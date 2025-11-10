@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { API_ENDPOINTS } from '../config';
 import './ExpenseList.css';
 
-const ExpenseList = ({ expenses, onExpenseDeleted, searchText }) => {
+const ExpenseList = ({ expenses, onExpenseDeleted, searchText, onAddExpense }) => {
   const [deletingId, setDeletingId] = useState(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [expenseToDelete, setExpenseToDelete] = useState(null);
@@ -150,7 +150,16 @@ const ExpenseList = ({ expenses, onExpenseDeleted, searchText }) => {
 
   return (
     <div className="expense-list-container">
-      <h2>Expense List</h2>
+      <div className="expense-list-header">
+        <h2>Expense List</h2>
+        <button 
+          className="add-expense-button" 
+          onClick={onAddExpense}
+          aria-label="Add new expense"
+        >
+          + Add Expense
+        </button>
+      </div>
       <div className="table-wrapper">
         <table className="expense-table">
           <thead>

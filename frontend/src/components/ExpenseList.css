@@ -6,14 +6,35 @@
   margin-top: 15px;
 }
 
-.expense-list-container h2 {
-  margin-top: 0;
+.expense-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 15px;
+  border-bottom: 2px solid #667eea;
+  padding-bottom: 8px;
+}
+
+.expense-list-container h2 {
+  margin: 0;
   color: #333;
   font-size: 1.2rem;
   font-weight: 600;
-  border-bottom: 2px solid #667eea;
-  padding-bottom: 8px;
+}
+
+.expense-list-container .add-expense-button {
+  background-color: #667eea;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.expense-list-container .add-expense-button:hover {
+  background-color: #5568d3;
 }
 
 .no-expenses-message {

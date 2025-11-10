@@ -144,23 +144,14 @@ function App() {
     <div className="App">
       <header className="App-header">
         <h1>Expense Tracker</h1>
-        <div className="header-buttons">
-          <button 
-            className="backup-button" 
-            onClick={handleBackup}
-            aria-label="Backup database"
-            title="Download database backup"
-          >
-            💾 Backup
-          </button>
-          <button 
-            className="add-expense-button" 
-            onClick={() => setShowExpenseForm(true)}
-            aria-label="Add new expense"
-          >
-            + Add Expense
-          </button>
-        </div>
+        <button 
+          className="backup-button" 
+          onClick={handleBackup}
+          aria-label="Backup database"
+          title="Download database backup"
+        >
+          💾 Backup
+        </button>
       </header>
       <main className="App-main">
         <MonthSelector 
@@ -211,6 +202,7 @@ function App() {
               expenses={filteredExpenses}
               onExpenseDeleted={handleExpenseDeleted}
               searchText={searchText}
+              onAddExpense={() => setShowExpenseForm(true)}
             />
             <SummaryPanel 
               selectedYear={selectedYear}

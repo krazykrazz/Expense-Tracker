@@ -1,0 +1,55 @@
+.month-selector {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+  padding: 10px;
+  background: white;
+  border-radius: 4px;
+  margin-bottom: 15px;
+  border: 1px solid #ddd;
+}
+
+.selector-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.selector-group label {
+  font-weight: 500;
+  color: #333;
+  font-size: 13px;
+}
+
+.selector-group select {
+  padding: 6px 10px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  font-size: 13px;
+  background-color: white;
+  cursor: pointer;
+  min-width: 120px;
+}
+
+.selector-group select:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+@media (max-width: 768px) {
+  .month-selector {
+    flex-direction: column;
+    gap: 10px;
+    align-items: stretch;
+  }
+
+  .selector-group {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 5px;
+  }
+
+  .selector-group select {
+    width: 100%;
+  }
+}

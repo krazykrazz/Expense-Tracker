@@ -1,0 +1,29 @@
+const express = require('express');
+const router = express.Router();
+const expenseController = require('../controllers/expenseController');
+
+// POST /api/expenses - Create a new expense
+router.post('/expenses', expenseController.createExpense);
+
+// GET /api/expenses - Get all expenses with optional filtering
+router.get('/expenses', expenseController.getExpenses);
+
+// GET /api/expenses/summary - Get summary data (must be before /:id route)
+router.get('/expenses/summary', expenseController.getSummary);
+
+// PUT /api/expenses/:id - Update an expense by ID
+router.put('/expenses/:id', expenseController.updateExpense);
+
+// DELETE /api/expenses/:id - Delete an expense by ID
+router.delete('/expenses/:id', expenseController.deleteExpense);
+
+// GET /api/monthly-gross - Get monthly gross income
+router.get('/monthly-gross', expenseController.getMonthlyGross);
+
+// POST /api/monthly-gross - Set monthly gross income
+router.post('/monthly-gross', expenseController.setMonthlyGross);
+
+// GET /api/backup - Download database backup
+router.get('/backup', expenseController.backupDatabase);
+
+module.exports = router;

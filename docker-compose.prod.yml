@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  expense-tracker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: expense-tracker
+    ports:
+      - "2424:2424"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - NODE_ENV=production
+      - PORT=2424
+    restart: unless-stopped

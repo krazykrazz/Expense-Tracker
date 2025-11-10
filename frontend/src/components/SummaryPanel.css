@@ -1,0 +1,274 @@
+.summary-panel {
+  background: white;
+  border-radius: 4px;
+  padding: 15px;
+  margin: 15px 0;
+  border: 1px solid #ddd;
+}
+
+.summary-panel h2 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  color: #333;
+  font-size: 1.2rem;
+  font-weight: 600;
+  border-bottom: 2px solid #667eea;
+  padding-bottom: 8px;
+}
+
+.summary-columns {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.summary-column {
+  background-color: #f9f9f9;
+  border-radius: 3px;
+  padding: 12px;
+}
+
+.summary-column h3 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  color: #333;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border-bottom: 2px solid #667eea;
+  padding-bottom: 5px;
+}
+
+.summary-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.summary-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 8px;
+  background: white;
+  border-radius: 2px;
+}
+
+.summary-label {
+  font-weight: 500;
+  color: #555;
+  font-size: 12px;
+}
+
+.summary-value {
+  font-weight: 600;
+  color: #667eea;
+  font-size: 12px;
+}
+
+.summary-section {
+  margin-bottom: 15px;
+  padding: 12px;
+  background-color: #f9f9f9;
+  border-radius: 3px;
+}
+
+.summary-section h3 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  color: #333;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border-left: 3px solid #667eea;
+  padding-left: 8px;
+}
+
+.balance-sheet {
+  background-color: #f9f9f9;
+  border-radius: 3px;
+  padding: 12px;
+  margin-top: 15px;
+}
+
+.balance-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 10px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.balance-row:last-child {
+  border-bottom: none;
+}
+
+.balance-total {
+  border-top: 2px solid #333;
+  margin-top: 5px;
+  padding-top: 10px;
+  font-weight: 600;
+}
+
+.balance-label {
+  font-size: 13px;
+  color: #555;
+  font-weight: 500;
+}
+
+.balance-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+.balance-value-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.expense-value {
+  color: #e53e3e;
+}
+
+.balance-value.positive {
+  color: #48bb78;
+  font-size: 16px;
+}
+
+.balance-value.negative {
+  color: #e53e3e;
+  font-size: 16px;
+}
+
+.loading-message,
+.error-message {
+  padding: 10px;
+  text-align: center;
+  border-radius: 3px;
+  margin-top: 8px;
+  font-size: 13px;
+}
+
+.loading-message {
+  background-color: #e3f2fd;
+  color: #1976d2;
+}
+
+.error-message {
+  background-color: #ffebee;
+  color: #c62828;
+}
+
+@media (max-width: 768px) {
+  .summary-panel {
+    padding: 10px;
+  }
+
+  .summary-panel h2 {
+    font-size: 1.1rem;
+  }
+
+  .summary-columns {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .summary-column {
+    padding: 10px;
+  }
+
+  .summary-column h3 {
+    font-size: 0.85rem;
+  }
+
+  .summary-section {
+    padding: 10px;
+  }
+
+  .summary-section h3 {
+    font-size: 0.9rem;
+  }
+
+  .balance-sheet {
+    padding: 10px;
+  }
+
+  .balance-row {
+    padding: 6px 8px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+  }
+
+  .balance-value-container {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .gross-input-inline {
+    width: 80px;
+  }
+}
+
+.edit-gross-button {
+  background-color: transparent;
+  color: #667eea;
+  border: none;
+  padding: 2px 6px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.edit-gross-button:hover {
+  color: #5568d3;
+}
+
+.gross-edit-inline {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.gross-input-inline {
+  padding: 4px 8px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  font-size: 13px;
+  font-weight: 600;
+  width: 100px;
+  text-align: right;
+}
+
+.gross-input-inline:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.save-button-inline,
+.cancel-button-inline {
+  padding: 3px 8px;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.save-button-inline {
+  background-color: #48bb78;
+  color: white;
+}
+
+.save-button-inline:hover {
+  background-color: #38a169;
+}
+
+.cancel-button-inline {
+  background-color: #ddd;
+  color: #333;
+}
+
+.cancel-button-inline:hover {
+  background-color: #ccc;
+}

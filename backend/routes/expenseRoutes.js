@@ -23,6 +23,9 @@ router.get('/monthly-gross', expenseController.getMonthlyGross);
 // POST /api/monthly-gross - Set monthly gross income
 router.post('/monthly-gross', expenseController.setMonthlyGross);
 
+// POST /api/import - Import expenses from CSV
+router.post('/import', expenseController.upload.single('file'), expenseController.importExpenses);
+
 // GET /api/backup - Download database backup
 router.get('/backup', expenseController.backupDatabase);
 

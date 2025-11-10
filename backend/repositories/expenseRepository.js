@@ -67,7 +67,7 @@ class ExpenseRepository {
         params.push(filters.month.toString().padStart(2, '0'));
       }
       
-      sql += ' ORDER BY date DESC';
+      sql += ' ORDER BY date ASC';
       
       db.all(sql, params, (err, rows) => {
         if (err) {

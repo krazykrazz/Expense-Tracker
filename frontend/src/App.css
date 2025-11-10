@@ -19,6 +19,12 @@
   margin: 0;
 }
 
+.header-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.import-button,
 .backup-button {
   background-color: rgba(255, 255, 255, 0.2);
   color: white;
@@ -31,6 +37,7 @@
   transition: background-color 0.2s;
 }
 
+.import-button:hover,
 .backup-button:hover {
   background-color: rgba(255, 255, 255, 0.3);
 }
@@ -171,6 +178,11 @@
     font-size: 1.2rem;
   }
 
+  .header-buttons {
+    gap: 5px;
+  }
+
+  .import-button,
   .backup-button {
     font-size: 12px;
     padding: 5px 10px;

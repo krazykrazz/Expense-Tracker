@@ -114,6 +114,43 @@ function App() {
     }
   };
 
+  const handleImport = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await fetch('/api/import', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to import expenses');
+      }
+
+      const result = await response.json();
+      
+      let message = `Import completed!\n${result.successCount} expenses imported successfully.`;
+      if (result.errorCount > 0) {
+        message += `\n${result.errorCount} errors occurred.`;
+      }
+      
+      alert(message);
+      
+      // Refresh the page to show new data
+      window.location.reload();
+    } catch (error) {
+      console.error('Import error:', error);
+      alert('Failed to import expenses. Please check your CSV format.');
+    }
+
+    // Reset file input
+    event.target.value = '';
+  };
+
   // Filter expenses based on search text, type, and method
   const filteredExpenses = expenses.filter(expense => {
     // Search filter
@@ -144,14 +181,25 @@ function App() {
     <div className="App">
       <header className="App-header">
         <h1>Expense Tracker</h1>
-        <button 
-          className="backup-button" 
-          onClick={handleBackup}
-          aria-label="Backup database"
-          title="Download database backup"
-        >
-          💾 Backup
-        </button>
+        <div className="header-buttons">
+          <label className="import-button" title="Import expenses from CSV">
+            📥 Import
+            <input 
+              type="file" 
+              accept=".csv"
+              onChange={handleImport}
+              style={{ display: 'none' }}
+            />
+          </label>
+          <button 
+            className="backup-button" 
+            onClick={handleBackup}
+            aria-label="Backup database"
+            title="Download database backup"
+          >
+            💾 Backup
+          </button>
+        </div>
       </header>
       <main className="App-main">
         <MonthSelector 

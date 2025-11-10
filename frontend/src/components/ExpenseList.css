@@ -76,6 +76,14 @@
   background-color: #f9f9f9;
 }
 
+.expense-table tbody tr.highlighted-row {
+  background-color: #e3f2fd !important;
+}
+
+.expense-table tbody tr.highlighted-row:hover {
+  background-color: #bbdefb !important;
+}
+
 .expense-table .amount {
   font-weight: 600;
   color: #667eea;
@@ -85,6 +93,26 @@
 .expense-table .amount.high-amount {
   color: #e53e3e;
   font-weight: 700;
+}
+
+.place-with-recurring {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.recurring-indicator {
+  font-size: 14px;
+  cursor: help;
+  display: inline-flex;
+  align-items: center;
+}
+
+.template-deleted-badge {
+  font-size: 11px;
+  color: #999;
+  font-style: italic;
+  margin-left: 4px;
 }
 
 .action-buttons {

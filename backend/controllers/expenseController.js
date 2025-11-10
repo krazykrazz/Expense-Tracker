@@ -1,4 +1,5 @@
 const expenseService = require('../services/expenseService');
+const recurringExpenseService = require('../services/recurringExpenseService');
 const fs = require('fs');
 const path = require('path');
 const { DB_PATH } = require('../database/db');
@@ -39,10 +40,43 @@ async function getExpenses(req, res) {
       filters.month = parseInt(month);
     }
     
+    // If year and month are provided, generate recurring expenses for that month first
+    if (year && month) {
+      await recurringExpenseService.generateExpensesForMonth(
+        parseInt(year),
+        parseInt(month)
+      );
+    }
+    
     const expenses = await expenseService.getExpenses(filters);
     res.status(200).json(expenses);
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+}
+
+/**
+ * Toggle highlight on an expense
+ * PATCH /api/expenses/:id/highlight
+ */
+async function toggleHighlight(req, res) {
+  try {
+    const id = parseInt(req.params.id);
+    
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'Invalid expense ID' });
+    }
+    
+    const { highlighted } = req.body;
+    const result = await expenseService.toggleHighlight(id, highlighted);
+    
+    if (!result) {
+      return res.status(404).json({ error: 'Expense not found' });
+    }
+    
+    res.status(200).json(result);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
   }
 }
 
@@ -199,6 +233,9 @@ function convertDate(dateStr) {
 /**
  * Import expenses from CSV
  * POST /api/import
+ * 
+ * Imports expenses from CSV file. All imported expenses are treated as manual entries
+ * (recurring_id = null, is_generated = 0) to ensure they are not linked to recurring templates.
  */
 async function importExpenses(req, res) {
   if (!req.file) {
@@ -258,13 +295,17 @@ async function importExpenses(req, res) {
         const convertedDate = convertDate(dateStr);
         
         // Map CSV columns to expense fields
+        // Note: recurring_id and is_generated are explicitly excluded to ensure
+        // imported expenses are treated as manual entries, not generated from templates
         const expenseData = {
           date: convertedDate,
           place: place.trim(),
           notes: notes.trim(),
           amount: amount,
           type: type.trim(),
-          method: method.trim()
+          method: method.trim(),
+          recurring_id: null,
+          is_generated: 0
         };
 
         // Validate and create expense
@@ -303,6 +344,11 @@ async function importExpenses(req, res) {
 /**
  * Backup database
  * GET /api/backup
+ * 
+ * Creates a complete backup of the SQLite database including:
+ * - expenses table (with recurring_id and is_generated fields)
+ * - monthly_gross table
+ * - recurring_expenses table
  */
 async function backupDatabase(req, res) {
   try {
@@ -319,7 +365,7 @@ async function backupDatabase(req, res) {
     res.setHeader('Content-Type', 'application/octet-stream');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
 
-    // Stream the database file
+    // Stream the database file (includes all tables: expenses, monthly_gross, recurring_expenses)
     const fileStream = fs.createReadStream(DB_PATH);
     fileStream.pipe(res);
 
@@ -337,6 +383,7 @@ module.exports = {
   createExpense,
   getExpenses,
   updateExpense,
+  toggleHighlight,
   deleteExpense,
   getSummary,
   getMonthlyGross,

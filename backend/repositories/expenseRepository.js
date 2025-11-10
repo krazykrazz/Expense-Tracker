@@ -11,8 +11,8 @@ class ExpenseRepository {
     
     return new Promise((resolve, reject) => {
       const sql = `
-        INSERT INTO expenses (date, place, notes, amount, type, week, method)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO expenses (date, place, notes, amount, type, week, method, recurring_id, is_generated)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
       
       const params = [
@@ -22,7 +22,9 @@ class ExpenseRepository {
         expense.amount,
         expense.type,
         expense.week,
-        expense.method
+        expense.method,
+        expense.recurring_id !== undefined ? expense.recurring_id : null,
+        expense.is_generated !== undefined ? expense.is_generated : 0
       ];
       
       db.run(sql, params, function(err) {
@@ -49,25 +51,35 @@ class ExpenseRepository {
     const db = await getDatabase();
     
     return new Promise((resolve, reject) => {
-      let sql = 'SELECT * FROM expenses';
+      // Join with recurring_expenses to check if template still exists
+      let sql = `
+        SELECT 
+          e.*,
+          CASE 
+            WHEN e.recurring_id IS NOT NULL AND r.id IS NULL THEN 1
+            ELSE 0
+          END as template_deleted
+        FROM expenses e
+        LEFT JOIN recurring_expenses r ON e.recurring_id = r.id
+      `;
       const params = [];
       
       // Add filtering by year and month if provided
       if (filters.year && filters.month) {
-        sql += ' WHERE strftime("%Y", date) = ? AND strftime("%m", date) = ?';
+        sql += ' WHERE strftime("%Y", e.date) = ? AND strftime("%m", e.date) = ?';
         params.push(
           filters.year.toString(),
           filters.month.toString().padStart(2, '0')
         );
       } else if (filters.year) {
-        sql += ' WHERE strftime("%Y", date) = ?';
+        sql += ' WHERE strftime("%Y", e.date) = ?';
         params.push(filters.year.toString());
       } else if (filters.month) {
-        sql += ' WHERE strftime("%m", date) = ?';
+        sql += ' WHERE strftime("%m", e.date) = ?';
         params.push(filters.month.toString().padStart(2, '0'));
       }
       
-      sql += ' ORDER BY date ASC';
+      sql += ' ORDER BY e.date ASC';
       
       db.all(sql, params, (err, rows) => {
         if (err) {
@@ -101,6 +113,41 @@ class ExpenseRepository {
   }
 
   /**
+   * Toggle highlight on an expense
+   * @param {number} id - Expense ID
+   * @param {number} highlighted - 0 or 1
+   * @returns {Promise<Object|null>} Updated expense or null
+   */
+  async toggleHighlight(id, highlighted) {
+    const db = await getDatabase();
+    
+    return new Promise((resolve, reject) => {
+      const sql = 'UPDATE expenses SET highlighted = ? WHERE id = ?';
+      
+      db.run(sql, [highlighted, id], function(err) {
+        if (err) {
+          reject(err);
+          return;
+        }
+        
+        if (this.changes === 0) {
+          resolve(null);
+          return;
+        }
+        
+        // Return the updated expense
+        db.get('SELECT * FROM expenses WHERE id = ?', [id], (err, row) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+          resolve(row);
+        });
+      });
+    });
+  }
+
+  /**
    * Update an expense by ID
    * @param {number} id - Expense ID
    * @param {Object} expense - Updated expense data
@@ -110,38 +157,54 @@ class ExpenseRepository {
     const db = await getDatabase();
     
     return new Promise((resolve, reject) => {
-      const sql = `
-        UPDATE expenses 
-        SET date = ?, place = ?, notes = ?, amount = ?, type = ?, week = ?, method = ?
-        WHERE id = ?
-      `;
-      
-      const params = [
-        expense.date,
-        expense.place || null,
-        expense.notes || null,
-        expense.amount,
-        expense.type,
-        expense.week,
-        expense.method,
-        id
-      ];
-      
-      db.run(sql, params, function(err) {
+      // First, get the current expense to preserve recurring_id and is_generated
+      db.get('SELECT recurring_id, is_generated FROM expenses WHERE id = ?', [id], (err, currentExpense) => {
         if (err) {
           reject(err);
           return;
         }
         
-        if (this.changes === 0) {
-          resolve(null); // No rows updated, expense not found
+        if (!currentExpense) {
+          resolve(null);
           return;
         }
         
-        // Return the updated expense
-        resolve({
-          id: id,
-          ...expense
+        // Update only the editable fields, preserve recurring_id and is_generated
+        const sql = `
+          UPDATE expenses 
+          SET date = ?, place = ?, notes = ?, amount = ?, type = ?, week = ?, method = ?
+          WHERE id = ?
+        `;
+        
+        const params = [
+          expense.date,
+          expense.place || null,
+          expense.notes || null,
+          expense.amount,
+          expense.type,
+          expense.week,
+          expense.method,
+          id
+        ];
+        
+        db.run(sql, params, function(err) {
+          if (err) {
+            reject(err);
+            return;
+          }
+          
+          if (this.changes === 0) {
+            resolve(null); // No rows updated, expense not found
+            return;
+          }
+          
+          // Return the updated expense with preserved recurring fields
+          resolve({
+            id: id,
+            ...expense,
+            recurring_id: currentExpense.recurring_id,
+            is_generated: currentExpense.is_generated
+          });
         });
       });
     });

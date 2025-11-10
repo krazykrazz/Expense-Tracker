@@ -99,7 +99,9 @@ class ExpenseService {
       amount: parseFloat(expenseData.amount),
       type: expenseData.type,
       week: week,
-      method: expenseData.method
+      method: expenseData.method,
+      recurring_id: expenseData.recurring_id !== undefined ? expenseData.recurring_id : null,
+      is_generated: expenseData.is_generated !== undefined ? expenseData.is_generated : 0
     };
 
     // Create expense in repository
@@ -122,6 +124,16 @@ class ExpenseService {
    */
   async getExpenseById(id) {
     return await expenseRepository.findById(id);
+  }
+
+  /**
+   * Toggle highlight on an expense
+   * @param {number} id - Expense ID
+   * @param {boolean} highlighted - Highlight state
+   * @returns {Promise<Object|null>} Updated expense or null
+   */
+  async toggleHighlight(id, highlighted) {
+    return await expenseRepository.toggleHighlight(id, highlighted ? 1 : 0);
   }
 
   /**

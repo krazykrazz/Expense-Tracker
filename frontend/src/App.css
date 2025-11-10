@@ -24,6 +24,7 @@
   gap: 8px;
 }
 
+.recurring-button,
 .import-button,
 .backup-button {
   background-color: rgba(255, 255, 255, 0.2);
@@ -37,6 +38,7 @@
   transition: background-color 0.2s;
 }
 
+.recurring-button:hover,
 .import-button:hover,
 .backup-button:hover {
   background-color: rgba(255, 255, 255, 0.3);
@@ -45,9 +47,25 @@
 .App-main {
   flex: 1;
   padding: 15px;
-  max-width: 1400px;
+  max-width: 1600px;
   margin: 0 auto;
   width: 100%;
+}
+
+.content-layout {
+  display: grid;
+  grid-template-columns: 1fr 400px;
+  gap: 15px;
+  align-items: start;
+}
+
+.content-left {
+  min-width: 0;
+}
+
+.content-right {
+  position: sticky;
+  top: 15px;
 }
 
 .filters-container {
@@ -148,6 +166,10 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
+.modal-content-large {
+  max-width: 900px;
+}
+
 .modal-close-button {
   position: absolute;
   top: 10px;
@@ -182,6 +204,7 @@
     gap: 5px;
   }
 
+  .recurring-button,
   .import-button,
   .backup-button {
     font-size: 12px;
@@ -200,6 +223,14 @@
 
   .App-main {
     padding: 10px;
+  }
+
+  .content-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .content-right {
+    position: static;
   }
 
   .filters-container {

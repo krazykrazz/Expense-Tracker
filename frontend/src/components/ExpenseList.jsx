@@ -120,12 +120,37 @@ const ExpenseList = ({ expenses, onExpenseDeleted, searchText, onAddExpense }) =
     setExpenseToDelete(null);
   };
 
+  const handleRowClick = async (expense) => {
+    const newHighlightState = !expense.highlighted;
+    
+    try {
+      const response = await fetch(API_ENDPOINTS.EXPENSE_BY_ID(expense.id) + '/highlight', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ highlighted: newHighlightState })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to toggle highlight');
+      }
+
+      // Refresh the page to show updated highlight
+      window.location.reload();
+    } catch (error) {
+      console.error('Error toggling highlight:', error);
+    }
+  };
+
   const formatAmount = (amount) => {
     return parseFloat(amount).toFixed(2);
   };
 
   const formatDate = (dateString) => {
-    const date = new Date(dateString);
+    // Parse date as local time to avoid timezone issues
+    const [year, month, day] = dateString.split('-');
+    const date = new Date(year, month - 1, day);
     return date.toLocaleDateString('en-US', { 
       year: 'numeric', 
       month: 'short', 
@@ -176,9 +201,35 @@ const ExpenseList = ({ expenses, onExpenseDeleted, searchText, onAddExpense }) =
           </thead>
           <tbody>
             {expenses.map((expense) => (
-              <tr key={expense.id}>
+              <tr 
+                key={expense.id}
+                className={expense.highlighted ? 'highlighted-row' : ''}
+                onClick={() => handleRowClick(expense)}
+                style={{ cursor: 'pointer' }}
+              >
                 <td>{formatDate(expense.date)}</td>
-                <td>{expense.place || '-'}</td>
+                <td>
+                  {expense.is_generated ? (
+                    <span className="place-with-recurring">
+                      <span 
+                        className="recurring-indicator" 
+                        title={expense.template_deleted ? "Template deleted" : "Generated from recurring template"}
+                        aria-label={expense.template_deleted ? "Template deleted" : "Generated from recurring template"}
+                        style={expense.template_deleted ? { opacity: 0.5 } : {}}
+                      >
+                        🔄
+                      </span>
+                      {expense.place || '-'}
+                      {expense.template_deleted && (
+                        <span className="template-deleted-badge" title="The recurring template for this expense has been deleted">
+                          (template deleted)
+                        </span>
+                      )}
+                    </span>
+                  ) : (
+                    expense.place || '-'
+                  )}
+                </td>
                 <td>{expense.notes || '-'}</td>
                 <td className={`amount ${expense.amount > 400 ? 'high-amount' : ''}`}>
                   ${formatAmount(expense.amount)}

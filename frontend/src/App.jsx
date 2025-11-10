@@ -5,6 +5,7 @@ import MonthSelector from './components/MonthSelector';
 import ExpenseList from './components/ExpenseList';
 import SearchBar from './components/SearchBar';
 import SummaryPanel from './components/SummaryPanel';
+import RecurringExpensesManager from './components/RecurringExpensesManager';
 import { API_ENDPOINTS } from './config';
 
 function App() {
@@ -16,6 +17,7 @@ function App() {
   const [searchText, setSearchText] = useState('');
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [showExpenseForm, setShowExpenseForm] = useState(false);
+  const [showRecurringManager, setShowRecurringManager] = useState(false);
   const [filterType, setFilterType] = useState('');
   const [filterMethod, setFilterMethod] = useState('');
 
@@ -54,7 +56,12 @@ function App() {
     const expenseMonth = expenseDate.getMonth() + 1;
     
     if (expenseYear === selectedYear && expenseMonth === selectedMonth) {
-      setExpenses(prev => [newExpense, ...prev]);
+      setExpenses(prev => {
+        // Insert in chronological order
+        const newList = [...prev, newExpense];
+        newList.sort((a, b) => new Date(a.date) - new Date(b.date));
+        return newList;
+      });
     }
     
     // Trigger summary refresh and close modal
@@ -182,6 +189,14 @@ function App() {
       <header className="App-header">
         <h1>Expense Tracker</h1>
         <div className="header-buttons">
+          <button 
+            className="recurring-button" 
+            onClick={() => setShowRecurringManager(true)}
+            aria-label="Manage recurring expenses"
+            title="Manage recurring expenses"
+          >
+            🔄 Recurring
+          </button>
           <label className="import-button" title="Import expenses from CSV">
             📥 Import
             <input 
@@ -245,19 +260,23 @@ function App() {
         {loading && <div className="loading-message">Loading expenses...</div>}
         {error && <div className="error-message">Error: {error}</div>}
         {!loading && !error && (
-          <>
-            <ExpenseList 
-              expenses={filteredExpenses}
-              onExpenseDeleted={handleExpenseDeleted}
-              searchText={searchText}
-              onAddExpense={() => setShowExpenseForm(true)}
-            />
-            <SummaryPanel 
-              selectedYear={selectedYear}
-              selectedMonth={selectedMonth}
-              refreshTrigger={refreshTrigger}
-            />
-          </>
+          <div className="content-layout">
+            <div className="content-left">
+              <ExpenseList 
+                expenses={filteredExpenses}
+                onExpenseDeleted={handleExpenseDeleted}
+                searchText={searchText}
+                onAddExpense={() => setShowExpenseForm(true)}
+              />
+            </div>
+            <div className="content-right">
+              <SummaryPanel 
+                selectedYear={selectedYear}
+                selectedMonth={selectedMonth}
+                refreshTrigger={refreshTrigger}
+              />
+            </div>
+          </div>
         )}
       </main>
 
@@ -272,6 +291,21 @@ function App() {
               ×
             </button>
             <ExpenseForm onExpenseAdded={handleExpenseAdded} />
+          </div>
+        </div>
+      )}
+
+      {showRecurringManager && (
+        <div className="modal-overlay" onClick={() => setShowRecurringManager(false)}>
+          <div className="modal-content modal-content-large" onClick={(e) => e.stopPropagation()}>
+            <button 
+              className="modal-close-button" 
+              onClick={() => setShowRecurringManager(false)}
+              aria-label="Close"
+            >
+              ×
+            </button>
+            <RecurringExpensesManager onClose={() => setShowRecurringManager(false)} />
           </div>
         </div>
       )}

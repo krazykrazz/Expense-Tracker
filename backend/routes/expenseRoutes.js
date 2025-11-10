@@ -14,6 +14,9 @@ router.get('/expenses/summary', expenseController.getSummary);
 // PUT /api/expenses/:id - Update an expense by ID
 router.put('/expenses/:id', expenseController.updateExpense);
 
+// PATCH /api/expenses/:id/highlight - Toggle highlight on an expense
+router.patch('/expenses/:id/highlight', expenseController.toggleHighlight);
+
 // DELETE /api/expenses/:id - Delete an expense by ID
 router.delete('/expenses/:id', expenseController.deleteExpense);
 

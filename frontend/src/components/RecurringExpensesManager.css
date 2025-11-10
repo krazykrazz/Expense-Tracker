@@ -1,0 +1,271 @@
+.recurring-manager {
+  background: #fff;
+  padding: 20px;
+  border-radius: 4px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.recurring-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #667eea;
+}
+
+.recurring-header h2 {
+  margin: 0;
+  color: #333;
+  font-size: 1.3rem;
+  font-weight: 600;
+}
+
+.add-new-button {
+  padding: 8px 16px;
+  background: #667eea;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.add-new-button:hover {
+  background: #5568d3;
+}
+
+.message {
+  padding: 10px;
+  border-radius: 3px;
+  margin-bottom: 15px;
+  font-size: 13px;
+}
+
+.message.success {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.message.error {
+  background-color: #ffebee;
+  color: #c62828;
+}
+
+.loading-message,
+.error-message {
+  text-align: center;
+  padding: 20px;
+  color: #666;
+}
+
+.error-message {
+  color: #c62828;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: #666;
+}
+
+.empty-state p {
+  margin: 8px 0;
+}
+
+.templates-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.template-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  background: #fafafa;
+  transition: box-shadow 0.2s;
+}
+
+.template-card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.template-card.paused {
+  opacity: 0.7;
+  background: #f5f5f5;
+}
+
+.template-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  flex: 1;
+}
+
+.template-icon {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.template-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.template-place {
+  font-size: 15px;
+  font-weight: 600;
+  color: #333;
+}
+
+.template-details {
+  font-size: 13px;
+  color: #666;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.template-amount {
+  font-weight: 600;
+  color: #667eea;
+}
+
+.template-separator {
+  color: #ccc;
+}
+
+.template-date-range {
+  font-size: 12px;
+  color: #888;
+  margin-top: 2px;
+}
+
+.template-status {
+  font-size: 12px;
+  color: #ff9800;
+  font-weight: 500;
+  margin-top: 4px;
+}
+
+.template-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.action-button {
+  padding: 6px 10px;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+  line-height: 1;
+}
+
+.action-button:hover {
+  background: #f5f5f5;
+  border-color: #bbb;
+}
+
+.pause-button:hover {
+  background: #fff3e0;
+  border-color: #ff9800;
+}
+
+.edit-button:hover {
+  background: #e3f2fd;
+  border-color: #2196f3;
+}
+
+.delete-button:hover {
+  background: #ffebee;
+  border-color: #f44336;
+}
+
+@media (max-width: 768px) {
+  .recurring-manager {
+    padding: 15px;
+  }
+
+  .recurring-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .template-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .template-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .template-details {
+    font-size: 12px;
+  }
+}
+
+.form-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.form-modal-content {
+  background: white;
+  border-radius: 4px;
+  max-width: 600px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.form-modal-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: none;
+  border: none;
+  font-size: 28px;
+  color: #666;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  transition: background 0.2s;
+}
+
+.form-modal-close:hover {
+  background: #f5f5f5;
+  color: #333;
+}

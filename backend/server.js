@@ -3,6 +3,7 @@ const bodyParser = require('body-parser');
 const path = require('path');
 const { initializeDatabase } = require('./database/db');
 const expenseRoutes = require('./routes/expenseRoutes');
+const recurringExpenseRoutes = require('./routes/recurringExpenseRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 2424;
@@ -18,6 +19,9 @@ app.get('/api/health', (req, res) => {
 
 // Expense API routes
 app.use('/api', expenseRoutes);
+
+// Recurring expense API routes
+app.use('/api', recurringExpenseRoutes);
 
 // Serve static files from the React app (after build)
 app.use(express.static(path.join(__dirname, 'client', 'dist')));

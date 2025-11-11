@@ -10,7 +10,7 @@
   color: #333;
   font-size: 1.2rem;
   font-weight: 600;
-  border-bottom: 2px solid #667eea;
+  border-bottom: 2px solid #0ea5e9;
   padding-bottom: 8px;
 }
 
@@ -53,7 +53,7 @@
 .form-group select:focus,
 .form-group textarea:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: #0ea5e9;
 }
 
 .form-group textarea {
@@ -78,7 +78,7 @@
 
 .submit-button {
   padding: 8px 16px;
-  background: #667eea;
+  background: #0ea5e9;
   color: white;
   border: none;
   border-radius: 3px;
@@ -88,7 +88,7 @@
 }
 
 .submit-button:hover:not(:disabled) {
-  background: #5568d3;
+  background: #0284c7;
 }
 
 .submit-button:disabled {
@@ -108,4 +108,57 @@
   .form-row {
     grid-template-columns: 1fr;
   }
+}
+
+.recurring-checkbox {
+  margin-top: 8px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #555;
+  font-weight: 500;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: auto;
+  cursor: pointer;
+  margin: 0;
+}
+
+.recurring-fields {
+  background: #f8f9ff;
+  padding: 15px;
+  border-radius: 4px;
+  border: 1px solid #e0e4ff;
+  margin-top: 5px;
+}
+
+.recurring-section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0ea5e9;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.field-hint {
+  font-size: 11px;
+  color: #888;
+  margin-top: 3px;
+}
+
+.checkbox-group {
+  justify-content: center;
+}
+
+.form-group input:disabled {
+  background-color: #f5f5f5;
+  color: #999;
+  cursor: not-allowed;
 }

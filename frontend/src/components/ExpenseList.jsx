@@ -120,26 +120,26 @@ const ExpenseList = ({ expenses, onExpenseDeleted, searchText, onAddExpense }) =
     setExpenseToDelete(null);
   };
 
-  const handleRowClick = async (expense) => {
-    const newHighlightState = !expense.highlighted;
+  const handleTaxToggle = async (expense) => {
+    const newTaxState = !expense.tax_deductible;
     
     try {
-      const response = await fetch(API_ENDPOINTS.EXPENSE_BY_ID(expense.id) + '/highlight', {
+      const response = await fetch(API_ENDPOINTS.EXPENSE_BY_ID(expense.id) + '/tax', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ highlighted: newHighlightState })
+        body: JSON.stringify({ tax_deductible: newTaxState })
       });
 
       if (!response.ok) {
-        throw new Error('Failed to toggle highlight');
+        throw new Error('Failed to toggle tax deductible');
       }
 
-      // Refresh the page to show updated highlight
+      // Refresh the page to show updated state
       window.location.reload();
     } catch (error) {
-      console.error('Error toggling highlight:', error);
+      console.error('Error toggling tax deductible:', error);
     }
   };
 
@@ -196,6 +196,7 @@ const ExpenseList = ({ expenses, onExpenseDeleted, searchText, onAddExpense }) =
               <th>Type</th>
               <th>Week</th>
               <th>Method</th>
+              <th>Tax</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -203,9 +204,7 @@ const ExpenseList = ({ expenses, onExpenseDeleted, searchText, onAddExpense }) =
             {expenses.map((expense) => (
               <tr 
                 key={expense.id}
-                className={expense.highlighted ? 'highlighted-row' : ''}
-                onClick={() => handleRowClick(expense)}
-                style={{ cursor: 'pointer' }}
+                className={expense.tax_deductible ? 'tax-deductible-row' : ''}
               >
                 <td>{formatDate(expense.date)}</td>
                 <td>
@@ -231,12 +230,20 @@ const ExpenseList = ({ expenses, onExpenseDeleted, searchText, onAddExpense }) =
                   )}
                 </td>
                 <td>{expense.notes || '-'}</td>
-                <td className={`amount ${expense.amount > 400 ? 'high-amount' : ''}`}>
+                <td className={`amount ${expense.amount >= 350 ? 'high-amount' : ''}`}>
                   ${formatAmount(expense.amount)}
                 </td>
                 <td>{expense.type}</td>
                 <td>{expense.week}</td>
                 <td>{expense.method}</td>
+                <td className="tax-checkbox-cell">
+                  <input
+                    type="checkbox"
+                    checked={expense.tax_deductible || false}
+                    onChange={() => handleTaxToggle(expense)}
+                    title="Mark as tax deductible"
+                  />
+                </td>
                 <td>
                   <div className="action-buttons">
                     <button

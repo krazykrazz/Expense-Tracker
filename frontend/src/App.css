@@ -5,7 +5,7 @@
 }
 
 .App-header {
-  background: #667eea;
+  background: linear-gradient(135deg, #475569 0%, #334155 100%);
   padding: 15px 20px;
   color: white;
   display: flex;
@@ -24,9 +24,8 @@
   gap: 8px;
 }
 
-.recurring-button,
-.import-button,
-.backup-button {
+.settings-button,
+.recurring-button {
   background-color: rgba(255, 255, 255, 0.2);
   color: white;
   border: 1px solid white;
@@ -38,9 +37,8 @@
   transition: background-color 0.2s;
 }
 
-.recurring-button:hover,
-.import-button:hover,
-.backup-button:hover {
+.settings-button:hover,
+.recurring-button:hover {
   background-color: rgba(255, 255, 255, 0.3);
 }
 
@@ -107,7 +105,7 @@
 
 .filter-group select:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: #0ea5e9;
 }
 
 .loading-message,
@@ -250,4 +248,17 @@
   .modal-content {
     width: 95%;
   }
+}
+
+.App-footer {
+  padding: 10px 20px;
+  text-align: center;
+  background: linear-gradient(135deg, #475569 0%, #334155 100%);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.version {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 500;
 }

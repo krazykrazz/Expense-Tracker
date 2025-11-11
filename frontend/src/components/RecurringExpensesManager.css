@@ -12,7 +12,7 @@
   align-items: center;
   margin-bottom: 20px;
   padding-bottom: 10px;
-  border-bottom: 2px solid #667eea;
+  border-bottom: 2px solid #0ea5e9;
 }
 
 .recurring-header h2 {
@@ -24,7 +24,7 @@
 
 .add-new-button {
   padding: 8px 16px;
-  background: #667eea;
+  background: #0ea5e9;
   color: white;
   border: none;
   border-radius: 3px;
@@ -35,7 +35,7 @@
 }
 
 .add-new-button:hover {
-  background: #5568d3;
+  background: #0284c7;
 }
 
 .message {
@@ -138,7 +138,7 @@
 
 .template-amount {
   font-weight: 600;
-  color: #667eea;
+  color: #0ea5e9;
 }
 
 .template-separator {

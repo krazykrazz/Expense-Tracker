@@ -10,7 +10,7 @@
   color: #333;
   font-size: 1.2rem;
   font-weight: 600;
-  border-bottom: 2px solid #667eea;
+  border-bottom: 2px solid #0ea5e9;
   padding-bottom: 8px;
 }
 
@@ -59,7 +59,7 @@
 .form-group select:focus,
 .form-group textarea:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: #0ea5e9;
 }
 
 .form-group textarea {
@@ -135,12 +135,12 @@
 }
 
 .submit-button {
-  background: #667eea;
+  background: #0ea5e9;
   color: white;
 }
 
 .submit-button:hover:not(:disabled) {
-  background: #5568d3;
+  background: #0284c7;
 }
 
 .submit-button:disabled {

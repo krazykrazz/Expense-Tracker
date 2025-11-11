@@ -81,6 +81,31 @@ async function toggleHighlight(req, res) {
 }
 
 /**
+ * Toggle tax deductible on an expense
+ * PATCH /api/expenses/:id/tax
+ */
+async function toggleTaxDeductible(req, res) {
+  try {
+    const id = parseInt(req.params.id);
+    
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'Invalid expense ID' });
+    }
+    
+    const { tax_deductible } = req.body;
+    const result = await expenseService.toggleTaxDeductible(id, tax_deductible);
+    
+    if (!result) {
+      return res.status(404).json({ error: 'Expense not found' });
+    }
+    
+    res.status(200).json(result);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+}
+
+/**
  * Update an expense by ID
  * PUT /api/expenses/:id
  */
@@ -142,6 +167,25 @@ async function getSummary(req, res) {
     }
     
     const summary = await expenseService.getSummary(year, month);
+    res.status(200).json(summary);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+}
+
+/**
+ * Get annual summary data
+ * GET /api/expenses/annual-summary?year=2024
+ */
+async function getAnnualSummary(req, res) {
+  try {
+    const { year } = req.query;
+    
+    if (!year) {
+      return res.status(400).json({ error: 'Year query parameter is required' });
+    }
+    
+    const summary = await expenseService.getAnnualSummary(parseInt(year));
     res.status(200).json(summary);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -384,8 +428,10 @@ module.exports = {
   getExpenses,
   updateExpense,
   toggleHighlight,
+  toggleTaxDeductible,
   deleteExpense,
   getSummary,
+  getAnnualSummary,
   getMonthlyGross,
   setMonthlyGross,
   importExpenses,

@@ -148,6 +148,41 @@ class ExpenseRepository {
   }
 
   /**
+   * Toggle tax deductible on an expense
+   * @param {number} id - Expense ID
+   * @param {number} taxDeductible - 0 or 1
+   * @returns {Promise<Object|null>} Updated expense or null
+   */
+  async toggleTaxDeductible(id, taxDeductible) {
+    const db = await getDatabase();
+    
+    return new Promise((resolve, reject) => {
+      const sql = 'UPDATE expenses SET tax_deductible = ? WHERE id = ?';
+      
+      db.run(sql, [taxDeductible, id], function(err) {
+        if (err) {
+          reject(err);
+          return;
+        }
+        
+        if (this.changes === 0) {
+          resolve(null);
+          return;
+        }
+        
+        // Return the updated expense
+        db.get('SELECT * FROM expenses WHERE id = ?', [id], (err, row) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+          resolve(row);
+        });
+      });
+    });
+  }
+
+  /**
    * Update an expense by ID
    * @param {number} id - Expense ID
    * @param {Object} expense - Updated expense data

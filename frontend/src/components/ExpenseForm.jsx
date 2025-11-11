@@ -12,6 +12,14 @@ const ExpenseForm = ({ onExpenseAdded }) => {
     method: 'Cash'
   });
 
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurringData, setRecurringData] = useState({
+    day_of_month: '',
+    start_month: '',
+    end_month: '',
+    ongoing: false
+  });
+
   const [message, setMessage] = useState({ text: '', type: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -24,6 +32,23 @@ const ExpenseForm = ({ onExpenseAdded }) => {
       ...prev,
       [name]: value
     }));
+  };
+
+  const handleRecurringChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    
+    if (name === 'ongoing') {
+      setRecurringData(prev => ({
+        ...prev,
+        ongoing: checked,
+        end_month: checked ? '' : prev.end_month
+      }));
+    } else {
+      setRecurringData(prev => ({
+        ...prev,
+        [name]: type === 'checkbox' ? checked : value
+      }));
+    }
   };
 
   const validateForm = () => {
@@ -51,6 +76,23 @@ const ExpenseForm = ({ onExpenseAdded }) => {
       setMessage({ text: 'Notes must be 200 characters or less', type: 'error' });
       return false;
     }
+    
+    // Validate recurring fields if recurring is enabled
+    if (isRecurring) {
+      if (!recurringData.day_of_month || recurringData.day_of_month < 1 || recurringData.day_of_month > 31) {
+        setMessage({ text: 'Day of month must be between 1 and 31', type: 'error' });
+        return false;
+      }
+      if (!recurringData.start_month) {
+        setMessage({ text: 'Start month is required for recurring expenses', type: 'error' });
+        return false;
+      }
+      if (!recurringData.ongoing && recurringData.end_month && recurringData.end_month < recurringData.start_month) {
+        setMessage({ text: 'End month must be after or equal to start month', type: 'error' });
+        return false;
+      }
+    }
+    
     return true;
   };
 
@@ -65,6 +107,7 @@ const ExpenseForm = ({ onExpenseAdded }) => {
     setIsSubmitting(true);
 
     try {
+      // Create the expense
       const response = await fetch(API_ENDPOINTS.EXPENSES, {
         method: 'POST',
         headers: {
@@ -87,7 +130,35 @@ const ExpenseForm = ({ onExpenseAdded }) => {
 
       const newExpense = await response.json();
       
-      setMessage({ text: 'Expense added successfully!', type: 'success' });
+      // If recurring is enabled, create the recurring template
+      if (isRecurring) {
+        const recurringResponse = await fetch('/api/recurring', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            place: formData.place,
+            amount: parseFloat(formData.amount),
+            notes: formData.notes,
+            type: formData.type,
+            method: formData.method,
+            day_of_month: parseInt(recurringData.day_of_month),
+            start_month: recurringData.start_month,
+            end_month: recurringData.ongoing ? null : (recurringData.end_month || null)
+          })
+        });
+
+        if (!recurringResponse.ok) {
+          const errorData = await recurringResponse.json();
+          throw new Error(errorData.error || 'Failed to create recurring template');
+        }
+      }
+      
+      setMessage({ 
+        text: isRecurring ? 'Expense and recurring template added successfully!' : 'Expense added successfully!', 
+        type: 'success' 
+      });
       
       // Clear form
       setFormData({
@@ -97,6 +168,14 @@ const ExpenseForm = ({ onExpenseAdded }) => {
         amount: '',
         type: 'Other',
         method: 'Cash'
+      });
+      
+      setIsRecurring(false);
+      setRecurringData({
+        day_of_month: '',
+        start_month: '',
+        end_month: '',
+        ongoing: false
       });
 
       // Notify parent component
@@ -206,6 +285,79 @@ const ExpenseForm = ({ onExpenseAdded }) => {
             placeholder="Additional notes..."
           />
         </div>
+
+        <div className="form-group recurring-checkbox">
+          <label className="checkbox-label">
+            <input
+              type="checkbox"
+              checked={isRecurring}
+              onChange={(e) => setIsRecurring(e.target.checked)}
+            />
+            <span>🔄 Make this a recurring expense</span>
+          </label>
+        </div>
+
+        {isRecurring && (
+          <div className="recurring-fields">
+            <div className="recurring-section-title">Recurring Settings</div>
+            
+            <div className="form-row">
+              <div className="form-group">
+                <label htmlFor="day_of_month">Day of Month *</label>
+                <input
+                  type="number"
+                  id="day_of_month"
+                  name="day_of_month"
+                  value={recurringData.day_of_month}
+                  onChange={handleRecurringChange}
+                  min="1"
+                  max="31"
+                  placeholder="1-31"
+                  required={isRecurring}
+                />
+                <small className="field-hint">Day when expense occurs each month</small>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="start_month">Start Month *</label>
+                <input
+                  type="month"
+                  id="start_month"
+                  name="start_month"
+                  value={recurringData.start_month}
+                  onChange={handleRecurringChange}
+                  required={isRecurring}
+                />
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label htmlFor="end_month">End Month</label>
+                <input
+                  type="month"
+                  id="end_month"
+                  name="end_month"
+                  value={recurringData.end_month}
+                  onChange={handleRecurringChange}
+                  disabled={recurringData.ongoing}
+                />
+              </div>
+
+              <div className="form-group checkbox-group">
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    name="ongoing"
+                    checked={recurringData.ongoing}
+                    onChange={handleRecurringChange}
+                  />
+                  <span>Ongoing (no end date)</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        )}
 
         {message.text && (
           <div className={`message ${message.type}`}>

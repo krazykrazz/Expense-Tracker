@@ -4,6 +4,8 @@ const path = require('path');
 const { initializeDatabase } = require('./database/db');
 const expenseRoutes = require('./routes/expenseRoutes');
 const recurringExpenseRoutes = require('./routes/recurringExpenseRoutes');
+const backupRoutes = require('./routes/backupRoutes');
+const backupService = require('./services/backupService');
 
 const app = express();
 const PORT = process.env.PORT || 2424;
@@ -23,12 +25,15 @@ app.use('/api', expenseRoutes);
 // Recurring expense API routes
 app.use('/api', recurringExpenseRoutes);
 
+// Backup API routes
+app.use('/api', backupRoutes);
+
 // Serve static files from the React app (after build)
-app.use(express.static(path.join(__dirname, 'client', 'dist')));
+app.use(express.static(path.join(__dirname, '..', 'frontend', 'dist')));
 
 // Catch-all handler: send back React's index.html for any non-API routes
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'client', 'dist', 'index.html'));
+  res.sendFile(path.join(__dirname, '..', 'frontend', 'dist', 'index.html'));
 });
 
 // Initialize database and start server
@@ -40,6 +45,15 @@ initializeDatabase()
       console.log(`Frontend available at http://localhost:${PORT}`);
       console.log(`\nTo access from other devices on your network:`);
       console.log(`Find your local IP address and use: http://YOUR_LOCAL_IP:${PORT}`);
+      
+      // Start backup scheduler
+      backupService.startScheduler();
+      const config = backupService.getConfig();
+      if (config.enabled) {
+        const nextBackup = backupService.getNextBackupTime();
+        console.log(`\nAutomatic backups enabled`);
+        console.log(`Next backup: ${nextBackup ? nextBackup.toLocaleString() : 'Not scheduled'}`);
+      }
     });
   })
   .catch((err) => {

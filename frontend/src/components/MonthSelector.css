@@ -33,7 +33,7 @@
 
 .selector-group select:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: #0ea5e9;
 }
 
 @media (max-width: 768px) {
@@ -50,6 +50,29 @@
   }
 
   .selector-group select {
+    width: 100%;
+  }
+}
+
+.annual-summary-button {
+  padding: 6px 16px;
+  background: #0ea5e9;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+
+.annual-summary-button:hover {
+  background: #0284c7;
+}
+
+@media (max-width: 768px) {
+  .annual-summary-button {
     width: 100%;
   }
 }

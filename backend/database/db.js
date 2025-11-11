@@ -113,6 +113,15 @@ function initializeDatabase() {
           }
         });
 
+        // Add tax_deductible column if it doesn't exist (migration)
+        db.run('ALTER TABLE expenses ADD COLUMN tax_deductible INTEGER DEFAULT 0', (err) => {
+          if (err && !err.message.includes('duplicate column')) {
+            console.error('Error adding tax_deductible column:', err.message);
+          } else if (!err) {
+            console.log('Added tax_deductible column to expenses table');
+          }
+        });
+
           // Create indexes for better query performance
           const indexes = [
             'CREATE INDEX IF NOT EXISTS idx_date ON expenses(date)',

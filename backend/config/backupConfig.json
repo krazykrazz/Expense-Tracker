@@ -1,0 +1,8 @@
+{
+  "enabled": false,
+  "schedule": "daily",
+  "time": "02:00",
+  "targetPath": "",
+  "keepLastN": 7,
+  "lastBackup": null
+}

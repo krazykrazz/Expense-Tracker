@@ -137,6 +137,16 @@ class ExpenseService {
   }
 
   /**
+   * Toggle tax deductible on an expense
+   * @param {number} id - Expense ID
+   * @param {boolean} taxDeductible - Tax deductible state
+   * @returns {Promise<Object|null>} Updated expense or null
+   */
+  async toggleTaxDeductible(id, taxDeductible) {
+    return await expenseRepository.toggleTaxDeductible(id, taxDeductible ? 1 : 0);
+  }
+
+  /**
    * Update an expense
    * @param {number} id - Expense ID
    * @param {Object} expenseData - Updated expense data
@@ -235,6 +245,103 @@ class ExpenseService {
     }
 
     return await expenseRepository.setMonthlyGross(year, month, amount);
+  }
+
+  /**
+   * Get annual summary data
+   * @param {number} year - Year
+   * @returns {Promise<Object>} Annual summary object
+   */
+  async getAnnualSummary(year) {
+    const db = await require('../database/db').getDatabase();
+    
+    return new Promise((resolve, reject) => {
+      // Get monthly totals
+      const monthlyQuery = `
+        SELECT 
+          CAST(strftime('%m', date) AS INTEGER) as month,
+          SUM(amount) as total
+        FROM expenses
+        WHERE strftime('%Y', date) = ?
+        GROUP BY strftime('%m', date)
+        ORDER BY month
+      `;
+      
+      db.all(monthlyQuery, [year.toString()], (err, monthlyTotals) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        
+        // Get category breakdown
+        const categoryQuery = `
+          SELECT type, SUM(amount) as total
+          FROM expenses
+          WHERE strftime('%Y', date) = ?
+          GROUP BY type
+          ORDER BY total DESC
+        `;
+        
+        db.all(categoryQuery, [year.toString()], (err, categoryTotals) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+          
+          // Get payment method breakdown
+          const methodQuery = `
+            SELECT method, SUM(amount) as total
+            FROM expenses
+            WHERE strftime('%Y', date) = ?
+            GROUP BY method
+            ORDER BY total DESC
+          `;
+          
+          db.all(methodQuery, [year.toString()], (err, methodTotals) => {
+            if (err) {
+              reject(err);
+              return;
+            }
+            
+            // Calculate totals and averages
+            const totalExpenses = monthlyTotals.reduce((sum, m) => sum + m.total, 0);
+            const monthsWithData = monthlyTotals.length;
+            const averageMonthly = monthsWithData > 0 ? totalExpenses / monthsWithData : 0;
+            
+            // Find highest and lowest months
+            const highestMonth = monthlyTotals.length > 0 
+              ? monthlyTotals.reduce((max, m) => m.total > max.total ? m : max, monthlyTotals[0])
+              : null;
+            
+            const lowestMonth = monthlyTotals.length > 0
+              ? monthlyTotals.reduce((min, m) => m.total < min.total ? m : min, monthlyTotals[0])
+              : null;
+            
+            // Convert arrays to objects for easier frontend consumption
+            const byCategory = {};
+            categoryTotals.forEach(c => {
+              byCategory[c.type] = c.total;
+            });
+            
+            const byMethod = {};
+            methodTotals.forEach(m => {
+              byMethod[m.method] = m.total;
+            });
+            
+            resolve({
+              year,
+              totalExpenses,
+              averageMonthly,
+              monthlyTotals,
+              highestMonth,
+              lowestMonth,
+              byCategory,
+              byMethod
+            });
+          });
+        });
+      });
+    });
   }
 }
 

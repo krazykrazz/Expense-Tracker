@@ -1,0 +1,297 @@
+.backup-settings {
+  padding: 20px;
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.backup-settings h2 {
+  margin-top: 0;
+  margin-bottom: 20px;
+  color: #333;
+  font-size: 1.3rem;
+  font-weight: 600;
+  border-bottom: 2px solid #0ea5e9;
+  padding-bottom: 10px;
+}
+
+.backup-settings h3 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  color: #555;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.settings-section {
+  background: #f8f9ff;
+  padding: 20px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+  border: 1px solid #e0e4ff;
+}
+
+.settings-section p {
+  margin: 0 0 15px 0;
+  color: #666;
+  font-size: 14px;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 500;
+  color: #555;
+  font-size: 13px;
+}
+
+.form-group input[type="text"],
+.form-group input[type="time"],
+.form-group input[type="number"] {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #0ea5e9;
+}
+
+.checkbox-group {
+  margin-bottom: 20px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 15px;
+  color: #333;
+  font-weight: 500;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: auto;
+  cursor: pointer;
+  transform: scale(1.2);
+}
+
+.field-hint {
+  display: block;
+  font-size: 12px;
+  color: #888;
+  margin-top: 4px;
+}
+
+.next-backup-info {
+  background: #e8f5e9;
+  padding: 12px;
+  border-radius: 4px;
+  margin-top: 15px;
+  font-size: 14px;
+  color: #2e7d32;
+}
+
+.form-actions {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.save-button {
+  padding: 10px 20px;
+  background: #0ea5e9;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.save-button:hover {
+  background: #0284c7;
+}
+
+.manual-backup-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.backup-button,
+.download-button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.backup-button {
+  background: #4caf50;
+  color: white;
+}
+
+.backup-button:hover {
+  background: #45a049;
+}
+
+.download-button {
+  background: #2196f3;
+  color: white;
+}
+
+.download-button:hover {
+  background: #1976d2;
+}
+
+.backup-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.backup-item {
+  background: white;
+  padding: 12px;
+  border-radius: 4px;
+  border: 1px solid #e0e0e0;
+}
+
+.backup-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.backup-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+  font-family: 'Courier New', monospace;
+}
+
+.backup-details {
+  font-size: 12px;
+  color: #888;
+}
+
+.message {
+  padding: 12px;
+  border-radius: 4px;
+  font-size: 14px;
+  margin-top: 15px;
+}
+
+.message.success {
+  background-color: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.message.error {
+  background-color: #ffebee;
+  color: #c62828;
+  border: 1px solid #f5c6cb;
+}
+
+.message.info {
+  background-color: #e3f2fd;
+  color: #1565c0;
+  border: 1px solid #bbdefb;
+}
+
+.backup-settings-loading {
+  padding: 40px;
+  text-align: center;
+  color: #666;
+  font-size: 14px;
+}
+
+@media (max-width: 768px) {
+  .backup-settings {
+    padding: 15px;
+  }
+
+  .manual-backup-buttons {
+    flex-direction: column;
+  }
+
+  .backup-button,
+  .download-button {
+    width: 100%;
+  }
+}
+
+.import-restore-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.import-option {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.import-option h4 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #333;
+}
+
+.import-option p {
+  margin: 0;
+  font-size: 13px;
+  color: #666;
+}
+
+.warning-text {
+  color: #d32f2f !important;
+  font-weight: 500;
+}
+
+.file-upload-button {
+  display: inline-block;
+  padding: 10px 20px;
+  background: #2196f3;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+}
+
+.file-upload-button:hover {
+  background: #1976d2;
+}
+
+.file-upload-button.restore-button {
+  background: #ff9800;
+}
+
+.file-upload-button.restore-button:hover {
+  background: #f57c00;
+}
+
+@media (max-width: 768px) {
+  .import-restore-section {
+    grid-template-columns: 1fr;
+  }
+}

@@ -11,11 +11,17 @@ router.get('/expenses', expenseController.getExpenses);
 // GET /api/expenses/summary - Get summary data (must be before /:id route)
 router.get('/expenses/summary', expenseController.getSummary);
 
+// GET /api/expenses/annual-summary - Get annual summary data
+router.get('/expenses/annual-summary', expenseController.getAnnualSummary);
+
 // PUT /api/expenses/:id - Update an expense by ID
 router.put('/expenses/:id', expenseController.updateExpense);
 
 // PATCH /api/expenses/:id/highlight - Toggle highlight on an expense
 router.patch('/expenses/:id/highlight', expenseController.toggleHighlight);
+
+// PATCH /api/expenses/:id/tax - Toggle tax deductible on an expense
+router.patch('/expenses/:id/tax', expenseController.toggleTaxDeductible);
 
 // DELETE /api/expenses/:id - Delete an expense by ID
 router.delete('/expenses/:id', expenseController.deleteExpense);

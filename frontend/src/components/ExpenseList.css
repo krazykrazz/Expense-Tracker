@@ -11,7 +11,7 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 15px;
-  border-bottom: 2px solid #667eea;
+  border-bottom: 2px solid #475569;
   padding-bottom: 8px;
 }
 
@@ -23,7 +23,7 @@
 }
 
 .expense-list-container .add-expense-button {
-  background-color: #667eea;
+  background-color: #0ea5e9;
   color: white;
   border: none;
   padding: 6px 12px;
@@ -34,7 +34,7 @@
 }
 
 .expense-list-container .add-expense-button:hover {
-  background-color: #5568d3;
+  background-color: #0284c7;
 }
 
 .no-expenses-message {
@@ -55,7 +55,7 @@
 }
 
 .expense-table thead {
-  background: #667eea;
+  background: #475569;
 }
 
 .expense-table th {
@@ -76,17 +76,26 @@
   background-color: #f9f9f9;
 }
 
-.expense-table tbody tr.highlighted-row {
+.expense-table tbody tr.tax-deductible-row {
   background-color: #e3f2fd !important;
 }
 
-.expense-table tbody tr.highlighted-row:hover {
+.expense-table tbody tr.tax-deductible-row:hover {
   background-color: #bbdefb !important;
+}
+
+.tax-checkbox-cell {
+  text-align: center;
+}
+
+.tax-checkbox-cell input[type="checkbox"] {
+  cursor: pointer;
+  transform: scale(1.2);
 }
 
 .expense-table .amount {
   font-weight: 600;
-  color: #667eea;
+  color: #0ea5e9;
   text-align: right;
 }
 
@@ -132,11 +141,11 @@
 }
 
 .edit-button {
-  background-color: #667eea;
+  background-color: #0ea5e9;
 }
 
 .edit-button:hover:not(:disabled) {
-  background-color: #5568d3;
+  background-color: #0284c7;
 }
 
 .delete-button {
@@ -324,7 +333,7 @@
 .edit-form .form-group select:focus,
 .edit-form .form-group textarea:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: #0ea5e9;
 }
 
 .edit-form .form-group textarea {

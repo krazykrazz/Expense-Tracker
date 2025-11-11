@@ -5,7 +5,8 @@ import MonthSelector from './components/MonthSelector';
 import ExpenseList from './components/ExpenseList';
 import SearchBar from './components/SearchBar';
 import SummaryPanel from './components/SummaryPanel';
-import RecurringExpensesManager from './components/RecurringExpensesManager';
+import BackupSettings from './components/BackupSettings';
+import AnnualSummary from './components/AnnualSummary';
 import { API_ENDPOINTS } from './config';
 
 function App() {
@@ -17,20 +18,28 @@ function App() {
   const [searchText, setSearchText] = useState('');
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [showExpenseForm, setShowExpenseForm] = useState(false);
-  const [showRecurringManager, setShowRecurringManager] = useState(false);
+  const [showBackupSettings, setShowBackupSettings] = useState(false);
+  const [showAnnualSummary, setShowAnnualSummary] = useState(false);
   const [filterType, setFilterType] = useState('');
   const [filterMethod, setFilterMethod] = useState('');
 
-  // Fetch expenses when month/year changes
+  // Fetch expenses when month/year changes or when searching
   useEffect(() => {
     const fetchExpenses = async () => {
       setLoading(true);
       setError(null);
       
       try {
-        const response = await fetch(
-          `${API_ENDPOINTS.EXPENSES}?year=${selectedYear}&month=${selectedMonth}`
-        );
+        let url;
+        if (searchText && searchText.trim().length > 0) {
+          // Global search - fetch all expenses
+          url = `${API_ENDPOINTS.EXPENSES}`;
+        } else {
+          // Month-specific view
+          url = `${API_ENDPOINTS.EXPENSES}?year=${selectedYear}&month=${selectedMonth}`;
+        }
+        
+        const response = await fetch(url);
         
         if (!response.ok) {
           throw new Error('Failed to fetch expenses');
@@ -47,7 +56,7 @@ function App() {
     };
 
     fetchExpenses();
-  }, [selectedYear, selectedMonth]);
+  }, [selectedYear, selectedMonth, searchText]);
 
   const handleExpenseAdded = (newExpense) => {
     // Add new expense to the list if it belongs to the selected month
@@ -86,78 +95,6 @@ function App() {
     setSearchText(text);
   };
 
-  const handleBackup = async () => {
-    try {
-      const response = await fetch('/api/backup');
-      
-      if (!response.ok) {
-        throw new Error('Failed to backup database');
-      }
-
-      // Get the filename from the Content-Disposition header
-      const contentDisposition = response.headers.get('Content-Disposition');
-      let filename = 'expense-tracker-backup.db';
-      
-      if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(/filename="(.+)"/);
-        if (filenameMatch) {
-          filename = filenameMatch[1];
-        }
-      }
-
-      // Create blob and download
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-    } catch (error) {
-      console.error('Backup error:', error);
-      alert('Failed to backup database. Please try again.');
-    }
-  };
-
-  const handleImport = async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    const formData = new FormData();
-    formData.append('file', file);
-
-    try {
-      const response = await fetch('/api/import', {
-        method: 'POST',
-        body: formData
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to import expenses');
-      }
-
-      const result = await response.json();
-      
-      let message = `Import completed!\n${result.successCount} expenses imported successfully.`;
-      if (result.errorCount > 0) {
-        message += `\n${result.errorCount} errors occurred.`;
-      }
-      
-      alert(message);
-      
-      // Refresh the page to show new data
-      window.location.reload();
-    } catch (error) {
-      console.error('Import error:', error);
-      alert('Failed to import expenses. Please check your CSV format.');
-    }
-
-    // Reset file input
-    event.target.value = '';
-  };
-
   // Filter expenses based on search text, type, and method
   const filteredExpenses = expenses.filter(expense => {
     // Search filter
@@ -190,29 +127,12 @@ function App() {
         <h1>Expense Tracker</h1>
         <div className="header-buttons">
           <button 
-            className="recurring-button" 
-            onClick={() => setShowRecurringManager(true)}
-            aria-label="Manage recurring expenses"
-            title="Manage recurring expenses"
+            className="settings-button" 
+            onClick={() => setShowBackupSettings(true)}
+            aria-label="Settings"
+            title="Backup, import, and restore settings"
           >
-            🔄 Recurring
-          </button>
-          <label className="import-button" title="Import expenses from CSV">
-            📥 Import
-            <input 
-              type="file" 
-              accept=".csv"
-              onChange={handleImport}
-              style={{ display: 'none' }}
-            />
-          </label>
-          <button 
-            className="backup-button" 
-            onClick={handleBackup}
-            aria-label="Backup database"
-            title="Download database backup"
-          >
-            💾 Backup
+            ⚙️ Settings
           </button>
         </div>
       </header>
@@ -221,6 +141,7 @@ function App() {
           selectedYear={selectedYear}
           selectedMonth={selectedMonth}
           onMonthChange={handleMonthChange}
+          onViewAnnualSummary={() => setShowAnnualSummary(true)}
         />
         <div className="filters-container">
           <SearchBar onSearchChange={handleSearchChange} />
@@ -295,20 +216,39 @@ function App() {
         </div>
       )}
 
-      {showRecurringManager && (
-        <div className="modal-overlay" onClick={() => setShowRecurringManager(false)}>
+      {showBackupSettings && (
+        <div className="modal-overlay" onClick={() => setShowBackupSettings(false)}>
           <div className="modal-content modal-content-large" onClick={(e) => e.stopPropagation()}>
             <button 
               className="modal-close-button" 
-              onClick={() => setShowRecurringManager(false)}
+              onClick={() => setShowBackupSettings(false)}
               aria-label="Close"
             >
               ×
             </button>
-            <RecurringExpensesManager onClose={() => setShowRecurringManager(false)} />
+            <BackupSettings onClose={() => setShowBackupSettings(false)} />
           </div>
         </div>
       )}
+
+      {showAnnualSummary && (
+        <div className="modal-overlay" onClick={() => setShowAnnualSummary(false)}>
+          <div className="modal-content modal-content-large" onClick={(e) => e.stopPropagation()}>
+            <button 
+              className="modal-close-button" 
+              onClick={() => setShowAnnualSummary(false)}
+              aria-label="Close"
+            >
+              ×
+            </button>
+            <AnnualSummary year={selectedYear} onClose={() => setShowAnnualSummary(false)} />
+          </div>
+        </div>
+      )}
+
+      <footer className="App-footer">
+        <span className="version">v2.5</span>
+      </footer>
     </div>
   );
 }

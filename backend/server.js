@@ -1,16 +1,20 @@
 const express = require('express');
 const bodyParser = require('body-parser');
+const cors = require('cors');
 const path = require('path');
 const { initializeDatabase } = require('./database/db');
 const expenseRoutes = require('./routes/expenseRoutes');
 const recurringExpenseRoutes = require('./routes/recurringExpenseRoutes');
 const backupRoutes = require('./routes/backupRoutes');
+const incomeRoutes = require('./routes/incomeRoutes');
+const fixedExpenseRoutes = require('./routes/fixedExpenseRoutes');
 const backupService = require('./services/backupService');
 
 const app = express();
 const PORT = process.env.PORT || 2424;
 
 // Middleware
+app.use(cors()); // Enable CORS for all routes
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
@@ -27,6 +31,12 @@ app.use('/api', recurringExpenseRoutes);
 
 // Backup API routes
 app.use('/api', backupRoutes);
+
+// Income API routes
+app.use('/api/income', incomeRoutes);
+
+// Fixed expense API routes
+app.use('/api/fixed-expenses', fixedExpenseRoutes);
 
 // Serve static files from the React app (after build)
 app.use(express.static(path.join(__dirname, '..', 'frontend', 'dist')));

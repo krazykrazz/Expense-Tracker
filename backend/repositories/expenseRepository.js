@@ -113,76 +113,6 @@ class ExpenseRepository {
   }
 
   /**
-   * Toggle highlight on an expense
-   * @param {number} id - Expense ID
-   * @param {number} highlighted - 0 or 1
-   * @returns {Promise<Object|null>} Updated expense or null
-   */
-  async toggleHighlight(id, highlighted) {
-    const db = await getDatabase();
-    
-    return new Promise((resolve, reject) => {
-      const sql = 'UPDATE expenses SET highlighted = ? WHERE id = ?';
-      
-      db.run(sql, [highlighted, id], function(err) {
-        if (err) {
-          reject(err);
-          return;
-        }
-        
-        if (this.changes === 0) {
-          resolve(null);
-          return;
-        }
-        
-        // Return the updated expense
-        db.get('SELECT * FROM expenses WHERE id = ?', [id], (err, row) => {
-          if (err) {
-            reject(err);
-            return;
-          }
-          resolve(row);
-        });
-      });
-    });
-  }
-
-  /**
-   * Toggle tax deductible on an expense
-   * @param {number} id - Expense ID
-   * @param {number} taxDeductible - 0 or 1
-   * @returns {Promise<Object|null>} Updated expense or null
-   */
-  async toggleTaxDeductible(id, taxDeductible) {
-    const db = await getDatabase();
-    
-    return new Promise((resolve, reject) => {
-      const sql = 'UPDATE expenses SET tax_deductible = ? WHERE id = ?';
-      
-      db.run(sql, [taxDeductible, id], function(err) {
-        if (err) {
-          reject(err);
-          return;
-        }
-        
-        if (this.changes === 0) {
-          resolve(null);
-          return;
-        }
-        
-        // Return the updated expense
-        db.get('SELECT * FROM expenses WHERE id = ?', [id], (err, row) => {
-          if (err) {
-            reject(err);
-            return;
-          }
-          resolve(row);
-        });
-      });
-    });
-  }
-
-  /**
    * Update an expense by ID
    * @param {number} id - Expense ID
    * @param {Object} expense - Updated expense data
@@ -277,14 +207,15 @@ class ExpenseRepository {
     const db = await getDatabase();
     
     return new Promise((resolve, reject) => {
-      const sql = 'SELECT gross_amount FROM monthly_gross WHERE year = ? AND month = ?';
+      const sql = 'SELECT SUM(amount) as total FROM income_sources WHERE year = ? AND month = ?';
       
       db.get(sql, [year, month], (err, row) => {
         if (err) {
           reject(err);
           return;
         }
-        resolve(row ? row.gross_amount : null);
+        // Return the sum of all income sources, or null if no sources exist
+        resolve(row && row.total !== null ? row.total : null);
       });
     });
   }
@@ -323,6 +254,35 @@ class ExpenseRepository {
   }
 
   /**
+   * Get tax-deductible expenses for a specific year
+   * @param {number} year - Year
+   * @returns {Promise<Array>} Array of tax-deductible expense objects
+   */
+  async getTaxDeductibleExpenses(year) {
+    const db = await getDatabase();
+    
+    return new Promise((resolve, reject) => {
+      const sql = `
+        SELECT id, date, place, amount, notes, type
+        FROM expenses
+        WHERE strftime('%Y', date) = ?
+          AND type IN ('Tax - Medical', 'Tax - Donation')
+        ORDER BY date ASC
+      `;
+      
+      const params = [year.toString()];
+      
+      db.all(sql, params, (err, rows) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        resolve(rows || []);
+      });
+    });
+  }
+
+  /**
    * Get summary data for a specific month
    * @param {number} year - Year
    * @param {number} month - Month (1-12)
@@ -351,12 +311,12 @@ class ExpenseRepository {
         GROUP BY method
       `;
       
-      // Query for type totals (Gas, Food, and Other)
+      // Query for type totals (Gas, Food, Other, Tax - Medical, and Tax - Donation)
       const typeSQL = `
         SELECT type, SUM(amount) as total
         FROM expenses
         WHERE strftime("%Y", date) = ? AND strftime("%m", date) = ?
-        AND type IN ('Gas', 'Food', 'Other')
+        AND type IN ('Gas', 'Food', 'Other', 'Tax - Medical', 'Tax - Donation')
         GROUP BY type
       `;
       
@@ -386,7 +346,9 @@ class ExpenseRepository {
         typeTotals: {
           'Gas': 0,
           'Food': 0,
-          'Other': 0
+          'Other': 0,
+          'Tax - Medical': 0,
+          'Tax - Donation': 0
         },
         total: 0
       };

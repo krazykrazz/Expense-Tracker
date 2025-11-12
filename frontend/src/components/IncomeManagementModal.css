@@ -1,0 +1,418 @@
+/* Modal Overlay */
+.income-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+/* Modal Container */
+.income-modal-container {
+  background: white;
+  border-radius: 8px;
+  max-width: 600px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Modal Header */
+.income-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.income-modal-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #333;
+}
+
+.income-modal-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #666;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.income-modal-close:hover {
+  color: #333;
+}
+
+/* Modal Content */
+.income-modal-content {
+  padding: 20px;
+}
+
+/* Error Display */
+.income-modal-error {
+  background-color: #fee;
+  color: #c33;
+  padding: 12px;
+  border-radius: 4px;
+  margin-bottom: 15px;
+  border: 1px solid #fcc;
+}
+
+.income-error-retry-button {
+  margin-top: 10px;
+  padding: 6px 12px;
+  background-color: #d32f2f;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.2s;
+}
+
+.income-error-retry-button:hover {
+  background-color: #b71c1c;
+}
+
+/* Loading State */
+.income-modal-loading {
+  text-align: center;
+  padding: 40px;
+  color: #666;
+  font-size: 1.1rem;
+}
+
+/* Income Sources List */
+.income-sources-list {
+  margin-bottom: 20px;
+}
+
+.income-sources-empty {
+  text-align: center;
+  padding: 30px;
+  color: #999;
+  font-style: italic;
+}
+
+/* Income Source Item */
+.income-source-item {
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 12px;
+  margin-bottom: 10px;
+  background-color: #fafafa;
+}
+
+.income-source-display {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.income-source-name {
+  flex: 1;
+  font-weight: 500;
+  color: #333;
+}
+
+.income-source-amount {
+  font-weight: 600;
+  color: #2e7d32;
+  margin-right: 10px;
+}
+
+.income-source-actions {
+  display: flex;
+  gap: 5px;
+}
+
+.income-edit-button,
+.income-delete-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.2rem;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.income-edit-button:hover {
+  background-color: #e3f2fd;
+}
+
+.income-delete-button:hover {
+  background-color: #ffebee;
+}
+
+.income-edit-button:disabled,
+.income-delete-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Edit Mode */
+.income-source-edit {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.income-input-group {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 150px;
+}
+
+.income-edit-name,
+.income-edit-amount {
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 0.95rem;
+}
+
+.income-edit-name {
+  flex: 2;
+}
+
+.income-edit-amount {
+  flex: 1;
+}
+
+/* Validation Error Styling */
+.input-error {
+  border-color: #d32f2f !important;
+  background-color: #ffebee;
+}
+
+.validation-error {
+  color: #d32f2f;
+  font-size: 0.75rem;
+  margin-top: 4px;
+  display: block;
+}
+
+.income-save-button,
+.income-cancel-button {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background-color 0.2s;
+}
+
+.income-save-button {
+  background-color: #4caf50;
+  color: white;
+}
+
+.income-save-button:hover:not(:disabled) {
+  background-color: #45a049;
+}
+
+.income-cancel-button {
+  background-color: #f44336;
+  color: white;
+}
+
+.income-cancel-button:hover:not(:disabled) {
+  background-color: #da190b;
+}
+
+.income-save-button:disabled,
+.income-cancel-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Add Section */
+.income-add-section {
+  margin-bottom: 20px;
+  padding-top: 15px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.income-copy-previous-button {
+  width: 100%;
+  padding: 12px;
+  background-color: #9c27b0;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 500;
+  transition: background-color 0.2s;
+  margin-bottom: 10px;
+}
+
+.income-copy-previous-button:hover:not(:disabled) {
+  background-color: #7b1fa2;
+}
+
+.income-copy-previous-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.income-add-toggle-button {
+  width: 100%;
+  padding: 12px;
+  background-color: #2196f3;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.income-add-toggle-button:hover:not(:disabled) {
+  background-color: #1976d2;
+}
+
+.income-add-toggle-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Add Form */
+.income-add-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.income-add-name,
+.income-add-amount {
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 0.95rem;
+}
+
+.income-add-name {
+  flex: 2;
+  min-width: 200px;
+}
+
+.income-add-amount {
+  flex: 1;
+  min-width: 100px;
+}
+
+.income-add-button,
+.income-add-cancel-button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.income-add-button {
+  background-color: #4caf50;
+  color: white;
+}
+
+.income-add-button:hover:not(:disabled) {
+  background-color: #45a049;
+}
+
+.income-add-cancel-button {
+  background-color: #757575;
+  color: white;
+}
+
+.income-add-cancel-button:hover:not(:disabled) {
+  background-color: #616161;
+}
+
+.income-add-button:disabled,
+.income-add-cancel-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Total Section */
+.income-total-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px;
+  background-color: #e8f5e9;
+  border-radius: 4px;
+  border: 2px solid #4caf50;
+}
+
+.income-total-label {
+  font-weight: 600;
+  color: #333;
+  font-size: 1.1rem;
+}
+
+.income-total-amount {
+  font-weight: 700;
+  color: #2e7d32;
+  font-size: 1.3rem;
+}
+
+/* Responsive Design */
+@media (max-width: 600px) {
+  .income-modal-container {
+    width: 95%;
+    max-height: 90vh;
+  }
+
+  .income-modal-header h2 {
+    font-size: 1.2rem;
+  }
+
+  .income-source-display {
+    flex-wrap: wrap;
+  }
+
+  .income-source-edit,
+  .income-add-form {
+    flex-direction: column;
+  }
+
+  .income-edit-name,
+  .income-edit-amount,
+  .income-add-name,
+  .income-add-amount {
+    width: 100%;
+    min-width: unset;
+  }
+
+  .income-input-group {
+    width: 100%;
+  }
+
+  .income-save-button,
+  .income-cancel-button,
+  .income-add-button,
+  .income-add-cancel-button {
+    width: 100%;
+  }
+}

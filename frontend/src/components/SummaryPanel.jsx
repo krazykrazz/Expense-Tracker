@@ -1,13 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { API_ENDPOINTS } from '../config';
+import IncomeManagementModal from './IncomeManagementModal';
+import FixedExpensesModal from './FixedExpensesModal';
 import './SummaryPanel.css';
 
 const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [isEditingGross, setIsEditingGross] = useState(false);
-  const [grossInput, setGrossInput] = useState('');
+  const [showIncomeModal, setShowIncomeModal] = useState(false);
+  const [showFixedExpensesModal, setShowFixedExpensesModal] = useState(false);
 
   useEffect(() => {
     const fetchSummary = async () => {
@@ -40,53 +42,64 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
     return parseFloat(amount || 0).toFixed(2);
   };
 
-  const handleEditGross = () => {
-    setGrossInput(summary.monthlyGross.toString());
-    setIsEditingGross(true);
+  const handleOpenIncomeModal = () => {
+    setShowIncomeModal(true);
   };
 
-  const handleSaveGross = async () => {
-    try {
-      const grossAmount = parseFloat(grossInput);
-      
-      if (isNaN(grossAmount) || grossAmount < 0) {
-        alert('Please enter a valid non-negative number');
-        return;
-      }
+  const handleCloseIncomeModal = async () => {
+    setShowIncomeModal(false);
+    
+    // Refresh summary to reflect changes
+    setLoading(true);
+    setError(null);
 
-      const response = await fetch('/api/monthly-gross', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          year: selectedYear,
-          month: selectedMonth,
-          grossAmount: grossAmount
-        })
-      });
+    try {
+      const response = await fetch(
+        `${API_ENDPOINTS.SUMMARY}?year=${selectedYear}&month=${selectedMonth}`
+      );
 
       if (!response.ok) {
-        throw new Error('Failed to update monthly gross');
+        throw new Error('Failed to fetch summary data');
       }
 
-      // Update summary with new gross and recalculate net balance
-      setSummary(prev => ({
-        ...prev,
-        monthlyGross: grossAmount,
-        netBalance: grossAmount - prev.total
-      }));
-
-      setIsEditingGross(false);
-    } catch (error) {
-      console.error('Error updating monthly gross:', error);
-      alert('Failed to update monthly gross. Please try again.');
+      const data = await response.json();
+      setSummary(data);
+    } catch (err) {
+      setError(err.message);
+      console.error('Error fetching summary:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleCancelEdit = () => {
-    setIsEditingGross(false);
-    setGrossInput('');
+  const handleOpenFixedExpensesModal = () => {
+    setShowFixedExpensesModal(true);
+  };
+
+  const handleCloseFixedExpensesModal = async () => {
+    setShowFixedExpensesModal(false);
+    
+    // Refresh summary to reflect changes
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch(
+        `${API_ENDPOINTS.SUMMARY}?year=${selectedYear}&month=${selectedMonth}`
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch summary data');
+      }
+
+      const data = await response.json();
+      setSummary(data);
+    } catch (err) {
+      setError(err.message);
+      console.error('Error fetching summary:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (loading) {
@@ -184,6 +197,14 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
               <span className="summary-value">${formatAmount(summary.typeTotals.Gas)}</span>
             </div>
             <div className="summary-item">
+              <span className="summary-label">Tax - Medical:</span>
+              <span className="summary-value">${formatAmount(summary.typeTotals['Tax - Medical'])}</span>
+            </div>
+            <div className="summary-item">
+              <span className="summary-label">Tax - Donation:</span>
+              <span className="summary-value">${formatAmount(summary.typeTotals['Tax - Donation'])}</span>
+            </div>
+            <div className="summary-item">
               <span className="summary-label">Other:</span>
               <span className="summary-value">${formatAmount(summary.typeTotals.Other)}</span>
             </div>
@@ -195,28 +216,20 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
         <div className="balance-row">
           <span className="balance-label">Monthly Gross Income:</span>
           <div className="balance-value-container">
-            {!isEditingGross ? (
-              <>
-                <span className="balance-value">${formatAmount(summary.monthlyGross)}</span>
-                <button className="edit-gross-button" onClick={handleEditGross}>
-                  ✏️
-                </button>
-              </>
-            ) : (
-              <div className="gross-edit-inline">
-                <input
-                  type="number"
-                  value={grossInput}
-                  onChange={(e) => setGrossInput(e.target.value)}
-                  placeholder="0.00"
-                  step="0.01"
-                  min="0"
-                  className="gross-input-inline"
-                />
-                <button className="save-button-inline" onClick={handleSaveGross}>✓</button>
-                <button className="cancel-button-inline" onClick={handleCancelEdit}>✕</button>
-              </div>
-            )}
+            <span className="balance-value">${formatAmount(summary.monthlyGross)}</span>
+            <button className="view-income-button" onClick={handleOpenIncomeModal}>
+              👁️ View/Edit
+            </button>
+          </div>
+        </div>
+        
+        <div className="balance-row">
+          <span className="balance-label">Total Fixed Expenses:</span>
+          <div className="balance-value-container">
+            <span className="balance-value expense-value">-${formatAmount(summary.totalFixedExpenses || 0)}</span>
+            <button className="view-fixed-expenses-button" onClick={handleOpenFixedExpensesModal}>
+              👁️ View/Edit
+            </button>
           </div>
         </div>
         
@@ -232,6 +245,26 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
           </span>
         </div>
       </div>
+
+      {showIncomeModal && (
+        <IncomeManagementModal
+          isOpen={showIncomeModal}
+          onClose={handleCloseIncomeModal}
+          year={selectedYear}
+          month={selectedMonth}
+          onUpdate={handleCloseIncomeModal}
+        />
+      )}
+
+      {showFixedExpensesModal && (
+        <FixedExpensesModal
+          isOpen={showFixedExpensesModal}
+          onClose={handleCloseFixedExpensesModal}
+          year={selectedYear}
+          month={selectedMonth}
+          onUpdate={handleCloseFixedExpensesModal}
+        />
+      )}
     </div>
   );
 };

@@ -1,0 +1,429 @@
+/* Modal Overlay */
+.fixed-expenses-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+/* Modal Container */
+.fixed-expenses-modal-container {
+  background: white;
+  border-radius: 8px;
+  max-width: 600px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Modal Header */
+.fixed-expenses-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.fixed-expenses-modal-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #333;
+}
+
+.fixed-expenses-modal-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #666;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fixed-expenses-modal-close:hover {
+  color: #333;
+}
+
+/* Carry Forward Section */
+.fixed-expenses-carry-forward-section {
+  padding: 15px 20px;
+  border-bottom: 1px solid #e0e0e0;
+  background-color: #f9f9f9;
+}
+
+.fixed-expenses-carry-forward-button {
+  width: 100%;
+  padding: 12px;
+  background-color: #9c27b0;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.fixed-expenses-carry-forward-button:hover:not(:disabled) {
+  background-color: #7b1fa2;
+}
+
+.fixed-expenses-carry-forward-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Modal Content */
+.fixed-expenses-modal-content {
+  padding: 20px;
+}
+
+/* Error Display */
+.fixed-expenses-modal-error {
+  background-color: #fee;
+  color: #c33;
+  padding: 12px;
+  border-radius: 4px;
+  margin: 15px 20px;
+  border: 1px solid #fcc;
+}
+
+.fixed-expenses-error-retry-button {
+  margin-top: 10px;
+  padding: 6px 12px;
+  background-color: #d32f2f;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.2s;
+}
+
+.fixed-expenses-error-retry-button:hover {
+  background-color: #b71c1c;
+}
+
+/* Loading State */
+.fixed-expenses-modal-loading {
+  text-align: center;
+  padding: 40px;
+  color: #666;
+  font-size: 1.1rem;
+}
+
+/* Fixed Expenses List */
+.fixed-expenses-list {
+  margin-bottom: 20px;
+}
+
+.fixed-expenses-empty {
+  text-align: center;
+  padding: 30px;
+  color: #999;
+  font-style: italic;
+}
+
+/* Fixed Expense Item */
+.fixed-expense-item {
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 12px;
+  margin-bottom: 10px;
+  background-color: #fafafa;
+  transition: background-color 0.2s;
+}
+
+.fixed-expense-item:hover {
+  background-color: #f5f5f5;
+}
+
+.fixed-expense-display {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.fixed-expense-name {
+  flex: 1;
+  font-weight: 500;
+  color: #333;
+}
+
+.fixed-expense-amount {
+  font-weight: 600;
+  color: #d32f2f;
+  margin-right: 10px;
+}
+
+.fixed-expense-actions {
+  display: flex;
+  gap: 5px;
+}
+
+.fixed-expense-edit-button,
+.fixed-expense-delete-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.2rem;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.fixed-expense-edit-button:hover {
+  background-color: #e3f2fd;
+}
+
+.fixed-expense-delete-button:hover {
+  background-color: #ffebee;
+}
+
+.fixed-expense-edit-button:disabled,
+.fixed-expense-delete-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Edit Mode */
+.fixed-expense-edit {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.fixed-expense-input-group {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 150px;
+}
+
+.fixed-expense-edit-name,
+.fixed-expense-edit-amount {
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 0.95rem;
+}
+
+.fixed-expense-edit-name {
+  flex: 2;
+}
+
+.fixed-expense-edit-amount {
+  flex: 1;
+}
+
+/* Validation Error Styling */
+.input-error {
+  border-color: #d32f2f !important;
+  background-color: #ffebee;
+}
+
+.validation-error {
+  color: #d32f2f;
+  font-size: 0.75rem;
+  margin-top: 4px;
+  display: block;
+}
+
+.fixed-expense-save-button,
+.fixed-expense-cancel-button {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background-color 0.2s;
+}
+
+.fixed-expense-save-button {
+  background-color: #4caf50;
+  color: white;
+}
+
+.fixed-expense-save-button:hover:not(:disabled) {
+  background-color: #45a049;
+}
+
+.fixed-expense-cancel-button {
+  background-color: #f44336;
+  color: white;
+}
+
+.fixed-expense-cancel-button:hover:not(:disabled) {
+  background-color: #da190b;
+}
+
+.fixed-expense-save-button:disabled,
+.fixed-expense-cancel-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Add Section */
+.fixed-expenses-add-section {
+  margin-bottom: 20px;
+  padding-top: 15px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.fixed-expenses-add-toggle-button {
+  width: 100%;
+  padding: 12px;
+  background-color: #2196f3;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.fixed-expenses-add-toggle-button:hover:not(:disabled) {
+  background-color: #1976d2;
+}
+
+.fixed-expenses-add-toggle-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Add Form */
+.fixed-expenses-add-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.fixed-expense-add-name,
+.fixed-expense-add-amount {
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 0.95rem;
+}
+
+.fixed-expense-add-name {
+  flex: 2;
+  min-width: 200px;
+}
+
+.fixed-expense-add-amount {
+  flex: 1;
+  min-width: 100px;
+}
+
+.fixed-expenses-add-button,
+.fixed-expenses-add-cancel-button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.fixed-expenses-add-button {
+  background-color: #4caf50;
+  color: white;
+}
+
+.fixed-expenses-add-button:hover:not(:disabled) {
+  background-color: #45a049;
+}
+
+.fixed-expenses-add-cancel-button {
+  background-color: #757575;
+  color: white;
+}
+
+.fixed-expenses-add-cancel-button:hover:not(:disabled) {
+  background-color: #616161;
+}
+
+.fixed-expenses-add-button:disabled,
+.fixed-expenses-add-cancel-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Total Section */
+.fixed-expenses-total-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px;
+  background-color: #ffebee;
+  border-radius: 4px;
+  border: 2px solid #d32f2f;
+}
+
+.fixed-expenses-total-label {
+  font-weight: 600;
+  color: #333;
+  font-size: 1.1rem;
+}
+
+.fixed-expenses-total-amount {
+  font-weight: 700;
+  color: #d32f2f;
+  font-size: 1.3rem;
+}
+
+/* Responsive Design */
+@media (max-width: 600px) {
+  .fixed-expenses-modal-container {
+    width: 95%;
+    max-height: 90vh;
+  }
+
+  .fixed-expenses-modal-header h2 {
+    font-size: 1.2rem;
+  }
+
+  .fixed-expense-display {
+    flex-wrap: wrap;
+  }
+
+  .fixed-expense-edit,
+  .fixed-expenses-add-form {
+    flex-direction: column;
+  }
+
+  .fixed-expense-edit-name,
+  .fixed-expense-edit-amount,
+  .fixed-expense-add-name,
+  .fixed-expense-add-amount {
+    width: 100%;
+    min-width: unset;
+  }
+
+  .fixed-expense-input-group {
+    width: 100%;
+  }
+
+  .fixed-expense-save-button,
+  .fixed-expense-cancel-button,
+  .fixed-expenses-add-button,
+  .fixed-expenses-add-cancel-button {
+    width: 100%;
+  }
+}

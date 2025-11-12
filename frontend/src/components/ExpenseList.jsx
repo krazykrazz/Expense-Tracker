@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { API_ENDPOINTS } from '../config';
 import './ExpenseList.css';
 
@@ -120,29 +120,6 @@ const ExpenseList = ({ expenses, onExpenseDeleted, searchText, onAddExpense }) =
     setExpenseToDelete(null);
   };
 
-  const handleTaxToggle = async (expense) => {
-    const newTaxState = !expense.tax_deductible;
-    
-    try {
-      const response = await fetch(API_ENDPOINTS.EXPENSE_BY_ID(expense.id) + '/tax', {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ tax_deductible: newTaxState })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to toggle tax deductible');
-      }
-
-      // Refresh the page to show updated state
-      window.location.reload();
-    } catch (error) {
-      console.error('Error toggling tax deductible:', error);
-    }
-  };
-
   const formatAmount = (amount) => {
     return parseFloat(amount).toFixed(2);
   };
@@ -196,7 +173,6 @@ const ExpenseList = ({ expenses, onExpenseDeleted, searchText, onAddExpense }) =
               <th>Type</th>
               <th>Week</th>
               <th>Method</th>
-              <th>Tax</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -204,7 +180,10 @@ const ExpenseList = ({ expenses, onExpenseDeleted, searchText, onAddExpense }) =
             {expenses.map((expense) => (
               <tr 
                 key={expense.id}
-                className={expense.tax_deductible ? 'tax-deductible-row' : ''}
+                className={
+                  expense.type === 'Tax - Medical' ? 'tax-medical-row' : 
+                  expense.type === 'Tax - Donation' ? 'tax-donation-row' : ''
+                }
               >
                 <td>{formatDate(expense.date)}</td>
                 <td>
@@ -236,14 +215,6 @@ const ExpenseList = ({ expenses, onExpenseDeleted, searchText, onAddExpense }) =
                 <td>{expense.type}</td>
                 <td>{expense.week}</td>
                 <td>{expense.method}</td>
-                <td className="tax-checkbox-cell">
-                  <input
-                    type="checkbox"
-                    checked={expense.tax_deductible || false}
-                    onChange={() => handleTaxToggle(expense)}
-                    title="Mark as tax deductible"
-                  />
-                </td>
                 <td>
                   <div className="action-buttons">
                     <button
@@ -351,6 +322,8 @@ const ExpenseList = ({ expenses, onExpenseDeleted, searchText, onAddExpense }) =
                     <option value="Other">Other</option>
                     <option value="Food">Food</option>
                     <option value="Gas">Gas</option>
+                    <option value="Tax - Medical">Tax - Medical</option>
+                    <option value="Tax - Donation">Tax - Donation</option>
                   </select>
                 </div>
 

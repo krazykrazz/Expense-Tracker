@@ -1,4 +1,3 @@
-import React from 'react';
 import './MonthSelector.css';
 
 const MonthSelector = ({ selectedYear, selectedMonth, onMonthChange, onViewAnnualSummary }) => {

@@ -7,8 +7,11 @@ A full-stack expense tracking application built with React and Node.js.
 - 📝 Add, edit, and delete expenses
 - 🔍 Search and filter expenses by type and payment method
 - 📊 View monthly summaries with weekly breakdowns
-- 💰 Track monthly gross income and net balance
+- 💰 Track monthly gross income from multiple sources
+- 🏠 Manage fixed monthly expenses (rent, utilities, subscriptions)
+- 📈 Calculate net balance including fixed expenses
 - 📅 Filter expenses by month and year
+- 🔄 Carry forward income sources and fixed expenses from previous month
 - 💾 Backup database functionality
 - 🌐 Access from any device on your local network
 
@@ -81,8 +84,10 @@ Both servers are configured to accept connections from your local network. Find 
 3. **Delete Expenses**: Click the delete button (🗑️) next to any expense
 4. **Filter**: Use the dropdowns to filter by type or payment method
 5. **Search**: Use the search bar to find expenses by place or notes
-6. **Set Monthly Income**: Click the edit button next to Monthly Gross Income
-7. **Backup**: Click the "💾 Backup" button to download your database
+6. **Manage Income**: Click the "👁️ View/Edit" button next to Monthly Gross Income to add/edit income sources
+7. **Manage Fixed Expenses**: Click the "👁️ View/Edit" button next to Total Fixed Expenses to manage recurring monthly costs
+8. **Carry Forward**: Use the carry-forward feature in modals to copy previous month's income or fixed expenses
+9. **Backup**: Click the "💾 Backup" button to download your database
 
 ## Project Structure
 
@@ -107,13 +112,28 @@ expense-tracker/
 
 ## API Endpoints
 
+### Expenses
 - `POST /api/expenses` - Create a new expense
 - `GET /api/expenses` - Get all expenses (with optional filters)
 - `PUT /api/expenses/:id` - Update an expense
 - `DELETE /api/expenses/:id` - Delete an expense
 - `GET /api/expenses/summary` - Get monthly summary
-- `GET /api/monthly-gross` - Get monthly gross income
-- `POST /api/monthly-gross` - Set monthly gross income
+
+### Income Sources
+- `GET /api/income/:year/:month` - Get income sources for a month
+- `POST /api/income` - Create a new income source
+- `PUT /api/income/:id` - Update an income source
+- `DELETE /api/income/:id` - Delete an income source
+- `POST /api/income/carry-forward` - Copy income sources from previous month
+
+### Fixed Expenses
+- `GET /api/fixed-expenses/:year/:month` - Get fixed expenses for a month
+- `POST /api/fixed-expenses` - Create a new fixed expense
+- `PUT /api/fixed-expenses/:id` - Update a fixed expense
+- `DELETE /api/fixed-expenses/:id` - Delete a fixed expense
+- `POST /api/fixed-expenses/carry-forward` - Copy fixed expenses from previous month
+
+### Backup
 - `GET /api/backup` - Download database backup
 
 ## Database Schema
@@ -124,16 +144,25 @@ expense-tracker/
 - place (TEXT)
 - notes (TEXT)
 - amount (REAL)
-- type (TEXT) - 'Other', 'Food', or 'Gas'
+- type (TEXT) - 'Other', 'Food', 'Gas', 'Tax - Medical', 'Tax - Donation'
 - week (INTEGER) - 1-5
 - method (TEXT) - Payment method
 - created_at (TEXT)
 
-### Monthly Gross Table
+### Income Sources Table
 - id (INTEGER PRIMARY KEY)
 - year (INTEGER)
 - month (INTEGER)
-- gross_amount (REAL)
+- name (TEXT) - Income source name
+- amount (REAL)
+- created_at (TEXT)
+
+### Fixed Expenses Table
+- id (INTEGER PRIMARY KEY)
+- year (INTEGER)
+- month (INTEGER)
+- name (TEXT) - Fixed expense name
+- amount (REAL)
 - created_at (TEXT)
 
 ## License

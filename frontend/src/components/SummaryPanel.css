@@ -205,70 +205,27 @@
     width: 100%;
     justify-content: flex-end;
   }
-
-  .gross-input-inline {
-    width: 80px;
-  }
 }
 
-.edit-gross-button {
-  background-color: transparent;
-  color: #0ea5e9;
+.view-income-button,
+.view-fixed-expenses-button {
+  background-color: #0ea5e9;
+  color: white;
   border: none;
-  padding: 2px 6px;
-  cursor: pointer;
-  font-size: 14px;
-}
-
-.edit-gross-button:hover {
-  color: #0284c7;
-}
-
-.gross-edit-inline {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.gross-input-inline {
-  padding: 4px 8px;
-  border: 1px solid #ddd;
-  border-radius: 3px;
-  font-size: 13px;
-  font-weight: 600;
-  width: 100px;
-  text-align: right;
-}
-
-.gross-input-inline:focus {
-  outline: none;
-  border-color: #0ea5e9;
-}
-
-.save-button-inline,
-.cancel-button-inline {
-  padding: 3px 8px;
-  border: none;
-  border-radius: 3px;
+  padding: 4px 10px;
   cursor: pointer;
   font-size: 12px;
+  border-radius: 3px;
   font-weight: 500;
+  transition: background-color 0.2s;
 }
 
-.save-button-inline {
-  background-color: #48bb78;
-  color: white;
+.view-income-button:hover,
+.view-fixed-expenses-button:hover {
+  background-color: #0284c7;
 }
 
-.save-button-inline:hover {
-  background-color: #38a169;
-}
-
-.cancel-button-inline {
-  background-color: #ddd;
-  color: #333;
-}
-
-.cancel-button-inline:hover {
-  background-color: #ccc;
+.view-income-button:active,
+.view-fixed-expenses-button:active {
+  background-color: #0369a1;
 }

@@ -14,14 +14,11 @@ router.get('/expenses/summary', expenseController.getSummary);
 // GET /api/expenses/annual-summary - Get annual summary data
 router.get('/expenses/annual-summary', expenseController.getAnnualSummary);
 
+// GET /api/expenses/tax-deductible - Get tax-deductible expenses summary
+router.get('/expenses/tax-deductible', expenseController.getTaxDeductibleSummary);
+
 // PUT /api/expenses/:id - Update an expense by ID
 router.put('/expenses/:id', expenseController.updateExpense);
-
-// PATCH /api/expenses/:id/highlight - Toggle highlight on an expense
-router.patch('/expenses/:id/highlight', expenseController.toggleHighlight);
-
-// PATCH /api/expenses/:id/tax - Toggle tax deductible on an expense
-router.patch('/expenses/:id/tax', expenseController.toggleTaxDeductible);
 
 // DELETE /api/expenses/:id - Delete an expense by ID
 router.delete('/expenses/:id', expenseController.deleteExpense);

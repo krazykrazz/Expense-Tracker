@@ -4,6 +4,8 @@
 
 The Recurring Expenses feature enables users to define expense templates that automatically generate expense entries on a monthly basis within a specified date range. This eliminates the need to manually enter the same expenses every month.
 
+**Note:** Recurring expenses are different from Fixed Expenses. Recurring expenses generate actual expense entries in the expenses table with specific dates and full details (place, notes, type, method), while Fixed Expenses are tracked separately as monthly budget items without specific transaction dates.
+
 ## Glossary
 
 - **Recurring Expense Template**: A saved expense configuration that defines the pattern for automatically generating monthly expenses

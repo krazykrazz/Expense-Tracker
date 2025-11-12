@@ -153,6 +153,48 @@
   color: #c62828;
 }
 
+.tax-deductible-section {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+}
+
+.tax-summary-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+}
+
+.tax-card {
+  background: white;
+  border: 1px solid #86efac;
+}
+
+.tax-monthly-breakdown {
+  margin-top: 25px;
+  padding-top: 20px;
+  border-top: 1px solid #bbf7d0;
+}
+
+.tax-monthly-breakdown h4 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  color: #166534;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.tax-month-bar {
+  background: linear-gradient(90deg, #22c55e 0%, #16a34a 100%);
+}
+
+.empty-state {
+  padding: 30px;
+  text-align: center;
+  color: #666;
+  font-size: 14px;
+  font-style: italic;
+}
+
 @media (max-width: 768px) {
   .annual-summary {
     padding: 15px;
@@ -178,5 +220,109 @@
 
   .month-label {
     min-width: auto;
+  }
+}
+
+/* Tax Deductible Detailed Expense Lists */
+.tax-details {
+  margin-top: 25px;
+  padding-top: 20px;
+  border-top: 1px solid #bbf7d0;
+}
+
+.tax-category {
+  margin-bottom: 25px;
+}
+
+.tax-category:last-child {
+  margin-bottom: 0;
+}
+
+.tax-category-header {
+  margin-top: 0;
+  margin-bottom: 15px;
+  color: #166534;
+  font-size: 1rem;
+  font-weight: 600;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #86efac;
+}
+
+.tax-expense-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tax-expense-item {
+  display: grid;
+  grid-template-columns: 120px 1fr auto;
+  gap: 15px;
+  align-items: start;
+  padding: 12px 15px;
+  background: white;
+  border: 1px solid #d1fae5;
+  border-radius: 4px;
+  transition: box-shadow 0.2s ease;
+}
+
+.tax-expense-item:hover {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.tax-expense-date {
+  font-size: 13px;
+  font-weight: 600;
+  color: #166534;
+  white-space: nowrap;
+}
+
+.tax-expense-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tax-expense-place {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+.tax-expense-notes {
+  font-size: 13px;
+  color: #666;
+  font-style: italic;
+}
+
+.tax-expense-amount {
+  font-size: 16px;
+  font-weight: 700;
+  color: #16a34a;
+  text-align: right;
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .tax-expense-item {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .tax-expense-date {
+    font-size: 12px;
+  }
+
+  .tax-expense-place {
+    font-size: 13px;
+  }
+
+  .tax-expense-notes {
+    font-size: 12px;
+  }
+
+  .tax-expense-amount {
+    font-size: 15px;
+    text-align: left;
   }
 }

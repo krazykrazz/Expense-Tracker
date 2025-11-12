@@ -24,10 +24,9 @@ function initializeDatabase() {
         place TEXT,
         notes TEXT,
         amount REAL NOT NULL,
-        type TEXT NOT NULL CHECK(type IN ('Other', 'Food', 'Gas')),
+        type TEXT NOT NULL CHECK(type IN ('Other', 'Food', 'Gas', 'Tax - Medical', 'Tax - Donation')),
         week INTEGER NOT NULL CHECK(week >= 1 AND week <= 5),
         method TEXT NOT NULL CHECK(method IN ('Cash', 'Debit', 'CIBC MC', 'PCF MC', 'WS VISA', 'VISA')),
-        highlighted INTEGER DEFAULT 0,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP
       )
     `;
@@ -51,13 +50,39 @@ function initializeDatabase() {
         place TEXT NOT NULL,
         amount REAL NOT NULL,
         notes TEXT,
-        type TEXT NOT NULL CHECK(type IN ('Other', 'Food', 'Gas')),
+        type TEXT NOT NULL CHECK(type IN ('Other', 'Food', 'Gas', 'Tax - Medical', 'Tax - Donation')),
         method TEXT NOT NULL CHECK(method IN ('Cash', 'Debit', 'CIBC MC', 'PCF MC', 'WS VISA', 'VISA')),
         day_of_month INTEGER NOT NULL CHECK(day_of_month >= 1 AND day_of_month <= 31),
         start_month TEXT NOT NULL,
         end_month TEXT,
         paused INTEGER DEFAULT 0,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
+
+    // Create income_sources table
+    const createIncomeSourcesSQL = `
+      CREATE TABLE IF NOT EXISTS income_sources (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        year INTEGER NOT NULL,
+        month INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        amount REAL NOT NULL CHECK(amount >= 0),
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
+
+    // Create fixed_expenses table
+    const createFixedExpensesSQL = `
+      CREATE TABLE IF NOT EXISTS fixed_expenses (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        year INTEGER NOT NULL,
+        month INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        amount REAL NOT NULL CHECK(amount >= 0),
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
       )
     `;
 
@@ -87,64 +112,69 @@ function initializeDatabase() {
           }
           console.log('Recurring expenses table created or already exists');
 
-        // Add highlighted column if it doesn't exist (migration)
-        db.run('ALTER TABLE expenses ADD COLUMN highlighted INTEGER DEFAULT 0', (err) => {
-          if (err && !err.message.includes('duplicate column')) {
-            console.error('Error adding highlighted column:', err.message);
-          } else if (!err) {
-            console.log('Added highlighted column to expenses table');
-          }
-        });
+          // Create income_sources table
+          db.run(createIncomeSourcesSQL, (err) => {
+            if (err) {
+              console.error('Error creating income_sources table:', err.message);
+              reject(err);
+              return;
+            }
+            console.log('Income sources table created or already exists');
 
-        // Add recurring expense columns if they don't exist (migration)
-        db.run('ALTER TABLE expenses ADD COLUMN recurring_id INTEGER', (err) => {
-          if (err && !err.message.includes('duplicate column')) {
-            console.error('Error adding recurring_id column:', err.message);
-          } else if (!err) {
-            console.log('Added recurring_id column to expenses table');
-          }
-        });
-
-        db.run('ALTER TABLE expenses ADD COLUMN is_generated INTEGER DEFAULT 0', (err) => {
-          if (err && !err.message.includes('duplicate column')) {
-            console.error('Error adding is_generated column:', err.message);
-          } else if (!err) {
-            console.log('Added is_generated column to expenses table');
-          }
-        });
-
-        // Add tax_deductible column if it doesn't exist (migration)
-        db.run('ALTER TABLE expenses ADD COLUMN tax_deductible INTEGER DEFAULT 0', (err) => {
-          if (err && !err.message.includes('duplicate column')) {
-            console.error('Error adding tax_deductible column:', err.message);
-          } else if (!err) {
-            console.log('Added tax_deductible column to expenses table');
-          }
-        });
-
-          // Create indexes for better query performance
-          const indexes = [
-            'CREATE INDEX IF NOT EXISTS idx_date ON expenses(date)',
-            'CREATE INDEX IF NOT EXISTS idx_type ON expenses(type)',
-            'CREATE INDEX IF NOT EXISTS idx_method ON expenses(method)',
-            'CREATE INDEX IF NOT EXISTS idx_year_month ON monthly_gross(year, month)',
-            'CREATE INDEX IF NOT EXISTS idx_recurring_dates ON recurring_expenses(start_month, end_month)',
-            'CREATE INDEX IF NOT EXISTS idx_recurring_id ON expenses(recurring_id)'
-          ];
-
-          let completed = 0;
-          indexes.forEach((indexSQL) => {
-            db.run(indexSQL, (err) => {
+            // Create fixed_expenses table
+            db.run(createFixedExpensesSQL, (err) => {
               if (err) {
-                console.error('Error creating index:', err.message);
+                console.error('Error creating fixed_expenses table:', err.message);
                 reject(err);
                 return;
               }
-              completed++;
-              if (completed === indexes.length) {
-                console.log('All indexes created successfully');
-                resolve(db);
+              console.log('Fixed expenses table created or already exists');
+              console.log('Fixed expenses table created or already exists');
+
+            // Add recurring expense columns if they don't exist (migration)
+            db.run('ALTER TABLE expenses ADD COLUMN recurring_id INTEGER', (err) => {
+              if (err && !err.message.includes('duplicate column')) {
+                console.error('Error adding recurring_id column:', err.message);
+              } else if (!err) {
+                console.log('Added recurring_id column to expenses table');
               }
+            });
+
+            db.run('ALTER TABLE expenses ADD COLUMN is_generated INTEGER DEFAULT 0', (err) => {
+              if (err && !err.message.includes('duplicate column')) {
+                console.error('Error adding is_generated column:', err.message);
+              } else if (!err) {
+                console.log('Added is_generated column to expenses table');
+              }
+            });
+
+              // Create indexes for better query performance
+              const indexes = [
+                'CREATE INDEX IF NOT EXISTS idx_date ON expenses(date)',
+                'CREATE INDEX IF NOT EXISTS idx_type ON expenses(type)',
+                'CREATE INDEX IF NOT EXISTS idx_method ON expenses(method)',
+                'CREATE INDEX IF NOT EXISTS idx_year_month ON monthly_gross(year, month)',
+                'CREATE INDEX IF NOT EXISTS idx_recurring_dates ON recurring_expenses(start_month, end_month)',
+                'CREATE INDEX IF NOT EXISTS idx_recurring_id ON expenses(recurring_id)',
+                'CREATE INDEX IF NOT EXISTS idx_income_year_month ON income_sources(year, month)',
+                'CREATE INDEX IF NOT EXISTS idx_fixed_expenses_year_month ON fixed_expenses(year, month)'
+              ];
+
+              let completed = 0;
+              indexes.forEach((indexSQL) => {
+                db.run(indexSQL, (err) => {
+                  if (err) {
+                    console.error('Error creating index:', err.message);
+                    reject(err);
+                    return;
+                  }
+                  completed++;
+                  if (completed === indexes.length) {
+                    console.log('All indexes created successfully');
+                    resolve(db);
+                  }
+                });
+              });
             });
           });
         });

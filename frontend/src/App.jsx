@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import './App.css';
 import ExpenseForm from './components/ExpenseForm';
 import MonthSelector from './components/MonthSelector';
@@ -157,6 +157,8 @@ function App() {
                 <option value="Other">Other</option>
                 <option value="Food">Food</option>
                 <option value="Gas">Gas</option>
+                <option value="Tax - Medical">Tax - Medical</option>
+                <option value="Tax - Donation">Tax - Donation</option>
               </select>
             </div>
             <div className="filter-group">
@@ -226,7 +228,7 @@ function App() {
             >
               ×
             </button>
-            <BackupSettings onClose={() => setShowBackupSettings(false)} />
+            <BackupSettings />
           </div>
         </div>
       )}
@@ -241,7 +243,7 @@ function App() {
             >
               ×
             </button>
-            <AnnualSummary year={selectedYear} onClose={() => setShowAnnualSummary(false)} />
+            <AnnualSummary year={selectedYear} />
           </div>
         </div>
       )}

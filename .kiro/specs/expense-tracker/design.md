@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Expense Tracker Application is a full-stack web application consisting of a React-based frontend and a Node.js/Express backend with a relational database. The system enables users to record expenses with detailed attributes, view transactions by month, search through records, and analyze spending through various aggregated views including weekly totals and payment method breakdowns.
+The Expense Tracker Application is a full-stack web application consisting of a React-based frontend and a Node.js/Express backend with a relational database. The system enables users to record, edit, and delete expenses with detailed attributes, view transactions by month, search globally through all records, and analyze spending through various aggregated views including weekly totals, payment method breakdowns, and annual summaries. The application includes automated backup functionality, data import/restore capabilities, and visual highlighting for tax-related expenses (medical and donations) and high-value expenses.
 
 ## Architecture
 
@@ -63,10 +63,11 @@ graph TB
 - Manages selected month/year state
 
 #### 2. ExpenseForm Component
-- Input fields: date, place, notes, amount, type dropdown, method dropdown
+- Input fields: date, place, notes, amount, type dropdown (5 options), method dropdown
 - Validates required fields before submission
 - Calculates week automatically from date
 - Submits new expense to backend API
+- Type dropdown includes: Other, Food, Gas, Tax - Medical, Tax - Donation
 
 #### 3. MonthSelector Component
 - Dropdown for year selection
@@ -75,21 +76,65 @@ graph TB
 
 #### 4. ExpenseList Component
 - Displays table of expenses for selected month
-- Columns: Date, Place, Notes, Amount, Type, Week, Method
-- Delete button for each row
+- Columns: Date, Place, Notes, Amount, Type, Week, Method, Actions
+- Edit and delete buttons for each row
 - Sorted by date (most recent first)
+- Applies dark blue row highlighting (#1e3a5f with white text) for expenses with type "Tax - Medical"
+- Applies orange row highlighting (#ea580c with white text) for expenses with type "Tax - Donation"
+- Applies visual highlighting for high-value expenses (≥$350)
+- Inline edit functionality with event propagation handling
 
 #### 5. SearchBar Component
 - Text input for search query
 - Filters expense list in real-time
 - Searches place and notes fields (case-insensitive)
+- Performs global search across all expenses regardless of selected month
 
 #### 6. SummaryPanel Component
 - Displays multiple summary sections:
   - Weekly totals (weeks 1-5)
   - Payment method totals (all 6 methods)
-  - Type-specific totals (Gas and Food)
+  - Type-specific totals (Gas, Food, Tax - Medical, Tax - Donation, and Other)
+  - Monthly gross income with View/Edit button
+  - Total fixed expenses with View/Edit button
   - Overall total for the month
+  - Net balance calculation
+- Opens IncomeManagementModal for managing income sources
+- Opens FixedExpensesModal for managing fixed monthly expenses
+
+#### 7. AnnualSummary Component
+- Displays comprehensive yearly expense analysis
+- Year selector for choosing which year to analyze
+- Monthly breakdown showing totals for each month
+- Category analysis with totals for each expense type
+- Visual charts/graphs for spending patterns
+- Overall annual total with two decimal places
+
+#### 8. BackupSettings Component
+- Backup configuration interface
+- Manual backup trigger button
+- Automated backup scheduling controls
+- Last backup timestamp display
+- Import functionality for uploading backup files
+- Restore functionality with confirmation dialog
+- Backup status indicators
+
+#### 9. IncomeManagementModal Component
+- Modal interface for managing monthly gross income
+- Displays list of income sources for selected month/year
+- Add, edit, and delete income sources
+- Each source has a name and amount
+- Displays total income from all sources
+- Carry-forward functionality to copy previous month's sources
+
+#### 10. FixedExpensesModal Component
+- Modal interface for managing fixed monthly expenses
+- Displays list of fixed expenses for selected month/year
+- Add, edit, and delete fixed expense items
+- Each item has a name and amount
+- Displays total of all fixed expenses
+- Carry-forward functionality to copy previous month's expenses
+- Validates input (name required, amount must be positive)
 
 ### Backend API Endpoints
 
@@ -108,10 +153,68 @@ graph TB
 - Deletes expense by ID
 - Returns: Success status
 
+#### PUT /api/expenses/:id
+- Updates an existing expense entry
+- Request body: `{ date, place, notes, amount, type, method }`
+- Recalculates week from updated date
+- Returns: Updated expense object
+
 #### GET /api/expenses/summary
 - Retrieves aggregated data for a specific month
 - Query parameters: `year`, `month` (required)
-- Returns: Object containing weekly totals, payment method totals, type totals
+- Returns: Object containing weekly totals, payment method totals, type totals (Gas, Food, Tax - Medical, Tax - Donation, Other)
+
+#### GET /api/expenses/annual-summary
+- Retrieves aggregated data for an entire year
+- Query parameters: `year` (required)
+- Returns: Object containing monthly totals, category totals, and annual total
+
+#### POST /api/backup/create
+- Creates a manual backup of the database
+- Returns: Backup file information with timestamp
+
+#### GET /api/backup/status
+- Retrieves backup system status
+- Returns: Last backup timestamp and configuration
+
+#### POST /api/backup/schedule
+- Configures automated backup schedule
+- Request body: `{ frequency, enabled }`
+- Returns: Updated schedule configuration
+
+#### POST /api/backup/import
+- Imports data from a backup file
+- Request body: File upload (multipart/form-data)
+- Returns: Import status and record count
+
+#### POST /api/backup/restore
+- Restores database from a backup file
+- Request body: `{ backupFileName }`
+- Returns: Restore status
+
+#### GET /api/fixed-expenses/:year/:month
+- Retrieves all fixed expenses for a specific month
+- Path parameters: `year`, `month`
+- Returns: Object with `items` array and `total` amount
+
+#### POST /api/fixed-expenses
+- Creates a new fixed expense item
+- Request body: `{ year, month, name, amount }`
+- Returns: Created fixed expense with ID
+
+#### PUT /api/fixed-expenses/:id
+- Updates an existing fixed expense item
+- Request body: `{ name, amount }`
+- Returns: Updated fixed expense object
+
+#### DELETE /api/fixed-expenses/:id
+- Deletes a fixed expense item by ID
+- Returns: Success status
+
+#### POST /api/fixed-expenses/carry-forward
+- Copies all fixed expenses from previous month to current month
+- Request body: `{ fromYear, fromMonth, toYear, toMonth }`
+- Returns: Array of newly created fixed expense items
 
 ### Data Repository Layer
 
@@ -119,8 +222,17 @@ graph TB
 - `create(expense)`: Insert new expense into database
 - `findAll(filters)`: Query expenses with optional year/month filters
 - `findById(id)`: Retrieve single expense
+- `update(id, expense)`: Update existing expense in database
 - `delete(id)`: Remove expense from database
-- `getSummary(year, month)`: Calculate aggregated totals
+- `getSummary(year, month)`: Calculate aggregated totals for a month
+- `getAnnualSummary(year)`: Calculate aggregated totals for a year
+
+#### BackupRepository
+- `createBackup()`: Create a timestamped backup file of the database
+- `getBackupList()`: Retrieve list of available backup files
+- `restoreBackup(filename)`: Restore database from a backup file
+- `importBackup(fileData)`: Import data from an uploaded backup file
+- `getLastBackupTime()`: Retrieve timestamp of most recent backup
 
 ## Data Models
 
@@ -133,7 +245,7 @@ interface Expense {
   place: string;           // Max 200 characters
   notes: string;           // Max 200 characters
   amount: number;          // Decimal with 2 places
-  type: 'Other' | 'Food' | 'Gas';
+  type: 'Other' | 'Food' | 'Gas' | 'Tax - Medical' | 'Tax - Donation';  // Tax deductible expenses identified by type
   week: number;            // 1-5, calculated from date
   method: 'Cash' | 'Debit' | 'CIBC MC' | 'PCF MC' | 'WS VISA' | 'VISA';
   created_at: string;      // Timestamp
@@ -149,7 +261,7 @@ CREATE TABLE expenses (
   place TEXT,
   notes TEXT,
   amount REAL NOT NULL,
-  type TEXT NOT NULL CHECK(type IN ('Other', 'Food', 'Gas')),
+  type TEXT NOT NULL CHECK(type IN ('Other', 'Food', 'Gas', 'Tax - Medical', 'Tax - Donation')),
   week INTEGER NOT NULL CHECK(week >= 1 AND week <= 5),
   method TEXT NOT NULL CHECK(method IN ('Cash', 'Debit', 'CIBC MC', 'PCF MC', 'WS VISA', 'VISA')),
   created_at TEXT DEFAULT CURRENT_TIMESTAMP
@@ -182,9 +294,74 @@ interface Summary {
   typeTotals: {
     Gas: number;
     Food: number;
+    Other: number;
+    'Tax - Medical': number;
+    'Tax - Donation': number;
   };
-  total: number;
+  total: number;                    // Total of variable expenses only
+  monthlyGross: number;             // Total gross income from all sources
+  totalFixedExpenses: number;       // Total of all fixed expenses
+  totalExpenses: number;            // Sum of total + totalFixedExpenses
+  netBalance: number;               // monthlyGross - totalExpenses
 }
+```
+
+### Annual Summary Response
+
+```typescript
+interface AnnualSummary {
+  year: number;
+  monthlyTotals: {
+    [month: string]: number; // e.g., "January": 1234.56
+  };
+  categoryTotals: {
+    Other: number;
+    Food: number;
+    Gas: number;
+    'Tax - Medical': number;
+    'Tax - Donation': number;
+  };
+  annualTotal: number;
+}
+```
+
+### Backup Configuration
+
+```typescript
+interface BackupConfig {
+  enabled: boolean;
+  frequency: 'daily' | 'weekly' | 'monthly';
+  lastBackupTime: string; // ISO 8601 timestamp
+  autoBackupEnabled: boolean;
+}
+```
+
+### Fixed Expense
+
+```typescript
+interface FixedExpense {
+  id: number;              // Auto-generated primary key
+  year: number;            // Year (e.g., 2024)
+  month: number;           // Month (1-12)
+  name: string;            // Name of the fixed expense (e.g., "Rent", "Internet")
+  amount: number;          // Decimal with 2 places
+  created_at: string;      // Timestamp
+}
+```
+
+### Fixed Expenses Database Schema
+
+```sql
+CREATE TABLE fixed_expenses (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  year INTEGER NOT NULL,
+  month INTEGER NOT NULL CHECK(month >= 1 AND month <= 12),
+  name TEXT NOT NULL,
+  amount REAL NOT NULL CHECK(amount >= 0),
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_fixed_expenses_year_month ON fixed_expenses(year, month);
 ```
 
 ## Error Handling
@@ -208,7 +385,7 @@ interface Summary {
 ### Validation Rules
 - Date: Required, valid date format
 - Amount: Required, positive number with max 2 decimal places
-- Type: Required, must be one of the three valid options
+- Type: Required, must be one of the five valid options (Other, Food, Gas, Tax - Medical, Tax - Donation)
 - Method: Required, must be one of the six valid options
 - Place: Optional, max 200 characters
 - Notes: Optional, max 200 characters
@@ -238,6 +415,46 @@ interface Summary {
 
 ## Implementation Notes
 
+### Row Styling
+
+```css
+/* Apply dark blue background to Tax - Medical expense rows */
+.expense-row.tax-medical-row {
+  background-color: #1e3a5f; /* Dark blue */
+  color: #ffffff; /* White text for contrast */
+}
+
+/* Apply orange background to Tax - Donation expense rows */
+.expense-row.tax-donation-row {
+  background-color: #ea580c; /* Orange */
+  color: #ffffff; /* White text for contrast */
+}
+
+/* Apply highlighting to high-value expenses (≥$350) */
+.expense-row.high-amount {
+  border-left: 4px solid #f59e0b; /* Orange accent */
+  font-weight: 600;
+}
+```
+
+### Backup File Naming Convention
+```javascript
+// Backup files use timestamp format
+const backupFileName = `expense-backup-${Date.now()}.db`;
+// Example: expense-backup-1699564800000.db
+```
+
+### Global Search Implementation
+```javascript
+// Search across all expenses, not limited to current month
+function searchExpenses(query) {
+  return expenses.filter(expense => 
+    expense.place.toLowerCase().includes(query.toLowerCase()) ||
+    expense.notes.toLowerCase().includes(query.toLowerCase())
+  );
+}
+```
+
 ### Week Calculation Logic
 ```javascript
 function calculateWeek(dateString) {
@@ -260,7 +477,14 @@ function calculateWeek(dateString) {
 ### Database Initialization
 - Create database file and table on first run
 - Seed with sample data for development (optional)
-- Migrations not needed for initial version (single table)
+- Support for database schema migrations when adding new features
+
+### Backup System Architecture
+- Scheduled backup service runs in background
+- Node-cron for scheduling automated backups
+- File system operations for backup creation and restoration
+- Backup files stored in dedicated backups directory
+- Validation of backup file integrity before restore operations
 
 ## Security Considerations
 

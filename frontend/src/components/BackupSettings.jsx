@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import './BackupSettings.css';
 
-const BackupSettings = ({ onClose }) => {
+const BackupSettings = () => {
   const [config, setConfig] = useState({
     enabled: false,
     schedule: 'daily',

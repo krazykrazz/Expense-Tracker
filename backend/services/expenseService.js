@@ -1,4 +1,5 @@
 const expenseRepository = require('../repositories/expenseRepository');
+const fixedExpenseRepository = require('../repositories/fixedExpenseRepository');
 const { calculateWeek } = require('../utils/dateUtils');
 
 class ExpenseService {
@@ -44,7 +45,7 @@ class ExpenseService {
     }
 
     // Type validation
-    const validTypes = ['Other', 'Food', 'Gas'];
+    const validTypes = ['Other', 'Food', 'Gas', 'Tax - Medical', 'Tax - Donation'];
     if (expense.type && !validTypes.includes(expense.type)) {
       errors.push(`Type must be one of: ${validTypes.join(', ')}`);
     }
@@ -127,26 +128,6 @@ class ExpenseService {
   }
 
   /**
-   * Toggle highlight on an expense
-   * @param {number} id - Expense ID
-   * @param {boolean} highlighted - Highlight state
-   * @returns {Promise<Object|null>} Updated expense or null
-   */
-  async toggleHighlight(id, highlighted) {
-    return await expenseRepository.toggleHighlight(id, highlighted ? 1 : 0);
-  }
-
-  /**
-   * Toggle tax deductible on an expense
-   * @param {number} id - Expense ID
-   * @param {boolean} taxDeductible - Tax deductible state
-   * @returns {Promise<Object|null>} Updated expense or null
-   */
-  async toggleTaxDeductible(id, taxDeductible) {
-    return await expenseRepository.toggleTaxDeductible(id, taxDeductible ? 1 : 0);
-  }
-
-  /**
    * Update an expense
    * @param {number} id - Expense ID
    * @param {Object} expenseData - Updated expense data
@@ -208,10 +189,13 @@ class ExpenseService {
 
     const summary = await expenseRepository.getSummary(yearNum, monthNum);
     const monthlyGross = await expenseRepository.getMonthlyGross(yearNum, monthNum);
+    const totalFixedExpenses = await fixedExpenseRepository.getTotalFixedExpenses(yearNum, monthNum);
     
-    // Add monthly gross and net balance to summary
+    // Add monthly gross, fixed expenses, and net balance to summary
     summary.monthlyGross = monthlyGross || 0;
-    summary.netBalance = summary.monthlyGross - summary.total;
+    summary.totalFixedExpenses = totalFixedExpenses || 0;
+    summary.totalExpenses = summary.total + summary.totalFixedExpenses;
+    summary.netBalance = summary.monthlyGross - summary.totalExpenses;
     
     return summary;
   }
@@ -342,6 +326,63 @@ class ExpenseService {
         });
       });
     });
+  }
+
+  /**
+   * Get tax-deductible summary for a specific year
+   * @param {number} year - Year
+   * @returns {Promise<Object>} Tax-deductible summary object
+   */
+  async getTaxDeductibleSummary(year) {
+    // Validate year parameter
+    if (!year) {
+      throw new Error('Year parameter is required');
+    }
+
+    const yearNum = parseInt(year);
+    if (isNaN(yearNum)) {
+      throw new Error('Year must be a valid number');
+    }
+
+    // Call repository method to fetch expenses
+    const expenses = await expenseRepository.getTaxDeductibleExpenses(yearNum);
+
+    // Separate expenses into medical and donations arrays
+    const medicalExpenses = expenses.filter(exp => exp.type === 'Tax - Medical');
+    const donationExpenses = expenses.filter(exp => exp.type === 'Tax - Donation');
+
+    // Calculate totals
+    const medicalTotal = medicalExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+    const donationTotal = donationExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+    const totalDeductible = medicalTotal + donationTotal;
+
+    // Generate monthly breakdown by grouping expenses by month
+    const monthlyBreakdown = [];
+    for (let month = 1; month <= 12; month++) {
+      const monthExpenses = expenses.filter(exp => {
+        const expenseMonth = parseInt(exp.date.substring(5, 7));
+        return expenseMonth === month;
+      });
+      
+      const monthTotal = monthExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+      monthlyBreakdown.push({
+        month: month,
+        total: parseFloat(monthTotal.toFixed(2))
+      });
+    }
+
+    // Return structured summary object matching the design interface
+    return {
+      year: yearNum,
+      totalDeductible: parseFloat(totalDeductible.toFixed(2)),
+      medicalTotal: parseFloat(medicalTotal.toFixed(2)),
+      donationTotal: parseFloat(donationTotal.toFixed(2)),
+      monthlyBreakdown: monthlyBreakdown,
+      expenses: {
+        medical: medicalExpenses,
+        donations: donationExpenses
+      }
+    };
   }
 }
 

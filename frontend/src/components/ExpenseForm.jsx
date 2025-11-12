@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { API_ENDPOINTS } from '../config';
 import './ExpenseForm.css';
 
@@ -23,7 +23,7 @@ const ExpenseForm = ({ onExpenseAdded }) => {
   const [message, setMessage] = useState({ text: '', type: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const typeOptions = ['Other', 'Food', 'Gas'];
+  const typeOptions = ['Other', 'Food', 'Gas', 'Tax - Medical', 'Tax - Donation'];
   const methodOptions = ['Cash', 'Debit', 'CIBC MC', 'PCF MC', 'WS VISA', 'VISA'];
 
   const handleChange = (e) => {

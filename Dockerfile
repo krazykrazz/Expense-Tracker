@@ -20,8 +20,8 @@ RUN npm install --production
 
 COPY backend/ ./
 
-# Copy frontend build to backend's client/dist directory
-COPY --from=frontend-build /app/frontend/dist ./client/dist
+# Copy frontend build to backend directory
+COPY --from=frontend-build /app/frontend/dist ../frontend/dist
 
 # Expose port
 EXPOSE 2424

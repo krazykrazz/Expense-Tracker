@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import './RecurringExpenseForm.css';
 
 const RecurringExpenseForm = ({ template, onSave, onCancel }) => {

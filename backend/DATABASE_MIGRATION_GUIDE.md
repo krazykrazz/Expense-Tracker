@@ -1,7 +1,7 @@
-# Database Migration Guide - Fixed Expenses Table
+# Database Migration Guide
 
-## Problem
-The running application doesn't have the `fixed_expenses` table in the database schema, which causes errors when trying to read or add fixed expenses.
+## Overview
+This guide covers database migrations for adding new tables to your existing database. The application automatically creates all required tables on initialization, but if you're upgrading from an older version, you may need to run migration scripts.
 
 ## Solution
 Run the migration script to add the missing table to your existing database.
@@ -72,19 +72,40 @@ npm start
 
 ## What the Migration Does
 
-The migration script:
-1. Creates the `fixed_expenses` table with the following schema:
-   - `id`: Auto-incrementing primary key
-   - `year`: Year (INTEGER, NOT NULL)
-   - `month`: Month 1-12 (INTEGER, NOT NULL)
-   - `name`: Name of the fixed expense (TEXT, NOT NULL)
-   - `amount`: Amount (REAL, NOT NULL, must be >= 0)
-   - `created_at`: Timestamp when created
-   - `updated_at`: Timestamp when last updated
+The migration script creates the `fixed_expenses` table with the following schema:
+- `id`: Auto-incrementing primary key
+- `year`: Year (INTEGER, NOT NULL)
+- `month`: Month 1-12 (INTEGER, NOT NULL)
+- `name`: Name of the fixed expense (TEXT, NOT NULL)
+- `amount`: Amount (REAL, NOT NULL, must be >= 0)
+- `created_at`: Timestamp when created
+- `updated_at`: Timestamp when last updated
 
-2. Creates an index on `(year, month)` for faster queries
+It also creates an index on `(year, month)` for faster queries and verifies the table was created successfully.
 
-3. Verifies the table was created successfully
+## Other Available Tables
+
+The application includes these additional tables that are automatically created on initialization:
+
+### Loans Table
+Tracks outstanding loans with balance history:
+- `id`: Auto-incrementing primary key
+- `name`: Loan name (TEXT, NOT NULL)
+- `initial_balance`: Original loan amount (REAL, NOT NULL, >= 0)
+- `start_date`: When loan started (TEXT, NOT NULL)
+- `notes`: Additional notes (TEXT)
+- `is_paid_off`: Whether loan is paid off (INTEGER, 0 or 1)
+- `created_at`, `updated_at`: Timestamps
+
+### Loan Balances Table
+Tracks monthly balance and interest rate updates for each loan:
+- `id`: Auto-incrementing primary key
+- `loan_id`: Foreign key to loans table (INTEGER, NOT NULL)
+- `year`, `month`: Month identifier (INTEGER, NOT NULL)
+- `remaining_balance`: Outstanding balance (REAL, NOT NULL, >= 0)
+- `rate`: Interest rate percentage (REAL, NOT NULL, >= 0)
+- `created_at`, `updated_at`: Timestamps
+- Unique constraint on (loan_id, year, month)
 
 ## Troubleshooting
 
@@ -107,7 +128,15 @@ You can use a SQLite browser tool like:
 
 ## Database Backup (Recommended)
 
-Before running the migration, you may want to backup your database:
+Before running any migration, you should backup your database. The application includes an automated backup feature:
+
+### Using the Application Backup Feature
+1. Open the application in your browser
+2. Click the "💾 Backup" button
+3. The backup will be saved to your configured backup location
+
+### Manual Backup
+You can also manually copy the database file:
 
 ```bash
 # On Windows
@@ -116,6 +145,8 @@ copy backend\database\expenses.db backend\database\expenses.db.backup
 # On Mac/Linux
 cp backend/database/expenses.db backend/database/expenses.db.backup
 ```
+
+**Note:** All backups include all tables (expenses, income_sources, fixed_expenses, loans, loan_balances, etc.) and preserve data integrity.
 
 ## Notes
 

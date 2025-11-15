@@ -33,7 +33,6 @@ Follow Semantic Versioning (SEMVER): `MAJOR.MINOR.PATCH`
 - Documentation updates
 
 ## Update Process
-
 When making changes that warrant a version bump:
 
 1. **Determine the version type** based on the change

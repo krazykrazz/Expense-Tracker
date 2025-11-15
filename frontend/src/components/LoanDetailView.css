@@ -1,0 +1,757 @@
+/* Loan Detail View Modal Overlay */
+.loan-detail-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1001;
+  padding: 20px;
+}
+
+/* Loan Detail Container */
+.loan-detail-container {
+  background-color: white;
+  border-radius: 8px;
+  width: 100%;
+  max-width: 1200px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* Header */
+.loan-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e0e0e0;
+  background-color: #f8f9fa;
+}
+
+.loan-detail-header h2 {
+  margin: 0;
+  font-size: 24px;
+  color: #333;
+  flex: 1;
+  text-align: center;
+}
+
+.loan-detail-back-button {
+  background-color: transparent;
+  border: 1px solid #007bff;
+  color: #007bff;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.loan-detail-back-button:hover {
+  background-color: #007bff;
+  color: white;
+}
+
+.loan-detail-close {
+  background-color: transparent;
+  border: none;
+  font-size: 28px;
+  cursor: pointer;
+  color: #666;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+}
+
+.loan-detail-close:hover {
+  color: #333;
+}
+
+/* Messages */
+.loan-detail-error {
+  background-color: #f8d7da;
+  color: #721c24;
+  padding: 12px 24px;
+  border-left: 4px solid #dc3545;
+  margin: 0;
+}
+
+.loan-detail-success {
+  background-color: #d4edda;
+  color: #155724;
+  padding: 12px 24px;
+  border-left: 4px solid #28a745;
+  margin: 0;
+}
+
+/* Content */
+.loan-detail-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+/* Loan Summary Card */
+.loan-summary-card {
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.loan-summary-card h3 {
+  margin: 0 0 20px 0;
+  font-size: 20px;
+  color: #333;
+}
+
+.loan-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.loan-summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.loan-summary-label {
+  font-size: 14px;
+  color: #666;
+  font-weight: 500;
+}
+
+.loan-summary-value {
+  font-size: 18px;
+  color: #333;
+  font-weight: 600;
+}
+
+.loan-current-balance {
+  color: #007bff;
+}
+
+.loan-paid-down {
+  color: #28a745;
+}
+
+.loan-summary-notes {
+  grid-column: 1 / -1;
+}
+
+.loan-summary-notes .loan-summary-value {
+  font-size: 14px;
+  font-weight: 400;
+  color: #555;
+  white-space: pre-wrap;
+}
+
+/* Progress Indicator */
+.loan-progress-section {
+  margin: 20px 0;
+}
+
+.loan-progress-label {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.loan-progress-bar {
+  width: 100%;
+  height: 24px;
+  background-color: #e9ecef;
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+}
+
+.loan-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #28a745 0%, #20c997 100%);
+  transition: width 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 8px;
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Balance Line Chart for Lines of Credit */
+.loan-balance-chart-section {
+  margin: 20px 0;
+  padding: 16px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+}
+
+.loan-balance-chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.loan-balance-chart-label {
+  font-size: 14px;
+  color: #666;
+  font-weight: 500;
+}
+
+.loan-balance-chart-legend {
+  display: flex;
+  gap: 16px;
+  font-size: 12px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #666;
+}
+
+.legend-color {
+  width: 16px;
+  height: 3px;
+  border-radius: 2px;
+}
+
+.loan-balance-line-chart {
+  background-color: white;
+  border-radius: 4px;
+  border: 1px solid #dee2e6;
+  padding: 10px;
+  overflow-x: auto;
+}
+
+.loan-balance-line-chart svg {
+  display: block;
+  min-width: 400px;
+}
+
+/* Loan Edit Form */
+.loan-edit-form {
+  margin-top: 16px;
+}
+
+.loan-input-group {
+  margin-bottom: 16px;
+}
+
+.loan-input-group label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 14px;
+  color: #333;
+  font-weight: 500;
+}
+
+.loan-input-group input,
+.loan-input-group textarea {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.loan-input-group input:focus,
+.loan-input-group textarea:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.loan-input-group input.input-error,
+.loan-input-group textarea.input-error {
+  border-color: #dc3545;
+}
+
+.loan-input-group textarea {
+  resize: vertical;
+  font-family: inherit;
+}
+
+.validation-error {
+  display: block;
+  color: #dc3545;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+/* Action Buttons */
+.loan-summary-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.loan-edit-details-button,
+.loan-paid-off-button {
+  padding: 10px 20px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+
+.loan-edit-details-button {
+  background-color: #007bff;
+  color: white;
+}
+
+.loan-edit-details-button:hover:not(:disabled) {
+  background-color: #0056b3;
+}
+
+.loan-paid-off-button {
+  background-color: #6c757d;
+  color: white;
+}
+
+.loan-paid-off-button:hover:not(:disabled) {
+  background-color: #5a6268;
+}
+
+.loan-paid-off-button.active {
+  background-color: #28a745;
+}
+
+.loan-paid-off-button.active:hover:not(:disabled) {
+  background-color: #218838;
+}
+
+.loan-edit-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.loan-save-button,
+.loan-cancel-button {
+  padding: 10px 20px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+
+.loan-save-button {
+  background-color: #28a745;
+  color: white;
+}
+
+.loan-save-button:hover:not(:disabled) {
+  background-color: #218838;
+}
+
+.loan-cancel-button {
+  background-color: #6c757d;
+  color: white;
+}
+
+.loan-cancel-button:hover:not(:disabled) {
+  background-color: #5a6268;
+}
+
+/* Balance History Section */
+.loan-balance-history-section {
+  background-color: white;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 24px;
+}
+
+.loan-balance-history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.loan-balance-history-header h3 {
+  margin: 0;
+  font-size: 20px;
+  color: #333;
+}
+
+.loan-add-balance-button {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.loan-add-balance-button:hover:not(:disabled) {
+  background-color: #0056b3;
+}
+
+.loan-add-balance-button:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Add Balance Form */
+.loan-add-balance-form {
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.loan-add-balance-form h4 {
+  margin: 0 0 16px 0;
+  font-size: 16px;
+  color: #333;
+}
+
+.balance-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.balance-input-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.balance-input-group label {
+  margin-bottom: 6px;
+  font-size: 14px;
+  color: #333;
+  font-weight: 500;
+}
+
+.balance-input-group input,
+.balance-input-group select {
+  padding: 10px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.balance-input-group input:focus,
+.balance-input-group select:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.balance-input-group input.input-error,
+.balance-input-group select.input-error {
+  border-color: #dc3545;
+}
+
+.balance-form-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.balance-form-submit-button,
+.balance-form-cancel-button {
+  padding: 10px 20px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+
+.balance-form-submit-button {
+  background-color: #28a745;
+  color: white;
+}
+
+.balance-form-submit-button:hover:not(:disabled) {
+  background-color: #218838;
+}
+
+.balance-form-cancel-button {
+  background-color: #6c757d;
+  color: white;
+}
+
+.balance-form-cancel-button:hover:not(:disabled) {
+  background-color: #5a6268;
+}
+
+/* Balance History Table */
+.loan-balance-table-container {
+  overflow-x: auto;
+}
+
+.loan-balance-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.loan-balance-table thead {
+  background-color: #f8f9fa;
+}
+
+.loan-balance-table th {
+  padding: 12px;
+  text-align: left;
+  font-weight: 600;
+  color: #333;
+  border-bottom: 2px solid #dee2e6;
+}
+
+.loan-balance-table td {
+  padding: 12px;
+  border-bottom: 1px solid #e9ecef;
+  vertical-align: middle;
+}
+
+.loan-balance-table tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+.loan-balance-table input {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 13px;
+  box-sizing: border-box;
+}
+
+.loan-balance-table input:focus {
+  outline: none;
+  border-color: #007bff;
+}
+
+.loan-balance-table input.input-error {
+  border-color: #dc3545;
+}
+
+.validation-error-small {
+  color: #dc3545;
+  font-size: 11px;
+  margin-top: 2px;
+}
+
+/* Balance Change Indicators */
+.balance-change,
+.rate-change {
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.balance-change.decrease {
+  color: #28a745;
+}
+
+.balance-change.increase {
+  color: #dc3545;
+}
+
+.rate-change.decrease {
+  color: #28a745;
+}
+
+.rate-change.increase {
+  color: #dc3545;
+}
+
+.no-change {
+  color: #6c757d;
+}
+
+/* Balance Actions */
+.balance-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.balance-edit-button,
+.balance-delete-button,
+.balance-save-button,
+.balance-cancel-button {
+  background-color: transparent;
+  border: 1px solid #ced4da;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.balance-edit-button:hover:not(:disabled) {
+  background-color: #007bff;
+  border-color: #007bff;
+  color: white;
+}
+
+.balance-delete-button:hover:not(:disabled) {
+  background-color: #dc3545;
+  border-color: #dc3545;
+  color: white;
+}
+
+.balance-save-button {
+  background-color: #28a745;
+  border-color: #28a745;
+  color: white;
+}
+
+.balance-save-button:hover:not(:disabled) {
+  background-color: #218838;
+  border-color: #218838;
+}
+
+.balance-cancel-button {
+  background-color: #6c757d;
+  border-color: #6c757d;
+  color: white;
+}
+
+.balance-cancel-button:hover:not(:disabled) {
+  background-color: #5a6268;
+  border-color: #5a6268;
+}
+
+.balance-edit-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+/* Loading and Empty States */
+.loan-loading,
+.loan-empty-history {
+  text-align: center;
+  padding: 40px 20px;
+  color: #6c757d;
+  font-size: 14px;
+}
+
+/* Disabled State */
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .loan-detail-overlay {
+    padding: 0;
+  }
+
+  .loan-detail-container {
+    max-width: 100%;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+
+  .loan-detail-header {
+    padding: 16px;
+  }
+
+  .loan-detail-header h2 {
+    font-size: 20px;
+  }
+
+  .loan-detail-content {
+    padding: 16px;
+  }
+
+  .loan-summary-card,
+  .loan-balance-history-section {
+    padding: 16px;
+  }
+
+  .loan-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .balance-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .loan-balance-table {
+    font-size: 12px;
+  }
+
+  .loan-balance-table th,
+  .loan-balance-table td {
+    padding: 8px;
+  }
+
+  .loan-summary-actions,
+  .loan-edit-actions,
+  .balance-form-actions {
+    flex-direction: column;
+  }
+
+  .loan-summary-actions button,
+  .loan-edit-actions button,
+  .balance-form-actions button {
+    width: 100%;
+  }
+
+  .loan-balance-history-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .loan-add-balance-button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .loan-detail-back-button {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+
+  .loan-balance-table-container {
+    overflow-x: scroll;
+  }
+
+  .loan-balance-table {
+    min-width: 600px;
+  }
+}

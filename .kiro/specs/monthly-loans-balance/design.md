@@ -130,10 +130,13 @@ class LoanBalanceRepository {
 
 **loanBalanceService.js**
 
-- Validates balance entries
-- Enforces one balance per loan per month
+- Validates balance entries (year, month, remaining_balance, rate)
+- Enforces business rules (balance >= 0, rate >= 0)
+- Enforces one balance entry per loan per month
 - Calculates balance changes from previous month
+- Calculates rate changes from previous month
 - Handles upsert logic for monthly updates
+- Auto-marks loans as paid off when balance reaches zero
 
 ### Controller Layer
 
@@ -286,7 +289,8 @@ export const loanApi = {
 
 ### Validation Errors (400)
 
-- Missing required fields (name, rate, initial_balance, start_date)
+- Missing required fields for loan: name, initial_balance, start_date
+- Missing required fields for balance entry: loan_id, year, month, remaining_balance, rate
 - Invalid data types or formats
 - Negative balance or rate values
 - Invalid month (not 1-12)
@@ -388,14 +392,14 @@ Update `backend/database/db.js` to include new tables in initialization.
   - Original Amount: $X,XXX.XX
   - Current Balance: $X,XXX.XX
   - Total Paid Down: $X,XXX.XX (calculated)
-  - Interest Rate: X.XX%
+  - Current Interest Rate: X.XX% (from most recent balance entry)
   - Start Date: MM/DD/YYYY
 - Balance history table/timeline:
-  - Columns: Month/Year, Remaining Balance, Change, Actions
+  - Columns: Month/Year, Remaining Balance, Interest Rate, Balance Change, Rate Change, Actions
   - Sorted chronologically (most recent first)
-  - Color coding: green for decreases, red for increases
-  - Inline add/edit forms for balance entries
-- Month/year picker for adding new balance entries
+  - Color coding: green for balance decreases, red for increases; visual indicator for rate changes
+  - Inline add/edit forms for balance entries (both balance and rate)
+- Month/year picker for adding new balance entries with both balance and rate fields
 - Visual progress indicator showing paydown percentage
 - Back button to return to loans list
 

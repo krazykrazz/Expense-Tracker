@@ -9,10 +9,11 @@ A full-stack expense tracking application built with React and Node.js.
 - 📊 View monthly summaries with weekly breakdowns
 - 💰 Track monthly gross income from multiple sources
 - 🏠 Manage fixed monthly expenses (rent, utilities, subscriptions)
-- 📈 Calculate net balance including fixed expenses
+- 💳 Track outstanding loans with monthly balance and interest rate history
+- 📈 Calculate net balance including fixed expenses and loan obligations
 - 📅 Filter expenses by month and year
 - 🔄 Carry forward income sources and fixed expenses from previous month
-- 💾 Backup database functionality
+- 💾 Backup database functionality (includes all data: expenses, income, fixed expenses, and loans)
 - 🌐 Access from any device on your local network
 
 ## Tech Stack
@@ -164,6 +165,26 @@ expense-tracker/
 - name (TEXT) - Fixed expense name
 - amount (REAL)
 - created_at (TEXT)
+
+### Loans Table
+- id (INTEGER PRIMARY KEY)
+- name (TEXT) - Loan name
+- initial_balance (REAL) - Original loan amount
+- start_date (TEXT) - When loan started
+- notes (TEXT) - Additional notes
+- is_paid_off (INTEGER) - 0 or 1
+- created_at (TEXT)
+- updated_at (TEXT)
+
+### Loan Balances Table
+- id (INTEGER PRIMARY KEY)
+- loan_id (INTEGER) - Foreign key to loans table
+- year (INTEGER)
+- month (INTEGER)
+- remaining_balance (REAL) - Outstanding balance
+- rate (REAL) - Interest rate percentage
+- created_at (TEXT)
+- updated_at (TEXT)
 
 ## License
 

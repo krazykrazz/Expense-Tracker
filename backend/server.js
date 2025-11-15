@@ -8,6 +8,8 @@ const recurringExpenseRoutes = require('./routes/recurringExpenseRoutes');
 const backupRoutes = require('./routes/backupRoutes');
 const incomeRoutes = require('./routes/incomeRoutes');
 const fixedExpenseRoutes = require('./routes/fixedExpenseRoutes');
+const loanRoutes = require('./routes/loanRoutes');
+const loanBalanceRoutes = require('./routes/loanBalanceRoutes');
 const backupService = require('./services/backupService');
 
 const app = express();
@@ -37,6 +39,12 @@ app.use('/api/income', incomeRoutes);
 
 // Fixed expense API routes
 app.use('/api/fixed-expenses', fixedExpenseRoutes);
+
+// Loan API routes
+app.use('/api/loans', loanRoutes);
+
+// Loan balance API routes
+app.use('/api/loan-balances', loanBalanceRoutes);
 
 // Serve static files from the React app (after build)
 app.use(express.static(path.join(__dirname, '..', 'frontend', 'dist')));

@@ -229,3 +229,140 @@
 .view-fixed-expenses-button:active {
   background-color: #0369a1;
 }
+
+.loans-section {
+  background-color: #f9f9f9;
+  border-radius: 3px;
+  padding: 12px;
+  margin-top: 15px;
+}
+
+.loans-section h3 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  color: #333;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border-left: 3px solid #0ea5e9;
+  padding-left: 8px;
+}
+
+.loans-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.loan-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 10px;
+  background: white;
+  border-radius: 2px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.loan-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.loan-name {
+  font-size: 13px;
+  color: #333;
+  font-weight: 500;
+}
+
+.loan-rate {
+  font-size: 11px;
+  color: #666;
+  font-style: italic;
+}
+
+.loan-balance {
+  font-size: 14px;
+  font-weight: 600;
+  color: #e53e3e;
+}
+
+.loans-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 10px 5px 10px;
+  border-top: 2px solid #333;
+  margin-top: 5px;
+}
+
+.loans-label {
+  font-size: 13px;
+  color: #555;
+  font-weight: 600;
+}
+
+.loans-value-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.loans-value {
+  font-size: 16px;
+  font-weight: 600;
+  color: #e53e3e;
+}
+
+.view-loans-button {
+  background-color: #0ea5e9;
+  color: white;
+  border: none;
+  padding: 4px 10px;
+  cursor: pointer;
+  font-size: 12px;
+  border-radius: 3px;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.view-loans-button:hover {
+  background-color: #0284c7;
+}
+
+.view-loans-button:active {
+  background-color: #0369a1;
+}
+
+@media (max-width: 768px) {
+  .loans-section {
+    padding: 10px;
+  }
+
+  .loans-section h3 {
+    font-size: 0.9rem;
+  }
+
+  .loan-item {
+    padding: 6px 8px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+  }
+
+  .loan-balance {
+    align-self: flex-end;
+  }
+
+  .loans-total {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .loans-value-container {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}

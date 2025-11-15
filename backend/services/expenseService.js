@@ -1,5 +1,6 @@
 const expenseRepository = require('../repositories/expenseRepository');
 const fixedExpenseRepository = require('../repositories/fixedExpenseRepository');
+const loanService = require('./loanService');
 const { calculateWeek } = require('../utils/dateUtils');
 
 class ExpenseService {
@@ -191,11 +192,19 @@ class ExpenseService {
     const monthlyGross = await expenseRepository.getMonthlyGross(yearNum, monthNum);
     const totalFixedExpenses = await fixedExpenseRepository.getTotalFixedExpenses(yearNum, monthNum);
     
-    // Add monthly gross, fixed expenses, and net balance to summary
+    // Fetch loans for the selected month (filters by start_date and excludes paid off)
+    const loans = await loanService.getLoansForMonth(yearNum, monthNum);
+    
+    // Calculate total outstanding debt from active loans
+    const totalOutstandingDebt = loanService.calculateTotalOutstandingDebt(loans);
+    
+    // Add monthly gross, fixed expenses, loans, and net balance to summary
     summary.monthlyGross = monthlyGross || 0;
     summary.totalFixedExpenses = totalFixedExpenses || 0;
     summary.totalExpenses = summary.total + summary.totalFixedExpenses;
     summary.netBalance = summary.monthlyGross - summary.totalExpenses;
+    summary.loans = loans;
+    summary.totalOutstandingDebt = totalOutstandingDebt;
     
     return summary;
   }

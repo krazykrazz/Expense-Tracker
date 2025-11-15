@@ -28,15 +28,16 @@ The Monthly Loans Balance feature enables users to track outstanding loan balanc
 
 ### Requirement 2
 
-**User Story:** As a user, I want to record monthly balance updates for each loan, so that I can track how my loan balances change over time
+**User Story:** As a user, I want to record monthly balance and interest rate updates for each loan, so that I can track how my loan balances and rates change over time
 
 #### Acceptance Criteria
 
-1. WHEN a user adds a balance entry, THE Loan Tracker SHALL record the balance amount, month, and year
+1. WHEN a user adds a balance entry, THE Loan Tracker SHALL record the balance amount, interest rate, month, and year
 2. THE Loan Tracker SHALL allow only one balance entry per loan per month
 3. IF a balance entry already exists for a month, THEN THE Loan Tracker SHALL update the existing entry instead of creating a duplicate
 4. THE Loan Tracker SHALL calculate and display the balance change from the previous month
-5. THE Loan Tracker SHALL sort balance entries chronologically with most recent first
+5. THE Loan Tracker SHALL calculate and display the interest rate change from the previous month
+6. THE Loan Tracker SHALL sort balance entries chronologically with most recent first
 
 ### Requirement 3
 
@@ -54,14 +55,14 @@ The Monthly Loans Balance feature enables users to track outstanding loan balanc
 
 ### Requirement 4
 
-**User Story:** As a user, I want to view balance history for each loan, so that I can see my progress in paying down debt over time
+**User Story:** As a user, I want to view balance and rate history for each loan, so that I can see my progress in paying down debt and track interest rate changes over time
 
 #### Acceptance Criteria
 
 1. THE Loan Tracker SHALL display a chronological list of all balance entries for a selected loan
-2. THE Loan Tracker SHALL show the month, year, balance amount, and change from previous month for each entry
+2. THE Loan Tracker SHALL show the month, year, balance amount, interest rate, balance change, and rate change for each entry
 3. THE Loan Tracker SHALL calculate the total amount paid down since the loan start date
-4. THE Loan Tracker SHALL allow users to edit historical balance entries
+4. THE Loan Tracker SHALL allow users to edit historical balance entries including both balance and rate
 5. THE Loan Tracker SHALL allow users to delete balance entries
 
 ### Requirement 5

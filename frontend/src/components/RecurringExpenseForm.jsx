@@ -18,7 +18,7 @@ const RecurringExpenseForm = ({ template, onSave, onCancel }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const typeOptions = ['Other', 'Food', 'Gas'];
-  const methodOptions = ['Cash', 'Debit', 'CIBC MC', 'PCF MC', 'WS VISA', 'VISA'];
+  const methodOptions = ['Cash', 'Debit', 'Cheque', 'CIBC MC', 'PCF MC', 'WS VISA', 'VISA'];
 
   useEffect(() => {
     if (template) {

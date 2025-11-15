@@ -63,7 +63,7 @@ graph TB
 - Manages selected month/year state
 
 #### 2. ExpenseForm Component
-- Input fields: date, place, notes, amount, type dropdown (5 options), method dropdown
+- Input fields: date, place, notes, amount, type dropdown (5 options), method dropdown (7 options)
 - Validates required fields before submission
 - Calculates week automatically from date
 - Submits new expense to backend API
@@ -93,7 +93,7 @@ graph TB
 #### 6. SummaryPanel Component
 - Displays multiple summary sections:
   - Weekly totals (weeks 1-5)
-  - Payment method totals (all 6 methods)
+  - Payment method totals (all 7 methods)
   - Type-specific totals (Gas, Food, Tax - Medical, Tax - Donation, and Other)
   - Monthly gross income with View/Edit button
   - Total fixed expenses with View/Edit button
@@ -247,7 +247,7 @@ interface Expense {
   amount: number;          // Decimal with 2 places
   type: 'Other' | 'Food' | 'Gas' | 'Tax - Medical' | 'Tax - Donation';  // Tax deductible expenses identified by type
   week: number;            // 1-5, calculated from date
-  method: 'Cash' | 'Debit' | 'CIBC MC' | 'PCF MC' | 'WS VISA' | 'VISA';
+  method: 'Cash' | 'Debit' | 'Cheque' | 'CIBC MC' | 'PCF MC' | 'WS VISA' | 'VISA';
   created_at: string;      // Timestamp
 }
 ```
@@ -263,7 +263,7 @@ CREATE TABLE expenses (
   amount REAL NOT NULL,
   type TEXT NOT NULL CHECK(type IN ('Other', 'Food', 'Gas', 'Tax - Medical', 'Tax - Donation')),
   week INTEGER NOT NULL CHECK(week >= 1 AND week <= 5),
-  method TEXT NOT NULL CHECK(method IN ('Cash', 'Debit', 'CIBC MC', 'PCF MC', 'WS VISA', 'VISA')),
+  method TEXT NOT NULL CHECK(method IN ('Cash', 'Debit', 'Cheque', 'CIBC MC', 'PCF MC', 'WS VISA', 'VISA')),
   created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -286,6 +286,7 @@ interface Summary {
   methodTotals: {
     Cash: number;
     Debit: number;
+    Cheque: number;
     'CIBC MC': number;
     'PCF MC': number;
     'WS VISA': number;
@@ -386,7 +387,7 @@ CREATE INDEX idx_fixed_expenses_year_month ON fixed_expenses(year, month);
 - Date: Required, valid date format
 - Amount: Required, positive number with max 2 decimal places
 - Type: Required, must be one of the five valid options (Other, Food, Gas, Tax - Medical, Tax - Donation)
-- Method: Required, must be one of the six valid options
+- Method: Required, must be one of the seven valid options (Cash, Debit, Cheque, CIBC MC, PCF MC, WS VISA, VISA)
 - Place: Optional, max 200 characters
 - Notes: Optional, max 200 characters
 

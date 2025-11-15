@@ -1,8 +1,8 @@
 {
-  "enabled": false,
+  "enabled": true,
   "schedule": "daily",
   "time": "02:00",
-  "targetPath": "",
+  "targetPath": "G:\\My Drive\\Documents\\Financial\\Expense Tracker Backups",
   "keepLastN": 7,
-  "lastBackup": null
+  "lastBackup": "2025-11-13T02:36:04.488Z"
 }

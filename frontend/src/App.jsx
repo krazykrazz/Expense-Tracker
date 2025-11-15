@@ -86,6 +86,16 @@ function App() {
     setRefreshTrigger(prev => prev + 1);
   };
 
+  const handleExpenseUpdated = (updatedExpense) => {
+    // Update the expense in the list
+    setExpenses(prev => prev.map(expense => 
+      expense.id === updatedExpense.id ? updatedExpense : expense
+    ));
+    
+    // Trigger summary refresh
+    setRefreshTrigger(prev => prev + 1);
+  };
+
   const handleMonthChange = (year, month) => {
     setSelectedYear(year);
     setSelectedMonth(month);
@@ -188,6 +198,7 @@ function App() {
               <ExpenseList 
                 expenses={filteredExpenses}
                 onExpenseDeleted={handleExpenseDeleted}
+                onExpenseUpdated={handleExpenseUpdated}
                 searchText={searchText}
                 onAddExpense={() => setShowExpenseForm(true)}
               />
@@ -249,7 +260,7 @@ function App() {
       )}
 
       <footer className="App-footer">
-        <span className="version">v2.5</span>
+        <span className="version">v3.1.1</span>
       </footer>
     </div>
   );

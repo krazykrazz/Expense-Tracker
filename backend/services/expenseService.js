@@ -51,7 +51,7 @@ class ExpenseService {
     }
 
     // Method validation
-    const validMethods = ['Cash', 'Debit', 'CIBC MC', 'PCF MC', 'WS VISA', 'VISA'];
+    const validMethods = ['Cash', 'Debit', 'Cheque', 'CIBC MC', 'PCF MC', 'WS VISA', 'VISA'];
     if (expense.method && !validMethods.includes(expense.method)) {
       errors.push(`Payment method must be one of: ${validMethods.join(', ')}`);
     }

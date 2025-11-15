@@ -251,10 +251,10 @@ const BackupSettings = () => {
                 name="targetPath"
                 value={config.targetPath}
                 onChange={handleChange}
-                placeholder="Leave empty for default location"
+                placeholder="e.g., C:\Backups\ExpenseTracker (leave empty for default)"
               />
               <small className="field-hint">
-                Full path to backup directory (e.g., C:\Backups\ExpenseTracker)
+                <strong>Must be a full absolute path</strong> (e.g., C:\Backups\ExpenseTracker or D:\MyBackups). Leave empty to use default location.
               </small>
             </div>
 

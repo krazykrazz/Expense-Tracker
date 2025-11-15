@@ -163,24 +163,28 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
               <span className="summary-value">${formatAmount(summary.methodTotals.Cash)}</span>
             </div>
             <div className="summary-item">
-              <span className="summary-label">CIBC MC:</span>
-              <span className="summary-value">${formatAmount(summary.methodTotals['CIBC MC'])}</span>
-            </div>
-            <div className="summary-item">
               <span className="summary-label">Debit:</span>
               <span className="summary-value">${formatAmount(summary.methodTotals.Debit)}</span>
+            </div>
+            <div className="summary-item">
+              <span className="summary-label">Cheque:</span>
+              <span className="summary-value">${formatAmount(summary.methodTotals.Cheque)}</span>
+            </div>
+            <div className="summary-item">
+              <span className="summary-label">CIBC MC:</span>
+              <span className="summary-value">${formatAmount(summary.methodTotals['CIBC MC'])}</span>
             </div>
             <div className="summary-item">
               <span className="summary-label">PCF MC:</span>
               <span className="summary-value">${formatAmount(summary.methodTotals['PCF MC'])}</span>
             </div>
             <div className="summary-item">
-              <span className="summary-label">VISA:</span>
-              <span className="summary-value">${formatAmount(summary.methodTotals.VISA)}</span>
-            </div>
-            <div className="summary-item">
               <span className="summary-label">WS VISA:</span>
               <span className="summary-value">${formatAmount(summary.methodTotals['WS VISA'])}</span>
+            </div>
+            <div className="summary-item">
+              <span className="summary-label">VISA:</span>
+              <span className="summary-value">${formatAmount(summary.methodTotals.VISA)}</span>
             </div>
           </div>
         </div>

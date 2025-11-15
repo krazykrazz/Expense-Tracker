@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { API_ENDPOINTS } from '../config';
 import './ExpenseList.css';
 
-const ExpenseList = ({ expenses, onExpenseDeleted, searchText, onAddExpense }) => {
+const ExpenseList = ({ expenses, onExpenseDeleted, onExpenseUpdated, searchText, onAddExpense }) => {
   const [deletingId, setDeletingId] = useState(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [expenseToDelete, setExpenseToDelete] = useState(null);
@@ -14,8 +14,10 @@ const ExpenseList = ({ expenses, onExpenseDeleted, searchText, onAddExpense }) =
 
   const handleEditClick = (expense) => {
     setExpenseToEdit(expense);
+    // Ensure date is in YYYY-MM-DD format for the date input
+    const dateValue = expense.date.includes('T') ? expense.date.split('T')[0] : expense.date;
     setEditFormData({
-      date: expense.date,
+      date: dateValue,
       place: expense.place || '',
       notes: expense.notes || '',
       amount: expense.amount.toString(),
@@ -40,13 +42,23 @@ const ExpenseList = ({ expenses, onExpenseDeleted, searchText, onAddExpense }) =
     setIsSubmitting(true);
 
     try {
+      // Ensure date is in YYYY-MM-DD format
+      const dateValue = editFormData.date.includes('T') ? editFormData.date.split('T')[0] : editFormData.date;
+      
+      console.log('Submitting expense update:', {
+        id: expenseToEdit.id,
+        originalDate: expenseToEdit.date,
+        editFormDate: editFormData.date,
+        dateValue: dateValue
+      });
+      
       const response = await fetch(API_ENDPOINTS.EXPENSE_BY_ID(expenseToEdit.id), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          date: editFormData.date,
+          date: dateValue,
           place: editFormData.place,
           notes: editFormData.notes,
           amount: parseFloat(editFormData.amount),
@@ -61,9 +73,12 @@ const ExpenseList = ({ expenses, onExpenseDeleted, searchText, onAddExpense }) =
       }
 
       const updatedExpense = await response.json();
+      console.log('Received updated expense from server:', updatedExpense);
       
-      // Update the expense in the list
-      window.location.reload(); // Simple refresh to update all data
+      // Notify parent component to update the expense
+      if (onExpenseUpdated) {
+        onExpenseUpdated(updatedExpense);
+      }
       
       setShowEditModal(false);
       setExpenseToEdit(null);
@@ -338,6 +353,7 @@ const ExpenseList = ({ expenses, onExpenseDeleted, searchText, onAddExpense }) =
                   >
                     <option value="Cash">Cash</option>
                     <option value="Debit">Debit</option>
+                    <option value="Cheque">Cheque</option>
                     <option value="CIBC MC">CIBC MC</option>
                     <option value="PCF MC">PCF MC</option>
                     <option value="WS VISA">WS VISA</option>

@@ -7,6 +7,8 @@ const AnnualSummary = ({ year }) => {
   const [error, setError] = useState(null);
   const [taxDeductible, setTaxDeductible] = useState(null);
   const [taxLoading, setTaxLoading] = useState(true);
+  const [medicalExpanded, setMedicalExpanded] = useState(false);
+  const [donationsExpanded, setDonationsExpanded] = useState(false);
 
   useEffect(() => {
     fetchAnnualSummary();
@@ -213,25 +215,68 @@ const AnnualSummary = ({ year }) => {
             {/* Monthly Breakdown for Tax Deductible Expenses */}
             <div className="tax-monthly-breakdown">
               <h4>Monthly Breakdown</h4>
+              <div className="tax-legend">
+                <div className="legend-item">
+                  <div className="legend-color medical-color"></div>
+                  <span>Medical</span>
+                </div>
+                <div className="legend-item">
+                  <div className="legend-color donation-color"></div>
+                  <span>Donations</span>
+                </div>
+              </div>
               <div className="monthly-chart">
                 {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((monthNum) => {
-                  const monthData = taxDeductible.monthlyBreakdown.find(m => m.month === monthNum);
-                  const monthTotal = monthData ? monthData.total : 0;
+                  // Calculate medical and donation totals for this month
+                  const medicalExpenses = taxDeductible.expenses.medical.filter(exp => {
+                    const expMonth = parseInt(exp.date.substring(5, 7));
+                    return expMonth === monthNum;
+                  });
+                  const donationExpenses = taxDeductible.expenses.donations.filter(exp => {
+                    const expMonth = parseInt(exp.date.substring(5, 7));
+                    return expMonth === monthNum;
+                  });
+                  
+                  const medicalTotal = medicalExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+                  const donationTotal = donationExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+                  const monthTotal = medicalTotal + donationTotal;
+                  
                   const highestMonthTotal = Math.max(...taxDeductible.monthlyBreakdown.map(m => m.total), 1);
-                  const barWidth = highestMonthTotal > 0 ? (monthTotal / highestMonthTotal) * 100 : 0;
+                  const medicalWidth = highestMonthTotal > 0 ? (medicalTotal / highestMonthTotal) * 100 : 0;
+                  const donationWidth = highestMonthTotal > 0 ? (donationTotal / highestMonthTotal) * 100 : 0;
 
                   return (
                     <div key={monthNum} className="month-bar-container">
                       <div className="month-label">{getMonthName(monthNum)}</div>
                       <div className="bar-wrapper">
-                        <div 
-                          className="month-bar tax-month-bar" 
-                          style={{ 
-                            width: `${barWidth}%` 
-                          }}
-                        >
-                          <span className="bar-value">${formatAmount(monthTotal)}</span>
-                        </div>
+                        {medicalTotal > 0 && (
+                          <div 
+                            className="month-bar tax-medical-bar" 
+                            style={{ 
+                              width: `${medicalWidth}%` 
+                            }}
+                            title={`Medical: $${formatAmount(medicalTotal)}`}
+                          >
+                            {medicalTotal >= 50 && <span className="bar-value">${formatAmount(medicalTotal)}</span>}
+                          </div>
+                        )}
+                        {donationTotal > 0 && (
+                          <div 
+                            className="month-bar tax-donation-bar" 
+                            style={{ 
+                              width: `${donationWidth}%`,
+                              marginLeft: medicalTotal > 0 ? '2px' : '0'
+                            }}
+                            title={`Donations: $${formatAmount(donationTotal)}`}
+                          >
+                            {donationTotal >= 50 && <span className="bar-value">${formatAmount(donationTotal)}</span>}
+                          </div>
+                        )}
+                        {monthTotal === 0 && (
+                          <div className="empty-bar">
+                            <span className="bar-value">$0.00</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
@@ -244,46 +289,70 @@ const AnnualSummary = ({ year }) => {
               {/* Medical Expenses Section */}
               {taxDeductible.expenses.medical && taxDeductible.expenses.medical.length > 0 && (
                 <div className="tax-category">
-                  <h4 className="tax-category-header">🏥 Medical Expenses</h4>
-                  <div className="tax-expense-list">
-                    {taxDeductible.expenses.medical.map((expense) => (
-                      <div key={expense.id} className="tax-expense-item">
-                        <div className="tax-expense-date">
-                          {formatDate(expense.date)}
-                        </div>
-                        <div className="tax-expense-details">
-                          <div className="tax-expense-place">{expense.place}</div>
-                          {expense.notes && (
-                            <div className="tax-expense-notes">{expense.notes}</div>
-                          )}
-                        </div>
-                        <div className="tax-expense-amount">${formatAmount(expense.amount)}</div>
-                      </div>
-                    ))}
+                  <div 
+                    className="tax-category-header-collapsible"
+                    onClick={() => setMedicalExpanded(!medicalExpanded)}
+                  >
+                    <h4 className="tax-category-header">
+                      🏥 Medical Expenses ({taxDeductible.expenses.medical.length} items - ${formatAmount(taxDeductible.medicalTotal)})
+                    </h4>
+                    <button className="collapse-toggle" aria-label={medicalExpanded ? "Collapse" : "Expand"}>
+                      {medicalExpanded ? '▲' : '▼'}
+                    </button>
                   </div>
+                  {medicalExpanded && (
+                    <div className="tax-expense-list">
+                      {taxDeductible.expenses.medical.map((expense) => (
+                        <div key={expense.id} className="tax-expense-item">
+                          <div className="tax-expense-date">
+                            {formatDate(expense.date)}
+                          </div>
+                          <div className="tax-expense-details">
+                            <div className="tax-expense-place">{expense.place}</div>
+                            {expense.notes && (
+                              <div className="tax-expense-notes">{expense.notes}</div>
+                            )}
+                          </div>
+                          <div className="tax-expense-amount">${formatAmount(expense.amount)}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 
               {/* Donations Section */}
               {taxDeductible.expenses.donations && taxDeductible.expenses.donations.length > 0 && (
                 <div className="tax-category">
-                  <h4 className="tax-category-header">❤️ Donations</h4>
-                  <div className="tax-expense-list">
-                    {taxDeductible.expenses.donations.map((expense) => (
-                      <div key={expense.id} className="tax-expense-item">
-                        <div className="tax-expense-date">
-                          {formatDate(expense.date)}
-                        </div>
-                        <div className="tax-expense-details">
-                          <div className="tax-expense-place">{expense.place}</div>
-                          {expense.notes && (
-                            <div className="tax-expense-notes">{expense.notes}</div>
-                          )}
-                        </div>
-                        <div className="tax-expense-amount">${formatAmount(expense.amount)}</div>
-                      </div>
-                    ))}
+                  <div 
+                    className="tax-category-header-collapsible"
+                    onClick={() => setDonationsExpanded(!donationsExpanded)}
+                  >
+                    <h4 className="tax-category-header">
+                      ❤️ Donations ({taxDeductible.expenses.donations.length} items - ${formatAmount(taxDeductible.donationTotal)})
+                    </h4>
+                    <button className="collapse-toggle" aria-label={donationsExpanded ? "Collapse" : "Expand"}>
+                      {donationsExpanded ? '▲' : '▼'}
+                    </button>
                   </div>
+                  {donationsExpanded && (
+                    <div className="tax-expense-list">
+                      {taxDeductible.expenses.donations.map((expense) => (
+                        <div key={expense.id} className="tax-expense-item">
+                          <div className="tax-expense-date">
+                            {formatDate(expense.date)}
+                          </div>
+                          <div className="tax-expense-details">
+                            <div className="tax-expense-place">{expense.place}</div>
+                            {expense.notes && (
+                              <div className="tax-expense-notes">{expense.notes}</div>
+                            )}
+                          </div>
+                          <div className="tax-expense-amount">${formatAmount(expense.amount)}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

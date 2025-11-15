@@ -93,11 +93,23 @@ class BackupService {
       }
 
       // Determine target path
-      const backupPath = targetPath || this.config.targetPath || path.join(__dirname, '../backups');
+      let backupPath = targetPath || this.config.targetPath || path.join(__dirname, '../backups');
+      
+      // If targetPath is not absolute, use default
+      if (this.config.targetPath && !path.isAbsolute(this.config.targetPath)) {
+        console.warn(`Backup path "${this.config.targetPath}" is not absolute. Using default location.`);
+        backupPath = path.join(__dirname, '../backups');
+      }
+      
+      console.log('Backup path being used:', backupPath);
       
       // Create backup directory if it doesn't exist
       if (!fs.existsSync(backupPath)) {
-        fs.mkdirSync(backupPath, { recursive: true });
+        try {
+          fs.mkdirSync(backupPath, { recursive: true });
+        } catch (error) {
+          throw new Error(`Cannot create backup directory at "${backupPath}": ${error.message}`);
+        }
       }
 
       // Generate filename with timestamp

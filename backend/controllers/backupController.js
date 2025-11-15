@@ -163,8 +163,13 @@ async function restoreBackup(req, res) {
     // Clean up uploaded file
     fs.unlinkSync(uploadedFile);
 
+    // Re-initialize database to ensure schema is up to date
+    // This will create any missing tables/columns from newer versions
+    const { initializeDatabase } = require('../database/db');
+    await initializeDatabase();
+
     res.status(200).json({ 
-      message: 'Backup restored successfully',
+      message: 'Backup restored successfully. Database schema updated to current version.',
       preRestoreBackup: path.basename(preRestoreBackup)
     });
   } catch (error) {

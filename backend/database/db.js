@@ -26,7 +26,9 @@ function initializeDatabase() {
         amount REAL NOT NULL,
         type TEXT NOT NULL CHECK(type IN ('Other', 'Food', 'Gas', 'Tax - Medical', 'Tax - Donation')),
         week INTEGER NOT NULL CHECK(week >= 1 AND week <= 5),
-        method TEXT NOT NULL CHECK(method IN ('Cash', 'Debit', 'CIBC MC', 'PCF MC', 'WS VISA', 'VISA')),
+        method TEXT NOT NULL CHECK(method IN ('Cash', 'Debit', 'Cheque', 'CIBC MC', 'PCF MC', 'WS VISA', 'VISA')),
+        recurring_id INTEGER,
+        is_generated INTEGER DEFAULT 0,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP
       )
     `;
@@ -51,7 +53,7 @@ function initializeDatabase() {
         amount REAL NOT NULL,
         notes TEXT,
         type TEXT NOT NULL CHECK(type IN ('Other', 'Food', 'Gas', 'Tax - Medical', 'Tax - Donation')),
-        method TEXT NOT NULL CHECK(method IN ('Cash', 'Debit', 'CIBC MC', 'PCF MC', 'WS VISA', 'VISA')),
+        method TEXT NOT NULL CHECK(method IN ('Cash', 'Debit', 'Cheque', 'CIBC MC', 'PCF MC', 'WS VISA', 'VISA')),
         day_of_month INTEGER NOT NULL CHECK(day_of_month >= 1 AND day_of_month <= 31),
         start_month TEXT NOT NULL,
         end_month TEXT,

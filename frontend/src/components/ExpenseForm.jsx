@@ -24,7 +24,7 @@ const ExpenseForm = ({ onExpenseAdded }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const typeOptions = ['Other', 'Food', 'Gas', 'Tax - Medical', 'Tax - Donation'];
-  const methodOptions = ['Cash', 'Debit', 'CIBC MC', 'PCF MC', 'WS VISA', 'VISA'];
+  const methodOptions = ['Cash', 'Debit', 'Cheque', 'CIBC MC', 'PCF MC', 'WS VISA', 'VISA'];
 
   const handleChange = (e) => {
     const { name, value } = e.target;

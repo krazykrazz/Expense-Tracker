@@ -120,6 +120,8 @@ ORDER BY date ASC
 ```javascript
 const [taxDeductible, setTaxDeductible] = useState(null);
 const [taxLoading, setTaxLoading] = useState(true);
+const [medicalExpanded, setMedicalExpanded] = useState(false);
+const [donationsExpanded, setDonationsExpanded] = useState(false);
 ```
 
 **New Data Fetching:**
@@ -151,20 +153,41 @@ const fetchTaxDeductibleData = async () => {
     <div className="tax-card">Donations</div>
   </div>
   
-  <!-- Monthly Breakdown -->
+  <!-- Monthly Breakdown with Color Legend -->
   <div className="tax-monthly-breakdown">
-    <!-- Bar chart similar to existing monthly breakdown -->
+    <h4>Monthly Breakdown</h4>
+    <div className="tax-legend">
+      <div className="legend-item">
+        <div className="legend-color medical-color"></div>
+        <span>Medical</span>
+      </div>
+      <div className="legend-item">
+        <div className="legend-color donation-color"></div>
+        <span>Donations</span>
+      </div>
+    </div>
+    <!-- Bar chart with separate colors for medical (blue) and donations (orange) -->
   </div>
   
-  <!-- Detailed Lists -->
+  <!-- Detailed Lists (Collapsible) -->
   <div className="tax-details">
     <div className="tax-category">
-      <h4>🏥 Medical Expenses</h4>
-      <!-- List of medical expenses -->
+      <div className="tax-category-header-collapsible" onClick={toggleMedical}>
+        <h4>🏥 Medical Expenses ({count} items - ${total})</h4>
+        <button className="collapse-toggle">{expanded ? '▲' : '▼'}</button>
+      </div>
+      {expanded && (
+        <!-- List of medical expenses -->
+      )}
     </div>
     <div className="tax-category">
-      <h4>❤️ Donations</h4>
-      <!-- List of donation expenses -->
+      <div className="tax-category-header-collapsible" onClick={toggleDonations}>
+        <h4>❤️ Donations ({count} items - ${total})</h4>
+        <button className="collapse-toggle">{expanded ? '▲' : '▼'}</button>
+      </div>
+      {expanded && (
+        <!-- List of donation expenses -->
+      )}
     </div>
   </div>
 </div>
@@ -235,6 +258,35 @@ The feature uses the existing `expenses` table:
 3. **Loading State**
    - Display loading spinner or skeleton UI
    - Prevent layout shift when data loads
+
+## UI/UX Design
+
+### Visual Design
+
+**Color Scheme:**
+- Medical expenses: Blue gradient (#3b82f6 to #2563eb)
+- Donations: Orange gradient (#f59e0b to #d97706)
+- Section background: Light green (#f0fdf4)
+- Borders: Green (#bbf7d0, #86efac)
+
+**Collapsible Sections:**
+- Sections start collapsed by default
+- Header shows: Icon, category name, item count, and total amount
+- Click anywhere on header to expand/collapse
+- Arrow indicator (▼/▲) shows current state
+- Hover effect on header for better UX
+
+**Monthly Breakdown Chart:**
+- Side-by-side bars for months with both medical and donations
+- Color legend at top of chart
+- Tooltips show exact amounts on hover
+- Bars scale relative to highest month total
+
+### Responsive Behavior
+
+- Collapsible sections prevent overwhelming users with large lists
+- Mobile: Stack elements vertically, maintain collapsible functionality
+- Desktop: Full width layout with side-by-side bars in chart
 
 ## Testing Strategy
 

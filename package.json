@@ -1,6 +1,6 @@
 {
   "name": "expense-tracker",
-  "version": "1.0.0",
+  "version": "3.1.0",
   "description": "Full-stack expense tracking application",
   "scripts": {
     "install-all": "npm install && cd frontend && npm install && cd ../backend && npm install",

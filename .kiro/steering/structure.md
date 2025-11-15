@@ -38,13 +38,20 @@ expense-tracker/
 
 ### Tables
 - **expenses**: Main expense records with recurring tracking fields
-- **monthly_gross**: Monthly income records
+- **monthly_gross**: Monthly income records (deprecated - replaced by income_sources)
 - **recurring_expenses**: Recurring expense templates
+- **income_sources**: Monthly income from multiple sources
+- **fixed_expenses**: Fixed monthly expenses (rent, utilities, etc.)
+- **loans**: Loan and line of credit tracking
+- **loan_balances**: Monthly balance and rate history for loans
 
 ### Key Fields
 - Expenses include `recurring_id` and `is_generated` to track template relationships
 - Week calculation (1-5) based on date
 - Tax-deductible types: "Tax - Medical" and "Tax - Donation"
+- Loans include `loan_type` ('loan' or 'line_of_credit') for different behavior
+- Loan balances have UNIQUE constraint on (loan_id, year, month)
+- Foreign keys enabled with CASCADE DELETE for referential integrity
 
 ## Component Organization
 

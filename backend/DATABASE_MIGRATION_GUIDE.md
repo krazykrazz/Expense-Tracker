@@ -94,18 +94,33 @@ Tracks outstanding loans with balance history:
 - `initial_balance`: Original loan amount (REAL, NOT NULL, >= 0)
 - `start_date`: When loan started (TEXT, NOT NULL)
 - `notes`: Additional notes (TEXT)
+- `loan_type`: Type of loan (TEXT, NOT NULL, DEFAULT 'loan', CHECK: 'loan' or 'line_of_credit')
 - `is_paid_off`: Whether loan is paid off (INTEGER, 0 or 1)
 - `created_at`, `updated_at`: Timestamps
 
 ### Loan Balances Table
 Tracks monthly balance and interest rate updates for each loan:
 - `id`: Auto-incrementing primary key
-- `loan_id`: Foreign key to loans table (INTEGER, NOT NULL)
+- `loan_id`: Foreign key to loans table (INTEGER, NOT NULL, CASCADE DELETE)
 - `year`, `month`: Month identifier (INTEGER, NOT NULL)
 - `remaining_balance`: Outstanding balance (REAL, NOT NULL, >= 0)
 - `rate`: Interest rate percentage (REAL, NOT NULL, >= 0)
 - `created_at`, `updated_at`: Timestamps
 - Unique constraint on (loan_id, year, month)
+
+### Loan Type Migration (v3.2.0)
+If upgrading from v3.1.x to v3.2.0, the `loan_type` column needs to be added to existing loans:
+
+```bash
+cd backend
+node scripts/addLoanTypeColumn.js
+```
+
+This migration:
+- Backs up the database before making changes
+- Adds the `loan_type` column with CHECK constraint
+- Defaults existing loans to 'loan' type
+- Enables foreign keys for cascade delete support
 
 ## Troubleshooting
 

@@ -108,12 +108,11 @@ export const deleteIncomeSource = async (id) => {
  */
 export const carryForwardIncomeSources = async (year, month) => {
   try {
-    const response = await fetch('/api/income/carry-forward', {
+    const response = await fetch(`/api/income/${year}/${month}/copy-previous`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ year, month })
+      }
     });
     
     if (!response.ok) {

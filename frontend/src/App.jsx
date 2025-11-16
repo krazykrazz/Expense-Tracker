@@ -260,7 +260,7 @@ function App() {
       )}
 
       <footer className="App-footer">
-        <span className="version">v3.2.0</span>
+        <span className="version">v3.3.0</span>
       </footer>
     </div>
   );

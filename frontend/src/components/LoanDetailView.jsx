@@ -518,6 +518,15 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
                     </span>
                   </div>
                   
+                  {loanData.loan_type === 'loan' && loanData.estimated_months_left && (
+                    <div className="loan-summary-item">
+                      <span className="loan-summary-label">Estimated Months Left:</span>
+                      <span className="loan-summary-value loan-months-left">
+                        {loanData.estimated_months_left} months
+                      </span>
+                    </div>
+                  )}
+                  
                   {loanData.notes && (
                     <div className="loan-summary-item loan-summary-notes">
                       <span className="loan-summary-label">Notes:</span>

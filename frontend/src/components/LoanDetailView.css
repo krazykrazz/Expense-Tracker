@@ -755,3 +755,9 @@ button:disabled {
     min-width: 600px;
   }
 }
+
+/* Months Left Styling */
+.loan-months-left {
+  color: #2e7d32;
+  font-weight: 600;
+}

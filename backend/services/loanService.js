@@ -44,6 +44,16 @@ class LoanService {
     if (loan.loan_type && !['loan', 'line_of_credit'].includes(loan.loan_type)) {
       throw new Error('Loan type must be either "loan" or "line_of_credit"');
     }
+
+    // Validate estimated_months_left if provided
+    if (loan.estimated_months_left !== undefined && loan.estimated_months_left !== null) {
+      if (typeof loan.estimated_months_left !== 'number' || loan.estimated_months_left < 0) {
+        throw new Error('Estimated months left must be a non-negative number');
+      }
+      if (!Number.isInteger(loan.estimated_months_left)) {
+        throw new Error('Estimated months left must be a whole number');
+      }
+    }
   }
 
   /**
@@ -60,7 +70,8 @@ class LoanService {
       start_date: data.start_date,
       notes: data.notes ? data.notes.trim() : null,
       loan_type: data.loan_type || 'loan', // Default to 'loan' if not specified
-      is_paid_off: 0
+      is_paid_off: 0,
+      estimated_months_left: data.estimated_months_left || null
     };
 
     return await loanRepository.create(loanData);
@@ -80,7 +91,8 @@ class LoanService {
       initial_balance: data.initial_balance,
       start_date: data.start_date,
       notes: data.notes ? data.notes.trim() : null,
-      loan_type: data.loan_type || 'loan'
+      loan_type: data.loan_type || 'loan',
+      estimated_months_left: data.estimated_months_left || null
     };
 
     return await loanRepository.update(id, loanData);

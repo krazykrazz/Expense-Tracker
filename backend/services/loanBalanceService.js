@@ -72,6 +72,9 @@ class LoanBalanceService {
       await this.autoMarkPaidOff(data.loan_id, 0);
     }
     
+    // Recalculate estimated months left
+    await this.recalculateEstimatedMonths(data.loan_id);
+    
     return result;
   }
 
@@ -98,16 +101,29 @@ class LoanBalanceService {
       await this.autoMarkPaidOff(data.loan_id, 0);
     }
     
+    // Recalculate estimated months left
+    if (result) {
+      await this.recalculateEstimatedMonths(data.loan_id);
+    }
+    
     return result;
   }
 
   /**
    * Delete a balance entry
    * @param {number} id - Balance entry ID
+   * @param {number} loanId - Loan ID (for recalculation)
    * @returns {Promise<boolean>} True if deleted, false if not found
    */
-  async deleteBalance(id) {
-    return await loanBalanceRepository.delete(id);
+  async deleteBalance(id, loanId) {
+    const result = await loanBalanceRepository.delete(id);
+    
+    // Recalculate estimated months left after deletion
+    if (result && loanId) {
+      await this.recalculateEstimatedMonths(loanId);
+    }
+    
+    return result;
   }
 
   /**
@@ -194,6 +210,98 @@ class LoanBalanceService {
         await loanRepository.markPaidOff(loanId, 1);
       }
     }
+  }
+
+  /**
+   * Calculate estimated months left based on balance history
+   * @param {Array} balanceHistory - Array of balance entries sorted chronologically
+   * @param {number} currentBalance - Current remaining balance
+   * @returns {number|null} Estimated months or null if cannot calculate
+   */
+  calculateEstimatedMonths(balanceHistory, currentBalance) {
+    if (balanceHistory.length < 2) {
+      return null; // Need at least 2 data points
+    }
+
+    if (currentBalance <= 0) {
+      return 0; // Already paid off
+    }
+
+    // Use the most recent entries (up to 12 months)
+    const recentEntries = balanceHistory.slice(-12);
+
+    if (recentEntries.length < 2) {
+      return null;
+    }
+
+    // Calculate average monthly paydown
+    let totalPaydown = 0;
+    let monthCount = 0;
+
+    for (let i = 1; i < recentEntries.length; i++) {
+      const prev = recentEntries[i - 1];
+      const curr = recentEntries[i];
+      
+      const monthsDiff = (curr.year - prev.year) * 12 + (curr.month - prev.month);
+      
+      if (monthsDiff > 0) {
+        const balanceChange = prev.remaining_balance - curr.remaining_balance;
+        const monthlyPaydown = balanceChange / monthsDiff;
+        
+        if (monthlyPaydown > 0) {
+          totalPaydown += monthlyPaydown;
+          monthCount++;
+        }
+      }
+    }
+
+    if (monthCount === 0 || totalPaydown <= 0) {
+      return null; // No positive paydown trend
+    }
+
+    const avgMonthlyPaydown = totalPaydown / monthCount;
+    const estimatedMonths = Math.ceil(currentBalance / avgMonthlyPaydown);
+
+    return estimatedMonths;
+  }
+
+  /**
+   * Recalculate and update estimated months left for a loan
+   * @param {number} loanId - Loan ID
+   * @returns {Promise<void>}
+   */
+  async recalculateEstimatedMonths(loanId) {
+    const loan = await loanRepository.findById(loanId);
+    
+    // Only calculate for traditional loans, not lines of credit
+    if (!loan || loan.loan_type === 'line_of_credit') {
+      return;
+    }
+
+    // Get balance history
+    const balanceHistory = await loanBalanceRepository.getBalanceHistory(loanId);
+    
+    // Get current balance
+    const currentBalanceEntry = await loanRepository.getCurrentBalance(loanId);
+    const currentBalance = currentBalanceEntry ? currentBalanceEntry.remaining_balance : loan.initial_balance;
+
+    // Calculate estimated months
+    let estimatedMonths = this.calculateEstimatedMonths(balanceHistory, currentBalance);
+    
+    // If balance is zero but calculation returned null (not enough history), set to 0
+    if (currentBalance === 0 && estimatedMonths === null) {
+      estimatedMonths = 0;
+    }
+
+    // Update the loan
+    await loanRepository.update(loanId, {
+      name: loan.name,
+      initial_balance: loan.initial_balance,
+      start_date: loan.start_date,
+      notes: loan.notes,
+      loan_type: loan.loan_type,
+      estimated_months_left: estimatedMonths
+    });
   }
 }
 

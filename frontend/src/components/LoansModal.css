@@ -302,13 +302,13 @@
 
 .loan-item-main {
   display: flex;
-  justify-content: space-between;
   align-items: center;
   gap: 15px;
 }
 
 .loan-item-info {
   flex: 1;
+  min-width: 0;
 }
 
 .loan-item-name {
@@ -343,6 +343,7 @@
   display: flex;
   gap: 8px;
   flex-shrink: 0;
+  margin-left: auto;
 }
 
 .loan-view-button,
@@ -452,4 +453,32 @@
   .loan-item-actions {
     gap: 5px;
   }
+}
+
+/* Loan Type Badge */
+.loan-type-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 6px;
+  background-color: #e3f2fd;
+  color: #1976d2;
+  font-size: 0.7rem;
+  font-weight: 600;
+  border-radius: 4px;
+  vertical-align: middle;
+}
+
+/* Months Left Display */
+.loan-item-months-left {
+  color: #2e7d32;
+  font-weight: 500;
+}
+
+/* Field Hint */
+.loans-field-hint {
+  display: block;
+  font-size: 0.85rem;
+  color: #666;
+  margin-top: 4px;
+  font-style: italic;
 }

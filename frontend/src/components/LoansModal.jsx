@@ -133,6 +133,7 @@ const LoansModal = ({ isOpen, onClose, year, month, onUpdate }) => {
         name: formData.name.trim(),
         initial_balance: parseFloat(formData.initial_balance),
         start_date: formData.start_date,
+        loan_type: formData.loan_type,
         notes: formData.notes.trim() || null
       });
       
@@ -433,7 +434,12 @@ const LoansModal = ({ isOpen, onClose, year, month, onUpdate }) => {
                     <div key={loan.id} className="loan-item">
                       <div className="loan-item-main">
                         <div className="loan-item-info">
-                          <div className="loan-item-name">{loan.name}</div>
+                          <div className="loan-item-name">
+                            {loan.name}
+                            {loan.loan_type === 'line_of_credit' && (
+                              <span className="loan-type-badge">LOC</span>
+                            )}
+                          </div>
                           <div className="loan-item-details">
                             <span className="loan-item-rate">
                               Rate: {loan.currentRate ? `${loan.currentRate}%` : 'N/A'}

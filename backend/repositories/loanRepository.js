@@ -11,8 +11,8 @@ class LoanRepository {
     
     return new Promise((resolve, reject) => {
       const sql = `
-        INSERT INTO loans (name, initial_balance, start_date, notes, loan_type, is_paid_off)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO loans (name, initial_balance, start_date, notes, loan_type, is_paid_off, estimated_months_left)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
       `;
       
       const params = [
@@ -21,7 +21,8 @@ class LoanRepository {
         loan.start_date,
         loan.notes || null,
         loan.loan_type || 'loan',
-        loan.is_paid_off !== undefined ? loan.is_paid_off : 0
+        loan.is_paid_off !== undefined ? loan.is_paid_off : 0,
+        loan.estimated_months_left || null
       ];
       
       db.run(sql, params, function(err) {
@@ -94,7 +95,7 @@ class LoanRepository {
     return new Promise((resolve, reject) => {
       const sql = `
         UPDATE loans 
-        SET name = ?, initial_balance = ?, start_date = ?, notes = ?, loan_type = ?, updated_at = CURRENT_TIMESTAMP
+        SET name = ?, initial_balance = ?, start_date = ?, notes = ?, loan_type = ?, estimated_months_left = ?, updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
       `;
       
@@ -104,6 +105,7 @@ class LoanRepository {
         loan.start_date,
         loan.notes || null,
         loan.loan_type || 'loan',
+        loan.estimated_months_left !== undefined ? loan.estimated_months_left : null,
         id
       ];
       

@@ -131,10 +131,24 @@ async function deleteBalance(req, res) {
   }
 }
 
+/**
+ * Get total debt over time across all active loans
+ * GET /api/loan-balances/total/history
+ */
+async function getTotalDebtOverTime(req, res) {
+  try {
+    const totalDebtHistory = await loanBalanceService.getTotalDebtOverTime();
+    res.status(200).json(totalDebtHistory);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+}
+
 module.exports = {
   getBalanceHistory,
   getBalanceForMonth,
   createOrUpdateBalance,
   updateBalance,
-  deleteBalance
+  deleteBalance,
+  getTotalDebtOverTime
 };

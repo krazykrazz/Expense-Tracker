@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import './BackupSettings.css';
+import { formatDateTime } from '../utils/formatters';
 
 const BackupSettings = () => {
   const [config, setConfig] = useState({
@@ -202,9 +203,7 @@ const BackupSettings = () => {
     return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
   };
 
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleString();
-  };
+  const formatDate = formatDateTime;
 
   if (loading) {
     return <div className="backup-settings-loading">Loading backup settings...</div>;

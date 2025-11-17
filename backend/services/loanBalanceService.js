@@ -303,6 +303,15 @@ class LoanBalanceService {
       estimated_months_left: estimatedMonths
     });
   }
+
+  /**
+   * Get total debt over time across all active loans
+   * @returns {Promise<Array>} Array of monthly total debt values
+   */
+  async getTotalDebtOverTime() {
+    return await loanBalanceRepository.getTotalDebtOverTime();
+  }
+
 }
 
 module.exports = new LoanBalanceService();

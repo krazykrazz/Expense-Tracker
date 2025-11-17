@@ -235,6 +235,16 @@ expense-tracker/
 - updated_at (TEXT)
 - UNIQUE constraint on (loan_id, year, month)
 
+## Documentation
+
+For more detailed information, see:
+
+- **[CHANGELOG.md](./CHANGELOG.md)** - Version history and release notes
+- **[Documentation Index](./docs/README.md)** - Comprehensive documentation
+  - [Feature Documentation](./docs/features/) - Detailed feature guides
+  - [Deployment Guides](./docs/deployments/) - Deployment and migration notes
+  - [User Guides](./docs/guides/) - Setup and usage guides
+
 ## License
 
 MIT

@@ -1,0 +1,69 @@
+# Documentation
+
+This directory contains all project documentation organized by category.
+
+## Directory Structure
+
+### features/
+Documentation for completed features and implementations:
+- `AUTOMATIC_ESTIMATED_MONTHS_COMPLETE.md` - Automatic loan payoff estimation
+- `ESTIMATED_MONTHS_LEFT_FEATURE.md` - Estimated months left feature details
+- `LOAN_TYPE_IMPLEMENTATION_COMPLETE.md` - Loan type differentiation
+- `TOTAL_DEBT_FEATURE.md` - Total debt tracking feature
+- `BACKUP_VERIFICATION_SUMMARY.md` - Backup system verification
+- `FUTURE_BALANCE_BUG_FIX.md` - Future balance calculation fix
+- `LINE_OF_CREDIT_ZERO_BALANCE_FIX.md` - Line of credit zero balance handling
+- `LOAN_TYPE_FEATURE_SUMMARY.md` - Loan type feature summary
+- `LOANS_INTEGRATION_TEST_RESULTS.md` - Loans integration testing
+
+### deployments/
+Deployment history and migration guides:
+- `DEPLOYMENT_v3.2.0.md` - Version 3.2.0 deployment notes
+- `DEPLOYMENT_v3.3.1.md` - Version 3.3.1 deployment notes
+- `DATABASE_MIGRATION_COMPLETE.md` - Database migration documentation
+- `CHANGELOG_v3.2.0.md` - Version 3.2.0 changelog
+
+### optimizations/
+Code optimization reports and analysis:
+- `CODE_OPTIMIZATION_OPPORTUNITIES.md` - Identified optimization opportunities
+- `OPTIMIZATION_REPORT.md` - Optimization analysis report
+- `OPTIMIZATION_SUMMARY.md` - Summary of optimizations
+- `OPTIMIZATION_TASKS.md` - Optimization task list
+- `OPTIMIZATIONS_COMPLETED.md` - Completed optimizations
+- `OPTIMIZATION_COMPLETE_SUMMARY.md` - Final optimization summary
+- `QUICK_WINS.md` - Quick optimization wins
+- `SPEC_REVIEW_SUMMARY.md` - Spec review findings
+
+### guides/
+User and developer guides:
+- `STARTUP_GUIDE.md` - How to start the application
+- `TRAY_ICON_GUIDE.md` - System tray icon setup
+- `DATABASE_MIGRATION_GUIDE.md` - Database migration procedures
+
+## Main Documentation
+
+See the root `README.md` for:
+- Project overview
+- Installation instructions
+- Technology stack
+- Common commands
+- Development workflow
+
+## Specs
+
+Feature specifications are located in `.kiro/specs/`:
+- `expense-tracker/` - Main expense tracker spec
+- `tax-deductible-view/` - Tax deductible view spec
+- `configurable-monthly-gross/` - Income management spec
+- `configurable-fixed-expenses/` - Fixed expenses spec
+- `recurring-expenses/` - Recurring expenses spec
+- `monthly-loans-balance/` - Loans and balances spec
+- `containerization-optimization/` - Docker optimization spec
+
+## Steering Rules
+
+Project guidelines are in `.kiro/steering/`:
+- `product.md` - Product overview and features
+- `structure.md` - Project structure and architecture
+- `tech.md` - Technology stack and commands
+- `versioning.md` - Version management rules

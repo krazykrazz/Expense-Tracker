@@ -1,19 +1,65 @@
 const sqlite3 = require('sqlite3').verbose();
+const fs = require('fs');
 const path = require('path');
+const { getDatabasePath, ensureDirectories } = require('../config/paths');
 
-// Database file path
-const DB_PATH = path.join(__dirname, 'expenses.db');
+// Database file path - use dynamic path from config
+const DB_PATH = getDatabasePath();
+const OLD_DB_PATH = path.join(__dirname, 'expenses.db');
+
+/**
+ * Automatically migrate database from old location to new /config structure
+ * Only runs if old database exists and new location doesn't have a database
+ */
+async function migrateOldDatabase() {
+  const oldExists = fs.existsSync(OLD_DB_PATH);
+  const newExists = fs.existsSync(DB_PATH);
+  
+  // Only migrate if old exists and new doesn't (or is empty/small)
+  if (oldExists && (!newExists || fs.statSync(DB_PATH).size < 100000)) {
+    try {
+      const oldStats = fs.statSync(OLD_DB_PATH);
+      console.log('Migrating database from old location...');
+      console.log('  Old:', OLD_DB_PATH, `(${oldStats.size} bytes)`);
+      console.log('  New:', DB_PATH);
+      
+      await fs.promises.copyFile(OLD_DB_PATH, DB_PATH);
+      
+      const newStats = fs.statSync(DB_PATH);
+      if (oldStats.size === newStats.size) {
+        console.log('✓ Database migration successful');
+      } else {
+        console.warn('⚠ Warning: Database copy size mismatch');
+      }
+    } catch (error) {
+      console.error('Error migrating database:', error.message);
+      // Don't throw - allow initialization to continue
+    }
+  }
+}
 
 // Create and initialize database
 function initializeDatabase() {
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
+    try {
+      // Ensure /config directory structure exists before initializing database
+      await ensureDirectories();
+      
+      // Auto-migrate old database if it exists and new location is empty
+      await migrateOldDatabase();
+    } catch (err) {
+      console.error('Error creating config directories:', err.message);
+      reject(err);
+      return;
+    }
+
     const db = new sqlite3.Database(DB_PATH, (err) => {
       if (err) {
         console.error('Error opening database:', err.message);
         reject(err);
         return;
       }
-      console.log('Connected to SQLite database');
+      console.log('Connected to SQLite database at:', DB_PATH);
       
       // Enable foreign keys
       db.run('PRAGMA foreign_keys = ON', (err) => {
@@ -250,8 +296,8 @@ function initializeDatabase() {
 // Get database connection
 function getDatabase() {
   return new Promise((resolve, reject) => {
-    const dbPath = process.env.DB_PATH || DB_PATH;
-    const db = new sqlite3.Database(dbPath, (err) => {
+    // Use dynamic path from config (supports /config directory)
+    const db = new sqlite3.Database(DB_PATH, (err) => {
       if (err) {
         console.error('Error connecting to database:', err.message);
         reject(err);

@@ -221,6 +221,39 @@ class LoanBalanceRepository {
       });
     });
   }
+
+  /**
+   * Get total debt over time across all active loans
+   * Returns monthly totals of all loan balances
+   * @returns {Promise<Array>} Array of {year, month, total_debt} objects sorted chronologically
+   */
+  async getTotalDebtOverTime() {
+    const db = await getDatabase();
+    
+    return new Promise((resolve, reject) => {
+      const sql = `
+        SELECT 
+          lb.year,
+          lb.month,
+          SUM(lb.remaining_balance) as total_debt,
+          COUNT(DISTINCT lb.loan_id) as loan_count
+        FROM loan_balances lb
+        INNER JOIN loans l ON lb.loan_id = l.id
+        WHERE l.is_paid_off = 0
+        GROUP BY lb.year, lb.month
+        ORDER BY lb.year ASC, lb.month ASC
+      `;
+      
+      db.all(sql, [], (err, rows) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        resolve(rows || []);
+      });
+    });
+  }
+
 }
 
 module.exports = new LoanBalanceRepository();

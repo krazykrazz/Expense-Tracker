@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This specification defines requirements for creating a production-ready, unified Docker container for the expense tracker application. The current implementation uses separate containers for frontend and backend services. This feature will consolidate both services into a single container image, implement automated publishing to GitHub Container Registry (GHCR), standardize data persistence to a /config directory, and provide configurable logging and timezone support. The goal is to create a simple, maintainable containerized application suitable for self-hosted deployment.
+This specification defines requirements for creating a production-ready, unified Docker container for the expense tracker application. The current implementation uses separate containers for frontend and backend services. This feature will consolidate both services into a single container image, implement automated publishing to a local Docker registry, standardize data persistence to a /config directory, and provide configurable logging and timezone support. The goal is to create a simple, maintainable containerized application suitable for self-hosted deployment.
 
 ## Glossary
 
@@ -14,8 +14,8 @@ This specification defines requirements for creating a production-ready, unified
 - **Config_Directory**: The /config directory inside the container where all persistent data is stored
 - **Health_Endpoint**: An HTTP endpoint that reports service health status
 - **Base_Image**: The foundational Docker image (node:18-alpine) used to build the container
-- **GHCR**: GitHub Container Registry, the registry where container images are published
-- **CI_Pipeline**: GitHub Actions workflow that builds and publishes container images
+- **Local_Registry**: A local Docker registry running on the network where container images are published
+- **CI_Pipeline**: Automated workflow that builds and publishes container images to the Local_Registry
 - **Log_Level**: The verbosity of application logging (debug or info)
 - **Service_Timezone**: The timezone configuration for the container's date/time operations
 
@@ -47,15 +47,16 @@ This specification defines requirements for creating a production-ready, unified
 
 ### Requirement 3
 
-**User Story:** As a DevOps engineer, I want container images automatically published to GitHub Container Registry, so that I can pull the latest version without manual builds
+**User Story:** As a DevOps engineer, I want production container images automatically published to my local Docker registry, so that I can pull the latest version without manual builds
 
 #### Acceptance Criteria
 
-1. THE CI_Pipeline SHALL build the Unified_Container image on every push to the main branch
-2. THE CI_Pipeline SHALL tag images with both "latest" and the git commit SHA
-3. THE CI_Pipeline SHALL publish built images to GHCR at ghcr.io/[username]/expense-tracker
-4. THE CI_Pipeline SHALL authenticate to GHCR using GitHub Actions secrets
-5. WHEN a new version is tagged, THE CI_Pipeline SHALL also publish an image with the version tag
+1. THE CI_Pipeline SHALL build the production Unified_Container image on every push to the main branch
+2. THE CI_Pipeline SHALL tag production images with both "latest" and the git commit SHA
+3. THE CI_Pipeline SHALL publish production images to the Local_Registry at localhost:5000/expense-tracker
+4. THE CI_Pipeline SHALL authenticate to the Local_Registry if authentication is configured
+5. WHEN a new version is tagged, THE CI_Pipeline SHALL also publish a production image with the version tag
+6. THE CI_Pipeline SHALL NOT publish development images to the Local_Registry
 
 ### Requirement 4
 
@@ -137,6 +138,6 @@ This specification defines requirements for creating a production-ready, unified
 
 1. THE documentation SHALL provide a docker-compose.yml example with the Config_Directory volume mount
 2. THE documentation SHALL list all supported environment variables with descriptions and default values
-3. THE documentation SHALL include commands for pulling the image from GHCR
-4. THE documentation SHALL document the process for backing up and restoring the Config_Directory
+3. THE documentation SHALL include commands for pulling the image from the Local_Registry
+4. THE documentation SHALL document the process for backing up and restoring the Config_Directory, including fresh installation with empty database and importing from backup
 5. THE documentation SHALL provide troubleshooting steps for common container issues

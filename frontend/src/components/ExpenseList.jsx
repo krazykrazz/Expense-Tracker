@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { API_ENDPOINTS } from '../config';
 import './ExpenseList.css';
+import { formatAmount, formatLocalDate } from '../utils/formatters';
 
 const ExpenseList = ({ expenses, onExpenseDeleted, onExpenseUpdated, searchText, onAddExpense }) => {
   const [deletingId, setDeletingId] = useState(null);
@@ -135,20 +136,7 @@ const ExpenseList = ({ expenses, onExpenseDeleted, onExpenseUpdated, searchText,
     setExpenseToDelete(null);
   };
 
-  const formatAmount = (amount) => {
-    return parseFloat(amount).toFixed(2);
-  };
-
-  const formatDate = (dateString) => {
-    // Parse date as local time to avoid timezone issues
-    const [year, month, day] = dateString.split('-');
-    const date = new Date(year, month - 1, day);
-    return date.toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric' 
-    });
-  };
+  const formatDate = formatLocalDate;
 
   if (expenses.length === 0) {
     const message = searchText 

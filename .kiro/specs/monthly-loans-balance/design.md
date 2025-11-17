@@ -210,6 +210,25 @@ Detailed view component for individual loan (opened from LoansModal):
   - Delete balance entry buttons
   - Mark as paid off toggle
 
+#### New TotalDebtView.jsx
+
+Modal component showing aggregate debt across all active loans over time (opened from LoansModal):
+
+- **Summary Statistics Section**:
+  - Current Total Debt (sum of all active loan balances)
+  - Starting Total Debt (first recorded total)
+  - Total Reduction (amount paid down)
+  - Active Loans Count
+- **Monthly History Table**:
+  - Chronological list of all months with balance data
+  - Display month/year, total debt, change from previous month (amount and percentage)
+  - Visual indicators (▼/▲) for debt increase/decrease
+  - Color coding (green for decrease, red for increase)
+  - Number of active loans per month
+- **API Endpoint**: `GET /api/loan-balances/total/history`
+  - Returns aggregated monthly totals across all active loans
+  - Excludes paid-off loans from calculations
+
 #### New loanApi.js
 
 Frontend API service for loan operations:

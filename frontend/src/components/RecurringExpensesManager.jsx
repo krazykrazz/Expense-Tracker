@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import RecurringExpenseForm from './RecurringExpenseForm';
 import './RecurringExpensesManager.css';
+import { formatCurrency, formatMonthString } from '../utils/formatters';
 
 const RecurringExpensesManager = ({ onClose }) => {
   const [templates, setTemplates] = useState([]);
@@ -111,19 +112,7 @@ const RecurringExpensesManager = ({ onClose }) => {
     setTimeout(() => setMessage({ text: '', type: '' }), 3000);
   };
 
-  const formatMonth = (monthStr) => {
-    if (!monthStr) return 'Ongoing';
-    const [year, month] = monthStr.split('-');
-    const date = new Date(year, parseInt(month) - 1);
-    return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-  };
-
-  const formatAmount = (amount) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(amount);
-  };
+  const formatMonth = formatMonthString;
 
   return (
     <div className="recurring-manager">
@@ -157,7 +146,7 @@ const RecurringExpensesManager = ({ onClose }) => {
                 <div className="template-info">
                   <div className="template-place">{template.place || 'Unnamed'}</div>
                   <div className="template-details">
-                    <span className="template-amount">{formatAmount(template.amount)}</span>
+                    <span className="template-amount">{formatCurrency(template.amount)}</span>
                     <span className="template-separator">•</span>
                     <span className="template-type">{template.type}</span>
                     <span className="template-separator">•</span>

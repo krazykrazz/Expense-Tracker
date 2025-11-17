@@ -98,3 +98,25 @@ export const deleteBalance = async (id) => {
     throw error;
   }
 };
+
+/**
+ * Get total debt over time across all active loans
+ * @returns {Promise<Array>} Array of {year, month, total_debt, loan_count} objects
+ */
+export const getTotalDebtOverTime = async () => {
+  try {
+    const response = await fetch(`${API_ENDPOINTS.LOAN_BALANCES}/total/history`);
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || 'Failed to fetch total debt history');
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching total debt history:', error);
+    throw error;
+  }
+};
+
+

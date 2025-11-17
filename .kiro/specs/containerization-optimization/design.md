@@ -2,7 +2,7 @@
 
 ## Overview
 
-This design implements a production-ready, unified Docker container for the expense tracker application. The container consolidates the Node.js backend and React frontend into a single deployable unit, standardizes data persistence to a `/config` directory, and provides automated publishing to GitHub Container Registry (GHCR). The design emphasizes simplicity, maintainability, and ease of deployment for self-hosted environments.
+This design implements a production-ready, unified Docker container for the expense tracker application. The container consolidates the Node.js backend and React frontend into a single deployable unit, standardizes data persistence to a `/config` directory, and provides automated publishing to a local Docker registry. The design emphasizes simplicity, maintainability, and ease of deployment for self-hosted environments.
 
 ## Architecture
 
@@ -244,7 +244,7 @@ version: '3.8'
 
 services:
   expense-tracker:
-    image: ghcr.io/[username]/expense-tracker:latest
+    image: localhost:5000/expense-tracker:latest
     container_name: expense-tracker
     ports:
       - "2424:2424"
@@ -263,32 +263,38 @@ services:
       start_period: 40s
 ```
 
-### 10. GitHub Actions CI/CD Pipeline
+### 10. Automated CI/CD Pipeline
 
-**Location:** `.github/workflows/docker-publish.yml` (new file)
+**Location:** `.github/workflows/docker-publish.yml` (new file) or local script
 
-**Purpose:** Automated container build and publish to GHCR
+**Purpose:** Automated production container build and publish to local Docker registry
 
 **Triggers:**
 - Push to `main` branch
 - Push of version tags (v*)
-- Manual workflow dispatch
+- Manual workflow dispatch or script execution
 
 **Steps:**
 1. Checkout code
 2. Set up Docker Buildx
-3. Log in to GHCR using `GITHUB_TOKEN`
+3. Log in to local registry (if authentication enabled)
 4. Extract metadata (tags, labels)
-5. Build and push multi-platform image (linux/amd64, linux/arm64)
-6. Tag with:
+5. Build and push production multi-platform image (linux/amd64, linux/arm64)
+6. Tag production images with:
    - `latest` (for main branch)
    - Git SHA (for traceability)
    - Version tag (for releases)
 
+**Important Notes:**
+- Only production images are published to the local registry
+- Development images are built locally only and not published
+- This keeps the registry clean and ensures only production-ready images are distributed
+- Local registry must be accessible from the build environment
+
 **Environment:**
-- Registry: `ghcr.io`
-- Image name: `ghcr.io/${{ github.repository_owner }}/expense-tracker`
-- Authentication: GitHub Actions automatic token
+- Registry: `localhost:5000` (or configured registry host)
+- Image name: `localhost:5000/expense-tracker`
+- Authentication: Optional, based on registry configuration
 
 ### 11. .dockerignore Updates
 
@@ -478,11 +484,11 @@ Thumbs.db
    - Verify: Backups accessible from host
 
 3. **CI/CD pipeline**
-   - Test: Push to main branch
-   - Verify: GitHub Actions workflow triggers
+   - Test: Push to main branch or run build script
+   - Verify: Automated workflow triggers
    - Verify: Image builds successfully
-   - Verify: Image pushed to GHCR
-   - Verify: Image pullable from GHCR
+   - Verify: Image pushed to local registry
+   - Verify: Image pullable from localhost:5000
 
 ### Security Testing
 
@@ -497,6 +503,34 @@ Thumbs.db
    - Document: Any accepted vulnerabilities
 
 ## Migration Strategy
+
+### Fresh Installation (Empty Database)
+
+1. **Create /config directory structure**
+   - `mkdir -p config/database config/backups config/config`
+
+2. **Start container**
+   - `docker-compose up -d`
+   - Container will create an empty database automatically
+   - Verify health check passes
+
+3. **Access application**
+   - Navigate to `http://localhost:2424`
+   - Start adding expenses
+
+### Restore from Backup
+
+1. **Create /config directory structure**
+   - `mkdir -p config/database config/backups config/config`
+
+2. **Copy backup file to config directory**
+   - Copy your backup file (e.g., `expense-tracker-backup-2024-01-15.db`) to `config/database/expenses.db`
+   - Or use the restore feature in the application UI
+
+3. **Start container**
+   - `docker-compose up -d`
+   - Container will use the restored database
+   - Verify health check passes
 
 ### From Current Setup to Unified Container
 
@@ -517,7 +551,7 @@ Thumbs.db
 
 5. **Update docker-compose.yml**
    - Replace with new unified configuration
-   - Update image reference to GHCR
+   - Update image reference to local registry
 
 6. **Start new container**
    - `docker-compose up -d`
@@ -595,7 +629,7 @@ Thumbs.db
    - Volume mount requirements
 
 3. **Deployment section**
-   - GHCR image location
+   - Local registry image location
    - Version tagging strategy
    - Update procedure
 
@@ -636,11 +670,11 @@ docker run -d \
   expense-tracker:dev
 ```
 
-### Production (GHCR)
+### Production (Local Registry)
 
 ```bash
-# Pull latest image
-docker pull ghcr.io/[username]/expense-tracker:latest
+# Pull latest image from local registry
+docker pull localhost:5000/expense-tracker:latest
 
 # Run with docker-compose
 docker-compose up -d

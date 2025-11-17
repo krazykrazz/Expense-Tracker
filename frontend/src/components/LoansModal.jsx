@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react';
 import './LoansModal.css';
 import { getAllLoans, createLoan, updateLoan, deleteLoan } from '../services/loanApi';
 import { validateName, validateAmount } from '../utils/validation';
+import { formatCurrency, formatDate } from '../utils/formatters';
 import LoanDetailView from './LoanDetailView';
+import TotalDebtView from './TotalDebtView';
 
 const LoansModal = ({ isOpen, onClose, year, month, onUpdate }) => {
   const [loans, setLoans] = useState([]);
@@ -12,6 +14,7 @@ const LoansModal = ({ isOpen, onClose, year, month, onUpdate }) => {
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingLoanId, setEditingLoanId] = useState(null);
   const [selectedLoanId, setSelectedLoanId] = useState(null);
+  const [showTotalDebt, setShowTotalDebt] = useState(false);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -238,14 +241,7 @@ const LoansModal = ({ isOpen, onClose, year, month, onUpdate }) => {
     onClose();
   };
 
-  const formatCurrency = (amount) => {
-    return `$${parseFloat(amount || 0).toFixed(2)}`;
-  };
 
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-  };
 
   if (!isOpen) {
     return null;
@@ -253,6 +249,16 @@ const LoansModal = ({ isOpen, onClose, year, month, onUpdate }) => {
 
   const displayedLoans = activeTab === 'active' ? activeLoans : paidOffLoans;
   const selectedLoan = selectedLoanId ? loans.find(l => l.id === selectedLoanId) : null;
+
+  // If total debt view is shown, show that instead
+  if (showTotalDebt) {
+    return (
+      <TotalDebtView
+        isOpen={true}
+        onClose={() => setShowTotalDebt(false)}
+      />
+    );
+  }
 
   // If a loan is selected, show the detail view instead
   if (selectedLoan) {
@@ -293,7 +299,7 @@ const LoansModal = ({ isOpen, onClose, year, month, onUpdate }) => {
             <div className="loans-modal-loading">Loading loans...</div>
           ) : (
             <>
-              {/* Add New Loan Button */}
+              {/* Action Buttons */}
               <div className="loans-add-button-section">
                 <button
                   className="loans-add-new-button"
@@ -301,6 +307,13 @@ const LoansModal = ({ isOpen, onClose, year, month, onUpdate }) => {
                   disabled={loading || showAddForm}
                 >
                   + Add New Loan
+                </button>
+                <button
+                  className="loans-total-debt-button"
+                  onClick={() => setShowTotalDebt(true)}
+                  disabled={loading}
+                >
+                  📊 View Total Debt Trend
                 </button>
               </div>
 

@@ -1,0 +1,301 @@
+/* Total Debt View Modal */
+.total-debt-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.total-debt-modal-container {
+  background: white;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 1000px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.total-debt-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.total-debt-modal-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #1f2937;
+}
+
+.total-debt-modal-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #6b7280;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.total-debt-modal-close:hover {
+  background-color: #f3f4f6;
+}
+
+.total-debt-modal-content {
+  padding: 20px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.total-debt-loading,
+.total-debt-empty {
+  text-align: center;
+  padding: 40px;
+  color: #6b7280;
+}
+
+.total-debt-modal-error {
+  background-color: #fee2e2;
+  color: #991b1b;
+  padding: 12px 16px;
+  margin: 16px 20px;
+  border-radius: 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.total-debt-error-retry-button {
+  background-color: #dc2626;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.total-debt-error-retry-button:hover {
+  background-color: #b91c1c;
+}
+
+/* Summary Stats */
+.total-debt-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.total-debt-stat {
+  background-color: #f9fafb;
+  padding: 16px;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.total-debt-stat-label {
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.total-debt-stat-value {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.total-debt-reduction {
+  color: #059669;
+}
+
+/* Chart */
+.total-debt-chart-container {
+  margin-bottom: 32px;
+}
+
+.total-debt-chart-container h3 {
+  margin: 0 0 8px 0;
+  font-size: 1.125rem;
+  color: #1f2937;
+}
+
+.chart-description {
+  margin: 0 0 16px 0;
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.total-debt-chart {
+  width: 100%;
+  height: 300px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background-color: #ffffff;
+}
+
+.total-debt-grid-line {
+  stroke: #e5e7eb;
+  stroke-width: 0.2;
+}
+
+.loan-area {
+  transition: fill-opacity 0.2s;
+}
+
+.loan-area:hover {
+  fill-opacity: 0.9;
+}
+
+.total-debt-chart-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.total-debt-chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 16px;
+  padding: 12px;
+  background-color: #f9fafb;
+  border-radius: 4px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.legend-color-box {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  opacity: 0.7;
+}
+
+.legend-label {
+  font-size: 0.875rem;
+  color: #374151;
+  font-weight: 500;
+}
+
+/* History Table */
+.total-debt-history-table {
+  margin-top: 32px;
+}
+
+.total-debt-history-table h3 {
+  margin: 0 0 16px 0;
+  font-size: 1.125rem;
+  color: #1f2937;
+}
+
+.total-debt-history-table table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.total-debt-history-table thead {
+  background-color: #f9fafb;
+}
+
+.total-debt-history-table th {
+  padding: 12px;
+  text-align: left;
+  font-weight: 600;
+  color: #374151;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.total-debt-history-table td {
+  padding: 12px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.total-debt-history-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.total-debt-history-table tbody tr:hover {
+  background-color: #f9fafb;
+}
+
+.total-debt-amount {
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.total-debt-change {
+  font-weight: 500;
+}
+
+.total-debt-change.negative {
+  color: #059669;
+}
+
+.total-debt-change.positive {
+  color: #dc2626;
+}
+
+.total-debt-change-percent {
+  font-size: 0.875rem;
+  margin-left: 4px;
+  opacity: 0.7;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .total-debt-modal-container {
+    width: 95%;
+    max-height: 95vh;
+  }
+
+  .total-debt-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .total-debt-chart {
+    height: 200px;
+  }
+
+  .total-debt-history-table {
+    overflow-x: auto;
+  }
+
+  .total-debt-history-table table {
+    font-size: 0.875rem;
+  }
+
+  .total-debt-history-table th,
+  .total-debt-history-table td {
+    padding: 8px;
+  }
+}

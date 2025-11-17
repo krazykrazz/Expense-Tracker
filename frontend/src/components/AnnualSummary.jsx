@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import './AnnualSummary.css';
+import { formatAmount, formatLocalDate } from '../utils/formatters';
 
 const AnnualSummary = ({ year }) => {
   const [summary, setSummary] = useState(null);
@@ -56,25 +57,12 @@ const AnnualSummary = ({ year }) => {
     }
   };
 
-  const formatAmount = (amount) => {
-    return parseFloat(amount || 0).toFixed(2);
-  };
-
   const getMonthName = (monthNum) => {
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     return months[monthNum - 1];
   };
 
-  const formatDate = (dateString) => {
-    // Parse date string (YYYY-MM-DD) to avoid timezone issues
-    const [year, month, day] = dateString.split('-');
-    const date = new Date(year, month - 1, day);
-    return date.toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric' 
-    });
-  };
+  const formatDate = formatLocalDate;
 
   if (loading) {
     return (

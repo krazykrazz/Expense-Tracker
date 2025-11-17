@@ -2,6 +2,9 @@ const express = require('express');
 const router = express.Router();
 const loanBalanceController = require('../controllers/loanBalanceController');
 
+// GET /api/loan-balances/total/history - Get total debt over time (must be before /:loanId)
+router.get('/total/history', loanBalanceController.getTotalDebtOverTime);
+
 // GET /api/loan-balances/:loanId - Get balance history for a loan
 router.get('/:loanId', loanBalanceController.getBalanceHistory);
 

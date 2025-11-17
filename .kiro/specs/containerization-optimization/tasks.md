@@ -1,13 +1,23 @@
 # Implementation Plan
 
-- [ ] 1. Create backend configuration modules for paths, logging, and timezone
+- [x] 1. Create backend configuration modules for paths, logging, and timezone
+
+
+
+
+
   - Create `backend/config/paths.js` module with functions to manage /config directory structure
   - Create `backend/config/logger.js` module with LOG_LEVEL environment variable support
   - Create `backend/config/timezone.js` module with SERVICE_TZ environment variable support
   - Implement directory creation logic with fallback for development environments
   - _Requirements: 2.1, 2.2, 2.3, 4.1, 4.2, 4.3, 4.4, 5.1, 5.2, 5.3, 5.4, 5.5_
 
-- [ ] 2. Update database initialization to use /config directory
+- [x] 2. Update database initialization to use /config directory
+
+
+
+
+
   - Modify `backend/database/db.js` to import and use paths configuration
   - Replace hardcoded DB_PATH with dynamic path from `getDatabasePath()`
   - Call `ensureDirectories()` before database initialization
@@ -66,15 +76,17 @@
   - Set restart policy to unless-stopped
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 6.1, 6.2, 6.3, 6.4, 6.5, 8.5_
 
-- [ ] 9. Create GitHub Actions workflow for GHCR publishing
-  - Create `.github/workflows/docker-publish.yml` workflow file
+- [ ] 9. Create automated workflow for local registry publishing
+  - Create `.github/workflows/docker-publish.yml` workflow file or build script
   - Configure triggers: push to main, version tags, manual dispatch
   - Add job to checkout code and set up Docker Buildx
-  - Add step to log in to GHCR using GITHUB_TOKEN
+  - Add step to log in to local registry (localhost:5000) if authentication is configured
   - Add step to extract metadata for tags and labels
-  - Add step to build and push multi-platform image (linux/amd64, linux/arm64)
-  - Configure image tags: latest, git SHA, version tags
-  - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 6.1, 6.2, 6.3, 6.4_
+  - Add step to build and push production multi-platform image (linux/amd64, linux/arm64)
+  - Configure production image tags: latest, git SHA, version tags
+  - Ensure only production images are published (not development images)
+  - Configure registry URL as localhost:5000/expense-tracker
+  - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 6.1, 6.2, 6.3, 6.4_
 
 - [ ] 10. Create comprehensive Docker documentation
   - Create `DOCKER.md` with architecture overview and build instructions
@@ -83,7 +95,7 @@
   - Document /config directory structure and volume mounting
   - Add backup and restore procedures for /config directory
   - Add troubleshooting section for common container issues
-  - Document GHCR image location and pull commands
+  - Document local registry image location and pull commands
   - Add update procedure for pulling new versions
   - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.5_
 

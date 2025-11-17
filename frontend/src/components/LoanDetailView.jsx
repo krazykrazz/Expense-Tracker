@@ -3,6 +3,7 @@ import './LoanDetailView.css';
 import { updateLoan, markPaidOff } from '../services/loanApi';
 import { getBalanceHistory, createOrUpdateBalance, deleteBalance } from '../services/loanBalanceApi';
 import { validateName, validateAmount } from '../utils/validation';
+import { formatCurrency, formatDate, formatMonthYear } from '../utils/formatters';
 
 const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
   const [loanData, setLoanData] = useState(loan);
@@ -73,19 +74,7 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
     : 0;
   const currentRate = loanData?.currentRate || 0;
 
-  const formatCurrency = (amount) => {
-    return `$${parseFloat(amount || 0).toFixed(2)}`;
-  };
 
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-  };
-
-  const formatMonthYear = (year, month) => {
-    const date = new Date(year, month - 1);
-    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
-  };
 
   const clearMessages = () => {
     setError(null);
@@ -633,7 +622,7 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
                                     fontSize="11"
                                     fill="#007bff"
                                   >
-                                    ${formatCurrency(value)}
+                                    {formatCurrency(value)}
                                   </text>
                                 </g>
                               );
@@ -698,7 +687,7 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
                                 style={{ cursor: 'pointer' }}
                               >
                                 <title>
-                                  {formatMonthYear(point.entry.year, point.entry.month)}: ${formatCurrency(point.entry.remaining_balance)} @ {point.entry.rate}%
+                                  {formatMonthYear(point.entry.year, point.entry.month)}: {formatCurrency(point.entry.remaining_balance)} @ {point.entry.rate}%
                                 </title>
                               </circle>
                             ))}

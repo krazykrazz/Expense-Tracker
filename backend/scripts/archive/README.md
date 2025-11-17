@@ -1,26 +1,41 @@
 # Archived Scripts
 
-These scripts were used for one-time migrations and database fixes. They are kept for reference only and should **NOT** be run on current databases.
+This directory contains scripts that were used during development but are no longer actively needed.
 
-## Scripts
+## Directory Structure
 
-### checkMonthlyGross.js
-- **Purpose:** Checked the old monthly_gross table structure
-- **Status:** Deprecated (replaced by income_sources table)
-- **Date Archived:** November 12, 2024
+### migrations/
+One-time database migration scripts that have already been executed:
+- `addChequePaymentMethod.js` - Added "Cheque" payment method
+- `addEstimatedMonthsLeftColumn.js` - Added estimated_months_left to loans table
+- `addFixedExpensesTable.js` - Created fixed_expenses table
+- `addLoansTable.js` - Created loans and loan_balances tables
+- `addLoanTypeColumn.js` - Added loan_type column to loans table
+- `migrateDatabaseLocation.js` - Moved database to /data directory
 
-### migrateMonthlyGrossToIncomeSources.js
-- **Purpose:** One-time migration from monthly_gross to income_sources table
-- **Status:** Migration complete
-- **Date Archived:** November 12, 2024
+### tests/
+Test scripts used during feature development:
+- Various test scripts for loans, balances, backups, and summaries
+- These were used to verify functionality during development
+- Kept for reference but not actively maintained
 
-### fixWeeks.js
-- **Purpose:** Fixed week calculations in expense records
-- **Status:** One-time fix completed
-- **Date Archived:** November 12, 2024
+### debug/
+One-time debug scripts used to investigate specific issues:
+- `debugZeroBalance.js` - Investigated zero balance issue
+- `checkMortgageCalculation.js` - Verified mortgage calculations
+- `checkDatabaseSchema.js` - Schema verification
+
+## Active Scripts
+
+Scripts still in the main `backend/scripts/` directory are actively used:
+- `calculateEstimatedMonthsLeft.js` - Calculate loan payoff estimates
+- `setEstimatedMonthsLeft.js` - Set estimated months for a loan
+- `updateEstimatedMonthsLeft.js` - Update all loan estimates
+- `clearExpenses.js` - Clear expense data (utility)
 
 ## Notes
 
-- These scripts are preserved for historical reference
-- Do not run these on production databases
-- If you need to reference the logic, see the current implementation in the respective services
+- These archived scripts are kept for historical reference
+- They should not be run on production databases
+- If you need to reference migration logic, check these files
+- Consider deleting after 6-12 months if no longer needed

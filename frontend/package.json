@@ -1,6 +1,6 @@
 {
   "name": "expense-tracker-frontend",
-  "version": "3.3.2",
+  "version": "3.3.4",
   "description": "Expense Tracker React Frontend",
   "private": true,
   "scripts": {

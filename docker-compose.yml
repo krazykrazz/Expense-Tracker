@@ -1,38 +1,21 @@
 version: '3.8'
 
 services:
-  expense-backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: expense-backend
+  expense-tracker:
+    image: localhost:5000/expense-tracker:latest
+    container_name: expense-tracker
     ports:
       - "2424:2424"
     volumes:
-      - ./backend:/app
-      - backend_node_modules:/app/node_modules
-      - ./backend/database:/app/database
+      - ./config:/config
     environment:
-      - NODE_ENV=development
-      - PORT=2424
+      - LOG_LEVEL=info
+      - SERVICE_TZ=Etc/UTC
+      - NODE_ENV=production
     restart: unless-stopped
-
-  expense-frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: expense-frontend
-    ports:
-      - "5173:5173"
-    volumes:
-      - ./frontend:/app
-      - frontend_node_modules:/app/node_modules
-    environment:
-      - VITE_API_BASE_URL=http://localhost:2424
-    depends_on:
-      - expense-backend
-    restart: unless-stopped
-
-volumes:
-  backend_node_modules:
-  frontend_node_modules:
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:2424/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

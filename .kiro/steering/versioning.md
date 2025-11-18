@@ -41,7 +41,7 @@ When making changes that warrant a version bump:
    - `backend/package.json` - "version" field  
    - `frontend/src/App.jsx` - Footer version display
 3. **Keep versions synchronized** across all locations
-4. **Document the change** in a changelog or commit message
+4. **Document the change** in `CHANGELOG.md` following the Keep a Changelog format
 
 ## Examples
 
@@ -57,13 +57,15 @@ When the user requests to push changes to production, build for production, or d
 1. **Automatically determine the version bump type** based on changes made:
    - MAJOR: Breaking changes, database schema changes requiring migration, API breaking changes
    - MINOR: New features, new endpoints, new UI components
-   - PATCH: Bug fixes, UI tweaks, performance improvements
+   - PATCH: Bug fixes, UI tweaks, performance improvements, documentation updates
 
 2. **Automatically update all three locations** without asking:
    - `frontend/package.json` - "version" field
    - `backend/package.json` - "version" field  
    - `frontend/src/App.jsx` - Footer version display
 
-3. **Rebuild the frontend** after version update to include the new version in the production build
+3. **Update CHANGELOG.md** with the new version entry following Keep a Changelog format
 
-4. **Inform the user** of the version bump applied (e.g., "Updated version to 3.3.0 (MINOR: added estimated_months_left feature)")
+4. **Rebuild the frontend** after version update to include the new version in the production build
+
+5. **Inform the user** of the version bump applied (e.g., "Updated version to 3.3.0 (MINOR: added estimated_months_left feature)")

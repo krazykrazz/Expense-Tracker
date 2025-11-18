@@ -16,6 +16,8 @@ This specification defines requirements for creating a production-ready, unified
 - **Base_Image**: The foundational Docker image (node:18-alpine) used to build the container
 - **Local_Registry**: A local Docker registry running on the network where container images are published
 - **CI_Pipeline**: Automated workflow that builds and publishes container images to the Local_Registry
+- **Production_Image**: Container image built from the main branch and tagged with "latest"
+- **Development_Image**: Container image built from the development branch and tagged with "dev"
 - **Log_Level**: The verbosity of application logging (debug or info)
 - **Service_Timezone**: The timezone configuration for the container's date/time operations
 
@@ -47,16 +49,18 @@ This specification defines requirements for creating a production-ready, unified
 
 ### Requirement 3
 
-**User Story:** As a DevOps engineer, I want production container images automatically published to my local Docker registry, so that I can pull the latest version without manual builds
+**User Story:** As a DevOps engineer, I want container images automatically published to my local Docker registry with appropriate tags, so that I can pull the correct version for production or development without manual builds
 
 #### Acceptance Criteria
 
 1. THE CI_Pipeline SHALL build the production Unified_Container image on every push to the main branch
-2. THE CI_Pipeline SHALL tag production images with both "latest" and the git commit SHA
-3. THE CI_Pipeline SHALL publish production images to the Local_Registry at localhost:5000/expense-tracker
-4. THE CI_Pipeline SHALL authenticate to the Local_Registry if authentication is configured
-5. WHEN a new version is tagged, THE CI_Pipeline SHALL also publish a production image with the version tag
-6. THE CI_Pipeline SHALL NOT publish development images to the Local_Registry
+2. THE CI_Pipeline SHALL tag production images with "latest" only
+3. THE CI_Pipeline SHALL publish production images to the Local_Registry at localhost:5000/expense-tracker:latest, overwriting the previous latest image
+4. THE CI_Pipeline SHALL build the development Unified_Container image on every push to the development branch
+5. THE CI_Pipeline SHALL tag development images with "dev" only
+6. THE CI_Pipeline SHALL publish development images to the Local_Registry at localhost:5000/expense-tracker:dev, overwriting the previous dev image
+7. THE CI_Pipeline SHALL authenticate to the Local_Registry if authentication is configured
+8. THE Local_Registry SHALL maintain only the most recent "latest" and "dev" tagged images, with no retention of previous versions
 
 ### Requirement 4
 

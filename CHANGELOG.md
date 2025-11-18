@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.3.4] - 2025-11-18
+
+### Fixed
+- **Tax Deduction Summary**: All donation and medical bar graph entries now display their amounts (removed $50 threshold)
+- **Monthly Summary Layout**: Improved readability with stacked label/value layout for weekly totals, payment methods, and types
+
+### Changed
+- Monthly summary sections now display labels on first line and amounts on second line for better visual hierarchy
+- Increased value font size from 12px to 14px for better readability
+
+---
+
+## [3.3.3] - 2025-11-18
+
+### Fixed
+- **Date Input Timezone**: Fixed date inputs to use local timezone instead of UTC, preventing off-by-one day errors
+- Date inputs now correctly default to today's date in the user's local timezone
+- Added `getTodayLocalDate()`, `dateToLocalString()`, and `getCurrentYearMonth()` utility functions
+
+---
+
 ## [3.3.2] - 2025-11-16
 
 ### Changed

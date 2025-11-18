@@ -109,3 +109,40 @@ export const formatAmount = (amount) => {
     maximumFractionDigits: 2 
   });
 };
+
+/**
+ * Get today's date in YYYY-MM-DD format using local timezone
+ * This avoids timezone issues where new Date().toISOString() might return
+ * a different date than the user's local date
+ * @returns {string} Today's date in YYYY-MM-DD format
+ */
+export const getTodayLocalDate = () => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+/**
+ * Convert a Date object to YYYY-MM-DD format using local timezone
+ * @param {Date} date - Date object to convert
+ * @returns {string} Date in YYYY-MM-DD format
+ */
+export const dateToLocalString = (date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+/**
+ * Get current year-month in YYYY-MM format using local timezone
+ * @returns {string} Current year-month in YYYY-MM format
+ */
+export const getCurrentYearMonth = () => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  return `${year}-${month}`;
+};

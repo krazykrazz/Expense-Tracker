@@ -267,10 +267,11 @@ services:
 
 **Location:** `.github/workflows/docker-publish.yml` (new file) or local script
 
-**Purpose:** Automated production container build and publish to local Docker registry
+**Purpose:** Automated container build and publish to local Docker registry for both production and development
 
 **Triggers:**
-- Push to `main` branch
+- Push to `main` branch (production)
+- Push to `development` branch (development)
 - Push of version tags (v*)
 - Manual workflow dispatch or script execution
 
@@ -278,17 +279,31 @@ services:
 1. Checkout code
 2. Set up Docker Buildx
 3. Log in to local registry (if authentication enabled)
-4. Extract metadata (tags, labels)
-5. Build and push production multi-platform image (linux/amd64, linux/arm64)
-6. Tag production images with:
-   - `latest` (for main branch)
-   - Git SHA (for traceability)
-   - Version tag (for releases)
+4. Determine image tag based on branch:
+   - `main` branch → `latest` tag
+   - `development` branch → `dev` tag
+5. Extract metadata (labels)
+6. Build and push multi-platform image (linux/amd64, linux/arm64)
+7. Tag and push with single tag (`latest` or `dev`), overwriting previous image
+
+**Image Tagging Strategy:**
+
+**Production Images (main branch):**
+- `localhost:5000/expense-tracker:latest` (overwrites previous)
+
+**Development Images (development branch):**
+- `localhost:5000/expense-tracker:dev` (overwrites previous)
+
+**Retention Policy:**
+- Only the most recent `latest` and `dev` images are kept
+- Each push overwrites the previous image with the same tag
+- No historical versions or SHA tags are retained
+- Minimal storage footprint (2 images total)
 
 **Important Notes:**
-- Only production images are published to the local registry
-- Development images are built locally only and not published
-- This keeps the registry clean and ensures only production-ready images are distributed
+- Simple retention strategy - always pull `latest` or `dev` for current version
+- No rollback capability (use git to rebuild older versions if needed)
+- Minimal registry maintenance required
 - Local registry must be accessible from the build environment
 
 **Environment:**
@@ -657,8 +672,11 @@ Thumbs.db
 ### Development
 
 ```bash
-# Build image locally
+# Option 1: Build image locally
 docker build -t expense-tracker:dev .
+
+# Option 2: Pull from local registry
+docker pull localhost:5000/expense-tracker:dev
 
 # Run with development settings
 docker run -d \
@@ -667,13 +685,13 @@ docker run -d \
   -e LOG_LEVEL=debug \
   -e SERVICE_TZ=America/New_York \
   --name expense-tracker \
-  expense-tracker:dev
+  localhost:5000/expense-tracker:dev
 ```
 
 ### Production (Local Registry)
 
 ```bash
-# Pull latest image from local registry
+# Pull latest production image from local registry
 docker pull localhost:5000/expense-tracker:latest
 
 # Run with docker-compose

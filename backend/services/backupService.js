@@ -1,8 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { DB_PATH } = require('../database/db');
-
-const CONFIG_PATH = path.join(__dirname, '../config/backupConfig.json');
+const { getBackupPath, getBackupConfigPath } = require('../config/paths');
 
 class BackupService {
   constructor() {
@@ -15,15 +14,16 @@ class BackupService {
    */
   loadConfig() {
     try {
-      if (fs.existsSync(CONFIG_PATH)) {
-        const data = fs.readFileSync(CONFIG_PATH, 'utf8');
+      const configPath = getBackupConfigPath();
+      if (fs.existsSync(configPath)) {
+        const data = fs.readFileSync(configPath, 'utf8');
         this.config = JSON.parse(data);
       } else {
         this.config = {
           enabled: false,
           schedule: 'daily',
           time: '02:00',
-          targetPath: '',
+          targetPath: getBackupPath(),
           keepLastN: 7,
           lastBackup: null
         };
@@ -35,7 +35,7 @@ class BackupService {
         enabled: false,
         schedule: 'daily',
         time: '02:00',
-        targetPath: '',
+        targetPath: getBackupPath(),
         keepLastN: 7,
         lastBackup: null
       };
@@ -47,11 +47,12 @@ class BackupService {
    */
   saveConfig() {
     try {
-      const configDir = path.dirname(CONFIG_PATH);
+      const configPath = getBackupConfigPath();
+      const configDir = path.dirname(configPath);
       if (!fs.existsSync(configDir)) {
         fs.mkdirSync(configDir, { recursive: true });
       }
-      fs.writeFileSync(CONFIG_PATH, JSON.stringify(this.config, null, 2));
+      fs.writeFileSync(configPath, JSON.stringify(this.config, null, 2));
     } catch (error) {
       console.error('Error saving backup config:', error);
       throw error;
@@ -92,14 +93,8 @@ class BackupService {
         throw new Error('Database file not found');
       }
 
-      // Determine target path
-      let backupPath = targetPath || this.config.targetPath || path.join(__dirname, '../backups');
-      
-      // If targetPath is not absolute, use default
-      if (this.config.targetPath && !path.isAbsolute(this.config.targetPath)) {
-        console.warn(`Backup path "${this.config.targetPath}" is not absolute. Using default location.`);
-        backupPath = path.join(__dirname, '../backups');
-      }
+      // Use configured backup path or default from paths module
+      const backupPath = targetPath || this.config.targetPath || getBackupPath();
       
       console.log('Backup path being used:', backupPath);
       
@@ -249,7 +244,7 @@ class BackupService {
    */
   getBackupList() {
     try {
-      const backupPath = this.config.targetPath || path.join(__dirname, '../backups');
+      const backupPath = this.config.targetPath || getBackupPath();
       
       if (!fs.existsSync(backupPath)) {
         return [];

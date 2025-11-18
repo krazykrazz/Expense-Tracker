@@ -245,7 +245,7 @@ const AnnualSummary = ({ year }) => {
                             }}
                             title={`Medical: $${formatAmount(medicalTotal)}`}
                           >
-                            {medicalTotal >= 50 && <span className="bar-value">${formatAmount(medicalTotal)}</span>}
+                            <span className="bar-value">${formatAmount(medicalTotal)}</span>
                           </div>
                         )}
                         {donationTotal > 0 && (
@@ -257,7 +257,7 @@ const AnnualSummary = ({ year }) => {
                             }}
                             title={`Donations: $${formatAmount(donationTotal)}`}
                           >
-                            {donationTotal >= 50 && <span className="bar-value">${formatAmount(donationTotal)}</span>}
+                            <span className="bar-value">${formatAmount(donationTotal)}</span>
                           </div>
                         )}
                         {monthTotal === 0 && (

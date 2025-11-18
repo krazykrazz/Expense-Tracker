@@ -10,7 +10,13 @@ const incomeRoutes = require('./routes/incomeRoutes');
 const fixedExpenseRoutes = require('./routes/fixedExpenseRoutes');
 const loanRoutes = require('./routes/loanRoutes');
 const loanBalanceRoutes = require('./routes/loanBalanceRoutes');
+const healthRoutes = require('./routes/healthRoutes');
 const backupService = require('./services/backupService');
+const logger = require('./config/logger');
+const { configureTimezone, getTimezone } = require('./config/timezone');
+
+// Configure timezone at startup
+configureTimezone();
 
 const app = express();
 const PORT = process.env.PORT || 2424;
@@ -21,9 +27,8 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 // API routes
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'Expense Tracker API is running' });
-});
+// Health check endpoint
+app.use('/api', healthRoutes);
 
 // Expense API routes
 app.use('/api', expenseRoutes);
@@ -47,35 +52,49 @@ app.use('/api/loans', loanRoutes);
 app.use('/api/loan-balances', loanBalanceRoutes);
 
 // Serve static files from the React app (after build)
-app.use(express.static(path.join(__dirname, '..', 'frontend', 'dist')));
+// In container: /app/frontend/dist, in development: ../frontend/dist
+const frontendPath = process.env.NODE_ENV === 'production' 
+  ? path.join('/app', 'frontend', 'dist')
+  : path.join(__dirname, '..', 'frontend', 'dist');
+
+app.use(express.static(frontendPath));
 
 // Catch-all handler: send back React's index.html for any non-API routes
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'frontend', 'dist', 'index.html'));
+  res.sendFile(path.join(frontendPath, 'index.html'));
 });
 
 // Initialize database and start server
 initializeDatabase()
   .then(() => {
     app.listen(PORT, '0.0.0.0', () => {
-      console.log(`Server is running on port ${PORT}`);
-      console.log(`API available at http://localhost:${PORT}/api`);
-      console.log(`Frontend available at http://localhost:${PORT}`);
-      console.log(`\nTo access from other devices on your network:`);
-      console.log(`Find your local IP address and use: http://YOUR_LOCAL_IP:${PORT}`);
+      logger.info('=== Expense Tracker Server Started ===');
+      logger.info(`Environment Configuration:`);
+      logger.info(`  - LOG_LEVEL: ${logger.getLogLevel()}`);
+      logger.info(`  - SERVICE_TZ: ${getTimezone()}`);
+      logger.info(`  - PORT: ${PORT}`);
+      logger.info(`  - NODE_ENV: ${process.env.NODE_ENV || 'development'}`);
+      logger.info('');
+      logger.info(`Server is running on port ${PORT}`);
+      logger.info(`API available at http://localhost:${PORT}/api`);
+      logger.info(`Frontend available at http://localhost:${PORT}`);
+      logger.info('');
+      logger.info('To access from other devices on your network:');
+      logger.info('Find your local IP address and use: http://YOUR_LOCAL_IP:' + PORT);
       
       // Start backup scheduler
       backupService.startScheduler();
       const config = backupService.getConfig();
       if (config.enabled) {
         const nextBackup = backupService.getNextBackupTime();
-        console.log(`\nAutomatic backups enabled`);
-        console.log(`Next backup: ${nextBackup ? nextBackup.toLocaleString() : 'Not scheduled'}`);
+        logger.info('');
+        logger.info('Automatic backups enabled');
+        logger.info(`Next backup: ${nextBackup ? nextBackup.toLocaleString() : 'Not scheduled'}`);
       }
     });
   })
   .catch((err) => {
-    console.error('Failed to initialize database:', err);
+    logger.error('Failed to initialize database:', err);
     process.exit(1);
   });
 

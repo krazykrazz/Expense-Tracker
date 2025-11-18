@@ -24,14 +24,24 @@
   - Update database connection logic to handle /config directory
   - _Requirements: 2.1, 2.2, 2.3, 2.4_
 
-- [ ] 3. Update backup service to use /config directory
+- [x] 3. Update backup service to use /config directory
+
+
+
+
+
   - Modify `backend/services/backupService.js` to import paths configuration
   - Replace hardcoded backup paths with `getBackupPath()` and `getBackupConfigPath()`
   - Remove absolute path validation logic (always use /config)
   - Update default configuration to use /config paths
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
 
-- [ ] 4. Create enhanced health check endpoint
+- [x] 4. Create enhanced health check endpoint
+
+
+
+
+
   - Create `backend/routes/healthRoutes.js` with comprehensive health check
   - Implement database connectivity test in health check
   - Include uptime, version, and timestamp in health response
@@ -39,14 +49,24 @@
   - Add health route to `backend/server.js`
   - _Requirements: 8.1, 8.2, 8.3, 8.4_
 
-- [ ] 5. Update server startup with new configuration modules
+- [x] 5. Update server startup with new configuration modules
+
+
+
+
+
   - Modify `backend/server.js` to import and configure timezone at startup
   - Replace console.log statements with logger module calls
   - Log environment configuration (LOG_LEVEL, SERVICE_TZ, PORT) on startup
   - Update frontend static file serving path to `/app/frontend/dist`
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 5.1, 5.2, 5.3, 5.4, 5.5_
 
-- [ ] 6. Create multi-stage Dockerfile for unified container
+- [x] 6. Create multi-stage Dockerfile for unified container
+
+
+
+
+
   - Create new `Dockerfile` in root directory with three stages
   - Implement frontend-builder stage: install deps, build React app
   - Implement backend-deps stage: install production dependencies only
@@ -57,7 +77,12 @@
   - Add HEALTHCHECK instruction using wget
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 7.1, 7.2, 7.3, 7.4, 7.5, 9.1, 9.2, 9.3, 9.4, 9.5_
 
-- [ ] 7. Update .dockerignore for optimized build context
+- [x] 7. Update .dockerignore for optimized build context
+
+
+
+
+
   - Replace `.dockerignore` with comprehensive exclusion patterns
   - Exclude node_modules, .git, development files, and test files
   - Exclude existing database and backup files
@@ -65,7 +90,12 @@
   - Exclude scripts, batch files, and OS-specific files
   - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_
 
-- [ ] 8. Create production docker-compose.yml configuration
+- [x] 8. Create production docker-compose.yml configuration
+
+
+
+
+
   - Replace `docker-compose.yml` with unified container configuration
   - Configure single service named "expense-tracker"
   - Set container_name to "expense-tracker"
@@ -78,15 +108,15 @@
 
 - [ ] 9. Create automated workflow for local registry publishing
   - Create `.github/workflows/docker-publish.yml` workflow file or build script
-  - Configure triggers: push to main, version tags, manual dispatch
+  - Configure triggers: push to main, push to development, manual dispatch
   - Add job to checkout code and set up Docker Buildx
   - Add step to log in to local registry (localhost:5000) if authentication is configured
-  - Add step to extract metadata for tags and labels
-  - Add step to build and push production multi-platform image (linux/amd64, linux/arm64)
-  - Configure production image tags: latest, git SHA, version tags
-  - Ensure only production images are published (not development images)
+  - Add step to determine image tag based on branch (main → latest, development → dev)
+  - Add step to extract metadata for labels
+  - Add step to build and push multi-platform image (linux/amd64, linux/arm64)
+  - Configure to push only single tag per branch (latest or dev), overwriting previous image
   - Configure registry URL as localhost:5000/expense-tracker
-  - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 6.1, 6.2, 6.3, 6.4_
+  - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 6.1, 6.2, 6.3, 6.4_
 
 - [ ] 10. Create comprehensive Docker documentation
   - Create `DOCKER.md` with architecture overview and build instructions

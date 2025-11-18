@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { API_ENDPOINTS } from '../config';
+import { getTodayLocalDate } from '../utils/formatters';
 import './ExpenseForm.css';
 
 const ExpenseForm = ({ onExpenseAdded }) => {
   const [formData, setFormData] = useState({
-    date: new Date().toISOString().split('T')[0],
+    date: getTodayLocalDate(),
     place: '',
     notes: '',
     amount: '',
@@ -162,7 +163,7 @@ const ExpenseForm = ({ onExpenseAdded }) => {
       
       // Clear form
       setFormData({
-        date: new Date().toISOString().split('T')[0],
+        date: getTodayLocalDate(),
         place: '',
         notes: '',
         amount: '',

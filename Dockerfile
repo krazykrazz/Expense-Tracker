@@ -32,10 +32,6 @@ FROM node:18-alpine
 # Install tzdata for timezone support
 RUN apk add --no-cache tzdata wget
 
-# Create non-root user
-RUN addgroup -g 1000 appuser && \
-    adduser -D -u 1000 -G appuser appuser
-
 # Set working directory
 WORKDIR /app
 
@@ -48,15 +44,13 @@ COPY --from=frontend-builder /build/frontend/dist ./frontend/dist
 # Copy production node_modules from backend-deps stage
 COPY --from=backend-deps /build/backend/node_modules ./node_modules
 
-# Create /config directory structure
+# Create /config directory structure and set ownership
+# Note: node:18-alpine already has a 'node' user with UID 1000
 RUN mkdir -p /config/database /config/backups /config/config && \
-    chown -R appuser:appuser /config
+    chown -R node:node /config /app
 
-# Set ownership of application directory
-RUN chown -R appuser:appuser /app
-
-# Switch to non-root user
-USER appuser
+# Switch to non-root user (node user has UID 1000)
+USER node
 
 # Expose port
 EXPOSE 2424

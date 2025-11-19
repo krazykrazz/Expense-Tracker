@@ -73,6 +73,129 @@ npm install
 
 ## Running the Application
 
+### Docker Deployment (Recommended)
+
+The easiest way to run the application is using Docker with the unified container. This single container includes both the backend and frontend, with all data stored in a single `/config` directory.
+
+#### Quick Start with Docker Compose
+
+1. **Create a docker-compose.yml file:**
+```yaml
+version: '3.8'
+
+services:
+  expense-tracker:
+    image: localhost:5000/expense-tracker:latest
+    container_name: expense-tracker
+    ports:
+      - "2424:2424"
+    volumes:
+      - ./config:/config
+    environment:
+      - LOG_LEVEL=info
+      - SERVICE_TZ=Etc/UTC
+      - NODE_ENV=production
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:2424/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+```
+
+2. **Pull the image from your local registry:**
+```bash
+docker pull localhost:5000/expense-tracker:latest
+```
+
+3. **Start the container:**
+```bash
+docker-compose up -d
+```
+
+4. **Access the application:**
+- Open http://localhost:2424 in your browser
+- All data is stored in the `./config` directory
+
+#### Environment Variables
+
+Configure the container using environment variables:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `LOG_LEVEL` | `info` | Logging verbosity: `debug` or `info` |
+| `SERVICE_TZ` | `Etc/UTC` | Timezone (e.g., `America/New_York`, `Europe/London`) |
+| `PORT` | `2424` | HTTP server port |
+| `NODE_ENV` | `production` | Node environment mode |
+
+**Example with custom timezone:**
+```yaml
+environment:
+  - LOG_LEVEL=debug
+  - SERVICE_TZ=America/New_York
+```
+
+#### Data Persistence
+
+All persistent data is stored in the `/config` directory:
+
+```
+config/
+├── database/
+│   └── expenses.db              # SQLite database
+├── backups/
+│   └── expense-tracker-backup-*.db  # Automated backups
+└── config/
+    └── backupConfig.json        # Backup settings
+```
+
+**Important:** Always mount the `/config` directory as a volume to preserve your data across container restarts.
+
+#### Fresh Installation vs. Restore from Backup
+
+**Fresh Installation (Empty Database):**
+```bash
+# Create config directory
+mkdir -p config/database config/backups config/config
+
+# Start container (will create empty database)
+docker-compose up -d
+```
+
+**Restore from Backup:**
+```bash
+# Create config directory
+mkdir -p config/database config/backups config/config
+
+# Copy your backup file as the main database
+cp /path/to/backup.db config/database/expenses.db
+
+# Start container
+docker-compose up -d
+```
+
+#### Updating the Container
+
+```bash
+# Pull the latest image
+docker-compose pull
+
+# Restart with new image
+docker-compose down
+docker-compose up -d
+
+# Verify the update
+docker logs expense-tracker
+```
+
+#### Building and Publishing Images
+
+For information on building and publishing Docker images to your local registry, see:
+- **[Docker Deployment Guide](./DOCKER.md)** - Comprehensive Docker documentation
+- **[Build and Push Documentation](./BUILD_AND_PUSH.md)** - Build and registry guide
+- **[Quick Build Guide](./QUICK_BUILD_GUIDE.md)** - Fast reference for common build commands
+
 ### Development Mode
 
 1. Start the backend server:
@@ -92,8 +215,28 @@ The frontend will run on http://localhost:5173
 ### Access from Other Devices
 
 Both servers are configured to accept connections from your local network. Find your local IP address and use:
-- Frontend: http://YOUR_LOCAL_IP:5173
-- Backend: http://YOUR_LOCAL_IP:2424
+- Docker: http://YOUR_LOCAL_IP:2424
+- Development Frontend: http://YOUR_LOCAL_IP:5173
+- Development Backend: http://YOUR_LOCAL_IP:2424
+
+### Stopping Servers
+
+**For Docker:**
+```bash
+# Stop the Docker container
+docker-compose down
+
+# Or use the convenience script
+stop-docker.bat
+```
+
+**For Development Mode:**
+```bash
+# Use Ctrl+C in each terminal, or run:
+stop-servers.bat
+```
+
+**Important:** The `stop-servers.bat` script only stops local Node.js processes. It will NOT stop Docker containers. Use `docker-compose down` or `stop-docker.bat` to stop Docker containers.
 
 ## Usage
 
@@ -239,7 +382,10 @@ expense-tracker/
 
 For more detailed information, see:
 
+- **[DOCKER.md](./DOCKER.md)** - Complete Docker deployment guide with troubleshooting
 - **[CHANGELOG.md](./CHANGELOG.md)** - Version history and release notes
+- **[Build and Push Documentation](./BUILD_AND_PUSH.md)** - Comprehensive Docker build and registry guide
+- **[Quick Build Guide](./QUICK_BUILD_GUIDE.md)** - Fast reference for Docker builds
 - **[Documentation Index](./docs/README.md)** - Comprehensive documentation
   - [Feature Documentation](./docs/features/) - Detailed feature guides
   - [Deployment Guides](./docs/deployments/) - Deployment and migration notes

@@ -1,0 +1,96 @@
+name: Build and Push to Local Registry
+
+on:
+  push:
+    branches:
+      - main
+      - development
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Image tag (latest or dev)'
+        required: false
+        default: 'auto'
+        type: choice
+        options:
+          - auto
+          - latest
+          - dev
+
+env:
+  REGISTRY: localhost:5000
+  IMAGE_NAME: expense-tracker
+
+jobs:
+  build-and-push:
+    runs-on: self-hosted
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: network=host
+      
+      - name: Determine image tag
+        id: tag
+        run: |
+          if [ "${{ github.event.inputs.tag }}" = "auto" ] || [ -z "${{ github.event.inputs.tag }}" ]; then
+            if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+              echo "tag=latest" >> $GITHUB_OUTPUT
+            elif [ "${{ github.ref }}" = "refs/heads/development" ]; then
+              echo "tag=dev" >> $GITHUB_OUTPUT
+            else
+              echo "tag=latest" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "tag=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
+          fi
+        shell: bash
+      
+      - name: Extract metadata
+        id: meta
+        run: |
+          echo "version=$(cat backend/package.json | jq -r '.version')" >> $GITHUB_OUTPUT
+          echo "commit=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "branch=$(git rev-parse --abbrev-ref HEAD)" >> $GITHUB_OUTPUT
+          echo "date=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
+        shell: bash
+      
+      - name: Log in to local registry (if auth configured)
+        if: env.REGISTRY_USERNAME != ''
+        run: |
+          echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login ${{ env.REGISTRY }} -u "${{ secrets.REGISTRY_USERNAME }}" --password-stdin
+        continue-on-error: true
+      
+      - name: Build and push multi-platform image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.tag.outputs.tag }}
+          labels: |
+            org.opencontainers.image.created=${{ steps.meta.outputs.date }}
+            org.opencontainers.image.version=${{ steps.meta.outputs.version }}
+            org.opencontainers.image.revision=${{ steps.meta.outputs.commit }}
+            org.opencontainers.image.title=expense-tracker
+            org.opencontainers.image.description=Personal expense tracking application
+            app.name=expense-tracker
+            app.version=${{ steps.meta.outputs.version }}
+            app.branch=${{ steps.meta.outputs.branch }}
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
+          network: host
+      
+      - name: Image digest
+        run: |
+          echo "Image pushed: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.tag.outputs.tag }}"
+          echo "Version: ${{ steps.meta.outputs.version }}"
+          echo "Commit: ${{ steps.meta.outputs.commit }}"
+          echo "Branch: ${{ steps.meta.outputs.branch }}"

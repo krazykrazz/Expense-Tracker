@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.0] - 2025-11-19
+
+### Added
+- **Unified Docker Container**: Single container running both frontend and backend services
+- **Health Check Endpoint**: `/api/health` endpoint with database connectivity verification
+- **Configurable Logging**: LOG_LEVEL environment variable support (debug/info)
+- **Timezone Configuration**: SERVICE_TZ environment variable for container timezone
+- **Automated CI/CD**: GitHub Actions workflow for building and publishing to local registry
+- **Multi-stage Docker Build**: Optimized build process with separate stages for frontend, backend deps, and runtime
+- **Non-root User**: Container runs as uid 1000 for improved security
+- **Configuration Modules**: Centralized path, logging, and timezone configuration
+
+### Changed
+- **Data Persistence**: All persistent data now stored in `/config` directory (database, backups, config)
+- **Container Architecture**: Consolidated from separate frontend/backend containers to unified container
+- **Port Exposure**: Single port 2424 for all traffic
+- **Image Registry**: Images published to localhost:5000/expense-tracker with `latest` and `dev` tags
+- **Docker Compose**: Simplified configuration with single service and volume mount
+
+### Technical
+- Created `backend/config/paths.js`, `logger.js`, and `timezone.js` modules
+- Added `backend/routes/healthRoutes.js` with comprehensive health checks
+- Updated `backend/database/db.js` and `backend/services/backupService.js` to use /config directory
+- Created multi-stage `Dockerfile` with frontend-builder, backend-deps, and runtime stages
+- Updated `.dockerignore` for optimized build context
+- Created `.github/workflows/docker-publish.yml` for automated builds
+- Final image size: < 300MB (node:18-alpine base)
+- Archived old Docker configuration files (backend/Dockerfile, frontend/Dockerfile, docker-compose.prod.yml)
+
+### Documentation
+- Created comprehensive `DOCKER.md` with architecture and deployment guides
+- Created `BUILD_AND_PUSH.md` with build script documentation
+- Updated `README.md` with Docker quick start section
+
+---
+
 ## [3.3.4] - 2025-11-18
 
 ### Fixed

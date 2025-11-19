@@ -36,3 +36,6 @@ yarn-error.log*
 # Temporary files
 *.tmp
 .cache/
+
+# Archived files
+*.old

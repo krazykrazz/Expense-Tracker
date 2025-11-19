@@ -283,6 +283,31 @@ class ExpenseRepository {
   }
 
   /**
+   * Get distinct place names from expenses
+   * @returns {Promise<Array<string>>} Array of unique place names
+   */
+  async getDistinctPlaces() {
+    const db = await getDatabase();
+    
+    return new Promise((resolve, reject) => {
+      const sql = `
+        SELECT DISTINCT place 
+        FROM expenses 
+        WHERE place IS NOT NULL AND place != '' 
+        ORDER BY place ASC
+      `;
+      
+      db.all(sql, [], (err, rows) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        resolve(rows.map(row => row.place));
+      });
+    });
+  }
+
+  /**
    * Get summary data for a specific month
    * @param {number} year - Year
    * @param {number} month - Month (1-12)

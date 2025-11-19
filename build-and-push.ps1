@@ -108,8 +108,11 @@ Write-Info "  Git Commit: $gitCommit"
 Write-Info "  Git Branch: $gitBranch"
 Write-Info "  Build Date: $buildDate"
 
-# Build arguments for labels
+# Build arguments for labels and environment variables
 $buildArgs = @(
+    "--build-arg", "IMAGE_TAG=$Tag",
+    "--build-arg", "BUILD_DATE=$buildDate",
+    "--build-arg", "GIT_COMMIT=$gitCommit",
     "--label", "org.opencontainers.image.created=$buildDate",
     "--label", "org.opencontainers.image.version=$version",
     "--label", "org.opencontainers.image.revision=$gitCommit",

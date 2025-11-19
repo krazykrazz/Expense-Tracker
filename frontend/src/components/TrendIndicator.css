@@ -1,0 +1,19 @@
+.trend-indicator {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 0.75em;
+  cursor: help;
+  transition: transform 0.2s ease;
+}
+
+.trend-indicator:hover {
+  transform: scale(1.2);
+}
+
+.trend-up {
+  color: #e74c3c;
+}
+
+.trend-down {
+  color: #27ae60;
+}

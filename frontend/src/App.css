@@ -13,6 +13,18 @@
   align-items: center;
 }
 
+.header-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.app-logo {
+  height: 40px;
+  width: auto;
+  object-fit: contain;
+}
+
 .App-header h1 {
   font-size: 1.5rem;
   font-weight: 600;
@@ -66,47 +78,7 @@
   top: 15px;
 }
 
-.filters-container {
-  display: flex;
-  gap: 10px;
-  align-items: flex-end;
-  margin-bottom: 15px;
-  flex-wrap: wrap;
-}
 
-.filter-dropdowns {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.filter-group {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.filter-group label {
-  font-size: 12px;
-  font-weight: 500;
-  color: #666;
-}
-
-.filter-group select {
-  padding: 6px 10px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 13px;
-  font-family: inherit;
-  background-color: white;
-  cursor: pointer;
-  min-width: 140px;
-}
-
-.filter-group select:focus {
-  outline: none;
-  border-color: #0ea5e9;
-}
 
 .loading-message,
 .error-message {
@@ -231,19 +203,7 @@
     position: static;
   }
 
-  .filters-container {
-    flex-direction: column;
-    gap: 8px;
-  }
 
-  .filter-dropdowns {
-    width: 100%;
-    gap: 8px;
-  }
-
-  .filter-group select {
-    width: 100%;
-  }
 
   .modal-content {
     width: 95%;
@@ -261,4 +221,10 @@
   font-size: 11px;
   color: rgba(255, 255, 255, 0.7);
   font-weight: 500;
+}
+
+.docker-tag {
+  color: rgba(59, 130, 246, 0.9);
+  font-weight: 600;
+  margin-left: 4px;
 }

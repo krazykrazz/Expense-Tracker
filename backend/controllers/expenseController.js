@@ -106,17 +106,20 @@ async function deleteExpense(req, res) {
 
 /**
  * Get summary data for a specific month
- * GET /api/expenses/summary?year=2024&month=11
+ * GET /api/expenses/summary?year=2024&month=11&includePrevious=true
  */
 async function getSummary(req, res) {
   try {
-    const { year, month } = req.query;
+    const { year, month, includePrevious } = req.query;
     
     if (!year || !month) {
       return res.status(400).json({ error: 'Year and month query parameters are required' });
     }
     
-    const summary = await expenseService.getSummary(year, month);
+    // Parse includePrevious as boolean (defaults to false)
+    const shouldIncludePrevious = includePrevious === 'true' || includePrevious === '1';
+    
+    const summary = await expenseService.getSummary(year, month, shouldIncludePrevious);
     res.status(200).json(summary);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -393,6 +396,19 @@ async function backupDatabase(req, res) {
   }
 }
 
+/**
+ * Get distinct place names
+ * GET /api/expenses/places
+ */
+async function getDistinctPlaces(req, res) {
+  try {
+    const places = await expenseService.getDistinctPlaces();
+    res.status(200).json(places);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+}
+
 module.exports = {
   createExpense,
   getExpenses,
@@ -405,5 +421,6 @@ module.exports = {
   setMonthlyGross,
   importExpenses,
   backupDatabase,
+  getDistinctPlaces,
   upload
 };

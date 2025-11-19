@@ -8,6 +8,7 @@ import SummaryPanel from './components/SummaryPanel';
 import BackupSettings from './components/BackupSettings';
 import AnnualSummary from './components/AnnualSummary';
 import { API_ENDPOINTS } from './config';
+import logo from './assets/tracker.png.png';
 
 function App() {
   const [expenses, setExpenses] = useState([]);
@@ -22,6 +23,24 @@ function App() {
   const [showAnnualSummary, setShowAnnualSummary] = useState(false);
   const [filterType, setFilterType] = useState('');
   const [filterMethod, setFilterMethod] = useState('');
+  const [versionInfo, setVersionInfo] = useState(null);
+
+  // Fetch version info on mount
+  useEffect(() => {
+    const fetchVersionInfo = async () => {
+      try {
+        const response = await fetch('/api/version');
+        if (response.ok) {
+          const data = await response.json();
+          setVersionInfo(data);
+        }
+      } catch (err) {
+        console.error('Error fetching version info:', err);
+      }
+    };
+
+    fetchVersionInfo();
+  }, []);
 
   // Fetch expenses when month/year changes or when searching
   useEffect(() => {
@@ -134,7 +153,10 @@ function App() {
   return (
     <div className="App">
       <header className="App-header">
-        <h1>Expense Tracker</h1>
+        <div className="header-title">
+          <img src={logo} alt="Expense Tracker Logo" className="app-logo" />
+          <h1>Expense Tracker</h1>
+        </div>
         <div className="header-buttons">
           <button 
             className="settings-button" 
@@ -153,42 +175,7 @@ function App() {
           onMonthChange={handleMonthChange}
           onViewAnnualSummary={() => setShowAnnualSummary(true)}
         />
-        <div className="filters-container">
-          <SearchBar onSearchChange={handleSearchChange} />
-          <div className="filter-dropdowns">
-            <div className="filter-group">
-              <label htmlFor="type-filter">Type:</label>
-              <select 
-                id="type-filter"
-                value={filterType} 
-                onChange={(e) => setFilterType(e.target.value)}
-              >
-                <option value="">All Types</option>
-                <option value="Other">Other</option>
-                <option value="Food">Food</option>
-                <option value="Gas">Gas</option>
-                <option value="Tax - Medical">Tax - Medical</option>
-                <option value="Tax - Donation">Tax - Donation</option>
-              </select>
-            </div>
-            <div className="filter-group">
-              <label htmlFor="method-filter">Payment Method:</label>
-              <select 
-                id="method-filter"
-                value={filterMethod} 
-                onChange={(e) => setFilterMethod(e.target.value)}
-              >
-                <option value="">All Methods</option>
-                <option value="Cash">Cash</option>
-                <option value="Debit">Debit</option>
-                <option value="CIBC MC">CIBC MC</option>
-                <option value="PCF MC">PCF MC</option>
-                <option value="WS VISA">WS VISA</option>
-                <option value="VISA">VISA</option>
-              </select>
-            </div>
-          </div>
-        </div>
+        <SearchBar onSearchChange={handleSearchChange} />
         
         {loading && <div className="loading-message">Loading expenses...</div>}
         {error && <div className="error-message">Error: {error}</div>}
@@ -201,6 +188,10 @@ function App() {
                 onExpenseUpdated={handleExpenseUpdated}
                 searchText={searchText}
                 onAddExpense={() => setShowExpenseForm(true)}
+                filterType={filterType}
+                filterMethod={filterMethod}
+                onFilterTypeChange={setFilterType}
+                onFilterMethodChange={setFilterMethod}
               />
             </div>
             <div className="content-right">
@@ -260,7 +251,12 @@ function App() {
       )}
 
       <footer className="App-footer">
-        <span className="version">v3.4.0</span>
+        <span className="version">
+          v{versionInfo?.version || '3.5.0'}
+          {versionInfo?.docker && (
+            <span className="docker-tag"> (Docker: {versionInfo.docker.tag})</span>
+          )}
+        </span>
       </footer>
     </div>
   );

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { API_ENDPOINTS } from '../config';
 import { getTodayLocalDate } from '../utils/formatters';
 import './ExpenseForm.css';
@@ -23,9 +23,28 @@ const ExpenseForm = ({ onExpenseAdded }) => {
 
   const [message, setMessage] = useState({ text: '', type: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [places, setPlaces] = useState([]);
+  const [filteredPlaces, setFilteredPlaces] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   const typeOptions = ['Other', 'Food', 'Gas', 'Tax - Medical', 'Tax - Donation'];
   const methodOptions = ['Cash', 'Debit', 'Cheque', 'CIBC MC', 'PCF MC', 'WS VISA', 'VISA'];
+
+  // Fetch distinct places on component mount
+  useEffect(() => {
+    const fetchPlaces = async () => {
+      try {
+        const response = await fetch(`${API_ENDPOINTS.EXPENSES}/places`);
+        if (response.ok) {
+          const data = await response.json();
+          setPlaces(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch places:', error);
+      }
+    };
+    fetchPlaces();
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -33,6 +52,29 @@ const ExpenseForm = ({ onExpenseAdded }) => {
       ...prev,
       [name]: value
     }));
+
+    // Handle place autocomplete
+    if (name === 'place') {
+      if (value.trim() === '') {
+        setFilteredPlaces([]);
+        setShowSuggestions(false);
+      } else {
+        const filtered = places.filter(place =>
+          place.toLowerCase().includes(value.toLowerCase())
+        );
+        setFilteredPlaces(filtered);
+        setShowSuggestions(filtered.length > 0);
+      }
+    }
+  };
+
+  const handlePlaceSelect = (place) => {
+    setFormData(prev => ({
+      ...prev,
+      place: place
+    }));
+    setShowSuggestions(false);
+    setFilteredPlaces([]);
   };
 
   const handleRecurringChange = (e) => {
@@ -261,7 +303,7 @@ const ExpenseForm = ({ onExpenseAdded }) => {
           </div>
         </div>
 
-        <div className="form-group">
+        <div className="form-group autocomplete-wrapper">
           <label htmlFor="place">Place</label>
           <input
             type="text"
@@ -269,9 +311,32 @@ const ExpenseForm = ({ onExpenseAdded }) => {
             name="place"
             value={formData.place}
             onChange={handleChange}
+            onFocus={() => {
+              if (formData.place && filteredPlaces.length > 0) {
+                setShowSuggestions(true);
+              }
+            }}
+            onBlur={() => {
+              // Delay to allow click on suggestion
+              setTimeout(() => setShowSuggestions(false), 200);
+            }}
             maxLength="200"
             placeholder="Where was this expense?"
+            autoComplete="off"
           />
+          {showSuggestions && filteredPlaces.length > 0 && (
+            <ul className="autocomplete-suggestions">
+              {filteredPlaces.slice(0, 10).map((place, index) => (
+                <li
+                  key={index}
+                  onClick={() => handlePlaceSelect(place)}
+                  className="autocomplete-item"
+                >
+                  {place}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
 
         <div className="form-group">

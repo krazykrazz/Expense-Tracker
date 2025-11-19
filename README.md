@@ -203,7 +203,7 @@ For information on building and publishing Docker images to your local registry,
 cd backend
 npm start
 ```
-The backend will run on http://localhost:2424
+The backend will run on http://localhost:2626
 
 2. In a new terminal, start the frontend:
 ```bash
@@ -217,7 +217,7 @@ The frontend will run on http://localhost:5173
 Both servers are configured to accept connections from your local network. Find your local IP address and use:
 - Docker: http://YOUR_LOCAL_IP:2424
 - Development Frontend: http://YOUR_LOCAL_IP:5173
-- Development Backend: http://YOUR_LOCAL_IP:2424
+- Development Backend: http://YOUR_LOCAL_IP:2626
 
 ### Stopping Servers
 

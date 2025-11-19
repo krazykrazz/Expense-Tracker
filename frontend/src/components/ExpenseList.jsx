@@ -3,7 +3,7 @@ import { API_ENDPOINTS } from '../config';
 import './ExpenseList.css';
 import { formatAmount, formatLocalDate } from '../utils/formatters';
 
-const ExpenseList = ({ expenses, onExpenseDeleted, onExpenseUpdated, searchText, onAddExpense }) => {
+const ExpenseList = ({ expenses, onExpenseDeleted, onExpenseUpdated, searchText, onAddExpense, filterType, filterMethod, onFilterTypeChange, onFilterMethodChange }) => {
   const [deletingId, setDeletingId] = useState(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [expenseToDelete, setExpenseToDelete] = useState(null);
@@ -138,33 +138,78 @@ const ExpenseList = ({ expenses, onExpenseDeleted, onExpenseUpdated, searchText,
 
   const formatDate = formatLocalDate;
 
-  if (expenses.length === 0) {
-    const message = searchText 
-      ? 'No results found for your search.' 
-      : 'No expenses have been recorded for this period.';
-    
-    return (
-      <div className="expense-list-container">
-        <h2>Expense List</h2>
-        <div className="no-expenses-message">
-          {message}
-        </div>
-      </div>
-    );
-  }
+  const noExpensesMessage = expenses.length === 0 
+    ? (searchText 
+        ? 'No results found for your search.' 
+        : (filterType || filterMethod)
+          ? 'No expenses match the selected filters.'
+          : 'No expenses have been recorded for this period.')
+    : null;
 
   return (
     <div className="expense-list-container">
       <div className="expense-list-header">
         <h2>Expense List</h2>
-        <button 
-          className="add-expense-button" 
-          onClick={onAddExpense}
-          aria-label="Add new expense"
-        >
-          + Add Expense
-        </button>
+        <div className="header-controls">
+          <div className="filter-controls">
+            <select 
+              className="filter-select"
+              value={filterType} 
+              onChange={(e) => onFilterTypeChange(e.target.value)}
+              title="Filter by type"
+            >
+              <option value="">All Types</option>
+              <option value="Other">Other</option>
+              <option value="Food">Food</option>
+              <option value="Gas">Gas</option>
+              <option value="Tax - Medical">Tax - Medical</option>
+              <option value="Tax - Donation">Tax - Donation</option>
+            </select>
+            <select 
+              className="filter-select"
+              value={filterMethod} 
+              onChange={(e) => onFilterMethodChange(e.target.value)}
+              title="Filter by payment method"
+            >
+              <option value="">All Methods</option>
+              <option value="Cash">Cash</option>
+              <option value="Debit">Debit</option>
+              <option value="Cheque">Cheque</option>
+              <option value="CIBC MC">CIBC MC</option>
+              <option value="PCF MC">PCF MC</option>
+              <option value="WS VISA">WS VISA</option>
+              <option value="VISA">VISA</option>
+            </select>
+            {(filterType || filterMethod) && (
+              <button 
+                className="clear-filters-btn"
+                onClick={() => {
+                  onFilterTypeChange('');
+                  onFilterMethodChange('');
+                }}
+                title="Clear filters"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+          <button 
+            className="add-expense-button" 
+            onClick={onAddExpense}
+            aria-label="Add new expense"
+          >
+            + Add Expense
+          </button>
+        </div>
       </div>
+
+      {noExpensesMessage && (
+        <div className="no-expenses-message">
+          {noExpensesMessage}
+        </div>
+      )}
+
+      {!noExpensesMessage && (
       <div className="table-wrapper">
         <table className="expense-table">
           <thead>
@@ -241,6 +286,7 @@ const ExpenseList = ({ expenses, onExpenseDeleted, onExpenseUpdated, searchText,
           </tbody>
         </table>
       </div>
+      )}
 
       {showConfirmDialog && (
         <div className="modal-overlay">

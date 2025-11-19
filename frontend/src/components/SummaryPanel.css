@@ -16,132 +16,178 @@
   padding-bottom: 8px;
 }
 
-.summary-columns {
+/* Card Grid Layout */
+.summary-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 15px;
-  margin-bottom: 15px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
 }
 
-.summary-column {
-  background-color: #f9f9f9;
-  border-radius: 3px;
+/* Card Styles */
+.summary-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
   padding: 12px;
-}
-
-.summary-column h3 {
-  margin-top: 0;
-  margin-bottom: 10px;
-  color: #333;
-  font-size: 0.9rem;
-  font-weight: 600;
-  border-bottom: 2px solid #0ea5e9;
-  padding-bottom: 5px;
-}
-
-.summary-list {
   display: flex;
   flex-direction: column;
+  gap: 10px;
+  transition: box-shadow 0.2s;
+}
+
+.summary-card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.highlight-card {
+  background: linear-gradient(135deg, #f8fafc 0%, #e0f2fe 100%);
+  border: 2px solid #0ea5e9;
+}
+
+.income-card {
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+  border-color: #22c55e;
+}
+
+.balance-card {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border-color: #f59e0b;
+}
+
+.full-width {
+  grid-column: 1 / -1;
+}
+
+.loans-card {
+  grid-column: 1 / -1;
+}
+
+.horizontal-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 6px;
 }
 
-.summary-item {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  padding: 8px;
-  background: white;
-  border-radius: 2px;
-  gap: 4px;
-}
-
-.summary-label {
-  font-weight: 500;
-  color: #555;
-  font-size: 12px;
-}
-
-.summary-value {
-  font-weight: 600;
-  color: #0ea5e9;
-  font-size: 14px;
-}
-
-.summary-section {
-  margin-bottom: 15px;
-  padding: 12px;
-  background-color: #f9f9f9;
-  border-radius: 3px;
-}
-
-.summary-section h3 {
-  margin-top: 0;
-  margin-bottom: 10px;
-  color: #333;
-  font-size: 0.95rem;
-  font-weight: 600;
-  border-left: 3px solid #0ea5e9;
-  padding-left: 8px;
-}
-
-.balance-sheet {
-  background-color: #f9f9f9;
-  border-radius: 3px;
-  padding: 12px;
-  margin-top: 15px;
-}
-
-.balance-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 10px;
-  border-bottom: 1px solid #e0e0e0;
-}
-
-.balance-row:last-child {
-  border-bottom: none;
-}
-
-.balance-total {
-  border-top: 2px solid #333;
-  margin-top: 5px;
-  padding-top: 10px;
-  font-weight: 600;
-}
-
-.balance-label {
-  font-size: 13px;
-  color: #555;
-  font-weight: 500;
-}
-
-.balance-value {
-  font-size: 14px;
-  font-weight: 600;
-  color: #333;
-}
-
-.balance-value-container {
+/* Card Header */
+.card-header {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
+.card-icon {
+  font-size: 18px;
+}
+
+.card-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Card Value */
+.card-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #0ea5e9;
+  line-height: 1;
+}
+
+.card-value.positive {
+  color: #22c55e;
+}
+
+.card-value.negative {
+  color: #ef4444;
+}
+
 .expense-value {
-  color: #e53e3e;
+  color: #ef4444;
 }
 
-.balance-value.positive {
-  color: #48bb78;
+.card-subtitle {
+  font-size: 11px;
+  color: #64748b;
+  margin-top: -5px;
+}
+
+/* Card Content */
+.card-content {
+  flex: 1;
+}
+
+.compact-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.compact-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 8px;
+  background: white;
+  border-radius: 3px;
+  font-size: 12px;
+}
+
+.compact-item span:first-child {
+  color: #64748b;
+  font-weight: 500;
+}
+
+.compact-item > span:last-child:not(.trend-indicator) {
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.card-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px;
+  margin-top: 8px;
+  border-top: 2px solid #cbd5e1;
+  font-weight: 600;
+}
+
+.card-total span:first-child {
+  color: #475569;
+  font-size: 12px;
+}
+
+.total-value {
+  color: #ef4444;
   font-size: 16px;
 }
 
-.balance-value.negative {
-  color: #e53e3e;
-  font-size: 16px;
+/* Card Action Button */
+.card-action-btn {
+  background-color: #0ea5e9;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 11px;
+  border-radius: 4px;
+  font-weight: 600;
+  transition: background-color 0.2s;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
+.card-action-btn:hover {
+  background-color: #0284c7;
+}
+
+.card-action-btn:active {
+  background-color: #0369a1;
+}
+
+/* Loading and Error States */
 .loading-message,
 .error-message {
   padding: 10px;
@@ -161,6 +207,28 @@
   color: #c62828;
 }
 
+/* Trend Indicator Styles */
+.trend-indicator {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 0.75em;
+  cursor: help;
+  transition: transform 0.2s ease;
+}
+
+.trend-indicator:hover {
+  transform: scale(1.2);
+}
+
+.trend-indicator.trend-up {
+  color: #e74c3c !important;
+}
+
+.trend-indicator.trend-down {
+  color: #27ae60 !important;
+}
+
+/* Responsive Design */
 @media (max-width: 768px) {
   .summary-panel {
     padding: 10px;
@@ -170,200 +238,29 @@
     font-size: 1.1rem;
   }
 
-  .summary-columns {
+  .summary-grid {
     grid-template-columns: 1fr;
     gap: 10px;
   }
 
-  .summary-column {
-    padding: 10px;
+  .full-width,
+  .loans-card {
+    grid-column: 1;
   }
 
-  .summary-column h3 {
-    font-size: 0.85rem;
+  .horizontal-list {
+    grid-template-columns: 1fr;
   }
 
-  .summary-section {
-    padding: 10px;
+  .card-value {
+    font-size: 20px;
   }
 
-  .summary-section h3 {
-    font-size: 0.9rem;
+  .card-icon {
+    font-size: 16px;
   }
 
-  .balance-sheet {
-    padding: 10px;
-  }
-
-  .balance-row {
-    padding: 6px 8px;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 5px;
-  }
-
-  .balance-value-container {
-    width: 100%;
-    justify-content: flex-end;
-  }
-}
-
-.view-income-button,
-.view-fixed-expenses-button {
-  background-color: #0ea5e9;
-  color: white;
-  border: none;
-  padding: 4px 10px;
-  cursor: pointer;
-  font-size: 12px;
-  border-radius: 3px;
-  font-weight: 500;
-  transition: background-color 0.2s;
-}
-
-.view-income-button:hover,
-.view-fixed-expenses-button:hover {
-  background-color: #0284c7;
-}
-
-.view-income-button:active,
-.view-fixed-expenses-button:active {
-  background-color: #0369a1;
-}
-
-.loans-section {
-  background-color: #f9f9f9;
-  border-radius: 3px;
-  padding: 12px;
-  margin-top: 15px;
-}
-
-.loans-section h3 {
-  margin-top: 0;
-  margin-bottom: 10px;
-  color: #333;
-  font-size: 0.95rem;
-  font-weight: 600;
-  border-left: 3px solid #0ea5e9;
-  padding-left: 8px;
-}
-
-.loans-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.loan-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 10px;
-  background: white;
-  border-radius: 2px;
-  border-bottom: 1px solid #e0e0e0;
-}
-
-.loan-info {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.loan-name {
-  font-size: 13px;
-  color: #333;
-  font-weight: 500;
-}
-
-.loan-rate {
-  font-size: 11px;
-  color: #666;
-  font-style: italic;
-}
-
-.loan-balance {
-  font-size: 14px;
-  font-weight: 600;
-  color: #e53e3e;
-}
-
-.loans-total {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 10px 5px 10px;
-  border-top: 2px solid #333;
-  margin-top: 5px;
-}
-
-.loans-label {
-  font-size: 13px;
-  color: #555;
-  font-weight: 600;
-}
-
-.loans-value-container {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.loans-value {
-  font-size: 16px;
-  font-weight: 600;
-  color: #e53e3e;
-}
-
-.view-loans-button {
-  background-color: #0ea5e9;
-  color: white;
-  border: none;
-  padding: 4px 10px;
-  cursor: pointer;
-  font-size: 12px;
-  border-radius: 3px;
-  font-weight: 500;
-  transition: background-color 0.2s;
-}
-
-.view-loans-button:hover {
-  background-color: #0284c7;
-}
-
-.view-loans-button:active {
-  background-color: #0369a1;
-}
-
-@media (max-width: 768px) {
-  .loans-section {
-    padding: 10px;
-  }
-
-  .loans-section h3 {
-    font-size: 0.9rem;
-  }
-
-  .loan-item {
-    padding: 6px 8px;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 5px;
-  }
-
-  .loan-balance {
-    align-self: flex-end;
-  }
-
-  .loans-total {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-  }
-
-  .loans-value-container {
-    width: 100%;
-    justify-content: flex-end;
+  .card-title {
+    font-size: 12px;
   }
 }

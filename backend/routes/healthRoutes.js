@@ -24,6 +24,16 @@ router.get('/health', async (req, res) => {
     database: 'unknown'
   };
 
+  // Add Docker info if available
+  const imageTag = process.env.IMAGE_TAG;
+  if (imageTag) {
+    healthStatus.docker = {
+      tag: imageTag,
+      buildDate: process.env.BUILD_DATE,
+      commit: process.env.GIT_COMMIT
+    };
+  }
+
   try {
     // Test database connectivity with a simple query
     const db = await getDatabase();
@@ -61,6 +71,32 @@ router.get('/health', async (req, res) => {
     // Return HTTP 503 for unhealthy state
     res.status(503).json(healthStatus);
   }
+});
+
+/**
+ * Version info endpoint
+ * Returns application version and Docker image information
+ * 
+ * @route GET /api/version
+ * @returns {Object} Version information including Docker tag if running in container
+ */
+router.get('/version', (req, res) => {
+  const versionInfo = {
+    version: packageJson.version,
+    environment: process.env.NODE_ENV || 'development'
+  };
+
+  // Add Docker info if available
+  const imageTag = process.env.IMAGE_TAG;
+  if (imageTag) {
+    versionInfo.docker = {
+      tag: imageTag,
+      buildDate: process.env.BUILD_DATE,
+      commit: process.env.GIT_COMMIT
+    };
+  }
+
+  res.json(versionInfo);
 });
 
 module.exports = router;

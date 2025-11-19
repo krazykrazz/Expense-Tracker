@@ -3,6 +3,7 @@ import './BackupSettings.css';
 import { formatDateTime } from '../utils/formatters';
 
 const BackupSettings = () => {
+  const [activeTab, setActiveTab] = useState('backups');
   const [config, setConfig] = useState({
     enabled: false,
     schedule: 'daily',
@@ -15,11 +16,25 @@ const BackupSettings = () => {
   const [message, setMessage] = useState({ text: '', type: '' });
   const [loading, setLoading] = useState(true);
   const [nextBackup, setNextBackup] = useState(null);
+  const [versionInfo, setVersionInfo] = useState(null);
 
   useEffect(() => {
     fetchConfig();
     fetchBackupList();
+    fetchVersionInfo();
   }, []);
+
+  const fetchVersionInfo = async () => {
+    try {
+      const response = await fetch('/api/version');
+      if (response.ok) {
+        const data = await response.json();
+        setVersionInfo(data);
+      }
+    } catch (error) {
+      console.error('Error fetching version info:', error);
+    }
+  };
 
   const fetchConfig = async () => {
     try {
@@ -206,14 +221,38 @@ const BackupSettings = () => {
   const formatDate = formatDateTime;
 
   if (loading) {
-    return <div className="backup-settings-loading">Loading backup settings...</div>;
+    return <div className="backup-settings-loading">Loading settings...</div>;
   }
 
   return (
     <div className="backup-settings">
-      <h2>⚙️ Backup Settings</h2>
+      <h2>⚙️ Settings</h2>
+      
+      <div className="settings-tabs">
+        <button 
+          className={`tab-button ${activeTab === 'backups' ? 'active' : ''}`}
+          onClick={() => setActiveTab('backups')}
+        >
+          💾 Backups
+        </button>
+        <button 
+          className={`tab-button ${activeTab === 'import' ? 'active' : ''}`}
+          onClick={() => setActiveTab('import')}
+        >
+          📥 Import & Restore
+        </button>
+        <button 
+          className={`tab-button ${activeTab === 'about' ? 'active' : ''}`}
+          onClick={() => setActiveTab('about')}
+        >
+          ℹ️ About
+        </button>
+      </div>
 
-      <div className="settings-section">
+      <div className="tab-content">
+        {activeTab === 'backups' && (
+          <div className="tab-panel">
+            <div className="settings-section">
         <h3>Automatic Backups</h3>
         
         <div className="form-group checkbox-group">
@@ -299,13 +338,33 @@ const BackupSettings = () => {
         </div>
       </div>
 
-      <div className="settings-section">
-        <h3>Import & Restore</h3>
-        
-        <div className="import-restore-section">
-          <div className="import-option">
-            <h4>Import from CSV</h4>
-            <p>Import expenses from a CSV file</p>
+
+
+            {backups.length > 0 && (
+              <div className="settings-section">
+                <h3>Recent Backups</h3>
+                <div className="backup-list">
+                  {backups.map((backup, index) => (
+                    <div key={index} className="backup-item">
+                      <div className="backup-info">
+                        <div className="backup-name">{backup.name}</div>
+                        <div className="backup-details">
+                          {formatFileSize(backup.size)} • {formatDate(backup.created)}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+      {activeTab === 'import' && (
+        <div className="tab-panel">
+          <div className="settings-section">
+            <h3>Import from CSV</h3>
+            <p>Import expenses from a CSV file. The file should have columns for date, place, amount, type, method, and notes.</p>
             <label className="file-upload-button">
               📄 Choose CSV File
               <input 
@@ -317,11 +376,11 @@ const BackupSettings = () => {
             </label>
           </div>
 
-          <div className="import-option">
-            <h4>Restore from Backup</h4>
-            <p className="warning-text">⚠️ This will replace all current data</p>
+          <div className="settings-section">
+            <h3>Restore from Backup</h3>
+            <p className="warning-text">⚠️ WARNING: This will replace ALL current data. This action cannot be undone!</p>
             <label className="file-upload-button restore-button">
-              🔄 Choose Backup File
+              🔄 Choose Backup File (.db)
               <input 
                 type="file" 
                 accept=".db"
@@ -331,22 +390,105 @@ const BackupSettings = () => {
             </label>
           </div>
         </div>
-      </div>
+      )}
 
-      {backups.length > 0 && (
-        <div className="settings-section">
-          <h3>Recent Backups</h3>
-          <div className="backup-list">
-            {backups.map((backup, index) => (
-              <div key={index} className="backup-item">
-                <div className="backup-info">
-                  <div className="backup-name">{backup.name}</div>
-                  <div className="backup-details">
-                    {formatFileSize(backup.size)} • {formatDate(backup.created)}
-                  </div>
+      {activeTab === 'about' && (
+        <div className="tab-panel">
+          <div className="settings-section">
+            <h3>Version Information</h3>
+            {versionInfo && (
+              <div className="version-info">
+                <div className="version-item">
+                  <strong>Version:</strong> {versionInfo.version}
                 </div>
+                <div className="version-item">
+                  <strong>Environment:</strong> {versionInfo.environment}
+                </div>
+                {versionInfo.docker && (
+                  <>
+                    <div className="version-item">
+                      <strong>Docker Tag:</strong> {versionInfo.docker.tag}
+                    </div>
+                    <div className="version-item">
+                      <strong>Build Date:</strong> {new Date(versionInfo.docker.buildDate).toLocaleString()}
+                    </div>
+                    <div className="version-item">
+                      <strong>Git Commit:</strong> {versionInfo.docker.commit}
+                    </div>
+                  </>
+                )}
               </div>
-            ))}
+            )}
+          </div>
+
+          <div className="settings-section">
+            <h3>Recent Updates</h3>
+            <div className="changelog">
+              <div className="changelog-entry">
+                <div className="changelog-version">v3.5.0</div>
+                <div className="changelog-date">November 19, 2025</div>
+                <ul className="changelog-items">
+                  <li>Expense trend indicators with month-over-month comparisons</li>
+                  <li>Place autocomplete for faster expense entry</li>
+                  <li>Visual arrows showing spending increases/decreases</li>
+                  <li>Percentage change tooltips on hover</li>
+                  <li>Property-based testing for trend calculations</li>
+                </ul>
+              </div>
+
+              <div className="changelog-entry">
+                <div className="changelog-version">v3.4.0</div>
+                <div className="changelog-date">November 19, 2025</div>
+                <ul className="changelog-items">
+                  <li>Unified Docker container with frontend and backend</li>
+                  <li>Added health check endpoint and monitoring</li>
+                  <li>Configurable logging and timezone support</li>
+                  <li>Automated CI/CD pipeline for local registry</li>
+                  <li>Enhanced security with non-root user</li>
+                  <li>Standardized /config directory for all data</li>
+                </ul>
+              </div>
+
+              <div className="changelog-entry">
+                <div className="changelog-version">v3.3.4</div>
+                <div className="changelog-date">November 18, 2025</div>
+                <ul className="changelog-items">
+                  <li>Improved tax deduction summary display</li>
+                  <li>Enhanced monthly summary layout</li>
+                  <li>Better readability with stacked label/value layout</li>
+                </ul>
+              </div>
+
+              <div className="changelog-entry">
+                <div className="changelog-version">v3.3.3</div>
+                <div className="changelog-date">November 18, 2025</div>
+                <ul className="changelog-items">
+                  <li>Fixed date input timezone issues</li>
+                  <li>Prevented off-by-one day errors</li>
+                </ul>
+              </div>
+
+              <div className="changelog-entry">
+                <div className="changelog-version">v3.3.0</div>
+                <div className="changelog-date">November 14, 2025</div>
+                <ul className="changelog-items">
+                  <li>Total debt overview with aggregate tracking</li>
+                  <li>Dual-axis charts for balance and interest rates</li>
+                  <li>Loan type differentiation (loans vs lines of credit)</li>
+                  <li>Automatic estimated months calculation</li>
+                </ul>
+              </div>
+
+              <div className="changelog-entry">
+                <div className="changelog-version">v3.2.0</div>
+                <div className="changelog-date">November 10, 2025</div>
+                <ul className="changelog-items">
+                  <li>Fixed monthly expenses management</li>
+                  <li>Multiple income sources tracking</li>
+                  <li>Carry forward functionality</li>
+                </ul>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -356,6 +498,7 @@ const BackupSettings = () => {
           {message.text}
         </div>
       )}
+      </div>
     </div>
   );
 };

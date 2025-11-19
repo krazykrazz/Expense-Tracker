@@ -5,9 +5,9 @@ echo NOTE: This script stops local Node.js servers only.
 echo To stop Docker containers, use: docker-compose down
 echo.
 
-REM Kill Node.js processes on port 2424 (backend)
-echo Stopping Backend Node.js (Port 2424)...
-for /f "tokens=5" %%a in ('netstat -aon ^| findstr :2424') do (
+REM Kill Node.js processes on port 2626 (backend)
+echo Stopping Backend Node.js (Port 2626)...
+for /f "tokens=5" %%a in ('netstat -aon ^| findstr :2626') do (
     for /f "tokens=1" %%b in ('tasklist /FI "PID eq %%a" /NH ^| findstr "node.exe"') do (
         echo Stopping Node.js process (PID: %%a)
         taskkill /F /PID %%a >nul 2>&1

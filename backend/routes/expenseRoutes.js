@@ -8,6 +8,9 @@ router.post('/expenses', expenseController.createExpense);
 // GET /api/expenses - Get all expenses with optional filtering
 router.get('/expenses', expenseController.getExpenses);
 
+// GET /api/expenses/places - Get distinct place names (must be before /:id route)
+router.get('/expenses/places', expenseController.getDistinctPlaces);
+
 // GET /api/expenses/summary - Get summary data (must be before /:id route)
 router.get('/expenses/summary', expenseController.getSummary);
 

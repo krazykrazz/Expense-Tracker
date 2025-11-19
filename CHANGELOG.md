@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.5.0] - 2025-11-19
+
+### Added
+- **Expense Trend Indicators**: Visual month-over-month trend indicators on summary panel
+  - Red upward arrows (▲) for increases
+  - Green downward arrows (▼) for decreases
+  - Tooltips showing percentage change on hover
+  - 1% threshold filtering to reduce noise
+  - Trend indicators for weekly totals, expense types, and payment methods
+- **Place Autocomplete**: Smart autocomplete for the "Place" field in expense form
+  - Fetches unique place names from existing expenses
+  - Real-time filtering as you type
+  - Click to select from dropdown suggestions
+  - Case-insensitive matching
+
+### Changed
+- Enhanced backend summary endpoint to include previous month data for trend calculations
+- Updated SummaryPanel to display trend indicators alongside all totals
+
+### Technical
+- Added `TrendIndicator` component with hover effects
+- Added `trendCalculator` utility for percentage change calculations
+- Added property-based tests using fast-check library
+- Added `/api/expenses/places` endpoint for autocomplete data
+- Enhanced CSS specificity for trend indicator colors
+
+---
+
 ## [3.4.0] - 2025-11-19
 
 ### Added

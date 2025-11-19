@@ -19,7 +19,7 @@ const { configureTimezone, getTimezone } = require('./config/timezone');
 configureTimezone();
 
 const app = express();
-const PORT = process.env.PORT || 2424;
+const PORT = process.env.PORT || 2626;
 
 // Middleware
 app.use(cors()); // Enable CORS for all routes

@@ -3,10 +3,12 @@ import { API_ENDPOINTS } from '../config';
 import IncomeManagementModal from './IncomeManagementModal';
 import FixedExpensesModal from './FixedExpensesModal';
 import LoansModal from './LoansModal';
+import TrendIndicator from './TrendIndicator';
 import './SummaryPanel.css';
 
 const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
   const [summary, setSummary] = useState(null);
+  const [previousSummary, setPreviousSummary] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [showIncomeModal, setShowIncomeModal] = useState(false);
@@ -22,7 +24,7 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
 
       try {
         const response = await fetch(
-          `${API_ENDPOINTS.SUMMARY}?year=${selectedYear}&month=${selectedMonth}`
+          `${API_ENDPOINTS.SUMMARY}?year=${selectedYear}&month=${selectedMonth}&includePrevious=true`
         );
 
         if (!response.ok) {
@@ -30,15 +32,34 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
         }
 
         const data = await response.json();
-        setSummary(data);
         
-        // Extract loan data from summary response
-        if (data.loans && Array.isArray(data.loans)) {
-          setLoans(data.loans);
-          setTotalOutstandingDebt(data.totalOutstandingDebt || 0);
+        // Check if response has current/previous structure or is a single summary
+        if (data.current) {
+          // New structure with previous month data
+          setSummary(data.current);
+          setPreviousSummary(data.previous);
+          
+          // Extract loan data from current summary
+          if (data.current.loans && Array.isArray(data.current.loans)) {
+            setLoans(data.current.loans);
+            setTotalOutstandingDebt(data.current.totalOutstandingDebt || 0);
+          } else {
+            setLoans([]);
+            setTotalOutstandingDebt(0);
+          }
         } else {
-          setLoans([]);
-          setTotalOutstandingDebt(0);
+          // Old structure (single summary)
+          setSummary(data);
+          setPreviousSummary(null);
+          
+          // Extract loan data from summary response
+          if (data.loans && Array.isArray(data.loans)) {
+            setLoans(data.loans);
+            setTotalOutstandingDebt(data.totalOutstandingDebt || 0);
+          } else {
+            setLoans([]);
+            setTotalOutstandingDebt(0);
+          }
         }
       } catch (err) {
         setError(err.message);
@@ -68,7 +89,7 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
 
     try {
       const response = await fetch(
-        `${API_ENDPOINTS.SUMMARY}?year=${selectedYear}&month=${selectedMonth}`
+        `${API_ENDPOINTS.SUMMARY}?year=${selectedYear}&month=${selectedMonth}&includePrevious=true`
       );
 
       if (!response.ok) {
@@ -76,15 +97,30 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
       }
 
       const data = await response.json();
-      setSummary(data);
       
-      // Extract loan data from summary response
-      if (data.loans && Array.isArray(data.loans)) {
-        setLoans(data.loans);
-        setTotalOutstandingDebt(data.totalOutstandingDebt || 0);
+      // Check if response has current/previous structure or is a single summary
+      if (data.current) {
+        setSummary(data.current);
+        setPreviousSummary(data.previous);
+        
+        if (data.current.loans && Array.isArray(data.current.loans)) {
+          setLoans(data.current.loans);
+          setTotalOutstandingDebt(data.current.totalOutstandingDebt || 0);
+        } else {
+          setLoans([]);
+          setTotalOutstandingDebt(0);
+        }
       } else {
-        setLoans([]);
-        setTotalOutstandingDebt(0);
+        setSummary(data);
+        setPreviousSummary(null);
+        
+        if (data.loans && Array.isArray(data.loans)) {
+          setLoans(data.loans);
+          setTotalOutstandingDebt(data.totalOutstandingDebt || 0);
+        } else {
+          setLoans([]);
+          setTotalOutstandingDebt(0);
+        }
       }
     } catch (err) {
       setError(err.message);
@@ -107,7 +143,7 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
 
     try {
       const response = await fetch(
-        `${API_ENDPOINTS.SUMMARY}?year=${selectedYear}&month=${selectedMonth}`
+        `${API_ENDPOINTS.SUMMARY}?year=${selectedYear}&month=${selectedMonth}&includePrevious=true`
       );
 
       if (!response.ok) {
@@ -115,15 +151,30 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
       }
 
       const data = await response.json();
-      setSummary(data);
       
-      // Extract loan data from summary response
-      if (data.loans && Array.isArray(data.loans)) {
-        setLoans(data.loans);
-        setTotalOutstandingDebt(data.totalOutstandingDebt || 0);
+      // Check if response has current/previous structure or is a single summary
+      if (data.current) {
+        setSummary(data.current);
+        setPreviousSummary(data.previous);
+        
+        if (data.current.loans && Array.isArray(data.current.loans)) {
+          setLoans(data.current.loans);
+          setTotalOutstandingDebt(data.current.totalOutstandingDebt || 0);
+        } else {
+          setLoans([]);
+          setTotalOutstandingDebt(0);
+        }
       } else {
-        setLoans([]);
-        setTotalOutstandingDebt(0);
+        setSummary(data);
+        setPreviousSummary(null);
+        
+        if (data.loans && Array.isArray(data.loans)) {
+          setLoans(data.loans);
+          setTotalOutstandingDebt(data.totalOutstandingDebt || 0);
+        } else {
+          setLoans([]);
+          setTotalOutstandingDebt(0);
+        }
       }
     } catch (err) {
       setError(err.message);
@@ -146,7 +197,7 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
 
     try {
       const response = await fetch(
-        `${API_ENDPOINTS.SUMMARY}?year=${selectedYear}&month=${selectedMonth}`
+        `${API_ENDPOINTS.SUMMARY}?year=${selectedYear}&month=${selectedMonth}&includePrevious=true`
       );
 
       if (!response.ok) {
@@ -154,15 +205,30 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
       }
 
       const data = await response.json();
-      setSummary(data);
       
-      // Extract loan data from summary response
-      if (data.loans && Array.isArray(data.loans)) {
-        setLoans(data.loans);
-        setTotalOutstandingDebt(data.totalOutstandingDebt || 0);
+      // Check if response has current/previous structure or is a single summary
+      if (data.current) {
+        setSummary(data.current);
+        setPreviousSummary(data.previous);
+        
+        if (data.current.loans && Array.isArray(data.current.loans)) {
+          setLoans(data.current.loans);
+          setTotalOutstandingDebt(data.current.totalOutstandingDebt || 0);
+        } else {
+          setLoans([]);
+          setTotalOutstandingDebt(0);
+        }
       } else {
-        setLoans([]);
-        setTotalOutstandingDebt(0);
+        setSummary(data);
+        setPreviousSummary(null);
+        
+        if (data.loans && Array.isArray(data.loans)) {
+          setLoans(data.loans);
+          setTotalOutstandingDebt(data.totalOutstandingDebt || 0);
+        } else {
+          setLoans([]);
+          setTotalOutstandingDebt(0);
+        }
       }
     } catch (err) {
       setError(err.message);
@@ -198,151 +264,289 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
     <div className="summary-panel">
       <h2>Monthly Summary</h2>
 
-      <div className="summary-columns">
-        <div className="summary-column">
-          <h3>Weekly Totals</h3>
-          <div className="summary-list">
-            <div className="summary-item">
-              <span className="summary-label">Week 1:</span>
-              <span className="summary-value">${formatAmount(summary.weeklyTotals.week1)}</span>
-            </div>
-            <div className="summary-item">
-              <span className="summary-label">Week 2:</span>
-              <span className="summary-value">${formatAmount(summary.weeklyTotals.week2)}</span>
-            </div>
-            <div className="summary-item">
-              <span className="summary-label">Week 3:</span>
-              <span className="summary-value">${formatAmount(summary.weeklyTotals.week3)}</span>
-            </div>
-            <div className="summary-item">
-              <span className="summary-label">Week 4:</span>
-              <span className="summary-value">${formatAmount(summary.weeklyTotals.week4)}</span>
-            </div>
-            <div className="summary-item">
-              <span className="summary-label">Week 5:</span>
-              <span className="summary-value">${formatAmount(summary.weeklyTotals.week5)}</span>
-            </div>
+      {/* Key Metrics Cards */}
+      <div className="summary-grid">
+        {/* Row 1: Income and Fixed Expenses */}
+        <div className="summary-card highlight-card income-card">
+          <div className="card-header">
+            <span className="card-icon">💰</span>
+            <span className="card-title">Monthly Income</span>
+          </div>
+          <div className="card-value">${formatAmount(summary.monthlyGross)}</div>
+          <button className="card-action-btn" onClick={handleOpenIncomeModal}>
+            View/Edit
+          </button>
+        </div>
+
+        <div className="summary-card">
+          <div className="card-header">
+            <span className="card-icon">🏠</span>
+            <span className="card-title">Fixed Expenses</span>
+          </div>
+          <div className="card-value expense-value">
+            ${formatAmount(summary.totalFixedExpenses || 0)}
+          </div>
+          <button className="card-action-btn" onClick={handleOpenFixedExpensesModal}>
+            View/Edit
+          </button>
+        </div>
+
+        {/* Row 2: Variable Expenses and Net Balance */}
+        <div className="summary-card">
+          <div className="card-header">
+            <span className="card-icon">📝</span>
+            <span className="card-title">Variable Expenses</span>
+          </div>
+          <div className="card-value expense-value">
+            ${formatAmount(summary.total)}
+          </div>
+          <div className="card-subtitle">
+            Monthly tracked expenses
           </div>
         </div>
 
-        <div className="summary-column">
-          <h3>Payment Methods</h3>
-          <div className="summary-list">
-            <div className="summary-item">
-              <span className="summary-label">Cash:</span>
-              <span className="summary-value">${formatAmount(summary.methodTotals.Cash)}</span>
-            </div>
-            <div className="summary-item">
-              <span className="summary-label">Debit:</span>
-              <span className="summary-value">${formatAmount(summary.methodTotals.Debit)}</span>
-            </div>
-            <div className="summary-item">
-              <span className="summary-label">Cheque:</span>
-              <span className="summary-value">${formatAmount(summary.methodTotals.Cheque)}</span>
-            </div>
-            <div className="summary-item">
-              <span className="summary-label">CIBC MC:</span>
-              <span className="summary-value">${formatAmount(summary.methodTotals['CIBC MC'])}</span>
-            </div>
-            <div className="summary-item">
-              <span className="summary-label">PCF MC:</span>
-              <span className="summary-value">${formatAmount(summary.methodTotals['PCF MC'])}</span>
-            </div>
-            <div className="summary-item">
-              <span className="summary-label">WS VISA:</span>
-              <span className="summary-value">${formatAmount(summary.methodTotals['WS VISA'])}</span>
-            </div>
-            <div className="summary-item">
-              <span className="summary-label">VISA:</span>
-              <span className="summary-value">${formatAmount(summary.methodTotals.VISA)}</span>
-            </div>
+        <div className="summary-card highlight-card balance-card">
+          <div className="card-header">
+            <span className="card-icon">📊</span>
+            <span className="card-title">Net Balance</span>
           </div>
-        </div>
-
-        <div className="summary-column">
-          <h3>Types</h3>
-          <div className="summary-list">
-            <div className="summary-item">
-              <span className="summary-label">Food:</span>
-              <span className="summary-value">${formatAmount(summary.typeTotals.Food)}</span>
-            </div>
-            <div className="summary-item">
-              <span className="summary-label">Gas:</span>
-              <span className="summary-value">${formatAmount(summary.typeTotals.Gas)}</span>
-            </div>
-            <div className="summary-item">
-              <span className="summary-label">Tax - Medical:</span>
-              <span className="summary-value">${formatAmount(summary.typeTotals['Tax - Medical'])}</span>
-            </div>
-            <div className="summary-item">
-              <span className="summary-label">Tax - Donation:</span>
-              <span className="summary-value">${formatAmount(summary.typeTotals['Tax - Donation'])}</span>
-            </div>
-            <div className="summary-item">
-              <span className="summary-label">Other:</span>
-              <span className="summary-value">${formatAmount(summary.typeTotals.Other)}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="balance-sheet">
-        <div className="balance-row">
-          <span className="balance-label">Monthly Gross Income:</span>
-          <div className="balance-value-container">
-            <span className="balance-value">${formatAmount(summary.monthlyGross)}</span>
-            <button className="view-income-button" onClick={handleOpenIncomeModal}>
-              👁️ View/Edit
-            </button>
-          </div>
-        </div>
-        
-        <div className="balance-row">
-          <span className="balance-label">Total Fixed Expenses:</span>
-          <div className="balance-value-container">
-            <span className="balance-value expense-value">-${formatAmount(summary.totalFixedExpenses || 0)}</span>
-            <button className="view-fixed-expenses-button" onClick={handleOpenFixedExpensesModal}>
-              👁️ View/Edit
-            </button>
-          </div>
-        </div>
-        
-        <div className="balance-row">
-          <span className="balance-label">Total Expenses:</span>
-          <span className="balance-value expense-value">-${formatAmount(summary.total)}</span>
-        </div>
-        
-        <div className="balance-row balance-total">
-          <span className="balance-label">Net Balance:</span>
-          <span className={`balance-value ${summary.netBalance >= 0 ? 'positive' : 'negative'}`}>
+          <div className={`card-value ${summary.netBalance >= 0 ? 'positive' : 'negative'}`}>
             ${formatAmount(summary.netBalance)}
-          </span>
+          </div>
+          <div className="card-subtitle">
+            Income - Fixed - Variable
+          </div>
+        </div>
+
+        {/* Row 3: Weekly and Payment Methods */}
+        <div className="summary-card">
+          <div className="card-header">
+            <span className="card-icon">📅</span>
+            <span className="card-title">Weekly Breakdown</span>
+          </div>
+          <div className="card-content">
+            <div className="compact-list">
+              <div className="compact-item">
+                <span>W1</span>
+                <span>
+                  ${formatAmount(summary.weeklyTotals.week1)}
+                  <TrendIndicator 
+                    currentValue={summary.weeklyTotals.week1} 
+                    previousValue={previousSummary?.weeklyTotals?.week1} 
+                  />
+                </span>
+              </div>
+              <div className="compact-item">
+                <span>W2</span>
+                <span>
+                  ${formatAmount(summary.weeklyTotals.week2)}
+                  <TrendIndicator 
+                    currentValue={summary.weeklyTotals.week2} 
+                    previousValue={previousSummary?.weeklyTotals?.week2} 
+                  />
+                </span>
+              </div>
+              <div className="compact-item">
+                <span>W3</span>
+                <span>
+                  ${formatAmount(summary.weeklyTotals.week3)}
+                  <TrendIndicator 
+                    currentValue={summary.weeklyTotals.week3} 
+                    previousValue={previousSummary?.weeklyTotals?.week3} 
+                  />
+                </span>
+              </div>
+              <div className="compact-item">
+                <span>W4</span>
+                <span>
+                  ${formatAmount(summary.weeklyTotals.week4)}
+                  <TrendIndicator 
+                    currentValue={summary.weeklyTotals.week4} 
+                    previousValue={previousSummary?.weeklyTotals?.week4} 
+                  />
+                </span>
+              </div>
+              <div className="compact-item">
+                <span>W5</span>
+                <span>
+                  ${formatAmount(summary.weeklyTotals.week5)}
+                  <TrendIndicator 
+                    currentValue={summary.weeklyTotals.week5} 
+                    previousValue={previousSummary?.weeklyTotals?.week5} 
+                  />
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="summary-card">
+          <div className="card-header">
+            <span className="card-icon">💳</span>
+            <span className="card-title">Payment Methods</span>
+          </div>
+          <div className="card-content">
+            <div className="compact-list">
+              <div className="compact-item">
+                <span>Cash</span>
+                <span>
+                  ${formatAmount(summary.methodTotals.Cash)}
+                  <TrendIndicator 
+                    currentValue={summary.methodTotals.Cash} 
+                    previousValue={previousSummary?.methodTotals?.Cash} 
+                  />
+                </span>
+              </div>
+              <div className="compact-item">
+                <span>Debit</span>
+                <span>
+                  ${formatAmount(summary.methodTotals.Debit)}
+                  <TrendIndicator 
+                    currentValue={summary.methodTotals.Debit} 
+                    previousValue={previousSummary?.methodTotals?.Debit} 
+                  />
+                </span>
+              </div>
+              <div className="compact-item">
+                <span>Cheque</span>
+                <span>
+                  ${formatAmount(summary.methodTotals.Cheque)}
+                  <TrendIndicator 
+                    currentValue={summary.methodTotals.Cheque} 
+                    previousValue={previousSummary?.methodTotals?.Cheque} 
+                  />
+                </span>
+              </div>
+              <div className="compact-item">
+                <span>CIBC MC</span>
+                <span>
+                  ${formatAmount(summary.methodTotals['CIBC MC'])}
+                  <TrendIndicator 
+                    currentValue={summary.methodTotals['CIBC MC']} 
+                    previousValue={previousSummary?.methodTotals?.['CIBC MC']} 
+                  />
+                </span>
+              </div>
+              <div className="compact-item">
+                <span>PCF MC</span>
+                <span>
+                  ${formatAmount(summary.methodTotals['PCF MC'])}
+                  <TrendIndicator 
+                    currentValue={summary.methodTotals['PCF MC']} 
+                    previousValue={previousSummary?.methodTotals?.['PCF MC']} 
+                  />
+                </span>
+              </div>
+              <div className="compact-item">
+                <span>WS VISA</span>
+                <span>
+                  ${formatAmount(summary.methodTotals['WS VISA'])}
+                  <TrendIndicator 
+                    currentValue={summary.methodTotals['WS VISA']} 
+                    previousValue={previousSummary?.methodTotals?.['WS VISA']} 
+                  />
+                </span>
+              </div>
+              <div className="compact-item">
+                <span>VISA</span>
+                <span>
+                  ${formatAmount(summary.methodTotals.VISA)}
+                  <TrendIndicator 
+                    currentValue={summary.methodTotals.VISA} 
+                    previousValue={previousSummary?.methodTotals?.VISA} 
+                  />
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Row 4: Expense Types */}
+        <div className="summary-card full-width">
+          <div className="card-header">
+            <span className="card-icon">🏷️</span>
+            <span className="card-title">Expense Types</span>
+          </div>
+          <div className="card-content">
+            <div className="compact-list horizontal-list">
+              <div className="compact-item">
+                <span>Food</span>
+                <span>
+                  ${formatAmount(summary.typeTotals.Food)}
+                  <TrendIndicator 
+                    currentValue={summary.typeTotals.Food} 
+                    previousValue={previousSummary?.typeTotals?.Food} 
+                  />
+                </span>
+              </div>
+              <div className="compact-item">
+                <span>Gas</span>
+                <span>
+                  ${formatAmount(summary.typeTotals.Gas)}
+                  <TrendIndicator 
+                    currentValue={summary.typeTotals.Gas} 
+                    previousValue={previousSummary?.typeTotals?.Gas} 
+                  />
+                </span>
+              </div>
+              <div className="compact-item">
+                <span>Tax - Medical</span>
+                <span>
+                  ${formatAmount(summary.typeTotals['Tax - Medical'])}
+                  <TrendIndicator 
+                    currentValue={summary.typeTotals['Tax - Medical']} 
+                    previousValue={previousSummary?.typeTotals?.['Tax - Medical']} 
+                  />
+                </span>
+              </div>
+              <div className="compact-item">
+                <span>Tax - Donation</span>
+                <span>
+                  ${formatAmount(summary.typeTotals['Tax - Donation'])}
+                  <TrendIndicator 
+                    currentValue={summary.typeTotals['Tax - Donation']} 
+                    previousValue={previousSummary?.typeTotals?.['Tax - Donation']} 
+                  />
+                </span>
+              </div>
+              <div className="compact-item">
+                <span>Other</span>
+                <span>
+                  ${formatAmount(summary.typeTotals.Other)}
+                  <TrendIndicator 
+                    currentValue={summary.typeTotals.Other} 
+                    previousValue={previousSummary?.typeTotals?.Other} 
+                  />
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
       {loans.length > 0 && (
-        <div className="loans-section">
-          <h3>Outstanding Loans</h3>
-          <div className="loans-list">
-            {loans.map(loan => (
-              <div key={loan.id} className="loan-item">
-                <div className="loan-info">
-                  <span className="loan-name">{loan.name}</span>
-                  <span className="loan-rate">{formatAmount(loan.currentRate)}%</span>
-                </div>
-                <span className="loan-balance">${formatAmount(loan.currentBalance)}</span>
-              </div>
-            ))}
+        <div className="summary-card loans-card">
+          <div className="card-header">
+            <span className="card-icon">🏦</span>
+            <span className="card-title">Outstanding Loans</span>
           </div>
-          <div className="loans-total">
-            <span className="loans-label">Total Outstanding Debt:</span>
-            <div className="loans-value-container">
-              <span className="loans-value">${formatAmount(totalOutstandingDebt)}</span>
-              <button className="view-loans-button" onClick={handleOpenLoansModal}>
-                👁️ View/Edit
-              </button>
+          <div className="card-content">
+            <div className="compact-list">
+              {loans.map(loan => (
+                <div key={loan.id} className="compact-item">
+                  <span>{loan.name} ({formatAmount(loan.currentRate)}%)</span>
+                  <span>${formatAmount(loan.currentBalance)}</span>
+                </div>
+              ))}
+            </div>
+            <div className="card-total">
+              <span>Total Debt:</span>
+              <span className="total-value">${formatAmount(totalOutstandingDebt)}</span>
             </div>
           </div>
+          <button className="card-action-btn" onClick={handleOpenLoansModal}>
+            View/Edit
+          </button>
         </div>
       )}
 

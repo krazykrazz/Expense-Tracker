@@ -13,6 +13,8 @@
   margin-bottom: 15px;
   border-bottom: 2px solid #475569;
   padding-bottom: 8px;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .expense-list-container h2 {
@@ -20,6 +22,58 @@
   color: #333;
   font-size: 1.2rem;
   font-weight: 600;
+}
+
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.filter-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.filter-select {
+  padding: 6px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: inherit;
+  background-color: white;
+  cursor: pointer;
+  min-width: 120px;
+  transition: all 0.2s;
+}
+
+.filter-select:hover {
+  border-color: #94a3b8;
+}
+
+.filter-select:focus {
+  outline: none;
+  border-color: #0ea5e9;
+  box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.1);
+}
+
+.clear-filters-btn {
+  padding: 6px 10px;
+  background-color: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  line-height: 1;
+}
+
+.clear-filters-btn:hover {
+  background-color: #dc2626;
 }
 
 .expense-list-container .add-expense-button {
@@ -31,6 +85,7 @@
   font-weight: 500;
   border-radius: 3px;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .expense-list-container .add-expense-button:hover {
@@ -385,6 +440,30 @@
 @media (max-width: 768px) {
   .expense-list-container {
     padding: 10px;
+  }
+
+  .expense-list-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .header-controls {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .filter-controls {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .filter-select {
+    flex: 1;
+    min-width: 100px;
+  }
+
+  .expense-list-container .add-expense-button {
+    width: 100%;
   }
 
   .expense-list-container h2 {

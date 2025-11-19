@@ -29,6 +29,11 @@ RUN npm ci --only=production
 # Stage 3: Final Runtime
 FROM node:18-alpine
 
+# Build arguments for version info
+ARG IMAGE_TAG=unknown
+ARG BUILD_DATE=unknown
+ARG GIT_COMMIT=unknown
+
 # Install tzdata for timezone support
 RUN apk add --no-cache tzdata wget
 
@@ -63,7 +68,10 @@ HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=40s \
 ENV NODE_ENV=production \
     LOG_LEVEL=info \
     SERVICE_TZ=Etc/UTC \
-    PORT=2424
+    PORT=2424 \
+    IMAGE_TAG=${IMAGE_TAG} \
+    BUILD_DATE=${BUILD_DATE} \
+    GIT_COMMIT=${GIT_COMMIT}
 
 # Start the application
 CMD ["node", "server.js"]

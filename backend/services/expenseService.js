@@ -169,9 +169,10 @@ class ExpenseService {
    * Get summary data for a specific month
    * @param {number} year - Year
    * @param {number} month - Month (1-12)
-   * @returns {Promise<Object>} Summary object
+   * @param {boolean} includePrevious - Whether to include previous month data
+   * @returns {Promise<Object>} Summary object with current and optional previous month data
    */
-  async getSummary(year, month) {
+  async getSummary(year, month, includePrevious = false) {
     // Validate year and month
     if (!year || !month) {
       throw new Error('Year and month are required for summary');
@@ -188,6 +189,7 @@ class ExpenseService {
       throw new Error('Month must be between 1 and 12');
     }
 
+    // Get current month summary
     const summary = await expenseRepository.getSummary(yearNum, monthNum);
     const monthlyGross = await expenseRepository.getMonthlyGross(yearNum, monthNum);
     const totalFixedExpenses = await fixedExpenseRepository.getTotalFixedExpenses(yearNum, monthNum);
@@ -206,7 +208,44 @@ class ExpenseService {
     summary.loans = loans;
     summary.totalOutstandingDebt = totalOutstandingDebt;
     
-    return summary;
+    // If includePrevious is false, return just the current summary
+    if (!includePrevious) {
+      return summary;
+    }
+    
+    // Calculate previous month (handle year rollover)
+    let prevYear = yearNum;
+    let prevMonth = monthNum - 1;
+    
+    if (prevMonth < 1) {
+      prevMonth = 12;
+      prevYear = yearNum - 1;
+    }
+    
+    // Get previous month summary
+    const prevSummary = await expenseRepository.getSummary(prevYear, prevMonth);
+    const prevMonthlyGross = await expenseRepository.getMonthlyGross(prevYear, prevMonth);
+    const prevTotalFixedExpenses = await fixedExpenseRepository.getTotalFixedExpenses(prevYear, prevMonth);
+    
+    // Fetch loans for the previous month
+    const prevLoans = await loanService.getLoansForMonth(prevYear, prevMonth);
+    
+    // Calculate total outstanding debt from active loans for previous month
+    const prevTotalOutstandingDebt = loanService.calculateTotalOutstandingDebt(prevLoans);
+    
+    // Add monthly gross, fixed expenses, loans, and net balance to previous summary
+    prevSummary.monthlyGross = prevMonthlyGross || 0;
+    prevSummary.totalFixedExpenses = prevTotalFixedExpenses || 0;
+    prevSummary.totalExpenses = prevSummary.total + prevSummary.totalFixedExpenses;
+    prevSummary.netBalance = prevSummary.monthlyGross - prevSummary.totalExpenses;
+    prevSummary.loans = prevLoans;
+    prevSummary.totalOutstandingDebt = prevTotalOutstandingDebt;
+    
+    // Return both current and previous month data
+    return {
+      current: summary,
+      previous: prevSummary
+    };
   }
 
   /**
@@ -392,6 +431,13 @@ class ExpenseService {
         donations: donationExpenses
       }
     };
+  }
+  /**
+   * Get distinct place names from expenses
+   * @returns {Promise<Array<string>>} Array of unique place names
+   */
+  async getDistinctPlaces() {
+    return await expenseRepository.getDistinctPlaces();
   }
 }
 

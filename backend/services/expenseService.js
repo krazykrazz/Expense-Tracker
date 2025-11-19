@@ -288,7 +288,7 @@ class ExpenseService {
     const db = await require('../database/db').getDatabase();
     
     return new Promise((resolve, reject) => {
-      // Get monthly totals
+      // Get monthly variable expenses (from expenses table)
       const monthlyQuery = `
         SELECT 
           CAST(strftime('%m', date) AS INTEGER) as month,
@@ -299,76 +299,156 @@ class ExpenseService {
         ORDER BY month
       `;
       
-      db.all(monthlyQuery, [year.toString()], (err, monthlyTotals) => {
+      db.all(monthlyQuery, [year.toString()], (err, monthlyVariableExpenses) => {
         if (err) {
           reject(err);
           return;
         }
         
-        // Get category breakdown
-        const categoryQuery = `
-          SELECT type, SUM(amount) as total
-          FROM expenses
-          WHERE strftime('%Y', date) = ?
-          GROUP BY type
-          ORDER BY total DESC
+        // Get monthly fixed expenses (from fixed_expenses table)
+        const fixedExpensesQuery = `
+          SELECT 
+            month,
+            SUM(amount) as total
+          FROM fixed_expenses
+          WHERE year = ?
+          GROUP BY month
+          ORDER BY month
         `;
         
-        db.all(categoryQuery, [year.toString()], (err, categoryTotals) => {
+        db.all(fixedExpensesQuery, [year], (err, monthlyFixedExpenses) => {
           if (err) {
             reject(err);
             return;
           }
           
-          // Get payment method breakdown
-          const methodQuery = `
-            SELECT method, SUM(amount) as total
-            FROM expenses
-            WHERE strftime('%Y', date) = ?
-            GROUP BY method
-            ORDER BY total DESC
+          // Get monthly income (from income_sources table)
+          const incomeQuery = `
+            SELECT 
+              month,
+              SUM(amount) as total
+            FROM income_sources
+            WHERE year = ?
+            GROUP BY month
+            ORDER BY month
           `;
           
-          db.all(methodQuery, [year.toString()], (err, methodTotals) => {
+          db.all(incomeQuery, [year], (err, monthlyIncome) => {
             if (err) {
               reject(err);
               return;
             }
             
-            // Calculate totals and averages
-            const totalExpenses = monthlyTotals.reduce((sum, m) => sum + m.total, 0);
-            const monthsWithData = monthlyTotals.length;
-            const averageMonthly = monthsWithData > 0 ? totalExpenses / monthsWithData : 0;
+            // Get category breakdown
+            const categoryQuery = `
+              SELECT type, SUM(amount) as total
+              FROM expenses
+              WHERE strftime('%Y', date) = ?
+              GROUP BY type
+              ORDER BY total DESC
+            `;
             
-            // Find highest and lowest months
-            const highestMonth = monthlyTotals.length > 0 
-              ? monthlyTotals.reduce((max, m) => m.total > max.total ? m : max, monthlyTotals[0])
-              : null;
-            
-            const lowestMonth = monthlyTotals.length > 0
-              ? monthlyTotals.reduce((min, m) => m.total < min.total ? m : min, monthlyTotals[0])
-              : null;
-            
-            // Convert arrays to objects for easier frontend consumption
-            const byCategory = {};
-            categoryTotals.forEach(c => {
-              byCategory[c.type] = c.total;
-            });
-            
-            const byMethod = {};
-            methodTotals.forEach(m => {
-              byMethod[m.method] = m.total;
-            });
-            
-            resolve({
-              year,
-              totalExpenses,
-              averageMonthly,
-              monthlyTotals,
-              highestMonth,
-              lowestMonth,
-              byCategory,
-              byMethod
+            db.all(categoryQuery, [year.toString()], (err, categoryTotals) => {
+              if (err) {
+                reject(err);
+                return;
+              }
+              
+              // Get payment method breakdown
+              const methodQuery = `
+                SELECT method, SUM(amount) as total
+                FROM expenses
+                WHERE strftime('%Y', date) = ?
+                GROUP BY method
+                ORDER BY total DESC
+              `;
+              
+              db.all(methodQuery, [year.toString()], (err, methodTotals) => {
+                if (err) {
+                  reject(err);
+                  return;
+                }
+                
+                // Create lookup maps for fixed expenses and income
+                const fixedExpensesMap = {};
+                monthlyFixedExpenses.forEach(m => {
+                  fixedExpensesMap[m.month] = m.total;
+                });
+                
+                const incomeMap = {};
+                monthlyIncome.forEach(m => {
+                  incomeMap[m.month] = m.total;
+                });
+                
+                const variableExpensesMap = {};
+                monthlyVariableExpenses.forEach(m => {
+                  variableExpensesMap[m.month] = m.total;
+                });
+                
+                // Build complete monthly breakdown for all 12 months
+                const monthlyTotals = [];
+                for (let month = 1; month <= 12; month++) {
+                  const fixedExpenses = fixedExpensesMap[month] || 0;
+                  const variableExpenses = variableExpensesMap[month] || 0;
+                  const income = incomeMap[month] || 0;
+                  const total = fixedExpenses + variableExpenses;
+                  
+                  monthlyTotals.push({
+                    month,
+                    total,
+                    fixedExpenses,
+                    variableExpenses,
+                    income
+                  });
+                }
+                
+                // Calculate annual totals
+                const totalVariableExpenses = monthlyVariableExpenses.reduce((sum, m) => sum + m.total, 0);
+                const totalFixedExpenses = monthlyFixedExpenses.reduce((sum, m) => sum + m.total, 0);
+                const totalExpenses = totalVariableExpenses + totalFixedExpenses;
+                const totalIncome = monthlyIncome.reduce((sum, m) => sum + m.total, 0);
+                const netIncome = totalIncome - totalExpenses;
+                
+                // Calculate average monthly (only for months with data)
+                const monthsWithData = monthlyTotals.filter(m => m.total > 0).length;
+                const averageMonthly = monthsWithData > 0 ? totalExpenses / monthsWithData : 0;
+                
+                // Find highest and lowest months (based on total expenses)
+                const monthsWithExpenses = monthlyTotals.filter(m => m.total > 0);
+                const highestMonth = monthsWithExpenses.length > 0 
+                  ? monthsWithExpenses.reduce((max, m) => m.total > max.total ? m : max, monthsWithExpenses[0])
+                  : null;
+                
+                const lowestMonth = monthsWithExpenses.length > 0
+                  ? monthsWithExpenses.reduce((min, m) => m.total < min.total ? m : min, monthsWithExpenses[0])
+                  : null;
+                
+                // Convert arrays to objects for easier frontend consumption
+                const byCategory = {};
+                categoryTotals.forEach(c => {
+                  byCategory[c.type] = c.total;
+                });
+                
+                const byMethod = {};
+                methodTotals.forEach(m => {
+                  byMethod[m.method] = m.total;
+                });
+                
+                resolve({
+                  year,
+                  totalExpenses,
+                  totalFixedExpenses,
+                  totalVariableExpenses,
+                  totalIncome,
+                  netIncome,
+                  averageMonthly,
+                  monthlyTotals,
+                  highestMonth,
+                  lowestMonth,
+                  byCategory,
+                  byMethod
+                });
+              });
             });
           });
         });

@@ -260,3 +260,379 @@ describe('ExpenseService - getSummary with previous month data', () => {
     });
   });
 });
+
+// Property-Based Testing for Annual Summary
+const fc = require('fast-check');
+const { getDatabase } = require('../database/db');
+
+describe('ExpenseService - Annual Summary Property-Based Tests', () => {
+  let db;
+
+  beforeAll(async () => {
+    db = await getDatabase();
+  });
+
+  afterEach(async () => {
+    // Clean up test data after each test
+    await new Promise((resolve, reject) => {
+      db.run('DELETE FROM expenses WHERE strftime("%Y", date) = "9999"', (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+    await new Promise((resolve, reject) => {
+      db.run('DELETE FROM fixed_expenses WHERE year = 9999', (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+    await new Promise((resolve, reject) => {
+      db.run('DELETE FROM income_sources WHERE year = 9999', (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+  });
+
+  // Feature: enhanced-annual-summary, Property 1: Total expenses equals sum of fixed and variable
+  // Validates: Requirements 1.1, 1.2
+  test('Property 1: Total expenses should equal sum of fixed and variable expenses', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        // Generate random monthly data for fixed and variable expenses
+        fc.array(fc.record({
+          month: fc.integer({ min: 1, max: 12 }),
+          fixedAmount: fc.float({ min: 0, max: 10000, noNaN: true }),
+          variableAmount: fc.float({ min: 0, max: 10000, noNaN: true })
+        }), { minLength: 0, maxLength: 12 }),
+        async (monthlyData) => {
+          const testYear = 9999;
+          
+          // Insert test data into database
+          for (const data of monthlyData) {
+            // Insert fixed expense
+            if (data.fixedAmount > 0) {
+              await new Promise((resolve, reject) => {
+                db.run(
+                  'INSERT INTO fixed_expenses (year, month, name, amount) VALUES (?, ?, ?, ?)',
+                  [testYear, data.month, 'Test Fixed', parseFloat(data.fixedAmount.toFixed(2))],
+                  (err) => err ? reject(err) : resolve()
+                );
+              });
+            }
+            
+            // Insert variable expense
+            if (data.variableAmount > 0) {
+              await new Promise((resolve, reject) => {
+                db.run(
+                  'INSERT INTO expenses (date, place, amount, type, week, method) VALUES (?, ?, ?, ?, ?, ?)',
+                  [`${testYear}-${String(data.month).padStart(2, '0')}-15`, 'Test Place', parseFloat(data.variableAmount.toFixed(2)), 'Other', 3, 'Cash'],
+                  (err) => err ? reject(err) : resolve()
+                );
+              });
+            }
+          }
+          
+          // Get annual summary
+          const summary = await expenseService.getAnnualSummary(testYear);
+          
+          // Property: totalExpenses should equal totalFixedExpenses + totalVariableExpenses
+          const expectedTotal = summary.totalFixedExpenses + summary.totalVariableExpenses;
+          expect(Math.abs(summary.totalExpenses - expectedTotal)).toBeLessThan(0.01);
+        }
+      ),
+      { numRuns: 100 }
+    );
+  }, 30000);
+
+  // Feature: enhanced-annual-summary, Property 2: Net income calculation correctness
+  // Validates: Requirements 3.2
+  test('Property 2: Net income should equal total income minus total expenses', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        // Generate random monthly data for income and expenses
+        fc.array(fc.record({
+          month: fc.integer({ min: 1, max: 12 }),
+          income: fc.float({ min: 0, max: 20000, noNaN: true }),
+          fixedExpense: fc.float({ min: 0, max: 10000, noNaN: true }),
+          variableExpense: fc.float({ min: 0, max: 10000, noNaN: true })
+        }), { minLength: 0, maxLength: 12 }),
+        async (monthlyData) => {
+          const testYear = 9999;
+          
+          // Insert test data into database
+          for (const data of monthlyData) {
+            // Insert income
+            if (data.income > 0) {
+              await new Promise((resolve, reject) => {
+                db.run(
+                  'INSERT INTO income_sources (year, month, name, amount) VALUES (?, ?, ?, ?)',
+                  [testYear, data.month, 'Test Income', parseFloat(data.income.toFixed(2))],
+                  (err) => err ? reject(err) : resolve()
+                );
+              });
+            }
+            
+            // Insert fixed expense
+            if (data.fixedExpense > 0) {
+              await new Promise((resolve, reject) => {
+                db.run(
+                  'INSERT INTO fixed_expenses (year, month, name, amount) VALUES (?, ?, ?, ?)',
+                  [testYear, data.month, 'Test Fixed', parseFloat(data.fixedExpense.toFixed(2))],
+                  (err) => err ? reject(err) : resolve()
+                );
+              });
+            }
+            
+            // Insert variable expense
+            if (data.variableExpense > 0) {
+              await new Promise((resolve, reject) => {
+                db.run(
+                  'INSERT INTO expenses (date, place, amount, type, week, method) VALUES (?, ?, ?, ?, ?, ?)',
+                  [`${testYear}-${String(data.month).padStart(2, '0')}-15`, 'Test Place', parseFloat(data.variableExpense.toFixed(2)), 'Other', 3, 'Cash'],
+                  (err) => err ? reject(err) : resolve()
+                );
+              });
+            }
+          }
+          
+          // Get annual summary
+          const summary = await expenseService.getAnnualSummary(testYear);
+          
+          // Property: netIncome should equal totalIncome - totalExpenses
+          const expectedNetIncome = summary.totalIncome - summary.totalExpenses;
+          expect(Math.abs(summary.netIncome - expectedNetIncome)).toBeLessThan(0.01);
+        }
+      ),
+      { numRuns: 100 }
+    );
+  }, 30000);
+
+  // Feature: enhanced-annual-summary, Property 3: Monthly totals consistency
+  // Validates: Requirements 4.2
+  test('Property 3: Each monthly total should equal sum of fixed and variable expenses for that month', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        // Generate random monthly data
+        fc.array(fc.record({
+          month: fc.integer({ min: 1, max: 12 }),
+          fixedAmount: fc.float({ min: 0, max: 10000, noNaN: true }),
+          variableAmount: fc.float({ min: 0, max: 10000, noNaN: true })
+        }), { minLength: 0, maxLength: 12 }),
+        async (monthlyData) => {
+          const testYear = 9999;
+          
+          // Insert test data into database
+          for (const data of monthlyData) {
+            // Insert fixed expense
+            if (data.fixedAmount > 0) {
+              await new Promise((resolve, reject) => {
+                db.run(
+                  'INSERT INTO fixed_expenses (year, month, name, amount) VALUES (?, ?, ?, ?)',
+                  [testYear, data.month, 'Test Fixed', parseFloat(data.fixedAmount.toFixed(2))],
+                  (err) => err ? reject(err) : resolve()
+                );
+              });
+            }
+            
+            // Insert variable expense
+            if (data.variableAmount > 0) {
+              await new Promise((resolve, reject) => {
+                db.run(
+                  'INSERT INTO expenses (date, place, amount, type, week, method) VALUES (?, ?, ?, ?, ?, ?)',
+                  [`${testYear}-${String(data.month).padStart(2, '0')}-15`, 'Test Place', parseFloat(data.variableAmount.toFixed(2)), 'Other', 3, 'Cash'],
+                  (err) => err ? reject(err) : resolve()
+                );
+              });
+            }
+          }
+          
+          // Get annual summary
+          const summary = await expenseService.getAnnualSummary(testYear);
+          
+          // Property: For each month, total should equal fixedExpenses + variableExpenses
+          for (const monthData of summary.monthlyTotals) {
+            const expectedTotal = monthData.fixedExpenses + monthData.variableExpenses;
+            expect(Math.abs(monthData.total - expectedTotal)).toBeLessThan(0.01);
+          }
+        }
+      ),
+      { numRuns: 100 }
+    );
+  }, 30000);
+});
+
+describe('ExpenseService - Annual Summary Unit Tests', () => {
+  let db;
+
+  beforeAll(async () => {
+    db = await getDatabase();
+  });
+
+  afterEach(async () => {
+    // Clean up test data after each test
+    await new Promise((resolve, reject) => {
+      db.run('DELETE FROM expenses WHERE strftime("%Y", date) = "9998"', (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+    await new Promise((resolve, reject) => {
+      db.run('DELETE FROM fixed_expenses WHERE year = 9998', (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+    await new Promise((resolve, reject) => {
+      db.run('DELETE FROM income_sources WHERE year = 9998', (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+  });
+
+  test('should aggregate fixed expenses correctly', async () => {
+    const testYear = 9998;
+    
+    // Insert fixed expenses for different months
+    await new Promise((resolve, reject) => {
+      db.run(
+        'INSERT INTO fixed_expenses (year, month, name, amount) VALUES (?, ?, ?, ?)',
+        [testYear, 1, 'Rent', 1000],
+        (err) => err ? reject(err) : resolve()
+      );
+    });
+    await new Promise((resolve, reject) => {
+      db.run(
+        'INSERT INTO fixed_expenses (year, month, name, amount) VALUES (?, ?, ?, ?)',
+        [testYear, 2, 'Utilities', 200],
+        (err) => err ? reject(err) : resolve()
+      );
+    });
+    
+    const summary = await expenseService.getAnnualSummary(testYear);
+    
+    expect(summary.totalFixedExpenses).toBe(1200);
+  });
+
+  test('should aggregate income correctly', async () => {
+    const testYear = 9998;
+    
+    // Insert income for different months
+    await new Promise((resolve, reject) => {
+      db.run(
+        'INSERT INTO income_sources (year, month, name, amount) VALUES (?, ?, ?, ?)',
+        [testYear, 1, 'Salary', 5000],
+        (err) => err ? reject(err) : resolve()
+      );
+    });
+    await new Promise((resolve, reject) => {
+      db.run(
+        'INSERT INTO income_sources (year, month, name, amount) VALUES (?, ?, ?, ?)',
+        [testYear, 2, 'Bonus', 1000],
+        (err) => err ? reject(err) : resolve()
+      );
+    });
+    
+    const summary = await expenseService.getAnnualSummary(testYear);
+    
+    expect(summary.totalIncome).toBe(6000);
+  });
+
+  test('should handle missing fixed expenses (no fixed expenses)', async () => {
+    const testYear = 9998;
+    
+    // Insert only variable expenses
+    await new Promise((resolve, reject) => {
+      db.run(
+        'INSERT INTO expenses (date, place, amount, type, week, method) VALUES (?, ?, ?, ?, ?, ?)',
+        [`${testYear}-01-15`, 'Store', 100, 'Other', 3, 'Cash'],
+        (err) => err ? reject(err) : resolve()
+      );
+    });
+    
+    const summary = await expenseService.getAnnualSummary(testYear);
+    
+    expect(summary.totalFixedExpenses).toBe(0);
+    expect(summary.totalVariableExpenses).toBe(100);
+    expect(summary.totalExpenses).toBe(100);
+  });
+
+  test('should handle missing income (no income)', async () => {
+    const testYear = 9998;
+    
+    // Insert only expenses
+    await new Promise((resolve, reject) => {
+      db.run(
+        'INSERT INTO expenses (date, place, amount, type, week, method) VALUES (?, ?, ?, ?, ?, ?)',
+        [`${testYear}-01-15`, 'Store', 100, 'Other', 3, 'Cash'],
+        (err) => err ? reject(err) : resolve()
+      );
+    });
+    
+    const summary = await expenseService.getAnnualSummary(testYear);
+    
+    expect(summary.totalIncome).toBe(0);
+    expect(summary.netIncome).toBe(-100);
+  });
+
+  test('should calculate monthly breakdown correctly', async () => {
+    const testYear = 9998;
+    
+    // Insert data for January
+    await new Promise((resolve, reject) => {
+      db.run(
+        'INSERT INTO fixed_expenses (year, month, name, amount) VALUES (?, ?, ?, ?)',
+        [testYear, 1, 'Rent', 1000],
+        (err) => err ? reject(err) : resolve()
+      );
+    });
+    await new Promise((resolve, reject) => {
+      db.run(
+        'INSERT INTO expenses (date, place, amount, type, week, method) VALUES (?, ?, ?, ?, ?, ?)',
+        [`${testYear}-01-15`, 'Store', 200, 'Other', 3, 'Cash'],
+        (err) => err ? reject(err) : resolve()
+      );
+    });
+    await new Promise((resolve, reject) => {
+      db.run(
+        'INSERT INTO income_sources (year, month, name, amount) VALUES (?, ?, ?, ?)',
+        [testYear, 1, 'Salary', 5000],
+        (err) => err ? reject(err) : resolve()
+      );
+    });
+    
+    const summary = await expenseService.getAnnualSummary(testYear);
+    
+    // Check January data
+    const januaryData = summary.monthlyTotals.find(m => m.month === 1);
+    expect(januaryData).toBeDefined();
+    expect(januaryData.fixedExpenses).toBe(1000);
+    expect(januaryData.variableExpenses).toBe(200);
+    expect(januaryData.total).toBe(1200);
+    expect(januaryData.income).toBe(5000);
+    
+    // Check that all 12 months are present
+    expect(summary.monthlyTotals).toHaveLength(12);
+    
+    // Check that months without data have zero values
+    const februaryData = summary.monthlyTotals.find(m => m.month === 2);
+    expect(februaryData.fixedExpenses).toBe(0);
+    expect(februaryData.variableExpenses).toBe(0);
+    expect(februaryData.total).toBe(0);
+    expect(februaryData.income).toBe(0);
+  });
+
+  test('should handle year with no data', async () => {
+    const testYear = 9998;
+    
+    const summary = await expenseService.getAnnualSummary(testYear);
+    
+    expect(summary.totalExpenses).toBe(0);
+    expect(summary.totalFixedExpenses).toBe(0);
+    expect(summary.totalVariableExpenses).toBe(0);
+    expect(summary.totalIncome).toBe(0);
+    expect(summary.netIncome).toBe(0);
+    expect(summary.monthlyTotals).toHaveLength(12);
+  });
+});

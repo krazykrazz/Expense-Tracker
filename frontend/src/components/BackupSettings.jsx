@@ -425,6 +425,17 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v3.6.0</div>
+                <div className="changelog-date">November 19, 2025</div>
+                <ul className="changelog-items">
+                  <li>Enhanced annual summary with income and net income tracking</li>
+                  <li>Fixed vs variable expense breakdown in summary cards</li>
+                  <li>Horizontal stacked bar chart for monthly expense visualization</li>
+                  <li>Property-based testing for financial calculations</li>
+                </ul>
+              </div>
+
+              <div className="changelog-entry">
                 <div className="changelog-version">v3.5.0</div>
                 <div className="changelog-date">November 19, 2025</div>
                 <ul className="changelog-items">

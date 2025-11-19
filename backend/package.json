@@ -1,6 +1,6 @@
 {
   "name": "expense-tracker",
-  "version": "3.5.0",
+  "version": "3.6.0",
   "description": "Full-stack Expense Tracker Application",
   "main": "server.js",
   "scripts": {
@@ -21,6 +21,7 @@
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",
+    "fast-check": "^4.3.0",
     "jest": "^30.2.0",
     "nodemon": "^3.0.1"
   }

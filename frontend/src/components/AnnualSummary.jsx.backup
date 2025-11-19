@@ -155,42 +155,42 @@ const AnnualSummary = ({ year }) => {
             <span>Variable Expenses</span>
           </div>
         </div>
-        <div className="monthly-chart">
+        <div className="monthly-chart stacked">
           {summary.monthlyTotals && summary.monthlyTotals.map((month) => {
             const maxMonthTotal = summary.highestMonth?.total || 1;
-            const fixedWidth = maxMonthTotal > 0 ? ((month.fixedExpenses || 0) / maxMonthTotal) * 100 : 0;
-            const variableWidth = maxMonthTotal > 0 ? ((month.variableExpenses || 0) / maxMonthTotal) * 100 : 0;
+            const fixedHeight = maxMonthTotal > 0 ? ((month.fixedExpenses || 0) / maxMonthTotal) * 100 : 0;
+            const variableHeight = maxMonthTotal > 0 ? ((month.variableExpenses || 0) / maxMonthTotal) * 100 : 0;
             
             return (
               <div key={month.month} className="month-bar-container">
                 <div className="month-label">{getMonthName(month.month)}</div>
-                <div className="bar-wrapper">
-                  {(month.fixedExpenses || 0) > 0 && (
+                <div className="bar-wrapper stacked-bar-wrapper">
+                  <div className="stacked-bar">
+                    {/* Fixed expenses (bottom) */}
                     <div 
-                      className="month-bar fixed-expense-bar"
-                      style={{ width: `${fixedWidth}%` }}
-                      title={`Fixed: ${formatAmount(month.fixedExpenses || 0)}`}
+                      className="bar-segment fixed-segment"
+                      style={{ height: `${fixedHeight}%` }}
+                      title={`Fixed: $${formatAmount(month.fixedExpenses || 0)}`}
                     >
-                      <span className="bar-value">${formatAmount(month.fixedExpenses)}</span>
+                      {(month.fixedExpenses || 0) > 0 && (
+                        <span className="segment-value">${formatAmount(month.fixedExpenses)}</span>
+                      )}
                     </div>
-                  )}
-                  {(month.variableExpenses || 0) > 0 && (
+                    
+                    {/* Variable expenses (top) */}
                     <div 
-                      className="month-bar variable-expense-bar"
-                      style={{ 
-                        width: `${variableWidth}%`,
-                        marginLeft: (month.fixedExpenses || 0) > 0 ? '2px' : '0'
-                      }}
-                      title={`Variable: ${formatAmount(month.variableExpenses || 0)}`}
+                      className="bar-segment variable-segment"
+                      style={{ height: `${variableHeight}%` }}
+                      title={`Variable: $${formatAmount(month.variableExpenses || 0)}`}
                     >
-                      <span className="bar-value">${formatAmount(month.variableExpenses)}</span>
+                      {(month.variableExpenses || 0) > 0 && (
+                        <span className="segment-value">${formatAmount(month.variableExpenses)}</span>
+                      )}
                     </div>
-                  )}
-                  {month.total === 0 && (
-                    <div className="empty-bar">
-                      <span className="bar-value">$0.00</span>
-                    </div>
-                  )}
+                  </div>
+                  
+                  {/* Total label below bar */}
+                  <div className="bar-total">${formatAmount(month.total)}</div>
                 </div>
               </div>
             );
@@ -298,7 +298,7 @@ const AnnualSummary = ({ year }) => {
                             style={{ 
                               width: `${medicalWidth}%` 
                             }}
-                            title={`Medical: ${formatAmount(medicalTotal)}`}
+                            title={`Medical: $${formatAmount(medicalTotal)}`}
                           >
                             <span className="bar-value">${formatAmount(medicalTotal)}</span>
                           </div>
@@ -310,7 +310,7 @@ const AnnualSummary = ({ year }) => {
                               width: `${donationWidth}%`,
                               marginLeft: medicalTotal > 0 ? '2px' : '0'
                             }}
-                            title={`Donations: ${formatAmount(donationTotal)}`}
+                            title={`Donations: $${formatAmount(donationTotal)}`}
                           >
                             <span className="bar-value">${formatAmount(donationTotal)}</span>
                           </div>

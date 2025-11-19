@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.6.0] - 2025-11-19
+
+### Added
+- **Enhanced Annual Summary**: Comprehensive financial overview with income tracking
+  - Total Income card showing income from all sources
+  - Net Income card with color-coded surplus/deficit display
+  - Fixed vs Variable expense breakdown in Total Expenses card
+  - Horizontal stacked bar chart for monthly expense visualization
+  - Legend showing Fixed (blue) and Variable (purple) expenses
+  - Property-based testing for financial calculations (100+ test iterations)
+  
+### Changed
+- Backend annual summary endpoint now includes:
+  - `totalFixedExpenses` and `totalVariableExpenses` fields
+  - `totalIncome` and `netIncome` calculations
+  - Enhanced monthly breakdown with `fixedExpenses`, `variableExpenses`, and `income` per month
+- Monthly breakdown chart changed from vertical bars to horizontal stacked bars matching tax deductible chart style
+
+### Technical
+- Added property-based tests using fast-check library
+- Comprehensive test coverage for expense calculations and net income logic
+- Integration tests for complete data flow from API to UI
+
+---
+
 ## [3.5.0] - 2025-11-19
 
 ### Added

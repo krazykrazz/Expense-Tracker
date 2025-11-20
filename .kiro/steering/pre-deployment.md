@@ -23,7 +23,6 @@ Ensure all design documents are up-to-date and aligned with implementation:
 ## 3. Code Quality and Optimization
 
 Review the codebase for any pending optimizations or refactors:
-
 - Check for any TODO comments or FIXME markers in the code
 - Look for duplicate code that should be refactored
 - Review for any performance optimizations that were planned but not completed

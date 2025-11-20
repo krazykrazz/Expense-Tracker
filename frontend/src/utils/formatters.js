@@ -146,3 +146,26 @@ export const getCurrentYearMonth = () => {
   const month = String(today.getMonth() + 1).padStart(2, '0');
   return `${year}-${month}`;
 };
+
+/**
+ * Get short month name from month number
+ * @param {number} monthNum - Month number (1-12)
+ * @returns {string} Short month name (e.g., "Jan", "Feb")
+ */
+export const getMonthNameShort = (monthNum) => {
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return months[monthNum - 1] || '';
+};
+
+/**
+ * Get long month name from month number
+ * @param {number} monthNum - Month number (1-12)
+ * @returns {string} Long month name (e.g., "January", "February")
+ */
+export const getMonthNameLong = (monthNum) => {
+  const months = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+  return months[monthNum - 1] || '';
+};

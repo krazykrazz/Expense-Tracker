@@ -1,6 +1,6 @@
 import './MonthSelector.css';
 
-const MonthSelector = ({ selectedYear, selectedMonth, onMonthChange, onViewAnnualSummary }) => {
+const MonthSelector = ({ selectedYear, selectedMonth, onMonthChange, onViewAnnualSummary, onViewTaxDeductible }) => {
   // Generate year range from 2020 to 2030
   const years = [];
   for (let year = 2020; year <= 2030; year++) {
@@ -35,6 +35,22 @@ const MonthSelector = ({ selectedYear, selectedMonth, onMonthChange, onViewAnnua
 
   return (
     <div className="month-selector">
+      <button 
+        className="annual-summary-button"
+        onClick={onViewAnnualSummary}
+        title="View annual summary"
+      >
+        📊 Annual Summary
+      </button>
+
+      <button 
+        className="tax-deductible-button"
+        onClick={onViewTaxDeductible}
+        title="View tax deductible expenses"
+      >
+        💰 Income Tax
+      </button>
+
       <div className="selector-group">
         <label htmlFor="year-select">Year:</label>
         <select 
@@ -49,14 +65,6 @@ const MonthSelector = ({ selectedYear, selectedMonth, onMonthChange, onViewAnnua
           ))}
         </select>
       </div>
-
-      <button 
-        className="annual-summary-button"
-        onClick={onViewAnnualSummary}
-        title="View annual summary"
-      >
-        📊 Annual Summary
-      </button>
 
       <div className="selector-group">
         <label htmlFor="month-select">Month:</label>

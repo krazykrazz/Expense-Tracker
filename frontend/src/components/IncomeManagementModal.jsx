@@ -8,6 +8,7 @@ import {
   carryForwardIncomeSources
 } from '../services/incomeApi';
 import { validateName, validateAmount } from '../utils/validation';
+import { getMonthNameLong } from '../utils/formatters';
 
 const IncomeManagementModal = ({ isOpen, onClose, year, month, onUpdate }) => {
   const [incomeSources, setIncomeSources] = useState([]);
@@ -242,13 +243,7 @@ const IncomeManagementModal = ({ isOpen, onClose, year, month, onUpdate }) => {
     onClose();
   };
 
-  const getMonthName = (monthNum) => {
-    const months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
-    ];
-    return months[monthNum - 1] || '';
-  };
+
 
   if (!isOpen) {
     return null;
@@ -258,7 +253,7 @@ const IncomeManagementModal = ({ isOpen, onClose, year, month, onUpdate }) => {
     <div className="income-modal-overlay" onClick={handleClose}>
       <div className="income-modal-container" onClick={(e) => e.stopPropagation()}>
         <div className="income-modal-header">
-          <h2>Manage Income - {getMonthName(month)} {year}</h2>
+          <h2>Manage Income - {getMonthNameLong(month)} {year}</h2>
           <button className="income-modal-close" onClick={handleClose}>✕</button>
         </div>
 

@@ -4,6 +4,7 @@ import IncomeManagementModal from './IncomeManagementModal';
 import FixedExpensesModal from './FixedExpensesModal';
 import LoansModal from './LoansModal';
 import TrendIndicator from './TrendIndicator';
+import { formatAmount } from '../utils/formatters';
 import './SummaryPanel.css';
 
 const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
@@ -71,10 +72,6 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
 
     fetchSummary();
   }, [selectedYear, selectedMonth, refreshTrigger]);
-
-  const formatAmount = (amount) => {
-    return parseFloat(amount || 0).toFixed(2);
-  };
 
   const handleOpenIncomeModal = () => {
     setShowIncomeModal(true);

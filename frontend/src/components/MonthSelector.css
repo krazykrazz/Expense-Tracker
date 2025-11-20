@@ -54,7 +54,8 @@
   }
 }
 
-.annual-summary-button {
+.annual-summary-button,
+.tax-deductible-button {
   padding: 6px 16px;
   background: #0ea5e9;
   color: white;
@@ -67,12 +68,22 @@
   white-space: nowrap;
 }
 
-.annual-summary-button:hover {
+.annual-summary-button:hover,
+.tax-deductible-button:hover {
   background: #0284c7;
 }
 
+.tax-deductible-button {
+  background: #16a34a;
+}
+
+.tax-deductible-button:hover {
+  background: #15803d;
+}
+
 @media (max-width: 768px) {
-  .annual-summary-button {
+  .annual-summary-button,
+  .tax-deductible-button {
     width: 100%;
   }
 }

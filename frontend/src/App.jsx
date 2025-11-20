@@ -7,6 +7,7 @@ import SearchBar from './components/SearchBar';
 import SummaryPanel from './components/SummaryPanel';
 import BackupSettings from './components/BackupSettings';
 import AnnualSummary from './components/AnnualSummary';
+import TaxDeductible from './components/TaxDeductible';
 import { API_ENDPOINTS } from './config';
 import logo from './assets/tracker.png.png';
 
@@ -21,6 +22,7 @@ function App() {
   const [showExpenseForm, setShowExpenseForm] = useState(false);
   const [showBackupSettings, setShowBackupSettings] = useState(false);
   const [showAnnualSummary, setShowAnnualSummary] = useState(false);
+  const [showTaxDeductible, setShowTaxDeductible] = useState(false);
   const [filterType, setFilterType] = useState('');
   const [filterMethod, setFilterMethod] = useState('');
   const [versionInfo, setVersionInfo] = useState(null);
@@ -174,6 +176,7 @@ function App() {
           selectedMonth={selectedMonth}
           onMonthChange={handleMonthChange}
           onViewAnnualSummary={() => setShowAnnualSummary(true)}
+          onViewTaxDeductible={() => setShowTaxDeductible(true)}
         />
         <SearchBar onSearchChange={handleSearchChange} />
         
@@ -250,9 +253,24 @@ function App() {
         </div>
       )}
 
+      {showTaxDeductible && (
+        <div className="modal-overlay" onClick={() => setShowTaxDeductible(false)}>
+          <div className="modal-content modal-content-large" onClick={(e) => e.stopPropagation()}>
+            <button 
+              className="modal-close-button" 
+              onClick={() => setShowTaxDeductible(false)}
+              aria-label="Close"
+            >
+              ×
+            </button>
+            <TaxDeductible year={selectedYear} />
+          </div>
+        </div>
+      )}
+
       <footer className="App-footer">
         <span className="version">
-          v{versionInfo?.version || '3.6.0'}
+          v{versionInfo?.version || '3.6.1'}
           {versionInfo?.docker && (
             <span className="docker-tag"> (Docker: {versionInfo.docker.tag})</span>
           )}

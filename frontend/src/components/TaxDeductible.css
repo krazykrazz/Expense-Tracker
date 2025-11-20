@@ -1,13 +1,13 @@
 /* Import shared chart styles */
 @import '../styles/charts.css';
 
-.annual-summary {
+.tax-deductible {
   padding: 20px;
   max-width: 1200px;
   margin: 0 auto;
 }
 
-.annual-summary h2 {
+.tax-deductible h2 {
   margin-top: 0;
   margin-bottom: 20px;
   color: #333;
@@ -15,7 +15,7 @@
   font-weight: 600;
 }
 
-.annual-summary h3 {
+.tax-deductible h3 {
   margin-top: 0;
   margin-bottom: 15px;
   color: #555;
@@ -23,7 +23,7 @@
   font-weight: 600;
 }
 
-.summary-grid {
+.tax-summary-cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 15px;
@@ -52,126 +52,6 @@
   margin-bottom: 5px;
 }
 
-.big-number.positive {
-  color: #22c55e;
-}
-
-.big-number.negative {
-  color: #ef4444;
-}
-
-.big-number.neutral {
-  color: #64748b;
-}
-
-.sub-text {
-  font-size: 14px;
-  color: #888;
-}
-
-.income-card {
-  background: #f0fdf4;
-  border: 1px solid #86efac;
-}
-
-.net-income-card {
-  background: white;
-  border: 1px solid #e0e0e0;
-}
-
-.net-income-card .sub-text {
-  font-weight: 500;
-}
-
-.income-card h3 {
-  color: #166534;
-}
-
-.income-card .sub-text {
-  color: #16a34a;
-  font-weight: 500;
-}
-
-.expense-breakdown {
-  font-size: 13px;
-  color: #666;
-  margin-top: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-}
-
-.fixed-label {
-  color: #3b82f6;
-  font-weight: 500;
-}
-
-.variable-label {
-  color: #8b5cf6;
-  font-weight: 500;
-}
-
-.separator {
-  color: #999;
-  font-weight: 400;
-}
-
-.summary-section {
-  background: white;
-  padding: 20px;
-  border-radius: 6px;
-  border: 1px solid #e0e0e0;
-  margin-bottom: 20px;
-}
-
-/* Chart styles moved to shared charts.css */
-
-.category-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 15px;
-}
-
-.category-item {
-  background: #f8f9ff;
-  padding: 15px;
-  border-radius: 4px;
-  border: 1px solid #e0e4ff;
-}
-
-.category-name {
-  font-size: 14px;
-  font-weight: 600;
-  color: #333;
-  margin-bottom: 8px;
-}
-
-.category-amount {
-  font-size: 1.3rem;
-  font-weight: 700;
-  color: #0ea5e9;
-  margin-bottom: 4px;
-}
-
-.category-percentage {
-  font-size: 12px;
-  color: #888;
-}
-
-/* Loading and error states moved to shared charts.css */
-
-.tax-deductible-section {
-  background: #f0fdf4;
-  border: 1px solid #bbf7d0;
-}
-
-.tax-summary-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 15px;
-}
-
 .tax-card {
   background: white;
   border: 1px solid #86efac;
@@ -179,8 +59,10 @@
 
 .tax-monthly-breakdown {
   margin-top: 25px;
-  padding-top: 20px;
-  border-top: 1px solid #bbf7d0;
+  padding: 20px;
+  background: white;
+  border-radius: 6px;
+  border: 1px solid #bbf7d0;
 }
 
 .tax-monthly-breakdown h4 {
@@ -191,42 +73,12 @@
   font-weight: 600;
 }
 
-.tax-month-bar {
-  background: linear-gradient(90deg, #22c55e 0%, #16a34a 100%);
-}
+/* Chart styles moved to shared charts.css */
 
-/* Bar gradient styles moved to shared charts.css */
-
-.income-bar-wrapper {
-  margin-top: 2px;
-}
-
-/* Tax legend and empty states moved to shared charts.css */
-
-/* Component-specific override for tax legend background */
+/* Component-specific override for tax legend */
 .tax-legend {
   background: white;
   border: 1px solid #d1fae5;
-}
-
-@media (max-width: 768px) {
-  .annual-summary {
-    padding: 15px;
-  }
-
-  .summary-grid {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .big-number {
-    font-size: 1.5rem;
-  }
-
-  .category-grid {
-    grid-template-columns: 1fr;
-  }
-
-  /* Responsive chart styles moved to shared charts.css */
 }
 
 /* Tax Deductible Detailed Expense Lists */
@@ -348,6 +200,31 @@
 }
 
 @media (max-width: 768px) {
+  .tax-deductible {
+    padding: 15px;
+  }
+
+  .tax-summary-cards {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .big-number {
+    font-size: 1.5rem;
+  }
+
+  .month-bar-container {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 5px;
+  }
+
+  .month-label {
+    min-width: auto;
+    text-align: center;
+  }
+
+  /* Responsive chart styles moved to shared charts.css */
+
   .tax-expense-item {
     grid-template-columns: 1fr;
     gap: 8px;

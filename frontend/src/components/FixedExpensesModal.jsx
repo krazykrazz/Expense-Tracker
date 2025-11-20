@@ -8,6 +8,7 @@ import {
   carryForwardFixedExpenses
 } from '../services/fixedExpenseApi';
 import { validateName, validateAmount } from '../utils/validation';
+import { getMonthNameLong } from '../utils/formatters';
 
 const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
   const [fixedExpenses, setFixedExpenses] = useState([]);
@@ -251,13 +252,7 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
     onClose();
   };
 
-  const getMonthName = (monthNum) => {
-    const months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
-    ];
-    return months[monthNum - 1] || '';
-  };
+
 
   if (!isOpen) {
     return null;
@@ -267,7 +262,7 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
     <div className="fixed-expenses-modal-overlay" onClick={handleClose}>
       <div className="fixed-expenses-modal-container" onClick={(e) => e.stopPropagation()}>
         <div className="fixed-expenses-modal-header">
-          <h2>Manage Fixed Expenses - {getMonthName(month)} {year}</h2>
+          <h2>Manage Fixed Expenses - {getMonthNameLong(month)} {year}</h2>
           <button className="fixed-expenses-modal-close" onClick={handleClose}>✕</button>
         </div>
 

@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.6.1] - 2025-11-19
+
+### Fixed
+- **Critical Bug**: Fixed application crash when viewing Annual Summary for years without expense or income data
+  - Added proper empty state handling with user-friendly message
+  - Fixed React Hooks Order violation that caused blank screens
+  - Enhanced null checking throughout chart rendering logic
+  - Added safety checks for empty arrays and undefined data
+
+### Changed
+- **Code Optimization**: Eliminated ~200 lines of duplicate CSS code
+  - Created shared `charts.css` for common chart styling
+  - Extracted duplicate styles from AnnualSummary and TaxDeductible components
+  - Migrated to CSS variables for consistent theming
+- **Performance Improvements**: Added memoization for expensive chart calculations
+  - Implemented `useMemo` in AnnualSummary.jsx for chart data calculations
+  - Implemented `useMemo` in TaxDeductible.jsx for chart data calculations
+  - Reduced unnecessary re-renders and CPU usage
+
+### Technical
+- Created centralized chart styling system in `frontend/src/styles/charts.css`
+- Improved component performance with React memoization hooks
+- Better code maintainability with reduced duplication
+
+---
+
 ## [3.6.0] - 2025-11-19
 
 ### Added

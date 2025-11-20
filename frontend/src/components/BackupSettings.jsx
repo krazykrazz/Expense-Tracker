@@ -425,6 +425,17 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v3.6.1</div>
+                <div className="changelog-date">November 19, 2025</div>
+                <ul className="changelog-items">
+                  <li>Fixed critical bug: application crash when viewing years without data</li>
+                  <li>Code optimization: eliminated ~200 lines of duplicate CSS</li>
+                  <li>Performance improvements: added memoization for chart calculations</li>
+                  <li>Created shared chart styling system for consistency</li>
+                </ul>
+              </div>
+
+              <div className="changelog-entry">
                 <div className="changelog-version">v3.6.0</div>
                 <div className="changelog-date">November 19, 2025</div>
                 <ul className="changelog-items">

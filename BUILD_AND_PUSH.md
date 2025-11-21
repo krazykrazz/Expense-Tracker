@@ -76,29 +76,7 @@ REM Build and push with custom registry
 build-and-push.bat --registry myregistry.local:5000
 ```
 
-### Method 3: GitHub Actions (Automated CI/CD)
-
-The GitHub Actions workflow automatically builds and pushes images when you push to specific branches.
-
-#### Setup
-
-1. Ensure you have a self-hosted GitHub Actions runner configured
-2. The runner must have access to your local registry at `localhost:5000`
-3. (Optional) Configure registry authentication secrets:
-   - `REGISTRY_USERNAME`
-   - `REGISTRY_PASSWORD`
-
-#### Triggers
-
-- **Push to `main` branch**: Builds and pushes with `latest` tag
-- **Push to `development` branch**: Builds and pushes with `dev` tag
-- **Manual dispatch**: Allows you to choose the tag
-
-#### Workflow File
-
-The workflow is defined in `.github/workflows/docker-publish.yml`
-
-### Method 4: Manual Docker Commands
+### Method 3: Manual Docker Commands
 
 For advanced users who want full control:
 

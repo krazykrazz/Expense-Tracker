@@ -26,10 +26,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Implemented `useMemo` in TaxDeductible.jsx for chart data calculations
   - Reduced unnecessary re-renders and CPU usage
 
+### Removed
+- **GitHub Actions Workflow**: Removed unnecessary CI/CD workflow
+  - Not needed for local Docker registry builds
+  - PowerShell script (`build-and-push.ps1`) handles all build needs
+  - Eliminates unwanted workflow triggers on git push
+
 ### Technical
 - Created centralized chart styling system in `frontend/src/styles/charts.css`
 - Improved component performance with React memoization hooks
 - Better code maintainability with reduced duplication
+- Simplified build process to use local tooling only
 
 ---
 

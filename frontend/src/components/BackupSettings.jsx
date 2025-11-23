@@ -425,6 +425,18 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v3.7.0</div>
+                <div className="changelog-date">November 22, 2025</div>
+                <ul className="changelog-items">
+                  <li>Budget Tracking & Alerts: Set monthly budget limits with real-time progress tracking</li>
+                  <li>Color-coded budget status indicators (green/yellow/orange/red)</li>
+                  <li>Automatic budget carry-forward from previous month</li>
+                  <li>Historical budget analysis (3, 6, or 12 months)</li>
+                  <li>Budget vs actual spending comparisons with success rates</li>
+                </ul>
+              </div>
+
+              <div className="changelog-entry">
                 <div className="changelog-version">v3.6.1</div>
                 <div className="changelog-date">November 19, 2025</div>
                 <ul className="changelog-items">

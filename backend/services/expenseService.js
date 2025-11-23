@@ -3,6 +3,15 @@ const fixedExpenseRepository = require('../repositories/fixedExpenseRepository')
 const loanService = require('./loanService');
 const { calculateWeek } = require('../utils/dateUtils');
 
+// Lazy-load budgetService to avoid circular dependency
+let budgetService = null;
+function getBudgetService() {
+  if (!budgetService) {
+    budgetService = require('./budgetService');
+  }
+  return budgetService;
+}
+
 class ExpenseService {
   /**
    * Validate expense data
@@ -82,6 +91,36 @@ class ExpenseService {
   }
 
   /**
+   * Trigger budget recalculation for affected budgets
+   * This is called after expense operations to ensure budget progress is updated
+   * @param {string} date - Expense date (YYYY-MM-DD)
+   * @param {string} category - Expense category
+   * @private
+   */
+  async _triggerBudgetRecalculation(date, category) {
+    try {
+      // Only recalculate for budgetable categories
+      const budgetableCategories = ['Food', 'Gas', 'Other'];
+      if (!budgetableCategories.includes(category)) {
+        return;
+      }
+
+      // Extract year and month from date
+      const dateObj = new Date(date);
+      const year = dateObj.getFullYear();
+      const month = dateObj.getMonth() + 1; // JavaScript months are 0-indexed
+
+      // Get budget service and trigger recalculation by fetching summary
+      // This ensures the budget progress is recalculated with current expense data
+      const service = getBudgetService();
+      await service.getBudgetSummary(year, month);
+    } catch (err) {
+      // Log error but don't fail the expense operation
+      console.error('Budget recalculation failed:', err.message);
+    }
+  }
+
+  /**
    * Create a new expense
    * @param {Object} expenseData - Expense data
    * @returns {Promise<Object>} Created expense
@@ -107,7 +146,12 @@ class ExpenseService {
     };
 
     // Create expense in repository
-    return await expenseRepository.create(expense);
+    const createdExpense = await expenseRepository.create(expense);
+
+    // Trigger budget recalculation for affected budget
+    await this._triggerBudgetRecalculation(expense.date, expense.type);
+
+    return createdExpense;
   }
 
   /**
@@ -135,6 +179,9 @@ class ExpenseService {
    * @returns {Promise<Object|null>} Updated expense or null
    */
   async updateExpense(id, expenseData) {
+    // Get the old expense data before updating
+    const oldExpense = await expenseRepository.findById(id);
+
     // Validate the expense data
     this.validateExpense(expenseData);
 
@@ -153,7 +200,27 @@ class ExpenseService {
     };
 
     // Update expense in repository
-    return await expenseRepository.update(id, expense);
+    const updatedExpense = await expenseRepository.update(id, expense);
+
+    // Trigger budget recalculation for affected budgets
+    if (oldExpense) {
+      // If category, amount, or date changed, recalculate old budget
+      const categoryChanged = oldExpense.type !== expense.type;
+      const amountChanged = oldExpense.amount !== expense.amount;
+      const dateChanged = oldExpense.date !== expense.date;
+
+      if (categoryChanged || amountChanged || dateChanged) {
+        // Recalculate old budget (old category and date)
+        await this._triggerBudgetRecalculation(oldExpense.date, oldExpense.type);
+
+        // If category or date changed, also recalculate new budget
+        if (categoryChanged || dateChanged) {
+          await this._triggerBudgetRecalculation(expense.date, expense.type);
+        }
+      }
+    }
+
+    return updatedExpense;
   }
 
   /**
@@ -162,7 +229,18 @@ class ExpenseService {
    * @returns {Promise<boolean>} True if deleted
    */
   async deleteExpense(id) {
-    return await expenseRepository.delete(id);
+    // Get the expense data before deleting
+    const expense = await expenseRepository.findById(id);
+
+    // Delete the expense
+    const deleted = await expenseRepository.delete(id);
+
+    // Trigger budget recalculation for affected budget
+    if (deleted && expense) {
+      await this._triggerBudgetRecalculation(expense.date, expense.type);
+    }
+
+    return deleted;
   }
 
   /**

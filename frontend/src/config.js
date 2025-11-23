@@ -12,7 +12,11 @@ export const API_ENDPOINTS = {
   FIXED_EXPENSES_BY_ID: (id) => `${API_BASE_URL}/api/fixed-expenses/${id}`,
   FIXED_EXPENSES_CARRY_FORWARD: `${API_BASE_URL}/api/fixed-expenses/carry-forward`,
   LOANS: `${API_BASE_URL}/api/loans`,
-  LOAN_BALANCES: `${API_BASE_URL}/api/loan-balances`
+  LOAN_BALANCES: `${API_BASE_URL}/api/loan-balances`,
+  BUDGETS: `${API_BASE_URL}/api/budgets`,
+  BUDGET_SUMMARY: `${API_BASE_URL}/api/budgets/summary`,
+  BUDGET_HISTORY: `${API_BASE_URL}/api/budgets/history`,
+  BUDGET_COPY: `${API_BASE_URL}/api/budgets/copy`
 };
 
 export default API_BASE_URL;

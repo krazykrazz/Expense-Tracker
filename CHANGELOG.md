@@ -7,6 +7,90 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.7.0] - 2025-11-22
+
+### Added
+- **Budget Tracking & Alerts**: Comprehensive monthly budget management system
+  - Set monthly budget limits for Food, Gas, and Other expense categories
+  - Real-time progress bars with color-coded status indicators (green/yellow/orange/red)
+  - Visual alerts at 80%, 90%, and 100% budget thresholds
+  - Automatic budget carry-forward from previous month for seamless continuity
+  - Manual budget copy from any previous month for flexibility
+  - Overall budget summary showing total budgeted vs total spent
+  - Budget status tracking (budgets on track vs total budgets)
+- **Historical Budget Analysis**: Compare budget performance over time
+  - View budget vs actual spending for 3, 6, or 12 month periods
+  - Success rate calculation (percentage of months budget was met)
+  - Average spending per category over selected period
+  - Month-by-month breakdown with variance analysis
+- **Real-Time Budget Updates**: Budgets automatically recalculate when:
+  - Adding new expenses
+  - Editing expense amounts or categories
+  - Deleting expenses
+  - Changing expense dates between months
+- **Budget Management Interface**: User-friendly modal for budget configuration
+  - Create, update, and delete budget limits
+  - Copy budgets from previous months
+  - Input validation (positive amounts only, budgetable categories only)
+  - Confirmation messages and error handling
+
+### Changed
+- Summary panel now includes budget summary section with overall progress
+- Month selector enhanced with "Manage Budgets" and "Budget History" buttons
+- Expense operations now trigger budget recalculation for affected categories
+- Backup system now includes budget data in all backups and restores
+
+### Technical
+- Added `budgets` table with constraints and indexes
+  - UNIQUE constraint on (year, month, category)
+  - CHECK constraints for positive limits and valid categories
+  - Composite index on (year, month) for performance
+  - Category index for category-specific queries
+  - Automatic timestamp trigger for updated_at field
+- Created comprehensive budget service layer:
+  - `budgetService.js` with CRUD operations and progress calculations
+  - Automatic carry-forward logic when accessing months without budgets
+  - Manual budget copy with overwrite protection
+  - Historical analysis with aggregation and success rate calculations
+- Added budget API endpoints:
+  - `GET /api/budgets` - Get budgets with auto-carry-forward
+  - `POST /api/budgets` - Create budget
+  - `PUT /api/budgets/:id` - Update budget
+  - `DELETE /api/budgets/:id` - Delete budget
+  - `GET /api/budgets/summary` - Overall budget summary
+  - `GET /api/budgets/history` - Historical performance
+  - `POST /api/budgets/copy` - Manual budget copy
+- Created frontend components:
+  - `BudgetManagementModal` - Budget configuration interface
+  - `BudgetProgressBar` - Visual progress indicator with color coding
+  - `BudgetCard` - Individual category budget display
+  - `BudgetSummaryPanel` - Overall budget overview
+  - `BudgetHistoryView` - Historical analysis interface
+- Integrated budget recalculation hooks into expense service
+- Property-based testing with fast-check library (100+ iterations per property):
+  - 19 correctness properties covering all budget operations
+  - Round-trip testing for storage, backup, and copy operations
+  - Progress calculation accuracy verification
+  - Automatic carry-forward validation
+  - Real-time update verification
+- Comprehensive unit and integration test coverage:
+  - Repository layer tests for database operations
+  - Service layer tests for business logic
+  - Controller tests for API endpoints
+  - Component tests for UI functionality
+  - End-to-end integration tests for complete workflows
+
+### Documentation
+- Updated README.md with budget feature overview and usage instructions
+- Created comprehensive Budget Management User Guide (`docs/guides/BUDGET_MANAGEMENT_GUIDE.md`)
+- Added budget API endpoints to API documentation
+- Updated database schema documentation with budgets table
+
+### Breaking Changes
+- None - This is a purely additive feature with no breaking changes
+
+---
+
 ## [3.6.1] - 2025-11-19
 
 ### Fixed
@@ -377,6 +461,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version History Summary
 
+- **3.7.x**: Budget tracking and alerts with historical analysis
+- **3.6.x**: Enhanced annual summary and expense trend indicators
+- **3.5.x**: Expense trend indicators and place autocomplete
+- **3.4.x**: Unified Docker container and containerization optimization
 - **3.3.x**: Code quality and organization improvements
 - **3.2.x**: Fixed expenses and multi-source income
 - **3.1.x**: Recurring expenses and tax-deductible tracking
@@ -387,6 +475,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ---
 
 ## Upgrade Notes
+
+### Upgrading to 3.7.0
+- Database migration required
+- New table: `budgets`
+- Run migration script: `node backend/scripts/addBudgetsTable.js`
+- Backup database before upgrading
+- No breaking changes - fully backward compatible
+- Budget data automatically included in backups
 
 ### Upgrading to 3.3.2
 - No database changes required

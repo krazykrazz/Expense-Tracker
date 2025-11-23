@@ -8,6 +8,8 @@ import SummaryPanel from './components/SummaryPanel';
 import BackupSettings from './components/BackupSettings';
 import AnnualSummary from './components/AnnualSummary';
 import TaxDeductible from './components/TaxDeductible';
+import BudgetManagementModal from './components/BudgetManagementModal';
+import BudgetHistoryView from './components/BudgetHistoryView';
 import { API_ENDPOINTS } from './config';
 import logo from './assets/tracker.png.png';
 
@@ -23,6 +25,8 @@ function App() {
   const [showBackupSettings, setShowBackupSettings] = useState(false);
   const [showAnnualSummary, setShowAnnualSummary] = useState(false);
   const [showTaxDeductible, setShowTaxDeductible] = useState(false);
+  const [showBudgetManagement, setShowBudgetManagement] = useState(false);
+  const [showBudgetHistory, setShowBudgetHistory] = useState(false);
   const [filterType, setFilterType] = useState('');
   const [filterMethod, setFilterMethod] = useState('');
   const [versionInfo, setVersionInfo] = useState(null);
@@ -126,6 +130,29 @@ function App() {
     setSearchText(text);
   };
 
+  const handleManageBudgets = () => {
+    setShowBudgetManagement(true);
+  };
+
+  const handleCloseBudgetManagement = () => {
+    setShowBudgetManagement(false);
+    // Trigger refresh to update budget displays
+    setRefreshTrigger(prev => prev + 1);
+  };
+
+  const handleBudgetUpdated = () => {
+    // Just trigger refresh without closing the modal
+    setRefreshTrigger(prev => prev + 1);
+  };
+
+  const handleViewBudgetHistory = () => {
+    setShowBudgetHistory(true);
+  };
+
+  const handleCloseBudgetHistory = () => {
+    setShowBudgetHistory(false);
+  };
+
   // Filter expenses based on search text, type, and method
   const filteredExpenses = expenses.filter(expense => {
     // Search filter
@@ -177,6 +204,8 @@ function App() {
           onMonthChange={handleMonthChange}
           onViewAnnualSummary={() => setShowAnnualSummary(true)}
           onViewTaxDeductible={() => setShowTaxDeductible(true)}
+          onManageBudgets={handleManageBudgets}
+          onViewBudgetHistory={handleViewBudgetHistory}
         />
         <SearchBar onSearchChange={handleSearchChange} />
         
@@ -268,9 +297,27 @@ function App() {
         </div>
       )}
 
+      {showBudgetManagement && (
+        <BudgetManagementModal
+          isOpen={showBudgetManagement}
+          year={selectedYear}
+          month={selectedMonth}
+          onClose={handleCloseBudgetManagement}
+          onBudgetUpdated={handleBudgetUpdated}
+        />
+      )}
+
+      {showBudgetHistory && (
+        <BudgetHistoryView
+          year={selectedYear}
+          month={selectedMonth}
+          onClose={handleCloseBudgetHistory}
+        />
+      )}
+
       <footer className="App-footer">
         <span className="version">
-          v{versionInfo?.version || '3.6.1'}
+          v{versionInfo?.version || '3.7.0'}
           {versionInfo?.docker && (
             <span className="docker-tag"> (Docker: {versionInfo.docker.tag})</span>
           )}

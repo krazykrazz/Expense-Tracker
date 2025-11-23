@@ -10,6 +10,7 @@ const incomeRoutes = require('./routes/incomeRoutes');
 const fixedExpenseRoutes = require('./routes/fixedExpenseRoutes');
 const loanRoutes = require('./routes/loanRoutes');
 const loanBalanceRoutes = require('./routes/loanBalanceRoutes');
+const budgetRoutes = require('./routes/budgetRoutes');
 const healthRoutes = require('./routes/healthRoutes');
 const backupService = require('./services/backupService');
 const logger = require('./config/logger');
@@ -50,6 +51,9 @@ app.use('/api/loans', loanRoutes);
 
 // Loan balance API routes
 app.use('/api/loan-balances', loanBalanceRoutes);
+
+// Budget API routes
+app.use('/api/budgets', budgetRoutes);
 
 // Serve static files from the React app (after build)
 // In container: /app/frontend/dist, in development: ../frontend/dist

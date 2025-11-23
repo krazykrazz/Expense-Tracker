@@ -1,0 +1,505 @@
+/* Modal Overlay */
+.budget-history-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+/* Modal Content */
+.budget-history-content {
+  background: white;
+  border-radius: 8px;
+  max-width: 1200px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Modal Header */
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid #e0e0e0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 8px 8px 0 0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: white;
+}
+
+.close-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: white;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.close-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Period Selector */
+.period-selector {
+  padding: 20px;
+  border-bottom: 1px solid #e0e0e0;
+  background-color: #f9f9f9;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.period-selector label {
+  font-weight: 600;
+  color: #333;
+  font-size: 1rem;
+}
+
+.period-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.period-btn {
+  padding: 8px 16px;
+  border: 2px solid #667eea;
+  background-color: white;
+  color: #667eea;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.period-btn:hover {
+  background-color: #f0f4ff;
+}
+
+.period-btn.active {
+  background-color: #667eea;
+  color: white;
+}
+
+/* Export Section */
+.export-section {
+  padding: 15px 20px;
+  border-bottom: 1px solid #e0e0e0;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.export-btn {
+  padding: 10px 20px;
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.export-btn:hover {
+  background-color: #45a049;
+}
+
+/* Loading and Error States */
+.loading-message,
+.error-message {
+  text-align: center;
+  padding: 40px;
+  color: #666;
+  font-size: 1.1rem;
+}
+
+.error-message {
+  color: #d32f2f;
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #666;
+}
+
+.empty-state p {
+  margin: 10px 0;
+  font-size: 1.1rem;
+}
+
+.empty-state-hint {
+  color: #999;
+  font-size: 0.95rem;
+}
+
+/* History Table Container */
+.history-table-container {
+  padding: 20px;
+  overflow-x: auto;
+}
+
+.history-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: white;
+  table-layout: fixed;
+}
+
+.history-table thead {
+  background-color: #f5f5f5;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.history-table th {
+  padding: 12px;
+  text-align: left;
+  font-weight: 600;
+  color: #555;
+  font-size: 0.95rem;
+}
+
+.history-table th:nth-child(1) {
+  width: 20%;
+  text-align: left;
+}
+
+.history-table th:nth-child(2) {
+  width: 15%;
+  text-align: center;
+}
+
+.history-table th:nth-child(3),
+.history-table th:nth-child(4),
+.history-table th:nth-child(5) {
+  width: 21.67%;
+  text-align: right;
+}
+
+.history-table tbody tr {
+  border-bottom: 1px solid #e0e0e0;
+  transition: background-color 0.2s;
+}
+
+.history-table tbody tr:hover {
+  background-color: #f9f9f9;
+}
+
+.history-table td {
+  padding: 12px;
+  font-size: 0.95rem;
+}
+
+.history-table td:nth-child(1) {
+  text-align: left;
+}
+
+.history-table td:nth-child(3),
+.history-table td:nth-child(4),
+.history-table td:nth-child(5) {
+  text-align: right;
+}
+
+.category-cell {
+  font-weight: 600;
+  color: #333;
+}
+
+.success-rate-cell {
+  text-align: center;
+}
+
+.success-rate {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.success-rate.good {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+}
+
+.success-rate.moderate {
+  background-color: #fff3e0;
+  color: #f57c00;
+}
+
+.success-rate.poor {
+  background-color: #ffebee;
+  color: #c62828;
+}
+
+.amount-cell {
+  text-align: right;
+  font-family: 'Courier New', monospace;
+}
+
+.amount-cell.positive {
+  color: #2e7d32;
+  font-weight: 600;
+}
+
+.amount-cell.negative {
+  color: #c62828;
+  font-weight: 600;
+}
+
+/* Monthly Breakdown */
+.monthly-breakdown {
+  padding: 20px;
+  background-color: #fafafa;
+}
+
+.monthly-breakdown h3 {
+  margin: 0 0 20px 0;
+  font-size: 1.3rem;
+  color: #333;
+}
+
+.category-section {
+  margin-bottom: 30px;
+  background-color: white;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.category-title {
+  margin: 0 0 15px 0;
+  font-size: 1.1rem;
+  color: #667eea;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #667eea;
+}
+
+.monthly-table-container {
+  overflow-x: auto;
+}
+
+.monthly-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.monthly-table thead {
+  background-color: #f5f5f5;
+}
+
+.monthly-table th {
+  padding: 10px;
+  text-align: left;
+  font-weight: 600;
+  color: #555;
+  font-size: 0.9rem;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.monthly-table th:nth-child(1) {
+  width: 20%;
+}
+
+.monthly-table th:nth-child(2),
+.monthly-table th:nth-child(3),
+.monthly-table th:nth-child(4) {
+  width: 22%;
+  text-align: right;
+}
+
+.monthly-table th:nth-child(5) {
+  width: 14%;
+  text-align: center;
+}
+
+.monthly-table tbody tr {
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.monthly-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.monthly-table td {
+  padding: 10px;
+  font-size: 0.9rem;
+}
+
+.monthly-table td:nth-child(1) {
+  text-align: left;
+}
+
+.monthly-table td:nth-child(2),
+.monthly-table td:nth-child(3),
+.monthly-table td:nth-child(4) {
+  text-align: right;
+}
+
+.status-cell {
+  text-align: center;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.status-badge.met {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+}
+
+.status-badge.exceeded {
+  background-color: #ffebee;
+  color: #c62828;
+}
+
+.status-badge.no-budget {
+  background-color: #f5f5f5;
+  color: #999;
+  font-style: italic;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .budget-history-content {
+    max-width: 95%;
+  }
+
+  .history-table-container,
+  .monthly-table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media (max-width: 768px) {
+  .modal-header h2 {
+    font-size: 1.2rem;
+  }
+
+  .period-selector {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .period-buttons {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .period-btn {
+    flex: 1;
+    padding: 8px 12px;
+    font-size: 0.9rem;
+  }
+
+  .export-section {
+    padding: 15px;
+  }
+
+  .export-btn {
+    width: 100%;
+  }
+
+  .history-table th,
+  .history-table td {
+    padding: 8px;
+    font-size: 0.85rem;
+  }
+
+  .monthly-breakdown {
+    padding: 15px;
+  }
+
+  .category-section {
+    padding: 15px;
+  }
+
+  .monthly-table th,
+  .monthly-table td {
+    padding: 8px;
+    font-size: 0.85rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .budget-history-modal {
+    padding: 10px;
+  }
+
+  .modal-header {
+    padding: 15px;
+  }
+
+  .modal-header h2 {
+    font-size: 1.1rem;
+  }
+
+  .period-selector {
+    padding: 15px;
+  }
+
+  .period-btn {
+    padding: 6px 10px;
+    font-size: 0.85rem;
+  }
+
+  .history-table th,
+  .history-table td {
+    padding: 6px;
+    font-size: 0.8rem;
+  }
+
+  .success-rate {
+    padding: 3px 8px;
+    font-size: 0.8rem;
+  }
+
+  .status-badge {
+    padding: 3px 8px;
+    font-size: 0.75rem;
+  }
+
+  .monthly-breakdown h3 {
+    font-size: 1.1rem;
+  }
+
+  .category-title {
+    font-size: 1rem;
+  }
+}

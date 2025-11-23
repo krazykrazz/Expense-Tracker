@@ -174,6 +174,20 @@ function initializeDatabase() {
       )
     `;
 
+    // Create budgets table
+    const createBudgetsSQL = `
+      CREATE TABLE IF NOT EXISTS budgets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        year INTEGER NOT NULL,
+        month INTEGER NOT NULL CHECK(month >= 1 AND month <= 12),
+        category TEXT NOT NULL CHECK(category IN ('Food', 'Gas', 'Other')),
+        "limit" REAL NOT NULL CHECK("limit" > 0),
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(year, month, category)
+      )
+    `;
+
     db.run(createTableSQL, (err) => {
       if (err) {
         console.error('Error creating expenses table:', err.message);
@@ -236,6 +250,32 @@ function initializeDatabase() {
                   }
                   console.log('Loan balances table created or already exists');
 
+                  // Create budgets table
+                  db.run(createBudgetsSQL, (err) => {
+                    if (err) {
+                      console.error('Error creating budgets table:', err.message);
+                      reject(err);
+                      return;
+                    }
+                    console.log('Budgets table created or already exists');
+
+                    // Create trigger for budgets updated_at timestamp
+                    const createBudgetsTriggerSQL = `
+                      CREATE TRIGGER IF NOT EXISTS update_budgets_timestamp 
+                      AFTER UPDATE ON budgets
+                      BEGIN
+                        UPDATE budgets SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+                      END
+                    `;
+
+                    db.run(createBudgetsTriggerSQL, (err) => {
+                      if (err) {
+                        console.error('Error creating budgets trigger:', err.message);
+                        reject(err);
+                        return;
+                      }
+                      console.log('Budgets trigger created or already exists');
+
             // Add recurring expense columns if they don't exist (migration)
             db.run('ALTER TABLE expenses ADD COLUMN recurring_id INTEGER', (err) => {
               if (err && !err.message.includes('duplicate column')) {
@@ -265,7 +305,9 @@ function initializeDatabase() {
                     'CREATE INDEX IF NOT EXISTS idx_fixed_expenses_year_month ON fixed_expenses(year, month)',
                     'CREATE INDEX IF NOT EXISTS idx_loans_paid_off ON loans(is_paid_off)',
                     'CREATE INDEX IF NOT EXISTS idx_loan_balances_loan_id ON loan_balances(loan_id)',
-                    'CREATE INDEX IF NOT EXISTS idx_loan_balances_year_month ON loan_balances(year, month)'
+                    'CREATE INDEX IF NOT EXISTS idx_loan_balances_year_month ON loan_balances(year, month)',
+                    'CREATE INDEX IF NOT EXISTS idx_budgets_period ON budgets(year, month)',
+                    'CREATE INDEX IF NOT EXISTS idx_budgets_category ON budgets(category)'
                   ];
 
                   let completed = 0;
@@ -281,6 +323,8 @@ function initializeDatabase() {
                         console.log('All indexes created successfully');
                         resolve(db);
                       }
+                    });
+                  });
                     });
                   });
                 });

@@ -19,10 +19,11 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ## 📊 Analytics & Insights
 
-### ⚪ 1. Budget Tracking & Alerts
-**Status**: Proposed  
+### 🟡 1. Budget Tracking & Alerts
+**Status**: In Progress  
 **Priority**: High  
 **Effort**: Medium  
+**Spec**: `.kiro/specs/budget-tracking-alerts/`  
 **Description**: Set monthly budgets per category with visual progress bars and alerts when approaching or exceeding limits.
 
 **Key Features**:

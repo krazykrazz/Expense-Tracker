@@ -66,14 +66,6 @@ const AnnualSummary = ({ year }) => {
   }
 
   if (!summary) {
-    return null;
-  }
-
-  // Check if there's any data for this year
-  const hasData = summary.totalExpenses > 0 || summary.totalIncome > 0;
-
-  // Show empty state if no data
-  if (!hasData) {
     return (
       <div className="annual-summary">
         <h2>📊 Annual Summary {year}</h2>
@@ -155,13 +147,13 @@ const AnnualSummary = ({ year }) => {
             <span>Income</span>
           </div>
         </div>
-        <div className="monthly-chart">
+        <div className="monthly-chart stacked">
           {summary.monthlyTotals && summary.monthlyTotals.length > 0 && chartData && summary.monthlyTotals.map((month) => {
             // Use memoized scale factor for performance
             const { scaleFactor } = chartData;
             
-            const fixedWidth = ((month.fixedExpenses || 0) / scaleFactor) * 100;
-            const variableWidth = ((month.variableExpenses || 0) / scaleFactor) * 100;
+            const fixedHeight = ((month.fixedExpenses || 0) / scaleFactor) * 100;
+            const variableHeight = ((month.variableExpenses || 0) / scaleFactor) * 100;
             const incomeWidth = ((month.income || 0) / scaleFactor) * 100;
             const netIncome = (month.income || 0) - month.total;
             
@@ -170,27 +162,22 @@ const AnnualSummary = ({ year }) => {
                 <div className="month-label">{getMonthNameShort(month.month)}</div>
                 <div className="month-bars-wrapper">
                   <div className="bar-wrapper">
-                    {(month.fixedExpenses || 0) > 0 && (
+                    <div className="stacked-bar">
                       <div 
-                        className="month-bar fixed-expense-bar"
-                        style={{ width: `${fixedWidth}%` }}
-                        title={`Fixed: $${formatAmount(month.fixedExpenses || 0)}`}
+                        className="fixed-segment"
+                        style={{ height: `${fixedHeight}%` }}
+                        title={`Fixed: ${formatAmount(month.fixedExpenses || 0)}`}
                       >
                         <span className="bar-value">${formatAmount(month.fixedExpenses)}</span>
                       </div>
-                    )}
-                    {(month.variableExpenses || 0) > 0 && (
                       <div 
-                        className="month-bar variable-expense-bar"
-                        style={{ 
-                          width: `${variableWidth}%`,
-                          marginLeft: (month.fixedExpenses || 0) > 0 ? '2px' : '0'
-                        }}
-                        title={`Variable: $${formatAmount(month.variableExpenses || 0)}`}
+                        className="variable-segment"
+                        style={{ height: `${variableHeight}%` }}
+                        title={`Variable: ${formatAmount(month.variableExpenses || 0)}`}
                       >
                         <span className="bar-value">${formatAmount(month.variableExpenses)}</span>
                       </div>
-                    )}
+                    </div>
                     {month.total === 0 && (
                       <div className="empty-bar">
                         <span className="bar-value">$0.00</span>
@@ -202,7 +189,7 @@ const AnnualSummary = ({ year }) => {
                       <div 
                         className="month-bar income-bar"
                         style={{ width: `${incomeWidth}%` }}
-                        title={`Income: $${formatAmount(month.income || 0)} | Net: $${formatAmount(Math.abs(netIncome))}`}
+                        title={`Income: ${formatAmount(month.income || 0)} | Net: ${formatAmount(Math.abs(netIncome))}`}
                       >
                         <span className="bar-value">${formatAmount(month.income)}</span>
                       </div>

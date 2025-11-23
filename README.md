@@ -27,6 +27,16 @@ A full-stack expense tracking application built with React and Node.js.
 - 📅 Start date filtering (loans only appear in months after they start)
 - 🔗 Cascade delete (removing a loan deletes all balance entries)
 
+### Budget Tracking & Alerts
+- 💵 Set monthly budget limits for expense categories (Food, Gas, Other)
+- 📊 Real-time progress bars with color-coded status indicators
+- ⚠️ Visual alerts at 80%, 90%, and 100% thresholds
+- 🔄 Automatic budget carry-forward from previous month
+- 📋 Manual budget copy from any previous month
+- 📈 Historical budget performance analysis (3, 6, or 12 months)
+- 📉 Budget vs actual spending comparisons
+- 🎯 Overall budget summary with total budgeted vs spent
+
 ### Data Management
 - 💾 Automated and manual database backups (includes all data)
 - 📤 CSV export functionality
@@ -261,6 +271,19 @@ stop-servers.bat
 12. **View Charts**: Lines of credit display a dual-axis chart showing balance and interest rate trends
 13. **Mark Paid Off**: Traditional loans auto-mark as paid off when balance reaches zero
 
+### Budget Tracking & Alerts
+14. **Manage Budgets**: Click the "💵 Manage Budgets" button in the month selector to set budget limits
+15. **Set Budget Limits**: Enter budget amounts for Food, Gas, and Other categories
+16. **Monitor Progress**: View real-time progress bars with color-coded status:
+    - **Green**: Under 80% of budget (safe)
+    - **Yellow**: 80-89% of budget (warning)
+    - **Orange**: 90-99% of budget (danger)
+    - **Red**: 100% or more (over budget)
+17. **Copy Budgets**: Use "📋 Copy from Previous Month" to replicate budget limits
+18. **View History**: Click "📊 Budget History" to analyze budget performance over time
+19. **Automatic Carry-Forward**: Budgets automatically copy from previous month when accessing a new month
+20. **Budget Summary**: View overall budget status in the summary panel showing total budgeted vs spent
+
 ### Data Management
 14. **Backup**: Click the "💾 Backup" button to download your database
 15. **Automated Backups**: Configure scheduled backups in Backup Settings
@@ -323,6 +346,15 @@ expense-tracker/
 - `PUT /api/loan-balances/:id` - Update a balance entry
 - `DELETE /api/loan-balances/:id` - Delete a balance entry
 
+### Budgets
+- `GET /api/budgets?year=YYYY&month=MM` - Get budgets for a month (with auto-carry-forward)
+- `POST /api/budgets` - Create a new budget
+- `PUT /api/budgets/:id` - Update a budget limit
+- `DELETE /api/budgets/:id` - Delete a budget
+- `GET /api/budgets/summary?year=YYYY&month=MM` - Get overall budget summary
+- `GET /api/budgets/history?year=YYYY&month=MM&months=N` - Get historical budget performance
+- `POST /api/budgets/copy` - Manually copy budgets between months
+
 ### Backup
 - `GET /api/backup` - Download database backup
 - `POST /api/backup/restore` - Restore from backup file
@@ -377,6 +409,16 @@ expense-tracker/
 - created_at (TEXT)
 - updated_at (TEXT)
 - UNIQUE constraint on (loan_id, year, month)
+
+### Budgets Table
+- id (INTEGER PRIMARY KEY)
+- year (INTEGER)
+- month (INTEGER)
+- category (TEXT) - 'Food', 'Gas', or 'Other'
+- limit (REAL) - Budget limit amount (must be > 0)
+- created_at (TEXT)
+- updated_at (TEXT)
+- UNIQUE constraint on (year, month, category)
 
 ## Documentation
 

@@ -55,7 +55,9 @@
 }
 
 .annual-summary-button,
-.tax-deductible-button {
+.tax-deductible-button,
+.manage-budgets-button,
+.budget-history-button {
   padding: 6px 16px;
   background: #0ea5e9;
   color: white;
@@ -69,7 +71,9 @@
 }
 
 .annual-summary-button:hover,
-.tax-deductible-button:hover {
+.tax-deductible-button:hover,
+.manage-budgets-button:hover,
+.budget-history-button:hover {
   background: #0284c7;
 }
 
@@ -81,9 +85,27 @@
   background: #15803d;
 }
 
+.manage-budgets-button {
+  background: #8b5cf6;
+}
+
+.manage-budgets-button:hover {
+  background: #7c3aed;
+}
+
+.budget-history-button {
+  background: #f59e0b;
+}
+
+.budget-history-button:hover {
+  background: #d97706;
+}
+
 @media (max-width: 768px) {
   .annual-summary-button,
-  .tax-deductible-button {
+  .tax-deductible-button,
+  .manage-budgets-button,
+  .budget-history-button {
     width: 100%;
   }
 }

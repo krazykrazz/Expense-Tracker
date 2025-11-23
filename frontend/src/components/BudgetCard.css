@@ -1,0 +1,109 @@
+.budget-card {
+  background: var(--bg-white);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow var(--transition-normal), transform var(--transition-normal);
+}
+
+.budget-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.budget-card-header {
+  margin-bottom: var(--spacing-md);
+  padding-bottom: var(--spacing-md);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.category-info {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.category-icon {
+  font-size: 1.5em;
+  line-height: 1;
+}
+
+.category-name {
+  margin: 0;
+  font-size: 1.1em;
+  font-weight: 600;
+  color: var(--text-primary);
+  flex: 1;
+}
+
+.budget-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.budget-amounts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.amount-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.95em;
+}
+
+.amount-label {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.amount-value {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.amount-value.under-budget {
+  color: var(--color-positive);
+}
+
+.amount-value.over-budget {
+  color: var(--color-negative);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .budget-card {
+    padding: var(--spacing-md);
+  }
+  
+  .category-icon {
+    font-size: 1.3em;
+  }
+  
+  .category-name {
+    font-size: 1em;
+  }
+  
+  .amount-row {
+    font-size: 0.9em;
+  }
+}
+
+/* Grid layout support for multiple cards */
+.budget-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--spacing-lg);
+  margin-top: var(--spacing-lg);
+}
+
+@media (max-width: 768px) {
+  .budget-cards-grid {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-md);
+  }
+}

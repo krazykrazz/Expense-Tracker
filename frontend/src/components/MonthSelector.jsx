@@ -1,6 +1,6 @@
 import './MonthSelector.css';
 
-const MonthSelector = ({ selectedYear, selectedMonth, onMonthChange, onViewAnnualSummary, onViewTaxDeductible }) => {
+const MonthSelector = ({ selectedYear, selectedMonth, onMonthChange, onViewAnnualSummary, onViewTaxDeductible, onManageBudgets, onViewBudgetHistory }) => {
   // Generate year range from 2020 to 2030
   const years = [];
   for (let year = 2020; year <= 2030; year++) {
@@ -49,6 +49,22 @@ const MonthSelector = ({ selectedYear, selectedMonth, onMonthChange, onViewAnnua
         title="View tax deductible expenses"
       >
         💰 Income Tax
+      </button>
+
+      <button 
+        className="manage-budgets-button"
+        onClick={onManageBudgets}
+        title="Manage monthly budgets"
+      >
+        💵 Manage Budgets
+      </button>
+
+      <button 
+        className="budget-history-button"
+        onClick={onViewBudgetHistory}
+        title="View budget history"
+      >
+        📈 Budget History
       </button>
 
       <div className="selector-group">

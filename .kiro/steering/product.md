@@ -12,7 +12,6 @@ A full-stack personal expense tracking application for managing household financ
 - Loan type differentiation (traditional loans vs lines of credit)
 - Visual dual-axis charts showing balance and interest rate trends
 - Total debt overview showing aggregate debt across all active loans over time
-- Recurring expense templates with automatic generation
 - Tax-deductible expense tracking (medical and donations)
 - CSV import for bulk expense entry
 - Automated and manual database backups

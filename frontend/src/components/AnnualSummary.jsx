@@ -147,49 +147,56 @@ const AnnualSummary = ({ year }) => {
             <span>Income</span>
           </div>
         </div>
-        <div className="monthly-chart stacked">
+        <div className="monthly-chart">
           {summary.monthlyTotals && summary.monthlyTotals.length > 0 && chartData && summary.monthlyTotals.map((month) => {
             // Use memoized scale factor for performance
             const { scaleFactor } = chartData;
             
-            const fixedHeight = ((month.fixedExpenses || 0) / scaleFactor) * 100;
-            const variableHeight = ((month.variableExpenses || 0) / scaleFactor) * 100;
+            const fixedWidth = ((month.fixedExpenses || 0) / scaleFactor) * 100;
+            const variableWidth = ((month.variableExpenses || 0) / scaleFactor) * 100;
             const incomeWidth = ((month.income || 0) / scaleFactor) * 100;
-            const netIncome = (month.income || 0) - month.total;
+            const totalExpenseWidth = fixedWidth + variableWidth;
             
             return (
               <div key={month.month} className="month-bar-container">
                 <div className="month-label">{getMonthNameShort(month.month)}</div>
                 <div className="month-bars-wrapper">
+                  {/* Expenses Bar - Stacked Horizontal */}
                   <div className="bar-wrapper">
-                    <div className="stacked-bar">
-                      <div 
-                        className="fixed-segment"
-                        style={{ height: `${fixedHeight}%` }}
-                        title={`Fixed: ${formatAmount(month.fixedExpenses || 0)}`}
-                      >
-                        <span className="bar-value">${formatAmount(month.fixedExpenses)}</span>
+                    {month.total > 0 ? (
+                      <div className="horizontal-stacked-bar" style={{ width: `${totalExpenseWidth}%` }}>
+                        {fixedWidth > 0 && (
+                          <div 
+                            className="horizontal-segment fixed-segment"
+                            style={{ width: `${(fixedWidth / totalExpenseWidth) * 100}%` }}
+                            title={`Fixed: $${formatAmount(month.fixedExpenses || 0)}`}
+                          >
+                            {fixedWidth > 10 && <span className="bar-value">${formatAmount(month.fixedExpenses)}</span>}
+                          </div>
+                        )}
+                        {variableWidth > 0 && (
+                          <div 
+                            className="horizontal-segment variable-segment"
+                            style={{ width: `${(variableWidth / totalExpenseWidth) * 100}%` }}
+                            title={`Variable: $${formatAmount(month.variableExpenses || 0)}`}
+                          >
+                            {variableWidth > 10 && <span className="bar-value">${formatAmount(month.variableExpenses)}</span>}
+                          </div>
+                        )}
                       </div>
-                      <div 
-                        className="variable-segment"
-                        style={{ height: `${variableHeight}%` }}
-                        title={`Variable: ${formatAmount(month.variableExpenses || 0)}`}
-                      >
-                        <span className="bar-value">${formatAmount(month.variableExpenses)}</span>
-                      </div>
-                    </div>
-                    {month.total === 0 && (
+                    ) : (
                       <div className="empty-bar">
                         <span className="bar-value">$0.00</span>
                       </div>
                     )}
                   </div>
+                  {/* Income Bar - Horizontal */}
                   {(month.income || 0) > 0 && (
-                    <div className="bar-wrapper income-bar-wrapper">
+                    <div className="bar-wrapper">
                       <div 
                         className="month-bar income-bar"
                         style={{ width: `${incomeWidth}%` }}
-                        title={`Income: ${formatAmount(month.income || 0)} | Net: ${formatAmount(Math.abs(netIncome))}`}
+                        title={`Income: $${formatAmount(month.income || 0)}`}
                       >
                         <span className="bar-value">${formatAmount(month.income)}</span>
                       </div>

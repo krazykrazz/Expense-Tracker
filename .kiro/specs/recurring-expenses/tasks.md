@@ -1,5 +1,17 @@
 # Implementation Plan
 
+> **⚠️ DEPRECATED - Feature Removed in v4.0.0**
+> 
+> This feature was removed from the Expense Tracker application in version 4.0.0 (November 2025).
+> The recurring expenses functionality has been replaced by the **Fixed Expenses** feature for 
+> predictable monthly costs. This spec is retained for historical reference only.
+> 
+> **Migration Information:**
+> - See: `RECURRING_EXPENSES_REMOVAL.md` for removal details
+> - See: `RECURRING_EXPENSES_REMOVAL_COMPLETE.md` for completion report
+> - Database migration automatically converts generated expenses to regular expenses
+> - Use Fixed Expenses feature for tracking predictable monthly obligations
+
 - [x] 1. Set up database schema for recurring expenses
 
 

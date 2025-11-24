@@ -4,15 +4,8 @@ const loanService = require('./loanService');
 const { calculateWeek } = require('../utils/dateUtils');
 const { CATEGORIES } = require('../utils/categories');
 const { validateYearMonth } = require('../utils/validators');
-
-// Lazy-load budgetService to avoid circular dependency
-let budgetService = null;
-function getBudgetService() {
-  if (!budgetService) {
-    budgetService = require('./budgetService');
-  }
-  return budgetService;
-}
+const { PAYMENT_METHODS } = require('../utils/constants');
+const budgetEvents = require('../events/budgetEvents');
 
 class ExpenseService {
   /**
@@ -62,9 +55,8 @@ class ExpenseService {
     }
 
     // Method validation
-    const validMethods = ['Cash', 'Debit', 'Cheque', 'CIBC MC', 'PCF MC', 'WS VISA', 'VISA'];
-    if (expense.method && !validMethods.includes(expense.method)) {
-      errors.push(`Payment method must be one of: ${validMethods.join(', ')}`);
+    if (expense.method && !PAYMENT_METHODS.includes(expense.method)) {
+      errors.push(`Payment method must be one of: ${PAYMENT_METHODS.join(', ')}`);
     }
 
     // String length validation
@@ -94,33 +86,16 @@ class ExpenseService {
   /**
    * Trigger budget recalculation for affected budgets
    * This is called after expense operations to ensure budget progress is updated
+   * Uses event emitter to avoid circular dependency with budgetService
    * @param {string} date - Expense date (YYYY-MM-DD)
    * @param {string} category - Expense category
    * @private
    */
-  async _triggerBudgetRecalculation(date, category) {
-    try {
-      // Only recalculate for budgetable categories
-      const { BUDGETABLE_CATEGORIES } = require('../utils/categories');
-      if (!BUDGETABLE_CATEGORIES.includes(category)) {
-        return;
-      }
-
-      // Extract year and month from date
-      const dateObj = new Date(date);
-      const year = dateObj.getFullYear();
-      const month = dateObj.getMonth() + 1; // JavaScript months are 0-indexed
-
-      // Get budget service and trigger recalculation by fetching summary
-      // This ensures the budget progress is recalculated with current expense data
-      const service = getBudgetService();
-      await service.getBudgetSummary(year, month);
-    } catch (err) {
-      // Silently ignore if budgets table doesn't exist (e.g., in test environments)
-      // Otherwise log the error but don't fail the expense operation
-      if (!err.message.includes('no such table: budgets')) {
-        console.error('Budget recalculation failed:', err.message);
-      }
+  _triggerBudgetRecalculation(date, category) {
+    // Only emit event for budgetable categories
+    const { BUDGETABLE_CATEGORIES } = require('../utils/categories');
+    if (BUDGETABLE_CATEGORIES.includes(category)) {
+      budgetEvents.emitBudgetRecalculation(date, category);
     }
   }
 
@@ -153,7 +128,7 @@ class ExpenseService {
     const createdExpense = await expenseRepository.create(expense);
 
     // Trigger budget recalculation for affected budget
-    await this._triggerBudgetRecalculation(expense.date, expense.type);
+    this._triggerBudgetRecalculation(expense.date, expense.type);
 
     return createdExpense;
   }
@@ -215,11 +190,11 @@ class ExpenseService {
 
       if (categoryChanged || amountChanged || dateChanged) {
         // Recalculate old budget (old category and date)
-        await this._triggerBudgetRecalculation(oldExpense.date, oldExpense.type);
+        this._triggerBudgetRecalculation(oldExpense.date, oldExpense.type);
 
         // If category or date changed, also recalculate new budget
         if (categoryChanged || dateChanged) {
-          await this._triggerBudgetRecalculation(expense.date, expense.type);
+          this._triggerBudgetRecalculation(expense.date, expense.type);
         }
       }
     }
@@ -241,7 +216,7 @@ class ExpenseService {
 
     // Trigger budget recalculation for affected budget
     if (deleted && expense) {
-      await this._triggerBudgetRecalculation(expense.date, expense.type);
+      this._triggerBudgetRecalculation(expense.date, expense.type);
     }
 
     return deleted;
@@ -270,62 +245,69 @@ class ExpenseService {
     }
 
     // Get current month summary
-    const summary = await expenseRepository.getSummary(yearNum, monthNum);
-    const monthlyGross = await expenseRepository.getMonthlyGross(yearNum, monthNum);
-    const totalFixedExpenses = await fixedExpenseRepository.getTotalFixedExpenses(yearNum, monthNum);
+    const current = await this._getMonthSummary(yearNum, monthNum);
     
-    // Fetch loans for the selected month (filters by start_date and excludes paid off)
-    const loans = await loanService.getLoansForMonth(yearNum, monthNum);
+    // If includePrevious is false, return just the current summary
+    if (!includePrevious) {
+      return current;
+    }
+    
+    // Calculate previous month and get its summary
+    const { prevYear, prevMonth } = this._calculatePreviousMonth(yearNum, monthNum);
+    const previous = await this._getMonthSummary(prevYear, prevMonth);
+    
+    // Return both current and previous month data
+    return { current, previous };
+  }
+
+  /**
+   * Get complete summary for a specific month
+   * @param {number} year - Year
+   * @param {number} month - Month (1-12)
+   * @returns {Promise<Object>} Complete month summary
+   * @private
+   */
+  async _getMonthSummary(year, month) {
+    // Fetch all data in parallel for better performance
+    const [summary, monthlyGross, totalFixedExpenses, loans] = await Promise.all([
+      expenseRepository.getSummary(year, month),
+      expenseRepository.getMonthlyGross(year, month),
+      fixedExpenseRepository.getTotalFixedExpenses(year, month),
+      loanService.getLoansForMonth(year, month)
+    ]);
     
     // Calculate total outstanding debt from active loans
     const totalOutstandingDebt = loanService.calculateTotalOutstandingDebt(loans);
     
-    // Add monthly gross, fixed expenses, loans, and net balance to summary
-    summary.monthlyGross = monthlyGross || 0;
-    summary.totalFixedExpenses = totalFixedExpenses || 0;
-    summary.totalExpenses = summary.total + summary.totalFixedExpenses;
-    summary.netBalance = summary.monthlyGross - summary.totalExpenses;
-    summary.loans = loans;
-    summary.totalOutstandingDebt = totalOutstandingDebt;
-    
-    // If includePrevious is false, return just the current summary
-    if (!includePrevious) {
-      return summary;
-    }
-    
-    // Calculate previous month (handle year rollover)
-    let prevYear = yearNum;
-    let prevMonth = monthNum - 1;
+    // Build complete summary object
+    return {
+      ...summary,
+      monthlyGross: monthlyGross || 0,
+      totalFixedExpenses: totalFixedExpenses || 0,
+      totalExpenses: summary.total + (totalFixedExpenses || 0),
+      netBalance: (monthlyGross || 0) - (summary.total + (totalFixedExpenses || 0)),
+      loans,
+      totalOutstandingDebt
+    };
+  }
+
+  /**
+   * Calculate previous month with year rollover handling
+   * @param {number} year - Current year
+   * @param {number} month - Current month
+   * @returns {Object} Previous month { prevYear, prevMonth }
+   * @private
+   */
+  _calculatePreviousMonth(year, month) {
+    let prevYear = year;
+    let prevMonth = month - 1;
     
     if (prevMonth < 1) {
       prevMonth = 12;
-      prevYear = yearNum - 1;
+      prevYear = year - 1;
     }
     
-    // Get previous month summary
-    const prevSummary = await expenseRepository.getSummary(prevYear, prevMonth);
-    const prevMonthlyGross = await expenseRepository.getMonthlyGross(prevYear, prevMonth);
-    const prevTotalFixedExpenses = await fixedExpenseRepository.getTotalFixedExpenses(prevYear, prevMonth);
-    
-    // Fetch loans for the previous month
-    const prevLoans = await loanService.getLoansForMonth(prevYear, prevMonth);
-    
-    // Calculate total outstanding debt from active loans for previous month
-    const prevTotalOutstandingDebt = loanService.calculateTotalOutstandingDebt(prevLoans);
-    
-    // Add monthly gross, fixed expenses, loans, and net balance to previous summary
-    prevSummary.monthlyGross = prevMonthlyGross || 0;
-    prevSummary.totalFixedExpenses = prevTotalFixedExpenses || 0;
-    prevSummary.totalExpenses = prevSummary.total + prevSummary.totalFixedExpenses;
-    prevSummary.netBalance = prevSummary.monthlyGross - prevSummary.totalExpenses;
-    prevSummary.loans = prevLoans;
-    prevSummary.totalOutstandingDebt = prevTotalOutstandingDebt;
-    
-    // Return both current and previous month data
-    return {
-      current: summary,
-      previous: prevSummary
-    };
+    return { prevYear, prevMonth };
   }
 
   /**
@@ -365,11 +347,43 @@ class ExpenseService {
    * @returns {Promise<Object>} Annual summary object
    */
   async getAnnualSummary(year) {
+    // Fetch all data in parallel
+    const [
+      monthlyVariableExpenses,
+      monthlyFixedExpenses,
+      monthlyIncome,
+      categoryTotals,
+      methodTotals
+    ] = await Promise.all([
+      this._getMonthlyVariableExpenses(year),
+      this._getMonthlyFixedExpenses(year),
+      this._getMonthlyIncome(year),
+      this._getCategoryTotals(year),
+      this._getMethodTotals(year)
+    ]);
+
+    // Build summary from fetched data
+    return this._buildAnnualSummary(
+      year,
+      monthlyVariableExpenses,
+      monthlyFixedExpenses,
+      monthlyIncome,
+      categoryTotals,
+      methodTotals
+    );
+  }
+
+  /**
+   * Get monthly variable expenses for a year
+   * @param {number} year - Year
+   * @returns {Promise<Array>} Monthly variable expenses
+   * @private
+   */
+  async _getMonthlyVariableExpenses(year) {
     const db = await require('../database/db').getDatabase();
     
     return new Promise((resolve, reject) => {
-      // Get monthly variable expenses (from expenses table)
-      const monthlyQuery = `
+      const query = `
         SELECT 
           CAST(strftime('%m', date) AS INTEGER) as month,
           SUM(amount) as total
@@ -379,161 +393,227 @@ class ExpenseService {
         ORDER BY month
       `;
       
-      db.all(monthlyQuery, [year.toString()], (err, monthlyVariableExpenses) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-        
-        // Get monthly fixed expenses (from fixed_expenses table)
-        const fixedExpensesQuery = `
-          SELECT 
-            month,
-            SUM(amount) as total
-          FROM fixed_expenses
-          WHERE year = ?
-          GROUP BY month
-          ORDER BY month
-        `;
-        
-        db.all(fixedExpensesQuery, [year], (err, monthlyFixedExpenses) => {
-          if (err) {
-            reject(err);
-            return;
-          }
-          
-          // Get monthly income (from income_sources table)
-          const incomeQuery = `
-            SELECT 
-              month,
-              SUM(amount) as total
-            FROM income_sources
-            WHERE year = ?
-            GROUP BY month
-            ORDER BY month
-          `;
-          
-          db.all(incomeQuery, [year], (err, monthlyIncome) => {
-            if (err) {
-              reject(err);
-              return;
-            }
-            
-            // Get category breakdown
-            const categoryQuery = `
-              SELECT type, SUM(amount) as total
-              FROM expenses
-              WHERE strftime('%Y', date) = ?
-              GROUP BY type
-              ORDER BY total DESC
-            `;
-            
-            db.all(categoryQuery, [year.toString()], (err, categoryTotals) => {
-              if (err) {
-                reject(err);
-                return;
-              }
-              
-              // Get payment method breakdown
-              const methodQuery = `
-                SELECT method, SUM(amount) as total
-                FROM expenses
-                WHERE strftime('%Y', date) = ?
-                GROUP BY method
-                ORDER BY total DESC
-              `;
-              
-              db.all(methodQuery, [year.toString()], (err, methodTotals) => {
-                if (err) {
-                  reject(err);
-                  return;
-                }
-                
-                // Create lookup maps for fixed expenses and income
-                const fixedExpensesMap = {};
-                monthlyFixedExpenses.forEach(m => {
-                  fixedExpensesMap[m.month] = m.total;
-                });
-                
-                const incomeMap = {};
-                monthlyIncome.forEach(m => {
-                  incomeMap[m.month] = m.total;
-                });
-                
-                const variableExpensesMap = {};
-                monthlyVariableExpenses.forEach(m => {
-                  variableExpensesMap[m.month] = m.total;
-                });
-                
-                // Build complete monthly breakdown for all 12 months
-                const monthlyTotals = [];
-                for (let month = 1; month <= 12; month++) {
-                  const fixedExpenses = fixedExpensesMap[month] || 0;
-                  const variableExpenses = variableExpensesMap[month] || 0;
-                  const income = incomeMap[month] || 0;
-                  const total = fixedExpenses + variableExpenses;
-                  
-                  monthlyTotals.push({
-                    month,
-                    total,
-                    fixedExpenses,
-                    variableExpenses,
-                    income
-                  });
-                }
-                
-                // Calculate annual totals
-                const totalVariableExpenses = monthlyVariableExpenses.reduce((sum, m) => sum + m.total, 0);
-                const totalFixedExpenses = monthlyFixedExpenses.reduce((sum, m) => sum + m.total, 0);
-                const totalExpenses = totalVariableExpenses + totalFixedExpenses;
-                const totalIncome = monthlyIncome.reduce((sum, m) => sum + m.total, 0);
-                const netIncome = totalIncome - totalExpenses;
-                
-                // Calculate average monthly (only for months with data)
-                const monthsWithData = monthlyTotals.filter(m => m.total > 0).length;
-                const averageMonthly = monthsWithData > 0 ? totalExpenses / monthsWithData : 0;
-                
-                // Find highest and lowest months (based on total expenses)
-                const monthsWithExpenses = monthlyTotals.filter(m => m.total > 0);
-                const highestMonth = monthsWithExpenses.length > 0 
-                  ? monthsWithExpenses.reduce((max, m) => m.total > max.total ? m : max, monthsWithExpenses[0])
-                  : null;
-                
-                const lowestMonth = monthsWithExpenses.length > 0
-                  ? monthsWithExpenses.reduce((min, m) => m.total < min.total ? m : min, monthsWithExpenses[0])
-                  : null;
-                
-                // Convert arrays to objects for easier frontend consumption
-                const byCategory = {};
-                categoryTotals.forEach(c => {
-                  byCategory[c.type] = c.total;
-                });
-                
-                const byMethod = {};
-                methodTotals.forEach(m => {
-                  byMethod[m.method] = m.total;
-                });
-                
-                resolve({
-                  year,
-                  totalExpenses,
-                  totalFixedExpenses,
-                  totalVariableExpenses,
-                  totalIncome,
-                  netIncome,
-                  averageMonthly,
-                  monthlyTotals,
-                  highestMonth,
-                  lowestMonth,
-                  byCategory,
-                  byMethod
-                });
-              });
-            });
-          });
-        });
+      db.all(query, [year.toString()], (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows || []);
       });
     });
+  }
+
+  /**
+   * Get monthly fixed expenses for a year
+   * @param {number} year - Year
+   * @returns {Promise<Array>} Monthly fixed expenses
+   * @private
+   */
+  async _getMonthlyFixedExpenses(year) {
+    const db = await require('../database/db').getDatabase();
+    
+    return new Promise((resolve, reject) => {
+      const query = `
+        SELECT month, SUM(amount) as total
+        FROM fixed_expenses
+        WHERE year = ?
+        GROUP BY month
+        ORDER BY month
+      `;
+      
+      db.all(query, [year], (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows || []);
+      });
+    });
+  }
+
+  /**
+   * Get monthly income for a year
+   * @param {number} year - Year
+   * @returns {Promise<Array>} Monthly income
+   * @private
+   */
+  async _getMonthlyIncome(year) {
+    const db = await require('../database/db').getDatabase();
+    
+    return new Promise((resolve, reject) => {
+      const query = `
+        SELECT month, SUM(amount) as total
+        FROM income_sources
+        WHERE year = ?
+        GROUP BY month
+        ORDER BY month
+      `;
+      
+      db.all(query, [year], (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows || []);
+      });
+    });
+  }
+
+  /**
+   * Get category totals for a year
+   * @param {number} year - Year
+   * @returns {Promise<Array>} Category totals
+   * @private
+   */
+  async _getCategoryTotals(year) {
+    const db = await require('../database/db').getDatabase();
+    
+    return new Promise((resolve, reject) => {
+      const query = `
+        SELECT type, SUM(amount) as total
+        FROM expenses
+        WHERE strftime('%Y', date) = ?
+        GROUP BY type
+        ORDER BY total DESC
+      `;
+      
+      db.all(query, [year.toString()], (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows || []);
+      });
+    });
+  }
+
+  /**
+   * Get payment method totals for a year
+   * @param {number} year - Year
+   * @returns {Promise<Array>} Method totals
+   * @private
+   */
+  async _getMethodTotals(year) {
+    const db = await require('../database/db').getDatabase();
+    
+    return new Promise((resolve, reject) => {
+      const query = `
+        SELECT method, SUM(amount) as total
+        FROM expenses
+        WHERE strftime('%Y', date) = ?
+        GROUP BY method
+        ORDER BY total DESC
+      `;
+      
+      db.all(query, [year.toString()], (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows || []);
+      });
+    });
+  }
+
+  /**
+   * Build annual summary from fetched data
+   * @param {number} year - Year
+   * @param {Array} monthlyVariableExpenses - Monthly variable expenses
+   * @param {Array} monthlyFixedExpenses - Monthly fixed expenses
+   * @param {Array} monthlyIncome - Monthly income
+   * @param {Array} categoryTotals - Category totals
+   * @param {Array} methodTotals - Method totals
+   * @returns {Object} Annual summary
+   * @private
+   */
+  _buildAnnualSummary(year, monthlyVariableExpenses, monthlyFixedExpenses, monthlyIncome, categoryTotals, methodTotals) {
+    // Create lookup maps
+    const fixedExpensesMap = this._createMonthMap(monthlyFixedExpenses);
+    const incomeMap = this._createMonthMap(monthlyIncome);
+    const variableExpensesMap = this._createMonthMap(monthlyVariableExpenses);
+    
+    // Build monthly totals for all 12 months
+    const monthlyTotals = this._buildMonthlyTotals(fixedExpensesMap, variableExpensesMap, incomeMap);
+    
+    // Calculate annual totals
+    const totalVariableExpenses = monthlyVariableExpenses.reduce((sum, m) => sum + m.total, 0);
+    const totalFixedExpenses = monthlyFixedExpenses.reduce((sum, m) => sum + m.total, 0);
+    const totalExpenses = totalVariableExpenses + totalFixedExpenses;
+    const totalIncome = monthlyIncome.reduce((sum, m) => sum + m.total, 0);
+    const netIncome = totalIncome - totalExpenses;
+    
+    // Calculate statistics
+    const monthsWithData = monthlyTotals.filter(m => m.total > 0).length;
+    const averageMonthly = monthsWithData > 0 ? totalExpenses / monthsWithData : 0;
+    
+    const monthsWithExpenses = monthlyTotals.filter(m => m.total > 0);
+    const highestMonth = monthsWithExpenses.length > 0 
+      ? monthsWithExpenses.reduce((max, m) => m.total > max.total ? m : max, monthsWithExpenses[0])
+      : null;
+    
+    const lowestMonth = monthsWithExpenses.length > 0
+      ? monthsWithExpenses.reduce((min, m) => m.total < min.total ? m : min, monthsWithExpenses[0])
+      : null;
+    
+    // Convert arrays to objects
+    const byCategory = this._arrayToObject(categoryTotals, 'type');
+    const byMethod = this._arrayToObject(methodTotals, 'method');
+    
+    return {
+      year,
+      totalExpenses,
+      totalFixedExpenses,
+      totalVariableExpenses,
+      totalIncome,
+      netIncome,
+      averageMonthly,
+      monthlyTotals,
+      highestMonth,
+      lowestMonth,
+      byCategory,
+      byMethod
+    };
+  }
+
+  /**
+   * Create month lookup map from array
+   * @param {Array} data - Array with month and total properties
+   * @returns {Object} Month map
+   * @private
+   */
+  _createMonthMap(data) {
+    const map = {};
+    data.forEach(item => {
+      map[item.month] = item.total;
+    });
+    return map;
+  }
+
+  /**
+   * Build monthly totals for all 12 months
+   * @param {Object} fixedExpensesMap - Fixed expenses by month
+   * @param {Object} variableExpensesMap - Variable expenses by month
+   * @param {Object} incomeMap - Income by month
+   * @returns {Array} Monthly totals
+   * @private
+   */
+  _buildMonthlyTotals(fixedExpensesMap, variableExpensesMap, incomeMap) {
+    const monthlyTotals = [];
+    for (let month = 1; month <= 12; month++) {
+      const fixedExpenses = fixedExpensesMap[month] || 0;
+      const variableExpenses = variableExpensesMap[month] || 0;
+      const income = incomeMap[month] || 0;
+      const total = fixedExpenses + variableExpenses;
+      
+      monthlyTotals.push({
+        month,
+        total,
+        fixedExpenses,
+        variableExpenses,
+        income
+      });
+    }
+    return monthlyTotals;
+  }
+
+  /**
+   * Convert array to object for easier frontend consumption
+   * @param {Array} data - Array of objects
+   * @param {string} keyField - Field to use as key
+   * @returns {Object} Object with keys from keyField
+   * @private
+   */
+  _arrayToObject(data, keyField) {
+    const obj = {};
+    data.forEach(item => {
+      obj[item[keyField]] = item.total;
+    });
+    return obj;
   }
 
   /**
@@ -598,6 +678,19 @@ class ExpenseService {
    */
   async getDistinctPlaces() {
     return await expenseRepository.getDistinctPlaces();
+  }
+
+  /**
+   * Get suggested category for a place based on historical data
+   * @param {string} place - Place name
+   * @returns {Promise<Object>} Suggestion object with category and confidence
+   */
+  async getSuggestedCategory(place) {
+    if (!place || typeof place !== 'string') {
+      throw new Error('Place name is required');
+    }
+
+    return await expenseRepository.getSuggestedCategory(place.trim());
   }
 }
 

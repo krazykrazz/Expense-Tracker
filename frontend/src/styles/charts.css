@@ -155,6 +155,40 @@
   gap: 4px;
 }
 
+/* Horizontal Stacked Bars */
+.horizontal-stacked-bar {
+  display: flex;
+  flex-direction: row;
+  height: 100%;
+  border-radius: var(--border-radius-sm, 4px);
+  overflow: hidden;
+  min-width: 60px;
+  transition: width var(--transition-normal, 0.3s ease);
+}
+
+.horizontal-segment {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 8px;
+  transition: opacity var(--transition-fast, 0.2s);
+}
+
+.horizontal-segment:hover {
+  opacity: 0.85;
+  cursor: pointer;
+}
+
+.horizontal-segment.fixed-segment {
+  background: linear-gradient(90deg, var(--color-fixed-expense, #3b82f6) 0%, #2563eb 100%);
+}
+
+.horizontal-segment.variable-segment {
+  background: linear-gradient(90deg, var(--color-variable-expense, #8b5cf6) 0%, #7c3aed 100%);
+}
+
+/* Vertical Stacked Bars (for other components like TaxDeductible) */
 .stacked-bar-wrapper {
   display: flex;
   flex-direction: column;
@@ -167,7 +201,7 @@
 .stacked-bar {
   display: flex;
   flex-direction: column-reverse;
-  height: 200px;
+  height: 120px;
   width: 100%;
   background: var(--color-bg-tertiary, #f1f5f9);
   border-radius: var(--border-radius-sm, 4px);
@@ -184,6 +218,7 @@
   color: white;
   transition: opacity var(--transition-fast, 0.2s);
   position: relative;
+  min-height: 8px;
 }
 
 .bar-segment:hover {
@@ -244,7 +279,7 @@
   }
 
   .stacked-bar {
-    height: 150px;
+    height: 100px;
   }
 
   .chart-legend,

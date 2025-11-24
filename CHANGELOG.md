@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.0.1] - 2025-11-24
+
+### Fixed
+- **Annual Summary Charts**: Fixed white space issues in bar graphs
+  - Converted mixed vertical/horizontal layout to consistent horizontal bars
+  - Reduced bar segment min-height for better space utilization
+  - Added conditional rendering to eliminate unnecessary white space
+
+### Changed
+- **Database Cleanup**: Standardized 58 expense categories based on place names
+  - Automatically updated "Other" expenses to correct categories when place had established category
+  - Improved data consistency across gas stations, medical expenses, and food places
+
+---
+
 ## [4.0.0] - 2025-11-24
 
 ### Removed (BREAKING CHANGE)

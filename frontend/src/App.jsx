@@ -33,19 +33,27 @@ function App() {
 
   // Fetch version info on mount
   useEffect(() => {
+    let isMounted = true;
+
     const fetchVersionInfo = async () => {
       try {
         const response = await fetch('/api/version');
-        if (response.ok) {
+        if (response.ok && isMounted) {
           const data = await response.json();
           setVersionInfo(data);
         }
       } catch (err) {
-        console.error('Error fetching version info:', err);
+        if (isMounted) {
+          console.error('Error fetching version info:', err);
+        }
       }
     };
 
     fetchVersionInfo();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // Fetch expenses when month/year changes or when searching
@@ -353,7 +361,7 @@ function App() {
 
       <footer className="App-footer">
         <span className="version">
-          v{versionInfo?.version || '4.0.0'}
+          v{versionInfo?.version || '4.0.1'}
           {versionInfo?.docker && (
             <span className="docker-tag"> (Docker: {versionInfo.docker.tag})</span>
           )}

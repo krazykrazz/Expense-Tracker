@@ -463,6 +463,16 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v4.0.1</div>
+                <div className="changelog-date">November 24, 2025</div>
+                <ul className="changelog-items">
+                  <li>Fixed bar graph white space issues in annual summary charts</li>
+                  <li>Improved chart layout with consistent horizontal bars</li>
+                  <li>Database cleanup: standardized 58 expense categories by place name</li>
+                </ul>
+              </div>
+
+              <div className="changelog-entry">
                 <div className="changelog-version">v4.0.0</div>
                 <div className="changelog-date">November 24, 2025</div>
                 <ul className="changelog-items">

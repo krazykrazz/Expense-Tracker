@@ -38,11 +38,12 @@ The backup system uses SQLite's file-based architecture. When a backup is perfor
 2. This includes ALL tables:
    - expenses
    - monthly_gross
-   - recurring_expenses
+   - ~~recurring_expenses~~ (removed in v4.0.0)
    - income_sources
    - fixed_expenses
    - **loans** (new)
    - **loan_balances** (new)
+   - budgets
 3. All data, indexes, and constraints are preserved
 4. The backup file is a complete, standalone SQLite database
 

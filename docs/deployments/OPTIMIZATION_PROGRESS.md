@@ -10,7 +10,7 @@
 ### Remaining Components (In Progress):
 4. AnnualSummary.jsx
 5. ExpenseList.jsx
-6. RecurringExpensesManager.jsx
+6. ~~RecurringExpensesManager.jsx~~ (component removed in v4.0.0)
 7. BackupSettings.jsx
 
 ## Next Steps:

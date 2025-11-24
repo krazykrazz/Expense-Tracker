@@ -281,6 +281,68 @@ class ExpenseRepository {
   }
 
   /**
+   * Get suggested category for a place based on historical data
+   * @param {string} place - Place name
+   * @returns {Promise<Object|null>} Object with suggested category and confidence, or null
+   */
+  async getSuggestedCategory(place) {
+    const db = await getDatabase();
+    
+    return new Promise((resolve, reject) => {
+      if (!place || place.trim() === '') {
+        resolve(null);
+        return;
+      }
+
+      const sql = `
+        SELECT type, COUNT(*) as count
+        FROM expenses
+        WHERE LOWER(place) = LOWER(?)
+        GROUP BY type
+        ORDER BY count DESC
+        LIMIT 1
+      `;
+      
+      db.get(sql, [place.trim()], (err, row) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        
+        if (!row) {
+          resolve(null);
+          return;
+        }
+        
+        // Get total count for this place to calculate confidence
+        const totalSql = `
+          SELECT COUNT(*) as total
+          FROM expenses
+          WHERE LOWER(place) = LOWER(?)
+        `;
+        
+        db.get(totalSql, [place.trim()], (err, totalRow) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+          
+          const confidence = totalRow.total > 0 
+            ? Math.round((row.count / totalRow.total) * 100) 
+            : 0;
+          
+          resolve({
+            category: row.type,
+            confidence: confidence,
+            count: row.count,
+            total: totalRow.total
+          });
+        });
+      });
+    });
+  }
+
+  /**
    * Get summary data for a specific month
    * @param {number} year - Year
    * @param {number} month - Month (1-12)

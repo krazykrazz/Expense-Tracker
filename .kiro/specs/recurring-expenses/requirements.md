@@ -1,5 +1,17 @@
 # Requirements Document
 
+> **⚠️ DEPRECATED - Feature Removed in v4.0.0**
+> 
+> This feature was removed from the Expense Tracker application in version 4.0.0 (November 2025).
+> The recurring expenses functionality has been replaced by the **Fixed Expenses** feature for 
+> predictable monthly costs. This spec is retained for historical reference only.
+> 
+> **Migration Information:**
+> - See: `RECURRING_EXPENSES_REMOVAL.md` for removal details
+> - See: `RECURRING_EXPENSES_REMOVAL_COMPLETE.md` for completion report
+> - Database migration automatically converts generated expenses to regular expenses
+> - Use Fixed Expenses feature for tracking predictable monthly obligations
+
 ## Introduction
 
 The Recurring Expenses feature enables users to define expense templates that automatically generate expense entries on a monthly basis within a specified date range. This eliminates the need to manually enter the same expenses every month.

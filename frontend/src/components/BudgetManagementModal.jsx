@@ -11,28 +11,14 @@ import {
 } from '../services/budgetApi';
 import { validateAmount } from '../utils/validation';
 import { getMonthNameLong } from '../utils/formatters';
+import { API_ENDPOINTS } from '../config';
 import BudgetCard from './BudgetCard';
 import BudgetProgressBar from './BudgetProgressBar';
-
-// Budgetable categories (excludes tax-deductible categories)
-const BUDGETABLE_CATEGORIES = [
-  'Housing',
-  'Utilities',
-  'Groceries',
-  'Dining Out',
-  'Insurance',
-  'Gas',
-  'Vehicle Maintenance',
-  'Entertainment',
-  'Subscriptions',
-  'Recreation Activities',
-  'Pet Care',
-  'Other'
-];
 
 const BudgetManagementModal = ({ isOpen, onClose, year, month, onBudgetUpdated }) => {
   const [budgets, setBudgets] = useState([]);
   const [summary, setSummary] = useState(null);
+  const [categories, setCategories] = useState([]);
   const [editingCategory, setEditingCategory] = useState(null);
   const [editAmount, setEditAmount] = useState('');
   const [loading, setLoading] = useState(false);
@@ -41,6 +27,28 @@ const BudgetManagementModal = ({ isOpen, onClose, year, month, onBudgetUpdated }
   const [isCopying, setIsCopying] = useState(false);
   const [suggestion, setSuggestion] = useState(null);
   const [loadingSuggestion, setLoadingSuggestion] = useState(false);
+
+  // Fetch categories on mount
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch(API_ENDPOINTS.CATEGORIES);
+        if (!response.ok) {
+          throw new Error('Failed to fetch categories');
+        }
+        const data = await response.json();
+        // Filter to only budgetable categories (exclude tax-deductible)
+        const budgetableCategories = (data.budgetableCategories || data.categories || []);
+        setCategories(budgetableCategories);
+      } catch (err) {
+        console.error('Error fetching categories:', err);
+        // Fallback to empty array if fetch fails
+        setCategories([]);
+      }
+    };
+
+    fetchCategories();
+  }, []);
 
   // Fetch budgets when modal opens or year/month changes
   useEffect(() => {
@@ -368,7 +376,7 @@ const BudgetManagementModal = ({ isOpen, onClose, year, month, onBudgetUpdated }
                   <span className="budget-header-actions">Actions</span>
                 </div>
                 
-                {BUDGETABLE_CATEGORIES.map((category) => {
+                {categories.map((category) => {
                   const budget = getBudgetForCategory(category);
                   const isEditing = editingCategory === category;
                   

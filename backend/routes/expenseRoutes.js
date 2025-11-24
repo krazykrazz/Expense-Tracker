@@ -11,6 +11,9 @@ router.get('/expenses', expenseController.getExpenses);
 // GET /api/expenses/places - Get distinct place names (must be before /:id route)
 router.get('/expenses/places', expenseController.getDistinctPlaces);
 
+// GET /api/expenses/suggest-category - Get suggested category for a place (must be before /:id route)
+router.get('/expenses/suggest-category', expenseController.getSuggestedCategory);
+
 // GET /api/expenses/summary - Get summary data (must be before /:id route)
 router.get('/expenses/summary', expenseController.getSummary);
 

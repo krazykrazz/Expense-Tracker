@@ -76,10 +76,10 @@ The recent code optimization introduced new architectural patterns that should b
 
 ### Priority 2: Feature Specs (Medium Priority)
 
-#### recurring-expenses/design.md
+#### ~~recurring-expenses/design.md~~ (DEPRECATED - removed in v4.0.0)
 **Section to Update:** Error Handling / Validation
-**Change:** Reference centralized validators
-**Effort:** 10 minutes
+**Change:** ~~Reference centralized validators~~ N/A - Feature removed
+**Effort:** ~~10 minutes~~ N/A
 
 #### monthly-loans-balance/design.md
 **Section to Update:** Error Handling / Validation Errors

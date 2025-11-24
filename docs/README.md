@@ -56,7 +56,7 @@ Feature specifications are located in `.kiro/specs/`:
 - `tax-deductible-view/` - Tax deductible view spec
 - `configurable-monthly-gross/` - Income management spec
 - `configurable-fixed-expenses/` - Fixed expenses spec
-- `recurring-expenses/` - Recurring expenses spec
+- `recurring-expenses/` - ⚠️ DEPRECATED (removed in v4.0.0) - Historical reference only
 - `monthly-loans-balance/` - Loans and balances spec
 - `containerization-optimization/` - Docker optimization spec
 

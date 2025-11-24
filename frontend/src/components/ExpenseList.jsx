@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { API_ENDPOINTS } from '../config';
+import { PAYMENT_METHODS } from '../utils/constants';
 import './ExpenseList.css';
 import { formatAmount, formatLocalDate } from '../utils/formatters';
 
@@ -16,6 +17,8 @@ const ExpenseList = ({ expenses, onExpenseDeleted, onExpenseUpdated, searchText,
 
   // Fetch categories on mount
   useEffect(() => {
+    let isMounted = true;
+
     const fetchCategories = async () => {
       try {
         const response = await fetch(API_ENDPOINTS.CATEGORIES);
@@ -23,15 +26,23 @@ const ExpenseList = ({ expenses, onExpenseDeleted, onExpenseUpdated, searchText,
           throw new Error('Failed to fetch categories');
         }
         const data = await response.json();
-        setCategories(data.categories || []);
+        if (isMounted) {
+          setCategories(data.categories || []);
+        }
       } catch (err) {
-        console.error('Error fetching categories:', err);
-        // Fallback to empty array if fetch fails
-        setCategories([]);
+        if (isMounted) {
+          console.error('Error fetching categories:', err);
+          // Fallback to empty array if fetch fails
+          setCategories([]);
+        }
       }
     };
 
     fetchCategories();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const handleEditClick = (expense) => {
@@ -193,13 +204,9 @@ const ExpenseList = ({ expenses, onExpenseDeleted, onExpenseUpdated, searchText,
               title="Filter by payment method"
             >
               <option value="">All Methods</option>
-              <option value="Cash">Cash</option>
-              <option value="Debit">Debit</option>
-              <option value="Cheque">Cheque</option>
-              <option value="CIBC MC">CIBC MC</option>
-              <option value="PCF MC">PCF MC</option>
-              <option value="WS VISA">WS VISA</option>
-              <option value="VISA">VISA</option>
+              {PAYMENT_METHODS.map((method) => (
+                <option key={method} value={method}>{method}</option>
+              ))}
             </select>
             {(filterType || filterMethod) && (
               <button 
@@ -406,13 +413,9 @@ const ExpenseList = ({ expenses, onExpenseDeleted, onExpenseUpdated, searchText,
                     onChange={handleEditChange}
                     required
                   >
-                    <option value="Cash">Cash</option>
-                    <option value="Debit">Debit</option>
-                    <option value="Cheque">Cheque</option>
-                    <option value="CIBC MC">CIBC MC</option>
-                    <option value="PCF MC">PCF MC</option>
-                    <option value="WS VISA">WS VISA</option>
-                    <option value="VISA">VISA</option>
+                    {PAYMENT_METHODS.map((method) => (
+                      <option key={method} value={method}>{method}</option>
+                    ))}
                   </select>
                 </div>
               </div>

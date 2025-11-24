@@ -489,14 +489,17 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ---
 
-### 🟢 Recurring Expenses (v3.1.0)
+### 🟢 Recurring Expenses (v3.1.0) - REMOVED IN v4.0.0
 **Completed**: November 2025  
+**Removed**: November 2025 (v4.0.0)  
 **Description**: Create templates for recurring expenses with automatic generation.
 
 **Features Delivered**:
 - Recurring expense templates
 - Automatic expense generation
 - Template management interface
+
+**Removal Reason**: Feature was replaced by the Fixed Expenses feature which better serves the use case of tracking predictable monthly costs. Recurring expenses added unnecessary complexity for generating actual expense entries. See `RECURRING_EXPENSES_REMOVAL.md` for migration details.
 
 ---
 

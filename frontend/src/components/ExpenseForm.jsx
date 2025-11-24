@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { API_ENDPOINTS } from '../config';
 import { getTodayLocalDate } from '../utils/formatters';
+import { PAYMENT_METHODS } from '../utils/constants';
 import './ExpenseForm.css';
 
 const ExpenseForm = ({ onExpenseAdded }) => {
@@ -20,19 +21,21 @@ const ExpenseForm = ({ onExpenseAdded }) => {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [typeOptions, setTypeOptions] = useState(['Other']); // Default fallback
 
-  const methodOptions = ['Cash', 'Debit', 'Cheque', 'CIBC MC', 'PCF MC', 'WS VISA', 'VISA'];
-
   // Fetch categories and distinct places on component mount
   useEffect(() => {
+    let isMounted = true;
+
     const fetchCategories = async () => {
       try {
         const response = await fetch('/api/categories');
-        if (response.ok) {
+        if (response.ok && isMounted) {
           const data = await response.json();
           setTypeOptions(data.categories);
         }
       } catch (error) {
-        console.error('Failed to fetch categories:', error);
+        if (isMounted) {
+          console.error('Failed to fetch categories:', error);
+        }
         // Keep default fallback value
       }
     };
@@ -40,17 +43,23 @@ const ExpenseForm = ({ onExpenseAdded }) => {
     const fetchPlaces = async () => {
       try {
         const response = await fetch(`${API_ENDPOINTS.EXPENSES}/places`);
-        if (response.ok) {
+        if (response.ok && isMounted) {
           const data = await response.json();
           setPlaces(data);
         }
       } catch (error) {
-        console.error('Failed to fetch places:', error);
+        if (isMounted) {
+          console.error('Failed to fetch places:', error);
+        }
       }
     };
 
     fetchCategories();
     fetchPlaces();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const handleChange = (e) => {
@@ -75,13 +84,31 @@ const ExpenseForm = ({ onExpenseAdded }) => {
     }
   };
 
-  const handlePlaceSelect = (place) => {
+  const handlePlaceSelect = async (place) => {
     setFormData(prev => ({
       ...prev,
       place: place
     }));
     setShowSuggestions(false);
     setFilteredPlaces([]);
+
+    // Fetch category suggestion for this place
+    try {
+      const response = await fetch(`${API_ENDPOINTS.EXPENSES}/suggest-category?place=${encodeURIComponent(place)}`);
+      if (response.ok) {
+        const suggestion = await response.json();
+        // Only auto-fill if we have a suggestion with reasonable confidence
+        if (suggestion.category && suggestion.confidence >= 50) {
+          setFormData(prev => ({
+            ...prev,
+            type: suggestion.category
+          }));
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch category suggestion:', error);
+      // Silently fail - don't disrupt user experience
+    }
   };
 
   const validateForm = () => {
@@ -237,7 +264,7 @@ const ExpenseForm = ({ onExpenseAdded }) => {
               onChange={handleChange}
               required
             >
-              {methodOptions.map(method => (
+              {PAYMENT_METHODS.map(method => (
                 <option key={method} value={method}>{method}</option>
               ))}
             </select>

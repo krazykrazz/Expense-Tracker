@@ -303,7 +303,6 @@ function initializeDatabase() {
                     'CREATE INDEX IF NOT EXISTS idx_method ON expenses(method)',
                     'CREATE INDEX IF NOT EXISTS idx_year_month ON monthly_gross(year, month)',
                     'CREATE INDEX IF NOT EXISTS idx_recurring_dates ON recurring_expenses(start_month, end_month)',
-                    'CREATE INDEX IF NOT EXISTS idx_recurring_id ON expenses(recurring_id)',
                     'CREATE INDEX IF NOT EXISTS idx_income_year_month ON income_sources(year, month)',
                     'CREATE INDEX IF NOT EXISTS idx_fixed_expenses_year_month ON fixed_expenses(year, month)',
                     'CREATE INDEX IF NOT EXISTS idx_loans_paid_off ON loans(is_paid_off)',

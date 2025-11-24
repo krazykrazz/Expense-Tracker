@@ -29,7 +29,7 @@ This release focuses on code quality improvements and project organization with 
 - TotalDebtView.jsx
 - AnnualSummary.jsx
 - ExpenseList.jsx
-- RecurringExpensesManager.jsx
+- ~~RecurringExpensesManager.jsx~~ (component removed in v4.0.0)
 - BackupSettings.jsx
 
 ---
@@ -117,7 +117,7 @@ start-silent-prod.vbs
 - [ ] Loan detail view charts render
 - [ ] Total debt view displays correctly
 - [ ] Annual summary dates formatted correctly
-- [ ] Recurring expenses end dates formatted correctly
+- [ ] ~~Recurring expenses end dates formatted correctly~~ (feature removed in v4.0.0)
 - [ ] Backup history timestamps formatted correctly
 
 ### Functionality

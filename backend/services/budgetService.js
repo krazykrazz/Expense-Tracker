@@ -1,8 +1,35 @@
 const budgetRepository = require('../repositories/budgetRepository');
 const { getDatabase } = require('../database/db');
 const { BUDGETABLE_CATEGORIES } = require('../utils/categories');
+const budgetEvents = require('../events/budgetEvents');
 
 class BudgetService {
+  constructor() {
+    // Listen for budget recalculation events
+    budgetEvents.on('budgetRecalculation', this._handleBudgetRecalculation.bind(this));
+  }
+
+  /**
+   * Handle budget recalculation event
+   * @param {Object} data - Event data { date, category }
+   * @private
+   */
+  async _handleBudgetRecalculation({ date, category }) {
+    try {
+      // Extract year and month from date
+      const dateObj = new Date(date);
+      const year = dateObj.getFullYear();
+      const month = dateObj.getMonth() + 1;
+
+      // Trigger recalculation by fetching summary
+      await this.getBudgetSummary(year, month);
+    } catch (err) {
+      // Silently ignore if budgets table doesn't exist (e.g., in test environments)
+      if (!err.message || !err.message.includes('no such table: budgets')) {
+        console.error('Budget recalculation failed:', err.message);
+      }
+    }
+  }
   // Budgetable categories (excludes tax-deductible categories)
   static BUDGETABLE_CATEGORIES = BUDGETABLE_CATEGORIES;
 

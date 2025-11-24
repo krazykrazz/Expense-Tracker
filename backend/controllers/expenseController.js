@@ -420,6 +420,25 @@ async function getDistinctPlaces(req, res) {
   }
 }
 
+/**
+ * Get suggested category for a place
+ * GET /api/expenses/suggest-category?place=Walmart
+ */
+async function getSuggestedCategory(req, res) {
+  try {
+    const { place } = req.query;
+    
+    if (!place) {
+      return res.status(400).json({ error: 'Place query parameter is required' });
+    }
+    
+    const suggestion = await expenseService.getSuggestedCategory(place);
+    res.status(200).json(suggestion);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+}
+
 module.exports = {
   createExpense,
   getExpenses,
@@ -433,5 +452,6 @@ module.exports = {
   importExpenses,
   backupDatabase,
   getDistinctPlaces,
+  getSuggestedCategory,
   upload
 };

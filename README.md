@@ -40,7 +40,7 @@ A full-stack expense tracking application built with React and Node.js.
 ### Data Management
 - 💾 Automated and manual database backups (includes all data)
 - 📤 CSV export functionality
-- 🔄 Recurring expense templates with automatic generation
+
 - 🌐 Access from any device on your local network
 
 ## Tech Stack
@@ -259,7 +259,7 @@ stop-servers.bat
 
 ### Income & Fixed Expenses
 6. **Manage Income**: Click the "👁️ View/Edit" button next to Monthly Gross Income to add/edit income sources
-7. **Manage Fixed Expenses**: Click the "👁️ View/Edit" button next to Total Fixed Expenses to manage recurring monthly costs
+7. **Manage Fixed Expenses**: Click the "👁️ View/Edit" button next to Total Fixed Expenses to manage predictable monthly costs
 8. **Carry Forward**: Use the "📋 Copy from Previous Month" button to copy previous month's income or fixed expenses
 
 ### Loans & Lines of Credit

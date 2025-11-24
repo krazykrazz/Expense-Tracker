@@ -463,6 +463,25 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v4.0.0</div>
+                <div className="changelog-date">November 24, 2025</div>
+                <ul className="changelog-items">
+                  <li>Removed recurring expenses feature (use Fixed Expenses instead)</li>
+                  <li>All previously generated expenses converted to regular expenses</li>
+                  <li>Simplified expense management workflow</li>
+                </ul>
+              </div>
+
+              <div className="changelog-entry">
+                <div className="changelog-version">v3.8.1</div>
+                <div className="changelog-date">November 24, 2025</div>
+                <ul className="changelog-items">
+                  <li>Updated documentation to reflect 14 expense categories</li>
+                  <li>Improved product overview with comprehensive category listing</li>
+                </ul>
+              </div>
+
+              <div className="changelog-entry">
                 <div className="changelog-version">v3.8.0</div>
                 <div className="changelog-date">November 23, 2025</div>
                 <ul className="changelog-items">

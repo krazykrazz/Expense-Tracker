@@ -1,6 +1,6 @@
 # Product Overview
 
-A full-stack personal expense tracking application for managing household finances. Users can add, edit, and delete expenses with categorization by type (Food, Gas, Other, Tax-deductible items) and payment method. The app provides monthly and annual summaries, tracks gross income vs expenses, supports recurring expense templates, manages fixed monthly expenses, and tracks loans and lines of credit with balance history. Features include CSV import/export, automated database backups, tax-deductible expense reporting, and visual analytics for loan trends.
+A full-stack personal expense tracking application for managing household finances. Users can add, edit, and delete expenses with categorization across 14 expense types including Housing, Utilities, Groceries, Dining Out, Insurance, Gas, Vehicle Maintenance, Entertainment, Subscriptions, Recreation Activities, Pet Care, Other, and tax-deductible categories (Tax - Medical, Tax - Donation). The app provides monthly and annual summaries, tracks gross income vs expenses, manages fixed monthly expenses, and tracks loans and lines of credit with balance history. Features include CSV import/export, automated database backups, tax-deductible expense reporting, budget tracking with alerts, place name standardization, and visual analytics for loan trends.
 
 ## Key Features
 

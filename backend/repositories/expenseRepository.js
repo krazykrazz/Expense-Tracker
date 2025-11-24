@@ -1,4 +1,5 @@
 const { getDatabase } = require('../database/db');
+const { CATEGORIES } = require('../utils/categories');
 
 class ExpenseRepository {
   /**
@@ -11,8 +12,8 @@ class ExpenseRepository {
     
     return new Promise((resolve, reject) => {
       const sql = `
-        INSERT INTO expenses (date, place, notes, amount, type, week, method, recurring_id, is_generated)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO expenses (date, place, notes, amount, type, week, method)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
       `;
       
       const params = [
@@ -22,9 +23,7 @@ class ExpenseRepository {
         expense.amount,
         expense.type,
         expense.week,
-        expense.method,
-        expense.recurring_id !== undefined ? expense.recurring_id : null,
-        expense.is_generated !== undefined ? expense.is_generated : 0
+        expense.method
       ];
       
       db.run(sql, params, function(err) {
@@ -51,35 +50,25 @@ class ExpenseRepository {
     const db = await getDatabase();
     
     return new Promise((resolve, reject) => {
-      // Join with recurring_expenses to check if template still exists
-      let sql = `
-        SELECT 
-          e.*,
-          CASE 
-            WHEN e.recurring_id IS NOT NULL AND r.id IS NULL THEN 1
-            ELSE 0
-          END as template_deleted
-        FROM expenses e
-        LEFT JOIN recurring_expenses r ON e.recurring_id = r.id
-      `;
+      let sql = 'SELECT * FROM expenses';
       const params = [];
       
       // Add filtering by year and month if provided
       if (filters.year && filters.month) {
-        sql += ' WHERE strftime("%Y", e.date) = ? AND strftime("%m", e.date) = ?';
+        sql += ' WHERE strftime("%Y", date) = ? AND strftime("%m", date) = ?';
         params.push(
           filters.year.toString(),
           filters.month.toString().padStart(2, '0')
         );
       } else if (filters.year) {
-        sql += ' WHERE strftime("%Y", e.date) = ?';
+        sql += ' WHERE strftime("%Y", date) = ?';
         params.push(filters.year.toString());
       } else if (filters.month) {
-        sql += ' WHERE strftime("%m", e.date) = ?';
+        sql += ' WHERE strftime("%m", date) = ?';
         params.push(filters.month.toString().padStart(2, '0'));
       }
       
-      sql += ' ORDER BY e.date ASC';
+      sql += ' ORDER BY date ASC';
       
       db.all(sql, params, (err, rows) => {
         if (err) {
@@ -122,54 +111,38 @@ class ExpenseRepository {
     const db = await getDatabase();
     
     return new Promise((resolve, reject) => {
-      // First, get the current expense to preserve recurring_id and is_generated
-      db.get('SELECT recurring_id, is_generated FROM expenses WHERE id = ?', [id], (err, currentExpense) => {
+      const sql = `
+        UPDATE expenses 
+        SET date = ?, place = ?, notes = ?, amount = ?, type = ?, week = ?, method = ?
+        WHERE id = ?
+      `;
+      
+      const params = [
+        expense.date,
+        expense.place || null,
+        expense.notes || null,
+        expense.amount,
+        expense.type,
+        expense.week,
+        expense.method,
+        id
+      ];
+      
+      db.run(sql, params, function(err) {
         if (err) {
           reject(err);
           return;
         }
         
-        if (!currentExpense) {
-          resolve(null);
+        if (this.changes === 0) {
+          resolve(null); // No rows updated, expense not found
           return;
         }
         
-        // Update only the editable fields, preserve recurring_id and is_generated
-        const sql = `
-          UPDATE expenses 
-          SET date = ?, place = ?, notes = ?, amount = ?, type = ?, week = ?, method = ?
-          WHERE id = ?
-        `;
-        
-        const params = [
-          expense.date,
-          expense.place || null,
-          expense.notes || null,
-          expense.amount,
-          expense.type,
-          expense.week,
-          expense.method,
-          id
-        ];
-        
-        db.run(sql, params, function(err) {
-          if (err) {
-            reject(err);
-            return;
-          }
-          
-          if (this.changes === 0) {
-            resolve(null); // No rows updated, expense not found
-            return;
-          }
-          
-          // Return the updated expense with preserved recurring fields
-          resolve({
-            id: id,
-            ...expense,
-            recurring_id: currentExpense.recurring_id,
-            is_generated: currentExpense.is_generated
-          });
+        // Return the updated expense
+        resolve({
+          id: id,
+          ...expense
         });
       });
     });
@@ -336,12 +309,11 @@ class ExpenseRepository {
         GROUP BY method
       `;
       
-      // Query for type totals (Gas, Food, Other, Tax - Medical, and Tax - Donation)
+      // Query for type totals (all categories)
       const typeSQL = `
         SELECT type, SUM(amount) as total
         FROM expenses
         WHERE strftime("%Y", date) = ? AND strftime("%m", date) = ?
-        AND type IN ('Gas', 'Food', 'Other', 'Tax - Medical', 'Tax - Donation')
         GROUP BY type
       `;
       
@@ -351,6 +323,12 @@ class ExpenseRepository {
         FROM expenses
         WHERE strftime("%Y", date) = ? AND strftime("%m", date) = ?
       `;
+      
+      // Initialize typeTotals with all categories set to 0
+      const typeTotals = {};
+      CATEGORIES.forEach(category => {
+        typeTotals[category] = 0;
+      });
       
       const summary = {
         weeklyTotals: {
@@ -363,18 +341,13 @@ class ExpenseRepository {
         methodTotals: {
           'Cash': 0,
           'Debit': 0,
+          'Cheque': 0,
           'CIBC MC': 0,
           'PCF MC': 0,
           'WS VISA': 0,
           'VISA': 0
         },
-        typeTotals: {
-          'Gas': 0,
-          'Food': 0,
-          'Other': 0,
-          'Tax - Medical': 0,
-          'Tax - Donation': 0
-        },
+        typeTotals: typeTotals,
         total: 0
       };
       

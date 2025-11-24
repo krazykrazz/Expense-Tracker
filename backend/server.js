@@ -4,7 +4,6 @@ const cors = require('cors');
 const path = require('path');
 const { initializeDatabase } = require('./database/db');
 const expenseRoutes = require('./routes/expenseRoutes');
-const recurringExpenseRoutes = require('./routes/recurringExpenseRoutes');
 const backupRoutes = require('./routes/backupRoutes');
 const incomeRoutes = require('./routes/incomeRoutes');
 const fixedExpenseRoutes = require('./routes/fixedExpenseRoutes');
@@ -36,9 +35,6 @@ app.use('/api', healthRoutes);
 
 // Expense API routes
 app.use('/api', expenseRoutes);
-
-// Recurring expense API routes
-app.use('/api', recurringExpenseRoutes);
 
 // Backup API routes
 app.use('/api', backupRoutes);

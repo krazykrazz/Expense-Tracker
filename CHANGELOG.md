@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.0.0] - 2025-11-24
+
+### Removed (BREAKING CHANGE)
+- **Recurring Expenses Feature**: Removed recurring expense templates and automatic generation
+  - Dropped `recurring_expenses` table from database
+  - Removed `recurring_id` and `is_generated` columns from expenses table
+  - Deleted all recurring expense UI components and forms
+  - Removed recurring expense API endpoints
+  - All previously generated expenses converted to regular expenses (no data loss)
+
+### Migration
+- Run `node backend/scripts/removeRecurringExpenses.js` to migrate existing databases
+- Automatic backup created before migration
+- All expense data preserved
+
+### Recommendation
+- Use **Fixed Expenses** feature for predictable monthly costs instead
+
+---
+
+## [3.8.1] - 2025-11-24
+
+### Changed
+- Updated product documentation to reflect 14 expense categories
+- Updated expense trend indicators design document with current category structure
+- Improved product overview with comprehensive category listing
+
+---
+
 ## [3.8.0] - 2025-11-23
 
 ### Added

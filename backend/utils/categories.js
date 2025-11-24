@@ -4,34 +4,36 @@
  */
 
 const CATEGORIES = [
-  'Housing',
-  'Utilities',
-  'Groceries',
+  'Clothing',
   'Dining Out',
-  'Insurance',
-  'Gas',
-  'Vehicle Maintenance',
   'Entertainment',
-  'Subscriptions',
-  'Recreation Activities',
+  'Gas',
+  'Groceries',
+  'Housing',
+  'Insurance',
   'Pet Care',
-  'Tax - Medical',
+  'Recreation Activities',
+  'Subscriptions',
+  'Utilities',
+  'Vehicle Maintenance',
+  'Other',
   'Tax - Donation',
-  'Other'
+  'Tax - Medical'
 ];
 
 const BUDGETABLE_CATEGORIES = [
-  'Housing',
-  'Utilities',
-  'Groceries',
+  'Clothing',
   'Dining Out',
-  'Insurance',
-  'Gas',
-  'Vehicle Maintenance',
   'Entertainment',
-  'Subscriptions',
-  'Recreation Activities',
+  'Gas',
+  'Groceries',
+  'Housing',
+  'Insurance',
   'Pet Care',
+  'Recreation Activities',
+  'Subscriptions',
+  'Utilities',
+  'Vehicle Maintenance',
   'Other'
 ];
 

@@ -1,5 +1,4 @@
 const expenseService = require('../services/expenseService');
-const recurringExpenseService = require('../services/recurringExpenseService');
 const { isValid: isValidCategory } = require('../utils/categories');
 const fs = require('fs');
 const path = require('path');
@@ -39,14 +38,6 @@ async function getExpenses(req, res) {
     
     if (month) {
       filters.month = parseInt(month);
-    }
-    
-    // If year and month are provided, generate recurring expenses for that month first
-    if (year && month) {
-      await recurringExpenseService.generateExpensesForMonth(
-        parseInt(year),
-        parseInt(month)
-      );
     }
     
     const expenses = await expenseService.getExpenses(filters);
@@ -117,10 +108,18 @@ async function getSummary(req, res) {
       return res.status(400).json({ error: 'Year and month query parameters are required' });
     }
     
+    // Parse year and month as integers
+    const yearNum = parseInt(year);
+    const monthNum = parseInt(month);
+    
+    if (isNaN(yearNum) || isNaN(monthNum)) {
+      return res.status(400).json({ error: 'Year and month must be valid numbers' });
+    }
+    
     // Parse includePrevious as boolean (defaults to false)
     const shouldIncludePrevious = includePrevious === 'true' || includePrevious === '1';
     
-    const summary = await expenseService.getSummary(year, month, shouldIncludePrevious);
+    const summary = await expenseService.getSummary(yearNum, monthNum, shouldIncludePrevious);
     res.status(200).json(summary);
   } catch (error) {
     res.status(400).json({ error: error.message });

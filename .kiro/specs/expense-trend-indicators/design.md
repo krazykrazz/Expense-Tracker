@@ -127,8 +127,17 @@ Calculates trend direction and percentage change.
       week5: number
     },
     typeTotals: {
-      'Food': number,
+      'Housing': number,
+      'Utilities': number,
+      'Groceries': number,
+      'Dining Out': number,
+      'Insurance': number,
       'Gas': number,
+      'Vehicle Maintenance': number,
+      'Entertainment': number,
+      'Subscriptions': number,
+      'Recreation Activities': number,
+      'Pet Care': number,
       'Other': number,
       'Tax - Medical': number,
       'Tax - Donation': number

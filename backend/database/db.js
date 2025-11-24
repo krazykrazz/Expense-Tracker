@@ -2,6 +2,7 @@ const sqlite3 = require('sqlite3').verbose();
 const fs = require('fs');
 const path = require('path');
 const { getDatabasePath, ensureDirectories } = require('../config/paths');
+const { CATEGORIES, BUDGETABLE_CATEGORIES } = require('../utils/categories');
 
 // Database file path - use dynamic path from config
 const DB_PATH = getDatabasePath();
@@ -72,6 +73,7 @@ function initializeDatabase() {
     });
 
     // Create expenses table with all constraints
+    const categoryList = CATEGORIES.map(c => `'${c}'`).join(', ');
     const createTableSQL = `
       CREATE TABLE IF NOT EXISTS expenses (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -79,7 +81,7 @@ function initializeDatabase() {
         place TEXT,
         notes TEXT,
         amount REAL NOT NULL,
-        type TEXT NOT NULL CHECK(type IN ('Other', 'Food', 'Gas', 'Tax - Medical', 'Tax - Donation')),
+        type TEXT NOT NULL CHECK(type IN (${categoryList})),
         week INTEGER NOT NULL CHECK(week >= 1 AND week <= 5),
         method TEXT NOT NULL CHECK(method IN ('Cash', 'Debit', 'Cheque', 'CIBC MC', 'PCF MC', 'WS VISA', 'VISA')),
         recurring_id INTEGER,
@@ -107,7 +109,7 @@ function initializeDatabase() {
         place TEXT NOT NULL,
         amount REAL NOT NULL,
         notes TEXT,
-        type TEXT NOT NULL CHECK(type IN ('Other', 'Food', 'Gas', 'Tax - Medical', 'Tax - Donation')),
+        type TEXT NOT NULL CHECK(type IN (${categoryList})),
         method TEXT NOT NULL CHECK(method IN ('Cash', 'Debit', 'Cheque', 'CIBC MC', 'PCF MC', 'WS VISA', 'VISA')),
         day_of_month INTEGER NOT NULL CHECK(day_of_month >= 1 AND day_of_month <= 31),
         start_month TEXT NOT NULL,
@@ -175,12 +177,13 @@ function initializeDatabase() {
     `;
 
     // Create budgets table
+    const budgetCategoryList = BUDGETABLE_CATEGORIES.map(c => `'${c}'`).join(', ');
     const createBudgetsSQL = `
       CREATE TABLE IF NOT EXISTS budgets (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         year INTEGER NOT NULL,
         month INTEGER NOT NULL CHECK(month >= 1 AND month <= 12),
-        category TEXT NOT NULL CHECK(category IN ('Food', 'Gas', 'Other')),
+        category TEXT NOT NULL CHECK(category IN (${budgetCategoryList})),
         "limit" REAL NOT NULL CHECK("limit" > 0),
         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -321,7 +324,19 @@ function initializeDatabase() {
                       completed++;
                       if (completed === indexes.length) {
                         console.log('All indexes created successfully');
-                        resolve(db);
+                        
+                        // Run any pending migrations
+                        const { runMigrations } = require('./migrations');
+                        runMigrations(db)
+                          .then(() => {
+                            resolve(db);
+                          })
+                          .catch((err) => {
+                            console.error('Migration error:', err);
+                            // Don't reject - allow app to start even if migrations fail
+                            // This prevents breaking the app if there's a migration issue
+                            resolve(db);
+                          });
                       }
                     });
                   });

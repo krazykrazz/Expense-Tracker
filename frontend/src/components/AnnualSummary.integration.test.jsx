@@ -23,7 +23,7 @@ describe('AnnualSummary - Integration Tests', () => {
           variableExpenses: 416.67,
           income: 1250
         })),
-        byCategory: { Food: 5000, Gas: 3000, Other: 4000 },
+        byCategory: { Groceries: 5000, Gas: 3000, Other: 4000 },
         byMethod: { Cash: 4000, Debit: 5000, 'CIBC MC': 3000 }
       };
 
@@ -653,7 +653,7 @@ describe('AnnualSummary - Integration Tests', () => {
           variableExpenses: 400,
           income: 1250
         })),
-        byCategory: { Food: 5000, Gas: 3000, Other: 4000 },
+        byCategory: { Groceries: 5000, Gas: 3000, Other: 4000 },
         byMethod: { Cash: 4000, Debit: 5000, 'CIBC MC': 3000 }
       };
 
@@ -705,3 +705,4 @@ describe('AnnualSummary - Integration Tests', () => {
     });
   });
 });
+

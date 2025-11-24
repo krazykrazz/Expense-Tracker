@@ -1,5 +1,6 @@
 const expenseService = require('../services/expenseService');
 const recurringExpenseService = require('../services/recurringExpenseService');
+const { isValid: isValidCategory } = require('../utils/categories');
 const fs = require('fs');
 const path = require('path');
 const { DB_PATH } = require('../database/db');
@@ -296,6 +297,17 @@ async function importExpenses(req, res) {
 
         // Skip empty rows
         if (!dateStr || !amountStr || !type || !method) {
+          continue;
+        }
+
+        // Validate category against approved list
+        if (!isValidCategory(type.trim())) {
+          errorCount++;
+          errors.push({
+            row: i + 4,
+            data: row,
+            error: `Invalid category: "${type.trim()}". Must be one of the approved categories.`
+          });
           continue;
         }
 

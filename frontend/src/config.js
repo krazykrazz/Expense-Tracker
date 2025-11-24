@@ -17,6 +17,8 @@ export const API_ENDPOINTS = {
   BUDGET_SUMMARY: `${API_BASE_URL}/api/budgets/summary`,
   BUDGET_HISTORY: `${API_BASE_URL}/api/budgets/history`,
   BUDGET_COPY: `${API_BASE_URL}/api/budgets/copy`,
+  BUDGET_SUGGEST: `${API_BASE_URL}/api/budgets/suggest`,
+  CATEGORIES: `${API_BASE_URL}/api/categories`,
   PLACE_NAMES_ANALYZE: `${API_BASE_URL}/api/expenses/place-names/analyze`,
   PLACE_NAMES_STANDARDIZE: `${API_BASE_URL}/api/expenses/place-names/standardize`
 };

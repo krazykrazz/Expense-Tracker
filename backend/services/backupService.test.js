@@ -59,7 +59,7 @@ describe('BackupService - Budget Table Integration', () => {
     const testBudget = await budgetRepository.create({
       year: 2025,
       month: 11,
-      category: 'Food',
+      category: 'Groceries',
       limit: 500.00
     });
 
@@ -85,7 +85,7 @@ describe('BackupService - Budget Table Integration', () => {
     db.close();
 
     expect(budgetData).toBeDefined();
-    expect(budgetData.category).toBe('Food');
+    expect(budgetData.category).toBe('Groceries');
     expect(budgetData.limit).toBe(500.00);
 
     // Clean up test budget
@@ -99,7 +99,7 @@ describe('BackupService - Budget Table Integration', () => {
     const budget1 = await budgetRepository.create({
       year: 2025,
       month: 11,
-      category: 'Food',
+      category: 'Groceries',
       limit: 500.00
     });
     
@@ -131,7 +131,7 @@ describe('BackupService - Budget Table Integration', () => {
     const budgetsAfterRestore = await budgetRepository.findByYearMonth(2025, 11);
     expect(budgetsAfterRestore.length).toBe(2);
     
-    const restoredFood = budgetsAfterRestore.find(b => b.category === 'Food');
+    const restoredFood = budgetsAfterRestore.find(b => b.category === 'Groceries');
     const restoredGas = budgetsAfterRestore.find(b => b.category === 'Gas');
     
     expect(restoredFood).toBeDefined();
@@ -145,3 +145,4 @@ describe('BackupService - Budget Table Integration', () => {
     await budgetRepository.delete(restoredGas.id);
   });
 });
+

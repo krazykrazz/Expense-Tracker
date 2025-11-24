@@ -97,31 +97,50 @@
   - **Property 6: Budget status indication**
   - **Validates: Requirements 3.4**
 
-- [ ] 5. Create budget suggestion API endpoint
+- [x] 5. Create budget suggestion API endpoint
+
+
+
+
+
   - Add `GET /api/budgets/suggest` endpoint to budgetController
   - Accept year, month, and category query parameters
   - Return suggested amount, average spending, and months analyzed
   - Add route to budgetRoutes.js
   - _Requirements: 3.1_
 
-- [ ] 5.1 Write unit tests for budget suggestion endpoint
+- [x] 5.1 Write unit tests for budget suggestion endpoint
+
+
   - Test with historical data (should return rounded average)
   - Test with no historical data (should return 0)
   - Test with insufficient data (should use available months)
   - _Requirements: 3.1_
 
-- [ ] 6. Update frontend expense form
+- [x] 6. Update frontend expense form
+
+
+
+
+
   - Update `frontend/src/components/ExpenseForm.jsx` to fetch categories from API
   - Replace hardcoded typeOptions with API response
   - Update dropdown rendering to display all 14 categories
   - Maintain current UI/UX patterns
   - _Requirements: 1.1, 1.2_
 
-- [ ] 6.1 Write property test for category dropdown completeness
+- [x] 6.1 Write property test for category dropdown completeness
+
+
   - **Property 1: Category dropdown completeness**
   - **Validates: Requirements 1.1**
 
-- [ ] 7. Update frontend budget management modal
+- [x] 7. Update frontend budget management modal
+
+
+
+
+
   - Update `frontend/src/components/BudgetManagementModal.jsx` category dropdown
   - Implement budget suggestion feature
   - Fetch suggestion when category is selected
@@ -130,22 +149,36 @@
   - Show "No historical data" message when suggestion is $0
   - _Requirements: 3.1_
 
-- [ ] 8. Update frontend summary and list components
+- [x] 8. Update frontend summary and list components
+
+
+
+
   - Update `frontend/src/components/SummaryPanel.jsx` to dynamically render all categories
   - Update layout to accommodate more categories (grid or scrolling)
   - Update `frontend/src/components/ExpenseList.jsx` filter dropdown
   - Ensure trend indicators work with new categories
   - _Requirements: 1.5, 6.1, 6.3_
 
-- [ ] 8.1 Write property test for category filtering accuracy
+- [x] 8.1 Write property test for category filtering accuracy
+
+
   - **Property 3: Category filtering accuracy**
   - **Validates: Requirements 1.5**
 
-- [ ] 8.2 Write property test for category aggregation correctness
+- [x] 8.2 Write property test for category aggregation correctness
+
+
+
   - **Property 10: Category aggregation correctness**
   - **Validates: Requirements 6.1, 6.2, 6.3, 6.4, 6.5**
 
-- [ ] 9. Update CSV import validation
+- [x] 9. Update CSV import validation
+
+
+
+
+
   - Update `validate_csv.py` with new category list
   - Update validation error messages
   - Update documentation/comments
@@ -153,21 +186,35 @@
   - Ensure validation uses categories module
   - _Requirements: 5.1, 5.2, 5.3, 5.4_
 
-- [ ] 9.1 Write property test for CSV import validation
+- [x] 9.1 Write property test for CSV import validation
+
+
   - **Property 9: CSV import category validation**
   - **Validates: Requirements 5.1, 5.3, 5.4**
 
-- [ ] 10. Update tax-deductible functionality
+- [x] 10. Update tax-deductible functionality
+
+
+
+
+
   - Verify `backend/services/expenseService.js` getTaxDeductibleSummary works with new categories
   - Verify `frontend/src/components/TaxDeductible.jsx` displays all tax-deductible categories
   - Ensure tax reports include both "Tax - Medical" and "Tax - Donation"
   - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_
 
-- [ ] 10.1 Write property test for tax-deductible identification
+- [x] 10.1 Write property test for tax-deductible identification
+
+
   - **Property 11: Tax-deductible category identification**
   - **Validates: Requirements 7.2, 7.3, 7.5**
 
-- [ ] 11. Run database migration
+- [x] 11. Run database migration
+
+
+
+
+
   - Create backup of production database
   - Run `backend/scripts/expandCategories.js` migration script
   - Verify migration success
@@ -176,7 +223,12 @@
   - Test expense creation with new categories
   - _Requirements: 9.1, 9.2, 9.4, 10.1, 10.2, 10.3, 10.4, 10.5_
 
-- [ ] 12. Integration testing and verification
+- [x] 12. Integration testing and verification
+
+
+
+
+
   - Test end-to-end expense creation with all new categories
   - Test budget creation with new categories and suggestion feature
   - Test recurring expense creation and generation with new categories
@@ -186,5 +238,10 @@
   - Verify historical data displays correctly with updated categories
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 3.1, 4.1, 5.1, 6.1, 9.5_
 
-- [ ] 13. Final checkpoint - Ensure all tests pass
+- [x] 13. Final checkpoint - Ensure all tests pass
+
+
+
+
+
   - Ensure all tests pass, ask the user if questions arise.

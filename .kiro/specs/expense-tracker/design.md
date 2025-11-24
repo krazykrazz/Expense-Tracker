@@ -63,11 +63,11 @@ graph TB
 - Manages selected month/year state
 
 #### 2. ExpenseForm Component
-- Input fields: date, place, notes, amount, type dropdown (5 options), method dropdown (7 options)
+- Input fields: date, place, notes, amount, type dropdown (14 options), method dropdown (7 options)
 - Validates required fields before submission
 - Calculates week automatically from date
 - Submits new expense to backend API
-- Type dropdown includes: Other, Food, Gas, Tax - Medical, Tax - Donation
+- Type dropdown includes: Housing, Utilities, Groceries, Dining Out, Insurance, Gas, Vehicle Maintenance, Entertainment, Subscriptions, Recreation Activities, Pet Care, Tax - Medical, Tax - Donation, Other
 
 #### 3. MonthSelector Component
 - Dropdown for year selection
@@ -94,7 +94,7 @@ graph TB
 - Displays multiple summary sections:
   - Weekly totals (weeks 1-5)
   - Payment method totals (all 7 methods)
-  - Type-specific totals (Gas, Food, Tax - Medical, Tax - Donation, and Other)
+  - Type-specific totals for all 14 expense categories
   - Monthly gross income with View/Edit button
   - Total fixed expenses with View/Edit button
   - Overall total for the month
@@ -162,7 +162,7 @@ graph TB
 #### GET /api/expenses/summary
 - Retrieves aggregated data for a specific month
 - Query parameters: `year`, `month` (required)
-- Returns: Object containing weekly totals, payment method totals, type totals (Gas, Food, Tax - Medical, Tax - Donation, Other)
+- Returns: Object containing weekly totals, payment method totals, type totals for all 14 expense categories
 
 #### GET /api/expenses/annual-summary
 - Retrieves aggregated data for an entire year
@@ -245,7 +245,9 @@ interface Expense {
   place: string;           // Max 200 characters
   notes: string;           // Max 200 characters
   amount: number;          // Decimal with 2 places
-  type: 'Other' | 'Food' | 'Gas' | 'Tax - Medical' | 'Tax - Donation';  // Tax deductible expenses identified by type
+  type: 'Housing' | 'Utilities' | 'Groceries' | 'Dining Out' | 'Insurance' | 
+        'Gas' | 'Vehicle Maintenance' | 'Entertainment' | 'Subscriptions' | 
+        'Recreation Activities' | 'Pet Care' | 'Tax - Medical' | 'Tax - Donation' | 'Other';
   week: number;            // 1-5, calculated from date
   method: 'Cash' | 'Debit' | 'Cheque' | 'CIBC MC' | 'PCF MC' | 'WS VISA' | 'VISA';
   created_at: string;      // Timestamp
@@ -261,7 +263,9 @@ CREATE TABLE expenses (
   place TEXT,
   notes TEXT,
   amount REAL NOT NULL,
-  type TEXT NOT NULL CHECK(type IN ('Other', 'Food', 'Gas', 'Tax - Medical', 'Tax - Donation')),
+  type TEXT NOT NULL CHECK(type IN ('Housing', 'Utilities', 'Groceries', 'Dining Out', 'Insurance',
+                                     'Gas', 'Vehicle Maintenance', 'Entertainment', 'Subscriptions',
+                                     'Recreation Activities', 'Pet Care', 'Tax - Medical', 'Tax - Donation', 'Other')),
   week INTEGER NOT NULL CHECK(week >= 1 AND week <= 5),
   method TEXT NOT NULL CHECK(method IN ('Cash', 'Debit', 'Cheque', 'CIBC MC', 'PCF MC', 'WS VISA', 'VISA')),
   created_at TEXT DEFAULT CURRENT_TIMESTAMP
@@ -293,11 +297,20 @@ interface Summary {
     VISA: number;
   };
   typeTotals: {
+    Housing: number;
+    Utilities: number;
+    Groceries: number;
+    'Dining Out': number;
+    Insurance: number;
     Gas: number;
-    Food: number;
-    Other: number;
+    'Vehicle Maintenance': number;
+    Entertainment: number;
+    Subscriptions: number;
+    'Recreation Activities': number;
+    'Pet Care': number;
     'Tax - Medical': number;
     'Tax - Donation': number;
+    Other: number;
   };
   total: number;                    // Total of variable expenses only
   monthlyGross: number;             // Total gross income from all sources
@@ -316,11 +329,20 @@ interface AnnualSummary {
     [month: string]: number; // e.g., "January": 1234.56
   };
   categoryTotals: {
-    Other: number;
-    Food: number;
+    Housing: number;
+    Utilities: number;
+    Groceries: number;
+    'Dining Out': number;
+    Insurance: number;
     Gas: number;
+    'Vehicle Maintenance': number;
+    Entertainment: number;
+    Subscriptions: number;
+    'Recreation Activities': number;
+    'Pet Care': number;
     'Tax - Medical': number;
     'Tax - Donation': number;
+    Other: number;
   };
   annualTotal: number;
 }
@@ -386,7 +408,7 @@ CREATE INDEX idx_fixed_expenses_year_month ON fixed_expenses(year, month);
 ### Validation Rules
 - Date: Required, valid date format
 - Amount: Required, positive number with max 2 decimal places
-- Type: Required, must be one of the five valid options (Other, Food, Gas, Tax - Medical, Tax - Donation)
+- Type: Required, must be one of the fourteen valid options (Housing, Utilities, Groceries, Dining Out, Insurance, Gas, Vehicle Maintenance, Entertainment, Subscriptions, Recreation Activities, Pet Care, Tax - Medical, Tax - Donation, Other)
 - Method: Required, must be one of the seven valid options (Cash, Debit, Cheque, CIBC MC, PCF MC, WS VISA, VISA)
 - Place: Optional, max 200 characters
 - Notes: Optional, max 200 characters

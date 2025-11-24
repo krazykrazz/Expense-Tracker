@@ -8,6 +8,9 @@ router.get('/summary', budgetController.getBudgetSummary);
 // GET /api/budgets/history - Get budget history (must be before /:id route)
 router.get('/history', budgetController.getBudgetHistory);
 
+// GET /api/budgets/suggest - Get budget suggestion based on historical spending (must be before /:id route)
+router.get('/suggest', budgetController.suggestBudget);
+
 // POST /api/budgets/copy - Copy budgets between months
 router.post('/copy', budgetController.copyBudgets);
 

@@ -10,8 +10,8 @@ This document specifies the requirements for the Budget Tracking & Alerts featur
 - **Budget Limit**: A maximum spending amount set by the user for a specific category in a specific month
 - **Budget Progress**: The percentage of a budget limit that has been consumed by actual spending
 - **Alert Threshold**: A predefined percentage (80%, 90%, 100%) that triggers a visual warning when budget progress reaches or exceeds it
-- **Expense Category**: One of the predefined expense types (Food, Gas, Other, Tax-Medical, Tax-Donation)
-- **Budgetable Category**: An expense category that can have budget limits set (Food, Gas, Other only - excludes tax-deductible categories)
+- **Expense Category**: One of the fourteen predefined expense types (Housing, Utilities, Groceries, Dining Out, Insurance, Gas, Vehicle Maintenance, Entertainment, Subscriptions, Recreation Activities, Pet Care, Tax - Medical, Tax - Donation, Other)
+- **Budgetable Category**: An expense category that can have budget limits set (all categories except tax-deductible categories: Housing, Utilities, Groceries, Dining Out, Insurance, Gas, Vehicle Maintenance, Entertainment, Subscriptions, Recreation Activities, Pet Care, Other)
 - **Budget Period**: A single month for which budget limits are set and tracked
 - **Budget Status**: The current state of a budget (under budget, approaching limit, at limit, over budget)
 
@@ -23,7 +23,7 @@ This document specifies the requirements for the Budget Tracking & Alerts featur
 
 #### Acceptance Criteria
 
-1. WHEN a user accesses the budget management interface THEN the system SHALL display only budgetable categories (Food, Gas, Other) with current budget settings
+1. WHEN a user accesses the budget management interface THEN the system SHALL display only budgetable categories (all non-tax-deductible categories: Housing, Utilities, Groceries, Dining Out, Insurance, Gas, Vehicle Maintenance, Entertainment, Subscriptions, Recreation Activities, Pet Care, Other) with current budget settings
 2. WHEN a user sets a budget limit for a category THEN the system SHALL store the limit amount and associate it with the current month and category
 3. WHEN a user updates an existing budget limit THEN the system SHALL replace the previous limit with the new value
 4. WHEN a user removes a budget limit THEN the system SHALL delete the limit and stop tracking that category

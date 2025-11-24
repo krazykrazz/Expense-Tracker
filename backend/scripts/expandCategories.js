@@ -50,6 +50,7 @@ function createBackup() {
 
 /**
  * Update CHECK constraint for expenses table
+ * This function updates data AND constraint in one operation
  */
 function updateExpensesConstraint(db, callback) {
   const categoryList = CATEGORIES.map(c => `'${c}'`).join(', ');
@@ -74,12 +75,18 @@ function updateExpensesConstraint(db, callback) {
     `, (err) => {
       if (err) return callback(err);
 
-      // Copy data from old table to new table
+      // Copy data from old table to new table, updating "Food" to "Dining Out" during copy
       db.run(`
         INSERT INTO expenses_new 
-        SELECT * FROM expenses
-      `, (err) => {
+        SELECT 
+          id, date, place, notes, amount,
+          CASE WHEN type = 'Food' THEN 'Dining Out' ELSE type END as type,
+          week, method, recurring_id, is_generated, created_at
+        FROM expenses
+      `, function(err) {
         if (err) return callback(err);
+        
+        const rowsUpdated = this.changes;
 
         // Drop old table
         db.run('DROP TABLE expenses', (err) => {
@@ -89,7 +96,8 @@ function updateExpensesConstraint(db, callback) {
           db.run('ALTER TABLE expenses_new RENAME TO expenses', (err) => {
             if (err) return callback(err);
             console.log('✓ Updated CHECK constraint for expenses table');
-            callback(null);
+            console.log(`✓ Migrated ${rowsUpdated} expense records`);
+            callback(null, rowsUpdated);
           });
         });
       });
@@ -99,6 +107,7 @@ function updateExpensesConstraint(db, callback) {
 
 /**
  * Update CHECK constraint for recurring_expenses table
+ * This function updates data AND constraint in one operation
  */
 function updateRecurringExpensesConstraint(db, callback) {
   const categoryList = CATEGORIES.map(c => `'${c}'`).join(', ');
@@ -109,25 +118,31 @@ function updateRecurringExpensesConstraint(db, callback) {
       CREATE TABLE recurring_expenses_new (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         place TEXT NOT NULL,
-        notes TEXT,
         amount REAL NOT NULL,
+        notes TEXT,
         type TEXT NOT NULL CHECK(type IN (${categoryList})),
         method TEXT NOT NULL,
-        frequency TEXT NOT NULL CHECK(frequency IN ('weekly', 'biweekly', 'monthly')),
-        start_date TEXT NOT NULL,
-        end_date TEXT,
-        is_active INTEGER DEFAULT 1,
+        day_of_month INTEGER NOT NULL,
+        start_month TEXT NOT NULL,
+        end_month TEXT,
+        paused INTEGER DEFAULT 0,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP
       )
     `, (err) => {
       if (err) return callback(err);
 
-      // Copy data from old table to new table
+      // Copy data from old table to new table, updating "Food" to "Dining Out" during copy
       db.run(`
         INSERT INTO recurring_expenses_new 
-        SELECT * FROM recurring_expenses
-      `, (err) => {
+        SELECT 
+          id, place, amount, notes,
+          CASE WHEN type = 'Food' THEN 'Dining Out' ELSE type END as type,
+          method, day_of_month, start_month, end_month, paused, created_at
+        FROM recurring_expenses
+      `, function(err) {
         if (err) return callback(err);
+        
+        const rowsUpdated = this.changes;
 
         // Drop old table
         db.run('DROP TABLE recurring_expenses', (err) => {
@@ -137,7 +152,8 @@ function updateRecurringExpensesConstraint(db, callback) {
           db.run('ALTER TABLE recurring_expenses_new RENAME TO recurring_expenses', (err) => {
             if (err) return callback(err);
             console.log('✓ Updated CHECK constraint for recurring_expenses table');
-            callback(null);
+            console.log(`✓ Migrated ${rowsUpdated} recurring expense records`);
+            callback(null, rowsUpdated);
           });
         });
       });
@@ -147,42 +163,61 @@ function updateRecurringExpensesConstraint(db, callback) {
 
 /**
  * Update CHECK constraint for budgets table
+ * This function updates data AND constraint in one operation
+ * Skips if budgets table doesn't exist
  */
 function updateBudgetsConstraint(db, callback) {
-  const categoryList = BUDGETABLE_CATEGORIES.map(c => `'${c}'`).join(', ');
-  
-  db.serialize(() => {
-    // Create temporary table with new constraint
-    db.run(`
-      CREATE TABLE budgets_new (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        year INTEGER NOT NULL,
-        month INTEGER NOT NULL CHECK(month >= 1 AND month <= 12),
-        category TEXT NOT NULL CHECK(category IN (${categoryList})),
-        "limit" REAL NOT NULL CHECK("limit" > 0),
-        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-        updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE(year, month, category)
-      )
-    `, (err) => {
-      if (err) return callback(err);
+  // First check if budgets table exists
+  db.get(`SELECT name FROM sqlite_master WHERE type='table' AND name='budgets'`, (err, row) => {
+    if (err) return callback(err);
+    
+    if (!row) {
+      console.log('ℹ Budgets table does not exist, skipping migration');
+      return callback(null, 0);
+    }
 
-      // Copy data from old table to new table
+    const categoryList = BUDGETABLE_CATEGORIES.map(c => `'${c}'`).join(', ');
+    
+    db.serialize(() => {
+      // Create temporary table with new constraint
       db.run(`
-        INSERT INTO budgets_new 
-        SELECT * FROM budgets
+        CREATE TABLE budgets_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          year INTEGER NOT NULL,
+          month INTEGER NOT NULL CHECK(month >= 1 AND month <= 12),
+          category TEXT NOT NULL CHECK(category IN (${categoryList})),
+          "limit" REAL NOT NULL CHECK("limit" > 0),
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+          updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(year, month, category)
+        )
       `, (err) => {
         if (err) return callback(err);
 
-        // Drop old table
-        db.run('DROP TABLE budgets', (err) => {
+        // Copy data from old table to new table, updating "Food" to "Dining Out" during copy
+        db.run(`
+          INSERT INTO budgets_new 
+          SELECT 
+            id, year, month,
+            CASE WHEN category = 'Food' THEN 'Dining Out' ELSE category END as category,
+            "limit", created_at, updated_at
+          FROM budgets
+        `, function(err) {
           if (err) return callback(err);
+          
+          const rowsUpdated = this.changes;
 
-          // Rename new table to original name
-          db.run('ALTER TABLE budgets_new RENAME TO budgets', (err) => {
+          // Drop old table
+          db.run('DROP TABLE budgets', (err) => {
             if (err) return callback(err);
-            console.log('✓ Updated CHECK constraint for budgets table');
-            callback(null);
+
+            // Rename new table to original name
+            db.run('ALTER TABLE budgets_new RENAME TO budgets', (err) => {
+              if (err) return callback(err);
+              console.log('✓ Updated CHECK constraint for budgets table');
+              console.log(`✓ Migrated ${rowsUpdated} budget records`);
+              callback(null, rowsUpdated);
+            });
           });
         });
       });
@@ -210,82 +245,43 @@ function runMigration(db) {
 
         console.log('\n--- Starting transaction ---');
 
-        // Step 1: Update CHECK constraints first (so we can use "Dining Out")
-        updateExpensesConstraint(db, (err) => {
+        // Step 1: Update expenses table (migrates "Food" to "Dining Out" and updates constraint)
+        updateExpensesConstraint(db, (err, expensesCount) => {
           if (err) {
             console.error('Error updating expenses constraint:', err);
             db.run('ROLLBACK');
             return reject(err);
           }
+          results.expensesUpdated = expensesCount;
 
-          // Step 2: Update recurring_expenses constraint
-          updateRecurringExpensesConstraint(db, (err) => {
+          // Step 2: Update recurring_expenses table (migrates "Food" to "Dining Out" and updates constraint)
+          updateRecurringExpensesConstraint(db, (err, recurringCount) => {
             if (err) {
               console.error('Error updating recurring expenses constraint:', err);
               db.run('ROLLBACK');
               return reject(err);
             }
+            results.recurringUpdated = recurringCount;
 
-            // Step 3: Update budgets constraint
-            updateBudgetsConstraint(db, (err) => {
+            // Step 3: Update budgets table (migrates "Food" to "Dining Out" and updates constraint)
+            updateBudgetsConstraint(db, (err, budgetsCount) => {
               if (err) {
                 console.error('Error updating budgets constraint:', err);
                 db.run('ROLLBACK');
                 return reject(err);
               }
+              results.budgetsUpdated = budgetsCount;
 
-              // Step 4: Now update "Food" to "Dining Out" in expenses table
-              db.run(
-                `UPDATE expenses SET type = 'Dining Out' WHERE type = 'Food'`,
-                function(err) {
-                  if (err) {
-                    console.error('Error updating expenses:', err);
-                    db.run('ROLLBACK');
-                    return reject(err);
-                  }
-                  results.expensesUpdated = this.changes;
-                  console.log(`✓ Updated ${this.changes} expense records from "Food" to "Dining Out"`);
-
-                  // Step 5: Update "Food" to "Dining Out" in recurring_expenses table
-                  db.run(
-                    `UPDATE recurring_expenses SET type = 'Dining Out' WHERE type = 'Food'`,
-                    function(err) {
-                      if (err) {
-                        console.error('Error updating recurring expenses:', err);
-                        db.run('ROLLBACK');
-                        return reject(err);
-                      }
-                      results.recurringUpdated = this.changes;
-                      console.log(`✓ Updated ${this.changes} recurring expense records from "Food" to "Dining Out"`);
-
-                      // Step 6: Update "Food" to "Dining Out" in budgets table
-                      db.run(
-                        `UPDATE budgets SET category = 'Dining Out' WHERE category = 'Food'`,
-                        function(err) {
-                          if (err) {
-                            console.error('Error updating budgets:', err);
-                            db.run('ROLLBACK');
-                            return reject(err);
-                          }
-                          results.budgetsUpdated = this.changes;
-                          console.log(`✓ Updated ${this.changes} budget records from "Food" to "Dining Out"`);
-
-                          // Commit transaction
-                          db.run('COMMIT', (err) => {
-                            if (err) {
-                              console.error('Error committing transaction:', err);
-                              db.run('ROLLBACK');
-                              return reject(err);
-                            }
-                            console.log('\n--- Transaction committed successfully ---');
-                            resolve(results);
-                          });
-                        }
-                      );
-                    }
-                  );
+              // Commit transaction
+              db.run('COMMIT', (err) => {
+                if (err) {
+                  console.error('Error committing transaction:', err);
+                  db.run('ROLLBACK');
+                  return reject(err);
                 }
-              );
+                console.log('\n--- Transaction committed successfully ---');
+                resolve(results);
+              });
             });
           });
         });
@@ -318,20 +314,36 @@ function verifyMigration(db) {
         }
         console.log('✓ No "Food" records in recurring_expenses table');
 
-        db.get(`SELECT COUNT(*) as count FROM budgets WHERE category = 'Food'`, (err, row) => {
+        // Check budgets table only if it exists
+        db.get(`SELECT name FROM sqlite_master WHERE type='table' AND name='budgets'`, (err, tableRow) => {
           if (err) return reject(err);
           
-          if (row.count > 0) {
-            return reject(new Error(`Migration verification failed: ${row.count} "Food" records still exist in budgets table`));
-          }
-          console.log('✓ No "Food" records in budgets table');
+          if (!tableRow) {
+            console.log('ℹ Budgets table does not exist, skipping verification');
+            
+            // Check that "Dining Out" records exist (if any were migrated)
+            db.get(`SELECT COUNT(*) as count FROM expenses WHERE type = 'Dining Out'`, (err, row) => {
+              if (err) return reject(err);
+              console.log(`✓ Found ${row.count} "Dining Out" records in expenses table`);
+              resolve();
+            });
+          } else {
+            db.get(`SELECT COUNT(*) as count FROM budgets WHERE category = 'Food'`, (err, row) => {
+              if (err) return reject(err);
+              
+              if (row.count > 0) {
+                return reject(new Error(`Migration verification failed: ${row.count} "Food" records still exist in budgets table`));
+              }
+              console.log('✓ No "Food" records in budgets table');
 
-          // Check that "Dining Out" records exist (if any were migrated)
-          db.get(`SELECT COUNT(*) as count FROM expenses WHERE type = 'Dining Out'`, (err, row) => {
-            if (err) return reject(err);
-            console.log(`✓ Found ${row.count} "Dining Out" records in expenses table`);
-            resolve();
-          });
+              // Check that "Dining Out" records exist (if any were migrated)
+              db.get(`SELECT COUNT(*) as count FROM expenses WHERE type = 'Dining Out'`, (err, row) => {
+                if (err) return reject(err);
+                console.log(`✓ Found ${row.count} "Dining Out" records in expenses table`);
+                resolve();
+              });
+            });
+          }
         });
       });
     });

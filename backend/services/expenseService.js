@@ -3,6 +3,7 @@ const fixedExpenseRepository = require('../repositories/fixedExpenseRepository')
 const loanService = require('./loanService');
 const { calculateWeek } = require('../utils/dateUtils');
 const { CATEGORIES } = require('../utils/categories');
+const { validateYearMonth } = require('../utils/validators');
 
 // Lazy-load budgetService to avoid circular dependency
 let budgetService = null;
@@ -115,8 +116,11 @@ class ExpenseService {
       const service = getBudgetService();
       await service.getBudgetSummary(year, month);
     } catch (err) {
-      // Log error but don't fail the expense operation
-      console.error('Budget recalculation failed:', err.message);
+      // Silently ignore if budgets table doesn't exist (e.g., in test environments)
+      // Otherwise log the error but don't fail the expense operation
+      if (!err.message.includes('no such table: budgets')) {
+        console.error('Budget recalculation failed:', err.message);
+      }
     }
   }
 
@@ -252,9 +256,7 @@ class ExpenseService {
    */
   async getSummary(year, month, includePrevious = false) {
     // Validate year and month
-    if (!year || !month) {
-      throw new Error('Year and month are required for summary');
-    }
+    validateYearMonth(year, month);
 
     const yearNum = parseInt(year);
     const monthNum = parseInt(month);

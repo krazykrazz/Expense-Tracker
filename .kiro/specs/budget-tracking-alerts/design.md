@@ -309,7 +309,9 @@ CREATE TABLE budgets (
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE(year, month, category),
   CHECK(month >= 1 AND month <= 12),
-  CHECK(category IN ('Food', 'Gas', 'Other'))
+  CHECK(category IN ('Housing', 'Utilities', 'Groceries', 'Dining Out', 'Insurance', 
+                      'Gas', 'Vehicle Maintenance', 'Entertainment', 'Subscriptions', 
+                      'Recreation Activities', 'Pet Care', 'Other'))
 );
 
 CREATE INDEX idx_budgets_period ON budgets(year, month);
@@ -323,7 +325,9 @@ interface Budget {
   id: number;
   year: number;
   month: number;
-  category: 'Food' | 'Gas' | 'Other';
+  category: 'Housing' | 'Utilities' | 'Groceries' | 'Dining Out' | 'Insurance' | 
+           'Gas' | 'Vehicle Maintenance' | 'Entertainment' | 'Subscriptions' | 
+           'Recreation Activities' | 'Pet Care' | 'Other';
   limit: number;
   created_at: string;
   updated_at: string;
@@ -452,8 +456,8 @@ function calculateBudgetStatus(progress: number): BudgetStatus {
 **Invalid Category**:
 - Error Code: `INVALID_CATEGORY`
 - HTTP Status: 400
-- Message: "Budget can only be set for Food, Gas, or Other categories"
-- Trigger: User attempts to set budget for Tax-Medical or Tax-Donation
+- Message: "Budget can only be set for non-tax-deductible categories (Housing, Utilities, Groceries, Dining Out, Insurance, Gas, Vehicle Maintenance, Entertainment, Subscriptions, Recreation Activities, Pet Care, Other)"
+- Trigger: User attempts to set budget for Tax - Medical or Tax - Donation
 
 **Invalid Date**:
 - Error Code: `INVALID_DATE`
@@ -540,7 +544,9 @@ import fc from 'fast-check';
 const budgetArbitrary = fc.record({
   year: fc.integer({ min: 2020, max: 2030 }),
   month: fc.integer({ min: 1, max: 12 }),
-  category: fc.constantFrom('Food', 'Gas', 'Other'),
+  category: fc.constantFrom('Housing', 'Utilities', 'Groceries', 'Dining Out', 'Insurance',
+                            'Gas', 'Vehicle Maintenance', 'Entertainment', 'Subscriptions',
+                            'Recreation Activities', 'Pet Care', 'Other'),
   limit: fc.float({ min: 0.01, max: 10000, noNaN: true })
 });
 ```
@@ -717,7 +723,9 @@ CREATE TABLE IF NOT EXISTS budgets (
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE(year, month, category),
   CHECK(month >= 1 AND month <= 12),
-  CHECK(category IN ('Food', 'Gas', 'Other'))
+  CHECK(category IN ('Housing', 'Utilities', 'Groceries', 'Dining Out', 'Insurance', 
+                      'Gas', 'Vehicle Maintenance', 'Entertainment', 'Subscriptions', 
+                      'Recreation Activities', 'Pet Care', 'Other'))
 );
 
 CREATE INDEX idx_budgets_period ON budgets(year, month);

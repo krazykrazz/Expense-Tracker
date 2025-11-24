@@ -196,3 +196,28 @@ export const copyBudgets = async (sourceYear, sourceMonth, targetYear, targetMon
     throw error;
   }
 };
+
+/**
+ * Get budget suggestion based on historical spending
+ * @param {number} year - Target year
+ * @param {number} month - Target month (1-12)
+ * @param {string} category - Budget category
+ * @returns {Promise<Object>} { category, suggestedAmount, averageSpending, basedOnMonths }
+ */
+export const getBudgetSuggestion = async (year, month, category) => {
+  try {
+    const response = await fetch(
+      `${API_ENDPOINTS.BUDGET_SUGGEST}?year=${year}&month=${month}&category=${encodeURIComponent(category)}`
+    );
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error?.message || 'Failed to fetch budget suggestion');
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching budget suggestion:', error);
+    throw error;
+  }
+};

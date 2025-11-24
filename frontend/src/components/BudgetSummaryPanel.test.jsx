@@ -16,7 +16,7 @@ describe('BudgetSummaryPanel', () => {
   describe('Summary Calculations Display', () => {
     it('should display total budgeted amount correctly', async () => {
       const mockBudgets = [
-        { id: 1, category: 'Food', limit: 500, spent: 300 },
+        { id: 1, category: 'Groceries', limit: 500, spent: 300 },
         { id: 2, category: 'Gas', limit: 200, spent: 150 }
       ];
       
@@ -51,7 +51,7 @@ describe('BudgetSummaryPanel', () => {
 
     it('should display total spent amount correctly', async () => {
       const mockBudgets = [
-        { id: 1, category: 'Food', limit: 500, spent: 300 },
+        { id: 1, category: 'Groceries', limit: 500, spent: 300 },
         { id: 2, category: 'Gas', limit: 200, spent: 150 }
       ];
       
@@ -86,7 +86,7 @@ describe('BudgetSummaryPanel', () => {
 
     it('should display remaining amount when under budget', async () => {
       const mockBudgets = [
-        { id: 1, category: 'Food', limit: 500, spent: 300 }
+        { id: 1, category: 'Groceries', limit: 500, spent: 300 }
       ];
       
       const mockSummary = {
@@ -127,7 +127,7 @@ describe('BudgetSummaryPanel', () => {
 
     it('should display over budget amount when overspending', async () => {
       const mockBudgets = [
-        { id: 1, category: 'Food', limit: 500, spent: 600 }
+        { id: 1, category: 'Groceries', limit: 500, spent: 600 }
       ];
       
       const mockSummary = {
@@ -168,7 +168,7 @@ describe('BudgetSummaryPanel', () => {
 
     it('should display budgets on track count', async () => {
       const mockBudgets = [
-        { id: 1, category: 'Food', limit: 500, spent: 300 },
+        { id: 1, category: 'Groceries', limit: 500, spent: 300 },
         { id: 2, category: 'Gas', limit: 200, spent: 150 },
         { id: 3, category: 'Other', limit: 300, spent: 350 }
       ];
@@ -204,7 +204,7 @@ describe('BudgetSummaryPanel', () => {
 
     it('should display overall progress percentage', async () => {
       const mockBudgets = [
-        { id: 1, category: 'Food', limit: 500, spent: 400 }
+        { id: 1, category: 'Groceries', limit: 500, spent: 400 }
       ];
       
       const mockSummary = {
@@ -238,7 +238,7 @@ describe('BudgetSummaryPanel', () => {
   describe('Category Cards Rendering', () => {
     it('should render budget card for each category', async () => {
       const mockBudgets = [
-        { id: 1, category: 'Food', limit: 500, spent: 300 },
+        { id: 1, category: 'Groceries', limit: 500, spent: 300 },
         { id: 2, category: 'Gas', limit: 200, spent: 150 },
         { id: 3, category: 'Other', limit: 300, spent: 250 }
       ];
@@ -271,7 +271,7 @@ describe('BudgetSummaryPanel', () => {
 
     it('should render correct category names', async () => {
       const mockBudgets = [
-        { id: 1, category: 'Food', limit: 500, spent: 300 },
+        { id: 1, category: 'Groceries', limit: 500, spent: 300 },
         { id: 2, category: 'Gas', limit: 200, spent: 150 }
       ];
       
@@ -296,7 +296,7 @@ describe('BudgetSummaryPanel', () => {
       );
       
       await waitFor(() => {
-        expect(screen.getByText('Food')).toBeInTheDocument();
+        expect(screen.getByText('Groceries')).toBeInTheDocument();
         expect(screen.getByText('Gas')).toBeInTheDocument();
       });
     });
@@ -305,7 +305,7 @@ describe('BudgetSummaryPanel', () => {
       const mockBudgets = [
         { 
           id: 1, 
-          category: 'Food', 
+          category: 'Groceries', 
           limit: 500, 
           spent: 300,
           previousMonthSpent: 250
@@ -365,7 +365,7 @@ describe('BudgetSummaryPanel', () => {
   describe('Modal Opening', () => {
     it('should call onManageBudgets when manage button is clicked', async () => {
       const mockBudgets = [
-        { id: 1, category: 'Food', limit: 500, spent: 300 }
+        { id: 1, category: 'Groceries', limit: 500, spent: 300 }
       ];
       
       const mockSummary = {
@@ -458,7 +458,7 @@ describe('BudgetSummaryPanel', () => {
   describe('Refresh Trigger', () => {
     it('should refetch data when refreshTrigger changes', async () => {
       const mockBudgets = [
-        { id: 1, category: 'Food', limit: 500, spent: 300 }
+        { id: 1, category: 'Groceries', limit: 500, spent: 300 }
       ];
       
       const mockSummary = {
@@ -504,3 +504,5 @@ describe('BudgetSummaryPanel', () => {
     });
   });
 });
+
+

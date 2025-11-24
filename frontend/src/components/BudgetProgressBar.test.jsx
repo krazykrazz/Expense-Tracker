@@ -9,7 +9,7 @@ describe('BudgetProgressBar', () => {
       it('should apply safe status (green) for progress < 80%', () => {
         const { container } = render(
           <BudgetProgressBar 
-            category="Food"
+            category="Groceries"
             budgetLimit={1000}
             spent={500}
             showAlert={true}
@@ -23,7 +23,7 @@ describe('BudgetProgressBar', () => {
       it('should apply warning status (yellow) for progress 80-89%', () => {
         const { container } = render(
           <BudgetProgressBar 
-            category="Food"
+            category="Groceries"
             budgetLimit={1000}
             spent={850}
             showAlert={true}
@@ -37,7 +37,7 @@ describe('BudgetProgressBar', () => {
       it('should apply danger status (orange) for progress 90-99%', () => {
         const { container } = render(
           <BudgetProgressBar 
-            category="Food"
+            category="Groceries"
             budgetLimit={1000}
             spent={950}
             showAlert={true}
@@ -51,7 +51,7 @@ describe('BudgetProgressBar', () => {
       it('should apply critical status (red) for progress >= 100%', () => {
         const { container } = render(
           <BudgetProgressBar 
-            category="Food"
+            category="Groceries"
             budgetLimit={1000}
             spent={1000}
             showAlert={true}
@@ -65,7 +65,7 @@ describe('BudgetProgressBar', () => {
       it('should apply critical status for overspending', () => {
         const { container } = render(
           <BudgetProgressBar 
-            category="Food"
+            category="Groceries"
             budgetLimit={1000}
             spent={1200}
             showAlert={true}
@@ -82,7 +82,7 @@ describe('BudgetProgressBar', () => {
       it('should display correct percentage for 50% progress', () => {
         const { container } = render(
           <BudgetProgressBar 
-            category="Food"
+            category="Groceries"
             budgetLimit={1000}
             spent={500}
             showAlert={true}
@@ -96,7 +96,7 @@ describe('BudgetProgressBar', () => {
       it('should display correct percentage for 100% progress', () => {
         const { container } = render(
           <BudgetProgressBar 
-            category="Food"
+            category="Groceries"
             budgetLimit={1000}
             spent={1000}
             showAlert={true}
@@ -110,7 +110,7 @@ describe('BudgetProgressBar', () => {
       it('should display percentage > 100% for overspending', () => {
         const { container } = render(
           <BudgetProgressBar 
-            category="Food"
+            category="Groceries"
             budgetLimit={1000}
             spent={1250}
             showAlert={true}
@@ -124,7 +124,7 @@ describe('BudgetProgressBar', () => {
       it('should display 0% when no spending', () => {
         const { container } = render(
           <BudgetProgressBar 
-            category="Food"
+            category="Groceries"
             budgetLimit={1000}
             spent={0}
             showAlert={true}
@@ -138,7 +138,7 @@ describe('BudgetProgressBar', () => {
       it('should handle decimal percentages correctly', () => {
         const { container } = render(
           <BudgetProgressBar 
-            category="Food"
+            category="Groceries"
             budgetLimit={1000}
             spent={333.33}
             showAlert={true}
@@ -155,7 +155,7 @@ describe('BudgetProgressBar', () => {
       it('should not show alert indicator when progress < 80%', () => {
         const { container } = render(
           <BudgetProgressBar 
-            category="Food"
+            category="Groceries"
             budgetLimit={1000}
             spent={500}
             showAlert={true}
@@ -169,7 +169,7 @@ describe('BudgetProgressBar', () => {
       it('should show warning alert at 80% progress', () => {
         const { container } = render(
           <BudgetProgressBar 
-            category="Food"
+            category="Groceries"
             budgetLimit={1000}
             spent={800}
             showAlert={true}
@@ -184,7 +184,7 @@ describe('BudgetProgressBar', () => {
       it('should show danger alert at 90% progress', () => {
         const { container } = render(
           <BudgetProgressBar 
-            category="Food"
+            category="Groceries"
             budgetLimit={1000}
             spent={900}
             showAlert={true}
@@ -199,7 +199,7 @@ describe('BudgetProgressBar', () => {
       it('should show critical alert at 100% progress', () => {
         const { container } = render(
           <BudgetProgressBar 
-            category="Food"
+            category="Groceries"
             budgetLimit={1000}
             spent={1000}
             showAlert={true}
@@ -214,7 +214,7 @@ describe('BudgetProgressBar', () => {
       it('should not show alert when showAlert is false', () => {
         const { container } = render(
           <BudgetProgressBar 
-            category="Food"
+            category="Groceries"
             budgetLimit={1000}
             spent={900}
             showAlert={false}
@@ -231,7 +231,7 @@ describe('BudgetProgressBar', () => {
       it('should cap progress bar width at 100% for overspending', () => {
         const { container } = render(
           <BudgetProgressBar 
-            category="Food"
+            category="Groceries"
             budgetLimit={1000}
             spent={1500}
             showAlert={true}
@@ -246,7 +246,7 @@ describe('BudgetProgressBar', () => {
       it('should display "over budget" text for overspending', () => {
         const { container } = render(
           <BudgetProgressBar 
-            category="Food"
+            category="Groceries"
             budgetLimit={1000}
             spent={1200}
             showAlert={true}
@@ -261,7 +261,7 @@ describe('BudgetProgressBar', () => {
       it('should display correct overage amount', () => {
         const { container } = render(
           <BudgetProgressBar 
-            category="Food"
+            category="Groceries"
             budgetLimit={1000}
             spent={1200}
             showAlert={true}
@@ -275,7 +275,7 @@ describe('BudgetProgressBar', () => {
       it('should display "remaining" text when under budget', () => {
         const { container } = render(
           <BudgetProgressBar 
-            category="Food"
+            category="Groceries"
             budgetLimit={1000}
             spent={600}
             showAlert={true}
@@ -290,7 +290,7 @@ describe('BudgetProgressBar', () => {
       it('should display correct remaining amount', () => {
         const { container } = render(
           <BudgetProgressBar 
-            category="Food"
+            category="Groceries"
             budgetLimit={1000}
             spent={600}
             showAlert={true}
@@ -307,7 +307,7 @@ describe('BudgetProgressBar', () => {
       it('should have proper ARIA attributes', () => {
         const { container } = render(
           <BudgetProgressBar 
-            category="Food"
+            category="Groceries"
             budgetLimit={1000}
             spent={500}
             showAlert={true}
@@ -324,7 +324,7 @@ describe('BudgetProgressBar', () => {
       it('should have descriptive aria-label', () => {
         const { container } = render(
           <BudgetProgressBar 
-            category="Food"
+            category="Groceries"
             budgetLimit={1000}
             spent={500}
             showAlert={true}
@@ -333,7 +333,7 @@ describe('BudgetProgressBar', () => {
         
         const progressBar = container.querySelector('.progress-bar-fill');
         const ariaLabel = progressBar.getAttribute('aria-label');
-        expect(ariaLabel).toContain('Food');
+        expect(ariaLabel).toContain('Groceries');
         expect(ariaLabel).toContain('50.0%');
       });
     });
@@ -343,7 +343,7 @@ describe('BudgetProgressBar', () => {
       it('should format amounts as Canadian currency', () => {
         const { container } = render(
           <BudgetProgressBar 
-            category="Food"
+            category="Groceries"
             budgetLimit={1234.56}
             spent={567.89}
             showAlert={true}
@@ -358,7 +358,7 @@ describe('BudgetProgressBar', () => {
       it('should display amounts with 2 decimal places', () => {
         const { container } = render(
           <BudgetProgressBar 
-            category="Food"
+            category="Groceries"
             budgetLimit={1000}
             spent={500.5}
             showAlert={true}
@@ -371,3 +371,4 @@ describe('BudgetProgressBar', () => {
     });
   });
 });
+

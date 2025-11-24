@@ -1,8 +1,8 @@
 {
-  "enabled": true,
+  "enabled": false,
   "schedule": "daily",
   "time": "02:00",
-  "targetPath": "G:\\My Drive\\Documents\\Financial\\Expense Tracker Backups",
+  "targetPath": "C:\\Users\\krazy\\Projects\\Expense Tracker\\backend\\config\\backups",
   "keepLastN": 7,
-  "lastBackup": "2025-11-23T17:07:59.363Z"
+  "lastBackup": "2025-11-24T02:29:38.103Z"
 }

@@ -17,6 +17,27 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
   const [showLoansModal, setShowLoansModal] = useState(false);
   const [loans, setLoans] = useState([]);
   const [totalOutstandingDebt, setTotalOutstandingDebt] = useState(0);
+  const [categories, setCategories] = useState([]);
+
+  // Fetch categories on mount
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch(API_ENDPOINTS.CATEGORIES);
+        if (!response.ok) {
+          throw new Error('Failed to fetch categories');
+        }
+        const data = await response.json();
+        setCategories(data.categories || []);
+      } catch (err) {
+        console.error('Error fetching categories:', err);
+        // Fallback to empty array if fetch fails
+        setCategories([]);
+      }
+    };
+
+    fetchCategories();
+  }, []);
 
   useEffect(() => {
     const fetchSummary = async () => {
@@ -466,56 +487,28 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
           </div>
           <div className="card-content">
             <div className="compact-list horizontal-list">
-              <div className="compact-item">
-                <span>Food</span>
-                <span>
-                  ${formatAmount(summary.typeTotals.Food)}
-                  <TrendIndicator 
-                    currentValue={summary.typeTotals.Food} 
-                    previousValue={previousSummary?.typeTotals?.Food} 
-                  />
-                </span>
-              </div>
-              <div className="compact-item">
-                <span>Gas</span>
-                <span>
-                  ${formatAmount(summary.typeTotals.Gas)}
-                  <TrendIndicator 
-                    currentValue={summary.typeTotals.Gas} 
-                    previousValue={previousSummary?.typeTotals?.Gas} 
-                  />
-                </span>
-              </div>
-              <div className="compact-item">
-                <span>Tax - Medical</span>
-                <span>
-                  ${formatAmount(summary.typeTotals['Tax - Medical'])}
-                  <TrendIndicator 
-                    currentValue={summary.typeTotals['Tax - Medical']} 
-                    previousValue={previousSummary?.typeTotals?.['Tax - Medical']} 
-                  />
-                </span>
-              </div>
-              <div className="compact-item">
-                <span>Tax - Donation</span>
-                <span>
-                  ${formatAmount(summary.typeTotals['Tax - Donation'])}
-                  <TrendIndicator 
-                    currentValue={summary.typeTotals['Tax - Donation']} 
-                    previousValue={previousSummary?.typeTotals?.['Tax - Donation']} 
-                  />
-                </span>
-              </div>
-              <div className="compact-item">
-                <span>Other</span>
-                <span>
-                  ${formatAmount(summary.typeTotals.Other)}
-                  <TrendIndicator 
-                    currentValue={summary.typeTotals.Other} 
-                    previousValue={previousSummary?.typeTotals?.Other} 
-                  />
-                </span>
-              </div>
+              {categories.map((category) => {
+                const currentValue = summary.typeTotals[category] || 0;
+                const previousValue = previousSummary?.typeTotals?.[category] || 0;
+                
+                // Only show categories that have expenses or had expenses in previous month
+                if (currentValue === 0 && previousValue === 0) {
+                  return null;
+                }
+                
+                return (
+                  <div key={category} className="compact-item">
+                    <span>{category}</span>
+                    <span>
+                      ${formatAmount(currentValue)}
+                      <TrendIndicator 
+                        currentValue={currentValue} 
+                        previousValue={previousValue} 
+                      />
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>

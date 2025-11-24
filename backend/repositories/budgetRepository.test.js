@@ -29,7 +29,7 @@ describe('BudgetRepository - Property-Based Tests', () => {
         fc.record({
           year: fc.constant(9999), // Use test year to avoid conflicts
           month: fc.integer({ min: 1, max: 12 }),
-          category: fc.constantFrom('Food', 'Gas', 'Other'),
+          category: fc.constantFrom('Groceries', 'Gas', 'Other'),
           limit: fc.float({ min: Math.fround(0.01), max: Math.fround(10000), noNaN: true })
         }),
         async (budget) => {
@@ -64,7 +64,7 @@ describe('BudgetRepository - Property-Based Tests', () => {
         fc.record({
           year: fc.constant(9999),
           month: fc.integer({ min: 1, max: 12 }),
-          category: fc.constantFrom('Food', 'Gas', 'Other'),
+          category: fc.constantFrom('Groceries', 'Gas', 'Other'),
           initialLimit: fc.float({ min: Math.fround(0.01), max: Math.fround(10000), noNaN: true }),
           newLimit: fc.float({ min: Math.fround(0.01), max: Math.fround(10000), noNaN: true })
         }),
@@ -111,7 +111,7 @@ describe('BudgetRepository - Property-Based Tests', () => {
         fc.record({
           year: fc.constant(9999),
           month: fc.integer({ min: 1, max: 12 }),
-          category: fc.constantFrom('Food', 'Gas', 'Other'),
+          category: fc.constantFrom('Groceries', 'Gas', 'Other'),
           limit: fc.float({ min: Math.fround(0.01), max: Math.fround(10000), noNaN: true })
         }),
         async (budget) => {
@@ -145,7 +145,7 @@ describe('BudgetRepository - Property-Based Tests', () => {
         fc.record({
           year: fc.constant(9999),
           month: fc.integer({ min: 1, max: 12 }),
-          category: fc.constantFrom('Food', 'Gas', 'Other'),
+          category: fc.constantFrom('Groceries', 'Gas', 'Other'),
           limit: fc.float({ min: Math.fround(-10000), max: Math.fround(10000), noNaN: true })
         }),
         async (budget) => {
@@ -168,3 +168,4 @@ describe('BudgetRepository - Property-Based Tests', () => {
     );
   }, 30000);
 });
+

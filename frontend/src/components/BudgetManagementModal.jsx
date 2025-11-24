@@ -6,7 +6,8 @@ import {
   createBudget,
   updateBudget,
   deleteBudget,
-  copyBudgets
+  copyBudgets,
+  getBudgetSuggestion
 } from '../services/budgetApi';
 import { validateAmount } from '../utils/validation';
 import { getMonthNameLong } from '../utils/formatters';
@@ -14,7 +15,20 @@ import BudgetCard from './BudgetCard';
 import BudgetProgressBar from './BudgetProgressBar';
 
 // Budgetable categories (excludes tax-deductible categories)
-const BUDGETABLE_CATEGORIES = ['Food', 'Gas', 'Other'];
+const BUDGETABLE_CATEGORIES = [
+  'Housing',
+  'Utilities',
+  'Groceries',
+  'Dining Out',
+  'Insurance',
+  'Gas',
+  'Vehicle Maintenance',
+  'Entertainment',
+  'Subscriptions',
+  'Recreation Activities',
+  'Pet Care',
+  'Other'
+];
 
 const BudgetManagementModal = ({ isOpen, onClose, year, month, onBudgetUpdated }) => {
   const [budgets, setBudgets] = useState([]);
@@ -25,6 +39,8 @@ const BudgetManagementModal = ({ isOpen, onClose, year, month, onBudgetUpdated }
   const [error, setError] = useState(null);
   const [validationErrors, setValidationErrors] = useState({});
   const [isCopying, setIsCopying] = useState(false);
+  const [suggestion, setSuggestion] = useState(null);
+  const [loadingSuggestion, setLoadingSuggestion] = useState(false);
 
   // Fetch budgets when modal opens or year/month changes
   useEffect(() => {
@@ -61,11 +77,31 @@ const BudgetManagementModal = ({ isOpen, onClose, year, month, onBudgetUpdated }
     return budgets.find(b => b.category === category);
   };
 
-  const handleEditBudget = (category) => {
+  const handleEditBudget = async (category) => {
     const budget = getBudgetForCategory(category);
     setEditingCategory(category);
     setEditAmount(budget ? budget.limit.toString() : '');
     clearValidationErrors();
+    
+    // Fetch budget suggestion
+    setSuggestion(null);
+    setLoadingSuggestion(true);
+    
+    try {
+      const suggestionData = await getBudgetSuggestion(year, month, category);
+      setSuggestion(suggestionData);
+      
+      // If no existing budget and suggestion is available, pre-fill with suggestion
+      if (!budget && suggestionData.suggestedAmount > 0) {
+        setEditAmount(suggestionData.suggestedAmount.toString());
+      }
+    } catch (err) {
+      console.error('Error fetching budget suggestion:', err);
+      // Don't show error to user, just skip suggestion
+      setSuggestion(null);
+    } finally {
+      setLoadingSuggestion(false);
+    }
   };
 
   const handleSaveBudget = async () => {
@@ -129,6 +165,13 @@ const BudgetManagementModal = ({ isOpen, onClose, year, month, onBudgetUpdated }
     setEditAmount('');
     setError(null);
     clearValidationErrors();
+    setSuggestion(null);
+  };
+
+  const handleAcceptSuggestion = () => {
+    if (suggestion && suggestion.suggestedAmount > 0) {
+      setEditAmount(suggestion.suggestedAmount.toString());
+    }
   };
 
   const handleDeleteBudget = async (category) => {
@@ -352,6 +395,45 @@ const BudgetManagementModal = ({ isOpen, onClose, year, month, onBudgetUpdated }
                             {validationErrors[category] && (
                               <span className="validation-error">{validationErrors[category]}</span>
                             )}
+                            
+                            {/* Budget Suggestion */}
+                            {loadingSuggestion && (
+                              <div className="budget-suggestion loading">
+                                <span className="suggestion-icon">💡</span>
+                                <span className="suggestion-text">Loading suggestion...</span>
+                              </div>
+                            )}
+                            
+                            {!loadingSuggestion && suggestion && suggestion.suggestedAmount > 0 && (
+                              <div className="budget-suggestion">
+                                <span className="suggestion-icon">💡</span>
+                                <span className="suggestion-text">
+                                  Suggested: {formatCurrency(suggestion.suggestedAmount)}
+                                  {suggestion.basedOnMonths > 0 && (
+                                    <span className="suggestion-detail">
+                                      {' '}(Based on {suggestion.basedOnMonths} month{suggestion.basedOnMonths > 1 ? 's' : ''} average: {formatCurrency(suggestion.averageSpending)})
+                                    </span>
+                                  )}
+                                </span>
+                                {editAmount !== suggestion.suggestedAmount.toString() && (
+                                  <button
+                                    className="suggestion-accept-button"
+                                    onClick={handleAcceptSuggestion}
+                                    disabled={loading}
+                                    title="Use suggested amount"
+                                  >
+                                    Use
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                            
+                            {!loadingSuggestion && suggestion && suggestion.suggestedAmount === 0 && (
+                              <div className="budget-suggestion no-data">
+                                <span className="suggestion-icon">ℹ️</span>
+                                <span className="suggestion-text">No historical data available for this category</span>
+                              </div>
+                            )}
                           </div>
                           <div className="budget-edit-actions">
                             <button
@@ -409,8 +491,7 @@ const BudgetManagementModal = ({ isOpen, onClose, year, month, onBudgetUpdated }
 
                 <div className="budget-info-section">
                   <p className="budget-info-text">
-                    💡 <strong>Tip:</strong> Budgets only apply to Food, Gas, and Other categories. 
-                    Tax-deductible expenses are tracked separately.
+                    💡 <strong>Tip:</strong> Budgets apply to all categories except tax-deductible expenses (Tax - Medical, Tax - Donation), which are tracked separately.
                   </p>
                 </div>
               </div>

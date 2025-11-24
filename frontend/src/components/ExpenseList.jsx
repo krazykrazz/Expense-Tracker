@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { API_ENDPOINTS } from '../config';
 import './ExpenseList.css';
 import { formatAmount, formatLocalDate } from '../utils/formatters';
@@ -12,6 +12,27 @@ const ExpenseList = ({ expenses, onExpenseDeleted, onExpenseUpdated, searchText,
   const [editFormData, setEditFormData] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editMessage, setEditMessage] = useState({ text: '', type: '' });
+  const [categories, setCategories] = useState([]);
+
+  // Fetch categories on mount
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch(API_ENDPOINTS.CATEGORIES);
+        if (!response.ok) {
+          throw new Error('Failed to fetch categories');
+        }
+        const data = await response.json();
+        setCategories(data.categories || []);
+      } catch (err) {
+        console.error('Error fetching categories:', err);
+        // Fallback to empty array if fetch fails
+        setCategories([]);
+      }
+    };
+
+    fetchCategories();
+  }, []);
 
   const handleEditClick = (expense) => {
     setExpenseToEdit(expense);
@@ -159,11 +180,11 @@ const ExpenseList = ({ expenses, onExpenseDeleted, onExpenseUpdated, searchText,
               title="Filter by type"
             >
               <option value="">All Types</option>
-              <option value="Other">Other</option>
-              <option value="Food">Food</option>
-              <option value="Gas">Gas</option>
-              <option value="Tax - Medical">Tax - Medical</option>
-              <option value="Tax - Donation">Tax - Donation</option>
+              {categories.map((category) => (
+                <option key={category} value={category}>
+                  {category}
+                </option>
+              ))}
             </select>
             <select 
               className="filter-select"
@@ -368,11 +389,11 @@ const ExpenseList = ({ expenses, onExpenseDeleted, onExpenseUpdated, searchText,
                     onChange={handleEditChange}
                     required
                   >
-                    <option value="Other">Other</option>
-                    <option value="Food">Food</option>
-                    <option value="Gas">Gas</option>
-                    <option value="Tax - Medical">Tax - Medical</option>
-                    <option value="Tax - Donation">Tax - Donation</option>
+                    {categories.map((category) => (
+                      <option key={category} value={category}>
+                        {category}
+                      </option>
+                    ))}
                   </select>
                 </div>
 

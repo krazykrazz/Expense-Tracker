@@ -9,7 +9,7 @@ The Expense Tracker Application is a web-based system that enables users to reco
 - **Expense Tracker Application**: The complete web-based system including frontend and backend components
 - **User**: An individual who interacts with the Expense Tracker Application to manage their expenses
 - **Expense Entry**: A single record containing information about a financial transaction including amount, date, place, notes, type, week, and payment method
-- **Type**: A classification label for the nature of the expense, limited to Other, Food, Gas, Tax - Medical, or Tax - Donation
+- **Type**: A classification label for the nature of the expense, selected from 14 available categories: Housing, Utilities, Groceries, Dining Out, Insurance, Gas, Vehicle Maintenance, Entertainment, Subscriptions, Recreation Activities, Pet Care, Tax - Medical, Tax - Donation, and Other
 - **Week**: A calculated value from 1 to 5 representing which week of the month the expense occurred, based on the day of the month (days 1-7 = week 1, days 8-14 = week 2, etc.)
 - **Payment Method**: The financial instrument used for the transaction, one of Cash, Debit, CIBC MC, PCF MC, WS VISA, or VISA
 - **Expense List**: A collection of expense entries displayed to the user
@@ -52,7 +52,7 @@ The Expense Tracker Application is a web-based system that enables users to reco
 
 #### Acceptance Criteria
 
-1. THE Expense Tracker Application SHALL provide exactly five Type options: Other, Food, Gas, Tax - Medical, and Tax - Donation
+1. THE Expense Tracker Application SHALL provide fourteen Type options: Housing, Utilities, Groceries, Dining Out, Insurance, Gas, Vehicle Maintenance, Entertainment, Subscriptions, Recreation Activities, Pet Care, Tax - Medical, Tax - Donation, and Other
 2. WHEN the User creates an Expense Entry, THE Expense Tracker Application SHALL require the User to select one Type
 3. THE Expense Tracker Application SHALL provide exactly six Payment Method options: Cash, Debit, CIBC MC, PCF MC, WS VISA, and VISA
 4. WHEN the User creates an Expense Entry, THE Expense Tracker Application SHALL require the User to select one Payment Method
@@ -115,14 +115,14 @@ The Expense Tracker Application is a web-based system that enables users to reco
 
 ### Requirement 9
 
-**User Story:** As a user, I want to see spending totals for Gas and Food categories for a selected month, so that I can track these specific expense types.
+**User Story:** As a user, I want to see spending totals for all expense categories for a selected month, so that I can track spending across different expense types.
 
 #### Acceptance Criteria
 
-1. WHEN the User views a specific month, THE Expense Tracker Application SHALL calculate the total expense amount for all Expense Entries with Type equal to Gas
-2. WHEN the User views a specific month, THE Expense Tracker Application SHALL calculate the total expense amount for all Expense Entries with Type equal to Food
-3. THE Expense Tracker Application SHALL display the Gas total and Food total with two decimal places
-4. WHEN a Type has no Expense Entries in the selected month, THE Expense Tracker Application SHALL display zero for that Type
+1. WHEN the User views a specific month, THE Expense Tracker Application SHALL calculate the total expense amount for each Type that has Expense Entries
+2. THE Expense Tracker Application SHALL display spending totals grouped by category with two decimal places
+3. WHEN a Type has no Expense Entries in the selected month, THE Expense Tracker Application SHALL display zero for that Type or omit it from the display
+4. THE Expense Tracker Application SHALL support displaying totals for all fourteen expense categories
 
 ### Requirement 10
 
@@ -143,8 +143,8 @@ The Expense Tracker Application is a web-based system that enables users to reco
 
 #### Acceptance Criteria
 
-1. THE Expense Tracker Application SHALL provide exactly five Type options: Other, Food, Gas, Tax - Medical, and Tax - Donation
-2. WHEN the User creates or edits an Expense Entry, THE Expense Tracker Application SHALL require the User to select one Type from the five available options
+1. THE Expense Tracker Application SHALL provide fourteen Type options including two tax-deductible categories: Tax - Medical and Tax - Donation
+2. WHEN the User creates or edits an Expense Entry, THE Expense Tracker Application SHALL require the User to select one Type from the fourteen available options
 3. WHEN the User selects "Tax - Medical" as the Type, THE Expense Tracker Application SHALL visually distinguish that Expense Entry in the Expense List with dark blue row highlighting (#1e3a5f background with white text)
 4. WHEN the User selects "Tax - Donation" as the Type, THE Expense Tracker Application SHALL visually distinguish that Expense Entry in the Expense List with orange row highlighting (#ea580c background with white text)
 5. THE Expense Tracker Application SHALL allow the User to filter the Expense List by Type including both Tax - Medical and Tax - Donation options

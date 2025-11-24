@@ -1,4 +1,5 @@
 const fixedExpenseRepository = require('../repositories/fixedExpenseRepository');
+const { validateYearMonth } = require('../utils/validators');
 
 class FixedExpenseService {
   /**
@@ -65,9 +66,7 @@ class FixedExpenseService {
    */
   async getMonthlyFixedExpenses(year, month) {
     // Validate year and month
-    if (!year || !month) {
-      throw new Error('Year and month are required');
-    }
+    validateYearMonth(year, month);
 
     const yearNum = parseInt(year);
     const monthNum = parseInt(month);
@@ -164,9 +163,7 @@ class FixedExpenseService {
    */
   async carryForwardFixedExpenses(year, month) {
     // Validate year and month
-    if (!year || !month) {
-      throw new Error('Year and month are required');
-    }
+    validateYearMonth(year, month);
 
     const yearNum = parseInt(year);
     const monthNum = parseInt(month);

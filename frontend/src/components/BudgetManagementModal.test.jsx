@@ -18,7 +18,7 @@ describe('BudgetManagementModal', () => {
   };
 
   const mockBudgets = [
-    { id: 1, year: 2025, month: 11, category: 'Food', limit: 500 },
+    { id: 1, year: 2025, month: 11, category: 'Groceries', limit: 500 },
     { id: 2, year: 2025, month: 11, category: 'Gas', limit: 200 }
   ];
 
@@ -38,17 +38,17 @@ describe('BudgetManagementModal', () => {
         id: 1,
         year: 2025,
         month: 11,
-        category: 'Food',
+        category: 'Housing',
         limit: 500
       });
 
       render(<BudgetManagementModal {...defaultProps} />);
 
       await waitFor(() => {
-        expect(screen.getByText('Food')).toBeInTheDocument();
+        expect(screen.getByText('Housing')).toBeInTheDocument();
       });
 
-      // Click edit button for Food category
+      // Click edit button for Housing category (first in the list)
       const editButtons = screen.getAllByTitle(/Set budget|Edit budget/);
       fireEvent.click(editButtons[0]);
 
@@ -61,7 +61,7 @@ describe('BudgetManagementModal', () => {
       fireEvent.click(saveButton);
 
       await waitFor(() => {
-        expect(budgetApi.createBudget).toHaveBeenCalledWith(2025, 11, 'Food', 500);
+        expect(budgetApi.createBudget).toHaveBeenCalledWith(2025, 11, 'Housing', 500);
       });
 
       expect(mockOnBudgetUpdated).toHaveBeenCalled();
@@ -73,10 +73,10 @@ describe('BudgetManagementModal', () => {
       render(<BudgetManagementModal {...defaultProps} />);
 
       await waitFor(() => {
-        expect(screen.getByText('Food')).toBeInTheDocument();
+        expect(screen.getByText('Housing')).toBeInTheDocument();
       });
 
-      // Click edit button for Food category
+      // Click edit button for Housing category (first in the list)
       const editButtons = screen.getAllByTitle(/Set budget|Edit budget/);
       fireEvent.click(editButtons[0]);
 
@@ -101,10 +101,10 @@ describe('BudgetManagementModal', () => {
       render(<BudgetManagementModal {...defaultProps} />);
 
       await waitFor(() => {
-        expect(screen.getByText('Food')).toBeInTheDocument();
+        expect(screen.getByText('Housing')).toBeInTheDocument();
       });
 
-      // Click edit button for Food category
+      // Click edit button for Housing category (first in the list)
       const editButtons = screen.getAllByTitle(/Set budget|Edit budget/);
       fireEvent.click(editButtons[0]);
 
@@ -130,7 +130,7 @@ describe('BudgetManagementModal', () => {
         id: 1,
         year: 2025,
         month: 11,
-        category: 'Food',
+        category: 'Groceries',
         limit: 600
       });
 
@@ -140,7 +140,7 @@ describe('BudgetManagementModal', () => {
         expect(screen.getByText('$500.00')).toBeInTheDocument();
       });
 
-      // Click edit button for Food category (first edit button)
+      // Click edit button for Groceries category (first edit button)
       const editButtons = screen.getAllByTitle(/Edit budget/);
       fireEvent.click(editButtons[0]);
 
@@ -166,7 +166,7 @@ describe('BudgetManagementModal', () => {
         expect(screen.getByText('$500.00')).toBeInTheDocument();
       });
 
-      // Click edit button for Food category
+      // Click edit button for Groceries category
       const editButtons = screen.getAllByTitle(/Edit budget/);
       fireEvent.click(editButtons[0]);
 
@@ -197,7 +197,7 @@ describe('BudgetManagementModal', () => {
         expect(screen.getByText('$500.00')).toBeInTheDocument();
       });
 
-      // Click delete button for Food category
+      // Click delete button for Groceries category
       const deleteButtons = screen.getAllByTitle('Remove budget');
       fireEvent.click(deleteButtons[0]);
 
@@ -217,7 +217,7 @@ describe('BudgetManagementModal', () => {
         expect(screen.getByText('$500.00')).toBeInTheDocument();
       });
 
-      // Click delete button for Food category
+      // Click delete button for Groceries category
       const deleteButtons = screen.getAllByTitle('Remove budget');
       fireEvent.click(deleteButtons[0]);
 
@@ -233,10 +233,10 @@ describe('BudgetManagementModal', () => {
       render(<BudgetManagementModal {...defaultProps} />);
 
       await waitFor(() => {
-        expect(screen.getByText('Food')).toBeInTheDocument();
+        expect(screen.getByText('Groceries')).toBeInTheDocument();
       });
 
-      // Click edit button for Food category
+      // Click edit button for Groceries category
       const editButtons = screen.getAllByTitle(/Set budget/);
       fireEvent.click(editButtons[0]);
 
@@ -255,10 +255,10 @@ describe('BudgetManagementModal', () => {
       render(<BudgetManagementModal {...defaultProps} />);
 
       await waitFor(() => {
-        expect(screen.getByText('Food')).toBeInTheDocument();
+        expect(screen.getByText('Groceries')).toBeInTheDocument();
       });
 
-      // Click edit button for Food category
+      // Click edit button for Groceries category
       const editButtons = screen.getAllByTitle(/Set budget/);
       fireEvent.click(editButtons[0]);
 
@@ -281,10 +281,10 @@ describe('BudgetManagementModal', () => {
       render(<BudgetManagementModal {...defaultProps} />);
 
       await waitFor(() => {
-        expect(screen.getByText('Food')).toBeInTheDocument();
+        expect(screen.getByText('Groceries')).toBeInTheDocument();
       });
 
-      // Click edit button for Food category
+      // Click edit button for Groceries category
       const editButtons = screen.getAllByTitle(/Set budget/);
       fireEvent.click(editButtons[0]);
 
@@ -318,7 +318,7 @@ describe('BudgetManagementModal', () => {
       render(<BudgetManagementModal {...defaultProps} />);
 
       await waitFor(() => {
-        expect(screen.getByText('Food')).toBeInTheDocument();
+        expect(screen.getByText('Groceries')).toBeInTheDocument();
       });
 
       // Click copy button
@@ -340,7 +340,7 @@ describe('BudgetManagementModal', () => {
       render(<BudgetManagementModal {...defaultProps} />);
 
       await waitFor(() => {
-        expect(screen.getByText('Food')).toBeInTheDocument();
+        expect(screen.getByText('Groceries')).toBeInTheDocument();
       });
 
       // Click copy button
@@ -379,7 +379,7 @@ describe('BudgetManagementModal', () => {
       render(<BudgetManagementModal {...januaryProps} />);
 
       await waitFor(() => {
-        expect(screen.getByText('Food')).toBeInTheDocument();
+        expect(screen.getByText('Groceries')).toBeInTheDocument();
       });
 
       // Click copy button
@@ -406,7 +406,7 @@ describe('BudgetManagementModal', () => {
       render(<BudgetManagementModal {...defaultProps} />);
 
       await waitFor(() => {
-        expect(screen.getByText('Food')).toBeInTheDocument();
+        expect(screen.getByText('Groceries')).toBeInTheDocument();
       });
 
       const closeButton = screen.getByText('✕');
@@ -419,7 +419,7 @@ describe('BudgetManagementModal', () => {
       const { container } = render(<BudgetManagementModal {...defaultProps} />);
 
       await waitFor(() => {
-        expect(screen.getByText('Food')).toBeInTheDocument();
+        expect(screen.getByText('Groceries')).toBeInTheDocument();
       });
 
       const overlay = container.querySelector('.budget-modal-overlay');
@@ -432,7 +432,7 @@ describe('BudgetManagementModal', () => {
       const { container } = render(<BudgetManagementModal {...defaultProps} />);
 
       await waitFor(() => {
-        expect(screen.getByText('Food')).toBeInTheDocument();
+        expect(screen.getByText('Groceries')).toBeInTheDocument();
       });
 
       const modalContent = container.querySelector('.budget-modal-container');
@@ -530,7 +530,7 @@ describe('BudgetManagementModal', () => {
       render(<BudgetManagementModal {...defaultProps} />);
 
       await waitFor(() => {
-        expect(screen.getByText('Food')).toBeInTheDocument();
+        expect(screen.getByText('Groceries')).toBeInTheDocument();
       });
 
       // Click edit button
@@ -555,7 +555,7 @@ describe('BudgetManagementModal', () => {
       render(<BudgetManagementModal {...defaultProps} />);
 
       await waitFor(() => {
-        expect(screen.getByText('Food')).toBeInTheDocument();
+        expect(screen.getByText('Groceries')).toBeInTheDocument();
         expect(screen.getByText('Gas')).toBeInTheDocument();
         expect(screen.getByText('Other')).toBeInTheDocument();
       });
@@ -568,7 +568,7 @@ describe('BudgetManagementModal', () => {
 
       await waitFor(() => {
         const notSetElements = screen.getAllByText('Not set');
-        expect(notSetElements).toHaveLength(3); // All three categories
+        expect(notSetElements).toHaveLength(12); // All 12 budgetable categories
       });
     });
 
@@ -585,8 +585,11 @@ describe('BudgetManagementModal', () => {
       render(<BudgetManagementModal {...defaultProps} />);
 
       await waitFor(() => {
-        expect(screen.getByText(/only apply to Food, Gas, and Other/)).toBeInTheDocument();
+        expect(screen.getByText(/Budgets apply to all categories except tax-deductible expenses/)).toBeInTheDocument();
       });
     });
   });
 });
+
+
+

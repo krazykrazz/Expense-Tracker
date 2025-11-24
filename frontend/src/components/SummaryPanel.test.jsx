@@ -70,7 +70,7 @@ describe('SummaryPanel', () => {
                 total: 500,
                 weeklyTotals: currentWeekly,
                 typeTotals: {
-                  Food: 100,
+                  Groceries: 100,
                   Gas: 50,
                   Other: 50,
                   'Tax - Medical': 0,
@@ -95,7 +95,7 @@ describe('SummaryPanel', () => {
                 total: 450,
                 weeklyTotals: previousWeekly,
                 typeTotals: {
-                  Food: 90,
+                  Groceries: 90,
                   Gas: 45,
                   Other: 45,
                   'Tax - Medical': 0,
@@ -162,14 +162,14 @@ describe('SummaryPanel', () => {
         fc.asyncProperty(
           // Generate random expense type totals
           fc.record({
-            Food: fc.double({ min: 50, max: 500, noNaN: true }),
+            Groceries: fc.double({ min: 50, max: 500, noNaN: true }),
             Gas: fc.double({ min: 20, max: 200, noNaN: true }),
             Other: fc.double({ min: 10, max: 300, noNaN: true }),
             'Tax - Medical': fc.double({ min: 0, max: 100, noNaN: true }),
             'Tax - Donation': fc.double({ min: 0, max: 100, noNaN: true })
           }),
           fc.record({
-            Food: fc.double({ min: 50, max: 500, noNaN: true }),
+            Groceries: fc.double({ min: 50, max: 500, noNaN: true }),
             Gas: fc.double({ min: 20, max: 200, noNaN: true }),
             Other: fc.double({ min: 10, max: 300, noNaN: true }),
             'Tax - Medical': fc.double({ min: 0, max: 100, noNaN: true }),
@@ -269,7 +269,7 @@ describe('SummaryPanel', () => {
                 total: 500,
                 weeklyTotals: { week1: 100, week2: 100, week3: 100, week4: 100, week5: 100 },
                 typeTotals: {
-                  Food: 200, Gas: 100, Other: 100,
+                  Groceries: 200, Gas: 100, Other: 100,
                   'Tax - Medical': 50, 'Tax - Donation': 50
                 },
                 methodTotals: currentMethods,
@@ -283,7 +283,7 @@ describe('SummaryPanel', () => {
                 total: 450,
                 weeklyTotals: { week1: 90, week2: 90, week3: 90, week4: 90, week5: 90 },
                 typeTotals: {
-                  Food: 180, Gas: 90, Other: 90,
+                  Groceries: 180, Gas: 90, Other: 90,
                   'Tax - Medical': 45, 'Tax - Donation': 45
                 },
                 methodTotals: previousMethods,
@@ -328,3 +328,4 @@ describe('SummaryPanel', () => {
     }, 30000);
   });
 });
+

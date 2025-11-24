@@ -374,6 +374,54 @@ async function copyBudgets(req, res) {
   }
 }
 
+/**
+ * Get budget suggestion based on historical spending
+ * GET /api/budgets/suggest?year=2025&month=11&category=Groceries
+ */
+async function suggestBudget(req, res) {
+  try {
+    const { year, month, category } = req.query;
+    
+    // Validate required fields
+    if (!year || !month || !category) {
+      return res.status(400).json({ 
+        error: {
+          code: 'INVALID_REQUEST',
+          message: 'Year, month, and category query parameters are required'
+        }
+      });
+    }
+    
+    const suggestion = await budgetService.suggestBudgetAmount(year, month, category);
+    res.status(200).json(suggestion);
+  } catch (error) {
+    if (error.message.includes('Invalid year or month')) {
+      return res.status(400).json({
+        error: {
+          code: 'INVALID_DATE',
+          message: error.message
+        }
+      });
+    }
+    
+    if (error.message.includes('Budget can only be set for')) {
+      return res.status(400).json({
+        error: {
+          code: 'INVALID_CATEGORY',
+          message: error.message
+        }
+      });
+    }
+    
+    res.status(500).json({ 
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: error.message
+      }
+    });
+  }
+}
+
 module.exports = {
   getBudgets,
   createBudget,
@@ -381,5 +429,6 @@ module.exports = {
   deleteBudget,
   getBudgetSummary,
   getBudgetHistory,
-  copyBudgets
+  copyBudgets,
+  suggestBudget
 };

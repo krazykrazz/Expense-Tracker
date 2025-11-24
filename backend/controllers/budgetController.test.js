@@ -28,7 +28,7 @@ describe('BudgetController - Unit Tests', () => {
   describe('GET /api/budgets - getBudgets', () => {
     test('should return budgets for valid year and month', async () => {
       const mockBudgets = [
-        { id: 1, year: 2025, month: 11, category: 'Food', limit: 500 }
+        { id: 1, year: 2025, month: 11, category: 'Groceries', limit: 500 }
       ];
 
       req.query = { year: '2025', month: '11' };
@@ -87,14 +87,14 @@ describe('BudgetController - Unit Tests', () => {
 
   describe('POST /api/budgets - createBudget', () => {
     test('should create budget with valid data', async () => {
-      const mockBudget = { id: 1, year: 2025, month: 11, category: 'Food', limit: 500 };
+      const mockBudget = { id: 1, year: 2025, month: 11, category: 'Groceries', limit: 500 };
 
-      req.body = { year: 2025, month: 11, category: 'Food', limit: 500 };
+      req.body = { year: 2025, month: 11, category: 'Groceries', limit: 500 };
       budgetService.createBudget.mockResolvedValue(mockBudget);
 
       await budgetController.createBudget(req, res);
 
-      expect(budgetService.createBudget).toHaveBeenCalledWith(2025, 11, 'Food', 500);
+      expect(budgetService.createBudget).toHaveBeenCalledWith(2025, 11, 'Groceries', 500);
       expect(res.status).toHaveBeenCalledWith(201);
       expect(res.json).toHaveBeenCalledWith(mockBudget);
     });
@@ -114,7 +114,7 @@ describe('BudgetController - Unit Tests', () => {
     });
 
     test('should return 400 for invalid budget amount', async () => {
-      req.body = { year: 2025, month: 11, category: 'Food', limit: -100 };
+      req.body = { year: 2025, month: 11, category: 'Groceries', limit: -100 };
       budgetService.createBudget.mockRejectedValue(
         new Error('Budget limit must be a positive number greater than zero')
       );
@@ -152,7 +152,7 @@ describe('BudgetController - Unit Tests', () => {
     });
 
     test('should return 409 for duplicate budget', async () => {
-      req.body = { year: 2025, month: 11, category: 'Food', limit: 500 };
+      req.body = { year: 2025, month: 11, category: 'Groceries', limit: 500 };
       budgetService.createBudget.mockRejectedValue(
         new Error('A budget already exists for this category and month')
       );
@@ -171,7 +171,7 @@ describe('BudgetController - Unit Tests', () => {
 
   describe('PUT /api/budgets/:id - updateBudget', () => {
     test('should update budget with valid data', async () => {
-      const mockBudget = { id: 1, year: 2025, month: 11, category: 'Food', limit: 600 };
+      const mockBudget = { id: 1, year: 2025, month: 11, category: 'Groceries', limit: 600 };
 
       req.params = { id: '1' };
       req.body = { limit: 600 };
@@ -441,4 +441,154 @@ describe('BudgetController - Unit Tests', () => {
       });
     });
   });
+
+  describe('GET /api/budgets/suggest - suggestBudget', () => {
+    test('should return budget suggestion with historical data', async () => {
+      const mockSuggestion = {
+        category: 'Groceries',
+        suggestedAmount: 450,
+        averageSpending: 437.50,
+        basedOnMonths: 3
+      };
+
+      req.query = { year: '2025', month: '11', category: 'Groceries' };
+      budgetService.suggestBudgetAmount.mockResolvedValue(mockSuggestion);
+
+      await budgetController.suggestBudget(req, res);
+
+      expect(budgetService.suggestBudgetAmount).toHaveBeenCalledWith('2025', '11', 'Groceries');
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(mockSuggestion);
+    });
+
+    test('should return 0 suggestion with no historical data', async () => {
+      const mockSuggestion = {
+        category: 'Groceries',
+        suggestedAmount: 0,
+        averageSpending: 0,
+        basedOnMonths: 0
+      };
+
+      req.query = { year: '2025', month: '11', category: 'Groceries' };
+      budgetService.suggestBudgetAmount.mockResolvedValue(mockSuggestion);
+
+      await budgetController.suggestBudget(req, res);
+
+      expect(budgetService.suggestBudgetAmount).toHaveBeenCalledWith('2025', '11', 'Groceries');
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(mockSuggestion);
+    });
+
+    test('should use available months when insufficient data', async () => {
+      const mockSuggestion = {
+        category: 'Groceries',
+        suggestedAmount: 200,
+        averageSpending: 180.00,
+        basedOnMonths: 2
+      };
+
+      req.query = { year: '2025', month: '11', category: 'Groceries' };
+      budgetService.suggestBudgetAmount.mockResolvedValue(mockSuggestion);
+
+      await budgetController.suggestBudget(req, res);
+
+      expect(budgetService.suggestBudgetAmount).toHaveBeenCalledWith('2025', '11', 'Groceries');
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(mockSuggestion);
+    });
+
+    test('should return 400 when year is missing', async () => {
+      req.query = { month: '11', category: 'Groceries' };
+
+      await budgetController.suggestBudget(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({
+        error: {
+          code: 'INVALID_REQUEST',
+          message: 'Year, month, and category query parameters are required'
+        }
+      });
+    });
+
+    test('should return 400 when month is missing', async () => {
+      req.query = { year: '2025', category: 'Groceries' };
+
+      await budgetController.suggestBudget(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({
+        error: {
+          code: 'INVALID_REQUEST',
+          message: 'Year, month, and category query parameters are required'
+        }
+      });
+    });
+
+    test('should return 400 when category is missing', async () => {
+      req.query = { year: '2025', month: '11' };
+
+      await budgetController.suggestBudget(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({
+        error: {
+          code: 'INVALID_REQUEST',
+          message: 'Year, month, and category query parameters are required'
+        }
+      });
+    });
+
+    test('should return 400 for invalid year or month', async () => {
+      req.query = { year: '2025', month: '13', category: 'Groceries' };
+      budgetService.suggestBudgetAmount.mockRejectedValue(
+        new Error('Invalid year or month specified')
+      );
+
+      await budgetController.suggestBudget(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({
+        error: {
+          code: 'INVALID_DATE',
+          message: 'Invalid year or month specified'
+        }
+      });
+    });
+
+    test('should return 400 for invalid category', async () => {
+      req.query = { year: '2025', month: '11', category: 'Tax - Medical' };
+      budgetService.suggestBudgetAmount.mockRejectedValue(
+        new Error('Budget can only be set for Housing, Utilities, Groceries, Dining Out, Insurance, Gas, Vehicle Maintenance, Entertainment, Subscriptions, Recreation Activities, Pet Care, Other categories')
+      );
+
+      await budgetController.suggestBudget(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({
+        error: {
+          code: 'INVALID_CATEGORY',
+          message: 'Budget can only be set for Housing, Utilities, Groceries, Dining Out, Insurance, Gas, Vehicle Maintenance, Entertainment, Subscriptions, Recreation Activities, Pet Care, Other categories'
+        }
+      });
+    });
+
+    test('should return 500 for internal errors', async () => {
+      req.query = { year: '2025', month: '11', category: 'Groceries' };
+      budgetService.suggestBudgetAmount.mockRejectedValue(
+        new Error('Database connection failed')
+      );
+
+      await budgetController.suggestBudget(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith({
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: 'Database connection failed'
+        }
+      });
+    });
+  });
 });
+

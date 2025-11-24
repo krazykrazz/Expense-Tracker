@@ -43,7 +43,7 @@ describe('BackupService - Property-Based Tests', () => {
     const budgetArbitrary = fc.record({
       year: fc.integer({ min: 2020, max: 2030 }),
       month: fc.integer({ min: 1, max: 12 }),
-      category: fc.constantFrom('Food', 'Gas', 'Other'),
+      category: fc.constantFrom('Groceries', 'Gas', 'Other'),
       limit: fc.float({ min: Math.fround(0.01), max: Math.fround(10000), noNaN: true, noDefaultInfinity: true })
     });
 
@@ -108,7 +108,7 @@ describe('BackupService - Property-Based Tests', () => {
     const budgetArbitrary = fc.record({
       year: fc.integer({ min: 2020, max: 2030 }),
       month: fc.integer({ min: 1, max: 12 }),
-      category: fc.constantFrom('Food', 'Gas', 'Other'),
+      category: fc.constantFrom('Groceries', 'Gas', 'Other'),
       limit: fc.float({ min: Math.fround(0.01), max: Math.fround(10000), noNaN: true, noDefaultInfinity: true })
     });
 
@@ -201,3 +201,4 @@ describe('BackupService - Property-Based Tests', () => {
     );
   }, 60000); // Increase timeout for property-based test
 });
+

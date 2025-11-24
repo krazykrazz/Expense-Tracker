@@ -1,5 +1,6 @@
 const loanRepository = require('../repositories/loanRepository');
 const loanBalanceRepository = require('../repositories/loanBalanceRepository');
+const { validateNumber, validateString } = require('../utils/validators');
 
 class LoanService {
   /**
@@ -8,26 +9,15 @@ class LoanService {
    * @throws {Error} If validation fails
    */
   validateLoan(loan) {
-    if (!loan.name || typeof loan.name !== 'string' || loan.name.trim().length === 0) {
-      throw new Error('Loan name is required and must be a non-empty string');
-    }
+    // Validate name
+    validateString(loan.name, 'Loan name', { minLength: 1, maxLength: 100 });
 
-    if (loan.name.length > 100) {
-      throw new Error('Loan name must not exceed 100 characters');
-    }
+    // Validate initial balance
+    validateNumber(loan.initial_balance, 'Initial balance', { min: 0 });
 
-    if (loan.initial_balance === undefined || loan.initial_balance === null) {
-      throw new Error('Initial balance is required');
-    }
-
-    if (typeof loan.initial_balance !== 'number' || loan.initial_balance < 0) {
-      throw new Error('Initial balance must be a non-negative number');
-    }
-
-    if (!loan.start_date || typeof loan.start_date !== 'string') {
-      throw new Error('Start date is required and must be a string');
-    }
-
+    // Validate start date
+    validateString(loan.start_date, 'Start date');
+    
     // Validate date format (YYYY-MM-DD)
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (!dateRegex.test(loan.start_date)) {
@@ -47,9 +37,7 @@ class LoanService {
 
     // Validate estimated_months_left if provided
     if (loan.estimated_months_left !== undefined && loan.estimated_months_left !== null) {
-      if (typeof loan.estimated_months_left !== 'number' || loan.estimated_months_left < 0) {
-        throw new Error('Estimated months left must be a non-negative number');
-      }
+      validateNumber(loan.estimated_months_left, 'Estimated months left', { min: 0 });
       if (!Number.isInteger(loan.estimated_months_left)) {
         throw new Error('Estimated months left must be a whole number');
       }

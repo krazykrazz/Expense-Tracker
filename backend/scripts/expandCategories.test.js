@@ -24,7 +24,7 @@ describe('Migration Script - Unit Tests', () => {
               place TEXT NOT NULL,
               notes TEXT,
               amount REAL NOT NULL,
-              type TEXT NOT NULL CHECK(type IN ('Other', 'Food', 'Gas', 'Tax - Medical', 'Tax - Donation')),
+              type TEXT NOT NULL CHECK(type IN ('Housing', 'Utilities', 'Groceries', 'Dining Out', 'Insurance', 'Gas', 'Vehicle Maintenance', 'Entertainment', 'Subscriptions', 'Recreation Activities', 'Pet Care', 'Tax - Medical', 'Tax - Donation', 'Other')),
               week INTEGER NOT NULL,
               method TEXT NOT NULL,
               recurring_id INTEGER,
@@ -41,7 +41,7 @@ describe('Migration Script - Unit Tests', () => {
                 place TEXT NOT NULL,
                 notes TEXT,
                 amount REAL NOT NULL,
-                type TEXT NOT NULL CHECK(type IN ('Other', 'Food', 'Gas', 'Tax - Medical', 'Tax - Donation')),
+                type TEXT NOT NULL CHECK(type IN ('Housing', 'Utilities', 'Groceries', 'Dining Out', 'Insurance', 'Gas', 'Vehicle Maintenance', 'Entertainment', 'Subscriptions', 'Recreation Activities', 'Pet Care', 'Tax - Medical', 'Tax - Donation', 'Other')),
                 method TEXT NOT NULL,
                 frequency TEXT NOT NULL CHECK(frequency IN ('weekly', 'biweekly', 'monthly')),
                 start_date TEXT NOT NULL,
@@ -58,7 +58,7 @@ describe('Migration Script - Unit Tests', () => {
                   id INTEGER PRIMARY KEY AUTOINCREMENT,
                   year INTEGER NOT NULL,
                   month INTEGER NOT NULL CHECK(month >= 1 AND month <= 12),
-                  category TEXT NOT NULL CHECK(category IN ('Food', 'Gas', 'Other')),
+                  category TEXT NOT NULL CHECK(category IN ('Groceries', 'Gas', 'Other')),
                   limit_amount REAL NOT NULL CHECK(limit_amount >= 0),
                   created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                   updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -83,8 +83,8 @@ describe('Migration Script - Unit Tests', () => {
         testDb.run(`
           INSERT INTO expenses (date, place, notes, amount, type, week, method)
           VALUES 
-            ('2024-01-15', 'Restaurant A', 'Lunch', 25.50, 'Food', 3, 'Credit'),
-            ('2024-01-20', 'Grocery Store', 'Weekly shopping', 150.00, 'Food', 3, 'Debit'),
+            ('2024-01-15', 'Restaurant A', 'Lunch', 25.50, 'Groceries', 3, 'Credit'),
+            ('2024-01-20', 'Grocery Store', 'Weekly shopping', 150.00, 'Groceries', 3, 'Debit'),
             ('2024-01-25', 'Gas Station', 'Fuel', 45.00, 'Gas', 4, 'Credit')
         `, (err) => {
           if (err) return reject(err);
@@ -94,7 +94,7 @@ describe('Migration Script - Unit Tests', () => {
             INSERT INTO recurring_expenses (place, notes, amount, type, method, frequency, start_date)
             VALUES 
               ('Netflix', 'Subscription', 15.99, 'Other', 'Credit', 'monthly', '2024-01-01'),
-              ('Meal Prep Service', 'Weekly meals', 75.00, 'Food', 'Credit', 'weekly', '2024-01-01')
+              ('Meal Prep Service', 'Weekly meals', 75.00, 'Groceries', 'Credit', 'weekly', '2024-01-01')
           `, (err) => {
             if (err) return reject(err);
 
@@ -102,7 +102,7 @@ describe('Migration Script - Unit Tests', () => {
             testDb.run(`
               INSERT INTO budgets (year, month, category, limit_amount)
               VALUES 
-                (2024, 1, 'Food', 500.00),
+                (2024, 1, 'Groceries', 500.00),
                 (2024, 1, 'Gas', 200.00)
             `, (err) => {
               if (err) return reject(err);
@@ -179,7 +179,7 @@ describe('Migration Script - Unit Tests', () => {
 
                 // Step 2: Now update the data
                 testDb.run(
-                  `UPDATE expenses SET type = 'Dining Out' WHERE type = 'Food'`,
+                  `UPDATE expenses SET type = 'Dining Out' WHERE type = 'Groceries'`,
                   function(err) {
                     if (err) {
                       testDb.run('ROLLBACK');
@@ -188,7 +188,7 @@ describe('Migration Script - Unit Tests', () => {
                     results.expensesUpdated = this.changes;
 
                     testDb.run(
-                      `UPDATE recurring_expenses SET type = 'Dining Out' WHERE type = 'Food'`,
+                      `UPDATE recurring_expenses SET type = 'Dining Out' WHERE type = 'Groceries'`,
                       function(err) {
                         if (err) {
                           testDb.run('ROLLBACK');
@@ -197,7 +197,7 @@ describe('Migration Script - Unit Tests', () => {
                         results.recurringUpdated = this.changes;
 
                         testDb.run(
-                          `UPDATE budgets SET category = 'Dining Out' WHERE category = 'Food'`,
+                          `UPDATE budgets SET category = 'Dining Out' WHERE category = 'Groceries'`,
                           function(err) {
                             if (err) {
                               testDb.run('ROLLBACK');
@@ -340,21 +340,21 @@ describe('Migration Script - Unit Tests', () => {
   // Helper function to verify migration
   function verifyMigration(testDb) {
     return new Promise((resolve, reject) => {
-      testDb.get(`SELECT COUNT(*) as count FROM expenses WHERE type = 'Food'`, (err, row) => {
+      testDb.get(`SELECT COUNT(*) as count FROM expenses WHERE type = 'Groceries'`, (err, row) => {
         if (err) return reject(err);
         
         if (row.count > 0) {
           return reject(new Error(`Migration verification failed: ${row.count} "Food" records still exist in expenses table`));
         }
 
-        testDb.get(`SELECT COUNT(*) as count FROM recurring_expenses WHERE type = 'Food'`, (err, row) => {
+        testDb.get(`SELECT COUNT(*) as count FROM recurring_expenses WHERE type = 'Groceries'`, (err, row) => {
           if (err) return reject(err);
           
           if (row.count > 0) {
             return reject(new Error(`Migration verification failed: ${row.count} "Food" records still exist in recurring_expenses table`));
           }
 
-          testDb.get(`SELECT COUNT(*) as count FROM budgets WHERE category = 'Food'`, (err, row) => {
+          testDb.get(`SELECT COUNT(*) as count FROM budgets WHERE category = 'Groceries'`, (err, row) => {
             if (err) return reject(err);
             
             if (row.count > 0) {
@@ -429,7 +429,7 @@ describe('Migration Script - Unit Tests', () => {
       expect(results.expensesUpdated).toBe(2);
       
       const foodCount = await new Promise((resolve, reject) => {
-        db.get('SELECT COUNT(*) as count FROM expenses WHERE type = ?', ['Food'], (err, row) => {
+        db.get('SELECT COUNT(*) as count FROM expenses WHERE type = ?', ['Groceries'], (err, row) => {
           if (err) reject(err);
           else resolve(row.count);
         });
@@ -453,7 +453,7 @@ describe('Migration Script - Unit Tests', () => {
       expect(results.recurringUpdated).toBe(1);
       
       const foodCount = await new Promise((resolve, reject) => {
-        db.get('SELECT COUNT(*) as count FROM recurring_expenses WHERE type = ?', ['Food'], (err, row) => {
+        db.get('SELECT COUNT(*) as count FROM recurring_expenses WHERE type = ?', ['Groceries'], (err, row) => {
           if (err) reject(err);
           else resolve(row.count);
         });
@@ -477,7 +477,7 @@ describe('Migration Script - Unit Tests', () => {
       expect(results.budgetsUpdated).toBe(1);
       
       const foodCount = await new Promise((resolve, reject) => {
-        db.get('SELECT COUNT(*) as count FROM budgets WHERE category = ?', ['Food'], (err, row) => {
+        db.get('SELECT COUNT(*) as count FROM budgets WHERE category = ?', ['Groceries'], (err, row) => {
           if (err) reject(err);
           else resolve(row.count);
         });
@@ -650,7 +650,7 @@ describe('Migration Script - Unit Tests', () => {
   describe('Rollback on Error Tests', () => {
     test('should rollback transaction if constraint update fails', async () => {
       const initialExpenseCount = await new Promise((resolve, reject) => {
-        db.get('SELECT COUNT(*) as count FROM expenses WHERE type = ?', ['Food'], (err, row) => {
+        db.get('SELECT COUNT(*) as count FROM expenses WHERE type = ?', ['Groceries'], (err, row) => {
           if (err) reject(err);
           else resolve(row.count);
         });
@@ -661,7 +661,7 @@ describe('Migration Script - Unit Tests', () => {
       await runMigration(db);
       
       const finalFoodCount = await new Promise((resolve, reject) => {
-        db.get('SELECT COUNT(*) as count FROM expenses WHERE type = ?', ['Food'], (err, row) => {
+        db.get('SELECT COUNT(*) as count FROM expenses WHERE type = ?', ['Groceries'], (err, row) => {
           if (err) reject(err);
           else resolve(row.count);
         });
@@ -685,7 +685,7 @@ describe('Migration Script - Unit Tests', () => {
 
     test('should fail verification if "Food" records still exist in recurring_expenses', async () => {
       await new Promise((resolve, reject) => {
-        db.run('UPDATE expenses SET type = ? WHERE type = ?', ['Dining Out', 'Food'], (err) => {
+        db.run('UPDATE expenses SET type = ? WHERE type = ?', ['Dining Out', 'Groceries'], (err) => {
           if (err) reject(err);
           else resolve();
         });
@@ -696,10 +696,10 @@ describe('Migration Script - Unit Tests', () => {
 
     test('should fail verification if "Food" records still exist in budgets', async () => {
       await new Promise((resolve, reject) => {
-        db.run('UPDATE expenses SET type = ? WHERE type = ?', ['Dining Out', 'Food'], (err) => {
+        db.run('UPDATE expenses SET type = ? WHERE type = ?', ['Dining Out', 'Groceries'], (err) => {
           if (err) reject(err);
           else {
-            db.run('UPDATE recurring_expenses SET type = ? WHERE type = ?', ['Dining Out', 'Food'], (err) => {
+            db.run('UPDATE recurring_expenses SET type = ? WHERE type = ?', ['Dining Out', 'Groceries'], (err) => {
               if (err) reject(err);
               else resolve();
             });
@@ -714,7 +714,7 @@ describe('Migration Script - Unit Tests', () => {
   describe('Data Integrity Tests', () => {
     test('should preserve all expense data except category during migration', async () => {
       const originalExpense = await new Promise((resolve, reject) => {
-        db.get('SELECT * FROM expenses WHERE type = ? AND place = ?', ['Food', 'Restaurant A'], (err, row) => {
+        db.get('SELECT * FROM expenses WHERE type = ? AND place = ?', ['Groceries', 'Restaurant A'], (err, row) => {
           if (err) reject(err);
           else resolve(row);
         });
@@ -741,7 +741,7 @@ describe('Migration Script - Unit Tests', () => {
 
     test('should preserve all budget data except category during migration', async () => {
       const originalBudget = await new Promise((resolve, reject) => {
-        db.get('SELECT * FROM budgets WHERE category = ?', ['Food'], (err, row) => {
+        db.get('SELECT * FROM budgets WHERE category = ?', ['Groceries'], (err, row) => {
           if (err) reject(err);
           else resolve(row);
         });
@@ -815,3 +815,5 @@ describe('Migration Script - Unit Tests', () => {
     });
   });
 });
+
+

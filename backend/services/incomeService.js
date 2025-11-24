@@ -1,4 +1,5 @@
 const incomeRepository = require('../repositories/incomeRepository');
+const { validateYearMonth } = require('../utils/validators');
 
 class IncomeService {
   /**
@@ -65,9 +66,7 @@ class IncomeService {
    */
   async getMonthlyIncome(year, month) {
     // Validate year and month
-    if (!year || !month) {
-      throw new Error('Year and month are required');
-    }
+    validateYearMonth(year, month);
 
     const yearNum = parseInt(year);
     const monthNum = parseInt(month);
@@ -164,9 +163,7 @@ class IncomeService {
    */
   async copyFromPreviousMonth(year, month) {
     // Validate year and month
-    if (!year || !month) {
-      throw new Error('Year and month are required');
-    }
+    validateYearMonth(year, month);
 
     const yearNum = parseInt(year);
     const monthNum = parseInt(month);

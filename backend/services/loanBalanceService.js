@@ -1,5 +1,6 @@
 const loanBalanceRepository = require('../repositories/loanBalanceRepository');
 const loanRepository = require('../repositories/loanRepository');
+const { validateNumber, validateYearMonth } = require('../utils/validators');
 
 class LoanBalanceService {
   /**
@@ -8,45 +9,17 @@ class LoanBalanceService {
    * @throws {Error} If validation fails
    */
   validateBalanceEntry(entry) {
-    if (!entry.loan_id || typeof entry.loan_id !== 'number') {
-      throw new Error('Loan ID is required and must be a number');
-    }
+    // Validate loan_id
+    validateNumber(entry.loan_id, 'Loan ID');
 
-    if (!entry.year || typeof entry.year !== 'number') {
-      throw new Error('Year is required and must be a number');
-    }
+    // Validate year and month
+    validateYearMonth(entry.year, entry.month);
 
-    if (entry.year < 1900 || entry.year > 2100) {
-      throw new Error('Year must be between 1900 and 2100');
-    }
+    // Validate remaining balance
+    validateNumber(entry.remaining_balance, 'Remaining balance', { min: 0 });
 
-    if (!entry.month || typeof entry.month !== 'number') {
-      throw new Error('Month is required and must be a number');
-    }
-
-    if (entry.month < 1 || entry.month > 12) {
-      throw new Error('Month must be between 1 and 12');
-    }
-
-    if (entry.remaining_balance === undefined || entry.remaining_balance === null) {
-      throw new Error('Remaining balance is required');
-    }
-
-    if (typeof entry.remaining_balance !== 'number' || entry.remaining_balance < 0) {
-      throw new Error('Remaining balance must be a non-negative number');
-    }
-
-    if (entry.rate === undefined || entry.rate === null) {
-      throw new Error('Interest rate is required');
-    }
-
-    if (typeof entry.rate !== 'number' || entry.rate < 0) {
-      throw new Error('Interest rate must be a non-negative number');
-    }
-
-    if (entry.rate > 100) {
-      throw new Error('Interest rate must not exceed 100%');
-    }
+    // Validate interest rate
+    validateNumber(entry.rate, 'Interest rate', { min: 0, max: 100 });
   }
 
   /**

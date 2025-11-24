@@ -1,0 +1,6 @@
+# Ignore all CSV files in test-data
+*.csv
+*.db
+
+# But track the README
+!README.md

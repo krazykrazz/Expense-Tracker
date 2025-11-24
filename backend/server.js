@@ -17,6 +17,7 @@ const categoryRoutes = require('./routes/categoryRoutes');
 const backupService = require('./services/backupService');
 const logger = require('./config/logger');
 const { configureTimezone, getTimezone } = require('./config/timezone');
+const { errorHandler } = require('./middleware/errorHandler');
 
 // Configure timezone at startup
 configureTimezone();
@@ -75,6 +76,9 @@ app.use(express.static(frontendPath));
 app.get('*', (req, res) => {
   res.sendFile(path.join(frontendPath, 'index.html'));
 });
+
+// Error handling middleware (must be last)
+app.use(errorHandler);
 
 // Initialize database and start server
 initializeDatabase()

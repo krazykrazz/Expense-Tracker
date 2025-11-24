@@ -353,6 +353,7 @@ expense-tracker/
 - `DELETE /api/budgets/:id` - Delete a budget
 - `GET /api/budgets/summary?year=YYYY&month=MM` - Get overall budget summary
 - `GET /api/budgets/history?year=YYYY&month=MM&months=N` - Get historical budget performance
+- `GET /api/budgets/suggest?year=YYYY&month=MM&category=CATEGORY` - Get budget suggestion based on historical spending
 - `POST /api/budgets/copy` - Manually copy budgets between months
 
 ### Backup

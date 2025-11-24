@@ -24,32 +24,32 @@ describe('BudgetService - Unit Tests', () => {
     test('should reject tax-deductible categories', async () => {
       await expect(
         budgetService.createBudget(2025, 11, 'Tax - Medical', 500)
-      ).rejects.toThrow('Budget can only be set for Food, Gas, Other categories');
+      ).rejects.toThrow('Budget can only be set for Housing, Utilities, Groceries, Dining Out, Insurance, Gas, Vehicle Maintenance, Entertainment, Subscriptions, Recreation Activities, Pet Care, Other categories');
 
       await expect(
         budgetService.createBudget(2025, 11, 'Tax - Donation', 500)
-      ).rejects.toThrow('Budget can only be set for Food, Gas, Other categories');
+      ).rejects.toThrow('Budget can only be set for Housing, Utilities, Groceries, Dining Out, Insurance, Gas, Vehicle Maintenance, Entertainment, Subscriptions, Recreation Activities, Pet Care, Other categories');
     });
 
     test('should reject zero amount', async () => {
       await expect(
-        budgetService.createBudget(2025, 11, 'Food', 0)
+        budgetService.createBudget(2025, 11, 'Groceries', 0)
       ).rejects.toThrow('Budget limit must be a positive number greater than zero');
     });
 
     test('should reject negative amount', async () => {
       await expect(
-        budgetService.createBudget(2025, 11, 'Food', -100)
+        budgetService.createBudget(2025, 11, 'Groceries', -100)
       ).rejects.toThrow('Budget limit must be a positive number greater than zero');
     });
 
     test('should handle duplicate budget error', async () => {
       // Create first budget
-      await budgetService.createBudget(2090, 11, 'Food', 500);
+      await budgetService.createBudget(2090, 11, 'Groceries', 500);
 
       // Try to create duplicate
       await expect(
-        budgetService.createBudget(2090, 11, 'Food', 600)
+        budgetService.createBudget(2090, 11, 'Groceries', 600)
       ).rejects.toThrow('A budget already exists for this category and month');
     });
   });
@@ -57,7 +57,7 @@ describe('BudgetService - Unit Tests', () => {
   describe('Automatic Carry-Forward Tests', () => {
     test('should automatically carry forward when no budgets exist', async () => {
       // Create budgets in October 2090
-      await budgetService.createBudget(2090, 10, 'Food', 500);
+      await budgetService.createBudget(2090, 10, 'Groceries', 500);
       await budgetService.createBudget(2090, 10, 'Gas', 200);
 
       // Get budgets for November 2090 (should trigger carry-forward)
@@ -65,7 +65,7 @@ describe('BudgetService - Unit Tests', () => {
 
       expect(novemberBudgets.length).toBe(2);
       
-      const foodBudget = novemberBudgets.find(b => b.category === 'Food');
+      const foodBudget = novemberBudgets.find(b => b.category === 'Groceries');
       const gasBudget = novemberBudgets.find(b => b.category === 'Gas');
 
       expect(foodBudget).toBeDefined();
@@ -81,18 +81,18 @@ describe('BudgetService - Unit Tests', () => {
 
     test('should not carry forward when budgets already exist', async () => {
       // Create budgets in October 2090
-      await budgetService.createBudget(2090, 10, 'Food', 500);
+      await budgetService.createBudget(2090, 10, 'Groceries', 500);
       await budgetService.createBudget(2090, 10, 'Gas', 200);
 
       // Create different budgets in November 2090
-      await budgetService.createBudget(2090, 11, 'Food', 600);
+      await budgetService.createBudget(2090, 11, 'Groceries', 600);
 
       // Get budgets for November 2090 (should NOT carry forward)
       const novemberBudgets = await budgetService.getBudgets(2090, 11);
 
       // Should only have the manually created budget
       expect(novemberBudgets.length).toBe(1);
-      expect(novemberBudgets[0].category).toBe('Food');
+      expect(novemberBudgets[0].category).toBe('Groceries');
       expect(novemberBudgets[0].limit).toBe(600);
     });
 
@@ -110,7 +110,7 @@ describe('BudgetService - Unit Tests', () => {
 
     test('should handle year rollover in carry-forward', async () => {
       // Create budgets in December 2090
-      await budgetService.createBudget(2090, 12, 'Food', 500);
+      await budgetService.createBudget(2090, 12, 'Groceries', 500);
       await budgetService.createBudget(2090, 12, 'Other', 300);
 
       // Get budgets for January 2091 (should carry forward from December 2090)
@@ -118,7 +118,7 @@ describe('BudgetService - Unit Tests', () => {
 
       expect(januaryBudgets.length).toBe(2);
       
-      const foodBudget = januaryBudgets.find(b => b.category === 'Food');
+      const foodBudget = januaryBudgets.find(b => b.category === 'Groceries');
       expect(foodBudget).toBeDefined();
       expect(foodBudget.year).toBe(2091);
       expect(foodBudget.month).toBe(1);
@@ -240,7 +240,7 @@ describe('BudgetService - Property-Based Tests', () => {
           // Generate 1-3 budgets with different categories
           budgets: fc.uniqueArray(
             fc.record({
-              category: fc.constantFrom('Food', 'Gas', 'Other'),
+              category: fc.constantFrom('Groceries', 'Gas', 'Other'),
               limit: fc.float({ min: Math.fround(0.01), max: Math.fround(10000), noNaN: true })
             }),
             { 
@@ -301,7 +301,7 @@ describe('BudgetService - Property-Based Tests', () => {
           // Generate 1-3 budgets with different categories
           budgets: fc.uniqueArray(
             fc.record({
-              category: fc.constantFrom('Food', 'Gas', 'Other'),
+              category: fc.constantFrom('Groceries', 'Gas', 'Other'),
               limit: fc.float({ min: Math.fround(100), max: Math.fround(10000), noNaN: true }),
               // Generate expenses for this category (0-3 expenses)
               expenses: fc.array(
@@ -338,8 +338,8 @@ describe('BudgetService - Property-Based Tests', () => {
                 const dateStr = `${data.year}-${String(data.month).padStart(2, '0')}-15`;
                 await new Promise((resolve, reject) => {
                   db.run(
-                    `INSERT INTO expenses (date, type, amount, method, week) VALUES (?, ?, ?, ?, ?)`,
-                    [dateStr, budget.category, expenseAmount, 'Cash', 3],
+                    `INSERT INTO expenses (date, place, type, amount, method, week) VALUES (?, ?, ?, ?, ?)`,
+                    [dateStr, 'Test Place', budget.category, expenseAmount, 'Cash', 3],
                     function(err) {
                       if (err) reject(err);
                       else {
@@ -407,7 +407,7 @@ describe('BudgetService - Property-Based Tests', () => {
           month: fc.integer({ min: 1, max: 12 }),
           // Generate 1-2 budgeted categories
           budgetedCategories: fc.uniqueArray(
-            fc.constantFrom('Food', 'Gas', 'Other'),
+            fc.constantFrom('Groceries', 'Gas', 'Other'),
             { minLength: 1, maxLength: 2 }
           ),
           // Generate expenses for budgeted categories
@@ -418,7 +418,7 @@ describe('BudgetService - Property-Based Tests', () => {
           // Generate expenses for non-budgeted categories (should be excluded)
           nonBudgetedExpenses: fc.array(
             fc.record({
-              category: fc.constantFrom('Food', 'Gas', 'Other'),
+              category: fc.constantFrom('Groceries', 'Gas', 'Other'),
               amount: fc.float({ min: Math.fround(1), max: Math.fround(500), noNaN: true })
             }),
             { minLength: 1, maxLength: 3 }
@@ -447,8 +447,8 @@ describe('BudgetService - Property-Based Tests', () => {
               const category = data.budgetedCategories[Math.floor(Math.random() * data.budgetedCategories.length)];
               await new Promise((resolve, reject) => {
                 db.run(
-                  `INSERT INTO expenses (date, type, amount, method, week) VALUES (?, ?, ?, ?, ?)`,
-                  [dateStr, category, expenseAmount, 'Cash', 3],
+                  `INSERT INTO expenses (date, place, type, amount, method, week) VALUES (?, ?, ?, ?, ?)`,
+                  [dateStr, 'Test Place', category, expenseAmount, 'Cash', 3],
                   function(err) {
                     if (err) reject(err);
                     else {
@@ -466,8 +466,8 @@ describe('BudgetService - Property-Based Tests', () => {
               if (!data.budgetedCategories.includes(expense.category)) {
                 await new Promise((resolve, reject) => {
                   db.run(
-                    `INSERT INTO expenses (date, type, amount, method, week) VALUES (?, ?, ?, ?, ?)`,
-                    [dateStr, expense.category, expense.amount, 'Cash', 3],
+                    `INSERT INTO expenses (date, place, type, amount, method, week) VALUES (?, ?, ?, ?, ?)`,
+                    [dateStr, 'Test Place', expense.category, expense.amount, 'Cash', 3],
                     function(err) {
                       if (err) reject(err);
                       else {
@@ -550,7 +550,7 @@ describe('BudgetService - Property-Based Tests', () => {
           // Generate 1-3 budgets with different categories
           budgets: fc.uniqueArray(
             fc.record({
-              category: fc.constantFrom('Food', 'Gas', 'Other'),
+              category: fc.constantFrom('Groceries', 'Gas', 'Other'),
               limit: fc.float({ min: Math.fround(0.01), max: Math.fround(10000), noNaN: true })
             }),
             { 
@@ -640,7 +640,7 @@ describe('BudgetService - Property-Based Tests', () => {
           // Generate 1-3 budgets with different categories
           budgets: fc.uniqueArray(
             fc.record({
-              category: fc.constantFrom('Food', 'Gas', 'Other'),
+              category: fc.constantFrom('Groceries', 'Gas', 'Other'),
               limit: fc.float({ min: Math.fround(0.01), max: Math.fround(10000), noNaN: true })
             }),
             { 
@@ -738,7 +738,7 @@ describe('BudgetService - Property-Based Tests', () => {
           // Generate 1-3 budgets with different categories
           budgets: fc.uniqueArray(
             fc.record({
-              category: fc.constantFrom('Food', 'Gas', 'Other'),
+              category: fc.constantFrom('Groceries', 'Gas', 'Other'),
               limit: fc.float({ min: Math.fround(0.01), max: Math.fround(10000), noNaN: true })
             }),
             { 
@@ -836,15 +836,15 @@ describe('BudgetService - Historical Analysis Tests', () => {
   describe('Success Rate Calculation', () => {
     test('should calculate success rate correctly when all budgets are met', async () => {
       // Create budgets for 3 months
-      await budgetRepository.create({ year: 2090, month: 1, category: 'Food', limit: 500 });
-      await budgetRepository.create({ year: 2090, month: 2, category: 'Food', limit: 500 });
-      await budgetRepository.create({ year: 2090, month: 3, category: 'Food', limit: 500 });
+      await budgetRepository.create({ year: 2090, month: 1, category: 'Groceries', limit: 500 });
+      await budgetRepository.create({ year: 2090, month: 2, category: 'Groceries', limit: 500 });
+      await budgetRepository.create({ year: 2090, month: 3, category: 'Groceries', limit: 500 });
 
       // Create expenses under budget for all months
       await new Promise((resolve) => {
-        db.run(`INSERT INTO expenses (date, type, amount, method, week) VALUES ('2090-01-15', 'Food', 400, 'Cash', 3)`, () => {
-          db.run(`INSERT INTO expenses (date, type, amount, method, week) VALUES ('2090-02-15', 'Food', 450, 'Cash', 3)`, () => {
-            db.run(`INSERT INTO expenses (date, type, amount, method, week) VALUES ('2090-03-15', 'Food', 480, 'Cash', 3)`, () => {
+        db.run(`INSERT INTO expenses (date, place, type, amount, method, week) VALUES ('2090-01-15', 'Test Place', 'Groceries', 400, 'Cash', 3)`, () => {
+          db.run(`INSERT INTO expenses (date, place, type, amount, method, week) VALUES ('2090-02-15', 'Test Place', 'Groceries', 450, 'Cash', 3)`, () => {
+            db.run(`INSERT INTO expenses (date, place, type, amount, method, week) VALUES ('2090-03-15', 'Test Place', 'Groceries', 480, 'Cash', 3)`, () => {
               resolve();
             });
           });
@@ -855,7 +855,7 @@ describe('BudgetService - Historical Analysis Tests', () => {
       const history = await budgetService.getBudgetHistory(2090, 3, 3);
 
       // Success rate should be 100% (all 3 months met budget)
-      expect(history.categories.Food.successRate).toBe(100);
+      expect(history.categories.Groceries.successRate).toBe(100);
     });
 
     test('should calculate success rate correctly when some budgets are not met', async () => {
@@ -869,12 +869,12 @@ describe('BudgetService - Historical Analysis Tests', () => {
 
       // Create expenses: 3 under budget, 3 over budget
       await new Promise((resolve) => {
-        db.run(`INSERT INTO expenses (date, type, amount, method, week) VALUES ('2090-01-15', 'Gas', 150, 'Cash', 3)`, () => {
-          db.run(`INSERT INTO expenses (date, type, amount, method, week) VALUES ('2090-02-15', 'Gas', 250, 'Cash', 3)`, () => {
-            db.run(`INSERT INTO expenses (date, type, amount, method, week) VALUES ('2090-03-15', 'Gas', 180, 'Cash', 3)`, () => {
-              db.run(`INSERT INTO expenses (date, type, amount, method, week) VALUES ('2090-04-15', 'Gas', 220, 'Cash', 3)`, () => {
-                db.run(`INSERT INTO expenses (date, type, amount, method, week) VALUES ('2090-05-15', 'Gas', 190, 'Cash', 3)`, () => {
-                  db.run(`INSERT INTO expenses (date, type, amount, method, week) VALUES ('2090-06-15', 'Gas', 210, 'Cash', 3)`, () => {
+        db.run(`INSERT INTO expenses (date, place, type, amount, method, week) VALUES ('2090-01-15', 'Test Place', 'Gas', 150, 'Cash', 3)`, () => {
+          db.run(`INSERT INTO expenses (date, place, type, amount, method, week) VALUES ('2090-02-15', 'Test Place', 'Gas', 250, 'Cash', 3)`, () => {
+            db.run(`INSERT INTO expenses (date, place, type, amount, method, week) VALUES ('2090-03-15', 'Test Place', 'Gas', 180, 'Cash', 3)`, () => {
+              db.run(`INSERT INTO expenses (date, place, type, amount, method, week) VALUES ('2090-04-15', 'Test Place', 'Gas', 220, 'Cash', 3)`, () => {
+                db.run(`INSERT INTO expenses (date, place, type, amount, method, week) VALUES ('2090-05-15', 'Test Place', 'Gas', 190, 'Cash', 3)`, () => {
+                  db.run(`INSERT INTO expenses (date, place, type, amount, method, week) VALUES ('2090-06-15', 'Test Place', 'Gas', 210, 'Cash', 3)`, () => {
                     resolve();
                   });
                 });
@@ -894,8 +894,8 @@ describe('BudgetService - Historical Analysis Tests', () => {
     test('should return null success rate when no budgets exist', async () => {
       // Create expenses but no budgets
       await new Promise((resolve) => {
-        db.run(`INSERT INTO expenses (date, type, amount, method, week) VALUES ('2090-01-15', 'Other', 100, 'Cash', 3)`, () => {
-          db.run(`INSERT INTO expenses (date, type, amount, method, week) VALUES ('2090-02-15', 'Other', 150, 'Cash', 3)`, () => {
+        db.run(`INSERT INTO expenses (date, place, type, amount, method, week) VALUES ('2090-01-15', 'Test Place', 'Other', 100, 'Cash', 3)`, () => {
+          db.run(`INSERT INTO expenses (date, place, type, amount, method, week) VALUES ('2090-02-15', 'Test Place', 'Other', 150, 'Cash', 3)`, () => {
             resolve();
           });
         });
@@ -912,15 +912,15 @@ describe('BudgetService - Historical Analysis Tests', () => {
   describe('Average Spending Calculation', () => {
     test('should calculate average spending correctly', async () => {
       // Create budgets for 3 months
-      await budgetRepository.create({ year: 2090, month: 1, category: 'Food', limit: 500 });
-      await budgetRepository.create({ year: 2090, month: 2, category: 'Food', limit: 500 });
-      await budgetRepository.create({ year: 2090, month: 3, category: 'Food', limit: 500 });
+      await budgetRepository.create({ year: 2090, month: 1, category: 'Groceries', limit: 500 });
+      await budgetRepository.create({ year: 2090, month: 2, category: 'Groceries', limit: 500 });
+      await budgetRepository.create({ year: 2090, month: 3, category: 'Groceries', limit: 500 });
 
       // Create expenses: 300, 400, 500
       await new Promise((resolve) => {
-        db.run(`INSERT INTO expenses (date, type, amount, method, week) VALUES ('2090-01-15', 'Food', 300, 'Cash', 3)`, () => {
-          db.run(`INSERT INTO expenses (date, type, amount, method, week) VALUES ('2090-02-15', 'Food', 400, 'Cash', 3)`, () => {
-            db.run(`INSERT INTO expenses (date, type, amount, method, week) VALUES ('2090-03-15', 'Food', 500, 'Cash', 3)`, () => {
+        db.run(`INSERT INTO expenses (date, place, type, amount, method, week) VALUES ('2090-01-15', 'Test Place', 'Groceries', 300, 'Cash', 3)`, () => {
+          db.run(`INSERT INTO expenses (date, place, type, amount, method, week) VALUES ('2090-02-15', 'Test Place', 'Groceries', 400, 'Cash', 3)`, () => {
+            db.run(`INSERT INTO expenses (date, place, type, amount, method, week) VALUES ('2090-03-15', 'Test Place', 'Groceries', 500, 'Cash', 3)`, () => {
               resolve();
             });
           });
@@ -931,7 +931,7 @@ describe('BudgetService - Historical Analysis Tests', () => {
       const history = await budgetService.getBudgetHistory(2090, 3, 3);
 
       // Average should be (300 + 400 + 500) / 3 = 400
-      expect(history.categories.Food.averageSpent).toBe(400);
+      expect(history.categories.Groceries.averageSpent).toBe(400);
     });
 
     test('should calculate average spending with zero spending months', async () => {
@@ -942,8 +942,8 @@ describe('BudgetService - Historical Analysis Tests', () => {
 
       // Create expenses only for month 1 and 3
       await new Promise((resolve) => {
-        db.run(`INSERT INTO expenses (date, type, amount, method, week) VALUES ('2090-01-15', 'Gas', 150, 'Cash', 3)`, () => {
-          db.run(`INSERT INTO expenses (date, type, amount, method, week) VALUES ('2090-03-15', 'Gas', 180, 'Cash', 3)`, () => {
+        db.run(`INSERT INTO expenses (date, place, type, amount, method, week) VALUES ('2090-01-15', 'Test Place', 'Gas', 150, 'Cash', 3)`, () => {
+          db.run(`INSERT INTO expenses (date, place, type, amount, method, week) VALUES ('2090-03-15', 'Test Place', 'Gas', 180, 'Cash', 3)`, () => {
             resolve();
           });
         });
@@ -960,15 +960,15 @@ describe('BudgetService - Historical Analysis Tests', () => {
   describe('Period Boundary Handling', () => {
     test('should handle 3-month period correctly', async () => {
       // Create budgets for months 1-3
-      await budgetRepository.create({ year: 2090, month: 1, category: 'Food', limit: 500 });
-      await budgetRepository.create({ year: 2090, month: 2, category: 'Food', limit: 500 });
-      await budgetRepository.create({ year: 2090, month: 3, category: 'Food', limit: 500 });
+      await budgetRepository.create({ year: 2090, month: 1, category: 'Groceries', limit: 500 });
+      await budgetRepository.create({ year: 2090, month: 2, category: 'Groceries', limit: 500 });
+      await budgetRepository.create({ year: 2090, month: 3, category: 'Groceries', limit: 500 });
 
       // Get history for 3 months ending in March
       const history = await budgetService.getBudgetHistory(2090, 3, 3);
 
       // Should have 3 months of history
-      expect(history.categories.Food.history.length).toBe(3);
+      expect(history.categories.Groceries.history.length).toBe(3);
       expect(history.period.months).toBe(3);
       expect(history.period.start).toBe('2090-01-01');
       expect(history.period.end).toBe('2090-03-01');
@@ -1008,25 +1008,25 @@ describe('BudgetService - Historical Analysis Tests', () => {
 
     test('should handle year rollover correctly', async () => {
       // Create budgets spanning year boundary (Nov 2089 - Jan 2090)
-      await budgetRepository.create({ year: 2089, month: 11, category: 'Food', limit: 500 });
-      await budgetRepository.create({ year: 2089, month: 12, category: 'Food', limit: 500 });
-      await budgetRepository.create({ year: 2090, month: 1, category: 'Food', limit: 500 });
+      await budgetRepository.create({ year: 2089, month: 11, category: 'Groceries', limit: 500 });
+      await budgetRepository.create({ year: 2089, month: 12, category: 'Groceries', limit: 500 });
+      await budgetRepository.create({ year: 2090, month: 1, category: 'Groceries', limit: 500 });
 
       // Get history for 3 months ending in January 2090
       const history = await budgetService.getBudgetHistory(2090, 1, 3);
 
       // Should have 3 months of history spanning the year boundary
-      expect(history.categories.Food.history.length).toBe(3);
+      expect(history.categories.Groceries.history.length).toBe(3);
       expect(history.period.start).toBe('2089-11-01');
       expect(history.period.end).toBe('2090-01-01');
 
       // Verify the months are in correct order
-      expect(history.categories.Food.history[0].year).toBe(2089);
-      expect(history.categories.Food.history[0].month).toBe(11);
-      expect(history.categories.Food.history[1].year).toBe(2089);
-      expect(history.categories.Food.history[1].month).toBe(12);
-      expect(history.categories.Food.history[2].year).toBe(2090);
-      expect(history.categories.Food.history[2].month).toBe(1);
+      expect(history.categories.Groceries.history[0].year).toBe(2089);
+      expect(history.categories.Groceries.history[0].month).toBe(11);
+      expect(history.categories.Groceries.history[1].year).toBe(2089);
+      expect(history.categories.Groceries.history[1].month).toBe(12);
+      expect(history.categories.Groceries.history[2].year).toBe(2090);
+      expect(history.categories.Groceries.history[2].month).toBe(1);
     });
 
     test('should reject invalid period values', async () => {
@@ -1043,14 +1043,14 @@ describe('BudgetService - Historical Analysis Tests', () => {
   describe('Missing Budget Handling', () => {
     test('should indicate "No budget set" for months without budgets', async () => {
       // Create budgets only for months 1 and 3 (skip month 2)
-      await budgetRepository.create({ year: 2090, month: 1, category: 'Food', limit: 500 });
-      await budgetRepository.create({ year: 2090, month: 3, category: 'Food', limit: 500 });
+      await budgetRepository.create({ year: 2090, month: 1, category: 'Groceries', limit: 500 });
+      await budgetRepository.create({ year: 2090, month: 3, category: 'Groceries', limit: 500 });
 
       // Create expenses for all 3 months
       await new Promise((resolve) => {
-        db.run(`INSERT INTO expenses (date, type, amount, method, week) VALUES ('2090-01-15', 'Food', 400, 'Cash', 3)`, () => {
-          db.run(`INSERT INTO expenses (date, type, amount, method, week) VALUES ('2090-02-15', 'Food', 450, 'Cash', 3)`, () => {
-            db.run(`INSERT INTO expenses (date, type, amount, method, week) VALUES ('2090-03-15', 'Food', 480, 'Cash', 3)`, () => {
+        db.run(`INSERT INTO expenses (date, place, type, amount, method, week) VALUES ('2090-01-15', 'Test Place', 'Groceries', 400, 'Cash', 3)`, () => {
+          db.run(`INSERT INTO expenses (date, place, type, amount, method, week) VALUES ('2090-02-15', 'Test Place', 'Groceries', 450, 'Cash', 3)`, () => {
+            db.run(`INSERT INTO expenses (date, place, type, amount, method, week) VALUES ('2090-03-15', 'Test Place', 'Groceries', 480, 'Cash', 3)`, () => {
               resolve();
             });
           });
@@ -1061,9 +1061,9 @@ describe('BudgetService - Historical Analysis Tests', () => {
       const history = await budgetService.getBudgetHistory(2090, 3, 3);
 
       // Month 2 should have null budget and null met status
-      expect(history.categories.Food.history[1].budgeted).toBeNull();
-      expect(history.categories.Food.history[1].met).toBeNull();
-      expect(history.categories.Food.history[1].spent).toBeGreaterThan(0);
+      expect(history.categories.Groceries.history[1].budgeted).toBeNull();
+      expect(history.categories.Groceries.history[1].met).toBeNull();
+      expect(history.categories.Groceries.history[1].spent).toBeGreaterThan(0);
     });
 
     test('should not count months without budgets in success rate', async () => {
@@ -1073,9 +1073,9 @@ describe('BudgetService - Historical Analysis Tests', () => {
 
       // Create expenses under budget for months 1 and 3
       await new Promise((resolve) => {
-        db.run(`INSERT INTO expenses (date, type, amount, method, week) VALUES ('2090-01-15', 'Gas', 150, 'Cash', 3)`, () => {
-          db.run(`INSERT INTO expenses (date, type, amount, method, week) VALUES ('2090-02-15', 'Gas', 250, 'Cash', 3)`, () => {
-            db.run(`INSERT INTO expenses (date, type, amount, method, week) VALUES ('2090-03-15', 'Gas', 180, 'Cash', 3)`, () => {
+        db.run(`INSERT INTO expenses (date, place, type, amount, method, week) VALUES ('2090-01-15', 'Test Place', 'Gas', 150, 'Cash', 3)`, () => {
+          db.run(`INSERT INTO expenses (date, place, type, amount, method, week) VALUES ('2090-02-15', 'Test Place', 'Gas', 250, 'Cash', 3)`, () => {
+            db.run(`INSERT INTO expenses (date, place, type, amount, method, week) VALUES ('2090-03-15', 'Test Place', 'Gas', 180, 'Cash', 3)`, () => {
               resolve();
             });
           });
@@ -1096,9 +1096,9 @@ describe('BudgetService - Historical Analysis Tests', () => {
 
       // Create expenses for all 3 months
       await new Promise((resolve) => {
-        db.run(`INSERT INTO expenses (date, type, amount, method, week) VALUES ('2090-01-15', 'Other', 100, 'Cash', 3)`, () => {
-          db.run(`INSERT INTO expenses (date, type, amount, method, week) VALUES ('2090-02-15', 'Other', 200, 'Cash', 3)`, () => {
-            db.run(`INSERT INTO expenses (date, type, amount, method, week) VALUES ('2090-03-15', 'Other', 300, 'Cash', 3)`, () => {
+        db.run(`INSERT INTO expenses (date, place, type, amount, method, week) VALUES ('2090-01-15', 'Test Place', 'Other', 100, 'Cash', 3)`, () => {
+          db.run(`INSERT INTO expenses (date, place, type, amount, method, week) VALUES ('2090-02-15', 'Test Place', 'Other', 200, 'Cash', 3)`, () => {
+            db.run(`INSERT INTO expenses (date, place, type, amount, method, week) VALUES ('2090-03-15', 'Test Place', 'Other', 300, 'Cash', 3)`, () => {
               resolve();
             });
           });
@@ -1149,7 +1149,7 @@ describe('BudgetService - Expense Integration Property Tests', () => {
         fc.record({
           year: fc.integer({ min: 2090, max: 2099 }),
           month: fc.integer({ min: 1, max: 12 }),
-          category: fc.constantFrom('Food', 'Gas', 'Other'),
+          category: fc.constantFrom('Groceries', 'Gas', 'Other'),
           budgetLimit: fc.float({ min: Math.fround(100), max: Math.fround(10000), noNaN: true }),
           // Generate 1-5 expenses to add (rounded to 2 decimal places)
           expenses: fc.array(
@@ -1232,8 +1232,8 @@ describe('BudgetService - Expense Integration Property Tests', () => {
         fc.record({
           year: fc.integer({ min: 2090, max: 2099 }),
           month: fc.integer({ min: 1, max: 12 }),
-          oldCategory: fc.constantFrom('Food', 'Gas', 'Other'),
-          newCategory: fc.constantFrom('Food', 'Gas', 'Other'),
+          oldCategory: fc.constantFrom('Groceries', 'Gas', 'Other'),
+          newCategory: fc.constantFrom('Groceries', 'Gas', 'Other'),
           oldAmount: fc.float({ min: Math.fround(10), max: Math.fround(500), noNaN: true }).map(v => Math.round(v * 100) / 100),
           newAmount: fc.float({ min: Math.fround(10), max: Math.fround(500), noNaN: true }).map(v => Math.round(v * 100) / 100),
           budgetLimit: fc.float({ min: Math.fround(1000), max: Math.fround(10000), noNaN: true })
@@ -1333,7 +1333,7 @@ describe('BudgetService - Expense Integration Property Tests', () => {
         fc.record({
           year: fc.integer({ min: 2090, max: 2099 }),
           oldMonth: fc.integer({ min: 1, max: 11 }), // Ensure we can move to next month
-          category: fc.constantFrom('Food', 'Gas', 'Other'),
+          category: fc.constantFrom('Groceries', 'Gas', 'Other'),
           amount: fc.float({ min: Math.fround(10), max: Math.fround(500), noNaN: true }).map(v => Math.round(v * 100) / 100),
           budgetLimit: fc.float({ min: Math.fround(1000), max: Math.fround(10000), noNaN: true })
         }),
@@ -1428,7 +1428,7 @@ describe('BudgetService - Expense Integration Property Tests', () => {
         fc.record({
           year: fc.integer({ min: 2090, max: 2099 }),
           targetMonth: fc.integer({ min: 2, max: 11 }), // Use middle months to have before/after
-          category: fc.constantFrom('Food', 'Gas', 'Other'),
+          category: fc.constantFrom('Groceries', 'Gas', 'Other'),
           budgetLimit: fc.float({ min: Math.fround(1000), max: Math.fround(10000), noNaN: true }),
           // Generate expenses for target month
           targetExpenses: fc.array(
@@ -1464,8 +1464,8 @@ describe('BudgetService - Expense Integration Property Tests', () => {
               
               await new Promise((resolve, reject) => {
                 db.run(
-                  `INSERT INTO expenses (date, type, amount, method, week) VALUES (?, ?, ?, ?, ?)`,
-                  [dateStr, data.category, amount, 'Cash', 3],
+                  `INSERT INTO expenses (date, place, type, amount, method, week) VALUES (?, ?, ?, ?, ?)`,
+                  [dateStr, 'Test Place', data.category, amount, 'Cash', 3],
                   function(err) {
                     if (err) reject(err);
                     else {
@@ -1488,8 +1488,8 @@ describe('BudgetService - Expense Integration Property Tests', () => {
               
               await new Promise((resolve, reject) => {
                 db.run(
-                  `INSERT INTO expenses (date, type, amount, method, week) VALUES (?, ?, ?, ?, ?)`,
-                  [dateStr, data.category, otherExpense.amount, 'Cash', 3],
+                  `INSERT INTO expenses (date, place, type, amount, method, week) VALUES (?, ?, ?, ?, ?)`,
+                  [dateStr, 'Test Place', data.category, otherExpense.amount, 'Cash', 3],
                   function(err) {
                     if (err) reject(err);
                     else {
@@ -1550,3 +1550,13 @@ describe('BudgetService - Expense Integration Property Tests', () => {
     );
   }, 60000);
 });
+
+
+
+
+
+
+
+
+
+

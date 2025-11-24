@@ -90,7 +90,9 @@ interface RecurringExpense {
   place: string;
   amount: number;
   notes: string;
-  type: 'Other' | 'Food' | 'Gas';
+  type: 'Housing' | 'Utilities' | 'Groceries' | 'Dining Out' | 'Insurance' | 
+        'Gas' | 'Vehicle Maintenance' | 'Entertainment' | 'Subscriptions' | 
+        'Recreation Activities' | 'Pet Care' | 'Tax - Medical' | 'Tax - Donation' | 'Other';
   method: 'Cash' | 'Debit' | 'CIBC MC' | 'PCF MC' | 'WS VISA' | 'VISA';
   day_of_month: number;        // 1-31
   start_month: string;          // YYYY-MM
@@ -108,7 +110,9 @@ CREATE TABLE recurring_expenses (
   place TEXT NOT NULL,
   amount REAL NOT NULL,
   notes TEXT,
-  type TEXT NOT NULL CHECK(type IN ('Other', 'Food', 'Gas')),
+  type TEXT NOT NULL CHECK(type IN ('Housing', 'Utilities', 'Groceries', 'Dining Out', 'Insurance',
+                                     'Gas', 'Vehicle Maintenance', 'Entertainment', 'Subscriptions',
+                                     'Recreation Activities', 'Pet Care', 'Tax - Medical', 'Tax - Donation', 'Other')),
   method TEXT NOT NULL CHECK(method IN ('Cash', 'Debit', 'CIBC MC', 'PCF MC', 'WS VISA', 'VISA')),
   day_of_month INTEGER NOT NULL CHECK(day_of_month >= 1 AND day_of_month <= 31),
   start_month TEXT NOT NULL,

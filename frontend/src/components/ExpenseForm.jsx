@@ -26,12 +26,25 @@ const ExpenseForm = ({ onExpenseAdded }) => {
   const [places, setPlaces] = useState([]);
   const [filteredPlaces, setFilteredPlaces] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [typeOptions, setTypeOptions] = useState(['Other']); // Default fallback
 
-  const typeOptions = ['Other', 'Food', 'Gas', 'Tax - Medical', 'Tax - Donation'];
   const methodOptions = ['Cash', 'Debit', 'Cheque', 'CIBC MC', 'PCF MC', 'WS VISA', 'VISA'];
 
-  // Fetch distinct places on component mount
+  // Fetch categories and distinct places on component mount
   useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch('/api/categories');
+        if (response.ok) {
+          const data = await response.json();
+          setTypeOptions(data.categories);
+        }
+      } catch (error) {
+        console.error('Failed to fetch categories:', error);
+        // Keep default fallback value
+      }
+    };
+
     const fetchPlaces = async () => {
       try {
         const response = await fetch(`${API_ENDPOINTS.EXPENSES}/places`);
@@ -43,6 +56,8 @@ const ExpenseForm = ({ onExpenseAdded }) => {
         console.error('Failed to fetch places:', error);
       }
     };
+
+    fetchCategories();
     fetchPlaces();
   }, []);
 

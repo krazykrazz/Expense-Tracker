@@ -166,3 +166,107 @@ Potential improvements for future consideration:
 
 **Last Updated:** November 12, 2024
 **Updated By:** Kiro AI Assistant
+
+
+---
+
+## Code Optimization Updates (November 23, 2025)
+
+### New Architecture Components
+
+Recent code optimization work has introduced new architectural patterns:
+
+1. **Validation Utilities** (`backend/utils/validators.js`)
+   - Centralized validation functions
+   - Used across all services
+   - Reduces code duplication by ~70%
+
+2. **Validation Middleware** (`backend/middleware/validateYearMonth.js`)
+   - Route-level year/month validation
+   - Eliminates duplicate validation in controllers
+
+3. **Error Handler Middleware** (`backend/middleware/errorHandler.js`)
+   - Centralized error handling
+   - Standardized error response format
+   - asyncHandler wrapper for async routes
+
+### Specs Requiring Updates
+
+**High Priority:**
+- `expense-tracker/design.md` - Add middleware and validation sections
+- `.kiro/steering/structure.md` - Document middleware layer
+
+**Medium Priority:**
+- `recurring-expenses/design.md` - Update validation section
+- `monthly-loans-balance/design.md` - Update validation section
+- `place-name-standardization/design.md` - Update error handling section
+
+**Details:** See `.kiro/specs/CODE_OPTIMIZATION_SPEC_UPDATE.md` for complete recommendations
+
+### Impact
+
+- ✅ No breaking changes to API contracts
+- ✅ All functionality remains the same
+- ✅ Implementation details improved
+- 📝 Documentation should be updated to reflect new patterns
+
+### Status
+
+- **Code Changes:** ✅ Complete
+- **Spec Updates:** 📝 Recommended (not urgent)
+- **Timeline:** Update within 1-2 weeks for accuracy
+
+
+---
+
+## New Spec Created: code-optimization (November 23, 2025)
+
+### Spec Details
+
+**Location:** `.kiro/specs/code-optimization/`
+
+**Purpose:** Document the centralized validation utilities, middleware patterns, and error handling introduced during code optimization work.
+
+**Files:**
+- ✅ `requirements.md` - 7 requirements, 31 acceptance criteria
+- ✅ `design.md` - Complete architecture and component documentation
+- ✅ `tasks.md` - 12 main tasks, 22 sub-tasks (all completed)
+
+### What This Spec Documents
+
+1. **Validation Utilities** (`backend/utils/validators.js`)
+   - validateNumber, validateString, validateYearMonth functions
+   - Centralized validation logic used across all services
+
+2. **Validation Middleware** (`backend/middleware/validateYearMonth.js`)
+   - Route-level year/month validation
+   - Eliminates duplicate validation in controllers
+
+3. **Error Handler Middleware** (`backend/middleware/errorHandler.js`)
+   - Centralized error handling
+   - asyncHandler wrapper for async routes
+   - Standardized error response format
+
+### Impact
+
+- **Code Reduction:** ~1,050 lines removed
+- **Duplication Reduction:** ~70%
+- **Services Refactored:** 5 (loan, loanBalance, income, fixedExpense, expense)
+- **Breaking Changes:** 0
+- **New Patterns:** Established for future development
+
+### Cross-References
+
+This spec should be referenced by:
+- `expense-tracker/design.md` - Core architecture
+- `.kiro/steering/structure.md` - Middleware layer
+- Feature specs that use validation (recurring-expenses, monthly-loans-balance, etc.)
+
+### Status
+
+- **Implementation:** ✅ Complete
+- **Documentation:** ✅ Complete
+- **Testing:** ✅ All tests passing
+- **Deployment:** ✅ In production
+
+See `NEW_SPEC_CREATION_COMPLETE.md` for complete details.

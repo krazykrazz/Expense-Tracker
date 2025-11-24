@@ -44,7 +44,7 @@ TrendIndicator (New)
   current: {
     total: number,
     weeklyTotals: { week1-5: number },
-    typeTotals: { Food, Gas, Other, etc.: number },
+    typeTotals: { [category: string]: number }, // All 14 expense categories
     methodTotals: { Cash, Debit, Credit, etc.: number },
     // ... existing fields
   },

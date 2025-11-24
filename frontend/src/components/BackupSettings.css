@@ -416,3 +416,74 @@
 .changelog-items li:last-child {
   margin-bottom: 0;
 }
+
+/* Misc Tab Styles */
+.misc-tools-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-top: 15px;
+}
+
+.misc-tool-item {
+  background: white;
+  padding: 15px;
+  border-radius: 4px;
+  border: 1px solid #e0e4ff;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+}
+
+.misc-tool-info {
+  flex: 1;
+}
+
+.misc-tool-info h4 {
+  margin: 0 0 6px 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #333;
+}
+
+.misc-tool-info p {
+  margin: 0;
+  font-size: 13px;
+  color: #666;
+  line-height: 1.4;
+}
+
+.misc-tool-button {
+  padding: 10px 20px;
+  background: #0ea5e9;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.misc-tool-button:hover:not(:disabled) {
+  background: #0284c7;
+}
+
+.misc-tool-button:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+@media (max-width: 768px) {
+  .misc-tool-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .misc-tool-button {
+    width: 100%;
+  }
+}

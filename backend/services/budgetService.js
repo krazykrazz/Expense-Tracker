@@ -1,9 +1,10 @@
 const budgetRepository = require('../repositories/budgetRepository');
 const { getDatabase } = require('../database/db');
+const { BUDGETABLE_CATEGORIES } = require('../utils/categories');
 
 class BudgetService {
   // Budgetable categories (excludes tax-deductible categories)
-  static BUDGETABLE_CATEGORIES = ['Food', 'Gas', 'Other'];
+  static BUDGETABLE_CATEGORIES = BUDGETABLE_CATEGORIES;
 
   /**
    * Validate that a category is budgetable
@@ -336,6 +337,72 @@ class BudgetService {
       budgetsOnTrack,
       totalBudgets: budgets.length,
       categories
+    };
+  }
+
+  /**
+   * Suggest a budget amount based on historical spending
+   * @param {number} year - Target year
+   * @param {number} month - Target month (1-12)
+   * @param {string} category - Expense category
+   * @returns {Promise<Object>} Suggestion object with suggestedAmount, averageSpending, and basedOnMonths
+   */
+  async suggestBudgetAmount(year, month, category) {
+    // Validate inputs
+    this.validateYearMonth(year, month);
+    this.validateCategory(category);
+
+    const targetYear = parseInt(year);
+    const targetMonth = parseInt(month);
+
+    // Calculate the range for historical data (3-6 months before target month)
+    const historicalMonths = [];
+    let currentYear = targetYear;
+    let currentMonth = targetMonth - 1;
+
+    // Go back up to 6 months
+    for (let i = 0; i < 6; i++) {
+      if (currentMonth < 1) {
+        currentMonth = 12;
+        currentYear -= 1;
+      }
+
+      historicalMonths.push({ year: currentYear, month: currentMonth });
+
+      currentMonth -= 1;
+    }
+
+    // Get spending for each historical month
+    const spendingData = [];
+    for (const monthInfo of historicalMonths) {
+      const spent = await this.getSpentAmount(monthInfo.year, monthInfo.month, category);
+      if (spent > 0) {
+        spendingData.push(spent);
+      }
+    }
+
+    // If no historical data, return 0
+    if (spendingData.length === 0) {
+      return {
+        category,
+        suggestedAmount: 0,
+        averageSpending: 0,
+        basedOnMonths: 0
+      };
+    }
+
+    // Calculate average spending
+    const totalSpending = spendingData.reduce((sum, amount) => sum + amount, 0);
+    const averageSpending = totalSpending / spendingData.length;
+
+    // Round to nearest $50
+    const suggestedAmount = Math.round(averageSpending / 50) * 50;
+
+    return {
+      category,
+      suggestedAmount,
+      averageSpending,
+      basedOnMonths: spendingData.length
     };
   }
 

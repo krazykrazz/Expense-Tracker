@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import './BackupSettings.css';
 import { formatDateTime } from '../utils/formatters';
+import PlaceNameStandardization from './PlaceNameStandardization';
 
 const BackupSettings = () => {
   const [activeTab, setActiveTab] = useState('backups');
@@ -17,6 +18,7 @@ const BackupSettings = () => {
   const [loading, setLoading] = useState(true);
   const [nextBackup, setNextBackup] = useState(null);
   const [versionInfo, setVersionInfo] = useState(null);
+  const [showPlaceNameStandardization, setShowPlaceNameStandardization] = useState(false);
 
   useEffect(() => {
     fetchConfig();
@@ -242,6 +244,12 @@ const BackupSettings = () => {
           📥 Import & Restore
         </button>
         <button 
+          className={`tab-button ${activeTab === 'misc' ? 'active' : ''}`}
+          onClick={() => setActiveTab('misc')}
+        >
+          🔧 Misc
+        </button>
+        <button 
           className={`tab-button ${activeTab === 'about' ? 'active' : ''}`}
           onClick={() => setActiveTab('about')}
         >
@@ -392,6 +400,36 @@ const BackupSettings = () => {
         </div>
       )}
 
+      {activeTab === 'misc' && (
+        <div className="tab-panel">
+          {!showPlaceNameStandardization ? (
+            <div className="settings-section">
+              <h3>Data Management Tools</h3>
+              <p>Miscellaneous tools for managing and cleaning up your expense data.</p>
+              
+              <div className="misc-tools-list">
+                <div className="misc-tool-item">
+                  <div className="misc-tool-info">
+                    <h4>🏷️ Standardize Place Names</h4>
+                    <p>Find and fix inconsistent place names in your expenses (e.g., "Walmart", "walmart", "Wal-Mart")</p>
+                  </div>
+                  <button 
+                    className="misc-tool-button"
+                    onClick={() => setShowPlaceNameStandardization(true)}
+                  >
+                    Open Tool
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <PlaceNameStandardization 
+              onClose={() => setShowPlaceNameStandardization(false)}
+            />
+          )}
+        </div>
+      )}
+
       {activeTab === 'about' && (
         <div className="tab-panel">
           <div className="settings-section">
@@ -424,6 +462,18 @@ const BackupSettings = () => {
           <div className="settings-section">
             <h3>Recent Updates</h3>
             <div className="changelog">
+              <div className="changelog-entry">
+                <div className="changelog-version">v3.8.0</div>
+                <div className="changelog-date">November 23, 2025</div>
+                <ul className="changelog-items">
+                  <li>Place Name Standardization: Find and fix inconsistent place names in expenses</li>
+                  <li>Fuzzy matching algorithm identifies similar place name variations</li>
+                  <li>Bulk update tool with preview before applying changes</li>
+                  <li>Transaction-safe updates ensure data integrity</li>
+                  <li>Performance optimized for large datasets (10,000+ records)</li>
+                </ul>
+              </div>
+
               <div className="changelog-entry">
                 <div className="changelog-version">v3.7.0</div>
                 <div className="changelog-date">November 22, 2025</div>

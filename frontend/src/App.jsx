@@ -83,6 +83,42 @@ function App() {
     fetchExpenses();
   }, [selectedYear, selectedMonth, searchText]);
 
+  // Listen for expensesUpdated event (e.g., from place name standardization)
+  useEffect(() => {
+    const handleExpensesUpdated = () => {
+      // Trigger a refresh by updating the refresh trigger
+      setRefreshTrigger(prev => prev + 1);
+      
+      // Re-fetch expenses to reflect changes
+      const fetchExpenses = async () => {
+        try {
+          let url;
+          if (searchText && searchText.trim().length > 0) {
+            url = `${API_ENDPOINTS.EXPENSES}`;
+          } else {
+            url = `${API_ENDPOINTS.EXPENSES}?year=${selectedYear}&month=${selectedMonth}`;
+          }
+          
+          const response = await fetch(url);
+          if (response.ok) {
+            const data = await response.json();
+            setExpenses(data);
+          }
+        } catch (err) {
+          console.error('Error refreshing expenses:', err);
+        }
+      };
+      
+      fetchExpenses();
+    };
+
+    window.addEventListener('expensesUpdated', handleExpensesUpdated);
+    
+    return () => {
+      window.removeEventListener('expensesUpdated', handleExpensesUpdated);
+    };
+  }, [selectedYear, selectedMonth, searchText]);
+
   const handleExpenseAdded = (newExpense) => {
     // Add new expense to the list if it belongs to the selected month
     const expenseDate = new Date(newExpense.date);
@@ -317,7 +353,7 @@ function App() {
 
       <footer className="App-footer">
         <span className="version">
-          v{versionInfo?.version || '3.7.0'}
+          v{versionInfo?.version || '3.8.0'}
           {versionInfo?.docker && (
             <span className="docker-tag"> (Docker: {versionInfo.docker.tag})</span>
           )}

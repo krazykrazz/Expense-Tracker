@@ -1,6 +1,7 @@
 const recurringExpenseRepository = require('../repositories/recurringExpenseRepository');
 const expenseRepository = require('../repositories/expenseRepository');
 const { calculateWeek } = require('../utils/dateUtils');
+const { CATEGORIES } = require('../utils/categories');
 
 class RecurringExpenseService {
   /**
@@ -74,9 +75,8 @@ class RecurringExpenseService {
     }
 
     // Type validation
-    const validTypes = ['Other', 'Food', 'Gas'];
-    if (template.type && !validTypes.includes(template.type)) {
-      errors.push(`Type must be one of: ${validTypes.join(', ')}`);
+    if (template.type && !CATEGORIES.includes(template.type)) {
+      errors.push(`Type must be one of: ${CATEGORIES.join(', ')}`);
     }
 
     // Method validation

@@ -12,6 +12,8 @@ const loanRoutes = require('./routes/loanRoutes');
 const loanBalanceRoutes = require('./routes/loanBalanceRoutes');
 const budgetRoutes = require('./routes/budgetRoutes');
 const healthRoutes = require('./routes/healthRoutes');
+const placeNameRoutes = require('./routes/placeNameRoutes');
+const categoryRoutes = require('./routes/categoryRoutes');
 const backupService = require('./services/backupService');
 const logger = require('./config/logger');
 const { configureTimezone, getTimezone } = require('./config/timezone');
@@ -54,6 +56,12 @@ app.use('/api/loan-balances', loanBalanceRoutes);
 
 // Budget API routes
 app.use('/api/budgets', budgetRoutes);
+
+// Place name API routes
+app.use('/api/expenses/place-names', placeNameRoutes);
+
+// Category API routes
+app.use('/api/categories', categoryRoutes);
 
 // Serve static files from the React app (after build)
 // In container: /app/frontend/dist, in development: ../frontend/dist

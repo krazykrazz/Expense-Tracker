@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.8.0] - 2025-11-23
+
+### Added
+- **Place Name Standardization**: Data cleanup tool for inconsistent place names
+  - Fuzzy matching algorithm identifies similar place name variations (e.g., "Walmart", "walmart", "Wal-Mart")
+  - Intelligent grouping using Levenshtein distance and string normalization
+  - Bulk update tool with preview before applying changes
+  - Transaction-safe updates ensure data integrity (all-or-nothing updates)
+  - Performance optimized for large datasets (10,000+ expense records)
+  - Accessible from Settings → Misc tab
+- **Similarity Analysis**: Comprehensive place name analysis
+  - Groups similar names with variation counts
+  - Suggests most frequent variation as canonical name
+  - Allows custom canonical name entry
+  - Shows total affected expense count per group
+  - Sorts groups by frequency for prioritization
+- **Preview & Confirmation Workflow**: Safe standardization process
+  - Preview all changes before applying
+  - Shows which variations will be updated to which canonical names
+  - Displays total number of records to be modified
+  - Cancel option at any stage without data changes
+  - Success confirmation with update count
+
+### Changed
+- Settings modal now includes "Misc" tab for miscellaneous data management tools
+- Expense lists automatically refresh after place name standardization
+- Enhanced error handling for database operations
+
+### Technical
+- Added place name repository with transaction support
+- Implemented fuzzy matching service with configurable similarity threshold (default 0.8)
+- Created comprehensive test suite (63 tests) covering:
+  - Levenshtein distance calculation
+  - String normalization and similarity scoring
+  - Grouping logic and edge cases
+  - Transaction rollback on failure
+  - Integration tests with real data
+- Performance tested with 10,000+ records (analysis < 5s, updates < 10s)
+
+---
+
 ## [3.7.0] - 2025-11-22
 
 ### Added

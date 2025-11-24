@@ -1,0 +1,103 @@
+.similarity-group {
+  border: 1px solid var(--border-light, #ddd);
+  border-radius: var(--radius-lg, 8px);
+  padding: var(--spacing-xl, 20px);
+  background-color: var(--bg-white, white);
+}
+
+.group-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-lg, 15px);
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border-light, #eee);
+}
+
+.group-total {
+  font-weight: 600;
+  color: var(--text-primary, #333);
+}
+
+.group-variations {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: var(--spacing-lg, 15px);
+}
+
+.variation-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--border-light, #ddd);
+  border-radius: var(--radius-md, 6px);
+  cursor: pointer;
+  transition: all var(--transition-normal, 0.2s);
+}
+
+.variation-option:hover {
+  background-color: #f9f9f9;
+  border-color: #4CAF50;
+}
+
+.variation-option.suggested {
+  background-color: #e8f5e9;
+  border-color: #4CAF50;
+}
+
+.variation-option input[type="radio"] {
+  cursor: pointer;
+}
+
+.variation-name {
+  flex: 1;
+  font-weight: 500;
+  color: var(--text-primary, #333);
+}
+
+.variation-count {
+  color: var(--text-tertiary, #666);
+  font-size: 0.9rem;
+}
+
+.suggested-badge {
+  padding: 2px var(--spacing-sm, 8px);
+  background-color: #4CAF50;
+  color: white;
+  border-radius: var(--radius-sm, 4px);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.custom-name-input {
+  margin-top: var(--spacing-lg, 15px);
+  padding-top: var(--spacing-lg, 15px);
+  border-top: 1px solid var(--border-light, #eee);
+}
+
+.custom-name-input label {
+  display: block;
+  font-size: 0.9rem;
+  color: var(--text-tertiary, #666);
+  margin-bottom: var(--spacing-sm, 8px);
+}
+
+.custom-name-input input[type="text"] {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid var(--border-light, #ddd);
+  border-radius: var(--radius-md, 6px);
+  font-size: 0.95rem;
+  box-sizing: border-box;
+}
+
+.custom-name-input input[type="text"]:focus {
+  outline: none;
+  border-color: #4CAF50;
+}
+
+.custom-name-input input[type="text"]:invalid {
+  border-color: var(--color-negative, #f44336);
+}

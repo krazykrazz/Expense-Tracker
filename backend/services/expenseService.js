@@ -2,6 +2,7 @@ const expenseRepository = require('../repositories/expenseRepository');
 const fixedExpenseRepository = require('../repositories/fixedExpenseRepository');
 const loanService = require('./loanService');
 const { calculateWeek } = require('../utils/dateUtils');
+const { CATEGORIES } = require('../utils/categories');
 
 // Lazy-load budgetService to avoid circular dependency
 let budgetService = null;
@@ -55,9 +56,8 @@ class ExpenseService {
     }
 
     // Type validation
-    const validTypes = ['Other', 'Food', 'Gas', 'Tax - Medical', 'Tax - Donation'];
-    if (expense.type && !validTypes.includes(expense.type)) {
-      errors.push(`Type must be one of: ${validTypes.join(', ')}`);
+    if (expense.type && !CATEGORIES.includes(expense.type)) {
+      errors.push(`Type must be one of: ${CATEGORIES.join(', ')}`);
     }
 
     // Method validation
@@ -100,8 +100,8 @@ class ExpenseService {
   async _triggerBudgetRecalculation(date, category) {
     try {
       // Only recalculate for budgetable categories
-      const budgetableCategories = ['Food', 'Gas', 'Other'];
-      if (!budgetableCategories.includes(category)) {
+      const { BUDGETABLE_CATEGORIES } = require('../utils/categories');
+      if (!BUDGETABLE_CATEGORIES.includes(category)) {
         return;
       }
 

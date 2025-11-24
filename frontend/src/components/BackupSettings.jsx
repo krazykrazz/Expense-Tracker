@@ -463,6 +463,33 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v4.1.0</div>
+                <div className="changelog-date">November 24, 2025</div>
+                <ul className="changelog-items">
+                  <li>Added "Personal Care" expense category for haircuts, cosmetics, toiletries, and spa services</li>
+                  <li>Personal Care category is budgetable and appears in all summaries and reports</li>
+                  <li>Automatic database migration updates constraints on startup</li>
+                  <li>CSV import/export fully supports Personal Care expenses</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
+                <div className="changelog-version">v4.0.3</div>
+                <div className="changelog-date">November 24, 2025</div>
+                <ul className="changelog-items">
+                  <li>Fixed database migration for "Gifts" category support</li>
+                  <li>Automatic migration runs on container startup</li>
+                  <li>Added comprehensive migration documentation and test scripts</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
+                <div className="changelog-version">v4.0.2</div>
+                <div className="changelog-date">November 24, 2025</div>
+                <ul className="changelog-items">
+                  <li>Project cleanup: Archived 45 historical files for better organization</li>
+                  <li>Removed empty folders and organized documentation</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v4.0.1</div>
                 <div className="changelog-date">November 24, 2025</div>
                 <ul className="changelog-items">

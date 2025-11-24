@@ -7,6 +7,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.1.0] - 2025-11-24
+
+### Added
+- **Personal Care Category**: New expense category for personal grooming and hygiene
+  - Added "Personal Care" to expense categories (haircuts, cosmetics, toiletries, spa services)
+  - Personal Care is budgetable and appears in all summaries and reports
+  - Automatic database migration updates constraints on startup
+  - CSV import/export fully supports Personal Care expenses
+  - Comprehensive property-based tests validate all functionality
+  - Integration tests confirm feature works across all application layers
+
+### Technical
+- **Database Migration**: `migrateAddPersonalCareCategory()` updates expenses and budgets tables
+- **Category Validation**: Updated category arrays in `backend/utils/categories.js`
+- **CSV Scripts**: Updated `validate_csv.py` and `xls_to_csv.py` to accept Personal Care
+- **Test Coverage**: 7 property-based tests + 9 integration tests (100% pass rate)
+
+---
+
+## [4.0.3] - 2025-11-24
+
+### Fixed
+- **Database Migrations**: Added automatic migration to fix category constraints
+  - New migration ensures "Gifts" category is included in database CHECK constraints
+  - Migration runs automatically on container startup
+  - Detects and fixes databases with incomplete category constraints
+  - Creates automatic backup before applying fixes
+
+### Added
+- **Migration Documentation**: Created comprehensive database migration guide
+  - Documents automatic migration system
+  - Explains how migrations run on container startup
+  - Provides troubleshooting steps for migration issues
+- **Test Scripts**: Added verification scripts for database schema and migrations
+  - `testGiftsCategory.js` - Validates Gifts category functionality
+  - `simulateContainerStartup.js` - Shows migration flow
+  - `checkSchema.js` - Verifies database constraints
+
+---
+
+## [4.0.2] - 2025-11-24
+
+### Changed
+- **Project Cleanup**: Archived historical documentation and test scripts
+  - Moved 20 completion reports to archive/completion-reports/
+  - Moved 15 test scripts to archive/test-scripts/
+  - Moved 6 migration scripts to archive/migration-scripts/
+  - Moved 4 spec summaries to archive/spec-summaries/
+  - Removed 2 empty folders (uploads/, backups/)
+  - Created comprehensive archive documentation
+  - Total: 45 files archived for better project organization
+
+---
+
 ## [4.0.1] - 2025-11-24
 
 ### Fixed

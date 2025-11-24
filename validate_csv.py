@@ -4,12 +4,11 @@ CSV Validator for Expense Tracker
 Validates a CSV file and reports any rows with missing required fields.
 
 Valid expense categories (as of expanded categories feature):
-- Housing, Utilities, Groceries, Dining Out, Insurance
-- Gas, Vehicle Maintenance
-- Entertainment, Subscriptions, Recreation Activities
-- Pet Care
-- Tax - Medical, Tax - Donation
+- Clothing, Dining Out, Entertainment, Gas, Gifts
+- Groceries, Housing, Insurance, Personal Care, Pet Care
+- Recreation Activities, Subscriptions, Utilities, Vehicle Maintenance
 - Other
+- Tax - Medical, Tax - Donation
 
 Note: The legacy "Food" category has been replaced with "Dining Out".
 
@@ -27,20 +26,23 @@ def validate_csv(csv_file):
     # Updated category list - matches backend/utils/categories.js
     # Note: "Food" has been replaced with "Dining Out" as of the category expansion
     valid_types = [
-        'Housing',
-        'Utilities',
-        'Groceries',
+        'Clothing',
         'Dining Out',
-        'Insurance',
-        'Gas',
-        'Vehicle Maintenance',
         'Entertainment',
-        'Subscriptions',
-        'Recreation Activities',
+        'Gas',
+        'Gifts',
+        'Groceries',
+        'Housing',
+        'Insurance',
+        'Personal Care',
         'Pet Care',
-        'Tax - Medical',
+        'Recreation Activities',
+        'Subscriptions',
+        'Utilities',
+        'Vehicle Maintenance',
+        'Other',
         'Tax - Donation',
-        'Other'
+        'Tax - Medical'
     ]
     valid_methods = ['Cash', 'Debit', 'Cheque', 'CIBC MC', 'PCF MC', 'WS VISA', 'VISA']
     

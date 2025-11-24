@@ -190,4 +190,133 @@ describe('Categories - Property-Based Tests', () => {
       { numRuns: 100 }
     );
   });
+
+  /**
+   * Feature: personal-care-category, Property 1: Category validation accepts Personal Care
+   * Validates: Requirements 1.2, 3.3
+   * 
+   * For any expense with category "Personal Care", the validation function isValid("Personal Care") 
+   * should return true
+   */
+  test('Property 1: Category validation accepts Personal Care', () => {
+    fc.assert(
+      fc.property(
+        fc.constant('Personal Care'),
+        (category) => {
+          // Personal Care should be a valid category
+          expect(isValid(category)).toBe(true);
+          // Personal Care should be in the CATEGORIES array
+          expect(CATEGORIES.includes(category)).toBe(true);
+          return true;
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+
+  /**
+   * Feature: personal-care-category, Property 2: Personal Care is budgetable
+   * Validates: Requirements 1.5, 3.2
+   * 
+   * For any budget creation request with category "Personal Care", the validation function 
+   * isBudgetable("Personal Care") should return true
+   */
+  test('Property 2: Personal Care is budgetable', () => {
+    fc.assert(
+      fc.property(
+        fc.constant('Personal Care'),
+        (category) => {
+          // Personal Care should be budgetable
+          expect(isBudgetable(category)).toBe(true);
+          // Personal Care should be in the BUDGETABLE_CATEGORIES array
+          expect(BUDGETABLE_CATEGORIES.includes(category)).toBe(true);
+          return true;
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+
+  /**
+   * Feature: personal-care-category, Property 3: Personal Care is not tax-deductible
+   * Validates: Requirements 3.3
+   * 
+   * For any expense with category "Personal Care", the function isTaxDeductible("Personal Care") 
+   * should return false
+   */
+  test('Property 3: Personal Care is not tax-deductible', () => {
+    fc.assert(
+      fc.property(
+        fc.constant('Personal Care'),
+        (category) => {
+          // Personal Care should NOT be tax-deductible
+          expect(isTaxDeductible(category)).toBe(false);
+          // Personal Care should NOT be in the TAX_DEDUCTIBLE_CATEGORIES array
+          expect(TAX_DEDUCTIBLE_CATEGORIES.includes(category)).toBe(false);
+          return true;
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+
+  /**
+   * Feature: personal-care-category, Property 7: Category list ordering is maintained
+   * Validates: Requirements 1.1, 3.1
+   * 
+   * For any category list retrieval, "Personal Care" should appear in alphabetical order 
+   * between "Insurance" and "Pet Care"
+   */
+  test('Property 7: Category list ordering is maintained', () => {
+    fc.assert(
+      fc.property(
+        fc.constant(CATEGORIES),
+        (categories) => {
+          // Find the indices of the relevant categories
+          const insuranceIndex = categories.indexOf('Insurance');
+          const personalCareIndex = categories.indexOf('Personal Care');
+          const petCareIndex = categories.indexOf('Pet Care');
+          
+          // All three categories should exist in the list
+          expect(insuranceIndex).toBeGreaterThanOrEqual(0);
+          expect(personalCareIndex).toBeGreaterThanOrEqual(0);
+          expect(petCareIndex).toBeGreaterThanOrEqual(0);
+          
+          // Personal Care should come after Insurance
+          expect(personalCareIndex).toBeGreaterThan(insuranceIndex);
+          
+          // Personal Care should come before Pet Care
+          expect(personalCareIndex).toBeLessThan(petCareIndex);
+          
+          // Verify alphabetical ordering for the non-tax category list
+          // (Tax categories are at the end and follow a different pattern)
+          // Note: "Other" is intentionally placed at the end before tax categories
+          const nonTaxCategories = categories.filter(cat => !cat.startsWith('Tax - '));
+          const nonTaxWithoutOther = nonTaxCategories.filter(cat => cat !== 'Other');
+          
+          // Check that all categories except "Other" are in alphabetical order
+          for (let i = 1; i < nonTaxWithoutOther.length; i++) {
+            const prev = nonTaxWithoutOther[i - 1];
+            const curr = nonTaxWithoutOther[i];
+            // Each category should be alphabetically after the previous one
+            expect(prev.localeCompare(curr)).toBeLessThan(0);
+          }
+          
+          // Verify "Other" comes after all alphabetically sorted categories but before tax categories
+          const otherIndex = categories.indexOf('Other');
+          const firstTaxIndex = categories.findIndex(cat => cat.startsWith('Tax - '));
+          
+          if (otherIndex >= 0 && firstTaxIndex >= 0) {
+            // "Other" should come before tax categories
+            expect(otherIndex).toBeLessThan(firstTaxIndex);
+            // "Other" should come after all other non-tax categories
+            expect(otherIndex).toBeGreaterThan(personalCareIndex);
+          }
+          
+          return true;
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
 });

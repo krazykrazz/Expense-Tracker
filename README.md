@@ -368,7 +368,7 @@ expense-tracker/
 - place (TEXT)
 - notes (TEXT)
 - amount (REAL)
-- type (TEXT) - 'Other', 'Food', 'Gas', 'Tax - Medical', 'Tax - Donation'
+- type (TEXT) - Categories include: Clothing, Dining Out, Entertainment, Gas, Gifts, Groceries, Housing, Insurance, Personal Care, Pet Care, Recreation Activities, Subscriptions, Utilities, Vehicle Maintenance, Other, Tax - Medical, Tax - Donation
 - week (INTEGER) - 1-5
 - method (TEXT) - Payment method
 - created_at (TEXT)

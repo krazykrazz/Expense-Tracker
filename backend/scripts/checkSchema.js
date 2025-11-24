@@ -1,14 +1,46 @@
-const sqlite3 = require('sqlite3');
-const { getDatabasePath } = require('../config/paths');
+/**
+ * Check current database schema
+ */
 
-const db = new sqlite3.Database(getDatabasePath());
+const { getDatabase } = require('../database/db');
 
-db.get('SELECT sql FROM sqlite_master WHERE type="table" AND name="expenses"', (err, row) => {
-  if (err) {
-    console.error('Error:', err);
-  } else {
-    console.log('Expenses table schema:');
-    console.log(row.sql);
+async function main() {
+  try {
+    const db = await getDatabase();
+    
+    console.log('Checking expenses table schema...\n');
+    
+    db.all('PRAGMA table_info(expenses)', (err, columns) => {
+      if (err) {
+        console.error('Error:', err.message);
+        process.exit(1);
+      }
+      
+      console.log('Columns:');
+      columns.forEach(col => {
+        console.log(`  - ${col.name} (${col.type})`);
+      });
+      
+      // Get the CREATE TABLE statement
+      db.get(
+        "SELECT sql FROM sqlite_master WHERE type='table' AND name='expenses'",
+        (err, row) => {
+          if (err) {
+            console.error('Error:', err.message);
+            process.exit(1);
+          }
+          
+          console.log('\nCREATE TABLE statement:');
+          console.log(row.sql);
+          
+          db.close();
+        }
+      );
+    });
+  } catch (error) {
+    console.error('Error:', error.message);
+    process.exit(1);
   }
-  db.close();
-});
+}
+
+main();

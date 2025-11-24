@@ -838,6 +838,576 @@ async function migrateRemoveRecurringExpenses(db) {
 }
 
 /**
+ * Migration: Fix category constraints to include Gifts
+ * This migration ensures all tables have the complete category list
+ */
+async function migrateFixCategoryConstraints(db) {
+  const migrationName = 'fix_category_constraints_v1';
+  
+  // Check if already applied
+  const isApplied = await checkMigrationApplied(db, migrationName);
+  if (isApplied) {
+    console.log(`✓ Migration "${migrationName}" already applied, skipping`);
+    return;
+  }
+
+  console.log(`Running migration: ${migrationName}`);
+
+  // Create backup
+  await createBackup();
+
+  return new Promise((resolve, reject) => {
+    const categoryList = CATEGORIES.map(c => `'${c}'`).join(', ');
+    const budgetCategoryList = BUDGETABLE_CATEGORIES.map(c => `'${c}'`).join(', ');
+
+    db.serialize(() => {
+      db.run('BEGIN TRANSACTION', (err) => {
+        if (err) {
+          return reject(err);
+        }
+
+        // Check current expenses table constraint
+        db.get(
+          "SELECT sql FROM sqlite_master WHERE type='table' AND name='expenses'",
+          (err, row) => {
+            if (err) {
+              db.run('ROLLBACK');
+              return reject(err);
+            }
+
+            // Check if Gifts is already in the constraint
+            if (row && row.sql.includes("'Gifts'")) {
+              console.log('✓ Expenses table already has correct constraints');
+              
+              // Still check budgets table
+              checkAndUpdateBudgetsTable(db, budgetCategoryList, migrationName, resolve, reject);
+            } else {
+              console.log('ℹ Updating expenses table constraints...');
+              
+              // Create new expenses table with correct constraint
+              db.run(`
+                CREATE TABLE expenses_new (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  date TEXT NOT NULL,
+                  place TEXT,
+                  notes TEXT,
+                  amount REAL NOT NULL,
+                  type TEXT NOT NULL CHECK(type IN (${categoryList})),
+                  week INTEGER NOT NULL CHECK(week >= 1 AND week <= 5),
+                  method TEXT NOT NULL CHECK(method IN ('Cash', 'Debit', 'Cheque', 'CIBC MC', 'PCF MC', 'WS VISA', 'VISA')),
+                  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                  recurring_id INTEGER,
+                  is_generated INTEGER DEFAULT 0
+                )
+              `, (err) => {
+                if (err) {
+                  db.run('ROLLBACK');
+                  return reject(err);
+                }
+
+                // Copy all data
+                db.run(`
+                  INSERT INTO expenses_new 
+                  SELECT * FROM expenses
+                `, function(err) {
+                  if (err) {
+                    db.run('ROLLBACK');
+                    return reject(err);
+                  }
+
+                  console.log(`✓ Copied ${this.changes} expense records`);
+
+                  // Drop old table
+                  db.run('DROP TABLE expenses', (err) => {
+                    if (err) {
+                      db.run('ROLLBACK');
+                      return reject(err);
+                    }
+
+                    // Rename new table
+                    db.run('ALTER TABLE expenses_new RENAME TO expenses', (err) => {
+                      if (err) {
+                        db.run('ROLLBACK');
+                        return reject(err);
+                      }
+
+                      console.log('✓ Updated expenses table');
+
+                      // Recreate indexes
+                      const indexes = [
+                        'CREATE INDEX IF NOT EXISTS idx_date ON expenses(date)',
+                        'CREATE INDEX IF NOT EXISTS idx_type ON expenses(type)',
+                        'CREATE INDEX IF NOT EXISTS idx_method ON expenses(method)'
+                      ];
+
+                      let completed = 0;
+                      indexes.forEach((indexSQL) => {
+                        db.run(indexSQL, (err) => {
+                          if (err) {
+                            db.run('ROLLBACK');
+                            return reject(err);
+                          }
+                          completed++;
+                          if (completed === indexes.length) {
+                            // Check and update recurring_expenses table
+                            checkAndUpdateRecurringTable(db, categoryList, budgetCategoryList, migrationName, resolve, reject);
+                          }
+                        });
+                      });
+                    });
+                  });
+                });
+              });
+            }
+          }
+        );
+      });
+    });
+  });
+}
+
+function checkAndUpdateRecurringTable(db, categoryList, budgetCategoryList, migrationName, resolve, reject) {
+  db.get(
+    "SELECT name FROM sqlite_master WHERE type='table' AND name='recurring_expenses'",
+    (err, row) => {
+      if (err) {
+        db.run('ROLLBACK');
+        return reject(err);
+      }
+
+      if (row) {
+        // Check if recurring_expenses has correct constraint
+        db.get(
+          "SELECT sql FROM sqlite_master WHERE type='table' AND name='recurring_expenses'",
+          (err, row) => {
+            if (err) {
+              db.run('ROLLBACK');
+              return reject(err);
+            }
+
+            if (row && row.sql.includes("'Gifts'")) {
+              console.log('✓ Recurring expenses table already has correct constraints');
+              checkAndUpdateBudgetsTable(db, budgetCategoryList, migrationName, resolve, reject);
+            } else {
+              console.log('ℹ Updating recurring_expenses table constraints...');
+              
+              db.run(`
+                CREATE TABLE recurring_expenses_new (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  place TEXT NOT NULL,
+                  amount REAL NOT NULL,
+                  notes TEXT,
+                  type TEXT NOT NULL CHECK(type IN (${categoryList})),
+                  method TEXT NOT NULL CHECK(method IN ('Cash', 'Debit', 'Cheque', 'CIBC MC', 'PCF MC', 'WS VISA', 'VISA')),
+                  day_of_month INTEGER NOT NULL CHECK(day_of_month >= 1 AND day_of_month <= 31),
+                  start_month TEXT NOT NULL,
+                  end_month TEXT,
+                  paused INTEGER DEFAULT 0,
+                  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+                )
+              `, (err) => {
+                if (err) {
+                  db.run('ROLLBACK');
+                  return reject(err);
+                }
+
+                db.run(`
+                  INSERT INTO recurring_expenses_new 
+                  SELECT * FROM recurring_expenses
+                `, function(err) {
+                  if (err) {
+                    db.run('ROLLBACK');
+                    return reject(err);
+                  }
+
+                  console.log(`✓ Copied ${this.changes} recurring expense records`);
+
+                  db.run('DROP TABLE recurring_expenses', (err) => {
+                    if (err) {
+                      db.run('ROLLBACK');
+                      return reject(err);
+                    }
+
+                    db.run('ALTER TABLE recurring_expenses_new RENAME TO recurring_expenses', (err) => {
+                      if (err) {
+                        db.run('ROLLBACK');
+                        return reject(err);
+                      }
+
+                      console.log('✓ Updated recurring_expenses table');
+                      checkAndUpdateBudgetsTable(db, budgetCategoryList, migrationName, resolve, reject);
+                    });
+                  });
+                });
+              });
+            }
+          }
+        );
+      } else {
+        // No recurring_expenses table
+        checkAndUpdateBudgetsTable(db, budgetCategoryList, migrationName, resolve, reject);
+      }
+    }
+  );
+}
+
+function checkAndUpdateBudgetsTable(db, budgetCategoryList, migrationName, resolve, reject) {
+  db.get(
+    "SELECT name FROM sqlite_master WHERE type='table' AND name='budgets'",
+    (err, row) => {
+      if (err) {
+        db.run('ROLLBACK');
+        return reject(err);
+      }
+
+      if (row) {
+        // Check if budgets has correct constraint
+        db.get(
+          "SELECT sql FROM sqlite_master WHERE type='table' AND name='budgets'",
+          (err, row) => {
+            if (err) {
+              db.run('ROLLBACK');
+              return reject(err);
+            }
+
+            if (row && row.sql.includes("'Gifts'")) {
+              console.log('✓ Budgets table already has correct constraints');
+              commitFixMigration(db, migrationName, resolve, reject);
+            } else {
+              console.log('ℹ Updating budgets table constraints...');
+              
+              db.run(`
+                CREATE TABLE budgets_new (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  year INTEGER NOT NULL,
+                  month INTEGER NOT NULL CHECK(month >= 1 AND month <= 12),
+                  category TEXT NOT NULL CHECK(category IN (${budgetCategoryList})),
+                  "limit" REAL NOT NULL CHECK("limit" > 0),
+                  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                  UNIQUE(year, month, category)
+                )
+              `, (err) => {
+                if (err) {
+                  db.run('ROLLBACK');
+                  return reject(err);
+                }
+
+                db.run(`
+                  INSERT INTO budgets_new 
+                  SELECT * FROM budgets
+                `, function(err) {
+                  if (err) {
+                    db.run('ROLLBACK');
+                    return reject(err);
+                  }
+
+                  console.log(`✓ Copied ${this.changes} budget records`);
+
+                  db.run('DROP TABLE budgets', (err) => {
+                    if (err) {
+                      db.run('ROLLBACK');
+                      return reject(err);
+                    }
+
+                    db.run('ALTER TABLE budgets_new RENAME TO budgets', (err) => {
+                      if (err) {
+                        db.run('ROLLBACK');
+                        return reject(err);
+                      }
+
+                      console.log('✓ Updated budgets table');
+
+                      // Recreate budgets indexes and trigger
+                      db.run('CREATE INDEX IF NOT EXISTS idx_budgets_period ON budgets(year, month)', (err) => {
+                        if (err) {
+                          db.run('ROLLBACK');
+                          return reject(err);
+                        }
+
+                        db.run('CREATE INDEX IF NOT EXISTS idx_budgets_category ON budgets(category)', (err) => {
+                          if (err) {
+                            db.run('ROLLBACK');
+                            return reject(err);
+                          }
+
+                          db.run(`
+                            CREATE TRIGGER IF NOT EXISTS update_budgets_timestamp 
+                            AFTER UPDATE ON budgets
+                            BEGIN
+                              UPDATE budgets SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+                            END
+                          `, (err) => {
+                            if (err) {
+                              db.run('ROLLBACK');
+                              return reject(err);
+                            }
+
+                            commitFixMigration(db, migrationName, resolve, reject);
+                          });
+                        });
+                      });
+                    });
+                  });
+                });
+              });
+            }
+          }
+        );
+      } else {
+        // No budgets table
+        commitFixMigration(db, migrationName, resolve, reject);
+      }
+    }
+  );
+}
+
+function commitFixMigration(db, migrationName, resolve, reject) {
+  markMigrationApplied(db, migrationName).then(() => {
+    db.run('COMMIT', (err) => {
+      if (err) {
+        db.run('ROLLBACK');
+        return reject(err);
+      }
+      console.log(`✓ Migration "${migrationName}" completed successfully`);
+      resolve();
+    });
+  }).catch(reject);
+}
+
+/**
+ * Migration: Add Personal Care category
+ */
+async function migrateAddPersonalCareCategory(db) {
+  const migrationName = 'add_personal_care_category_v1';
+  
+  // Check if already applied
+  const isApplied = await checkMigrationApplied(db, migrationName);
+  if (isApplied) {
+    console.log(`✓ Migration "${migrationName}" already applied, skipping`);
+    return;
+  }
+
+  console.log(`Running migration: ${migrationName}`);
+
+  // Create backup
+  await createBackup();
+
+  return new Promise((resolve, reject) => {
+    const categoryList = CATEGORIES.map(c => `'${c}'`).join(', ');
+    const budgetCategoryList = BUDGETABLE_CATEGORIES.map(c => `'${c}'`).join(', ');
+
+    db.serialize(() => {
+      db.run('BEGIN TRANSACTION', (err) => {
+        if (err) {
+          return reject(err);
+        }
+
+        // First check if table has recurring columns
+        db.all('PRAGMA table_info(expenses)', (err, columns) => {
+          if (err) {
+            db.run('ROLLBACK');
+            return reject(err);
+          }
+
+          const hasRecurringId = columns.some(col => col.name === 'recurring_id');
+          const hasIsGenerated = columns.some(col => col.name === 'is_generated');
+
+          // Create new table with or without recurring columns based on current schema
+          const createTableSQL = hasRecurringId && hasIsGenerated
+            ? `CREATE TABLE expenses_new (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                date TEXT NOT NULL,
+                place TEXT,
+                notes TEXT,
+                amount REAL NOT NULL,
+                type TEXT NOT NULL CHECK(type IN (${categoryList})),
+                week INTEGER NOT NULL CHECK(week >= 1 AND week <= 5),
+                method TEXT NOT NULL CHECK(method IN ('Cash', 'Debit', 'Cheque', 'CIBC MC', 'PCF MC', 'WS VISA', 'VISA')),
+                recurring_id INTEGER,
+                is_generated INTEGER DEFAULT 0,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+              )`
+            : `CREATE TABLE expenses_new (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                date TEXT NOT NULL,
+                place TEXT,
+                notes TEXT,
+                amount REAL NOT NULL,
+                type TEXT NOT NULL CHECK(type IN (${categoryList})),
+                week INTEGER NOT NULL CHECK(week >= 1 AND week <= 5),
+                method TEXT NOT NULL CHECK(method IN ('Cash', 'Debit', 'Cheque', 'CIBC MC', 'PCF MC', 'WS VISA', 'VISA')),
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+              )`;
+
+          // Update expenses table
+          db.run(createTableSQL, (err) => {
+            if (err) {
+              db.run('ROLLBACK');
+              return reject(err);
+            }
+
+            db.run(`
+              INSERT INTO expenses_new 
+              SELECT * FROM expenses
+            `, (err) => {
+            if (err) {
+              db.run('ROLLBACK');
+              return reject(err);
+            }
+
+            db.run('DROP TABLE expenses', (err) => {
+              if (err) {
+                db.run('ROLLBACK');
+                return reject(err);
+              }
+
+              db.run('ALTER TABLE expenses_new RENAME TO expenses', (err) => {
+                if (err) {
+                  db.run('ROLLBACK');
+                  return reject(err);
+                }
+
+                console.log('✓ Updated expenses table with Personal Care category');
+
+                // Recreate indexes
+                const indexes = [
+                  'CREATE INDEX IF NOT EXISTS idx_date ON expenses(date)',
+                  'CREATE INDEX IF NOT EXISTS idx_type ON expenses(type)',
+                  'CREATE INDEX IF NOT EXISTS idx_method ON expenses(method)'
+                ];
+
+                let completed = 0;
+                indexes.forEach((indexSQL) => {
+                  db.run(indexSQL, (err) => {
+                    if (err) {
+                      db.run('ROLLBACK');
+                      return reject(err);
+                    }
+                    completed++;
+                    if (completed === indexes.length) {
+                      // Check if budgets table exists
+                      db.get('SELECT name FROM sqlite_master WHERE type="table" AND name="budgets"', (err, row) => {
+                        if (err) {
+                          db.run('ROLLBACK');
+                          return reject(err);
+                        }
+
+                        if (!row) {
+                          // No budgets table, skip and commit
+                          console.log('ℹ Budgets table does not exist, skipping');
+                          
+                          markMigrationApplied(db, migrationName).then(() => {
+                            db.run('COMMIT', (err) => {
+                              if (err) {
+                                db.run('ROLLBACK');
+                                return reject(err);
+                              }
+                              console.log(`✓ Migration "${migrationName}" completed successfully`);
+                              resolve();
+                            });
+                          }).catch(reject);
+                        } else {
+                          // Update budgets table
+                          db.run(`
+                            CREATE TABLE budgets_new (
+                              id INTEGER PRIMARY KEY AUTOINCREMENT,
+                              year INTEGER NOT NULL,
+                              month INTEGER NOT NULL CHECK(month >= 1 AND month <= 12),
+                              category TEXT NOT NULL CHECK(category IN (${budgetCategoryList})),
+                              "limit" REAL NOT NULL CHECK("limit" > 0),
+                              created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                              updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                              UNIQUE(year, month, category)
+                            )
+                          `, (err) => {
+                            if (err) {
+                              db.run('ROLLBACK');
+                              return reject(err);
+                            }
+
+                            db.run(`
+                              INSERT INTO budgets_new 
+                              SELECT * FROM budgets
+                            `, (err) => {
+                              if (err) {
+                                db.run('ROLLBACK');
+                                return reject(err);
+                              }
+
+                              db.run('DROP TABLE budgets', (err) => {
+                                if (err) {
+                                  db.run('ROLLBACK');
+                                  return reject(err);
+                                }
+
+                                db.run('ALTER TABLE budgets_new RENAME TO budgets', (err) => {
+                                  if (err) {
+                                    db.run('ROLLBACK');
+                                    return reject(err);
+                                  }
+
+                                  console.log('✓ Updated budgets table with Personal Care category');
+
+                                  // Recreate budgets indexes and trigger
+                                  db.run('CREATE INDEX IF NOT EXISTS idx_budgets_period ON budgets(year, month)', (err) => {
+                                    if (err) {
+                                      db.run('ROLLBACK');
+                                      return reject(err);
+                                    }
+
+                                    db.run('CREATE INDEX IF NOT EXISTS idx_budgets_category ON budgets(category)', (err) => {
+                                      if (err) {
+                                        db.run('ROLLBACK');
+                                        return reject(err);
+                                      }
+
+                                      db.run(`
+                                        CREATE TRIGGER IF NOT EXISTS update_budgets_timestamp 
+                                        AFTER UPDATE ON budgets
+                                        BEGIN
+                                          UPDATE budgets SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+                                        END
+                                      `, (err) => {
+                                        if (err) {
+                                          db.run('ROLLBACK');
+                                          return reject(err);
+                                        }
+
+                                        // Mark migration as applied and commit
+                                        markMigrationApplied(db, migrationName).then(() => {
+                                          db.run('COMMIT', (err) => {
+                                            if (err) {
+                                              db.run('ROLLBACK');
+                                              return reject(err);
+                                            }
+                                            console.log(`✓ Migration "${migrationName}" completed successfully`);
+                                            resolve();
+                                          });
+                                        }).catch(reject);
+                                      });
+                                    });
+                                  });
+                                });
+                              });
+                            });
+                          });
+                        }
+                      });
+                    }
+                  });
+                });
+              });
+            });
+          });
+        });
+        });
+      });
+    });
+  });
+}
+
+/**
  * Run all pending migrations
  */
 async function runMigrations(db) {
@@ -847,6 +1417,8 @@ async function runMigrations(db) {
     await migrateExpandCategories(db);
     await migrateAddClothingCategory(db);
     await migrateRemoveRecurringExpenses(db);
+    await migrateFixCategoryConstraints(db);
+    await migrateAddPersonalCareCategory(db);
     console.log('✓ All migrations completed\n');
   } catch (error) {
     console.error('✗ Migration failed:', error.message);

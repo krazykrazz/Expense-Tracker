@@ -1,11 +1,33 @@
-// Simple wrapper to run the migration
-const { migrate } = require('./expandCategories');
+/**
+ * Manual migration runner
+ * Run this script to apply pending database migrations
+ */
 
-console.log('Starting migration wrapper...');
+const { getDatabase } = require('../database/db');
+const { runMigrations } = require('../database/migrations');
 
-migrate().then(() => {
-  console.log('Migration wrapper complete');
-}).catch((err) => {
-  console.error('Migration wrapper error:', err);
-  process.exit(1);
-});
+async function main() {
+  console.log('Starting manual migration...\n');
+  
+  try {
+    const db = await getDatabase();
+    await runMigrations(db);
+    
+    console.log('\n✓ Migration completed successfully!');
+    console.log('You can now use the "Gifts" category and other expanded categories.');
+    
+    db.close((err) => {
+      if (err) {
+        console.error('Error closing database:', err.message);
+        process.exit(1);
+      }
+      process.exit(0);
+    });
+  } catch (error) {
+    console.error('\n✗ Migration failed:', error.message);
+    console.error(error.stack);
+    process.exit(1);
+  }
+}
+
+main();

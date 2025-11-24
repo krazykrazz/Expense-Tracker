@@ -5,6 +5,9 @@ Exports all sheets from an Excel file to a CSV format compatible with the expens
 - Skips the "Summary" sheet
 - Extracts columns: Date, Place, Amount, Notes, Type, Week, Method
 - Formats output to match expense tracker import expectations
+- Preserves all category values including: Clothing, Dining Out, Entertainment, Gas, Gifts,
+  Groceries, Housing, Insurance, Personal Care, Pet Care, Recreation Activities, 
+  Subscriptions, Utilities, Vehicle Maintenance, Other, Tax - Donation, Tax - Medical
 
 Usage:
     python xls_to_csv.py <input_file.xls>

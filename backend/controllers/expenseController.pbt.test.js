@@ -155,4 +155,50 @@ describe('CSV Import - Property-Based Tests', () => {
     expect(CATEGORIES.includes('Dining Out')).toBe(true);
     expect(isValidCategory('Dining Out')).toBe(true);
   });
+
+  /**
+   * Feature: personal-care-category, Property 6: CSV import accepts Personal Care
+   * Validates: Requirements 4.1, 4.2
+   * 
+   * For any CSV file containing expenses with "Personal Care" category, 
+   * the import process should successfully create expense records
+   */
+  test('Property 6: CSV import accepts Personal Care', () => {
+    // Test that "Personal Care" is in the valid categories list
+    expect(CATEGORIES.includes('Personal Care')).toBe(true);
+    
+    // Test that "Personal Care" passes validation
+    expect(isValidCategory('Personal Care')).toBe(true);
+    
+    // Property test: For any number of CSV rows with "Personal Care" category,
+    // all should pass validation
+    fc.assert(
+      fc.property(
+        fc.array(fc.constant('Personal Care'), { minLength: 1, maxLength: 100 }),
+        (categories) => {
+          // For any array of "Personal Care" categories, all should be valid
+          const allValid = categories.every(cat => isValidCategory(cat));
+          expect(allValid).toBe(true);
+          
+          // All should be in the CATEGORIES list
+          const allInList = categories.every(cat => CATEGORIES.includes(cat));
+          expect(allInList).toBe(true);
+          
+          return true;
+        }
+      ),
+      { numRuns: 100 }
+    );
+    
+    // Test that "Personal Care" appears in alphabetical order between "Insurance" and "Pet Care"
+    const personalCareIndex = CATEGORIES.indexOf('Personal Care');
+    const insuranceIndex = CATEGORIES.indexOf('Insurance');
+    const petCareIndex = CATEGORIES.indexOf('Pet Care');
+    
+    expect(personalCareIndex).toBeGreaterThan(-1); // Personal Care exists
+    expect(insuranceIndex).toBeGreaterThan(-1); // Insurance exists
+    expect(petCareIndex).toBeGreaterThan(-1); // Pet Care exists
+    expect(personalCareIndex).toBeGreaterThan(insuranceIndex); // Personal Care comes after Insurance
+    expect(personalCareIndex).toBeLessThan(petCareIndex); // Personal Care comes before Pet Care
+  });
 });

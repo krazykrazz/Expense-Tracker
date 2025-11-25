@@ -1,5 +1,9 @@
 const fixedExpenseRepository = require('../repositories/fixedExpenseRepository');
 const { validateYearMonth } = require('../utils/validators');
+const { CATEGORIES } = require('../utils/categories');
+
+// Valid payment types for fixed expenses
+const VALID_PAYMENT_TYPES = ['Cash', 'Debit', 'Cheque', 'CIBC MC', 'PCF MC', 'WS VISA', 'VISA'];
 
 class FixedExpenseService {
   /**
@@ -17,6 +21,20 @@ class FixedExpenseService {
 
     if (fixedExpense.amount === undefined || fixedExpense.amount === null) {
       errors.push('Amount is required');
+    }
+
+    // Category validation
+    if (!fixedExpense.category || fixedExpense.category.trim() === '') {
+      errors.push('Category is required');
+    } else if (!CATEGORIES.includes(fixedExpense.category)) {
+      errors.push(`Invalid category. Must be one of: ${CATEGORIES.join(', ')}`);
+    }
+
+    // Payment type validation
+    if (!fixedExpense.payment_type || fixedExpense.payment_type.trim() === '') {
+      errors.push('Payment type is required');
+    } else if (!VALID_PAYMENT_TYPES.includes(fixedExpense.payment_type)) {
+      errors.push(`Invalid payment type. Must be one of: ${VALID_PAYMENT_TYPES.join(', ')}`);
     }
 
     // String length validation
@@ -91,7 +109,7 @@ class FixedExpenseService {
 
   /**
    * Create a new fixed expense item
-   * @param {Object} data - { year, month, name, amount }
+   * @param {Object} data - { year, month, name, amount, category, payment_type }
    * @returns {Promise<Object>} Created fixed expense
    */
   async createFixedExpense(data) {
@@ -108,7 +126,9 @@ class FixedExpenseService {
       year: parseInt(data.year),
       month: parseInt(data.month),
       name: data.name.trim(),
-      amount: parseFloat(data.amount)
+      amount: parseFloat(data.amount),
+      category: data.category.trim(),
+      payment_type: data.payment_type.trim()
     };
 
     // Create fixed expense in repository
@@ -118,7 +138,7 @@ class FixedExpenseService {
   /**
    * Update a fixed expense item
    * @param {number} id - Fixed expense ID
-   * @param {Object} data - { name, amount }
+   * @param {Object} data - { name, amount, category, payment_type }
    * @returns {Promise<Object|null>} Updated fixed expense or null if not found
    */
   async updateFixedExpense(id, data) {
@@ -133,7 +153,9 @@ class FixedExpenseService {
     // Prepare updates object
     const updates = {
       name: data.name.trim(),
-      amount: parseFloat(data.amount)
+      amount: parseFloat(data.amount),
+      category: data.category.trim(),
+      payment_type: data.payment_type.trim()
     };
 
     // Update fixed expense in repository

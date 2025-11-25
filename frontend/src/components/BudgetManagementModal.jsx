@@ -140,15 +140,14 @@ const BudgetManagementModal = ({ isOpen, onClose, year, month, onBudgetUpdated }
     try {
       if (existingBudget) {
         // Update existing budget
-        const updatedBudget = await updateBudget(existingBudget.id, amount);
-        setBudgets(budgets.map(b => 
-          b.id === existingBudget.id ? updatedBudget : b
-        ));
+        await updateBudget(existingBudget.id, amount);
       } else {
         // Create new budget
-        const newBudget = await createBudget(year, month, editingCategory, amount);
-        setBudgets([...budgets, newBudget]);
+        await createBudget(year, month, editingCategory, amount);
       }
+
+      // Refetch all budgets to ensure spent amounts are current
+      await fetchBudgets();
 
       // Reset edit state
       setEditingCategory(null);

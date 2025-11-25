@@ -1,5 +1,14 @@
 # Implementation Plan
 
+> **SUPERSEDED NOTICE**
+> 
+> This specification was superseded by the **Enhanced Fixed Expenses** feature in version 4.2.0 (November 2025).
+> The enhanced version adds category and payment_type fields to fixed expenses, enabling better tracking and reporting.
+> This spec is retained for historical reference only.
+> 
+> **Current Spec**: See `.kiro/specs/enhanced-fixed-expenses/` for the current implementation
+> **Migration**: Database migration `add_category_payment_type_fixed_expenses_v1` automatically adds new fields with default values
+
 - [x] 1. Set up database schema and repository layer
 
 

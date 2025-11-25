@@ -131,10 +131,13 @@ graph TB
 - Modal interface for managing fixed monthly expenses
 - Displays list of fixed expenses for selected month/year
 - Add, edit, and delete fixed expense items
-- Each item has a name and amount
+- Each item has a name, amount, category, and payment type
+- Category dropdown with all expense categories
+- Payment type dropdown with all payment methods
 - Displays total of all fixed expenses
-- Carry-forward functionality to copy previous month's expenses
-- Validates input (name required, amount must be positive)
+- Fixed expenses are included in category and payment type breakdowns
+- Carry-forward functionality to copy previous month's expenses (including category and payment type)
+- Validates input (name required, amount must be positive, category and payment type must be selected)
 
 ### Backend API Endpoints
 
@@ -199,12 +202,12 @@ graph TB
 
 #### POST /api/fixed-expenses
 - Creates a new fixed expense item
-- Request body: `{ year, month, name, amount }`
+- Request body: `{ year, month, name, amount, category, payment_type }`
 - Returns: Created fixed expense with ID
 
 #### PUT /api/fixed-expenses/:id
 - Updates an existing fixed expense item
-- Request body: `{ name, amount }`
+- Request body: `{ name, amount, category, payment_type }`
 - Returns: Updated fixed expense object
 
 #### DELETE /api/fixed-expenses/:id
@@ -368,7 +371,10 @@ interface FixedExpense {
   month: number;           // Month (1-12)
   name: string;            // Name of the fixed expense (e.g., "Rent", "Internet")
   amount: number;          // Decimal with 2 places
+  category: string;        // Expense category (e.g., "Housing", "Utilities")
+  payment_type: string;    // Payment method (e.g., "Debit", "CIBC MC")
   created_at: string;      // Timestamp
+  updated_at: string;      // Timestamp
 }
 ```
 
@@ -381,7 +387,10 @@ CREATE TABLE fixed_expenses (
   month INTEGER NOT NULL CHECK(month >= 1 AND month <= 12),
   name TEXT NOT NULL,
   amount REAL NOT NULL CHECK(amount >= 0),
-  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+  category TEXT NOT NULL DEFAULT 'Other',
+  payment_type TEXT NOT NULL DEFAULT 'Debit',
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX idx_fixed_expenses_year_month ON fixed_expenses(year, month);

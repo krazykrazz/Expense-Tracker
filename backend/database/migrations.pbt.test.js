@@ -229,6 +229,72 @@ function getAllBudgets(db) {
   });
 }
 
+// Helper function to create fixed_expenses table without category and payment_type
+function createOldFixedExpensesTable(db) {
+  return new Promise((resolve, reject) => {
+    db.run(`
+      CREATE TABLE fixed_expenses (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        year INTEGER NOT NULL,
+        month INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        amount REAL NOT NULL CHECK(amount >= 0),
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+      )
+    `, (err) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve();
+      }
+    });
+  });
+}
+
+// Helper function to insert fixed expense (old schema)
+function insertOldFixedExpense(db, fixedExpense) {
+  return new Promise((resolve, reject) => {
+    db.run(
+      `INSERT INTO fixed_expenses (year, month, name, amount) VALUES (?, ?, ?, ?)`,
+      [fixedExpense.year, fixedExpense.month, fixedExpense.name, fixedExpense.amount],
+      function(err) {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(this.lastID);
+        }
+      }
+    );
+  });
+}
+
+// Helper function to get all fixed expenses
+function getAllFixedExpenses(db) {
+  return new Promise((resolve, reject) => {
+    db.all('SELECT * FROM fixed_expenses ORDER BY id', (err, rows) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(rows);
+      }
+    });
+  });
+}
+
+// Helper function to count fixed expenses
+function countFixedExpenses(db) {
+  return new Promise((resolve, reject) => {
+    db.get('SELECT COUNT(*) as count FROM fixed_expenses', (err, row) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(row.count);
+      }
+    });
+  });
+}
+
 describe('Database Migrations - Property-Based Tests', () => {
   /**
    * Feature: personal-care-category, Property 4: Database constraint accepts Personal Care
@@ -586,6 +652,117 @@ describe('Database Migrations - Property-Based Tests', () => {
         }
       ),
       { numRuns: 50 } // Reduced runs since this is more complex
+    );
+  });
+
+  /**
+   * Feature: enhanced-fixed-expenses, Property 5: Migration preserves existing data
+   * Validates: Requirements 3.4
+   * 
+   * For any set of existing fixed expenses, running the migration should preserve 
+   * all original name, amount, year, and month values
+   */
+  test('Property 5 (fixed expenses): Migration preserves existing fixed expense data', async () => {
+    // Arbitrary for generating valid fixed expenses without category and payment_type
+    const oldFixedExpenseArbitrary = fc.record({
+      year: fc.integer({ min: 2020, max: 2030 }),
+      month: fc.integer({ min: 1, max: 12 }),
+      name: fc.string({ minLength: 1, maxLength: 100 }),
+      amount: fc.float({ min: Math.fround(0.01), max: Math.fround(10000), noNaN: true }).map(n => Math.round(n * 100) / 100)
+    });
+
+    // Generate array of 1-10 fixed expenses
+    const fixedExpensesArrayArbitrary = fc.array(oldFixedExpenseArbitrary, { minLength: 1, maxLength: 10 });
+
+    await fc.assert(
+      fc.asyncProperty(
+        fixedExpensesArrayArbitrary,
+        async (fixedExpenses) => {
+          const db = await createTestDatabase();
+          
+          try {
+            // Create old schema table (without category and payment_type)
+            await createOldFixedExpensesTable(db);
+            
+            // Insert all fixed expenses
+            for (const fixedExpense of fixedExpenses) {
+              await insertOldFixedExpense(db, fixedExpense);
+            }
+            
+            // Get count and data before migration
+            const countBefore = await countFixedExpenses(db);
+            const fixedExpensesBefore = await getAllFixedExpenses(db);
+            
+            // Simulate migration: add category and payment_type columns
+            await new Promise((resolve, reject) => {
+              db.serialize(() => {
+                db.run('BEGIN TRANSACTION', (err) => {
+                  if (err) return reject(err);
+                  
+                  // Add category column with default value 'Other'
+                  db.run(`
+                    ALTER TABLE fixed_expenses 
+                    ADD COLUMN category TEXT NOT NULL DEFAULT 'Other'
+                  `, (err) => {
+                    if (err) {
+                      db.run('ROLLBACK');
+                      return reject(err);
+                    }
+                    
+                    // Add payment_type column with default value 'Debit'
+                    db.run(`
+                      ALTER TABLE fixed_expenses 
+                      ADD COLUMN payment_type TEXT NOT NULL DEFAULT 'Debit'
+                    `, (err) => {
+                      if (err) {
+                        db.run('ROLLBACK');
+                        return reject(err);
+                      }
+                      
+                      db.run('COMMIT', (err) => {
+                        if (err) {
+                          db.run('ROLLBACK');
+                          return reject(err);
+                        }
+                        resolve();
+                      });
+                    });
+                  });
+                });
+              });
+            });
+            
+            // Get count and data after migration
+            const countAfter = await countFixedExpenses(db);
+            const fixedExpensesAfter = await getAllFixedExpenses(db);
+            
+            // Verify count is preserved
+            expect(countAfter).toBe(countBefore);
+            expect(countAfter).toBe(fixedExpenses.length);
+            
+            // Verify all original data is preserved
+            expect(fixedExpensesAfter.length).toBe(fixedExpensesBefore.length);
+            
+            for (let i = 0; i < fixedExpensesBefore.length; i++) {
+              // Original fields must be preserved
+              expect(fixedExpensesAfter[i].id).toBe(fixedExpensesBefore[i].id);
+              expect(fixedExpensesAfter[i].year).toBe(fixedExpensesBefore[i].year);
+              expect(fixedExpensesAfter[i].month).toBe(fixedExpensesBefore[i].month);
+              expect(fixedExpensesAfter[i].name).toBe(fixedExpensesBefore[i].name);
+              expect(fixedExpensesAfter[i].amount).toBe(fixedExpensesBefore[i].amount);
+              
+              // New fields should have default values
+              expect(fixedExpensesAfter[i].category).toBe('Other');
+              expect(fixedExpensesAfter[i].payment_type).toBe('Debit');
+            }
+            
+            return true;
+          } finally {
+            await closeDatabase(db);
+          }
+        }
+      ),
+      { numRuns: 100 }
     );
   });
 });

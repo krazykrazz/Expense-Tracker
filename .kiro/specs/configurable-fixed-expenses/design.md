@@ -1,5 +1,14 @@
 # Design Document
 
+> **SUPERSEDED NOTICE**
+> 
+> This specification was superseded by the **Enhanced Fixed Expenses** feature in version 4.2.0 (November 2025).
+> The enhanced version adds category and payment_type fields to fixed expenses, enabling better tracking and reporting.
+> This spec is retained for historical reference only.
+> 
+> **Current Spec**: See `.kiro/specs/enhanced-fixed-expenses/` for the current implementation
+> **Migration**: Database migration `add_category_payment_type_fixed_expenses_v1` automatically adds new fields with default values
+
 ## Overview
 
 This feature enables users to configure multiple fixed expense items per month, similar to how income sources are managed. Users will be able to define named fixed expenses (e.g., "Rent", "Insurance", "Netflix") for each month, with the total fixed expenses displayed as a separate line in the monthly summary. The implementation includes a modal-based UI for managing fixed expenses and a carry-forward feature to copy items from the previous month.

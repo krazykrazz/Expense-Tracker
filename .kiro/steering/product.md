@@ -7,7 +7,7 @@ A full-stack personal expense tracking application for managing household financ
 - Expense management with search and filtering
 - Monthly and annual financial summaries with weekly breakdowns
 - Configurable monthly gross income from multiple sources
-- Fixed monthly expenses management with carry-forward capability
+- Fixed monthly expenses management with category and payment type tracking and carry-forward capability
 - Loans and lines of credit tracking with monthly balance history
 - Loan type differentiation (traditional loans vs lines of credit)
 - Visual dual-axis charts showing balance and interest rate trends

@@ -6,14 +6,37 @@
  * @returns {Object|null} Trend object with direction, percentChange, and displayText, or null if no trend
  */
 export function calculateTrend(current, previous, threshold = 0.01) {
-  // Handle edge cases: null, undefined, or zero previous values
-  if (previous === null || previous === undefined || previous === 0) {
+  // Handle edge cases: null or undefined values
+  if (current === null || current === undefined) {
+    return null;
+  }
+  
+  if (previous === null || previous === undefined) {
     return null;
   }
 
-  // Handle edge cases: null or undefined current values
-  if (current === null || current === undefined) {
-    return null;
+  // Special case: previous is zero
+  if (previous === 0) {
+    // If current is also zero, no trend
+    if (current === 0) {
+      return null;
+    }
+    
+    // If current is positive, show up arrow with "NEW" indicator
+    if (current > 0) {
+      return {
+        direction: 'up',
+        percentChange: Infinity,
+        displayText: 'NEW'
+      };
+    }
+    
+    // If current is negative (shouldn't happen with expenses, but handle it)
+    return {
+      direction: 'down',
+      percentChange: -Infinity,
+      displayText: 'NEW'
+    };
   }
 
   // Calculate percentage change

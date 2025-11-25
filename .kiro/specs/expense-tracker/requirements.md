@@ -13,7 +13,7 @@ The Expense Tracker Application is a web-based system that enables users to reco
 - **Week**: A calculated value from 1 to 5 representing which week of the month the expense occurred, based on the day of the month (days 1-7 = week 1, days 8-14 = week 2, etc.)
 - **Payment Method**: The financial instrument used for the transaction, one of Cash, Debit, CIBC MC, PCF MC, WS VISA, or VISA
 - **Expense List**: A collection of expense entries displayed to the user
-- **Fixed Expense**: A recurring monthly obligation with a name and amount that remains relatively constant each month (e.g., rent, utilities, subscriptions)
+- **Fixed Expense**: A recurring monthly obligation with a name, amount, category, and payment type that remains relatively constant each month (e.g., rent, utilities, subscriptions). Fixed expenses are included in category and payment method totals.
 - **Database**: The persistent storage system that maintains all expense data
 - **Backup File**: A copy of the Database stored as a file with a timestamp for data recovery purposes
 - **Annual Summary**: A comprehensive view of expense data aggregated across all months of a selected year
@@ -222,12 +222,15 @@ The Expense Tracker Application is a web-based system that enables users to reco
 #### Acceptance Criteria
 
 1. THE Expense Tracker Application SHALL provide a fixed expenses management interface accessible from the monthly summary panel
-2. THE Expense Tracker Application SHALL allow the User to add fixed expense items with a name and amount for a specific month and year
-3. THE Expense Tracker Application SHALL allow the User to edit existing fixed expense items including name and amount
+2. THE Expense Tracker Application SHALL allow the User to add fixed expense items with a name, amount, category, and payment type for a specific month and year
+3. THE Expense Tracker Application SHALL allow the User to edit existing fixed expense items including name, amount, category, and payment type
 4. THE Expense Tracker Application SHALL allow the User to delete fixed expense items
-5. THE Expense Tracker Application SHALL calculate and display the total of all fixed expenses for the selected month
-6. WHEN the User views the monthly summary, THE Expense Tracker Application SHALL display the total fixed expenses as a separate line item
-7. THE Expense Tracker Application SHALL include fixed expenses in the total expenses calculation for net balance
-8. THE Expense Tracker Application SHALL provide a carry-forward feature that copies all fixed expenses from the previous month to the current month
-9. WHEN the User carries forward fixed expenses, THE Expense Tracker Application SHALL create new entries for the current month with the same names and amounts
-10. THE Expense Tracker Application SHALL display fixed expenses with two decimal places
+5. THE Expense Tracker Application SHALL validate that category is one of the valid expense categories
+6. THE Expense Tracker Application SHALL validate that payment type is one of the valid payment methods
+7. THE Expense Tracker Application SHALL calculate and display the total of all fixed expenses for the selected month
+8. WHEN the User views the monthly summary, THE Expense Tracker Application SHALL display the total fixed expenses as a separate line item
+9. THE Expense Tracker Application SHALL include fixed expenses in the total expenses calculation for net balance
+10. THE Expense Tracker Application SHALL include fixed expenses in category totals and payment method totals
+11. THE Expense Tracker Application SHALL provide a carry-forward feature that copies all fixed expenses from the previous month to the current month
+12. WHEN the User carries forward fixed expenses, THE Expense Tracker Application SHALL create new entries for the current month with the same names, amounts, categories, and payment types
+13. THE Expense Tracker Application SHALL display fixed expenses with two decimal places

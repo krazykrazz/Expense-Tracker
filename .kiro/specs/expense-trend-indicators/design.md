@@ -152,7 +152,7 @@ Calculates trend direction and percentage change.
       'VISA': number
     },
     monthlyGross: number,
-    totalFixedExpenses: number,
+    totalFixedExpenses: number,  // Includes categorized fixed expenses with payment types
     netBalance: number
   },
   previous: {

@@ -269,19 +269,39 @@ class ExpenseService {
    */
   async _getMonthSummary(year, month) {
     // Fetch all data in parallel for better performance
-    const [summary, monthlyGross, totalFixedExpenses, loans] = await Promise.all([
+    const [summary, monthlyGross, totalFixedExpenses, loans, fixedCategoryTotals, fixedPaymentTotals] = await Promise.all([
       expenseRepository.getSummary(year, month),
       expenseRepository.getMonthlyGross(year, month),
       fixedExpenseRepository.getTotalFixedExpenses(year, month),
-      loanService.getLoansForMonth(year, month)
+      loanService.getLoansForMonth(year, month),
+      fixedExpenseRepository.getCategoryTotals(year, month),
+      fixedExpenseRepository.getPaymentTypeTotals(year, month)
     ]);
     
     // Calculate total outstanding debt from active loans
     const totalOutstandingDebt = loanService.calculateTotalOutstandingDebt(loans);
     
+    // Combine category totals (regular + fixed)
+    const combinedCategoryTotals = { ...summary.typeTotals };
+    if (fixedCategoryTotals) {
+      Object.keys(fixedCategoryTotals).forEach(category => {
+        combinedCategoryTotals[category] = (combinedCategoryTotals[category] || 0) + fixedCategoryTotals[category];
+      });
+    }
+    
+    // Combine payment type totals (regular + fixed)
+    const combinedMethodTotals = { ...summary.methodTotals };
+    if (fixedPaymentTotals) {
+      Object.keys(fixedPaymentTotals).forEach(method => {
+        combinedMethodTotals[method] = (combinedMethodTotals[method] || 0) + fixedPaymentTotals[method];
+      });
+    }
+    
     // Build complete summary object
     return {
       ...summary,
+      typeTotals: combinedCategoryTotals,
+      methodTotals: combinedMethodTotals,
       monthlyGross: monthlyGross || 0,
       totalFixedExpenses: totalFixedExpenses || 0,
       totalExpenses: summary.total + (totalFixedExpenses || 0),
@@ -451,7 +471,36 @@ class ExpenseService {
   }
 
   /**
-   * Get category totals for a year
+   * Get expenses by category for a specific month
+   * @param {number} year - Year
+   * @param {number} month - Month (1-12)
+   * @param {string} category - Category name
+   * @returns {Promise<Object>} Object with regular, fixed, and total
+   */
+  async getExpensesByCategory(year, month, category) {
+    // Get regular expenses
+    const regularExpenses = await expenseRepository.findAll({ year, month });
+    const filteredRegular = regularExpenses.filter(exp => exp.type === category);
+    
+    // Get fixed expenses for this category
+    const fixedExpenses = await fixedExpenseRepository.getFixedExpensesByCategory(year, month, category);
+    
+    // Mark fixed expenses as such
+    const markedFixedExpenses = fixedExpenses.map(exp => ({
+      ...exp,
+      isFixed: true
+    }));
+    
+    return {
+      regular: filteredRegular,
+      fixed: markedFixedExpenses,
+      total: filteredRegular.reduce((sum, e) => sum + e.amount, 0) + 
+             fixedExpenses.reduce((sum, e) => sum + e.amount, 0)
+    };
+  }
+
+  /**
+   * Get category totals for a year (including fixed expenses)
    * @param {number} year - Year
    * @returns {Promise<Array>} Category totals
    * @private
@@ -459,7 +508,8 @@ class ExpenseService {
   async _getCategoryTotals(year) {
     const db = await require('../database/db').getDatabase();
     
-    return new Promise((resolve, reject) => {
+    // Get regular expense totals
+    const regularTotals = await new Promise((resolve, reject) => {
       const query = `
         SELECT type, SUM(amount) as total
         FROM expenses
@@ -473,10 +523,68 @@ class ExpenseService {
         else resolve(rows || []);
       });
     });
+    
+    // Get fixed expense totals
+    const fixedTotals = await new Promise((resolve, reject) => {
+      const query = `
+        SELECT category as type, SUM(amount) as total
+        FROM fixed_expenses
+        WHERE year = ?
+        GROUP BY category
+      `;
+      
+      db.all(query, [year], (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows || []);
+      });
+    });
+    
+    // Combine totals
+    const combinedMap = {};
+    regularTotals.forEach(row => {
+      combinedMap[row.type] = (combinedMap[row.type] || 0) + row.total;
+    });
+    fixedTotals.forEach(row => {
+      combinedMap[row.type] = (combinedMap[row.type] || 0) + row.total;
+    });
+    
+    // Convert back to array and sort
+    return Object.entries(combinedMap)
+      .map(([type, total]) => ({ type, total }))
+      .sort((a, b) => b.total - a.total);
   }
 
   /**
-   * Get payment method totals for a year
+   * Get expenses by payment method for a specific month
+   * @param {number} year - Year
+   * @param {number} month - Month (1-12)
+   * @param {string} method - Payment method
+   * @returns {Promise<Object>} Object with regular, fixed, and total
+   */
+  async getExpensesByPaymentMethod(year, month, method) {
+    // Get regular expenses
+    const regularExpenses = await expenseRepository.findAll({ year, month });
+    const filteredRegular = regularExpenses.filter(exp => exp.method === method);
+    
+    // Get fixed expenses for this payment type
+    const fixedExpenses = await fixedExpenseRepository.getFixedExpensesByPaymentType(year, month, method);
+    
+    // Mark fixed expenses as such
+    const markedFixedExpenses = fixedExpenses.map(exp => ({
+      ...exp,
+      isFixed: true
+    }));
+    
+    return {
+      regular: filteredRegular,
+      fixed: markedFixedExpenses,
+      total: filteredRegular.reduce((sum, e) => sum + e.amount, 0) + 
+             fixedExpenses.reduce((sum, e) => sum + e.amount, 0)
+    };
+  }
+
+  /**
+   * Get payment method totals for a year (including fixed expenses)
    * @param {number} year - Year
    * @returns {Promise<Array>} Method totals
    * @private
@@ -484,7 +592,8 @@ class ExpenseService {
   async _getMethodTotals(year) {
     const db = await require('../database/db').getDatabase();
     
-    return new Promise((resolve, reject) => {
+    // Get regular expense totals
+    const regularTotals = await new Promise((resolve, reject) => {
       const query = `
         SELECT method, SUM(amount) as total
         FROM expenses
@@ -498,6 +607,35 @@ class ExpenseService {
         else resolve(rows || []);
       });
     });
+    
+    // Get fixed expense totals
+    const fixedTotals = await new Promise((resolve, reject) => {
+      const query = `
+        SELECT payment_type as method, SUM(amount) as total
+        FROM fixed_expenses
+        WHERE year = ?
+        GROUP BY payment_type
+      `;
+      
+      db.all(query, [year], (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows || []);
+      });
+    });
+    
+    // Combine totals
+    const combinedMap = {};
+    regularTotals.forEach(row => {
+      combinedMap[row.method] = (combinedMap[row.method] || 0) + row.total;
+    });
+    fixedTotals.forEach(row => {
+      combinedMap[row.method] = (combinedMap[row.method] || 0) + row.total;
+    });
+    
+    // Convert back to array and sort
+    return Object.entries(combinedMap)
+      .map(([method, total]) => ({ method, total }))
+      .sort((a, b) => b.total - a.total);
   }
 
   /**

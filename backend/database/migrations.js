@@ -1408,6 +1408,163 @@ async function migrateAddPersonalCareCategory(db) {
 }
 
 /**
+ * Migration: Add category and payment_type to fixed_expenses table
+ */
+async function migrateAddCategoryAndPaymentTypeToFixedExpenses(db) {
+  const migrationName = 'add_category_payment_type_fixed_expenses_v1';
+  
+  // Check if already applied
+  const isApplied = await checkMigrationApplied(db, migrationName);
+  if (isApplied) {
+    console.log(`✓ Migration "${migrationName}" already applied, skipping`);
+    return;
+  }
+
+  console.log(`Running migration: ${migrationName}`);
+
+  // Create backup
+  await createBackup();
+
+  return new Promise((resolve, reject) => {
+    db.serialize(() => {
+      db.run('BEGIN TRANSACTION', (err) => {
+        if (err) {
+          return reject(err);
+        }
+
+        // Check if fixed_expenses table exists
+        db.get(
+          "SELECT name FROM sqlite_master WHERE type='table' AND name='fixed_expenses'",
+          (err, row) => {
+            if (err) {
+              db.run('ROLLBACK');
+              return reject(err);
+            }
+
+            if (!row) {
+              console.log('ℹ fixed_expenses table does not exist, skipping migration');
+              markMigrationApplied(db, migrationName).then(() => {
+                db.run('COMMIT', (err) => {
+                  if (err) {
+                    db.run('ROLLBACK');
+                    return reject(err);
+                  }
+                  console.log(`✓ Migration "${migrationName}" completed successfully`);
+                  resolve();
+                });
+              }).catch(reject);
+              return;
+            }
+
+            // Check if columns already exist
+            db.all('PRAGMA table_info(fixed_expenses)', (err, columns) => {
+              if (err) {
+                db.run('ROLLBACK');
+                return reject(err);
+              }
+
+              const hasCategory = columns.some(col => col.name === 'category');
+              const hasPaymentType = columns.some(col => col.name === 'payment_type');
+
+              if (hasCategory && hasPaymentType) {
+                console.log('✓ fixed_expenses already has category and payment_type columns');
+                markMigrationApplied(db, migrationName).then(() => {
+                  db.run('COMMIT', (err) => {
+                    if (err) {
+                      db.run('ROLLBACK');
+                      return reject(err);
+                    }
+                    console.log(`✓ Migration "${migrationName}" completed successfully`);
+                    resolve();
+                  });
+                }).catch(reject);
+                return;
+              }
+
+              // Add category column with default value 'Other'
+              if (!hasCategory) {
+                db.run(`
+                  ALTER TABLE fixed_expenses 
+                  ADD COLUMN category TEXT NOT NULL DEFAULT 'Other'
+                `, (err) => {
+                  if (err) {
+                    db.run('ROLLBACK');
+                    return reject(err);
+                  }
+                  console.log('✓ Added category column to fixed_expenses');
+
+                  // Add payment_type column with default value 'Debit'
+                  if (!hasPaymentType) {
+                    db.run(`
+                      ALTER TABLE fixed_expenses 
+                      ADD COLUMN payment_type TEXT NOT NULL DEFAULT 'Debit'
+                    `, (err) => {
+                      if (err) {
+                        db.run('ROLLBACK');
+                        return reject(err);
+                      }
+                      console.log('✓ Added payment_type column to fixed_expenses');
+
+                      // Mark migration as applied and commit
+                      markMigrationApplied(db, migrationName).then(() => {
+                        db.run('COMMIT', (err) => {
+                          if (err) {
+                            db.run('ROLLBACK');
+                            return reject(err);
+                          }
+                          console.log(`✓ Migration "${migrationName}" completed successfully`);
+                          resolve();
+                        });
+                      }).catch(reject);
+                    });
+                  } else {
+                    // Only category was missing
+                    markMigrationApplied(db, migrationName).then(() => {
+                      db.run('COMMIT', (err) => {
+                        if (err) {
+                          db.run('ROLLBACK');
+                          return reject(err);
+                        }
+                        console.log(`✓ Migration "${migrationName}" completed successfully`);
+                        resolve();
+                      });
+                    }).catch(reject);
+                  }
+                });
+              } else if (!hasPaymentType) {
+                // Only payment_type is missing
+                db.run(`
+                  ALTER TABLE fixed_expenses 
+                  ADD COLUMN payment_type TEXT NOT NULL DEFAULT 'Debit'
+                `, (err) => {
+                  if (err) {
+                    db.run('ROLLBACK');
+                    return reject(err);
+                  }
+                  console.log('✓ Added payment_type column to fixed_expenses');
+
+                  // Mark migration as applied and commit
+                  markMigrationApplied(db, migrationName).then(() => {
+                    db.run('COMMIT', (err) => {
+                      if (err) {
+                        db.run('ROLLBACK');
+                        return reject(err);
+                      }
+                      console.log(`✓ Migration "${migrationName}" completed successfully`);
+                      resolve();
+                    });
+                  }).catch(reject);
+                });
+              }
+            });
+          }
+        );
+      });
+    });
+  });
+}
+
+/**
  * Run all pending migrations
  */
 async function runMigrations(db) {
@@ -1419,6 +1576,7 @@ async function runMigrations(db) {
     await migrateRemoveRecurringExpenses(db);
     await migrateFixCategoryConstraints(db);
     await migrateAddPersonalCareCategory(db);
+    await migrateAddCategoryAndPaymentTypeToFixedExpenses(db);
     console.log('✓ All migrations completed\n');
   } catch (error) {
     console.error('✗ Migration failed:', error.message);

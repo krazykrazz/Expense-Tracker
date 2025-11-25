@@ -16,11 +16,11 @@
 .fixed-expenses-modal-container {
   background: white;
   border-radius: 8px;
-  max-width: 600px;
+  max-width: 1000px;
   width: 90%;
   max-height: 80vh;
   overflow-y: auto;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
 }
 
 /* Modal Header */
@@ -129,6 +129,31 @@
   margin-bottom: 20px;
 }
 
+.fixed-expenses-list-header {
+  display: grid;
+  grid-template-columns: 2fr 1.2fr 1.2fr 1fr auto;
+  gap: 12px;
+  padding: 10px 12px;
+  background-color: #f5f5f5;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  font-weight: 600;
+  font-size: 0.9em;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.fixed-expenses-list-header > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fixed-expenses-list-header > span:last-child {
+  text-align: center;
+}
+
 .fixed-expenses-empty {
   text-align: center;
   padding: 30px;
@@ -143,29 +168,58 @@
   padding: 12px;
   margin-bottom: 10px;
   background-color: #fafafa;
-  transition: background-color 0.2s;
+  transition: background-color 0.2s, box-shadow 0.2s;
 }
 
 .fixed-expense-item:hover {
   background-color: #f5f5f5;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .fixed-expense-display {
-  display: flex;
+  display: grid;
+  grid-template-columns: 2fr 1.2fr 1.2fr 1fr auto;
+  gap: 12px;
   align-items: center;
-  gap: 10px;
 }
 
 .fixed-expense-name {
-  flex: 1;
   font-weight: 500;
   color: #333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fixed-expense-category {
+  color: #666;
+  font-size: 0.9em;
+  padding: 4px 8px;
+  background-color: #e3f2fd;
+  border-radius: 4px;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fixed-expense-payment {
+  color: #666;
+  font-size: 0.9em;
+  padding: 4px 8px;
+  background-color: #fff3e0;
+  border-radius: 4px;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .fixed-expense-amount {
   font-weight: 600;
   color: #d32f2f;
-  margin-right: 10px;
+  text-align: right;
+  white-space: nowrap;
 }
 
 .fixed-expense-actions {
@@ -200,8 +254,8 @@
 
 /* Edit Mode */
 .fixed-expense-edit {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: 2fr 1.2fr 1.2fr 1fr auto auto;
   gap: 10px;
   align-items: flex-start;
 }
@@ -209,24 +263,27 @@
 .fixed-expense-input-group {
   display: flex;
   flex-direction: column;
-  flex: 1;
-  min-width: 150px;
+  gap: 4px;
 }
 
 .fixed-expense-edit-name,
+.fixed-expense-edit-category,
+.fixed-expense-edit-payment,
 .fixed-expense-edit-amount {
   padding: 8px;
   border: 1px solid #ccc;
   border-radius: 4px;
   font-size: 0.95rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-.fixed-expense-edit-name {
-  flex: 2;
-}
-
-.fixed-expense-edit-amount {
-  flex: 1;
+.fixed-expense-edit-name:focus,
+.fixed-expense-edit-category:focus,
+.fixed-expense-edit-payment:focus,
+.fixed-expense-edit-amount:focus {
+  outline: none;
+  border-color: #2196f3;
+  box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.1);
 }
 
 /* Validation Error Styling */
@@ -307,27 +364,52 @@
 
 /* Add Form */
 .fixed-expenses-add-form {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: 2fr 1.2fr 1.2fr 1fr auto auto;
   gap: 10px;
+  align-items: flex-start;
+  margin-top: 15px;
 }
 
 .fixed-expense-add-name,
+.fixed-expense-add-category,
+.fixed-expense-add-payment,
 .fixed-expense-add-amount {
   padding: 10px;
   border: 1px solid #ccc;
   border-radius: 4px;
   font-size: 0.95rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-.fixed-expense-add-name {
-  flex: 2;
-  min-width: 200px;
+.fixed-expense-add-name:focus,
+.fixed-expense-add-category:focus,
+.fixed-expense-add-payment:focus,
+.fixed-expense-add-amount:focus {
+  outline: none;
+  border-color: #2196f3;
+  box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.1);
 }
 
-.fixed-expense-add-amount {
-  flex: 1;
-  min-width: 100px;
+select.fixed-expense-add-category,
+select.fixed-expense-add-payment,
+select.fixed-expense-edit-category,
+select.fixed-expense-edit-payment {
+  background-color: white;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 16px;
+  padding-right: 32px;
+}
+
+select.fixed-expense-add-category:hover,
+select.fixed-expense-add-payment:hover,
+select.fixed-expense-edit-category:hover,
+select.fixed-expense-edit-payment:hover {
+  border-color: #999;
 }
 
 .fixed-expenses-add-button,
@@ -389,7 +471,20 @@
 }
 
 /* Responsive Design */
-@media (max-width: 600px) {
+@media (max-width: 1024px) {
+  .fixed-expense-display {
+    grid-template-columns: 1.5fr 1fr 1fr 0.8fr auto;
+    gap: 8px;
+  }
+
+  .fixed-expense-edit,
+  .fixed-expenses-add-form {
+    grid-template-columns: 1.5fr 1fr 1fr 0.8fr auto auto;
+    gap: 8px;
+  }
+}
+
+@media (max-width: 768px) {
   .fixed-expenses-modal-container {
     width: 95%;
     max-height: 90vh;
@@ -399,25 +494,42 @@
     font-size: 1.2rem;
   }
 
+  .fixed-expenses-list-header {
+    display: none;
+  }
+
   .fixed-expense-display {
-    flex-wrap: wrap;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .fixed-expense-name {
+    font-size: 1.05em;
+    font-weight: 600;
+    white-space: normal;
+  }
+
+  .fixed-expense-category,
+  .fixed-expense-payment {
+    font-size: 0.85em;
+    display: inline-block;
+    width: auto;
+  }
+
+  .fixed-expense-amount {
+    font-size: 1.1em;
+    text-align: left;
+  }
+
+  .fixed-expense-actions {
+    justify-content: flex-start;
+    margin-top: 8px;
   }
 
   .fixed-expense-edit,
   .fixed-expenses-add-form {
-    flex-direction: column;
-  }
-
-  .fixed-expense-edit-name,
-  .fixed-expense-edit-amount,
-  .fixed-expense-add-name,
-  .fixed-expense-add-amount {
-    width: 100%;
-    min-width: unset;
-  }
-
-  .fixed-expense-input-group {
-    width: 100%;
+    grid-template-columns: 1fr;
+    gap: 10px;
   }
 
   .fixed-expense-save-button,
@@ -425,5 +537,33 @@
   .fixed-expenses-add-button,
   .fixed-expenses-add-cancel-button {
     width: 100%;
+  }
+
+  .fixed-expense-input-group {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .fixed-expenses-modal-container {
+    width: 100%;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+
+  .fixed-expenses-modal-header {
+    padding: 15px;
+  }
+
+  .fixed-expenses-modal-header h2 {
+    font-size: 1.1rem;
+  }
+
+  .fixed-expenses-modal-content {
+    padding: 15px;
+  }
+
+  .fixed-expense-item {
+    padding: 10px;
   }
 }

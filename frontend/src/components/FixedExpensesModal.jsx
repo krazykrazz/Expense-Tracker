@@ -9,6 +9,7 @@ import {
 } from '../services/fixedExpenseApi';
 import { validateName, validateAmount } from '../utils/validation';
 import { getMonthNameLong } from '../utils/formatters';
+import { CATEGORIES, PAYMENT_METHODS } from '../utils/constants';
 
 const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
   const [fixedExpenses, setFixedExpenses] = useState([]);
@@ -16,17 +17,25 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [newExpenseName, setNewExpenseName] = useState('');
   const [newExpenseAmount, setNewExpenseAmount] = useState('');
+  const [newExpenseCategory, setNewExpenseCategory] = useState('');
+  const [newExpensePaymentType, setNewExpensePaymentType] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState('');
   const [editAmount, setEditAmount] = useState('');
+  const [editCategory, setEditCategory] = useState('');
+  const [editPaymentType, setEditPaymentType] = useState('');
   const [loading, setLoading] = useState(false);
   const [isCarryingForward, setIsCarryingForward] = useState(false);
   const [error, setError] = useState(null);
   const [validationErrors, setValidationErrors] = useState({
     addName: '',
     addAmount: '',
+    addCategory: '',
+    addPaymentType: '',
     editName: '',
-    editAmount: ''
+    editAmount: '',
+    editCategory: '',
+    editPaymentType: ''
   });
 
   // Fetch fixed expenses when modal opens or year/month changes
@@ -61,8 +70,12 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
     setValidationErrors({
       addName: '',
       addAmount: '',
+      addCategory: '',
+      addPaymentType: '',
       editName: '',
-      editAmount: ''
+      editAmount: '',
+      editCategory: '',
+      editPaymentType: ''
     });
   };
 
@@ -77,10 +90,25 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
     
     newErrors.addName = nameError;
     newErrors.addAmount = amountError;
+    
+    // Validate category
+    if (!newExpenseCategory || newExpenseCategory.trim() === '') {
+      newErrors.addCategory = 'Category is required';
+    } else {
+      newErrors.addCategory = '';
+    }
+    
+    // Validate payment type
+    if (!newExpensePaymentType || newExpensePaymentType.trim() === '') {
+      newErrors.addPaymentType = 'Payment type is required';
+    } else {
+      newErrors.addPaymentType = '';
+    }
+    
     setValidationErrors(newErrors);
     
     // If there are validation errors, don't proceed
-    if (nameError || amountError) {
+    if (nameError || amountError || newErrors.addCategory || newErrors.addPaymentType) {
       setError('Please fix the validation errors before submitting.');
       return;
     }
@@ -94,7 +122,9 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
         year,
         month,
         name: newExpenseName.trim(),
-        amount
+        amount,
+        category: newExpenseCategory,
+        payment_type: newExpensePaymentType
       });
       
       // Update local state
@@ -105,6 +135,8 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
       // Reset form
       setNewExpenseName('');
       setNewExpenseAmount('');
+      setNewExpenseCategory('');
+      setNewExpensePaymentType('');
       setIsAdding(false);
       clearValidationErrors();
     } catch (err) {
@@ -120,6 +152,8 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
     setEditingId(expense.id);
     setEditName(expense.name);
     setEditAmount(expense.amount.toString());
+    setEditCategory(expense.category || '');
+    setEditPaymentType(expense.payment_type || '');
   };
 
   const handleSaveEdit = async () => {
@@ -133,10 +167,25 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
     
     newErrors.editName = nameError;
     newErrors.editAmount = amountError;
+    
+    // Validate category
+    if (!editCategory || editCategory.trim() === '') {
+      newErrors.editCategory = 'Category is required';
+    } else {
+      newErrors.editCategory = '';
+    }
+    
+    // Validate payment type
+    if (!editPaymentType || editPaymentType.trim() === '') {
+      newErrors.editPaymentType = 'Payment type is required';
+    } else {
+      newErrors.editPaymentType = '';
+    }
+    
     setValidationErrors(newErrors);
     
     // If there are validation errors, don't proceed
-    if (nameError || amountError) {
+    if (nameError || amountError || newErrors.editCategory || newErrors.editPaymentType) {
       setError('Please fix the validation errors before saving.');
       return;
     }
@@ -148,7 +197,9 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
     try {
       const updatedExpense = await updateFixedExpense(editingId, {
         name: editName.trim(),
-        amount
+        amount,
+        category: editCategory,
+        payment_type: editPaymentType
       });
       
       // Update local state
@@ -162,6 +213,8 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
       setEditingId(null);
       setEditName('');
       setEditAmount('');
+      setEditCategory('');
+      setEditPaymentType('');
       clearValidationErrors();
     } catch (err) {
       const errorMessage = err.message || 'Network error. Unable to update fixed expense. Please check your connection and try again.';
@@ -176,6 +229,8 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
     setEditingId(null);
     setEditName('');
     setEditAmount('');
+    setEditCategory('');
+    setEditPaymentType('');
     clearValidationErrors();
   };
 
@@ -238,9 +293,13 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
     setIsAdding(false);
     setNewExpenseName('');
     setNewExpenseAmount('');
+    setNewExpenseCategory('');
+    setNewExpensePaymentType('');
     setEditingId(null);
     setEditName('');
     setEditAmount('');
+    setEditCategory('');
+    setEditPaymentType('');
     setError(null);
     clearValidationErrors();
     
@@ -301,7 +360,15 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
                     No fixed expenses for this month. Add one below or carry forward from previous month.
                   </div>
                 ) : (
-                  fixedExpenses.map((expense) => (
+                  <>
+                    <div className="fixed-expenses-list-header">
+                      <span>Name</span>
+                      <span>Category</span>
+                      <span>Payment Type</span>
+                      <span style={{ textAlign: 'right' }}>Amount</span>
+                      <span>Actions</span>
+                    </div>
+                    {fixedExpenses.map((expense) => (
                     <div key={expense.id} className="fixed-expense-item">
                       {editingId === expense.id ? (
                         <div className="fixed-expense-edit">
@@ -316,6 +383,38 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
                             />
                             {validationErrors.editName && (
                               <span className="validation-error">{validationErrors.editName}</span>
+                            )}
+                          </div>
+                          <div className="fixed-expense-input-group">
+                            <select
+                              value={editCategory}
+                              onChange={(e) => setEditCategory(e.target.value)}
+                              className={`fixed-expense-edit-category ${validationErrors.editCategory ? 'input-error' : ''}`}
+                              disabled={loading}
+                            >
+                              <option value="">Select Category</option>
+                              {CATEGORIES.map(cat => (
+                                <option key={cat} value={cat}>{cat}</option>
+                              ))}
+                            </select>
+                            {validationErrors.editCategory && (
+                              <span className="validation-error">{validationErrors.editCategory}</span>
+                            )}
+                          </div>
+                          <div className="fixed-expense-input-group">
+                            <select
+                              value={editPaymentType}
+                              onChange={(e) => setEditPaymentType(e.target.value)}
+                              className={`fixed-expense-edit-payment ${validationErrors.editPaymentType ? 'input-error' : ''}`}
+                              disabled={loading}
+                            >
+                              <option value="">Select Payment Type</option>
+                              {PAYMENT_METHODS.map(method => (
+                                <option key={method} value={method}>{method}</option>
+                              ))}
+                            </select>
+                            {validationErrors.editPaymentType && (
+                              <span className="validation-error">{validationErrors.editPaymentType}</span>
                             )}
                           </div>
                           <div className="fixed-expense-input-group">
@@ -351,6 +450,8 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
                       ) : (
                         <div className="fixed-expense-display">
                           <span className="fixed-expense-name">{expense.name}</span>
+                          <span className="fixed-expense-category">{expense.category || 'Other'}</span>
+                          <span className="fixed-expense-payment">{expense.payment_type || 'Debit'}</span>
                           <span className="fixed-expense-amount">
                             ${parseFloat(expense.amount).toFixed(2)}
                           </span>
@@ -375,7 +476,8 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
                         </div>
                       )}
                     </div>
-                  ))
+                  ))}
+                  </>
                 )}
               </div>
 
@@ -401,6 +503,38 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
                       />
                       {validationErrors.addName && (
                         <span className="validation-error">{validationErrors.addName}</span>
+                      )}
+                    </div>
+                    <div className="fixed-expense-input-group">
+                      <select
+                        value={newExpenseCategory}
+                        onChange={(e) => setNewExpenseCategory(e.target.value)}
+                        className={`fixed-expense-add-category ${validationErrors.addCategory ? 'input-error' : ''}`}
+                        disabled={loading}
+                      >
+                        <option value="">Select Category</option>
+                        {CATEGORIES.map(cat => (
+                          <option key={cat} value={cat}>{cat}</option>
+                        ))}
+                      </select>
+                      {validationErrors.addCategory && (
+                        <span className="validation-error">{validationErrors.addCategory}</span>
+                      )}
+                    </div>
+                    <div className="fixed-expense-input-group">
+                      <select
+                        value={newExpensePaymentType}
+                        onChange={(e) => setNewExpensePaymentType(e.target.value)}
+                        className={`fixed-expense-add-payment ${validationErrors.addPaymentType ? 'input-error' : ''}`}
+                        disabled={loading}
+                      >
+                        <option value="">Select Payment Type</option>
+                        {PAYMENT_METHODS.map(method => (
+                          <option key={method} value={method}>{method}</option>
+                        ))}
+                      </select>
+                      {validationErrors.addPaymentType && (
+                        <span className="validation-error">{validationErrors.addPaymentType}</span>
                       )}
                     </div>
                     <div className="fixed-expense-input-group">
@@ -431,6 +565,8 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
                         setIsAdding(false);
                         setNewExpenseName('');
                         setNewExpenseAmount('');
+                        setNewExpenseCategory('');
+                        setNewExpensePaymentType('');
                         clearValidationErrors();
                       }}
                       disabled={loading}

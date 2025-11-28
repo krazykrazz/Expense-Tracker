@@ -7,6 +7,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.2.3] - 2025-11-27
+
+### Fixed
+- **Category Field Flashing on Autocomplete**: Fixed issue where category field flashed when selecting a place from autocomplete dropdown
+  - Added `justSelectedFromDropdownRef` to track dropdown selections
+  - Prevented blur handler from running after dropdown selection
+  - Eliminated race condition between dropdown click and blur event
+  - Category now stays stable when selecting from autocomplete suggestions
+
+### Technical
+- No database changes required
+- No API changes
+- Frontend rebuild required
+- Fully backward compatible
+
+---
+
+## [4.2.2] - 2025-11-27
+
+### Fixed
+- **Category Field Flashing**: Fixed issue where category field briefly flashed suggested value before reverting to "Other" when adding expenses
+  - Added `isSubmittingRef` to track form submission state
+  - Prevented blur handler from executing during form submission
+  - Eliminated race condition between form reset and category suggestion
+
+### Technical
+- No database changes required
+- No API changes
+- Frontend rebuild required
+- Fully backward compatible
+
+---
+
+## [4.2.1] - 2025-11-27
+
+### Changed
+- **Code Quality**: Centralized API endpoint configuration across frontend
+  - Added 11 new endpoints to `frontend/src/config.js` (Income, Backup, Import, Version APIs)
+  - Updated `incomeApi.js`, `BackupSettings.jsx`, and `App.jsx` to use centralized `API_ENDPOINTS`
+  - Eliminated hardcoded API paths for better maintainability
+- **Code Quality**: Eliminated code duplication in SummaryPanel component
+  - Created reusable `fetchSummaryData` and `processSummaryData` functions
+  - Reduced ~120 lines of duplicated fetch logic to ~30 lines
+  - Improved performance with proper React memoization
+
+### Technical
+- No database changes required
+- No API changes
+- Frontend rebuild required
+- Fully backward compatible
+- See `CODE_AUDIT_REPORT_2025-11-27.md` for detailed analysis
+
+---
+
 ## [4.2.0] - 2025-11-25
 
 ### Added

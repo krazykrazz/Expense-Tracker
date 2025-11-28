@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import './App.css';
 import ExpenseForm from './components/ExpenseForm';
 import MonthSelector from './components/MonthSelector';
@@ -11,6 +11,7 @@ import TaxDeductible from './components/TaxDeductible';
 import BudgetManagementModal from './components/BudgetManagementModal';
 import BudgetHistoryView from './components/BudgetHistoryView';
 import { API_ENDPOINTS } from './config';
+import { CATEGORIES, PAYMENT_METHODS } from './utils/constants';
 import logo from './assets/tracker.png.png';
 
 function App() {
@@ -30,6 +31,22 @@ function App() {
   const [filterType, setFilterType] = useState('');
   const [filterMethod, setFilterMethod] = useState('');
   const [versionInfo, setVersionInfo] = useState(null);
+
+  /**
+   * Global View Mode Determination
+   * 
+   * The application operates in two modes:
+   * - Monthly View: Shows expenses for the selected month only (default)
+   * - Global View: Shows expenses from all time periods (when any filter is active)
+   * 
+   * Global view is triggered when ANY of the following filters are active:
+   * - searchText: User has entered text to search place/notes
+   * - filterType: User has selected a category filter
+   * - filterMethod: User has selected a payment method filter
+   * 
+   * This allows users to filter expenses globally without requiring text search.
+   */
+  const isGlobalView = searchText.trim().length > 0 || filterType || filterMethod;
 
   // Fetch version info on mount
   useEffect(() => {
@@ -56,7 +73,19 @@ function App() {
     };
   }, []);
 
-  // Fetch expenses when month/year changes or when searching
+  /**
+   * Expense Fetching Effect
+   * 
+   * Fetches expenses from the API based on the current view mode:
+   * - Global View: Fetches ALL expenses (no date filtering) when any filter is active
+   * - Monthly View: Fetches only expenses for the selected year/month
+   * 
+   * Dependencies:
+   * - selectedYear, selectedMonth: Triggers refetch when user changes month
+   * - isGlobalView: Triggers refetch when switching between global/monthly modes
+   * 
+   * The API endpoint changes based on view mode to optimize data transfer.
+   */
   useEffect(() => {
     const fetchExpenses = async () => {
       setLoading(true);
@@ -64,32 +93,57 @@ function App() {
       
       try {
         let url;
-        if (searchText && searchText.trim().length > 0) {
-          // Global search - fetch all expenses
+        if (isGlobalView) {
+          // Global view - fetch all expenses when any filter is active
           url = `${API_ENDPOINTS.EXPENSES}`;
         } else {
-          // Month-specific view
+          // Monthly view - fetch month-specific expenses
           url = `${API_ENDPOINTS.EXPENSES}?year=${selectedYear}&month=${selectedMonth}`;
         }
         
         const response = await fetch(url);
         
         if (!response.ok) {
-          throw new Error('Failed to fetch expenses');
+          const errorText = await response.text();
+          let errorMessage = 'Unable to load expenses. Please try again.';
+          
+          try {
+            const errorData = JSON.parse(errorText);
+            errorMessage = errorData.error || errorMessage;
+          } catch {
+            // If response is not JSON, use default message
+          }
+          
+          throw new Error(errorMessage);
         }
         
         const data = await response.json();
         setExpenses(data);
       } catch (err) {
-        setError(err.message);
+        // Provide user-friendly error messages
+        let userMessage = err.message;
+        
+        if (err.message.includes('fetch')) {
+          userMessage = 'Unable to connect to the server. Please check your connection and try again.';
+        } else if (err.message.includes('NetworkError') || err.message.includes('Failed to fetch')) {
+          userMessage = 'Network error. Please check your connection and try again.';
+        }
+        
+        setError(userMessage);
         console.error('Error fetching expenses:', err);
+        
+        // Keep existing expenses on error to avoid blank screen
+        // Only clear if this is the first load
+        if (expenses.length === 0) {
+          setExpenses([]);
+        }
       } finally {
         setLoading(false);
       }
     };
 
     fetchExpenses();
-  }, [selectedYear, selectedMonth, searchText]);
+  }, [selectedYear, selectedMonth, isGlobalView]);
 
   // Listen for expensesUpdated event (e.g., from place name standardization)
   useEffect(() => {
@@ -101,7 +155,7 @@ function App() {
       const fetchExpenses = async () => {
         try {
           let url;
-          if (searchText && searchText.trim().length > 0) {
+          if (isGlobalView) {
             url = `${API_ENDPOINTS.EXPENSES}`;
           } else {
             url = `${API_ENDPOINTS.EXPENSES}?year=${selectedYear}&month=${selectedMonth}`;
@@ -125,7 +179,7 @@ function App() {
     return () => {
       window.removeEventListener('expensesUpdated', handleExpensesUpdated);
     };
-  }, [selectedYear, selectedMonth, searchText]);
+  }, [selectedYear, selectedMonth, isGlobalView]);
 
   const handleExpenseAdded = (newExpense) => {
     // Add new expense to the list if it belongs to the selected month
@@ -170,9 +224,64 @@ function App() {
     setSelectedMonth(month);
   };
 
-  const handleSearchChange = (text) => {
+  const handleSearchChange = useCallback((text) => {
     setSearchText(text);
-  };
+  }, []);
+
+  /**
+   * Filter Type Change Handler
+   * 
+   * Updates the category filter state with validation.
+   * Validates the selected category against the approved CATEGORIES list
+   * to prevent invalid selections (e.g., from URL manipulation or bugs).
+   * 
+   * @param {string} type - The selected category or empty string for "All"
+   */
+  const handleFilterTypeChange = useCallback((type) => {
+    // Validate category against approved list
+    if (type && !CATEGORIES.includes(type)) {
+      console.warn(`Invalid category selected: ${type}. Resetting to empty.`);
+      setFilterType('');
+      return;
+    }
+    setFilterType(type);
+  }, []);
+
+  /**
+   * Filter Method Change Handler
+   * 
+   * Updates the payment method filter state with validation.
+   * Validates the selected payment method against the approved PAYMENT_METHODS list
+   * to prevent invalid selections.
+   * 
+   * @param {string} method - The selected payment method or empty string for "All"
+   */
+  const handleFilterMethodChange = useCallback((method) => {
+    // Validate payment method against approved list
+    if (method && !PAYMENT_METHODS.includes(method)) {
+      console.warn(`Invalid payment method selected: ${method}. Resetting to empty.`);
+      setFilterMethod('');
+      return;
+    }
+    setFilterMethod(method);
+  }, []);
+
+  /**
+   * Clear All Filters Handler
+   * 
+   * Resets all filter states to their default empty values:
+   * - searchText: cleared
+   * - filterType: cleared (shows all categories)
+   * - filterMethod: cleared (shows all payment methods)
+   * 
+   * This returns the application to monthly view mode, showing only
+   * expenses for the currently selected month.
+   */
+  const handleClearFilters = useCallback(() => {
+    setSearchText('');
+    setFilterType('');
+    setFilterMethod('');
+  }, []);
 
   const handleManageBudgets = () => {
     setShowBudgetManagement(true);
@@ -197,31 +306,51 @@ function App() {
     setShowBudgetHistory(false);
   };
 
-  // Filter expenses based on search text, type, and method
-  const filteredExpenses = expenses.filter(expense => {
-    // Search filter
-    if (searchText) {
-      const searchLower = searchText.toLowerCase();
-      const placeMatch = expense.place && expense.place.toLowerCase().includes(searchLower);
-      const notesMatch = expense.notes && expense.notes.toLowerCase().includes(searchLower);
+  /**
+   * Client-Side Expense Filtering (Memoized)
+   * 
+   * Applies all active filters to the fetched expenses using AND logic.
+   * All filters must match for an expense to be included in the results.
+   * 
+   * Filter Logic:
+   * 1. Text Search: Matches against place OR notes fields (case-insensitive)
+   * 2. Category Filter: Exact match on expense.type
+   * 3. Payment Method Filter: Exact match on expense.method
+   * 
+   * Performance Optimization:
+   * - useMemo prevents unnecessary re-filtering when unrelated state changes
+   * - Only re-computes when expenses array or filter values change
+   * 
+   * @returns {Array} Filtered array of expense objects
+   */
+  const filteredExpenses = useMemo(() => {
+    return expenses.filter(expense => {
+      // Text search filter - matches place OR notes (case-insensitive)
+      if (searchText) {
+        const searchLower = searchText.toLowerCase();
+        const placeMatch = expense.place && expense.place.toLowerCase().includes(searchLower);
+        const notesMatch = expense.notes && expense.notes.toLowerCase().includes(searchLower);
+        
+        // Expense must match at least one field
+        if (!placeMatch && !notesMatch) {
+          return false;
+        }
+      }
       
-      if (!placeMatch && !notesMatch) {
+      // Category filter - exact match required
+      if (filterType && expense.type !== filterType) {
         return false;
       }
-    }
-    
-    // Type filter
-    if (filterType && expense.type !== filterType) {
-      return false;
-    }
-    
-    // Method filter
-    if (filterMethod && expense.method !== filterMethod) {
-      return false;
-    }
-    
-    return true;
-  });
+      
+      // Payment method filter - exact match required
+      if (filterMethod && expense.method !== filterMethod) {
+        return false;
+      }
+      
+      // All active filters passed
+      return true;
+    });
+  }, [expenses, searchText, filterType, filterMethod]);
 
   return (
     <div className="App">
@@ -251,10 +380,33 @@ function App() {
           onManageBudgets={handleManageBudgets}
           onViewBudgetHistory={handleViewBudgetHistory}
         />
-        <SearchBar onSearchChange={handleSearchChange} />
+        <SearchBar 
+          onSearchChange={handleSearchChange}
+          onFilterTypeChange={handleFilterTypeChange}
+          onFilterMethodChange={handleFilterMethodChange}
+          onClearFilters={handleClearFilters}
+          filterType={filterType}
+          filterMethod={filterMethod}
+          categories={CATEGORIES}
+          paymentMethods={PAYMENT_METHODS}
+          loading={loading}
+        />
         
         {loading && <div className="loading-message">Loading expenses...</div>}
-        {error && <div className="error-message">Error: {error}</div>}
+        {error && (
+          <div className="error-message">
+            <div className="error-text">Error: {error}</div>
+            <button 
+              className="retry-button"
+              onClick={() => {
+                setError(null);
+                setRefreshTrigger(prev => prev + 1);
+              }}
+            >
+              Retry
+            </button>
+          </div>
+        )}
         {!loading && !error && (
           <div className="content-layout">
             <div className="content-left">
@@ -266,8 +418,8 @@ function App() {
                 onAddExpense={() => setShowExpenseForm(true)}
                 filterType={filterType}
                 filterMethod={filterMethod}
-                onFilterTypeChange={setFilterType}
-                onFilterMethodChange={setFilterMethod}
+                onFilterTypeChange={handleFilterTypeChange}
+                onFilterMethodChange={handleFilterMethodChange}
               />
             </div>
             <div className="content-right">
@@ -361,7 +513,7 @@ function App() {
 
       <footer className="App-footer">
         <span className="version">
-          v{versionInfo?.version || '4.2.0'}
+          v{versionInfo?.version || '4.2.3'}
           {versionInfo?.docker && (
             <span className="docker-tag"> (Docker: {versionInfo.docker.tag})</span>
           )}

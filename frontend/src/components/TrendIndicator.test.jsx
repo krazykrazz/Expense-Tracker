@@ -115,13 +115,16 @@ describe('TrendIndicator', () => {
       expect(indicator).toBeNull();
     });
 
-    it('should render nothing when previous value is zero', () => {
+    it('should show "NEW" indicator when previous value is zero and current is positive', () => {
       const { container } = render(
         <TrendIndicator currentValue={100} previousValue={0} />
       );
       
       const indicator = container.querySelector('.trend-indicator');
-      expect(indicator).toBeNull();
+      expect(indicator).not.toBeNull();
+      expect(indicator).toHaveClass('trend-up');
+      expect(indicator.textContent).toBe('▲');
+      expect(indicator.getAttribute('title')).toBe('NEW');
     });
 
     it('should display correct tooltip text for upward trend', () => {

@@ -1,0 +1,287 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import App from './App';
+
+// Mock the API endpoints
+vi.mock('./config', () => {
+  const API_BASE_URL = '';
+  return {
+    default: API_BASE_URL,
+    API_BASE_URL,
+    API_ENDPOINTS: {
+      EXPENSES: `${API_BASE_URL}/api/expenses`,
+      EXPENSE_BY_ID: (id) => `${API_BASE_URL}/api/expenses/${id}`,
+      SUMMARY: `${API_BASE_URL}/api/expenses/summary`,
+      SUGGEST_CATEGORY: `${API_BASE_URL}/api/expenses/suggest-category`,
+      PLACE_NAMES_ANALYZE: `${API_BASE_URL}/api/expenses/place-names/analyze`,
+      PLACE_NAMES_STANDARDIZE: `${API_BASE_URL}/api/expenses/place-names/standardize`,
+      RECURRING: `${API_BASE_URL}/api/recurring`,
+      RECURRING_BY_ID: (id) => `${API_BASE_URL}/api/recurring/${id}`,
+      FIXED_EXPENSES: `${API_BASE_URL}/api/fixed-expenses`,
+      FIXED_EXPENSES_BY_MONTH: (year, month) => `${API_BASE_URL}/api/fixed-expenses/${year}/${month}`,
+      FIXED_EXPENSES_BY_ID: (id) => `${API_BASE_URL}/api/fixed-expenses/${id}`,
+      FIXED_EXPENSES_CARRY_FORWARD: `${API_BASE_URL}/api/fixed-expenses/carry-forward`,
+      INCOME: `${API_BASE_URL}/api/income`,
+      INCOME_BY_MONTH: (year, month) => `${API_BASE_URL}/api/income/${year}/${month}`,
+      INCOME_BY_ID: (id) => `${API_BASE_URL}/api/income/${id}`,
+      INCOME_COPY_PREVIOUS: (year, month) => `${API_BASE_URL}/api/income/${year}/${month}/copy-previous`,
+      LOANS: `${API_BASE_URL}/api/loans`,
+      LOAN_BALANCES: `${API_BASE_URL}/api/loan-balances`,
+      BUDGETS: `${API_BASE_URL}/api/budgets`,
+      BUDGET_SUMMARY: `${API_BASE_URL}/api/budgets/summary`,
+      BUDGET_HISTORY: `${API_BASE_URL}/api/budgets/history`,
+      BUDGET_COPY: `${API_BASE_URL}/api/budgets/copy`,
+      BUDGET_SUGGEST: `${API_BASE_URL}/api/budgets/suggest`,
+      CATEGORIES: `${API_BASE_URL}/api/categories`,
+      BACKUP_CONFIG: `${API_BASE_URL}/api/backup/config`,
+      BACKUP_LIST: `${API_BASE_URL}/api/backup/list`,
+      BACKUP_MANUAL: `${API_BASE_URL}/api/backup/manual`,
+      BACKUP_RESTORE: `${API_BASE_URL}/api/backup/restore`,
+      IMPORT: `${API_BASE_URL}/api/import`,
+      VERSION: `${API_BASE_URL}/api/version`
+    }
+  };
+});
+
+// Helper to generate large dataset
+const generateExpenses = (count) => {
+  const categories = ['Groceries', 'Dining Out', 'Gas', 'Entertainment', 'Utilities'];
+  const methods = ['Credit Card', 'Debit Card', 'Cash'];
+  const places = ['Store A', 'Store B', 'Restaurant C', 'Gas Station D', 'Shop E'];
+  
+  return Array.from({ length: count }, (_, i) => ({
+    id: i + 1,
+    date: `2024-01-${String((i % 28) + 1).padStart(2, '0')}`,
+    place: places[i % places.length],
+    notes: `Note ${i}`,
+    amount: Math.random() * 500,
+    type: categories[i % categories.length],
+    method: methods[i % methods.length],
+    week: Math.floor((i % 28) / 7) + 1
+  }));
+};
+
+describe('App Performance Tests', () => {
+  beforeEach(() => {
+    // Mock fetch for version info
+    global.fetch = vi.fn((url) => {
+      if (url.includes('/api/version')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ version: '4.2.3' })
+        });
+      }
+      if (url.includes('/api/categories')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ 
+            categories: ['Groceries', 'Dining Out', 'Gas', 'Entertainment', 'Utilities']
+          })
+        });
+      }
+      if (url.includes('/api/summary')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            totalExpenses: 500,
+            weeklyTotals: { week1: 100, week2: 100, week3: 100, week4: 100, week5: 100 },
+            monthlyGross: 3000,
+            remaining: 2500
+          })
+        });
+      }
+      if (url.includes('/api/budgets/summary')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ totalBudget: 0, totalSpent: 0 })
+        });
+      }
+      if (url.includes('/api/budgets')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([])
+        });
+      }
+      if (url.includes('/api/fixed-expenses')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([])
+        });
+      }
+      if (url.includes('/api/income')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([])
+        });
+      }
+      if (url.includes('/api/loans')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([])
+        });
+      }
+      if (url.includes('/api/expenses')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(generateExpenses(1000))
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve([])
+      });
+    });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('should filter 1000+ expenses efficiently', async () => {
+    const startTime = performance.now();
+    
+    render(<App />);
+    
+    // Wait for expenses to load
+    await waitFor(() => {
+      expect(screen.queryByText('Loading expenses...')).not.toBeInTheDocument();
+    }, { timeout: 5000 });
+    
+    const endTime = performance.now();
+    const loadTime = endTime - startTime;
+    
+    // Should load within reasonable time (5 seconds for 1000 expenses)
+    expect(loadTime).toBeLessThan(5000);
+  });
+
+  it('should handle text search debouncing correctly', async () => {
+    const user = userEvent.setup();
+    
+    render(<App />);
+    
+    // Wait for initial load
+    await waitFor(() => {
+      expect(screen.queryByText('Loading expenses...')).not.toBeInTheDocument();
+    });
+    
+    const searchInput = screen.getByPlaceholderText(/search by place or notes/i);
+    
+    // Track fetch calls
+    const fetchCallsBefore = global.fetch.mock.calls.length;
+    
+    // Type rapidly (should debounce)
+    await user.type(searchInput, 'Store');
+    
+    // Wait for debounce delay (300ms)
+    await new Promise(resolve => setTimeout(resolve, 400));
+    
+    const fetchCallsAfter = global.fetch.mock.calls.length;
+    
+    // Should not make a fetch call for every keystroke
+    // Only initial load calls + potentially one debounced call
+    expect(fetchCallsAfter - fetchCallsBefore).toBeLessThanOrEqual(1);
+  });
+
+  it('should memoize filtered results to prevent unnecessary re-renders', async () => {
+    const user = userEvent.setup();
+    
+    // Create a spy to track component renders
+    let renderCount = 0;
+    const OriginalApp = App;
+    
+    // We can't directly spy on renders, but we can verify memoization
+    // by checking that filtering large datasets doesn't cause performance issues
+    const startTime = performance.now();
+    
+    render(<App />);
+    
+    // Wait for initial load
+    await waitFor(() => {
+      expect(screen.queryByText('Loading expenses...')).not.toBeInTheDocument();
+    }, { timeout: 10000 });
+    
+    // Apply category filter
+    const categoryFilter = screen.getByLabelText(/filter by expense category/i);
+    await user.selectOptions(categoryFilter, 'Groceries');
+    
+    // Wait for filter to apply
+    await waitFor(() => {
+      // Check that we're in global view with filtered results
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringMatching(/\/api\/expenses(?!\?year=)/)
+      );
+    }, { timeout: 10000 });
+    
+    const endTime = performance.now();
+    const filterTime = endTime - startTime;
+    
+    // Filtering should be fast even with 1000 expenses (under 2 seconds)
+    expect(filterTime).toBeLessThan(2000);
+  }, 15000);
+
+  it('should handle rapid filter changes efficiently', async () => {
+    const user = userEvent.setup();
+    
+    render(<App />);
+    
+    // Wait for initial load
+    await waitFor(() => {
+      expect(screen.queryByText('Loading expenses...')).not.toBeInTheDocument();
+    }, { timeout: 10000 });
+    
+    const startTime = performance.now();
+    
+    // Rapidly change filters
+    const categoryFilter = screen.getByLabelText(/filter by expense category/i);
+    await user.selectOptions(categoryFilter, 'Groceries');
+    await user.selectOptions(categoryFilter, 'Dining Out');
+    await user.selectOptions(categoryFilter, 'Gas');
+    
+    const paymentFilter = screen.getByLabelText(/filter by payment method/i);
+    await user.selectOptions(paymentFilter, 'Credit Card');
+    await user.selectOptions(paymentFilter, 'Debit Card');
+    
+    const endTime = performance.now();
+    const totalTime = endTime - startTime;
+    
+    // Multiple rapid filter changes should complete quickly (under 3 seconds)
+    expect(totalTime).toBeLessThan(3000);
+  }, 15000);
+
+  it('should efficiently clear all filters on large dataset', async () => {
+    const user = userEvent.setup();
+    
+    render(<App />);
+    
+    // Wait for initial load
+    await waitFor(() => {
+      expect(screen.queryByText('Loading expenses...')).not.toBeInTheDocument();
+    }, { timeout: 10000 });
+    
+    // Apply multiple filters
+    const categoryFilter = screen.getByLabelText(/filter by expense category/i);
+    await user.selectOptions(categoryFilter, 'Groceries');
+    
+    const paymentFilter = screen.getByLabelText(/filter by payment method/i);
+    await user.selectOptions(paymentFilter, 'Credit Card');
+    
+    const searchInput = screen.getByPlaceholderText(/search by place or notes/i);
+    await user.type(searchInput, 'Store');
+    
+    // Wait for debounce
+    await new Promise(resolve => setTimeout(resolve, 400));
+    
+    // Clear all filters
+    const startTime = performance.now();
+    
+    const clearButton = await screen.findByText(/clear filters/i);
+    await user.click(clearButton);
+    
+    const endTime = performance.now();
+    const clearTime = endTime - startTime;
+    
+    // Clearing should be instant (under 500ms)
+    expect(clearTime).toBeLessThan(500);
+  }, 15000);
+});

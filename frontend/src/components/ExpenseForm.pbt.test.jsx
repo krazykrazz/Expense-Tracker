@@ -187,10 +187,16 @@ describe('ExpenseForm Property-Based Tests', () => {
    */
   it('Property 4: should enable submit button when all required fields have valid values', async () => {
     // Generator for valid date strings (YYYY-MM-DD format)
-    const validDateArb = fc.date({
-      min: new Date('2020-01-01'),
-      max: new Date('2030-12-31')
-    }).map(d => d.toISOString().split('T')[0]);
+    // Use integer-based generation to avoid invalid dates
+    const validDateArb = fc.tuple(
+      fc.integer({ min: 2020, max: 2030 }), // year
+      fc.integer({ min: 1, max: 12 }),      // month
+      fc.integer({ min: 1, max: 28 })       // day (use 28 to avoid invalid dates)
+    ).map(([year, month, day]) => {
+      const monthStr = month.toString().padStart(2, '0');
+      const dayStr = day.toString().padStart(2, '0');
+      return `${year}-${monthStr}-${dayStr}`;
+    });
 
     // Generator for valid amounts (positive numbers)
     // Use Math.fround to ensure 32-bit float compatibility

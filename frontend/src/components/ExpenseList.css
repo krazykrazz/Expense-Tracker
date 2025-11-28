@@ -99,6 +99,17 @@
   font-size: 14px;
 }
 
+.filter-status-message {
+  background-color: #e0f2fe;
+  border-left: 4px solid #0ea5e9;
+  padding: 10px 15px;
+  margin-bottom: 15px;
+  color: #0c4a6e;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 3px;
+}
+
 .table-wrapper {
   overflow-x: auto;
 }

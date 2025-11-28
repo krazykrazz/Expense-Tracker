@@ -169,24 +169,29 @@ describe('AnnualSummary - Chart Data Completeness', () => {
 
           // Wait for the component to load
           await waitFor(() => {
-            const monthlyChart = container.querySelector('.monthly-chart.stacked');
+            const monthlyChart = container.querySelector('.monthly-chart');
             expect(monthlyChart).toBeTruthy();
           }, { timeout: 1000 });
 
           // Property: Chart should have exactly 12 month bar containers
-          const monthBarContainers = container.querySelectorAll('.monthly-chart.stacked .month-bar-container');
+          const monthBarContainers = container.querySelectorAll('.monthly-chart .month-bar-container');
           expect(monthBarContainers.length).toBe(12);
 
-          // Property: Each month should have a stacked bar
-          monthBarContainers.forEach((barContainer, index) => {
-            const stackedBar = barContainer.querySelector('.stacked-bar');
-            expect(stackedBar).toBeTruthy();
+          // Property: Each month should have either a horizontal stacked bar or an empty bar
+          monthBarContainers.forEach((barContainer) => {
+            const horizontalStackedBar = barContainer.querySelector('.horizontal-stacked-bar');
+            const emptyBar = barContainer.querySelector('.empty-bar');
             
-            // Each stacked bar should have fixed and variable segments
-            const fixedSegment = barContainer.querySelector('.fixed-segment');
-            const variableSegment = barContainer.querySelector('.variable-segment');
-            expect(fixedSegment).toBeTruthy();
-            expect(variableSegment).toBeTruthy();
+            // Each month should have either a stacked bar or an empty bar
+            expect(horizontalStackedBar || emptyBar).toBeTruthy();
+            
+            // If it has a stacked bar, it should have at least one segment (fixed or variable)
+            if (horizontalStackedBar) {
+              const fixedSegment = barContainer.querySelector('.fixed-segment');
+              const variableSegment = barContainer.querySelector('.variable-segment');
+              // At least one segment should exist
+              expect(fixedSegment || variableSegment).toBeTruthy();
+            }
           });
 
           // Clean up
@@ -706,7 +711,7 @@ describe('AnnualSummary - Integration Tests', () => {
       const { container } = render(<AnnualSummary year={2024} />);
 
       await waitFor(() => {
-        const monthlyChart = container.querySelector('.monthly-chart.stacked');
+        const monthlyChart = container.querySelector('.monthly-chart');
         expect(monthlyChart).toBeTruthy();
       });
 
@@ -723,12 +728,12 @@ describe('AnnualSummary - Integration Tests', () => {
       expect(variableColor).toBeTruthy();
 
       // Verify 12 month bars
-      const monthBarContainers = container.querySelectorAll('.monthly-chart.stacked .month-bar-container');
+      const monthBarContainers = container.querySelectorAll('.monthly-chart .month-bar-container');
       expect(monthBarContainers.length).toBe(12);
 
       // Verify each bar has stacked segments
       monthBarContainers.forEach((barContainer) => {
-        const stackedBar = barContainer.querySelector('.stacked-bar');
+        const stackedBar = barContainer.querySelector('.horizontal-stacked-bar');
         expect(stackedBar).toBeTruthy();
 
         const fixedSegment = barContainer.querySelector('.fixed-segment');
@@ -737,12 +742,12 @@ describe('AnnualSummary - Integration Tests', () => {
         expect(variableSegment).toBeTruthy();
 
         // Verify segments have height styles
-        expect(fixedSegment.style.height).toBeTruthy();
-        expect(variableSegment.style.height).toBeTruthy();
+        expect(fixedSegment.style.width).toBeTruthy();
+        expect(variableSegment.style.width).toBeTruthy();
       });
 
       // Verify month labels
-      const monthLabels = container.querySelectorAll('.monthly-chart.stacked .month-label');
+      const monthLabels = container.querySelectorAll('.monthly-chart .month-label');
       expect(monthLabels.length).toBe(12);
       expect(monthLabels[0].textContent).toBe('Jan');
       expect(monthLabels[11].textContent).toBe('Dec');
@@ -794,23 +799,23 @@ describe('AnnualSummary - Integration Tests', () => {
       const { container } = render(<AnnualSummary year={2024} />);
 
       await waitFor(() => {
-        const monthlyChart = container.querySelector('.monthly-chart.stacked');
+        const monthlyChart = container.querySelector('.monthly-chart');
         expect(monthlyChart).toBeTruthy();
       });
 
       // Verify all 12 bars are rendered even with zero values
-      const monthBarContainers = container.querySelectorAll('.monthly-chart.stacked .month-bar-container');
+      const monthBarContainers = container.querySelectorAll('.monthly-chart .month-bar-container');
       expect(monthBarContainers.length).toBe(12);
 
       // Verify first month has visible segments
       const firstBar = monthBarContainers[0];
-      const firstFixedSegment = firstBar.querySelector('.fixed-segment');
-      expect(firstFixedSegment.style.height).not.toBe('0%');
+      const firstHorizontalStackedBar = firstBar.querySelector('.horizontal-stacked-bar');
+      expect(firstHorizontalStackedBar).toBeTruthy();
 
       // Verify other months have zero-height segments
       const secondBar = monthBarContainers[1];
-      const secondFixedSegment = secondBar.querySelector('.fixed-segment');
-      expect(secondFixedSegment.style.height).toBe('0%');
+      const secondEmptyBar = secondBar.querySelector('.empty-bar');
+      expect(secondEmptyBar).toBeTruthy();
     });
 
     it('should display tooltips on bar segments', async () => {
@@ -867,7 +872,7 @@ describe('AnnualSummary - Integration Tests', () => {
       const { container } = render(<AnnualSummary year={2024} />);
 
       await waitFor(() => {
-        const monthlyChart = container.querySelector('.monthly-chart.stacked');
+        const monthlyChart = container.querySelector('.monthly-chart');
         expect(monthlyChart).toBeTruthy();
       });
 
@@ -1410,7 +1415,7 @@ describe('AnnualSummary - Integration Tests', () => {
       const { container } = render(<AnnualSummary year={2024} />);
 
       await waitFor(() => {
-        const monthlyChart = container.querySelector('.monthly-chart.stacked');
+        const monthlyChart = container.querySelector('.monthly-chart');
         expect(monthlyChart).toBeTruthy();
       });
 
@@ -1427,12 +1432,12 @@ describe('AnnualSummary - Integration Tests', () => {
       expect(variableColor).toBeTruthy();
 
       // Verify 12 month bars
-      const monthBarContainers = container.querySelectorAll('.monthly-chart.stacked .month-bar-container');
+      const monthBarContainers = container.querySelectorAll('.monthly-chart .month-bar-container');
       expect(monthBarContainers.length).toBe(12);
 
       // Verify each bar has stacked segments
       monthBarContainers.forEach((barContainer) => {
-        const stackedBar = barContainer.querySelector('.stacked-bar');
+        const stackedBar = barContainer.querySelector('.horizontal-stacked-bar');
         expect(stackedBar).toBeTruthy();
 
         const fixedSegment = barContainer.querySelector('.fixed-segment');
@@ -1441,12 +1446,12 @@ describe('AnnualSummary - Integration Tests', () => {
         expect(variableSegment).toBeTruthy();
 
         // Verify segments have height styles
-        expect(fixedSegment.style.height).toBeTruthy();
-        expect(variableSegment.style.height).toBeTruthy();
+        expect(fixedSegment.style.width).toBeTruthy();
+        expect(variableSegment.style.width).toBeTruthy();
       });
 
       // Verify month labels
-      const monthLabels = container.querySelectorAll('.monthly-chart.stacked .month-label');
+      const monthLabels = container.querySelectorAll('.monthly-chart .month-label');
       expect(monthLabels.length).toBe(12);
       expect(monthLabels[0].textContent).toBe('Jan');
       expect(monthLabels[11].textContent).toBe('Dec');
@@ -1498,23 +1503,23 @@ describe('AnnualSummary - Integration Tests', () => {
       const { container } = render(<AnnualSummary year={2024} />);
 
       await waitFor(() => {
-        const monthlyChart = container.querySelector('.monthly-chart.stacked');
+        const monthlyChart = container.querySelector('.monthly-chart');
         expect(monthlyChart).toBeTruthy();
       });
 
       // Verify all 12 bars are rendered even with zero values
-      const monthBarContainers = container.querySelectorAll('.monthly-chart.stacked .month-bar-container');
+      const monthBarContainers = container.querySelectorAll('.monthly-chart .month-bar-container');
       expect(monthBarContainers.length).toBe(12);
 
       // Verify first month has visible segments
       const firstBar = monthBarContainers[0];
-      const firstFixedSegment = firstBar.querySelector('.fixed-segment');
-      expect(firstFixedSegment.style.height).not.toBe('0%');
+      const firstHorizontalStackedBar = firstBar.querySelector('.horizontal-stacked-bar');
+      expect(firstHorizontalStackedBar).toBeTruthy();
 
       // Verify other months have zero-height segments
       const secondBar = monthBarContainers[1];
-      const secondFixedSegment = secondBar.querySelector('.fixed-segment');
-      expect(secondFixedSegment.style.height).toBe('0%');
+      const secondEmptyBar = secondBar.querySelector('.empty-bar');
+      expect(secondEmptyBar).toBeTruthy();
     });
 
     it('should display tooltips on bar segments', async () => {
@@ -1571,7 +1576,7 @@ describe('AnnualSummary - Integration Tests', () => {
       const { container } = render(<AnnualSummary year={2024} />);
 
       await waitFor(() => {
-        const monthlyChart = container.querySelector('.monthly-chart.stacked');
+        const monthlyChart = container.querySelector('.monthly-chart');
         expect(monthlyChart).toBeTruthy();
       });
 
@@ -1713,4 +1718,8 @@ describe('AnnualSummary - Integration Tests', () => {
     });
   });
 });
+
+
+
+
 

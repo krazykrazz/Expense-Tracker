@@ -17,6 +17,7 @@ Documentation for completed features and implementations:
 - `LOAN_TYPE_FEATURE_SUMMARY.md` - Loan type feature summary
 - `LOANS_INTEGRATION_TEST_RESULTS.md` - Loans integration testing
 - `ENHANCED_FIXED_EXPENSES.md` - Enhanced fixed expenses with category and payment type tracking
+- `GLOBAL_EXPENSE_FILTERING.md` - Global filtering by category and payment method across all time periods
 
 ### deployments/
 Deployment history and migration guides:
@@ -62,6 +63,7 @@ Feature specifications are located in `.kiro/specs/`:
 - `monthly-loans-balance/` - Loans and balances spec
 - `containerization-optimization/` - Docker optimization spec
 - `smart-expense-entry/` - Smart expense entry with category suggestions
+- `global-expense-filtering/` - Global expense filtering by category and payment method
 
 ## Steering Rules
 

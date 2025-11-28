@@ -92,9 +92,15 @@ graph TB
 
 #### 5. SearchBar Component
 - Text input for search query
+- Category (Type) filter dropdown
+- Payment Method filter dropdown
+- Clear filters button (visible when any filter is active)
 - Filters expense list in real-time
 - Searches place and notes fields (case-insensitive)
 - Performs global search across all expenses regardless of selected month
+- Supports independent filtering by category and payment method
+- Combines multiple filters using AND logic
+- Automatically switches to global view when any filter is active
 
 #### 6. SummaryPanel Component
 - Displays multiple summary sections:
@@ -488,15 +494,42 @@ const backupFileName = `expense-backup-${Date.now()}.db`;
 // Example: expense-backup-1699564800000.db
 ```
 
-### Global Search Implementation
+### Global Search and Filtering Implementation
 ```javascript
-// Search across all expenses, not limited to current month
-function searchExpenses(query) {
-  return expenses.filter(expense => 
-    expense.place.toLowerCase().includes(query.toLowerCase()) ||
-    expense.notes.toLowerCase().includes(query.toLowerCase())
-  );
-}
+// Determine if global view should be active
+const isGlobalView = searchText.trim().length > 0 || filterType || filterMethod;
+
+// Fetch expenses based on view mode
+const fetchExpenses = async () => {
+  let url;
+  if (isGlobalView) {
+    // Fetch all expenses for global filtering
+    url = `${API_ENDPOINTS.EXPENSES}`;
+  } else {
+    // Fetch month-specific expenses
+    url = `${API_ENDPOINTS.EXPENSES}?year=${selectedYear}&month=${selectedMonth}`;
+  }
+  // ... fetch and filter
+};
+
+// Client-side filtering with multiple criteria
+const filteredExpenses = expenses.filter(expense => {
+  // Text search filter
+  if (searchText) {
+    const searchLower = searchText.toLowerCase();
+    const placeMatch = expense.place?.toLowerCase().includes(searchLower);
+    const notesMatch = expense.notes?.toLowerCase().includes(searchLower);
+    if (!placeMatch && !notesMatch) return false;
+  }
+  
+  // Category filter
+  if (filterType && expense.type !== filterType) return false;
+  
+  // Payment method filter
+  if (filterMethod && expense.method !== filterMethod) return false;
+  
+  return true;
+});
 ```
 
 ### Week Calculation Logic
@@ -511,7 +544,10 @@ function calculateWeek(dateString) {
 ### Frontend State Management
 - Use React useState for local component state
 - Use useEffect for data fetching on mount and filter changes
-- Lift state up to App component for shared data (selected month/year)
+- Lift state up to App component for shared data (selected month/year, filter state)
+- Filter state includes: searchText, filterType, filterMethod
+- Computed isGlobalView state determines whether to fetch all expenses or monthly expenses
+- Filter state is shared between SearchBar and ExpenseList components for synchronization
 
 ### API Communication
 - Base URL configuration for environment flexibility

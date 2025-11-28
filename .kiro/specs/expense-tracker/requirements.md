@@ -126,7 +126,7 @@ The Expense Tracker Application is a web-based system that enables users to reco
 
 ### Requirement 10
 
-**User Story:** As a user, I want to search through all my transactions globally, so that I can quickly find specific expenses across all time periods.
+**User Story:** As a user, I want to search and filter through all my transactions globally, so that I can quickly find specific expenses across all time periods.
 
 #### Acceptance Criteria
 
@@ -136,6 +136,13 @@ The Expense Tracker Application is a web-based system that enables users to reco
 4. THE Expense Tracker Application SHALL search across all Expense Entries in the Database regardless of the selected month or year
 5. WHEN the search text does not match any Expense Entries, THE Expense Tracker Application SHALL display a message indicating no results were found
 6. WHEN the User clears the search field, THE Expense Tracker Application SHALL display Expense Entries according to the current month filter
+7. THE Expense Tracker Application SHALL allow the User to filter expenses by Type globally across all time periods
+8. THE Expense Tracker Application SHALL allow the User to filter expenses by Payment Method globally across all time periods
+9. WHEN the User applies a Type filter without search text, THE Expense Tracker Application SHALL display all Expense Entries matching that Type from all time periods
+10. WHEN the User applies a Payment Method filter without search text, THE Expense Tracker Application SHALL display all Expense Entries matching that Payment Method from all time periods
+11. WHEN the User applies multiple filters (search text, Type, and/or Payment Method), THE Expense Tracker Application SHALL apply all filters simultaneously using AND logic
+12. THE Expense Tracker Application SHALL provide a clear filters button that resets all active filters and returns to monthly view
+13. WHEN any filter is active (search text, Type, or Payment Method), THE Expense Tracker Application SHALL automatically switch to global view displaying expenses from all time periods
 
 ### Requirement 11
 

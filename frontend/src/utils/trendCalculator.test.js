@@ -95,8 +95,16 @@ describe('trendCalculator', () => {
       expect(result).toBeNull();
     });
 
-    it('should return null when previous value is zero', () => {
+    it('should return "NEW" indicator when previous value is zero and current is positive', () => {
       const result = calculateTrend(100, 0);
+      expect(result).not.toBeNull();
+      expect(result.direction).toBe('up');
+      expect(result.displayText).toBe('NEW');
+      expect(result.percentChange).toBe(Infinity);
+    });
+
+    it('should return null when both previous and current values are zero', () => {
+      const result = calculateTrend(0, 0);
       expect(result).toBeNull();
     });
 

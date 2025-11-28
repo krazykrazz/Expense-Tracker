@@ -215,9 +215,9 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
               <div className="compact-item">
                 <span>W1</span>
                 <span>
-                  ${formatAmount(summary.weeklyTotals.week1)}
+                  ${formatAmount(summary?.weeklyTotals?.week1 || 0)}
                   <TrendIndicator 
-                    currentValue={summary.weeklyTotals.week1} 
+                    currentValue={summary?.weeklyTotals?.week1 || 0} 
                     previousValue={previousSummary?.weeklyTotals?.week1} 
                   />
                 </span>
@@ -225,9 +225,9 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
               <div className="compact-item">
                 <span>W2</span>
                 <span>
-                  ${formatAmount(summary.weeklyTotals.week2)}
+                  ${formatAmount(summary?.weeklyTotals?.week2 || 0)}
                   <TrendIndicator 
-                    currentValue={summary.weeklyTotals.week2} 
+                    currentValue={summary?.weeklyTotals?.week2 || 0} 
                     previousValue={previousSummary?.weeklyTotals?.week2} 
                   />
                 </span>
@@ -235,9 +235,9 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
               <div className="compact-item">
                 <span>W3</span>
                 <span>
-                  ${formatAmount(summary.weeklyTotals.week3)}
+                  ${formatAmount(summary?.weeklyTotals?.week3 || 0)}
                   <TrendIndicator 
-                    currentValue={summary.weeklyTotals.week3} 
+                    currentValue={summary?.weeklyTotals?.week3 || 0} 
                     previousValue={previousSummary?.weeklyTotals?.week3} 
                   />
                 </span>
@@ -245,9 +245,9 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
               <div className="compact-item">
                 <span>W4</span>
                 <span>
-                  ${formatAmount(summary.weeklyTotals.week4)}
+                  ${formatAmount(summary?.weeklyTotals?.week4 || 0)}
                   <TrendIndicator 
-                    currentValue={summary.weeklyTotals.week4} 
+                    currentValue={summary?.weeklyTotals?.week4 || 0} 
                     previousValue={previousSummary?.weeklyTotals?.week4} 
                   />
                 </span>
@@ -255,9 +255,9 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
               <div className="compact-item">
                 <span>W5</span>
                 <span>
-                  ${formatAmount(summary.weeklyTotals.week5)}
+                  ${formatAmount(summary?.weeklyTotals?.week5 || 0)}
                   <TrendIndicator 
-                    currentValue={summary.weeklyTotals.week5} 
+                    currentValue={summary?.weeklyTotals?.week5 || 0} 
                     previousValue={previousSummary?.weeklyTotals?.week5} 
                   />
                 </span>

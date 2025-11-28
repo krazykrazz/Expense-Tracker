@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo } from 'react';
 import { API_ENDPOINTS } from '../config';
 import { PAYMENT_METHODS } from '../utils/constants';
 import './ExpenseList.css';
 import { formatAmount, formatLocalDate } from '../utils/formatters';
 
-const ExpenseList = ({ expenses, onExpenseDeleted, onExpenseUpdated, searchText, onAddExpense, filterType, filterMethod, onFilterTypeChange, onFilterMethodChange }) => {
+const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, searchText, onAddExpense, filterType, filterMethod, onFilterTypeChange, onFilterMethodChange }) => {
   const [deletingId, setDeletingId] = useState(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [expenseToDelete, setExpenseToDelete] = useState(null);
@@ -78,13 +78,6 @@ const ExpenseList = ({ expenses, onExpenseDeleted, onExpenseUpdated, searchText,
       // Ensure date is in YYYY-MM-DD format
       const dateValue = editFormData.date.includes('T') ? editFormData.date.split('T')[0] : editFormData.date;
       
-      console.log('Submitting expense update:', {
-        id: expenseToEdit.id,
-        originalDate: expenseToEdit.date,
-        editFormDate: editFormData.date,
-        dateValue: dateValue
-      });
-      
       const response = await fetch(API_ENDPOINTS.EXPENSE_BY_ID(expenseToEdit.id), {
         method: 'PUT',
         headers: {
@@ -106,7 +99,6 @@ const ExpenseList = ({ expenses, onExpenseDeleted, onExpenseUpdated, searchText,
       }
 
       const updatedExpense = await response.json();
-      console.log('Received updated expense from server:', updatedExpense);
       
       // Notify parent component to update the expense
       if (onExpenseUpdated) {
@@ -170,13 +162,49 @@ const ExpenseList = ({ expenses, onExpenseDeleted, onExpenseUpdated, searchText,
 
   const formatDate = formatLocalDate;
 
-  const noExpensesMessage = expenses.length === 0 
-    ? (searchText 
-        ? 'No results found for your search.' 
-        : (filterType || filterMethod)
-          ? 'No expenses match the selected filters.'
-          : 'No expenses have been recorded for this period.')
-    : null;
+  /**
+   * Generates informative status messages based on filter state
+   * 
+   * Provides contextual feedback to users about:
+   * - Why no expenses are shown (no data vs. filters excluding all results)
+   * - How many expenses match the current filters
+   * - What filters are currently active
+   * 
+   * This improves UX by making the filtering behavior transparent and
+   * helping users understand why they're seeing (or not seeing) certain expenses.
+   * 
+   * @returns {string|null} Status message or null if no message needed
+   */
+  const getFilterStatusMessage = () => {
+    if (expenses.length === 0) {
+      // No expenses at all - distinguish between no data and filtered out
+      if (searchText || filterType || filterMethod) {
+        const activeFilters = [];
+        if (searchText) activeFilters.push(`search: "${searchText}"`);
+        if (filterType) activeFilters.push(`category: ${filterType}`);
+        if (filterMethod) activeFilters.push(`payment: ${filterMethod}`);
+        
+        return `No expenses match the selected filters (${activeFilters.join(', ')}). Try adjusting your filters or clearing them to see all expenses.`;
+      }
+      return 'No expenses have been recorded for this period.';
+    }
+    
+    // Show result count when filters are active
+    if (searchText || filterType || filterMethod) {
+      const activeFilters = [];
+      if (searchText) activeFilters.push(`"${searchText}"`);
+      if (filterType) activeFilters.push(filterType);
+      if (filterMethod) activeFilters.push(filterMethod);
+      
+      const expenseWord = expenses.length === 1 ? 'expense' : 'expenses';
+      return `Showing ${expenses.length} ${expenseWord} matching: ${activeFilters.join(', ')}`;
+    }
+    
+    return null;
+  };
+
+  const filterStatusMessage = getFilterStatusMessage();
+  const noExpensesMessage = expenses.length === 0 ? filterStatusMessage : null;
 
   return (
     <div className="expense-list-container">
@@ -234,6 +262,12 @@ const ExpenseList = ({ expenses, onExpenseDeleted, onExpenseUpdated, searchText,
       {noExpensesMessage && (
         <div className="no-expenses-message">
           {noExpensesMessage}
+        </div>
+      )}
+
+      {filterStatusMessage && expenses.length > 0 && (
+        <div className="filter-status-message">
+          {filterStatusMessage}
         </div>
       )}
 
@@ -472,6 +506,8 @@ const ExpenseList = ({ expenses, onExpenseDeleted, onExpenseUpdated, searchText,
       )}
     </div>
   );
-};
+});
+
+ExpenseList.displayName = 'ExpenseList';
 
 export default ExpenseList;

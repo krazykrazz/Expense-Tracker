@@ -22,9 +22,27 @@ describe('BudgetManagementModal', () => {
     { id: 2, year: 2025, month: 11, category: 'Gas', limit: 200 }
   ];
 
+  const mockBudgetableCategories = [
+    'Groceries', 'Gas', 'Housing', 'Utilities', 'Subscriptions',
+    'Insurance', 'Dining Out', 'Entertainment', 'Clothing',
+    'Pet Care', 'Recreation Activities', 'Other'
+  ];
+
   beforeEach(() => {
     vi.clearAllMocks();
     budgetApi.getBudgets.mockResolvedValue({ budgets: mockBudgets });
+    budgetApi.getBudgetSuggestion.mockResolvedValue({ suggestedAmount: 300 });
+    
+    // Mock fetch for categories endpoint
+    global.fetch = vi.fn((url) => {
+      if (url.includes('/api/categories')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ budgetableCategories: mockBudgetableCategories })
+        });
+      }
+      return Promise.reject(new Error('Unknown endpoint'));
+    });
   });
 
   afterEach(() => {
@@ -33,14 +51,21 @@ describe('BudgetManagementModal', () => {
 
   describe('Budget Creation', () => {
     it('should create a new budget when setting limit for category without budget', async () => {
-      budgetApi.getBudgets.mockResolvedValue({ budgets: [] });
-      budgetApi.createBudget.mockResolvedValue({
+      const newBudget = {
         id: 1,
         year: 2025,
         month: 11,
         category: 'Housing',
         limit: 500
-      });
+      };
+      
+      // Initial call returns empty budgets
+      budgetApi.getBudgets.mockResolvedValueOnce({ budgets: [] });
+      budgetApi.getBudgetSummary.mockResolvedValue({ totalBudget: 0, totalSpent: 0 });
+      
+      // After creation, return the new budget
+      budgetApi.createBudget.mockResolvedValue(newBudget);
+      budgetApi.getBudgets.mockResolvedValueOnce({ budgets: [newBudget] });
 
       render(<BudgetManagementModal {...defaultProps} />);
 

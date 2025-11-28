@@ -58,9 +58,11 @@ const ExpenseForm = ({ onExpenseAdded }) => {
   const [typeOptions, setTypeOptions] = useState(['Other']); // Default fallback
   const [isCategorySuggested, setIsCategorySuggested] = useState(false); // Track if category was auto-suggested
 
-  // Refs for focus management
+  // Refs for focus management and form state
   const placeInputRef = useRef(null);
   const amountInputRef = useRef(null);
+  const isSubmittingRef = useRef(false); // Track if form is being submitted to prevent blur handler interference
+  const justSelectedFromDropdownRef = useRef(false); // Track if we just selected from dropdown to prevent blur handler
 
   // Fetch categories and distinct places on component mount
   useEffect(() => {
@@ -162,20 +164,42 @@ const ExpenseForm = ({ onExpenseAdded }) => {
   };
 
   const handlePlaceSelect = async (place) => {
-    setFormData(prev => ({
-      ...prev,
-      place: place
-    }));
+    // Mark that we're selecting from dropdown to prevent blur handler from running
+    justSelectedFromDropdownRef.current = true;
+    
     setShowSuggestions(false);
     setFilteredPlaces([]);
 
-    // Fetch category suggestion for this place (Requirements 1.3, 1.4)
-    await fetchAndApplyCategorySuggestion(place);
+    // Fetch category suggestion first, then update both place and category together
+    const suggestion = await fetchCategorySuggestion(place);
+    
+    if (suggestion && suggestion.category) {
+      // Update place and category in a single state update to avoid flashing
+      setFormData(prev => ({
+        ...prev,
+        place: place,
+        type: suggestion.category
+      }));
+      setIsCategorySuggested(true);
+    } else {
+      // No suggestion found - set place and default to "Other"
+      setFormData(prev => ({
+        ...prev,
+        place: place,
+        type: 'Other'
+      }));
+      setIsCategorySuggested(false);
+    }
 
     // Move focus to Amount field after place selection (Requirements 3.1)
     if (amountInputRef.current) {
       amountInputRef.current.focus();
     }
+    
+    // Reset the flag after a delay (longer than blur handler delay)
+    setTimeout(() => {
+      justSelectedFromDropdownRef.current = false;
+    }, 300);
   };
 
   // Handle place field blur - fetch suggestion if place was typed manually (Requirements 1.3)
@@ -184,10 +208,16 @@ const ExpenseForm = ({ onExpenseAdded }) => {
     setTimeout(async () => {
       setShowSuggestions(false);
       
-      // If place has value and category hasn't been suggested yet, fetch suggestion
-      if (formData.place && formData.place.trim() && !isCategorySuggested) {
-        await fetchAndApplyCategorySuggestion(formData.place);
+      // Don't fetch suggestion if:
+      // - Form is being submitted
+      // - Just selected from dropdown (to prevent overwriting the selection)
+      // - Place is empty
+      // - Category has already been suggested
+      if (isSubmittingRef.current || justSelectedFromDropdownRef.current || !formData.place || !formData.place.trim() || isCategorySuggested) {
+        return;
       }
+      
+      await fetchAndApplyCategorySuggestion(formData.place);
     }, 200);
   };
 
@@ -229,6 +259,7 @@ const ExpenseForm = ({ onExpenseAdded }) => {
     }
 
     setIsSubmitting(true);
+    isSubmittingRef.current = true; // Mark that we're submitting to prevent blur handler
 
     try {
       // Create the expense
@@ -264,6 +295,10 @@ const ExpenseForm = ({ onExpenseAdded }) => {
       
       // Clear form and reset suggestion indicator, but keep the last used payment method (Requirements 5.1)
       const lastMethod = formData.method;
+      
+      // Reset suggestion indicator first to prevent any pending blur handlers from triggering
+      setIsCategorySuggested(false);
+      
       setFormData({
         date: getTodayLocalDate(),
         place: '',
@@ -272,7 +307,6 @@ const ExpenseForm = ({ onExpenseAdded }) => {
         type: 'Other',
         method: lastMethod // Pre-select last used payment method for next entry
       });
-      setIsCategorySuggested(false);
 
       // Notify parent component
       if (onExpenseAdded) {
@@ -288,6 +322,10 @@ const ExpenseForm = ({ onExpenseAdded }) => {
       setMessage({ text: error.message, type: 'error' });
     } finally {
       setIsSubmitting(false);
+      // Reset submitting ref after a delay to ensure blur handler has completed
+      setTimeout(() => {
+        isSubmittingRef.current = false;
+      }, 300);
     }
   };
 

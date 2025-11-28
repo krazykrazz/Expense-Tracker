@@ -464,6 +464,32 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v4.2.3</div>
+                <div className="changelog-date">November 27, 2025</div>
+                <ul className="changelog-items">
+                  <li>Fixed category field flashing when selecting place from autocomplete dropdown</li>
+                  <li>Prevented blur handler from overwriting category selection</li>
+                  <li>Improved race condition handling between dropdown selection and blur events</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
+                <div className="changelog-version">v4.2.2</div>
+                <div className="changelog-date">November 27, 2025</div>
+                <ul className="changelog-items">
+                  <li>Fixed category field flashing issue when adding expenses</li>
+                  <li>Improved form submission handling to prevent race conditions</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
+                <div className="changelog-version">v4.2.1</div>
+                <div className="changelog-date">November 27, 2025</div>
+                <ul className="changelog-items">
+                  <li>Centralized API endpoint configuration for better maintainability</li>
+                  <li>Eliminated code duplication in SummaryPanel component</li>
+                  <li>Improved code quality and consistency across frontend</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v4.2.0</div>
                 <div className="changelog-date">November 25, 2025</div>
                 <ul className="changelog-items">

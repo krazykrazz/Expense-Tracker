@@ -29,8 +29,13 @@ describe('ExpenseService - Property-Based Tests for Category Persistence', () =>
         fc.constantFrom(...CATEGORIES),
         // Generate random expense data
         fc.record({
-          date: fc.date({ min: new Date('2020-01-01'), max: new Date('2030-12-31') })
-            .map(d => d.toISOString().split('T')[0]),
+          date: fc.integer({ min: 2020, max: 2030 }).chain(year =>
+            fc.integer({ min: 1, max: 12 }).chain(month =>
+              fc.integer({ min: 1, max: 28 }).map(day =>
+                `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+              )
+            )
+          ),
           place: fc.string({ minLength: 1, maxLength: 50 }).map(s => `PBT_${s.replace(/[^a-zA-Z0-9]/g, '_')}`),
           notes: fc.option(fc.string({ maxLength: 100 }), { nil: null }),
           amount: fc.float({ min: Math.fround(0.01), max: Math.fround(10000), noNaN: true })

@@ -1,6 +1,7 @@
 # Code Quality Report
 
-**Date:** November 23, 2025  
+**Date:** November 27, 2025 (Updated)  
+**Previous Date:** November 23, 2025  
 **Scope:** Full codebase scan for quality issues
 
 ## Executive Summary
@@ -54,48 +55,30 @@ The codebase demonstrates **excellent code quality** with very few issues found.
 
 ## 🟡 Minor Observations
 
-### 1. Console Statements in Frontend (Non-Critical)
+### 1. ~~Hardcoded API Endpoints~~ (FIXED - Nov 27, 2025)
+**Status:** ✅ Resolved
+
+Several files were using hardcoded API paths instead of centralized config. Fixed by:
+- Adding missing endpoints to `frontend/src/config.js`
+- Updating `incomeApi.js`, `BackupSettings.jsx`, `App.jsx` to use `API_ENDPOINTS`
+
+### 2. ~~Code Duplication in SummaryPanel~~ (FIXED - Nov 27, 2025)
+**Status:** ✅ Resolved
+
+The same fetch logic was duplicated 4 times. Fixed by:
+- Creating reusable `fetchSummaryData` and `processSummaryData` functions
+- Reduced ~120 lines of duplicated code to ~30 lines
+
+### 3. Console Statements in Frontend (Non-Critical)
 **Location:** `frontend/src/components/ExpenseList.jsx` (lines 52, 68)
 
-Two console.log statements exist for debugging expense updates:
-```javascript
-console.log('Submitting expense update:', {...});
-console.log('Received updated expense from server:', updatedExpense);
-```
+Two console.log statements exist for debugging expense updates.
 
 **Impact:** Low - These are helpful for debugging and don't affect functionality  
 **Recommendation:** Consider removing or converting to conditional debug logging
 
-### 2. Error Handling in Frontend
-**Location:** `frontend/src/App.jsx` (line 43)
-
-Generic error handling for version fetch:
-```javascript
-console.error('Error fetching version info:', err);
-```
-
-**Impact:** Minimal - Version info is non-critical  
-**Recommendation:** Already handled appropriately with silent failure
-
-### 3. Potential Enhancement: Error Constants
+### 4. Potential Enhancement: Error Constants
 **Observation:** Error messages are inline strings throughout services
-
-**Current:**
-```javascript
-throw new Error('Budget limit must be a positive number greater than zero');
-```
-
-**Potential Enhancement:** Create error constants file for consistency
-```javascript
-// backend/utils/errorMessages.js
-const ERRORS = {
-  BUDGET: {
-    INVALID_LIMIT: 'Budget limit must be a positive number greater than zero',
-    NOT_FOUND: 'Budget not found',
-    // ...
-  }
-};
-```
 
 **Impact:** Low - Current approach is clear and maintainable  
 **Recommendation:** Optional enhancement for future consideration
@@ -142,8 +125,8 @@ const ERRORS = {
 | Empty Catch Blocks | ✅ None | All errors properly handled |
 | Console Statements | 🟡 2 found | Non-critical debug logs in frontend |
 | TODO/FIXME Comments | ✅ None | All in documentation only |
-| Hardcoded Values | ✅ None | All externalized |
-| Code Duplication | ✅ Minimal | Shared logic properly extracted |
+| Hardcoded Values | ✅ None | All externalized (fixed Nov 27) |
+| Code Duplication | ✅ Minimal | SummaryPanel refactored (fixed Nov 27) |
 | Error Handling | ✅ Excellent | Consistent patterns throughout |
 | Test Coverage | ✅ Good | Unit + PBT + Integration tests |
 

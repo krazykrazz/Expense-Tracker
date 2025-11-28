@@ -1,7 +1,7 @@
 # Expense Tracker - Feature Roadmap
 
-**Last Updated**: November 19, 2025  
-**Current Version**: 3.6.0
+**Last Updated**: November 27, 2025  
+**Current Version**: 4.2.0
 
 This document tracks potential features and enhancements for the Expense Tracker application. Features are categorized by priority and implementation status.
 
@@ -429,6 +429,22 @@ This document tracks potential features and enhancements for the Expense Tracker
 ---
 
 ## 🟢 Completed Features
+
+### 🟢 Smart Expense Entry (v4.3.0)
+**Completed**: November 27, 2025  
+**Spec**: `.kiro/specs/smart-expense-entry/`  
+**Description**: Intelligent expense entry with category suggestions and payment method memory.
+
+**Features Delivered**:
+- Place-first form field order with initial focus on Place field
+- Intelligent category suggestions based on place history
+- Visual indicator ("✨ suggested") for auto-suggested categories
+- Tie-breaker logic using most recent category when frequencies are equal
+- Payment method persistence (remembers last used method)
+- Auto-focus to Amount field after place entry
+- Graceful degradation when suggestion API is unavailable
+
+---
 
 ### 🟢 Enhanced Annual Summary (v3.6.0)
 **Completed**: November 19, 2025  

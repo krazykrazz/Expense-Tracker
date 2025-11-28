@@ -338,7 +338,7 @@ describe('BudgetService - Property-Based Tests', () => {
                 const dateStr = `${data.year}-${String(data.month).padStart(2, '0')}-15`;
                 await new Promise((resolve, reject) => {
                   db.run(
-                    `INSERT INTO expenses (date, place, type, amount, method, week) VALUES (?, ?, ?, ?, ?)`,
+                    `INSERT INTO expenses (date, place, type, amount, method, week) VALUES (?, ?, ?, ?, ?, ?)`,
                     [dateStr, 'Test Place', budget.category, expenseAmount, 'Cash', 3],
                     function(err) {
                       if (err) reject(err);
@@ -447,7 +447,7 @@ describe('BudgetService - Property-Based Tests', () => {
               const category = data.budgetedCategories[Math.floor(Math.random() * data.budgetedCategories.length)];
               await new Promise((resolve, reject) => {
                 db.run(
-                  `INSERT INTO expenses (date, place, type, amount, method, week) VALUES (?, ?, ?, ?, ?)`,
+                  `INSERT INTO expenses (date, place, type, amount, method, week) VALUES (?, ?, ?, ?, ?, ?)`,
                   [dateStr, 'Test Place', category, expenseAmount, 'Cash', 3],
                   function(err) {
                     if (err) reject(err);
@@ -466,7 +466,7 @@ describe('BudgetService - Property-Based Tests', () => {
               if (!data.budgetedCategories.includes(expense.category)) {
                 await new Promise((resolve, reject) => {
                   db.run(
-                    `INSERT INTO expenses (date, place, type, amount, method, week) VALUES (?, ?, ?, ?, ?)`,
+                    `INSERT INTO expenses (date, place, type, amount, method, week) VALUES (?, ?, ?, ?, ?, ?)`,
                     [dateStr, 'Test Place', expense.category, expense.amount, 'Cash', 3],
                     function(err) {
                       if (err) reject(err);
@@ -1464,7 +1464,7 @@ describe('BudgetService - Expense Integration Property Tests', () => {
               
               await new Promise((resolve, reject) => {
                 db.run(
-                  `INSERT INTO expenses (date, place, type, amount, method, week) VALUES (?, ?, ?, ?, ?)`,
+                  `INSERT INTO expenses (date, place, type, amount, method, week) VALUES (?, ?, ?, ?, ?, ?)`,
                   [dateStr, 'Test Place', data.category, amount, 'Cash', 3],
                   function(err) {
                     if (err) reject(err);
@@ -1488,7 +1488,7 @@ describe('BudgetService - Expense Integration Property Tests', () => {
               
               await new Promise((resolve, reject) => {
                 db.run(
-                  `INSERT INTO expenses (date, place, type, amount, method, week) VALUES (?, ?, ?, ?, ?)`,
+                  `INSERT INTO expenses (date, place, type, amount, method, week) VALUES (?, ?, ?, ?, ?, ?)`,
                   [dateStr, 'Test Place', data.category, otherExpense.amount, 'Cash', 3],
                   function(err) {
                     if (err) reject(err);

@@ -19,13 +19,14 @@ This feature expands the expense tracking system's category options from the cur
 
 ## Approved Category List
 
-The complete list of expense categories after this feature is implemented:
+The complete list of expense categories after this feature is implemented (17 total):
 
 **Essential Living:**
-- Housing
-- Utilities
+- Clothing (added in personal-care-category spec)
 - Groceries
+- Housing
 - Insurance
+- Utilities
 
 **Transportation:**
 - Gas (existing)
@@ -36,18 +37,22 @@ The complete list of expense categories after this feature is implemented:
 
 **Entertainment & Lifestyle:**
 - Entertainment
-- Subscriptions
 - Recreation Activities
+- Subscriptions
 
-**Family & Pets:**
+**Personal & Family:**
+- Gifts (added in personal-care-category spec)
+- Personal Care (added in personal-care-category spec)
 - Pet Care
 
 **Tax-Deductible:**
-- Tax - Medical (existing)
 - Tax - Donation (existing, keep as-is)
+- Tax - Medical (existing)
 
 **Other:**
 - Other (existing)
+
+> **Note:** Clothing, Gifts, and Personal Care categories were added in subsequent updates (see personal-care-category spec).
 
 ## Requirements
 

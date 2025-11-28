@@ -44,7 +44,7 @@ TrendIndicator (New)
   current: {
     total: number,
     weeklyTotals: { week1-5: number },
-    typeTotals: { [category: string]: number }, // All 14 expense categories
+    typeTotals: { [category: string]: number }, // All 17 expense categories
     methodTotals: { Cash, Debit, Credit, etc.: number },
     // ... existing fields
   },
@@ -127,17 +127,20 @@ Calculates trend direction and percentage change.
       week5: number
     },
     typeTotals: {
-      'Housing': number,
-      'Utilities': number,
-      'Groceries': number,
+      'Clothing': number,
       'Dining Out': number,
-      'Insurance': number,
-      'Gas': number,
-      'Vehicle Maintenance': number,
       'Entertainment': number,
-      'Subscriptions': number,
-      'Recreation Activities': number,
+      'Gas': number,
+      'Gifts': number,
+      'Groceries': number,
+      'Housing': number,
+      'Insurance': number,
+      'Personal Care': number,
       'Pet Care': number,
+      'Recreation Activities': number,
+      'Subscriptions': number,
+      'Utilities': number,
+      'Vehicle Maintenance': number,
       'Other': number,
       'Tax - Medical': number,
       'Tax - Donation': number

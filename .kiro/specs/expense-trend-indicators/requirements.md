@@ -31,7 +31,7 @@ This feature adds visual trend indicators to the expense tracking application, s
 
 #### Acceptance Criteria
 
-1. WHEN viewing expense type breakdowns for all 14 expense categories THEN the Expense Tracker SHALL display a trend indicator next to each type's total
+1. WHEN viewing expense type breakdowns for all 17 expense categories THEN the Expense Tracker SHALL display a trend indicator next to each type's total
 2. WHEN a type's current month total is higher than the previous month THEN the Expense Tracker SHALL display a red upward arrow
 3. WHEN a type's current month total is lower than the previous month THEN the Expense Tracker SHALL display a green downward arrow
 4. WHEN a type's current month total equals the previous month THEN the Expense Tracker SHALL display no trend indicator

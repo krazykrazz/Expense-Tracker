@@ -68,7 +68,7 @@
     - updateBudget(id, limit)
     - deleteBudget(id)
     - getBudgets(year, month) - with automatic carry-forward from previous month
-    - Validate category is budgetable (all non-tax-deductible categories: 12 total)
+    - Validate category is budgetable (all non-tax-deductible categories: 15 total)
     - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 5.1, 5.2, 5.3_
 
   - [x] 3.2 Write property test for automatic carry-forward
@@ -369,7 +369,7 @@
   - [x] 14.1 Create BudgetManagementModal component
 
 
-    - Display list of budgetable categories (all 12 non-tax-deductible categories)
+    - Display list of budgetable categories (all 15 non-tax-deductible categories)
     - Show current budget limits
     - Allow editing budget limits inline
     - Add/remove budget buttons

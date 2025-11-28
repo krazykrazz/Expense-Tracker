@@ -20,6 +20,7 @@ Migrations are defined in `backend/database/migrations.js`:
 - `migrateRemoveRecurringExpenses` - Removes recurring expenses feature
 - `migrateFixCategoryConstraints` - Ensures all tables have correct category constraints
 - `migrateAddPersonalCareCategory` - Adds "Personal Care" category
+- `migrateEnhanceFixedExpenses` - Adds category and payment_type fields to fixed_expenses table
 
 ## Container Startup
 

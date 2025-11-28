@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { API_ENDPOINTS } from '../config';
 import IncomeManagementModal from './IncomeManagementModal';
 import FixedExpensesModal from './FixedExpensesModal';
@@ -19,6 +19,67 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
   const [totalOutstandingDebt, setTotalOutstandingDebt] = useState(0);
   const [categories, setCategories] = useState([]);
 
+  /**
+   * Process summary data and update state
+   * Handles both old (single summary) and new (current/previous) response formats
+   */
+  const processSummaryData = useCallback((data) => {
+    if (data.current) {
+      // New structure with previous month data
+      setSummary(data.current);
+      setPreviousSummary(data.previous);
+      
+      // Extract loan data from current summary
+      if (data.current.loans && Array.isArray(data.current.loans)) {
+        setLoans(data.current.loans);
+        setTotalOutstandingDebt(data.current.totalOutstandingDebt || 0);
+      } else {
+        setLoans([]);
+        setTotalOutstandingDebt(0);
+      }
+    } else {
+      // Old structure (single summary)
+      setSummary(data);
+      setPreviousSummary(null);
+      
+      // Extract loan data from summary response
+      if (data.loans && Array.isArray(data.loans)) {
+        setLoans(data.loans);
+        setTotalOutstandingDebt(data.totalOutstandingDebt || 0);
+      } else {
+        setLoans([]);
+        setTotalOutstandingDebt(0);
+      }
+    }
+  }, []);
+
+  /**
+   * Fetch summary data from API
+   * Reusable function to avoid code duplication
+   */
+  const fetchSummaryData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch(
+        `${API_ENDPOINTS.SUMMARY}?year=${selectedYear}&month=${selectedMonth}&includePrevious=true`
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch summary data');
+      }
+
+      const data = await response.json();
+      processSummaryData(data);
+    } catch (err) {
+      setError(err.message);
+      console.error('Error fetching summary:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedYear, selectedMonth, processSummaryData]);
+
   // Fetch categories on mount
   useEffect(() => {
     const fetchCategories = async () => {
@@ -31,7 +92,6 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
         setCategories(data.categories || []);
       } catch (err) {
         console.error('Error fetching categories:', err);
-        // Fallback to empty array if fetch fails
         setCategories([]);
       }
     };
@@ -39,221 +99,29 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
     fetchCategories();
   }, []);
 
+  // Fetch summary when dependencies change
   useEffect(() => {
-    const fetchSummary = async () => {
-      setLoading(true);
-      setError(null);
+    fetchSummaryData();
+  }, [fetchSummaryData, refreshTrigger]);
 
-      try {
-        const response = await fetch(
-          `${API_ENDPOINTS.SUMMARY}?year=${selectedYear}&month=${selectedMonth}&includePrevious=true`
-        );
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch summary data');
-        }
-
-        const data = await response.json();
-        
-        // Check if response has current/previous structure or is a single summary
-        if (data.current) {
-          // New structure with previous month data
-          setSummary(data.current);
-          setPreviousSummary(data.previous);
-          
-          // Extract loan data from current summary
-          if (data.current.loans && Array.isArray(data.current.loans)) {
-            setLoans(data.current.loans);
-            setTotalOutstandingDebt(data.current.totalOutstandingDebt || 0);
-          } else {
-            setLoans([]);
-            setTotalOutstandingDebt(0);
-          }
-        } else {
-          // Old structure (single summary)
-          setSummary(data);
-          setPreviousSummary(null);
-          
-          // Extract loan data from summary response
-          if (data.loans && Array.isArray(data.loans)) {
-            setLoans(data.loans);
-            setTotalOutstandingDebt(data.totalOutstandingDebt || 0);
-          } else {
-            setLoans([]);
-            setTotalOutstandingDebt(0);
-          }
-        }
-      } catch (err) {
-        setError(err.message);
-        console.error('Error fetching summary:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchSummary();
-  }, [selectedYear, selectedMonth, refreshTrigger]);
-
-  const handleOpenIncomeModal = () => {
-    setShowIncomeModal(true);
-  };
+  // Modal handlers - simplified using shared fetch function
+  const handleOpenIncomeModal = () => setShowIncomeModal(true);
+  const handleOpenFixedExpensesModal = () => setShowFixedExpensesModal(true);
+  const handleOpenLoansModal = () => setShowLoansModal(true);
 
   const handleCloseIncomeModal = async () => {
     setShowIncomeModal(false);
-    
-    // Refresh summary to reflect changes
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await fetch(
-        `${API_ENDPOINTS.SUMMARY}?year=${selectedYear}&month=${selectedMonth}&includePrevious=true`
-      );
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch summary data');
-      }
-
-      const data = await response.json();
-      
-      // Check if response has current/previous structure or is a single summary
-      if (data.current) {
-        setSummary(data.current);
-        setPreviousSummary(data.previous);
-        
-        if (data.current.loans && Array.isArray(data.current.loans)) {
-          setLoans(data.current.loans);
-          setTotalOutstandingDebt(data.current.totalOutstandingDebt || 0);
-        } else {
-          setLoans([]);
-          setTotalOutstandingDebt(0);
-        }
-      } else {
-        setSummary(data);
-        setPreviousSummary(null);
-        
-        if (data.loans && Array.isArray(data.loans)) {
-          setLoans(data.loans);
-          setTotalOutstandingDebt(data.totalOutstandingDebt || 0);
-        } else {
-          setLoans([]);
-          setTotalOutstandingDebt(0);
-        }
-      }
-    } catch (err) {
-      setError(err.message);
-      console.error('Error fetching summary:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleOpenFixedExpensesModal = () => {
-    setShowFixedExpensesModal(true);
+    await fetchSummaryData();
   };
 
   const handleCloseFixedExpensesModal = async () => {
     setShowFixedExpensesModal(false);
-    
-    // Refresh summary to reflect changes
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await fetch(
-        `${API_ENDPOINTS.SUMMARY}?year=${selectedYear}&month=${selectedMonth}&includePrevious=true`
-      );
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch summary data');
-      }
-
-      const data = await response.json();
-      
-      // Check if response has current/previous structure or is a single summary
-      if (data.current) {
-        setSummary(data.current);
-        setPreviousSummary(data.previous);
-        
-        if (data.current.loans && Array.isArray(data.current.loans)) {
-          setLoans(data.current.loans);
-          setTotalOutstandingDebt(data.current.totalOutstandingDebt || 0);
-        } else {
-          setLoans([]);
-          setTotalOutstandingDebt(0);
-        }
-      } else {
-        setSummary(data);
-        setPreviousSummary(null);
-        
-        if (data.loans && Array.isArray(data.loans)) {
-          setLoans(data.loans);
-          setTotalOutstandingDebt(data.totalOutstandingDebt || 0);
-        } else {
-          setLoans([]);
-          setTotalOutstandingDebt(0);
-        }
-      }
-    } catch (err) {
-      setError(err.message);
-      console.error('Error fetching summary:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleOpenLoansModal = () => {
-    setShowLoansModal(true);
+    await fetchSummaryData();
   };
 
   const handleCloseLoansModal = async () => {
     setShowLoansModal(false);
-    
-    // Refresh summary to reflect changes
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await fetch(
-        `${API_ENDPOINTS.SUMMARY}?year=${selectedYear}&month=${selectedMonth}&includePrevious=true`
-      );
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch summary data');
-      }
-
-      const data = await response.json();
-      
-      // Check if response has current/previous structure or is a single summary
-      if (data.current) {
-        setSummary(data.current);
-        setPreviousSummary(data.previous);
-        
-        if (data.current.loans && Array.isArray(data.current.loans)) {
-          setLoans(data.current.loans);
-          setTotalOutstandingDebt(data.current.totalOutstandingDebt || 0);
-        } else {
-          setLoans([]);
-          setTotalOutstandingDebt(0);
-        }
-      } else {
-        setSummary(data);
-        setPreviousSummary(null);
-        
-        if (data.loans && Array.isArray(data.loans)) {
-          setLoans(data.loans);
-          setTotalOutstandingDebt(data.totalOutstandingDebt || 0);
-        } else {
-          setLoans([]);
-          setTotalOutstandingDebt(0);
-        }
-      }
-    } catch (err) {
-      setError(err.message);
-      console.error('Error fetching summary:', err);
-    } finally {
-      setLoading(false);
-    }
+    await fetchSummaryData();
   };
 
   if (loading) {

@@ -7,6 +7,7 @@ This directory contains all project documentation organized by category.
 ### features/
 Documentation for completed features and implementations:
 - `AUTOMATIC_ESTIMATED_MONTHS_COMPLETE.md` - Automatic loan payoff estimation
+- `CATEGORY_SUGGESTION.md` - Smart expense entry with category suggestions
 - `ESTIMATED_MONTHS_LEFT_FEATURE.md` - Estimated months left feature details
 - `LOAN_TYPE_IMPLEMENTATION_COMPLETE.md` - Loan type differentiation
 - `TOTAL_DEBT_FEATURE.md` - Total debt tracking feature
@@ -15,6 +16,7 @@ Documentation for completed features and implementations:
 - `LINE_OF_CREDIT_ZERO_BALANCE_FIX.md` - Line of credit zero balance handling
 - `LOAN_TYPE_FEATURE_SUMMARY.md` - Loan type feature summary
 - `LOANS_INTEGRATION_TEST_RESULTS.md` - Loans integration testing
+- `ENHANCED_FIXED_EXPENSES.md` - Enhanced fixed expenses with category and payment type tracking
 
 ### deployments/
 Deployment history and migration guides:
@@ -59,6 +61,7 @@ Feature specifications are located in `.kiro/specs/`:
 - `recurring-expenses/` - ⚠️ DEPRECATED (removed in v4.0.0) - Historical reference only
 - `monthly-loans-balance/` - Loans and balances spec
 - `containerization-optimization/` - Docker optimization spec
+- `smart-expense-entry/` - Smart expense entry with category suggestions
 
 ## Steering Rules
 

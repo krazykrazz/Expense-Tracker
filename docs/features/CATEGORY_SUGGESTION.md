@@ -1,34 +1,51 @@
-# Smart Category Suggestion Feature
+# Smart Expense Entry Feature
 
 ## Overview
 
-The smart category suggestion feature automatically suggests expense categories based on historical data when a user selects a place name from the autocomplete dropdown.
+The smart expense entry feature enhances the expense entry workflow by:
+1. Reordering form fields to prioritize the Place input
+2. Implementing intelligent category suggestions based on historical data
+3. Remembering the last used payment method
+
+When a user enters a place name, the system analyzes historical expenses to suggest the most likely category, reducing manual selection and improving data consistency.
 
 ## How It Works
 
-1. **User Types Place Name**: When adding a new expense, the user starts typing in the "Place" field
-2. **Autocomplete Shows Suggestions**: The system shows previously used place names that match the input
-3. **User Selects Place**: When the user clicks on a place from the autocomplete suggestions
-4. **Category Auto-Fills**: The system automatically suggests and fills in the most commonly used category for that place
+### Place-First Entry Flow
+1. **Form Opens with Place Focus**: The Place field receives initial focus when the form opens
+2. **User Types Place Name**: Autocomplete shows previously used place names
+3. **User Selects/Enters Place**: When place is selected or field loses focus
+4. **Category Auto-Suggests**: System suggests the most frequently used category for that place
+5. **Focus Moves to Amount**: After place entry, focus automatically moves to the Amount field
+
+### Category Suggestion Logic
+- Suggests the most frequently used category for the exact place name (case-insensitive)
+- If multiple categories have equal frequency, uses the most recently used category
+- Shows a visual indicator ("✨ suggested") when category is auto-filled
+- Defaults to "Other" if no history exists for the place
+
+### Payment Method Memory
+- Remembers the last used payment method in localStorage
+- Pre-selects it when opening the form for the next expense
+- Defaults to "Cash" if no previous selection exists
 
 ## Technical Implementation
 
 ### Backend
 
 **Repository Layer** (`backend/repositories/expenseRepository.js`):
-- `getSuggestedCategory(place)`: Queries the database for historical expense data
-- Returns the most frequently used category for the given place
-- Includes confidence percentage based on usage frequency
-- Case-insensitive matching
+- `getCategoryFrequencyByPlace(place)`: Queries category frequency with last used dates
+- Case-insensitive matching using `LOWER()` SQL function
+- Returns array sorted by count DESC, then last_used DESC
 
-**Service Layer** (`backend/services/expenseService.js`):
-- `getSuggestedCategory(place)`: Validates input and calls repository method
-- Handles errors gracefully
+**Service Layer** (`backend/services/categorySuggestionService.js`):
+- `getSuggestedCategory(place)`: Returns suggestion with confidence score
+- `getCategoryBreakdown(place)`: Returns full breakdown of all categories for a place
+- Handles tie-breaker logic using most recent date
 
 **Controller Layer** (`backend/controllers/expenseController.js`):
 - `getSuggestedCategory(req, res)`: HTTP endpoint handler
-- Validates query parameters
-- Returns JSON response with suggestion data
+- Returns both suggestion and breakdown in response
 
 **Routes** (`backend/routes/expenseRoutes.js`):
 - `GET /api/expenses/suggest-category?place={placeName}`
@@ -36,9 +53,16 @@ The smart category suggestion feature automatically suggests expense categories 
 ### Frontend
 
 **ExpenseForm Component** (`frontend/src/components/ExpenseForm.jsx`):
-- Modified `handlePlaceSelect()` function to fetch category suggestion
-- Automatically fills category field if confidence >= 50%
-- Fails silently if API call fails (doesn't disrupt user experience)
+- Field order: Date, Place, Type, Amount, Payment Method, Notes
+- Place field gets initial focus via `useRef`
+- `fetchAndApplyCategorySuggestion()`: Fetches and applies category suggestion
+- `handlePlaceBlur()`: Triggers suggestion fetch when place field loses focus
+- Visual indicator for auto-suggested categories
+- Payment method persistence via localStorage
+
+**Category Suggestion API** (`frontend/src/services/categorySuggestionApi.js`):
+- `fetchCategorySuggestion(place)`: Fetches suggestion from backend
+- Graceful degradation on errors (returns null)
 
 ## API Endpoint
 
@@ -50,16 +74,24 @@ GET /api/expenses/suggest-category?place=Walmart
 ### Response (with history)
 ```json
 {
-  "category": "Groceries",
-  "confidence": 85,
-  "count": 17,
-  "total": 20
+  "suggestion": {
+    "category": "Groceries",
+    "confidence": 0.85,
+    "count": 17
+  },
+  "breakdown": [
+    { "category": "Groceries", "count": 17, "lastUsed": "2025-11-25" },
+    { "category": "Other", "count": 3, "lastUsed": "2025-10-15" }
+  ]
 }
 ```
 
 ### Response (no history)
 ```json
-null
+{
+  "suggestion": null,
+  "breakdown": []
+}
 ```
 
 ### Error Response
@@ -71,63 +103,82 @@ null
 
 ## Response Fields
 
-- `category`: The suggested expense category
-- `confidence`: Percentage (0-100) indicating how confident the suggestion is
-- `count`: Number of times this category was used for this place
-- `total`: Total number of expenses at this place
+- `suggestion.category`: The suggested expense category (or null)
+- `suggestion.confidence`: Ratio (0-1) indicating suggestion confidence
+- `suggestion.count`: Number of times this category was used for this place
+- `breakdown`: Array of all categories used at this place with counts and last used dates
 
-## Confidence Threshold
+## Form Field Order
 
-The frontend only auto-fills the category if the confidence is >= 50%. This ensures:
-- High-quality suggestions that are likely correct
-- Users aren't confused by low-confidence suggestions
-- Manual override is still easy if the suggestion is wrong
+The form fields are displayed in this order (Requirements 3.2):
+1. Date
+2. Place (with autocomplete)
+3. Type (with suggestion indicator)
+4. Amount
+5. Payment Method
+6. Notes
 
-## User Experience
+## Visual Indicators
 
-1. **Seamless Integration**: The feature works automatically without requiring user action
-2. **Non-Intrusive**: If no suggestion is available or confidence is low, the form behaves normally
-3. **Override Friendly**: Users can always change the suggested category
-4. **Fast**: Suggestions load instantly as they're based on local database queries
+- **Suggestion Badge**: "✨ suggested" appears next to the Type label when auto-filled
+- **Highlighted Select**: The Type dropdown has a light blue background when auto-suggested
+- **Indicator Clears**: When user manually changes the category, the indicator disappears
+
+## localStorage Keys
+
+- `expense-tracker-last-payment-method`: Stores the last used payment method
 
 ## Testing
 
-### Backend Tests
-Run: `node backend/scripts/testCategorySuggestion.js`
+### Backend Property-Based Tests
+```bash
+npx jest categorySuggestionService.pbt --runInBand
+```
 
 Tests:
-- Suggestion for place with history
-- Suggestion for place without history
-- Case-insensitive matching
+- Property 2: Tie-breaker uses most recent category
+- Property 3: New places return null suggestion
 
-### API Tests
-Run: `node backend/scripts/testCategorySuggestionAPI.js`
+### Backend Unit Tests
+```bash
+npx jest expenseController.suggestCategory --runInBand
+```
 
 Tests:
 - Valid place with history
+- Missing/empty place parameter
 - Place without history
-- Missing place parameter (error handling)
+- Error handling
 
-### Manual Testing
+### Frontend Property-Based Tests
+```bash
+npx vitest run ExpenseForm.pbt
+```
 
-1. Start the application
-2. Navigate to "Add New Expense"
-3. Type a place name that you've used before (e.g., "Walmart")
-4. Select it from the autocomplete dropdown
-5. Verify the category field auto-fills with the most common category
+Tests:
+- Property 4: Form validation enables submit
+- Property 5: Payment method persistence
 
-## Future Enhancements
+## Correctness Properties
 
-Potential improvements:
-- Show confidence percentage to user
-- Allow user to see all category suggestions (not just top one)
-- Machine learning to improve suggestions over time
-- Fuzzy matching for similar place names (e.g., "Walmart" and "Wal-Mart")
-- Consider date/time patterns (e.g., coffee shops in morning = Dining Out)
+1. **Most Frequent Category Suggestion**: For any place with history, the suggested category is the one with highest frequency
+2. **Tie-Breaker Uses Most Recent**: When categories have equal frequency, the most recently used is suggested
+3. **New Place Defaults to Null**: Places with no history return null (form defaults to "Other")
+4. **Form Validation Enables Submit**: Submit button enabled when all required fields are valid
+5. **Payment Method Persistence**: Last used payment method is stored and pre-selected
 
 ## Performance
 
-- Database query is optimized with proper indexing
-- Response time: < 10ms for typical datasets
-- No impact on form load time (suggestion fetched only after place selection)
+- Database query optimized with proper indexing
+- Response time: < 100ms (Requirements 4.3)
+- No impact on form load time (suggestion fetched only after place entry)
 - Graceful degradation if API is slow or unavailable
+
+## Error Handling
+
+| Error Scenario | Handling Strategy |
+|----------------|-------------------|
+| API timeout | Use default "Other" category, don't block form |
+| Invalid place name | Allow submission, no suggestion |
+| Network error | Graceful degradation, form works without suggestions |
+| Empty place name | No API call, no suggestion |

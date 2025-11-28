@@ -63,11 +63,17 @@ graph TB
 - Manages selected month/year state
 
 #### 2. ExpenseForm Component
-- Input fields: date, place, notes, amount, type dropdown (14 options), method dropdown (7 options)
+- Input fields displayed in order: date, place, type dropdown, amount, method dropdown, notes
+- Place field receives initial focus when form opens
 - Validates required fields before submission
 - Calculates week automatically from date
 - Submits new expense to backend API
-- Type dropdown includes: Housing, Utilities, Groceries, Dining Out, Insurance, Gas, Vehicle Maintenance, Entertainment, Subscriptions, Recreation Activities, Pet Care, Tax - Medical, Tax - Donation, Other
+- Type dropdown includes: Clothing, Dining Out, Entertainment, Gas, Gifts, Groceries, Housing, Insurance, Personal Care, Pet Care, Recreation Activities, Subscriptions, Utilities, Vehicle Maintenance, Other, Tax - Medical, Tax - Donation
+- Smart category suggestion: fetches suggested category when place is entered/selected
+- Visual indicator ("✨ suggested") shown when category is auto-filled
+- Focus automatically moves to Amount field after place entry
+- Payment method persistence: remembers last used method in localStorage
+- Pre-selects last used payment method (defaults to "Cash" if none saved)
 
 #### 3. MonthSelector Component
 - Dropdown for year selection
@@ -94,7 +100,7 @@ graph TB
 - Displays multiple summary sections:
   - Weekly totals (weeks 1-5)
   - Payment method totals (all 7 methods)
-  - Type-specific totals for all 14 expense categories
+  - Type-specific totals for all 17 expense categories
   - Monthly gross income with View/Edit button
   - Total fixed expenses with View/Edit button
   - Overall total for the month
@@ -165,12 +171,18 @@ graph TB
 #### GET /api/expenses/summary
 - Retrieves aggregated data for a specific month
 - Query parameters: `year`, `month` (required)
-- Returns: Object containing weekly totals, payment method totals, type totals for all 14 expense categories
+- Returns: Object containing weekly totals, payment method totals, type totals for all 17 expense categories
 
 #### GET /api/expenses/annual-summary
 - Retrieves aggregated data for an entire year
 - Query parameters: `year` (required)
 - Returns: Object containing monthly totals, category totals, and annual total
+
+#### GET /api/expenses/suggest-category
+- Retrieves category suggestion for a place based on historical data
+- Query parameters: `place` (required)
+- Returns: Object containing suggestion (category, confidence, count) and breakdown array
+- Returns null suggestion for places with no history
 
 #### POST /api/backup/create
 - Creates a manual backup of the database
@@ -248,9 +260,9 @@ interface Expense {
   place: string;           // Max 200 characters
   notes: string;           // Max 200 characters
   amount: number;          // Decimal with 2 places
-  type: 'Housing' | 'Utilities' | 'Groceries' | 'Dining Out' | 'Insurance' | 
-        'Gas' | 'Vehicle Maintenance' | 'Entertainment' | 'Subscriptions' | 
-        'Recreation Activities' | 'Pet Care' | 'Tax - Medical' | 'Tax - Donation' | 'Other';
+  type: 'Clothing' | 'Dining Out' | 'Entertainment' | 'Gas' | 'Gifts' | 'Groceries' | 
+        'Housing' | 'Insurance' | 'Personal Care' | 'Pet Care' | 'Recreation Activities' | 
+        'Subscriptions' | 'Utilities' | 'Vehicle Maintenance' | 'Other' | 'Tax - Medical' | 'Tax - Donation';
   week: number;            // 1-5, calculated from date
   method: 'Cash' | 'Debit' | 'Cheque' | 'CIBC MC' | 'PCF MC' | 'WS VISA' | 'VISA';
   created_at: string;      // Timestamp
@@ -266,9 +278,9 @@ CREATE TABLE expenses (
   place TEXT,
   notes TEXT,
   amount REAL NOT NULL,
-  type TEXT NOT NULL CHECK(type IN ('Housing', 'Utilities', 'Groceries', 'Dining Out', 'Insurance',
-                                     'Gas', 'Vehicle Maintenance', 'Entertainment', 'Subscriptions',
-                                     'Recreation Activities', 'Pet Care', 'Tax - Medical', 'Tax - Donation', 'Other')),
+  type TEXT NOT NULL CHECK(type IN ('Clothing', 'Dining Out', 'Entertainment', 'Gas', 'Gifts', 'Groceries',
+                                     'Housing', 'Insurance', 'Personal Care', 'Pet Care', 'Recreation Activities',
+                                     'Subscriptions', 'Utilities', 'Vehicle Maintenance', 'Other', 'Tax - Medical', 'Tax - Donation')),
   week INTEGER NOT NULL CHECK(week >= 1 AND week <= 5),
   method TEXT NOT NULL CHECK(method IN ('Cash', 'Debit', 'Cheque', 'CIBC MC', 'PCF MC', 'WS VISA', 'VISA')),
   created_at TEXT DEFAULT CURRENT_TIMESTAMP
@@ -417,7 +429,7 @@ CREATE INDEX idx_fixed_expenses_year_month ON fixed_expenses(year, month);
 ### Validation Rules
 - Date: Required, valid date format
 - Amount: Required, positive number with max 2 decimal places
-- Type: Required, must be one of the fourteen valid options (Housing, Utilities, Groceries, Dining Out, Insurance, Gas, Vehicle Maintenance, Entertainment, Subscriptions, Recreation Activities, Pet Care, Tax - Medical, Tax - Donation, Other)
+- Type: Required, must be one of the seventeen valid options (Clothing, Dining Out, Entertainment, Gas, Gifts, Groceries, Housing, Insurance, Personal Care, Pet Care, Recreation Activities, Subscriptions, Utilities, Vehicle Maintenance, Other, Tax - Medical, Tax - Donation)
 - Method: Required, must be one of the seven valid options (Cash, Debit, Cheque, CIBC MC, PCF MC, WS VISA, VISA)
 - Place: Optional, max 200 characters
 - Notes: Optional, max 200 characters

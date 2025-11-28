@@ -208,14 +208,7 @@
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6_
 - [x] 9. Create LoansModal component
 
-
-
-
-- [ ] 9. Create LoansModal component
-
-
-
-  - [ ] 9.1 Create LoansModal.jsx with tabbed interface
+  - [x] 9.1 Create LoansModal.jsx with tabbed interface
     - Create modal overlay structure with close button
     - Implement tabbed interface: "Active Loans" and "Paid Off Loans"
     - Fetch all loans on modal open using loanApi.getAllLoans()
@@ -314,11 +307,6 @@
     - Ensure responsive design for mobile
     - _Requirements: 4.1_
 - [x] 11. Wire LoansModal to SummaryPanel
-
-
-
-
-- [ ] 11. Wire LoansModal to SummaryPanel
 
   - Add showLoansModal state to SummaryPanel
   - Implement handleOpenLoansModal() to set showLoansModal to true

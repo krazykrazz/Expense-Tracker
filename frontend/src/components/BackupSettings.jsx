@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { API_ENDPOINTS } from '../config';
 import './BackupSettings.css';
 import { formatDateTime } from '../utils/formatters';
 import PlaceNameStandardization from './PlaceNameStandardization';
@@ -28,7 +29,7 @@ const BackupSettings = () => {
 
   const fetchVersionInfo = async () => {
     try {
-      const response = await fetch('/api/version');
+      const response = await fetch(API_ENDPOINTS.VERSION);
       if (response.ok) {
         const data = await response.json();
         setVersionInfo(data);
@@ -40,7 +41,7 @@ const BackupSettings = () => {
 
   const fetchConfig = async () => {
     try {
-      const response = await fetch('/api/backup/config');
+      const response = await fetch(API_ENDPOINTS.BACKUP_CONFIG);
       if (!response.ok) throw new Error('Failed to fetch backup config');
       
       const data = await response.json();
@@ -62,7 +63,7 @@ const BackupSettings = () => {
 
   const fetchBackupList = async () => {
     try {
-      const response = await fetch('/api/backup/list');
+      const response = await fetch(API_ENDPOINTS.BACKUP_LIST);
       if (!response.ok) throw new Error('Failed to fetch backup list');
       
       const data = await response.json();
@@ -84,7 +85,7 @@ const BackupSettings = () => {
     setMessage({ text: '', type: '' });
     
     try {
-      const response = await fetch('/api/backup/config', {
+      const response = await fetch(API_ENDPOINTS.BACKUP_CONFIG, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
@@ -111,7 +112,7 @@ const BackupSettings = () => {
     setMessage({ text: 'Creating backup...', type: 'info' });
     
     try {
-      const response = await fetch('/api/backup/manual', {
+      const response = await fetch(API_ENDPOINTS.BACKUP_MANUAL, {
         method: 'POST'
       });
 
@@ -132,7 +133,7 @@ const BackupSettings = () => {
   };
 
   const handleDownloadBackup = () => {
-    window.location.href = '/api/backup';
+    window.location.href = `${API_ENDPOINTS.EXPENSES.replace('/expenses', '/backup')}`;
   };
 
   const handleImportCSV = async (event) => {
@@ -145,7 +146,7 @@ const BackupSettings = () => {
     formData.append('file', file);
 
     try {
-      const response = await fetch('/api/import', {
+      const response = await fetch(API_ENDPOINTS.IMPORT, {
         method: 'POST',
         body: formData
       });
@@ -190,7 +191,7 @@ const BackupSettings = () => {
     formData.append('backup', file);
 
     try {
-      const response = await fetch('/api/backup/restore', {
+      const response = await fetch(API_ENDPOINTS.BACKUP_RESTORE, {
         method: 'POST',
         body: formData
       });
@@ -462,6 +463,17 @@ const BackupSettings = () => {
           <div className="settings-section">
             <h3>Recent Updates</h3>
             <div className="changelog">
+              <div className="changelog-entry">
+                <div className="changelog-version">v4.2.0</div>
+                <div className="changelog-date">November 25, 2025</div>
+                <ul className="changelog-items">
+                  <li>Enhanced Fixed Expenses: Added category and payment type tracking</li>
+                  <li>Categorize fixed expenses (Housing, Utilities, Subscriptions, Insurance, etc.)</li>
+                  <li>Track payment methods (Credit Card, Debit Card, Cash, Cheque, E-Transfer)</li>
+                  <li>Automatic database migration with backward compatibility</li>
+                  <li>Improved UI with dropdown selectors for better organization</li>
+                </ul>
+              </div>
               <div className="changelog-entry">
                 <div className="changelog-version">v4.1.0</div>
                 <div className="changelog-date">November 24, 2025</div>

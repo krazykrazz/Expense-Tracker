@@ -9,9 +9,9 @@ The Expense Tracker Application is a web-based system that enables users to reco
 - **Expense Tracker Application**: The complete web-based system including frontend and backend components
 - **User**: An individual who interacts with the Expense Tracker Application to manage their expenses
 - **Expense Entry**: A single record containing information about a financial transaction including amount, date, place, notes, type, week, and payment method
-- **Type**: A classification label for the nature of the expense, selected from 14 available categories: Housing, Utilities, Groceries, Dining Out, Insurance, Gas, Vehicle Maintenance, Entertainment, Subscriptions, Recreation Activities, Pet Care, Tax - Medical, Tax - Donation, and Other
+- **Type**: A classification label for the nature of the expense, selected from 17 available categories: Clothing, Dining Out, Entertainment, Gas, Gifts, Groceries, Housing, Insurance, Personal Care, Pet Care, Recreation Activities, Subscriptions, Utilities, Vehicle Maintenance, Other, Tax - Medical, and Tax - Donation
 - **Week**: A calculated value from 1 to 5 representing which week of the month the expense occurred, based on the day of the month (days 1-7 = week 1, days 8-14 = week 2, etc.)
-- **Payment Method**: The financial instrument used for the transaction, one of Cash, Debit, CIBC MC, PCF MC, WS VISA, or VISA
+- **Payment Method**: The financial instrument used for the transaction, one of Cash, Debit, Cheque, CIBC MC, PCF MC, WS VISA, or VISA
 - **Expense List**: A collection of expense entries displayed to the user
 - **Fixed Expense**: A recurring monthly obligation with a name, amount, category, and payment type that remains relatively constant each month (e.g., rent, utilities, subscriptions). Fixed expenses are included in category and payment method totals.
 - **Database**: The persistent storage system that maintains all expense data
@@ -52,9 +52,9 @@ The Expense Tracker Application is a web-based system that enables users to reco
 
 #### Acceptance Criteria
 
-1. THE Expense Tracker Application SHALL provide fourteen Type options: Housing, Utilities, Groceries, Dining Out, Insurance, Gas, Vehicle Maintenance, Entertainment, Subscriptions, Recreation Activities, Pet Care, Tax - Medical, Tax - Donation, and Other
+1. THE Expense Tracker Application SHALL provide seventeen Type options: Clothing, Dining Out, Entertainment, Gas, Gifts, Groceries, Housing, Insurance, Personal Care, Pet Care, Recreation Activities, Subscriptions, Utilities, Vehicle Maintenance, Other, Tax - Medical, and Tax - Donation
 2. WHEN the User creates an Expense Entry, THE Expense Tracker Application SHALL require the User to select one Type
-3. THE Expense Tracker Application SHALL provide exactly six Payment Method options: Cash, Debit, CIBC MC, PCF MC, WS VISA, and VISA
+3. THE Expense Tracker Application SHALL provide exactly seven Payment Method options: Cash, Debit, Cheque, CIBC MC, PCF MC, WS VISA, and VISA
 4. WHEN the User creates an Expense Entry, THE Expense Tracker Application SHALL require the User to select one Payment Method
 5. THE Expense Tracker Application SHALL allow the User to filter the Expense List by Type
 6. THE Expense Tracker Application SHALL allow the User to filter the Expense List by Payment Method
@@ -108,9 +108,9 @@ The Expense Tracker Application is a web-based system that enables users to reco
 
 #### Acceptance Criteria
 
-1. WHEN the User views a specific month, THE Expense Tracker Application SHALL calculate the total expense amount for each Payment Method (Cash, Debit, CIBC MC, PCF MC, WS VISA, VISA)
+1. WHEN the User views a specific month, THE Expense Tracker Application SHALL calculate the total expense amount for each Payment Method (Cash, Debit, Cheque, CIBC MC, PCF MC, WS VISA, VISA)
 2. THE Expense Tracker Application SHALL display each Payment Method total with two decimal places
-3. THE Expense Tracker Application SHALL display all six Payment Method totals for the selected month
+3. THE Expense Tracker Application SHALL display all seven Payment Method totals for the selected month
 4. WHEN a Payment Method has no Expense Entries in the selected month, THE Expense Tracker Application SHALL display zero for that Payment Method
 
 ### Requirement 9
@@ -122,7 +122,7 @@ The Expense Tracker Application is a web-based system that enables users to reco
 1. WHEN the User views a specific month, THE Expense Tracker Application SHALL calculate the total expense amount for each Type that has Expense Entries
 2. THE Expense Tracker Application SHALL display spending totals grouped by category with two decimal places
 3. WHEN a Type has no Expense Entries in the selected month, THE Expense Tracker Application SHALL display zero for that Type or omit it from the display
-4. THE Expense Tracker Application SHALL support displaying totals for all fourteen expense categories
+4. THE Expense Tracker Application SHALL support displaying totals for all seventeen expense categories
 
 ### Requirement 10
 
@@ -143,8 +143,8 @@ The Expense Tracker Application is a web-based system that enables users to reco
 
 #### Acceptance Criteria
 
-1. THE Expense Tracker Application SHALL provide fourteen Type options including two tax-deductible categories: Tax - Medical and Tax - Donation
-2. WHEN the User creates or edits an Expense Entry, THE Expense Tracker Application SHALL require the User to select one Type from the fourteen available options
+1. THE Expense Tracker Application SHALL provide seventeen Type options including two tax-deductible categories: Tax - Medical and Tax - Donation
+2. WHEN the User creates or edits an Expense Entry, THE Expense Tracker Application SHALL require the User to select one Type from the seventeen available options
 3. WHEN the User selects "Tax - Medical" as the Type, THE Expense Tracker Application SHALL visually distinguish that Expense Entry in the Expense List with dark blue row highlighting (#1e3a5f background with white text)
 4. WHEN the User selects "Tax - Donation" as the Type, THE Expense Tracker Application SHALL visually distinguish that Expense Entry in the Expense List with orange row highlighting (#ea580c background with white text)
 5. THE Expense Tracker Application SHALL allow the User to filter the Expense List by Type including both Tax - Medical and Tax - Donation options
@@ -234,3 +234,31 @@ The Expense Tracker Application is a web-based system that enables users to reco
 11. THE Expense Tracker Application SHALL provide a carry-forward feature that copies all fixed expenses from the previous month to the current month
 12. WHEN the User carries forward fixed expenses, THE Expense Tracker Application SHALL create new entries for the current month with the same names, amounts, categories, and payment types
 13. THE Expense Tracker Application SHALL display fixed expenses with two decimal places
+
+
+### Requirement 18
+
+**User Story:** As a user, I want the expense form to suggest categories based on the place I enter, so that I can add expenses faster and maintain consistency.
+
+#### Acceptance Criteria
+
+1. WHEN the User opens the expense form, THE Expense Tracker Application SHALL display the Place field with initial focus
+2. WHEN the User enters or selects a place name, THE Expense Tracker Application SHALL analyze historical expenses for that place
+3. WHEN historical data exists for a place, THE Expense Tracker Application SHALL suggest the most frequently used category for that place
+4. WHEN multiple categories have equal frequency for a place, THE Expense Tracker Application SHALL suggest the most recently used category
+5. WHEN a category is auto-suggested, THE Expense Tracker Application SHALL display a visual indicator showing it was auto-suggested
+6. WHEN the User changes the suggested category, THE Expense Tracker Application SHALL accept the override without restriction
+7. WHEN a place has no historical data, THE Expense Tracker Application SHALL default to the "Other" category
+8. THE Expense Tracker Application SHALL display form fields in this order: Date, Place, Type, Amount, Payment Method, Notes
+9. WHEN a place is entered, THE Expense Tracker Application SHALL automatically move focus to the Amount field
+
+### Requirement 19
+
+**User Story:** As a user, I want the expense form to remember my last used payment method, so that I don't have to select it every time.
+
+#### Acceptance Criteria
+
+1. WHEN the User opens the expense form, THE Expense Tracker Application SHALL pre-select the last used payment method
+2. WHEN no previous payment method exists, THE Expense Tracker Application SHALL default to "Cash"
+3. WHEN the User submits an expense, THE Expense Tracker Application SHALL remember the payment method for the next expense entry
+4. THE Expense Tracker Application SHALL persist the payment method preference in local storage

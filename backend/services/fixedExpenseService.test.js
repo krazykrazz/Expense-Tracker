@@ -1,6 +1,6 @@
 const fixedExpenseService = require('./fixedExpenseService');
 const fixedExpenseRepository = require('../repositories/fixedExpenseRepository');
-const { validateNumber, validateString, validateYearMonth } = require('../utils/validators');
+const { validateYearMonth } = require('../utils/validators');
 
 // Mock dependencies
 jest.mock('../repositories/fixedExpenseRepository');
@@ -9,232 +9,28 @@ jest.mock('../utils/validators');
 describe('fixedExpenseService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    // Default validator mocks to return true
-    validateNumber.mockReturnValue(true);
-    validateString.mockReturnValue(true);
-    validateYearMonth.mockReturnValue(true);
+    // Default validator mock to not throw
+    validateYearMonth.mockImplementation(() => {});
   });
 
-  describe('getAllFixedExpenses', () => {
-    it('should return all fixed expenses from repository', async () => {
-      const mockExpenses = [
-        { id: 1, name: 'Rent', amount: 1200, category: 'Housing' },
-        { id: 2, name: 'Insurance', amount: 300, category: 'Insurance' }
-      ];
-      fixedExpenseRepository.getAll.mockResolvedValue(mockExpenses);
-
-      const result = await fixedExpenseService.getAllFixedExpenses();
-
-      expect(result).toEqual(mockExpenses);
-      expect(fixedExpenseRepository.getAll).toHaveBeenCalledTimes(1);
-    });
-
-    it('should handle repository errors', async () => {
-      const error = new Error('Database error');
-      fixedExpenseRepository.getAll.mockRejectedValue(error);
-
-      await expect(fixedExpenseService.getAllFixedExpenses()).rejects.toThrow('Database error');
-    });
-  });
-
-  describe('getFixedExpenseById', () => {
-    it('should return fixed expense by id', async () => {
-      const mockExpense = { id: 1, name: 'Rent', amount: 1200, category: 'Housing' };
-      fixedExpenseRepository.getById.mockResolvedValue(mockExpense);
-
-      const result = await fixedExpenseService.getFixedExpenseById(1);
-
-      expect(result).toEqual(mockExpense);
-      expect(fixedExpenseRepository.getById).toHaveBeenCalledWith(1);
-    });
-
-    it('should validate id parameter', async () => {
-      validateNumber.mockImplementation((value, name) => {
-        if (value !== 1) throw new Error(`${name} must be a valid number`);
-        return true;
-      });
-
-      await expect(fixedExpenseService.getFixedExpenseById('invalid')).rejects.toThrow('ID must be a valid number');
-      expect(validateNumber).toHaveBeenCalledWith('invalid', 'ID', { min: 1 });
-    });
-
-    it('should return null when expense not found', async () => {
-      fixedExpenseRepository.getById.mockResolvedValue(null);
-
-      const result = await fixedExpenseService.getFixedExpenseById(999);
-
-      expect(result).toBeNull();
-    });
-  });
-
-  describe('createFixedExpense', () => {
-    const validExpenseData = {
-      name: 'Rent',
-      amount: 1200,
-      category: 'Housing',
-      description: 'Monthly rent payment'
-    };
-
-    it('should create a new fixed expense with valid data', async () => {
-      const mockCreatedExpense = { id: 1, ...validExpenseData };
-      fixedExpenseRepository.create.mockResolvedValue(mockCreatedExpense);
-
-      const result = await fixedExpenseService.createFixedExpense(validExpenseData);
-
-      expect(result).toEqual(mockCreatedExpense);
-      expect(fixedExpenseRepository.create).toHaveBeenCalledWith(validExpenseData);
-    });
-
-    it('should validate name field', async () => {
-      validateString.mockImplementation((value, name) => {
-        if (!value || value.trim() === '') throw new Error(`${name} is required`);
-        return true;
-      });
-
-      const invalidData = { ...validExpenseData, name: '' };
-      
-      await expect(fixedExpenseService.createFixedExpense(invalidData)).rejects.toThrow('Name is required');
-      expect(validateString).toHaveBeenCalledWith('', 'Name', { minLength: 1, maxLength: 100 });
-    });
-
-    it('should validate amount field', async () => {
-      validateNumber.mockImplementation((value, name) => {
-        if (value <= 0) throw new Error(`${name} must be greater than 0`);
-        return true;
-      });
-
-      const invalidData = { ...validExpenseData, amount: -100 };
-      
-      await expect(fixedExpenseService.createFixedExpense(invalidData)).rejects.toThrow('Amount must be greater than 0');
-      expect(validateNumber).toHaveBeenCalledWith(-100, 'Amount', { min: 0.01 });
-    });
-
-    it('should validate category field', async () => {
-      validateString.mockImplementation((value, name) => {
-        if (!value || value.trim() === '') throw new Error(`${name} is required`);
-        return true;
-      });
-
-      const invalidData = { ...validExpenseData, category: '' };
-      
-      await expect(fixedExpenseService.createFixedExpense(invalidData)).rejects.toThrow('Category is required');
-      expect(validateString).toHaveBeenCalledWith('', 'Category', { minLength: 1, maxLength: 50 });
-    });
-
-    it('should handle optional description field', async () => {
-      const dataWithoutDescription = {
-        name: 'Rent',
-        amount: 1200,
-        category: 'Housing'
-      };
-      const mockCreatedExpense = { id: 1, ...dataWithoutDescription, description: null };
-      fixedExpenseRepository.create.mockResolvedValue(mockCreatedExpense);
-
-      const result = await fixedExpenseService.createFixedExpense(dataWithoutDescription);
-
-      expect(result).toEqual(mockCreatedExpense);
-      expect(validateString).toHaveBeenCalledWith(undefined, 'Description', { required: false, maxLength: 255 });
-    });
-  });
-
-  describe('updateFixedExpense', () => {
-    const validUpdateData = {
-      name: 'Updated Rent',
-      amount: 1300,
-      category: 'Housing',
-      description: 'Updated monthly rent'
-    };
-
-    it('should update existing fixed expense', async () => {
-      const mockUpdatedExpense = { id: 1, ...validUpdateData };
-      fixedExpenseRepository.update.mockResolvedValue(mockUpdatedExpense);
-
-      const result = await fixedExpenseService.updateFixedExpense(1, validUpdateData);
-
-      expect(result).toEqual(mockUpdatedExpense);
-      expect(fixedExpenseRepository.update).toHaveBeenCalledWith(1, validUpdateData);
-    });
-
-    it('should validate id parameter', async () => {
-      validateNumber.mockImplementation((value, name) => {
-        if (typeof value !== 'number' || value < 1) throw new Error(`${name} must be a valid positive number`);
-        return true;
-      });
-
-      await expect(fixedExpenseService.updateFixedExpense('invalid', validUpdateData)).rejects.toThrow('ID must be a valid positive number');
-    });
-
-    it('should validate update data fields', async () => {
-      validateString.mockImplementation((value, name) => {
-        if (name === 'Name' && (!value || value.trim() === '')) {
-          throw new Error(`${name} is required`);
-        }
-        return true;
-      });
-
-      const invalidData = { ...validUpdateData, name: '' };
-      
-      await expect(fixedExpenseService.updateFixedExpense(1, invalidData)).rejects.toThrow('Name is required');
-    });
-
-    it('should handle partial updates', async () => {
-      const partialUpdate = { amount: 1400 };
-      const mockUpdatedExpense = { id: 1, name: 'Rent', amount: 1400, category: 'Housing' };
-      fixedExpenseRepository.update.mockResolvedValue(mockUpdatedExpense);
-
-      const result = await fixedExpenseService.updateFixedExpense(1, partialUpdate);
-
-      expect(result).toEqual(mockUpdatedExpense);
-      expect(fixedExpenseRepository.update).toHaveBeenCalledWith(1, partialUpdate);
-    });
-  });
-
-  describe('deleteFixedExpense', () => {
-    it('should delete fixed expense by id', async () => {
-      fixedExpenseRepository.delete.mockResolvedValue(true);
-
-      const result = await fixedExpenseService.deleteFixedExpense(1);
-
-      expect(result).toBe(true);
-      expect(fixedExpenseRepository.delete).toHaveBeenCalledWith(1);
-    });
-
-    it('should validate id parameter', async () => {
-      validateNumber.mockImplementation((value, name) => {
-        if (typeof value !== 'number' || value < 1) throw new Error(`${name} must be a valid positive number`);
-        return true;
-      });
-
-      await expect(fixedExpenseService.deleteFixedExpense('invalid')).rejects.toThrow('ID must be a valid positive number');
-    });
-
-    it('should return false when expense not found', async () => {
-      fixedExpenseRepository.delete.mockResolvedValue(false);
-
-      const result = await fixedExpenseService.deleteFixedExpense(999);
-
-      expect(result).toBe(false);
-    });
-  });
-
-  describe('getFixedExpensesForMonth', () => {
-    it('should return fixed expenses for specific month', async () => {
-      const mockExpenses = [
+  describe('getMonthlyFixedExpenses', () => {
+    it('should return fixed expenses and total for a month', async () => {
+      const mockItems = [
         { id: 1, name: 'Rent', amount: 1200, category: 'Housing', year: 2024, month: 11 },
         { id: 2, name: 'Insurance', amount: 300, category: 'Insurance', year: 2024, month: 11 }
       ];
-      fixedExpenseRepository.getForMonth.mockResolvedValue(mockExpenses);
+      fixedExpenseRepository.getFixedExpenses.mockResolvedValue(mockItems);
+      fixedExpenseRepository.getTotalFixedExpenses.mockResolvedValue(1500);
 
-      const result = await fixedExpenseService.getFixedExpensesForMonth(2024, 11);
+      const result = await fixedExpenseService.getMonthlyFixedExpenses(2024, 11);
 
-      expect(result).toEqual(mockExpenses);
-      expect(fixedExpenseRepository.getForMonth).toHaveBeenCalledWith(2024, 11);
-    });
-
-    it('should validate year and month parameters', async () => {
-      await fixedExpenseService.getFixedExpensesForMonth(2024, 11);
-
+      expect(result).toEqual({
+        items: mockItems,
+        total: 1500
+      });
       expect(validateYearMonth).toHaveBeenCalledWith(2024, 11);
+      expect(fixedExpenseRepository.getFixedExpenses).toHaveBeenCalledWith(2024, 11);
+      expect(fixedExpenseRepository.getTotalFixedExpenses).toHaveBeenCalledWith(2024, 11);
     });
 
     it('should handle invalid year/month', async () => {
@@ -242,112 +38,279 @@ describe('fixedExpenseService', () => {
         throw new Error('Invalid year or month');
       });
 
-      await expect(fixedExpenseService.getFixedExpensesForMonth(2024, 13)).rejects.toThrow('Invalid year or month');
+      await expect(fixedExpenseService.getMonthlyFixedExpenses(2024, 13)).rejects.toThrow('Invalid year or month');
+    });
+
+    it('should return empty items and zero total when no expenses exist', async () => {
+      fixedExpenseRepository.getFixedExpenses.mockResolvedValue([]);
+      fixedExpenseRepository.getTotalFixedExpenses.mockResolvedValue(0);
+
+      const result = await fixedExpenseService.getMonthlyFixedExpenses(2024, 11);
+
+      expect(result).toEqual({
+        items: [],
+        total: 0
+      });
+    });
+  });
+
+  describe('createFixedExpense', () => {
+    it('should create a new fixed expense with valid data', async () => {
+      const expenseData = {
+        year: 2024,
+        month: 11,
+        name: 'Rent',
+        amount: 1200,
+        category: 'Housing',
+        payment_type: 'Debit'
+      };
+      const mockCreatedExpense = { id: 1, ...expenseData };
+      fixedExpenseRepository.createFixedExpense.mockResolvedValue(mockCreatedExpense);
+
+      const result = await fixedExpenseService.createFixedExpense(expenseData);
+
+      expect(result).toEqual(mockCreatedExpense);
+      expect(fixedExpenseRepository.createFixedExpense).toHaveBeenCalledWith({
+        year: 2024,
+        month: 11,
+        name: 'Rent',
+        amount: 1200,
+        category: 'Housing',
+        payment_type: 'Debit'
+      });
+    });
+
+    it('should throw error when name is missing', async () => {
+      const invalidData = {
+        year: 2024,
+        month: 11,
+        name: '',
+        amount: 1200,
+        category: 'Housing',
+        payment_type: 'Debit'
+      };
+
+      await expect(fixedExpenseService.createFixedExpense(invalidData)).rejects.toThrow('Name is required');
+    });
+
+    it('should throw error when amount is missing', async () => {
+      const invalidData = {
+        year: 2024,
+        month: 11,
+        name: 'Rent',
+        category: 'Housing',
+        payment_type: 'Debit'
+      };
+
+      await expect(fixedExpenseService.createFixedExpense(invalidData)).rejects.toThrow('Amount is required');
+    });
+
+    it('should throw error when category is invalid', async () => {
+      const invalidData = {
+        year: 2024,
+        month: 11,
+        name: 'Rent',
+        amount: 1200,
+        category: 'InvalidCategory',
+        payment_type: 'Debit'
+      };
+
+      await expect(fixedExpenseService.createFixedExpense(invalidData)).rejects.toThrow('Invalid category');
+    });
+
+    it('should throw error when payment_type is invalid', async () => {
+      const invalidData = {
+        year: 2024,
+        month: 11,
+        name: 'Rent',
+        amount: 1200,
+        category: 'Housing',
+        payment_type: 'InvalidPayment'
+      };
+
+      await expect(fixedExpenseService.createFixedExpense(invalidData)).rejects.toThrow('Invalid payment type');
+    });
+
+    it('should throw error when year/month is missing', async () => {
+      const invalidData = {
+        name: 'Rent',
+        amount: 1200,
+        category: 'Housing',
+        payment_type: 'Debit'
+      };
+
+      await expect(fixedExpenseService.createFixedExpense(invalidData)).rejects.toThrow('Year and month are required');
+    });
+
+    it('should trim whitespace from name', async () => {
+      const expenseData = {
+        year: 2024,
+        month: 11,
+        name: '  Rent  ',
+        amount: 1200,
+        category: 'Housing',
+        payment_type: 'Debit'
+      };
+      fixedExpenseRepository.createFixedExpense.mockResolvedValue({ id: 1, ...expenseData, name: 'Rent' });
+
+      await fixedExpenseService.createFixedExpense(expenseData);
+
+      expect(fixedExpenseRepository.createFixedExpense).toHaveBeenCalledWith({
+        year: 2024,
+        month: 11,
+        name: 'Rent',
+        amount: 1200,
+        category: 'Housing',
+        payment_type: 'Debit'
+      });
+    });
+  });
+
+  describe('updateFixedExpense', () => {
+    it('should update existing fixed expense', async () => {
+      const updateData = {
+        name: 'Updated Rent',
+        amount: 1300,
+        category: 'Housing',
+        payment_type: 'Debit'
+      };
+      const mockUpdatedExpense = { id: 1, year: 2024, month: 11, ...updateData };
+      fixedExpenseRepository.updateFixedExpense.mockResolvedValue(mockUpdatedExpense);
+
+      const result = await fixedExpenseService.updateFixedExpense(1, updateData);
+
+      expect(result).toEqual(mockUpdatedExpense);
+      expect(fixedExpenseRepository.updateFixedExpense).toHaveBeenCalledWith(1, {
+        name: 'Updated Rent',
+        amount: 1300,
+        category: 'Housing',
+        payment_type: 'Debit'
+      });
+    });
+
+    it('should throw error when id is missing', async () => {
+      await expect(fixedExpenseService.updateFixedExpense(null, { name: 'Test', amount: 100, category: 'Housing', payment_type: 'Cash' }))
+        .rejects.toThrow('Fixed expense ID is required');
+    });
+
+    it('should return null when fixed expense not found', async () => {
+      fixedExpenseRepository.updateFixedExpense.mockResolvedValue(null);
+
+      const result = await fixedExpenseService.updateFixedExpense(999, { name: 'Test', amount: 100, category: 'Housing', payment_type: 'Cash' });
+
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('deleteFixedExpense', () => {
+    it('should delete fixed expense by id', async () => {
+      fixedExpenseRepository.deleteFixedExpense.mockResolvedValue(true);
+
+      const result = await fixedExpenseService.deleteFixedExpense(1);
+
+      expect(result).toBe(true);
+      expect(fixedExpenseRepository.deleteFixedExpense).toHaveBeenCalledWith(1);
+    });
+
+    it('should throw error when id is missing', async () => {
+      await expect(fixedExpenseService.deleteFixedExpense(null))
+        .rejects.toThrow('Fixed expense ID is required');
+    });
+
+    it('should return false when fixed expense not found', async () => {
+      fixedExpenseRepository.deleteFixedExpense.mockResolvedValue(false);
+
+      const result = await fixedExpenseService.deleteFixedExpense(999);
+
+      expect(result).toBe(false);
     });
   });
 
   describe('carryForwardFixedExpenses', () => {
-    it('should carry forward fixed expenses to next month', async () => {
-      const mockCarriedExpenses = [
-        { id: 3, name: 'Rent', amount: 1200, category: 'Housing', year: 2024, month: 12 },
-        { id: 4, name: 'Insurance', amount: 300, category: 'Insurance', year: 2024, month: 12 }
+    it('should carry forward fixed expenses from previous month', async () => {
+      const mockCopiedExpenses = [
+        { id: 3, year: 2024, month: 12, name: 'Rent', amount: 1200, category: 'Housing', payment_type: 'Debit' },
+        { id: 4, year: 2024, month: 12, name: 'Insurance', amount: 300, category: 'Insurance', payment_type: 'Cash' }
       ];
-      fixedExpenseRepository.carryForward.mockResolvedValue(mockCarriedExpenses);
-
-      const result = await fixedExpenseService.carryForwardFixedExpenses(2024, 11);
-
-      expect(result).toEqual(mockCarriedExpenses);
-      expect(fixedExpenseRepository.carryForward).toHaveBeenCalledWith(2024, 11);
-    });
-
-    it('should validate year and month parameters', async () => {
-      await fixedExpenseService.carryForwardFixedExpenses(2024, 11);
-
-      expect(validateYearMonth).toHaveBeenCalledWith(2024, 11);
-    });
-
-    it('should handle carry forward errors', async () => {
-      const error = new Error('Carry forward failed');
-      fixedExpenseRepository.carryForward.mockRejectedValue(error);
-
-      await expect(fixedExpenseService.carryForwardFixedExpenses(2024, 11)).rejects.toThrow('Carry forward failed');
-    });
-
-    it('should handle year rollover (December to January)', async () => {
-      const mockCarriedExpenses = [
-        { id: 5, name: 'Rent', amount: 1200, category: 'Housing', year: 2025, month: 1 }
-      ];
-      fixedExpenseRepository.carryForward.mockResolvedValue(mockCarriedExpenses);
+      fixedExpenseRepository.getFixedExpenses.mockResolvedValue([
+        { id: 1, name: 'Rent', amount: 1200 },
+        { id: 2, name: 'Insurance', amount: 300 }
+      ]);
+      fixedExpenseRepository.copyFixedExpenses.mockResolvedValue(mockCopiedExpenses);
 
       const result = await fixedExpenseService.carryForwardFixedExpenses(2024, 12);
 
-      expect(result).toEqual(mockCarriedExpenses);
-      expect(fixedExpenseRepository.carryForward).toHaveBeenCalledWith(2024, 12);
-    });
-  });
-
-  describe('getTotalFixedExpensesForMonth', () => {
-    it('should return total amount of fixed expenses for month', async () => {
-      const mockExpenses = [
-        { amount: 1200 },
-        { amount: 300 },
-        { amount: 150 }
-      ];
-      fixedExpenseRepository.getForMonth.mockResolvedValue(mockExpenses);
-
-      const result = await fixedExpenseService.getTotalFixedExpensesForMonth(2024, 11);
-
-      expect(result).toBe(1650);
-      expect(fixedExpenseRepository.getForMonth).toHaveBeenCalledWith(2024, 11);
+      expect(result).toEqual({
+        items: mockCopiedExpenses,
+        count: 2
+      });
+      expect(validateYearMonth).toHaveBeenCalledWith(2024, 12);
+      expect(fixedExpenseRepository.copyFixedExpenses).toHaveBeenCalledWith(2024, 11, 2024, 12);
     });
 
-    it('should return 0 when no fixed expenses exist', async () => {
-      fixedExpenseRepository.getForMonth.mockResolvedValue([]);
+    it('should return empty result when no previous month expenses exist', async () => {
+      fixedExpenseRepository.getFixedExpenses.mockResolvedValue([]);
 
-      const result = await fixedExpenseService.getTotalFixedExpensesForMonth(2024, 11);
-
-      expect(result).toBe(0);
-    });
-
-    it('should validate year and month parameters', async () => {
-      fixedExpenseRepository.getForMonth.mockResolvedValue([]);
-      
-      await fixedExpenseService.getTotalFixedExpensesForMonth(2024, 11);
-
-      expect(validateYearMonth).toHaveBeenCalledWith(2024, 11);
-    });
-  });
-
-  describe('getFixedExpensesByCategory', () => {
-    it('should return fixed expenses grouped by category', async () => {
-      const mockExpenses = [
-        { id: 1, name: 'Rent', amount: 1200, category: 'Housing' },
-        { id: 2, name: 'Mortgage', amount: 1500, category: 'Housing' },
-        { id: 3, name: 'Car Insurance', amount: 200, category: 'Insurance' },
-        { id: 4, name: 'Health Insurance', amount: 400, category: 'Insurance' }
-      ];
-      fixedExpenseRepository.getAll.mockResolvedValue(mockExpenses);
-
-      const result = await fixedExpenseService.getFixedExpensesByCategory();
+      const result = await fixedExpenseService.carryForwardFixedExpenses(2024, 12);
 
       expect(result).toEqual({
-        'Housing': [
-          { id: 1, name: 'Rent', amount: 1200, category: 'Housing' },
-          { id: 2, name: 'Mortgage', amount: 1500, category: 'Housing' }
-        ],
-        'Insurance': [
-          { id: 3, name: 'Car Insurance', amount: 200, category: 'Insurance' },
-          { id: 4, name: 'Health Insurance', amount: 400, category: 'Insurance' }
-        ]
+        items: [],
+        count: 0
       });
     });
 
-    it('should return empty object when no expenses exist', async () => {
-      fixedExpenseRepository.getAll.mockResolvedValue([]);
+    it('should handle invalid year/month', async () => {
+      validateYearMonth.mockImplementation(() => {
+        throw new Error('Invalid year or month');
+      });
 
-      const result = await fixedExpenseService.getFixedExpensesByCategory();
+      await expect(fixedExpenseService.carryForwardFixedExpenses(2024, 13)).rejects.toThrow('Invalid year or month');
+    });
 
-      expect(result).toEqual({});
+    it('should handle year rollover (January copies from December)', async () => {
+      const mockCopiedExpenses = [
+        { id: 2, year: 2025, month: 1, name: 'Rent', amount: 1200, category: 'Housing', payment_type: 'Debit' }
+      ];
+      fixedExpenseRepository.getFixedExpenses.mockResolvedValue([
+        { id: 1, name: 'Rent', amount: 1200 }
+      ]);
+      fixedExpenseRepository.copyFixedExpenses.mockResolvedValue(mockCopiedExpenses);
+
+      const result = await fixedExpenseService.carryForwardFixedExpenses(2025, 1);
+
+      expect(fixedExpenseRepository.getFixedExpenses).toHaveBeenCalledWith(2024, 12);
+      expect(fixedExpenseRepository.copyFixedExpenses).toHaveBeenCalledWith(2024, 12, 2025, 1);
+      expect(result.count).toBe(1);
+    });
+  });
+
+  describe('validateFixedExpense', () => {
+    it('should throw error for name exceeding max length', async () => {
+      const invalidData = {
+        year: 2024,
+        month: 11,
+        name: 'A'.repeat(101),
+        amount: 1200,
+        category: 'Housing',
+        payment_type: 'Debit'
+      };
+
+      await expect(fixedExpenseService.createFixedExpense(invalidData))
+        .rejects.toThrow('Name must not exceed 100 characters');
+    });
+
+    it('should throw error for negative amount', async () => {
+      const invalidData = {
+        year: 2024,
+        month: 11,
+        name: 'Rent',
+        amount: -100,
+        category: 'Housing',
+        payment_type: 'Debit'
+      };
+
+      await expect(fixedExpenseService.createFixedExpense(invalidData))
+        .rejects.toThrow('Amount must be a non-negative number');
     });
   });
 });

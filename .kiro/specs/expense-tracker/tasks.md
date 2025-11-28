@@ -88,7 +88,7 @@
   - [x] 4.4 Create GET /api/expenses/summary endpoint
 
     - Write controller to calculate weekly totals (weeks 1-5)
-    - Calculate payment method totals for all 6 methods
+    - Calculate payment method totals for all 7 methods
     - Calculate Gas and Food type totals
     - Calculate overall total
     - Require year and month query parameters
@@ -185,7 +185,7 @@
 
     - Fetch summary data from GET /api/expenses/summary
     - Display weekly totals section (weeks 1-5)
-    - Display payment method totals section (all 6 methods)
+    - Display payment method totals section (all 7 methods)
     - Display type totals section (Gas and Food)
     - Display overall total for the month
     - Format all amounts to 2 decimal places
@@ -396,7 +396,7 @@
 
 
 
-  - [ ] 19.6 Update filtering to support Tax Deductible type
+  - [x] 19.6 Update filtering to support Tax Deductible type
     - Ensure type filter dropdown includes Tax Deductible option
     - Verify filtering works correctly for Tax Deductible expenses
     - _Requirements: 11.4_

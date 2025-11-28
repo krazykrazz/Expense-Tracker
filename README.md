@@ -10,10 +10,14 @@ A full-stack expense tracking application built with React and Node.js.
 - 📊 View monthly summaries with weekly breakdowns
 - 📅 Filter expenses by month and year
 - 📥 CSV import for bulk expense entry
+- ✨ Smart category suggestions based on place history
+- 💳 Payment method memory (remembers last used)
 
 ### Income & Fixed Expenses
 - 💰 Track monthly gross income from multiple sources
-- 🏠 Manage fixed monthly expenses (rent, utilities, subscriptions)
+- 🏠 Manage fixed monthly expenses with category and payment type tracking
+- 🏷️ Categorize fixed expenses (Housing, Utilities, Subscriptions, Insurance, etc.)
+- 💳 Track payment methods for fixed expenses (Credit Card, Debit Card, Cash, Cheque, E-Transfer)
 - 🔄 Carry forward income sources and fixed expenses from previous month
 - 📈 Calculate net balance including all income and expenses
 
@@ -252,6 +256,8 @@ stop-servers.bat
 
 ### Expense Management
 1. **Add Expenses**: Click the "+ Add Expense" button in the header
+   - Enter the place name first - the system will suggest a category based on your history
+   - The form remembers your last used payment method
 2. **Edit Expenses**: Click the edit button (✏️) next to any expense
 3. **Delete Expenses**: Click the delete button (🗑️) next to any expense
 4. **Filter**: Use the dropdowns to filter by type or payment method
@@ -387,7 +393,10 @@ expense-tracker/
 - month (INTEGER)
 - name (TEXT) - Fixed expense name
 - amount (REAL)
+- category (TEXT) - Expense category (Housing, Utilities, Subscriptions, Insurance, etc.)
+- payment_type (TEXT) - Payment method (Credit Card, Debit Card, Cash, Cheque, E-Transfer)
 - created_at (TEXT)
+- updated_at (TEXT)
 
 ### Loans Table
 - id (INTEGER PRIMARY KEY)

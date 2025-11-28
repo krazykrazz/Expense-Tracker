@@ -41,7 +41,7 @@ expense-tracker/
 - **monthly_gross**: Monthly income records (deprecated - replaced by income_sources)
 - **recurring_expenses**: Recurring expense templates
 - **income_sources**: Monthly income from multiple sources
-- **fixed_expenses**: Fixed monthly expenses (rent, utilities, etc.)
+- **fixed_expenses**: Fixed monthly expenses with category and payment type tracking
 - **loans**: Loan and line of credit tracking
 - **loan_balances**: Monthly balance and rate history for loans
 

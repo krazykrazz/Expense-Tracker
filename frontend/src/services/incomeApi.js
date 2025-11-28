@@ -1,4 +1,12 @@
-import { API_ENDPOINTS } from '../config.js';
+import API_BASE_URL from '../config.js';
+
+// Income API endpoints
+const INCOME_ENDPOINTS = {
+  BASE: `${API_BASE_URL}/api/income`,
+  BY_MONTH: (year, month) => `${API_BASE_URL}/api/income/${year}/${month}`,
+  BY_ID: (id) => `${API_BASE_URL}/api/income/${id}`,
+  COPY_PREVIOUS: (year, month) => `${API_BASE_URL}/api/income/${year}/${month}/copy-previous`
+};
 
 /**
  * Get all income sources for a specific month
@@ -8,7 +16,7 @@ import { API_ENDPOINTS } from '../config.js';
  */
 export const getMonthlyIncomeSources = async (year, month) => {
   try {
-    const response = await fetch(`/api/income/${year}/${month}`);
+    const response = await fetch(INCOME_ENDPOINTS.BY_MONTH(year, month));
     
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -29,7 +37,7 @@ export const getMonthlyIncomeSources = async (year, month) => {
  */
 export const createIncomeSource = async (data) => {
   try {
-    const response = await fetch('/api/income', {
+    const response = await fetch(INCOME_ENDPOINTS.BASE, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -57,7 +65,7 @@ export const createIncomeSource = async (data) => {
  */
 export const updateIncomeSource = async (id, data) => {
   try {
-    const response = await fetch(`/api/income/${id}`, {
+    const response = await fetch(INCOME_ENDPOINTS.BY_ID(id), {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json'
@@ -84,7 +92,7 @@ export const updateIncomeSource = async (id, data) => {
  */
 export const deleteIncomeSource = async (id) => {
   try {
-    const response = await fetch(`/api/income/${id}`, {
+    const response = await fetch(INCOME_ENDPOINTS.BY_ID(id), {
       method: 'DELETE'
     });
     
@@ -108,7 +116,7 @@ export const deleteIncomeSource = async (id) => {
  */
 export const carryForwardIncomeSources = async (year, month) => {
   try {
-    const response = await fetch(`/api/income/${year}/${month}/copy-previous`, {
+    const response = await fetch(INCOME_ENDPOINTS.COPY_PREVIOUS(year, month), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'

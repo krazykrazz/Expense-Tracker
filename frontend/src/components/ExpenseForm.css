@@ -202,3 +202,20 @@
 .autocomplete-item:active {
   background-color: #e0f2fe;
 }
+
+/* Category Suggestion Indicator Styles (Requirements 2.3) */
+.suggestion-indicator {
+  margin-left: 8px;
+  font-size: 10px;
+  font-weight: 400;
+  color: #0ea5e9;
+  background-color: #e0f2fe;
+  padding: 2px 6px;
+  border-radius: 10px;
+  vertical-align: middle;
+}
+
+.suggested-category {
+  border-color: #0ea5e9 !important;
+  background-color: #f0f9ff !important;
+}

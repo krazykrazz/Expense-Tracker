@@ -281,6 +281,38 @@ class ExpenseRepository {
   }
 
   /**
+   * Get category frequency for a specific place
+   * @param {string} place - The place name (case-insensitive match)
+   * @returns {Promise<Array<{category: string, count: number, last_used: string}>>}
+   */
+  async getCategoryFrequencyByPlace(place) {
+    const db = await getDatabase();
+    
+    return new Promise((resolve, reject) => {
+      if (!place || place.trim() === '') {
+        resolve([]);
+        return;
+      }
+
+      const sql = `
+        SELECT type as category, COUNT(*) as count, MAX(date) as last_used
+        FROM expenses
+        WHERE LOWER(place) = LOWER(?)
+        GROUP BY type
+        ORDER BY count DESC, last_used DESC
+      `;
+      
+      db.all(sql, [place.trim()], (err, rows) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        resolve(rows || []);
+      });
+    });
+  }
+
+  /**
    * Get suggested category for a place based on historical data
    * @param {string} place - Place name
    * @returns {Promise<Object|null>} Object with suggested category and confidence, or null

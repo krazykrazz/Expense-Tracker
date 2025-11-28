@@ -125,7 +125,7 @@
 
   - Update `frontend/src/components/ExpenseForm.jsx` to fetch categories from API
   - Replace hardcoded typeOptions with API response
-  - Update dropdown rendering to display all 14 categories
+  - Update dropdown rendering to display all 17 categories
   - Maintain current UI/UX patterns
   - _Requirements: 1.1, 1.2_
 

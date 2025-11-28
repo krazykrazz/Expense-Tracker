@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.2.0] - 2025-11-25
+
+### Added
+- **Enhanced Fixed Expenses**: Category and payment type tracking for fixed monthly expenses
+  - Added category field to fixed expenses (Housing, Utilities, Subscriptions, Insurance, etc.)
+  - Added payment_type field (Credit Card, Debit Card, Cash, Cheque, E-Transfer)
+  - Improved UI with dropdown selectors for better organization
+  - Automatic database migration with backward compatibility
+  - Existing fixed expenses get default values (category: "Other", payment_type: "Credit Card")
+  - Comprehensive test coverage with unit, property-based, and integration tests
+
+### Technical
+- **Database Migration**: `migrateEnhanceFixedExpenses()` adds category and payment_type columns
+- **API Updates**: Fixed expense endpoints now accept and return category and payment_type
+- **Validation**: Backend and frontend validation for category and payment type fields
+- **Documentation**: Created comprehensive feature documentation in `docs/features/ENHANCED_FIXED_EXPENSES.md`
+- **Test Coverage**: 7 test files covering repository, service, and integration layers
+
+---
+
 ## [4.1.0] - 2025-11-24
 
 ### Added

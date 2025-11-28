@@ -77,9 +77,7 @@
     - Ensure existing summary endpoint continues to work
     - _Requirements: 2.5, 5.5_
 
-- [-] 6. Create Income Management Modal component
-
-
+- [x] 6. Create Income Management Modal component
 
   - [x] 6.1 Create `frontend/src/components/IncomeManagementModal.jsx`
 

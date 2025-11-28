@@ -1,200 +1,258 @@
 const fixedExpenseRepository = require('./fixedExpenseRepository');
-const db = require('../database/db');
+const { getDatabase } = require('../database/db');
 
-// Mock the database
-jest.mock('../database/db');
+// Mock the database module
+jest.mock('../database/db', () => ({
+  getDatabase: jest.fn()
+}));
 
 describe('fixedExpenseRepository', () => {
   let mockDb;
 
   beforeEach(() => {
     mockDb = {
-      prepare: jest.fn(),
-      exec: jest.fn(),
-      transaction: jest.fn()
+      run: jest.fn(),
+      get: jest.fn(),
+      all: jest.fn()
     };
-    db.mockReturnValue(mockDb);
+    getDatabase.mockResolvedValue(mockDb);
     jest.clearAllMocks();
   });
 
-  describe('getAll', () => {
-    it('should return all fixed expenses', () => {
+  describe('getFixedExpenses', () => {
+    it('should return all fixed expenses for a month', async () => {
       const mockExpenses = [
-        { id: 1, name: 'Rent', amount: 1200, category: 'Housing' },
-        { id: 2, name: 'Insurance', amount: 300, category: 'Insurance' }
+        { id: 1, name: 'Rent', amount: 1200, category: 'Housing', year: 2024, month: 11 },
+        { id: 2, name: 'Insurance', amount: 300, category: 'Insurance', year: 2024, month: 11 }
       ];
       
-      const mockStmt = {
-        all: jest.fn().mockReturnValue(mockExpenses)
-      };
-      mockDb.prepare.mockReturnValue(mockStmt);
+      mockDb.all.mockImplementation((sql, params, callback) => {
+        callback(null, mockExpenses);
+      });
 
-      const result = fixedExpenseRepository.getAll();
+      const result = await fixedExpenseRepository.getFixedExpenses(2024, 11);
 
-      expect(mockDb.prepare).toHaveBeenCalledWith(
-        'SELECT * FROM fixed_expenses ORDER BY name ASC'
-      );
-      expect(mockStmt.all).toHaveBeenCalled();
+      expect(mockDb.all).toHaveBeenCalled();
       expect(result).toEqual(mockExpenses);
     });
-  });
 
-  describe('getById', () => {
-    it('should return fixed expense by id', () => {
-      const mockExpense = { id: 1, name: 'Rent', amount: 1200, category: 'Housing' };
-      
-      const mockStmt = {
-        get: jest.fn().mockReturnValue(mockExpense)
-      };
-      mockDb.prepare.mockReturnValue(mockStmt);
+    it('should return empty array when no fixed expenses exist', async () => {
+      mockDb.all.mockImplementation((sql, params, callback) => {
+        callback(null, []);
+      });
 
-      const result = fixedExpenseRepository.getById(1);
+      const result = await fixedExpenseRepository.getFixedExpenses(2024, 11);
 
-      expect(mockDb.prepare).toHaveBeenCalledWith('SELECT * FROM fixed_expenses WHERE id = ?');
-      expect(mockStmt.get).toHaveBeenCalledWith(1);
-      expect(result).toEqual(mockExpense);
+      expect(result).toEqual([]);
+    });
+
+    it('should handle database errors', async () => {
+      mockDb.all.mockImplementation((sql, params, callback) => {
+        callback(new Error('Database error'));
+      });
+
+      await expect(fixedExpenseRepository.getFixedExpenses(2024, 11)).rejects.toThrow('Database error');
     });
   });
 
-  describe('create', () => {
-    it('should create new fixed expense', () => {
+  describe('getTotalFixedExpenses', () => {
+    it('should return total fixed expenses for month', async () => {
+      mockDb.get.mockImplementation((sql, params, callback) => {
+        callback(null, { total: 1500 });
+      });
+
+      const result = await fixedExpenseRepository.getTotalFixedExpenses(2024, 11);
+
+      expect(mockDb.get).toHaveBeenCalled();
+      expect(result).toBe(1500);
+    });
+
+    it('should return 0 when no fixed expenses exist', async () => {
+      mockDb.get.mockImplementation((sql, params, callback) => {
+        callback(null, { total: 0 });
+      });
+
+      const result = await fixedExpenseRepository.getTotalFixedExpenses(2024, 11);
+
+      expect(result).toBe(0);
+    });
+  });
+
+  describe('createFixedExpense', () => {
+    it('should create new fixed expense', async () => {
       const expenseData = {
+        year: 2024,
+        month: 11,
         name: 'Rent',
         amount: 1200,
         category: 'Housing',
-        description: 'Monthly rent'
+        payment_type: 'Bank Transfer'
       };
 
-      const mockInsertStmt = {
-        run: jest.fn().mockReturnValue({ lastInsertRowid: 1 })
-      };
-      const mockSelectStmt = {
-        get: jest.fn().mockReturnValue({ id: 1, ...expenseData })
-      };
-      
-      mockDb.prepare
-        .mockReturnValueOnce(mockInsertStmt)
-        .mockReturnValueOnce(mockSelectStmt);
+      mockDb.run.mockImplementation(function(sql, params, callback) {
+        callback.call({ lastID: 1 }, null);
+      });
 
-      const result = fixedExpenseRepository.create(expenseData);
+      const result = await fixedExpenseRepository.createFixedExpense(expenseData);
 
-      expect(mockInsertStmt.run).toHaveBeenCalledWith(
-        'Rent', 1200, 'Housing', 'Monthly rent'
-      );
-      expect(result).toEqual({ id: 1, ...expenseData });
+      expect(mockDb.run).toHaveBeenCalled();
+      expect(result.id).toBe(1);
+      expect(result.name).toBe('Rent');
+      expect(result.amount).toBe(1200);
+    });
+
+    it('should handle insert errors', async () => {
+      const expenseData = {
+        year: 2024,
+        month: 11,
+        name: 'Rent',
+        amount: 1200,
+        category: 'Housing',
+        payment_type: 'Bank Transfer'
+      };
+
+      mockDb.run.mockImplementation((sql, params, callback) => {
+        callback(new Error('Insert failed'));
+      });
+
+      await expect(fixedExpenseRepository.createFixedExpense(expenseData)).rejects.toThrow('Insert failed');
     });
   });
 
-  describe('update', () => {
-    it('should update existing fixed expense', () => {
+  describe('updateFixedExpense', () => {
+    it('should update existing fixed expense', async () => {
       const updateData = {
         name: 'Updated Rent',
         amount: 1300,
         category: 'Housing',
-        description: 'Updated rent'
+        payment_type: 'Bank Transfer'
       };
 
-      const mockUpdateStmt = {
-        run: jest.fn().mockReturnValue({ changes: 1 })
-      };
-      const mockSelectStmt = {
-        get: jest.fn().mockReturnValue({ id: 1, ...updateData })
-      };
-      
-      mockDb.prepare
-        .mockReturnValueOnce(mockUpdateStmt)
-        .mockReturnValueOnce(mockSelectStmt);
+      mockDb.run.mockImplementation(function(sql, params, callback) {
+        callback.call({ changes: 1 }, null);
+      });
+      mockDb.get.mockImplementation((sql, params, callback) => {
+        callback(null, { id: 1, year: 2024, month: 11, ...updateData });
+      });
 
-      const result = fixedExpenseRepository.update(1, updateData);
+      const result = await fixedExpenseRepository.updateFixedExpense(1, updateData);
 
-      expect(mockUpdateStmt.run).toHaveBeenCalledWith(
-        'Updated Rent', 1300, 'Housing', 'Updated rent', 1
-      );
-      expect(result).toEqual({ id: 1, ...updateData });
+      expect(mockDb.run).toHaveBeenCalled();
+      expect(result).toEqual({ id: 1, year: 2024, month: 11, ...updateData });
+    });
+
+    it('should return null when fixed expense not found', async () => {
+      mockDb.run.mockImplementation(function(sql, params, callback) {
+        callback.call({ changes: 0 }, null);
+      });
+
+      const result = await fixedExpenseRepository.updateFixedExpense(999, { name: 'Test', amount: 100 });
+
+      expect(result).toBeNull();
     });
   });
 
-  describe('delete', () => {
-    it('should delete fixed expense by id', () => {
-      const mockStmt = {
-        run: jest.fn().mockReturnValue({ changes: 1 })
-      };
-      mockDb.prepare.mockReturnValue(mockStmt);
+  describe('deleteFixedExpense', () => {
+    it('should delete fixed expense by id', async () => {
+      mockDb.run.mockImplementation(function(sql, params, callback) {
+        callback.call({ changes: 1 }, null);
+      });
 
-      const result = fixedExpenseRepository.delete(1);
+      const result = await fixedExpenseRepository.deleteFixedExpense(1);
 
-      expect(mockDb.prepare).toHaveBeenCalledWith('DELETE FROM fixed_expenses WHERE id = ?');
-      expect(mockStmt.run).toHaveBeenCalledWith(1);
+      expect(mockDb.run).toHaveBeenCalled();
       expect(result).toBe(true);
     });
+
+    it('should return false when fixed expense not found', async () => {
+      mockDb.run.mockImplementation(function(sql, params, callback) {
+        callback.call({ changes: 0 }, null);
+      });
+
+      const result = await fixedExpenseRepository.deleteFixedExpense(999);
+
+      expect(result).toBe(false);
+    });
   });
 
-  describe('getForMonth', () => {
-    it('should return fixed expenses for specific month', () => {
+  describe('getFixedExpensesByCategory', () => {
+    it('should return fixed expenses for specific category', async () => {
       const mockExpenses = [
-        { id: 1, name: 'Rent', amount: 1200, year: 2024, month: 11 },
-        { id: 2, name: 'Insurance', amount: 300, year: 2024, month: 11 }
+        { id: 1, name: 'Rent', amount: 1200, category: 'Housing' }
       ];
       
-      const mockStmt = {
-        all: jest.fn().mockReturnValue(mockExpenses)
-      };
-      mockDb.prepare.mockReturnValue(mockStmt);
+      mockDb.all.mockImplementation((sql, params, callback) => {
+        callback(null, mockExpenses);
+      });
 
-      const result = fixedExpenseRepository.getForMonth(2024, 11);
+      const result = await fixedExpenseRepository.getFixedExpensesByCategory(2024, 11, 'Housing');
 
-      expect(mockStmt.all).toHaveBeenCalledWith(2024, 11);
+      expect(mockDb.all).toHaveBeenCalled();
       expect(result).toEqual(mockExpenses);
     });
   });
 
-  describe('carryForward', () => {
-    it('should carry forward expenses to next month', () => {
-      const mockExpenses = [
-        { id: 1, name: 'Rent', amount: 1200, category: 'Housing' },
-        { id: 2, name: 'Insurance', amount: 300, category: 'Insurance' }
+  describe('getCategoryTotals', () => {
+    it('should return totals grouped by category', async () => {
+      const mockTotals = [
+        { category: 'Housing', total: 1200 },
+        { category: 'Insurance', total: 300 }
+      ];
+      
+      mockDb.all.mockImplementation((sql, params, callback) => {
+        callback(null, mockTotals);
+      });
+
+      const result = await fixedExpenseRepository.getCategoryTotals(2024, 11);
+
+      expect(mockDb.all).toHaveBeenCalled();
+      expect(result).toEqual({
+        'Housing': 1200,
+        'Insurance': 300
+      });
+    });
+  });
+
+  describe('copyFixedExpenses', () => {
+    it('should copy fixed expenses from one month to another', async () => {
+      const sourceExpenses = [
+        { id: 1, name: 'Rent', amount: 1200, category: 'Housing', payment_type: 'Bank Transfer' },
+        { id: 2, name: 'Insurance', amount: 300, category: 'Insurance', payment_type: 'Credit Card' }
       ];
 
-      const mockSelectStmt = {
-        all: jest.fn().mockReturnValue(mockExpenses)
-      };
-      const mockInsertStmt = {
-        run: jest.fn().mockReturnValue({ lastInsertRowid: 3 })
-      };
-      
-      mockDb.prepare
-        .mockReturnValueOnce(mockSelectStmt)
-        .mockReturnValue(mockInsertStmt);
+      // First call returns source expenses
+      let allCallCount = 0;
+      mockDb.all.mockImplementation((sql, params, callback) => {
+        allCallCount++;
+        if (allCallCount === 1) {
+          callback(null, sourceExpenses);
+        } else {
+          callback(null, []);
+        }
+      });
 
-      const result = fixedExpenseRepository.carryForward(2024, 11);
+      // Run calls for creating new expenses
+      let runCallCount = 0;
+      mockDb.run.mockImplementation(function(sql, params, callback) {
+        runCallCount++;
+        callback.call({ lastID: runCallCount + 2 }, null);
+      });
 
-      expect(mockSelectStmt.all).toHaveBeenCalledWith(2024, 11);
-      expect(mockInsertStmt.run).toHaveBeenCalledTimes(2);
+      const result = await fixedExpenseRepository.copyFixedExpenses(2024, 11, 2024, 12);
+
       expect(result).toHaveLength(2);
+      expect(result[0].name).toBe('Rent');
+      expect(result[1].name).toBe('Insurance');
     });
 
-    it('should handle year rollover', () => {
-      const mockExpenses = [
-        { id: 1, name: 'Rent', amount: 1200, category: 'Housing' }
-      ];
+    it('should return empty array when no source expenses exist', async () => {
+      mockDb.all.mockImplementation((sql, params, callback) => {
+        callback(null, []);
+      });
 
-      const mockSelectStmt = {
-        all: jest.fn().mockReturnValue(mockExpenses)
-      };
-      const mockInsertStmt = {
-        run: jest.fn().mockReturnValue({ lastInsertRowid: 2 })
-      };
-      
-      mockDb.prepare
-        .mockReturnValueOnce(mockSelectStmt)
-        .mockReturnValue(mockInsertStmt);
+      const result = await fixedExpenseRepository.copyFixedExpenses(2024, 11, 2024, 12);
 
-      const result = fixedExpenseRepository.carryForward(2024, 12);
-
-      // Should insert with year 2025, month 1
-      expect(mockInsertStmt.run).toHaveBeenCalledWith(
-        'Rent', 1200, 'Housing', undefined, 2025, 1
-      );
+      expect(result).toEqual([]);
     });
   });
 });

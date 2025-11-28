@@ -1,4 +1,5 @@
 const expenseService = require('../services/expenseService');
+const categorySuggestionService = require('../services/categorySuggestionService');
 const { isValid: isValidCategory } = require('../utils/categories');
 const fs = require('fs');
 const path = require('path');
@@ -423,17 +424,29 @@ async function getDistinctPlaces(req, res) {
 /**
  * Get suggested category for a place
  * GET /api/expenses/suggest-category?place=Walmart
+ * 
+ * Returns suggestion with confidence and breakdown of all categories for the place.
+ * Response format:
+ * {
+ *   "suggestion": { "category": "Groceries", "confidence": 0.85, "count": 17 },
+ *   "breakdown": [{ "category": "Groceries", "count": 17, "lastUsed": "2025-11-25" }, ...]
+ * }
  */
 async function getSuggestedCategory(req, res) {
   try {
     const { place } = req.query;
     
-    if (!place) {
+    if (!place || place.trim() === '') {
       return res.status(400).json({ error: 'Place query parameter is required' });
     }
     
-    const suggestion = await expenseService.getSuggestedCategory(place);
-    res.status(200).json(suggestion);
+    const suggestion = await categorySuggestionService.getSuggestedCategory(place);
+    const breakdown = await categorySuggestionService.getCategoryBreakdown(place);
+    
+    res.status(200).json({
+      suggestion: suggestion,
+      breakdown: breakdown
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

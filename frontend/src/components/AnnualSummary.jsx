@@ -1,15 +1,28 @@
 import { useState, useEffect, useMemo } from 'react';
 import './AnnualSummary.css';
 import { formatAmount, getMonthNameShort } from '../utils/formatters';
+import { getAnnualIncomeByCategory } from '../services/incomeApi';
 
 const AnnualSummary = ({ year }) => {
   const [summary, setSummary] = useState(null);
+  const [incomeByCategory, setIncomeByCategory] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     fetchAnnualSummary();
   }, [year]);
+
+  // Helper function to get category icon
+  const getCategoryIcon = (category) => {
+    const icons = {
+      'Salary': '💼',
+      'Government': '🏛️',
+      'Gifts': '🎁',
+      'Other': '💰'
+    };
+    return icons[category] || '💰';
+  };
 
   // Memoize expensive chart calculations - MUST be at top level, before any returns
   const chartData = useMemo(() => {
@@ -39,6 +52,16 @@ const AnnualSummary = ({ year }) => {
 
       const data = await response.json();
       setSummary(data);
+
+      // Fetch income by category
+      try {
+        const categoryData = await getAnnualIncomeByCategory(year);
+        setIncomeByCategory(categoryData);
+      } catch (categoryErr) {
+        console.error('Error fetching income by category:', categoryErr);
+        // Don't fail the whole component if category data fails
+        setIncomeByCategory(null);
+      }
     } catch (err) {
       setError(err.message);
       console.error('Error fetching annual summary:', err);
@@ -130,6 +153,27 @@ const AnnualSummary = ({ year }) => {
           </div>
         </div>
       </div>
+
+      {/* Income by Category Section */}
+      {incomeByCategory && Object.keys(incomeByCategory).length > 0 && (
+        <div className="summary-section">
+          <h3>Income by Category</h3>
+          <div className="category-grid">
+            {Object.entries(incomeByCategory).map(([category, total]) => (
+              <div key={category} className="category-item income-category-item">
+                <div className="category-icon-large">{getCategoryIcon(category)}</div>
+                <div className="category-name">{category}</div>
+                <div className="category-amount">${formatAmount(total)}</div>
+                <div className="category-percentage">
+                  {summary.totalIncome > 0 
+                    ? ((total / summary.totalIncome) * 100).toFixed(1) 
+                    : 0}%
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="summary-section">
         <h3>Monthly Breakdown</h3>

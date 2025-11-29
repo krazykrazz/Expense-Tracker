@@ -1565,6 +1565,125 @@ async function migrateAddCategoryAndPaymentTypeToFixedExpenses(db) {
 }
 
 /**
+ * Migration: Add category column to income_sources table
+ */
+async function migrateAddIncomeCategoryColumn(db) {
+  const migrationName = 'add_income_category_column_v1';
+  
+  // Check if already applied
+  const isApplied = await checkMigrationApplied(db, migrationName);
+  if (isApplied) {
+    console.log(`✓ Migration "${migrationName}" already applied, skipping`);
+    return;
+  }
+
+  console.log(`Running migration: ${migrationName}`);
+
+  // Create backup
+  await createBackup();
+
+  return new Promise((resolve, reject) => {
+    db.serialize(() => {
+      db.run('BEGIN TRANSACTION', (err) => {
+        if (err) {
+          return reject(err);
+        }
+
+        // Check if income_sources table exists
+        db.get(
+          "SELECT name FROM sqlite_master WHERE type='table' AND name='income_sources'",
+          (err, row) => {
+            if (err) {
+              db.run('ROLLBACK');
+              return reject(err);
+            }
+
+            if (!row) {
+              console.log('ℹ income_sources table does not exist, skipping migration');
+              markMigrationApplied(db, migrationName).then(() => {
+                db.run('COMMIT', (err) => {
+                  if (err) {
+                    db.run('ROLLBACK');
+                    return reject(err);
+                  }
+                  console.log(`✓ Migration "${migrationName}" completed successfully`);
+                  resolve();
+                });
+              }).catch(reject);
+              return;
+            }
+
+            // Check if category column already exists
+            db.all('PRAGMA table_info(income_sources)', (err, columns) => {
+              if (err) {
+                db.run('ROLLBACK');
+                return reject(err);
+              }
+
+              const hasCategory = columns.some(col => col.name === 'category');
+
+              if (hasCategory) {
+                console.log('✓ income_sources already has category column');
+                markMigrationApplied(db, migrationName).then(() => {
+                  db.run('COMMIT', (err) => {
+                    if (err) {
+                      db.run('ROLLBACK');
+                      return reject(err);
+                    }
+                    console.log(`✓ Migration "${migrationName}" completed successfully`);
+                    resolve();
+                  });
+                }).catch(reject);
+                return;
+              }
+
+              // Add category column with default value 'Other'
+              db.run(`
+                ALTER TABLE income_sources 
+                ADD COLUMN category TEXT NOT NULL DEFAULT 'Other' 
+                CHECK(category IN ('Salary', 'Government', 'Gifts', 'Other'))
+              `, (err) => {
+                if (err) {
+                  db.run('ROLLBACK');
+                  return reject(err);
+                }
+                
+                console.log('✓ Added category column to income_sources');
+
+                // Count updated records
+                db.get('SELECT COUNT(*) as count FROM income_sources', (err, row) => {
+                  if (err) {
+                    db.run('ROLLBACK');
+                    return reject(err);
+                  }
+
+                  const recordCount = row ? row.count : 0;
+                  if (recordCount > 0) {
+                    console.log(`✓ Updated ${recordCount} existing income source(s) with default category 'Other'`);
+                  }
+
+                  // Mark migration as applied and commit
+                  markMigrationApplied(db, migrationName).then(() => {
+                    db.run('COMMIT', (err) => {
+                      if (err) {
+                        db.run('ROLLBACK');
+                        return reject(err);
+                      }
+                      console.log(`✓ Migration "${migrationName}" completed successfully`);
+                      resolve();
+                    });
+                  }).catch(reject);
+                });
+              });
+            });
+          }
+        );
+      });
+    });
+  });
+}
+
+/**
  * Run all pending migrations
  */
 async function runMigrations(db) {
@@ -1577,6 +1696,7 @@ async function runMigrations(db) {
     await migrateFixCategoryConstraints(db);
     await migrateAddPersonalCareCategory(db);
     await migrateAddCategoryAndPaymentTypeToFixedExpenses(db);
+    await migrateAddIncomeCategoryColumn(db);
     console.log('✓ All migrations completed\n');
   } catch (error) {
     console.error('✗ Migration failed:', error.message);

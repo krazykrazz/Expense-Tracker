@@ -159,6 +159,54 @@
   color: #888;
 }
 
+/* Income category items */
+.income-category-item {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: 1px solid #5a67d8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 20px 15px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.income-category-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.income-category-item .category-name,
+.income-category-item .category-amount,
+.income-category-item .category-percentage {
+  color: white;
+}
+
+.income-category-item .category-name {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.income-category-item .category-amount {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.income-category-item .category-percentage {
+  font-size: 13px;
+  opacity: 0.9;
+}
+
+.category-icon-large {
+  font-size: 36px;
+  margin-bottom: 10px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+}
+
 /* Loading and error states moved to shared charts.css */
 
 .tax-deductible-section {

@@ -33,7 +33,7 @@ async function getMonthlyIncome(req, res) {
 /**
  * Create a new income source
  * POST /api/income
- * Body: { year, month, name, amount }
+ * Body: { year, month, name, amount, category }
  */
 async function createIncomeSource(req, res) {
   try {
@@ -43,6 +43,7 @@ async function createIncomeSource(req, res) {
       return res.status(400).json({ error: 'Year, month, name, and amount are required' });
     }
     
+    // Pass category to service layer (service will handle default)
     const createdIncome = await incomeService.createIncomeSource(incomeData);
     res.status(201).json(createdIncome);
   } catch (error) {
@@ -53,7 +54,7 @@ async function createIncomeSource(req, res) {
 /**
  * Update an income source by ID
  * PUT /api/income/:id
- * Body: { name, amount }
+ * Body: { name, amount, category }
  */
 async function updateIncomeSource(req, res) {
   try {
@@ -69,6 +70,7 @@ async function updateIncomeSource(req, res) {
       return res.status(400).json({ error: 'Name and amount are required' });
     }
     
+    // Pass category to service layer (service will handle validation)
     const updatedIncome = await incomeService.updateIncomeSource(id, incomeData);
     
     if (!updatedIncome) {
@@ -143,10 +145,36 @@ async function copyFromPreviousMonth(req, res) {
   }
 }
 
+/**
+ * Get annual income breakdown by category
+ * GET /api/income/annual/:year/by-category
+ */
+async function getAnnualIncomeByCategory(req, res) {
+  try {
+    const { year } = req.params;
+    
+    if (!year) {
+      return res.status(400).json({ error: 'Year parameter is required' });
+    }
+    
+    const yearNum = parseInt(year);
+    
+    if (isNaN(yearNum)) {
+      return res.status(400).json({ error: 'Year must be a valid number' });
+    }
+    
+    const byCategory = await incomeService.getAnnualIncomeByCategory(yearNum);
+    res.status(200).json(byCategory);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+}
+
 module.exports = {
   getMonthlyIncome,
   createIncomeSource,
   updateIncomeSource,
   deleteIncomeSource,
-  copyFromPreviousMonth
+  copyFromPreviousMonth,
+  getAnnualIncomeByCategory
 };

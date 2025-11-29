@@ -94,7 +94,7 @@ describe('incomeRepository', () => {
       const result = await incomeRepository.createIncomeSource(incomeData);
 
       expect(mockDb.run).toHaveBeenCalled();
-      expect(result).toEqual({ id: 1, ...incomeData });
+      expect(result).toEqual({ id: 1, ...incomeData, category: 'Other' });
     });
 
     it('should handle insert errors', async () => {

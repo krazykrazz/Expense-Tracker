@@ -1,6 +1,7 @@
 .search-bar-container {
-  margin: 0;
+  margin: 0 0 15px 0;
   flex: 1;
+  width: 100%;
 }
 
 /* Screen reader only content */
@@ -18,7 +19,7 @@
 
 .search-filters-wrapper {
   display: flex;
-  gap: 8px;
+  gap: 5px;
   align-items: center;
   flex-wrap: wrap;
 }
@@ -56,9 +57,12 @@
 
 .filter-dropdown-wrapper {
   position: relative;
+  flex: 1;
+  min-width: 0;
 }
 
 .filter-dropdown {
+  width: 100%;
   padding: 6px 10px;
   font-size: 13px;
   border: 1px solid #ddd;
@@ -66,7 +70,6 @@
   outline: none;
   background-color: white;
   cursor: pointer;
-  min-width: 150px;
   transition: all 0.2s ease;
   position: relative;
 }

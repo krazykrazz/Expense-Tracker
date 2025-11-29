@@ -5,14 +5,15 @@ const INCOME_ENDPOINTS = {
   BASE: `${API_BASE_URL}/api/income`,
   BY_MONTH: (year, month) => `${API_BASE_URL}/api/income/${year}/${month}`,
   BY_ID: (id) => `${API_BASE_URL}/api/income/${id}`,
-  COPY_PREVIOUS: (year, month) => `${API_BASE_URL}/api/income/${year}/${month}/copy-previous`
+  COPY_PREVIOUS: (year, month) => `${API_BASE_URL}/api/income/${year}/${month}/copy-previous`,
+  ANNUAL_BY_CATEGORY: (year) => `${API_BASE_URL}/api/income/annual/${year}/by-category`
 };
 
 /**
  * Get all income sources for a specific month
  * @param {number} year - Year
  * @param {number} month - Month (1-12)
- * @returns {Promise<Object>} { sources: Array, total: number }
+ * @returns {Promise<Object>} { sources: Array, total: number, byCategory: Object }
  */
 export const getMonthlyIncomeSources = async (year, month) => {
   try {
@@ -23,7 +24,14 @@ export const getMonthlyIncomeSources = async (year, month) => {
       throw new Error(errorData.error || 'Failed to fetch income sources');
     }
     
-    return await response.json();
+    const data = await response.json();
+    
+    // Parse byCategory from response (Requirement 2.5)
+    return {
+      sources: data.sources || [],
+      total: data.total || 0,
+      byCategory: data.byCategory || {}
+    };
   } catch (error) {
     console.error('Error fetching monthly income sources:', error);
     throw error;
@@ -32,17 +40,24 @@ export const getMonthlyIncomeSources = async (year, month) => {
 
 /**
  * Create a new income source
- * @param {Object} data - { year, month, name, amount }
+ * @param {Object} data - { year, month, name, amount, category }
  * @returns {Promise<Object>} Created income source
  */
 export const createIncomeSource = async (data) => {
   try {
+    // Include category in request body (Requirement 1.5)
     const response = await fetch(INCOME_ENDPOINTS.BASE, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(data)
+      body: JSON.stringify({
+        year: data.year,
+        month: data.month,
+        name: data.name,
+        amount: data.amount,
+        category: data.category || 'Other'
+      })
     });
     
     if (!response.ok) {
@@ -60,17 +75,22 @@ export const createIncomeSource = async (data) => {
 /**
  * Update an income source
  * @param {number} id - Income source ID
- * @param {Object} data - { name, amount }
+ * @param {Object} data - { name, amount, category }
  * @returns {Promise<Object>} Updated income source
  */
 export const updateIncomeSource = async (id, data) => {
   try {
+    // Include category in request body (Requirement 3.3)
     const response = await fetch(INCOME_ENDPOINTS.BY_ID(id), {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(data)
+      body: JSON.stringify({
+        name: data.name,
+        amount: data.amount,
+        category: data.category
+      })
     });
     
     if (!response.ok) {
@@ -131,6 +151,27 @@ export const carryForwardIncomeSources = async (year, month) => {
     return await response.json();
   } catch (error) {
     console.error('Error carrying forward income sources:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get annual income breakdown by category
+ * @param {number} year - Year
+ * @returns {Promise<Object>} Category breakdown for the year
+ */
+export const getAnnualIncomeByCategory = async (year) => {
+  try {
+    const response = await fetch(INCOME_ENDPOINTS.ANNUAL_BY_CATEGORY(year));
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || 'Failed to fetch annual income by category');
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching annual income by category:', error);
     throw error;
   }
 };

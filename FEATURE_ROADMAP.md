@@ -1,7 +1,7 @@
 # Expense Tracker - Feature Roadmap
 
-**Last Updated**: November 27, 2025  
-**Current Version**: 4.2.0
+**Last Updated**: November 29, 2025  
+**Current Version**: 4.3.1
 
 This document tracks potential features and enhancements for the Expense Tracker application. Features are categorized by priority and implementation status.
 
@@ -430,6 +430,23 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ## 🟢 Completed Features
 
+### 🟢 Income Source Categories (v4.3.1)
+**Completed**: November 29, 2025  
+**Spec**: `.kiro/specs/income-source-categories/`  
+**Description**: Enhanced income tracking with categorization by type (Salary, Government, Gifts, Other).
+
+**Features Delivered**:
+- Category selection dropdown for all income sources
+- Four predefined income categories: Salary, Government, Gifts, Other
+- Category display and editing in Income Management Modal
+- Category subtotals in monthly income view
+- Income breakdown by category on Annual Summary
+- Category preservation during carry-forward operations
+- Automatic database migration with default "Other" category for existing sources
+- Visual category indicators and grouping in income lists
+
+---
+
 ### 🟢 Smart Expense Entry (v4.3.0)
 **Completed**: November 27, 2025  
 **Spec**: `.kiro/specs/smart-expense-entry/`  
@@ -496,12 +513,14 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ### 🟢 Multiple Income Sources (v3.2.0)
 **Completed**: November 10, 2025  
+**Enhanced**: v4.3.1 with category tracking  
 **Description**: Track income from multiple sources per month.
 
 **Features Delivered**:
 - Income sources management
 - Monthly income tracking
 - Income vs expense comparison
+- (v4.3.1) Category-based income classification and reporting
 
 ---
 
@@ -578,4 +597,6 @@ This document tracks potential features and enhancements for the Expense Tracker
 ---
 
 **Version History**:
+- v1.2 (2025-11-29): Added Income Source Categories (v4.3.1) to completed features
+- v1.1 (2025-11-27): Added Smart Expense Entry (v4.3.0) to completed features
 - v1.0 (2025-11-19): Initial roadmap created with 18 proposed features

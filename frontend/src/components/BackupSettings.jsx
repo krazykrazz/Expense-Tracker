@@ -464,6 +464,36 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v4.3.2</div>
+                <div className="changelog-date">November 29, 2025</div>
+                <ul className="changelog-items">
+                  <li>Fixed ExpenseList filters incorrectly triggering global view mode</li>
+                  <li>Monthly expense filters now work correctly without switching views</li>
+                  <li>Fixed application crash when payment method data is undefined</li>
+                  <li>Improved stability and error handling in SummaryPanel</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
+                <div className="changelog-version">v4.3.1</div>
+                <div className="changelog-date">November 29, 2025</div>
+                <ul className="changelog-items">
+                  <li>Improved filter layout alignment and spacing</li>
+                  <li>Filters now properly align with monthly summary panel</li>
+                  <li>Reduced gap between filter dropdowns for cleaner appearance</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
+                <div className="changelog-version">v4.3.0</div>
+                <div className="changelog-date">November 29, 2025</div>
+                <ul className="changelog-items">
+                  <li>Added global expense filtering across all time periods</li>
+                  <li>Filter by category and payment method from any view</li>
+                  <li>Combined text search with category and payment filters</li>
+                  <li>Automatic switch to global view when filters are active</li>
+                  <li>Clear all filters button for easy reset</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v4.2.3</div>
                 <div className="changelog-date">November 27, 2025</div>
                 <ul className="changelog-items">

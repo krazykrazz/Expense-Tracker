@@ -50,7 +50,7 @@ describe('Budget Service - End-to-End Integration Tests', () => {
     test('should handle complete budget lifecycle with expense operations', async () => {
       const year = 2090;
       const month = 6;
-      const category = 'Food';
+      const category = 'Groceries';
       const budgetLimit = 500;
 
       // Step 1: Create budget

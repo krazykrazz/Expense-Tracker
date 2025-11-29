@@ -15,11 +15,13 @@ A full-stack expense tracking application built with React and Node.js.
 - 💳 Payment method memory (remembers last used)
 
 ### Income & Fixed Expenses
-- 💰 Track monthly gross income from multiple sources
+- 💰 Track monthly gross income from multiple sources with categorization
+- 🏷️ Categorize income sources (Salary, Government, Gifts, Other)
+- 📊 View income breakdown by category on monthly and annual summaries
 - 🏠 Manage fixed monthly expenses with category and payment type tracking
 - 🏷️ Categorize fixed expenses (Housing, Utilities, Subscriptions, Insurance, etc.)
 - 💳 Track payment methods for fixed expenses (Credit Card, Debit Card, Cash, Cheque, E-Transfer)
-- 🔄 Carry forward income sources and fixed expenses from previous month
+- 🔄 Carry forward income sources and fixed expenses from previous month (preserves categories)
 - 📈 Calculate net balance including all income and expenses
 
 ### Loans & Lines of Credit
@@ -331,11 +333,12 @@ expense-tracker/
 - `GET /api/expenses/summary` - Get monthly summary
 
 ### Income Sources
-- `GET /api/income/:year/:month` - Get income sources for a month
-- `POST /api/income` - Create a new income source
-- `PUT /api/income/:id` - Update an income source
+- `GET /api/income/:year/:month` - Get income sources for a month (includes category breakdown)
+- `POST /api/income` - Create a new income source (with category)
+- `PUT /api/income/:id` - Update an income source (with category)
 - `DELETE /api/income/:id` - Delete an income source
-- `POST /api/income/:year/:month/copy-previous` - Copy income sources from previous month
+- `POST /api/income/:year/:month/copy-previous` - Copy income sources from previous month (preserves categories)
+- `GET /api/income/annual/:year/by-category` - Get annual income breakdown by category
 
 ### Fixed Expenses
 - `GET /api/fixed-expenses/:year/:month` - Get fixed expenses for a month
@@ -391,7 +394,9 @@ expense-tracker/
 - month (INTEGER)
 - name (TEXT) - Income source name
 - amount (REAL)
+- category (TEXT) - Income category (Salary, Government, Gifts, Other)
 - created_at (TEXT)
+- updated_at (TEXT)
 
 ### Fixed Expenses Table
 - id (INTEGER PRIMARY KEY)

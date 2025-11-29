@@ -12,6 +12,14 @@ const PAYMENT_METHODS = [
   'VISA'
 ];
 
+const INCOME_CATEGORIES = [
+  'Salary',
+  'Government',
+  'Gifts',
+  'Other'
+];
+
 module.exports = {
-  PAYMENT_METHODS
+  PAYMENT_METHODS,
+  INCOME_CATEGORIES
 };

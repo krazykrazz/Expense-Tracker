@@ -380,17 +380,6 @@ function App() {
           onManageBudgets={handleManageBudgets}
           onViewBudgetHistory={handleViewBudgetHistory}
         />
-        <SearchBar 
-          onSearchChange={handleSearchChange}
-          onFilterTypeChange={handleFilterTypeChange}
-          onFilterMethodChange={handleFilterMethodChange}
-          onClearFilters={handleClearFilters}
-          filterType={filterType}
-          filterMethod={filterMethod}
-          categories={CATEGORIES}
-          paymentMethods={PAYMENT_METHODS}
-          loading={loading}
-        />
         
         {loading && <div className="loading-message">Loading expenses...</div>}
         {error && (
@@ -410,19 +399,39 @@ function App() {
         {!loading && !error && (
           <div className="content-layout">
             <div className="content-left">
+              <SearchBar 
+                onSearchChange={handleSearchChange}
+                onFilterTypeChange={handleFilterTypeChange}
+                onFilterMethodChange={handleFilterMethodChange}
+                onClearFilters={handleClearFilters}
+                filterType={filterType}
+                filterMethod={filterMethod}
+                categories={CATEGORIES}
+                paymentMethods={PAYMENT_METHODS}
+                loading={loading}
+                showOnlySearch={true}
+              />
               <ExpenseList 
                 expenses={filteredExpenses}
                 onExpenseDeleted={handleExpenseDeleted}
                 onExpenseUpdated={handleExpenseUpdated}
                 searchText={searchText}
                 onAddExpense={() => setShowExpenseForm(true)}
-                filterType={filterType}
-                filterMethod={filterMethod}
-                onFilterTypeChange={handleFilterTypeChange}
-                onFilterMethodChange={handleFilterMethodChange}
               />
             </div>
             <div className="content-right">
+              <SearchBar 
+                onSearchChange={handleSearchChange}
+                onFilterTypeChange={handleFilterTypeChange}
+                onFilterMethodChange={handleFilterMethodChange}
+                onClearFilters={handleClearFilters}
+                filterType={filterType}
+                filterMethod={filterMethod}
+                categories={CATEGORIES}
+                paymentMethods={PAYMENT_METHODS}
+                loading={loading}
+                showOnlyFilters={true}
+              />
               <SummaryPanel 
                 selectedYear={selectedYear}
                 selectedMonth={selectedMonth}
@@ -513,7 +522,7 @@ function App() {
 
       <footer className="App-footer">
         <span className="version">
-          v{versionInfo?.version || '4.2.3'}
+          v{versionInfo?.version || '4.3.2'}
           {versionInfo?.docker && (
             <span className="docker-tag"> (Docker: {versionInfo.docker.tag})</span>
           )}

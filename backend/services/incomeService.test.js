@@ -19,18 +19,22 @@ describe('incomeService', () => {
         { id: 1, name: 'Salary', amount: 5000, year: 2024, month: 11 },
         { id: 2, name: 'Freelance', amount: 1500, year: 2024, month: 11 }
       ];
+      const mockByCategory = { Salary: 5000, Other: 1500 };
       incomeRepository.getIncomeSources.mockResolvedValue(mockSources);
       incomeRepository.getTotalMonthlyGross.mockResolvedValue(6500);
+      incomeRepository.getIncomeByCategoryForMonth.mockResolvedValue(mockByCategory);
 
       const result = await incomeService.getMonthlyIncome(2024, 11);
 
       expect(result).toEqual({
         sources: mockSources,
-        total: 6500
+        total: 6500,
+        byCategory: mockByCategory
       });
       expect(validateYearMonth).toHaveBeenCalledWith(2024, 11);
       expect(incomeRepository.getIncomeSources).toHaveBeenCalledWith(2024, 11);
       expect(incomeRepository.getTotalMonthlyGross).toHaveBeenCalledWith(2024, 11);
+      expect(incomeRepository.getIncomeByCategoryForMonth).toHaveBeenCalledWith(2024, 11);
     });
 
     it('should handle invalid year/month', async () => {
@@ -44,12 +48,14 @@ describe('incomeService', () => {
     it('should return empty sources and zero total when no income exists', async () => {
       incomeRepository.getIncomeSources.mockResolvedValue([]);
       incomeRepository.getTotalMonthlyGross.mockResolvedValue(0);
+      incomeRepository.getIncomeByCategoryForMonth.mockResolvedValue({});
 
       const result = await incomeService.getMonthlyIncome(2024, 11);
 
       expect(result).toEqual({
         sources: [],
-        total: 0
+        total: 0,
+        byCategory: {}
       });
     });
   });
@@ -72,7 +78,8 @@ describe('incomeService', () => {
         year: 2024,
         month: 11,
         name: 'Salary',
-        amount: 5000
+        amount: 5000,
+        category: 'Other'
       });
     });
 
@@ -132,7 +139,8 @@ describe('incomeService', () => {
         year: 2024,
         month: 11,
         name: 'Salary',
-        amount: 5000
+        amount: 5000,
+        category: 'Other'
       });
     });
   });
@@ -151,7 +159,8 @@ describe('incomeService', () => {
       expect(result).toEqual(mockUpdatedIncome);
       expect(incomeRepository.updateIncomeSource).toHaveBeenCalledWith(1, {
         name: 'Updated Salary',
-        amount: 5500
+        amount: 5500,
+        category: 'Other'
       });
     });
 
@@ -250,6 +259,62 @@ describe('incomeService', () => {
 
       await expect(incomeService.createIncomeSource(invalidData))
         .rejects.toThrow('Amount must be a valid number');
+    });
+
+    it('should throw error for invalid category', async () => {
+      const invalidData = {
+        year: 2024,
+        month: 11,
+        name: 'Salary',
+        amount: 5000,
+        category: 'InvalidCategory'
+      };
+
+      await expect(incomeService.createIncomeSource(invalidData))
+        .rejects.toThrow('Category must be one of: Salary, Government, Gifts, Other');
+    });
+
+    it('should accept valid category', async () => {
+      const validData = {
+        year: 2024,
+        month: 11,
+        name: 'Salary',
+        amount: 5000,
+        category: 'Salary'
+      };
+      incomeRepository.createIncomeSource.mockResolvedValue({ id: 1, ...validData });
+
+      await incomeService.createIncomeSource(validData);
+
+      expect(incomeRepository.createIncomeSource).toHaveBeenCalledWith({
+        year: 2024,
+        month: 11,
+        name: 'Salary',
+        amount: 5000,
+        category: 'Salary'
+      });
+    });
+  });
+
+  describe('getAnnualIncomeByCategory', () => {
+    it('should return annual income breakdown by category', async () => {
+      const mockCategoryBreakdown = {
+        Salary: 60000,
+        Government: 5000,
+        Gifts: 2000,
+        Other: 3000
+      };
+      incomeRepository.getIncomeByCategoryForYear.mockResolvedValue(mockCategoryBreakdown);
+
+      const result = await incomeService.getAnnualIncomeByCategory(2024);
+
+      expect(result).toEqual(mockCategoryBreakdown);
+      expect(incomeRepository.getIncomeByCategoryForYear).toHaveBeenCalledWith(2024);
+    });
+
+    it('should throw error for invalid year', async () => {
+      await expect(incomeService.getAnnualIncomeByCategory('invalid'))
+        .rejects.toThrow('Year must be a valid number');
     });
   });
 });

@@ -2,20 +2,20 @@ const { getDatabase } = require('../database/db');
 
 class IncomeRepository {
   /**
-   * Get all income sources for a specific month
+   * Get all income sources for a specific month (now includes category)
    * @param {number} year - Year
    * @param {number} month - Month (1-12)
-   * @returns {Promise<Array>} Array of income source objects
+   * @returns {Promise<Array>} Array of income source objects with category
    */
   async getIncomeSources(year, month) {
     const db = await getDatabase();
     
     return new Promise((resolve, reject) => {
       const sql = `
-        SELECT id, year, month, name, amount, created_at, updated_at
+        SELECT id, year, month, name, amount, category, created_at, updated_at
         FROM income_sources
         WHERE year = ? AND month = ?
-        ORDER BY created_at ASC
+        ORDER BY category ASC, created_at ASC
       `;
       
       db.all(sql, [year, month], (err, rows) => {
@@ -55,8 +55,75 @@ class IncomeRepository {
   }
 
   /**
-   * Create a new income source
-   * @param {Object} incomeSource - { year, month, name, amount }
+   * Get income totals by category for a specific month
+   * @param {number} year - Year
+   * @param {number} month - Month (1-12)
+   * @returns {Promise<Object>} Object with category totals
+   */
+  async getIncomeByCategoryForMonth(year, month) {
+    const db = await getDatabase();
+    
+    return new Promise((resolve, reject) => {
+      const sql = `
+        SELECT category, COALESCE(SUM(amount), 0) as total
+        FROM income_sources
+        WHERE year = ? AND month = ?
+        GROUP BY category
+      `;
+      
+      db.all(sql, [year, month], (err, rows) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        
+        // Convert array to object
+        const result = {};
+        rows.forEach(row => {
+          result[row.category] = parseFloat(row.total.toFixed(2));
+        });
+        
+        resolve(result);
+      });
+    });
+  }
+
+  /**
+   * Get income totals by category for entire year
+   * @param {number} year - Year
+   * @returns {Promise<Object>} Object with category totals for the year
+   */
+  async getIncomeByCategoryForYear(year) {
+    const db = await getDatabase();
+    
+    return new Promise((resolve, reject) => {
+      const sql = `
+        SELECT category, COALESCE(SUM(amount), 0) as total
+        FROM income_sources
+        WHERE year = ?
+        GROUP BY category
+      `;
+      
+      db.all(sql, [year], (err, rows) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        
+        // Convert array to object
+        const result = {};
+        rows.forEach(row => {
+          result[row.category] = parseFloat(row.total.toFixed(2));
+        });
+        
+        resolve(result);
+      });
+    });
+  }
+
+  /**
+   * Create a new income source (now includes category)
+   * @param {Object} incomeSource - { year, month, name, amount, category }
    * @returns {Promise<Object>} Created income source with ID
    */
   async createIncomeSource(incomeSource) {
@@ -64,15 +131,16 @@ class IncomeRepository {
     
     return new Promise((resolve, reject) => {
       const sql = `
-        INSERT INTO income_sources (year, month, name, amount)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO income_sources (year, month, name, amount, category)
+        VALUES (?, ?, ?, ?, ?)
       `;
       
       const params = [
         incomeSource.year,
         incomeSource.month,
         incomeSource.name,
-        incomeSource.amount
+        incomeSource.amount,
+        incomeSource.category || 'Other'  // Default to Other if not provided
       ];
       
       db.run(sql, params, function(err) {
@@ -84,16 +152,17 @@ class IncomeRepository {
         // Return the created income source with its ID
         resolve({
           id: this.lastID,
-          ...incomeSource
+          ...incomeSource,
+          category: incomeSource.category || 'Other'
         });
       });
     });
   }
 
   /**
-   * Update an income source by ID
+   * Update an income source by ID (now includes category)
    * @param {number} id - Income source ID
-   * @param {Object} updates - { name, amount }
+   * @param {Object} updates - { name, amount, category }
    * @returns {Promise<Object|null>} Updated income source or null if not found
    */
   async updateIncomeSource(id, updates) {
@@ -102,13 +171,14 @@ class IncomeRepository {
     return new Promise((resolve, reject) => {
       const sql = `
         UPDATE income_sources
-        SET name = ?, amount = ?, updated_at = CURRENT_TIMESTAMP
+        SET name = ?, amount = ?, category = ?, updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
       `;
       
       const params = [
         updates.name,
         updates.amount,
+        updates.category,
         id
       ];
       
@@ -158,7 +228,7 @@ class IncomeRepository {
   }
 
   /**
-   * Copy income sources from previous month to current month
+   * Copy income sources from previous month to current month (preserves categories)
    * @param {number} year - Target year
    * @param {number} month - Target month (1-12)
    * @returns {Promise<Array>} Array of created income sources
@@ -178,7 +248,7 @@ class IncomeRepository {
     return new Promise((resolve, reject) => {
       // First, get income sources from previous month
       const selectSql = `
-        SELECT name, amount
+        SELECT name, amount, category
         FROM income_sources
         WHERE year = ? AND month = ?
         ORDER BY created_at ASC
@@ -197,15 +267,15 @@ class IncomeRepository {
         
         // Insert each source into the target month
         const insertSql = `
-          INSERT INTO income_sources (year, month, name, amount)
-          VALUES (?, ?, ?, ?)
+          INSERT INTO income_sources (year, month, name, amount, category)
+          VALUES (?, ?, ?, ?, ?)
         `;
         
         const createdSources = [];
         let completed = 0;
         
         rows.forEach((row) => {
-          db.run(insertSql, [year, month, row.name, row.amount], function(err) {
+          db.run(insertSql, [year, month, row.name, row.amount, row.category], function(err) {
             if (err) {
               reject(err);
               return;
@@ -216,7 +286,8 @@ class IncomeRepository {
               year,
               month,
               name: row.name,
-              amount: row.amount
+              amount: row.amount,
+              category: row.category
             });
             
             completed++;

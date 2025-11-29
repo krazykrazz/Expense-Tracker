@@ -7,6 +7,95 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.4.0] - 2025-11-29
+
+### Added
+- **Income Source Categories**: Categorize income sources for better financial analysis
+  - Added category field to income sources (Salary, Government, Gifts, Other)
+  - Income Management Modal displays category badges with color coding
+  - Monthly income breakdown by category in Income Management Modal
+  - Annual Summary shows "Income by Category" section with totals and percentages
+  - Category preserved when carrying forward income sources from previous month
+  - New API endpoint: `GET /api/income/annual/:year/by-category` for annual category breakdown
+  - Automatic database migration adds category column with default "Other"
+  - Comprehensive test coverage (38 tests) for all income category functionality
+
+### Changed
+- Income sources now include category in all CRUD operations
+- Income Management Modal enhanced with category selectors and breakdown display
+- Annual Summary enhanced with income category visualization
+- Backend validation ensures category is one of: Salary, Government, Gifts, Other
+
+### Technical
+- **Database Migration**: `migrateAddIncomeCategoryColumn()` adds category column to income_sources table
+- **API Updates**: Income endpoints now accept and return category field
+- **Frontend Components**: Enhanced IncomeManagementModal and AnnualSummary with category support
+- **Validation**: Backend and frontend validation for income categories
+- **Test Coverage**: Unit tests for service and repository layers validate category functionality
+- **Default Values**: New income sources default to "Other" if category not specified
+
+---
+
+## [4.3.2] - 2025-11-29
+
+### Fixed
+- **ExpenseList Filter Bug**: Fixed local filters incorrectly triggering global view mode
+  - ExpenseList now uses independent local filter state (localFilterType, localFilterMethod)
+  - Monthly expense filters work correctly without switching to global view
+  - Filter tooltips clarify scope (current month vs global)
+  - Added 8 comprehensive tests to prevent regression
+- **SummaryPanel Crash**: Fixed application crash when methodTotals is undefined
+  - Added optional chaining (?.methodTotals?.Cash || 0) to prevent crashes
+  - Enhanced error handling in payment method summary display
+  - Improved stability when viewing months with incomplete data
+
+### Technical
+- Created `frontend/src/components/ExpenseList.localFilters.test.jsx` with 8 test cases
+- Updated ExpenseList component with local filter state management
+- Enhanced SummaryPanel with defensive programming patterns
+- Documentation: Created `EXPENSELIST_FILTER_FIX.md` with detailed fix analysis
+
+---
+
+## [4.3.1] - 2025-11-29
+
+### Changed
+- **UI Improvements**: Enhanced filter layout and alignment
+  - Improved filter dropdown alignment with monthly summary panel
+  - Reduced gap between filter dropdowns from 8px to 5px for tighter spacing
+  - Filters now expand to fill available width for better visual balance
+  - Search bar and filters now have consistent vertical sizing
+
+### Technical
+- Updated SearchBar.css with optimized spacing and sizing
+- No functional changes, purely visual improvements
+
+---
+
+## [4.3.0] - 2025-11-29
+
+### Added
+- **Global Expense Filtering**: Search and filter expenses across all time periods
+  - Added category filter dropdown in SearchBar (filters across all 17 expense categories)
+  - Added payment method filter dropdown in SearchBar (filters across all 7 payment methods)
+  - Combined text search with category and payment method filters using AND logic
+  - Automatic switch to global view when any filter is active
+  - Clear all filters button to reset and return to monthly view
+  - Filter state preservation across view transitions
+  - Synchronized filters between SearchBar and ExpenseList components
+  - Performance optimizations with memoization and debouncing
+  - Full accessibility support with ARIA labels and keyboard navigation
+  - Comprehensive test coverage (property-based, integration, accessibility, performance tests)
+
+### Technical
+- **No Database Changes**: Feature uses existing data structures
+- **No API Changes**: Uses existing expense endpoints with query parameters
+- **Frontend Updates**: Enhanced SearchBar and App components with filter logic
+- **Test Coverage**: 12 test files covering all aspects of filtering functionality
+- **Documentation**: Created comprehensive feature documentation in `docs/features/GLOBAL_EXPENSE_FILTERING.md`
+
+---
+
 ## [4.2.3] - 2025-11-27
 
 ### Fixed

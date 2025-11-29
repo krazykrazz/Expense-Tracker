@@ -1,5 +1,6 @@
 const incomeRepository = require('../repositories/incomeRepository');
 const { validateYearMonth } = require('../utils/validators');
+const { INCOME_CATEGORIES } = require('../utils/constants');
 
 class IncomeService {
   /**
@@ -38,6 +39,13 @@ class IncomeService {
       }
     }
 
+    // Category validation
+    if (incomeSource.category) {
+      if (!INCOME_CATEGORIES.includes(incomeSource.category)) {
+        errors.push(`Category must be one of: ${INCOME_CATEGORIES.join(', ')}`);
+      }
+    }
+
     // Year and month validation (when provided)
     if (incomeSource.year !== undefined) {
       const year = parseInt(incomeSource.year);
@@ -59,10 +67,10 @@ class IncomeService {
   }
 
   /**
-   * Get all income sources for a month with total
+   * Get all income sources for a month with total and category breakdown
    * @param {number} year - Year
    * @param {number} month - Month (1-12)
-   * @returns {Promise<Object>} { sources: Array, total: number }
+   * @returns {Promise<Object>} { sources: Array, total: number, byCategory: Object }
    */
   async getMonthlyIncome(year, month) {
     // Validate year and month
@@ -79,19 +87,21 @@ class IncomeService {
       throw new Error('Month must be between 1 and 12');
     }
 
-    // Fetch income sources and total from repository
+    // Fetch income sources, total, and category breakdown from repository
     const sources = await incomeRepository.getIncomeSources(yearNum, monthNum);
     const total = await incomeRepository.getTotalMonthlyGross(yearNum, monthNum);
+    const byCategory = await incomeRepository.getIncomeByCategoryForMonth(yearNum, monthNum);
 
     return {
       sources,
-      total
+      total,
+      byCategory
     };
   }
 
   /**
    * Create a new income source
-   * @param {Object} data - { year, month, name, amount }
+   * @param {Object} data - { year, month, name, amount, category }
    * @returns {Promise<Object>} Created income source
    */
   async createIncomeSource(data) {
@@ -108,7 +118,8 @@ class IncomeService {
       year: parseInt(data.year),
       month: parseInt(data.month),
       name: data.name.trim(),
-      amount: parseFloat(data.amount)
+      amount: parseFloat(data.amount),
+      category: data.category || 'Other'  // Default to Other
     };
 
     // Create income source in repository
@@ -118,7 +129,7 @@ class IncomeService {
   /**
    * Update an income source
    * @param {number} id - Income source ID
-   * @param {Object} data - { name, amount }
+   * @param {Object} data - { name, amount, category }
    * @returns {Promise<Object|null>} Updated income source or null if not found
    */
   async updateIncomeSource(id, data) {
@@ -133,7 +144,8 @@ class IncomeService {
     // Prepare updates object
     const updates = {
       name: data.name.trim(),
-      amount: parseFloat(data.amount)
+      amount: parseFloat(data.amount),
+      category: data.category || 'Other'
     };
 
     // Update income source in repository
@@ -184,6 +196,21 @@ class IncomeService {
 
     // Copy from previous month
     return await incomeRepository.copyFromPreviousMonth(yearNum, monthNum);
+  }
+
+  /**
+   * Get annual income breakdown by category
+   * @param {number} year - Year
+   * @returns {Promise<Object>} Category breakdown for the year
+   */
+  async getAnnualIncomeByCategory(year) {
+    const yearNum = parseInt(year);
+    
+    if (isNaN(yearNum)) {
+      throw new Error('Year must be a valid number');
+    }
+
+    return await incomeRepository.getIncomeByCategoryForYear(yearNum);
   }
 }
 

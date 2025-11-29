@@ -1,10 +1,10 @@
-import { useState, useEffect, memo } from 'react';
+import { useState, useEffect, memo, useMemo } from 'react';
 import { API_ENDPOINTS } from '../config';
 import { PAYMENT_METHODS } from '../utils/constants';
 import './ExpenseList.css';
 import { formatAmount, formatLocalDate } from '../utils/formatters';
 
-const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, searchText, onAddExpense, filterType, filterMethod, onFilterTypeChange, onFilterMethodChange }) => {
+const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, searchText, onAddExpense }) => {
   const [deletingId, setDeletingId] = useState(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [expenseToDelete, setExpenseToDelete] = useState(null);
@@ -14,6 +14,9 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, search
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editMessage, setEditMessage] = useState({ text: '', type: '' });
   const [categories, setCategories] = useState([]);
+  // Local filters for monthly view only (don't trigger global view)
+  const [localFilterType, setLocalFilterType] = useState('');
+  const [localFilterMethod, setLocalFilterMethod] = useState('');
 
   // Fetch categories on mount
   useEffect(() => {
@@ -162,6 +165,21 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, search
 
   const formatDate = formatLocalDate;
 
+  // Filter expenses based on local filters (for current month only)
+  const filteredExpenses = useMemo(() => {
+    return expenses.filter(expense => {
+      // Apply local type filter
+      if (localFilterType && expense.type !== localFilterType) {
+        return false;
+      }
+      // Apply local method filter
+      if (localFilterMethod && expense.method !== localFilterMethod) {
+        return false;
+      }
+      return true;
+    });
+  }, [expenses, localFilterType, localFilterMethod]);
+
   /**
    * Generates informative status messages based on filter state
    * 
@@ -176,35 +194,35 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, search
    * @returns {string|null} Status message or null if no message needed
    */
   const getFilterStatusMessage = () => {
+    if (filteredExpenses.length === 0 && expenses.length > 0) {
+      // Expenses exist but all filtered out by local filters
+      const activeFilters = [];
+      if (localFilterType) activeFilters.push(`category: ${localFilterType}`);
+      if (localFilterMethod) activeFilters.push(`payment: ${localFilterMethod}`);
+      
+      return `No expenses match the selected filters (${activeFilters.join(', ')}). Try adjusting your filters or clearing them to see all expenses.`;
+    }
+    
     if (expenses.length === 0) {
-      // No expenses at all - distinguish between no data and filtered out
-      if (searchText || filterType || filterMethod) {
-        const activeFilters = [];
-        if (searchText) activeFilters.push(`search: "${searchText}"`);
-        if (filterType) activeFilters.push(`category: ${filterType}`);
-        if (filterMethod) activeFilters.push(`payment: ${filterMethod}`);
-        
-        return `No expenses match the selected filters (${activeFilters.join(', ')}). Try adjusting your filters or clearing them to see all expenses.`;
-      }
+      // No expenses at all for this month
       return 'No expenses have been recorded for this period.';
     }
     
-    // Show result count when filters are active
-    if (searchText || filterType || filterMethod) {
+    // Show result count when local filters are active
+    if (localFilterType || localFilterMethod) {
       const activeFilters = [];
-      if (searchText) activeFilters.push(`"${searchText}"`);
-      if (filterType) activeFilters.push(filterType);
-      if (filterMethod) activeFilters.push(filterMethod);
+      if (localFilterType) activeFilters.push(localFilterType);
+      if (localFilterMethod) activeFilters.push(localFilterMethod);
       
-      const expenseWord = expenses.length === 1 ? 'expense' : 'expenses';
-      return `Showing ${expenses.length} ${expenseWord} matching: ${activeFilters.join(', ')}`;
+      const expenseWord = filteredExpenses.length === 1 ? 'expense' : 'expenses';
+      return `Showing ${filteredExpenses.length} ${expenseWord} matching: ${activeFilters.join(', ')}`;
     }
     
     return null;
   };
 
   const filterStatusMessage = getFilterStatusMessage();
-  const noExpensesMessage = expenses.length === 0 ? filterStatusMessage : null;
+  const noExpensesMessage = filteredExpenses.length === 0 ? filterStatusMessage : null;
 
   return (
     <div className="expense-list-container">
@@ -214,9 +232,9 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, search
           <div className="filter-controls">
             <select 
               className="filter-select"
-              value={filterType} 
-              onChange={(e) => onFilterTypeChange(e.target.value)}
-              title="Filter by type"
+              value={localFilterType} 
+              onChange={(e) => setLocalFilterType(e.target.value)}
+              title="Filter by type (current month only)"
             >
               <option value="">All Types</option>
               {categories.map((category) => (
@@ -227,21 +245,21 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, search
             </select>
             <select 
               className="filter-select"
-              value={filterMethod} 
-              onChange={(e) => onFilterMethodChange(e.target.value)}
-              title="Filter by payment method"
+              value={localFilterMethod} 
+              onChange={(e) => setLocalFilterMethod(e.target.value)}
+              title="Filter by payment method (current month only)"
             >
               <option value="">All Methods</option>
               {PAYMENT_METHODS.map((method) => (
                 <option key={method} value={method}>{method}</option>
               ))}
             </select>
-            {(filterType || filterMethod) && (
+            {(localFilterType || localFilterMethod) && (
               <button 
                 className="clear-filters-btn"
                 onClick={() => {
-                  onFilterTypeChange('');
-                  onFilterMethodChange('');
+                  setLocalFilterType('');
+                  setLocalFilterMethod('');
                 }}
                 title="Clear filters"
               >
@@ -265,7 +283,7 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, search
         </div>
       )}
 
-      {filterStatusMessage && expenses.length > 0 && (
+      {filterStatusMessage && filteredExpenses.length > 0 && (
         <div className="filter-status-message">
           {filterStatusMessage}
         </div>
@@ -287,7 +305,7 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, search
             </tr>
           </thead>
           <tbody>
-            {expenses.map((expense) => (
+            {filteredExpenses.map((expense) => (
               <tr 
                 key={expense.id}
                 className={

@@ -276,9 +276,9 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
               <div className="compact-item">
                 <span>Cash</span>
                 <span>
-                  ${formatAmount(summary.methodTotals.Cash)}
+                  ${formatAmount(summary.methodTotals?.Cash || 0)}
                   <TrendIndicator 
-                    currentValue={summary.methodTotals.Cash} 
+                    currentValue={summary.methodTotals?.Cash || 0} 
                     previousValue={previousSummary?.methodTotals?.Cash} 
                   />
                 </span>
@@ -286,9 +286,9 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
               <div className="compact-item">
                 <span>Debit</span>
                 <span>
-                  ${formatAmount(summary.methodTotals.Debit)}
+                  ${formatAmount(summary.methodTotals?.Debit || 0)}
                   <TrendIndicator 
-                    currentValue={summary.methodTotals.Debit} 
+                    currentValue={summary.methodTotals?.Debit || 0} 
                     previousValue={previousSummary?.methodTotals?.Debit} 
                   />
                 </span>
@@ -296,9 +296,9 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
               <div className="compact-item">
                 <span>Cheque</span>
                 <span>
-                  ${formatAmount(summary.methodTotals.Cheque)}
+                  ${formatAmount(summary.methodTotals?.Cheque || 0)}
                   <TrendIndicator 
-                    currentValue={summary.methodTotals.Cheque} 
+                    currentValue={summary.methodTotals?.Cheque || 0} 
                     previousValue={previousSummary?.methodTotals?.Cheque} 
                   />
                 </span>
@@ -306,9 +306,9 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
               <div className="compact-item">
                 <span>CIBC MC</span>
                 <span>
-                  ${formatAmount(summary.methodTotals['CIBC MC'])}
+                  ${formatAmount(summary.methodTotals?.['CIBC MC'] || 0)}
                   <TrendIndicator 
-                    currentValue={summary.methodTotals['CIBC MC']} 
+                    currentValue={summary.methodTotals?.['CIBC MC'] || 0} 
                     previousValue={previousSummary?.methodTotals?.['CIBC MC']} 
                   />
                 </span>
@@ -316,9 +316,9 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
               <div className="compact-item">
                 <span>PCF MC</span>
                 <span>
-                  ${formatAmount(summary.methodTotals['PCF MC'])}
+                  ${formatAmount(summary.methodTotals?.['PCF MC'] || 0)}
                   <TrendIndicator 
-                    currentValue={summary.methodTotals['PCF MC']} 
+                    currentValue={summary.methodTotals?.['PCF MC'] || 0} 
                     previousValue={previousSummary?.methodTotals?.['PCF MC']} 
                   />
                 </span>
@@ -326,9 +326,9 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
               <div className="compact-item">
                 <span>WS VISA</span>
                 <span>
-                  ${formatAmount(summary.methodTotals['WS VISA'])}
+                  ${formatAmount(summary.methodTotals?.['WS VISA'] || 0)}
                   <TrendIndicator 
-                    currentValue={summary.methodTotals['WS VISA']} 
+                    currentValue={summary.methodTotals?.['WS VISA'] || 0} 
                     previousValue={previousSummary?.methodTotals?.['WS VISA']} 
                   />
                 </span>
@@ -336,9 +336,9 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
               <div className="compact-item">
                 <span>VISA</span>
                 <span>
-                  ${formatAmount(summary.methodTotals.VISA)}
+                  ${formatAmount(summary.methodTotals?.VISA || 0)}
                   <TrendIndicator 
-                    currentValue={summary.methodTotals.VISA} 
+                    currentValue={summary.methodTotals?.VISA || 0} 
                     previousValue={previousSummary?.methodTotals?.VISA} 
                   />
                 </span>

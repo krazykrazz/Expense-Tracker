@@ -8,7 +8,7 @@ A full-stack personal expense tracking application for managing household financ
 - Smart expense entry with intelligent category suggestions based on place history
 - Payment method memory (remembers last used payment method)
 - Monthly and annual financial summaries with weekly breakdowns
-- Configurable monthly gross income from multiple sources
+- Configurable monthly gross income from multiple sources with category tracking (Salary, Government, Gifts, Other)
 - Fixed monthly expenses management with full category and payment type tracking (Housing, Utilities, Subscriptions, Insurance, etc.) and carry-forward capability
 - Loans and lines of credit tracking with monthly balance history
 - Loan type differentiation (traditional loans vs lines of credit)

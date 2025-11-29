@@ -2,6 +2,9 @@ const express = require('express');
 const router = express.Router();
 const incomeController = require('../controllers/incomeController');
 
+// GET /api/income/annual/:year/by-category - Get annual income breakdown by category
+router.get('/annual/:year/by-category', incomeController.getAnnualIncomeByCategory);
+
 // GET /api/income/:year/:month - Get all income sources for a specific month
 router.get('/:year/:month', incomeController.getMonthlyIncome);
 

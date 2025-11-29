@@ -37,7 +37,9 @@ const SearchBar = memo(({
   filterMethod = '',
   categories = [], 
   paymentMethods = [],
-  loading = false
+  loading = false,
+  showOnlySearch = false,
+  showOnlyFilters = false
 }) => {
   const [searchText, setSearchText] = useState('');
   const [announcement, setAnnouncement] = useState('');
@@ -173,86 +175,92 @@ const SearchBar = memo(({
       </div>
 
       <div className="search-filters-wrapper">
-        <div className="search-input-wrapper">
-          <label htmlFor="expense-search-input" className="sr-only">
-            Search expenses by place or notes
-          </label>
-          <input
-            id="expense-search-input"
-            ref={searchInputRef}
-            type="text"
-            className="search-input"
-            placeholder="Search by place or notes..."
-            value={searchText}
-            onChange={handleSearchChange}
-            aria-label="Search expenses by place or notes"
-            aria-describedby="search-help"
-          />
-          <span id="search-help" className="sr-only">
-            Enter text to search expenses globally across all time periods
-          </span>
-        </div>
+        {!showOnlyFilters && (
+          <div className="search-input-wrapper">
+            <label htmlFor="expense-search-input" className="sr-only">
+              Search expenses by place or notes
+            </label>
+            <input
+              id="expense-search-input"
+              ref={searchInputRef}
+              type="text"
+              className="search-input"
+              placeholder="Search by place or notes..."
+              value={searchText}
+              onChange={handleSearchChange}
+              aria-label="Search expenses by place or notes"
+              aria-describedby="search-help"
+            />
+            <span id="search-help" className="sr-only">
+              Enter text to search expenses globally across all time periods
+            </span>
+          </div>
+        )}
 
-        <div className="filter-dropdown-wrapper">
-          <label htmlFor="category-filter" className="sr-only">
-            Filter by expense category
-          </label>
-          <select
-            id="category-filter"
-            className={`filter-dropdown ${filterType ? 'active-filter' : ''}`}
-            value={filterType}
-            onChange={handleFilterTypeChange}
-            aria-label="Filter by category"
-            aria-describedby="category-help"
-            title="Filter by expense category"
-          >
-            <option value="">All Categories</option>
-            {categories.map(category => (
-              <option key={category} value={category}>
-                {category}
-              </option>
-            ))}
-          </select>
-          <span id="category-help" className="sr-only">
-            Select a category to filter expenses globally
-          </span>
-        </div>
+        {!showOnlySearch && (
+          <>
+            <div className="filter-dropdown-wrapper">
+              <label htmlFor="category-filter" className="sr-only">
+                Filter by expense category
+              </label>
+              <select
+                id="category-filter"
+                className={`filter-dropdown ${filterType ? 'active-filter' : ''}`}
+                value={filterType}
+                onChange={handleFilterTypeChange}
+                aria-label="Filter by category"
+                aria-describedby="category-help"
+                title="Filter by expense category"
+              >
+                <option value="">All Categories</option>
+                {categories.map(category => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
+              <span id="category-help" className="sr-only">
+                Select a category to filter expenses globally
+              </span>
+            </div>
 
-        <div className="filter-dropdown-wrapper">
-          <label htmlFor="payment-method-filter" className="sr-only">
-            Filter by payment method
-          </label>
-          <select
-            id="payment-method-filter"
-            className={`filter-dropdown ${filterMethod ? 'active-filter' : ''}`}
-            value={filterMethod}
-            onChange={handleFilterMethodChange}
-            aria-label="Filter by payment method"
-            aria-describedby="method-help"
-            title="Filter by payment method"
-          >
-            <option value="">All Payment Methods</option>
-            {paymentMethods.map(method => (
-              <option key={method} value={method}>
-                {method}
-              </option>
-            ))}
-          </select>
-          <span id="method-help" className="sr-only">
-            Select a payment method to filter expenses globally
-          </span>
-        </div>
+            <div className="filter-dropdown-wrapper">
+              <label htmlFor="payment-method-filter" className="sr-only">
+                Filter by payment method
+              </label>
+              <select
+                id="payment-method-filter"
+                className={`filter-dropdown ${filterMethod ? 'active-filter' : ''}`}
+                value={filterMethod}
+                onChange={handleFilterMethodChange}
+                aria-label="Filter by payment method"
+                aria-describedby="method-help"
+                title="Filter by payment method"
+              >
+                <option value="">All Payment Methods</option>
+                {paymentMethods.map(method => (
+                  <option key={method} value={method}>
+                    {method}
+                  </option>
+                ))}
+              </select>
+              <span id="method-help" className="sr-only">
+                Select a payment method to filter expenses globally
+              </span>
+            </div>
 
-        {hasActiveFilters && (
-          <button 
-            className="clear-filters-button" 
-            onClick={handleClearAll}
-            aria-label="Clear all filters and return to monthly view"
-            title="Clear all filters and return to monthly view"
-            type="button"
-          >
-            Clear Filters
-          </button>
+            {hasActiveFilters && !showOnlySearch && (
+              <button 
+                className="clear-filters-button" 
+                onClick={handleClearAll}
+                aria-label="Clear all filters and return to monthly view"
+                title="Clear all filters and return to monthly view"
+                type="button"
+              >
+                Clear Filters
+              </button>
+            )}
+          </>
         )}
       </div>
     </div>

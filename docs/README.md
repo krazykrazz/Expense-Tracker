@@ -18,6 +18,7 @@ Documentation for completed features and implementations:
 - `LOANS_INTEGRATION_TEST_RESULTS.md` - Loans integration testing
 - `ENHANCED_FIXED_EXPENSES.md` - Enhanced fixed expenses with category and payment type tracking
 - `GLOBAL_EXPENSE_FILTERING.md` - Global filtering by category and payment method across all time periods
+- `INCOME_SOURCE_CATEGORIES.md` - Income source categorization for better financial analysis
 
 ### deployments/
 Deployment history and migration guides:
@@ -64,6 +65,7 @@ Feature specifications are located in `.kiro/specs/`:
 - `containerization-optimization/` - Docker optimization spec
 - `smart-expense-entry/` - Smart expense entry with category suggestions
 - `global-expense-filtering/` - Global expense filtering by category and payment method
+- `income-source-categories/` - Income source categorization feature
 
 ## Steering Rules
 

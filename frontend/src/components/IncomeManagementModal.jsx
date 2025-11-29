@@ -13,12 +13,15 @@ import { getMonthNameLong } from '../utils/formatters';
 const IncomeManagementModal = ({ isOpen, onClose, year, month, onUpdate }) => {
   const [incomeSources, setIncomeSources] = useState([]);
   const [totalGross, setTotalGross] = useState(0);
+  const [byCategory, setByCategory] = useState(null);
   const [isAdding, setIsAdding] = useState(false);
   const [newSourceName, setNewSourceName] = useState('');
   const [newSourceAmount, setNewSourceAmount] = useState('');
+  const [newSourceCategory, setNewSourceCategory] = useState('Other');
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState('');
   const [editAmount, setEditAmount] = useState('');
+  const [editCategory, setEditCategory] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [validationErrors, setValidationErrors] = useState({
@@ -43,6 +46,7 @@ const IncomeManagementModal = ({ isOpen, onClose, year, month, onUpdate }) => {
       const data = await getMonthlyIncomeSources(year, month);
       setIncomeSources(data.sources || []);
       setTotalGross(data.total || 0);
+      setByCategory(data.byCategory || null);
     } catch (err) {
       const errorMessage = err.message || 'Network error. Unable to load income sources. Please check your connection and try again.';
       setError(errorMessage);
@@ -54,6 +58,16 @@ const IncomeManagementModal = ({ isOpen, onClose, year, month, onUpdate }) => {
 
   const calculateTotal = (sources) => {
     return sources.reduce((sum, source) => sum + parseFloat(source.amount || 0), 0);
+  };
+
+  const getCategoryIcon = (category) => {
+    const icons = {
+      'Salary': '💼',
+      'Government': '🏛️',
+      'Gifts': '🎁',
+      'Other': '💰'
+    };
+    return icons[category] || '💰';
   };
 
   const clearValidationErrors = () => {
@@ -93,7 +107,8 @@ const IncomeManagementModal = ({ isOpen, onClose, year, month, onUpdate }) => {
         year,
         month,
         name: newSourceName.trim(),
-        amount
+        amount,
+        category: newSourceCategory
       });
       
       // Update local state
@@ -101,9 +116,13 @@ const IncomeManagementModal = ({ isOpen, onClose, year, month, onUpdate }) => {
       setIncomeSources(updatedSources);
       setTotalGross(calculateTotal(updatedSources));
 
+      // Refresh to get updated category breakdown
+      await fetchIncomeSources();
+
       // Reset form
       setNewSourceName('');
       setNewSourceAmount('');
+      setNewSourceCategory('Other');
       setIsAdding(false);
       clearValidationErrors();
     } catch (err) {
@@ -119,6 +138,7 @@ const IncomeManagementModal = ({ isOpen, onClose, year, month, onUpdate }) => {
     setEditingId(source.id);
     setEditName(source.name);
     setEditAmount(source.amount.toString());
+    setEditCategory(source.category || 'Other');
   };
 
   const handleSaveEdit = async () => {
@@ -147,7 +167,8 @@ const IncomeManagementModal = ({ isOpen, onClose, year, month, onUpdate }) => {
     try {
       const updatedSource = await updateIncomeSource(editingId, {
         name: editName.trim(),
-        amount
+        amount,
+        category: editCategory
       });
       
       // Update local state
@@ -157,10 +178,14 @@ const IncomeManagementModal = ({ isOpen, onClose, year, month, onUpdate }) => {
       setIncomeSources(updatedSources);
       setTotalGross(calculateTotal(updatedSources));
 
+      // Refresh to get updated category breakdown
+      await fetchIncomeSources();
+
       // Reset edit state
       setEditingId(null);
       setEditName('');
       setEditAmount('');
+      setEditCategory('');
       clearValidationErrors();
     } catch (err) {
       const errorMessage = err.message || 'Network error. Unable to update income source. Please check your connection and try again.';
@@ -175,6 +200,7 @@ const IncomeManagementModal = ({ isOpen, onClose, year, month, onUpdate }) => {
     setEditingId(null);
     setEditName('');
     setEditAmount('');
+    setEditCategory('');
     clearValidationErrors();
   };
 
@@ -229,9 +255,11 @@ const IncomeManagementModal = ({ isOpen, onClose, year, month, onUpdate }) => {
     setIsAdding(false);
     setNewSourceName('');
     setNewSourceAmount('');
+    setNewSourceCategory('Other');
     setEditingId(null);
     setEditName('');
     setEditAmount('');
+    setEditCategory('');
     setError(null);
     clearValidationErrors();
     
@@ -276,6 +304,22 @@ const IncomeManagementModal = ({ isOpen, onClose, year, month, onUpdate }) => {
             <div className="income-modal-loading">Loading income sources...</div>
           ) : (
             <>
+              {/* Category breakdown display */}
+              {byCategory && Object.keys(byCategory).length > 0 && (
+                <div className="income-category-breakdown">
+                  <h4>By Category</h4>
+                  <div className="category-breakdown-grid">
+                    {Object.entries(byCategory).map(([category, amount]) => (
+                      <div key={category} className="category-breakdown-item">
+                        <span className="category-icon">{getCategoryIcon(category)}</span>
+                        <span className="category-name">{category}</span>
+                        <span className="category-amount">${amount.toFixed(2)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="income-sources-list">
                 {incomeSources.length === 0 ? (
                   <div className="income-sources-empty">
@@ -298,6 +342,19 @@ const IncomeManagementModal = ({ isOpen, onClose, year, month, onUpdate }) => {
                             {validationErrors.editName && (
                               <span className="validation-error">{validationErrors.editName}</span>
                             )}
+                          </div>
+                          <div className="income-input-group">
+                            <select
+                              value={editCategory}
+                              onChange={(e) => setEditCategory(e.target.value)}
+                              className="income-edit-category"
+                              disabled={loading}
+                            >
+                              <option value="Salary">Salary</option>
+                              <option value="Government">Government</option>
+                              <option value="Gifts">Gifts</option>
+                              <option value="Other">Other</option>
+                            </select>
                           </div>
                           <div className="income-input-group">
                             <input
@@ -331,7 +388,12 @@ const IncomeManagementModal = ({ isOpen, onClose, year, month, onUpdate }) => {
                         </div>
                       ) : (
                         <div className="income-source-display">
-                          <span className="income-source-name">{source.name}</span>
+                          <div className="income-source-header">
+                            <span className={`category-badge category-${(source.category || 'Other').toLowerCase()}`}>
+                              {source.category || 'Other'}
+                            </span>
+                            <span className="income-source-name">{source.name}</span>
+                          </div>
                           <span className="income-source-amount">
                             ${parseFloat(source.amount).toFixed(2)}
                           </span>
@@ -395,6 +457,19 @@ const IncomeManagementModal = ({ isOpen, onClose, year, month, onUpdate }) => {
                       )}
                     </div>
                     <div className="income-input-group">
+                      <select
+                        value={newSourceCategory}
+                        onChange={(e) => setNewSourceCategory(e.target.value)}
+                        className="income-add-category"
+                        disabled={loading}
+                      >
+                        <option value="Salary">Salary</option>
+                        <option value="Government">Government</option>
+                        <option value="Gifts">Gifts</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                    <div className="income-input-group">
                       <input
                         type="number"
                         value={newSourceAmount}
@@ -422,6 +497,7 @@ const IncomeManagementModal = ({ isOpen, onClose, year, month, onUpdate }) => {
                         setIsAdding(false);
                         setNewSourceName('');
                         setNewSourceAmount('');
+                        setNewSourceCategory('Other');
                         clearValidationErrors();
                       }}
                       disabled={loading}

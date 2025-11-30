@@ -19,6 +19,7 @@ Documentation for completed features and implementations:
 - `ENHANCED_FIXED_EXPENSES.md` - Enhanced fixed expenses with category and payment type tracking
 - `GLOBAL_EXPENSE_FILTERING.md` - Global filtering by category and payment method across all time periods
 - `INCOME_SOURCE_CATEGORIES.md` - Income source categorization for better financial analysis
+- `INVESTMENT_TRACKING.md` - Investment portfolio tracking with TFSA and RRSP accounts
 
 ### deployments/
 Deployment history and migration guides:
@@ -66,6 +67,7 @@ Feature specifications are located in `.kiro/specs/`:
 - `smart-expense-entry/` - Smart expense entry with category suggestions
 - `global-expense-filtering/` - Global expense filtering by category and payment method
 - `income-source-categories/` - Income source categorization feature
+- `investment-tracking/` - Investment portfolio tracking with TFSA and RRSP accounts
 
 ## Steering Rules
 

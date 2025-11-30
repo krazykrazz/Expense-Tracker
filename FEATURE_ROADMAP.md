@@ -430,6 +430,28 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ## 🟢 Completed Features
 
+### 🟢 Investment Tracking (v4.4.0)
+**Completed**: November 30, 2025  
+**Spec**: `.kiro/specs/investment-tracking/`  
+**Description**: Track investment portfolio performance with TFSA and RRSP accounts, monthly value tracking, and visual performance indicators.
+
+**Features Delivered**:
+- Create and manage multiple investments (TFSA and RRSP types)
+- Record monthly investment values with historical tracking
+- View investment performance with line graphs
+- Color-coded value changes (green for increases, red for decreases)
+- Arrow indicators showing month-over-month performance (▲ ▼ —)
+- Total portfolio value calculation across all investments
+- Value history timeline with change percentages
+- Investment detail view with summary cards and charts
+- Integration with monthly summary panel
+- Cascade delete (removing investment deletes all value entries)
+- Database backup integration
+- Comprehensive property-based testing
+- 100% integration test success rate (24/24 tests passed)
+
+---
+
 ### 🟢 Income Source Categories (v4.3.1)
 **Completed**: November 29, 2025  
 **Spec**: `.kiro/specs/income-source-categories/`  

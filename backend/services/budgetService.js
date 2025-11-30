@@ -452,8 +452,9 @@ class BudgetService {
     const tgtYear = parseInt(targetYear);
     const tgtMonth = parseInt(targetMonth);
 
-    // Get budgets from source month
-    const sourceBudgets = await budgetRepository.findForCopy(srcYear, srcMonth);
+    // Get budgets from source month - use getBudgets() to trigger auto-carry-forward if needed
+    // This ensures we copy the budgets the user actually sees in the source month
+    const sourceBudgets = await this.getBudgets(srcYear, srcMonth);
 
     // Validate source month has budgets
     if (sourceBudgets.length === 0) {

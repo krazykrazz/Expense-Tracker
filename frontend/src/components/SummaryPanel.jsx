@@ -3,6 +3,7 @@ import { API_ENDPOINTS } from '../config';
 import IncomeManagementModal from './IncomeManagementModal';
 import FixedExpensesModal from './FixedExpensesModal';
 import LoansModal from './LoansModal';
+import InvestmentsModal from './InvestmentsModal';
 import TrendIndicator from './TrendIndicator';
 import { formatAmount } from '../utils/formatters';
 import './SummaryPanel.css';
@@ -15,8 +16,11 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
   const [showIncomeModal, setShowIncomeModal] = useState(false);
   const [showFixedExpensesModal, setShowFixedExpensesModal] = useState(false);
   const [showLoansModal, setShowLoansModal] = useState(false);
+  const [showInvestmentsModal, setShowInvestmentsModal] = useState(false);
   const [loans, setLoans] = useState([]);
   const [totalOutstandingDebt, setTotalOutstandingDebt] = useState(0);
+  const [investments, setInvestments] = useState([]);
+  const [totalInvestmentValue, setTotalInvestmentValue] = useState(0);
   const [categories, setCategories] = useState([]);
 
   /**
@@ -37,6 +41,15 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
         setLoans([]);
         setTotalOutstandingDebt(0);
       }
+      
+      // Extract investment data from current summary
+      if (data.current.investments && Array.isArray(data.current.investments)) {
+        setInvestments(data.current.investments);
+        setTotalInvestmentValue(data.current.totalInvestmentValue || 0);
+      } else {
+        setInvestments([]);
+        setTotalInvestmentValue(0);
+      }
     } else {
       // Old structure (single summary)
       setSummary(data);
@@ -49,6 +62,15 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
       } else {
         setLoans([]);
         setTotalOutstandingDebt(0);
+      }
+      
+      // Extract investment data from summary response
+      if (data.investments && Array.isArray(data.investments)) {
+        setInvestments(data.investments);
+        setTotalInvestmentValue(data.totalInvestmentValue || 0);
+      } else {
+        setInvestments([]);
+        setTotalInvestmentValue(0);
       }
     }
   }, []);
@@ -108,6 +130,7 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
   const handleOpenIncomeModal = () => setShowIncomeModal(true);
   const handleOpenFixedExpensesModal = () => setShowFixedExpensesModal(true);
   const handleOpenLoansModal = () => setShowLoansModal(true);
+  const handleOpenInvestmentsModal = () => setShowInvestmentsModal(true);
 
   const handleCloseIncomeModal = async () => {
     setShowIncomeModal(false);
@@ -121,6 +144,11 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
 
   const handleCloseLoansModal = async () => {
     setShowLoansModal(false);
+    await fetchSummaryData();
+  };
+
+  const handleCloseInvestmentsModal = async () => {
+    setShowInvestmentsModal(false);
     await fetchSummaryData();
   };
 
@@ -408,6 +436,32 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
         </div>
       )}
 
+      {investments.length > 0 && (
+        <div className="summary-card investments-card">
+          <div className="card-header">
+            <span className="card-icon">📈</span>
+            <span className="card-title">Investments</span>
+          </div>
+          <div className="card-content">
+            <div className="compact-list">
+              {investments.map(investment => (
+                <div key={investment.id} className="compact-item">
+                  <span>{investment.name} ({investment.type})</span>
+                  <span>${formatAmount(investment.currentValue)}</span>
+                </div>
+              ))}
+            </div>
+            <div className="card-total">
+              <span>Total Investment Value:</span>
+              <span className="total-value investment-value">${formatAmount(totalInvestmentValue)}</span>
+            </div>
+          </div>
+          <button className="card-action-btn" onClick={handleOpenInvestmentsModal}>
+            👁️ View/Edit
+          </button>
+        </div>
+      )}
+
       {showIncomeModal && (
         <IncomeManagementModal
           isOpen={showIncomeModal}
@@ -435,6 +489,16 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
           year={selectedYear}
           month={selectedMonth}
           onUpdate={handleCloseLoansModal}
+        />
+      )}
+
+      {showInvestmentsModal && (
+        <InvestmentsModal
+          isOpen={showInvestmentsModal}
+          onClose={handleCloseInvestmentsModal}
+          year={selectedYear}
+          month={selectedMonth}
+          onUpdate={handleCloseInvestmentsModal}
         />
       )}
     </div>

@@ -13,6 +13,8 @@ const budgetRoutes = require('./routes/budgetRoutes');
 const healthRoutes = require('./routes/healthRoutes');
 const placeNameRoutes = require('./routes/placeNameRoutes');
 const categoryRoutes = require('./routes/categoryRoutes');
+const investmentRoutes = require('./routes/investmentRoutes');
+const investmentValueRoutes = require('./routes/investmentValueRoutes');
 const backupService = require('./services/backupService');
 const logger = require('./config/logger');
 const { configureTimezone, getTimezone } = require('./config/timezone');
@@ -59,6 +61,12 @@ app.use('/api/expenses/place-names', placeNameRoutes);
 
 // Category API routes
 app.use('/api/categories', categoryRoutes);
+
+// Investment API routes
+app.use('/api/investments', investmentRoutes);
+
+// Investment value API routes
+app.use('/api/investment-values', investmentValueRoutes);
 
 // Serve static files from the React app (after build)
 // In container: /app/frontend/dist, in development: ../frontend/dist

@@ -371,15 +371,33 @@ function App() {
         </div>
       </header>
       <main className="App-main">
-        <MonthSelector 
-          selectedYear={selectedYear}
-          selectedMonth={selectedMonth}
-          onMonthChange={handleMonthChange}
-          onViewAnnualSummary={() => setShowAnnualSummary(true)}
-          onViewTaxDeductible={() => setShowTaxDeductible(true)}
-          onManageBudgets={handleManageBudgets}
-          onViewBudgetHistory={handleViewBudgetHistory}
-        />
+        {/* View Mode Indicator */}
+        <div className="view-mode-indicator">
+          {isGlobalView ? (
+            <div className="view-mode-badge global">
+              <span className="view-mode-icon">🔍</span>
+              <span>Global View - Filtered Results</span>
+            </div>
+          ) : (
+            <div className="view-mode-badge monthly">
+              <span className="view-mode-icon">📅</span>
+              <span>Monthly View - {new Date(selectedYear, selectedMonth - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Month Selector - dimmed when in global view */}
+        <div className={`month-selector-wrapper ${isGlobalView ? 'dimmed' : ''}`}>
+          <MonthSelector 
+            selectedYear={selectedYear}
+            selectedMonth={selectedMonth}
+            onMonthChange={handleMonthChange}
+            onViewAnnualSummary={() => setShowAnnualSummary(true)}
+            onViewTaxDeductible={() => setShowTaxDeductible(true)}
+            onManageBudgets={handleManageBudgets}
+            onViewBudgetHistory={handleViewBudgetHistory}
+          />
+        </div>
         
         {loading && <div className="loading-message">Loading expenses...</div>}
         {error && (

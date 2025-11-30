@@ -176,25 +176,38 @@ const SearchBar = memo(({
 
       <div className="search-filters-wrapper">
         {!showOnlyFilters && (
-          <div className="search-input-wrapper">
-            <label htmlFor="expense-search-input" className="sr-only">
-              Search expenses by place or notes
-            </label>
-            <input
-              id="expense-search-input"
-              ref={searchInputRef}
-              type="text"
-              className="search-input"
-              placeholder="Search by place or notes..."
-              value={searchText}
-              onChange={handleSearchChange}
-              aria-label="Search expenses by place or notes"
-              aria-describedby="search-help"
-            />
-            <span id="search-help" className="sr-only">
-              Enter text to search expenses globally across all time periods
-            </span>
-          </div>
+          <>
+            <div className="search-input-wrapper">
+              <label htmlFor="expense-search-input" className="sr-only">
+                Search expenses by place or notes
+              </label>
+              <input
+                id="expense-search-input"
+                ref={searchInputRef}
+                type="text"
+                className="search-input"
+                placeholder="Search by place or notes..."
+                value={searchText}
+                onChange={handleSearchChange}
+                aria-label="Search expenses by place or notes"
+                aria-describedby="search-help"
+              />
+              <span id="search-help" className="sr-only">
+                Enter text to search expenses globally across all time periods
+              </span>
+            </div>
+            {searchText.trim().length > 0 && showOnlySearch && (
+              <button 
+                className="clear-filters-button" 
+                onClick={handleClearAll}
+                aria-label="Clear search and return to monthly view"
+                title="Clear search and return to monthly view"
+                type="button"
+              >
+                Clear Search
+              </button>
+            )}
+          </>
         )}
 
         {!showOnlySearch && (
@@ -249,7 +262,7 @@ const SearchBar = memo(({
               </span>
             </div>
 
-            {hasActiveFilters && !showOnlySearch && (
+            {hasActiveFilters && (
               <button 
                 className="clear-filters-button" 
                 onClick={handleClearAll}

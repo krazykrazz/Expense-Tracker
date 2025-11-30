@@ -16,9 +16,9 @@
 .income-modal-container {
   background: white;
   border-radius: 8px;
-  max-width: 600px;
+  max-width: 750px;
   width: 90%;
-  max-height: 80vh;
+  max-height: 85vh;
   overflow-y: auto;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
@@ -107,36 +107,66 @@
   font-style: italic;
 }
 
+/* List Header */
+.income-sources-list-header {
+  display: grid;
+  grid-template-columns: 2fr 1.5fr 1.2fr auto;
+  gap: 15px;
+  padding: 12px 15px;
+  background-color: #f5f5f5;
+  border-bottom: 2px solid #ddd;
+  font-weight: 600;
+  color: #555;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
 /* Income Source Item */
 .income-source-item {
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
-  padding: 12px;
-  margin-bottom: 10px;
+  border-bottom: 1px solid #e0e0e0;
+  padding: 12px 15px;
+  background-color: #fff;
+  transition: background-color 0.2s;
+}
+
+.income-source-item:hover {
   background-color: #fafafa;
 }
 
+.income-source-item:last-child {
+  border-bottom: none;
+}
+
 .income-source-display {
-  display: flex;
+  display: grid;
+  grid-template-columns: 2fr 1.5fr 1.2fr auto;
+  gap: 15px;
   align-items: center;
-  gap: 10px;
 }
 
 .income-source-name {
-  flex: 1;
   font-weight: 500;
   color: #333;
+  font-size: 1rem;
+}
+
+.income-source-category {
+  color: #666;
+  font-size: 0.95rem;
 }
 
 .income-source-amount {
   font-weight: 600;
   color: #2e7d32;
-  margin-right: 10px;
+  font-size: 1.05rem;
+  text-align: right;
 }
 
 .income-source-actions {
   display: flex;
   gap: 5px;
+  justify-content: flex-end;
 }
 
 .income-edit-button,
@@ -166,33 +196,25 @@
 
 /* Edit Mode */
 .income-source-edit {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  align-items: flex-start;
+  display: grid;
+  grid-template-columns: 2fr 1.5fr 1.2fr auto auto;
+  gap: 12px;
+  align-items: start;
 }
 
 .income-input-group {
   display: flex;
   flex-direction: column;
-  flex: 1;
-  min-width: 150px;
 }
 
 .income-edit-name,
-.income-edit-amount {
-  padding: 8px;
+.income-edit-amount,
+.income-edit-category {
+  padding: 10px;
   border: 1px solid #ccc;
   border-radius: 4px;
   font-size: 0.95rem;
-}
-
-.income-edit-name {
-  flex: 2;
-}
-
-.income-edit-amount {
-  flex: 1;
+  width: 100%;
 }
 
 /* Validation Error Styling */
@@ -297,12 +319,12 @@
 /* Add Form */
 .income-add-form {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-
-.income-add-form .income-input-group:first-child {
-  grid-column: 1 / -1;
+  grid-template-columns: 2fr 1.5fr 1.2fr auto auto;
+  gap: 12px;
+  align-items: start;
+  padding: 15px;
+  background-color: #f9f9f9;
+  border-radius: 4px;
 }
 
 .income-add-name,
@@ -313,11 +335,6 @@
   border-radius: 4px;
   font-size: 0.95rem;
   width: 100%;
-}
-
-.income-add-button,
-.income-add-cancel-button {
-  grid-column: span 1;
 }
 
 .income-add-button,
@@ -424,44 +441,6 @@
   color: #28a745;
 }
 
-/* Category badges */
-.income-source-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex: 1;
-}
-
-.category-badge {
-  display: inline-block;
-  padding: 3px 8px;
-  border-radius: 12px;
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.category-salary {
-  background-color: #e3f2fd;
-  color: #1976d2;
-}
-
-.category-government {
-  background-color: #f3e5f5;
-  color: #7b1fa2;
-}
-
-.category-gifts {
-  background-color: #fff3e0;
-  color: #f57c00;
-}
-
-.category-other {
-  background-color: #e8f5e9;
-  color: #388e3c;
-}
-
 /* Category selector in forms */
 .income-add-category,
 .income-edit-category {
@@ -471,8 +450,6 @@
   font-size: 0.95rem;
   background-color: white;
   cursor: pointer;
-  flex: 1;
-  min-width: 120px;
 }
 
 .income-add-category:focus,
@@ -489,7 +466,7 @@
 }
 
 /* Responsive Design */
-@media (max-width: 600px) {
+@media (max-width: 768px) {
   .income-modal-container {
     width: 95%;
     max-height: 90vh;
@@ -499,21 +476,29 @@
     font-size: 1.2rem;
   }
 
+  .income-sources-list-header {
+    display: none;
+  }
+
   .income-source-display {
-    flex-wrap: wrap;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .income-source-name,
+  .income-source-category,
+  .income-source-amount {
+    text-align: left;
+  }
+
+  .income-source-actions {
+    justify-content: flex-start;
   }
 
   .income-source-edit,
   .income-add-form {
-    flex-direction: column;
-  }
-
-  .income-edit-name,
-  .income-edit-amount,
-  .income-add-name,
-  .income-add-amount {
-    width: 100%;
-    min-width: unset;
+    grid-template-columns: 1fr;
+    gap: 10px;
   }
 
   .income-input-group {
@@ -525,5 +510,9 @@
   .income-add-button,
   .income-add-cancel-button {
     width: 100%;
+  }
+
+  .category-breakdown-grid {
+    grid-template-columns: 1fr;
   }
 }

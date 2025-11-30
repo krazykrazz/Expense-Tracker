@@ -1,5 +1,16 @@
 # Database Backup Restore Guide
 
+## What's Included in Backups
+
+All database backups include:
+- **Expenses**: All expense records with categories, payment methods, and notes
+- **Income Sources**: Monthly income from multiple sources with categories
+- **Fixed Expenses**: Monthly fixed expenses with categories
+- **Loans**: Loan and line of credit records with balance history
+- **Budgets**: Budget limits and tracking data
+- **Investments**: Investment accounts (TFSA, RRSP) with monthly value history
+- **Configuration**: Recurring expenses and other settings
+
 ## Quick Start - Easiest Method
 
 Use the automated script:

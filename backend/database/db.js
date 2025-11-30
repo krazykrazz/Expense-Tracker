@@ -279,6 +279,49 @@ function initializeDatabase() {
                       }
                       console.log('Budgets trigger created or already exists');
 
+                      // Create investments table
+                      const createInvestmentsSQL = `
+                        CREATE TABLE IF NOT EXISTS investments (
+                          id INTEGER PRIMARY KEY AUTOINCREMENT,
+                          name TEXT NOT NULL,
+                          type TEXT NOT NULL CHECK(type IN ('TFSA', 'RRSP')),
+                          initial_value REAL NOT NULL CHECK(initial_value >= 0),
+                          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                          updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+                        )
+                      `;
+
+                      db.run(createInvestmentsSQL, (err) => {
+                        if (err) {
+                          console.error('Error creating investments table:', err.message);
+                          reject(err);
+                          return;
+                        }
+                        console.log('Investments table created or already exists');
+
+                        // Create investment_values table
+                        const createInvestmentValuesSQL = `
+                          CREATE TABLE IF NOT EXISTS investment_values (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            investment_id INTEGER NOT NULL,
+                            year INTEGER NOT NULL,
+                            month INTEGER NOT NULL,
+                            value REAL NOT NULL CHECK(value >= 0),
+                            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                            updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                            FOREIGN KEY (investment_id) REFERENCES investments(id) ON DELETE CASCADE,
+                            UNIQUE(investment_id, year, month)
+                          )
+                        `;
+
+                        db.run(createInvestmentValuesSQL, (err) => {
+                          if (err) {
+                            console.error('Error creating investment_values table:', err.message);
+                            reject(err);
+                            return;
+                          }
+                          console.log('Investment values table created or already exists');
+
             // Add recurring expense columns if they don't exist (migration)
             db.run('ALTER TABLE expenses ADD COLUMN recurring_id INTEGER', (err) => {
               if (err && !err.message.includes('duplicate column')) {
@@ -296,49 +339,54 @@ function initializeDatabase() {
               }
             });
 
-                  // Create indexes for better query performance
-                  const indexes = [
-                    'CREATE INDEX IF NOT EXISTS idx_date ON expenses(date)',
-                    'CREATE INDEX IF NOT EXISTS idx_type ON expenses(type)',
-                    'CREATE INDEX IF NOT EXISTS idx_method ON expenses(method)',
-                    'CREATE INDEX IF NOT EXISTS idx_year_month ON monthly_gross(year, month)',
-                    'CREATE INDEX IF NOT EXISTS idx_recurring_dates ON recurring_expenses(start_month, end_month)',
-                    'CREATE INDEX IF NOT EXISTS idx_income_year_month ON income_sources(year, month)',
-                    'CREATE INDEX IF NOT EXISTS idx_fixed_expenses_year_month ON fixed_expenses(year, month)',
-                    'CREATE INDEX IF NOT EXISTS idx_loans_paid_off ON loans(is_paid_off)',
-                    'CREATE INDEX IF NOT EXISTS idx_loan_balances_loan_id ON loan_balances(loan_id)',
-                    'CREATE INDEX IF NOT EXISTS idx_loan_balances_year_month ON loan_balances(year, month)',
-                    'CREATE INDEX IF NOT EXISTS idx_budgets_period ON budgets(year, month)',
-                    'CREATE INDEX IF NOT EXISTS idx_budgets_category ON budgets(category)'
-                  ];
+                          // Create indexes for better query performance
+                          const indexes = [
+                            'CREATE INDEX IF NOT EXISTS idx_date ON expenses(date)',
+                            'CREATE INDEX IF NOT EXISTS idx_type ON expenses(type)',
+                            'CREATE INDEX IF NOT EXISTS idx_method ON expenses(method)',
+                            'CREATE INDEX IF NOT EXISTS idx_year_month ON monthly_gross(year, month)',
+                            'CREATE INDEX IF NOT EXISTS idx_recurring_dates ON recurring_expenses(start_month, end_month)',
+                            'CREATE INDEX IF NOT EXISTS idx_income_year_month ON income_sources(year, month)',
+                            'CREATE INDEX IF NOT EXISTS idx_fixed_expenses_year_month ON fixed_expenses(year, month)',
+                            'CREATE INDEX IF NOT EXISTS idx_loans_paid_off ON loans(is_paid_off)',
+                            'CREATE INDEX IF NOT EXISTS idx_loan_balances_loan_id ON loan_balances(loan_id)',
+                            'CREATE INDEX IF NOT EXISTS idx_loan_balances_year_month ON loan_balances(year, month)',
+                            'CREATE INDEX IF NOT EXISTS idx_budgets_period ON budgets(year, month)',
+                            'CREATE INDEX IF NOT EXISTS idx_budgets_category ON budgets(category)',
+                            'CREATE INDEX IF NOT EXISTS idx_investments_type ON investments(type)',
+                            'CREATE INDEX IF NOT EXISTS idx_investment_values_investment_id ON investment_values(investment_id)',
+                            'CREATE INDEX IF NOT EXISTS idx_investment_values_year_month ON investment_values(year, month)'
+                          ];
 
-                  let completed = 0;
-                  indexes.forEach((indexSQL) => {
-                    db.run(indexSQL, (err) => {
-                      if (err) {
-                        console.error('Error creating index:', err.message);
-                        reject(err);
-                        return;
-                      }
-                      completed++;
-                      if (completed === indexes.length) {
-                        console.log('All indexes created successfully');
-                        
-                        // Run any pending migrations
-                        const { runMigrations } = require('./migrations');
-                        runMigrations(db)
-                          .then(() => {
-                            resolve(db);
-                          })
-                          .catch((err) => {
-                            console.error('Migration error:', err);
-                            // Don't reject - allow app to start even if migrations fail
-                            // This prevents breaking the app if there's a migration issue
-                            resolve(db);
+                          let completed = 0;
+                          indexes.forEach((indexSQL) => {
+                            db.run(indexSQL, (err) => {
+                              if (err) {
+                                console.error('Error creating index:', err.message);
+                                reject(err);
+                                return;
+                              }
+                              completed++;
+                              if (completed === indexes.length) {
+                                console.log('All indexes created successfully');
+                                
+                                // Run any pending migrations
+                                const { runMigrations } = require('./migrations');
+                                runMigrations(db)
+                                  .then(() => {
+                                    resolve(db);
+                                  })
+                                  .catch((err) => {
+                                    console.error('Migration error:', err);
+                                    // Don't reject - allow app to start even if migrations fail
+                                    // This prevents breaking the app if there's a migration issue
+                                    resolve(db);
+                                  });
+                              }
+                            });
                           });
-                      }
-                    });
-                  });
+                        });
+                      });
                     });
                   });
                 });

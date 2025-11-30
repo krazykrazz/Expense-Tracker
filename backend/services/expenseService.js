@@ -1,6 +1,7 @@
 const expenseRepository = require('../repositories/expenseRepository');
 const fixedExpenseRepository = require('../repositories/fixedExpenseRepository');
 const loanService = require('./loanService');
+const investmentService = require('./investmentService');
 const { calculateWeek } = require('../utils/dateUtils');
 const { CATEGORIES } = require('../utils/categories');
 const { validateYearMonth } = require('../utils/validators');
@@ -269,17 +270,21 @@ class ExpenseService {
    */
   async _getMonthSummary(year, month) {
     // Fetch all data in parallel for better performance
-    const [summary, monthlyGross, totalFixedExpenses, loans, fixedCategoryTotals, fixedPaymentTotals] = await Promise.all([
+    const [summary, monthlyGross, totalFixedExpenses, loans, fixedCategoryTotals, fixedPaymentTotals, investments] = await Promise.all([
       expenseRepository.getSummary(year, month),
       expenseRepository.getMonthlyGross(year, month),
       fixedExpenseRepository.getTotalFixedExpenses(year, month),
       loanService.getLoansForMonth(year, month),
       fixedExpenseRepository.getCategoryTotals(year, month),
-      fixedExpenseRepository.getPaymentTypeTotals(year, month)
+      fixedExpenseRepository.getPaymentTypeTotals(year, month),
+      investmentService.getAllInvestments()
     ]);
     
     // Calculate total outstanding debt from active loans
     const totalOutstandingDebt = loanService.calculateTotalOutstandingDebt(loans);
+    
+    // Calculate total investment value from all investments
+    const totalInvestmentValue = investmentService.calculateTotalInvestmentValue(investments);
     
     // Combine category totals (regular + fixed)
     const combinedCategoryTotals = { ...summary.typeTotals };
@@ -307,7 +312,9 @@ class ExpenseService {
       totalExpenses: summary.total + (totalFixedExpenses || 0),
       netBalance: (monthlyGross || 0) - (summary.total + (totalFixedExpenses || 0)),
       loans,
-      totalOutstandingDebt
+      totalOutstandingDebt,
+      investments,
+      totalInvestmentValue
     };
   }
 

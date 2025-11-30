@@ -34,6 +34,17 @@ A full-stack expense tracking application built with React and Node.js.
 - 📅 Start date filtering (loans only appear in months after they start)
 - 🔗 Cascade delete (removing a loan deletes all balance entries)
 
+### Investment Tracking
+- 📈 Track investment portfolios (TFSA and RRSP accounts)
+- 💰 Record monthly investment values with historical tracking
+- 📊 View investment performance with line graphs showing value changes over time
+- 🎨 Color-coded value changes (green for increases, red for decreases)
+- ⬆️⬇️ Arrow indicators showing month-over-month performance
+- 💵 Total portfolio value calculation across all investments
+- 📉 Value history timeline with change percentages
+- 🔄 Create, edit, and delete investments and value entries
+- 📅 Monthly value snapshots for performance tracking
+
 ### Budget Tracking & Alerts
 - 💵 Set monthly budget limits for expense categories (Food, Gas, Other)
 - 📊 Real-time progress bars with color-coded status indicators
@@ -285,22 +296,30 @@ stop-servers.bat
 12. **View Charts**: Lines of credit display a dual-axis chart showing balance and interest rate trends
 13. **Mark Paid Off**: Traditional loans auto-mark as paid off when balance reaches zero
 
+### Investment Tracking
+14. **View Investments**: Click the "📈 Investments" button in the summary panel to see all investments
+15. **Add Investment**: Click "+ Add New Investment" and select the type (TFSA or RRSP)
+16. **Track Values**: Click "View" on any investment to see details and add monthly value entries
+17. **Monitor Performance**: View line graphs showing investment value changes over time
+18. **Value History**: See chronological list of all value entries with change indicators and percentages
+19. **Portfolio Overview**: View total portfolio value across all investments in the summary panel
+
 ### Budget Tracking & Alerts
-14. **Manage Budgets**: Click the "💵 Manage Budgets" button in the month selector to set budget limits
-15. **Set Budget Limits**: Enter budget amounts for Food, Gas, and Other categories
-16. **Monitor Progress**: View real-time progress bars with color-coded status:
+20. **Manage Budgets**: Click the "💵 Manage Budgets" button in the month selector to set budget limits
+21. **Set Budget Limits**: Enter budget amounts for Food, Gas, and Other categories
+22. **Monitor Progress**: View real-time progress bars with color-coded status:
     - **Green**: Under 80% of budget (safe)
     - **Yellow**: 80-89% of budget (warning)
     - **Orange**: 90-99% of budget (danger)
     - **Red**: 100% or more (over budget)
-17. **Copy Budgets**: Use "📋 Copy from Previous Month" to replicate budget limits
-18. **View History**: Click "📊 Budget History" to analyze budget performance over time
-19. **Automatic Carry-Forward**: Budgets automatically copy from previous month when accessing a new month
-20. **Budget Summary**: View overall budget status in the summary panel showing total budgeted vs spent
+23. **Copy Budgets**: Use "📋 Copy from Previous Month" to replicate budget limits
+24. **View History**: Click "📊 Budget History" to analyze budget performance over time
+25. **Automatic Carry-Forward**: Budgets automatically copy from previous month when accessing a new month
+26. **Budget Summary**: View overall budget status in the summary panel showing total budgeted vs spent
 
 ### Data Management
-14. **Backup**: Click the "💾 Backup" button to download your database
-15. **Automated Backups**: Configure scheduled backups in Backup Settings
+27. **Backup**: Click the "💾 Backup" button to download your database
+28. **Automated Backups**: Configure scheduled backups in Backup Settings
 
 ## Project Structure
 
@@ -371,6 +390,19 @@ expense-tracker/
 - `GET /api/budgets/suggest?year=YYYY&month=MM&category=CATEGORY` - Get budget suggestion based on historical spending
 - `POST /api/budgets/copy` - Manually copy budgets between months
 
+### Investments
+- `GET /api/investments` - Get all investments with current values
+- `POST /api/investments` - Create a new investment
+- `PUT /api/investments/:id` - Update investment details
+- `DELETE /api/investments/:id` - Delete an investment (cascades to value entries)
+
+### Investment Values
+- `GET /api/investment-values/:investmentId` - Get all value entries for an investment
+- `GET /api/investment-values/:investmentId/:year/:month` - Get specific value entry
+- `POST /api/investment-values` - Create or update a value entry (upsert)
+- `PUT /api/investment-values/:id` - Update a value entry
+- `DELETE /api/investment-values/:id` - Delete a value entry
+
 ### Backup
 - `GET /api/backup` - Download database backup
 - `POST /api/backup/restore` - Restore from backup file
@@ -440,6 +472,24 @@ expense-tracker/
 - created_at (TEXT)
 - updated_at (TEXT)
 - UNIQUE constraint on (year, month, category)
+
+### Investments Table
+- id (INTEGER PRIMARY KEY)
+- name (TEXT) - Investment name
+- type (TEXT) - 'TFSA' or 'RRSP'
+- initial_value (REAL) - Initial investment amount
+- created_at (TEXT)
+- updated_at (TEXT)
+
+### Investment Values Table
+- id (INTEGER PRIMARY KEY)
+- investment_id (INTEGER) - Foreign key to investments table (CASCADE DELETE)
+- year (INTEGER)
+- month (INTEGER)
+- value (REAL) - Investment value at end of month
+- created_at (TEXT)
+- updated_at (TEXT)
+- UNIQUE constraint on (investment_id, year, month)
 
 ## Documentation
 

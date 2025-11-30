@@ -1,0 +1,410 @@
+/* Modal Overlay */
+.investments-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+/* Modal Container */
+.investments-modal-container {
+  background: white;
+  border-radius: 8px;
+  max-width: 700px;
+  width: 90%;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Modal Header */
+.investments-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid #e0e0e0;
+  background-color: #f9f9f9;
+}
+
+.investments-modal-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #333;
+}
+
+.investments-modal-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #666;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.investments-modal-close:hover {
+  color: #333;
+}
+
+/* Modal Content */
+.investments-modal-content {
+  padding: 20px;
+}
+
+/* Error Display */
+.investments-modal-error {
+  background-color: #fee;
+  color: #c33;
+  padding: 12px;
+  border-radius: 4px;
+  margin-bottom: 15px;
+  border: 1px solid #fcc;
+}
+
+.investments-error-retry-button {
+  margin-top: 10px;
+  padding: 6px 12px;
+  background-color: #d32f2f;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.2s;
+}
+
+.investments-error-retry-button:hover {
+  background-color: #b71c1c;
+}
+
+/* Loading State */
+.investments-modal-loading {
+  text-align: center;
+  padding: 40px;
+  color: #666;
+  font-size: 1.1rem;
+}
+
+/* Add New Investment Button Section */
+.investments-add-button-section {
+  margin-bottom: 20px;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.investments-add-new-button {
+  flex: 1;
+  min-width: 200px;
+  padding: 12px;
+  background-color: #2196f3;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.investments-add-new-button:hover:not(:disabled) {
+  background-color: #1976d2;
+}
+
+.investments-add-new-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Investment Form Section */
+.investments-form-section {
+  background-color: #f5f5f5;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.investments-form-section h3 {
+  margin: 0 0 15px 0;
+  font-size: 1.2rem;
+  color: #333;
+}
+
+.investments-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.investments-input-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.investments-input-group label {
+  font-weight: 500;
+  color: #555;
+  margin-bottom: 5px;
+  font-size: 0.9rem;
+}
+
+.investments-input-group input,
+.investments-input-group select {
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 0.95rem;
+  font-family: inherit;
+}
+
+.investments-input-group input:disabled,
+.investments-input-group select:disabled {
+  background-color: #f0f0f0;
+  cursor: not-allowed;
+}
+
+/* Validation Error Styling */
+.input-error {
+  border-color: #d32f2f !important;
+  background-color: #ffebee;
+}
+
+.validation-error {
+  color: #d32f2f;
+  font-size: 0.75rem;
+  margin-top: 4px;
+  display: block;
+}
+
+/* Form Actions */
+.investments-form-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.investments-form-submit-button,
+.investments-form-cancel-button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.investments-form-submit-button {
+  background-color: #4caf50;
+  color: white;
+  flex: 1;
+}
+
+.investments-form-submit-button:hover:not(:disabled) {
+  background-color: #45a049;
+}
+
+.investments-form-cancel-button {
+  background-color: #757575;
+  color: white;
+}
+
+.investments-form-cancel-button:hover:not(:disabled) {
+  background-color: #616161;
+}
+
+.investments-form-submit-button:disabled,
+.investments-form-cancel-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Investments List */
+.investments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.investments-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: #999;
+  font-style: italic;
+  font-size: 1rem;
+}
+
+/* Investment Item */
+.investment-item {
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 15px;
+  background-color: #fafafa;
+  transition: all 0.2s;
+}
+
+.investment-item:hover {
+  background-color: #f5f5f5;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.investment-item-main {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.investment-item-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.investment-item-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.investment-item-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.investment-item-current-value {
+  font-weight: 600;
+  color: #2e7d32;
+}
+
+/* Investment Type Badge */
+.investment-type-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  background-color: #e3f2fd;
+  color: #1976d2;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 4px;
+  vertical-align: middle;
+}
+
+/* Investment Item Actions */
+.investment-item-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.investment-view-button,
+.investment-edit-button,
+.investment-delete-button {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.investment-view-button {
+  background-color: #2196f3;
+  color: white;
+}
+
+.investment-view-button:hover:not(:disabled) {
+  background-color: #1976d2;
+}
+
+.investment-edit-button {
+  background-color: #ff9800;
+  color: white;
+}
+
+.investment-edit-button:hover:not(:disabled) {
+  background-color: #f57c00;
+}
+
+.investment-delete-button {
+  background-color: #f44336;
+  color: white;
+}
+
+.investment-delete-button:hover:not(:disabled) {
+  background-color: #d32f2f;
+}
+
+.investment-view-button:disabled,
+.investment-edit-button:disabled,
+.investment-delete-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .investments-modal-container {
+    width: 95%;
+    max-height: 90vh;
+  }
+
+  .investments-modal-header h2 {
+    font-size: 1.2rem;
+  }
+
+  .investment-item-main {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .investment-item-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .investment-item-details {
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .investments-form-actions {
+    flex-direction: column;
+  }
+
+  .investments-form-submit-button,
+  .investments-form-cancel-button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .investment-view-button,
+  .investment-edit-button,
+  .investment-delete-button {
+    padding: 6px 10px;
+    font-size: 0.85rem;
+  }
+
+  .investment-item-actions {
+    gap: 5px;
+  }
+}

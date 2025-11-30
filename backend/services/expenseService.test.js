@@ -2,11 +2,13 @@ const expenseService = require('./expenseService');
 const expenseRepository = require('../repositories/expenseRepository');
 const fixedExpenseRepository = require('../repositories/fixedExpenseRepository');
 const loanService = require('./loanService');
+const investmentService = require('./investmentService');
 
 // Mock the dependencies
 jest.mock('../repositories/expenseRepository');
 jest.mock('../repositories/fixedExpenseRepository');
 jest.mock('./loanService');
+jest.mock('./investmentService');
 
 describe('ExpenseService - getSummary with previous month data', () => {
   beforeEach(() => {
@@ -49,6 +51,13 @@ describe('ExpenseService - getSummary with previous month data', () => {
         .mockResolvedValueOnce([]); // Previous month
       
       loanService.calculateTotalOutstandingDebt
+        .mockReturnValue(0);
+      
+      investmentService.getAllInvestments
+        .mockResolvedValueOnce([])  // Current month
+        .mockResolvedValueOnce([]); // Previous month
+      
+      investmentService.calculateTotalInvestmentValue
         .mockReturnValue(0);
 
       // Execute
@@ -100,6 +109,13 @@ describe('ExpenseService - getSummary with previous month data', () => {
       
       loanService.calculateTotalOutstandingDebt
         .mockReturnValue(0);
+      
+      investmentService.getAllInvestments
+        .mockResolvedValueOnce([])  // Current month
+        .mockResolvedValueOnce([]); // Previous month
+      
+      investmentService.calculateTotalInvestmentValue
+        .mockReturnValue(0);
 
       // Execute
       const result = await expenseService.getSummary(2024, 1, true);
@@ -150,6 +166,13 @@ describe('ExpenseService - getSummary with previous month data', () => {
       
       loanService.calculateTotalOutstandingDebt
         .mockReturnValue(0);
+      
+      investmentService.getAllInvestments
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]);
+      
+      investmentService.calculateTotalInvestmentValue
+        .mockReturnValue(0);
 
       const result = await expenseService.getSummary(2024, 6, true);
 
@@ -168,6 +191,8 @@ describe('ExpenseService - getSummary with previous month data', () => {
       expect(result.current).toHaveProperty('netBalance');
       expect(result.current).toHaveProperty('loans');
       expect(result.current).toHaveProperty('totalOutstandingDebt');
+      expect(result.current).toHaveProperty('investments');
+      expect(result.current).toHaveProperty('totalInvestmentValue');
       
       // Verify previous month data
       expect(result.previous).toHaveProperty('weeklyTotals');
@@ -180,6 +205,8 @@ describe('ExpenseService - getSummary with previous month data', () => {
       expect(result.previous).toHaveProperty('netBalance');
       expect(result.previous).toHaveProperty('loans');
       expect(result.previous).toHaveProperty('totalOutstandingDebt');
+      expect(result.previous).toHaveProperty('investments');
+      expect(result.previous).toHaveProperty('totalInvestmentValue');
     });
 
     it('should return only current month data when includePrevious is false', async () => {
@@ -195,6 +222,8 @@ describe('ExpenseService - getSummary with previous month data', () => {
       fixedExpenseRepository.getTotalFixedExpenses.mockResolvedValueOnce(1000);
       loanService.getLoansForMonth.mockResolvedValueOnce([]);
       loanService.calculateTotalOutstandingDebt.mockReturnValue(0);
+      investmentService.getAllInvestments.mockResolvedValueOnce([]);
+      investmentService.calculateTotalInvestmentValue.mockReturnValue(0);
 
       const result = await expenseService.getSummary(2024, 6, false);
 
@@ -248,6 +277,13 @@ describe('ExpenseService - getSummary with previous month data', () => {
         .mockResolvedValueOnce([]);
       
       loanService.calculateTotalOutstandingDebt
+        .mockReturnValue(0);
+      
+      investmentService.getAllInvestments
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]);
+      
+      investmentService.calculateTotalInvestmentValue
         .mockReturnValue(0);
 
       const result = await expenseService.getSummary(2024, 6, true);

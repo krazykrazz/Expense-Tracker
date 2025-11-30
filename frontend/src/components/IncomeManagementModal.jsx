@@ -215,10 +215,8 @@ const IncomeManagementModal = ({ isOpen, onClose, year, month, onUpdate }) => {
     try {
       await deleteIncomeSource(id);
 
-      // Update local state
-      const updatedSources = incomeSources.filter(source => source.id !== id);
-      setIncomeSources(updatedSources);
-      setTotalGross(calculateTotal(updatedSources));
+      // Refresh to get updated data including category breakdown
+      await fetchIncomeSources();
     } catch (err) {
       const errorMessage = err.message || 'Network error. Unable to delete income source. Please check your connection and try again.';
       setError(errorMessage);
@@ -326,99 +324,103 @@ const IncomeManagementModal = ({ isOpen, onClose, year, month, onUpdate }) => {
                     No income sources for this month. Add one below.
                   </div>
                 ) : (
-                  incomeSources.map((source) => (
-                    <div key={source.id} className="income-source-item">
-                      {editingId === source.id ? (
-                        <div className="income-source-edit">
-                          <div className="income-input-group">
-                            <input
-                              type="text"
-                              value={editName}
-                              onChange={(e) => setEditName(e.target.value)}
-                              placeholder="Income source name"
-                              className={`income-edit-name ${validationErrors.editName ? 'input-error' : ''}`}
-                              disabled={loading}
-                            />
-                            {validationErrors.editName && (
-                              <span className="validation-error">{validationErrors.editName}</span>
-                            )}
-                          </div>
-                          <div className="income-input-group">
-                            <select
-                              value={editCategory}
-                              onChange={(e) => setEditCategory(e.target.value)}
-                              className="income-edit-category"
-                              disabled={loading}
-                            >
-                              <option value="Salary">Salary</option>
-                              <option value="Government">Government</option>
-                              <option value="Gifts">Gifts</option>
-                              <option value="Other">Other</option>
-                            </select>
-                          </div>
-                          <div className="income-input-group">
-                            <input
-                              type="number"
-                              value={editAmount}
-                              onChange={(e) => setEditAmount(e.target.value)}
-                              placeholder="0.00"
-                              step="0.01"
-                              min="0"
-                              className={`income-edit-amount ${validationErrors.editAmount ? 'input-error' : ''}`}
-                              disabled={loading}
-                            />
-                            {validationErrors.editAmount && (
-                              <span className="validation-error">{validationErrors.editAmount}</span>
-                            )}
-                          </div>
-                          <button
-                            className="income-save-button"
-                            onClick={handleSaveEdit}
-                            disabled={loading}
-                          >
-                            {loading ? '...' : '✓'}
-                          </button>
-                          <button
-                            className="income-cancel-button"
-                            onClick={handleCancelEdit}
-                            disabled={loading}
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="income-source-display">
-                          <div className="income-source-header">
-                            <span className={`category-badge category-${(source.category || 'Other').toLowerCase()}`}>
-                              {source.category || 'Other'}
-                            </span>
-                            <span className="income-source-name">{source.name}</span>
-                          </div>
-                          <span className="income-source-amount">
-                            ${parseFloat(source.amount).toFixed(2)}
-                          </span>
-                          <div className="income-source-actions">
-                            <button
-                              className="income-edit-button"
-                              onClick={() => handleEditSource(source)}
-                              disabled={loading}
-                              title="Edit"
-                            >
-                              ✏️
-                            </button>
-                            <button
-                              className="income-delete-button"
-                              onClick={() => handleDeleteSource(source.id)}
-                              disabled={loading}
-                              title="Delete"
-                            >
-                              🗑️
-                            </button>
-                          </div>
-                        </div>
-                      )}
+                  <>
+                    <div className="income-sources-list-header">
+                      <span>Name</span>
+                      <span>Category</span>
+                      <span style={{ textAlign: 'right' }}>Amount</span>
+                      <span>Actions</span>
                     </div>
-                  ))
+                    {incomeSources.map((source) => (
+                      <div key={source.id} className="income-source-item">
+                        {editingId === source.id ? (
+                          <div className="income-source-edit">
+                            <div className="income-input-group">
+                              <input
+                                type="text"
+                                value={editName}
+                                onChange={(e) => setEditName(e.target.value)}
+                                placeholder="Income source name"
+                                className={`income-edit-name ${validationErrors.editName ? 'input-error' : ''}`}
+                                disabled={loading}
+                              />
+                              {validationErrors.editName && (
+                                <span className="validation-error">{validationErrors.editName}</span>
+                              )}
+                            </div>
+                            <div className="income-input-group">
+                              <select
+                                value={editCategory}
+                                onChange={(e) => setEditCategory(e.target.value)}
+                                className="income-edit-category"
+                                disabled={loading}
+                              >
+                                <option value="Salary">Salary</option>
+                                <option value="Government">Government</option>
+                                <option value="Gifts">Gifts</option>
+                                <option value="Other">Other</option>
+                              </select>
+                            </div>
+                            <div className="income-input-group">
+                              <input
+                                type="number"
+                                value={editAmount}
+                                onChange={(e) => setEditAmount(e.target.value)}
+                                placeholder="0.00"
+                                step="0.01"
+                                min="0"
+                                className={`income-edit-amount ${validationErrors.editAmount ? 'input-error' : ''}`}
+                                disabled={loading}
+                              />
+                              {validationErrors.editAmount && (
+                                <span className="validation-error">{validationErrors.editAmount}</span>
+                              )}
+                            </div>
+                            <button
+                              className="income-save-button"
+                              onClick={handleSaveEdit}
+                              disabled={loading}
+                            >
+                              {loading ? '...' : '✓'}
+                            </button>
+                            <button
+                              className="income-cancel-button"
+                              onClick={handleCancelEdit}
+                              disabled={loading}
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="income-source-display">
+                            <span className="income-source-name">{source.name}</span>
+                            <span className="income-source-category">{source.category || 'Other'}</span>
+                            <span className="income-source-amount">
+                              ${parseFloat(source.amount).toFixed(2)}
+                            </span>
+                            <div className="income-source-actions">
+                              <button
+                                className="income-edit-button"
+                                onClick={() => handleEditSource(source)}
+                                disabled={loading}
+                                title="Edit"
+                              >
+                                ✏️
+                              </button>
+                              <button
+                                className="income-delete-button"
+                                onClick={() => handleDeleteSource(source.id)}
+                                disabled={loading}
+                                title="Delete"
+                              >
+                                🗑️
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </>
                 )}
               </div>
 

@@ -1684,6 +1684,165 @@ async function migrateAddIncomeCategoryColumn(db) {
 }
 
 /**
+ * Migration: Add investment tracking tables
+ */
+async function migrateAddInvestmentTables(db) {
+  const migrationName = 'add_investment_tables_v1';
+  
+  // Check if already applied
+  const isApplied = await checkMigrationApplied(db, migrationName);
+  if (isApplied) {
+    console.log(`✓ Migration "${migrationName}" already applied, skipping`);
+    return;
+  }
+
+  console.log(`Running migration: ${migrationName}`);
+
+  // Create backup
+  await createBackup();
+
+  return new Promise((resolve, reject) => {
+    db.serialize(() => {
+      db.run('BEGIN TRANSACTION', (err) => {
+        if (err) {
+          return reject(err);
+        }
+
+        // Check if investments table already exists
+        db.get(
+          "SELECT name FROM sqlite_master WHERE type='table' AND name='investments'",
+          (err, row) => {
+            if (err) {
+              db.run('ROLLBACK');
+              return reject(err);
+            }
+
+            if (row) {
+              console.log('✓ investments table already exists');
+              
+              // Check if investment_values table exists
+              db.get(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='investment_values'",
+                (err, row) => {
+                  if (err) {
+                    db.run('ROLLBACK');
+                    return reject(err);
+                  }
+
+                  if (row) {
+                    console.log('✓ investment_values table already exists');
+                    markMigrationApplied(db, migrationName).then(() => {
+                      db.run('COMMIT', (err) => {
+                        if (err) {
+                          db.run('ROLLBACK');
+                          return reject(err);
+                        }
+                        console.log(`✓ Migration "${migrationName}" completed successfully`);
+                        resolve();
+                      });
+                    }).catch(reject);
+                  } else {
+                    // Create investment_values table
+                    createInvestmentValuesTables(db, migrationName, resolve, reject);
+                  }
+                }
+              );
+            } else {
+              // Create investments table
+              db.run(`
+                CREATE TABLE investments (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  name TEXT NOT NULL,
+                  type TEXT NOT NULL CHECK(type IN ('TFSA', 'RRSP')),
+                  initial_value REAL NOT NULL CHECK(initial_value >= 0),
+                  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                  updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+                )
+              `, (err) => {
+                if (err) {
+                  db.run('ROLLBACK');
+                  return reject(err);
+                }
+
+                console.log('✓ Created investments table');
+
+                // Create index on type
+                db.run('CREATE INDEX IF NOT EXISTS idx_investments_type ON investments(type)', (err) => {
+                  if (err) {
+                    db.run('ROLLBACK');
+                    return reject(err);
+                  }
+
+                  console.log('✓ Created index on investments.type');
+
+                  // Create investment_values table
+                  createInvestmentValuesTables(db, migrationName, resolve, reject);
+                });
+              });
+            }
+          }
+        );
+      });
+    });
+  });
+}
+
+function createInvestmentValuesTables(db, migrationName, resolve, reject) {
+  db.run(`
+    CREATE TABLE IF NOT EXISTS investment_values (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      investment_id INTEGER NOT NULL,
+      year INTEGER NOT NULL,
+      month INTEGER NOT NULL,
+      value REAL NOT NULL CHECK(value >= 0),
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (investment_id) REFERENCES investments(id) ON DELETE CASCADE,
+      UNIQUE(investment_id, year, month)
+    )
+  `, (err) => {
+    if (err) {
+      db.run('ROLLBACK');
+      return reject(err);
+    }
+
+    console.log('✓ Created investment_values table');
+
+    // Create indexes
+    const indexes = [
+      'CREATE INDEX IF NOT EXISTS idx_investment_values_investment_id ON investment_values(investment_id)',
+      'CREATE INDEX IF NOT EXISTS idx_investment_values_year_month ON investment_values(year, month)'
+    ];
+
+    let completed = 0;
+    indexes.forEach((indexSQL) => {
+      db.run(indexSQL, (err) => {
+        if (err) {
+          db.run('ROLLBACK');
+          return reject(err);
+        }
+        completed++;
+        if (completed === indexes.length) {
+          console.log('✓ Created indexes on investment_values table');
+
+          // Mark migration as applied and commit
+          markMigrationApplied(db, migrationName).then(() => {
+            db.run('COMMIT', (err) => {
+              if (err) {
+                db.run('ROLLBACK');
+                return reject(err);
+              }
+              console.log(`✓ Migration "${migrationName}" completed successfully`);
+              resolve();
+            });
+          }).catch(reject);
+        }
+      });
+    });
+  });
+}
+
+/**
  * Run all pending migrations
  */
 async function runMigrations(db) {
@@ -1697,6 +1856,7 @@ async function runMigrations(db) {
     await migrateAddPersonalCareCategory(db);
     await migrateAddCategoryAndPaymentTypeToFixedExpenses(db);
     await migrateAddIncomeCategoryColumn(db);
+    await migrateAddInvestmentTables(db);
     console.log('✓ All migrations completed\n');
   } catch (error) {
     console.error('✗ Migration failed:', error.message);

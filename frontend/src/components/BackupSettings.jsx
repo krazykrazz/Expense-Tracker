@@ -336,7 +336,7 @@ const BackupSettings = () => {
 
       <div className="settings-section">
         <h3>Manual Backup</h3>
-        <p>Create a backup right now</p>
+        <p>Create a backup right now. Backups include all expenses, income sources, fixed expenses, loans, budgets, investments, and configuration data.</p>
         <div className="manual-backup-buttons">
           <button onClick={handleManualBackup} className="backup-button">
             💾 Create Backup Now

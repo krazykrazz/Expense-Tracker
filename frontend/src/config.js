@@ -30,6 +30,10 @@ export const API_ENDPOINTS = {
   LOANS: `${API_BASE_URL}/api/loans`,
   LOAN_BALANCES: `${API_BASE_URL}/api/loan-balances`,
   
+  // Investments
+  INVESTMENTS: `${API_BASE_URL}/api/investments`,
+  INVESTMENT_VALUES: `${API_BASE_URL}/api/investment-values`,
+  
   // Budgets
   BUDGETS: `${API_BASE_URL}/api/budgets`,
   BUDGET_SUMMARY: `${API_BASE_URL}/api/budgets/summary`,

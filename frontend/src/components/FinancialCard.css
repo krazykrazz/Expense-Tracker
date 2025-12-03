@@ -1,0 +1,150 @@
+.financial-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+
+.financial-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+/* Card Header */
+.financial-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.financial-card-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.financial-card-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Card Value */
+.financial-card-value {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.financial-card-value.value-positive {
+  color: #22c55e;
+}
+
+.financial-card-value.value-negative {
+  color: #ef4444;
+}
+
+.financial-card-value.value-neutral {
+  color: #0ea5e9;
+}
+
+/* Details List */
+.financial-card-details {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.financial-card-detail-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 8px;
+  background: white;
+  border-radius: 3px;
+  font-size: 12px;
+}
+
+.detail-label {
+  color: #64748b;
+  font-weight: 500;
+}
+
+.detail-value {
+  color: #0f172a;
+  font-weight: 600;
+}
+
+/* Action Button */
+.financial-card-action-btn {
+  background-color: #0ea5e9;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 11px;
+  border-radius: 4px;
+  font-weight: 600;
+  transition: background-color 0.2s;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: auto;
+}
+
+.financial-card-action-btn:hover {
+  background-color: #0284c7;
+}
+
+.financial-card-action-btn:active {
+  background-color: #0369a1;
+}
+
+.financial-card-action-btn:focus {
+  outline: 2px solid #0ea5e9;
+  outline-offset: 2px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .financial-card {
+    padding: 10px;
+  }
+
+  .financial-card-icon {
+    font-size: 16px;
+  }
+
+  .financial-card-title {
+    font-size: 12px;
+  }
+
+  .financial-card-value {
+    font-size: 20px;
+  }
+
+  .financial-card-detail-item {
+    font-size: 11px;
+    padding: 3px 6px;
+  }
+
+  .financial-card-action-btn {
+    padding: 5px 10px;
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .financial-card-value {
+    font-size: 18px;
+  }
+
+  .financial-card-title {
+    font-size: 11px;
+  }
+}

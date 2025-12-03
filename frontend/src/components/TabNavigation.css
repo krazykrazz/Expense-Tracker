@@ -1,0 +1,116 @@
+.tab-navigation {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: #f1f5f9;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin; /* Firefox */
+  flex-wrap: nowrap; /* Prevent wrapping */
+}
+
+/* Hide scrollbar but keep functionality */
+.tab-navigation::-webkit-scrollbar {
+  height: 4px;
+}
+
+.tab-navigation::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.tab-navigation::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 2px;
+}
+
+/* Tab Button */
+.tab-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: #64748b;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  flex-shrink: 0; /* Prevent tabs from shrinking */
+  min-width: fit-content; /* Ensure full label is visible */
+}
+
+.tab-button:hover {
+  background: rgba(14, 165, 233, 0.1);
+  color: #0ea5e9;
+}
+
+.tab-button:focus {
+  outline: 2px solid #0ea5e9;
+  outline-offset: 2px;
+}
+
+.tab-button:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.tab-button:focus-visible {
+  outline: 2px solid #0ea5e9;
+  outline-offset: 2px;
+}
+
+/* Active Tab */
+.tab-button.active {
+  background: white;
+  color: #0ea5e9;
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Tab Icon */
+.tab-icon {
+  font-size: 14px;
+}
+
+/* Tab Label */
+.tab-label {
+  letter-spacing: 0.3px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .tab-navigation {
+    padding: 3px;
+    gap: 2px;
+  }
+
+  .tab-button {
+    padding: 6px 12px;
+    font-size: 12px;
+    flex: 1;
+    justify-content: center;
+  }
+
+  .tab-icon {
+    font-size: 12px;
+  }
+
+  /* On mobile, hide labels and show only icons if space is tight */
+  @media (max-width: 400px) {
+    .tab-label {
+      display: none;
+    }
+
+    .tab-button {
+      padding: 8px 12px;
+    }
+
+    .tab-icon {
+      font-size: 16px;
+    }
+  }
+}

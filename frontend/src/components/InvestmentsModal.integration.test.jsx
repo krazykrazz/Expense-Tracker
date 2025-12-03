@@ -87,12 +87,17 @@ describe('InvestmentsModal Integration Tests', () => {
       />
     );
 
+    // Wait for investments to load first
+    await waitFor(() => {
+      expect(screen.getByText('My TFSA')).toBeInTheDocument();
+    });
+
     // Click add new investment
     const addButton = screen.getByText(/add new investment/i);
     fireEvent.click(addButton);
 
     // Check that type dropdown only has TFSA and RRSP
-    const typeSelect = screen.getByLabelText(/type/i);
+    const typeSelect = screen.getByRole('combobox');
     const options = typeSelect.querySelectorAll('option');
     
     expect(options).toHaveLength(2);
@@ -111,26 +116,31 @@ describe('InvestmentsModal Integration Tests', () => {
       />
     );
 
+    // Wait for investments to load first
+    await waitFor(() => {
+      expect(screen.getByText('My TFSA')).toBeInTheDocument();
+    });
+
     // Click add new investment
     const addButton = screen.getByText(/add new investment/i);
     fireEvent.click(addButton);
 
     // Fill form with negative value
-    const nameInput = screen.getByLabelText(/name/i);
-    const typeSelect = screen.getByLabelText(/type/i);
-    const valueInput = screen.getByLabelText(/initial value/i);
+    const nameInput = screen.getByPlaceholderText(/e\.g\., My TFSA/i);
+    const typeSelect = screen.getByRole('combobox');
+    const valueInput = screen.getByPlaceholderText(/0\.00/i);
 
     fireEvent.change(nameInput, { target: { value: 'Test Investment' } });
     fireEvent.change(typeSelect, { target: { value: 'TFSA' } });
     fireEvent.change(valueInput, { target: { value: '-1000' } });
 
     // Try to submit
-    const submitButton = screen.getByText(/save/i);
+    const submitButton = screen.getByText(/create investment/i);
     fireEvent.click(submitButton);
 
     // Should show validation error
     await waitFor(() => {
-      expect(screen.getByText(/must be greater than or equal to 0/i)).toBeInTheDocument();
+      expect(screen.getByText(/must be a non-negative number/i)).toBeInTheDocument();
     });
 
     expect(investmentApi.createInvestment).not.toHaveBeenCalled();
@@ -169,16 +179,16 @@ describe('InvestmentsModal Integration Tests', () => {
     fireEvent.click(addButton);
 
     // Fill form
-    const nameInput = screen.getByLabelText(/name/i);
-    const typeSelect = screen.getByLabelText(/type/i);
-    const valueInput = screen.getByLabelText(/initial value/i);
+    const nameInput = screen.getByPlaceholderText(/e\.g\., My TFSA/i);
+    const typeSelect = screen.getByRole('combobox');
+    const valueInput = screen.getByPlaceholderText(/0\.00/i);
 
     fireEvent.change(nameInput, { target: { value: 'New TFSA' } });
     fireEvent.change(typeSelect, { target: { value: 'TFSA' } });
     fireEvent.change(valueInput, { target: { value: '5000' } });
 
     // Submit
-    const submitButton = screen.getByText(/save/i);
+    const submitButton = screen.getByText(/create investment/i);
     fireEvent.click(submitButton);
 
     await waitFor(() => {
@@ -216,8 +226,8 @@ describe('InvestmentsModal Integration Tests', () => {
       expect(screen.getByText('My TFSA')).toBeInTheDocument();
     });
 
-    // Find and click delete button for first investment
-    const deleteButtons = screen.getAllByText(/delete/i);
+    // Find and click delete button for first investment (uses title attribute)
+    const deleteButtons = screen.getAllByTitle('Delete');
     fireEvent.click(deleteButtons[0]);
 
     expect(global.confirm).toHaveBeenCalled();
@@ -254,8 +264,8 @@ describe('InvestmentsModal Integration Tests', () => {
       expect(screen.getByText('My TFSA')).toBeInTheDocument();
     });
 
-    // Click view button
-    const viewButtons = screen.getAllByText(/view/i);
+    // Click view button (uses title attribute)
+    const viewButtons = screen.getAllByTitle('View Details');
     fireEvent.click(viewButtons[0]);
 
     // Should show detail view
@@ -278,7 +288,7 @@ describe('InvestmentsModal Integration Tests', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/error loading investments/i)).toBeInTheDocument();
+      expect(screen.getByText(/Network error/i)).toBeInTheDocument();
     });
   });
 
@@ -297,8 +307,8 @@ describe('InvestmentsModal Integration Tests', () => {
       expect(screen.getByText('My TFSA')).toBeInTheDocument();
     });
 
-    // Click close button
-    const closeButton = screen.getByText(/close/i);
+    // Click close button (the X button)
+    const closeButton = screen.getByText('✕');
     fireEvent.click(closeButton);
 
     expect(mockOnClose).toHaveBeenCalled();

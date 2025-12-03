@@ -1,0 +1,22 @@
+.financial-health-tab {
+  padding: 0.5rem 0;
+}
+
+.financial-health-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .financial-health-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1200px) {
+  .financial-health-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

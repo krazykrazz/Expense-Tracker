@@ -55,7 +55,7 @@ describe('BudgetManagementModal', () => {
         id: 1,
         year: 2025,
         month: 11,
-        category: 'Housing',
+        category: 'Groceries',
         limit: 500
       };
       
@@ -70,10 +70,10 @@ describe('BudgetManagementModal', () => {
       render(<BudgetManagementModal {...defaultProps} />);
 
       await waitFor(() => {
-        expect(screen.getByText('Housing')).toBeInTheDocument();
+        expect(screen.getByText('Groceries')).toBeInTheDocument();
       });
 
-      // Click edit button for Housing category (first in the list)
+      // Click edit button for Groceries category (first in the list)
       const editButtons = screen.getAllByTitle(/Set budget|Edit budget/);
       fireEvent.click(editButtons[0]);
 
@@ -86,7 +86,7 @@ describe('BudgetManagementModal', () => {
       fireEvent.click(saveButton);
 
       await waitFor(() => {
-        expect(budgetApi.createBudget).toHaveBeenCalledWith(2025, 11, 'Housing', 500);
+        expect(budgetApi.createBudget).toHaveBeenCalledWith(2025, 11, 'Groceries', 500);
       });
 
       expect(mockOnBudgetUpdated).toHaveBeenCalled();

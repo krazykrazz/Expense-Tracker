@@ -42,6 +42,115 @@ describe('SummaryPanel', () => {
     global.fetch = vi.fn();
   });
 
+  describe('Loading States', () => {
+    // Validates: Requirements 7.5
+    it('should display loading skeleton when loading is true', () => {
+      // Mock fetch to never resolve, keeping component in loading state
+      global.fetch.mockImplementation(() => new Promise(() => {}));
+
+      render(<SummaryPanel selectedYear={2025} selectedMonth={11} refreshTrigger={0} />);
+
+      // Check for skeleton loaders
+      expect(document.querySelector('.key-metrics-skeleton')).toBeInTheDocument();
+      expect(document.querySelector('.tab-navigation-skeleton')).toBeInTheDocument();
+      expect(document.querySelector('.tab-content-skeleton')).toBeInTheDocument();
+      
+      // Check for skeleton cards
+      const skeletonCards = document.querySelectorAll('.skeleton-card');
+      expect(skeletonCards.length).toBe(3);
+      
+      // Check for skeleton tabs
+      const skeletonTabs = document.querySelectorAll('.skeleton-tab');
+      expect(skeletonTabs.length).toBe(3);
+      
+      // Check for skeleton sections
+      const skeletonSections = document.querySelectorAll('.skeleton-section');
+      expect(skeletonSections.length).toBe(2);
+    });
+
+    // Validates: Requirements 7.5
+    it('should display content when loading is false', async () => {
+      const mockResponse = {
+        current: {
+          total: 500,
+          weeklyTotals: { week1: 100, week2: 100, week3: 100, week4: 100, week5: 100 },
+          typeTotals: {
+            Groceries: 200,
+            Gas: 100,
+            Other: 100,
+            'Tax - Medical': 50,
+            'Tax - Donation': 50
+          },
+          methodTotals: {
+            Cash: 50,
+            Debit: 50,
+            Cheque: 0,
+            'CIBC MC': 100,
+            'PCF MC': 0,
+            'WS VISA': 0,
+            VISA: 0
+          },
+          monthlyGross: 3000,
+          totalFixedExpenses: 1500,
+          netBalance: 1000,
+          loans: [],
+          totalOutstandingDebt: 0,
+          investments: [],
+          totalInvestmentValue: 0
+        },
+        previous: {
+          total: 450,
+          weeklyTotals: { week1: 90, week2: 90, week3: 90, week4: 90, week5: 90 },
+          typeTotals: {
+            Groceries: 180,
+            Gas: 90,
+            Other: 90,
+            'Tax - Medical': 45,
+            'Tax - Donation': 45
+          },
+          methodTotals: {
+            Cash: 45,
+            Debit: 45,
+            Cheque: 0,
+            'CIBC MC': 90,
+            'PCF MC': 0,
+            'WS VISA': 0,
+            VISA: 0
+          },
+          monthlyGross: 3000,
+          totalFixedExpenses: 1500,
+          netBalance: 1050,
+          loans: [],
+          totalOutstandingDebt: 0,
+          investments: [],
+          totalInvestmentValue: 0
+        }
+      };
+
+      global.fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockResponse
+      });
+
+      render(<SummaryPanel selectedYear={2025} selectedMonth={11} refreshTrigger={0} />);
+
+      // Wait for loading to complete
+      await waitFor(() => {
+        expect(document.querySelector('.key-metrics-skeleton')).not.toBeInTheDocument();
+      });
+
+      // Check that actual content is rendered
+      expect(document.querySelector('.key-metrics-row')).toBeInTheDocument();
+      expect(document.querySelector('.tab-navigation')).toBeInTheDocument();
+      expect(document.querySelector('.tab-content')).toBeInTheDocument();
+      
+      // Skeleton loaders should not be present
+      expect(document.querySelector('.key-metrics-skeleton')).not.toBeInTheDocument();
+      expect(document.querySelector('.tab-navigation-skeleton')).not.toBeInTheDocument();
+      expect(document.querySelector('.tab-content-skeleton')).not.toBeInTheDocument();
+    });
+  });
+
   describe('Property-Based Tests', () => {
     // Feature: expense-trend-indicators, Property 5: Trend indicators appear for all categories
     // Validates: Requirements 1.1, 2.1, 3.1

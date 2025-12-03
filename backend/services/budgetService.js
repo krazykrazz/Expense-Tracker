@@ -382,7 +382,7 @@ class BudgetService {
     const targetYear = parseInt(year);
     const targetMonth = parseInt(month);
 
-    // Calculate the range for historical data (3-6 months before target month)
+    // Calculate the range for historical data (6 months before target month)
     const historicalMonths = [];
     let currentYear = targetYear;
     let currentMonth = targetMonth - 1;
@@ -399,28 +399,26 @@ class BudgetService {
       currentMonth -= 1;
     }
 
-    // Get spending for each historical month
+    // Get spending for each historical month (including zero-spending months)
     const spendingData = [];
     for (const monthInfo of historicalMonths) {
       const spent = await this.getSpentAmount(monthInfo.year, monthInfo.month, category);
-      if (spent > 0) {
-        spendingData.push(spent);
-      }
+      spendingData.push(spent); // Include all months, even with $0 spending
     }
 
-    // If no historical data, return 0
-    if (spendingData.length === 0) {
+    // Calculate average spending across all 6 months
+    const totalSpending = spendingData.reduce((sum, amount) => sum + amount, 0);
+    const averageSpending = totalSpending / spendingData.length;
+
+    // If no spending at all in any month, return 0
+    if (totalSpending === 0) {
       return {
         category,
         suggestedAmount: 0,
         averageSpending: 0,
-        basedOnMonths: 0
+        basedOnMonths: spendingData.length
       };
     }
-
-    // Calculate average spending
-    const totalSpending = spendingData.reduce((sum, amount) => sum + amount, 0);
-    const averageSpending = totalSpending / spendingData.length;
 
     // Round to nearest $50
     const suggestedAmount = Math.round(averageSpending / 50) * 50;

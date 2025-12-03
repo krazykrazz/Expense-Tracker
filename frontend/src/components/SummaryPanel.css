@@ -236,6 +236,31 @@
   color: #27ae60 !important;
 }
 
+/* Collapsible Panel Styles */
+.collapsible-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+  padding: 4px 0;
+}
+
+.collapsible-header:hover {
+  opacity: 0.8;
+}
+
+.collapse-icon {
+  font-size: 14px;
+  color: #64748b;
+  transition: transform 0.2s ease;
+  font-weight: bold;
+}
+
+.collapsible-header:hover .collapse-icon {
+  color: #0ea5e9;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .summary-panel {

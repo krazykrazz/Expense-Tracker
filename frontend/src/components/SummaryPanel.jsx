@@ -4,8 +4,6 @@ import IncomeManagementModal from './IncomeManagementModal';
 import FixedExpensesModal from './FixedExpensesModal';
 import LoansModal from './LoansModal';
 import InvestmentsModal from './InvestmentsModal';
-import TrendIndicator from './TrendIndicator';
-import { formatAmount } from '../utils/formatters';
 import './SummaryPanel.css';
 
 const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
@@ -21,7 +19,11 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
   const [totalOutstandingDebt, setTotalOutstandingDebt] = useState(0);
   const [investments, setInvestments] = useState([]);
   const [totalInvestmentValue, setTotalInvestmentValue] = useState(0);
-  const [categories, setCategories] = useState([]);
+  
+  // Collapsible panel states
+  const [weeklyOpen, setWeeklyOpen] = useState(false);
+  const [paymentOpen, setPaymentOpen] = useState(false);
+  const [expenseTypesOpen, setExpenseTypesOpen] = useState(false);
 
   /**
    * Process summary data and update state
@@ -102,25 +104,6 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
     }
   }, [selectedYear, selectedMonth, processSummaryData]);
 
-  // Fetch categories on mount
-  useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const response = await fetch(API_ENDPOINTS.CATEGORIES);
-        if (!response.ok) {
-          throw new Error('Failed to fetch categories');
-        }
-        const data = await response.json();
-        setCategories(data.categories || []);
-      } catch (err) {
-        console.error('Error fetching categories:', err);
-        setCategories([]);
-      }
-    };
-
-    fetchCategories();
-  }, []);
-
   // Fetch summary when dependencies change
   useEffect(() => {
     fetchSummaryData();
@@ -152,6 +135,14 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
     await fetchSummaryData();
   };
 
+  // Format currency
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-CA', {
+      style: 'currency',
+      currency: 'CAD'
+    }).format(amount);
+  };
+
   if (loading) {
     return (
       <div className="summary-panel">
@@ -178,289 +169,170 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
     <div className="summary-panel">
       <h2>Monthly Summary</h2>
 
-      {/* Key Metrics Cards */}
+      {/* Summary Cards Grid */}
       <div className="summary-grid">
-        {/* Row 1: Income and Fixed Expenses */}
-        <div className="summary-card highlight-card income-card">
+        {/* Total Expenses Card */}
+        <div className="summary-card highlight-card">
           <div className="card-header">
-            <span className="card-icon">≡ƒÆ░</span>
+            <span className="card-icon">💰</span>
+            <span className="card-title">Total Expenses</span>
+          </div>
+          <div className="card-value expense-value">{formatCurrency(summary.total || 0)}</div>
+        </div>
+
+        {/* Monthly Income Card */}
+        <div className="summary-card income-card">
+          <div className="card-header">
+            <span className="card-icon">🏠</span>
             <span className="card-title">Monthly Income</span>
           </div>
-          <div className="card-value">${formatAmount(summary.monthlyGross)}</div>
+          <div className="card-value positive">{formatCurrency(summary.monthlyGross || 0)}</div>
           <button className="card-action-btn" onClick={handleOpenIncomeModal}>
-            View/Edit
+            Manage Income
           </button>
         </div>
 
+        {/* Fixed Expenses Card */}
         <div className="summary-card">
           <div className="card-header">
-            <span className="card-icon">≡ƒÅá</span>
+            <span className="card-icon">📝</span>
             <span className="card-title">Fixed Expenses</span>
           </div>
-          <div className="card-value expense-value">
-            ${formatAmount(summary.totalFixedExpenses || 0)}
-          </div>
+          <div className="card-value expense-value">{formatCurrency(summary.totalFixedExpenses || 0)}</div>
           <button className="card-action-btn" onClick={handleOpenFixedExpensesModal}>
-            View/Edit
+            Manage Fixed
           </button>
         </div>
 
-        {/* Row 2: Variable Expenses and Net Balance */}
-        <div className="summary-card">
+        {/* Balance Card */}
+        <div className="summary-card balance-card">
           <div className="card-header">
-            <span className="card-icon">≡ƒô¥</span>
-            <span className="card-title">Variable Expenses</span>
+            <span className="card-icon">📊</span>
+            <span className="card-title">Balance</span>
           </div>
-          <div className="card-value expense-value">
-            ${formatAmount(summary.total)}
+          <div className={`card-value ${(summary.monthlyGross - summary.total - summary.totalFixedExpenses) >= 0 ? 'positive' : 'negative'}`}>
+            {formatCurrency((summary.monthlyGross || 0) - (summary.total || 0) - (summary.totalFixedExpenses || 0))}
           </div>
-          <div className="card-subtitle">
-            Monthly tracked expenses
-          </div>
+          <div className="card-subtitle">Income - All Expenses</div>
         </div>
 
-        <div className="summary-card highlight-card balance-card">
-          <div className="card-header">
-            <span className="card-icon">≡ƒôè</span>
-            <span className="card-title">Net Balance</span>
-          </div>
-          <div className={`card-value ${summary.netBalance >= 0 ? 'positive' : 'negative'}`}>
-            ${formatAmount(summary.netBalance)}
-          </div>
-          <div className="card-subtitle">
-            Income - Fixed - Variable
-          </div>
-        </div>
-
-        {/* Row 3: Weekly and Payment Methods */}
-        <div className="summary-card">
-          <div className="card-header">
-            <span className="card-icon">≡ƒôà</span>
-            <span className="card-title">Weekly Breakdown</span>
-          </div>
-          <div className="card-content">
-            <div className="compact-list">
-              <div className="compact-item">
-                <span>W1</span>
-                <span>
-                  ${formatAmount(summary?.weeklyTotals?.week1 || 0)}
-                  <TrendIndicator 
-                    currentValue={summary?.weeklyTotals?.week1 || 0} 
-                    previousValue={previousSummary?.weeklyTotals?.week1} 
-                  />
-                </span>
-              </div>
-              <div className="compact-item">
-                <span>W2</span>
-                <span>
-                  ${formatAmount(summary?.weeklyTotals?.week2 || 0)}
-                  <TrendIndicator 
-                    currentValue={summary?.weeklyTotals?.week2 || 0} 
-                    previousValue={previousSummary?.weeklyTotals?.week2} 
-                  />
-                </span>
-              </div>
-              <div className="compact-item">
-                <span>W3</span>
-                <span>
-                  ${formatAmount(summary?.weeklyTotals?.week3 || 0)}
-                  <TrendIndicator 
-                    currentValue={summary?.weeklyTotals?.week3 || 0} 
-                    previousValue={previousSummary?.weeklyTotals?.week3} 
-                  />
-                </span>
-              </div>
-              <div className="compact-item">
-                <span>W4</span>
-                <span>
-                  ${formatAmount(summary?.weeklyTotals?.week4 || 0)}
-                  <TrendIndicator 
-                    currentValue={summary?.weeklyTotals?.week4 || 0} 
-                    previousValue={previousSummary?.weeklyTotals?.week4} 
-                  />
-                </span>
-              </div>
-              <div className="compact-item">
-                <span>W5</span>
-                <span>
-                  ${formatAmount(summary?.weeklyTotals?.week5 || 0)}
-                  <TrendIndicator 
-                    currentValue={summary?.weeklyTotals?.week5 || 0} 
-                    previousValue={previousSummary?.weeklyTotals?.week5} 
-                  />
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="summary-card">
-          <div className="card-header">
-            <span className="card-icon">≡ƒÆ│</span>
-            <span className="card-title">Payment Methods</span>
-          </div>
-          <div className="card-content">
-            <div className="compact-list">
-              <div className="compact-item">
-                <span>Cash</span>
-                <span>
-                  ${formatAmount(summary.methodTotals?.Cash || 0)}
-                  <TrendIndicator 
-                    currentValue={summary.methodTotals?.Cash || 0} 
-                    previousValue={previousSummary?.methodTotals?.Cash} 
-                  />
-                </span>
-              </div>
-              <div className="compact-item">
-                <span>Debit</span>
-                <span>
-                  ${formatAmount(summary.methodTotals?.Debit || 0)}
-                  <TrendIndicator 
-                    currentValue={summary.methodTotals?.Debit || 0} 
-                    previousValue={previousSummary?.methodTotals?.Debit} 
-                  />
-                </span>
-              </div>
-              <div className="compact-item">
-                <span>Cheque</span>
-                <span>
-                  ${formatAmount(summary.methodTotals?.Cheque || 0)}
-                  <TrendIndicator 
-                    currentValue={summary.methodTotals?.Cheque || 0} 
-                    previousValue={previousSummary?.methodTotals?.Cheque} 
-                  />
-                </span>
-              </div>
-              <div className="compact-item">
-                <span>CIBC MC</span>
-                <span>
-                  ${formatAmount(summary.methodTotals?.['CIBC MC'] || 0)}
-                  <TrendIndicator 
-                    currentValue={summary.methodTotals?.['CIBC MC'] || 0} 
-                    previousValue={previousSummary?.methodTotals?.['CIBC MC']} 
-                  />
-                </span>
-              </div>
-              <div className="compact-item">
-                <span>PCF MC</span>
-                <span>
-                  ${formatAmount(summary.methodTotals?.['PCF MC'] || 0)}
-                  <TrendIndicator 
-                    currentValue={summary.methodTotals?.['PCF MC'] || 0} 
-                    previousValue={previousSummary?.methodTotals?.['PCF MC']} 
-                  />
-                </span>
-              </div>
-              <div className="compact-item">
-                <span>WS VISA</span>
-                <span>
-                  ${formatAmount(summary.methodTotals?.['WS VISA'] || 0)}
-                  <TrendIndicator 
-                    currentValue={summary.methodTotals?.['WS VISA'] || 0} 
-                    previousValue={previousSummary?.methodTotals?.['WS VISA']} 
-                  />
-                </span>
-              </div>
-              <div className="compact-item">
-                <span>VISA</span>
-                <span>
-                  ${formatAmount(summary.methodTotals?.VISA || 0)}
-                  <TrendIndicator 
-                    currentValue={summary.methodTotals?.VISA || 0} 
-                    previousValue={previousSummary?.methodTotals?.VISA} 
-                  />
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Row 4: Expense Types */}
+        {/* Collapsible: Weekly Breakdown */}
         <div className="summary-card full-width">
-          <div className="card-header">
-            <span className="card-icon">≡ƒÅ╖∩╕Å</span>
-            <span className="card-title">Expense Types</span>
-          </div>
-          <div className="card-content">
-            <div className="compact-list horizontal-list">
-              {categories.map((category) => {
-                const currentValue = summary.typeTotals[category] || 0;
-                const previousValue = previousSummary?.typeTotals?.[category] || 0;
-                
-                // Only show categories that have expenses or had expenses in previous month
-                if (currentValue === 0 && previousValue === 0) {
-                  return null;
-                }
-                
-                return (
-                  <div key={category} className="compact-item">
-                    <span>{category}</span>
-                    <span>
-                      ${formatAmount(currentValue)}
-                      <TrendIndicator 
-                        currentValue={currentValue} 
-                        previousValue={previousValue} 
-                      />
-                    </span>
-                  </div>
-                );
-              })}
+          <div className="collapsible-header" onClick={() => setWeeklyOpen(!weeklyOpen)}>
+            <div className="card-header">
+              <span className="card-icon">📅</span>
+              <span className="card-title">Weekly Breakdown</span>
             </div>
+            <span className="collapse-icon">{weeklyOpen ? '▼' : '▶'}</span>
           </div>
+          {weeklyOpen && (
+            <div className="card-content">
+              <div className="compact-list">
+                {Object.entries(summary.weeklyTotals || {}).map(([week, amount]) => (
+                  <div key={week} className="compact-item">
+                    <span>Week {week}</span>
+                    <span>{formatCurrency(amount)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
-      </div>
 
-      {loans.length > 0 && (
+        {/* Collapsible: Payment Methods */}
+        <div className="summary-card full-width">
+          <div className="collapsible-header" onClick={() => setPaymentOpen(!paymentOpen)}>
+            <div className="card-header">
+              <span className="card-icon">💳</span>
+              <span className="card-title">Payment Methods</span>
+            </div>
+            <span className="collapse-icon">{paymentOpen ? '▼' : '▶'}</span>
+          </div>
+          {paymentOpen && (
+            <div className="card-content">
+              <div className="compact-list">
+                {Object.entries(summary.methodTotals || {}).map(([method, amount]) => (
+                  <div key={method} className="compact-item">
+                    <span>{method}</span>
+                    <span>{formatCurrency(amount)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Collapsible: Expense Types */}
+        <div className="summary-card full-width">
+          <div className="collapsible-header" onClick={() => setExpenseTypesOpen(!expenseTypesOpen)}>
+            <div className="card-header">
+              <span className="card-icon">🏷️</span>
+              <span className="card-title">Expense Types</span>
+            </div>
+            <span className="collapse-icon">{expenseTypesOpen ? '▼' : '▶'}</span>
+          </div>
+          {expenseTypesOpen && (
+            <div className="card-content">
+              <div className="compact-list">
+                {Object.entries(summary.typeTotals || {})
+                  .sort(([, a], [, b]) => b - a)
+                  .map(([type, amount]) => (
+                    <div key={type} className="compact-item">
+                      <span>{type}</span>
+                      <span>{formatCurrency(amount)}</span>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Loans Card */}
         <div className="summary-card loans-card">
           <div className="card-header">
-            <span className="card-icon">≡ƒÅª</span>
-            <span className="card-title">Outstanding Loans</span>
+            <span className="card-icon">🏦</span>
+            <span className="card-title">Outstanding Debt</span>
           </div>
-          <div className="card-content">
-            <div className="compact-list">
-              {loans.map(loan => (
-                <div key={loan.id} className="compact-item">
-                  <span>{loan.name} ({formatAmount(loan.currentRate)}%)</span>
-                  <span>${formatAmount(loan.currentBalance)}</span>
-                </div>
-              ))}
-            </div>
-            <div className="card-total">
-              <span>Total Debt:</span>
-              <span className="total-value">${formatAmount(totalOutstandingDebt)}</span>
-            </div>
-          </div>
-          <button className="card-action-btn" onClick={handleOpenLoansModal}>
-            View/Edit
-          </button>
+          {loans.length > 0 ? (
+            <>
+              <div className="card-value negative">{formatCurrency(totalOutstandingDebt)}</div>
+              <button className="card-action-btn" onClick={handleOpenLoansModal}>
+                Manage Loans
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="card-value">{formatCurrency(0)}</div>
+              <button className="card-action-btn" onClick={handleOpenLoansModal}>
+                Manage Loans
+              </button>
+            </>
+          )}
         </div>
-      )}
 
-      {investments.length > 0 && (
+        {/* Investments Card */}
         <div className="summary-card investments-card">
           <div className="card-header">
-            <span className="card-icon">≡ƒôê</span>
-            <span className="card-title">Investments</span>
+            <span className="card-icon">📈</span>
+            <span className="card-title">Total Investments</span>
           </div>
-          <div className="card-content">
-            <div className="compact-list">
-              {investments.map(investment => (
-                <div key={investment.id} className="compact-item">
-                  <span>{investment.name} ({investment.type})</span>
-                  <span>${formatAmount(investment.currentValue)}</span>
-                </div>
-              ))}
-            </div>
-            <div className="card-total">
-              <span>Total Investment Value:</span>
-              <span className="total-value investment-value">${formatAmount(totalInvestmentValue)}</span>
-            </div>
-          </div>
-          <button className="card-action-btn" onClick={handleOpenInvestmentsModal}>
-            ≡ƒæü∩╕Å View/Edit
-          </button>
+          {investments.length > 0 ? (
+            <>
+              <div className="card-value positive">{formatCurrency(totalInvestmentValue)}</div>
+              <button className="card-action-btn" onClick={handleOpenInvestmentsModal}>
+                Manage Investments
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="card-value">{formatCurrency(0)}</div>
+              <button className="card-action-btn" onClick={handleOpenInvestmentsModal}>
+                Manage Investments
+              </button>
+            </>
+          )}
         </div>
-      )}
+      </div>
 
       {showIncomeModal && (
         <IncomeManagementModal

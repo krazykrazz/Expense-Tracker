@@ -380,17 +380,26 @@ class ExpenseService {
       monthlyFixedExpenses,
       monthlyIncome,
       categoryTotals,
-      methodTotals
+      methodTotals,
+      yearEndInvestments,
+      yearEndLoans
     ] = await Promise.all([
       this._getMonthlyVariableExpenses(year),
       this._getMonthlyFixedExpenses(year),
       this._getMonthlyIncome(year),
       this._getCategoryTotals(year),
-      this._getMethodTotals(year)
+      this._getMethodTotals(year),
+      this._getYearEndInvestmentValues(year),
+      this._getYearEndLoanBalances(year)
     ]);
 
+    // Calculate net worth components
+    const totalAssets = yearEndInvestments.reduce((sum, inv) => sum + inv.value, 0);
+    const totalLiabilities = yearEndLoans.reduce((sum, loan) => sum + loan.remaining_balance, 0);
+    const netWorth = totalAssets - totalLiabilities;
+
     // Build summary from fetched data
-    return this._buildAnnualSummary(
+    const summary = this._buildAnnualSummary(
       year,
       monthlyVariableExpenses,
       monthlyFixedExpenses,
@@ -398,6 +407,127 @@ class ExpenseService {
       categoryTotals,
       methodTotals
     );
+
+    // Add net worth data to summary
+    return {
+      ...summary,
+      netWorth,
+      totalAssets,
+      totalLiabilities
+    };
+  }
+
+  /**
+   * Get year-end investment values (prefer December, fallback to latest month)
+   * @param {number} year - Year
+   * @returns {Promise<Array>} Array of investment values
+   * @private
+   */
+  async _getYearEndInvestmentValues(year) {
+    const db = await require('../database/db').getDatabase();
+    
+    return new Promise((resolve, reject) => {
+      // Try to get December values first
+      const decemberQuery = `
+        SELECT iv.*, i.name as investment_name
+        FROM investment_values iv
+        JOIN investments i ON iv.investment_id = i.id
+        WHERE iv.year = ? AND iv.month = 12
+      `;
+      
+      db.all(decemberQuery, [year], (err, decemberRows) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        
+        // If we have December data, return it
+        if (decemberRows && decemberRows.length > 0) {
+          resolve(decemberRows);
+          return;
+        }
+        
+        // Otherwise, get the most recent value for each investment in that year
+        const fallbackQuery = `
+          SELECT iv.*, i.name as investment_name
+          FROM investment_values iv
+          JOIN investments i ON iv.investment_id = i.id
+          WHERE iv.year = ?
+          AND (iv.investment_id, iv.month) IN (
+            SELECT investment_id, MAX(month)
+            FROM investment_values
+            WHERE year = ?
+            GROUP BY investment_id
+          )
+        `;
+        
+        db.all(fallbackQuery, [year, year], (err, fallbackRows) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+          resolve(fallbackRows || []);
+        });
+      });
+    });
+  }
+
+  /**
+   * Get year-end loan balances (prefer December, fallback to latest month)
+   * Excludes paid-off loans
+   * @param {number} year - Year
+   * @returns {Promise<Array>} Array of loan balances
+   * @private
+   */
+  async _getYearEndLoanBalances(year) {
+    const db = await require('../database/db').getDatabase();
+    
+    return new Promise((resolve, reject) => {
+      // Try to get December balances first
+      const decemberQuery = `
+        SELECT lb.*, l.name as loan_name
+        FROM loan_balances lb
+        JOIN loans l ON lb.loan_id = l.id
+        WHERE lb.year = ? AND lb.month = 12
+        AND l.is_paid_off = 0
+      `;
+      
+      db.all(decemberQuery, [year], (err, decemberRows) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        
+        // If we have December data, return it
+        if (decemberRows && decemberRows.length > 0) {
+          resolve(decemberRows);
+          return;
+        }
+        
+        // Otherwise, get the most recent balance for each loan in that year
+        const fallbackQuery = `
+          SELECT lb.*, l.name as loan_name
+          FROM loan_balances lb
+          JOIN loans l ON lb.loan_id = l.id
+          WHERE lb.year = ?
+          AND l.is_paid_off = 0
+          AND (lb.loan_id, lb.month) IN (
+            SELECT loan_id, MAX(month)
+            FROM loan_balances
+            WHERE year = ?
+            GROUP BY loan_id
+          )
+        `;
+        
+        db.all(fallbackQuery, [year, year], (err, fallbackRows) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+          resolve(fallbackRows || []);
+        });
+      });
+    });
   }
 
   /**

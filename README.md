@@ -45,6 +45,14 @@ A full-stack expense tracking application built with React and Node.js.
 - 🔄 Create, edit, and delete investments and value entries
 - 📅 Monthly value snapshots for performance tracking
 
+### Net Worth Tracking
+- 💎 Net Worth card on annual summary showing year-end financial position
+- 💎 Net Worth card on monthly summary showing current month position
+- 📊 Assets and liabilities breakdown display
+- 🎨 Color-coded net worth (green for positive, red for negative)
+- 💰 Automatic calculation from investment values and loan balances
+- 📈 Year-end value selection (December preferred, fallback to latest month)
+
 ### Budget Tracking & Alerts
 - 💵 Set monthly budget limits for expense categories (Food, Gas, Other)
 - 📊 Real-time progress bars with color-coded status indicators
@@ -304,22 +312,29 @@ stop-servers.bat
 18. **Value History**: See chronological list of all value entries with change indicators and percentages
 19. **Portfolio Overview**: View total portfolio value across all investments in the summary panel
 
+### Net Worth Tracking
+20. **View Net Worth**: See your net worth automatically calculated on both annual and monthly summaries
+21. **Annual Net Worth**: View year-end financial position on the Annual Summary page
+22. **Monthly Net Worth**: Track current month position on the Summary Panel
+23. **Assets & Liabilities**: See breakdown showing total investments (assets) minus total loans (liabilities)
+24. **Color Indicators**: Green for positive net worth, red for negative net worth
+
 ### Budget Tracking & Alerts
-20. **Manage Budgets**: Click the "💵 Manage Budgets" button in the month selector to set budget limits
-21. **Set Budget Limits**: Enter budget amounts for Food, Gas, and Other categories
-22. **Monitor Progress**: View real-time progress bars with color-coded status:
+25. **Manage Budgets**: Click the "💵 Manage Budgets" button in the month selector to set budget limits
+26. **Set Budget Limits**: Enter budget amounts for Food, Gas, and Other categories
+27. **Monitor Progress**: View real-time progress bars with color-coded status:
     - **Green**: Under 80% of budget (safe)
     - **Yellow**: 80-89% of budget (warning)
     - **Orange**: 90-99% of budget (danger)
     - **Red**: 100% or more (over budget)
-23. **Copy Budgets**: Use "📋 Copy from Previous Month" to replicate budget limits
-24. **View History**: Click "📊 Budget History" to analyze budget performance over time
-25. **Automatic Carry-Forward**: Budgets automatically copy from previous month when accessing a new month
-26. **Budget Summary**: View overall budget status in the summary panel showing total budgeted vs spent
+28. **Copy Budgets**: Use "📋 Copy from Previous Month" to replicate budget limits
+29. **View History**: Click "📊 Budget History" to analyze budget performance over time
+30. **Automatic Carry-Forward**: Budgets automatically copy from previous month when accessing a new month
+31. **Budget Summary**: View overall budget status in the summary panel showing total budgeted vs spent
 
 ### Data Management
-27. **Backup**: Click the "💾 Backup" button to download your database
-28. **Automated Backups**: Configure scheduled backups in Backup Settings
+32. **Backup**: Click the "💾 Backup" button to download your database
+33. **Automated Backups**: Configure scheduled backups in Backup Settings
 
 ## Project Structure
 

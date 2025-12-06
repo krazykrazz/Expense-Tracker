@@ -33,6 +33,7 @@ const SearchBar = memo(({
   onFilterTypeChange, 
   onFilterMethodChange,
   onClearFilters,
+  searchText: externalSearchText = '',
   filterType = '', 
   filterMethod = '',
   categories = [], 
@@ -41,10 +42,15 @@ const SearchBar = memo(({
   showOnlySearch = false,
   showOnlyFilters = false
 }) => {
-  const [searchText, setSearchText] = useState('');
+  const [searchText, setSearchText] = useState(externalSearchText);
   const [announcement, setAnnouncement] = useState('');
   const searchInputRef = useRef(null);
   const debounceTimerRef = useRef(null);
+
+  // Sync local state with external prop
+  useEffect(() => {
+    setSearchText(externalSearchText);
+  }, [externalSearchText]);
 
   /**
    * Handles text search input changes with debouncing

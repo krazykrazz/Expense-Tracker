@@ -182,12 +182,15 @@ function App() {
   }, [selectedYear, selectedMonth, isGlobalView]);
 
   const handleExpenseAdded = (newExpense) => {
-    // Add new expense to the list if it belongs to the selected month
-    const expenseDate = new Date(newExpense.date);
-    const expenseYear = expenseDate.getFullYear();
-    const expenseMonth = expenseDate.getMonth() + 1;
+    // Add new expense to the list
+    // Parse date as local date to avoid timezone issues
+    const dateParts = newExpense.date.split('-');
+    const expenseYear = parseInt(dateParts[0], 10);
+    const expenseMonth = parseInt(dateParts[1], 10);
     
-    if (expenseYear === selectedYear && expenseMonth === selectedMonth) {
+    // In global view, always add the expense
+    // In monthly view, only add if it belongs to the selected month
+    if (isGlobalView || (expenseYear === selectedYear && expenseMonth === selectedMonth)) {
       setExpenses(prev => {
         // Insert in chronological order
         const newList = [...prev, newExpense];
@@ -422,6 +425,7 @@ function App() {
                 onFilterTypeChange={handleFilterTypeChange}
                 onFilterMethodChange={handleFilterMethodChange}
                 onClearFilters={handleClearFilters}
+                searchText={searchText}
                 filterType={filterType}
                 filterMethod={filterMethod}
                 categories={CATEGORIES}
@@ -443,6 +447,7 @@ function App() {
                 onFilterTypeChange={handleFilterTypeChange}
                 onFilterMethodChange={handleFilterMethodChange}
                 onClearFilters={handleClearFilters}
+                searchText={searchText}
                 filterType={filterType}
                 filterMethod={filterMethod}
                 categories={CATEGORIES}
@@ -540,7 +545,7 @@ function App() {
 
       <footer className="App-footer">
         <span className="version">
-          v{versionInfo?.version || '4.3.2'}
+          v{versionInfo?.version || '4.4.6'}
           {versionInfo?.docker && (
             <span className="docker-tag"> (Docker: {versionInfo.docker.tag})</span>
           )}

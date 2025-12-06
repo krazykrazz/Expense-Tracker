@@ -102,30 +102,45 @@ const AnnualSummary = ({ year }) => {
       <h2>📊 Annual Summary {year}</h2>
 
       <div className="summary-grid">
-        <div className="summary-card">
-          <h3>Total Expenses</h3>
-          <div className="big-number">${formatAmount(summary.totalExpenses)}</div>
-          <div className="expense-breakdown">
-            <span className="fixed-label">Fixed: ${formatAmount(summary.totalFixedExpenses || 0)}</span>
-            <span className="separator"> + </span>
-            <span className="variable-label">Variable: ${formatAmount(summary.totalVariableExpenses || 0)}</span>
-          </div>
-        </div>
-
         <div className="summary-card income-card">
           <h3>Total Income</h3>
           <div className="big-number positive">${formatAmount(summary.totalIncome || 0)}</div>
           <div className="sub-text">From all sources</div>
         </div>
 
+        <div className="summary-card">
+          <h3>Fixed Expenses</h3>
+          <div className="big-number">${formatAmount(summary.totalFixedExpenses || 0)}</div>
+          <div className="sub-text">Monthly recurring costs</div>
+        </div>
+
+        <div className="summary-card">
+          <h3>Variable Expenses</h3>
+          <div className="big-number">${formatAmount(summary.totalVariableExpenses || 0)}</div>
+          <div className="sub-text">Day-to-day spending</div>
+        </div>
+
         <div className="summary-card net-income-card">
-          <h3>Net Income</h3>
+          <h3>Balance</h3>
           <div className={`big-number ${summary.netIncome > 0 ? 'positive' : summary.netIncome < 0 ? 'negative' : 'neutral'}`}>
             ${formatAmount(Math.abs(summary.netIncome || 0))}
           </div>
           <div className="sub-text">
             {summary.netIncome > 0 ? 'Surplus' : summary.netIncome < 0 ? 'Deficit' : 'Break Even'}
           </div>
+        </div>
+
+        <div className="summary-card net-worth-card">
+          <h3>Net Worth</h3>
+          <div className={`big-number ${(summary.netWorth || 0) >= 0 ? 'positive' : 'negative'}`}>
+            ${formatAmount(Math.abs(summary.netWorth || 0))}
+          </div>
+          <div className="net-worth-breakdown">
+            <span className="assets-label">Assets: ${formatAmount(summary.totalAssets || 0)}</span>
+            <span className="separator">-</span>
+            <span className="liabilities-label">Liabilities: ${formatAmount(summary.totalLiabilities || 0)}</span>
+          </div>
+          <div className="sub-text">Year-end position</div>
         </div>
 
         <div className="summary-card">

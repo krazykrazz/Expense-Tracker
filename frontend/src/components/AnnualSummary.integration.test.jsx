@@ -57,13 +57,11 @@ describe('AnnualSummary - Integration Tests', () => {
         expect(summaryGrid).toBeTruthy();
       });
 
-      // Verify Total Expenses card
-      const expenseCards = container.querySelectorAll('.summary-card');
-      const totalExpensesCard = expenseCards[0];
-      expect(totalExpensesCard.textContent).toContain('Total Expenses');
-      expect(totalExpensesCard.textContent).toContain('12,000.00');
-      expect(totalExpensesCard.textContent).toContain('Fixed: $7,000.00');
-      expect(totalExpensesCard.textContent).toContain('Variable: $5,000.00');
+      // Verify Fixed and Variable Expenses cards
+      expect(container.textContent).toContain('Fixed Expenses');
+      expect(container.textContent).toContain('7,000.00');
+      expect(container.textContent).toContain('Variable Expenses');
+      expect(container.textContent).toContain('5,000.00');
 
       // Verify Total Income card
       const incomeCard = container.querySelector('.income-card');
@@ -72,10 +70,10 @@ describe('AnnualSummary - Integration Tests', () => {
       expect(incomeCard.textContent).toContain('15,000.00');
       expect(incomeCard.textContent).toContain('From all sources');
 
-      // Verify Net Income card
+      // Verify Balance card (Net Income)
       const netIncomeCard = container.querySelector('.net-income-card');
       expect(netIncomeCard).toBeTruthy();
-      expect(netIncomeCard.textContent).toContain('Net Income');
+      expect(netIncomeCard.textContent).toContain('Balance');
       expect(netIncomeCard.textContent).toContain('3,000.00');
       expect(netIncomeCard.textContent).toContain('Surplus');
       const netIncomeBigNumber = netIncomeCard.querySelector('.big-number');
@@ -167,7 +165,8 @@ describe('AnnualSummary - Integration Tests', () => {
       });
 
       // Verify zero fixed expenses
-      expect(container.textContent).toContain('Fixed: $0.00');
+      expect(container.textContent).toContain('Fixed Expenses');
+      expect(container.textContent).toContain('$0.00');
 
       // Verify zero income
       const incomeCard = container.querySelector('.income-card');
@@ -230,11 +229,11 @@ describe('AnnualSummary - Integration Tests', () => {
       const summaryCards = container.querySelectorAll('.summary-card');
       expect(summaryCards.length).toBeGreaterThanOrEqual(6);
 
-      // Verify expense breakdown
-      const expenseBreakdown = container.querySelector('.expense-breakdown');
-      expect(expenseBreakdown).toBeTruthy();
-      expect(expenseBreakdown.textContent).toContain('6,000.00');
-      expect(expenseBreakdown.textContent).toContain('4,000.00');
+      // Verify fixed and variable expenses
+      expect(container.textContent).toContain('Fixed Expenses');
+      expect(container.textContent).toContain('6,000.00');
+      expect(container.textContent).toContain('Variable Expenses');
+      expect(container.textContent).toContain('4,000.00');
 
       // Verify positive net income styling
       const netIncomeCard = container.querySelector('.net-income-card');
@@ -347,9 +346,9 @@ describe('AnnualSummary - Integration Tests', () => {
       });
 
       // Verify large values are formatted correctly with commas
-      expect(container.textContent).toContain('125,000.50');
-      expect(container.textContent).toContain('75,000.25');
-      expect(container.textContent).toContain('50,000.25');
+      expect(container.textContent).toContain('150,000.75'); // Total Income
+      expect(container.textContent).toContain('75,000.25'); // Fixed Expenses
+      expect(container.textContent).toContain('50,000.25'); // Variable Expenses
       expect(container.textContent).toContain('150,000.75');
       expect(container.textContent).toContain('25,000.25');
     });

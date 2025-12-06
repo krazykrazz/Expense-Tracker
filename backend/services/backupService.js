@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { DB_PATH } = require('../database/db');
 const { getBackupPath, getBackupConfigPath } = require('../config/paths');
+const logger = require('../config/logger');
 
 class BackupService {
   constructor() {
@@ -30,7 +31,7 @@ class BackupService {
         this.saveConfig();
       }
     } catch (error) {
-      console.error('Error loading backup config:', error);
+      logger.error('Error loading backup config:', error);
       this.config = {
         enabled: false,
         schedule: 'daily',
@@ -54,7 +55,7 @@ class BackupService {
       }
       fs.writeFileSync(configPath, JSON.stringify(this.config, null, 2));
     } catch (error) {
-      console.error('Error saving backup config:', error);
+      logger.error('Error saving backup config:', error);
       throw error;
     }
   }
@@ -96,7 +97,7 @@ class BackupService {
       // Use configured backup path or default from paths module
       const backupPath = targetPath || this.config.targetPath || getBackupPath();
       
-      console.log('Backup path being used:', backupPath);
+      logger.debug('Backup path being used:', backupPath);
       
       // Create backup directory if it doesn't exist
       if (!fs.existsSync(backupPath)) {
@@ -129,7 +130,7 @@ class BackupService {
         timestamp: this.config.lastBackup
       };
     } catch (error) {
-      console.error('Backup error:', error);
+      logger.error('Backup error:', error);
       throw error;
     }
   }
@@ -159,14 +160,14 @@ class BackupService {
         filesToDelete.forEach(file => {
           try {
             fs.unlinkSync(file.path);
-            console.log(`Deleted old backup: ${file.name}`);
+            logger.info(`Deleted old backup: ${file.name}`);
           } catch (error) {
-            console.error(`Error deleting backup ${file.name}:`, error);
+            logger.error(`Error deleting backup ${file.name}:`, error);
           }
         });
       }
     } catch (error) {
-      console.error('Error cleaning up old backups:', error);
+      logger.error('Error cleaning up old backups:', error);
     }
   }
 
@@ -209,15 +210,15 @@ class BackupService {
       const now = new Date();
       const timeUntilBackup = nextBackup.getTime() - now.getTime();
 
-      console.log(`Next backup scheduled for: ${nextBackup.toLocaleString()}`);
+      logger.info(`Next backup scheduled for: ${nextBackup.toLocaleString()}`);
 
       this.scheduledJob = setTimeout(async () => {
-        console.log('Performing scheduled backup...');
+        logger.info('Performing scheduled backup...');
         try {
           const result = await this.performBackup();
-          console.log('Scheduled backup completed:', result.filename);
+          logger.info('Scheduled backup completed:', result.filename);
         } catch (error) {
-          console.error('Scheduled backup failed:', error);
+          logger.error('Scheduled backup failed:', error);
         }
         
         // Schedule next backup
@@ -235,7 +236,7 @@ class BackupService {
     if (this.scheduledJob) {
       clearTimeout(this.scheduledJob);
       this.scheduledJob = null;
-      console.log('Backup scheduler stopped');
+      logger.info('Backup scheduler stopped');
     }
   }
 
@@ -265,7 +266,7 @@ class BackupService {
 
       return files;
     } catch (error) {
-      console.error('Error getting backup list:', error);
+      logger.error('Error getting backup list:', error);
       return [];
     }
   }

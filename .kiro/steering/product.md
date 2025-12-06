@@ -19,6 +19,7 @@ A full-stack personal expense tracking application for managing household financ
 - Investment value change indicators and color coding
 - Line graphs showing investment performance over time
 - Total portfolio value calculation and display
+- Net worth tracking showing assets minus liabilities on annual and monthly summaries
 - Tax-deductible expense tracking (medical and donations)
 - CSV import for bulk expense entry
 - Automated and manual database backups

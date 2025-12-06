@@ -430,6 +430,26 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ## 🟢 Completed Features
 
+### 🟢 Net Worth Card (v4.5.0)
+**Completed**: December 6, 2025  
+**Spec**: `.kiro/specs/net-worth-card/`  
+**Description**: Display net worth calculation on annual and monthly summaries showing total assets (investments) minus total liabilities (loans).
+
+**Features Delivered**:
+- Net Worth card on Annual Summary showing year-end financial position
+- Net Worth card on Monthly Summary (SummaryPanel) showing current month position
+- Automatic calculation: Total Assets (investments) - Total Liabilities (loans)
+- Assets and liabilities breakdown display
+- Color-coded net worth values (green for positive/zero, red for negative)
+- Year-end value selection (prefers December, falls back to latest month)
+- Handles missing data gracefully (displays $0 when no data available)
+- Subtitle indicators ("Year-end position" vs "Current month position")
+- Integration with existing annual summary endpoint
+- Comprehensive property-based testing for calculation correctness
+- Full integration test coverage (14/14 tests passed)
+
+---
+
 ### 🟢 Investment Tracking (v4.4.0)
 **Completed**: November 30, 2025  
 **Spec**: `.kiro/specs/investment-tracking/`  

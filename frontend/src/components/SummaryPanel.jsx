@@ -4,6 +4,7 @@ import IncomeManagementModal from './IncomeManagementModal';
 import FixedExpensesModal from './FixedExpensesModal';
 import LoansModal from './LoansModal';
 import InvestmentsModal from './InvestmentsModal';
+import TrendIndicator from './TrendIndicator';
 import './SummaryPanel.css';
 
 const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
@@ -169,17 +170,8 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
     <div className="summary-panel">
       <h2>Monthly Summary</h2>
 
-      {/* Summary Cards Grid */}
+      {/* Summary Cards Grid - Order: Income, Fixed, Variable, Balance */}
       <div className="summary-grid">
-        {/* Total Expenses Card */}
-        <div className="summary-card highlight-card">
-          <div className="card-header">
-            <span className="card-icon">💰</span>
-            <span className="card-title">Total Expenses</span>
-          </div>
-          <div className="card-value expense-value">{formatCurrency(summary.total || 0)}</div>
-        </div>
-
         {/* Monthly Income Card */}
         <div className="summary-card income-card">
           <div className="card-header">
@@ -202,6 +194,15 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
           <button className="card-action-btn" onClick={handleOpenFixedExpensesModal}>
             Manage Fixed
           </button>
+        </div>
+
+        {/* Variable Expenses Card */}
+        <div className="summary-card highlight-card">
+          <div className="card-header">
+            <span className="card-icon">💰</span>
+            <span className="card-title">Variable Expenses</span>
+          </div>
+          <div className="card-value expense-value">{formatCurrency(summary.total || 0)}</div>
         </div>
 
         {/* Balance Card */}
@@ -228,12 +229,18 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
           {weeklyOpen && (
             <div className="card-content">
               <div className="compact-list">
-                {Object.entries(summary.weeklyTotals || {}).map(([week, amount]) => (
-                  <div key={week} className="compact-item">
-                    <span>Week {week}</span>
-                    <span>{formatCurrency(amount)}</span>
-                  </div>
-                ))}
+                {Object.entries(summary.weeklyTotals || {}).map(([week, amount]) => {
+                  const previousAmount = previousSummary?.weeklyTotals?.[week];
+                  return (
+                    <div key={week} className="compact-item">
+                      <span>Week {week.replace('week', '')}</span>
+                      <span>
+                        {formatCurrency(amount)}
+                        <TrendIndicator currentValue={amount} previousValue={previousAmount} />
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -251,12 +258,18 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
           {paymentOpen && (
             <div className="card-content">
               <div className="compact-list">
-                {Object.entries(summary.methodTotals || {}).map(([method, amount]) => (
-                  <div key={method} className="compact-item">
-                    <span>{method}</span>
-                    <span>{formatCurrency(amount)}</span>
-                  </div>
-                ))}
+                {Object.entries(summary.methodTotals || {}).map(([method, amount]) => {
+                  const previousAmount = previousSummary?.methodTotals?.[method];
+                  return (
+                    <div key={method} className="compact-item">
+                      <span>{method}</span>
+                      <span>
+                        {formatCurrency(amount)}
+                        <TrendIndicator currentValue={amount} previousValue={previousAmount} />
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -276,12 +289,18 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
               <div className="compact-list">
                 {Object.entries(summary.typeTotals || {})
                   .sort(([, a], [, b]) => b - a)
-                  .map(([type, amount]) => (
-                    <div key={type} className="compact-item">
-                      <span>{type}</span>
-                      <span>{formatCurrency(amount)}</span>
-                    </div>
-                  ))}
+                  .map(([type, amount]) => {
+                    const previousAmount = previousSummary?.typeTotals?.[type];
+                    return (
+                      <div key={type} className="compact-item">
+                        <span>{type}</span>
+                        <span>
+                          {formatCurrency(amount)}
+                          <TrendIndicator currentValue={amount} previousValue={previousAmount} />
+                        </span>
+                      </div>
+                    );
+                  })}
               </div>
             </div>
           )}
@@ -331,6 +350,23 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
               </button>
             </>
           )}
+        </div>
+
+        {/* Net Worth Card */}
+        <div className="summary-card net-worth-card">
+          <div className="card-header">
+            <span className="card-icon">💎</span>
+            <span className="card-title">Net Worth</span>
+          </div>
+          <div className={`card-value ${(totalInvestmentValue - totalOutstandingDebt) >= 0 ? 'positive' : 'negative'}`}>
+            {formatCurrency(totalInvestmentValue - totalOutstandingDebt)}
+          </div>
+          <div className="net-worth-breakdown">
+            <span className="assets-label">Assets: {formatCurrency(totalInvestmentValue)}</span>
+            <span className="separator">-</span>
+            <span className="liabilities-label">Liabilities: {formatCurrency(totalOutstandingDebt)}</span>
+          </div>
+          <div className="card-subtitle">Current month position</div>
         </div>
       </div>
 

@@ -42,6 +42,200 @@ describe('SummaryPanel', () => {
     global.fetch = vi.fn();
   });
 
+  describe('Net Worth Card Rendering', () => {
+    // Validates: Requirements 5.4, 5.5, 5.6
+    it('should render Net Worth card with positive net worth', async () => {
+      const mockResponse = {
+        current: {
+          total: 500,
+          weeklyTotals: { week1: 100, week2: 100, week3: 100, week4: 100, week5: 100 },
+          typeTotals: { Groceries: 200, Gas: 100, Other: 100, 'Tax - Medical': 50, 'Tax - Donation': 50 },
+          methodTotals: { Cash: 50, Debit: 50, Cheque: 0, 'CIBC MC': 100, 'PCF MC': 0, 'WS VISA': 0, VISA: 0 },
+          monthlyGross: 3000,
+          totalFixedExpenses: 1500,
+          netBalance: 1000,
+          loans: [],
+          totalOutstandingDebt: 50000,
+          investments: [],
+          totalInvestmentValue: 100000
+        },
+        previous: null
+      };
+
+      global.fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockResponse
+      });
+
+      render(<SummaryPanel selectedYear={2025} selectedMonth={11} refreshTrigger={0} />);
+
+      await waitFor(() => {
+        expect(screen.queryByText('Loading summary...')).not.toBeInTheDocument();
+      });
+
+      // Find the Net Worth card
+      const netWorthCard = document.querySelector('.net-worth-card');
+      expect(netWorthCard).toBeInTheDocument();
+
+      // Check that the net worth value is positive and styled correctly
+      const netWorthValue = netWorthCard.querySelector('.card-value');
+      expect(netWorthValue).toBeInTheDocument();
+      expect(netWorthValue).toHaveClass('positive');
+      expect(netWorthValue.textContent).toBe('$50,000.00');
+
+      // Verify the breakdown is displayed
+      const breakdown = netWorthCard.querySelector('.net-worth-breakdown');
+      expect(breakdown).toBeInTheDocument();
+      expect(breakdown.textContent).toContain('Assets: $100,000.00');
+      expect(breakdown.textContent).toContain('Liabilities: $50,000.00');
+
+      // Verify subtitle
+      const subtitle = netWorthCard.querySelector('.card-subtitle');
+      expect(subtitle).toBeInTheDocument();
+      expect(subtitle.textContent).toBe('Current month position');
+    });
+
+    // Validates: Requirements 5.4, 5.5, 5.6
+    it('should render Net Worth card with negative net worth', async () => {
+      const mockResponse = {
+        current: {
+          total: 500,
+          weeklyTotals: { week1: 100, week2: 100, week3: 100, week4: 100, week5: 100 },
+          typeTotals: { Groceries: 200, Gas: 100, Other: 100, 'Tax - Medical': 50, 'Tax - Donation': 50 },
+          methodTotals: { Cash: 50, Debit: 50, Cheque: 0, 'CIBC MC': 100, 'PCF MC': 0, 'WS VISA': 0, VISA: 0 },
+          monthlyGross: 3000,
+          totalFixedExpenses: 1500,
+          netBalance: 1000,
+          loans: [],
+          totalOutstandingDebt: 150000,
+          investments: [],
+          totalInvestmentValue: 50000
+        },
+        previous: null
+      };
+
+      global.fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockResponse
+      });
+
+      render(<SummaryPanel selectedYear={2025} selectedMonth={11} refreshTrigger={0} />);
+
+      await waitFor(() => {
+        expect(screen.queryByText('Loading summary...')).not.toBeInTheDocument();
+      });
+
+      // Find the Net Worth card
+      const netWorthCard = document.querySelector('.net-worth-card');
+      expect(netWorthCard).toBeInTheDocument();
+
+      // Check that the net worth value is negative and styled correctly
+      const netWorthValue = netWorthCard.querySelector('.card-value');
+      expect(netWorthValue).toBeInTheDocument();
+      expect(netWorthValue).toHaveClass('negative');
+      expect(netWorthValue.textContent).toBe('-$100,000.00');
+
+      // Verify the breakdown is displayed
+      const breakdown = netWorthCard.querySelector('.net-worth-breakdown');
+      expect(breakdown).toBeInTheDocument();
+      expect(breakdown.textContent).toContain('Assets: $50,000.00');
+      expect(breakdown.textContent).toContain('Liabilities: $150,000.00');
+    });
+
+    // Validates: Requirements 5.4, 5.5, 5.6
+    it('should render Net Worth card with zero net worth', async () => {
+      const mockResponse = {
+        current: {
+          total: 500,
+          weeklyTotals: { week1: 100, week2: 100, week3: 100, week4: 100, week5: 100 },
+          typeTotals: { Groceries: 200, Gas: 100, Other: 100, 'Tax - Medical': 50, 'Tax - Donation': 50 },
+          methodTotals: { Cash: 50, Debit: 50, Cheque: 0, 'CIBC MC': 100, 'PCF MC': 0, 'WS VISA': 0, VISA: 0 },
+          monthlyGross: 3000,
+          totalFixedExpenses: 1500,
+          netBalance: 1000,
+          loans: [],
+          totalOutstandingDebt: 75000,
+          investments: [],
+          totalInvestmentValue: 75000
+        },
+        previous: null
+      };
+
+      global.fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockResponse
+      });
+
+      render(<SummaryPanel selectedYear={2025} selectedMonth={11} refreshTrigger={0} />);
+
+      await waitFor(() => {
+        expect(screen.queryByText('Loading summary...')).not.toBeInTheDocument();
+      });
+
+      // Find the Net Worth card
+      const netWorthCard = document.querySelector('.net-worth-card');
+      expect(netWorthCard).toBeInTheDocument();
+
+      // Check that the net worth value is zero and styled as positive (>= 0)
+      const netWorthValue = netWorthCard.querySelector('.card-value');
+      expect(netWorthValue).toBeInTheDocument();
+      expect(netWorthValue).toHaveClass('positive');
+      expect(netWorthValue.textContent).toBe('$0.00');
+
+      // Verify the breakdown is displayed
+      const breakdown = netWorthCard.querySelector('.net-worth-breakdown');
+      expect(breakdown).toBeInTheDocument();
+      expect(breakdown.textContent).toContain('Assets: $75,000.00');
+      expect(breakdown.textContent).toContain('Liabilities: $75,000.00');
+    });
+
+    // Validates: Requirements 5.4, 5.5, 5.6
+    it('should handle missing data and display $0', async () => {
+      const mockResponse = {
+        current: {
+          total: 500,
+          weeklyTotals: { week1: 100, week2: 100, week3: 100, week4: 100, week5: 100 },
+          typeTotals: { Groceries: 200, Gas: 100, Other: 100, 'Tax - Medical': 50, 'Tax - Donation': 50 },
+          methodTotals: { Cash: 50, Debit: 50, Cheque: 0, 'CIBC MC': 100, 'PCF MC': 0, 'WS VISA': 0, VISA: 0 },
+          monthlyGross: 3000,
+          totalFixedExpenses: 1500,
+          netBalance: 1000,
+          loans: [],
+          totalOutstandingDebt: 0,
+          investments: [],
+          totalInvestmentValue: 0
+        },
+        previous: null
+      };
+
+      global.fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockResponse
+      });
+
+      render(<SummaryPanel selectedYear={2025} selectedMonth={11} refreshTrigger={0} />);
+
+      await waitFor(() => {
+        expect(screen.queryByText('Loading summary...')).not.toBeInTheDocument();
+      });
+
+      // Find the Net Worth card
+      const netWorthCard = document.querySelector('.net-worth-card');
+      expect(netWorthCard).toBeInTheDocument();
+
+      // Check that the net worth value is $0
+      const netWorthValue = netWorthCard.querySelector('.card-value');
+      expect(netWorthValue).toBeInTheDocument();
+      expect(netWorthValue.textContent).toBe('$0.00');
+
+      // Verify the breakdown shows $0 for both
+      const breakdown = netWorthCard.querySelector('.net-worth-breakdown');
+      expect(breakdown).toBeInTheDocument();
+      expect(breakdown.textContent).toContain('Assets: $0.00');
+      expect(breakdown.textContent).toContain('Liabilities: $0.00');
+    });
+  });
+
   describe('Loading States', () => {
     // Validates: Requirements 7.5
     it('should display loading skeleton when loading is true', () => {
@@ -50,22 +244,9 @@ describe('SummaryPanel', () => {
 
       render(<SummaryPanel selectedYear={2025} selectedMonth={11} refreshTrigger={0} />);
 
-      // Check for skeleton loaders
-      expect(document.querySelector('.key-metrics-skeleton')).toBeInTheDocument();
-      expect(document.querySelector('.tab-navigation-skeleton')).toBeInTheDocument();
-      expect(document.querySelector('.tab-content-skeleton')).toBeInTheDocument();
-      
-      // Check for skeleton cards
-      const skeletonCards = document.querySelectorAll('.skeleton-card');
-      expect(skeletonCards.length).toBe(3);
-      
-      // Check for skeleton tabs
-      const skeletonTabs = document.querySelectorAll('.skeleton-tab');
-      expect(skeletonTabs.length).toBe(3);
-      
-      // Check for skeleton sections
-      const skeletonSections = document.querySelectorAll('.skeleton-section');
-      expect(skeletonSections.length).toBe(2);
+      // Check for loading message
+      expect(document.querySelector('.loading-message')).toBeInTheDocument();
+      expect(document.querySelector('.loading-message').textContent).toContain('Loading summary');
     });
 
     // Validates: Requirements 7.5
@@ -136,18 +317,16 @@ describe('SummaryPanel', () => {
 
       // Wait for loading to complete
       await waitFor(() => {
-        expect(document.querySelector('.key-metrics-skeleton')).not.toBeInTheDocument();
+        expect(document.querySelector('.loading-message')).not.toBeInTheDocument();
       });
 
       // Check that actual content is rendered
-      expect(document.querySelector('.key-metrics-row')).toBeInTheDocument();
-      expect(document.querySelector('.tab-navigation')).toBeInTheDocument();
-      expect(document.querySelector('.tab-content')).toBeInTheDocument();
+      const summaryPanel = document.querySelector('.summary-panel');
+      expect(summaryPanel).toBeInTheDocument();
+      expect(summaryPanel.textContent).toContain('Monthly Summary');
       
-      // Skeleton loaders should not be present
-      expect(document.querySelector('.key-metrics-skeleton')).not.toBeInTheDocument();
-      expect(document.querySelector('.tab-navigation-skeleton')).not.toBeInTheDocument();
-      expect(document.querySelector('.tab-content-skeleton')).not.toBeInTheDocument();
+      // Loading message should not be present
+      expect(document.querySelector('.loading-message')).not.toBeInTheDocument();
     });
   });
 
@@ -435,6 +614,95 @@ describe('SummaryPanel', () => {
         { numRuns: 20 }
       );
     }, 30000);
+
+    // Feature: net-worth-card, Property 5: Monthly net worth calculation correctness
+    // Validates: Requirements 5.2, 5.3
+    it('should calculate net worth correctly as totalInvestmentValue - totalOutstandingDebt', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          // Generate random investment and debt values
+          fc.double({ min: 0, max: 1000000, noNaN: true }),
+          fc.double({ min: 0, max: 500000, noNaN: true }),
+          async (totalInvestmentValue, totalOutstandingDebt) => {
+            const mockResponse = {
+              current: {
+                total: 500,
+                weeklyTotals: { week1: 100, week2: 100, week3: 100, week4: 100, week5: 100 },
+                typeTotals: {
+                  Groceries: 200,
+                  Gas: 100,
+                  Other: 100,
+                  'Tax - Medical': 50,
+                  'Tax - Donation': 50
+                },
+                methodTotals: {
+                  Cash: 50,
+                  Debit: 50,
+                  Cheque: 0,
+                  'CIBC MC': 100,
+                  'PCF MC': 0,
+                  'WS VISA': 0,
+                  VISA: 0
+                },
+                monthlyGross: 3000,
+                totalFixedExpenses: 1500,
+                netBalance: 1000,
+                loans: [],
+                totalOutstandingDebt: totalOutstandingDebt,
+                investments: [],
+                totalInvestmentValue: totalInvestmentValue
+              },
+              previous: null
+            };
+
+            global.fetch.mockResolvedValueOnce({
+              ok: true,
+              json: async () => mockResponse
+            });
+
+            render(<SummaryPanel selectedYear={2025} selectedMonth={11} refreshTrigger={0} />);
+
+            // Wait for the component to finish loading
+            await waitFor(() => {
+              expect(screen.queryByText('Loading summary...')).not.toBeInTheDocument();
+            });
+
+            // Calculate expected net worth
+            const expectedNetWorth = totalInvestmentValue - totalOutstandingDebt;
+
+            // Format the expected value to match the component's formatting
+            const formattedExpected = new Intl.NumberFormat('en-CA', {
+              style: 'currency',
+              currency: 'CAD'
+            }).format(expectedNetWorth);
+
+            // Find the Net Worth card by its unique class
+            const netWorthCards = document.querySelectorAll('.net-worth-card');
+            expect(netWorthCards.length).toBeGreaterThan(0);
+            
+            // Get the last net worth card (the most recent render)
+            const netWorthCard = netWorthCards[netWorthCards.length - 1];
+            expect(netWorthCard).toBeInTheDocument();
+
+            // Check that the net worth value is displayed correctly
+            const netWorthValue = netWorthCard.querySelector('.card-value');
+            expect(netWorthValue).toBeInTheDocument();
+            expect(netWorthValue.textContent).toBe(formattedExpected);
+
+            // Verify the breakdown is displayed
+            const breakdown = netWorthCard.querySelector('.net-worth-breakdown');
+            expect(breakdown).toBeInTheDocument();
+
+            // Verify assets and liabilities are shown
+            const assetsLabel = breakdown.querySelector('.assets-label');
+            const liabilitiesLabel = breakdown.querySelector('.liabilities-label');
+            expect(assetsLabel).toBeInTheDocument();
+            expect(liabilitiesLabel).toBeInTheDocument();
+          }
+        ),
+        { numRuns: 100 }
+      );
+    }, 60000);
   });
 });
 

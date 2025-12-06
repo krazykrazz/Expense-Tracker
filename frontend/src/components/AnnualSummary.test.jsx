@@ -369,10 +369,10 @@ describe('AnnualSummary - Integration Tests', () => {
       // Verify Total Expenses card
       const expenseCards = container.querySelectorAll('.summary-card');
       const totalExpensesCard = expenseCards[0];
-      expect(totalExpensesCard.textContent).toContain('Total Expenses');
-      expect(totalExpensesCard.textContent).toContain('12,000.00');
-      expect(totalExpensesCard.textContent).toContain('Fixed: $7,000.00');
-      expect(totalExpensesCard.textContent).toContain('Variable: $5,000.00');
+      expect(container.textContent).toContain('Fixed Expenses');
+      expect(container.textContent).toContain('7,000.00');
+      expect(container.textContent).toContain('Variable Expenses');
+      expect(container.textContent).toContain('5,000.00');
 
       // Verify Total Income card
       const incomeCard = container.querySelector('.income-card');
@@ -384,7 +384,7 @@ describe('AnnualSummary - Integration Tests', () => {
       // Verify Net Income card
       const netIncomeCard = container.querySelector('.net-income-card');
       expect(netIncomeCard).toBeTruthy();
-      expect(netIncomeCard.textContent).toContain('Net Income');
+      expect(netIncomeCard.textContent).toContain('Balance');
       expect(netIncomeCard.textContent).toContain('3,000.00');
       expect(netIncomeCard.textContent).toContain('Surplus');
       const netIncomeBigNumber = netIncomeCard.querySelector('.big-number');
@@ -476,7 +476,7 @@ describe('AnnualSummary - Integration Tests', () => {
       });
 
       // Verify zero fixed expenses
-      expect(container.textContent).toContain('Fixed: $0.00');
+      expect(container.textContent).toContain('Fixed Expenses');
 
       // Verify zero income
       const incomeCard = container.querySelector('.income-card');
@@ -540,10 +540,10 @@ describe('AnnualSummary - Integration Tests', () => {
       expect(summaryCards.length).toBeGreaterThanOrEqual(6);
 
       // Verify expense breakdown
-      const expenseBreakdown = container.querySelector('.expense-breakdown');
-      expect(expenseBreakdown).toBeTruthy();
-      expect(expenseBreakdown.textContent).toContain('6,000.00');
-      expect(expenseBreakdown.textContent).toContain('4,000.00');
+      expect(container.textContent).toContain('Fixed Expenses');
+      expect(container.textContent).toContain('6,000.00');
+      expect(container.textContent).toContain('Variable Expenses');
+      expect(container.textContent).toContain('4,000.00');
 
       // Verify positive net income styling
       const netIncomeCard = container.querySelector('.net-income-card');
@@ -656,7 +656,7 @@ describe('AnnualSummary - Integration Tests', () => {
       });
 
       // Verify large values are formatted correctly with commas
-      expect(container.textContent).toContain('125,000.50');
+      // Total expenses no longer shown as combined
       expect(container.textContent).toContain('75,000.25');
       expect(container.textContent).toContain('50,000.25');
       expect(container.textContent).toContain('150,000.75');
@@ -1073,10 +1073,10 @@ describe('AnnualSummary - Integration Tests', () => {
       // Verify Total Expenses card
       const expenseCards = container.querySelectorAll('.summary-card');
       const totalExpensesCard = expenseCards[0];
-      expect(totalExpensesCard.textContent).toContain('Total Expenses');
-      expect(totalExpensesCard.textContent).toContain('12,000.00');
-      expect(totalExpensesCard.textContent).toContain('Fixed: $7,000.00');
-      expect(totalExpensesCard.textContent).toContain('Variable: $5,000.00');
+      expect(container.textContent).toContain('Fixed Expenses');
+      expect(container.textContent).toContain('7,000.00');
+      expect(container.textContent).toContain('Variable Expenses');
+      expect(container.textContent).toContain('5,000.00');
 
       // Verify Total Income card
       const incomeCard = container.querySelector('.income-card');
@@ -1088,7 +1088,7 @@ describe('AnnualSummary - Integration Tests', () => {
       // Verify Net Income card
       const netIncomeCard = container.querySelector('.net-income-card');
       expect(netIncomeCard).toBeTruthy();
-      expect(netIncomeCard.textContent).toContain('Net Income');
+      expect(netIncomeCard.textContent).toContain('Balance');
       expect(netIncomeCard.textContent).toContain('3,000.00');
       expect(netIncomeCard.textContent).toContain('Surplus');
       const netIncomeBigNumber = netIncomeCard.querySelector('.big-number');
@@ -1180,7 +1180,7 @@ describe('AnnualSummary - Integration Tests', () => {
       });
 
       // Verify zero fixed expenses
-      expect(container.textContent).toContain('Fixed: $0.00');
+      expect(container.textContent).toContain('Fixed Expenses');
 
       // Verify zero income
       const incomeCard = container.querySelector('.income-card');
@@ -1244,10 +1244,10 @@ describe('AnnualSummary - Integration Tests', () => {
       expect(summaryCards.length).toBeGreaterThanOrEqual(6);
 
       // Verify expense breakdown
-      const expenseBreakdown = container.querySelector('.expense-breakdown');
-      expect(expenseBreakdown).toBeTruthy();
-      expect(expenseBreakdown.textContent).toContain('6,000.00');
-      expect(expenseBreakdown.textContent).toContain('4,000.00');
+      expect(container.textContent).toContain('Fixed Expenses');
+      expect(container.textContent).toContain('6,000.00');
+      expect(container.textContent).toContain('Variable Expenses');
+      expect(container.textContent).toContain('4,000.00');
 
       // Verify positive net income styling
       const netIncomeCard = container.querySelector('.net-income-card');
@@ -1360,7 +1360,7 @@ describe('AnnualSummary - Integration Tests', () => {
       });
 
       // Verify large values are formatted correctly with commas
-      expect(container.textContent).toContain('125,000.50');
+      // Total expenses no longer shown as combined
       expect(container.textContent).toContain('75,000.25');
       expect(container.textContent).toContain('50,000.25');
       expect(container.textContent).toContain('150,000.75');
@@ -1718,6 +1718,348 @@ describe('AnnualSummary - Integration Tests', () => {
     });
   });
 });
+
+
+
+
+
+
+// Unit Tests for Net Worth Card Rendering
+// Requirements: 1.4, 1.5, 2.1, 2.2, 2.3, 2.4, 2.5
+describe('AnnualSummary - Net Worth Card Rendering', () => {
+  it('should render net worth card with positive net worth', async () => {
+    const mockData = {
+      totalExpenses: 10000,
+      totalFixedExpenses: 6000,
+      totalVariableExpenses: 4000,
+      totalIncome: 12000,
+      netIncome: 2000,
+      netWorth: 50000,
+      totalAssets: 75000,
+      totalLiabilities: 25000,
+      averageMonthly: 833.33,
+      highestMonth: { month: 12, total: 1200 },
+      lowestMonth: { month: 6, total: 600 },
+      monthlyTotals: [],
+      byCategory: {},
+      byMethod: {}
+    };
+
+    global.fetch = async (url) => {
+      if (url.includes('/api/expenses/annual-summary')) {
+        return {
+          ok: true,
+          json: async () => mockData
+        };
+      }
+      if (url.includes('/api/expenses/tax-deductible')) {
+        return {
+          ok: true,
+          json: async () => ({
+            totalDeductible: 0,
+            medicalTotal: 0,
+            donationTotal: 0,
+            expenses: { medical: [], donations: [] },
+            monthlyBreakdown: []
+          })
+        };
+      }
+      return { ok: false };
+    };
+
+    const { container } = render(<AnnualSummary year={2024} />);
+
+    await waitFor(() => {
+      const netWorthCard = container.querySelector('.net-worth-card');
+      expect(netWorthCard).toBeTruthy();
+    });
+
+    const netWorthCard = container.querySelector('.net-worth-card');
+    
+    // Verify card title
+    const title = netWorthCard.querySelector('h3');
+    expect(title.textContent).toBe('Net Worth');
+
+    // Verify positive styling
+    const bigNumber = netWorthCard.querySelector('.big-number');
+    expect(bigNumber.classList.contains('positive')).toBe(true);
+    expect(bigNumber.textContent).toContain('50,000.00');
+
+    // Verify assets and liabilities breakdown
+    const breakdown = netWorthCard.querySelector('.net-worth-breakdown');
+    expect(breakdown).toBeTruthy();
+    
+    const assetsLabel = breakdown.querySelector('.assets-label');
+    expect(assetsLabel.textContent).toContain('Assets: $75,000.00');
+    
+    const liabilitiesLabel = breakdown.querySelector('.liabilities-label');
+    expect(liabilitiesLabel.textContent).toContain('Liabilities: $25,000.00');
+    
+    const separator = breakdown.querySelector('.separator');
+    expect(separator.textContent).toBe('-');
+
+    // Verify subtitle
+    const subText = netWorthCard.querySelector('.sub-text');
+    expect(subText.textContent).toBe('Year-end position');
+  });
+
+  it('should render net worth card with negative net worth', async () => {
+    const mockData = {
+      totalExpenses: 10000,
+      totalFixedExpenses: 6000,
+      totalVariableExpenses: 4000,
+      totalIncome: 12000,
+      netIncome: 2000,
+      netWorth: -15000,
+      totalAssets: 35000,
+      totalLiabilities: 50000,
+      averageMonthly: 833.33,
+      highestMonth: { month: 12, total: 1200 },
+      lowestMonth: { month: 6, total: 600 },
+      monthlyTotals: [],
+      byCategory: {},
+      byMethod: {}
+    };
+
+    global.fetch = async (url) => {
+      if (url.includes('/api/expenses/annual-summary')) {
+        return {
+          ok: true,
+          json: async () => mockData
+        };
+      }
+      if (url.includes('/api/expenses/tax-deductible')) {
+        return {
+          ok: true,
+          json: async () => ({
+            totalDeductible: 0,
+            medicalTotal: 0,
+            donationTotal: 0,
+            expenses: { medical: [], donations: [] },
+            monthlyBreakdown: []
+          })
+        };
+      }
+      return { ok: false };
+    };
+
+    const { container } = render(<AnnualSummary year={2024} />);
+
+    await waitFor(() => {
+      const netWorthCard = container.querySelector('.net-worth-card');
+      expect(netWorthCard).toBeTruthy();
+    });
+
+    const netWorthCard = container.querySelector('.net-worth-card');
+    
+    // Verify negative styling
+    const bigNumber = netWorthCard.querySelector('.big-number');
+    expect(bigNumber.classList.contains('negative')).toBe(true);
+    expect(bigNumber.textContent).toContain('15,000.00');
+
+    // Verify assets and liabilities breakdown
+    const breakdown = netWorthCard.querySelector('.net-worth-breakdown');
+    const assetsLabel = breakdown.querySelector('.assets-label');
+    expect(assetsLabel.textContent).toContain('Assets: $35,000.00');
+    
+    const liabilitiesLabel = breakdown.querySelector('.liabilities-label');
+    expect(liabilitiesLabel.textContent).toContain('Liabilities: $50,000.00');
+  });
+
+  it('should render net worth card with zero net worth', async () => {
+    const mockData = {
+      totalExpenses: 10000,
+      totalFixedExpenses: 6000,
+      totalVariableExpenses: 4000,
+      totalIncome: 12000,
+      netIncome: 2000,
+      netWorth: 0,
+      totalAssets: 40000,
+      totalLiabilities: 40000,
+      averageMonthly: 833.33,
+      highestMonth: { month: 12, total: 1200 },
+      lowestMonth: { month: 6, total: 600 },
+      monthlyTotals: [],
+      byCategory: {},
+      byMethod: {}
+    };
+
+    global.fetch = async (url) => {
+      if (url.includes('/api/expenses/annual-summary')) {
+        return {
+          ok: true,
+          json: async () => mockData
+        };
+      }
+      if (url.includes('/api/expenses/tax-deductible')) {
+        return {
+          ok: true,
+          json: async () => ({
+            totalDeductible: 0,
+            medicalTotal: 0,
+            donationTotal: 0,
+            expenses: { medical: [], donations: [] },
+            monthlyBreakdown: []
+          })
+        };
+      }
+      return { ok: false };
+    };
+
+    const { container } = render(<AnnualSummary year={2024} />);
+
+    await waitFor(() => {
+      const netWorthCard = container.querySelector('.net-worth-card');
+      expect(netWorthCard).toBeTruthy();
+    });
+
+    const netWorthCard = container.querySelector('.net-worth-card');
+    
+    // Verify positive styling for zero (zero is treated as non-negative)
+    const bigNumber = netWorthCard.querySelector('.big-number');
+    expect(bigNumber.classList.contains('positive')).toBe(true);
+    expect(bigNumber.textContent).toContain('0.00');
+
+    // Verify assets and liabilities breakdown
+    const breakdown = netWorthCard.querySelector('.net-worth-breakdown');
+    const assetsLabel = breakdown.querySelector('.assets-label');
+    expect(assetsLabel.textContent).toContain('Assets: $40,000.00');
+    
+    const liabilitiesLabel = breakdown.querySelector('.liabilities-label');
+    expect(liabilitiesLabel.textContent).toContain('Liabilities: $40,000.00');
+  });
+
+  it('should display assets and liabilities breakdown correctly', async () => {
+    const mockData = {
+      totalExpenses: 10000,
+      totalFixedExpenses: 6000,
+      totalVariableExpenses: 4000,
+      totalIncome: 12000,
+      netIncome: 2000,
+      netWorth: 125000.50,
+      totalAssets: 200000.75,
+      totalLiabilities: 75000.25,
+      averageMonthly: 833.33,
+      highestMonth: { month: 12, total: 1200 },
+      lowestMonth: { month: 6, total: 600 },
+      monthlyTotals: [],
+      byCategory: {},
+      byMethod: {}
+    };
+
+    global.fetch = async (url) => {
+      if (url.includes('/api/expenses/annual-summary')) {
+        return {
+          ok: true,
+          json: async () => mockData
+        };
+      }
+      if (url.includes('/api/expenses/tax-deductible')) {
+        return {
+          ok: true,
+          json: async () => ({
+            totalDeductible: 0,
+            medicalTotal: 0,
+            donationTotal: 0,
+            expenses: { medical: [], donations: [] },
+            monthlyBreakdown: []
+          })
+        };
+      }
+      return { ok: false };
+    };
+
+    const { container } = render(<AnnualSummary year={2024} />);
+
+    await waitFor(() => {
+      const netWorthCard = container.querySelector('.net-worth-card');
+      expect(netWorthCard).toBeTruthy();
+    });
+
+    const netWorthCard = container.querySelector('.net-worth-card');
+    const breakdown = netWorthCard.querySelector('.net-worth-breakdown');
+    
+    // Verify breakdown structure
+    expect(breakdown).toBeTruthy();
+    
+    // Verify all three elements are present
+    const assetsLabel = breakdown.querySelector('.assets-label');
+    const separator = breakdown.querySelector('.separator');
+    const liabilitiesLabel = breakdown.querySelector('.liabilities-label');
+    
+    expect(assetsLabel).toBeTruthy();
+    expect(separator).toBeTruthy();
+    expect(liabilitiesLabel).toBeTruthy();
+    
+    // Verify formatting with decimal places
+    expect(assetsLabel.textContent).toBe('Assets: $200,000.75');
+    expect(separator.textContent).toBe('-');
+    expect(liabilitiesLabel.textContent).toBe('Liabilities: $75,000.25');
+  });
+
+  it('should handle missing net worth data gracefully', async () => {
+    const mockData = {
+      totalExpenses: 10000,
+      totalFixedExpenses: 6000,
+      totalVariableExpenses: 4000,
+      totalIncome: 12000,
+      netIncome: 2000,
+      // netWorth, totalAssets, totalLiabilities are missing
+      averageMonthly: 833.33,
+      highestMonth: { month: 12, total: 1200 },
+      lowestMonth: { month: 6, total: 600 },
+      monthlyTotals: [],
+      byCategory: {},
+      byMethod: {}
+    };
+
+    global.fetch = async (url) => {
+      if (url.includes('/api/expenses/annual-summary')) {
+        return {
+          ok: true,
+          json: async () => mockData
+        };
+      }
+      if (url.includes('/api/expenses/tax-deductible')) {
+        return {
+          ok: true,
+          json: async () => ({
+            totalDeductible: 0,
+            medicalTotal: 0,
+            donationTotal: 0,
+            expenses: { medical: [], donations: [] },
+            monthlyBreakdown: []
+          })
+        };
+      }
+      return { ok: false };
+    };
+
+    const { container } = render(<AnnualSummary year={2024} />);
+
+    await waitFor(() => {
+      const netWorthCard = container.querySelector('.net-worth-card');
+      expect(netWorthCard).toBeTruthy();
+    });
+
+    const netWorthCard = container.querySelector('.net-worth-card');
+    
+    // Verify defaults to $0.00 when data is missing
+    const bigNumber = netWorthCard.querySelector('.big-number');
+    expect(bigNumber.textContent).toContain('0.00');
+    expect(bigNumber.classList.contains('positive')).toBe(true);
+
+    // Verify breakdown shows $0.00 for missing values
+    const breakdown = netWorthCard.querySelector('.net-worth-breakdown');
+    const assetsLabel = breakdown.querySelector('.assets-label');
+    const liabilitiesLabel = breakdown.querySelector('.liabilities-label');
+    
+    expect(assetsLabel.textContent).toContain('Assets: $0.00');
+    expect(liabilitiesLabel.textContent).toContain('Liabilities: $0.00');
+  });
+});
+
+
 
 
 

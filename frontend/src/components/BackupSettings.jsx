@@ -464,6 +464,65 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v4.4.6</div>
+                <div className="changelog-date">December 3, 2025</div>
+                <ul className="changelog-items">
+                  <li>Improved monthly summary card order for better financial flow</li>
+                  <li>Now displays: Income → Fixed Expenses → Variable Expenses → Balance</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
+                <div className="changelog-version">v4.4.5</div>
+                <div className="changelog-date">December 3, 2025</div>
+                <ul className="changelog-items">
+                  <li>Improved annual summary card order for better financial flow</li>
+                  <li>Now displays: Income → Fixed Expenses → Variable Expenses → Balance</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
+                <div className="changelog-version">v4.4.4</div>
+                <div className="changelog-date">December 3, 2025</div>
+                <ul className="changelog-items">
+                  <li>Fixed weekly breakdown display showing "Week week1" instead of "Week 1"</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
+                <div className="changelog-version">v4.4.3</div>
+                <div className="changelog-date">December 3, 2025</div>
+                <ul className="changelog-items">
+                  <li>Fixed expense list not refreshing after adding new expense</li>
+                  <li>Improved date parsing to avoid timezone issues</li>
+                  <li>Expenses now appear immediately in monthly view</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
+                <div className="changelog-version">v4.4.2</div>
+                <div className="changelog-date">December 3, 2025</div>
+                <ul className="changelog-items">
+                  <li>Fixed missing trend arrows in monthly summary collapsible sections</li>
+                  <li>Trend arrows now show in Weekly Breakdown, Payment Methods, and Expense Types</li>
+                  <li>Month-over-month changes displayed with percentage tooltips</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
+                <div className="changelog-version">v4.4.1</div>
+                <div className="changelog-date">December 3, 2025</div>
+                <ul className="changelog-items">
+                  <li>Fixed "Clear Filters" button not appearing on first global search</li>
+                  <li>SearchBar now properly syncs search text across both instances</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
+                <div className="changelog-version">v4.4.0</div>
+                <div className="changelog-date">December 3, 2025</div>
+                <ul className="changelog-items">
+                  <li>Investment Tracking: Track TFSA and RRSP portfolios with performance charts</li>
+                  <li>Income Source Categories: Categorize income (Salary, Government, Gifts, Other)</li>
+                  <li>Improved logging consistency across backend services</li>
+                  <li>Comprehensive codebase audit completed with Grade A</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v4.3.2</div>
                 <div className="changelog-date">November 29, 2025</div>
                 <ul className="changelog-items">

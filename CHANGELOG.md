@@ -7,9 +7,100 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [4.4.0] - 2025-11-29
+## [4.4.6] - 2025-12-03
+
+### Improved
+- **Monthly Summary Layout**: Reordered summary cards for better financial flow
+  - New order: Monthly Income → Fixed Expenses → Variable Expenses → Balance
+  - Follows natural income-to-expenses-to-balance progression
+  - Makes financial overview more intuitive at a glance
+
+---
+
+## [4.4.5] - 2025-12-03
+
+### Improved
+- **Annual Summary Layout**: Reordered summary cards for better financial flow
+  - New order: Total Income → Fixed Expenses → Variable Expenses → Balance
+  - Follows natural income-to-expenses-to-balance progression
+  - Makes financial overview more intuitive at a glance
+
+---
+
+## [4.4.4] - 2025-12-03
+
+### Fixed
+- **Weekly Breakdown Display**: Fixed weekly breakdown showing "Week week1" instead of "Week 1"
+  - Updated SummaryPanel component to strip "week" prefix from display
+  - Frontend rebuild required
+
+---
+
+## [4.4.3] - 2025-12-03
+
+### Fixed
+- **Expense List Refresh**: Fixed expense list not automatically updating after adding a new expense in monthly view
+  - Improved date parsing to avoid timezone issues
+  - Expense now appears immediately in the list after submission
+  - Works correctly in both monthly and global view modes
+
+### Technical
+- Changed date parsing from `new Date()` to direct string splitting to avoid timezone shifts
+- Frontend rebuild required
+
+---
+
+## [4.4.2] - 2025-12-03
+
+### Fixed
+- **Trend Indicators**: Fixed missing trend arrows in monthly summary collapsible sections
+  - Trend arrows now appear in Weekly Breakdown section
+  - Trend arrows now appear in Payment Methods section
+  - Trend arrows now appear in Expense Types section
+  - Arrows show month-over-month changes with percentage tooltips
+  - Red up arrows (▲) for increases, green down arrows (▼) for decreases
+
+### Technical
+- Added TrendIndicator component import to SummaryPanel
+- Connected previousSummary data to all three collapsible sections
+- Frontend rebuild required
+
+---
+
+## [4.4.1] - 2025-12-03
+
+### Fixed
+- **Clear Filters Button**: Fixed "Clear Filters" button not appearing on first global search
+  - SearchBar now accepts searchText as a prop from parent component
+  - Both SearchBar instances (left and right) now sync search text state
+  - Clear Filters button appears immediately when search text is entered
+  - Improved user experience for global filtering
+
+### Technical
+- Updated SearchBar component to accept and sync external searchText prop
+- Added useEffect to sync local state with external prop changes
+- Both SearchBar instances in App.jsx now receive searchText prop
+
+---
+
+## [4.4.0] - 2025-12-03
 
 ### Added
+- **Investment Tracking**: Track investment portfolio performance with TFSA and RRSP accounts
+  - Create and manage multiple investments (TFSA and RRSP types)
+  - Record monthly investment values with historical tracking
+  - View investment performance with line graphs showing value changes over time
+  - Color-coded value changes (green for increases, red for decreases)
+  - Arrow indicators showing month-over-month performance (▲ ▼ —)
+  - Total portfolio value calculation across all investments
+  - Value history timeline with change percentages
+  - Investment detail view with summary cards and charts
+  - Integration with monthly summary panel
+  - Cascade delete (removing investment deletes all value entries)
+  - Database backup integration
+  - Comprehensive property-based testing
+  - 100% integration test success rate (24/24 tests passed)
+
 - **Income Source Categories**: Categorize income sources for better financial analysis
   - Added category field to income sources (Salary, Government, Gifts, Other)
   - Income Management Modal displays category badges with color coding
@@ -21,18 +112,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Comprehensive test coverage (38 tests) for all income category functionality
 
 ### Changed
+- **Logging Improvements**: Replaced all console statements in production code with centralized logger module
+  - Updated `backend/services/budgetService.js` to use logger
+  - Updated `backend/services/backupService.js` to use logger (9 statements)
+  - Added configurable log levels via `LOG_LEVEL` environment variable (debug, info, warn, error)
+  - Created logging best practices documentation in `.kiro/steering/logging-best-practices.md`
 - Income sources now include category in all CRUD operations
 - Income Management Modal enhanced with category selectors and breakdown display
 - Annual Summary enhanced with income category visualization
 - Backend validation ensures category is one of: Salary, Government, Gifts, Other
 
+### Fixed
+- Improved logging consistency across backend services
+- Better production logging with appropriate log levels
+
+### Documentation
+- Added comprehensive codebase audit report (`CODEBASE_AUDIT_REPORT_2025-12-03.md`)
+- Added logging improvements summary (`LOGGING_IMPROVEMENTS_COMPLETE.md`)
+- Added comprehensive audit completion report (`COMPREHENSIVE_AUDIT_COMPLETE_2025-12-03.md`)
+- Created logging best practices steering rule
+
 ### Technical
-- **Database Migration**: `migrateAddIncomeCategoryColumn()` adds category column to income_sources table
-- **API Updates**: Income endpoints now accept and return category field
-- **Frontend Components**: Enhanced IncomeManagementModal and AnnualSummary with category support
-- **Validation**: Backend and frontend validation for income categories
-- **Test Coverage**: Unit tests for service and repository layers validate category functionality
-- **Default Values**: New income sources default to "Other" if category not specified
+- **Database Migrations**: 
+  - `migrateAddIncomeCategoryColumn()` adds category column to income_sources table
+  - `migrateAddInvestmentTables()` adds investments and investment_values tables
+- **API Updates**: 
+  - Income endpoints now accept and return category field
+  - New investment and investment value endpoints
+- **Frontend Components**: 
+  - Enhanced IncomeManagementModal and AnnualSummary with category support
+  - New InvestmentsModal, InvestmentDetailView components
+- **Validation**: Backend and frontend validation for income categories and investments
+- **Test Coverage**: Comprehensive property-based and integration tests
+- **Logging**: All production code now uses centralized logger module
+- **Code Quality**: Codebase audit grade: A (production-ready)
 
 ---
 

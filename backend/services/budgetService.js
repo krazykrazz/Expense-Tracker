@@ -2,6 +2,7 @@ const budgetRepository = require('../repositories/budgetRepository');
 const { getDatabase } = require('../database/db');
 const { BUDGETABLE_CATEGORIES } = require('../utils/categories');
 const budgetEvents = require('../events/budgetEvents');
+const logger = require('../config/logger');
 
 class BudgetService {
   constructor() {
@@ -26,7 +27,7 @@ class BudgetService {
     } catch (err) {
       // Silently ignore if budgets table doesn't exist (e.g., in test environments)
       if (!err.message || !err.message.includes('no such table: budgets')) {
-        console.error('Budget recalculation failed:', err.message);
+        logger.error('Budget recalculation failed:', err.message);
       }
     }
   }

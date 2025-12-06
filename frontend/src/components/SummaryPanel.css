@@ -66,6 +66,36 @@
   grid-column: 1 / -1;
 }
 
+.net-worth-card {
+  grid-column: 1 / -1;
+  background: white;
+  border: 1px solid #e0e0e0;
+}
+
+.net-worth-breakdown {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  margin-top: 8px;
+  color: #64748b;
+}
+
+.assets-label {
+  color: #3b82f6;
+  font-weight: 500;
+}
+
+.liabilities-label {
+  color: #ef4444;
+  font-weight: 500;
+}
+
+.separator {
+  color: #94a3b8;
+}
+
 .horizontal-list {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
@@ -295,5 +325,11 @@
 
   .card-title {
     font-size: 12px;
+  }
+
+  .net-worth-breakdown {
+    font-size: 0.75rem;
+    gap: 6px;
+    flex-wrap: wrap;
   }
 }

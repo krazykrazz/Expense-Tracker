@@ -33,6 +33,7 @@ A full-stack expense tracking application built with React and Node.js.
 - 🎯 Automatic paid-off detection for traditional loans
 - 📅 Start date filtering (loans only appear in months after they start)
 - 🔗 Cascade delete (removing a loan deletes all balance entries)
+- 💡 Smart reminders to update loan balances for the current month
 
 ### Investment Tracking
 - 📈 Track investment portfolios (TFSA and RRSP accounts)
@@ -44,6 +45,7 @@ A full-stack expense tracking application built with React and Node.js.
 - 📉 Value history timeline with change percentages
 - 🔄 Create, edit, and delete investments and value entries
 - 📅 Monthly value snapshots for performance tracking
+- 💡 Smart reminders to update investment values for the current month
 
 ### Net Worth Tracking
 - 💎 Net Worth card on annual summary showing year-end financial position
@@ -66,7 +68,7 @@ A full-stack expense tracking application built with React and Node.js.
 ### Data Management
 - 💾 Automated and manual database backups (includes all data)
 - 📤 CSV export functionality
-
+- 💡 Monthly data reminders for investments and loans
 - 🌐 Access from any device on your local network
 
 ## Tech Stack
@@ -311,30 +313,32 @@ stop-servers.bat
 17. **Monitor Performance**: View line graphs showing investment value changes over time
 18. **Value History**: See chronological list of all value entries with change indicators and percentages
 19. **Portfolio Overview**: View total portfolio value across all investments in the summary panel
+20. **Data Reminders**: See reminder banners when investment values need updating for the current month
 
 ### Net Worth Tracking
-20. **View Net Worth**: See your net worth automatically calculated on both annual and monthly summaries
-21. **Annual Net Worth**: View year-end financial position on the Annual Summary page
-22. **Monthly Net Worth**: Track current month position on the Summary Panel
-23. **Assets & Liabilities**: See breakdown showing total investments (assets) minus total loans (liabilities)
-24. **Color Indicators**: Green for positive net worth, red for negative net worth
+21. **View Net Worth**: See your net worth automatically calculated on both annual and monthly summaries
+22. **Annual Net Worth**: View year-end financial position on the Annual Summary page
+23. **Monthly Net Worth**: Track current month position on the Summary Panel
+24. **Assets & Liabilities**: See breakdown showing total investments (assets) minus total loans (liabilities)
+25. **Color Indicators**: Green for positive net worth, red for negative net worth
 
 ### Budget Tracking & Alerts
-25. **Manage Budgets**: Click the "💵 Manage Budgets" button in the month selector to set budget limits
-26. **Set Budget Limits**: Enter budget amounts for Food, Gas, and Other categories
-27. **Monitor Progress**: View real-time progress bars with color-coded status:
+26. **Manage Budgets**: Click the "💵 Manage Budgets" button in the month selector to set budget limits
+27. **Set Budget Limits**: Enter budget amounts for Food, Gas, and Other categories
+28. **Monitor Progress**: View real-time progress bars with color-coded status:
     - **Green**: Under 80% of budget (safe)
     - **Yellow**: 80-89% of budget (warning)
     - **Orange**: 90-99% of budget (danger)
     - **Red**: 100% or more (over budget)
-28. **Copy Budgets**: Use "📋 Copy from Previous Month" to replicate budget limits
-29. **View History**: Click "📊 Budget History" to analyze budget performance over time
-30. **Automatic Carry-Forward**: Budgets automatically copy from previous month when accessing a new month
-31. **Budget Summary**: View overall budget status in the summary panel showing total budgeted vs spent
+29. **Copy Budgets**: Use "📋 Copy from Previous Month" to replicate budget limits
+30. **View History**: Click "📊 Budget History" to analyze budget performance over time
+31. **Automatic Carry-Forward**: Budgets automatically copy from previous month when accessing a new month
+32. **Budget Summary**: View overall budget status in the summary panel showing total budgeted vs spent
 
 ### Data Management
-32. **Backup**: Click the "💾 Backup" button to download your database
-33. **Automated Backups**: Configure scheduled backups in Backup Settings
+33. **Backup**: Click the "💾 Backup" button to download your database
+34. **Automated Backups**: Configure scheduled backups in Backup Settings
+35. **Data Reminders**: Receive visual reminders when monthly data needs updating (investments and loans)
 
 ## Project Structure
 
@@ -417,6 +421,9 @@ expense-tracker/
 - `POST /api/investment-values` - Create or update a value entry (upsert)
 - `PUT /api/investment-values/:id` - Update a value entry
 - `DELETE /api/investment-values/:id` - Delete a value entry
+
+### Reminders
+- `GET /api/reminders/status/:year/:month` - Get reminder status for missing investment values and loan balances
 
 ### Backup
 - `GET /api/backup` - Download database backup

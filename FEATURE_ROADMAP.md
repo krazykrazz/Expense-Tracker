@@ -430,6 +430,26 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ## 🟢 Completed Features
 
+### 🟢 Monthly Data Reminders (v4.5.0)
+**Completed**: December 6, 2025  
+**Spec**: `.kiro/specs/monthly-data-reminders/`  
+**Description**: Visual reminder banners that prompt users to update investment values and loan balances for the current month.
+
+**Features Delivered**:
+- Investment value reminder banners when data is missing for current month
+- Loan balance reminder banners when data is missing for current month
+- Count display showing number of items needing updates
+- Current month name included in reminder messages
+- Clickable banners that open relevant modals (Investments or Loans)
+- Dismissible reminders (session-based, reappear on refresh if data still missing)
+- Subtle visual design with warning colors and clear icons (💡 for investments, 💳 for loans)
+- Multiple reminders stack vertically when both types are needed
+- Backend API endpoint for checking reminder status
+- Comprehensive property-based testing (100+ iterations per property)
+- Full integration test coverage for reminder flow
+
+---
+
 ### 🟢 Net Worth Card (v4.5.0)
 **Completed**: December 6, 2025  
 **Spec**: `.kiro/specs/net-worth-card/`  

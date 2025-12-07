@@ -4,6 +4,7 @@
  */
 
 import { API_ENDPOINTS } from '../config.js';
+import { apiGet, apiPost, apiPut, apiDelete, logApiError } from '../utils/apiClient.js';
 
 /**
  * Get all loans with current balances
@@ -11,16 +12,9 @@ import { API_ENDPOINTS } from '../config.js';
  */
 export const getAllLoans = async () => {
   try {
-    const response = await fetch(API_ENDPOINTS.LOANS);
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Failed to fetch loans');
-    }
-    
-    return await response.json();
+    return await apiGet(API_ENDPOINTS.LOANS, 'fetch loans');
   } catch (error) {
-    console.error('Error fetching loans:', error);
+    logApiError('fetching loans', error);
     throw error;
   }
 };
@@ -32,22 +26,9 @@ export const getAllLoans = async () => {
  */
 export const createLoan = async (loanData) => {
   try {
-    const response = await fetch(API_ENDPOINTS.LOANS, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(loanData)
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Failed to create loan');
-    }
-    
-    return await response.json();
+    return await apiPost(API_ENDPOINTS.LOANS, loanData, 'create loan');
   } catch (error) {
-    console.error('Error creating loan:', error);
+    logApiError('creating loan', error);
     throw error;
   }
 };
@@ -60,22 +41,9 @@ export const createLoan = async (loanData) => {
  */
 export const updateLoan = async (id, loanData) => {
   try {
-    const response = await fetch(`${API_ENDPOINTS.LOANS}/${id}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(loanData)
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Failed to update loan');
-    }
-    
-    return await response.json();
+    return await apiPut(`${API_ENDPOINTS.LOANS}/${id}`, loanData, 'update loan');
   } catch (error) {
-    console.error('Error updating loan:', error);
+    logApiError('updating loan', error);
     throw error;
   }
 };
@@ -87,18 +55,9 @@ export const updateLoan = async (id, loanData) => {
  */
 export const deleteLoan = async (id) => {
   try {
-    const response = await fetch(`${API_ENDPOINTS.LOANS}/${id}`, {
-      method: 'DELETE'
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Failed to delete loan');
-    }
-    
-    return await response.json();
+    return await apiDelete(`${API_ENDPOINTS.LOANS}/${id}`, 'delete loan');
   } catch (error) {
-    console.error('Error deleting loan:', error);
+    logApiError('deleting loan', error);
     throw error;
   }
 };
@@ -111,22 +70,9 @@ export const deleteLoan = async (id) => {
  */
 export const markPaidOff = async (id, isPaidOff) => {
   try {
-    const response = await fetch(`${API_ENDPOINTS.LOANS}/${id}/paid-off`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ isPaidOff })
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Failed to update loan paid-off status');
-    }
-    
-    return await response.json();
+    return await apiPut(`${API_ENDPOINTS.LOANS}/${id}/paid-off`, { isPaidOff }, 'update loan paid-off status');
   } catch (error) {
-    console.error('Error updating loan paid-off status:', error);
+    logApiError('updating loan paid-off status', error);
     throw error;
   }
 };

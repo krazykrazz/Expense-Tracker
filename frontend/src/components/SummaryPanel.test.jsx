@@ -704,5 +704,330 @@ describe('SummaryPanel', () => {
       );
     }, 60000);
   });
-});
 
+  describe('Reminder Functionality', () => {
+    beforeEach(() => {
+      // Mock both summary and reminder status endpoints
+      global.fetch = vi.fn();
+    });
+
+    // Feature: monthly-data-reminders, Property 5: Month name accuracy
+    // Validates: Requirements 4.3
+    it('should display correct month name in reminder banner for all valid months', async () => {
+      const monthNames = [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'
+      ];
+
+      await fc.assert(
+        fc.asyncProperty(
+          // Generate month numbers 1-12
+          fc.integer({ min: 1, max: 12 }),
+          fc.integer({ min: 1, max: 5 }), // Number of missing items
+          async (monthNumber, missingCount) => {
+            const mockSummaryResponse = {
+              current: {
+                total: 500,
+                weeklyTotals: { week1: 100, week2: 100, week3: 100, week4: 100, week5: 100 },
+                typeTotals: { Groceries: 200, Gas: 100, Other: 100, 'Tax - Medical': 50, 'Tax - Donation': 50 },
+                methodTotals: { Cash: 50, Debit: 50, Cheque: 0, 'CIBC MC': 100, 'PCF MC': 0, 'WS VISA': 0, VISA: 0 },
+                monthlyGross: 3000,
+                totalFixedExpenses: 1500,
+                netBalance: 1000,
+                loans: [],
+                totalOutstandingDebt: 0,
+                investments: [],
+                totalInvestmentValue: 0
+              },
+              previous: null
+            };
+
+            const mockReminderResponse = {
+              missingInvestments: missingCount,
+              missingLoans: 0,
+              hasActiveInvestments: true,
+              hasActiveLoans: false
+            };
+
+            // Mock fetch to return different responses based on URL
+            global.fetch.mockImplementation((url) => {
+              if (url.includes('/api/reminders/status/')) {
+                return Promise.resolve({
+                  ok: true,
+                  json: async () => mockReminderResponse
+                });
+              } else {
+                return Promise.resolve({
+                  ok: true,
+                  json: async () => mockSummaryResponse
+                });
+              }
+            });
+
+            const { container } = render(
+              <SummaryPanel selectedYear={2025} selectedMonth={monthNumber} refreshTrigger={0} />
+            );
+
+            // Wait for the component to finish loading
+            await waitFor(() => {
+              expect(screen.queryByText('Loading summary...')).not.toBeInTheDocument();
+            }, { timeout: 3000 });
+
+            // Find the reminder banner
+            const reminderBanner = container.querySelector('.data-reminder-banner');
+            
+            if (reminderBanner) {
+              // Get the expected month name
+              const expectedMonthName = monthNames[monthNumber - 1];
+              
+              // Check that the banner contains the correct month name
+              const reminderMessage = reminderBanner.querySelector('.reminder-message');
+              expect(reminderMessage).toBeInTheDocument();
+              expect(reminderMessage.textContent).toContain(expectedMonthName);
+            }
+          }
+        ),
+        { numRuns: 12 } // Run once for each month
+      );
+    }, 30000);
+
+    // Integration tests for reminder flow
+    // Validates: Requirements 1.1, 1.2, 1.3, 2.1, 2.2, 2.3, 3.2, 3.3
+    it('should display reminder banner when investment data is missing', async () => {
+      const mockSummaryResponse = {
+        current: {
+          total: 500,
+          weeklyTotals: { week1: 100, week2: 100, week3: 100, week4: 100, week5: 100 },
+          typeTotals: { Groceries: 200, Gas: 100, Other: 100, 'Tax - Medical': 50, 'Tax - Donation': 50 },
+          methodTotals: { Cash: 50, Debit: 50, Cheque: 0, 'CIBC MC': 100, 'PCF MC': 0, 'WS VISA': 0, VISA: 0 },
+          monthlyGross: 3000,
+          totalFixedExpenses: 1500,
+          netBalance: 1000,
+          loans: [],
+          totalOutstandingDebt: 0,
+          investments: [],
+          totalInvestmentValue: 0
+        },
+        previous: null
+      };
+
+      const mockReminderResponse = {
+        missingInvestments: 2,
+        missingLoans: 0,
+        hasActiveInvestments: true,
+        hasActiveLoans: false
+      };
+
+      global.fetch.mockImplementation((url) => {
+        if (url.includes('/api/reminders/status/')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => mockReminderResponse
+          });
+        } else {
+          return Promise.resolve({
+            ok: true,
+            json: async () => mockSummaryResponse
+          });
+        }
+      });
+
+      const { container } = render(
+        <SummaryPanel selectedYear={2025} selectedMonth={11} refreshTrigger={0} />
+      );
+
+      await waitFor(() => {
+        expect(screen.queryByText('Loading summary...')).not.toBeInTheDocument();
+      });
+
+      // Check that the investment reminder banner is displayed
+      const reminderBanner = container.querySelector('.data-reminder-banner');
+      expect(reminderBanner).toBeInTheDocument();
+      
+      const reminderMessage = reminderBanner.querySelector('.reminder-message');
+      expect(reminderMessage.textContent).toContain('Update 2 investment');
+      expect(reminderMessage.textContent).toContain('November');
+    });
+
+    // Validates: Requirements 1.2
+    it('should not display reminder banner when all investment data is complete', async () => {
+      const mockSummaryResponse = {
+        current: {
+          total: 500,
+          weeklyTotals: { week1: 100, week2: 100, week3: 100, week4: 100, week5: 100 },
+          typeTotals: { Groceries: 200, Gas: 100, Other: 100, 'Tax - Medical': 50, 'Tax - Donation': 50 },
+          methodTotals: { Cash: 50, Debit: 50, Cheque: 0, 'CIBC MC': 100, 'PCF MC': 0, 'WS VISA': 0, VISA: 0 },
+          monthlyGross: 3000,
+          totalFixedExpenses: 1500,
+          netBalance: 1000,
+          loans: [],
+          totalOutstandingDebt: 0,
+          investments: [],
+          totalInvestmentValue: 0
+        },
+        previous: null
+      };
+
+      const mockReminderResponse = {
+        missingInvestments: 0,
+        missingLoans: 0,
+        hasActiveInvestments: true,
+        hasActiveLoans: false
+      };
+
+      global.fetch.mockImplementation((url) => {
+        if (url.includes('/api/reminders/status/')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => mockReminderResponse
+          });
+        } else {
+          return Promise.resolve({
+            ok: true,
+            json: async () => mockSummaryResponse
+          });
+        }
+      });
+
+      const { container } = render(
+        <SummaryPanel selectedYear={2025} selectedMonth={11} refreshTrigger={0} />
+      );
+
+      await waitFor(() => {
+        expect(screen.queryByText('Loading summary...')).not.toBeInTheDocument();
+      });
+
+      // Check that no reminder banner is displayed
+      const reminderBanner = container.querySelector('.data-reminder-banner');
+      expect(reminderBanner).not.toBeInTheDocument();
+    });
+
+    // Validates: Requirements 3.3
+    it('should hide reminder banner when dismissed', async () => {
+      const mockSummaryResponse = {
+        current: {
+          total: 500,
+          weeklyTotals: { week1: 100, week2: 100, week3: 100, week4: 100, week5: 100 },
+          typeTotals: { Groceries: 200, Gas: 100, Other: 100, 'Tax - Medical': 50, 'Tax - Donation': 50 },
+          methodTotals: { Cash: 50, Debit: 50, Cheque: 0, 'CIBC MC': 100, 'PCF MC': 0, 'WS VISA': 0, VISA: 0 },
+          monthlyGross: 3000,
+          totalFixedExpenses: 1500,
+          netBalance: 1000,
+          loans: [],
+          totalOutstandingDebt: 0,
+          investments: [],
+          totalInvestmentValue: 0
+        },
+        previous: null
+      };
+
+      const mockReminderResponse = {
+        missingInvestments: 2,
+        missingLoans: 0,
+        hasActiveInvestments: true,
+        hasActiveLoans: false
+      };
+
+      global.fetch.mockImplementation((url) => {
+        if (url.includes('/api/reminders/status/')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => mockReminderResponse
+          });
+        } else {
+          return Promise.resolve({
+            ok: true,
+            json: async () => mockSummaryResponse
+          });
+        }
+      });
+
+      const { container } = render(
+        <SummaryPanel selectedYear={2025} selectedMonth={11} refreshTrigger={0} />
+      );
+
+      await waitFor(() => {
+        expect(screen.queryByText('Loading summary...')).not.toBeInTheDocument();
+      });
+
+      // Check that the reminder banner is displayed
+      let reminderBanner = container.querySelector('.data-reminder-banner');
+      expect(reminderBanner).toBeInTheDocument();
+
+      // Click the dismiss button
+      const dismissButton = reminderBanner.querySelector('.reminder-dismiss-btn');
+      dismissButton.click();
+
+      // Wait for the banner to be removed
+      await waitFor(() => {
+        reminderBanner = container.querySelector('.data-reminder-banner');
+        expect(reminderBanner).not.toBeInTheDocument();
+      });
+    });
+
+    // Validates: Requirements 3.2
+    it('should display multiple reminders when both investment and loan data are missing', async () => {
+      const mockSummaryResponse = {
+        current: {
+          total: 500,
+          weeklyTotals: { week1: 100, week2: 100, week3: 100, week4: 100, week5: 100 },
+          typeTotals: { Groceries: 200, Gas: 100, Other: 100, 'Tax - Medical': 50, 'Tax - Donation': 50 },
+          methodTotals: { Cash: 50, Debit: 50, Cheque: 0, 'CIBC MC': 100, 'PCF MC': 0, 'WS VISA': 0, VISA: 0 },
+          monthlyGross: 3000,
+          totalFixedExpenses: 1500,
+          netBalance: 1000,
+          loans: [],
+          totalOutstandingDebt: 0,
+          investments: [],
+          totalInvestmentValue: 0
+        },
+        previous: null
+      };
+
+      const mockReminderResponse = {
+        missingInvestments: 2,
+        missingLoans: 1,
+        hasActiveInvestments: true,
+        hasActiveLoans: true
+      };
+
+      global.fetch.mockImplementation((url) => {
+        if (url.includes('/api/reminders/status/')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => mockReminderResponse
+          });
+        } else {
+          return Promise.resolve({
+            ok: true,
+            json: async () => mockSummaryResponse
+          });
+        }
+      });
+
+      const { container } = render(
+        <SummaryPanel selectedYear={2025} selectedMonth={11} refreshTrigger={0} />
+      );
+
+      await waitFor(() => {
+        expect(screen.queryByText('Loading summary...')).not.toBeInTheDocument();
+      });
+
+      // Check that both reminder banners are displayed
+      const reminderBanners = container.querySelectorAll('.data-reminder-banner');
+      expect(reminderBanners.length).toBe(2);
+
+      // Check investment reminder
+      const investmentBanner = Array.from(reminderBanners).find(banner => 
+        banner.textContent.includes('investment')
+      );
+      expect(investmentBanner).toBeInTheDocument();
+
+      // Check loan reminder
+      const loanBanner = Array.from(reminderBanners).find(banner => 
+        banner.textContent.includes('loan')
+      );
+      expect(loanBanner).toBeInTheDocument();
+    });
+  });
+});

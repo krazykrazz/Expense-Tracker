@@ -20,6 +20,7 @@ Documentation for completed features and implementations:
 - `GLOBAL_EXPENSE_FILTERING.md` - Global filtering by category and payment method across all time periods
 - `INCOME_SOURCE_CATEGORIES.md` - Income source categorization for better financial analysis
 - `INVESTMENT_TRACKING.md` - Investment portfolio tracking with TFSA and RRSP accounts
+- `MONTHLY_DATA_REMINDERS.md` - Visual reminders to update investment values and loan balances
 
 ### deployments/
 Deployment history and migration guides:
@@ -68,6 +69,7 @@ Feature specifications are located in `.kiro/specs/`:
 - `global-expense-filtering/` - Global expense filtering by category and payment method
 - `income-source-categories/` - Income source categorization feature
 - `investment-tracking/` - Investment portfolio tracking with TFSA and RRSP accounts
+- `monthly-data-reminders/` - Visual reminders to update investment values and loan balances
 
 ## Steering Rules
 

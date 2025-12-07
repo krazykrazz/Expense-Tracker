@@ -4,6 +4,7 @@
  */
 
 import { API_ENDPOINTS } from '../config.js';
+import { apiGet, apiPost, apiPut, apiDelete, logApiError } from '../utils/apiClient.js';
 
 /**
  * Get all budgets for a specific month
@@ -13,16 +14,9 @@ import { API_ENDPOINTS } from '../config.js';
  */
 export const getBudgets = async (year, month) => {
   try {
-    const response = await fetch(`${API_ENDPOINTS.BUDGETS}?year=${year}&month=${month}`);
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error?.message || 'Failed to fetch budgets');
-    }
-    
-    return await response.json();
+    return await apiGet(`${API_ENDPOINTS.BUDGETS}?year=${year}&month=${month}`, 'fetch budgets');
   } catch (error) {
-    console.error('Error fetching budgets:', error);
+    logApiError('fetching budgets', error);
     throw error;
   }
 };
@@ -37,22 +31,9 @@ export const getBudgets = async (year, month) => {
  */
 export const createBudget = async (year, month, category, limit) => {
   try {
-    const response = await fetch(API_ENDPOINTS.BUDGETS, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ year, month, category, limit })
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error?.message || 'Failed to create budget');
-    }
-    
-    return await response.json();
+    return await apiPost(API_ENDPOINTS.BUDGETS, { year, month, category, limit }, 'create budget');
   } catch (error) {
-    console.error('Error creating budget:', error);
+    logApiError('creating budget', error);
     throw error;
   }
 };
@@ -65,22 +46,9 @@ export const createBudget = async (year, month, category, limit) => {
  */
 export const updateBudget = async (id, limit) => {
   try {
-    const response = await fetch(`${API_ENDPOINTS.BUDGETS}/${id}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ limit })
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error?.message || 'Failed to update budget');
-    }
-    
-    return await response.json();
+    return await apiPut(`${API_ENDPOINTS.BUDGETS}/${id}`, { limit }, 'update budget');
   } catch (error) {
-    console.error('Error updating budget:', error);
+    logApiError('updating budget', error);
     throw error;
   }
 };
@@ -92,23 +60,9 @@ export const updateBudget = async (id, limit) => {
  */
 export const deleteBudget = async (id) => {
   try {
-    const response = await fetch(`${API_ENDPOINTS.BUDGETS}/${id}`, {
-      method: 'DELETE'
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error?.message || 'Failed to delete budget');
-    }
-    
-    // 204 No Content response has no body
-    if (response.status === 204) {
-      return;
-    }
-    
-    return await response.json();
+    return await apiDelete(`${API_ENDPOINTS.BUDGETS}/${id}`, 'delete budget');
   } catch (error) {
-    console.error('Error deleting budget:', error);
+    logApiError('deleting budget', error);
     throw error;
   }
 };
@@ -121,16 +75,9 @@ export const deleteBudget = async (id) => {
  */
 export const getBudgetSummary = async (year, month) => {
   try {
-    const response = await fetch(`${API_ENDPOINTS.BUDGET_SUMMARY}?year=${year}&month=${month}`);
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error?.message || 'Failed to fetch budget summary');
-    }
-    
-    return await response.json();
+    return await apiGet(`${API_ENDPOINTS.BUDGET_SUMMARY}?year=${year}&month=${month}`, 'fetch budget summary');
   } catch (error) {
-    console.error('Error fetching budget summary:', error);
+    logApiError('fetching budget summary', error);
     throw error;
   }
 };
@@ -144,18 +91,12 @@ export const getBudgetSummary = async (year, month) => {
  */
 export const getBudgetHistory = async (year, month, periodMonths = 6) => {
   try {
-    const response = await fetch(
-      `${API_ENDPOINTS.BUDGET_HISTORY}?year=${year}&month=${month}&months=${periodMonths}`
+    return await apiGet(
+      `${API_ENDPOINTS.BUDGET_HISTORY}?year=${year}&month=${month}&months=${periodMonths}`,
+      'fetch budget history'
     );
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error?.message || 'Failed to fetch budget history');
-    }
-    
-    return await response.json();
   } catch (error) {
-    console.error('Error fetching budget history:', error);
+    logApiError('fetching budget history', error);
     throw error;
   }
 };
@@ -171,28 +112,13 @@ export const getBudgetHistory = async (year, month, periodMonths = 6) => {
  */
 export const copyBudgets = async (sourceYear, sourceMonth, targetYear, targetMonth, overwrite = false) => {
   try {
-    const response = await fetch(API_ENDPOINTS.BUDGET_COPY, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        sourceYear,
-        sourceMonth,
-        targetYear,
-        targetMonth,
-        overwrite
-      })
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error?.message || 'Failed to copy budgets');
-    }
-    
-    return await response.json();
+    return await apiPost(
+      API_ENDPOINTS.BUDGET_COPY,
+      { sourceYear, sourceMonth, targetYear, targetMonth, overwrite },
+      'copy budgets'
+    );
   } catch (error) {
-    console.error('Error copying budgets:', error);
+    logApiError('copying budgets', error);
     throw error;
   }
 };
@@ -206,18 +132,12 @@ export const copyBudgets = async (sourceYear, sourceMonth, targetYear, targetMon
  */
 export const getBudgetSuggestion = async (year, month, category) => {
   try {
-    const response = await fetch(
-      `${API_ENDPOINTS.BUDGET_SUGGEST}?year=${year}&month=${month}&category=${encodeURIComponent(category)}`
+    return await apiGet(
+      `${API_ENDPOINTS.BUDGET_SUGGEST}?year=${year}&month=${month}&category=${encodeURIComponent(category)}`,
+      'fetch budget suggestion'
     );
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error?.message || 'Failed to fetch budget suggestion');
-    }
-    
-    return await response.json();
   } catch (error) {
-    console.error('Error fetching budget suggestion:', error);
+    logApiError('fetching budget suggestion', error);
     throw error;
   }
 };

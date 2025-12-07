@@ -5,7 +5,7 @@ import { validateName, validateAmount } from '../utils/validation';
 import { formatCurrency } from '../utils/formatters';
 import InvestmentDetailView from './InvestmentDetailView';
 
-const InvestmentsModal = ({ isOpen, onClose, onUpdate }) => {
+const InvestmentsModal = ({ isOpen, onClose, onUpdate, highlightIds = [] }) => {
   const [investments, setInvestments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -371,13 +371,20 @@ const InvestmentsModal = ({ isOpen, onClose, onUpdate }) => {
                     No investments yet. Add a new investment to get started.
                   </div>
                 ) : (
-                  investments.map((investment) => (
-                    <div key={investment.id} className="investment-item">
+                  investments.map((investment) => {
+                    const needsUpdate = highlightIds.includes(investment.id);
+                    return (
+                    <div key={investment.id} className={`investment-item ${needsUpdate ? 'needs-update' : ''}`}>
                       <div className="investment-item-main">
                         <div className="investment-item-info">
                           <div className="investment-item-name">
                             {investment.name}
                             <span className="investment-type-badge">{investment.type}</span>
+                            {needsUpdate && (
+                              <span className="needs-update-badge" title="Missing value for current month">
+                                ⚠️ Update Needed
+                              </span>
+                            )}
                           </div>
                           <div className="investment-item-details">
                             <span className="investment-item-current-value">
@@ -413,7 +420,8 @@ const InvestmentsModal = ({ isOpen, onClose, onUpdate }) => {
                         </div>
                       </div>
                     </div>
-                  ))
+                  );
+                  })
                 )}
               </div>
             </>

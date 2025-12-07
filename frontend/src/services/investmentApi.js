@@ -4,6 +4,7 @@
  */
 
 import { API_ENDPOINTS } from '../config.js';
+import { apiGet, apiPost, apiPut, apiDelete, logApiError } from '../utils/apiClient.js';
 
 /**
  * Get all investments with current values
@@ -11,16 +12,9 @@ import { API_ENDPOINTS } from '../config.js';
  */
 export const getAllInvestments = async () => {
   try {
-    const response = await fetch(API_ENDPOINTS.INVESTMENTS);
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Failed to fetch investments');
-    }
-    
-    return await response.json();
+    return await apiGet(API_ENDPOINTS.INVESTMENTS, 'fetch investments');
   } catch (error) {
-    console.error('Error fetching investments:', error);
+    logApiError('fetching investments', error);
     throw error;
   }
 };
@@ -32,22 +26,9 @@ export const getAllInvestments = async () => {
  */
 export const createInvestment = async (investmentData) => {
   try {
-    const response = await fetch(API_ENDPOINTS.INVESTMENTS, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(investmentData)
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Failed to create investment');
-    }
-    
-    return await response.json();
+    return await apiPost(API_ENDPOINTS.INVESTMENTS, investmentData, 'create investment');
   } catch (error) {
-    console.error('Error creating investment:', error);
+    logApiError('creating investment', error);
     throw error;
   }
 };
@@ -60,22 +41,9 @@ export const createInvestment = async (investmentData) => {
  */
 export const updateInvestment = async (id, investmentData) => {
   try {
-    const response = await fetch(`${API_ENDPOINTS.INVESTMENTS}/${id}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(investmentData)
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Failed to update investment');
-    }
-    
-    return await response.json();
+    return await apiPut(`${API_ENDPOINTS.INVESTMENTS}/${id}`, investmentData, 'update investment');
   } catch (error) {
-    console.error('Error updating investment:', error);
+    logApiError('updating investment', error);
     throw error;
   }
 };
@@ -87,18 +55,9 @@ export const updateInvestment = async (id, investmentData) => {
  */
 export const deleteInvestment = async (id) => {
   try {
-    const response = await fetch(`${API_ENDPOINTS.INVESTMENTS}/${id}`, {
-      method: 'DELETE'
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Failed to delete investment');
-    }
-    
-    return await response.json();
+    return await apiDelete(`${API_ENDPOINTS.INVESTMENTS}/${id}`, 'delete investment');
   } catch (error) {
-    console.error('Error deleting investment:', error);
+    logApiError('deleting investment', error);
     throw error;
   }
 };

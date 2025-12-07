@@ -6,7 +6,7 @@ import { formatCurrency, formatDate } from '../utils/formatters';
 import LoanDetailView from './LoanDetailView';
 import TotalDebtView from './TotalDebtView';
 
-const LoansModal = ({ isOpen, onClose, year, month, onUpdate }) => {
+const LoansModal = ({ isOpen, onClose, year, month, onUpdate, highlightIds = [] }) => {
   const [loans, setLoans] = useState([]);
   const [activeTab, setActiveTab] = useState('active'); // 'active' or 'paidOff'
   const [loading, setLoading] = useState(false);
@@ -443,14 +443,21 @@ const LoansModal = ({ isOpen, onClose, year, month, onUpdate }) => {
                       : 'No paid off loans yet.'}
                   </div>
                 ) : (
-                  displayedLoans.map((loan) => (
-                    <div key={loan.id} className="loan-item">
+                  displayedLoans.map((loan) => {
+                    const needsUpdate = highlightIds.includes(loan.id);
+                    return (
+                    <div key={loan.id} className={`loan-item ${needsUpdate ? 'needs-update' : ''}`}>
                       <div className="loan-item-main">
                         <div className="loan-item-info">
                           <div className="loan-item-name">
                             {loan.name}
                             {loan.loan_type === 'line_of_credit' && (
                               <span className="loan-type-badge">LOC</span>
+                            )}
+                            {needsUpdate && (
+                              <span className="needs-update-badge" title="Missing balance for current month">
+                                ⚠️ Update Needed
+                              </span>
                             )}
                           </div>
                           <div className="loan-item-details">
@@ -493,7 +500,8 @@ const LoansModal = ({ isOpen, onClose, year, month, onUpdate }) => {
                         </div>
                       </div>
                     </div>
-                  ))
+                  );
+                  })
                 )}
               </div>
             </>

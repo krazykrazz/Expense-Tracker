@@ -5,6 +5,7 @@ import FixedExpensesModal from './FixedExpensesModal';
 import LoansModal from './LoansModal';
 import InvestmentsModal from './InvestmentsModal';
 import TrendIndicator from './TrendIndicator';
+import DataReminderBanner from './DataReminderBanner';
 import './SummaryPanel.css';
 
 const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
@@ -20,6 +21,20 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
   const [totalOutstandingDebt, setTotalOutstandingDebt] = useState(0);
   const [investments, setInvestments] = useState([]);
   const [totalInvestmentValue, setTotalInvestmentValue] = useState(0);
+  
+  // Reminder states
+  const [reminderStatus, setReminderStatus] = useState({
+    missingInvestments: 0,
+    missingLoans: 0,
+    hasActiveInvestments: false,
+    hasActiveLoans: false,
+    investments: [],
+    loans: []
+  });
+  const [dismissedReminders, setDismissedReminders] = useState({
+    investments: false,
+    loans: false
+  });
   
   // Collapsible panel states
   const [weeklyOpen, setWeeklyOpen] = useState(false);
@@ -79,6 +94,34 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
   }, []);
 
   /**
+   * Fetch reminder status from API
+   */
+  const fetchReminderStatus = useCallback(async () => {
+    try {
+      const response = await fetch(API_ENDPOINTS.REMINDER_STATUS(selectedYear, selectedMonth));
+      
+      if (!response.ok) {
+        // Fail silently - don't block summary panel loading
+        console.error('Failed to fetch reminder status');
+        return;
+      }
+
+      const data = await response.json();
+      setReminderStatus({
+        missingInvestments: data.missingInvestments || 0,
+        missingLoans: data.missingLoans || 0,
+        hasActiveInvestments: data.hasActiveInvestments || false,
+        hasActiveLoans: data.hasActiveLoans || false,
+        investments: data.investments || [],
+        loans: data.loans || []
+      });
+    } catch (err) {
+      // Fail silently - don't block summary panel loading
+      console.error('Error fetching reminder status:', err);
+    }
+  }, [selectedYear, selectedMonth]);
+
+  /**
    * Fetch summary data from API
    * Reusable function to avoid code duplication
    */
@@ -108,7 +151,10 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
   // Fetch summary when dependencies change
   useEffect(() => {
     fetchSummaryData();
-  }, [fetchSummaryData, refreshTrigger]);
+    fetchReminderStatus();
+    // Reset dismissed reminders when month changes
+    setDismissedReminders({ investments: false, loans: false });
+  }, [fetchSummaryData, fetchReminderStatus, refreshTrigger]);
 
   // Modal handlers - simplified using shared fetch function
   const handleOpenIncomeModal = () => setShowIncomeModal(true);
@@ -129,12 +175,47 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
   const handleCloseLoansModal = async () => {
     setShowLoansModal(false);
     await fetchSummaryData();
+    await fetchReminderStatus();
   };
 
   const handleCloseInvestmentsModal = async () => {
     setShowInvestmentsModal(false);
     await fetchSummaryData();
+    await fetchReminderStatus();
   };
+
+  const handleInvestmentsUpdate = async () => {
+    // Refresh summary data without closing the modal
+    await fetchSummaryData();
+    // Also refresh reminder status
+    await fetchReminderStatus();
+  };
+
+  // Reminder handlers
+  const handleDismissInvestmentReminder = () => {
+    setDismissedReminders(prev => ({ ...prev, investments: true }));
+  };
+
+  const handleDismissLoanReminder = () => {
+    setDismissedReminders(prev => ({ ...prev, loans: true }));
+  };
+
+  const handleInvestmentReminderClick = () => {
+    setShowInvestmentsModal(true);
+  };
+
+  const handleLoanReminderClick = () => {
+    setShowLoansModal(true);
+  };
+
+  // Get IDs of investments/loans that need updates
+  const investmentsNeedingUpdate = reminderStatus.investments
+    ? reminderStatus.investments.filter(inv => !inv.hasValue).map(inv => inv.id)
+    : [];
+  
+  const loansNeedingUpdate = reminderStatus.loans
+    ? reminderStatus.loans.filter(loan => !loan.hasBalance).map(loan => loan.id)
+    : [];
 
   // Format currency
   const formatCurrency = (amount) => {
@@ -142,6 +223,15 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
       style: 'currency',
       currency: 'CAD'
     }).format(amount);
+  };
+
+  // Get month name from month number
+  const getMonthName = (monthNumber) => {
+    const monthNames = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    return monthNames[monthNumber - 1] || '';
   };
 
   if (loading) {
@@ -169,6 +259,31 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
   return (
     <div className="summary-panel">
       <h2>Monthly Summary</h2>
+
+      {/* Reminder Banners */}
+      {reminderStatus.hasActiveInvestments && 
+       reminderStatus.missingInvestments > 0 && 
+       !dismissedReminders.investments && (
+        <DataReminderBanner
+          type="investment"
+          count={reminderStatus.missingInvestments}
+          monthName={getMonthName(selectedMonth)}
+          onDismiss={handleDismissInvestmentReminder}
+          onClick={handleInvestmentReminderClick}
+        />
+      )}
+
+      {reminderStatus.hasActiveLoans && 
+       reminderStatus.missingLoans > 0 && 
+       !dismissedReminders.loans && (
+        <DataReminderBanner
+          type="loan"
+          count={reminderStatus.missingLoans}
+          monthName={getMonthName(selectedMonth)}
+          onDismiss={handleDismissLoanReminder}
+          onClick={handleLoanReminderClick}
+        />
+      )}
 
       {/* Summary Cards Grid - Order: Income, Fixed, Variable, Balance */}
       <div className="summary-grid">
@@ -397,6 +512,7 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
           year={selectedYear}
           month={selectedMonth}
           onUpdate={handleCloseLoansModal}
+          highlightIds={loansNeedingUpdate}
         />
       )}
 
@@ -406,7 +522,8 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
           onClose={handleCloseInvestmentsModal}
           year={selectedYear}
           month={selectedMonth}
-          onUpdate={handleCloseInvestmentsModal}
+          onUpdate={handleInvestmentsUpdate}
+          highlightIds={investmentsNeedingUpdate}
         />
       )}
     </div>

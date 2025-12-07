@@ -7,6 +7,58 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+---
+
+## [4.5.0] - 2025-12-06
+
+### Added
+- **Monthly Data Reminders**: Visual notification banners to prompt users to update investment values and loan balances
+  - Investment value reminder when data is missing for current month
+  - Loan balance reminder when data is missing for current month
+  - Shows count of items needing updates
+  - Includes current month name in reminder message
+  - Clickable banners open relevant modals (Investments or Loans)
+  - Dismissible reminders (session-based, reappear on refresh if data still missing)
+  - Subtle visual design with warning colors and clear icons (💡 for investments, 💳 for loans)
+  - Multiple reminders stack vertically when both types are needed
+  - Backend API endpoint: `GET /api/reminders/status/:year/:month`
+  - Comprehensive property-based testing (100+ iterations per property)
+  - Full integration test coverage for reminder flow
+
+### Technical
+- Added `reminderService.js` with logic to detect missing investment values and loan balances
+- Added `reminderController.js` with `/api/reminders/status/:year/:month` endpoint
+- Created `DataReminderBanner` component with dismiss and click functionality
+- Enhanced `SummaryPanel` to fetch and display reminders for current month
+- Property-based tests validate reminder detection accuracy across all scenarios
+- Integration tests confirm complete reminder workflow from API to UI
+
+---
+
+## [4.4.7] - 2025-12-06
+
+### Added
+- **Net Worth Tracking**: Display net worth (assets minus liabilities) in monthly and annual summaries
+  - Net Worth card in Monthly Summary Panel showing current month position
+  - Net Worth card in Annual Summary showing year-end position
+  - Calculates as: Total Investment Value - Total Outstanding Debt
+  - Color-coded display (green for positive, red for negative)
+  - Assets and Liabilities breakdown with detailed values
+  - Comprehensive property-based testing for calculation accuracy
+  - Integration tests for UI rendering and data flow
+
+### Fixed
+- **Test Suite**: Fixed all test failures across frontend and backend
+  - 299 frontend tests passing (26 test files)
+  - All backend tests passing
+  - Updated tests to match new UI structure for annual summary
+  - Fixed loading state tests in SummaryPanel
+  - Corrected invalid category names in backend integration tests
+
+---
+
 ## [4.4.6] - 2025-12-03
 
 ### Improved

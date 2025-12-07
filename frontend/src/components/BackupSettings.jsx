@@ -464,6 +464,25 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v4.5.0</div>
+                <div className="changelog-date">December 6, 2025</div>
+                <ul className="changelog-items">
+                  <li>Monthly Data Reminders: Visual notification banners prompt users to update investment values and loan balances</li>
+                  <li>Clickable reminders open relevant modals (Investments or Loans)</li>
+                  <li>Dismissible reminders with session-based persistence</li>
+                  <li>Shows count of items needing updates with current month name</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
+                <div className="changelog-version">v4.4.7</div>
+                <div className="changelog-date">December 6, 2025</div>
+                <ul className="changelog-items">
+                  <li>Added Net Worth tracking in monthly and annual summaries</li>
+                  <li>Net Worth = Total Investments - Total Debt with color-coded display</li>
+                  <li>Fixed all test failures (299 frontend tests, all backend tests passing)</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v4.4.6</div>
                 <div className="changelog-date">December 3, 2025</div>
                 <ul className="changelog-items">

@@ -1,7 +1,7 @@
 # Project Archive
 
 **Created:** 2025-11-24  
-**Last Updated:** 2025-11-30
+**Last Updated:** 2025-12-06
 
 This archive contains historical documentation and scripts that have served their purpose but are retained for reference.
 
@@ -21,11 +21,12 @@ Completion reports for various features and optimizations:
 - Test coverage analyses
 - Cleanup summaries
 
-### deployments/ (NEW - Nov 30, 2025)
+### deployments/ (Updated - Dec 6, 2025)
 Historical deployment documentation:
-- v4.0.3 through v4.3.1 deployment guides
+- v4.0.3 through v4.4.7 deployment guides
 - Deployment summaries and changelogs
 - Version-specific implementation notes
+- **Latest:** 11 deployment files added (v4.3.2 through v4.4.7)
 
 ### migration-scripts/ (Nov 24, 2025)
 Database migration scripts (kept for reference):
@@ -34,13 +35,16 @@ Database migration scripts (kept for reference):
 - Recurring expenses removal
 - Quick migration utilities
 
-### reports/ (NEW - Nov 30, 2025)
+### reports/ (Updated - Dec 6, 2025)
 Point-in-time audit and analysis reports:
-- Code audit reports
+- Code audit reports (2025-12-03)
 - Code optimization reports
 - Code quality reports
-- Cleanup reports
+- Cleanup reports (2025-11-30)
 - Docker implementation documentation
+- Test fix summaries
+- Logging improvements documentation
+- **Latest:** 8 audit/cleanup reports added
 
 ### spec-implementations/ (NEW - Nov 30, 2025)
 Implementation summaries from completed specs:
@@ -96,9 +100,15 @@ Copy-Item archive/[subfolder]/[filename] ./
   - Archived 16 test scripts to backend/scripts/archive/
   - Deleted 131 old database backups (kept last 7)
 
+- **2025-12-06:** Code optimization cleanup (19 files)
+  - Moved 11 deployment summaries to deployments/ (v4.3.2 through v4.4.7)
+  - Moved 8 audit/cleanup reports to reports/
+  - Kept current optimization reports in root temporarily
+  - Root directory reduced from ~60 to ~35 files
+
 ## Next Review
 
-**Scheduled:** 2026-05-30 (6 months from last cleanup)
+**Scheduled:** 2026-06-06 (6 months from last cleanup)
 
 **Actions to consider:**
 - Delete files older than 12 months if not referenced

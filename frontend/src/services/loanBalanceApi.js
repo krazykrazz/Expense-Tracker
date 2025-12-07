@@ -4,6 +4,7 @@
  */
 
 import { API_ENDPOINTS } from '../config.js';
+import { apiGet, apiPost, apiDelete, logApiError } from '../utils/apiClient.js';
 
 /**
  * Get balance history for a specific loan
@@ -12,16 +13,9 @@ import { API_ENDPOINTS } from '../config.js';
  */
 export const getBalanceHistory = async (loanId) => {
   try {
-    const response = await fetch(`${API_ENDPOINTS.LOAN_BALANCES}/${loanId}`);
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Failed to fetch balance history');
-    }
-    
-    return await response.json();
+    return await apiGet(`${API_ENDPOINTS.LOAN_BALANCES}/${loanId}`, 'fetch balance history');
   } catch (error) {
-    console.error('Error fetching balance history:', error);
+    logApiError('fetching balance history', error);
     throw error;
   }
 };
@@ -35,16 +29,9 @@ export const getBalanceHistory = async (loanId) => {
  */
 export const getBalanceForMonth = async (loanId, year, month) => {
   try {
-    const response = await fetch(`${API_ENDPOINTS.LOAN_BALANCES}/${loanId}/${year}/${month}`);
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Failed to fetch balance for month');
-    }
-    
-    return await response.json();
+    return await apiGet(`${API_ENDPOINTS.LOAN_BALANCES}/${loanId}/${year}/${month}`, 'fetch balance for month');
   } catch (error) {
-    console.error('Error fetching balance for month:', error);
+    logApiError('fetching balance for month', error);
     throw error;
   }
 };
@@ -56,22 +43,9 @@ export const getBalanceForMonth = async (loanId, year, month) => {
  */
 export const createOrUpdateBalance = async (balanceData) => {
   try {
-    const response = await fetch(API_ENDPOINTS.LOAN_BALANCES, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(balanceData)
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Failed to create or update balance');
-    }
-    
-    return await response.json();
+    return await apiPost(API_ENDPOINTS.LOAN_BALANCES, balanceData, 'create or update balance');
   } catch (error) {
-    console.error('Error creating or updating balance:', error);
+    logApiError('creating or updating balance', error);
     throw error;
   }
 };
@@ -83,18 +57,9 @@ export const createOrUpdateBalance = async (balanceData) => {
  */
 export const deleteBalance = async (id) => {
   try {
-    const response = await fetch(`${API_ENDPOINTS.LOAN_BALANCES}/${id}`, {
-      method: 'DELETE'
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Failed to delete balance entry');
-    }
-    
-    return await response.json();
+    return await apiDelete(`${API_ENDPOINTS.LOAN_BALANCES}/${id}`, 'delete balance entry');
   } catch (error) {
-    console.error('Error deleting balance entry:', error);
+    logApiError('deleting balance entry', error);
     throw error;
   }
 };
@@ -105,16 +70,9 @@ export const deleteBalance = async (id) => {
  */
 export const getTotalDebtOverTime = async () => {
   try {
-    const response = await fetch(`${API_ENDPOINTS.LOAN_BALANCES}/total/history`);
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Failed to fetch total debt history');
-    }
-    
-    return await response.json();
+    return await apiGet(`${API_ENDPOINTS.LOAN_BALANCES}/total/history`, 'fetch total debt history');
   } catch (error) {
-    console.error('Error fetching total debt history:', error);
+    logApiError('fetching total debt history', error);
     throw error;
   }
 };

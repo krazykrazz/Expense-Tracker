@@ -44,6 +44,9 @@ export const API_ENDPOINTS = {
   // Categories
   CATEGORIES: `${API_BASE_URL}/api/categories`,
   
+  // Reminders
+  REMINDER_STATUS: (year, month) => `${API_BASE_URL}/api/reminders/status/${year}/${month}`,
+  
   // Backup
   BACKUP_CONFIG: `${API_BASE_URL}/api/backup/config`,
   BACKUP_LIST: `${API_BASE_URL}/api/backup/list`,

@@ -3,6 +3,9 @@ import { API_ENDPOINTS } from '../config';
 import { getTodayLocalDate } from '../utils/formatters';
 import { PAYMENT_METHODS } from '../utils/constants';
 import { fetchCategorySuggestion } from '../services/categorySuggestionApi';
+import { getPeople } from '../services/peopleApi';
+import { createExpense } from '../services/expenseApi';
+import PersonAllocationModal from './PersonAllocationModal';
 import './ExpenseForm.css';
 
 // localStorage key for payment method persistence (Requirements 5.1, 5.3)
@@ -57,6 +60,11 @@ const ExpenseForm = ({ onExpenseAdded }) => {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [typeOptions, setTypeOptions] = useState(['Other']); // Default fallback
   const [isCategorySuggested, setIsCategorySuggested] = useState(false); // Track if category was auto-suggested
+  
+  // People selection state for medical expenses
+  const [people, setPeople] = useState([]);
+  const [selectedPeople, setSelectedPeople] = useState([]);
+  const [showPersonAllocation, setShowPersonAllocation] = useState(false);
 
   // Refs for focus management and form state
   const placeInputRef = useRef(null);
@@ -64,7 +72,7 @@ const ExpenseForm = ({ onExpenseAdded }) => {
   const isSubmittingRef = useRef(false); // Track if form is being submitted to prevent blur handler interference
   const justSelectedFromDropdownRef = useRef(false); // Track if we just selected from dropdown to prevent blur handler
 
-  // Fetch categories and distinct places on component mount
+  // Fetch categories, places, and people on component mount
   useEffect(() => {
     let isMounted = true;
 
@@ -97,8 +105,22 @@ const ExpenseForm = ({ onExpenseAdded }) => {
       }
     };
 
+    const fetchPeople = async () => {
+      try {
+        const peopleData = await getPeople();
+        if (isMounted) {
+          setPeople(peopleData);
+        }
+      } catch (error) {
+        if (isMounted) {
+          console.error('Failed to fetch people:', error);
+        }
+      }
+    };
+
     fetchCategories();
     fetchPlaces();
+    fetchPeople();
 
     // Set initial focus to Place field (Requirements 1.1)
     if (placeInputRef.current) {
@@ -136,8 +158,31 @@ const ExpenseForm = ({ onExpenseAdded }) => {
     // Clear suggestion indicator when user manually changes category (Requirements 2.4)
     if (name === 'type') {
       setIsCategorySuggested(false);
+      // Clear people selection when changing away from medical expenses
+      if (value !== 'Tax - Medical') {
+        setSelectedPeople([]);
+      }
     }
   };
+
+  // Handle people selection for medical expenses
+  const handlePeopleChange = (e) => {
+    const selectedOptions = Array.from(e.target.selectedOptions, option => ({
+      id: parseInt(option.value),
+      name: option.text
+    }));
+    setSelectedPeople(selectedOptions);
+  };
+
+  // Handle person allocation modal save
+  const handlePersonAllocation = (allocations) => {
+    setShowPersonAllocation(false);
+    // Store allocations for form submission
+    setSelectedPeople(allocations);
+  };
+
+  // Check if current expense type is medical
+  const isMedicalExpense = formData.type === 'Tax - Medical';
 
   // Fetch category suggestion for a place and auto-select if available (Requirements 1.3, 1.4, 2.1, 2.3)
   const fetchAndApplyCategorySuggestion = async (place) => {
@@ -258,32 +303,36 @@ const ExpenseForm = ({ onExpenseAdded }) => {
       return;
     }
 
+    // For medical expenses with multiple people, show allocation modal
+    if (isMedicalExpense && selectedPeople.length > 1 && !selectedPeople[0].amount) {
+      setShowPersonAllocation(true);
+      return;
+    }
+
     setIsSubmitting(true);
     isSubmittingRef.current = true; // Mark that we're submitting to prevent blur handler
 
     try {
-      // Create the expense
-      const response = await fetch(API_ENDPOINTS.EXPENSES, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          date: formData.date,
-          place: formData.place,
-          notes: formData.notes,
-          amount: parseFloat(formData.amount),
-          type: formData.type,
-          method: formData.method
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to add expense');
+      // Prepare people allocations for medical expenses
+      let peopleAllocations = null;
+      if (isMedicalExpense && selectedPeople.length > 0) {
+        if (selectedPeople.length === 1) {
+          // Single person - assign full amount
+          peopleAllocations = [{
+            personId: selectedPeople[0].id,
+            amount: parseFloat(formData.amount)
+          }];
+        } else {
+          // Multiple people - use allocated amounts
+          peopleAllocations = selectedPeople.map(person => ({
+            personId: person.id,
+            amount: person.amount
+          }));
+        }
       }
 
-      const newExpense = await response.json();
+      // Create the expense using the API service
+      const newExpense = await createExpense(formData, peopleAllocations);
       
       // Save payment method for next expense entry (Requirements 5.3)
       saveLastPaymentMethod(formData.method);
@@ -307,6 +356,9 @@ const ExpenseForm = ({ onExpenseAdded }) => {
         type: 'Other',
         method: lastMethod // Pre-select last used payment method for next entry
       });
+
+      // Clear people selection
+      setSelectedPeople([]);
 
       // Notify parent component
       if (onExpenseAdded) {
@@ -440,6 +492,37 @@ const ExpenseForm = ({ onExpenseAdded }) => {
           </select>
         </div>
 
+        {/* People Selection for Medical Expenses (Requirements 2.1, 2.2, 2.3) */}
+        {isMedicalExpense && (
+          <div className="form-group">
+            <label htmlFor="people">Assign to People</label>
+            <select
+              id="people"
+              name="people"
+              multiple
+              value={selectedPeople.map(p => p.id.toString())}
+              onChange={handlePeopleChange}
+              className="people-select"
+              size={Math.min(people.length + 1, 4)}
+            >
+              <option value="" disabled>Select family members...</option>
+              {people.map(person => (
+                <option key={person.id} value={person.id}>
+                  {person.name}
+                </option>
+              ))}
+            </select>
+            {selectedPeople.length > 0 && (
+              <div className="selected-people-info">
+                Selected: {selectedPeople.map(p => p.name).join(', ')}
+                {selectedPeople.length > 1 && (
+                  <span className="allocation-note"> (allocation required)</span>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Row 4: Notes (Requirements 3.2) */}
         <div className="form-group">
           <label htmlFor="notes">Notes</label>
@@ -464,6 +547,15 @@ const ExpenseForm = ({ onExpenseAdded }) => {
           {isSubmitting ? 'Adding...' : 'Add Expense'}
         </button>
       </form>
+
+      {/* Person Allocation Modal */}
+      <PersonAllocationModal
+        isOpen={showPersonAllocation}
+        expense={{ amount: parseFloat(formData.amount) || 0 }}
+        selectedPeople={selectedPeople}
+        onSave={handlePersonAllocation}
+        onCancel={() => setShowPersonAllocation(false)}
+      />
     </div>
   );
 };

@@ -16,6 +16,7 @@ const categoryRoutes = require('./routes/categoryRoutes');
 const investmentRoutes = require('./routes/investmentRoutes');
 const investmentValueRoutes = require('./routes/investmentValueRoutes');
 const reminderRoutes = require('./routes/reminderRoutes');
+const peopleRoutes = require('./routes/peopleRoutes');
 const backupService = require('./services/backupService');
 const logger = require('./config/logger');
 const { configureTimezone, getTimezone } = require('./config/timezone');
@@ -71,6 +72,9 @@ app.use('/api/investment-values', investmentValueRoutes);
 
 // Reminder API routes
 app.use('/api/reminders', reminderRoutes);
+
+// People API routes
+app.use('/api/people', peopleRoutes);
 
 // Serve static files from the React app (after build)
 // In container: /app/frontend/dist, in development: ../frontend/dist

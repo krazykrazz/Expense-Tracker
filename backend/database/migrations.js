@@ -1843,6 +1843,109 @@ function createInvestmentValuesTables(db, migrationName, resolve, reject) {
 }
 
 /**
+ * Migration: Add people and expense_people tables for medical expense tracking
+ */
+async function migrateAddPeopleTables(db) {
+  const migrationName = 'add_people_tables_v1';
+  
+  // Check if already applied
+  const isApplied = await checkMigrationApplied(db, migrationName);
+  if (isApplied) {
+    console.log(`✓ Migration "${migrationName}" already applied, skipping`);
+    return;
+  }
+
+  console.log(`Running migration: ${migrationName}`);
+
+  // Create backup
+  await createBackup();
+
+  return new Promise((resolve, reject) => {
+    db.serialize(() => {
+      db.run('BEGIN TRANSACTION', (err) => {
+        if (err) {
+          return reject(err);
+        }
+
+        // Create people table
+        const createPeopleSQL = `
+          CREATE TABLE IF NOT EXISTS people (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            date_of_birth DATE,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+          )
+        `;
+
+        db.run(createPeopleSQL, (err) => {
+          if (err) {
+            db.run('ROLLBACK');
+            return reject(err);
+          }
+          console.log('✓ Created people table');
+
+          // Create expense_people junction table
+          const createExpensePeopleSQL = `
+            CREATE TABLE IF NOT EXISTS expense_people (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              expense_id INTEGER NOT NULL,
+              person_id INTEGER NOT NULL,
+              amount DECIMAL(10,2) NOT NULL,
+              created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (expense_id) REFERENCES expenses(id) ON DELETE CASCADE,
+              FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE CASCADE,
+              UNIQUE(expense_id, person_id)
+            )
+          `;
+
+          db.run(createExpensePeopleSQL, (err) => {
+            if (err) {
+              db.run('ROLLBACK');
+              return reject(err);
+            }
+            console.log('✓ Created expense_people junction table');
+
+            // Create indexes for better performance
+            const indexes = [
+              'CREATE INDEX IF NOT EXISTS idx_people_name ON people(name)',
+              'CREATE INDEX IF NOT EXISTS idx_expense_people_expense_id ON expense_people(expense_id)',
+              'CREATE INDEX IF NOT EXISTS idx_expense_people_person_id ON expense_people(person_id)'
+            ];
+
+            let completed = 0;
+            indexes.forEach((indexSQL) => {
+              db.run(indexSQL, (err) => {
+                if (err) {
+                  db.run('ROLLBACK');
+                  return reject(err);
+                }
+                completed++;
+                if (completed === indexes.length) {
+                  console.log('✓ Created indexes for people tables');
+
+                  // Mark migration as applied and commit
+                  markMigrationApplied(db, migrationName).then(() => {
+                    db.run('COMMIT', (err) => {
+                      if (err) {
+                        db.run('ROLLBACK');
+                        return reject(err);
+                      }
+                      console.log(`✓ Migration "${migrationName}" completed successfully`);
+                      resolve();
+                    });
+                  }).catch(reject);
+                }
+              });
+            });
+          });
+        });
+      });
+    });
+  });
+}
+
+/**
  * Run all pending migrations
  */
 async function runMigrations(db) {
@@ -1857,6 +1960,7 @@ async function runMigrations(db) {
     await migrateAddCategoryAndPaymentTypeToFixedExpenses(db);
     await migrateAddIncomeCategoryColumn(db);
     await migrateAddInvestmentTables(db);
+    await migrateAddPeopleTables(db);
     console.log('✓ All migrations completed\n');
   } catch (error) {
     console.error('✗ Migration failed:', error.message);
@@ -1867,5 +1971,6 @@ async function runMigrations(db) {
 module.exports = {
   runMigrations,
   checkMigrationApplied,
-  markMigrationApplied
+  markMigrationApplied,
+  migrateAddPeopleTables
 };

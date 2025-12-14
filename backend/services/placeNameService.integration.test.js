@@ -285,7 +285,7 @@ describe('PlaceNameService - Integration Tests', () => {
           INSERT INTO expenses (date, place, amount, type, week, method, notes)
           VALUES (?, ?, ?, ?, ?, ?, ?)
         `;
-        db.run(sql, ['2024-01-15', 'E2E_TestStore', 25.50, 'Food', 3, 'Debit', 'Test note 1'], 
+        db.run(sql, ['2024-01-15', 'E2E_TestStore', 25.50, 'Groceries', 3, 'Debit', 'Test note 1'], 
           function(err) {
             if (err) reject(err);
             else resolve(this.lastID);
@@ -324,7 +324,7 @@ describe('PlaceNameService - Integration Tests', () => {
 
       expect(expense1).toBeDefined();
       expect(expense1.date).toBe('2024-01-15');
-      expect(expense1.type).toBe('Food');
+      expect(expense1.type).toBe('Groceries');
       expect(expense1.week).toBe(3);
       expect(expense1.method).toBe('Debit');
       expect(expense1.notes).toBe('Test note 1');

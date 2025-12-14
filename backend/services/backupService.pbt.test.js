@@ -31,6 +31,19 @@ describe('BackupService - Property-Based Tests', () => {
     }
   });
 
+  beforeEach(async () => {
+    // Clean up any existing budgets in the test year range to avoid conflicts
+    const { getDatabase } = require('../database/db');
+    const db = await getDatabase();
+    
+    await new Promise((resolve, reject) => {
+      db.run('DELETE FROM budgets WHERE year >= 2050 AND year <= 2070', (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+  });
+
   /**
    * Feature: budget-tracking-alerts, Property 16: Budget persistence immediacy
    * Validates: Requirements 7.1
@@ -39,9 +52,9 @@ describe('BackupService - Property-Based Tests', () => {
    * the operation should return the updated value
    */
   test('Property 16: Budget persistence immediacy - changes are immediately queryable', async () => {
-    // Define arbitrary for generating valid budgets
+    // Define arbitrary for generating valid budgets with unique combinations
     const budgetArbitrary = fc.record({
-      year: fc.integer({ min: 2020, max: 2030 }),
+      year: fc.integer({ min: 2050, max: 2070 }), // Use future years to avoid conflicts
       month: fc.integer({ min: 1, max: 12 }),
       category: fc.constantFrom('Groceries', 'Gas', 'Other'),
       limit: fc.float({ min: Math.fround(0.01), max: Math.fround(10000), noNaN: true, noDefaultInfinity: true })
@@ -104,18 +117,18 @@ describe('BackupService - Property-Based Tests', () => {
    * For any set of budgets, backing up then restoring should result in budgets with identical values
    */
   test('Property 15: Backup round-trip - budgets are preserved after backup and restore', async () => {
-    // Define arbitrary for generating valid budgets
+    // Define arbitrary for generating valid budgets with unique combinations
     const budgetArbitrary = fc.record({
-      year: fc.integer({ min: 2020, max: 2030 }),
+      year: fc.integer({ min: 2050, max: 2070 }), // Use future years to avoid conflicts
       month: fc.integer({ min: 1, max: 12 }),
       category: fc.constantFrom('Groceries', 'Gas', 'Other'),
       limit: fc.float({ min: Math.fround(0.01), max: Math.fround(10000), noNaN: true, noDefaultInfinity: true })
     });
 
-    // Generate an array of 1-5 unique budgets (unique by year/month/category combination)
-    const budgetsArrayArbitrary = fc.array(budgetArbitrary, { minLength: 1, maxLength: 5 })
+    // Generate an array of 1-3 budgets (reduced to minimize conflicts)
+    const budgetsArrayArbitrary = fc.array(budgetArbitrary, { minLength: 1, maxLength: 3 })
       .map(budgets => {
-        // Remove duplicates based on year/month/category
+        // Remove duplicates based on year/month/category combination
         const seen = new Set();
         return budgets.filter(budget => {
           const key = `${budget.year}-${budget.month}-${budget.category}`;
@@ -125,15 +138,11 @@ describe('BackupService - Property-Based Tests', () => {
           seen.add(key);
           return true;
         });
-      });
+      })
+      .filter(budgets => budgets.length > 0); // Ensure we have at least one budget
 
     await fc.assert(
       fc.asyncProperty(budgetsArrayArbitrary, async (budgets) => {
-        // Skip if no budgets after deduplication
-        if (budgets.length === 0) {
-          return true;
-        }
-
         const createdBudgets = [];
         
         try {

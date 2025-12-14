@@ -11,6 +11,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.5.1] - 2025-12-06
+
+### Added
+- **Reminder Item Highlighting**: Enhanced Monthly Data Reminders to highlight specific items needing updates
+  - Orange highlighting with warning badge for investments/loans missing data
+  - "⚠️ Update Needed" badge with pulsing animation draws attention to items
+  - Clicking reminder banner opens modal with highlighted items
+  - Clear visual distinction between items with complete vs missing data
+  - Consistent highlighting pattern for both investments and loans
+  - Tooltips explain what data is missing
+  - Highlighting automatically disappears after data is added
+
+### Changed
+- InvestmentsModal now accepts `highlightIds` prop to highlight specific investments
+- LoansModal now accepts `highlightIds` prop to highlight specific loans
+- SummaryPanel extracts IDs of items needing updates from reminder status
+- Enhanced user experience: users can immediately see which items need attention
+
+### Technical
+- Added `.needs-update` CSS class with orange color scheme (#ff9800)
+- Added `.needs-update-badge` with pulsing animation
+- Enhanced SummaryPanel to pass highlight IDs to modals
+- No backend changes required (API already returned necessary data)
+- No database changes required
+
+---
+
 ## [4.5.0] - 2025-12-06
 
 ### Added

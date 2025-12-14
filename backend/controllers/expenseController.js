@@ -16,8 +16,17 @@ const upload = multer({ dest: 'uploads/' });
  */
 async function createExpense(req, res) {
   try {
-    const expenseData = req.body;
-    const createdExpense = await expenseService.createExpense(expenseData);
+    const { peopleAllocations, ...expenseData } = req.body;
+    
+    let createdExpense;
+    if (peopleAllocations && peopleAllocations.length > 0) {
+      // Create expense with people allocations
+      createdExpense = await expenseService.createExpenseWithPeople(expenseData, peopleAllocations);
+    } else {
+      // Create regular expense without people
+      createdExpense = await expenseService.createExpense(expenseData);
+    }
+    
     res.status(201).json(createdExpense);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -49,6 +58,30 @@ async function getExpenses(req, res) {
 }
 
 /**
+ * Get an expense by ID with people data
+ * GET /api/expenses/:id
+ */
+async function getExpenseWithPeople(req, res) {
+  try {
+    const id = parseInt(req.params.id);
+    
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'Invalid expense ID' });
+    }
+    
+    const expense = await expenseService.getExpenseWithPeople(id);
+    
+    if (!expense) {
+      return res.status(404).json({ error: 'Expense not found' });
+    }
+    
+    res.status(200).json(expense);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+}
+
+/**
  * Update an expense by ID
  * PUT /api/expenses/:id
  */
@@ -60,8 +93,16 @@ async function updateExpense(req, res) {
       return res.status(400).json({ error: 'Invalid expense ID' });
     }
     
-    const expenseData = req.body;
-    const updatedExpense = await expenseService.updateExpense(id, expenseData);
+    const { peopleAllocations, ...expenseData } = req.body;
+    
+    let updatedExpense;
+    if (peopleAllocations !== undefined) {
+      // Update expense with people allocations (could be empty array to remove all people)
+      updatedExpense = await expenseService.updateExpenseWithPeople(id, expenseData, peopleAllocations);
+    } else {
+      // Update regular expense without touching people associations
+      updatedExpense = await expenseService.updateExpense(id, expenseData);
+    }
     
     if (!updatedExpense) {
       return res.status(404).json({ error: 'Expense not found' });
@@ -148,17 +189,25 @@ async function getAnnualSummary(req, res) {
 
 /**
  * Get tax-deductible expenses summary
- * GET /api/expenses/tax-deductible?year=2024
+ * GET /api/expenses/tax-deductible?year=2024&groupByPerson=true
  */
 async function getTaxDeductibleSummary(req, res) {
   try {
-    const { year } = req.query;
+    const { year, groupByPerson } = req.query;
     
     if (!year) {
       return res.status(400).json({ error: 'Year query parameter is required' });
     }
     
-    const summary = await expenseService.getTaxDeductibleSummary(parseInt(year));
+    const shouldGroupByPerson = groupByPerson === 'true' || groupByPerson === '1';
+    
+    let summary;
+    if (shouldGroupByPerson) {
+      summary = await expenseService.getTaxDeductibleWithPeople(parseInt(year));
+    } else {
+      summary = await expenseService.getTaxDeductibleSummary(parseInt(year));
+    }
+    
     res.status(200).json(summary);
   } catch (error) {
     console.error('Error fetching tax-deductible summary:', error);
@@ -455,6 +504,7 @@ async function getSuggestedCategory(req, res) {
 module.exports = {
   createExpense,
   getExpenses,
+  getExpenseWithPeople,
   updateExpense,
   deleteExpense,
   getSummary,

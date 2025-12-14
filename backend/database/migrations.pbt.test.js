@@ -399,8 +399,10 @@ describe('Database Migrations - Property-Based Tests', () => {
     // Arbitrary for generating valid expenses with old categories (excluding Personal Care)
     const oldCategories = CATEGORIES.filter(c => c !== 'Personal Care');
     const oldExpenseArbitrary = fc.record({
-      date: fc.date({ min: new Date('2020-01-01'), max: new Date('2025-12-31') })
-        .map(d => d.toISOString().split('T')[0]),
+      date: fc.integer({ min: 2020, max: 2025 })
+        .chain(year => fc.integer({ min: 1, max: 12 })
+          .chain(month => fc.integer({ min: 1, max: 28 }) // Use 28 to avoid invalid dates
+            .map(day => `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`))),
       place: fc.oneof(fc.constant(''), fc.string({ minLength: 1, maxLength: 100 })),
       notes: fc.oneof(fc.constant(''), fc.string({ minLength: 1, maxLength: 200 })),
       amount: fc.float({ min: Math.fround(0.01), max: Math.fround(10000), noNaN: true }).map(n => Math.round(n * 100) / 100),

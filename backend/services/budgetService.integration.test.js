@@ -159,14 +159,14 @@ describe('Budget Service - End-to-End Integration Tests', () => {
       const month = 7;
 
       // Create budgets for two categories
-      const foodBudget = await budgetService.createBudget(year, month, 'Food', 500);
+      const groceriesBudget = await budgetService.createBudget(year, month, 'Groceries', 500);
       const gasBudget = await budgetService.createBudget(year, month, 'Gas', 200);
 
-      // Create expense in Food category
+      // Create expense in Groceries category
       const dateStr = `${year}-${String(month).padStart(2, '0')}-10`;
       const expense = await expenseService.createExpense({
         date: dateStr,
-        type: 'Food',
+        type: 'Groceries',
         amount: 100,
         method: 'Debit',
         place: 'Store',
@@ -174,13 +174,13 @@ describe('Budget Service - End-to-End Integration Tests', () => {
       });
 
       // Verify initial state
-      let foodProgress = await budgetService.getBudgetProgress(foodBudget.id);
+      let groceriesProgress = await budgetService.getBudgetProgress(groceriesBudget.id);
       let gasProgress = await budgetService.getBudgetProgress(gasBudget.id);
       
-      expect(foodProgress.spent).toBe(100);
+      expect(groceriesProgress.spent).toBe(100);
       expect(gasProgress.spent).toBe(0);
 
-      // Change expense category from Food to Gas
+      // Change expense category from Groceries to Gas
       await expenseService.updateExpense(expense.id, {
         date: dateStr,
         type: 'Gas',
@@ -191,15 +191,15 @@ describe('Budget Service - End-to-End Integration Tests', () => {
       });
 
       // Verify both budgets updated correctly
-      foodProgress = await budgetService.getBudgetProgress(foodBudget.id);
+      groceriesProgress = await budgetService.getBudgetProgress(groceriesBudget.id);
       gasProgress = await budgetService.getBudgetProgress(gasBudget.id);
       
-      expect(foodProgress.spent).toBe(0); // Removed from Food
+      expect(groceriesProgress.spent).toBe(0); // Removed from Groceries
       expect(gasProgress.spent).toBe(100); // Added to Gas
 
       // Clean up
       await expenseService.deleteExpense(expense.id);
-      await budgetService.deleteBudget(foodBudget.id);
+      await budgetService.deleteBudget(groceriesBudget.id);
       await budgetService.deleteBudget(gasBudget.id);
     });
 
@@ -274,7 +274,7 @@ describe('Budget Service - End-to-End Integration Tests', () => {
       const targetMonth = 4;
 
       // Step 1: Create budgets in month A (source)
-      const foodBudget = await budgetService.createBudget(sourceYear, sourceMonth, 'Food', 600);
+      const groceriesBudget = await budgetService.createBudget(sourceYear, sourceMonth, 'Groceries', 600);
       const gasBudget = await budgetService.createBudget(sourceYear, sourceMonth, 'Gas', 250);
       const otherBudget = await budgetService.createBudget(sourceYear, sourceMonth, 'Other', 400);
 
@@ -301,14 +301,14 @@ describe('Budget Service - End-to-End Integration Tests', () => {
       expect(targetBudgets.length).toBe(3);
 
       // Verify each budget was copied correctly
-      const targetFood = targetBudgets.find(b => b.category === 'Food');
+      const targetGroceries = targetBudgets.find(b => b.category === 'Groceries');
       const targetGas = targetBudgets.find(b => b.category === 'Gas');
       const targetOther = targetBudgets.find(b => b.category === 'Other');
 
-      expect(targetFood).toBeDefined();
-      expect(targetFood.limit).toBe(600);
-      expect(targetFood.year).toBe(targetYear);
-      expect(targetFood.month).toBe(targetMonth);
+      expect(targetGroceries).toBeDefined();
+      expect(targetGroceries.limit).toBe(600);
+      expect(targetGroceries.year).toBe(targetYear);
+      expect(targetGroceries.month).toBe(targetMonth);
 
       expect(targetGas).toBeDefined();
       expect(targetGas.limit).toBe(250);
@@ -324,24 +324,24 @@ describe('Budget Service - End-to-End Integration Tests', () => {
       const sourceBudgetsAfter = await budgetService.getBudgets(sourceYear, sourceMonth);
       expect(sourceBudgetsAfter.length).toBe(3);
 
-      const sourceFood = sourceBudgetsAfter.find(b => b.category === 'Food');
+      const sourceGroceries = sourceBudgetsAfter.find(b => b.category === 'Groceries');
       const sourceGas = sourceBudgetsAfter.find(b => b.category === 'Gas');
       const sourceOther = sourceBudgetsAfter.find(b => b.category === 'Other');
 
-      expect(sourceFood.limit).toBe(600);
+      expect(sourceGroceries.limit).toBe(600);
       expect(sourceGas.limit).toBe(250);
       expect(sourceOther.limit).toBe(400);
 
       // Verify source budgets have different IDs than target budgets
-      expect(sourceFood.id).not.toBe(targetFood.id);
+      expect(sourceGroceries.id).not.toBe(targetGroceries.id);
       expect(sourceGas.id).not.toBe(targetGas.id);
       expect(sourceOther.id).not.toBe(targetOther.id);
 
       // Clean up
-      await budgetService.deleteBudget(foodBudget.id);
+      await budgetService.deleteBudget(groceriesBudget.id);
       await budgetService.deleteBudget(gasBudget.id);
       await budgetService.deleteBudget(otherBudget.id);
-      await budgetService.deleteBudget(targetFood.id);
+      await budgetService.deleteBudget(targetGroceries.id);
       await budgetService.deleteBudget(targetGas.id);
       await budgetService.deleteBudget(targetOther.id);
     });
@@ -353,11 +353,11 @@ describe('Budget Service - End-to-End Integration Tests', () => {
       const targetMonth = 6;
 
       // Create budgets in source month
-      await budgetService.createBudget(sourceYear, sourceMonth, 'Food', 500);
+      await budgetService.createBudget(sourceYear, sourceMonth, 'Groceries', 500);
       await budgetService.createBudget(sourceYear, sourceMonth, 'Gas', 200);
 
       // Create different budgets in target month (to be overwritten)
-      const existingFood = await budgetService.createBudget(targetYear, targetMonth, 'Food', 700);
+      const existingGroceries = await budgetService.createBudget(targetYear, targetMonth, 'Groceries', 700);
       const existingOther = await budgetService.createBudget(targetYear, targetMonth, 'Other', 300);
 
       // Copy with overwrite = true
@@ -371,20 +371,20 @@ describe('Budget Service - End-to-End Integration Tests', () => {
 
       // Verify copy statistics
       expect(copyResult.copied).toBe(1); // Gas was copied (new)
-      expect(copyResult.overwritten).toBe(1); // Food was overwritten
+      expect(copyResult.overwritten).toBe(1); // Groceries was overwritten
       expect(copyResult.skipped).toBe(0);
 
       // Verify target budgets
       const targetBudgets = await budgetService.getBudgets(targetYear, targetMonth);
       
-      // Should have Food (overwritten), Gas (copied), and Other (unchanged)
+      // Should have Groceries (overwritten), Gas (copied), and Other (unchanged)
       expect(targetBudgets.length).toBe(3);
 
-      const targetFood = targetBudgets.find(b => b.category === 'Food');
+      const targetGroceries = targetBudgets.find(b => b.category === 'Groceries');
       const targetGas = targetBudgets.find(b => b.category === 'Gas');
       const targetOther = targetBudgets.find(b => b.category === 'Other');
 
-      expect(targetFood.limit).toBe(500); // Overwritten from 700 to 500
+      expect(targetGroceries.limit).toBe(500); // Overwritten from 700 to 500
       expect(targetGas.limit).toBe(200); // Newly copied
       expect(targetOther.limit).toBe(300); // Unchanged
 
@@ -403,12 +403,12 @@ describe('Budget Service - End-to-End Integration Tests', () => {
       const targetMonth = 8;
 
       // Create budgets in source month
-      await budgetService.createBudget(sourceYear, sourceMonth, 'Food', 500);
+      await budgetService.createBudget(sourceYear, sourceMonth, 'Groceries', 500);
       await budgetService.createBudget(sourceYear, sourceMonth, 'Gas', 200);
       await budgetService.createBudget(sourceYear, sourceMonth, 'Other', 300);
 
       // Create conflicting budget in target month
-      await budgetService.createBudget(targetYear, targetMonth, 'Food', 700);
+      await budgetService.createBudget(targetYear, targetMonth, 'Groceries', 700);
 
       // Copy with overwrite = false should fail
       await expect(
@@ -436,7 +436,7 @@ describe('Budget Service - End-to-End Integration Tests', () => {
       const targetMonth = 1;
 
       // Create budgets in December 2090
-      await budgetService.createBudget(sourceYear, sourceMonth, 'Food', 550);
+      await budgetService.createBudget(sourceYear, sourceMonth, 'Groceries', 550);
       await budgetService.createBudget(sourceYear, sourceMonth, 'Gas', 220);
 
       // Copy to January 2091
@@ -496,18 +496,18 @@ describe('Budget Service - End-to-End Integration Tests', () => {
 
       // Step 1: Create budgets and expenses for 6 months (Jan-Jun)
       const monthlyData = [
-        { month: 1, foodBudget: 500, foodSpent: 450, gasBudget: 200, gasSpent: 180 },
-        { month: 2, foodBudget: 500, foodSpent: 520, gasBudget: 200, gasSpent: 190 },
-        { month: 3, foodBudget: 500, foodSpent: 480, gasBudget: 200, gasSpent: 210 },
-        { month: 4, foodBudget: 550, foodSpent: 500, gasBudget: 200, gasSpent: 195 },
-        { month: 5, foodBudget: 550, foodSpent: 530, gasBudget: 200, gasSpent: 185 },
-        { month: 6, foodBudget: 550, foodSpent: 540, gasBudget: 200, gasSpent: 200 }
+        { month: 1, GroceriesBudget: 500, GroceriesSpent: 450, gasBudget: 200, gasSpent: 180 },
+        { month: 2, GroceriesBudget: 500, GroceriesSpent: 520, gasBudget: 200, gasSpent: 190 },
+        { month: 3, GroceriesBudget: 500, GroceriesSpent: 480, gasBudget: 200, gasSpent: 210 },
+        { month: 4, GroceriesBudget: 550, GroceriesSpent: 500, gasBudget: 200, gasSpent: 195 },
+        { month: 5, GroceriesBudget: 550, GroceriesSpent: 530, gasBudget: 200, gasSpent: 185 },
+        { month: 6, GroceriesBudget: 550, GroceriesSpent: 540, gasBudget: 200, gasSpent: 200 }
       ];
 
       // Create budgets and expenses for each month
       for (const data of monthlyData) {
         // Create budgets
-        await budgetService.createBudget(year, data.month, 'Food', data.foodBudget);
+        await budgetService.createBudget(year, data.month, 'Groceries', data.GroceriesBudget);
         await budgetService.createBudget(year, data.month, 'Gas', data.gasBudget);
 
         // Create expenses
@@ -515,11 +515,11 @@ describe('Budget Service - End-to-End Integration Tests', () => {
         
         await expenseService.createExpense({
           date: dateStr,
-          type: 'Food',
-          amount: data.foodSpent,
+          type: 'Groceries',
+          amount: data.GroceriesSpent,
           method: 'Debit',
           place: 'Store',
-          notes: `Food expense for month ${data.month}`
+          notes: `Groceries expense for month ${data.month}`
         });
 
         await expenseService.createExpense({
@@ -542,23 +542,23 @@ describe('Budget Service - End-to-End Integration Tests', () => {
       expect(history.period.start).toBe('2090-01-01');
       expect(history.period.end).toBe('2090-06-01');
 
-      // Verify Food category history
-      expect(history.categories.Food).toBeDefined();
-      expect(history.categories.Food.history.length).toBe(6);
+      // Verify Groceries category history
+      expect(history.categories.Groceries).toBeDefined();
+      expect(history.categories.Groceries.history.length).toBe(6);
 
-      // Verify each month's data for Food
+      // Verify each month's data for Groceries
       for (let i = 0; i < monthlyData.length; i++) {
         const monthData = monthlyData[i];
-        const historyEntry = history.categories.Food.history[i];
+        const historyEntry = history.categories.Groceries.history[i];
 
         expect(historyEntry.year).toBe(year);
         expect(historyEntry.month).toBe(monthData.month);
-        expect(historyEntry.budgeted).toBe(monthData.foodBudget);
-        expect(historyEntry.spent).toBe(monthData.foodSpent);
-        expect(historyEntry.met).toBe(monthData.foodSpent <= monthData.foodBudget);
+        expect(historyEntry.budgeted).toBe(monthData.GroceriesBudget);
+        expect(historyEntry.spent).toBe(monthData.GroceriesSpent);
+        expect(historyEntry.met).toBe(monthData.GroceriesSpent <= monthData.GroceriesBudget);
       }
 
-      // Calculate expected Food success rate
+      // Calculate expected Groceries success rate
       // Month 1: 450 <= 500 ✓
       // Month 2: 520 > 500 ✗
       // Month 3: 480 <= 500 ✓
@@ -566,12 +566,12 @@ describe('Budget Service - End-to-End Integration Tests', () => {
       // Month 5: 530 <= 550 ✓
       // Month 6: 540 <= 550 ✓
       // Success: 5 out of 6 = 83.33%
-      expect(history.categories.Food.successRate).toBeCloseTo(83.33, 1);
+      expect(history.categories.Groceries.successRate).toBeCloseTo(83.33, 1);
 
-      // Calculate expected Food average spending
-      const foodTotalSpent = monthlyData.reduce((sum, d) => sum + d.foodSpent, 0);
-      const foodAverage = foodTotalSpent / monthlyData.length;
-      expect(history.categories.Food.averageSpent).toBe(foodAverage);
+      // Calculate expected Groceries average spending
+      const GroceriesTotalSpent = monthlyData.reduce((sum, d) => sum + d.GroceriesSpent, 0);
+      const GroceriesAverage = GroceriesTotalSpent / monthlyData.length;
+      expect(history.categories.Groceries.averageSpent).toBe(GroceriesAverage);
 
       // Verify Gas category history
       expect(history.categories.Gas).toBeDefined();
@@ -607,15 +607,15 @@ describe('Budget Service - End-to-End Integration Tests', () => {
       });
 
       // Create budgets with different amounts for each month
-      await budgetRepository.create({ year, month: 1, category: 'Food', limit: 500 });
-      await budgetRepository.create({ year, month: 2, category: 'Food', limit: 600 }); // Different amount
-      await budgetRepository.create({ year, month: 3, category: 'Food', limit: 550 }); // Different amount
+      await budgetRepository.create({ year, month: 1, category: 'Groceries', limit: 500 });
+      await budgetRepository.create({ year, month: 2, category: 'Groceries', limit: 600 }); // Different amount
+      await budgetRepository.create({ year, month: 3, category: 'Groceries', limit: 550 }); // Different amount
 
       // Create expenses for all 3 months
       // Month 1: under budget (450 < 500)
       await expenseService.createExpense({
         date: `${year}-01-15`,
-        type: 'Food',
+        type: 'Groceries',
         amount: 450,
         method: 'Debit',
         place: 'Store',
@@ -625,7 +625,7 @@ describe('Budget Service - End-to-End Integration Tests', () => {
       // Month 2: over budget (650 > 600)
       await expenseService.createExpense({
         date: `${year}-02-15`,
-        type: 'Food',
+        type: 'Groceries',
         amount: 650,
         method: 'Debit',
         place: 'Store',
@@ -635,7 +635,7 @@ describe('Budget Service - End-to-End Integration Tests', () => {
       // Month 3: under budget (500 < 550)
       await expenseService.createExpense({
         date: `${year}-03-15`,
-        type: 'Food',
+        type: 'Groceries',
         amount: 500,
         method: 'Debit',
         place: 'Store',
@@ -646,23 +646,23 @@ describe('Budget Service - End-to-End Integration Tests', () => {
       const history = await budgetService.getBudgetHistory(year, endMonth, periodMonths);
 
       // Verify each month's data
-      expect(history.categories.Food.history[0].budgeted).toBe(500);
-      expect(history.categories.Food.history[0].spent).toBe(450);
-      expect(history.categories.Food.history[0].met).toBe(true);
+      expect(history.categories.Groceries.history[0].budgeted).toBe(500);
+      expect(history.categories.Groceries.history[0].spent).toBe(450);
+      expect(history.categories.Groceries.history[0].met).toBe(true);
 
-      expect(history.categories.Food.history[1].budgeted).toBe(600);
-      expect(history.categories.Food.history[1].spent).toBe(650);
-      expect(history.categories.Food.history[1].met).toBe(false);
+      expect(history.categories.Groceries.history[1].budgeted).toBe(600);
+      expect(history.categories.Groceries.history[1].spent).toBe(650);
+      expect(history.categories.Groceries.history[1].met).toBe(false);
 
-      expect(history.categories.Food.history[2].budgeted).toBe(550);
-      expect(history.categories.Food.history[2].spent).toBe(500);
-      expect(history.categories.Food.history[2].met).toBe(true);
+      expect(history.categories.Groceries.history[2].budgeted).toBe(550);
+      expect(history.categories.Groceries.history[2].spent).toBe(500);
+      expect(history.categories.Groceries.history[2].met).toBe(true);
 
       // Success rate: 2 out of 3 = 66.67%
-      expect(history.categories.Food.successRate).toBeCloseTo(66.67, 1);
+      expect(history.categories.Groceries.successRate).toBeCloseTo(66.67, 1);
 
       // Average: (450 + 650 + 500) / 3 = 533.33
-      expect(history.categories.Food.averageSpent).toBeCloseTo(533.33, 1);
+      expect(history.categories.Groceries.averageSpent).toBeCloseTo(533.33, 1);
 
       // Clean up
       await new Promise((resolve) => {
@@ -677,9 +677,9 @@ describe('Budget Service - End-to-End Integration Tests', () => {
       const endMonth = 3;
       const periodMonths = 3;
 
-      // Create budgets for Food, Gas, and Other for 3 months
+      // Create budgets for Groceries, Gas, and Other for 3 months
       for (let month = 1; month <= 3; month++) {
-        await budgetService.createBudget(year, month, 'Food', 500);
+        await budgetService.createBudget(year, month, 'Groceries', 500);
         await budgetService.createBudget(year, month, 'Gas', 200);
         await budgetService.createBudget(year, month, 'Other', 300);
 
@@ -688,11 +688,11 @@ describe('Budget Service - End-to-End Integration Tests', () => {
         
         await expenseService.createExpense({
           date: dateStr,
-          type: 'Food',
+          type: 'Groceries',
           amount: 450 + (month * 10),
           method: 'Debit',
           place: 'Store',
-          notes: `Food ${month}`
+          notes: `Groceries ${month}`
         });
 
         await expenseService.createExpense({
@@ -718,19 +718,19 @@ describe('Budget Service - End-to-End Integration Tests', () => {
       const history = await budgetService.getBudgetHistory(year, endMonth, periodMonths);
 
       // Verify all three categories are present
-      expect(history.categories.Food).toBeDefined();
+      expect(history.categories.Groceries).toBeDefined();
       expect(history.categories.Gas).toBeDefined();
       expect(history.categories.Other).toBeDefined();
 
       // Verify each category has 3 months of history
-      expect(history.categories.Food.history.length).toBe(3);
+      expect(history.categories.Groceries.history.length).toBe(3);
       expect(history.categories.Gas.history.length).toBe(3);
       expect(history.categories.Other.history.length).toBe(3);
 
-      // Verify Food calculations
+      // Verify Groceries calculations
       // Spending: 460, 470, 480 - all under 500
-      expect(history.categories.Food.successRate).toBe(100);
-      expect(history.categories.Food.averageSpent).toBeCloseTo(470, 1);
+      expect(history.categories.Groceries.successRate).toBe(100);
+      expect(history.categories.Groceries.averageSpent).toBeCloseTo(470, 1);
 
       // Verify Gas calculations
       // Spending: 185, 190, 195 - all under 200
@@ -755,12 +755,12 @@ describe('Budget Service - End-to-End Integration Tests', () => {
 
       // Create budgets and expenses for 12 months
       for (let month = 1; month <= 12; month++) {
-        await budgetService.createBudget(year, month, 'Food', 500);
+        await budgetService.createBudget(year, month, 'Groceries', 500);
         
         const dateStr = `${year}-${String(month).padStart(2, '0')}-15`;
         await expenseService.createExpense({
           date: dateStr,
-          type: 'Food',
+          type: 'Groceries',
           amount: 400 + (month * 5),
           method: 'Debit',
           place: 'Store',
@@ -771,21 +771,21 @@ describe('Budget Service - End-to-End Integration Tests', () => {
       // Test 3-month period
       const history3 = await budgetService.getBudgetHistory(year, 12, 3);
       expect(history3.period.months).toBe(3);
-      expect(history3.categories.Food.history.length).toBe(3);
+      expect(history3.categories.Groceries.history.length).toBe(3);
       expect(history3.period.start).toBe('2090-10-01');
       expect(history3.period.end).toBe('2090-12-01');
 
       // Test 6-month period
       const history6 = await budgetService.getBudgetHistory(year, 12, 6);
       expect(history6.period.months).toBe(6);
-      expect(history6.categories.Food.history.length).toBe(6);
+      expect(history6.categories.Groceries.history.length).toBe(6);
       expect(history6.period.start).toBe('2090-07-01');
       expect(history6.period.end).toBe('2090-12-01');
 
       // Test 12-month period
       const history12 = await budgetService.getBudgetHistory(year, 12, 12);
       expect(history12.period.months).toBe(12);
-      expect(history12.categories.Food.history.length).toBe(12);
+      expect(history12.categories.Groceries.history.length).toBe(12);
       expect(history12.period.start).toBe('2090-01-01');
       expect(history12.period.end).toBe('2090-12-01');
 
@@ -799,14 +799,14 @@ describe('Budget Service - End-to-End Integration Tests', () => {
 
     test('should handle year boundary in historical analysis', async () => {
       // Create budgets spanning year boundary (Nov 2089 - Jan 2090)
-      await budgetService.createBudget(2089, 11, 'Food', 500);
-      await budgetService.createBudget(2089, 12, 'Food', 500);
-      await budgetService.createBudget(2090, 1, 'Food', 500);
+      await budgetService.createBudget(2089, 11, 'Groceries', 500);
+      await budgetService.createBudget(2089, 12, 'Groceries', 500);
+      await budgetService.createBudget(2090, 1, 'Groceries', 500);
 
       // Create expenses
       await expenseService.createExpense({
         date: '2089-11-15',
-        type: 'Food',
+        type: 'Groceries',
         amount: 450,
         method: 'Debit',
         place: 'Store',
@@ -815,7 +815,7 @@ describe('Budget Service - End-to-End Integration Tests', () => {
 
       await expenseService.createExpense({
         date: '2089-12-15',
-        type: 'Food',
+        type: 'Groceries',
         amount: 480,
         method: 'Debit',
         place: 'Store',
@@ -824,7 +824,7 @@ describe('Budget Service - End-to-End Integration Tests', () => {
 
       await expenseService.createExpense({
         date: '2090-01-15',
-        type: 'Food',
+        type: 'Groceries',
         amount: 470,
         method: 'Debit',
         place: 'Store',
@@ -837,15 +837,15 @@ describe('Budget Service - End-to-End Integration Tests', () => {
       // Verify period spans year boundary
       expect(history.period.start).toBe('2089-11-01');
       expect(history.period.end).toBe('2090-01-01');
-      expect(history.categories.Food.history.length).toBe(3);
+      expect(history.categories.Groceries.history.length).toBe(3);
 
       // Verify months are in correct order
-      expect(history.categories.Food.history[0].year).toBe(2089);
-      expect(history.categories.Food.history[0].month).toBe(11);
-      expect(history.categories.Food.history[1].year).toBe(2089);
-      expect(history.categories.Food.history[1].month).toBe(12);
-      expect(history.categories.Food.history[2].year).toBe(2090);
-      expect(history.categories.Food.history[2].month).toBe(1);
+      expect(history.categories.Groceries.history[0].year).toBe(2089);
+      expect(history.categories.Groceries.history[0].month).toBe(11);
+      expect(history.categories.Groceries.history[1].year).toBe(2089);
+      expect(history.categories.Groceries.history[1].month).toBe(12);
+      expect(history.categories.Groceries.history[2].year).toBe(2090);
+      expect(history.categories.Groceries.history[2].month).toBe(1);
 
       // Clean up
       await new Promise((resolve) => {

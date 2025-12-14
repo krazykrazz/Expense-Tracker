@@ -464,6 +464,16 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v4.5.1</div>
+                <div className="changelog-date">December 6, 2025</div>
+                <ul className="changelog-items">
+                  <li>Reminder Item Highlighting: Investments and loans needing updates are now highlighted with orange borders and warning badges</li>
+                  <li>Pulsing "⚠️ Update Needed" badge draws attention to items missing data</li>
+                  <li>Clear visual distinction between complete and incomplete items</li>
+                  <li>Highlighting automatically disappears after data is added</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v4.5.0</div>
                 <div className="changelog-date">December 6, 2025</div>
                 <ul className="changelog-items">

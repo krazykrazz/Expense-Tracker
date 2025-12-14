@@ -41,9 +41,9 @@ describe('ExpenseService - Property-Based Tests for Fixed Expense Aggregation', 
       fc.asyncProperty(
         // Generate a random category
         fc.constantFrom(...CATEGORIES),
-        // Generate a random time period (year and month)
+        // Generate a random time period (use future dates to avoid conflicts)
         fc.record({
-          year: fc.integer({ min: 2020, max: 2030 }),
+          year: fc.integer({ min: 2050, max: 2060 }), // Use future years to avoid existing data
           month: fc.integer({ min: 1, max: 12 })
         }),
         // Generate regular expenses
@@ -135,7 +135,7 @@ describe('ExpenseService - Property-Based Tests for Fixed Expense Aggregation', 
         fc.constantFrom(...PAYMENT_METHODS),
         // Generate a random time period (year and month)
         fc.record({
-          year: fc.integer({ min: 2020, max: 2030 }),
+          year: fc.integer({ min: 2050, max: 2060 }), // Use future years to avoid existing data
           month: fc.integer({ min: 1, max: 12 })
         }),
         // Generate regular expenses

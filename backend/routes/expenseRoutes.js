@@ -23,6 +23,9 @@ router.get('/expenses/annual-summary', expenseController.getAnnualSummary);
 // GET /api/expenses/tax-deductible - Get tax-deductible expenses summary
 router.get('/expenses/tax-deductible', expenseController.getTaxDeductibleSummary);
 
+// GET /api/expenses/:id - Get an expense by ID with people data
+router.get('/expenses/:id', expenseController.getExpenseWithPeople);
+
 // PUT /api/expenses/:id - Update an expense by ID
 router.put('/expenses/:id', expenseController.updateExpense);
 

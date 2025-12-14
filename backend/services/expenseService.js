@@ -1,5 +1,6 @@
 const expenseRepository = require('../repositories/expenseRepository');
 const fixedExpenseRepository = require('../repositories/fixedExpenseRepository');
+const expensePeopleRepository = require('../repositories/expensePeopleRepository');
 const loanService = require('./loanService');
 const investmentService = require('./investmentService');
 const { calculateWeek } = require('../utils/dateUtils');
@@ -947,6 +948,211 @@ class ExpenseService {
       }
     };
   }
+
+  /**
+   * Get tax-deductible summary with people grouping for a specific year
+   * @param {number} year - Year
+   * @returns {Promise<Object>} Tax-deductible summary object with people grouping
+   */
+  async getTaxDeductibleWithPeople(year) {
+    // Validate year parameter
+    if (!year) {
+      throw new Error('Year parameter is required');
+    }
+
+    const yearNum = parseInt(year);
+    if (isNaN(yearNum)) {
+      throw new Error('Year must be a valid number');
+    }
+
+    // Get all tax-deductible expenses for the year
+    const expenses = await expenseRepository.getTaxDeductibleExpenses(yearNum);
+
+    // Get people associations for all expenses
+    const expensesWithPeople = await Promise.all(
+      expenses.map(async (expense) => {
+        const people = await expensePeopleRepository.getPeopleForExpense(expense.id);
+        return {
+          ...expense,
+          people: people
+        };
+      })
+    );
+
+    // Group expenses by person
+    const groupedByPerson = this.groupExpensesByPerson(expensesWithPeople);
+
+    // Calculate person totals
+    const personTotals = this.calculatePersonTotals(expensesWithPeople);
+
+    // Handle unassigned expenses
+    const unassignedExpenses = this.handleUnassignedExpenses(expensesWithPeople);
+
+    // Calculate overall totals
+    const medicalExpenses = expensesWithPeople.filter(exp => exp.type === 'Tax - Medical');
+    const donationExpenses = expensesWithPeople.filter(exp => exp.type === 'Tax - Donation');
+    const medicalTotal = medicalExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+    const donationTotal = donationExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+    const totalDeductible = medicalTotal + donationTotal;
+
+    return {
+      year: yearNum,
+      totalDeductible: parseFloat(totalDeductible.toFixed(2)),
+      medicalTotal: parseFloat(medicalTotal.toFixed(2)),
+      donationTotal: parseFloat(donationTotal.toFixed(2)),
+      groupedByPerson,
+      personTotals,
+      unassignedExpenses,
+      expenses: {
+        medical: medicalExpenses,
+        donations: donationExpenses
+      }
+    };
+  }
+
+  /**
+   * Group expenses by person and provider
+   * @param {Array} expenses - Array of expenses with people associations
+   * @returns {Object} Expenses grouped by person and provider
+   */
+  groupExpensesByPerson(expenses) {
+    const grouped = {};
+
+    expenses.forEach(expense => {
+      if (expense.people && expense.people.length > 0) {
+        expense.people.forEach(person => {
+          // Initialize person group if not exists
+          if (!grouped[person.personId]) {
+            grouped[person.personId] = {
+              personId: person.personId,
+              personName: person.name,
+              providers: {},
+              total: 0
+            };
+          }
+
+          // Initialize provider group if not exists
+          const provider = expense.place || 'Unknown Provider';
+          if (!grouped[person.personId].providers[provider]) {
+            grouped[person.personId].providers[provider] = {
+              providerName: provider,
+              expenses: [],
+              total: 0
+            };
+          }
+
+          // Add expense to provider group
+          grouped[person.personId].providers[provider].expenses.push({
+            ...expense,
+            allocatedAmount: person.amount
+          });
+          grouped[person.personId].providers[provider].total += person.amount;
+          grouped[person.personId].total += person.amount;
+        });
+      }
+    });
+
+    // Convert providers object to array for easier frontend consumption
+    Object.keys(grouped).forEach(personId => {
+      grouped[personId].providers = Object.values(grouped[personId].providers);
+      grouped[personId].total = parseFloat(grouped[personId].total.toFixed(2));
+      
+      // Sort providers by total amount (descending)
+      grouped[personId].providers.sort((a, b) => b.total - a.total);
+      
+      // Round provider totals
+      grouped[personId].providers.forEach(provider => {
+        provider.total = parseFloat(provider.total.toFixed(2));
+      });
+    });
+
+    return grouped;
+  }
+
+  /**
+   * Calculate per-person totals from expenses
+   * @param {Array} expenses - Array of expenses with people associations
+   * @returns {Object} Person totals by person ID
+   */
+  calculatePersonTotals(expenses) {
+    const totals = {};
+
+    expenses.forEach(expense => {
+      if (expense.people && expense.people.length > 0) {
+        expense.people.forEach(person => {
+          if (!totals[person.personId]) {
+            totals[person.personId] = {
+              personId: person.personId,
+              personName: person.name,
+              medicalTotal: 0,
+              donationTotal: 0,
+              total: 0
+            };
+          }
+
+          const amount = person.amount;
+          if (expense.type === 'Tax - Medical') {
+            totals[person.personId].medicalTotal += amount;
+          } else if (expense.type === 'Tax - Donation') {
+            totals[person.personId].donationTotal += amount;
+          }
+          totals[person.personId].total += amount;
+        });
+      }
+    });
+
+    // Round all totals
+    Object.keys(totals).forEach(personId => {
+      totals[personId].medicalTotal = parseFloat(totals[personId].medicalTotal.toFixed(2));
+      totals[personId].donationTotal = parseFloat(totals[personId].donationTotal.toFixed(2));
+      totals[personId].total = parseFloat(totals[personId].total.toFixed(2));
+    });
+
+    return totals;
+  }
+
+  /**
+   * Handle unassigned expenses (expenses without people associations)
+   * @param {Array} expenses - Array of expenses with people associations
+   * @returns {Object} Unassigned expenses grouped by provider
+   */
+  handleUnassignedExpenses(expenses) {
+    const unassigned = expenses.filter(expense => !expense.people || expense.people.length === 0);
+    
+    const groupedByProvider = {};
+    let totalUnassigned = 0;
+
+    unassigned.forEach(expense => {
+      const provider = expense.place || 'Unknown Provider';
+      
+      if (!groupedByProvider[provider]) {
+        groupedByProvider[provider] = {
+          providerName: provider,
+          expenses: [],
+          total: 0
+        };
+      }
+
+      groupedByProvider[provider].expenses.push(expense);
+      groupedByProvider[provider].total += expense.amount;
+      totalUnassigned += expense.amount;
+    });
+
+    // Convert to array and round totals
+    const providers = Object.values(groupedByProvider);
+    providers.forEach(provider => {
+      provider.total = parseFloat(provider.total.toFixed(2));
+    });
+
+    // Sort providers by total amount (descending)
+    providers.sort((a, b) => b.total - a.total);
+
+    return {
+      providers,
+      total: parseFloat(totalUnassigned.toFixed(2)),
+      count: unassigned.length
+    };
+  }
   /**
    * Get distinct place names from expenses
    * @returns {Promise<Array<string>>} Array of unique place names
@@ -966,6 +1172,166 @@ class ExpenseService {
     }
 
     return await expenseRepository.getSuggestedCategory(place.trim());
+  }
+
+  /**
+   * Validate person allocations against total expense amount
+   * @param {number} totalAmount - Total expense amount
+   * @param {Array} allocations - Array of {personId, amount} objects
+   * @throws {Error} If validation fails
+   */
+  validatePersonAllocations(totalAmount, allocations) {
+    if (!allocations || !Array.isArray(allocations)) {
+      throw new Error('Person allocations must be an array');
+    }
+
+    if (allocations.length === 0) {
+      throw new Error('At least one person allocation is required');
+    }
+
+    // Validate each allocation
+    for (const allocation of allocations) {
+      if (!allocation.personId || typeof allocation.personId !== 'number' || allocation.personId <= 0) {
+        throw new Error('Each allocation must have a valid personId');
+      }
+
+      if (allocation.amount === undefined || allocation.amount === null) {
+        throw new Error('Each allocation must have an amount');
+      }
+
+      const amount = parseFloat(allocation.amount);
+      if (isNaN(amount) || amount <= 0) {
+        throw new Error('Each allocation amount must be a positive number');
+      }
+
+      // Check for max 2 decimal places
+      if (!/^\d+(\.\d{1,2})?$/.test(allocation.amount.toString())) {
+        throw new Error('Allocation amounts must have at most 2 decimal places');
+      }
+    }
+
+    // Check for duplicate person IDs first (before sum validation)
+    const personIds = allocations.map(a => a.personId);
+    const uniquePersonIds = [...new Set(personIds)];
+    if (personIds.length !== uniquePersonIds.length) {
+      throw new Error('Cannot allocate to the same person multiple times');
+    }
+
+    // Check that allocations sum to total amount
+    const totalAllocated = allocations.reduce((sum, allocation) => {
+      return sum + parseFloat(allocation.amount);
+    }, 0);
+
+    // Use a small epsilon for floating point comparison
+    const epsilon = 0.005; // Smaller epsilon for more precise validation
+    if (Math.abs(totalAllocated - totalAmount) > epsilon) {
+      throw new Error(`Total allocated amount (${totalAllocated.toFixed(2)}) must equal expense amount (${totalAmount.toFixed(2)})`);
+    }
+  }
+
+  /**
+   * Create a new expense with people associations
+   * @param {Object} expenseData - Expense data
+   * @param {Array} personAllocations - Array of {personId, amount} objects
+   * @returns {Promise<Object>} Created expense with people data
+   */
+  async createExpenseWithPeople(expenseData, personAllocations = []) {
+    // Validate the expense data first
+    this.validateExpense(expenseData);
+
+    // If people allocations are provided, validate them
+    if (personAllocations && personAllocations.length > 0) {
+      this.validatePersonAllocations(parseFloat(expenseData.amount), personAllocations);
+    }
+
+    // Create the expense first
+    const createdExpense = await this.createExpense(expenseData);
+
+    // If people allocations are provided, create the associations
+    if (personAllocations && personAllocations.length > 0) {
+      const associations = await expensePeopleRepository.createAssociations(
+        createdExpense.id,
+        personAllocations
+      );
+
+      // Return expense with people data
+      return {
+        ...createdExpense,
+        people: associations.map(assoc => ({
+          personId: assoc.personId,
+          amount: assoc.amount
+        }))
+      };
+    }
+
+    return createdExpense;
+  }
+
+  /**
+   * Update an expense with people associations
+   * @param {number} id - Expense ID
+   * @param {Object} expenseData - Updated expense data
+   * @param {Array} personAllocations - Array of {personId, amount} objects
+   * @returns {Promise<Object|null>} Updated expense with people data or null
+   */
+  async updateExpenseWithPeople(id, expenseData, personAllocations = []) {
+    // Validate the expense data first
+    this.validateExpense(expenseData);
+
+    // If people allocations are provided, validate them
+    if (personAllocations && personAllocations.length > 0) {
+      this.validatePersonAllocations(parseFloat(expenseData.amount), personAllocations);
+    }
+
+    // Update the expense first
+    const updatedExpense = await this.updateExpense(id, expenseData);
+
+    if (!updatedExpense) {
+      return null;
+    }
+
+    // Update people associations
+    const associations = await expensePeopleRepository.updateExpenseAllocations(
+      id,
+      personAllocations || []
+    );
+
+    // Return expense with people data
+    return {
+      ...updatedExpense,
+      people: associations.map(assoc => ({
+        personId: assoc.personId,
+        amount: assoc.amount
+      }))
+    };
+  }
+
+  /**
+   * Get an expense with associated people data
+   * @param {number} id - Expense ID
+   * @returns {Promise<Object|null>} Expense with people data or null
+   */
+  async getExpenseWithPeople(id) {
+    // Get the expense first
+    const expense = await this.getExpenseById(id);
+
+    if (!expense) {
+      return null;
+    }
+
+    // Get associated people
+    const people = await expensePeopleRepository.getPeopleForExpense(id);
+
+    // Return expense with people data
+    return {
+      ...expense,
+      people: people.map(person => ({
+        personId: person.personId,
+        name: person.name,
+        dateOfBirth: person.dateOfBirth,
+        amount: person.amount
+      }))
+    };
   }
 }
 

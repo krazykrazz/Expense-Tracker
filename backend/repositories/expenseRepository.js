@@ -375,6 +375,158 @@ class ExpenseRepository {
   }
 
   /**
+   * Get merchant analytics data with aggregated spending information
+   * @param {Object} filters - Date filters { period, startDate, endDate }
+   * @returns {Promise<Array>} Array of merchant analytics objects
+   */
+  async getMerchantAnalytics(filters = {}) {
+    const db = await getDatabase();
+    
+    return new Promise((resolve, reject) => {
+      let sql = `
+        SELECT 
+          place as name,
+          SUM(amount) as totalSpend,
+          COUNT(DISTINCT date) as visitCount,
+          SUM(amount) / COUNT(DISTINCT date) as averageSpend,
+          MIN(date) as firstVisit,
+          MAX(date) as lastVisit
+        FROM expenses
+        WHERE place IS NOT NULL AND place != ''
+      `;
+      
+      const params = [];
+      
+      // Add date filtering based on filters
+      if (filters.startDate && filters.endDate) {
+        sql += ' AND date >= ? AND date <= ?';
+        params.push(filters.startDate, filters.endDate);
+      } else if (filters.startDate) {
+        sql += ' AND date >= ?';
+        params.push(filters.startDate);
+      } else if (filters.endDate) {
+        sql += ' AND date <= ?';
+        params.push(filters.endDate);
+      }
+      
+      sql += `
+        GROUP BY place
+        ORDER BY totalSpend DESC
+      `;
+      
+      db.all(sql, params, (err, rows) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        
+        // Process results to calculate additional fields
+        const results = rows.map(row => ({
+          name: row.name,
+          totalSpend: parseFloat(row.totalSpend.toFixed(2)),
+          visitCount: row.visitCount,
+          averageSpend: parseFloat(row.averageSpend.toFixed(2)),
+          firstVisit: row.firstVisit,
+          lastVisit: row.lastVisit
+        }));
+        
+        resolve(results);
+      });
+    });
+  }
+
+  /**
+   * Get all expenses for a specific merchant with optional date filtering
+   * @param {string} merchantName - The merchant/place name
+   * @param {Object} filters - Date filters { period, startDate, endDate }
+   * @returns {Promise<Array>} Array of expense objects
+   */
+  async getMerchantExpenses(merchantName, filters = {}) {
+    const db = await getDatabase();
+    
+    return new Promise((resolve, reject) => {
+      let sql = `
+        SELECT id, date, place, notes, amount, type, method, week
+        FROM expenses
+        WHERE LOWER(place) = LOWER(?)
+      `;
+      
+      const params = [merchantName];
+      
+      // Add date filtering based on filters
+      if (filters.startDate && filters.endDate) {
+        sql += ' AND date >= ? AND date <= ?';
+        params.push(filters.startDate, filters.endDate);
+      } else if (filters.startDate) {
+        sql += ' AND date >= ?';
+        params.push(filters.startDate);
+      } else if (filters.endDate) {
+        sql += ' AND date <= ?';
+        params.push(filters.endDate);
+      }
+      
+      sql += ' ORDER BY date DESC';
+      
+      db.all(sql, params, (err, rows) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        resolve(rows || []);
+      });
+    });
+  }
+
+  /**
+   * Get monthly trend data for a specific merchant
+   * @param {string} merchantName - The merchant/place name
+   * @param {number} months - Number of months to include (default 12)
+   * @returns {Promise<Array>} Array of monthly trend objects
+   */
+  async getMerchantTrend(merchantName, months = 12) {
+    const db = await getDatabase();
+    
+    return new Promise((resolve, reject) => {
+      const sql = `
+        SELECT 
+          strftime('%Y', date) as year,
+          strftime('%m', date) as month,
+          SUM(amount) as amount,
+          COUNT(*) as visitCount
+        FROM expenses
+        WHERE LOWER(place) = LOWER(?)
+          AND date >= date('now', '-${months} months')
+        GROUP BY strftime('%Y-%m', date)
+        ORDER BY year, month
+      `;
+      
+      db.all(sql, [merchantName], (err, rows) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        
+        // Process results to include month names and format data
+        const results = rows.map(row => {
+          const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                             'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+          const monthIndex = parseInt(row.month) - 1;
+          
+          return {
+            year: parseInt(row.year),
+            month: parseInt(row.month),
+            monthName: `${monthNames[monthIndex]} ${row.year}`,
+            amount: parseFloat(row.amount.toFixed(2)),
+            visitCount: row.visitCount
+          };
+        });
+        
+        resolve(results);
+      });
+    });
+  }
+
+  /**
    * Get summary data for a specific month
    * @param {number} year - Year
    * @param {number} month - Month (1-12)

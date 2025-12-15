@@ -6,6 +6,8 @@ This feature adds a dedicated Tax Deductible Expenses section to the Annual Summ
 
 The design leverages the existing expense type system where 'Tax - Medical' and 'Tax - Donation' types identify tax-deductible expenses. The solution follows the established patterns in the codebase for data fetching, service layer logic, and component structure.
 
+> **Note:** This feature has been extended by the [Medical Expense People Tracking](../medical-expense-people-tracking/design.md) spec (v4.6.0), which adds the ability to associate medical expenses with family members and provides person-grouped tax reporting. See that spec for details on people management, expense allocation, and enhanced tax reporting views.
+
 ## Architecture
 
 ### System Components

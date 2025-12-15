@@ -18,6 +18,9 @@ RUN npm run build
 # Stage 2: Backend Dependencies
 FROM node:18-alpine AS backend-deps
 
+# Install build dependencies for native modules (sqlite3)
+RUN apk add --no-cache python3 make g++
+
 WORKDIR /build/backend
 
 # Copy backend package files

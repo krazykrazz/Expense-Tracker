@@ -2,7 +2,10 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import './TaxDeductible.css';
 import { formatAmount, formatLocalDate, getMonthNameShort } from '../utils/formatters';
 import { getPeople } from '../services/peopleApi';
-import { updateExpense } from '../services/expenseApi';
+import { getExpenseWithPeople, updateExpense } from '../services/expenseApi';
+import { API_ENDPOINTS } from '../config';
+import { PAYMENT_METHODS } from '../utils/constants';
+import PersonAllocationModal from './PersonAllocationModal';
 
 const TaxDeductible = ({ year, refreshTrigger }) => {
   const [taxDeductible, setTaxDeductible] = useState(null);
@@ -15,17 +18,25 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
   const [expandedPersons, setExpandedPersons] = useState({});
   const [unassignedExpanded, setUnassignedExpanded] = useState(false);
   
-  // Quick assign state
+  // People and categories state
   const [people, setPeople] = useState([]);
-  const [assigningExpenseId, setAssigningExpenseId] = useState(null);
-  const [assignError, setAssignError] = useState(null);
+  const [categories, setCategories] = useState([]);
+  
+  // Edit modal state
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [expenseToEdit, setExpenseToEdit] = useState(null);
+  const [editFormData, setEditFormData] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editMessage, setEditMessage] = useState({ text: '', type: '' });
+  const [selectedPeople, setSelectedPeople] = useState([]);
+  const [showPersonAllocation, setShowPersonAllocation] = useState(false);
 
   useEffect(() => {
     fetchTaxDeductibleData();
   }, [year, groupByPerson, refreshTrigger]);
 
   useEffect(() => {
-    // Fetch people list for quick assign functionality
+    // Fetch people list and categories
     const fetchPeopleData = async () => {
       try {
         const peopleData = await getPeople();
@@ -34,7 +45,21 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
         console.error('Error fetching people:', err);
       }
     };
+    
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch(API_ENDPOINTS.CATEGORIES);
+        if (response.ok) {
+          const data = await response.json();
+          setCategories(data.categories || []);
+        }
+      } catch (err) {
+        console.error('Error fetching categories:', err);
+      }
+    };
+    
     fetchPeopleData();
+    fetchCategories();
   }, [refreshTrigger]);
 
   // Listen for peopleUpdated event to refresh people list
@@ -92,44 +117,138 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
     }));
   }, []);
 
-  const handleQuickAssign = useCallback(async (expenseId, personId) => {
-    if (!personId) return;
+  // Edit modal handlers
+  const handleEditClick = useCallback(async (expense) => {
+    setExpenseToEdit(expense);
+    const dateValue = expense.date.includes('T') ? expense.date.split('T')[0] : expense.date;
+    setEditFormData({
+      date: dateValue,
+      place: expense.place || '',
+      notes: expense.notes || '',
+      amount: expense.amount.toString(),
+      type: expense.type,
+      method: expense.method || 'Debit'
+    });
     
-    setAssigningExpenseId(expenseId);
-    setAssignError(null);
-    
-    try {
-      // Find the expense to get its details
-      const expense = taxDeductible?.unassignedExpenses?.providers
-        ?.flatMap(p => p.expenses)
-        ?.find(e => e.id === expenseId);
-      
-      if (!expense) {
-        throw new Error('Expense not found');
+    // Load people assignments for medical expenses
+    if (expense.type === 'Tax - Medical') {
+      try {
+        const expenseWithPeople = await getExpenseWithPeople(expense.id);
+        if (expenseWithPeople.people && expenseWithPeople.people.length > 0) {
+          setSelectedPeople(expenseWithPeople.people.map(p => ({
+            id: p.personId,
+            name: p.name,
+            amount: p.amount
+          })));
+        } else {
+          setSelectedPeople([]);
+        }
+      } catch (error) {
+        console.error('Failed to load people for expense:', error);
+        setSelectedPeople([]);
       }
+    } else {
+      setSelectedPeople([]);
+    }
+    
+    setShowEditModal(true);
+    setEditMessage({ text: '', type: '' });
+  }, []);
+
+  const handleEditChange = (e) => {
+    const { name, value } = e.target;
+    setEditFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    
+    // Clear people selection when changing away from medical expenses
+    if (name === 'type' && value !== 'Tax - Medical') {
+      setSelectedPeople([]);
+    }
+  };
+
+  const handleEditPeopleChange = (e) => {
+    const selectedOptions = Array.from(e.target.selectedOptions, option => ({
+      id: parseInt(option.value),
+      name: option.text
+    }));
+    setSelectedPeople(selectedOptions);
+  };
+
+  const handleEditPersonAllocation = (allocations) => {
+    setShowPersonAllocation(false);
+    setSelectedPeople(allocations);
+  };
+
+  const isEditingMedicalExpense = editFormData.type === 'Tax - Medical';
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    setEditMessage({ text: '', type: '' });
+
+    // For medical expenses with multiple people, show allocation modal if amounts not set
+    if (isEditingMedicalExpense && selectedPeople.length > 1 && !selectedPeople[0].amount) {
+      setShowPersonAllocation(true);
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const dateValue = editFormData.date.includes('T') ? editFormData.date.split('T')[0] : editFormData.date;
       
-      // Update the expense with the person allocation (full amount to single person)
-      await updateExpense(expenseId, {
-        date: expense.date,
-        place: expense.place,
-        notes: expense.notes,
-        amount: expense.amount,
-        type: expense.type,
-        method: expense.method
-      }, [{ personId: parseInt(personId), amount: expense.amount }]);
+      // Prepare people allocations for medical expenses
+      let peopleAllocations = null;
+      if (isEditingMedicalExpense && selectedPeople.length > 0) {
+        if (selectedPeople.length === 1) {
+          peopleAllocations = [{
+            personId: selectedPeople[0].id,
+            amount: parseFloat(editFormData.amount)
+          }];
+        } else {
+          peopleAllocations = selectedPeople.map(person => ({
+            personId: person.id,
+            amount: person.amount
+          }));
+        }
+      } else if (isEditingMedicalExpense) {
+        peopleAllocations = [];
+      }
+
+      await updateExpense(expenseToEdit.id, {
+        date: dateValue,
+        place: editFormData.place,
+        notes: editFormData.notes,
+        amount: parseFloat(editFormData.amount),
+        type: editFormData.type,
+        method: editFormData.method
+      }, peopleAllocations);
       
       // Refresh the data
       await fetchTaxDeductibleData();
       
-      // Dispatch event to notify other components (expense list) of the update
+      // Dispatch event to notify other components
       window.dispatchEvent(new CustomEvent('expensesUpdated'));
-    } catch (err) {
-      console.error('Error assigning person to expense:', err);
-      setAssignError(`Failed to assign: ${err.message}`);
+      
+      setShowEditModal(false);
+      setExpenseToEdit(null);
+      setSelectedPeople([]);
+    } catch (error) {
+      console.error('Error updating expense:', error);
+      setEditMessage({ text: error.message, type: 'error' });
     } finally {
-      setAssigningExpenseId(null);
+      setIsSubmitting(false);
     }
-  }, [taxDeductible, year, groupByPerson]);
+  };
+
+  const handleCancelEdit = () => {
+    setShowEditModal(false);
+    setExpenseToEdit(null);
+    setEditFormData({});
+    setEditMessage({ text: '', type: '' });
+    setSelectedPeople([]);
+  };
 
   const formatDate = formatLocalDate;
 
@@ -335,9 +454,6 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
                     </div>
                     {unassignedExpanded && (
                       <div className="unassigned-expenses">
-                        {assignError && (
-                          <div className="assign-error">{assignError}</div>
-                        )}
                         {taxDeductible.unassignedExpenses.providers.map((provider) => (
                           <div key={provider.providerName} className="provider-group unassigned-provider">
                             <div className="provider-header">
@@ -356,23 +472,14 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
                                     )}
                                   </div>
                                   <div className="tax-expense-amount">${formatAmount(expense.amount)}</div>
-                                  <div className="quick-assign">
-                                    <select
-                                      className="quick-assign-select"
-                                      onChange={(e) => handleQuickAssign(expense.id, e.target.value)}
-                                      disabled={assigningExpenseId === expense.id}
-                                      defaultValue=""
+                                  <div className="expense-actions">
+                                    <button
+                                      className="edit-expense-btn"
+                                      onClick={() => handleEditClick(expense)}
+                                      title="Edit expense and assign people"
                                     >
-                                      <option value="" disabled>Assign to...</option>
-                                      {people.map((person) => (
-                                        <option key={person.id} value={person.id}>
-                                          {person.name}
-                                        </option>
-                                      ))}
-                                    </select>
-                                    {assigningExpenseId === expense.id && (
-                                      <span className="assigning-indicator">...</span>
-                                    )}
+                                      ✏️ Edit
+                                    </button>
                                   </div>
                                 </div>
                               ))}
@@ -458,6 +565,172 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
           </div>
         </>
       )}
+
+      {/* Edit Modal */}
+      {showEditModal && expenseToEdit && (
+        <div className="modal-overlay" onClick={handleCancelEdit}>
+          <div className="edit-modal" onClick={(e) => e.stopPropagation()}>
+            <button 
+              className="modal-close-button" 
+              onClick={handleCancelEdit}
+              aria-label="Close"
+            >
+              ×
+            </button>
+            <h3>Edit Expense</h3>
+            <form onSubmit={handleEditSubmit} className="edit-form">
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="edit-date">Date *</label>
+                  <input
+                    type="date"
+                    id="edit-date"
+                    name="date"
+                    value={editFormData.date}
+                    onChange={handleEditChange}
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="edit-amount">Amount *</label>
+                  <input
+                    type="number"
+                    id="edit-amount"
+                    name="amount"
+                    value={editFormData.amount}
+                    onChange={handleEditChange}
+                    step="0.01"
+                    min="0.01"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="edit-type">Type *</label>
+                  <select
+                    id="edit-type"
+                    name="type"
+                    value={editFormData.type}
+                    onChange={handleEditChange}
+                    required
+                  >
+                    {categories.map((category) => (
+                      <option key={category} value={category}>
+                        {category}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="edit-method">Payment Method *</label>
+                  <select
+                    id="edit-method"
+                    name="method"
+                    value={editFormData.method}
+                    onChange={handleEditChange}
+                    required
+                  >
+                    {PAYMENT_METHODS.map((method) => (
+                      <option key={method} value={method}>{method}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="edit-place">Place</label>
+                <input
+                  type="text"
+                  id="edit-place"
+                  name="place"
+                  value={editFormData.place}
+                  onChange={handleEditChange}
+                  maxLength="200"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="edit-notes">Notes</label>
+                <textarea
+                  id="edit-notes"
+                  name="notes"
+                  value={editFormData.notes}
+                  onChange={handleEditChange}
+                  maxLength="200"
+                  rows="3"
+                />
+              </div>
+
+              {/* People Selection for Medical Expenses */}
+              {isEditingMedicalExpense && (
+                <div className="form-group">
+                  <label htmlFor="edit-people">Assign to People</label>
+                  <select
+                    id="edit-people"
+                    name="people"
+                    multiple
+                    value={selectedPeople.map(p => p.id.toString())}
+                    onChange={handleEditPeopleChange}
+                    className="people-select"
+                    size={Math.min(people.length + 1, 4)}
+                  >
+                    <option value="" disabled>Select family members...</option>
+                    {people.map(person => (
+                      <option key={person.id} value={person.id}>
+                        {person.name}
+                      </option>
+                    ))}
+                  </select>
+                  {selectedPeople.length > 0 && (
+                    <div className="selected-people-info">
+                      Selected: {selectedPeople.map(p => p.name).join(', ')}
+                      {selectedPeople.length > 1 && (
+                        <span className="allocation-note"> (allocation required)</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {editMessage.text && (
+                <div className={`message ${editMessage.type}`}>
+                  {editMessage.text}
+                </div>
+              )}
+
+              <div className="dialog-actions">
+                <button 
+                  type="button"
+                  className="cancel-button" 
+                  onClick={handleCancelEdit}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit"
+                  className="save-button" 
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Person Allocation Modal */}
+      <PersonAllocationModal
+        isOpen={showPersonAllocation}
+        expense={{ amount: parseFloat(editFormData.amount) || 0 }}
+        selectedPeople={selectedPeople}
+        onSave={handleEditPersonAllocation}
+        onCancel={() => setShowPersonAllocation(false)}
+      />
     </div>
   );
 };

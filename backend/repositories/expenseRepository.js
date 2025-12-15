@@ -236,7 +236,7 @@ class ExpenseRepository {
     
     return new Promise((resolve, reject) => {
       const sql = `
-        SELECT id, date, place, amount, notes, type
+        SELECT id, date, place, amount, notes, type, method, week
         FROM expenses
         WHERE strftime('%Y', date) = ?
           AND type IN ('Tax - Medical', 'Tax - Donation')

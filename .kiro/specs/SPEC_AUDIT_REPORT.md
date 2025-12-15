@@ -1,6 +1,6 @@
 # Spec Audit Report
 
-**Date:** November 27, 2025  
+**Date:** November 27, 2025 (Updated: December 14, 2025)  
 **Auditor:** Kiro  
 **Status:** ✅ COMPLETED
 
@@ -99,9 +99,24 @@ All tasks completed. Implementation matches spec.
 
 ### 11. tax-deductible-view
 
-**Status:** ✅ NO CHANGES NEEDED
+**Status:** ✅ UPDATED
 
 All tasks completed. Implementation matches spec.
+
+**Changes Made (December 2025):**
+- ✅ Added note referencing medical-expense-people-tracking extension (v4.6.0)
+
+---
+
+### 11a. medical-expense-people-tracking (NEW - v4.6.0)
+
+**Status:** ✅ COMPLETED
+
+All tasks completed. This spec extends tax-deductible-view with:
+- People management for family members
+- Medical expense allocation to people
+- Person-grouped tax reporting with per-person subtotals by provider
+- Backward compatibility with existing medical expenses
 
 ---
 
@@ -155,6 +170,8 @@ All tasks completed. Implementation matches spec.
 | expanded-expense-categories | Updated category list |
 | configurable-monthly-gross | Updated task status |
 | expense-trend-indicators | Updated category count |
+| tax-deductible-view | Added reference to medical-expense-people-tracking extension |
+| medical-expense-people-tracking | NEW - Added v4.6.0 spec for people tracking |
 
 ---
 

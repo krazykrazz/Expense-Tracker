@@ -11,6 +11,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.6.2] - 2025-12-15
+
+### Fixed
+- **Tax Deductible Edit Form**: Fixed "payment method is required" error when editing expenses
+  - Added missing `method` and `week` fields to tax deductible expense query
+  - Replaced quick assign dropdown with full edit modal supporting multiple person selection
+  - Edit modal now matches ExpenseList functionality with all fields and person allocation
+- **Person Grouping**: Fixed to only include medical expenses
+  - Person grouping now correctly excludes donations from totals and lists
+  - Unassigned section now only shows medical expenses without person assignments
+
+---
+
+## [4.6.1] - 2025-12-15
+
+### Changed
+- **Multi-Person Medical Expense Display**: Improved vertical stacking layout
+  - Each person now displayed on separate line with name and allocation amount
+  - Consistent font size and weight between single and multi-person displays
+  - Better visual hierarchy with left border indicator for person list
+
+---
+
 ## [4.6.0] - 2025-12-14
 
 ### Added

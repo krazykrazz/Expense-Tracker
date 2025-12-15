@@ -4,6 +4,8 @@
 
 This feature adds a dedicated view within the Annual Summary to display tax-deductible expenses for a given year. Users need to easily identify and review their medical expenses and charitable donations for tax preparation purposes. The view will aggregate and display all expenses marked with tax-deductible types ('Tax - Medical' and 'Tax - Donation'), providing totals, breakdowns, and detailed listings.
 
+> **Note:** This feature has been extended by the [Medical Expense People Tracking](../medical-expense-people-tracking/requirements.md) spec (v4.6.0), which adds the ability to associate medical expenses with family members and provides person-grouped tax reporting with per-person subtotals by provider.
+
 ## Glossary
 
 - **Tax Deductible View**: A dedicated section within the Annual Summary component that displays expenses eligible for tax deductions

@@ -1,5 +1,39 @@
 # Expense Tracker Changelog
 
+## Version 4.6.0 - December 2025
+
+### Features
+- **Medical Expense People Tracking**: Associate medical expenses with family members for better tax reporting
+  - People management modal for adding/editing/deleting family members
+  - Single-person and multi-person expense allocation
+  - Person-grouped tax reporting with per-person subtotals by provider
+  - "Unassigned" section for medical expenses without people associations
+  - Backward compatibility with existing medical expenses
+  - Visual indicators showing assigned people on expense list
+
+### Database Changes
+- Added `people` table (id, name, date_of_birth, timestamps)
+- Added `expense_people` junction table (expense_id, person_id, amount)
+- Foreign key constraints with CASCADE DELETE
+- UNIQUE constraint on (expense_id, person_id)
+
+### API Changes
+- Added `GET /api/people` - Get all people
+- Added `POST /api/people` - Create person
+- Added `PUT /api/people/:id` - Update person
+- Added `DELETE /api/people/:id` - Delete person
+- Enhanced `POST /api/expenses` to accept people allocations
+- Enhanced `PUT /api/expenses/:id` to handle people updates
+- Enhanced `GET /api/expenses/tax-deductible` to support person grouping
+
+### Spec Updates
+- Added `.kiro/specs/medical-expense-people-tracking/` spec
+- Updated `.kiro/specs/tax-deductible-view/` to reference people tracking extension
+- Updated `.kiro/specs/expense-tracker/` to reference related specs
+- Updated `.kiro/specs/SPEC_AUDIT_REPORT.md` with new spec
+
+---
+
 ## Spec Audit - November 27, 2025
 
 ### Documentation Updates

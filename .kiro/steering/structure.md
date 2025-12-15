@@ -37,20 +37,24 @@ expense-tracker/
 ## Database Schema
 
 ### Tables
-- **expenses**: Main expense records with recurring tracking fields
+- **expenses**: Main expense records with date, place, amount, type, method, week
 - **monthly_gross**: Monthly income records (deprecated - replaced by income_sources)
-- **recurring_expenses**: Recurring expense templates
-- **income_sources**: Monthly income from multiple sources
+- **income_sources**: Monthly income from multiple sources with category tracking
 - **fixed_expenses**: Fixed monthly expenses with category and payment type tracking
 - **loans**: Loan and line of credit tracking
 - **loan_balances**: Monthly balance and rate history for loans
+- **investments**: Investment accounts (TFSA, RRSP)
+- **investment_values**: Monthly investment value snapshots
+- **budgets**: Monthly budget limits per category
+- **people**: Family members for medical expense tracking (name, date_of_birth)
+- **expense_people**: Junction table linking expenses to people with allocation amounts
 
 ### Key Fields
-- Expenses include `recurring_id` and `is_generated` to track template relationships
 - Week calculation (1-5) based on date
 - Tax-deductible types: "Tax - Medical" and "Tax - Donation"
 - Loans include `loan_type` ('loan' or 'line_of_credit') for different behavior
 - Loan balances have UNIQUE constraint on (loan_id, year, month)
+- expense_people has UNIQUE constraint on (expense_id, person_id)
 - Foreign keys enabled with CASCADE DELETE for referential integrity
 
 ## Component Organization

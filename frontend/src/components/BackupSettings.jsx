@@ -800,6 +800,24 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v4.6.2</div>
+                <div className="changelog-date">December 15, 2025</div>
+                <ul className="changelog-items">
+                  <li>Fixed tax deductible edit form to support multiple person selection</li>
+                  <li>Fixed person grouping to only include medical expenses (not donations)</li>
+                  <li>Added proper edit modal in tax deductible view for assigning people</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
+                <div className="changelog-version">v4.6.1</div>
+                <div className="changelog-date">December 15, 2025</div>
+                <ul className="changelog-items">
+                  <li>Improved multi-person medical expense display with vertical stacking</li>
+                  <li>Each person shown on separate line with allocation amount</li>
+                  <li>Consistent font styling between single and multi-person displays</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v4.6.0</div>
                 <div className="changelog-date">December 14, 2025</div>
                 <ul className="changelog-items">

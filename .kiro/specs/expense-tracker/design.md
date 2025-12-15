@@ -4,6 +4,13 @@
 
 The Expense Tracker Application is a full-stack web application consisting of a React-based frontend and a Node.js/Express backend with a relational database. The system enables users to record, edit, and delete expenses with detailed attributes, view transactions by month, search globally through all records, and analyze spending through various aggregated views including weekly totals, payment method breakdowns, and annual summaries. The application includes automated backup functionality, data import/restore capabilities, and visual highlighting for tax-related expenses (medical and donations) and high-value expenses.
 
+> **Related Specs:** This core spec has been extended by several feature specs:
+> - [Tax Deductible View](../tax-deductible-view/design.md) - Dedicated tax expense reporting
+> - [Medical Expense People Tracking](../medical-expense-people-tracking/design.md) (v4.6.0) - Associate medical expenses with family members
+> - [Budget Tracking Alerts](../budget-tracking-alerts/design.md) - Category budget management
+> - [Investment Tracking](../investment-tracking/design.md) - Portfolio tracking
+> - [Monthly Loans Balance](../monthly-loans-balance/design.md) - Loan and debt tracking
+
 ## Architecture
 
 ### System Architecture

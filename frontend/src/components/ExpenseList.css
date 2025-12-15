@@ -240,6 +240,14 @@
   color: #059669;
 }
 
+/* Ensure all children inherit the assigned color */
+.people-indicator.assigned .person-row,
+.people-indicator.assigned .person-name,
+.people-indicator.assigned .person-amount,
+.people-indicator.assigned .people-header {
+  color: #059669;
+}
+
 .people-indicator.unassigned {
   background-color: rgba(245, 158, 11, 0.15);
   color: #d97706;
@@ -276,6 +284,69 @@
   max-width: 150px;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* Multi-person vertical stacking */
+.people-indicator.multi-person {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 4px 6px;
+}
+
+.people-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+}
+
+.people-list-vertical {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  width: 100%;
+  margin-top: 2px;
+  padding-left: 2px;
+  border-left: 2px solid rgba(16, 185, 129, 0.3);
+}
+
+.tax-medical-row .people-list-vertical {
+  border-left-color: rgba(147, 197, 253, 0.4);
+}
+
+/* Ensure multi-person text inherits correct colors in tax-medical rows */
+.tax-medical-row .people-indicator.multi-person .person-row,
+.tax-medical-row .people-indicator.multi-person .person-name,
+.tax-medical-row .people-indicator.multi-person .person-amount {
+  color: #93c5fd;
+}
+
+.people-list-vertical .person-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 1px 4px;
+  font-size: 11px !important;
+  color: inherit;
+}
+
+.people-list-vertical .person-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px !important;
+  font-weight: normal;
+  color: inherit;
+}
+
+.people-list-vertical .person-amount {
+  font-weight: 600;
+  white-space: nowrap;
+  font-size: 11px !important;
+  color: inherit;
 }
 
 .unassigned-icon {

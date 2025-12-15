@@ -1034,13 +1034,17 @@ class ExpenseService {
 
   /**
    * Group expenses by person and provider
+   * Only includes medical expenses (Tax - Medical) since person grouping is for medical expense tracking
    * @param {Array} expenses - Array of expenses with people associations
    * @returns {Object} Expenses grouped by person and provider
    */
   groupExpensesByPerson(expenses) {
     const grouped = {};
 
-    expenses.forEach(expense => {
+    // Filter to only medical expenses - person grouping is specifically for medical expense tracking
+    const medicalExpenses = expenses.filter(exp => exp.type === 'Tax - Medical');
+
+    medicalExpenses.forEach(expense => {
       if (expense.people && expense.people.length > 0) {
         expense.people.forEach(person => {
           // Initialize person group if not exists
@@ -1134,12 +1138,16 @@ class ExpenseService {
   }
 
   /**
-   * Handle unassigned expenses (expenses without people associations)
+   * Handle unassigned expenses (medical expenses without people associations)
+   * Only includes medical expenses since person assignment is for medical expense tracking
    * @param {Array} expenses - Array of expenses with people associations
    * @returns {Object} Unassigned expenses grouped by provider
    */
   handleUnassignedExpenses(expenses) {
-    const unassigned = expenses.filter(expense => !expense.people || expense.people.length === 0);
+    // Filter to only medical expenses without people associations
+    const unassigned = expenses.filter(
+      expense => expense.type === 'Tax - Medical' && (!expense.people || expense.people.length === 0)
+    );
     
     const groupedByProvider = {};
     let totalUnassigned = 0;

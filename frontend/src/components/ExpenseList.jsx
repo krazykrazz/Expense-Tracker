@@ -47,26 +47,41 @@ const PeopleIndicator = ({ expense }) => {
   
   const tooltipContent = tooltipLines.join('\n');
 
-  // For single person, just show the name
-  // For multiple people, show names with allocation amounts
-  const displayContent = people.length === 1 
-    ? people[0].name
-    : people.map(p => `${p.name} ($${formatAmount(p.amount)})`).join(', ');
-
-  return (
-    <span 
-      className="people-indicator assigned"
-      title={tooltipContent}
-      aria-label={`Assigned to ${people.length} ${people.length === 1 ? 'person' : 'people'}: ${people.map(p => p.name).join(', ')}`}
-    >
-      <span className="person-icon">👤</span>
-      {people.length > 1 && (
-        <span className="person-count">{people.length}</span>
-      )}
-      <span className="person-names">
-        {displayContent}
+  // For single person, show inline
+  // For multiple people, stack vertically with allocation amounts
+  if (people.length === 1) {
+    return (
+      <span 
+        className="people-indicator assigned"
+        title={tooltipContent}
+        aria-label={`Assigned to ${people[0].name}`}
+      >
+        <span className="person-icon">👤</span>
+        <span className="person-names">{people[0].name}</span>
       </span>
-    </span>
+    );
+  }
+
+  // Multiple people - stack vertically
+  return (
+    <div 
+      className="people-indicator assigned multi-person"
+      title={tooltipContent}
+      aria-label={`Assigned to ${people.length} people: ${people.map(p => p.name).join(', ')}`}
+    >
+      <div className="people-header">
+        <span className="person-icon">👤</span>
+        <span className="person-count">{people.length}</span>
+      </div>
+      <div className="people-list-vertical">
+        {people.map((p, index) => (
+          <div key={index} className="person-row">
+            <span className="person-name">{p.name}</span>
+            <span className="person-amount">${formatAmount(p.amount)}</span>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 };
 

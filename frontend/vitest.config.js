@@ -6,10 +6,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'jsdom',
-    setupFiles: './vitest.setup.js',
-    env: {
-      VITE_API_BASE_URL: 'http://localhost:2424'
-    }
+    setupFiles: './vitest.setup.js'
   },
   define: {
     'import.meta.env.VITE_API_BASE_URL': JSON.stringify('http://localhost:2424')

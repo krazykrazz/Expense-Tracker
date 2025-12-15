@@ -138,10 +138,32 @@ class ExpenseService {
   /**
    * Get all expenses with optional filters
    * @param {Object} filters - Optional filters { year, month }
-   * @returns {Promise<Array>} Array of expenses
+   * @returns {Promise<Array>} Array of expenses with people data for medical expenses
    */
   async getExpenses(filters = {}) {
-    return await expenseRepository.findAll(filters);
+    const expenses = await expenseRepository.findAll(filters);
+    
+    // Get medical expense IDs to fetch people data
+    const medicalExpenseIds = expenses
+      .filter(e => e.type === 'Tax - Medical')
+      .map(e => e.id);
+    
+    // Fetch people data for medical expenses
+    let peopleByExpense = {};
+    if (medicalExpenseIds.length > 0) {
+      peopleByExpense = await expensePeopleRepository.getPeopleForExpenses(medicalExpenseIds);
+    }
+    
+    // Attach people data to medical expenses
+    return expenses.map(expense => {
+      if (expense.type === 'Tax - Medical') {
+        return {
+          ...expense,
+          people: peopleByExpense[expense.id] || []
+        };
+      }
+      return expense;
+    });
   }
 
   /**
@@ -1249,18 +1271,19 @@ class ExpenseService {
 
     // If people allocations are provided, create the associations
     if (personAllocations && personAllocations.length > 0) {
-      const associations = await expensePeopleRepository.createAssociations(
+      await expensePeopleRepository.createAssociations(
         createdExpense.id,
         personAllocations
       );
 
-      // Return expense with people data
+      // Fetch full people data including names for the response
+      const peopleByExpense = await expensePeopleRepository.getPeopleForExpenses([createdExpense.id]);
+      const people = peopleByExpense[createdExpense.id] || [];
+
+      // Return expense with complete people data (including names)
       return {
         ...createdExpense,
-        people: associations.map(assoc => ({
-          personId: assoc.personId,
-          amount: assoc.amount
-        }))
+        people
       };
     }
 
@@ -1291,18 +1314,19 @@ class ExpenseService {
     }
 
     // Update people associations
-    const associations = await expensePeopleRepository.updateExpenseAllocations(
+    await expensePeopleRepository.updateExpenseAllocations(
       id,
       personAllocations || []
     );
 
-    // Return expense with people data
+    // Fetch full people data including names for the response
+    const peopleByExpense = await expensePeopleRepository.getPeopleForExpenses([id]);
+    const people = peopleByExpense[id] || [];
+
+    // Return expense with complete people data (including names)
     return {
       ...updatedExpense,
-      people: associations.map(assoc => ({
-        personId: assoc.personId,
-        amount: assoc.amount
-      }))
+      people
     };
   }
 

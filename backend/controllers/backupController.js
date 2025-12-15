@@ -1,4 +1,5 @@
 const backupService = require('../services/backupService');
+const logger = require('../config/logger');
 const fs = require('fs');
 const path = require('path');
 const { DB_PATH } = require('../database/db');
@@ -104,11 +105,11 @@ async function downloadBackup(req, res) {
     fileStream.pipe(res);
 
     fileStream.on('error', (error) => {
-      console.error('Error streaming database file:', error);
+      logger.error('Error streaming database file:', error);
       res.status(500).json({ error: 'Failed to backup database' });
     });
   } catch (error) {
-    console.error('Backup error:', error);
+    logger.error('Backup error:', error);
     res.status(500).json({ error: error.message });
   }
 }
@@ -178,7 +179,7 @@ async function restoreBackup(req, res) {
       fs.unlinkSync(req.file.path);
     }
     
-    console.error('Restore error:', error);
+    logger.error('Restore error:', error);
     res.status(500).json({ error: error.message });
   }
 }

@@ -285,8 +285,12 @@ describe('App Integration Tests - Global Expense Filtering', () => {
     expect(categoryFilter.value).toBe('Groceries');
 
     // Verify we're still in global view (because filter is active)
-    const lastCall = mockFetch.mock.calls[mockFetch.mock.calls.length - 1][0];
-    expect(lastCall).toMatch(/\/api\/expenses(?!\?year=)/);
+    // Find the last expenses-related call (not reminder status)
+    const expenseCalls = mockFetch.mock.calls.filter(call => 
+      call[0].includes('/api/expenses') && !call[0].includes('/api/reminders')
+    );
+    const lastExpenseCall = expenseCalls[expenseCalls.length - 1][0];
+    expect(lastExpenseCall).toMatch(/\/api\/expenses(?!\?year=)/);
   });
 
   /**

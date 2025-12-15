@@ -43,7 +43,7 @@ const saveLastPaymentMethod = (method) => {
   }
 };
 
-const ExpenseForm = ({ onExpenseAdded }) => {
+const ExpenseForm = ({ onExpenseAdded, people: propPeople }) => {
   const [formData, setFormData] = useState({
     date: getTodayLocalDate(),
     place: '',
@@ -62,7 +62,9 @@ const ExpenseForm = ({ onExpenseAdded }) => {
   const [isCategorySuggested, setIsCategorySuggested] = useState(false); // Track if category was auto-suggested
   
   // People selection state for medical expenses
-  const [people, setPeople] = useState([]);
+  // Use prop people if provided, otherwise fetch locally
+  const [localPeople, setLocalPeople] = useState([]);
+  const people = propPeople || localPeople;
   const [selectedPeople, setSelectedPeople] = useState([]);
   const [showPersonAllocation, setShowPersonAllocation] = useState(false);
 
@@ -105,22 +107,25 @@ const ExpenseForm = ({ onExpenseAdded }) => {
       }
     };
 
-    const fetchPeople = async () => {
-      try {
-        const peopleData = await getPeople();
-        if (isMounted) {
-          setPeople(peopleData);
-        }
-      } catch (error) {
-        if (isMounted) {
-          console.error('Failed to fetch people:', error);
+    const fetchPeopleData = async () => {
+      // Only fetch if people not provided via props
+      if (!propPeople) {
+        try {
+          const peopleData = await getPeople();
+          if (isMounted) {
+            setLocalPeople(peopleData);
+          }
+        } catch (error) {
+          if (isMounted) {
+            console.error('Failed to fetch people:', error);
+          }
         }
       }
     };
 
     fetchCategories();
     fetchPlaces();
-    fetchPeople();
+    fetchPeopleData();
 
     // Set initial focus to Place field (Requirements 1.1)
     if (placeInputRef.current) {

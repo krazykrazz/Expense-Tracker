@@ -216,6 +216,76 @@
   margin-left: 4px;
 }
 
+/* Place cell with people indicator */
+.place-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* People indicator styles */
+.people-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  white-space: nowrap;
+  cursor: help;
+}
+
+.people-indicator.assigned {
+  background-color: rgba(16, 185, 129, 0.15);
+  color: #059669;
+}
+
+.people-indicator.unassigned {
+  background-color: rgba(245, 158, 11, 0.15);
+  color: #d97706;
+}
+
+/* Override colors for tax-medical rows */
+.tax-medical-row .people-indicator.assigned {
+  background-color: rgba(147, 197, 253, 0.2);
+  color: #93c5fd;
+}
+
+.tax-medical-row .people-indicator.unassigned {
+  background-color: rgba(251, 191, 36, 0.2);
+  color: #fbbf24;
+}
+
+.person-icon {
+  font-size: 12px;
+}
+
+.person-count {
+  background-color: rgba(0, 0, 0, 0.1);
+  padding: 0 4px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 10px;
+}
+
+.tax-medical-row .person-count {
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+.person-names {
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.unassigned-icon {
+  font-size: 12px;
+}
+
+.unassigned-text {
+  font-weight: 500;
+}
+
 .action-buttons {
   display: flex;
   gap: 5px;

@@ -1,4 +1,10 @@
+/**
+ * Expense API Service
+ * Handles all API calls related to expense management
+ */
+
 import { API_ENDPOINTS } from '../config.js';
+import { apiGet, apiPost, apiPut, apiDelete, logApiError } from '../utils/apiClient.js';
 
 /**
  * Get expenses based on filters
@@ -19,16 +25,9 @@ export const getExpenses = async (filters = {}) => {
       url = API_ENDPOINTS.EXPENSES;
     }
     
-    const response = await fetch(url);
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Failed to fetch expenses');
-    }
-    
-    return await response.json();
+    return await apiGet(url, 'fetch expenses');
   } catch (error) {
-    console.error('Error fetching expenses:', error);
+    logApiError('fetching expenses', error);
     throw error;
   }
 };
@@ -40,16 +39,9 @@ export const getExpenses = async (filters = {}) => {
  */
 export const getExpenseById = async (id) => {
   try {
-    const response = await fetch(API_ENDPOINTS.EXPENSE_BY_ID(id));
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Failed to fetch expense');
-    }
-    
-    return await response.json();
+    return await apiGet(API_ENDPOINTS.EXPENSE_BY_ID(id), 'fetch expense');
   } catch (error) {
-    console.error('Error fetching expense:', error);
+    logApiError('fetching expense', error);
     throw error;
   }
 };
@@ -61,19 +53,13 @@ export const getExpenseById = async (id) => {
  */
 export const getExpenseWithPeople = async (id) => {
   try {
-    const response = await fetch(`${API_ENDPOINTS.EXPENSE_BY_ID(id)}?includePeople=true`);
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Failed to fetch expense with people');
-    }
-    
-    return await response.json();
+    return await apiGet(`${API_ENDPOINTS.EXPENSE_BY_ID(id)}?includePeople=true`, 'fetch expense with people');
   } catch (error) {
-    console.error('Error fetching expense with people:', error);
+    logApiError('fetching expense with people', error);
     throw error;
   }
 };
+
 
 /**
  * Create a new expense
@@ -97,22 +83,9 @@ export const createExpense = async (expenseData, peopleAllocations = null) => {
       requestBody.peopleAllocations = peopleAllocations;
     }
     
-    const response = await fetch(API_ENDPOINTS.EXPENSES, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(requestBody)
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Failed to create expense');
-    }
-    
-    return await response.json();
+    return await apiPost(API_ENDPOINTS.EXPENSES, requestBody, 'create expense');
   } catch (error) {
-    console.error('Error creating expense:', error);
+    logApiError('creating expense', error);
     throw error;
   }
 };
@@ -140,22 +113,9 @@ export const updateExpense = async (id, expenseData, peopleAllocations = null) =
       requestBody.peopleAllocations = peopleAllocations;
     }
     
-    const response = await fetch(API_ENDPOINTS.EXPENSE_BY_ID(id), {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(requestBody)
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Failed to update expense');
-    }
-    
-    return await response.json();
+    return await apiPut(API_ENDPOINTS.EXPENSE_BY_ID(id), requestBody, 'update expense');
   } catch (error) {
-    console.error('Error updating expense:', error);
+    logApiError('updating expense', error);
     throw error;
   }
 };
@@ -167,18 +127,9 @@ export const updateExpense = async (id, expenseData, peopleAllocations = null) =
  */
 export const deleteExpense = async (id) => {
   try {
-    const response = await fetch(API_ENDPOINTS.EXPENSE_BY_ID(id), {
-      method: 'DELETE'
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Failed to delete expense');
-    }
-    
-    return await response.json();
+    return await apiDelete(API_ENDPOINTS.EXPENSE_BY_ID(id), 'delete expense');
   } catch (error) {
-    console.error('Error deleting expense:', error);
+    logApiError('deleting expense', error);
     throw error;
   }
 };
@@ -200,16 +151,9 @@ export const getExpenseSummary = async (filters = {}) => {
       url += `?${params.toString()}`;
     }
     
-    const response = await fetch(url);
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Failed to fetch expense summary');
-    }
-    
-    return await response.json();
+    return await apiGet(url, 'fetch expense summary');
   } catch (error) {
-    console.error('Error fetching expense summary:', error);
+    logApiError('fetching expense summary', error);
     throw error;
   }
 };
@@ -228,16 +172,9 @@ export const getTaxDeductibleExpenses = async (year, groupByPerson = false) => {
       url += '&groupByPerson=true';
     }
     
-    const response = await fetch(url);
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Failed to fetch tax deductible expenses');
-    }
-    
-    return await response.json();
+    return await apiGet(url, 'fetch tax deductible expenses');
   } catch (error) {
-    console.error('Error fetching tax deductible expenses:', error);
+    logApiError('fetching tax deductible expenses', error);
     throw error;
   }
 };
@@ -249,22 +186,9 @@ export const getTaxDeductibleExpenses = async (year, groupByPerson = false) => {
  */
 export const suggestCategory = async (place) => {
   try {
-    const response = await fetch(API_ENDPOINTS.SUGGEST_CATEGORY, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ place })
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Failed to get category suggestion');
-    }
-    
-    return await response.json();
+    return await apiPost(API_ENDPOINTS.SUGGEST_CATEGORY, { place }, 'get category suggestion');
   } catch (error) {
-    console.error('Error getting category suggestion:', error);
+    logApiError('getting category suggestion', error);
     throw error;
   }
 };
@@ -275,16 +199,9 @@ export const suggestCategory = async (place) => {
  */
 export const getPlaces = async () => {
   try {
-    const response = await fetch(`${API_ENDPOINTS.EXPENSES}/places`);
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Failed to fetch places');
-    }
-    
-    return await response.json();
+    return await apiGet(`${API_ENDPOINTS.EXPENSES}/places`, 'fetch places');
   } catch (error) {
-    console.error('Error fetching places:', error);
+    logApiError('fetching places', error);
     throw error;
   }
 };

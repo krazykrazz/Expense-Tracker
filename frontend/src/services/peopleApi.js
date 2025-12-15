@@ -1,10 +1,10 @@
-import API_BASE_URL from '../config.js';
+/**
+ * People API Service
+ * Handles all API calls related to people (family members) management
+ */
 
-// People API endpoints
-const PEOPLE_ENDPOINTS = {
-  BASE: `${API_BASE_URL}/api/people`,
-  BY_ID: (id) => `${API_BASE_URL}/api/people/${id}`
-};
+import { API_ENDPOINTS } from '../config.js';
+import { apiGet, apiPost, apiPut, apiDelete, logApiError } from '../utils/apiClient.js';
 
 /**
  * Get all people (family members)
@@ -12,16 +12,9 @@ const PEOPLE_ENDPOINTS = {
  */
 export const getPeople = async () => {
   try {
-    const response = await fetch(PEOPLE_ENDPOINTS.BASE);
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Failed to fetch people');
-    }
-    
-    return await response.json();
+    return await apiGet(API_ENDPOINTS.PEOPLE, 'fetch people');
   } catch (error) {
-    console.error('Error fetching people:', error);
+    logApiError('fetching people', error);
     throw error;
   }
 };
@@ -34,25 +27,12 @@ export const getPeople = async () => {
  */
 export const createPerson = async (name, dateOfBirth) => {
   try {
-    const response = await fetch(PEOPLE_ENDPOINTS.BASE, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        name,
-        dateOfBirth: dateOfBirth || null
-      })
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Failed to create person');
-    }
-    
-    return await response.json();
+    return await apiPost(API_ENDPOINTS.PEOPLE, {
+      name,
+      dateOfBirth: dateOfBirth || null
+    }, 'create person');
   } catch (error) {
-    console.error('Error creating person:', error);
+    logApiError('creating person', error);
     throw error;
   }
 };
@@ -66,25 +46,12 @@ export const createPerson = async (name, dateOfBirth) => {
  */
 export const updatePerson = async (id, name, dateOfBirth) => {
   try {
-    const response = await fetch(PEOPLE_ENDPOINTS.BY_ID(id), {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        name,
-        dateOfBirth: dateOfBirth || null
-      })
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Failed to update person');
-    }
-    
-    return await response.json();
+    return await apiPut(API_ENDPOINTS.PEOPLE_BY_ID(id), {
+      name,
+      dateOfBirth: dateOfBirth || null
+    }, 'update person');
   } catch (error) {
-    console.error('Error updating person:', error);
+    logApiError('updating person', error);
     throw error;
   }
 };
@@ -96,18 +63,9 @@ export const updatePerson = async (id, name, dateOfBirth) => {
  */
 export const deletePerson = async (id) => {
   try {
-    const response = await fetch(PEOPLE_ENDPOINTS.BY_ID(id), {
-      method: 'DELETE'
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Failed to delete person');
-    }
-    
-    return await response.json();
+    return await apiDelete(API_ENDPOINTS.PEOPLE_BY_ID(id), 'delete person');
   } catch (error) {
-    console.error('Error deleting person:', error);
+    logApiError('deleting person', error);
     throw error;
   }
 };

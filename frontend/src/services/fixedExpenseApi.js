@@ -1,4 +1,10 @@
+/**
+ * Fixed Expense API Service
+ * Handles all API calls related to fixed expense management
+ */
+
 import { API_ENDPOINTS } from '../config.js';
+import { apiGet, apiPost, apiPut, apiDelete, logApiError } from '../utils/apiClient.js';
 
 /**
  * Get all fixed expense items for a specific month
@@ -8,43 +14,23 @@ import { API_ENDPOINTS } from '../config.js';
  */
 export const getMonthlyFixedExpenses = async (year, month) => {
   try {
-    const response = await fetch(API_ENDPOINTS.FIXED_EXPENSES_BY_MONTH(year, month));
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Failed to fetch fixed expenses');
-    }
-    
-    return await response.json();
+    return await apiGet(API_ENDPOINTS.FIXED_EXPENSES_BY_MONTH(year, month), 'fetch fixed expenses');
   } catch (error) {
-    console.error('Error fetching monthly fixed expenses:', error);
+    logApiError('fetching monthly fixed expenses', error);
     throw error;
   }
 };
 
 /**
  * Create a new fixed expense item
- * @param {Object} data - { year, month, name, amount }
+ * @param {Object} data - { year, month, name, amount, category, payment_type }
  * @returns {Promise<Object>} Created fixed expense
  */
 export const createFixedExpense = async (data) => {
   try {
-    const response = await fetch(API_ENDPOINTS.FIXED_EXPENSES, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(data)
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Failed to create fixed expense');
-    }
-    
-    return await response.json();
+    return await apiPost(API_ENDPOINTS.FIXED_EXPENSES, data, 'create fixed expense');
   } catch (error) {
-    console.error('Error creating fixed expense:', error);
+    logApiError('creating fixed expense', error);
     throw error;
   }
 };
@@ -52,27 +38,14 @@ export const createFixedExpense = async (data) => {
 /**
  * Update a fixed expense item
  * @param {number} id - Fixed expense ID
- * @param {Object} data - { name, amount }
+ * @param {Object} data - { name, amount, category, payment_type }
  * @returns {Promise<Object>} Updated fixed expense
  */
 export const updateFixedExpense = async (id, data) => {
   try {
-    const response = await fetch(API_ENDPOINTS.FIXED_EXPENSES_BY_ID(id), {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(data)
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Failed to update fixed expense');
-    }
-    
-    return await response.json();
+    return await apiPut(API_ENDPOINTS.FIXED_EXPENSES_BY_ID(id), data, 'update fixed expense');
   } catch (error) {
-    console.error('Error updating fixed expense:', error);
+    logApiError('updating fixed expense', error);
     throw error;
   }
 };
@@ -84,18 +57,9 @@ export const updateFixedExpense = async (id, data) => {
  */
 export const deleteFixedExpense = async (id) => {
   try {
-    const response = await fetch(API_ENDPOINTS.FIXED_EXPENSES_BY_ID(id), {
-      method: 'DELETE'
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Failed to delete fixed expense');
-    }
-    
-    return await response.json();
+    return await apiDelete(API_ENDPOINTS.FIXED_EXPENSES_BY_ID(id), 'delete fixed expense');
   } catch (error) {
-    console.error('Error deleting fixed expense:', error);
+    logApiError('deleting fixed expense', error);
     throw error;
   }
 };
@@ -108,22 +72,9 @@ export const deleteFixedExpense = async (id) => {
  */
 export const carryForwardFixedExpenses = async (year, month) => {
   try {
-    const response = await fetch(API_ENDPOINTS.FIXED_EXPENSES_CARRY_FORWARD, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ year, month })
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Failed to carry forward fixed expenses');
-    }
-    
-    return await response.json();
+    return await apiPost(API_ENDPOINTS.FIXED_EXPENSES_CARRY_FORWARD, { year, month }, 'carry forward fixed expenses');
   } catch (error) {
-    console.error('Error carrying forward fixed expenses:', error);
+    logApiError('carrying forward fixed expenses', error);
     throw error;
   }
 };

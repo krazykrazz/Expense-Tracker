@@ -1,4 +1,5 @@
 const placeNameService = require('../services/placeNameService');
+const logger = require('../config/logger');
 
 /**
  * Analyze place names and return similarity groups
@@ -9,7 +10,7 @@ async function analyzePlaceNames(req, res) {
     const result = await placeNameService.analyzePlaceNames();
     res.json(result);
   } catch (error) {
-    console.error('Error analyzing place names:', error);
+    logger.error('Error analyzing place names:', error);
     res.status(500).json({ 
       error: 'Failed to analyze place names',
       message: error.message 
@@ -37,7 +38,7 @@ async function standardizePlaceNames(req, res) {
     const result = await placeNameService.standardizePlaceNames(updates);
     res.json(result);
   } catch (error) {
-    console.error('Error standardizing place names:', error);
+    logger.error('Error standardizing place names:', error);
     
     // Check if it's a validation error (from service)
     if (error.message && (

@@ -76,7 +76,6 @@ describe('ExpenseList - Local Filtering (Monthly View)', () => {
         expenses={mockExpenses}
         onExpenseDeleted={onExpenseDeleted}
         onExpenseUpdated={onExpenseUpdated}
-        searchText=""
         onAddExpense={onAddExpense}
       />
     );
@@ -116,7 +115,6 @@ describe('ExpenseList - Local Filtering (Monthly View)', () => {
         expenses={mockExpenses}
         onExpenseDeleted={vi.fn()}
         onExpenseUpdated={vi.fn()}
-        searchText=""
         onAddExpense={vi.fn()}
       />
     );
@@ -158,7 +156,6 @@ describe('ExpenseList - Local Filtering (Monthly View)', () => {
         expenses={mockExpenses}
         onExpenseDeleted={vi.fn()}
         onExpenseUpdated={vi.fn()}
-        searchText=""
         onAddExpense={vi.fn()}
       />
     );
@@ -200,7 +197,6 @@ describe('ExpenseList - Local Filtering (Monthly View)', () => {
         expenses={mockExpenses}
         onExpenseDeleted={vi.fn()}
         onExpenseUpdated={vi.fn()}
-        searchText=""
         onAddExpense={vi.fn()}
       />
     );
@@ -242,7 +238,6 @@ describe('ExpenseList - Local Filtering (Monthly View)', () => {
         expenses={mockExpenses}
         onExpenseDeleted={vi.fn()}
         onExpenseUpdated={vi.fn()}
-        searchText=""
         onAddExpense={vi.fn()}
       />
     );
@@ -290,7 +285,6 @@ describe('ExpenseList - Local Filtering (Monthly View)', () => {
         expenses={mockExpenses}
         onExpenseDeleted={vi.fn()}
         onExpenseUpdated={vi.fn()}
-        searchText=""
         onAddExpense={vi.fn()}
       />
     );
@@ -324,7 +318,6 @@ describe('ExpenseList - Local Filtering (Monthly View)', () => {
         expenses={singleExpense}
         onExpenseDeleted={vi.fn()}
         onExpenseUpdated={vi.fn()}
-        searchText=""
         onAddExpense={vi.fn()}
       />
     );
@@ -355,7 +348,6 @@ describe('ExpenseList - Local Filtering (Monthly View)', () => {
         expenses={mockExpenses}
         onExpenseDeleted={vi.fn()}
         onExpenseUpdated={vi.fn()}
-        searchText=""
         onAddExpense={vi.fn()}
       />
     );
@@ -396,7 +388,6 @@ describe('ExpenseList - Local Filtering (Monthly View)', () => {
         expenses={updatedExpenses}
         onExpenseDeleted={vi.fn()}
         onExpenseUpdated={vi.fn()}
-        searchText=""
         onAddExpense={vi.fn()}
       />
     );

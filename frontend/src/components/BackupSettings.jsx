@@ -3,6 +3,7 @@ import { API_ENDPOINTS } from '../config';
 import './BackupSettings.css';
 import { formatDateTime } from '../utils/formatters';
 import PlaceNameStandardization from './PlaceNameStandardization';
+import { getPeople, createPerson, updatePerson, deletePerson } from '../services/peopleApi';
 
 const BackupSettings = () => {
   const [activeTab, setActiveTab] = useState('backups');
@@ -20,12 +21,28 @@ const BackupSettings = () => {
   const [nextBackup, setNextBackup] = useState(null);
   const [versionInfo, setVersionInfo] = useState(null);
   const [showPlaceNameStandardization, setShowPlaceNameStandardization] = useState(false);
+  
+  // People management state
+  const [people, setPeople] = useState([]);
+  const [editingPerson, setEditingPerson] = useState(null);
+  const [peopleLoading, setPeopleLoading] = useState(false);
+  const [peopleError, setPeopleError] = useState(null);
+  const [personFormData, setPersonFormData] = useState({ name: '', dateOfBirth: '' });
+  const [personValidationErrors, setPersonValidationErrors] = useState({});
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
 
   useEffect(() => {
     fetchConfig();
     fetchBackupList();
     fetchVersionInfo();
   }, []);
+
+  // Fetch people when People tab is active
+  useEffect(() => {
+    if (activeTab === 'people') {
+      fetchPeople();
+    }
+  }, [activeTab]);
 
   const fetchVersionInfo = async () => {
     try {
@@ -223,6 +240,141 @@ const BackupSettings = () => {
 
   const formatDate = formatDateTime;
 
+  // People management functions
+  const fetchPeople = async () => {
+    setPeopleLoading(true);
+    setPeopleError(null);
+    try {
+      const data = await getPeople();
+      setPeople(data || []);
+    } catch (err) {
+      setPeopleError(err.message || 'Failed to load family members');
+    } finally {
+      setPeopleLoading(false);
+    }
+  };
+
+  const clearPersonForm = () => {
+    setPersonFormData({ name: '', dateOfBirth: '' });
+    setPersonValidationErrors({});
+    setEditingPerson(null);
+  };
+
+  const validatePersonForm = () => {
+    const errors = {};
+    if (!personFormData.name || personFormData.name.trim() === '') {
+      errors.name = 'Name is required';
+    }
+    if (personFormData.dateOfBirth && personFormData.dateOfBirth.trim() !== '') {
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      if (!dateRegex.test(personFormData.dateOfBirth)) {
+        errors.dateOfBirth = 'Date must be in YYYY-MM-DD format';
+      } else {
+        const date = new Date(personFormData.dateOfBirth);
+        if (isNaN(date.getTime())) {
+          errors.dateOfBirth = 'Invalid date';
+        } else if (date > new Date()) {
+          errors.dateOfBirth = 'Date cannot be in the future';
+        }
+      }
+    }
+    setPersonValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handlePersonInputChange = (field, value) => {
+    setPersonFormData(prev => ({ ...prev, [field]: value }));
+    if (personValidationErrors[field]) {
+      setPersonValidationErrors(prev => ({ ...prev, [field]: null }));
+    }
+  };
+
+  const handleAddPerson = () => {
+    clearPersonForm();
+    setEditingPerson('new');
+  };
+
+  const handleEditPerson = (person) => {
+    setPersonFormData({
+      name: person.name,
+      dateOfBirth: person.dateOfBirth || ''
+    });
+    setEditingPerson(person.id);
+    setPersonValidationErrors({});
+  };
+
+  const handleSavePerson = async () => {
+    if (!validatePersonForm()) return;
+    
+    setPeopleLoading(true);
+    setPeopleError(null);
+    try {
+      const { name, dateOfBirth } = personFormData;
+      const dateValue = dateOfBirth.trim() === '' ? null : dateOfBirth;
+      
+      if (editingPerson === 'new') {
+        await createPerson(name.trim(), dateValue);
+      } else {
+        await updatePerson(editingPerson, name.trim(), dateValue);
+      }
+      await fetchPeople();
+      clearPersonForm();
+      
+      // Dispatch global event to notify other components of people update
+      window.dispatchEvent(new CustomEvent('peopleUpdated'));
+    } catch (err) {
+      setPeopleError(err.message || 'Failed to save person');
+    } finally {
+      setPeopleLoading(false);
+    }
+  };
+
+  const handleCancelPersonEdit = () => {
+    clearPersonForm();
+    setPeopleError(null);
+  };
+
+  const handleDeletePersonClick = (person) => {
+    setDeleteConfirm(person);
+  };
+
+  const handleDeletePersonConfirm = async () => {
+    if (!deleteConfirm) return;
+    
+    setPeopleLoading(true);
+    setPeopleError(null);
+    try {
+      await deletePerson(deleteConfirm.id);
+      await fetchPeople();
+      setDeleteConfirm(null);
+      
+      // Dispatch global event to notify other components of people update
+      window.dispatchEvent(new CustomEvent('peopleUpdated'));
+    } catch (err) {
+      setPeopleError(err.message || 'Failed to delete person');
+    } finally {
+      setPeopleLoading(false);
+    }
+  };
+
+  const handleDeletePersonCancel = () => {
+    setDeleteConfirm(null);
+  };
+
+  const formatPersonDate = (dateString) => {
+    if (!dateString) return 'Not specified';
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-CA', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    } catch {
+      return dateString;
+    }
+  };
+
   if (loading) {
     return <div className="backup-settings-loading">Loading settings...</div>;
   }
@@ -243,6 +395,12 @@ const BackupSettings = () => {
           onClick={() => setActiveTab('import')}
         >
           📥 Import & Restore
+        </button>
+        <button 
+          className={`tab-button ${activeTab === 'people' ? 'active' : ''}`}
+          onClick={() => setActiveTab('people')}
+        >
+          👥 People
         </button>
         <button 
           className={`tab-button ${activeTab === 'misc' ? 'active' : ''}`}
@@ -401,6 +559,184 @@ const BackupSettings = () => {
         </div>
       )}
 
+      {activeTab === 'people' && (
+        <div className="tab-panel">
+          <div className="settings-section">
+            <h3>Family Members</h3>
+            <p>Manage family members for medical expense tracking. Associate medical expenses with specific people for detailed tax reporting.</p>
+            
+            {peopleError && (
+              <div className="message error">
+                {peopleError}
+                {people.length === 0 && !peopleLoading && (
+                  <button className="people-retry-button" onClick={fetchPeople}>
+                    Retry
+                  </button>
+                )}
+              </div>
+            )}
+
+            {peopleLoading && people.length === 0 ? (
+              <div className="people-loading">Loading family members...</div>
+            ) : (
+              <>
+                {/* Add Person Button */}
+                <div className="people-add-section">
+                  <button
+                    className="people-add-button"
+                    onClick={handleAddPerson}
+                    disabled={peopleLoading || editingPerson !== null}
+                  >
+                    ➕ Add Family Member
+                  </button>
+                </div>
+
+                {/* Person Form */}
+                {editingPerson !== null && (
+                  <div className="people-form-section">
+                    <h4>{editingPerson === 'new' ? 'Add New Person' : 'Edit Person'}</h4>
+                    
+                    <div className="people-form">
+                      <div className="people-form-group">
+                        <label htmlFor="settings-person-name">Name *</label>
+                        <input
+                          id="settings-person-name"
+                          type="text"
+                          value={personFormData.name}
+                          onChange={(e) => handlePersonInputChange('name', e.target.value)}
+                          placeholder="Enter person's name"
+                          className={personValidationErrors.name ? 'input-error' : ''}
+                          disabled={peopleLoading}
+                          autoFocus
+                        />
+                        {personValidationErrors.name && (
+                          <span className="validation-error">{personValidationErrors.name}</span>
+                        )}
+                      </div>
+
+                      <div className="people-form-group">
+                        <label htmlFor="settings-person-dob">Date of Birth (Optional)</label>
+                        <input
+                          id="settings-person-dob"
+                          type="date"
+                          value={personFormData.dateOfBirth}
+                          onChange={(e) => handlePersonInputChange('dateOfBirth', e.target.value)}
+                          className={personValidationErrors.dateOfBirth ? 'input-error' : ''}
+                          disabled={peopleLoading}
+                        />
+                        {personValidationErrors.dateOfBirth && (
+                          <span className="validation-error">{personValidationErrors.dateOfBirth}</span>
+                        )}
+                      </div>
+
+                      <div className="people-form-actions">
+                        <button
+                          className="people-save-button"
+                          onClick={handleSavePerson}
+                          disabled={peopleLoading}
+                        >
+                          {peopleLoading ? 'Saving...' : (editingPerson === 'new' ? 'Add Person' : 'Save Changes')}
+                        </button>
+                        <button
+                          className="people-cancel-button"
+                          onClick={handleCancelPersonEdit}
+                          disabled={peopleLoading}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* People List */}
+                <div className="people-list-section">
+                  <h4>Family Members ({people.length})</h4>
+                  
+                  {people.length === 0 ? (
+                    <div className="people-empty-state">
+                      <p>No family members added yet.</p>
+                      <p>Click "Add Family Member" to get started.</p>
+                    </div>
+                  ) : (
+                    <div className="people-list">
+                      {people.map((person) => (
+                        <div key={person.id} className="people-list-item">
+                          <div className="people-info">
+                            <div className="people-name">{person.name}</div>
+                            <div className="people-dob">
+                              Born: {formatPersonDate(person.dateOfBirth)}
+                            </div>
+                          </div>
+                          
+                          <div className="people-actions">
+                            <button
+                              className="people-edit-button"
+                              onClick={() => handleEditPerson(person)}
+                              disabled={peopleLoading || editingPerson !== null}
+                              title="Edit person"
+                            >
+                              ✏️
+                            </button>
+                            <button
+                              className="people-delete-button"
+                              onClick={() => handleDeletePersonClick(person)}
+                              disabled={peopleLoading}
+                              title="Delete person"
+                            >
+                              🗑️
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Info Section */}
+                <div className="people-info-note">
+                  <p>
+                    💡 <strong>Note:</strong> Deleting a person will remove them from all associated medical expenses. This action cannot be undone.
+                  </p>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Delete Confirmation */}
+          {deleteConfirm && (
+            <div className="people-delete-overlay">
+              <div className="people-delete-modal">
+                <h3>Confirm Deletion</h3>
+                <p>
+                  Are you sure you want to delete <strong>{deleteConfirm.name}</strong>?
+                </p>
+                <p className="people-delete-warning">
+                  ⚠️ This will remove them from all associated medical expenses and cannot be undone.
+                </p>
+                
+                <div className="people-delete-actions">
+                  <button
+                    className="people-delete-confirm-button"
+                    onClick={handleDeletePersonConfirm}
+                    disabled={peopleLoading}
+                  >
+                    {peopleLoading ? 'Deleting...' : 'Yes, Delete'}
+                  </button>
+                  <button
+                    className="people-delete-cancel-button"
+                    onClick={handleDeletePersonCancel}
+                    disabled={peopleLoading}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {activeTab === 'misc' && (
         <div className="tab-panel">
           {!showPlaceNameStandardization ? (
@@ -464,13 +800,23 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v4.6.0</div>
+                <div className="changelog-date">December 14, 2025</div>
+                <ul className="changelog-items">
+                  <li>Medical Expense People Tracking: Associate medical expenses with family members</li>
+                  <li>People management in Settings → People tab for adding/editing family members</li>
+                  <li>Split medical expenses across multiple people with custom allocations</li>
+                  <li>Person-grouped view in Tax Deductible for tax preparation</li>
+                  <li>Visual indicators showing assigned people on expense list</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v4.5.1</div>
                 <div className="changelog-date">December 6, 2025</div>
                 <ul className="changelog-items">
                   <li>Reminder Item Highlighting: Investments and loans needing updates are now highlighted with orange borders and warning badges</li>
                   <li>Pulsing "⚠️ Update Needed" badge draws attention to items missing data</li>
                   <li>Clear visual distinction between complete and incomplete items</li>
-                  <li>Highlighting automatically disappears after data is added</li>
                 </ul>
               </div>
               <div className="changelog-entry">
@@ -480,7 +826,6 @@ const BackupSettings = () => {
                   <li>Monthly Data Reminders: Visual notification banners prompt users to update investment values and loan balances</li>
                   <li>Clickable reminders open relevant modals (Investments or Loans)</li>
                   <li>Dismissible reminders with session-based persistence</li>
-                  <li>Shows count of items needing updates with current month name</li>
                 </ul>
               </div>
               <div className="changelog-entry">
@@ -489,7 +834,6 @@ const BackupSettings = () => {
                 <ul className="changelog-items">
                   <li>Added Net Worth tracking in monthly and annual summaries</li>
                   <li>Net Worth = Total Investments - Total Debt with color-coded display</li>
-                  <li>Fixed all test failures (299 frontend tests, all backend tests passing)</li>
                 </ul>
               </div>
               <div className="changelog-entry">
@@ -497,14 +841,6 @@ const BackupSettings = () => {
                 <div className="changelog-date">December 3, 2025</div>
                 <ul className="changelog-items">
                   <li>Improved monthly summary card order for better financial flow</li>
-                  <li>Now displays: Income → Fixed Expenses → Variable Expenses → Balance</li>
-                </ul>
-              </div>
-              <div className="changelog-entry">
-                <div className="changelog-version">v4.4.5</div>
-                <div className="changelog-date">December 3, 2025</div>
-                <ul className="changelog-items">
-                  <li>Improved annual summary card order for better financial flow</li>
                   <li>Now displays: Income → Fixed Expenses → Variable Expenses → Balance</li>
                 </ul>
               </div>

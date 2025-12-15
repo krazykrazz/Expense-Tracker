@@ -10,8 +10,10 @@ import AnnualSummary from './components/AnnualSummary';
 import TaxDeductible from './components/TaxDeductible';
 import BudgetManagementModal from './components/BudgetManagementModal';
 import BudgetHistoryView from './components/BudgetHistoryView';
+import PeopleManagementModal from './components/PeopleManagementModal';
 import { API_ENDPOINTS } from './config';
 import { CATEGORIES, PAYMENT_METHODS } from './utils/constants';
+import { getPeople } from './services/peopleApi';
 import logo from './assets/tracker.png.png';
 
 function App() {
@@ -28,9 +30,14 @@ function App() {
   const [showTaxDeductible, setShowTaxDeductible] = useState(false);
   const [showBudgetManagement, setShowBudgetManagement] = useState(false);
   const [showBudgetHistory, setShowBudgetHistory] = useState(false);
+  const [showPeopleManagement, setShowPeopleManagement] = useState(false);
   const [filterType, setFilterType] = useState('');
   const [filterMethod, setFilterMethod] = useState('');
   const [versionInfo, setVersionInfo] = useState(null);
+  
+  // People state management for medical expense tracking
+  const [people, setPeople] = useState([]);
+  const [peopleRefreshTrigger, setPeopleRefreshTrigger] = useState(0);
 
   /**
    * Global View Mode Determination
@@ -70,6 +77,47 @@ function App() {
 
     return () => {
       isMounted = false;
+    };
+  }, []);
+
+  // Fetch people data on mount and when peopleRefreshTrigger changes
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchPeopleData = async () => {
+      try {
+        const peopleData = await getPeople();
+        if (isMounted) {
+          setPeople(peopleData || []);
+        }
+      } catch (err) {
+        if (isMounted) {
+          console.error('Error fetching people:', err);
+        }
+      }
+    };
+
+    fetchPeopleData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [peopleRefreshTrigger]);
+
+  // Listen for peopleUpdated event (e.g., from PeopleManagementModal or BackupSettings)
+  useEffect(() => {
+    const handlePeopleUpdated = () => {
+      // Trigger a refresh of people data
+      setPeopleRefreshTrigger(prev => prev + 1);
+      
+      // Also trigger expense refresh to update people indicators
+      setRefreshTrigger(prev => prev + 1);
+    };
+
+    window.addEventListener('peopleUpdated', handlePeopleUpdated);
+    
+    return () => {
+      window.removeEventListener('peopleUpdated', handlePeopleUpdated);
     };
   }, []);
 
@@ -309,6 +357,21 @@ function App() {
     setShowBudgetHistory(false);
   };
 
+  const handlePeopleUpdated = useCallback(() => {
+    // Refresh people data
+    setPeopleRefreshTrigger(prev => prev + 1);
+    
+    // Trigger expense refresh to update people indicators in expense list
+    setRefreshTrigger(prev => prev + 1);
+    
+    // Dispatch global event for other components (TaxDeductible, etc.)
+    window.dispatchEvent(new CustomEvent('peopleUpdated'));
+  }, []);
+
+  const handleClosePeopleManagement = () => {
+    setShowPeopleManagement(false);
+  };
+
   /**
    * Client-Side Expense Filtering (Memoized)
    * 
@@ -437,7 +500,6 @@ function App() {
                 expenses={filteredExpenses}
                 onExpenseDeleted={handleExpenseDeleted}
                 onExpenseUpdated={handleExpenseUpdated}
-                searchText={searchText}
                 onAddExpense={() => setShowExpenseForm(true)}
               />
             </div>
@@ -475,7 +537,7 @@ function App() {
             >
               ×
             </button>
-            <ExpenseForm onExpenseAdded={handleExpenseAdded} />
+            <ExpenseForm onExpenseAdded={handleExpenseAdded} people={people} />
           </div>
         </div>
       )}
@@ -520,7 +582,7 @@ function App() {
             >
               ×
             </button>
-            <TaxDeductible year={selectedYear} />
+            <TaxDeductible year={selectedYear} refreshTrigger={refreshTrigger} />
           </div>
         </div>
       )}
@@ -543,9 +605,17 @@ function App() {
         />
       )}
 
+      {showPeopleManagement && (
+        <PeopleManagementModal
+          isOpen={showPeopleManagement}
+          onClose={handleClosePeopleManagement}
+          onPeopleUpdated={handlePeopleUpdated}
+        />
+      )}
+
       <footer className="App-footer">
         <span className="version">
-          v{versionInfo?.version || '4.5.1'}
+          v{versionInfo?.version || '4.6.0'}
           {versionInfo?.docker && (
             <span className="docker-tag"> (Docker: {versionInfo.docker.tag})</span>
           )}

@@ -33,7 +33,7 @@ describe('ExpenseForm Property-Based Tests', () => {
         async (categoriesToCheck) => {
           // Mock the API responses
           global.fetch.mockImplementation((url) => {
-            if (url === '/api/categories') {
+            if (url.includes('/api/categories') || url.includes('/categories')) {
               return Promise.resolve({
                 ok: true,
                 json: () => Promise.resolve({
@@ -49,7 +49,11 @@ describe('ExpenseForm Property-Based Tests', () => {
                 json: () => Promise.resolve([])
               });
             }
-            return Promise.reject(new Error('Unknown URL'));
+            // Default response for any other URL
+            return Promise.resolve({
+              ok: true,
+              json: () => Promise.resolve([])
+            });
           });
 
           // Render the component

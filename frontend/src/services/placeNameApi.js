@@ -4,6 +4,7 @@
  */
 
 import { API_ENDPOINTS } from '../config.js';
+import { apiGet, apiPost, logApiError } from '../utils/apiClient.js';
 
 /**
  * Analyze all place names and return similarity groups
@@ -11,16 +12,9 @@ import { API_ENDPOINTS } from '../config.js';
  */
 export const analyzePlaceNames = async () => {
   try {
-    const response = await fetch(API_ENDPOINTS.PLACE_NAMES_ANALYZE);
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Failed to analyze place names');
-    }
-    
-    return await response.json();
+    return await apiGet(API_ENDPOINTS.PLACE_NAMES_ANALYZE, 'analyze place names');
   } catch (error) {
-    console.error('Error analyzing place names:', error);
+    logApiError('analyzing place names', error);
     throw error;
   }
 };
@@ -32,22 +26,9 @@ export const analyzePlaceNames = async () => {
  */
 export const standardizePlaceNames = async (updates) => {
   try {
-    const response = await fetch(API_ENDPOINTS.PLACE_NAMES_STANDARDIZE, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ updates })
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Failed to standardize place names');
-    }
-    
-    return await response.json();
+    return await apiPost(API_ENDPOINTS.PLACE_NAMES_STANDARDIZE, { updates }, 'standardize place names');
   } catch (error) {
-    console.error('Error standardizing place names:', error);
+    logApiError('standardizing place names', error);
     throw error;
   }
 };

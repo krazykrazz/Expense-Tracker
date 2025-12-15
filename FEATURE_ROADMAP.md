@@ -1,7 +1,7 @@
 # Expense Tracker - Feature Roadmap
 
-**Last Updated**: November 29, 2025  
-**Current Version**: 4.3.1
+**Last Updated**: December 14, 2025  
+**Current Version**: 4.6.0
 
 This document tracks potential features and enhancements for the Expense Tracker application. Features are categorized by priority and implementation status.
 
@@ -430,6 +430,28 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ## 🟢 Completed Features
 
+### 🟢 Medical Expense People Tracking (v4.6.0)
+**Completed**: December 14, 2025  
+**Spec**: `.kiro/specs/medical-expense-people-tracking/`  
+**Description**: Associate medical expenses with specific family members for detailed tax reporting and expense tracking.
+
+**Features Delivered**:
+- People management in Settings → People tab for adding/editing family members
+- Associate medical expenses (Tax - Medical) with one or more people
+- Single person selection automatically assigns full expense amount
+- Multiple person selection with custom amount allocation
+- "Split Equally" button for convenient equal division among people
+- Person-grouped view in Tax Deductible for tax preparation
+- Per-person subtotals by medical provider
+- "Unassigned" section for medical expenses without people associations
+- Quick assign functionality to add people to existing expenses
+- Visual indicators showing assigned people on expense list
+- Backward compatible with existing medical expenses (no migration required)
+- Comprehensive property-based testing (13 properties, 100+ iterations each)
+- Full integration test coverage
+
+---
+
 ### 🟢 Monthly Data Reminders (v4.5.0)
 **Completed**: December 6, 2025  
 **Spec**: `.kiro/specs/monthly-data-reminders/`  
@@ -659,6 +681,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 ---
 
 **Version History**:
+- v1.3 (2025-12-14): Added Medical Expense People Tracking (v4.6.0) to completed features
 - v1.2 (2025-11-29): Added Income Source Categories (v4.3.1) to completed features
 - v1.1 (2025-11-27): Added Smart Expense Entry (v4.3.0) to completed features
 - v1.0 (2025-11-19): Initial roadmap created with 18 proposed features

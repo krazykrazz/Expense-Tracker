@@ -1,10 +1,76 @@
 import { useState, useEffect, memo, useMemo } from 'react';
 import { API_ENDPOINTS } from '../config';
 import { PAYMENT_METHODS } from '../utils/constants';
+import { getPeople } from '../services/peopleApi';
+import { getExpenseWithPeople, updateExpense } from '../services/expenseApi';
+import PersonAllocationModal from './PersonAllocationModal';
 import './ExpenseList.css';
 import { formatAmount, formatLocalDate } from '../utils/formatters';
 
-const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, searchText, onAddExpense }) => {
+/**
+ * Renders people indicator for medical expenses
+ * Shows person icon with count for assigned expenses, or "unassigned" indicator
+ * Displays allocation amounts for multi-person expenses
+ */
+const PeopleIndicator = ({ expense }) => {
+  if (expense.type !== 'Tax - Medical') {
+    return null;
+  }
+
+  const people = expense.people || [];
+  const hasPeople = people.length > 0;
+
+  if (!hasPeople) {
+    return (
+      <span 
+        className="people-indicator unassigned"
+        title="Medical expense not assigned to any person"
+        aria-label="Unassigned medical expense"
+      >
+        <span className="unassigned-icon">⚠️</span>
+        <span className="unassigned-text">Unassigned</span>
+      </span>
+    );
+  }
+
+  // Build detailed tooltip with person names, amounts, and date of birth if available
+  const tooltipLines = people.map(p => {
+    let line = p.name;
+    if (people.length > 1) {
+      line += `: $${formatAmount(p.amount)}`;
+    }
+    if (p.dateOfBirth) {
+      line += ` (DOB: ${p.dateOfBirth})`;
+    }
+    return line;
+  });
+  
+  const tooltipContent = tooltipLines.join('\n');
+
+  // For single person, just show the name
+  // For multiple people, show names with allocation amounts
+  const displayContent = people.length === 1 
+    ? people[0].name
+    : people.map(p => `${p.name} ($${formatAmount(p.amount)})`).join(', ');
+
+  return (
+    <span 
+      className="people-indicator assigned"
+      title={tooltipContent}
+      aria-label={`Assigned to ${people.length} ${people.length === 1 ? 'person' : 'people'}: ${people.map(p => p.name).join(', ')}`}
+    >
+      <span className="person-icon">👤</span>
+      {people.length > 1 && (
+        <span className="person-count">{people.length}</span>
+      )}
+      <span className="person-names">
+        {displayContent}
+      </span>
+    </span>
+  );
+};
+
+const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddExpense, people: propPeople }) => {
   const [deletingId, setDeletingId] = useState(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [expenseToDelete, setExpenseToDelete] = useState(null);
@@ -17,8 +83,13 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, search
   // Local filters for monthly view only (don't trigger global view)
   const [localFilterType, setLocalFilterType] = useState('');
   const [localFilterMethod, setLocalFilterMethod] = useState('');
+  // People selection state for medical expenses
+  const [localPeople, setLocalPeople] = useState([]);
+  const people = propPeople || localPeople;
+  const [selectedPeople, setSelectedPeople] = useState([]);
+  const [showPersonAllocation, setShowPersonAllocation] = useState(false);
 
-  // Fetch categories on mount
+  // Fetch categories and people on mount
   useEffect(() => {
     let isMounted = true;
 
@@ -41,14 +112,31 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, search
       }
     };
 
+    const fetchPeopleData = async () => {
+      // Only fetch if people not provided via props
+      if (!propPeople) {
+        try {
+          const peopleData = await getPeople();
+          if (isMounted) {
+            setLocalPeople(peopleData);
+          }
+        } catch (error) {
+          if (isMounted) {
+            console.error('Failed to fetch people:', error);
+          }
+        }
+      }
+    };
+
     fetchCategories();
+    fetchPeopleData();
 
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [propPeople]);
 
-  const handleEditClick = (expense) => {
+  const handleEditClick = async (expense) => {
     setExpenseToEdit(expense);
     // Ensure date is in YYYY-MM-DD format for the date input
     const dateValue = expense.date.includes('T') ? expense.date.split('T')[0] : expense.date;
@@ -60,6 +148,28 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, search
       type: expense.type,
       method: expense.method
     });
+    
+    // Load people assignments for medical expenses
+    if (expense.type === 'Tax - Medical') {
+      try {
+        const expenseWithPeople = await getExpenseWithPeople(expense.id);
+        if (expenseWithPeople.people && expenseWithPeople.people.length > 0) {
+          setSelectedPeople(expenseWithPeople.people.map(p => ({
+            id: p.personId,
+            name: p.name,
+            amount: p.amount
+          })));
+        } else {
+          setSelectedPeople([]);
+        }
+      } catch (error) {
+        console.error('Failed to load people for expense:', error);
+        setSelectedPeople([]);
+      }
+    } else {
+      setSelectedPeople([]);
+    }
+    
     setShowEditModal(true);
     setEditMessage({ text: '', type: '' });
   };
@@ -70,38 +180,76 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, search
       ...prev,
       [name]: value
     }));
+    
+    // Clear people selection when changing away from medical expenses
+    if (name === 'type' && value !== 'Tax - Medical') {
+      setSelectedPeople([]);
+    }
   };
+
+  // Handle people selection for medical expenses
+  const handleEditPeopleChange = (e) => {
+    const selectedOptions = Array.from(e.target.selectedOptions, option => ({
+      id: parseInt(option.value),
+      name: option.text
+    }));
+    setSelectedPeople(selectedOptions);
+  };
+
+  // Handle person allocation modal save
+  const handleEditPersonAllocation = (allocations) => {
+    setShowPersonAllocation(false);
+    setSelectedPeople(allocations);
+  };
+
+  // Check if current expense type is medical
+  const isEditingMedicalExpense = editFormData.type === 'Tax - Medical';
 
   const handleEditSubmit = async (e) => {
     e.preventDefault();
     setEditMessage({ text: '', type: '' });
+
+    // For medical expenses with multiple people, show allocation modal if amounts not set
+    if (isEditingMedicalExpense && selectedPeople.length > 1 && !selectedPeople[0].amount) {
+      setShowPersonAllocation(true);
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
       // Ensure date is in YYYY-MM-DD format
       const dateValue = editFormData.date.includes('T') ? editFormData.date.split('T')[0] : editFormData.date;
       
-      const response = await fetch(API_ENDPOINTS.EXPENSE_BY_ID(expenseToEdit.id), {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          date: dateValue,
-          place: editFormData.place,
-          notes: editFormData.notes,
-          amount: parseFloat(editFormData.amount),
-          type: editFormData.type,
-          method: editFormData.method
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to update expense');
+      // Prepare people allocations for medical expenses
+      let peopleAllocations = null;
+      if (isEditingMedicalExpense && selectedPeople.length > 0) {
+        if (selectedPeople.length === 1) {
+          // Single person - assign full amount
+          peopleAllocations = [{
+            personId: selectedPeople[0].id,
+            amount: parseFloat(editFormData.amount)
+          }];
+        } else {
+          // Multiple people - use allocated amounts
+          peopleAllocations = selectedPeople.map(person => ({
+            personId: person.id,
+            amount: person.amount
+          }));
+        }
+      } else if (isEditingMedicalExpense) {
+        // Medical expense with no people selected - clear allocations
+        peopleAllocations = [];
       }
 
-      const updatedExpense = await response.json();
+      const updatedExpense = await updateExpense(expenseToEdit.id, {
+        date: dateValue,
+        place: editFormData.place,
+        notes: editFormData.notes,
+        amount: parseFloat(editFormData.amount),
+        type: editFormData.type,
+        method: editFormData.method
+      }, peopleAllocations);
       
       // Notify parent component to update the expense
       if (onExpenseUpdated) {
@@ -110,6 +258,7 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, search
       
       setShowEditModal(false);
       setExpenseToEdit(null);
+      setSelectedPeople([]);
     } catch (error) {
       console.error('Error updating expense:', error);
       setEditMessage({ text: error.message, type: 'error' });
@@ -123,6 +272,7 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, search
     setExpenseToEdit(null);
     setEditFormData({});
     setEditMessage({ text: '', type: '' });
+    setSelectedPeople([]);
   };
 
   const handleDeleteClick = (expense) => {
@@ -315,26 +465,29 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, search
               >
                 <td>{formatDate(expense.date)}</td>
                 <td>
-                  {expense.is_generated ? (
-                    <span className="place-with-recurring">
-                      <span 
-                        className="recurring-indicator" 
-                        title={expense.template_deleted ? "Template deleted" : "Generated from recurring template"}
-                        aria-label={expense.template_deleted ? "Template deleted" : "Generated from recurring template"}
-                        style={expense.template_deleted ? { opacity: 0.5 } : {}}
-                      >
-                        🔄
-                      </span>
-                      {expense.place || '-'}
-                      {expense.template_deleted && (
-                        <span className="template-deleted-badge" title="The recurring template for this expense has been deleted">
-                          (template deleted)
+                  <div className="place-cell">
+                    {expense.is_generated ? (
+                      <span className="place-with-recurring">
+                        <span 
+                          className="recurring-indicator" 
+                          title={expense.template_deleted ? "Template deleted" : "Generated from recurring template"}
+                          aria-label={expense.template_deleted ? "Template deleted" : "Generated from recurring template"}
+                          style={expense.template_deleted ? { opacity: 0.5 } : {}}
+                        >
+                          🔄
                         </span>
-                      )}
-                    </span>
-                  ) : (
-                    expense.place || '-'
-                  )}
+                        {expense.place || '-'}
+                        {expense.template_deleted && (
+                          <span className="template-deleted-badge" title="The recurring template for this expense has been deleted">
+                            (template deleted)
+                          </span>
+                        )}
+                      </span>
+                    ) : (
+                      expense.place || '-'
+                    )}
+                    <PeopleIndicator expense={expense} />
+                  </div>
                 </td>
                 <td>{expense.notes || '-'}</td>
                 <td className={`amount ${expense.amount >= 350 ? 'high-amount' : ''}`}>
@@ -496,6 +649,37 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, search
                 />
               </div>
 
+              {/* People Selection for Medical Expenses */}
+              {isEditingMedicalExpense && (
+                <div className="form-group">
+                  <label htmlFor="edit-people">Assign to People</label>
+                  <select
+                    id="edit-people"
+                    name="people"
+                    multiple
+                    value={selectedPeople.map(p => p.id.toString())}
+                    onChange={handleEditPeopleChange}
+                    className="people-select"
+                    size={Math.min(people.length + 1, 4)}
+                  >
+                    <option value="" disabled>Select family members...</option>
+                    {people.map(person => (
+                      <option key={person.id} value={person.id}>
+                        {person.name}
+                      </option>
+                    ))}
+                  </select>
+                  {selectedPeople.length > 0 && (
+                    <div className="selected-people-info">
+                      Selected: {selectedPeople.map(p => p.name).join(', ')}
+                      {selectedPeople.length > 1 && (
+                        <span className="allocation-note"> (allocation required)</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {editMessage.text && (
                 <div className={`message ${editMessage.type}`}>
                   {editMessage.text}
@@ -522,6 +706,15 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, search
           </div>
         </div>
       )}
+
+      {/* Person Allocation Modal for Edit */}
+      <PersonAllocationModal
+        isOpen={showPersonAllocation}
+        expense={{ amount: parseFloat(editFormData.amount) || 0 }}
+        selectedPeople={selectedPeople}
+        onSave={handleEditPersonAllocation}
+        onCancel={() => setShowPersonAllocation(false)}
+      />
     </div>
   );
 });

@@ -4,6 +4,7 @@
  */
 
 import { API_ENDPOINTS } from '../config.js';
+import { apiGet, apiPost, apiDelete, logApiError } from '../utils/apiClient.js';
 
 /**
  * Get value history for a specific investment
@@ -12,16 +13,9 @@ import { API_ENDPOINTS } from '../config.js';
  */
 export const getValueHistory = async (investmentId) => {
   try {
-    const response = await fetch(`${API_ENDPOINTS.INVESTMENT_VALUES}/${investmentId}`);
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Failed to fetch value history');
-    }
-    
-    return await response.json();
+    return await apiGet(`${API_ENDPOINTS.INVESTMENT_VALUES}/${investmentId}`, 'fetch value history');
   } catch (error) {
-    console.error('Error fetching value history:', error);
+    logApiError('fetching value history', error);
     throw error;
   }
 };
@@ -35,16 +29,9 @@ export const getValueHistory = async (investmentId) => {
  */
 export const getValueForMonth = async (investmentId, year, month) => {
   try {
-    const response = await fetch(`${API_ENDPOINTS.INVESTMENT_VALUES}/${investmentId}/${year}/${month}`);
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Failed to fetch value for month');
-    }
-    
-    return await response.json();
+    return await apiGet(`${API_ENDPOINTS.INVESTMENT_VALUES}/${investmentId}/${year}/${month}`, 'fetch value for month');
   } catch (error) {
-    console.error('Error fetching value for month:', error);
+    logApiError('fetching value for month', error);
     throw error;
   }
 };
@@ -56,22 +43,9 @@ export const getValueForMonth = async (investmentId, year, month) => {
  */
 export const createOrUpdateValue = async (valueData) => {
   try {
-    const response = await fetch(API_ENDPOINTS.INVESTMENT_VALUES, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(valueData)
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Failed to create or update value');
-    }
-    
-    return await response.json();
+    return await apiPost(API_ENDPOINTS.INVESTMENT_VALUES, valueData, 'create or update value');
   } catch (error) {
-    console.error('Error creating or updating value:', error);
+    logApiError('creating or updating value', error);
     throw error;
   }
 };
@@ -83,18 +57,9 @@ export const createOrUpdateValue = async (valueData) => {
  */
 export const deleteValue = async (id) => {
   try {
-    const response = await fetch(`${API_ENDPOINTS.INVESTMENT_VALUES}/${id}`, {
-      method: 'DELETE'
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Failed to delete value entry');
-    }
-    
-    return await response.json();
+    return await apiDelete(`${API_ENDPOINTS.INVESTMENT_VALUES}/${id}`, 'delete value entry');
   } catch (error) {
-    console.error('Error deleting value entry:', error);
+    logApiError('deleting value entry', error);
     throw error;
   }
 };

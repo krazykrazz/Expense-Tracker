@@ -1,4 +1,5 @@
 const { CATEGORIES, BUDGETABLE_CATEGORIES, TAX_DEDUCTIBLE_CATEGORIES } = require('../utils/categories');
+const logger = require('../config/logger');
 
 /**
  * Get all valid categories
@@ -12,7 +13,7 @@ const getCategories = (req, res) => {
       taxDeductibleCategories: TAX_DEDUCTIBLE_CATEGORIES
     });
   } catch (error) {
-    console.error('Error fetching categories:', error);
+    logger.error('Error fetching categories:', error);
     res.status(500).json({ error: 'Failed to fetch categories' });
   }
 };

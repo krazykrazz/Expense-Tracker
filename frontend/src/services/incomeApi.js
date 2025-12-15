@@ -1,13 +1,10 @@
-import API_BASE_URL from '../config.js';
+/**
+ * Income API Service
+ * Handles all API calls related to income source management
+ */
 
-// Income API endpoints
-const INCOME_ENDPOINTS = {
-  BASE: `${API_BASE_URL}/api/income`,
-  BY_MONTH: (year, month) => `${API_BASE_URL}/api/income/${year}/${month}`,
-  BY_ID: (id) => `${API_BASE_URL}/api/income/${id}`,
-  COPY_PREVIOUS: (year, month) => `${API_BASE_URL}/api/income/${year}/${month}/copy-previous`,
-  ANNUAL_BY_CATEGORY: (year) => `${API_BASE_URL}/api/income/annual/${year}/by-category`
-};
+import { API_ENDPOINTS } from '../config.js';
+import { apiGet, apiPost, apiPut, apiDelete, logApiError } from '../utils/apiClient.js';
 
 /**
  * Get all income sources for a specific month
@@ -17,14 +14,7 @@ const INCOME_ENDPOINTS = {
  */
 export const getMonthlyIncomeSources = async (year, month) => {
   try {
-    const response = await fetch(INCOME_ENDPOINTS.BY_MONTH(year, month));
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Failed to fetch income sources');
-    }
-    
-    const data = await response.json();
+    const data = await apiGet(API_ENDPOINTS.INCOME_BY_MONTH(year, month), 'fetch income sources');
     
     // Parse byCategory from response (Requirement 2.5)
     return {
@@ -33,7 +23,7 @@ export const getMonthlyIncomeSources = async (year, month) => {
       byCategory: data.byCategory || {}
     };
   } catch (error) {
-    console.error('Error fetching monthly income sources:', error);
+    logApiError('fetching monthly income sources', error);
     throw error;
   }
 };
@@ -46,28 +36,15 @@ export const getMonthlyIncomeSources = async (year, month) => {
 export const createIncomeSource = async (data) => {
   try {
     // Include category in request body (Requirement 1.5)
-    const response = await fetch(INCOME_ENDPOINTS.BASE, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        year: data.year,
-        month: data.month,
-        name: data.name,
-        amount: data.amount,
-        category: data.category || 'Other'
-      })
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Failed to create income source');
-    }
-    
-    return await response.json();
+    return await apiPost(API_ENDPOINTS.INCOME, {
+      year: data.year,
+      month: data.month,
+      name: data.name,
+      amount: data.amount,
+      category: data.category || 'Other'
+    }, 'create income source');
   } catch (error) {
-    console.error('Error creating income source:', error);
+    logApiError('creating income source', error);
     throw error;
   }
 };
@@ -81,26 +58,13 @@ export const createIncomeSource = async (data) => {
 export const updateIncomeSource = async (id, data) => {
   try {
     // Include category in request body (Requirement 3.3)
-    const response = await fetch(INCOME_ENDPOINTS.BY_ID(id), {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        name: data.name,
-        amount: data.amount,
-        category: data.category
-      })
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Failed to update income source');
-    }
-    
-    return await response.json();
+    return await apiPut(API_ENDPOINTS.INCOME_BY_ID(id), {
+      name: data.name,
+      amount: data.amount,
+      category: data.category
+    }, 'update income source');
   } catch (error) {
-    console.error('Error updating income source:', error);
+    logApiError('updating income source', error);
     throw error;
   }
 };
@@ -112,18 +76,9 @@ export const updateIncomeSource = async (id, data) => {
  */
 export const deleteIncomeSource = async (id) => {
   try {
-    const response = await fetch(INCOME_ENDPOINTS.BY_ID(id), {
-      method: 'DELETE'
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Failed to delete income source');
-    }
-    
-    return await response.json();
+    return await apiDelete(API_ENDPOINTS.INCOME_BY_ID(id), 'delete income source');
   } catch (error) {
-    console.error('Error deleting income source:', error);
+    logApiError('deleting income source', error);
     throw error;
   }
 };
@@ -136,21 +91,9 @@ export const deleteIncomeSource = async (id) => {
  */
 export const carryForwardIncomeSources = async (year, month) => {
   try {
-    const response = await fetch(INCOME_ENDPOINTS.COPY_PREVIOUS(year, month), {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Failed to carry forward income sources');
-    }
-    
-    return await response.json();
+    return await apiPost(API_ENDPOINTS.INCOME_COPY_PREVIOUS(year, month), {}, 'carry forward income sources');
   } catch (error) {
-    console.error('Error carrying forward income sources:', error);
+    logApiError('carrying forward income sources', error);
     throw error;
   }
 };
@@ -162,16 +105,9 @@ export const carryForwardIncomeSources = async (year, month) => {
  */
 export const getAnnualIncomeByCategory = async (year) => {
   try {
-    const response = await fetch(INCOME_ENDPOINTS.ANNUAL_BY_CATEGORY(year));
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Failed to fetch annual income by category');
-    }
-    
-    return await response.json();
+    return await apiGet(`${API_ENDPOINTS.INCOME}/annual/${year}/by-category`, 'fetch annual income by category');
   } catch (error) {
-    console.error('Error fetching annual income by category:', error);
+    logApiError('fetching annual income by category', error);
     throw error;
   }
 };

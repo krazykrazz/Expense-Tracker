@@ -247,3 +247,284 @@
     text-align: left;
   }
 }
+
+
+/* Person Grouping Toggle */
+.person-grouping-toggle {
+  margin: 20px 0;
+  padding: 15px;
+  background: white;
+  border: 1px solid #d1fae5;
+  border-radius: 6px;
+}
+
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #166534;
+  font-weight: 500;
+}
+
+.toggle-label input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #16a34a;
+}
+
+.toggle-text {
+  user-select: none;
+}
+
+/* Person Group Styling */
+.person-group {
+  margin-bottom: 20px;
+  background: white;
+  border: 1px solid #86efac;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.person-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 15px;
+  background: #f0fdf4;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.person-group-header:hover {
+  background: #dcfce7;
+}
+
+.person-name {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #166534;
+  flex: 1;
+}
+
+.person-total {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #16a34a;
+  margin-right: 15px;
+}
+
+.person-providers {
+  padding: 15px;
+}
+
+/* Provider Group Styling */
+.provider-group {
+  margin-bottom: 15px;
+  padding: 12px;
+  background: #fafafa;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+}
+
+.provider-group:last-child {
+  margin-bottom: 0;
+}
+
+.provider-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.provider-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.provider-total {
+  font-size: 14px;
+  font-weight: 600;
+  color: #16a34a;
+}
+
+.provider-expenses {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Unassigned Section Styling */
+.unassigned-section {
+  margin-top: 25px;
+  background: white;
+  border: 2px solid #fbbf24;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.unassigned-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 15px;
+  background: #fef3c7;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.unassigned-header:hover {
+  background: #fde68a;
+}
+
+.unassigned-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #92400e;
+  flex: 1;
+}
+
+.unassigned-total {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #d97706;
+  margin-right: 15px;
+}
+
+.unassigned-expenses {
+  padding: 15px;
+}
+
+.unassigned-provider {
+  border-color: #fcd34d;
+  background: #fffbeb;
+}
+
+.unassigned-expense {
+  border-color: #fcd34d;
+  background: #fffbeb;
+}
+
+/* Quick Assign Styling */
+.quick-assign {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 10px;
+}
+
+.quick-assign-select {
+  padding: 6px 10px;
+  font-size: 13px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  background: white;
+  color: #374151;
+  cursor: pointer;
+  min-width: 120px;
+}
+
+.quick-assign-select:hover {
+  border-color: #16a34a;
+}
+
+.quick-assign-select:focus {
+  outline: none;
+  border-color: #16a34a;
+  box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.2);
+}
+
+.quick-assign-select:disabled {
+  background: #f3f4f6;
+  cursor: not-allowed;
+}
+
+.assigning-indicator {
+  font-size: 12px;
+  color: #6b7280;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.assign-error {
+  padding: 10px 15px;
+  margin-bottom: 15px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 4px;
+  color: #dc2626;
+  font-size: 13px;
+}
+
+/* Responsive adjustments for person grouping */
+@media (max-width: 768px) {
+  .person-group-header {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .person-name {
+    flex-basis: 100%;
+    order: 1;
+  }
+
+  .person-total {
+    order: 2;
+    margin-right: 0;
+  }
+
+  .person-group-header .collapse-toggle {
+    order: 3;
+  }
+
+  .provider-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+  }
+
+  .unassigned-header {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .unassigned-title {
+    flex-basis: 100%;
+    order: 1;
+  }
+
+  .unassigned-total {
+    order: 2;
+    margin-right: 0;
+  }
+
+  .unassigned-header .collapse-toggle {
+    order: 3;
+  }
+
+  .tax-expense-item.unassigned-expense {
+    grid-template-columns: 1fr;
+  }
+
+  .quick-assign {
+    margin-left: 0;
+    margin-top: 10px;
+    width: 100%;
+  }
+
+  .quick-assign-select {
+    flex: 1;
+  }
+}

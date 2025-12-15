@@ -1,7 +1,7 @@
 # Project Archive
 
 **Created:** 2025-11-24  
-**Last Updated:** 2025-12-06
+**Last Updated:** 2025-12-14
 
 This archive contains historical documentation and scripts that have served their purpose but are retained for reference.
 
@@ -105,6 +105,20 @@ Copy-Item archive/[subfolder]/[filename] ./
   - Moved 8 audit/cleanup reports to reports/
   - Kept current optimization reports in root temporarily
   - Root directory reduced from ~60 to ~35 files
+
+- **2025-12-14:** Post v4.6.0 cleanup (10 items)
+  - Moved 7 dated report files from root to archive/reports/:
+    - CLEANUP_AND_OPTIMIZATION_SUMMARY_2025-12-06.md
+    - CODE_AUDIT_OPTIMIZATION_REPORT_2025-12-06.md
+    - CODE_OPTIMIZATION_PROGRESS.md
+    - CODE_OPTIMIZATION_SUMMARY_2025-12-06.md
+    - PROJECT_CLEANUP_COMPLETE_2025-12-06.md
+    - PROJECT_CLEANUP_PLAN_2025-12-06.md
+  - Moved DEPLOYMENT_SUMMARY_v4.5.1.md to archive/deployments/
+  - Deleted empty folders: backend/uploads/, backend/Expense Tracker Backups/
+  - Deleted temporary files: backend/migration-debug.txt, frontend/test-results.txt, frontend/test-results2.txt
+  - Removed empty .github/ folder (no workflows)
+  - Root directory now has ~30 files (clean and organized)
 
 ## Next Review
 

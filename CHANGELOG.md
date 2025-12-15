@@ -11,6 +11,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.6.0] - 2025-12-14
+
+### Added
+- **Medical Expense People Tracking**: Associate medical expenses with specific family members for detailed tax reporting
+  - People management in Settings → People tab for adding/editing family members
+  - Associate medical expenses (Tax - Medical) with one or more people
+  - Single person selection automatically assigns full expense amount
+  - Multiple person selection with custom amount allocation
+  - "Split Equally" button for convenient equal division among people
+  - Person-grouped view in Tax Deductible for tax preparation
+  - Per-person subtotals by medical provider
+  - "Unassigned" section for medical expenses without people associations
+  - Quick assign functionality to add people to existing expenses
+  - Visual indicators showing assigned people on expense list
+  - Backward compatible with existing medical expenses (no migration required)
+
+### Technical
+- **Database Schema**: Added `people` and `expense_people` tables
+  - `people` table stores family member information (name, date of birth)
+  - `expense_people` junction table links expenses to people with amounts
+  - CASCADE DELETE ensures data integrity when people or expenses are removed
+  - UNIQUE constraint on (expense_id, person_id) prevents duplicate associations
+- **API Endpoints**: New people management endpoints
+  - `GET /api/people` - Get all people
+  - `POST /api/people` - Create a new person
+  - `PUT /api/people/:id` - Update a person
+  - `DELETE /api/people/:id` - Delete a person (cascades to associations)
+- **Enhanced Expense Endpoints**: Support for people associations
+  - Expense creation/update accepts optional `people` array with allocations
+  - Tax deductible endpoint supports person grouping
+- **Property-Based Testing**: 13 correctness properties with 100+ iterations each
+  - Person data round-trip, deletion cascade, amount allocation validation
+  - Person-grouped aggregation, backward compatibility, assignment workflow
+- **Frontend Components**: New and enhanced components
+  - `PeopleManagementModal` for managing family members
+  - `PersonAllocationModal` for splitting expenses across people
+  - Enhanced `ExpenseForm` with people selection for medical expenses
+  - Enhanced `TaxDeductible` with person-grouped view
+  - Visual indicators in `ExpenseList` for people assignments
+
+### Documentation
+- Added comprehensive feature documentation in `docs/features/MEDICAL_EXPENSE_PEOPLE_TRACKING.md`
+- Updated README.md with feature overview and usage instructions
+- Added database schema documentation for new tables
+- Added API endpoint documentation for people management
+
+---
+
 ## [4.5.1] - 2025-12-06
 
 ### Added

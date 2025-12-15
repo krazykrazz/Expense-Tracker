@@ -131,6 +131,9 @@ const PeopleManagementModal = ({ isOpen, onClose, onPeopleUpdated }) => {
       if (onPeopleUpdated) {
         onPeopleUpdated();
       }
+      
+      // Dispatch global event to notify other components of people update
+      window.dispatchEvent(new CustomEvent('peopleUpdated'));
     } catch (err) {
       const errorMessage = err.message || 'Network error. Unable to save person. Please check your connection and try again.';
       setError(errorMessage);
@@ -166,6 +169,9 @@ const PeopleManagementModal = ({ isOpen, onClose, onPeopleUpdated }) => {
       if (onPeopleUpdated) {
         onPeopleUpdated();
       }
+      
+      // Dispatch global event to notify other components of people update
+      window.dispatchEvent(new CustomEvent('peopleUpdated'));
     } catch (err) {
       const errorMessage = err.message || 'Network error. Unable to delete person. Please check your connection and try again.';
       setError(errorMessage);

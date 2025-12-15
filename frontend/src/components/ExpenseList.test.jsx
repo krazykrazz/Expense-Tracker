@@ -61,7 +61,6 @@ describe('ExpenseList Local Filter Tests', () => {
         expenses={mockExpenses}
         onExpenseDeleted={vi.fn()}
         onExpenseUpdated={vi.fn()}
-        searchText=""
         onAddExpense={vi.fn()}
       />
     );
@@ -85,7 +84,6 @@ describe('ExpenseList Local Filter Tests', () => {
         expenses={mockExpenses}
         onExpenseDeleted={vi.fn()}
         onExpenseUpdated={vi.fn()}
-        searchText=""
         onAddExpense={vi.fn()}
       />
     );
@@ -125,7 +123,6 @@ describe('ExpenseList Local Filter Tests', () => {
         expenses={[]}
         onExpenseDeleted={vi.fn()}
         onExpenseUpdated={vi.fn()}
-        searchText=""
         onAddExpense={vi.fn()}
       />
     );

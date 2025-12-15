@@ -55,6 +55,18 @@ A full-stack expense tracking application built with React and Node.js.
 - 💰 Automatic calculation from investment values and loan balances
 - 📈 Year-end value selection (December preferred, fallback to latest month)
 
+### Medical Expense People Tracking
+- 👨‍👩‍👧‍👦 Associate medical expenses with specific family members
+- 💊 Track which family member incurred each medical expense
+- 💰 Split medical expenses across multiple people with custom allocations
+- 📊 View tax-deductible medical expenses grouped by person
+- 📋 Per-person subtotals by medical provider for tax preparation
+- ⚡ Quick "Split Equally" option for multi-person expenses
+- 🏷️ Visual indicators showing assigned people on expense list
+- ⚠️ "Unassigned" indicators for medical expenses without people
+- 🔄 Backward compatible with existing medical expenses
+- 👤 People management in Settings for adding/editing family members
+
 ### Budget Tracking & Alerts
 - 💵 Set monthly budget limits for expense categories (Food, Gas, Other)
 - 📊 Real-time progress bars with color-coded status indicators
@@ -335,10 +347,22 @@ stop-servers.bat
 31. **Automatic Carry-Forward**: Budgets automatically copy from previous month when accessing a new month
 32. **Budget Summary**: View overall budget status in the summary panel showing total budgeted vs spent
 
+### Medical Expense People Tracking
+33. **Manage People**: Click "⚙️ Settings" → "People" tab to add family members
+34. **Add Person**: Enter name and optional date of birth for each family member
+35. **Assign to Expense**: When creating a medical expense (Tax - Medical), select one or more people
+36. **Single Person**: Selecting one person automatically assigns the full amount
+37. **Multiple People**: Selecting multiple people opens the allocation modal
+38. **Split Equally**: Use the "Split Equally" button to divide the expense evenly
+39. **Custom Allocation**: Enter specific amounts for each person (must sum to total)
+40. **View by Person**: In Tax Deductible view, toggle "Group by Person" to see expenses organized by family member
+41. **Quick Assign**: Assign people to unassigned medical expenses directly from the Tax Deductible view
+42. **Tax Preparation**: Use person-grouped view to get per-person totals for tax forms
+
 ### Data Management
-33. **Backup**: Click the "💾 Backup" button to download your database
-34. **Automated Backups**: Configure scheduled backups in Backup Settings
-35. **Data Reminders**: Receive visual reminders when monthly data needs updating (investments and loans)
+43. **Backup**: Click the "💾 Backup" button to download your database
+44. **Automated Backups**: Configure scheduled backups in Backup Settings
+45. **Data Reminders**: Receive visual reminders when monthly data needs updating (investments and loans)
 
 ## Project Structure
 
@@ -424,6 +448,12 @@ expense-tracker/
 
 ### Reminders
 - `GET /api/reminders/status/:year/:month` - Get reminder status for missing investment values and loan balances
+
+### People (Medical Expense Tracking)
+- `GET /api/people` - Get all people (family members)
+- `POST /api/people` - Create a new person
+- `PUT /api/people/:id` - Update a person
+- `DELETE /api/people/:id` - Delete a person (cascades to expense associations)
 
 ### Backup
 - `GET /api/backup` - Download database backup
@@ -512,6 +542,21 @@ expense-tracker/
 - created_at (TEXT)
 - updated_at (TEXT)
 - UNIQUE constraint on (investment_id, year, month)
+
+### People Table
+- id (INTEGER PRIMARY KEY)
+- name (TEXT NOT NULL) - Person's name
+- date_of_birth (DATE) - Optional date of birth
+- created_at (TEXT)
+- updated_at (TEXT)
+
+### Expense People Table (Junction Table)
+- id (INTEGER PRIMARY KEY)
+- expense_id (INTEGER) - Foreign key to expenses table (CASCADE DELETE)
+- person_id (INTEGER) - Foreign key to people table (CASCADE DELETE)
+- amount (DECIMAL) - Amount allocated to this person
+- created_at (TEXT)
+- UNIQUE constraint on (expense_id, person_id)
 
 ## Documentation
 

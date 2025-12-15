@@ -12,53 +12,56 @@ const { getDatabase } = require('../database/db');
 describe('ExpenseService - Property-Based Tests for People Grouping', () => {
   let db;
 
+  // Helper function to clean up test data in correct order (associations first, then expenses, then people)
+  const cleanupTestData = async () => {
+    // Delete expense_people associations for test people first
+    await new Promise((resolve, reject) => {
+      db.run(`DELETE FROM expense_people WHERE person_id IN (
+        SELECT id FROM people WHERE name LIKE "PBT_Person_%" OR name LIKE "PBT_Tax_Person_%" OR name LIKE "PBT_Mixed_Person_%"
+      )`, (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+    // Also delete associations for test expenses
+    await new Promise((resolve, reject) => {
+      db.run(`DELETE FROM expense_people WHERE expense_id IN (
+        SELECT id FROM expenses WHERE place LIKE "PBT_PEOPLE_%" OR place LIKE "PBT_TAX_%" OR place LIKE "PBT_MIXED_%"
+      )`, (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+    // Delete expenses
+    await new Promise((resolve, reject) => {
+      db.run('DELETE FROM expenses WHERE place LIKE "PBT_PEOPLE_%" OR place LIKE "PBT_TAX_%" OR place LIKE "PBT_MIXED_%"', (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+    // Delete people
+    await new Promise((resolve, reject) => {
+      db.run('DELETE FROM people WHERE name LIKE "PBT_Person_%" OR name LIKE "PBT_Tax_Person_%" OR name LIKE "PBT_Mixed_Person_%"', (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+  };
+
   beforeAll(async () => {
     db = await getDatabase();
     // Clean up any leftover test data from previous runs
-    await new Promise((resolve, reject) => {
-      db.run('DELETE FROM expenses WHERE place LIKE "PBT_PEOPLE_%"', (err) => {
-        if (err) reject(err);
-        else resolve();
-      });
-    });
-    await new Promise((resolve, reject) => {
-      db.run('DELETE FROM people WHERE name LIKE "PBT_Person_%"', (err) => {
-        if (err) reject(err);
-        else resolve();
-      });
-    });
+    await cleanupTestData();
   });
 
   beforeEach(async () => {
     // Clean up test data before each test to ensure isolation
-    await new Promise((resolve, reject) => {
-      db.run('DELETE FROM expenses WHERE place LIKE "PBT_PEOPLE_%"', (err) => {
-        if (err) reject(err);
-        else resolve();
-      });
-    });
-    await new Promise((resolve, reject) => {
-      db.run('DELETE FROM people WHERE name LIKE "PBT_Person_%"', (err) => {
-        if (err) reject(err);
-        else resolve();
-      });
-    });
+    await cleanupTestData();
   });
 
   afterEach(async () => {
     // Clean up test data after each test
-    await new Promise((resolve, reject) => {
-      db.run('DELETE FROM expenses WHERE place LIKE "PBT_PEOPLE_%"', (err) => {
-        if (err) reject(err);
-        else resolve();
-      });
-    });
-    await new Promise((resolve, reject) => {
-      db.run('DELETE FROM people WHERE name LIKE "PBT_Person_%"', (err) => {
-        if (err) reject(err);
-        else resolve();
-      });
-    });
+    await cleanupTestData();
   });
 
   /**
@@ -79,18 +82,7 @@ describe('ExpenseService - Property-Based Tests for People Grouping', () => {
         fc.integer({ min: 3, max: 10 }),
         async (year, numPeople, numExpenses) => {
           // Clean up any existing test data for this iteration
-          await new Promise((resolve, reject) => {
-            db.run('DELETE FROM expenses WHERE place LIKE "PBT_PEOPLE_%"', (err) => {
-              if (err) reject(err);
-              else resolve();
-            });
-          });
-          await new Promise((resolve, reject) => {
-            db.run('DELETE FROM people WHERE name LIKE "PBT_Person_%"', (err) => {
-              if (err) reject(err);
-              else resolve();
-            });
-          });
+          await cleanupTestData();
           
           // Create test people
           const createdPeople = [];
@@ -244,18 +236,7 @@ describe('ExpenseService - Property-Based Tests for People Grouping', () => {
         fc.integer({ min: 5, max: 15 }),
         async (year, numPeople, numExpenses) => {
           // Clean up any existing test data for this iteration
-          await new Promise((resolve, reject) => {
-            db.run('DELETE FROM expenses WHERE place LIKE "PBT_TAX_%"', (err) => {
-              if (err) reject(err);
-              else resolve();
-            });
-          });
-          await new Promise((resolve, reject) => {
-            db.run('DELETE FROM people WHERE name LIKE "PBT_Tax_Person_%"', (err) => {
-              if (err) reject(err);
-              else resolve();
-            });
-          });
+          await cleanupTestData();
           
           // Create test people
           const createdPeople = [];
@@ -432,18 +413,7 @@ describe('ExpenseService - Property-Based Tests for People Grouping', () => {
         fc.integer({ min: 2, max: 5 }),
         async (year, numPeople, numAssignedExpenses, numUnassignedExpenses) => {
           // Clean up any existing test data for this iteration
-          await new Promise((resolve, reject) => {
-            db.run('DELETE FROM expenses WHERE place LIKE "PBT_MIXED_%"', (err) => {
-              if (err) reject(err);
-              else resolve();
-            });
-          });
-          await new Promise((resolve, reject) => {
-            db.run('DELETE FROM people WHERE name LIKE "PBT_Mixed_Person_%"', (err) => {
-              if (err) reject(err);
-              else resolve();
-            });
-          });
+          await cleanupTestData();
           
           // Create test people
           const createdPeople = [];
@@ -574,15 +544,28 @@ describe('ExpenseService - Property-Based Tests for People Grouping', () => {
           }
           
           // Property 2: All unassigned expenses should appear in unassignedExpenses
-          expect(summary.unassignedExpenses.count).toBe(numUnassignedExpenses);
-          expect(summary.unassignedExpenses.total).toBeCloseTo(totalUnassignedAmount, 2);
+          // Filter to only count test-specific unassigned expenses (place starts with PBT_MIXED_Unassigned_)
+          let testUnassignedCount = 0;
+          let testUnassignedTotal = 0;
+          for (const provider of summary.unassignedExpenses.providers) {
+            for (const expense of provider.expenses) {
+              if (expense.place && expense.place.startsWith('PBT_MIXED_Unassigned_')) {
+                testUnassignedCount++;
+                testUnassignedTotal += expense.amount;
+              }
+            }
+          }
+          expect(testUnassignedCount).toBe(numUnassignedExpenses);
+          expect(testUnassignedTotal).toBeCloseTo(totalUnassignedAmount, 2);
           
           let totalFoundUnassigned = 0;
           for (const provider of summary.unassignedExpenses.providers) {
             for (const expense of provider.expenses) {
-              const originalExpense = unassignedExpenses.find(e => e.id === expense.id);
-              expect(originalExpense).toBeDefined();
-              totalFoundUnassigned += expense.amount;
+              if (expense.place && expense.place.startsWith('PBT_MIXED_Unassigned_')) {
+                const originalExpense = unassignedExpenses.find(e => e.id === expense.id);
+                expect(originalExpense).toBeDefined();
+                totalFoundUnassigned += expense.amount;
+              }
             }
           }
           expect(totalFoundUnassigned).toBeCloseTo(totalUnassignedAmount, 2);

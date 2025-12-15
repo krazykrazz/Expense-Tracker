@@ -332,6 +332,61 @@ class ExpensePeopleRepository {
       });
     });
   }
+
+  /**
+   * Get people for multiple expenses at once
+   * @param {Array<number>} expenseIds - Array of expense IDs
+   * @returns {Promise<Object>} Object mapping expense IDs to their people arrays
+   */
+  async getPeopleForExpenses(expenseIds) {
+    if (!expenseIds || expenseIds.length === 0) {
+      return {};
+    }
+
+    const db = await getDatabase();
+    
+    return new Promise((resolve, reject) => {
+      const placeholders = expenseIds.map(() => '?').join(',');
+      const sql = `
+        SELECT 
+          ep.expense_id,
+          ep.id as association_id,
+          ep.person_id,
+          ep.amount,
+          p.name,
+          p.date_of_birth
+        FROM expense_people ep
+        JOIN people p ON ep.person_id = p.id
+        WHERE ep.expense_id IN (${placeholders})
+        ORDER BY ep.expense_id, p.name ASC
+      `;
+      
+      db.all(sql, expenseIds, (err, rows) => {
+        if (err) {
+          logger.error('Error getting people for expenses:', err);
+          reject(err);
+          return;
+        }
+        
+        // Group by expense ID
+        const result = {};
+        rows.forEach(row => {
+          if (!result[row.expense_id]) {
+            result[row.expense_id] = [];
+          }
+          result[row.expense_id].push({
+            associationId: row.association_id,
+            personId: row.person_id,
+            name: row.name,
+            dateOfBirth: row.date_of_birth,
+            amount: row.amount
+          });
+        });
+        
+        resolve(result);
+      });
+    });
+  }
 }
 
 module.exports = new ExpensePeopleRepository();

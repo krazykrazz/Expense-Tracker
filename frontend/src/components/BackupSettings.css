@@ -487,3 +487,381 @@
     width: 100%;
   }
 }
+
+
+/* People Tab Styles */
+.people-loading {
+  padding: 20px;
+  text-align: center;
+  color: #666;
+  font-size: 14px;
+}
+
+.people-add-section {
+  margin-bottom: 20px;
+}
+
+.people-add-button {
+  padding: 10px 20px;
+  background: #4caf50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.people-add-button:hover:not(:disabled) {
+  background: #45a049;
+}
+
+.people-add-button:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.people-form-section {
+  background: white;
+  padding: 20px;
+  border-radius: 6px;
+  border: 1px solid #e0e4ff;
+  margin-bottom: 20px;
+}
+
+.people-form-section h4 {
+  margin: 0 0 15px 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #333;
+}
+
+.people-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.people-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.people-form-group label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #555;
+}
+
+.people-form-group input {
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.people-form-group input:focus {
+  outline: none;
+  border-color: #0ea5e9;
+}
+
+.people-form-group input.input-error {
+  border-color: #d32f2f;
+}
+
+.validation-error {
+  font-size: 12px;
+  color: #d32f2f;
+}
+
+.people-form-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.people-save-button {
+  padding: 10px 20px;
+  background: #0ea5e9;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.people-save-button:hover:not(:disabled) {
+  background: #0284c7;
+}
+
+.people-save-button:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.people-cancel-button {
+  padding: 10px 20px;
+  background: #f5f5f5;
+  color: #666;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.people-cancel-button:hover:not(:disabled) {
+  background: #e0e0e0;
+}
+
+.people-cancel-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.people-list-section {
+  margin-top: 20px;
+}
+
+.people-list-section h4 {
+  margin: 0 0 15px 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #333;
+}
+
+.people-empty-state {
+  background: white;
+  padding: 30px;
+  border-radius: 6px;
+  border: 1px solid #e0e4ff;
+  text-align: center;
+  color: #666;
+}
+
+.people-empty-state p {
+  margin: 5px 0;
+  font-size: 14px;
+}
+
+.people-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.people-list-item {
+  background: white;
+  padding: 15px;
+  border-radius: 6px;
+  border: 1px solid #e0e4ff;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.people-info {
+  flex: 1;
+}
+
+.people-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 4px;
+}
+
+.people-dob {
+  font-size: 13px;
+  color: #666;
+}
+
+.people-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.people-edit-button,
+.people-delete-button {
+  padding: 8px 12px;
+  background: #f5f5f5;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.people-edit-button:hover:not(:disabled) {
+  background: #e3f2fd;
+  border-color: #2196f3;
+}
+
+.people-delete-button:hover:not(:disabled) {
+  background: #ffebee;
+  border-color: #f44336;
+}
+
+.people-edit-button:disabled,
+.people-delete-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.people-info-note {
+  margin-top: 20px;
+  padding: 15px;
+  background: #fff3e0;
+  border-radius: 6px;
+  border: 1px solid #ffe0b2;
+}
+
+.people-info-note p {
+  margin: 0;
+  font-size: 13px;
+  color: #e65100;
+  line-height: 1.5;
+}
+
+.people-retry-button {
+  margin-left: 10px;
+  padding: 5px 10px;
+  background: #f5f5f5;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.people-retry-button:hover {
+  background: #e0e0e0;
+}
+
+/* Delete Confirmation Modal */
+.people-delete-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
+}
+
+.people-delete-modal {
+  background: white;
+  padding: 25px;
+  border-radius: 8px;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.people-delete-modal h3 {
+  margin: 0 0 15px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+}
+
+.people-delete-modal p {
+  margin: 0 0 10px 0;
+  font-size: 14px;
+  color: #555;
+  line-height: 1.5;
+}
+
+.people-delete-warning {
+  color: #d32f2f !important;
+  font-weight: 500;
+  margin-top: 15px !important;
+}
+
+.people-delete-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.people-delete-confirm-button {
+  padding: 10px 20px;
+  background: #d32f2f;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.people-delete-confirm-button:hover:not(:disabled) {
+  background: #b71c1c;
+}
+
+.people-delete-confirm-button:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.people-delete-cancel-button {
+  padding: 10px 20px;
+  background: #f5f5f5;
+  color: #666;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.people-delete-cancel-button:hover:not(:disabled) {
+  background: #e0e0e0;
+}
+
+.people-delete-cancel-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  .people-list-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .people-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .people-form-actions {
+    flex-direction: column;
+  }
+
+  .people-save-button,
+  .people-cancel-button {
+    width: 100%;
+  }
+
+  .people-delete-actions {
+    flex-direction: column;
+  }
+
+  .people-delete-confirm-button,
+  .people-delete-cancel-button {
+    width: 100%;
+  }
+}

@@ -1,6 +1,7 @@
 const expenseService = require('../services/expenseService');
 const categorySuggestionService = require('../services/categorySuggestionService');
 const { isValid: isValidCategory } = require('../utils/categories');
+const logger = require('../config/logger');
 const fs = require('fs');
 const path = require('path');
 const { DB_PATH } = require('../database/db');
@@ -210,7 +211,7 @@ async function getTaxDeductibleSummary(req, res) {
     
     res.status(200).json(summary);
   } catch (error) {
-    console.error('Error fetching tax-deductible summary:', error);
+    logger.error('Error fetching tax-deductible summary:', error);
     res.status(500).json({ error: 'Failed to retrieve tax-deductible expenses' });
   }
 }
@@ -414,7 +415,7 @@ async function importExpenses(req, res) {
       fs.unlinkSync(req.file.path);
     }
     
-    console.error('Import error:', error);
+    logger.error('Import error:', error);
     res.status(500).json({ error: error.message });
   }
 }
@@ -448,11 +449,11 @@ async function backupDatabase(req, res) {
     fileStream.pipe(res);
 
     fileStream.on('error', (error) => {
-      console.error('Error streaming database file:', error);
+      logger.error('Error streaming database file:', error);
       res.status(500).json({ error: 'Failed to backup database' });
     });
   } catch (error) {
-    console.error('Backup error:', error);
+    logger.error('Backup error:', error);
     res.status(500).json({ error: error.message });
   }
 }

@@ -11,6 +11,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.6.3] - 2025-12-15
+
+### Fixed
+- **Loan Reminders**: Fixed reminders to exclude loans that start in the future
+  - Loans with a start_date after the current month no longer trigger balance update reminders
+  - Only loans that have already started are included in reminder calculations
+
+---
+
 ## [4.6.2] - 2025-12-15
 
 ### Fixed

@@ -40,12 +40,18 @@ class ReminderRepository {
 
   /**
    * Get all active loans with their balance status for a specific month
+   * Only includes loans that have started (start_date <= requested month)
    * @param {number} year - Year
    * @param {number} month - Month (1-12)
    * @returns {Promise<Array>} Array of loans with hasBalance flag
    */
   async getLoansWithBalanceStatus(year, month) {
     const db = await getDatabase();
+    
+    // Build the first day of the requested month for comparison
+    // Format: YYYY-MM-01
+    const monthStr = month.toString().padStart(2, '0');
+    const requestedMonthStart = `${year}-${monthStr}-01`;
     
     return new Promise((resolve, reject) => {
       const sql = `
@@ -63,10 +69,11 @@ class ReminderRepository {
           AND lb.year = ? 
           AND lb.month = ?
         WHERE l.is_paid_off = 0
+          AND date(l.start_date) <= date(?)
         ORDER BY l.name ASC
       `;
       
-      db.all(sql, [year, month], (err, rows) => {
+      db.all(sql, [year, month, requestedMonthStart], (err, rows) => {
         if (err) {
           reject(err);
           return;

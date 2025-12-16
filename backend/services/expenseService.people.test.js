@@ -39,6 +39,12 @@ describe('ExpenseService - People Integration', () => {
 
       expenseRepository.create.mockResolvedValue(mockExpense);
       expensePeopleRepository.createAssociations.mockResolvedValue([mockAssociation]);
+      expensePeopleRepository.getPeopleForExpenses.mockResolvedValue({
+        1: [{
+          personId: 123,
+          amount: 150.00
+        }]
+      });
 
       // Test data
       const expenseData = {
@@ -128,6 +134,12 @@ describe('ExpenseService - People Integration', () => {
 
       expenseRepository.create.mockResolvedValue(mockExpense);
       expensePeopleRepository.createAssociations.mockResolvedValue(mockAssociations);
+      expensePeopleRepository.getPeopleForExpenses.mockResolvedValue({
+        1: [
+          { personId: 123, amount: 150.00 },
+          { personId: 456, amount: 150.00 }
+        ]
+      });
 
       // Test data
       const expenseData = {
@@ -177,6 +189,12 @@ describe('ExpenseService - People Integration', () => {
 
       expenseRepository.create.mockResolvedValue(mockExpense);
       expensePeopleRepository.createAssociations.mockResolvedValue(mockAssociations);
+      expensePeopleRepository.getPeopleForExpenses.mockResolvedValue({
+        1: [
+          { personId: 123, amount: 100.00 },
+          { personId: 456, amount: 150.00 }
+        ]
+      });
 
       // Test data
       const expenseData = {
@@ -335,6 +353,9 @@ describe('ExpenseService - People Integration', () => {
 
       expenseRepository.update.mockResolvedValue(mockUpdatedExpense);
       expensePeopleRepository.updateExpenseAllocations.mockResolvedValue(mockUpdatedAssociations);
+      expensePeopleRepository.getPeopleForExpenses.mockResolvedValue({
+        1: [{ personId: 789, amount: 200.00 }]
+      });
 
       // Test data
       const expenseData = {
@@ -410,6 +431,9 @@ describe('ExpenseService - People Integration', () => {
 
       expenseRepository.update.mockResolvedValue(mockUpdatedExpense);
       expensePeopleRepository.updateExpenseAllocations.mockResolvedValue([]);
+      expensePeopleRepository.getPeopleForExpenses.mockResolvedValue({
+        1: []
+      });
 
       // Test data
       const expenseData = {

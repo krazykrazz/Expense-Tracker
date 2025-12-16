@@ -19,30 +19,35 @@ describe('MerchantAnalyticsService - Expense Filtering Property Tests', () => {
     db = await getDatabase();
   });
 
-  beforeEach(async () => {
-    // Clear all related tables before each test
-    const tables = ['expense_people', 'expenses', 'monthly_gross', 'income_sources', 'fixed_expenses', 'loans', 'loan_balances', 'budgets', 'investments', 'investment_values', 'people'];
+  const cleanupDatabase = async () => {
+    // Clear all related tables - order matters for foreign keys
+    const tables = ['expense_people', 'expenses', 'loan_balances', 'loans', 'investment_values', 'investments', 'budgets', 'fixed_expenses', 'income_sources', 'monthly_gross', 'people'];
     
-    for (const table of tables) {
-      await new Promise((resolve, reject) => {
-        db.run(`DELETE FROM ${table}`, (err) => {
+    // Use transactions to ensure atomicity
+    await new Promise((resolve, reject) => {
+      db.serialize(() => {
+        db.run('BEGIN TRANSACTION');
+        
+        // Delete from all tables
+        for (const table of tables) {
+          db.run(`DELETE FROM ${table}`, (err) => {
+            if (err && !err.message.includes('no such table')) {
+              console.error(`Error deleting from ${table}:`, err);
+            }
+          });
+        }
+        
+        // Reset auto-increment counters
+        db.run('DELETE FROM sqlite_sequence', (err) => {
           if (err && !err.message.includes('no such table')) {
-            reject(err);
-          } else {
-            resolve();
+            console.error('Error resetting sequences:', err);
           }
         });
-      });
-    }
-    
-    // Reset auto-increment counters
-    await new Promise((resolve, reject) => {
-      db.run('DELETE FROM sqlite_sequence', (err) => {
-        if (err && !err.message.includes('no such table')) {
-          reject(err);
-        } else {
-          resolve();
-        }
+        
+        db.run('COMMIT', (err) => {
+          if (err) reject(err);
+          else resolve();
+        });
       });
     });
     
@@ -56,7 +61,15 @@ describe('MerchantAnalyticsService - Expense Filtering Property Tests', () => {
     });
     
     // Wait to ensure cleanup is complete
-    await new Promise(resolve => setTimeout(resolve, 50));
+    await new Promise(resolve => setTimeout(resolve, 100));
+  };
+
+  beforeEach(async () => {
+    await cleanupDatabase();
+  });
+
+  afterEach(async () => {
+    await cleanupDatabase();
   });
 
   test('**Feature: merchant-analytics, Property 10: Merchant expense filter returns only matching expenses**', async () => {

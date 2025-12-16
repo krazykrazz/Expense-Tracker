@@ -11,6 +11,7 @@ import TaxDeductible from './components/TaxDeductible';
 import BudgetManagementModal from './components/BudgetManagementModal';
 import BudgetHistoryView from './components/BudgetHistoryView';
 import PeopleManagementModal from './components/PeopleManagementModal';
+import MerchantAnalyticsModal from './components/MerchantAnalyticsModal';
 import { API_ENDPOINTS } from './config';
 import { CATEGORIES, PAYMENT_METHODS } from './utils/constants';
 import { getPeople } from './services/peopleApi';
@@ -31,6 +32,7 @@ function App() {
   const [showBudgetManagement, setShowBudgetManagement] = useState(false);
   const [showBudgetHistory, setShowBudgetHistory] = useState(false);
   const [showPeopleManagement, setShowPeopleManagement] = useState(false);
+  const [showMerchantAnalytics, setShowMerchantAnalytics] = useState(false);
   const [filterType, setFilterType] = useState('');
   const [filterMethod, setFilterMethod] = useState('');
   const [versionInfo, setVersionInfo] = useState(null);
@@ -372,6 +374,13 @@ function App() {
     setShowPeopleManagement(false);
   };
 
+  const handleViewExpensesFromMerchant = (merchantName) => {
+    // Set search text to the merchant name to filter expenses
+    setSearchText(merchantName);
+    // Close the merchant analytics modal
+    setShowMerchantAnalytics(false);
+  };
+
   /**
    * Client-Side Expense Filtering (Memoized)
    * 
@@ -521,6 +530,7 @@ function App() {
                 selectedYear={selectedYear}
                 selectedMonth={selectedMonth}
                 refreshTrigger={refreshTrigger}
+                onOpenMerchantAnalytics={() => setShowMerchantAnalytics(true)}
               />
             </div>
           </div>
@@ -610,6 +620,14 @@ function App() {
           isOpen={showPeopleManagement}
           onClose={handleClosePeopleManagement}
           onPeopleUpdated={handlePeopleUpdated}
+        />
+      )}
+
+      {showMerchantAnalytics && (
+        <MerchantAnalyticsModal
+          isOpen={showMerchantAnalytics}
+          onClose={() => setShowMerchantAnalytics(false)}
+          onViewExpenses={handleViewExpensesFromMerchant}
         />
       )}
 

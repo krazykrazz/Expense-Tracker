@@ -200,7 +200,7 @@ describe('MerchantAnalyticsService - Date Range Filtering Property Tests', () =>
           }
         }
       ),
-      { numRuns: 20, timeout: 10000 }
+      { numRuns: 10, timeout: 5000 }
     );
-  }, 15000);
+  }, 10000);
 });

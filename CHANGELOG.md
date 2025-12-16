@@ -11,6 +11,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.7.0] - 2025-12-16
+
+### Added
+- **Merchant Analytics**: Comprehensive spending analysis by merchant/place with detailed insights
+  - Merchant Analytics modal accessible via "🏪 Merchant Analytics" button in main navigation
+  - Top merchants ranking with three sort options: total spending, visit frequency, or average spend per visit
+  - Time period filtering: All Time, This Year, This Month, Last 3 Months for flexible analysis
+  - Detailed merchant statistics including total spend, visit count, average spend, and percentage of total expenses
+  - Monthly spending trend charts showing 12-month patterns with month-over-month change percentages
+  - Category breakdown analysis showing which expense types are most common at each merchant
+  - Payment method analysis revealing preferred payment methods per merchant
+  - Visit frequency insights with average days between visits calculation for shopping habit analysis
+  - First and last visit date tracking providing complete shopping history timeline
+  - Drill-down functionality to view complete expense list filtered by specific merchant
+  - Backend API endpoints: `/api/analytics/merchants` with comprehensive query parameter support
+  - Property-based testing with 10 correctness properties and 100+ test iterations each
+  - Full integration test coverage ensuring reliable merchant analytics functionality
+
+---
+
 ## [4.6.3] - 2025-12-15
 
 ### Fixed

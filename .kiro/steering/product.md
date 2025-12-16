@@ -1,6 +1,6 @@
 # Product Overview
 
-A full-stack personal expense tracking application for managing household finances. Users can add, edit, and delete expenses with categorization across 15 expense types including Clothing, Dining Out, Entertainment, Gas, Gifts, Groceries, Housing, Insurance, Personal Care, Pet Care, Recreation Activities, Subscriptions, Utilities, Vehicle Maintenance, Other, and tax-deductible categories (Tax - Medical, Tax - Donation). The app provides monthly and annual summaries, tracks gross income vs expenses, manages fixed monthly expenses, tracks loans and lines of credit with balance history, and monitors investment portfolio performance. Features include global expense filtering by category and payment method, CSV import/export, automated database backups, tax-deductible expense reporting with medical expense people tracking for family member associations, budget tracking with alerts, place name standardization, smart expense entry with category suggestions, investment tracking with value history and performance charts, visual analytics for loans and investments, and monthly data reminders to prompt users to update investment values and loan balances.
+A full-stack personal expense tracking application for managing household finances. Users can add, edit, and delete expenses with categorization across 15 expense types including Clothing, Dining Out, Entertainment, Gas, Gifts, Groceries, Housing, Insurance, Personal Care, Pet Care, Recreation Activities, Subscriptions, Utilities, Vehicle Maintenance, Other, and tax-deductible categories (Tax - Medical, Tax - Donation). The app provides monthly and annual summaries, tracks gross income vs expenses, manages fixed monthly expenses, tracks loans and lines of credit with balance history, and monitors investment portfolio performance. Features include global expense filtering by category and payment method, CSV import/export, automated database backups, tax-deductible expense reporting with medical expense people tracking for family member associations, budget tracking with alerts, place name standardization, smart expense entry with category suggestions, investment tracking with value history and performance charts, visual analytics for loans and investments, merchant analytics for spending insights by location, and monthly data reminders to prompt users to update investment values and loan balances.
 
 ## Key Features
 
@@ -24,6 +24,10 @@ A full-stack personal expense tracking application for managing household financ
 - Medical expense people tracking to associate expenses with family members
 - Person-grouped tax reports with per-person subtotals by provider
 - Multi-person expense allocation with split equally option
+- Merchant analytics with spending insights by location, visit frequency, and trend analysis
+- Top merchants ranking with flexible sorting and time period filtering
+- Detailed merchant statistics including category breakdowns and payment method analysis
+- Monthly spending trend charts with month-over-month change tracking
 - CSV import for bulk expense entry
 - Automated and manual database backups
 - Local network access for multi-device usage

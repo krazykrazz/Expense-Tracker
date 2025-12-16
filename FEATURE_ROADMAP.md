@@ -430,6 +430,27 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ## 🟢 Completed Features
 
+### 🟢 Merchant Analytics (v4.7.0)
+**Completed**: December 16, 2025  
+**Spec**: `.kiro/specs/merchant-analytics/`  
+**Description**: Comprehensive merchant spending analytics providing insights into spending patterns by location with detailed statistics and trend analysis.
+
+**Features Delivered**:
+- Merchant Analytics modal accessible from main navigation with "🏪 Merchant Analytics" button
+- Top merchants ranking by total spending, visit frequency, or average spend per visit
+- Time period filtering (All Time, This Year, This Month, Last 3 Months) for flexible analysis
+- Detailed merchant statistics including total spend, visit count, average spend, and percentage of total expenses
+- Monthly spending trend charts showing 12-month spending patterns with month-over-month change percentages
+- Category breakdown analysis showing expense types at each merchant
+- Payment method analysis showing preferred payment methods per merchant
+- Visit frequency insights with average days between visits calculation
+- First and last visit date tracking for shopping history
+- Drill-down functionality to view all expenses at any specific merchant
+- Comprehensive property-based testing (10 properties, 100+ iterations each)
+- Full integration test coverage with all merchant analytics tests passing
+
+---
+
 ### 🟢 Medical Expense People Tracking (v4.6.0)
 **Completed**: December 14, 2025  
 **Spec**: `.kiro/specs/medical-expense-people-tracking/`  
@@ -681,6 +702,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 ---
 
 **Version History**:
+- v1.4 (2025-12-16): Added Merchant Analytics (v4.7.0) to completed features
 - v1.3 (2025-12-14): Added Medical Expense People Tracking (v4.6.0) to completed features
 - v1.2 (2025-11-29): Added Income Source Categories (v4.3.1) to completed features
 - v1.1 (2025-11-27): Added Smart Expense Entry (v4.3.0) to completed features

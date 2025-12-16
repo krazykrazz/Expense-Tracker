@@ -61,7 +61,13 @@ export const API_ENDPOINTS = {
   IMPORT: `${API_BASE_URL}/api/import`,
   
   // Version
-  VERSION: `${API_BASE_URL}/api/version`
+  VERSION: `${API_BASE_URL}/api/version`,
+  
+  // Merchant Analytics
+  MERCHANT_ANALYTICS: `${API_BASE_URL}/api/analytics/merchants`,
+  MERCHANT_DETAILS: (name) => `${API_BASE_URL}/api/analytics/merchants/${encodeURIComponent(name)}`,
+  MERCHANT_TREND: (name) => `${API_BASE_URL}/api/analytics/merchants/${encodeURIComponent(name)}/trend`,
+  MERCHANT_EXPENSES: (name) => `${API_BASE_URL}/api/analytics/merchants/${encodeURIComponent(name)}/expenses`
 };
 
 export default API_BASE_URL;

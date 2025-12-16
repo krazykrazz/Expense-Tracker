@@ -107,6 +107,7 @@
     - **Validates: Requirements 5.4**
 
   - [x] 3.5 Write property test for merchant expense filtering
+
     - **Property 10: Merchant expense filter returns only matching expenses**
     - **Validates: Requirements 7.2**
     - **Status: FIXED** - Resolved database isolation issues causing incorrect expense counts
@@ -116,8 +117,15 @@
   - **Remaining Issue**: visitDates test still has database isolation problems when run with full suite
   - **Note**: All individual tests pass, core functionality is working correctly
 
-- [ ] 5. Create frontend API client
-  - [ ] 5.1 Create merchantAnalyticsApi.js with API functions
+- [x] 5. Create frontend API client
+
+
+
+
+
+
+  - [x] 5.1 Create merchantAnalyticsApi.js with API functions
+
     - Implement getTopMerchants(period, sortBy)
     - Implement getMerchantDetails(name, period)
     - Implement getMerchantTrend(name, months)
@@ -125,8 +133,15 @@
     - Handle errors and loading states
     - _Requirements: 1.1, 2.1, 5.1, 7.2_
 
-- [ ] 6. Create frontend components
-  - [ ] 6.1 Create MerchantAnalyticsModal component
+- [x] 6. Create frontend components
+
+
+
+
+
+
+  - [x] 6.1 Create MerchantAnalyticsModal component
+
     - Display ranked list of merchants with totals, visits, percentages
     - Add period filter dropdown (All Time, This Year, This Month, Last 3 Months)
     - Add sort toggle (by total spend, by visits, by average)
@@ -134,7 +149,9 @@
     - Style with MerchantAnalyticsModal.css
     - _Requirements: 1.1, 1.2, 3.1, 4.1, 4.2, 4.3, 4.4, 4.5_
 
-  - [ ] 6.2 Create MerchantDetailView component
+  - [x] 6.2 Create MerchantDetailView component
+
+
     - Display detailed statistics (total, visits, average, date range)
     - Show category breakdown with percentages
     - Show payment method breakdown
@@ -143,29 +160,45 @@
     - Style with MerchantDetailView.css
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 3.2, 3.3, 7.1_
 
-  - [ ] 6.3 Add spending trend chart to MerchantDetailView
+  - [x] 6.3 Add spending trend chart to MerchantDetailView
+
     - Display line chart showing monthly spending
     - Show month-over-month change percentages
     - Handle months with zero spending
     - Use existing chart patterns from InvestmentDetailView
     - _Requirements: 5.1, 5.2, 5.3, 5.4_
 
-  - [ ] 6.4 Add navigation button to access Merchant Analytics
+
+  - [x] 6.4 Add navigation button to access Merchant Analytics
+
     - Add "Merchant Analytics" button to main navigation area
     - Wire up modal open/close state in App.jsx
     - _Requirements: 6.1, 6.2, 6.3_
 
-  - [ ] 6.5 Implement drill-down to expense list
+
+  - [x] 6.5 Implement drill-down to expense list
+
     - Add click handler to view expenses at merchant
     - Filter expense list by selected merchant
     - Provide navigation back to analytics view
     - _Requirements: 7.1, 7.2, 7.3_
 
-- [ ] 7. Checkpoint - Ensure all tests pass
+- [x] 7. Checkpoint - Ensure all tests pass
+
+
+
+
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 8. Add frontend tests
-  - [ ] 8.1 Write unit tests for MerchantAnalyticsModal
+- [x] 8. Add frontend tests
+
+
+
+
+
+  - [x] 8.1 Write unit tests for MerchantAnalyticsModal
+
+
     - Test rendering with merchant data
     - Test period filter changes
     - Test sort toggle functionality
@@ -173,7 +206,9 @@
     - Test loading state
     - _Requirements: 1.1, 4.1_
 
-  - [ ] 8.2 Write unit tests for MerchantDetailView
+
+  - [x] 8.2 Write unit tests for MerchantDetailView
+
     - Test rendering with merchant details
     - Test category breakdown display
     - Test payment method breakdown display
@@ -181,5 +216,10 @@
     - Test trend chart rendering
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 3.3, 5.1_
 
-- [ ] 9. Final Checkpoint - Ensure all tests pass
+- [x] 9. Final Checkpoint - Ensure all tests pass
+
+
+
+
+
   - Ensure all tests pass, ask the user if questions arise.

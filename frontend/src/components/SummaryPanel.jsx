@@ -8,7 +8,7 @@ import TrendIndicator from './TrendIndicator';
 import DataReminderBanner from './DataReminderBanner';
 import './SummaryPanel.css';
 
-const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
+const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger, onOpenMerchantAnalytics }) => {
   const [summary, setSummary] = useState(null);
   const [previousSummary, setPreviousSummary] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -482,6 +482,18 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
             <span className="liabilities-label">Liabilities: {formatCurrency(totalOutstandingDebt)}</span>
           </div>
           <div className="card-subtitle">Current month position</div>
+        </div>
+
+        {/* Merchant Analytics Card */}
+        <div className="summary-card merchant-analytics-card">
+          <div className="card-header">
+            <span className="card-icon">🏪</span>
+            <span className="card-title">Merchant Analytics</span>
+          </div>
+          <div className="card-subtitle">Analyze spending by merchant</div>
+          <button className="card-action-btn" onClick={onOpenMerchantAnalytics}>
+            View Analytics
+          </button>
         </div>
       </div>
 

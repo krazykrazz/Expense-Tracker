@@ -67,6 +67,18 @@ A full-stack expense tracking application built with React and Node.js.
 - 🔄 Backward compatible with existing medical expenses
 - 👤 People management in Settings for adding/editing family members
 
+### Merchant Analytics
+- 🏪 Analyze spending patterns by merchant (place) with comprehensive insights
+- 📊 View top merchants ranked by total spending, visit frequency, or average spend
+- 📈 Monthly spending trend charts for each merchant showing patterns over time
+- 🔍 Filter merchant analytics by time period (All Time, This Year, This Month, Last 3 Months)
+- 📋 Detailed merchant statistics including visit count, average spend, and date ranges
+- 🏷️ Category and payment method breakdowns for each merchant
+- 📅 Average days between visits calculation for shopping habit insights
+- 💰 Percentage of total expenses per merchant for spending distribution
+- 📊 Month-over-month change tracking with percentage indicators
+- 🔗 Drill-down to view all expenses at any specific merchant
+
 ### Budget Tracking & Alerts
 - 💵 Set monthly budget limits for expense categories (Food, Gas, Other)
 - 📊 Real-time progress bars with color-coded status indicators
@@ -359,10 +371,22 @@ stop-servers.bat
 41. **Quick Assign**: Assign people to unassigned medical expenses directly from the Tax Deductible view
 42. **Tax Preparation**: Use person-grouped view to get per-person totals for tax forms
 
+### Merchant Analytics
+43. **View Merchant Analytics**: Click the "🏪 Merchant Analytics" button in the main navigation to open analytics
+44. **Analyze Top Merchants**: View merchants ranked by total spending, visit frequency, or average spend per visit
+45. **Filter by Time Period**: Use the period dropdown to analyze different time ranges (All Time, This Year, This Month, Last 3 Months)
+46. **Sort Options**: Toggle between sorting by total spend, number of visits, or average spend per visit
+47. **View Merchant Details**: Click on any merchant to see detailed statistics, category breakdowns, and spending trends
+48. **Monthly Trends**: View line charts showing spending patterns over the last 12 months for each merchant
+49. **Category Analysis**: See which expense categories you spend on most at each merchant
+50. **Payment Method Insights**: View which payment methods you use most frequently at each merchant
+51. **Visit Patterns**: See average days between visits and identify your shopping frequency habits
+52. **Drill-Down to Expenses**: Click "View All Expenses" to see the complete list of expenses at any merchant
+
 ### Data Management
-43. **Backup**: Click the "💾 Backup" button to download your database
-44. **Automated Backups**: Configure scheduled backups in Backup Settings
-45. **Data Reminders**: Receive visual reminders when monthly data needs updating (investments and loans)
+53. **Backup**: Click the "💾 Backup" button to download your database
+54. **Automated Backups**: Configure scheduled backups in Backup Settings
+55. **Data Reminders**: Receive visual reminders when monthly data needs updating (investments and loans)
 
 ## Project Structure
 
@@ -382,6 +406,7 @@ expense-tracker/
 │   │   ├── App.jsx      # Main app component
 │   │   └── config.js    # API configuration
 │   └── index.html
+├── utils/               # Utility scripts (CSV validation, XLS conversion)
 └── README.md
 ```
 
@@ -454,6 +479,12 @@ expense-tracker/
 - `POST /api/people` - Create a new person
 - `PUT /api/people/:id` - Update a person
 - `DELETE /api/people/:id` - Delete a person (cascades to expense associations)
+
+### Merchant Analytics
+- `GET /api/analytics/merchants` - Get top merchants with analytics (query params: period, sortBy)
+- `GET /api/analytics/merchants/:name` - Get detailed statistics for a specific merchant (query params: period)
+- `GET /api/analytics/merchants/:name/trend` - Get monthly spending trend for a merchant (query params: months)
+- `GET /api/analytics/merchants/:name/expenses` - Get all expenses for a specific merchant (query params: period)
 
 ### Backup
 - `GET /api/backup` - Download database backup

@@ -59,6 +59,13 @@ Spec update summaries and cleanup documentation:
 - Cleanup analyses
 - Historical spec changes
 
+### specs/ (NEW - Dec 16, 2025)
+Completed feature specifications that have been fully implemented:
+- 18 archived spec directories for completed features
+- Includes deprecated features (recurring-expenses)
+- Infrastructure specs (code-optimization, containerization-optimization)
+- All major feature implementations from v3.0.0 through v4.6.0
+
 ### test-scripts/ (Nov 24, 2025)
 One-time test scripts used during feature development:
 - Integration tests
@@ -120,9 +127,26 @@ Copy-Item archive/[subfolder]/[filename] ./
   - Removed empty .github/ folder (no workflows)
   - Root directory now has ~30 files (clean and organized)
 
+- **2025-12-16:** Post v4.7.0 major spec cleanup (18+ items)
+  - **NEW:** Created archive/specs/ folder for completed feature specifications
+  - Archived 18 completed spec directories from .kiro/specs/ to archive/specs/:
+    - recurring-expenses (deprecated in v4.0.0)
+    - expanded-expense-categories, enhanced-annual-summary, expense-trend-indicators
+    - configurable-fixed-expenses, configurable-monthly-gross, monthly-loans-balance
+    - enhanced-fixed-expenses, global-expense-filtering, income-source-categories
+    - investment-tracking, monthly-data-reminders, net-worth-card
+    - personal-care-category, place-name-standardization, smart-expense-entry
+    - tax-deductible-view, code-optimization, containerization-optimization, expense-tracker
+  - Deleted old database file: backend/database/expenses.db (app uses config/database/)
+  - Moved migration docs: backend/database/PEOPLE_TABLES_MIGRATION.md to archive/migration-scripts/
+  - Deleted empty directories: backend/backups/, backend/uploads/, backend/config/config/
+  - Deleted obsolete scripts: calculateEstimatedMonthsLeft.js, setEstimatedMonthsLeft.js, updateEstimatedMonthsLeft.js
+  - **NEW:** Created utils/ folder and moved Python utilities: validate_csv.py, xls_to_csv.py
+  - .kiro/specs/ now contains only active specs: budget-tracking-alerts, medical-expense-people-tracking, merchant-analytics
+
 ## Next Review
 
-**Scheduled:** 2026-06-06 (6 months from last cleanup)
+**Scheduled:** 2026-06-16 (6 months from last cleanup)
 
 **Actions to consider:**
 - Delete files older than 12 months if not referenced

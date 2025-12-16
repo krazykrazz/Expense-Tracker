@@ -53,7 +53,7 @@ class MerchantAnalyticsService {
    */
   async getTopMerchants(filters = {}, sortBy = 'total') {
     try {
-      logger.debug('Getting top merchants with filters:', filters, 'sortBy:', sortBy);
+      // Reduced logging verbosity for cleaner test output
       
       const dateFilter = this.calculateDateFilter(filters.period || 'year', filters.year, filters.month);
       const merchants = await expenseRepository.getMerchantAnalytics(dateFilter);
@@ -81,7 +81,7 @@ class MerchantAnalyticsService {
           break;
       }
 
-      logger.debug('Retrieved', enrichedMerchants.length, 'merchants');
+      // Debug logging removed for cleaner test output
       return enrichedMerchants;
     } catch (error) {
       logger.error('Error getting top merchants:', error);
@@ -97,7 +97,7 @@ class MerchantAnalyticsService {
    */
   async getMerchantDetails(merchantName, filters = {}) {
     try {
-      logger.debug('Getting merchant details for:', merchantName, 'with filters:', filters);
+      // Reduced logging verbosity for cleaner test output
       
       const dateFilter = this.calculateDateFilter(filters.period || 'year', filters.year, filters.month);
       
@@ -179,7 +179,7 @@ class MerchantAnalyticsService {
         paymentMethodBreakdown
       };
 
-      logger.debug('Retrieved merchant details for:', merchantName);
+      // Debug logging removed for cleaner test output
       return result;
     } catch (error) {
       logger.error('Error getting merchant details:', error);
@@ -195,7 +195,7 @@ class MerchantAnalyticsService {
    */
   async getMerchantTrend(merchantName, months = 12) {
     try {
-      logger.debug('Getting merchant trend for:', merchantName, 'months:', months);
+      // Reduced logging verbosity for cleaner test output
       
       const trendData = await expenseRepository.getMerchantTrend(merchantName, months);
       
@@ -243,7 +243,7 @@ class MerchantAnalyticsService {
         }
       }
 
-      logger.debug('Retrieved trend data with', completeMonths.length, 'months for:', merchantName);
+      // Debug logging removed for cleaner test output
       return completeMonths;
     } catch (error) {
       logger.error('Error getting merchant trend:', error);
@@ -259,12 +259,12 @@ class MerchantAnalyticsService {
    */
   async getMerchantExpenses(merchantName, filters = {}) {
     try {
-      logger.debug('Getting merchant expenses for:', merchantName, 'with filters:', filters);
+      // Reduced logging verbosity for cleaner test output
       
       const dateFilter = this.calculateDateFilter(filters.period || 'year', filters.year, filters.month);
       const expenses = await expenseRepository.getMerchantExpenses(merchantName, dateFilter);
       
-      logger.debug('Retrieved', expenses.length, 'expenses for:', merchantName);
+      // Debug logging removed for cleaner test output
       return expenses;
     } catch (error) {
       logger.error('Error getting merchant expenses:', error);

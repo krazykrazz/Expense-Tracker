@@ -56,7 +56,8 @@ class MerchantAnalyticsService {
       // Reduced logging verbosity for cleaner test output
       
       const dateFilter = this.calculateDateFilter(filters.period || 'year', filters.year, filters.month);
-      const merchants = await expenseRepository.getMerchantAnalytics(dateFilter);
+      const includeFixedExpenses = filters.includeFixedExpenses || false;
+      const merchants = await expenseRepository.getMerchantAnalytics(dateFilter, includeFixedExpenses);
       
       // Calculate total spending across all merchants for percentage calculation
       const totalSpending = merchants.reduce((sum, merchant) => sum + merchant.totalSpend, 0);
@@ -100,9 +101,10 @@ class MerchantAnalyticsService {
       // Reduced logging verbosity for cleaner test output
       
       const dateFilter = this.calculateDateFilter(filters.period || 'year', filters.year, filters.month);
+      const includeFixedExpenses = filters.includeFixedExpenses || false;
       
       // Get basic merchant analytics
-      const allMerchants = await expenseRepository.getMerchantAnalytics(dateFilter);
+      const allMerchants = await expenseRepository.getMerchantAnalytics(dateFilter, includeFixedExpenses);
       const merchant = allMerchants.find(m => m.name.toLowerCase() === merchantName.toLowerCase());
       
       if (!merchant) {
@@ -111,7 +113,7 @@ class MerchantAnalyticsService {
       }
 
       // Get all expenses for this merchant to calculate detailed breakdowns
-      const expenses = await expenseRepository.getMerchantExpenses(merchantName, dateFilter);
+      const expenses = await expenseRepository.getMerchantExpenses(merchantName, dateFilter, includeFixedExpenses);
       
       // Calculate total spending for percentage
       const totalSpending = allMerchants.reduce((sum, m) => sum + m.totalSpend, 0);
@@ -193,11 +195,11 @@ class MerchantAnalyticsService {
    * @param {number} months - Number of months to include (default 12)
    * @returns {Promise<Array<MonthlyTrend>>}
    */
-  async getMerchantTrend(merchantName, months = 12) {
+  async getMerchantTrend(merchantName, months = 12, includeFixedExpenses = false) {
     try {
       // Reduced logging verbosity for cleaner test output
       
-      const trendData = await expenseRepository.getMerchantTrend(merchantName, months);
+      const trendData = await expenseRepository.getMerchantTrend(merchantName, months, includeFixedExpenses);
       
       // Generate complete month range for gap filling
       const endDate = new Date();
@@ -262,7 +264,8 @@ class MerchantAnalyticsService {
       // Reduced logging verbosity for cleaner test output
       
       const dateFilter = this.calculateDateFilter(filters.period || 'year', filters.year, filters.month);
-      const expenses = await expenseRepository.getMerchantExpenses(merchantName, dateFilter);
+      const includeFixedExpenses = filters.includeFixedExpenses || false;
+      const expenses = await expenseRepository.getMerchantExpenses(merchantName, dateFilter, includeFixedExpenses);
       
       // Debug logging removed for cleaner test output
       return expenses;

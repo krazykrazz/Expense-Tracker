@@ -471,6 +471,7 @@ function App() {
             onViewTaxDeductible={() => setShowTaxDeductible(true)}
             onManageBudgets={handleManageBudgets}
             onViewBudgetHistory={handleViewBudgetHistory}
+            onOpenMerchantAnalytics={() => setShowMerchantAnalytics(true)}
           />
         </div>
         
@@ -530,7 +531,6 @@ function App() {
                 selectedYear={selectedYear}
                 selectedMonth={selectedMonth}
                 refreshTrigger={refreshTrigger}
-                onOpenMerchantAnalytics={() => setShowMerchantAnalytics(true)}
               />
             </div>
           </div>
@@ -633,7 +633,7 @@ function App() {
 
       <footer className="App-footer">
         <span className="version">
-          v{versionInfo?.version || '4.6.3'}
+          v{versionInfo?.version || '4.9.1'}
           {versionInfo?.docker && (
             <span className="docker-tag"> (Docker: {versionInfo.docker.tag})</span>
           )}

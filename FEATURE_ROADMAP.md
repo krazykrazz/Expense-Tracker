@@ -430,10 +430,10 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ## 🟢 Completed Features
 
-### 🟢 Merchant Analytics (v4.7.0)
-**Completed**: December 16, 2025  
+### 🟢 Merchant Analytics (v4.7.0 - v4.9.0)
+**Completed**: December 16, 2025 (v4.7.0), December 20, 2025 (v4.9.0)  
 **Spec**: `.kiro/specs/merchant-analytics/`  
-**Description**: Comprehensive merchant spending analytics providing insights into spending patterns by location with detailed statistics and trend analysis.
+**Description**: Comprehensive merchant spending analytics providing insights into spending patterns by location with detailed statistics and trend analysis. Enhanced in v4.9.0 with fixed expenses integration for complete spending analysis.
 
 **Features Delivered**:
 - Merchant Analytics modal accessible from main navigation with "🏪 Merchant Analytics" button
@@ -446,6 +446,9 @@ This document tracks potential features and enhancements for the Expense Tracker
 - Visit frequency insights with average days between visits calculation
 - First and last visit date tracking for shopping history
 - Drill-down functionality to view all expenses at any specific merchant
+- **Fixed Expenses Integration (v4.9.0)**: Optional "Include Fixed Expenses" checkbox to combine variable and recurring expenses for comprehensive spending analysis
+- **Complete Spending Analysis (v4.9.0)**: View total spending including both variable expenses and fixed costs (rent, utilities, subscriptions)
+- **Enhanced Merchant Insights (v4.9.0)**: Understand full financial relationship with service providers and merchants
 - Comprehensive property-based testing (10 properties, 100+ iterations each)
 - Full integration test coverage with all merchant analytics tests passing
 
@@ -702,6 +705,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 ---
 
 **Version History**:
+- v1.5 (2025-12-20): Updated Merchant Analytics with Fixed Expenses Integration (v4.9.0)
 - v1.4 (2025-12-16): Added Merchant Analytics (v4.7.0) to completed features
 - v1.3 (2025-12-14): Added Medical Expense People Tracking (v4.6.0) to completed features
 - v1.2 (2025-11-29): Added Income Source Categories (v4.3.1) to completed features

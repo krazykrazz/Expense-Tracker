@@ -216,10 +216,46 @@
     - Test trend chart rendering
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 3.3, 5.1_
 
-- [x] 9. Final Checkpoint - Ensure all tests pass
+- [x] 10. Fixed Expenses Integration (v4.9.0)
 
+  - [x] 10.1 Add fixed expenses support to backend repository
+    - Add `getFixedExpenseMerchantAnalytics(filters)` method to expenseRepository
+    - Map fixed expenses fields (name -> place, payment_type -> method)
+    - Support date filtering for fixed expenses
+    - _Requirements: Fixed expenses integration_
 
+  - [x] 10.2 Update merchant analytics service for fixed expenses
+    - Add `includeFixedExpenses` parameter to all service methods
+    - Implement data combination logic for expenses + fixed expenses
+    - Ensure consistent data format across both sources
+    - _Requirements: Fixed expenses integration_
 
+  - [x] 10.3 Update merchant analytics controller for fixed expenses
+    - Add `includeFixedExpenses` query parameter support to all endpoints
+    - Update input validation to handle new parameter
+    - Pass parameter through to service layer
+    - _Requirements: Fixed expenses integration_
 
+  - [x] 10.4 Add fixed expenses checkbox to frontend
+    - Add "Include Fixed Expenses" checkbox to MerchantAnalyticsModal
+    - Update state management to track checkbox value
+    - Pass parameter to all API calls based on checkbox state
+    - Style checkbox with visual indicator
+    - _Requirements: Fixed expenses integration_
+
+  - [x] 10.5 Update frontend API client for fixed expenses
+    - Update all merchantAnalyticsApi functions to accept includeFixedExpenses parameter
+    - Ensure parameter is passed to backend in all API calls
+    - Maintain backward compatibility with existing calls
+    - _Requirements: Fixed expenses integration_
+
+  - [x] 10.6 Test fixed expenses integration
+    - Verify checkbox functionality in UI
+    - Test API endpoints with includeFixedExpenses parameter
+    - Validate data combination and aggregation
+    - Ensure consistent behavior across all views
+    - _Requirements: Fixed expenses integration_
+
+- [x] 11. Final Checkpoint - Ensure all tests pass
 
   - Ensure all tests pass, ask the user if questions arise.

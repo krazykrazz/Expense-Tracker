@@ -800,6 +800,33 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v4.9.1</div>
+                <div className="changelog-date">December 20, 2025</div>
+                <ul className="changelog-items">
+                  <li>Fixed critical calculation errors in merchant analytics when including fixed expenses</li>
+                  <li>Eliminated "total" entries appearing in merchant list</li>
+                  <li>Improved data validation and error handling</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
+                <div className="changelog-version">v4.9.0</div>
+                <div className="changelog-date">December 20, 2025</div>
+                <ul className="changelog-items">
+                  <li>Fixed Expenses Integration in Merchant Analytics: Added "Include Fixed Expenses" checkbox for comprehensive spending analysis</li>
+                  <li>Combined view shows total spending across both variable and recurring expenses</li>
+                  <li>Enhanced merchant rankings and statistics with fixed expenses like rent, utilities, and subscriptions</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
+                <div className="changelog-version">v4.8.0</div>
+                <div className="changelog-date">December 19, 2025</div>
+                <ul className="changelog-items">
+                  <li>Improved Merchant Analytics Navigation: Moved merchant analytics button from summary panel to top navigation menu</li>
+                  <li>Enhanced accessibility and prominence of merchant analytics feature</li>
+                  <li>Added distinctive pink/magenta styling for merchant analytics button</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v4.6.3</div>
                 <div className="changelog-date">December 15, 2025</div>
                 <ul className="changelog-items">

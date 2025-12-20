@@ -78,6 +78,7 @@ A full-stack expense tracking application built with React and Node.js.
 - 💰 Percentage of total expenses per merchant for spending distribution
 - 📊 Month-over-month change tracking with percentage indicators
 - 🔗 Drill-down to view all expenses at any specific merchant
+- 🏠 **Fixed Expenses Integration**: Optional "Include Fixed Expenses" toggle to combine variable and recurring expenses for complete spending analysis
 
 ### Budget Tracking & Alerts
 - 💵 Set monthly budget limits for expense categories (Food, Gas, Other)
@@ -381,7 +382,8 @@ stop-servers.bat
 49. **Category Analysis**: See which expense categories you spend on most at each merchant
 50. **Payment Method Insights**: View which payment methods you use most frequently at each merchant
 51. **Visit Patterns**: See average days between visits and identify your shopping frequency habits
-52. **Drill-Down to Expenses**: Click "View All Expenses" to see the complete list of expenses at any merchant
+52. **Include Fixed Expenses**: Toggle the "Include Fixed Expenses" checkbox to combine variable and recurring expenses for comprehensive spending analysis
+53. **Drill-Down to Expenses**: Click "View All Expenses" to see the complete list of expenses at any merchant
 
 ### Data Management
 53. **Backup**: Click the "💾 Backup" button to download your database
@@ -481,10 +483,10 @@ expense-tracker/
 - `DELETE /api/people/:id` - Delete a person (cascades to expense associations)
 
 ### Merchant Analytics
-- `GET /api/analytics/merchants` - Get top merchants with analytics (query params: period, sortBy)
-- `GET /api/analytics/merchants/:name` - Get detailed statistics for a specific merchant (query params: period)
-- `GET /api/analytics/merchants/:name/trend` - Get monthly spending trend for a merchant (query params: months)
-- `GET /api/analytics/merchants/:name/expenses` - Get all expenses for a specific merchant (query params: period)
+- `GET /api/analytics/merchants` - Get top merchants with analytics (query params: period, sortBy, includeFixedExpenses)
+- `GET /api/analytics/merchants/:name` - Get detailed statistics for a specific merchant (query params: period, includeFixedExpenses)
+- `GET /api/analytics/merchants/:name/trend` - Get monthly spending trend for a merchant (query params: months, includeFixedExpenses)
+- `GET /api/analytics/merchants/:name/expenses` - Get all expenses for a specific merchant (query params: period, includeFixedExpenses)
 
 ### Backup
 - `GET /api/backup` - Download database backup

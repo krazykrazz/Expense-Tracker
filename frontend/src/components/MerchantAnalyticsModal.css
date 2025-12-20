@@ -142,6 +142,33 @@
   box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
 }
 
+/* Checkbox styling */
+.merchant-analytics-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  color: #555;
+  font-size: 0.9rem;
+}
+
+.merchant-analytics-checkbox {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.merchant-analytics-checkbox:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.merchant-analytics-fixed-indicator {
+  color: #8b5cf6;
+  font-weight: 500;
+}
+
 /* Current Filter Display */
 .merchant-analytics-current-filters {
   margin-bottom: 20px;

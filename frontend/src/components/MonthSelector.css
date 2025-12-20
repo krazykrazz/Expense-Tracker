@@ -57,7 +57,8 @@
 .annual-summary-button,
 .tax-deductible-button,
 .manage-budgets-button,
-.budget-history-button {
+.budget-history-button,
+.merchant-analytics-button {
   padding: 6px 16px;
   background: #0ea5e9;
   color: white;
@@ -73,7 +74,8 @@
 .annual-summary-button:hover,
 .tax-deductible-button:hover,
 .manage-budgets-button:hover,
-.budget-history-button:hover {
+.budget-history-button:hover,
+.merchant-analytics-button:hover {
   background: #0284c7;
 }
 
@@ -101,11 +103,20 @@
   background: #d97706;
 }
 
+.merchant-analytics-button {
+  background: #ec4899;
+}
+
+.merchant-analytics-button:hover {
+  background: #db2777;
+}
+
 @media (max-width: 768px) {
   .annual-summary-button,
   .tax-deductible-button,
   .manage-budgets-button,
-  .budget-history-button {
+  .budget-history-button,
+  .merchant-analytics-button {
     width: 100%;
   }
 }

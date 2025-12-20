@@ -13,20 +13,21 @@ const MerchantAnalyticsModal = ({ isOpen, onClose, onViewExpenses }) => {
   // Filter and sort state
   const [period, setPeriod] = useState('year');
   const [sortBy, setSortBy] = useState('total');
+  const [includeFixedExpenses, setIncludeFixedExpenses] = useState(false);
 
   // Fetch merchants when modal opens or filters change
   useEffect(() => {
     if (isOpen) {
       fetchMerchants();
     }
-  }, [isOpen, period, sortBy]);
+  }, [isOpen, period, sortBy, includeFixedExpenses]);
 
   const fetchMerchants = async () => {
     setLoading(true);
     setError(null);
 
     try {
-      const data = await getTopMerchants(period, sortBy);
+      const data = await getTopMerchants(period, sortBy, includeFixedExpenses);
       setMerchants(data || []);
     } catch (err) {
       const errorMessage = err.message || 'Network error. Unable to load merchant analytics. Please check your connection and try again.';
@@ -61,6 +62,7 @@ const MerchantAnalyticsModal = ({ isOpen, onClose, onViewExpenses }) => {
     setError(null);
     setPeriod('year');
     setSortBy('total');
+    setIncludeFixedExpenses(false);
     
     onClose();
   };
@@ -75,6 +77,7 @@ const MerchantAnalyticsModal = ({ isOpen, onClose, onViewExpenses }) => {
       <MerchantDetailView
         merchantName={selectedMerchant.name}
         period={period}
+        includeFixedExpenses={includeFixedExpenses}
         isOpen={true}
         onClose={handleBackToList}
         onViewExpenses={handleViewExpenses}
@@ -139,11 +142,25 @@ const MerchantAnalyticsModal = ({ isOpen, onClose, onViewExpenses }) => {
                     <option value="average">Average Spend</option>
                   </select>
                 </div>
+
+                <div className="merchant-analytics-filter-group">
+                  <label className="merchant-analytics-checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={includeFixedExpenses}
+                      onChange={(e) => setIncludeFixedExpenses(e.target.checked)}
+                      disabled={loading}
+                      className="merchant-analytics-checkbox"
+                    />
+                    Include Fixed Expenses
+                  </label>
+                </div>
               </div>
 
               {/* Current Filter Display */}
               <div className="merchant-analytics-current-filters">
                 Showing merchants for <strong>{getPeriodDisplayName(period)}</strong> sorted by <strong>{getSortByDisplayName(sortBy)}</strong>
+                {includeFixedExpenses && <span className="merchant-analytics-fixed-indicator"> (including fixed expenses)</span>}
               </div>
 
               {/* Merchants List */}

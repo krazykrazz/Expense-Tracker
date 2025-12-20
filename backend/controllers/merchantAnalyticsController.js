@@ -7,7 +7,7 @@ const logger = require('../config/logger');
  */
 async function getTopMerchants(req, res) {
   try {
-    const { period = 'year', sortBy = 'total', year, month } = req.query;
+    const { period = 'year', sortBy = 'total', includeFixedExpenses = 'false', year, month } = req.query;
     
     // Validate period parameter
     const validPeriods = ['all', 'year', 'month', '3months'];
@@ -25,7 +25,7 @@ async function getTopMerchants(req, res) {
       });
     }
     
-    const filters = { period };
+    const filters = { period, includeFixedExpenses: includeFixedExpenses === 'true' };
     if (year) {
       filters.year = parseInt(year);
     }
@@ -48,7 +48,7 @@ async function getTopMerchants(req, res) {
 async function getMerchantDetails(req, res) {
   try {
     const { name } = req.params;
-    const { period = 'year', year, month } = req.query;
+    const { period = 'year', includeFixedExpenses = 'false', year, month } = req.query;
     
     // Validate period parameter
     const validPeriods = ['all', 'year', 'month', '3months'];
@@ -58,7 +58,7 @@ async function getMerchantDetails(req, res) {
       });
     }
     
-    const filters = { period };
+    const filters = { period, includeFixedExpenses: includeFixedExpenses === 'true' };
     if (year) {
       filters.year = parseInt(year);
     }
@@ -86,7 +86,7 @@ async function getMerchantDetails(req, res) {
 async function getMerchantTrend(req, res) {
   try {
     const { name } = req.params;
-    const { months = 12 } = req.query;
+    const { months = 12, includeFixedExpenses = 'false' } = req.query;
     
     // Validate months parameter
     const monthsInt = parseInt(months);
@@ -96,7 +96,7 @@ async function getMerchantTrend(req, res) {
       });
     }
     
-    const trendData = await merchantAnalyticsService.getMerchantTrend(name, monthsInt);
+    const trendData = await merchantAnalyticsService.getMerchantTrend(name, monthsInt, includeFixedExpenses === 'true');
     res.json(trendData);
   } catch (error) {
     logger.error('Error getting merchant trend:', error);
@@ -111,7 +111,7 @@ async function getMerchantTrend(req, res) {
 async function getMerchantExpenses(req, res) {
   try {
     const { name } = req.params;
-    const { period = 'year', year, month } = req.query;
+    const { period = 'year', includeFixedExpenses = 'false', year, month } = req.query;
     
     // Validate period parameter
     const validPeriods = ['all', 'year', 'month', '3months'];
@@ -121,7 +121,7 @@ async function getMerchantExpenses(req, res) {
       });
     }
     
-    const filters = { period };
+    const filters = { period, includeFixedExpenses: includeFixedExpenses === 'true' };
     if (year) {
       filters.year = parseInt(year);
     }

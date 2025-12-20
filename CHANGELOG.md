@@ -11,6 +11,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.9.1] - 2025-12-20
+
+### Fixed
+- **Fixed Expenses Integration Bug Fix**: Resolved critical calculation errors in merchant analytics when including fixed expenses
+  - Fixed incorrect total spending calculations that were double-counting or miscalculating amounts
+  - Fixed incorrect visit count calculations that were improperly aggregating data from different sources
+  - Eliminated "total" entries appearing in merchant list due to empty/whitespace merchant names
+  - Improved data filtering with proper TRIM() conditions to prevent invalid entries
+  - Completely rewrote data combination logic to properly merge expenses and fixed expenses
+  - Added missing `includeFixedExpenses` parameter to `getMerchantExpenses` API function
+  - Enhanced error handling and data validation throughout the merchant analytics pipeline
+
+### Technical Details
+- Rewrote `getMerchantAnalytics` method in `expenseRepository.js` to use separate queries and JavaScript-based data combination
+- Added new `getCombinedMerchantAnalytics` helper method for proper data merging
+- Fixed SQL queries to handle different time granularities (daily expenses vs monthly fixed expenses)
+- Improved merchant name validation to prevent empty/whitespace entries
+
+---
+
+## [4.9.0] - 2025-12-20
+
+### Added
+- **Fixed Expenses Integration in Merchant Analytics**: Enhanced merchant analytics to optionally include fixed expenses alongside variable expenses
+  - Added "Include Fixed Expenses" checkbox in Merchant Analytics modal for comprehensive spending analysis
+  - Fixed expenses (rent, utilities, subscriptions) can now be included in merchant rankings and detailed statistics
+  - Combined view shows total spending across both variable and recurring expenses for complete financial insights
+  - Maintains backward compatibility with existing analytics while providing enhanced visibility into total merchant spending
+
+---
+
+## [4.8.0] - 2025-12-19
+
+### Changed
+- **Improved Merchant Analytics Navigation**: Moved merchant analytics button from summary panel to top navigation menu
+  - Enhanced accessibility and prominence of merchant analytics feature
+  - Added distinctive pink/magenta styling for merchant analytics button
+  - Better integration with other primary navigation options (Annual Summary, Income Tax, Manage Budgets, Budget History)
+  - Improved user experience by making merchant analytics more discoverable
+
+---
+
 ## [4.7.0] - 2025-12-16
 
 ### Added

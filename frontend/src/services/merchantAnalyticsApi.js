@@ -10,14 +10,16 @@ import { apiGet, logApiError } from '../utils/apiClient.js';
  * Get top merchants by total spending
  * @param {string} period - Time period filter ('all', 'year', 'month', '3months')
  * @param {string} sortBy - Sort criteria ('total', 'visits', 'average')
+ * @param {boolean} includeFixedExpenses - Whether to include fixed expenses in analysis
  * @param {Object} options - Additional options { year?, month? }
  * @returns {Promise<Array<MerchantSummary>>} Array of merchant summary objects
  */
-export const getTopMerchants = async (period = 'year', sortBy = 'total', options = {}) => {
+export const getTopMerchants = async (period = 'year', sortBy = 'total', includeFixedExpenses = false, options = {}) => {
   try {
     const params = new URLSearchParams();
     params.append('period', period);
     params.append('sortBy', sortBy);
+    params.append('includeFixedExpenses', includeFixedExpenses.toString());
     
     if (options.year) {
       params.append('year', options.year.toString());
@@ -38,13 +40,15 @@ export const getTopMerchants = async (period = 'year', sortBy = 'total', options
  * Get detailed statistics for a specific merchant
  * @param {string} name - Merchant name
  * @param {string} period - Time period filter ('all', 'year', 'month', '3months')
+ * @param {boolean} includeFixedExpenses - Whether to include fixed expenses in analysis
  * @param {Object} options - Additional options { year?, month? }
  * @returns {Promise<MerchantDetail>} Detailed merchant statistics
  */
-export const getMerchantDetails = async (name, period = 'year', options = {}) => {
+export const getMerchantDetails = async (name, period = 'year', includeFixedExpenses = false, options = {}) => {
   try {
     const params = new URLSearchParams();
     params.append('period', period);
+    params.append('includeFixedExpenses', includeFixedExpenses.toString());
     
     if (options.year) {
       params.append('year', options.year.toString());
@@ -65,12 +69,14 @@ export const getMerchantDetails = async (name, period = 'year', options = {}) =>
  * Get monthly spending trend for a merchant
  * @param {string} name - Merchant name
  * @param {number} months - Number of months to include (default 12)
+ * @param {boolean} includeFixedExpenses - Whether to include fixed expenses in analysis
  * @returns {Promise<Array<MonthlyTrend>>} Array of monthly trend data
  */
-export const getMerchantTrend = async (name, months = 12) => {
+export const getMerchantTrend = async (name, months = 12, includeFixedExpenses = false) => {
   try {
     const params = new URLSearchParams();
     params.append('months', months.toString());
+    params.append('includeFixedExpenses', includeFixedExpenses.toString());
     
     const url = `${API_ENDPOINTS.MERCHANT_TREND(name)}?${params.toString()}`;
     return await apiGet(url, 'fetch merchant trend');
@@ -84,13 +90,15 @@ export const getMerchantTrend = async (name, months = 12) => {
  * Get all expenses for a specific merchant
  * @param {string} name - Merchant name
  * @param {string} period - Time period filter ('all', 'year', 'month', '3months')
+ * @param {boolean} includeFixedExpenses - Whether to include fixed expenses in analysis
  * @param {Object} options - Additional options { year?, month? }
  * @returns {Promise<Array<Expense>>} Array of expense objects
  */
-export const getMerchantExpenses = async (name, period = 'year', options = {}) => {
+export const getMerchantExpenses = async (name, period = 'year', includeFixedExpenses = false, options = {}) => {
   try {
     const params = new URLSearchParams();
     params.append('period', period);
+    params.append('includeFixedExpenses', includeFixedExpenses.toString());
     
     if (options.year) {
       params.append('year', options.year.toString());

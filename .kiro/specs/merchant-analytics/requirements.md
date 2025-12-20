@@ -89,3 +89,16 @@ This document specifies the requirements for the Merchant Analytics feature, whi
 1. WHEN viewing merchant details THEN the Merchant Analytics System SHALL provide a link to view all expenses at that merchant
 2. WHEN the user clicks to view expenses THEN the Merchant Analytics System SHALL display a filtered list of all expenses at the selected merchant
 3. WHEN displaying the expense list THEN the Merchant Analytics System SHALL show date, amount, category, and payment method for each expense
+
+### Requirement 8
+
+**User Story:** As a user, I want to optionally include fixed expenses in merchant analytics, so that I can see my complete spending picture including recurring costs.
+
+#### Acceptance Criteria
+
+1. WHEN viewing merchant analytics THEN the Merchant Analytics System SHALL provide an "Include Fixed Expenses" checkbox option
+2. WHEN the checkbox is unchecked THEN the Merchant Analytics System SHALL show only variable expenses (default behavior)
+3. WHEN the checkbox is checked THEN the Merchant Analytics System SHALL combine data from both variable expenses and fixed expenses tables
+4. WHEN fixed expenses are included THEN the Merchant Analytics System SHALL treat fixed expense names as equivalent to merchant places
+5. WHEN fixed expenses are included THEN the Merchant Analytics System SHALL properly aggregate totals, visit counts, and statistics across both data sources
+6. WHEN displaying combined results THEN the Merchant Analytics System SHALL provide visual indication that fixed expenses are included

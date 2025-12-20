@@ -27,6 +27,7 @@ A full-stack personal expense tracking application for managing household financ
 - Merchant analytics with spending insights by location, visit frequency, and trend analysis
 - Top merchants ranking with flexible sorting and time period filtering
 - Detailed merchant statistics including category breakdowns and payment method analysis
+- Fixed expenses integration option to include recurring costs (rent, utilities, subscriptions) in merchant analytics
 - Monthly spending trend charts with month-over-month change tracking
 - CSV import for bulk expense entry
 - Automated and manual database backups

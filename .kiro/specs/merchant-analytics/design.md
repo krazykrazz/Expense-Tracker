@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Merchant Analytics feature provides users with insights into their spending patterns by merchant (place). It aggregates expense data to show top spending locations, visit frequency, average spend per merchant, and spending trends over time. The feature is accessible from the main navigation and provides drill-down capabilities to view individual expenses at each merchant.
+The Merchant Analytics feature provides users with insights into their spending patterns by merchant (place). It aggregates expense data to show top spending locations, visit frequency, average spend per merchant, and spending trends over time. The feature is accessible from the main navigation and provides drill-down capabilities to view individual expenses at each merchant. **New in v4.9.0**: Optional integration with fixed expenses allows users to include recurring costs (rent, utilities, subscriptions) alongside variable expenses for comprehensive spending analysis.
 
 ## Architecture
 
@@ -48,7 +48,7 @@ Responsible for aggregating expense data into merchant-level analytics.
 class MerchantAnalyticsService {
   /**
    * Get top merchants by total spending
-   * @param {Object} filters - { period: 'all'|'year'|'month'|'3months', year?, month? }
+   * @param {Object} filters - { period: 'all'|'year'|'month'|'3months', year?, month?, includeFixedExpenses? }
    * @param {string} sortBy - 'total'|'visits'|'average'
    * @returns {Promise<Array<MerchantSummary>>}
    */
@@ -57,7 +57,7 @@ class MerchantAnalyticsService {
   /**
    * Get detailed statistics for a specific merchant
    * @param {string} merchantName - The merchant/place name
-   * @param {Object} filters - Time period filters
+   * @param {Object} filters - Time period filters with optional fixed expenses flag
    * @returns {Promise<MerchantDetail>}
    */
   async getMerchantDetails(merchantName, filters);
@@ -66,14 +66,15 @@ class MerchantAnalyticsService {
    * Get monthly spending trend for a merchant
    * @param {string} merchantName - The merchant/place name
    * @param {number} months - Number of months to include (default 12)
+   * @param {boolean} includeFixedExpenses - Whether to include fixed expenses
    * @returns {Promise<Array<MonthlyTrend>>}
    */
-  async getMerchantTrend(merchantName, months = 12);
+  async getMerchantTrend(merchantName, months = 12, includeFixedExpenses = false);
 
   /**
    * Get all expenses for a specific merchant
    * @param {string} merchantName - The merchant/place name
-   * @param {Object} filters - Time period filters
+   * @param {Object} filters - Time period filters with optional fixed expenses flag
    * @returns {Promise<Array<Expense>>}
    */
   async getMerchantExpenses(merchantName, filters);
@@ -268,6 +269,78 @@ interface DateFilter {
 *For any* merchant name, the filtered expense list SHALL contain only expenses where the place field matches the merchant name (case-insensitive).
 **Validates: Requirements 7.2**
 
+## Fixed Expenses Integration (v4.9.0)
+
+### Overview
+The fixed expenses integration allows users to optionally include recurring monthly costs (rent, utilities, subscriptions, insurance) alongside variable expenses for comprehensive merchant spending analysis.
+
+### Implementation Details
+
+#### Backend Changes
+- **Query Parameter**: All analytics endpoints accept `includeFixedExpenses` boolean parameter
+- **Data Source**: Fixed expenses table uses `name` field (equivalent to `place` in expenses)
+- **Field Mapping**: Fixed expenses include `category` and `payment_type` fields for analytics
+- **Data Combination**: Service layer combines data from both `expenses` and `fixed_expenses` tables when flag is enabled
+
+#### Frontend Changes
+- **UI Control**: "Include Fixed Expenses" checkbox in MerchantAnalyticsModal
+- **Visual Indicator**: Checkbox shows current state and updates analytics in real-time
+- **API Integration**: All API calls pass the `includeFixedExpenses` parameter based on checkbox state
+- **Consistent Experience**: Fixed expenses integration works across all views (list, detail, trend, expenses)
+
+#### Data Model Extensions
+Fixed expenses contribute to merchant analytics with:
+- **Name**: Used as merchant identifier (equivalent to `place`)
+- **Amount**: Contributes to total spend calculations
+- **Category**: Included in category breakdown analysis
+- **Payment Type**: Included in payment method breakdown (mapped to `method`)
+- **Date**: Uses year/month for time period filtering
+
+#### Use Cases
+- **Complete Spending Analysis**: View total spending including both variable and recurring costs
+- **Budget Planning**: Understand full financial relationship with service providers
+- **Merchant Comparison**: Compare total costs across similar merchants/services
+- **Category Insights**: See complete spending patterns including fixed costs
+
+### Technical Implementation
+
+#### Service Layer Changes
+```javascript
+// merchantAnalyticsService.js
+async getTopMerchants(filters, sortBy = 'total') {
+  const { includeFixedExpenses = false } = filters;
+  
+  // Get variable expenses
+  const expenses = await this.expenseRepository.getMerchantAnalytics(filters);
+  
+  // Optionally get fixed expenses
+  let fixedExpenses = [];
+  if (includeFixedExpenses) {
+    fixedExpenses = await this.expenseRepository.getFixedExpenseMerchantAnalytics(filters);
+  }
+  
+  // Combine and aggregate data
+  return this.combineAndAggregateData(expenses, fixedExpenses, sortBy);
+}
+```
+
+#### Repository Layer Changes
+```javascript
+// expenseRepository.js
+async getFixedExpenseMerchantAnalytics(filters) {
+  // Query fixed_expenses table with date filtering
+  // Map name -> place, payment_type -> method for consistency
+  // Return data in same format as regular expenses
+}
+```
+
+#### API Endpoint Updates
+All merchant analytics endpoints support the new parameter:
+- `GET /api/analytics/merchants?includeFixedExpenses=true`
+- `GET /api/analytics/merchants/:name?includeFixedExpenses=true`
+- `GET /api/analytics/merchants/:name/trend?includeFixedExpenses=true`
+- `GET /api/analytics/merchants/:name/expenses?includeFixedExpenses=true`
+
 ## Error Handling
 
 ### Backend Errors
@@ -275,6 +348,7 @@ interface DateFilter {
 | Error Condition | HTTP Status | Response |
 |----------------|-------------|----------|
 | Invalid period parameter | 400 | `{ error: "Invalid period. Must be 'all', 'year', 'month', or '3months'" }` |
+| Invalid includeFixedExpenses parameter | 400 | `{ error: "includeFixedExpenses must be 'true' or 'false'" }` |
 | Merchant not found | 404 | `{ error: "Merchant not found" }` |
 | Database error | 500 | `{ error: "Internal server error" }` |
 
@@ -284,6 +358,7 @@ interface DateFilter {
 - Show empty state when no merchants exist
 - Handle loading states with spinner/skeleton
 - Graceful degradation if API is unavailable
+- Preserve checkbox state during API errors
 
 ## Testing Strategy
 

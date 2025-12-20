@@ -3,7 +3,7 @@ import './MerchantDetailView.css';
 import { getMerchantDetails, getMerchantTrend } from '../services/merchantAnalyticsApi';
 import { formatCurrency, formatDate } from '../utils/formatters';
 
-const MerchantDetailView = ({ merchantName, period, isOpen, onClose, onViewExpenses }) => {
+const MerchantDetailView = ({ merchantName, period, includeFixedExpenses, isOpen, onClose, onViewExpenses }) => {
   const [merchantDetails, setMerchantDetails] = useState(null);
   const [trendData, setTrendData] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -14,7 +14,7 @@ const MerchantDetailView = ({ merchantName, period, isOpen, onClose, onViewExpen
     if (isOpen && merchantName) {
       fetchMerchantData();
     }
-  }, [isOpen, merchantName, period]);
+  }, [isOpen, merchantName, period, includeFixedExpenses]);
 
   const fetchMerchantData = async () => {
     setLoading(true);
@@ -23,8 +23,8 @@ const MerchantDetailView = ({ merchantName, period, isOpen, onClose, onViewExpen
     try {
       // Fetch both details and trend data in parallel
       const [detailsData, trendDataResult] = await Promise.all([
-        getMerchantDetails(merchantName, period),
-        getMerchantTrend(merchantName, 12)
+        getMerchantDetails(merchantName, period, includeFixedExpenses),
+        getMerchantTrend(merchantName, 12, includeFixedExpenses)
       ]);
       
       setMerchantDetails(detailsData);

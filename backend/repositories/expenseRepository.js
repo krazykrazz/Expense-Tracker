@@ -377,60 +377,209 @@ class ExpenseRepository {
   /**
    * Get merchant analytics data with aggregated spending information
    * @param {Object} filters - Date filters { period, startDate, endDate }
+   * @param {boolean} includeFixedExpenses - Whether to include fixed expenses in analysis
    * @returns {Promise<Array>} Array of merchant analytics objects
    */
-  async getMerchantAnalytics(filters = {}) {
+  async getMerchantAnalytics(filters = {}, includeFixedExpenses = false) {
     const db = await getDatabase();
     
     return new Promise((resolve, reject) => {
-      let sql = `
+      if (!includeFixedExpenses) {
+        // Original logic for expenses only
+        let sql = `
+          SELECT 
+            place as name,
+            SUM(amount) as totalSpend,
+            COUNT(DISTINCT date) as visitCount,
+            SUM(amount) / COUNT(DISTINCT date) as averageSpend,
+            MIN(date) as firstVisit,
+            MAX(date) as lastVisit
+          FROM expenses
+          WHERE place IS NOT NULL AND place != '' AND TRIM(place) != ''
+        `;
+        
+        const params = [];
+        
+        // Add date filtering based on filters
+        if (filters.startDate && filters.endDate) {
+          sql += ' AND date >= ? AND date <= ?';
+          params.push(filters.startDate, filters.endDate);
+        } else if (filters.startDate) {
+          sql += ' AND date >= ?';
+          params.push(filters.startDate);
+        } else if (filters.endDate) {
+          sql += ' AND date <= ?';
+          params.push(filters.endDate);
+        }
+        
+        sql += `
+          GROUP BY place
+          ORDER BY totalSpend DESC
+        `;
+        
+        db.all(sql, params, (err, rows) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+          
+          const results = rows.map(row => ({
+            name: row.name,
+            totalSpend: parseFloat(row.totalSpend.toFixed(2)),
+            visitCount: row.visitCount,
+            averageSpend: parseFloat(row.averageSpend.toFixed(2)),
+            firstVisit: row.firstVisit,
+            lastVisit: row.lastVisit
+          }));
+          
+          resolve(results);
+        });
+      } else {
+        // Combined logic for expenses + fixed expenses
+        this.getCombinedMerchantAnalytics(filters).then(resolve).catch(reject);
+      }
+    });
+  }
+
+  /**
+   * Get combined merchant analytics (expenses + fixed expenses)
+   * @param {Object} filters - Date filters
+   * @returns {Promise<Array>} Array of combined merchant analytics
+   */
+  async getCombinedMerchantAnalytics(filters = {}) {
+    const db = await getDatabase();
+    
+    return new Promise((resolve, reject) => {
+      // First get expenses data
+      let expensesSql = `
         SELECT 
           place as name,
           SUM(amount) as totalSpend,
           COUNT(DISTINCT date) as visitCount,
-          SUM(amount) / COUNT(DISTINCT date) as averageSpend,
           MIN(date) as firstVisit,
           MAX(date) as lastVisit
         FROM expenses
-        WHERE place IS NOT NULL AND place != ''
+        WHERE place IS NOT NULL AND place != '' AND TRIM(place) != ''
       `;
       
-      const params = [];
+      const expensesParams = [];
       
-      // Add date filtering based on filters
+      // Add date filtering for expenses
       if (filters.startDate && filters.endDate) {
-        sql += ' AND date >= ? AND date <= ?';
-        params.push(filters.startDate, filters.endDate);
+        expensesSql += ' AND date >= ? AND date <= ?';
+        expensesParams.push(filters.startDate, filters.endDate);
       } else if (filters.startDate) {
-        sql += ' AND date >= ?';
-        params.push(filters.startDate);
+        expensesSql += ' AND date >= ?';
+        expensesParams.push(filters.startDate);
       } else if (filters.endDate) {
-        sql += ' AND date <= ?';
-        params.push(filters.endDate);
+        expensesSql += ' AND date <= ?';
+        expensesParams.push(filters.endDate);
       }
       
-      sql += `
-        GROUP BY place
-        ORDER BY totalSpend DESC
+      expensesSql += ' GROUP BY place';
+      
+      // Then get fixed expenses data
+      let fixedSql = `
+        SELECT 
+          name,
+          SUM(amount) as totalSpend,
+          COUNT(*) as visitCount,
+          MIN(year || '-' || printf('%02d', month) || '-01') as firstVisit,
+          MAX(year || '-' || printf('%02d', month) || '-01') as lastVisit
+        FROM fixed_expenses
+        WHERE name IS NOT NULL AND name != '' AND TRIM(name) != ''
       `;
       
-      db.all(sql, params, (err, rows) => {
+      const fixedParams = [];
+      
+      // Add date filtering for fixed expenses
+      if (filters.startDate && filters.endDate) {
+        const startYear = new Date(filters.startDate).getFullYear();
+        const startMonth = new Date(filters.startDate).getMonth() + 1;
+        const endYear = new Date(filters.endDate).getFullYear();
+        const endMonth = new Date(filters.endDate).getMonth() + 1;
+        
+        fixedSql += ` AND ((year > ? OR (year = ? AND month >= ?)) AND (year < ? OR (year = ? AND month <= ?)))`;
+        fixedParams.push(startYear, startYear, startMonth, endYear, endYear, endMonth);
+      } else if (filters.startDate) {
+        const startYear = new Date(filters.startDate).getFullYear();
+        const startMonth = new Date(filters.startDate).getMonth() + 1;
+        fixedSql += ` AND (year > ? OR (year = ? AND month >= ?))`;
+        fixedParams.push(startYear, startYear, startMonth);
+      } else if (filters.endDate) {
+        const endYear = new Date(filters.endDate).getFullYear();
+        const endMonth = new Date(filters.endDate).getMonth() + 1;
+        fixedSql += ` AND (year < ? OR (year = ? AND month <= ?))`;
+        fixedParams.push(endYear, endYear, endMonth);
+      }
+      
+      fixedSql += ' GROUP BY name';
+      
+      // Execute both queries
+      db.all(expensesSql, expensesParams, (err, expensesRows) => {
         if (err) {
           reject(err);
           return;
         }
         
-        // Process results to calculate additional fields
-        const results = rows.map(row => ({
-          name: row.name,
-          totalSpend: parseFloat(row.totalSpend.toFixed(2)),
-          visitCount: row.visitCount,
-          averageSpend: parseFloat(row.averageSpend.toFixed(2)),
-          firstVisit: row.firstVisit,
-          lastVisit: row.lastVisit
-        }));
-        
-        resolve(results);
+        db.all(fixedSql, fixedParams, (err, fixedRows) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+          
+          // Combine the results
+          const merchantMap = new Map();
+          
+          // Add expenses data
+          expensesRows.forEach(row => {
+            const name = row.name.toLowerCase();
+            merchantMap.set(name, {
+              name: row.name,
+              totalSpend: parseFloat(row.totalSpend),
+              visitCount: row.visitCount,
+              firstVisit: row.firstVisit,
+              lastVisit: row.lastVisit
+            });
+          });
+          
+          // Add or merge fixed expenses data
+          fixedRows.forEach(row => {
+            const name = row.name.toLowerCase();
+            if (merchantMap.has(name)) {
+              // Merge with existing expense data
+              const existing = merchantMap.get(name);
+              existing.totalSpend += parseFloat(row.totalSpend);
+              existing.visitCount += row.visitCount;
+              existing.firstVisit = existing.firstVisit < row.firstVisit ? existing.firstVisit : row.firstVisit;
+              existing.lastVisit = existing.lastVisit > row.lastVisit ? existing.lastVisit : row.lastVisit;
+            } else {
+              // Add as new merchant
+              merchantMap.set(name, {
+                name: row.name,
+                totalSpend: parseFloat(row.totalSpend),
+                visitCount: row.visitCount,
+                firstVisit: row.firstVisit,
+                lastVisit: row.lastVisit
+              });
+            }
+          });
+          
+          // Convert to array and calculate averages
+          const results = Array.from(merchantMap.values()).map(merchant => ({
+            name: merchant.name,
+            totalSpend: parseFloat(merchant.totalSpend.toFixed(2)),
+            visitCount: merchant.visitCount,
+            averageSpend: parseFloat((merchant.totalSpend / merchant.visitCount).toFixed(2)),
+            firstVisit: merchant.firstVisit,
+            lastVisit: merchant.lastVisit
+          }));
+          
+          // Sort by total spend descending
+          results.sort((a, b) => b.totalSpend - a.totalSpend);
+          
+          resolve(results);
+        });
       });
     });
   }
@@ -439,14 +588,15 @@ class ExpenseRepository {
    * Get all expenses for a specific merchant with optional date filtering
    * @param {string} merchantName - The merchant/place name
    * @param {Object} filters - Date filters { period, startDate, endDate }
+   * @param {boolean} includeFixedExpenses - Whether to include fixed expenses
    * @returns {Promise<Array>} Array of expense objects
    */
-  async getMerchantExpenses(merchantName, filters = {}) {
+  async getMerchantExpenses(merchantName, filters = {}, includeFixedExpenses = false) {
     const db = await getDatabase();
     
     return new Promise((resolve, reject) => {
       let sql = `
-        SELECT id, date, place, notes, amount, type, method, week
+        SELECT id, date, place, notes, amount, type, method, week, 'expense' as source
         FROM expenses
         WHERE LOWER(place) = LOWER(?)
       `;
@@ -465,6 +615,47 @@ class ExpenseRepository {
         params.push(filters.endDate);
       }
       
+      if (includeFixedExpenses) {
+        // Union with fixed expenses
+        sql += `
+        UNION ALL
+        SELECT 
+          id, 
+          year || '-' || printf('%02d', month) || '-01' as date,
+          name as place,
+          '' as notes,
+          amount,
+          category as type,
+          payment_type as method,
+          1 as week,
+          'fixed_expense' as source
+        FROM fixed_expenses
+        WHERE LOWER(name) = LOWER(?)
+        `;
+        params.push(merchantName);
+        
+        // Add date filtering for fixed expenses
+        if (filters.startDate && filters.endDate) {
+          const startYear = new Date(filters.startDate).getFullYear();
+          const startMonth = new Date(filters.startDate).getMonth() + 1;
+          const endYear = new Date(filters.endDate).getFullYear();
+          const endMonth = new Date(filters.endDate).getMonth() + 1;
+          
+          sql += ` AND ((year > ? OR (year = ? AND month >= ?)) AND (year < ? OR (year = ? AND month <= ?)))`;
+          params.push(startYear, startYear, startMonth, endYear, endYear, endMonth);
+        } else if (filters.startDate) {
+          const startYear = new Date(filters.startDate).getFullYear();
+          const startMonth = new Date(filters.startDate).getMonth() + 1;
+          sql += ` AND (year > ? OR (year = ? AND month >= ?))`;
+          params.push(startYear, startYear, startMonth);
+        } else if (filters.endDate) {
+          const endYear = new Date(filters.endDate).getFullYear();
+          const endMonth = new Date(filters.endDate).getMonth() + 1;
+          sql += ` AND (year < ? OR (year = ? AND month <= ?))`;
+          params.push(endYear, endYear, endMonth);
+        }
+      }
+      
       sql += ' ORDER BY date DESC';
       
       db.all(sql, params, (err, rows) => {
@@ -481,13 +672,14 @@ class ExpenseRepository {
    * Get monthly trend data for a specific merchant
    * @param {string} merchantName - The merchant/place name
    * @param {number} months - Number of months to include (default 12)
+   * @param {boolean} includeFixedExpenses - Whether to include fixed expenses
    * @returns {Promise<Array>} Array of monthly trend objects
    */
-  async getMerchantTrend(merchantName, months = 12) {
+  async getMerchantTrend(merchantName, months = 12, includeFixedExpenses = false) {
     const db = await getDatabase();
     
     return new Promise((resolve, reject) => {
-      const sql = `
+      let sql = `
         SELECT 
           strftime('%Y', date) as year,
           strftime('%m', date) as month,
@@ -497,10 +689,42 @@ class ExpenseRepository {
         WHERE LOWER(place) = LOWER(?)
           AND date >= date('now', '-${months} months')
         GROUP BY strftime('%Y-%m', date)
-        ORDER BY year, month
       `;
       
-      db.all(sql, [merchantName], (err, rows) => {
+      const params = [merchantName];
+      
+      if (includeFixedExpenses) {
+        // Union with fixed expenses
+        sql += `
+        UNION ALL
+        SELECT 
+          CAST(year as TEXT) as year,
+          printf('%02d', month) as month,
+          SUM(amount) as amount,
+          COUNT(*) as visitCount
+        FROM fixed_expenses
+        WHERE LOWER(name) = LOWER(?)
+          AND (year * 12 + month) >= (strftime('%Y', 'now') * 12 + strftime('%m', 'now') - ${months})
+        GROUP BY year, month
+        `;
+        params.push(merchantName);
+        
+        // Wrap in outer query to combine results by month
+        sql = `
+          SELECT 
+            year,
+            month,
+            SUM(amount) as amount,
+            SUM(visitCount) as visitCount
+          FROM (${sql}) combined
+          GROUP BY year, month
+          ORDER BY year, month
+        `;
+      } else {
+        sql += ' ORDER BY year, month';
+      }
+      
+      db.all(sql, params, (err, rows) => {
         if (err) {
           reject(err);
           return;

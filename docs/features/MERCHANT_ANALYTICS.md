@@ -1,12 +1,12 @@
 # Merchant Analytics Feature
 
-**Version**: 4.7.0  
-**Release Date**: December 16, 2025  
+**Version**: 4.9.0  
+**Release Date**: December 20, 2025  
 **Spec**: `.kiro/specs/merchant-analytics/`
 
 ## Overview
 
-The Merchant Analytics feature provides comprehensive insights into spending patterns by merchant (place), helping users understand where their money goes and identify opportunities for savings. This feature analyzes expense data to show top spending locations, visit frequency, average spend per merchant, and spending trends over time.
+The Merchant Analytics feature provides comprehensive insights into spending patterns by merchant (place), helping users understand where their money goes and identify opportunities for savings. This feature analyzes expense data to show top spending locations, visit frequency, average spend per merchant, and spending trends over time. **New in v4.9.0**: Optional integration with fixed expenses to provide complete spending analysis including recurring costs like rent, utilities, and subscriptions.
 
 ## Key Features
 
@@ -15,6 +15,7 @@ The Merchant Analytics feature provides comprehensive insights into spending pat
 - **Flexible Sorting**: Toggle between three sorting options to analyze spending from different perspectives
 - **Spending Statistics**: See total amount spent, number of visits, average spend per visit, and percentage of total expenses
 - **Time Period Filtering**: Analyze data for All Time, This Year, This Month, or Last 3 Months
+- **Fixed Expenses Integration**: Optional "Include Fixed Expenses" checkbox to combine variable and recurring expenses for comprehensive analysis
 
 ### 📊 Detailed Analytics
 - **Merchant Detail View**: Click any merchant to see comprehensive statistics and breakdowns
@@ -46,6 +47,7 @@ The Merchant Analytics feature provides comprehensive insights into spending pat
 - **Key Metrics**: Each merchant shows total spend, visit count, average spend, and percentage
 - **Visual Indicators**: Clear typography and spacing for easy scanning of merchant data
 - **Sort Toggle**: Easy switching between total spend, visits, and average spend sorting
+- **Fixed Expenses Toggle**: "Include Fixed Expenses" checkbox with visual indicator when enabled
 
 ### Merchant Detail View
 - **Statistics Cards**: Key metrics displayed in organized card layout
@@ -69,6 +71,7 @@ GET /api/analytics/merchants
 Query Parameters:
 - period: 'all' | 'year' | 'month' | '3months'
 - sortBy: 'total' | 'visits' | 'average'
+- includeFixedExpenses: 'true' | 'false' (default: 'false')
 ```
 
 #### Get Merchant Details
@@ -76,6 +79,7 @@ Query Parameters:
 GET /api/analytics/merchants/:name
 Query Parameters:
 - period: 'all' | 'year' | 'month' | '3months'
+- includeFixedExpenses: 'true' | 'false' (default: 'false')
 ```
 
 #### Get Merchant Trend
@@ -83,6 +87,7 @@ Query Parameters:
 GET /api/analytics/merchants/:name/trend
 Query Parameters:
 - months: number (default 12)
+- includeFixedExpenses: 'true' | 'false' (default: 'false')
 ```
 
 #### Get Merchant Expenses
@@ -90,6 +95,7 @@ Query Parameters:
 GET /api/analytics/merchants/:name/expenses
 Query Parameters:
 - period: 'all' | 'year' | 'month' | '3months'
+- includeFixedExpenses: 'true' | 'false' (default: 'false')
 ```
 
 ### Frontend Architecture
@@ -182,7 +188,14 @@ Each property is tested with 100+ iterations using the `fast-check` library to e
 1. Click "🏪 Merchant Analytics" in the main navigation
 2. View the default list sorted by total spending
 3. Use the period filter to focus on "This Year" or "This Month"
-4. Identify your highest-spending merchants
+4. **Optional**: Check "Include Fixed Expenses" to see total spending including recurring costs
+5. Identify your highest-spending merchants
+
+### Understanding Complete Spending Patterns
+1. Enable "Include Fixed Expenses" checkbox for comprehensive analysis
+2. Compare variable vs. total spending (with fixed expenses) to understand full financial picture
+3. Identify merchants where you have both variable and fixed expenses (e.g., utilities, rent)
+4. Use combined view for accurate budget planning and spending analysis
 
 ### Understanding Shopping Habits
 1. Change sort to "Visits" to see most frequently visited places
@@ -205,14 +218,14 @@ Each property is tested with 100+ iterations using the `fast-check` library to e
 ## Benefits
 
 ### Financial Awareness
-- **Spending Visibility**: Clear view of where money is being spent
-- **Pattern Recognition**: Identify recurring spending patterns and habits
-- **Budget Planning**: Use insights to create more accurate budgets
+- **Complete Spending Visibility**: Clear view of where money is being spent, including both variable and recurring expenses
+- **Pattern Recognition**: Identify recurring spending patterns and habits across all expense types
+- **Budget Planning**: Use comprehensive insights to create more accurate budgets that account for all spending
 
 ### Decision Making
-- **Vendor Analysis**: Compare spending across similar merchants
-- **Frequency Insights**: Understand shopping frequency and adjust habits
-- **Category Awareness**: See what types of purchases dominate at each location
+- **Total Cost Analysis**: Compare complete spending (variable + fixed) across similar merchants
+- **Comprehensive Insights**: Understand full financial relationship with each merchant/service provider
+- **Category Awareness**: See what types of purchases dominate at each location, including recurring services
 
 ### Savings Opportunities
 - **High-Spend Identification**: Focus cost-cutting efforts on top merchants
@@ -257,5 +270,5 @@ For issues or questions about Merchant Analytics:
 
 ---
 
-**Last Updated**: December 16, 2025  
-**Feature Status**: ✅ Complete and Deployed
+**Last Updated**: December 20, 2025  
+**Feature Status**: ✅ Complete and Deployed (v4.9.0 with Fixed Expenses Integration)

@@ -2,9 +2,11 @@
  * Centralized error handling middleware
  * Should be added as the last middleware in the Express app
  */
+const logger = require('../config/logger');
+
 const errorHandler = (err, req, res, next) => {
   // Log error for debugging
-  console.error('Error occurred:', {
+  logger.error('Error occurred:', {
     message: err.message,
     stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
     path: req.path,

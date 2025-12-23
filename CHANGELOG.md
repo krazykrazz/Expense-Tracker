@@ -11,6 +11,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.10.0] - 2025-12-23
+
+### Added
+- **Budget Alert Notifications**: Proactive notification banners that appear at the top of the interface when approaching or exceeding budget limits
+  - **Smart Alert Thresholds**: Warning alerts at 80-89% (yellow with ⚡ icon), Danger alerts at 90-99% (orange with ! icon), Critical alerts at ≥100% (red with ⚠ icon)
+  - **Dismissible Alerts**: Temporarily hide alerts during your session with × button - alerts reappear on page refresh if budget condition persists
+  - **Real-time Updates**: Alerts appear, update, or disappear immediately as you add, edit, or delete expenses
+  - **Quick Budget Management**: Direct access to budget settings via "Manage Budgets" button and navigation to budget details via "View Details" link
+  - **Multiple Alert Handling**: When multiple categories trigger alerts, displays most severe alert with count of affected categories
+  - **Session-based Dismissal**: Dismissed alerts stay hidden during current session but reappear after refresh if conditions persist
+  - **Performance Optimized**: Reuses existing budget calculations, debounced updates (300ms), alert display limit (5 maximum)
+  - **Seamless Integration**: Leverages existing budget tracking infrastructure without replacing current functionality
+  - **Comprehensive Testing**: 10 correctness properties with property-based testing (100+ iterations each) plus full integration test coverage
+
+### Technical
+- **Frontend Components**: New `BudgetAlertBanner` and `BudgetAlertManager` components with React.memo optimization
+- **Alert Calculation**: Smart threshold detection with severity-based sorting and message generation
+- **Error Handling**: Error boundaries, graceful degradation, and fallback UI for alert failures
+- **Memory Management**: Session-based dismissal storage with sessionStorage fallback
+- **Integration**: Connected to existing budget refresh patterns and expense operation handlers
+- **No Backend Changes**: Feature entirely frontend-based, leveraging existing budget API endpoints
+
+---
+
 ## [4.9.1] - 2025-12-20
 
 ### Fixed

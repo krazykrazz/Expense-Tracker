@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import './BudgetAlertBanner.css';
 
 /**
@@ -5,8 +6,9 @@ import './BudgetAlertBanner.css';
  * Displays individual budget alert with severity-based styling and actions
  * 
  * Requirements: 2.1, 2.2, 2.3, 2.4, 3.1, 4.1, 4.3, 6.1, 6.2, 6.3
+ * Performance: React.memo prevents unnecessary re-renders (Requirement 7.1)
  */
-const BudgetAlertBanner = ({ 
+const BudgetAlertBanner = memo(({ 
   alert, 
   onDismiss, 
   onManageBudgets, 
@@ -81,6 +83,9 @@ const BudgetAlertBanner = ({
       </div>
     </div>
   );
-};
+});
+
+// Display name for debugging
+BudgetAlertBanner.displayName = 'BudgetAlertBanner';
 
 export default BudgetAlertBanner;

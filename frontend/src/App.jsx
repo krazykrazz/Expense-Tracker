@@ -31,6 +31,7 @@ function App() {
   const [showAnnualSummary, setShowAnnualSummary] = useState(false);
   const [showTaxDeductible, setShowTaxDeductible] = useState(false);
   const [showBudgetManagement, setShowBudgetManagement] = useState(false);
+  const [budgetManagementFocusCategory, setBudgetManagementFocusCategory] = useState(null);
   const [showBudgetHistory, setShowBudgetHistory] = useState(false);
   const [showPeopleManagement, setShowPeopleManagement] = useState(false);
   const [showMerchantAnalytics, setShowMerchantAnalytics] = useState(false);
@@ -344,12 +345,14 @@ function App() {
     setFilterMethod('');
   }, []);
 
-  const handleManageBudgets = () => {
+  const handleManageBudgets = (category = null) => {
+    setBudgetManagementFocusCategory(category);
     setShowBudgetManagement(true);
   };
 
   const handleCloseBudgetManagement = () => {
     setShowBudgetManagement(false);
+    setBudgetManagementFocusCategory(null);
     // Trigger refresh to update budget displays and alerts
     setRefreshTrigger(prev => prev + 1);
     setBudgetAlertRefreshTrigger(prev => prev + 1);
@@ -477,11 +480,22 @@ function App() {
           month={selectedMonth}
           refreshTrigger={budgetAlertRefreshTrigger}
           onManageBudgets={handleManageBudgets}
-          onViewDetails={() => {
+          onViewDetails={(category) => {
             // Navigate to budget summary section by scrolling to SummaryPanel
             const summaryPanel = document.querySelector('.summary-panel');
             if (summaryPanel) {
               summaryPanel.scrollIntoView({ behavior: 'smooth' });
+              
+              // Highlight the specific category budget card if it exists
+              setTimeout(() => {
+                const budgetCard = document.querySelector(`[data-budget-category="${category}"]`);
+                if (budgetCard) {
+                  budgetCard.classList.add('budget-card-highlighted');
+                  setTimeout(() => {
+                    budgetCard.classList.remove('budget-card-highlighted');
+                  }, 3000);
+                }
+              }, 500);
             }
           }}
         />
@@ -629,6 +643,7 @@ function App() {
           month={selectedMonth}
           onClose={handleCloseBudgetManagement}
           onBudgetUpdated={handleBudgetUpdated}
+          focusedCategory={budgetManagementFocusCategory}
         />
       )}
 
@@ -658,7 +673,7 @@ function App() {
 
       <footer className="App-footer">
         <span className="version">
-          v{versionInfo?.version || '4.9.1'}
+          v{versionInfo?.version || '4.10.0'}
           {versionInfo?.docker && (
             <span className="docker-tag"> (Docker: {versionInfo.docker.tag})</span>
           )}

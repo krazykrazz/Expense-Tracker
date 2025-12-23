@@ -800,6 +800,16 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v4.10.0</div>
+                <div className="changelog-date">December 23, 2025</div>
+                <ul className="changelog-items">
+                  <li>Added Budget Alert Notifications with proactive banner alerts</li>
+                  <li>Smart alert thresholds: Warning (80-89%), Danger (90-99%), Critical (≥100%)</li>
+                  <li>Dismissible alerts with session persistence and real-time updates</li>
+                  <li>Quick budget management access from alert banners</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v4.9.1</div>
                 <div className="changelog-date">December 20, 2025</div>
                 <ul className="changelog-items">

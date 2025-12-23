@@ -84,6 +84,11 @@ A full-stack expense tracking application built with React and Node.js.
 - 💵 Set monthly budget limits for expense categories (Food, Gas, Other)
 - 📊 Real-time progress bars with color-coded status indicators
 - ⚠️ Visual alerts at 80%, 90%, and 100% thresholds
+- 🚨 **Proactive alert notifications** - Prominent banner alerts at the top of the interface when approaching or exceeding budget limits
+- 🎯 **Smart alert thresholds** - Warning (80-89%), Danger (90-99%), Critical (≥100%) with distinct visual styling
+- 🔕 **Dismissible alerts** - Temporarily hide alerts during your session while keeping them active for future visits
+- ⚡ **Real-time updates** - Alerts appear and update immediately as you add, edit, or delete expenses
+- 🔗 **Quick budget management** - Direct access to budget settings and details from alert banners
 - 🔄 Automatic budget carry-forward from previous month
 - 📋 Manual budget copy from any previous month
 - 📈 Historical budget performance analysis (3, 6, or 12 months)
@@ -355,10 +360,19 @@ stop-servers.bat
     - **Yellow**: 80-89% of budget (warning)
     - **Orange**: 90-99% of budget (danger)
     - **Red**: 100% or more (over budget)
-29. **Copy Budgets**: Use "📋 Copy from Previous Month" to replicate budget limits
-30. **View History**: Click "📊 Budget History" to analyze budget performance over time
-31. **Automatic Carry-Forward**: Budgets automatically copy from previous month when accessing a new month
-32. **Budget Summary**: View overall budget status in the summary panel showing total budgeted vs spent
+29. **Budget Alert Notifications**: Receive prominent banner alerts at the top of the interface when budgets need attention:
+    - **Warning Alerts (80-89%)**: Yellow banners with ⚡ icon when approaching budget limits
+    - **Danger Alerts (90-99%)**: Orange banners with ! icon when nearing budget limits
+    - **Critical Alerts (≥100%)**: Red banners with ⚠ icon when exceeding budget limits
+30. **Dismiss Alerts**: Click the × button to temporarily hide alert banners during your current session
+31. **Quick Budget Actions**: Use alert banner buttons to:
+    - **Manage Budgets**: Open budget management modal directly from the alert
+    - **View Details**: Navigate to budget summary section for detailed analysis
+32. **Real-time Alert Updates**: Alerts automatically appear, update, or disappear as you modify expenses
+33. **Copy Budgets**: Use "📋 Copy from Previous Month" to replicate budget limits
+34. **View History**: Click "📊 Budget History" to analyze budget performance over time
+35. **Automatic Carry-Forward**: Budgets automatically copy from previous month when accessing a new month
+36. **Budget Summary**: View overall budget status in the summary panel showing total budgeted vs spent
 
 ### Medical Expense People Tracking
 33. **Manage People**: Click "⚙️ Settings" → "People" tab to add family members

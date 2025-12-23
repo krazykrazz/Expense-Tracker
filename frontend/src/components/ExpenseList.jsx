@@ -1,4 +1,4 @@
-import { useState, useEffect, memo, useMemo } from 'react';
+import { useState, useEffect, memo, useMemo, useCallback } from 'react';
 import { API_ENDPOINTS } from '../config';
 import { PAYMENT_METHODS } from '../utils/constants';
 import { getPeople } from '../services/peopleApi';
@@ -151,7 +151,7 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
     };
   }, [propPeople]);
 
-  const handleEditClick = async (expense) => {
+  const handleEditClick = useCallback(async (expense) => {
     setExpenseToEdit(expense);
     // Ensure date is in YYYY-MM-DD format for the date input
     const dateValue = expense.date.includes('T') ? expense.date.split('T')[0] : expense.date;
@@ -187,9 +187,9 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
     
     setShowEditModal(true);
     setEditMessage({ text: '', type: '' });
-  };
+  }, []);
 
-  const handleEditChange = (e) => {
+  const handleEditChange = useCallback((e) => {
     const { name, value } = e.target;
     setEditFormData(prev => ({
       ...prev,
@@ -200,27 +200,27 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
     if (name === 'type' && value !== 'Tax - Medical') {
       setSelectedPeople([]);
     }
-  };
+  }, []);
 
   // Handle people selection for medical expenses
-  const handleEditPeopleChange = (e) => {
+  const handleEditPeopleChange = useCallback((e) => {
     const selectedOptions = Array.from(e.target.selectedOptions, option => ({
       id: parseInt(option.value),
       name: option.text
     }));
     setSelectedPeople(selectedOptions);
-  };
+  }, []);
 
   // Handle person allocation modal save
-  const handleEditPersonAllocation = (allocations) => {
+  const handleEditPersonAllocation = useCallback((allocations) => {
     setShowPersonAllocation(false);
     setSelectedPeople(allocations);
-  };
+  }, []);
 
   // Check if current expense type is medical
   const isEditingMedicalExpense = editFormData.type === 'Tax - Medical';
 
-  const handleEditSubmit = async (e) => {
+  const handleEditSubmit = useCallback(async (e) => {
     e.preventDefault();
     setEditMessage({ text: '', type: '' });
 
@@ -280,22 +280,22 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }, [editFormData, isEditingMedicalExpense, selectedPeople, expenseToEdit, onExpenseUpdated]);
 
-  const handleCancelEdit = () => {
+  const handleCancelEdit = useCallback(() => {
     setShowEditModal(false);
     setExpenseToEdit(null);
     setEditFormData({});
     setEditMessage({ text: '', type: '' });
     setSelectedPeople([]);
-  };
+  }, []);
 
-  const handleDeleteClick = (expense) => {
+  const handleDeleteClick = useCallback((expense) => {
     setExpenseToDelete(expense);
     setShowConfirmDialog(true);
-  };
+  }, []);
 
-  const handleConfirmDelete = async () => {
+  const handleConfirmDelete = useCallback(async () => {
     if (!expenseToDelete) return;
 
     setDeletingId(expenseToDelete.id);
@@ -321,12 +321,12 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
       setDeletingId(null);
       setExpenseToDelete(null);
     }
-  };
+  }, [expenseToDelete, onExpenseDeleted]);
 
-  const handleCancelDelete = () => {
+  const handleCancelDelete = useCallback(() => {
     setShowConfirmDialog(false);
     setExpenseToDelete(null);
-  };
+  }, []);
 
   const formatDate = formatLocalDate;
 

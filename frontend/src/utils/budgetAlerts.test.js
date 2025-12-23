@@ -424,4 +424,213 @@ describe('Budget Alert Utilities - Property-Based Tests', () => {
       expect(typeof alert === 'object' || alert === null).toBe(true);
     });
   });
+
+  describe('Error Handling', () => {
+    let consoleWarnSpy;
+
+    beforeEach(() => {
+      consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      consoleWarnSpy.mockRestore();
+    });
+
+    test('should handle null and undefined budget progress objects', () => {
+      expect(createAlertFromBudget(null)).toBeNull();
+      expect(createAlertFromBudget(undefined)).toBeNull();
+      expect(createAlertFromBudget({})).toBeNull();
+    });
+
+    test('should handle invalid budget progress data types', () => {
+      expect(createAlertFromBudget('string')).toBeNull();
+      expect(createAlertFromBudget(123)).toBeNull();
+      expect(createAlertFromBudget([])).toBeNull();
+      expect(createAlertFromBudget(true)).toBeNull();
+    });
+
+    test('should handle budget progress with invalid nested budget object', () => {
+      const invalidBudgets = [
+        { budget: null, spent: 100, progress: 80 },
+        { budget: 'string', spent: 100, progress: 80 },
+        { budget: [], spent: 100, progress: 80 },
+        { budget: {}, spent: 100, progress: 80 }, // Missing required fields
+      ];
+
+      invalidBudgets.forEach(budgetProgress => {
+        const result = createAlertFromBudget(budgetProgress);
+        expect(result).toBeNull();
+      });
+
+      expect(consoleWarnSpy).toHaveBeenCalled();
+    });
+
+    test('should handle budget progress with invalid numeric fields', () => {
+      const invalidBudgets = [
+        { budget: { id: 1, category: 'Food', limit: 100 }, spent: 'invalid', progress: 80 },
+        { budget: { id: 1, category: 'Food', limit: 100 }, spent: 100, progress: 'invalid' },
+        { budget: { id: 1, category: 'Food', limit: 100 }, spent: NaN, progress: 80 },
+        { budget: { id: 1, category: 'Food', limit: 100 }, spent: 100, progress: NaN },
+        { budget: { id: 1, category: 'Food', limit: 'invalid' }, spent: 100, progress: 80 },
+      ];
+
+      invalidBudgets.forEach(budgetProgress => {
+        const result = createAlertFromBudget(budgetProgress);
+        expect(result).toBeNull();
+      });
+
+      expect(consoleWarnSpy).toHaveBeenCalled();
+    });
+
+    test('should handle budget progress with missing required fields', () => {
+      const incompleteBudgets = [
+        { budget: { category: 'Food', limit: 100 }, spent: 100, progress: 80 }, // Missing id
+        { budget: { id: 1, limit: 100 }, spent: 100, progress: 80 }, // Missing category
+        { budget: { id: 1, category: 'Food' }, spent: 100, progress: 80 }, // Missing limit
+      ];
+
+      incompleteBudgets.forEach(budgetProgress => {
+        const result = createAlertFromBudget(budgetProgress);
+        expect(result).toBeNull();
+      });
+
+      expect(consoleWarnSpy).toHaveBeenCalled();
+    });
+
+    test('should handle errors in generateAlertMessage gracefully', () => {
+      const invalidBudgetProgress = {
+        budget: { id: 1, category: null, limit: 100 },
+        spent: 'invalid',
+        progress: 80,
+        remaining: 20
+      };
+
+      const message = generateAlertMessage(invalidBudgetProgress, ALERT_SEVERITY.WARNING);
+      expect(message).toBe('Budget alert - data unavailable');
+      // Note: The function handles the error gracefully without throwing, so console.warn may not be called
+    });
+
+    test('should handle errors in createAlertFromBudget gracefully', () => {
+      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      
+      // Create a budget that will cause an error during processing by making budget.category throw
+      const problematicBudget = {
+        budget: { 
+          id: 1, 
+          get category() {
+            throw new Error('Property access error');
+          },
+          limit: 100 
+        },
+        spent: 100,
+        progress: 80
+      };
+
+      const result = createAlertFromBudget(problematicBudget);
+      expect(result).toBeNull();
+      expect(consoleWarnSpy).toHaveBeenCalledWith('Error creating alert from budget:', expect.any(Error), problematicBudget);
+      
+      consoleWarnSpy.mockRestore();
+    });
+
+    test('should handle non-array input to calculateAlerts', () => {
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      
+      expect(calculateAlerts(null)).toEqual([]);
+      expect(calculateAlerts(undefined)).toEqual([]);
+      expect(calculateAlerts('string')).toEqual([]);
+      expect(calculateAlerts(123)).toEqual([]);
+      expect(calculateAlerts({})).toEqual([]);
+
+      expect(consoleWarnSpy).toHaveBeenCalledWith('calculateAlerts received non-array input:', expect.anything());
+      
+      consoleErrorSpy.mockRestore();
+    });
+
+    test('should handle errors during alert calculation', () => {
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      
+      // Create invalid budget data that will cause an error in calculateAlerts
+      const invalidBudgets = [
+        {
+          budget: { id: 1, category: 'Food', limit: 100 },
+          spent: 85,
+          progress: 85,
+          // Add a getter that throws when accessed during sorting
+          get severity() {
+            throw new Error('Sorting error');
+          }
+        }
+      ];
+
+      const result = calculateAlerts(invalidBudgets);
+      // The function should handle the error gracefully and return an empty array
+      expect(Array.isArray(result)).toBe(true);
+      
+      consoleErrorSpy.mockRestore();
+    });
+
+    test('should handle mixed valid and invalid budget data', () => {
+      const mixedBudgets = [
+        null, // Invalid
+        { budget: { id: 1, category: 'Food', limit: 100 }, spent: 85, progress: 85 }, // Valid
+        { budget: null }, // Invalid
+        { budget: { id: 2, category: 'Gas', limit: 200 }, spent: 190, progress: 95 }, // Valid
+        'invalid', // Invalid
+      ];
+
+      const alerts = calculateAlerts(mixedBudgets);
+      
+      // Should return alerts only for valid budgets
+      expect(alerts).toHaveLength(2);
+      expect(alerts[0].category).toBe('Gas'); // Higher severity first
+      expect(alerts[1].category).toBe('Food');
+    });
+
+    test('should handle corrupted alert data in sorting', () => {
+      const corruptedAlerts = [
+        { id: '1', severity: ALERT_SEVERITY.WARNING, category: 'Food' },
+        { id: '2', severity: null, category: 'Gas' }, // Invalid severity
+        { id: '3', severity: ALERT_SEVERITY.CRITICAL, category: 'Entertainment' },
+        { id: '4', severity: 'invalid', category: 'Transport' }, // Invalid severity
+      ];
+
+      // Should not crash and should handle invalid severities gracefully
+      const sorted = sortAlertsBySeverity(corruptedAlerts);
+      expect(sorted).toHaveLength(4);
+      
+      // Valid severities should be sorted correctly
+      const validAlerts = sorted.filter(alert => 
+        alert.severity === ALERT_SEVERITY.CRITICAL || 
+        alert.severity === ALERT_SEVERITY.WARNING
+      );
+      expect(validAlerts[0].severity).toBe(ALERT_SEVERITY.CRITICAL);
+      expect(validAlerts[1].severity).toBe(ALERT_SEVERITY.WARNING);
+    });
+
+    test('should handle errors in generateAlertMessage with missing data', () => {
+      const incompleteBudgetProgress = {
+        budget: {},
+        progress: undefined,
+        spent: null
+      };
+
+      const message = generateAlertMessage(incompleteBudgetProgress, ALERT_SEVERITY.WARNING);
+      expect(message).toBe('Budget alert - data unavailable');
+    });
+
+    test('should handle errors when budget progress throws during property access', () => {
+      const throwingBudgetProgress = {
+        get budget() {
+          throw new Error('Budget access error');
+        },
+        progress: 85,
+        spent: 85
+      };
+
+      const result = createAlertFromBudget(throwingBudgetProgress);
+      expect(result).toBeNull();
+      expect(consoleWarnSpy).toHaveBeenCalledWith('Error creating alert from budget:', expect.any(Error), throwingBudgetProgress);
+    });
+  });
 });

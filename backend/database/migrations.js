@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const { getDatabasePath, getBackupPath } = require('../config/paths');
 const { CATEGORIES, BUDGETABLE_CATEGORIES } = require('../utils/categories');
+const logger = require('../config/logger');
 
 /**
  * Check if a migration has been applied
@@ -80,7 +81,7 @@ function createBackup() {
 
       fs.copyFileSync(DB_PATH, backupPath);
       
-      console.log('✓ Auto-migration backup created:', backupPath);
+      logger.info('Auto-migration backup created:', backupPath);
       resolve(backupPath);
     } catch (error) {
       reject(error);
@@ -97,11 +98,11 @@ async function migrateExpandCategories(db) {
   // Check if already applied
   const isApplied = await checkMigrationApplied(db, migrationName);
   if (isApplied) {
-    console.log(`✓ Migration "${migrationName}" already applied, skipping`);
+    logger.info(`Migration "${migrationName}" already applied, skipping`);
     return;
   }
 
-  console.log(`Running migration: ${migrationName}`);
+  logger.info(`Running migration: ${migrationName}`);
 
   // Create backup
   await createBackup();
@@ -1946,10 +1947,88 @@ async function migrateAddPeopleTables(db) {
 }
 
 /**
+ * Migration: Add performance indexes for frequently queried columns
+ */
+async function migrateAddPerformanceIndexes(db) {
+  const migrationName = 'add_performance_indexes_v1';
+  
+  // Check if already applied
+  const isApplied = await checkMigrationApplied(db, migrationName);
+  if (isApplied) {
+    console.log(`✓ Migration "${migrationName}" already applied, skipping`);
+    return;
+  }
+
+  console.log(`Running migration: ${migrationName}`);
+
+  return new Promise((resolve, reject) => {
+    db.serialize(() => {
+      db.run('BEGIN TRANSACTION', (err) => {
+        if (err) {
+          return reject(err);
+        }
+
+        // Performance indexes for expenses table
+        const expenseIndexes = [
+          'CREATE INDEX IF NOT EXISTS idx_expenses_place ON expenses(place)',
+          'CREATE INDEX IF NOT EXISTS idx_expenses_year_month ON expenses(strftime("%Y", date), strftime("%m", date))',
+          'CREATE INDEX IF NOT EXISTS idx_expenses_amount ON expenses(amount)',
+          'CREATE INDEX IF NOT EXISTS idx_expenses_date_type ON expenses(date, type)',
+          'CREATE INDEX IF NOT EXISTS idx_expenses_place_date ON expenses(place, date)'
+        ];
+
+        // Performance indexes for other tables
+        const otherIndexes = [
+          'CREATE INDEX IF NOT EXISTS idx_fixed_expenses_year_month ON fixed_expenses(year, month)',
+          'CREATE INDEX IF NOT EXISTS idx_fixed_expenses_category ON fixed_expenses(category)',
+          'CREATE INDEX IF NOT EXISTS idx_income_sources_year_month ON income_sources(year, month)',
+          'CREATE INDEX IF NOT EXISTS idx_income_sources_category ON income_sources(category)',
+          'CREATE INDEX IF NOT EXISTS idx_loan_balances_year_month ON loan_balances(year, month)',
+          'CREATE INDEX IF NOT EXISTS idx_loans_type ON loans(loan_type)',
+          'CREATE INDEX IF NOT EXISTS idx_loans_paid_off ON loans(is_paid_off)'
+        ];
+
+        const allIndexes = [...expenseIndexes, ...otherIndexes];
+        let completed = 0;
+
+        console.log(`Creating ${allIndexes.length} performance indexes...`);
+
+        allIndexes.forEach((indexSQL, index) => {
+          db.run(indexSQL, (err) => {
+            if (err) {
+              console.error(`Failed to create index ${index + 1}:`, err.message);
+              db.run('ROLLBACK');
+              return reject(err);
+            }
+            
+            completed++;
+            if (completed === allIndexes.length) {
+              console.log(`✓ Created ${completed} performance indexes`);
+
+              // Mark migration as applied and commit
+              markMigrationApplied(db, migrationName).then(() => {
+                db.run('COMMIT', (err) => {
+                  if (err) {
+                    db.run('ROLLBACK');
+                    return reject(err);
+                  }
+                  console.log(`✓ Migration "${migrationName}" completed successfully`);
+                  resolve();
+                });
+              }).catch(reject);
+            }
+          });
+        });
+      });
+    });
+  });
+}
+
+/**
  * Run all pending migrations
  */
 async function runMigrations(db) {
-  console.log('\n--- Checking for pending migrations ---');
+  logger.info('Checking for pending migrations');
   
   try {
     await migrateExpandCategories(db);
@@ -1961,9 +2040,10 @@ async function runMigrations(db) {
     await migrateAddIncomeCategoryColumn(db);
     await migrateAddInvestmentTables(db);
     await migrateAddPeopleTables(db);
-    console.log('✓ All migrations completed\n');
+    await migrateAddPerformanceIndexes(db);
+    logger.info('All migrations completed');
   } catch (error) {
-    console.error('✗ Migration failed:', error.message);
+    logger.error('Migration failed:', error.message);
     throw error;
   }
 }

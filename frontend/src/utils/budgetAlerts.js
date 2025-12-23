@@ -78,21 +78,34 @@ const formatCurrency = (amount) => {
  * @returns {string} Human-readable alert message
  */
 export const generateAlertMessage = (budgetProgress, severity) => {
-  const { budget, progress, spent, remaining } = budgetProgress;
-  const { category, limit } = budget;
-  
-  switch (severity) {
-    case ALERT_SEVERITY.WARNING:
-      return `${category} budget is ${progress.toFixed(1)}% used. ${formatCurrency(remaining)} remaining.`;
+  try {
+    const { budget, progress, spent } = budgetProgress;
+    const { category, limit } = budget;
     
-    case ALERT_SEVERITY.DANGER:
-      return `${category} budget is ${progress.toFixed(1)}% used. Only ${formatCurrency(remaining)} left!`;
+    // Validate required data
+    if (!category || typeof progress !== 'number' || typeof spent !== 'number') {
+      return 'Budget alert - data unavailable';
+    }
     
-    case ALERT_SEVERITY.CRITICAL:
-      return `${category} budget exceeded! ${formatCurrency(Math.abs(remaining))} over budget.`;
+    // Calculate remaining safely
+    const remaining = limit - spent;
     
-    default:
-      return `${category} budget needs attention.`;
+    switch (severity) {
+      case ALERT_SEVERITY.WARNING:
+        return `${category} budget is ${progress.toFixed(1)}% used. ${formatCurrency(remaining)} remaining.`;
+      
+      case ALERT_SEVERITY.DANGER:
+        return `${category} budget is ${progress.toFixed(1)}% used. Only ${formatCurrency(remaining)} left!`;
+      
+      case ALERT_SEVERITY.CRITICAL:
+        return `${category} budget exceeded! ${formatCurrency(Math.abs(remaining))} over budget.`;
+      
+      default:
+        return `${category} budget needs attention.`;
+    }
+  } catch (error) {
+    console.warn('Error generating alert message:', error);
+    return 'Budget alert - message unavailable';
   }
 };
 
@@ -102,35 +115,44 @@ export const generateAlertMessage = (budgetProgress, severity) => {
  * @returns {Object|null} Alert data object or null if no alert needed
  */
 export const createAlertFromBudget = (budgetProgress) => {
-  // Handle null, undefined, or invalid budget progress objects
-  if (!budgetProgress || typeof budgetProgress !== 'object') {
+  try {
+    // Handle null, undefined, or invalid budget progress objects
+    if (!budgetProgress || typeof budgetProgress !== 'object') {
+      return null;
+    }
+    
+    const { budget, progress, spent } = budgetProgress;
+    
+    // Ensure required fields exist and are valid
+    if (!budget || typeof budget !== 'object' || 
+        typeof progress !== 'number' || isNaN(progress) ||
+        typeof spent !== 'number' || isNaN(spent) ||
+        !budget.id || !budget.category || typeof budget.limit !== 'number') {
+      console.warn('Invalid budget progress data:', budgetProgress);
+      return null;
+    }
+    
+    // Determine if alert is needed
+    const severity = calculateAlertSeverity(progress);
+    if (!severity) {
+      return null; // No alert needed
+    }
+    
+    // Create alert data object
+    return {
+      id: `budget-alert-${budget.id}`,
+      severity,
+      category: budget.category,
+      progress,
+      spent,
+      limit: budget.limit,
+      message: generateAlertMessage(budgetProgress, severity),
+      icon: getAlertIcon(severity)
+    };
+  } catch (error) {
+    console.warn('Error creating alert from budget:', error, budgetProgress);
     return null;
   }
-  
-  const { budget, progress, spent } = budgetProgress;
-  
-  // Ensure required fields exist
-  if (!budget || typeof progress !== 'number' || typeof spent !== 'number') {
-    return null;
-  }
-  
-  // Determine if alert is needed
-  const severity = calculateAlertSeverity(progress);
-  if (!severity) {
-    return null; // No alert needed
-  }
-  
-  // Create alert data object
-  return {
-    id: `budget-alert-${budget.id}`,
-    severity,
-    category: budget.category,
-    progress,
-    spent,
-    limit: budget.limit,
-    message: generateAlertMessage(budgetProgress, severity),
-    icon: getAlertIcon(severity)
-  };
 };
 
 /**
@@ -139,25 +161,48 @@ export const createAlertFromBudget = (budgetProgress) => {
  * @returns {Array} Array of alert data objects
  */
 export const calculateAlerts = (budgets) => {
-  if (!Array.isArray(budgets)) {
-    return [];
-  }
-  
-  const alerts = [];
-  
-  for (const budgetProgress of budgets) {
-    // Skip null, undefined, or invalid budget progress objects
-    if (!budgetProgress || typeof budgetProgress !== 'object') {
-      continue;
+  try {
+    if (!Array.isArray(budgets)) {
+      console.warn('calculateAlerts received non-array input:', budgets);
+      return [];
     }
     
-    const alert = createAlertFromBudget(budgetProgress);
-    if (alert) {
-      alerts.push(alert);
+    // Handle duplicate budget IDs by keeping the one with highest progress
+    const uniqueBudgets = budgets.reduce((acc, budgetProgress) => {
+      // Skip null, undefined, or invalid budget progress objects
+      if (!budgetProgress || typeof budgetProgress !== 'object') {
+        return acc;
+      }
+      
+      // Skip if budget object is missing or invalid
+      if (!budgetProgress.budget || !budgetProgress.budget.id) {
+        return acc;
+      }
+      
+      const budgetId = budgetProgress.budget.id;
+      
+      // Keep the budget with highest progress for each unique ID
+      if (!acc[budgetId] || budgetProgress.progress > acc[budgetId].progress) {
+        acc[budgetId] = budgetProgress;
+      }
+      
+      return acc;
+    }, {});
+    
+    const alerts = [];
+    
+    for (const budgetProgress of Object.values(uniqueBudgets)) {
+      const alert = createAlertFromBudget(budgetProgress);
+      if (alert) {
+        alerts.push(alert);
+      }
     }
+    
+    return sortAlertsBySeverity(alerts);
+  } catch (error) {
+    console.error('Error calculating alerts:', error);
+    return []; // Return empty array on error to prevent crashes
   }
-  
-  return sortAlertsBySeverity(alerts);
 };
 
 /**

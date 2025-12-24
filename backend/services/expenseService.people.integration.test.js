@@ -26,27 +26,43 @@ describe('Medical Expense People Tracking - End-to-End Integration Tests', () =>
 
   afterEach(async () => {
     // Clean up test data after each test
-    await new Promise((resolve, reject) => {
-      db.serialize(() => {
-        // Delete expense_people associations first (due to foreign key)
+    try {
+      // Delete expense_people associations first (due to foreign key)
+      await new Promise((resolve, reject) => {
         db.run(`DELETE FROM expense_people WHERE expense_id IN (
           SELECT id FROM expenses WHERE strftime('%Y', date) = '${testYear}'
         )`, (err) => {
           if (err) reject(err);
+          else resolve();
         });
-        
-        // Delete test expenses
+      });
+      
+      // Delete test expenses
+      await new Promise((resolve, reject) => {
         db.run(`DELETE FROM expenses WHERE strftime('%Y', date) = '${testYear}'`, (err) => {
           if (err) reject(err);
+          else resolve();
         });
-        
-        // Delete test people (names starting with 'Test_')
+      });
+      
+      // Delete test people (names starting with 'Test_')
+      await new Promise((resolve, reject) => {
         db.run(`DELETE FROM people WHERE name LIKE 'Test_%'`, (err) => {
           if (err) reject(err);
           else resolve();
         });
       });
-    });
+      
+      // Reset auto-increment sequences
+      await new Promise((resolve, reject) => {
+        db.run(`DELETE FROM sqlite_sequence WHERE name IN ('expenses', 'people', 'expense_people')`, (err) => {
+          if (err && !err.message.includes('no such table')) reject(err);
+          else resolve();
+        });
+      });
+    } catch (error) {
+      console.warn('Test cleanup warning:', error.message);
+    }
   });
 
   /**

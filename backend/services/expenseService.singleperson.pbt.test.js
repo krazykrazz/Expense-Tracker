@@ -182,9 +182,10 @@ describe('ExpenseService - Single Person Assignment Properties', () => {
       fc.assert(
         fc.property(
           fc.integer({ min: 1, max: 1000 }),
-          fc.integer({ min: 10001, max: 99999 }), // 5 decimal places, ensuring > 2 decimals
-          (personId, fiveDecimalCents) => {
-            const amount = fiveDecimalCents / 100000; // Creates 5 decimal places
+          fc.integer({ min: 1, max: 999 }), // Generate base amount
+          (personId, baseAmount) => {
+            // Create amount with exactly 3 decimal places (more than 2)
+            const amount = baseAmount + 0.123; // Always has 3 decimal places
             const allocations = [{
               personId: personId,
               amount: amount

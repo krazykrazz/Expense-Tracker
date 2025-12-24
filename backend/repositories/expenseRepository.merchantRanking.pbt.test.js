@@ -15,7 +15,7 @@ describe('ExpenseRepository - Merchant Ranking Property Tests', () => {
 
   beforeEach(async () => {
     // Clear all related tables before each test
-    const tables = ['expenses', 'monthly_gross', 'income_sources', 'fixed_expenses', 'loans', 'loan_balances', 'budgets', 'investments', 'investment_values'];
+    const tables = ['expense_people', 'expenses', 'monthly_gross', 'income_sources', 'fixed_expenses', 'loans', 'loan_balances', 'budgets', 'investments', 'investment_values', 'people'];
     
     for (const table of tables) {
       await new Promise((resolve, reject) => {

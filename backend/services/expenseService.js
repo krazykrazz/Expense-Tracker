@@ -1067,6 +1067,11 @@ class ExpenseService {
             };
           }
 
+          // Ensure expenses array exists before pushing
+          if (!grouped[person.personId].providers[provider].expenses) {
+            grouped[person.personId].providers[provider].expenses = [];
+          }
+
           // Add expense to provider group
           grouped[person.personId].providers[provider].expenses.push({
             ...expense,

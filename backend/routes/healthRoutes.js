@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { getDatabase } = require('../database/db');
 const packageJson = require('../package.json');
+const logger = require('../config/logger');
 
 // Track server start time for uptime calculation
 const serverStartTime = Date.now();
@@ -53,7 +54,7 @@ router.get('/health', async (req, res) => {
       // Close the connection after the query
       db.close((err) => {
         if (err) {
-          console.error('Error closing database connection:', err.message);
+          logger.error('Error closing database connection:', err.message);
         }
       });
     });
@@ -66,7 +67,7 @@ router.get('/health', async (req, res) => {
     healthStatus.database = 'disconnected';
     healthStatus.error = error.message;
 
-    console.error('Health check failed:', error.message);
+    logger.error('Health check failed:', error.message);
 
     // Return HTTP 503 for unhealthy state
     res.status(503).json(healthStatus);

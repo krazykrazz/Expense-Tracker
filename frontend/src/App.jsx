@@ -12,6 +12,7 @@ import BudgetManagementModal from './components/BudgetManagementModal';
 import BudgetHistoryView from './components/BudgetHistoryView';
 import PeopleManagementModal from './components/PeopleManagementModal';
 import MerchantAnalyticsModal from './components/MerchantAnalyticsModal';
+import BudgetAlertManager from './components/BudgetAlertManager';
 import { API_ENDPOINTS } from './config';
 import { CATEGORIES, PAYMENT_METHODS } from './utils/constants';
 import { getPeople } from './services/peopleApi';
@@ -30,12 +31,16 @@ function App() {
   const [showAnnualSummary, setShowAnnualSummary] = useState(false);
   const [showTaxDeductible, setShowTaxDeductible] = useState(false);
   const [showBudgetManagement, setShowBudgetManagement] = useState(false);
+  const [budgetManagementFocusCategory, setBudgetManagementFocusCategory] = useState(null);
   const [showBudgetHistory, setShowBudgetHistory] = useState(false);
   const [showPeopleManagement, setShowPeopleManagement] = useState(false);
   const [showMerchantAnalytics, setShowMerchantAnalytics] = useState(false);
   const [filterType, setFilterType] = useState('');
   const [filterMethod, setFilterMethod] = useState('');
   const [versionInfo, setVersionInfo] = useState(null);
+  
+  // Budget alert refresh trigger for real-time updates
+  const [budgetAlertRefreshTrigger, setBudgetAlertRefreshTrigger] = useState(0);
   
   // People state management for medical expense tracking
   const [people, setPeople] = useState([]);
@@ -200,6 +205,7 @@ function App() {
     const handleExpensesUpdated = () => {
       // Trigger a refresh by updating the refresh trigger
       setRefreshTrigger(prev => prev + 1);
+      setBudgetAlertRefreshTrigger(prev => prev + 1);
       
       // Re-fetch expenses to reflect changes
       const fetchExpenses = async () => {
@@ -249,8 +255,9 @@ function App() {
       });
     }
     
-    // Trigger summary refresh and close modal
+    // Trigger summary refresh and budget alert refresh
     setRefreshTrigger(prev => prev + 1);
+    setBudgetAlertRefreshTrigger(prev => prev + 1);
     setShowExpenseForm(false);
   };
 
@@ -258,8 +265,9 @@ function App() {
     // Remove deleted expense from the list
     setExpenses(prev => prev.filter(expense => expense.id !== deletedId));
     
-    // Trigger summary refresh
+    // Trigger summary refresh and budget alert refresh
     setRefreshTrigger(prev => prev + 1);
+    setBudgetAlertRefreshTrigger(prev => prev + 1);
   };
 
   const handleExpenseUpdated = (updatedExpense) => {
@@ -268,8 +276,9 @@ function App() {
       expense.id === updatedExpense.id ? updatedExpense : expense
     ));
     
-    // Trigger summary refresh
+    // Trigger summary refresh and budget alert refresh
     setRefreshTrigger(prev => prev + 1);
+    setBudgetAlertRefreshTrigger(prev => prev + 1);
   };
 
   const handleMonthChange = (year, month) => {
@@ -336,19 +345,23 @@ function App() {
     setFilterMethod('');
   }, []);
 
-  const handleManageBudgets = () => {
+  const handleManageBudgets = (category = null) => {
+    setBudgetManagementFocusCategory(category);
     setShowBudgetManagement(true);
   };
 
   const handleCloseBudgetManagement = () => {
     setShowBudgetManagement(false);
-    // Trigger refresh to update budget displays
+    setBudgetManagementFocusCategory(null);
+    // Trigger refresh to update budget displays and alerts
     setRefreshTrigger(prev => prev + 1);
+    setBudgetAlertRefreshTrigger(prev => prev + 1);
   };
 
   const handleBudgetUpdated = () => {
-    // Just trigger refresh without closing the modal
+    // Trigger refresh to update budget displays and alerts
     setRefreshTrigger(prev => prev + 1);
+    setBudgetAlertRefreshTrigger(prev => prev + 1);
   };
 
   const handleViewBudgetHistory = () => {
@@ -460,6 +473,32 @@ function App() {
             </div>
           )}
         </div>
+
+        {/* Budget Alert Notifications */}
+        <BudgetAlertManager
+          year={selectedYear}
+          month={selectedMonth}
+          refreshTrigger={budgetAlertRefreshTrigger}
+          onManageBudgets={handleManageBudgets}
+          onViewDetails={(category) => {
+            // Navigate to budget summary section by scrolling to SummaryPanel
+            const summaryPanel = document.querySelector('.summary-panel');
+            if (summaryPanel) {
+              summaryPanel.scrollIntoView({ behavior: 'smooth' });
+              
+              // Highlight the specific category budget card if it exists
+              setTimeout(() => {
+                const budgetCard = document.querySelector(`[data-budget-category="${category}"]`);
+                if (budgetCard) {
+                  budgetCard.classList.add('budget-card-highlighted');
+                  setTimeout(() => {
+                    budgetCard.classList.remove('budget-card-highlighted');
+                  }, 3000);
+                }
+              }, 500);
+            }
+          }}
+        />
 
         {/* Month Selector - dimmed when in global view */}
         <div className={`month-selector-wrapper ${isGlobalView ? 'dimmed' : ''}`}>
@@ -604,6 +643,7 @@ function App() {
           month={selectedMonth}
           onClose={handleCloseBudgetManagement}
           onBudgetUpdated={handleBudgetUpdated}
+          focusedCategory={budgetManagementFocusCategory}
         />
       )}
 
@@ -633,7 +673,7 @@ function App() {
 
       <footer className="App-footer">
         <span className="version">
-          v{versionInfo?.version || '4.9.1'}
+          v{versionInfo?.version || '4.10.0'}
           {versionInfo?.docker && (
             <span className="docker-tag"> (Docker: {versionInfo.docker.tag})</span>
           )}

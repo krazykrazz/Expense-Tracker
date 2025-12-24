@@ -15,7 +15,7 @@ import { API_ENDPOINTS } from '../config';
 import BudgetCard from './BudgetCard';
 import BudgetProgressBar from './BudgetProgressBar';
 
-const BudgetManagementModal = ({ isOpen, onClose, year, month, onBudgetUpdated }) => {
+const BudgetManagementModal = ({ isOpen, onClose, year, month, onBudgetUpdated, focusedCategory = null }) => {
   const [budgets, setBudgets] = useState([]);
   const [summary, setSummary] = useState(null);
   const [categories, setCategories] = useState([]);
@@ -54,8 +54,16 @@ const BudgetManagementModal = ({ isOpen, onClose, year, month, onBudgetUpdated }
   useEffect(() => {
     if (isOpen) {
       fetchBudgets();
+      
+      // Auto-focus on the specified category if provided
+      if (focusedCategory) {
+        // Small delay to ensure modal is rendered
+        setTimeout(() => {
+          handleEditBudget(focusedCategory);
+        }, 100);
+      }
     }
-  }, [isOpen, year, month]);
+  }, [isOpen, year, month, focusedCategory]);
 
   const fetchBudgets = async () => {
     setLoading(true);

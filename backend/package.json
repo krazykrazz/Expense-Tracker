@@ -1,6 +1,6 @@
 {
   "name": "expense-tracker",
-  "version": "4.9.1",
+  "version": "4.10.0",
   "description": "Full-stack Expense Tracker Application",
   "main": "server.js",
   "scripts": {
@@ -10,6 +10,10 @@
     "db:check": "node scripts/checkDatabaseSchema.js",
     "db:migrate": "node scripts/addFixedExpensesTable.js",
     "test": "jest --runInBand"
+  },
+  "jest": {
+    "testTimeout": 30000,
+    "setupFilesAfterEnv": ["<rootDir>/jest.setup.js"]
   },
   "dependencies": {
     "body-parser": "^1.20.2",

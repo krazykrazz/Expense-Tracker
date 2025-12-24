@@ -1,7 +1,7 @@
 # Expense Tracker - Feature Roadmap
 
-**Last Updated**: December 14, 2025  
-**Current Version**: 4.6.0
+**Last Updated**: December 23, 2025  
+**Current Version**: 4.10.0
 
 This document tracks potential features and enhancements for the Expense Tracker application. Features are categorized by priority and implementation status.
 
@@ -19,30 +19,29 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ## 📊 Analytics & Insights
 
-### 🟡 1. Budget Tracking & Alerts
-**Status**: In Progress  
+### ⚪ 1. Spending Patterns & Predictions
+**Status**: Proposed  
 **Priority**: High  
-**Effort**: Medium  
-**Spec**: `.kiro/specs/budget-tracking-alerts/`  
-**Description**: Set monthly budgets per category with visual progress bars and alerts when approaching or exceeding limits.
+**Effort**: High  
+**Description**: Analyze spending patterns and predict future expenses based on historical data.
 
 **Key Features**:
-- Set budget limits per category (Food, Gas, Other, etc.)
-- Visual progress bars showing budget usage percentage
-- Alert notifications when reaching 80%, 90%, and 100% of budget
-- Year-over-year budget comparison
-- Budget vs actual spending reports
+- Identify recurring spending patterns
+- Predict end-of-month totals based on current trajectory
+- Seasonal spending analysis (compare months/quarters)
+- Day-of-week spending patterns
+- Anomaly detection (unusual spending alerts)
 
 **Benefits**:
-- Proactive spending management
-- Prevents overspending
-- Clear financial boundaries
+- Better financial planning
+- Early warning of overspending
+- Data-driven insights
 
-**Dependencies**: None
+**Dependencies**: Requires sufficient historical data (3+ months)
 
 ---
 
-### ⚪ 2. Spending Patterns & Predictions
+### ⚪ 2. Financial Goals Dashboard
 **Status**: Proposed  
 **Priority**: High  
 **Effort**: High  
@@ -430,6 +429,27 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ## 🟢 Completed Features
 
+### 🟢 Budget Alert Notifications (v4.10.0)
+**Completed**: December 23, 2025  
+**Spec**: `.kiro/specs/budget-alert-notifications/`  
+**Description**: Proactive notification banners that appear at the top of the interface when users approach or exceed their budget limits, enhancing the existing Budget Tracking & Alerts system.
+
+**Features Delivered**:
+- **Smart Alert Thresholds**: Warning alerts at 80-89% (yellow with ⚡ icon), Danger alerts at 90-99% (orange with ! icon), Critical alerts at ≥100% (red with ⚠ icon)
+- **Dismissible Alerts**: Temporarily hide alerts during current session with × button - alerts reappear on page refresh if budget condition persists
+- **Real-time Updates**: Alerts appear, update, or disappear immediately as expenses are added, edited, or deleted
+- **Quick Budget Management**: Direct access to budget settings via "Manage Budgets" button and navigation to budget details via "View Details" link
+- **Multiple Alert Handling**: When multiple categories trigger alerts, displays most severe alert with count of affected categories
+- **Session-based Dismissal**: Dismissed alerts stay hidden during current session but reappear after refresh if conditions persist
+- **Performance Optimized**: Reuses existing budget calculations, debounced updates (300ms), alert display limit (5 maximum)
+- **Seamless Integration**: Leverages existing budget tracking infrastructure without replacing current functionality
+- **Comprehensive Testing**: 10 correctness properties with property-based testing (100+ iterations each) plus full integration test coverage
+- **Frontend Components**: New `BudgetAlertBanner` and `BudgetAlertManager` components with React.memo optimization
+- **Error Handling**: Error boundaries, graceful degradation, and fallback UI for alert failures
+- **No Backend Changes**: Feature entirely frontend-based, leveraging existing budget API endpoints
+
+---
+
 ### 🟢 Merchant Analytics (v4.7.0 - v4.9.0)
 **Completed**: December 16, 2025 (v4.7.0), December 20, 2025 (v4.9.0)  
 **Spec**: `.kiro/specs/merchant-analytics/`  
@@ -661,9 +681,9 @@ This document tracks potential features and enhancements for the Expense Tracker
 ## Priority Matrix
 
 ### High Priority (Implement Next)
-1. Budget Tracking & Alerts
-2. Spending Patterns & Predictions
-3. Expense Templates
+1. Spending Patterns & Predictions
+2. Expense Templates
+3. Financial Goals Dashboard
 
 ### Medium Priority
 1. Financial Goals Dashboard
@@ -705,6 +725,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 ---
 
 **Version History**:
+- v1.6 (2025-12-23): Added Budget Alert Notifications (v4.10.0) to completed features, updated current version to 4.10.0
 - v1.5 (2025-12-20): Updated Merchant Analytics with Fixed Expenses Integration (v4.9.0)
 - v1.4 (2025-12-16): Added Merchant Analytics (v4.7.0) to completed features
 - v1.3 (2025-12-14): Added Medical Expense People Tracking (v4.6.0) to completed features

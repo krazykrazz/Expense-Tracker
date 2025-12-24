@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const { getDatabasePath, ensureDirectories } = require('../config/paths');
 const { CATEGORIES, BUDGETABLE_CATEGORIES } = require('../utils/categories');
+const logger = require('../config/logger');
 
 // Database file path - use dynamic path from config
 const DB_PATH = getDatabasePath();
@@ -20,20 +21,25 @@ async function migrateOldDatabase() {
   if (oldExists && (!newExists || fs.statSync(DB_PATH).size < 100000)) {
     try {
       const oldStats = fs.statSync(OLD_DB_PATH);
-      console.log('Migrating database from old location...');
-      console.log('  Old:', OLD_DB_PATH, `(${oldStats.size} bytes)`);
-      console.log('  New:', DB_PATH);
+      logger.info('Migrating database from old location...', {
+        oldPath: OLD_DB_PATH,
+        newPath: DB_PATH,
+        size: oldStats.size
+      });
       
       await fs.promises.copyFile(OLD_DB_PATH, DB_PATH);
       
       const newStats = fs.statSync(DB_PATH);
       if (oldStats.size === newStats.size) {
-        console.log('✓ Database migration successful');
+        logger.info('Database migration successful');
       } else {
-        console.warn('⚠ Warning: Database copy size mismatch');
+        logger.warn('Database copy size mismatch', {
+          oldSize: oldStats.size,
+          newSize: newStats.size
+        });
       }
     } catch (error) {
-      console.error('Error migrating database:', error.message);
+      logger.error('Error migrating database:', error);
       // Don't throw - allow initialization to continue
     }
   }
@@ -49,23 +55,23 @@ function initializeDatabase() {
       // Auto-migrate old database if it exists and new location is empty
       await migrateOldDatabase();
     } catch (err) {
-      console.error('Error creating config directories:', err.message);
+      logger.error('Error creating config directories:', err);
       reject(err);
       return;
     }
 
     const db = new sqlite3.Database(DB_PATH, (err) => {
       if (err) {
-        console.error('Error opening database:', err.message);
+        logger.error('Error opening database:', err);
         reject(err);
         return;
       }
-      console.log('Connected to SQLite database at:', DB_PATH);
+      logger.info('Connected to SQLite database', { path: DB_PATH });
       
       // Enable foreign keys
       db.run('PRAGMA foreign_keys = ON', (err) => {
         if (err) {
-          console.error('Error enabling foreign keys:', err.message);
+          logger.error('Error enabling foreign keys:', err);
           reject(err);
           return;
         }
@@ -193,74 +199,74 @@ function initializeDatabase() {
 
     db.run(createTableSQL, (err) => {
       if (err) {
-        console.error('Error creating expenses table:', err.message);
+        logger.error('Error creating expenses table:', err);
         reject(err);
         return;
       }
-      console.log('Expenses table created or already exists');
+      logger.debug('Expenses table created or already exists');
 
       // Create monthly_gross table
       db.run(createMonthlyGrossSQL, (err) => {
         if (err) {
-          console.error('Error creating monthly_gross table:', err.message);
+          logger.error('Error creating monthly_gross table:', err);
           reject(err);
           return;
         }
-        console.log('Monthly gross table created or already exists');
+        logger.debug('Monthly gross table created or already exists');
 
         // Create recurring_expenses table
         db.run(createRecurringExpensesSQL, (err) => {
           if (err) {
-            console.error('Error creating recurring_expenses table:', err.message);
+            logger.error('Error creating recurring_expenses table:', err);
             reject(err);
             return;
           }
-          console.log('Recurring expenses table created or already exists');
+          logger.debug('Recurring expenses table created or already exists');
 
           // Create income_sources table
           db.run(createIncomeSourcesSQL, (err) => {
             if (err) {
-              console.error('Error creating income_sources table:', err.message);
+              logger.error('Error creating income_sources table:', err);
               reject(err);
               return;
             }
-            console.log('Income sources table created or already exists');
+            logger.debug('Income sources table created or already exists');
 
             // Create fixed_expenses table
             db.run(createFixedExpensesSQL, (err) => {
               if (err) {
-                console.error('Error creating fixed_expenses table:', err.message);
+                logger.error('Error creating fixed_expenses table:', err);
                 reject(err);
                 return;
               }
-              console.log('Fixed expenses table created or already exists');
+              logger.debug('Fixed expenses table created or already exists');
 
               // Create loans table
               db.run(createLoansSQL, (err) => {
                 if (err) {
-                  console.error('Error creating loans table:', err.message);
+                  logger.error('Error creating loans table:', err);
                   reject(err);
                   return;
                 }
-                console.log('Loans table created or already exists');
+                logger.debug('Loans table created or already exists');
 
                 // Create loan_balances table
                 db.run(createLoanBalancesSQL, (err) => {
                   if (err) {
-                    console.error('Error creating loan_balances table:', err.message);
+                    logger.error('Error creating loan_balances table:', err);
                     reject(err);
                     return;
                   }
-                  console.log('Loan balances table created or already exists');
+                  logger.debug('Loan balances table created or already exists');
 
                   // Create budgets table
                   db.run(createBudgetsSQL, (err) => {
                     if (err) {
-                      console.error('Error creating budgets table:', err.message);
+                      logger.error('Error creating budgets table:', err);
                       reject(err);
                       return;
                     }
-                    console.log('Budgets table created or already exists');
+                    logger.debug('Budgets table created or already exists');
 
                     // Create trigger for budgets updated_at timestamp
                     const createBudgetsTriggerSQL = `
@@ -273,11 +279,11 @@ function initializeDatabase() {
 
                     db.run(createBudgetsTriggerSQL, (err) => {
                       if (err) {
-                        console.error('Error creating budgets trigger:', err.message);
+                        logger.error('Error creating budgets trigger:', err);
                         reject(err);
                         return;
                       }
-                      console.log('Budgets trigger created or already exists');
+                      logger.debug('Budgets trigger created or already exists');
 
                       // Create investments table
                       const createInvestmentsSQL = `
@@ -293,11 +299,11 @@ function initializeDatabase() {
 
                       db.run(createInvestmentsSQL, (err) => {
                         if (err) {
-                          console.error('Error creating investments table:', err.message);
+                          logger.error('Error creating investments table:', err);
                           reject(err);
                           return;
                         }
-                        console.log('Investments table created or already exists');
+                        logger.debug('Investments table created or already exists');
 
                         // Create investment_values table
                         const createInvestmentValuesSQL = `
@@ -316,26 +322,26 @@ function initializeDatabase() {
 
                         db.run(createInvestmentValuesSQL, (err) => {
                           if (err) {
-                            console.error('Error creating investment_values table:', err.message);
+                            logger.error('Error creating investment_values table:', err);
                             reject(err);
                             return;
                           }
-                          console.log('Investment values table created or already exists');
+                          logger.debug('Investment values table created or already exists');
 
             // Add recurring expense columns if they don't exist (migration)
             db.run('ALTER TABLE expenses ADD COLUMN recurring_id INTEGER', (err) => {
               if (err && !err.message.includes('duplicate column')) {
-                console.error('Error adding recurring_id column:', err.message);
+                logger.error('Error adding recurring_id column:', err);
               } else if (!err) {
-                console.log('Added recurring_id column to expenses table');
+                logger.debug('Added recurring_id column to expenses table');
               }
             });
 
             db.run('ALTER TABLE expenses ADD COLUMN is_generated INTEGER DEFAULT 0', (err) => {
               if (err && !err.message.includes('duplicate column')) {
-                console.error('Error adding is_generated column:', err.message);
+                logger.error('Error adding is_generated column:', err);
               } else if (!err) {
-                console.log('Added is_generated column to expenses table');
+                logger.debug('Added is_generated column to expenses table');
               }
             });
 
@@ -362,13 +368,13 @@ function initializeDatabase() {
                           indexes.forEach((indexSQL) => {
                             db.run(indexSQL, (err) => {
                               if (err) {
-                                console.error('Error creating index:', err.message);
+                                logger.error('Error creating index:', err);
                                 reject(err);
                                 return;
                               }
                               completed++;
                               if (completed === indexes.length) {
-                                console.log('All indexes created successfully');
+                                logger.info('All database indexes created successfully');
                                 
                                 // Run any pending migrations
                                 const { runMigrations } = require('./migrations');
@@ -377,7 +383,7 @@ function initializeDatabase() {
                                     resolve(db);
                                   })
                                   .catch((err) => {
-                                    console.error('Migration error:', err);
+                                    logger.error('Migration error:', err);
                                     // Don't reject - allow app to start even if migrations fail
                                     // This prevents breaking the app if there's a migration issue
                                     resolve(db);
@@ -405,7 +411,7 @@ function getDatabase() {
     // Use dynamic path from config (supports /config directory)
     const db = new sqlite3.Database(DB_PATH, (err) => {
       if (err) {
-        console.error('Error connecting to database:', err.message);
+        logger.error('Error connecting to database:', err);
         reject(err);
         return;
       }
@@ -413,7 +419,7 @@ function getDatabase() {
       // Enable foreign keys for this connection
       db.run('PRAGMA foreign_keys = ON', (err) => {
         if (err) {
-          console.error('Error enabling foreign keys:', err.message);
+          logger.error('Error enabling foreign keys:', err);
           reject(err);
           return;
         }

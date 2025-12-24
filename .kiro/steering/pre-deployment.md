@@ -55,9 +55,17 @@ Confirm version management is correct:
 - CHANGELOG.md has an entry for the new version
 - Version bump type (MAJOR/MINOR/PATCH) is appropriate for the changes
 
+## Feature Branch Integration
+
+This checklist now integrates with the feature branch promotion model:
+
+- **Feature Development**: Perform checks before promoting feature branch to main
+- **Main Branch**: Perform checks before building and pushing Docker images
+- **Hotfixes**: Perform abbreviated checks for critical fixes
+
 ## Agent Instructions
 
-When the user requests to push to production or deploy:
+When the user requests to promote a feature branch or push to production:
 
 1. **Automatically scan** the locations mentioned above
 2. **Report findings** to the user if any issues are discovered:

@@ -6,7 +6,7 @@ This implementation plan creates proactive budget alert notification banners tha
 
 ## Tasks
 
-- [ ] 1. Core alert calculation logic
+- [x] 1. Core alert calculation logic
   - [x] 1.1 Create alert calculation utilities
     - Write `calculateAlerts(budgets)` function to analyze budget progress and generate alerts
     - Write `generateAlertMessage(budget, severity)` function for alert text

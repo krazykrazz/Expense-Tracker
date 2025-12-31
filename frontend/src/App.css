@@ -69,6 +69,8 @@
   grid-template-columns: 1fr 400px;
   gap: 15px;
   align-items: start;
+  /* Smooth transition for responsive layout changes */
+  transition: grid-template-columns 0.3s ease, gap 0.3s ease;
 }
 
 .content-left {
@@ -78,6 +80,66 @@
 .content-right {
   position: sticky;
   top: 15px;
+  height: calc(100vh - 30px); /* Account for top offset */
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f1f5f9;
+  /* Smooth scrolling behavior */
+  scroll-behavior: smooth;
+  /* Transition for responsive changes */
+  transition: height 0.3s ease, position 0.3s ease;
+  /* Performance optimizations */
+  will-change: scroll-position;
+  /* Scroll event isolation - prevent bubbling */
+  overscroll-behavior: contain;
+}
+
+.content-right::-webkit-scrollbar {
+  width: 8px;
+}
+
+.content-right::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+.content-right::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+  /* Hover effect for better visual feedback */
+  transition: background-color 0.2s ease;
+}
+
+.content-right::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Enhanced hover feedback for summary panel */
+.content-right:hover {
+  scrollbar-color: #94a3b8 #e2e8f0;
+  /* Add subtle visual feedback for scrollable area */
+  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.1);
+}
+
+/* Focus styles for keyboard accessibility */
+.content-right:focus-within {
+  outline: 2px solid #0ea5e9;
+  outline-offset: -2px;
+  scrollbar-color: #0ea5e9 #e2e8f0;
+}
+
+/* Keyboard navigation support */
+.content-right {
+  /* Make the summary panel focusable for keyboard navigation */
+  tabindex: 0;
+}
+
+/* Accessibility: Respect reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .content-right {
+    scroll-behavior: auto;
+    transition: none;
+  }
 }
 
 
@@ -232,6 +294,19 @@
   color: #333;
 }
 
+/* Tablet breakpoint for intermediate responsive behavior */
+@media (max-width: 1024px) {
+  .content-layout {
+    grid-template-columns: 1fr 350px;
+    gap: 12px;
+  }
+  
+  .content-right {
+    height: calc(100vh - 25px);
+  }
+}
+
+/* Mobile breakpoint - maintain existing stacking behavior */
 @media (max-width: 768px) {
   .App-header {
     padding: 10px;
@@ -268,16 +343,50 @@
 
   .content-layout {
     grid-template-columns: 1fr;
+    gap: 15px;
   }
 
+  /* Mobile: Summary panel stacks below expense list with normal scrolling */
   .content-right {
     position: static;
+    height: auto;
+    overflow-y: visible;
+    /* Remove custom scrollbar styling on mobile */
+    scrollbar-width: auto;
+    scrollbar-color: initial;
   }
 
+  .content-right::-webkit-scrollbar {
+    width: initial;
+  }
 
+  .content-right::-webkit-scrollbar-track {
+    background: initial;
+    border-radius: initial;
+  }
+
+  .content-right::-webkit-scrollbar-thumb {
+    background: initial;
+    border-radius: initial;
+  }
+
+  .content-right::-webkit-scrollbar-thumb:hover {
+    background: initial;
+  }
 
   .modal-content {
     width: 95%;
+  }
+}
+
+/* Small mobile devices */
+@media (max-width: 480px) {
+  .App-main {
+    padding: 8px;
+  }
+  
+  .content-layout {
+    gap: 12px;
   }
 }
 

@@ -552,7 +552,12 @@ function App() {
                 onAddExpense={() => setShowExpenseForm(true)}
               />
             </div>
-            <div className="content-right">
+            <div 
+              className="content-right"
+              tabIndex="0"
+              role="region"
+              aria-label="Monthly summary panel - scrollable"
+            >
               <SearchBar 
                 onSearchChange={handleSearchChange}
                 onFilterTypeChange={handleFilterTypeChange}

@@ -13,6 +13,8 @@ A full-stack expense tracking application built with React and Node.js.
 - 📥 CSV import for bulk expense entry
 - ✨ Smart category suggestions based on place history
 - 💳 Payment method memory (remembers last used)
+- 📱 **Sticky summary scrolling** - Summary panel scrolls independently from expense list for better usability
+- ➕ **Floating add button** - Quick access to add expenses when viewing long lists (appears with >10 expenses)
 
 ### Income & Fixed Expenses
 - 💰 Track monthly gross income from multiple sources with categorization

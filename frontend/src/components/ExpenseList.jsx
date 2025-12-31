@@ -4,6 +4,7 @@ import { PAYMENT_METHODS } from '../utils/constants';
 import { getPeople } from '../services/peopleApi';
 import { getExpenseWithPeople, updateExpense } from '../services/expenseApi';
 import PersonAllocationModal from './PersonAllocationModal';
+import FloatingAddButton from './FloatingAddButton';
 import './ExpenseList.css';
 import { formatAmount, formatLocalDate } from '../utils/formatters';
 
@@ -729,6 +730,12 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
         selectedPeople={selectedPeople}
         onSave={handleEditPersonAllocation}
         onCancel={() => setShowPersonAllocation(false)}
+      />
+
+      {/* Floating Add Button */}
+      <FloatingAddButton
+        onAddExpense={onAddExpense}
+        expenseCount={expenses.length}
       />
     </div>
   );

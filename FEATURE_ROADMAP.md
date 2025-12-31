@@ -1,7 +1,7 @@
 # Expense Tracker - Feature Roadmap
 
-**Last Updated**: December 23, 2025  
-**Current Version**: 4.10.0
+**Last Updated**: December 31, 2025  
+**Current Version**: 4.11.0
 
 This document tracks potential features and enhancements for the Expense Tracker application. Features are categorized by priority and implementation status.
 
@@ -429,6 +429,25 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ## 🟢 Completed Features
 
+### 🟢 Sticky Summary Scrolling (v4.11.0)
+**Completed**: December 31, 2025  
+**Spec**: `.kiro/specs/sticky-summary-scrolling/`  
+**Description**: Enhanced UI with independent summary panel scrolling and floating action button for improved usability when working with long expense lists.
+
+**Features Delivered**:
+- **Independent Summary Panel Scrolling**: Summary panel now scrolls separately from expense list, allowing users to reference totals while reviewing expenses
+- **Floating Add Button**: Appears when >10 expenses exist, providing quick access to add expenses without scrolling to header
+- **Responsive Design**: Optimized for desktop, tablet, and mobile with appropriate sizing and positioning
+- **Enhanced Accessibility**: ARIA labels, keyboard navigation support, and screen reader compatibility
+- **Performance Optimizations**: Smooth scrolling behavior, scroll event isolation, and 60fps performance
+- **Visual Enhancements**: Custom scrollbar styling, hover effects, and smooth animations
+- **Backward Compatibility**: Preserves existing functionality while adding new features
+- **Comprehensive Testing**: 13 core tests passing with property-based testing (100+ iterations each)
+- **Cross-browser Support**: Compatible with Chrome, Firefox, Safari, and Edge
+- **Mobile Optimization**: Maintains existing mobile layout while adding touch-optimized floating button
+
+---
+
 ### 🟢 Budget Alert Notifications (v4.10.0)
 **Completed**: December 23, 2025  
 **Spec**: `.kiro/specs/budget-alert-notifications/`  
@@ -725,6 +744,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 ---
 
 **Version History**:
+- v1.7 (2025-12-31): Added Sticky Summary Scrolling (v4.11.0) to completed features, updated current version to 4.11.0
 - v1.6 (2025-12-23): Added Budget Alert Notifications (v4.10.0) to completed features, updated current version to 4.10.0
 - v1.5 (2025-12-20): Updated Merchant Analytics with Fixed Expenses Integration (v4.9.0)
 - v1.4 (2025-12-16): Added Merchant Analytics (v4.7.0) to completed features

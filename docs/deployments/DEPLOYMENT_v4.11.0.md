@@ -225,5 +225,13 @@ For issues related to this deployment:
 
 **Deployed by**: Kiro AI Assistant  
 **Deployment Date**: December 31, 2025  
-**Git Commit**: 1a4cfdb  
+**Git Commit**: 1d00f01 (includes logging fix)  
 **Docker Image**: localhost:5000/expense-tracker:latest
+
+## Post-Deployment Hotfix
+
+**Hotfix Applied**: December 31, 2025  
+**Issue**: Excessive DEBUG logging in production container  
+**Fix**: Removed noisy "Reminder status calculated" DEBUG log from reminder service  
+**Git Commit**: 1d00f01  
+**Updated Docker Image**: localhost:5000/expense-tracker:latest

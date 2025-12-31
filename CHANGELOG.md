@@ -11,6 +11,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.11.0] - 2025-12-31
+
+### Added
+- **Sticky Summary Scrolling**: Enhanced UI with independent summary panel scrolling for improved usability when working with long expense lists
+  - **Independent Summary Panel**: Summary panel now scrolls separately from expense list, allowing users to reference totals while reviewing expenses
+  - **Floating Add Button**: Appears when >10 expenses exist, providing quick access to add expenses without scrolling to header
+  - **Responsive Design**: Optimized for desktop, tablet, and mobile with appropriate sizing and positioning
+  - **Enhanced Accessibility**: ARIA labels, keyboard navigation support, and screen reader compatibility
+  - **Performance Optimizations**: Smooth scrolling behavior, scroll event isolation, and 60fps performance
+  - **Visual Enhancements**: Custom scrollbar styling, hover effects, and smooth animations
+
+---
+
 ## [4.10.0] - 2025-12-23
 
 ### Added

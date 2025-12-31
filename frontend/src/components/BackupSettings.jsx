@@ -800,6 +800,15 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v4.11.0</div>
+                <div className="changelog-date">December 31, 2025</div>
+                <ul className="changelog-items">
+                  <li>Sticky Summary Scrolling: Summary panel now scrolls independently from expense list for better usability</li>
+                  <li>Floating Add Button: Quick access to add expenses when viewing long lists (appears with >10 expenses)</li>
+                  <li>Enhanced responsive design with accessibility features and smooth animations</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v4.10.0</div>
                 <div className="changelog-date">December 23, 2025</div>
                 <ul className="changelog-items">

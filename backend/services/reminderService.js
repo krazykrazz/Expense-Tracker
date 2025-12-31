@@ -29,15 +29,6 @@ class ReminderService {
       const hasActiveInvestments = investments.length > 0;
       const hasActiveLoans = loans.length > 0;
 
-      logger.debug('Reminder status calculated:', {
-        year,
-        month,
-        missingInvestments,
-        missingLoans,
-        totalInvestments: investments.length,
-        totalLoans: loans.length
-      });
-
       return {
         missingInvestments,
         missingLoans,

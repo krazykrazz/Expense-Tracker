@@ -2025,6 +2025,118 @@ async function migrateAddPerformanceIndexes(db) {
 }
 
 /**
+ * Migration: Add expense_invoices table for medical expense invoice attachments
+ */
+async function migrateAddExpenseInvoicesTable(db) {
+  const migrationName = 'add_expense_invoices_table_v1';
+  
+  // Check if already applied
+  const isApplied = await checkMigrationApplied(db, migrationName);
+  if (isApplied) {
+    logger.info(`Migration "${migrationName}" already applied, skipping`);
+    return;
+  }
+
+  logger.info(`Running migration: ${migrationName}`);
+
+  // Create backup
+  await createBackup();
+
+  return new Promise((resolve, reject) => {
+    db.serialize(() => {
+      db.run('BEGIN TRANSACTION', (err) => {
+        if (err) {
+          return reject(err);
+        }
+
+        // Check if expense_invoices table already exists
+        db.get(
+          "SELECT name FROM sqlite_master WHERE type='table' AND name='expense_invoices'",
+          (err, row) => {
+            if (err) {
+              db.run('ROLLBACK');
+              return reject(err);
+            }
+
+            if (row) {
+              logger.info('expense_invoices table already exists');
+              markMigrationApplied(db, migrationName).then(() => {
+                db.run('COMMIT', (err) => {
+                  if (err) {
+                    db.run('ROLLBACK');
+                    return reject(err);
+                  }
+                  logger.info(`Migration "${migrationName}" completed successfully`);
+                  resolve();
+                });
+              }).catch(reject);
+              return;
+            }
+
+            // Create expense_invoices table
+            const createExpenseInvoicesSQL = `
+              CREATE TABLE expense_invoices (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                expense_id INTEGER NOT NULL,
+                filename TEXT NOT NULL,
+                original_filename TEXT NOT NULL,
+                file_path TEXT NOT NULL,
+                file_size INTEGER NOT NULL,
+                mime_type TEXT NOT NULL DEFAULT 'application/pdf',
+                upload_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (expense_id) REFERENCES expenses(id) ON DELETE CASCADE,
+                UNIQUE(expense_id)
+              )
+            `;
+
+            db.run(createExpenseInvoicesSQL, (err) => {
+              if (err) {
+                db.run('ROLLBACK');
+                return reject(err);
+              }
+
+              logger.info('Created expense_invoices table');
+
+              // Create indexes for performance
+              const indexes = [
+                'CREATE INDEX IF NOT EXISTS idx_expense_invoices_expense_id ON expense_invoices(expense_id)',
+                'CREATE INDEX IF NOT EXISTS idx_expense_invoices_upload_date ON expense_invoices(upload_date)'
+              ];
+
+              let completed = 0;
+              indexes.forEach((indexSQL) => {
+                db.run(indexSQL, (err) => {
+                  if (err) {
+                    db.run('ROLLBACK');
+                    return reject(err);
+                  }
+                  completed++;
+                  if (completed === indexes.length) {
+                    logger.info('Created indexes for expense_invoices table');
+
+                    // Mark migration as applied and commit
+                    markMigrationApplied(db, migrationName).then(() => {
+                      db.run('COMMIT', (err) => {
+                        if (err) {
+                          db.run('ROLLBACK');
+                          return reject(err);
+                        }
+                        logger.info(`Migration "${migrationName}" completed successfully`);
+                        resolve();
+                      });
+                    }).catch(reject);
+                  }
+                });
+              });
+            });
+          }
+        );
+      });
+    });
+  });
+}
+
+/**
  * Run all pending migrations
  */
 async function runMigrations(db) {
@@ -2041,6 +2153,7 @@ async function runMigrations(db) {
     await migrateAddInvestmentTables(db);
     await migrateAddPeopleTables(db);
     await migrateAddPerformanceIndexes(db);
+    await migrateAddExpenseInvoicesTable(db);
     logger.info('All migrations completed');
   } catch (error) {
     logger.error('Migration failed:', error.message);
@@ -2052,5 +2165,6 @@ module.exports = {
   runMigrations,
   checkMigrationApplied,
   markMigrationApplied,
-  migrateAddPeopleTables
+  migrateAddPeopleTables,
+  migrateAddExpenseInvoicesTable
 };

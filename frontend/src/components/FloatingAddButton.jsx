@@ -1,15 +1,10 @@
-import { useState, useEffect } from 'react';
 import './FloatingAddButton.css';
 
 const FloatingAddButton = ({ onAddExpense, expenseCount = 0 }) => {
-  const [isVisible, setIsVisible] = useState(false);
-
-  useEffect(() => {
-    // Show floating button when expense list has more than 10 items
-    setIsVisible(expenseCount > 10);
-  }, [expenseCount]);
-
-  if (!isVisible) return null;
+  // Show floating button when expense list has more than 10 items
+  const shouldShow = expenseCount > 10;
+  
+  if (!shouldShow) return null;
 
   return (
     <button 

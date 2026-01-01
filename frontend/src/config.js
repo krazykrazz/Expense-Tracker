@@ -67,7 +67,13 @@ export const API_ENDPOINTS = {
   MERCHANT_ANALYTICS: `${API_BASE_URL}/api/analytics/merchants`,
   MERCHANT_DETAILS: (name) => `${API_BASE_URL}/api/analytics/merchants/${encodeURIComponent(name)}`,
   MERCHANT_TREND: (name) => `${API_BASE_URL}/api/analytics/merchants/${encodeURIComponent(name)}/trend`,
-  MERCHANT_EXPENSES: (name) => `${API_BASE_URL}/api/analytics/merchants/${encodeURIComponent(name)}/expenses`
+  MERCHANT_EXPENSES: (name) => `${API_BASE_URL}/api/analytics/merchants/${encodeURIComponent(name)}/expenses`,
+  
+  // Invoices
+  INVOICES: `${API_BASE_URL}/api/invoices`,
+  INVOICE_UPLOAD: `${API_BASE_URL}/api/invoices/upload`,
+  INVOICE_BY_EXPENSE: (expenseId) => `${API_BASE_URL}/api/invoices/${expenseId}`,
+  INVOICE_METADATA: (expenseId) => `${API_BASE_URL}/api/invoices/${expenseId}/metadata`
 };
 
 export default API_BASE_URL;

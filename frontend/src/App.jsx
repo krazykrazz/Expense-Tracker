@@ -20,6 +20,7 @@ import logo from './assets/tracker.png.png';
 
 function App() {
   const [expenses, setExpenses] = useState([]);
+  const [currentMonthExpenseCount, setCurrentMonthExpenseCount] = useState(0);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [loading, setLoading] = useState(false);
@@ -110,6 +111,37 @@ function App() {
       isMounted = false;
     };
   }, [peopleRefreshTrigger]);
+
+  // Fetch current month expense count for floating button visibility
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchCurrentMonthExpenseCount = async () => {
+      try {
+        const currentDate = new Date();
+        const currentYear = currentDate.getFullYear();
+        const currentMonth = currentDate.getMonth() + 1;
+        
+        const url = `${API_ENDPOINTS.EXPENSES}?year=${currentYear}&month=${currentMonth}`;
+        const response = await fetch(url);
+        
+        if (response.ok && isMounted) {
+          const data = await response.json();
+          setCurrentMonthExpenseCount(data.length);
+        }
+      } catch (err) {
+        if (isMounted) {
+          console.error('Error fetching current month expense count:', err);
+        }
+      }
+    };
+
+    fetchCurrentMonthExpenseCount();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [refreshTrigger]); // Update when expenses are added/deleted
 
   // Listen for peopleUpdated event (e.g., from PeopleManagementModal or BackupSettings)
   useEffect(() => {
@@ -550,6 +582,7 @@ function App() {
                 onExpenseDeleted={handleExpenseDeleted}
                 onExpenseUpdated={handleExpenseUpdated}
                 onAddExpense={() => setShowExpenseForm(true)}
+                currentMonthExpenseCount={currentMonthExpenseCount}
               />
             </div>
             <div 
@@ -678,7 +711,7 @@ function App() {
 
       <footer className="App-footer">
         <span className="version">
-          v{versionInfo?.version || '4.11.0'}
+          v{versionInfo?.version || '4.11.2'}
           {versionInfo?.docker && (
             <span className="docker-tag"> (Docker: {versionInfo.docker.tag})</span>
           )}

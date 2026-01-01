@@ -139,11 +139,18 @@ describe('ExpenseList People Indicators Tests', () => {
     expect(countBadge.textContent).toBe('2');
 
     // Check that both names are displayed with amounts
-    const namesElement = document.querySelector('.person-names');
-    expect(namesElement).toBeTruthy();
-    expect(namesElement.textContent).toContain('John');
-    expect(namesElement.textContent).toContain('Jane');
-    expect(namesElement.textContent).toContain('$150.00');
+    const personRows = document.querySelectorAll('.person-row');
+    expect(personRows.length).toBe(2);
+    
+    const personNames = document.querySelectorAll('.person-name');
+    expect(personNames.length).toBe(2);
+    expect(personNames[0].textContent).toBe('John');
+    expect(personNames[1].textContent).toBe('Jane');
+    
+    const personAmounts = document.querySelectorAll('.person-amount');
+    expect(personAmounts.length).toBe(2);
+    expect(personAmounts[0].textContent).toBe('$150.00');
+    expect(personAmounts[1].textContent).toBe('$150.00');
   });
 
   /**

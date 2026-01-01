@@ -3,8 +3,10 @@ import { API_ENDPOINTS } from '../config';
 import { PAYMENT_METHODS } from '../utils/constants';
 import { getPeople } from '../services/peopleApi';
 import { getExpenseWithPeople, updateExpense } from '../services/expenseApi';
+import { getInvoiceMetadata } from '../services/invoiceApi';
 import PersonAllocationModal from './PersonAllocationModal';
 import FloatingAddButton from './FloatingAddButton';
+import InvoiceIndicator from './InvoiceIndicator';
 import './ExpenseList.css';
 import { formatAmount, formatLocalDate } from '../utils/formatters';
 
@@ -86,7 +88,7 @@ const PeopleIndicator = ({ expense }) => {
   );
 };
 
-const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddExpense, people: propPeople }) => {
+const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddExpense, people: propPeople, currentMonthExpenseCount = 0 }) => {
   const [deletingId, setDeletingId] = useState(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [expenseToDelete, setExpenseToDelete] = useState(null);
@@ -99,11 +101,15 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
   // Local filters for monthly view only (don't trigger global view)
   const [localFilterType, setLocalFilterType] = useState('');
   const [localFilterMethod, setLocalFilterMethod] = useState('');
+  const [localFilterInvoice, setLocalFilterInvoice] = useState(''); // New invoice filter
   // People selection state for medical expenses
   const [localPeople, setLocalPeople] = useState([]);
   const people = propPeople || localPeople;
   const [selectedPeople, setSelectedPeople] = useState([]);
   const [showPersonAllocation, setShowPersonAllocation] = useState(false);
+  // Invoice metadata cache
+  const [invoiceMetadata, setInvoiceMetadata] = useState(new Map());
+  const [loadingInvoices, setLoadingInvoices] = useState(new Set());
 
   // Fetch categories and people on mount
   useEffect(() => {
@@ -151,6 +157,74 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
       isMounted = false;
     };
   }, [propPeople]);
+
+  // Handle invoice metadata updates
+  const handleInvoiceUpdated = useCallback((expenseId, newInvoiceInfo) => {
+    setInvoiceMetadata(prev => {
+      const newMap = new Map(prev);
+      newMap.set(expenseId, newInvoiceInfo);
+      return newMap;
+    });
+  }, []);
+
+  const handleInvoiceDeleted = useCallback((expenseId) => {
+    setInvoiceMetadata(prev => {
+      const newMap = new Map(prev);
+      newMap.set(expenseId, null);
+      return newMap;
+    });
+  }, []);
+
+  // Load invoice metadata for medical expenses
+  useEffect(() => {
+    const loadInvoiceMetadata = async () => {
+      const medicalExpenses = expenses.filter(expense => expense.type === 'Tax - Medical');
+      const expensesToLoad = medicalExpenses.filter(expense => 
+        !invoiceMetadata.has(expense.id) && !loadingInvoices.has(expense.id)
+      );
+
+      if (expensesToLoad.length === 0) return;
+
+      // Mark expenses as loading
+      setLoadingInvoices(prev => {
+        const newSet = new Set(prev);
+        expensesToLoad.forEach(expense => newSet.add(expense.id));
+        return newSet;
+      });
+
+      // Load metadata for each expense
+      const metadataPromises = expensesToLoad.map(async (expense) => {
+        try {
+          const metadata = await getInvoiceMetadata(expense.id);
+          return { expenseId: expense.id, metadata };
+        } catch (error) {
+          console.error(`Failed to load invoice metadata for expense ${expense.id}:`, error);
+          return { expenseId: expense.id, metadata: null };
+        }
+      });
+
+      try {
+        const results = await Promise.all(metadataPromises);
+        
+        setInvoiceMetadata(prev => {
+          const newMap = new Map(prev);
+          results.forEach(({ expenseId, metadata }) => {
+            newMap.set(expenseId, metadata);
+          });
+          return newMap;
+        });
+      } finally {
+        // Remove from loading set
+        setLoadingInvoices(prev => {
+          const newSet = new Set(prev);
+          expensesToLoad.forEach(expense => newSet.delete(expense.id));
+          return newSet;
+        });
+      }
+    };
+
+    loadInvoiceMetadata();
+  }, [expenses, invoiceMetadata, loadingInvoices]);
 
   const handleEditClick = useCallback(async (expense) => {
     setExpenseToEdit(expense);
@@ -342,9 +416,24 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
       if (localFilterMethod && expense.method !== localFilterMethod) {
         return false;
       }
+      // Apply local invoice filter (only for medical expenses)
+      if (localFilterInvoice) {
+        // If invoice filter is active, only show medical expenses
+        if (expense.type !== 'Tax - Medical') {
+          return false;
+        }
+        
+        const hasInvoice = invoiceMetadata.has(expense.id) && invoiceMetadata.get(expense.id) !== null;
+        if (localFilterInvoice === 'with-invoice' && !hasInvoice) {
+          return false;
+        }
+        if (localFilterInvoice === 'without-invoice' && hasInvoice) {
+          return false;
+        }
+      }
       return true;
     });
-  }, [expenses, localFilterType, localFilterMethod]);
+  }, [expenses, localFilterType, localFilterMethod, localFilterInvoice, invoiceMetadata]);
 
   /**
    * Generates informative status messages based on filter state
@@ -365,6 +454,10 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
       const activeFilters = [];
       if (localFilterType) activeFilters.push(`category: ${localFilterType}`);
       if (localFilterMethod) activeFilters.push(`payment: ${localFilterMethod}`);
+      if (localFilterInvoice) {
+        const invoiceFilterText = localFilterInvoice === 'with-invoice' ? 'with invoices' : 'without invoices';
+        activeFilters.push(`${invoiceFilterText}`);
+      }
       
       return `No expenses match the selected filters (${activeFilters.join(', ')}). Try adjusting your filters or clearing them to see all expenses.`;
     }
@@ -375,10 +468,14 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
     }
     
     // Show result count when local filters are active
-    if (localFilterType || localFilterMethod) {
+    if (localFilterType || localFilterMethod || localFilterInvoice) {
       const activeFilters = [];
       if (localFilterType) activeFilters.push(localFilterType);
       if (localFilterMethod) activeFilters.push(localFilterMethod);
+      if (localFilterInvoice) {
+        const invoiceFilterText = localFilterInvoice === 'with-invoice' ? 'with invoices' : 'without invoices';
+        activeFilters.push(invoiceFilterText);
+      }
       
       const expenseWord = filteredExpenses.length === 1 ? 'expense' : 'expenses';
       return `Showing ${filteredExpenses.length} ${expenseWord} matching: ${activeFilters.join(', ')}`;
@@ -420,12 +517,23 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
                 <option key={method} value={method}>{method}</option>
               ))}
             </select>
-            {(localFilterType || localFilterMethod) && (
+            <select 
+              className="filter-select invoice-filter"
+              value={localFilterInvoice} 
+              onChange={(e) => setLocalFilterInvoice(e.target.value)}
+              title="Filter medical expenses by invoice status"
+            >
+              <option value="">All Invoices</option>
+              <option value="with-invoice">With Invoice</option>
+              <option value="without-invoice">Without Invoice</option>
+            </select>
+            {(localFilterType || localFilterMethod || localFilterInvoice) && (
               <button 
                 className="clear-filters-btn"
                 onClick={() => {
                   setLocalFilterType('');
                   setLocalFilterMethod('');
+                  setLocalFilterInvoice('');
                 }}
                 title="Clear filters"
               >
@@ -502,7 +610,21 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
                     ) : (
                       expense.place || '-'
                     )}
-                    <PeopleIndicator expense={expense} />
+                    <div className="expense-indicators">
+                      <PeopleIndicator expense={expense} />
+                      {expense.type === 'Tax - Medical' && (
+                        <InvoiceIndicator
+                          hasInvoice={invoiceMetadata.has(expense.id) && invoiceMetadata.get(expense.id) !== null}
+                          invoiceInfo={invoiceMetadata.get(expense.id)}
+                          expenseId={expense.id}
+                          size="small"
+                          alwaysShow={true}
+                          className={`list-item ${loadingInvoices.has(expense.id) ? 'loading' : ''}`}
+                          onInvoiceUpdated={(invoiceInfo) => handleInvoiceUpdated(expense.id, invoiceInfo)}
+                          onInvoiceDeleted={() => handleInvoiceDeleted(expense.id)}
+                        />
+                      )}
+                    </div>
                   </div>
                 </td>
                 <td>{expense.notes || '-'}</td>
@@ -732,10 +854,11 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
         onCancel={() => setShowPersonAllocation(false)}
       />
 
-      {/* Floating Add Button */}
+      {/* Floating Add Button - Based on current month expense count, not selected month */}
       <FloatingAddButton
+        key={`floating-button-${currentMonthExpenseCount}`}
         onAddExpense={onAddExpense}
-        expenseCount={expenses.length}
+        expenseCount={currentMonthExpenseCount}
       />
     </div>
   );

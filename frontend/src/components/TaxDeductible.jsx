@@ -6,6 +6,7 @@ import { getExpenseWithPeople, updateExpense } from '../services/expenseApi';
 import { API_ENDPOINTS } from '../config';
 import { PAYMENT_METHODS } from '../utils/constants';
 import PersonAllocationModal from './PersonAllocationModal';
+import InvoiceIndicator from './InvoiceIndicator';
 
 const TaxDeductible = ({ year, refreshTrigger }) => {
   const [taxDeductible, setTaxDeductible] = useState(null);
@@ -17,6 +18,9 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
   const [groupByPerson, setGroupByPerson] = useState(false);
   const [expandedPersons, setExpandedPersons] = useState({});
   const [unassignedExpanded, setUnassignedExpanded] = useState(false);
+  
+  // Invoice filtering state
+  const [invoiceFilter, setInvoiceFilter] = useState('all'); // 'all', 'with-invoice', 'without-invoice'
   
   // People and categories state
   const [people, setPeople] = useState([]);
@@ -252,6 +256,36 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
 
   const formatDate = formatLocalDate;
 
+  // Filter expenses based on invoice status
+  const filterExpensesByInvoice = useCallback((expenses) => {
+    if (invoiceFilter === 'all') return expenses;
+    if (invoiceFilter === 'with-invoice') return expenses.filter(exp => exp.hasInvoice);
+    if (invoiceFilter === 'without-invoice') return expenses.filter(exp => !exp.hasInvoice);
+    return expenses;
+  }, [invoiceFilter]);
+
+  // Calculate invoice coverage statistics
+  const invoiceStats = useMemo(() => {
+    if (!taxDeductible || !taxDeductible.expenses) {
+      return { medicalWithInvoice: 0, medicalTotal: 0, donationsWithInvoice: 0, donationsTotal: 0 };
+    }
+
+    const medicalExpenses = taxDeductible.expenses.medical || [];
+    const donationExpenses = taxDeductible.expenses.donations || [];
+
+    const medicalWithInvoice = medicalExpenses.filter(exp => exp.hasInvoice).length;
+    const donationsWithInvoice = donationExpenses.filter(exp => exp.hasInvoice).length;
+
+    return {
+      medicalWithInvoice,
+      medicalTotal: medicalExpenses.length,
+      donationsWithInvoice,
+      donationsTotal: donationExpenses.length,
+      medicalCoverage: medicalExpenses.length > 0 ? Math.round((medicalWithInvoice / medicalExpenses.length) * 100) : 0,
+      donationsCoverage: donationExpenses.length > 0 ? Math.round((donationsWithInvoice / donationExpenses.length) * 100) : 0
+    };
+  }, [taxDeductible]);
+
   // Memoize expensive chart calculations
   const chartData = useMemo(() => {
     if (!taxDeductible || !taxDeductible.monthlyBreakdown || taxDeductible.monthlyBreakdown.length === 0) {
@@ -313,6 +347,43 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
               </label>
             </div>
           )}
+
+          {/* Invoice Filter Controls */}
+          <div className="invoice-filter-section">
+            <div className="invoice-filter-controls">
+              <label className="filter-label">Filter by Invoice Status:</label>
+              <select 
+                value={invoiceFilter} 
+                onChange={(e) => setInvoiceFilter(e.target.value)}
+                className="invoice-filter-select"
+              >
+                <option value="all">All Expenses</option>
+                <option value="with-invoice">With Invoice</option>
+                <option value="without-invoice">Without Invoice</option>
+              </select>
+            </div>
+
+            {/* Invoice Coverage Statistics */}
+            <div className="invoice-statistics">
+              <div className="invoice-stat-card">
+                <h4>Medical Invoice Coverage</h4>
+                <div className="stat-content">
+                  <span className="stat-number">{invoiceStats.medicalWithInvoice}/{invoiceStats.medicalTotal}</span>
+                  <span className="stat-percentage">({invoiceStats.medicalCoverage}%)</span>
+                </div>
+              </div>
+              
+              {invoiceStats.donationsTotal > 0 && (
+                <div className="invoice-stat-card">
+                  <h4>Donation Invoice Coverage</h4>
+                  <div className="stat-content">
+                    <span className="stat-number">{invoiceStats.donationsWithInvoice}/{invoiceStats.donationsTotal}</span>
+                    <span className="stat-percentage">({invoiceStats.donationsCoverage}%)</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
 
           {/* Monthly Breakdown for Tax Deductible Expenses */}
           <div className="tax-monthly-breakdown">
@@ -416,7 +487,7 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
                               <span className="provider-total">${formatAmount(provider.total)}</span>
                             </div>
                             <div className="provider-expenses">
-                              {provider.expenses.map((expense) => (
+                              {filterExpensesByInvoice(provider.expenses).map((expense) => (
                                 <div key={expense.id} className="tax-expense-item">
                                   <div className="tax-expense-date">
                                     {formatDate(expense.date)}
@@ -427,6 +498,15 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
                                     )}
                                   </div>
                                   <div className="tax-expense-amount">${formatAmount(expense.allocatedAmount)}</div>
+                                  <div className="tax-expense-invoice">
+                                    <InvoiceIndicator
+                                      hasInvoice={expense.hasInvoice}
+                                      invoiceInfo={expense.invoice}
+                                      expenseId={expense.id}
+                                      size="small"
+                                      alwaysShow={true}
+                                    />
+                                  </div>
                                 </div>
                               ))}
                             </div>
@@ -461,7 +541,7 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
                               <span className="provider-total">${formatAmount(provider.total)}</span>
                             </div>
                             <div className="provider-expenses">
-                              {provider.expenses.map((expense) => (
+                              {filterExpensesByInvoice(provider.expenses).map((expense) => (
                                 <div key={expense.id} className="tax-expense-item unassigned-expense">
                                   <div className="tax-expense-date">
                                     {formatDate(expense.date)}
@@ -472,6 +552,15 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
                                     )}
                                   </div>
                                   <div className="tax-expense-amount">${formatAmount(expense.amount)}</div>
+                                  <div className="tax-expense-invoice">
+                                    <InvoiceIndicator
+                                      hasInvoice={expense.hasInvoice}
+                                      invoiceInfo={expense.invoice}
+                                      expenseId={expense.id}
+                                      size="small"
+                                      alwaysShow={true}
+                                    />
+                                  </div>
                                   <div className="expense-actions">
                                     <button
                                       className="edit-expense-btn"
@@ -501,7 +590,10 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
                   onClick={() => setMedicalExpanded(!medicalExpanded)}
                 >
                   <h4 className="tax-category-header">
-                    🏥 Medical Expenses ({taxDeductible.expenses.medical.length} items - ${formatAmount(taxDeductible.medicalTotal)})
+                    🏥 Medical Expenses ({filterExpensesByInvoice(taxDeductible.expenses.medical).length} items - ${formatAmount(filterExpensesByInvoice(taxDeductible.expenses.medical).reduce((sum, exp) => sum + exp.amount, 0))})
+                    {invoiceFilter !== 'all' && (
+                      <span className="filter-indicator"> - {invoiceFilter === 'with-invoice' ? 'With Invoice' : 'Without Invoice'}</span>
+                    )}
                   </h4>
                   <button className="collapse-toggle" aria-label={medicalExpanded ? "Collapse" : "Expand"}>
                     {medicalExpanded ? '▲' : '▼'}
@@ -509,7 +601,7 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
                 </div>
                 {medicalExpanded && (
                   <div className="tax-expense-list">
-                    {taxDeductible.expenses.medical.map((expense) => (
+                    {filterExpensesByInvoice(taxDeductible.expenses.medical).map((expense) => (
                       <div key={expense.id} className="tax-expense-item">
                         <div className="tax-expense-date">
                           {formatDate(expense.date)}
@@ -521,6 +613,15 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
                           )}
                         </div>
                         <div className="tax-expense-amount">${formatAmount(expense.amount)}</div>
+                        <div className="tax-expense-invoice">
+                          <InvoiceIndicator
+                            hasInvoice={expense.hasInvoice}
+                            invoiceInfo={expense.invoice}
+                            expenseId={expense.id}
+                            size="small"
+                            alwaysShow={true}
+                          />
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -536,7 +637,10 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
                   onClick={() => setDonationsExpanded(!donationsExpanded)}
                 >
                   <h4 className="tax-category-header">
-                    ❤️ Donations ({taxDeductible.expenses.donations.length} items - ${formatAmount(taxDeductible.donationTotal)})
+                    ❤️ Donations ({filterExpensesByInvoice(taxDeductible.expenses.donations).length} items - ${formatAmount(filterExpensesByInvoice(taxDeductible.expenses.donations).reduce((sum, exp) => sum + exp.amount, 0))})
+                    {invoiceFilter !== 'all' && (
+                      <span className="filter-indicator"> - {invoiceFilter === 'with-invoice' ? 'With Invoice' : 'Without Invoice'}</span>
+                    )}
                   </h4>
                   <button className="collapse-toggle" aria-label={donationsExpanded ? "Collapse" : "Expand"}>
                     {donationsExpanded ? '▲' : '▼'}
@@ -544,7 +648,7 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
                 </div>
                 {donationsExpanded && (
                   <div className="tax-expense-list">
-                    {taxDeductible.expenses.donations.map((expense) => (
+                    {filterExpensesByInvoice(taxDeductible.expenses.donations).map((expense) => (
                       <div key={expense.id} className="tax-expense-item">
                         <div className="tax-expense-date">
                           {formatDate(expense.date)}
@@ -556,6 +660,15 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
                           )}
                         </div>
                         <div className="tax-expense-amount">${formatAmount(expense.amount)}</div>
+                        <div className="tax-expense-invoice">
+                          <InvoiceIndicator
+                            hasInvoice={expense.hasInvoice}
+                            invoiceInfo={expense.invoice}
+                            expenseId={expense.id}
+                            size="small"
+                            alwaysShow={true}
+                          />
+                        </div>
                       </div>
                     ))}
                   </div>

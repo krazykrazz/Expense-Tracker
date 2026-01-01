@@ -152,7 +152,7 @@
 
 .tax-expense-item {
   display: grid;
-  grid-template-columns: 120px 1fr auto auto;
+  grid-template-columns: 120px 1fr auto auto auto;
   gap: 15px;
   align-items: start;
   padding: 12px 15px;
@@ -197,6 +197,13 @@
   color: #16a34a;
   text-align: right;
   white-space: nowrap;
+}
+
+.tax-expense-invoice {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
 }
 
 @media (max-width: 768px) {
@@ -246,6 +253,24 @@
     font-size: 15px;
     text-align: left;
   }
+
+  .tax-expense-invoice {
+    justify-content: flex-start;
+  }
+
+  .invoice-filter-controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .invoice-filter-select {
+    min-width: auto;
+  }
+
+  .invoice-statistics {
+    grid-template-columns: 1fr;
+  }
 }
 
 
@@ -277,6 +302,95 @@
 
 .toggle-text {
   user-select: none;
+}
+
+/* Invoice Filter Section */
+.invoice-filter-section {
+  margin: 20px 0;
+  padding: 20px;
+  background: white;
+  border: 1px solid #d1fae5;
+  border-radius: 6px;
+}
+
+.invoice-filter-controls {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.filter-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #166534;
+  white-space: nowrap;
+}
+
+.invoice-filter-select {
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  background: white;
+  color: #374151;
+  font-size: 14px;
+  cursor: pointer;
+  min-width: 160px;
+}
+
+.invoice-filter-select:hover {
+  border-color: #16a34a;
+}
+
+.invoice-filter-select:focus {
+  outline: none;
+  border-color: #16a34a;
+  box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.2);
+}
+
+.invoice-statistics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+}
+
+.invoice-stat-card {
+  padding: 15px;
+  background: #f0fdf4;
+  border: 1px solid #86efac;
+  border-radius: 6px;
+  text-align: center;
+}
+
+.invoice-stat-card h4 {
+  margin: 0 0 10px 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: #166534;
+}
+
+.stat-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.stat-number {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #16a34a;
+}
+
+.stat-percentage {
+  font-size: 0.9rem;
+  color: #166534;
+}
+
+.filter-indicator {
+  font-size: 0.85em;
+  color: #0ea5e9;
+  font-style: italic;
 }
 
 /* Person Group Styling */
@@ -411,6 +525,7 @@
 .unassigned-expense {
   border-color: #fcd34d;
   background: #fffbeb;
+  grid-template-columns: 120px 1fr auto auto auto;
 }
 
 /* Quick Assign Styling */

@@ -11,6 +11,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.11.2] - 2025-12-31
+
+### Fixed
+- Fixed floating add button to remain visible when navigating to future months
+- Button visibility now based on current month expense count, not selected month
+- Improved user experience for month navigation with consistent floating button behavior
+
+---
+
+## [4.11.1] - 2025-12-31
+
+### Fixed
+- Fixed floating add button disappearing when switching between months
+- Improved component re-rendering reliability for month navigation
+- Fixed JSX syntax issue in changelog display
+
+---
+
 ## [4.11.0] - 2025-12-31
 
 ### Added

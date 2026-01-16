@@ -14,7 +14,7 @@ The Merchant Analytics feature provides comprehensive insights into spending pat
 - **Top Merchants List**: View merchants ranked by total spending, visit frequency, or average spend per visit
 - **Flexible Sorting**: Toggle between three sorting options to analyze spending from different perspectives
 - **Spending Statistics**: See total amount spent, number of visits, average spend per visit, and percentage of total expenses
-- **Time Period Filtering**: Analyze data for All Time, This Year, This Month, or Last 3 Months
+- **Time Period Filtering**: Analyze data for All Time, This Year, Previous Year, This Month, or Last 3 Months
 - **Fixed Expenses Integration**: Optional "Include Fixed Expenses" checkbox to combine variable and recurring expenses for comprehensive analysis
 
 ### 📊 Detailed Analytics
@@ -69,7 +69,7 @@ The Merchant Analytics feature provides comprehensive insights into spending pat
 ```
 GET /api/analytics/merchants
 Query Parameters:
-- period: 'all' | 'year' | 'month' | '3months'
+- period: 'all' | 'year' | 'previousYear' | 'month' | '3months'
 - sortBy: 'total' | 'visits' | 'average'
 - includeFixedExpenses: 'true' | 'false' (default: 'false')
 ```
@@ -78,7 +78,7 @@ Query Parameters:
 ```
 GET /api/analytics/merchants/:name
 Query Parameters:
-- period: 'all' | 'year' | 'month' | '3months'
+- period: 'all' | 'year' | 'previousYear' | 'month' | '3months'
 - includeFixedExpenses: 'true' | 'false' (default: 'false')
 ```
 
@@ -94,7 +94,7 @@ Query Parameters:
 ```
 GET /api/analytics/merchants/:name/expenses
 Query Parameters:
-- period: 'all' | 'year' | 'month' | '3months'
+- period: 'all' | 'year' | 'previousYear' | 'month' | '3months'
 - includeFixedExpenses: 'true' | 'false' (default: 'false')
 ```
 
@@ -187,7 +187,7 @@ Each property is tested with 100+ iterations using the `fast-check` library to e
 ### Analyzing Top Spending Locations
 1. Click "🏪 Merchant Analytics" in the main navigation
 2. View the default list sorted by total spending
-3. Use the period filter to focus on "This Year" or "This Month"
+3. Use the period filter to focus on "This Year", "Previous Year", or "This Month"
 4. **Optional**: Check "Include Fixed Expenses" to see total spending including recurring costs
 5. Identify your highest-spending merchants
 

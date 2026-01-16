@@ -28,9 +28,14 @@ describe('Invoice Service - Property-Based Tests - File Upload Validation', () =
   });
 
   const validPdfFileArbitrary = fc.record({
-    originalname: fc.string({ minLength: 1, maxLength: 50 }).map(name => 
-      name.replace(/[<>:"/\\|?*]/g, '_') + '.pdf'
-    ),
+    originalname: fc.string({ minLength: 1, maxLength: 50 })
+      .filter(name => name.trim().length > 0) // Ensure not just whitespace
+      .map(name => {
+        // Replace dangerous characters and ensure we have a valid base name
+        const cleaned = name.replace(/[<>:"/\\|?*]/g, '_').trim();
+        const baseName = cleaned.length > 0 ? cleaned : 'file';
+        return baseName + '.pdf';
+      }),
     mimetype: fc.constant('application/pdf'),
     size: fc.integer({ min: 1024, max: 10 * 1024 * 1024 }), // 1KB to 10MB
     buffer: fc.constant(Buffer.from('%PDF-1.4\n1 0 obj\n<<\n/Type /Catalog\n>>\nendobj\n%%EOF'))

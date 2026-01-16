@@ -69,6 +69,18 @@ A full-stack expense tracking application built with React and Node.js.
 - 🔄 Backward compatible with existing medical expenses
 - 👤 People management in Settings for adding/editing family members
 
+### Medical Expense Invoice Attachments
+- 📄 Attach PDF invoices to medical expenses for record keeping
+- 📤 Upload invoices during expense creation or editing
+- 👁️ View invoices in built-in PDF viewer with zoom, download, and print
+- 🔄 Replace or delete invoice attachments as needed
+- 🏷️ Visual indicators showing which expenses have attached invoices
+- 📊 Invoice status visible in tax deductible reports
+- 🔍 Filter expenses by invoice attachment status
+- 🔒 Secure file storage with access control
+- 📱 Mobile-friendly upload and viewing interface
+- 💾 Automatic cleanup when expenses are deleted
+
 ### Merchant Analytics
 - 🏪 Analyze spending patterns by merchant (place) with comprehensive insights
 - 📊 View top merchants ranked by total spending, visit frequency, or average spend
@@ -388,23 +400,34 @@ stop-servers.bat
 41. **Quick Assign**: Assign people to unassigned medical expenses directly from the Tax Deductible view
 42. **Tax Preparation**: Use person-grouped view to get per-person totals for tax forms
 
+### Medical Expense Invoice Attachments
+43. **Upload Invoice**: When creating or editing a medical expense, scroll to "Invoice Attachment" section
+44. **Choose File**: Click "Choose File" or drag and drop a PDF file (max 10MB)
+45. **View Invoice**: Click the 📄 icon next to medical expenses to open the PDF viewer
+46. **PDF Viewer Controls**: Use zoom in/out, download, and print functions
+47. **Replace Invoice**: Edit the expense and click "Replace" to upload a new invoice
+48. **Delete Invoice**: Edit the expense and click "Delete" to remove the invoice
+49. **Filter by Invoice**: In Tax Deductible view, filter expenses by invoice attachment status
+50. **Invoice Indicators**: See which expenses have invoices in expense lists and tax reports
+51. **Automatic Cleanup**: Invoices are automatically deleted when expenses are deleted
+
 ### Merchant Analytics
-43. **View Merchant Analytics**: Click the "🏪 Merchant Analytics" button in the main navigation to open analytics
-44. **Analyze Top Merchants**: View merchants ranked by total spending, visit frequency, or average spend per visit
-45. **Filter by Time Period**: Use the period dropdown to analyze different time ranges (All Time, This Year, This Month, Last 3 Months)
-46. **Sort Options**: Toggle between sorting by total spend, number of visits, or average spend per visit
-47. **View Merchant Details**: Click on any merchant to see detailed statistics, category breakdowns, and spending trends
-48. **Monthly Trends**: View line charts showing spending patterns over the last 12 months for each merchant
-49. **Category Analysis**: See which expense categories you spend on most at each merchant
-50. **Payment Method Insights**: View which payment methods you use most frequently at each merchant
-51. **Visit Patterns**: See average days between visits and identify your shopping frequency habits
-52. **Include Fixed Expenses**: Toggle the "Include Fixed Expenses" checkbox to combine variable and recurring expenses for comprehensive spending analysis
-53. **Drill-Down to Expenses**: Click "View All Expenses" to see the complete list of expenses at any merchant
+52. **View Merchant Analytics**: Click the "🏪 Merchant Analytics" button in the main navigation to open analytics
+53. **Analyze Top Merchants**: View merchants ranked by total spending, visit frequency, or average spend per visit
+54. **Filter by Time Period**: Use the period dropdown to analyze different time ranges (All Time, This Year, This Month, Last 3 Months)
+55. **Sort Options**: Toggle between sorting by total spend, number of visits, or average spend per visit
+56. **View Merchant Details**: Click on any merchant to see detailed statistics, category breakdowns, and spending trends
+57. **Monthly Trends**: View line charts showing spending patterns over the last 12 months for each merchant
+58. **Category Analysis**: See which expense categories you spend on most at each merchant
+59. **Payment Method Insights**: View which payment methods you use most frequently at each merchant
+60. **Visit Patterns**: See average days between visits and identify your shopping frequency habits
+61. **Include Fixed Expenses**: Toggle the "Include Fixed Expenses" checkbox to combine variable and recurring expenses for comprehensive spending analysis
+62. **Drill-Down to Expenses**: Click "View All Expenses" to see the complete list of expenses at any merchant
 
 ### Data Management
-53. **Backup**: Click the "💾 Backup" button to download your database
-54. **Automated Backups**: Configure scheduled backups in Backup Settings
-55. **Data Reminders**: Receive visual reminders when monthly data needs updating (investments and loans)
+63. **Backup**: Click the "💾 Backup" button to download your database
+64. **Automated Backups**: Configure scheduled backups in Backup Settings
+65. **Data Reminders**: Receive visual reminders when monthly data needs updating (investments and loans)
 
 ## Project Structure
 
@@ -497,6 +520,12 @@ expense-tracker/
 - `POST /api/people` - Create a new person
 - `PUT /api/people/:id` - Update a person
 - `DELETE /api/people/:id` - Delete a person (cascades to expense associations)
+
+### Invoices (Medical Expense Attachments)
+- `POST /api/invoices/upload` - Upload a PDF invoice for an expense
+- `GET /api/invoices/:expenseId` - Get invoice file for an expense
+- `GET /api/invoices/:expenseId/metadata` - Get invoice metadata without file
+- `DELETE /api/invoices/:expenseId` - Delete an invoice attachment
 
 ### Merchant Analytics
 - `GET /api/analytics/merchants` - Get top merchants with analytics (query params: period, sortBy, includeFixedExpenses)
@@ -606,6 +635,17 @@ expense-tracker/
 - amount (DECIMAL) - Amount allocated to this person
 - created_at (TEXT)
 - UNIQUE constraint on (expense_id, person_id)
+
+### Expense Invoices Table
+- id (INTEGER PRIMARY KEY)
+- expense_id (INTEGER) - Foreign key to expenses table (CASCADE DELETE)
+- filename (TEXT) - Stored filename
+- original_filename (TEXT) - Original upload filename
+- file_path (TEXT) - Full path to file
+- file_size (INTEGER) - File size in bytes
+- mime_type (TEXT) - File MIME type (application/pdf)
+- upload_date (TEXT) - When invoice was uploaded
+- UNIQUE constraint on (expense_id) - One invoice per expense
 
 ## Documentation
 

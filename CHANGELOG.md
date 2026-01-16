@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Medical Expense Invoice Attachments**: Comprehensive invoice management for medical expenses
+  - **PDF Upload**: Attach PDF invoices to medical expenses during creation or editing (max 10MB)
+  - **Invoice Viewer**: Built-in PDF viewer with zoom, download, and print capabilities
+  - **Invoice Management**: Replace or delete invoice attachments with confirmation
+  - **Visual Indicators**: Clear 📄 icons showing which expenses have attached invoices
+  - **Tax Integration**: Invoice status visible in tax deductible reports with filtering options
+  - **Secure Storage**: Files stored securely with proper access control and automatic cleanup
+  - **Mobile Support**: Touch-friendly upload interface and responsive PDF viewer
+  - **File Validation**: Magic number checking, size limits, and PDF structure validation
+  - **Automatic Cleanup**: Invoices automatically deleted when expenses are removed
+  - **Backup Integration**: Invoice files included in automated backup procedures
+
 ---
 
 ## [4.11.2] - 2025-12-31

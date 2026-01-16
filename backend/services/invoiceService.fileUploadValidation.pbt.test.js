@@ -78,6 +78,7 @@ describe('Invoice Service - Property-Based Tests - File Upload Validation', () =
               expect(validation.isValid).toBe(false);
             }
             
+            return true; // Property holds
           } finally {
             // Cleanup temp file
             try {
@@ -132,6 +133,7 @@ describe('Invoice Service - Property-Based Tests - File Upload Validation', () =
               expect(validation.isValid).toBe(false);
             }
             
+            return true; // Property holds
           } finally {
             try {
               await fs.promises.unlink(tempFilePath);

@@ -283,6 +283,14 @@ async function getInvoiceMetadata(req, res) {
   } catch (error) {
     logger.error('Get invoice metadata API error:', error);
 
+    // Check for specific error types
+    if (error.message === 'Expense not found') {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'Expense not found' 
+      });
+    }
+
     res.status(500).json({ 
       success: false, 
       error: 'Internal server error while retrieving invoice metadata' 

@@ -292,6 +292,12 @@ class InvoiceService {
         throw new Error('Expense ID is required');
       }
 
+      // Check if expense exists first
+      const expense = await expenseRepository.findById(expenseId);
+      if (!expense) {
+        throw new Error('Expense not found');
+      }
+
       // Get invoice metadata from database
       const invoice = await invoiceRepository.findByExpenseId(expenseId);
       

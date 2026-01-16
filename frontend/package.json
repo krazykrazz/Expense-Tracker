@@ -1,6 +1,6 @@
 {
   "name": "expense-tracker-frontend",
-  "version": "4.11.0",
+  "version": "4.11.2",
   "description": "Expense Tracker React Frontend",
   "private": true,
   "scripts": {
@@ -12,7 +12,8 @@
   },
   "dependencies": {
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "react-pdf": "^10.3.0"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.9.1",

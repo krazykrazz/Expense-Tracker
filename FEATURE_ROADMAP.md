@@ -1,7 +1,7 @@
 # Expense Tracker - Feature Roadmap
 
-**Last Updated**: December 31, 2025  
-**Current Version**: 4.11.0
+**Last Updated**: January 15, 2026  
+**Current Version**: 4.12.0 (Unreleased)
 
 This document tracks potential features and enhancements for the Expense Tracker application. Features are categorized by priority and implementation status.
 
@@ -429,6 +429,28 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ## 🟢 Completed Features
 
+### 🟢 Medical Expense Invoice Attachments (v4.12.0)
+**Completed**: January 15, 2026  
+**Spec**: `.kiro/specs/medical-expense-invoices/`  
+**Description**: Comprehensive invoice management for medical expenses, enabling users to attach PDF invoices for better record keeping, tax preparation, and insurance claims.
+
+**Features Delivered**:
+- **PDF Upload**: Attach PDF invoices to medical expenses during creation or editing (max 10MB)
+- **Invoice Viewer**: Built-in PDF viewer with zoom, download, and print capabilities
+- **Invoice Management**: Replace or delete invoice attachments with confirmation
+- **Visual Indicators**: Clear 📄 icons showing which expenses have attached invoices
+- **Tax Integration**: Invoice status visible in tax deductible reports with filtering options
+- **Secure Storage**: Files stored securely with proper access control and automatic cleanup
+- **Mobile Support**: Touch-friendly upload interface and responsive PDF viewer
+- **File Validation**: Magic number checking, size limits, and PDF structure validation
+- **Automatic Cleanup**: Invoices automatically deleted when expenses are removed
+- **Backup Integration**: Invoice files included in automated backup procedures
+- **Comprehensive Testing**: Property-based testing (100+ iterations) and full integration test coverage
+- **Complete Documentation**: User guides, API docs, troubleshooting, deployment, and maintenance guides
+- **Utility Scripts**: Orphaned file detection and cleanup scripts for maintenance
+
+---
+
 ### 🟢 Sticky Summary Scrolling (v4.11.0)
 **Completed**: December 31, 2025  
 **Spec**: `.kiro/specs/sticky-summary-scrolling/`  
@@ -744,6 +766,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 ---
 
 **Version History**:
+- v1.8 (2026-01-15): Added Medical Expense Invoice Attachments (v4.12.0) to completed features, updated current version to 4.12.0
 - v1.7 (2025-12-31): Added Sticky Summary Scrolling (v4.11.0) to completed features, updated current version to 4.11.0
 - v1.6 (2025-12-23): Added Budget Alert Notifications (v4.10.0) to completed features, updated current version to 4.10.0
 - v1.5 (2025-12-20): Updated Merchant Analytics with Fixed Expenses Integration (v4.9.0)

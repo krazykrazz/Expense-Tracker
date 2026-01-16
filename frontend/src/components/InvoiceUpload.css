@@ -1,0 +1,417 @@
+/* InvoiceUpload Component Styles */
+
+.invoice-upload-container {
+  width: 100%;
+  margin: 8px 0;
+}
+
+/* Drop Zone Styles */
+.invoice-dropzone {
+  border: 2px dashed #d1d5db;
+  border-radius: 8px;
+  padding: 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background-color: #fafafa;
+  min-height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.invoice-dropzone:hover:not(.disabled):not(.uploading) {
+  border-color: #0ea5e9;
+  background-color: #f0f9ff;
+}
+
+.invoice-dropzone:focus:not(.disabled):not(.uploading) {
+  outline: none;
+  border-color: #0ea5e9;
+  background-color: #f0f9ff;
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+}
+
+.invoice-dropzone.drag-over {
+  border-color: #0ea5e9;
+  background-color: #e0f2fe;
+  transform: scale(1.02);
+}
+
+.invoice-dropzone.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background-color: #f5f5f5;
+}
+
+.invoice-dropzone.uploading {
+  cursor: default;
+  border-color: #0ea5e9;
+  background-color: #f0f9ff;
+}
+
+/* Drop Zone Content */
+.dropzone-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.upload-icon {
+  font-size: 2rem;
+  margin-bottom: 4px;
+  opacity: 0.7;
+}
+
+.upload-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.primary-text {
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.secondary-text {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.upload-requirements {
+  font-size: 11px;
+  color: #9ca3af;
+  margin-top: 4px;
+}
+
+/* Progress Bar Styles */
+.upload-progress {
+  width: 100%;
+  max-width: 200px;
+  margin-top: 8px;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 6px;
+  background-color: #e5e7eb;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background-color: #0ea5e9;
+  transition: width 0.3s ease;
+  border-radius: 3px;
+}
+
+.progress-text {
+  font-size: 11px;
+  color: #6b7280;
+  margin-top: 4px;
+  text-align: center;
+}
+
+/* Existing Invoice Display */
+.invoice-existing {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  gap: 12px;
+}
+
+.invoice-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0; /* Allow text truncation */
+}
+
+.invoice-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.invoice-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.invoice-filename {
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+.invoice-metadata {
+  font-size: 11px;
+  color: #6b7280;
+  margin-top: 2px;
+}
+
+/* Action Buttons */
+.invoice-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.invoice-action-btn {
+  padding: 4px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  background-color: white;
+  color: #374151;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  min-width: 60px;
+  text-align: center;
+}
+
+.invoice-action-btn:hover:not(:disabled) {
+  background-color: #f9fafb;
+  border-color: #9ca3af;
+}
+
+.invoice-action-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.view-btn:hover:not(:disabled) {
+  background-color: #eff6ff;
+  border-color: #3b82f6;
+  color: #1d4ed8;
+}
+
+.replace-btn:hover:not(:disabled) {
+  background-color: #fef3c7;
+  border-color: #f59e0b;
+  color: #92400e;
+}
+
+.delete-btn:hover:not(:disabled) {
+  background-color: #fef2f2;
+  border-color: #ef4444;
+  color: #dc2626;
+}
+
+/* Delete Confirmation */
+.delete-confirm {
+  display: flex;
+  gap: 4px;
+}
+
+.confirm-delete-btn {
+  background-color: #dc2626;
+  color: white;
+  border-color: #dc2626;
+}
+
+.confirm-delete-btn:hover:not(:disabled) {
+  background-color: #b91c1c;
+  border-color: #b91c1c;
+}
+
+.cancel-btn:hover:not(:disabled) {
+  background-color: #f3f4f6;
+  border-color: #6b7280;
+}
+
+/* Error Display */
+.invoice-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 4px;
+  margin-top: 8px;
+}
+
+.error-text {
+  font-size: 12px;
+  color: #dc2626;
+  flex: 1;
+}
+
+.error-close {
+  background: none;
+  border: none;
+  color: #dc2626;
+  cursor: pointer;
+  padding: 0;
+  margin-left: 8px;
+  font-size: 14px;
+  line-height: 1;
+  opacity: 0.7;
+}
+
+.error-close:hover {
+  opacity: 1;
+}
+
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+  .invoice-dropzone {
+    padding: 20px 16px;
+    min-height: 100px;
+  }
+
+  .upload-icon {
+    font-size: 1.75rem;
+  }
+
+  .primary-text {
+    font-size: 13px;
+  }
+
+  .secondary-text {
+    font-size: 11px;
+  }
+
+  .upload-requirements {
+    font-size: 10px;
+  }
+
+  .invoice-existing {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .invoice-info {
+    justify-content: center;
+  }
+
+  .invoice-filename {
+    max-width: none;
+    text-align: center;
+  }
+
+  .invoice-actions {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .invoice-action-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+
+  .delete-confirm {
+    justify-content: center;
+    width: 100%;
+  }
+}
+
+/* Touch-friendly styles for mobile */
+@media (max-width: 768px) and (pointer: coarse) {
+  .invoice-dropzone {
+    min-height: 120px;
+    padding: 24px 16px;
+  }
+
+  .invoice-action-btn {
+    min-height: 44px; /* iOS recommended touch target size */
+    padding: 8px 16px;
+  }
+
+  .error-close {
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .invoice-dropzone {
+    border-width: 3px;
+  }
+
+  .invoice-dropzone:hover:not(.disabled):not(.uploading),
+  .invoice-dropzone:focus:not(.disabled):not(.uploading) {
+    border-width: 3px;
+  }
+
+  .progress-fill {
+    background-color: #1e40af;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .invoice-dropzone,
+  .invoice-action-btn,
+  .progress-fill {
+    transition: none;
+  }
+
+  .invoice-dropzone.drag-over {
+    transform: none;
+  }
+}
+
+/* Focus visible support for better keyboard navigation */
+.invoice-dropzone:focus-visible {
+  outline: 2px solid #0ea5e9;
+  outline-offset: 2px;
+}
+
+.invoice-action-btn:focus-visible {
+  outline: 2px solid #0ea5e9;
+  outline-offset: 1px;
+}
+
+.error-close:focus-visible {
+  outline: 2px solid #dc2626;
+  outline-offset: 1px;
+}
+
+/* Loading state animation */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.invoice-dropzone.uploading .upload-icon {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* Screen reader only content */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

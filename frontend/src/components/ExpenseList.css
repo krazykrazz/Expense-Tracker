@@ -216,11 +216,23 @@
   margin-left: 4px;
 }
 
-/* Place cell with people indicator */
+/* Place cell with people indicator and invoice indicator */
 .place-cell {
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+.expense-indicators {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* Invoice filter specific styling */
+.filter-select.invoice-filter {
+  min-width: 140px;
 }
 
 /* People indicator styles */

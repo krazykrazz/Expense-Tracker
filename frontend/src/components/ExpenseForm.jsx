@@ -6,6 +6,8 @@ import { fetchCategorySuggestion } from '../services/categorySuggestionApi';
 import { getPeople } from '../services/peopleApi';
 import { createExpense } from '../services/expenseApi';
 import PersonAllocationModal from './PersonAllocationModal';
+import InvoiceUpload from './InvoiceUpload';
+import InvoicePDFViewer from './InvoicePDFViewer';
 import './ExpenseForm.css';
 
 // localStorage key for payment method persistence (Requirements 5.1, 5.3)
@@ -43,14 +45,16 @@ const saveLastPaymentMethod = (method) => {
   }
 };
 
-const ExpenseForm = ({ onExpenseAdded, people: propPeople }) => {
+const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => {
+  const isEditing = !!expense;
+  
   const [formData, setFormData] = useState({
-    date: getTodayLocalDate(),
-    place: '',
-    notes: '',
-    amount: '',
-    type: 'Other',
-    method: getLastPaymentMethod() // Load last used payment method (Requirements 5.1)
+    date: expense?.date || getTodayLocalDate(),
+    place: expense?.place || '',
+    notes: expense?.notes || '',
+    amount: expense?.amount?.toString() || '',
+    type: expense?.type || 'Other',
+    method: expense?.method || getLastPaymentMethod() // Load last used payment method (Requirements 5.1)
   });
 
   const [message, setMessage] = useState({ text: '', type: '' });
@@ -65,8 +69,13 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople }) => {
   // Use prop people if provided, otherwise fetch locally
   const [localPeople, setLocalPeople] = useState([]);
   const people = propPeople || localPeople;
-  const [selectedPeople, setSelectedPeople] = useState([]);
+  const [selectedPeople, setSelectedPeople] = useState(expense?.people || []);
   const [showPersonAllocation, setShowPersonAllocation] = useState(false);
+
+  // Invoice state for medical expenses (Requirements 1.1, 1.2, 1.3, 1.5, 2.1, 2.2, 2.3, 2.4, 2.5)
+  const [invoiceInfo, setInvoiceInfo] = useState(expense?.invoice || null);
+  const [invoiceFile, setInvoiceFile] = useState(null);
+  const [showInvoiceViewer, setShowInvoiceViewer] = useState(false);
 
   // Refs for focus management and form state
   const placeInputRef = useRef(null);
@@ -74,7 +83,7 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople }) => {
   const isSubmittingRef = useRef(false); // Track if form is being submitted to prevent blur handler interference
   const justSelectedFromDropdownRef = useRef(false); // Track if we just selected from dropdown to prevent blur handler
 
-  // Fetch categories, places, and people on component mount
+  // Fetch categories, places, people, and invoice data on component mount
   useEffect(() => {
     let isMounted = true;
 
@@ -123,19 +132,37 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople }) => {
       }
     };
 
+    const fetchInvoiceData = async () => {
+      // Fetch invoice metadata if editing a medical expense
+      if (isEditing && expense?.id && expense?.type === 'Tax - Medical') {
+        try {
+          const { getInvoiceMetadata } = await import('../services/invoiceApi');
+          const invoiceData = await getInvoiceMetadata(expense.id);
+          if (isMounted && invoiceData) {
+            setInvoiceInfo(invoiceData);
+          }
+        } catch (error) {
+          if (isMounted) {
+            console.error('Failed to fetch invoice data:', error);
+          }
+        }
+      }
+    };
+
     fetchCategories();
     fetchPlaces();
     fetchPeopleData();
+    fetchInvoiceData();
 
     // Set initial focus to Place field (Requirements 1.1)
-    if (placeInputRef.current) {
+    if (placeInputRef.current && !isEditing) {
       placeInputRef.current.focus();
     }
 
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [isEditing, expense?.id, expense?.type]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -166,6 +193,9 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople }) => {
       // Clear people selection when changing away from medical expenses
       if (value !== 'Tax - Medical') {
         setSelectedPeople([]);
+        // Clear invoice when changing away from medical expenses
+        setInvoiceInfo(null);
+        setInvoiceFile(null);
       }
     }
   };
@@ -188,6 +218,42 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople }) => {
 
   // Check if current expense type is medical
   const isMedicalExpense = formData.type === 'Tax - Medical';
+
+  // Handle invoice upload success (Requirements 1.1, 1.2, 2.1)
+  const handleInvoiceUploaded = (invoice) => {
+    setInvoiceInfo(invoice);
+    setInvoiceFile(null); // Clear file state after successful upload
+    setMessage({ text: 'Invoice uploaded successfully!', type: 'success' });
+    
+    // Clear success message after 3 seconds
+    setTimeout(() => {
+      setMessage({ text: '', type: '' });
+    }, 3000);
+  };
+
+  // Handle invoice deletion (Requirements 2.3, 2.4)
+  const handleInvoiceDeleted = () => {
+    setInvoiceInfo(null);
+    setInvoiceFile(null);
+    setMessage({ text: 'Invoice deleted successfully!', type: 'success' });
+    
+    // Clear success message after 3 seconds
+    setTimeout(() => {
+      setMessage({ text: '', type: '' });
+    }, 3000);
+  };
+
+  // Handle invoice file selection for new expenses (Requirements 1.1, 1.5)
+  const handleInvoiceFileSelected = (file) => {
+    setInvoiceFile(file);
+  };
+
+  // Handle viewing invoice (Requirements 3.1, 3.2, 3.3, 3.4, 3.5)
+  const handleViewInvoice = () => {
+    if (invoiceInfo && expense?.id) {
+      window.open(API_ENDPOINTS.INVOICE_BY_EXPENSE(expense.id), '_blank');
+    }
+  };
 
   // Fetch category suggestion for a place and auto-select if available (Requirements 1.3, 1.4, 2.1, 2.3)
   const fetchAndApplyCategorySuggestion = async (place) => {
@@ -336,34 +402,81 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople }) => {
         }
       }
 
-      // Create the expense using the API service
-      const newExpense = await createExpense(formData, peopleAllocations);
+      let newExpense;
+      
+      if (isEditing) {
+        // Update existing expense
+        const { updateExpense } = await import('../services/expenseApi');
+        newExpense = await updateExpense(expense.id, formData, peopleAllocations);
+      } else {
+        // Create new expense
+        newExpense = await createExpense(formData, peopleAllocations);
+      }
+
+      // Handle invoice upload for new expenses or when invoice file is selected
+      if (isMedicalExpense && invoiceFile && newExpense.id) {
+        try {
+          const formData = new FormData();
+          formData.append('invoice', invoiceFile);
+          formData.append('expenseId', newExpense.id.toString());
+
+          const response = await fetch(API_ENDPOINTS.INVOICE_UPLOAD, {
+            method: 'POST',
+            body: formData
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || 'Invoice upload failed');
+          }
+
+          const invoiceResult = await response.json();
+          if (invoiceResult.success && invoiceResult.invoice) {
+            setInvoiceInfo(invoiceResult.invoice);
+            newExpense.invoice = invoiceResult.invoice;
+            newExpense.hasInvoice = true;
+          }
+        } catch (invoiceError) {
+          console.error('Invoice upload failed:', invoiceError);
+          // Don't fail the entire form submission for invoice upload errors
+          setMessage({ 
+            text: `Expense ${isEditing ? 'updated' : 'added'} successfully, but invoice upload failed: ${invoiceError.message}`, 
+            type: 'warning' 
+          });
+        }
+      }
       
       // Save payment method for next expense entry (Requirements 5.3)
-      saveLastPaymentMethod(formData.method);
+      if (!isEditing) {
+        saveLastPaymentMethod(formData.method);
+      }
       
       setMessage({ 
-        text: 'Expense added successfully!', 
+        text: `Expense ${isEditing ? 'updated' : 'added'} successfully!`, 
         type: 'success' 
       });
       
-      // Clear form and reset suggestion indicator, but keep the last used payment method (Requirements 5.1)
-      const lastMethod = formData.method;
-      
-      // Reset suggestion indicator first to prevent any pending blur handlers from triggering
-      setIsCategorySuggested(false);
-      
-      setFormData({
-        date: getTodayLocalDate(),
-        place: '',
-        notes: '',
-        amount: '',
-        type: 'Other',
-        method: lastMethod // Pre-select last used payment method for next entry
-      });
+      if (!isEditing) {
+        // Clear form and reset suggestion indicator, but keep the last used payment method (Requirements 5.1)
+        const lastMethod = formData.method;
+        
+        // Reset suggestion indicator first to prevent any pending blur handlers from triggering
+        setIsCategorySuggested(false);
+        
+        setFormData({
+          date: getTodayLocalDate(),
+          place: '',
+          notes: '',
+          amount: '',
+          type: 'Other',
+          method: lastMethod // Pre-select last used payment method for next entry
+        });
 
-      // Clear people selection
-      setSelectedPeople([]);
+        // Clear people selection and invoice state
+        setSelectedPeople([]);
+        setInvoiceInfo(null);
+        setInvoiceFile(null);
+      }
 
       // Notify parent component
       if (onExpenseAdded) {
@@ -388,7 +501,7 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople }) => {
 
   return (
     <div className="expense-form-container">
-      <h2>Add New Expense</h2>
+      <h2>{isEditing ? 'Edit Expense' : 'Add New Expense'}</h2>
       <form onSubmit={handleSubmit} className="expense-form">
         {/* Row 1: Date and Place - Place has initial focus (Requirements 1.1, 3.2) */}
         <div className="form-row">
@@ -528,6 +641,89 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople }) => {
           </div>
         )}
 
+        {/* Invoice Upload for Medical Expenses (Requirements 1.1, 1.2, 1.3, 1.5, 2.1, 2.2, 2.3, 2.4, 2.5) */}
+        {isMedicalExpense && (
+          <div className="form-group invoice-section">
+            <label htmlFor="invoice">Invoice Attachment</label>
+            <div className="invoice-upload-wrapper">
+              {isEditing ? (
+                // For editing existing expenses, use full InvoiceUpload component
+                <InvoiceUpload
+                  expenseId={expense?.id}
+                  existingInvoice={invoiceInfo}
+                  onInvoiceUploaded={handleInvoiceUploaded}
+                  onInvoiceDeleted={handleInvoiceDeleted}
+                  disabled={isSubmitting}
+                />
+              ) : (
+                // For new expenses, show file selection only
+                <div className="invoice-new-expense">
+                  <div className="invoice-file-input">
+                    <input
+                      type="file"
+                      id="invoice-file"
+                      accept=".pdf,application/pdf"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          // Validate file
+                          const MAX_SIZE = 10 * 1024 * 1024; // 10MB
+                          if (file.size > MAX_SIZE) {
+                            setMessage({ 
+                              text: `File size (${(file.size / 1024 / 1024).toFixed(1)}MB) exceeds the 10MB limit`, 
+                              type: 'error' 
+                            });
+                            e.target.value = '';
+                            return;
+                          }
+                          if (file.type !== 'application/pdf') {
+                            setMessage({ 
+                              text: 'Only PDF files are allowed', 
+                              type: 'error' 
+                            });
+                            e.target.value = '';
+                            return;
+                          }
+                          setInvoiceFile(file);
+                          setMessage({ text: '', type: '' });
+                        }
+                      }}
+                      disabled={isSubmitting}
+                    />
+                    <label htmlFor="invoice-file" className="file-input-label">
+                      {invoiceFile ? (
+                        <span className="file-selected">
+                          📄 {invoiceFile.name} ({(invoiceFile.size / 1024 / 1024).toFixed(1)}MB)
+                        </span>
+                      ) : (
+                        <span className="file-placeholder">
+                          📄 Select PDF invoice (optional)
+                        </span>
+                      )}
+                    </label>
+                    {invoiceFile && (
+                      <button
+                        type="button"
+                        className="clear-file-btn"
+                        onClick={() => {
+                          setInvoiceFile(null);
+                          document.getElementById('invoice-file').value = '';
+                        }}
+                        disabled={isSubmitting}
+                      >
+                        ✕ Remove
+                      </button>
+                    )}
+                  </div>
+                  <div className="invoice-note">
+                    <small>PDF files only • Max 10MB • You can also add an invoice after creating the expense</small>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Row 4: Notes (Requirements 3.2) */}
         <div className="form-group">
           <label htmlFor="notes">Notes</label>
@@ -549,7 +745,7 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople }) => {
         )}
 
         <button type="submit" disabled={isSubmitting} className="submit-button">
-          {isSubmitting ? 'Adding...' : 'Add Expense'}
+          {isSubmitting ? (isEditing ? 'Updating...' : 'Adding...') : (isEditing ? 'Update Expense' : 'Add Expense')}
         </button>
       </form>
 

@@ -800,11 +800,27 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v4.11.2</div>
+                <div className="changelog-date">December 31, 2025</div>
+                <ul className="changelog-items">
+                  <li>Fixed floating add button to remain visible when navigating to future months</li>
+                  <li>Button visibility now based on current month expense count, not selected month</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
+                <div className="changelog-version">v4.11.1</div>
+                <div className="changelog-date">December 31, 2025</div>
+                <ul className="changelog-items">
+                  <li>Fixed floating add button disappearing when switching months</li>
+                  <li>Improved component re-rendering reliability for month navigation</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v4.11.0</div>
                 <div className="changelog-date">December 31, 2025</div>
                 <ul className="changelog-items">
                   <li>Sticky Summary Scrolling: Summary panel now scrolls independently from expense list for better usability</li>
-                  <li>Floating Add Button: Quick access to add expenses when viewing long lists (appears with >10 expenses)</li>
+                  <li>Floating Add Button: Quick access to add expenses when viewing long lists (appears with &gt;10 expenses)</li>
                   <li>Enhanced responsive design with accessibility features and smooth animations</li>
                 </ul>
               </div>

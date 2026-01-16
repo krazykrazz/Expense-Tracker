@@ -229,18 +229,28 @@ class ExpenseRepository {
   /**
    * Get tax-deductible expenses for a specific year
    * @param {number} year - Year
-   * @returns {Promise<Array>} Array of tax-deductible expense objects
+   * @returns {Promise<Array>} Array of tax-deductible expense objects with invoice information
    */
   async getTaxDeductibleExpenses(year) {
     const db = await getDatabase();
     
     return new Promise((resolve, reject) => {
       const sql = `
-        SELECT id, date, place, amount, notes, type, method, week
-        FROM expenses
-        WHERE strftime('%Y', date) = ?
-          AND type IN ('Tax - Medical', 'Tax - Donation')
-        ORDER BY date ASC
+        SELECT 
+          e.id, e.date, e.place, e.amount, e.notes, e.type, e.method, e.week,
+          i.id as invoice_id,
+          i.filename as invoice_filename,
+          i.original_filename as invoice_original_filename,
+          i.file_path as invoice_file_path,
+          i.file_size as invoice_file_size,
+          i.mime_type as invoice_mime_type,
+          i.upload_date as invoice_upload_date,
+          CASE WHEN i.id IS NOT NULL THEN 1 ELSE 0 END as has_invoice
+        FROM expenses e
+        LEFT JOIN expense_invoices i ON e.id = i.expense_id
+        WHERE strftime('%Y', e.date) = ?
+          AND e.type IN ('Tax - Medical', 'Tax - Donation')
+        ORDER BY e.date ASC
       `;
       
       const params = [year.toString()];
@@ -250,7 +260,39 @@ class ExpenseRepository {
           reject(err);
           return;
         }
-        resolve(rows || []);
+        
+        // Transform the results to include invoice information
+        const expenses = (rows || []).map(row => {
+          const expense = {
+            id: row.id,
+            date: row.date,
+            place: row.place,
+            amount: row.amount,
+            notes: row.notes,
+            type: row.type,
+            method: row.method,
+            week: row.week,
+            hasInvoice: Boolean(row.has_invoice)
+          };
+          
+          // Add invoice information if present
+          if (row.invoice_id) {
+            expense.invoice = {
+              id: row.invoice_id,
+              expenseId: row.id,
+              filename: row.invoice_filename,
+              originalFilename: row.invoice_original_filename,
+              filePath: row.invoice_file_path,
+              fileSize: row.invoice_file_size,
+              mimeType: row.invoice_mime_type,
+              uploadDate: row.invoice_upload_date
+            };
+          }
+          
+          return expense;
+        });
+        
+        resolve(expenses);
       });
     });
   }

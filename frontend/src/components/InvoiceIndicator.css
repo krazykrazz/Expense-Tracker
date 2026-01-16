@@ -1,0 +1,314 @@
+/* InvoiceIndicator Component Styles */
+
+.invoice-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  vertical-align: middle;
+}
+
+/* Size Variants */
+.invoice-indicator.small {
+  font-size: 12px;
+  padding: 2px 4px;
+}
+
+.invoice-indicator.small .invoice-icon {
+  font-size: 14px;
+}
+
+.invoice-indicator.medium {
+  font-size: 14px;
+  padding: 4px 6px;
+}
+
+.invoice-indicator.medium .invoice-icon {
+  font-size: 16px;
+}
+
+.invoice-indicator.large {
+  font-size: 16px;
+  padding: 6px 8px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.invoice-indicator.large .invoice-icon {
+  font-size: 18px;
+}
+
+/* State Variants */
+.invoice-indicator.has-invoice {
+  background: rgba(40, 167, 69, 0.1);
+  color: #28a745;
+  border: 1px solid rgba(40, 167, 69, 0.2);
+}
+
+.invoice-indicator.no-invoice {
+  background: rgba(108, 117, 125, 0.1);
+  color: #6c757d;
+  border: 1px solid rgba(108, 117, 125, 0.2);
+}
+
+/* Clickable State */
+.invoice-indicator.clickable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.invoice-indicator.clickable:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.invoice-indicator.clickable.has-invoice:hover {
+  background: rgba(40, 167, 69, 0.15);
+  border-color: rgba(40, 167, 69, 0.3);
+}
+
+.invoice-indicator.clickable.no-invoice:hover {
+  background: rgba(108, 117, 125, 0.15);
+  border-color: rgba(108, 117, 125, 0.3);
+}
+
+.invoice-indicator.clickable:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* Focus Styles for Accessibility */
+.invoice-indicator.clickable:focus {
+  outline: 2px solid #007bff;
+  outline-offset: 2px;
+}
+
+/* Icon Styles */
+.invoice-icon {
+  display: inline-block;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.invoice-indicator.has-invoice .invoice-icon {
+  filter: grayscale(0%);
+}
+
+.invoice-indicator.no-invoice .invoice-icon {
+  filter: grayscale(100%) opacity(0.6);
+}
+
+/* Text Styles */
+.invoice-text {
+  font-weight: 500;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Large Size Details */
+.invoice-details {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+
+.invoice-filename {
+  font-weight: 500;
+  font-size: 13px;
+  color: inherit;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 200px;
+}
+
+.invoice-metadata {
+  font-size: 11px;
+  color: #666;
+  font-weight: normal;
+}
+
+.invoice-indicator.has-invoice .invoice-metadata {
+  color: #155724;
+}
+
+.invoice-indicator.no-invoice .invoice-metadata {
+  color: #6c757d;
+}
+
+/* Status Badge Variant */
+.invoice-indicator.badge {
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 2px 8px;
+}
+
+.invoice-indicator.badge .invoice-icon {
+  font-size: 12px;
+}
+
+/* List Item Variant */
+.invoice-indicator.list-item {
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: inherit;
+}
+
+.invoice-indicator.list-item.has-invoice {
+  color: #28a745;
+}
+
+.invoice-indicator.list-item.no-invoice {
+  color: #6c757d;
+}
+
+.invoice-indicator.list-item:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.invoice-indicator.list-item.clickable:hover .invoice-icon {
+  transform: scale(1.1);
+}
+
+/* Tooltip Enhancement */
+.invoice-indicator[title] {
+  position: relative;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  .invoice-indicator.large {
+    font-size: 14px;
+    padding: 4px 6px;
+  }
+
+  .invoice-indicator.large .invoice-icon {
+    font-size: 16px;
+  }
+
+  .invoice-filename {
+    max-width: 150px;
+    font-size: 12px;
+  }
+
+  .invoice-metadata {
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .invoice-indicator.large .invoice-details {
+    display: none;
+  }
+
+  .invoice-indicator.medium {
+    font-size: 12px;
+    padding: 3px 5px;
+  }
+
+  .invoice-indicator.small {
+    font-size: 11px;
+    padding: 2px 3px;
+  }
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+  .invoice-indicator.has-invoice {
+    background: #d4edda;
+    border-color: #28a745;
+    color: #155724;
+  }
+
+  .invoice-indicator.no-invoice {
+    background: #f8f9fa;
+    border-color: #6c757d;
+    color: #495057;
+  }
+
+  .invoice-indicator.clickable:focus {
+    outline-width: 3px;
+  }
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  .invoice-indicator {
+    transition: none;
+  }
+
+  .invoice-indicator.clickable:hover {
+    transform: none;
+  }
+
+  .invoice-indicator.list-item.clickable:hover .invoice-icon {
+    transform: none;
+  }
+}
+
+/* Print Styles */
+@media print {
+  .invoice-indicator {
+    background: transparent !important;
+    border: 1px solid #000 !important;
+    color: #000 !important;
+  }
+
+  .invoice-indicator.clickable {
+    cursor: default;
+  }
+
+  .invoice-indicator::after {
+    content: attr(title);
+    font-size: 8px;
+    display: block;
+    margin-top: 2px;
+  }
+}
+
+/* Animation for Status Changes */
+@keyframes invoice-added {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.invoice-indicator.animate-added {
+  animation: invoice-added 0.3s ease-out;
+}
+
+/* Loading State */
+.invoice-indicator.loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.invoice-indicator.loading .invoice-icon {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}

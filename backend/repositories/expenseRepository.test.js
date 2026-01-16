@@ -186,8 +186,67 @@ describe('expenseRepository', () => {
   describe('getTaxDeductibleExpenses', () => {
     it('should return tax deductible expenses for year', async () => {
       const mockExpenses = [
-        { id: 1, amount: 100.00, type: 'Tax - Medical' },
-        { id: 2, amount: 50.00, type: 'Tax - Donation' }
+        { 
+          id: 1, 
+          date: '2024-01-15',
+          place: 'Medical Clinic',
+          amount: 100.00, 
+          notes: 'Checkup',
+          type: 'Tax - Medical',
+          method: 'Debit',
+          week: 3,
+          invoice_id: null,
+          invoice_filename: null,
+          invoice_original_filename: null,
+          invoice_file_path: null,
+          invoice_file_size: null,
+          invoice_mime_type: null,
+          invoice_upload_date: null,
+          has_invoice: 0
+        },
+        { 
+          id: 2, 
+          date: '2024-02-20',
+          place: 'Charity Org',
+          amount: 50.00, 
+          notes: 'Donation',
+          type: 'Tax - Donation',
+          method: 'Credit',
+          week: 3,
+          invoice_id: null,
+          invoice_filename: null,
+          invoice_original_filename: null,
+          invoice_file_path: null,
+          invoice_file_size: null,
+          invoice_mime_type: null,
+          invoice_upload_date: null,
+          has_invoice: 0
+        }
+      ];
+      
+      const expectedResult = [
+        {
+          id: 1,
+          date: '2024-01-15',
+          place: 'Medical Clinic',
+          amount: 100.00,
+          notes: 'Checkup',
+          type: 'Tax - Medical',
+          method: 'Debit',
+          week: 3,
+          hasInvoice: false
+        },
+        {
+          id: 2,
+          date: '2024-02-20',
+          place: 'Charity Org',
+          amount: 50.00,
+          notes: 'Donation',
+          type: 'Tax - Donation',
+          method: 'Credit',
+          week: 3,
+          hasInvoice: false
+        }
       ];
       
       mockDb.all.mockImplementation((sql, params, callback) => {
@@ -197,7 +256,7 @@ describe('expenseRepository', () => {
       const result = await expenseRepository.getTaxDeductibleExpenses(2024);
 
       expect(mockDb.all).toHaveBeenCalled();
-      expect(result).toEqual(mockExpenses);
+      expect(result).toEqual(expectedResult);
     });
   });
 

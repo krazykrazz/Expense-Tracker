@@ -4,6 +4,7 @@ const path = require('path');
 const { getDatabasePath, ensureDirectories } = require('../config/paths');
 const { CATEGORIES, BUDGETABLE_CATEGORIES } = require('../utils/categories');
 const logger = require('../config/logger');
+const { initializeInvoiceStorage } = require('../scripts/initializeInvoiceStorage');
 
 // Database file path - use dynamic path from config
 const DB_PATH = getDatabasePath();
@@ -51,6 +52,15 @@ function initializeDatabase() {
     try {
       // Ensure /config directory structure exists before initializing database
       await ensureDirectories();
+      
+      // Initialize invoice storage infrastructure
+      try {
+        await initializeInvoiceStorage();
+        logger.info('Invoice storage initialized successfully');
+      } catch (invoiceError) {
+        logger.warn('Invoice storage initialization failed (non-critical):', invoiceError);
+        // Don't fail database initialization if invoice storage fails
+      }
       
       // Auto-migrate old database if it exists and new location is empty
       await migrateOldDatabase();

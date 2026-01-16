@@ -72,13 +72,12 @@ describe('Invoice Service - Property-Based Tests - File Upload Validation', () =
             
             if (shouldBeValid) {
               // For valid PDFs, validation might still fail due to content, but type should be OK
-              expect(validation).toBeDefined();
+              return validation !== undefined && validation !== null;
             } else {
               // For invalid files, validation should fail
-              expect(validation.isValid).toBe(false);
+              return validation.isValid === false;
             }
             
-            return true; // Property holds
           } finally {
             // Cleanup temp file
             try {
@@ -124,16 +123,17 @@ describe('Invoice Service - Property-Based Tests - File Upload Validation', () =
             // Property: Files over 10MB should be rejected
             const maxSize = 10 * 1024 * 1024; // 10MB
             if (fileSize > maxSize) {
-              expect(validation.isValid).toBe(false);
-              expect(validation.errors.some(error => 
+              const hasSizeError = validation.errors.some(error => 
                 error.toLowerCase().includes('size') || error.toLowerCase().includes('large')
-              )).toBe(true);
+              );
+              return validation.isValid === false && hasSizeError;
             } else if (fileSize === 0) {
               // Empty files should also be rejected
-              expect(validation.isValid).toBe(false);
+              return validation.isValid === false;
             }
             
-            return true; // Property holds
+            // For valid sizes, just return true
+            return true;
           } finally {
             try {
               await fs.promises.unlink(tempFilePath);
@@ -206,20 +206,21 @@ describe('Invoice Service - Property-Based Tests - File Upload Validation', () =
             const validation = await fileValidation.validateFile(mockFile, tempFilePath);
             
             // Property: Validation result should always have isValid boolean
-            expect(typeof validation.isValid).toBe('boolean');
+            if (typeof validation.isValid !== 'boolean') return false;
             
             // Property: If invalid, should have error messages
             if (!validation.isValid) {
-              expect(Array.isArray(validation.errors)).toBe(true);
-              expect(validation.errors.length).toBeGreaterThan(0);
-              expect(validation.errors.every(error => typeof error === 'string')).toBe(true);
+              if (!Array.isArray(validation.errors)) return false;
+              if (validation.errors.length === 0) return false;
+              if (!validation.errors.every(error => typeof error === 'string')) return false;
             }
             
             // Property: Warnings should be array if present
             if (validation.warnings) {
-              expect(Array.isArray(validation.warnings)).toBe(true);
+              if (!Array.isArray(validation.warnings)) return false;
             }
             
+            return true;
           } finally {
             try {
               await fs.promises.unlink(tempFilePath);
@@ -260,8 +261,7 @@ describe('Invoice Service - Property-Based Tests - File Upload Validation', () =
             
             // Property: Valid PDF files should pass basic validation
             // Note: Content validation might still fail, but type/size validation should pass
-            expect(validation).toBeDefined();
-            expect(typeof validation.isValid).toBe('boolean');
+            if (!validation || typeof validation.isValid !== 'boolean') return false;
             
             // If it fails, it should be due to content, not type/size
             if (!validation.isValid) {
@@ -276,9 +276,10 @@ describe('Invoice Service - Property-Based Tests - File Upload Validation', () =
               );
               
               // Should not fail on type or size for valid inputs
-              expect(hasTypeError || hasSizeError).toBe(false);
+              return !(hasTypeError || hasSizeError);
             }
             
+            return true;
           } finally {
             try {
               await fs.promises.unlink(tempFilePath);

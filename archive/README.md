@@ -144,9 +144,28 @@ Copy-Item archive/[subfolder]/[filename] ./
   - **NEW:** Created utils/ folder and moved Python utilities: validate_csv.py, xls_to_csv.py
   - .kiro/specs/ now contains only active specs: budget-tracking-alerts, medical-expense-people-tracking, merchant-analytics
 
+- **2026-01-16:** Post v4.12.0 final spec cleanup (11 items)
+  - Archived 6 remaining completed spec directories from .kiro/specs/ to archive/specs/:
+    - budget-alert-notifications (v4.10.0)
+    - budget-tracking-alerts (v3.7.0)
+    - medical-expense-invoices (v4.12.0)
+    - medical-expense-people-tracking (v4.6.0)
+    - merchant-analytics (v4.7.0 + v4.9.0)
+    - sticky-summary-scrolling (v4.11.0)
+  - Moved 5 root directory reports to archive/reports/:
+    - CODE_ANALYSIS_REPORT.md → CODE_ANALYSIS_REPORT_2025-12-24.md
+    - CODE_REVIEW_INVOICE_FEATURE.md → CODE_REVIEW_INVOICE_FEATURE_2026-01-15.md
+    - TEST_FIXES_SUMMARY.md → TEST_FIXES_SUMMARY_2025-12-23.md
+    - PROJECT_CLEANUP_SUMMARY_2025-12-16.md
+    - OPTIMIZATION_COMPLETION_SUMMARY.md (deleted - duplicate)
+  - Deleted empty/incomplete spec: merchant-analytics-fixed-expenses
+  - **Result:** .kiro/specs/ now contains ONLY metadata files (CHANGELOG.md, SPEC_AUDIT_REPORT.md)
+  - **Total archived specs:** 24 complete feature specifications (v3.0.0 through v4.12.0)
+  - Root directory now extremely clean with only active documentation
+
 ## Next Review
 
-**Scheduled:** 2026-06-16 (6 months from last cleanup)
+**Scheduled:** 2026-07-16 (6 months from last cleanup)
 
 **Actions to consider:**
 - Delete files older than 12 months if not referenced

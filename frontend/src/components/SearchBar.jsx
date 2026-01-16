@@ -8,6 +8,7 @@ import './SearchBar.css';
  * - Text search (searches place and notes fields)
  * - Category filter dropdown
  * - Payment method filter dropdown
+ * - Year filter dropdown (for scoping global search)
  * - Clear all filters button
  * 
  * Features:
@@ -21,9 +22,11 @@ import './SearchBar.css';
  * @param {Function} props.onSearchChange - Callback when search text changes (debounced)
  * @param {Function} props.onFilterTypeChange - Callback when category filter changes
  * @param {Function} props.onFilterMethodChange - Callback when payment method filter changes
+ * @param {Function} props.onFilterYearChange - Callback when year filter changes
  * @param {Function} props.onClearFilters - Callback to clear all filters
  * @param {string} props.filterType - Currently selected category filter
  * @param {string} props.filterMethod - Currently selected payment method filter
+ * @param {string} props.filterYear - Currently selected year filter
  * @param {Array<string>} props.categories - Available expense categories
  * @param {Array<string>} props.paymentMethods - Available payment methods
  * @param {boolean} props.loading - Whether expenses are currently loading
@@ -32,10 +35,12 @@ const SearchBar = memo(({
   onSearchChange, 
   onFilterTypeChange, 
   onFilterMethodChange,
+  onFilterYearChange,
   onClearFilters,
   searchText: externalSearchText = '',
   filterType = '', 
   filterMethod = '',
+  filterYear = '',
   categories = [], 
   paymentMethods = [],
   loading = false,
@@ -123,6 +128,20 @@ const SearchBar = memo(({
     }
   };
 
+  const handleFilterYearChange = (e) => {
+    const value = e.target.value;
+    if (onFilterYearChange) {
+      onFilterYearChange(value);
+    }
+
+    // Announce filter change
+    if (value) {
+      setAnnouncement(`Year filter applied: ${value}`);
+    } else {
+      setAnnouncement('Year filter cleared');
+    }
+  };
+
   /**
    * Clears all filters and returns to monthly view
    * 
@@ -166,7 +185,14 @@ const SearchBar = memo(({
   }, [announcement]);
 
   // Check if any filter is active
-  const hasActiveFilters = searchText.trim().length > 0 || filterType || filterMethod;
+  const hasActiveFilters = searchText.trim().length > 0 || filterType || filterMethod || filterYear;
+
+  // Generate year options (current year and past 10 years)
+  const currentYear = new Date().getFullYear();
+  const yearOptions = [];
+  for (let i = 0; i < 10; i++) {
+    yearOptions.push(currentYear - i);
+  }
 
   return (
     <div className={`search-bar-container ${loading ? 'loading' : ''}`} role="search">
@@ -265,6 +291,31 @@ const SearchBar = memo(({
               </select>
               <span id="method-help" className="sr-only">
                 Select a payment method to filter expenses globally
+              </span>
+            </div>
+
+            <div className="filter-dropdown-wrapper">
+              <label htmlFor="year-filter" className="sr-only">
+                Filter by year
+              </label>
+              <select
+                id="year-filter"
+                className={`filter-dropdown ${filterYear ? 'active-filter' : ''}`}
+                value={filterYear}
+                onChange={handleFilterYearChange}
+                aria-label="Filter by year"
+                aria-describedby="year-help"
+                title="Filter by year"
+              >
+                <option value="">All Years</option>
+                {yearOptions.map(year => (
+                  <option key={year} value={year}>
+                    {year}
+                  </option>
+                ))}
+              </select>
+              <span id="year-help" className="sr-only">
+                Select a year to scope global search
               </span>
             </div>
 

@@ -38,6 +38,7 @@ function App() {
   const [showMerchantAnalytics, setShowMerchantAnalytics] = useState(false);
   const [filterType, setFilterType] = useState('');
   const [filterMethod, setFilterMethod] = useState('');
+  const [filterYear, setFilterYear] = useState(''); // Year filter for global search
   const [versionInfo, setVersionInfo] = useState(null);
   
   // Budget alert refresh trigger for real-time updates
@@ -58,10 +59,11 @@ function App() {
    * - searchText: User has entered text to search place/notes
    * - filterType: User has selected a category filter
    * - filterMethod: User has selected a payment method filter
+   * - filterYear: User has selected a year filter
    * 
    * This allows users to filter expenses globally without requiring text search.
    */
-  const isGlobalView = searchText.trim().length > 0 || filterType || filterMethod;
+  const isGlobalView = searchText.trim().length > 0 || filterType || filterMethod || filterYear;
 
   // Fetch version info on mount
   useEffect(() => {
@@ -164,12 +166,13 @@ function App() {
    * Expense Fetching Effect
    * 
    * Fetches expenses from the API based on the current view mode:
-   * - Global View: Fetches ALL expenses (no date filtering) when any filter is active
+   * - Global View: Fetches ALL expenses (or year-filtered) when any filter is active
    * - Monthly View: Fetches only expenses for the selected year/month
    * 
    * Dependencies:
    * - selectedYear, selectedMonth: Triggers refetch when user changes month
    * - isGlobalView: Triggers refetch when switching between global/monthly modes
+   * - filterYear: Triggers refetch when year filter changes
    * 
    * The API endpoint changes based on view mode to optimize data transfer.
    */
@@ -181,8 +184,12 @@ function App() {
       try {
         let url;
         if (isGlobalView) {
-          // Global view - fetch all expenses when any filter is active
-          url = `${API_ENDPOINTS.EXPENSES}`;
+          // Global view - fetch all expenses or year-filtered expenses
+          if (filterYear) {
+            url = `${API_ENDPOINTS.EXPENSES}?year=${filterYear}`;
+          } else {
+            url = `${API_ENDPOINTS.EXPENSES}`;
+          }
         } else {
           // Monthly view - fetch month-specific expenses
           url = `${API_ENDPOINTS.EXPENSES}?year=${selectedYear}&month=${selectedMonth}`;
@@ -230,7 +237,7 @@ function App() {
     };
 
     fetchExpenses();
-  }, [selectedYear, selectedMonth, isGlobalView]);
+  }, [selectedYear, selectedMonth, isGlobalView, filterYear]);
 
   // Listen for expensesUpdated event (e.g., from place name standardization)
   useEffect(() => {
@@ -244,7 +251,11 @@ function App() {
         try {
           let url;
           if (isGlobalView) {
-            url = `${API_ENDPOINTS.EXPENSES}`;
+            if (filterYear) {
+              url = `${API_ENDPOINTS.EXPENSES}?year=${filterYear}`;
+            } else {
+              url = `${API_ENDPOINTS.EXPENSES}`;
+            }
           } else {
             url = `${API_ENDPOINTS.EXPENSES}?year=${selectedYear}&month=${selectedMonth}`;
           }
@@ -361,12 +372,25 @@ function App() {
   }, []);
 
   /**
+   * Filter Year Change Handler
+   * 
+   * Updates the year filter state for global search scoping.
+   * Allows users to filter expenses by a specific year when in global view.
+   * 
+   * @param {string} year - The selected year or empty string for "All Years"
+   */
+  const handleFilterYearChange = useCallback((year) => {
+    setFilterYear(year);
+  }, []);
+
+  /**
    * Clear All Filters Handler
    * 
    * Resets all filter states to their default empty values:
    * - searchText: cleared
    * - filterType: cleared (shows all categories)
    * - filterMethod: cleared (shows all payment methods)
+   * - filterYear: cleared (no year filter)
    * 
    * This returns the application to monthly view mode, showing only
    * expenses for the currently selected month.
@@ -375,6 +399,7 @@ function App() {
     setSearchText('');
     setFilterType('');
     setFilterMethod('');
+    setFilterYear('');
   }, []);
 
   const handleManageBudgets = (category = null) => {
@@ -568,10 +593,12 @@ function App() {
                 onSearchChange={handleSearchChange}
                 onFilterTypeChange={handleFilterTypeChange}
                 onFilterMethodChange={handleFilterMethodChange}
+                onFilterYearChange={handleFilterYearChange}
                 onClearFilters={handleClearFilters}
                 searchText={searchText}
                 filterType={filterType}
                 filterMethod={filterMethod}
+                filterYear={filterYear}
                 categories={CATEGORIES}
                 paymentMethods={PAYMENT_METHODS}
                 loading={loading}
@@ -595,10 +622,12 @@ function App() {
                 onSearchChange={handleSearchChange}
                 onFilterTypeChange={handleFilterTypeChange}
                 onFilterMethodChange={handleFilterMethodChange}
+                onFilterYearChange={handleFilterYearChange}
                 onClearFilters={handleClearFilters}
                 searchText={searchText}
                 filterType={filterType}
                 filterMethod={filterMethod}
+                filterYear={filterYear}
                 categories={CATEGORIES}
                 paymentMethods={PAYMENT_METHODS}
                 loading={loading}

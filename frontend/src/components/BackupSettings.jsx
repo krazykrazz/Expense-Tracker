@@ -800,6 +800,17 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v4.12.0</div>
+                <div className="changelog-date">January 16, 2026</div>
+                <ul className="changelog-items">
+                  <li>Added medical expense invoice attachments feature</li>
+                  <li>Upload, view, and manage PDF invoices for medical expenses</li>
+                  <li>Built-in PDF viewer with zoom, download, and print capabilities</li>
+                  <li>Invoice indicators in expense lists and tax reports</li>
+                  <li>Comprehensive security validation and file management</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v4.11.2</div>
                 <div className="changelog-date">December 31, 2025</div>
                 <ul className="changelog-items">

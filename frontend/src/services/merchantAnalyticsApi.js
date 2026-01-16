@@ -121,7 +121,7 @@ export const getMerchantExpenses = async (name, period = 'year', includeFixedExp
  * @returns {boolean} True if valid
  */
 export const isValidPeriod = (period) => {
-  const validPeriods = ['all', 'year', 'month', '3months'];
+  const validPeriods = ['all', 'year', 'previousYear', 'month', '3months'];
   return validPeriods.includes(period);
 };
 
@@ -144,6 +144,7 @@ export const getPeriodDisplayName = (period) => {
   const periodNames = {
     'all': 'All Time',
     'year': 'This Year',
+    'previousYear': 'Previous Year',
     'month': 'This Month',
     '3months': 'Last 3 Months'
   };

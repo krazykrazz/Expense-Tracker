@@ -124,6 +124,7 @@ const MerchantAnalyticsModal = ({ isOpen, onClose, onViewExpenses }) => {
                   >
                     <option value="all">All Time</option>
                     <option value="year">This Year</option>
+                    <option value="previousYear">Previous Year</option>
                     <option value="month">This Month</option>
                     <option value="3months">Last 3 Months</option>
                   </select>

@@ -4,7 +4,7 @@ const logger = require('../config/logger');
 class MerchantAnalyticsService {
   /**
    * Calculate date range based on period filter
-   * @param {string} period - 'all', 'year', 'month', '3months'
+   * @param {string} period - 'all', 'year', 'previousYear', 'month', '3months'
    * @param {number} year - Current year (optional)
    * @param {number} month - Current month (optional)
    * @returns {Object} Date filter object
@@ -22,6 +22,13 @@ class MerchantAnalyticsService {
         return {
           startDate: `${currentYear}-01-01`,
           endDate: `${currentYear}-12-31`
+        };
+      
+      case 'previousYear':
+        const previousYear = currentYear - 1;
+        return {
+          startDate: `${previousYear}-01-01`,
+          endDate: `${previousYear}-12-31`
         };
       
       case 'month':

@@ -48,9 +48,9 @@
 }
 
 .invoice-indicator.no-invoice {
-  background: rgba(108, 117, 125, 0.1);
-  color: #6c757d;
-  border: 1px solid rgba(108, 117, 125, 0.2);
+  background: rgba(255, 193, 7, 0.1);
+  color: #856404;
+  border: 1px solid rgba(255, 193, 7, 0.3);
 }
 
 /* Clickable State */
@@ -70,8 +70,8 @@
 }
 
 .invoice-indicator.clickable.no-invoice:hover {
-  background: rgba(108, 117, 125, 0.15);
-  border-color: rgba(108, 117, 125, 0.3);
+  background: rgba(255, 193, 7, 0.15);
+  border-color: rgba(255, 193, 7, 0.4);
 }
 
 .invoice-indicator.clickable:active {
@@ -97,7 +97,8 @@
 }
 
 .invoice-indicator.no-invoice .invoice-icon {
-  filter: grayscale(100%) opacity(0.6);
+  filter: none;
+  opacity: 0.8;
 }
 
 /* Text Styles */
@@ -167,7 +168,7 @@
 }
 
 .invoice-indicator.list-item.no-invoice {
-  color: #6c757d;
+  color: #856404;
 }
 
 .invoice-indicator.list-item:hover {

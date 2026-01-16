@@ -112,7 +112,7 @@ const InvoiceIndicator = ({
         aria-label={hasInvoice ? 'View invoice attachment' : 'No invoice attached'}
       >
         <span className="invoice-icon">
-          {hasInvoice ? '📄' : '📄'}
+          {hasInvoice ? '📄' : '📋'}
         </span>
         
         {showText && (

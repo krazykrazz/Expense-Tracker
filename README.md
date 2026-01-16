@@ -6,7 +6,7 @@ A full-stack expense tracking application built with React and Node.js.
 
 ### Expense Management
 - 📝 Add, edit, and delete expenses
-- 🔍 **Global expense filtering** - Filter by category and payment method across all time periods
+- 🔍 **Global expense filtering** - Filter by category, payment method, and year across all time periods
 - 🔎 Search expenses by place or notes globally
 - 📊 View monthly summaries with weekly breakdowns
 - 📅 Filter expenses by month and year
@@ -332,6 +332,7 @@ stop-servers.bat
    - **Text Search**: Search by place or notes
    - **Category Filter**: Filter by expense type (Groceries, Gas, etc.)
    - **Payment Method Filter**: Filter by payment method (Credit Card, Cash, etc.)
+   - **Year Filter**: Scope search to a specific year (current year and past 10 years available)
    - **Combine Filters**: Use multiple filters together for precise results
    - **Clear Filters**: Click "Clear Filters" to return to monthly view
 5. **Monthly Filtering**: Use the dropdowns in the expense list to filter within the current month

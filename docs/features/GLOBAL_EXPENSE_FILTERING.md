@@ -2,17 +2,18 @@
 
 ## Overview
 
-The Global Expense Filtering feature allows you to filter expenses by category and payment method across all time periods, not just the currently selected month. This makes it easy to find and analyze specific types of expenses throughout your entire expense history.
+The Global Expense Filtering feature allows you to filter expenses by category, payment method, and year across all time periods, not just the currently selected month. This makes it easy to find and analyze specific types of expenses throughout your entire expense history.
 
 ## Features
 
 ### Filter Controls
 
-The application provides three types of filters in the search bar:
+The application provides four types of filters in the search bar:
 
 1. **Text Search**: Search for expenses by place name or notes
 2. **Category Filter**: Filter by expense type (Groceries, Dining Out, Gas, etc.)
 3. **Payment Method Filter**: Filter by payment method (Credit Card, Debit Card, Cash, etc.)
+4. **Year Filter**: Scope search to a specific year (current year and past 10 years available)
 
 ### How It Works
 
@@ -21,8 +22,8 @@ The application provides three types of filters in the search bar:
 - Use the month selector to navigate between different months
 
 #### Global View (Automatic)
-- When you apply ANY filter (text search, category, or payment method), the application automatically switches to global view
-- Global view displays expenses from ALL time periods that match your filters
+- When you apply ANY filter (text search, category, payment method, or year), the application automatically switches to global view
+- Global view displays expenses from ALL time periods that match your filters (or from the selected year if year filter is active)
 - You can use filters independently or combine them
 
 ### Filter Combinations
@@ -31,12 +32,23 @@ All filters work together using AND logic:
 
 - **Single Filter**: Apply just one filter to see all matching expenses across all time
   - Example: Select "Groceries" to see all grocery expenses ever recorded
+  - Example: Select "2024" to see all expenses from 2024
   
 - **Multiple Filters**: Combine filters to narrow down results
   - Example: Select "Groceries" + "Credit Card" to see only grocery expenses paid with credit card
+  - Example: Select "2024" + "Groceries" to see only grocery expenses from 2024
   
 - **Text + Filters**: Add text search to filter combinations
-  - Example: Search "Walmart" + "Groceries" to find all Walmart grocery purchases
+  - Example: Search "Walmart" + "Groceries" + "2024" to find all Walmart grocery purchases in 2024
+
+### Year Scoping
+
+The year filter allows you to scope your global search to a specific year:
+
+- **All Years** (default): Shows expenses from all time periods
+- **Specific Year**: Shows only expenses from the selected year (e.g., 2024, 2023, etc.)
+- **Available Years**: Current year and past 10 years are available in the dropdown
+- **Combines with Other Filters**: Year filter works alongside category, payment method, and text search
 
 ### Clearing Filters
 
@@ -57,17 +69,24 @@ All filters work together using AND logic:
 2. View all gas expenses across all time periods
 3. See total count of matching expenses
 
-### Example 2: Track Credit Card Spending
-1. Select "Credit Card" from the payment method dropdown
-2. View all credit card expenses across all time
-3. Optionally add a category filter to narrow down further
+### Example 2: Track Credit Card Spending in 2024
+1. Select "2024" from the year dropdown
+2. Select "Credit Card" from the payment method dropdown
+3. View all credit card expenses from 2024
+4. Optionally add a category filter to narrow down further
 
 ### Example 3: Find Specific Store Purchases
 1. Type store name in the search box (e.g., "Target")
-2. Optionally add category filter (e.g., "Groceries")
-3. View all matching expenses
+2. Optionally add year filter (e.g., "2024")
+3. Optionally add category filter (e.g., "Groceries")
+4. View all matching expenses
 
-### Example 4: Return to Monthly View
+### Example 4: Analyze Previous Year Spending
+1. Select "2023" from the year dropdown
+2. Optionally add category or payment method filters
+3. Review all expenses from the previous year
+
+### Example 5: Return to Monthly View
 1. Click "Clear Filters" button
 2. Application returns to showing current month only
 3. All filters are reset

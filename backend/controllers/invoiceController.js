@@ -152,11 +152,6 @@ async function getInvoice(req, res) {
 
     fileStream.pipe(res);
 
-    logger.debug('Invoice file served:', { 
-      expenseId, 
-      filename: invoiceData.originalFilename 
-    });
-
   } catch (error) {
     logger.error('Get invoice API error:', error);
 
@@ -261,11 +256,6 @@ async function getInvoiceMetadata(req, res) {
         error: 'No invoice found for this expense' 
       });
     }
-
-    logger.debug('Invoice metadata retrieved via API:', { 
-      expenseId, 
-      invoiceId: invoice.id 
-    });
 
     res.status(200).json({
       success: true,

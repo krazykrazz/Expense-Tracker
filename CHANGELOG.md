@@ -11,6 +11,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.12.4] - 2026-01-17
+
+### Fixed
+- **Invoice Upload**: Fixed invoice indicator not updating after upload
+  - ExpenseForm now properly notifies parent component when invoice is uploaded
+  - Invoice indicator color changes immediately from amber to green after successful upload
+- **Invoice Viewing**: Fixed "Failed to load invoice" error after upload
+  - Verified file path construction is correct
+  - Invoice files are now properly accessible after upload
+- **Logging**: Removed excessive debug logs from invoice system
+  - Cleaned up debug logs from invoiceService, fileStorage, fileValidation, uploadMiddleware
+  - Removed debug logs from invoice controller
+  - Production logs are now clean with LOG_LEVEL=info
+
+---
+
 ## [4.12.3] - 2026-01-16
 
 ### Fixed

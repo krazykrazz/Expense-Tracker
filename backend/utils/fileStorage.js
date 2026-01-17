@@ -147,7 +147,6 @@ class FileStorageUtils {
     } catch (error) {
       if (error.code === 'ENOENT') {
         await fs.promises.mkdir(dirPath, { recursive: true, mode: 0o755 });
-        logger.debug('Created directory:', dirPath);
       } else {
         throw error;
       }
@@ -171,8 +170,6 @@ class FileStorageUtils {
       
       // Delete temp file after successful copy
       await fs.promises.unlink(tempPath);
-      
-      logger.debug('Moved file from temp to final location:', { tempPath, finalPath });
     } catch (error) {
       logger.error('Failed to move file from temp:', error);
       // Clean up partial copy if it exists
@@ -192,7 +189,6 @@ class FileStorageUtils {
   async deleteFile(filePath) {
     try {
       await fs.promises.unlink(filePath);
-      logger.debug('Deleted file:', filePath);
     } catch (error) {
       if (error.code !== 'ENOENT') {
         logger.error('Failed to delete file:', error);
@@ -301,7 +297,6 @@ class FileStorageUtils {
               const filePath = path.join(monthPath, file);
               await this.deleteFile(filePath);
               cleanedCount++;
-              logger.debug('Deleted orphaned file:', filePath);
             }
           }
         }

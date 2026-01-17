@@ -87,12 +87,6 @@ class FileValidationUtils {
       }
 
       result.isValid = result.errors.length === 0;
-      
-      if (result.isValid) {
-        logger.debug('File validation passed:', result.fileInfo);
-      } else {
-        logger.warn('File validation failed:', { errors: result.errors, file: result.fileInfo });
-      }
 
       return result;
     } catch (error) {
@@ -157,12 +151,6 @@ class FileValidationUtils {
       }
 
       result.isValid = result.errors.length === 0;
-      
-      if (result.isValid) {
-        logger.debug('File buffer validation passed:', result.fileInfo);
-      } else {
-        logger.warn('File buffer validation failed:', { errors: result.errors, file: result.fileInfo });
-      }
 
       return result;
     } catch (error) {

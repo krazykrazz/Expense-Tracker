@@ -154,12 +154,17 @@ const InvoiceUpload = ({
 
       if (response.success && response.invoice) {
         setUploadProgress(100);
+        
+        // Notify parent component with invoice data
         onInvoiceUploaded(response.invoice);
         
         // Clear file input
         if (fileInputRef.current) {
           fileInputRef.current.value = '';
         }
+        
+        // Clear error state
+        setError(null);
       } else {
         throw new Error(response.error || 'Upload failed');
       }

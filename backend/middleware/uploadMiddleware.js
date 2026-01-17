@@ -82,12 +82,6 @@ class UploadMiddleware {
    */
   async fileFilter(req, file, cb) {
     try {
-      logger.debug('File filter validation started:', {
-        originalname: file.originalname,
-        mimetype: file.mimetype,
-        size: file.size
-      });
-
       // Basic null checks
       if (!file || !file.originalname) {
         return cb(new Error('Invalid file object'), false);
@@ -126,7 +120,6 @@ class UploadMiddleware {
         return cb(new Error('File appears to be suspicious or potentially harmful'), false);
       }
 
-      logger.debug('File filter validation passed:', file.originalname);
       cb(null, true);
 
     } catch (error) {

@@ -40,8 +40,6 @@ class InvoiceService {
       throw new Error('Expense ID and file are required');
     }
 
-    logger.debug('Starting invoice upload:', { expenseId, filename: file.originalname, size: file.size });
-
     let tempFilePath = null;
     let finalFilePath = null;
 
@@ -83,7 +81,6 @@ class InvoiceService {
       
       try {
         await fs.promises.writeFile(finalFilePath, file.buffer);
-        logger.debug('Wrote file to final location:', finalFilePath);
       } catch (writeError) {
         logger.error('Failed to write file to final location:', writeError);
         throw new Error('Failed to store invoice file. Please try again.');
@@ -180,8 +177,6 @@ class InvoiceService {
    * @returns {Promise<Object>} Invoice file path and metadata
    */
   async getInvoice(expenseId, userId = null) {
-    logger.debug('Getting invoice for expense:', expenseId);
-
     try {
       // Validate input
       if (!expenseId) {
@@ -210,8 +205,6 @@ class InvoiceService {
       // Get current file stats
       const fileStats = await fileStorage.getFileStats(fullFilePath);
 
-      logger.debug('Retrieved invoice successfully:', { expenseId, invoiceId: invoice.id });
-
       return {
         ...invoice,
         fullFilePath,
@@ -231,8 +224,6 @@ class InvoiceService {
    * @returns {Promise<boolean>} True if deleted successfully
    */
   async deleteInvoice(expenseId, userId = null) {
-    logger.debug('Deleting invoice for expense:', expenseId);
-
     try {
       // Validate input
       if (!expenseId) {
@@ -254,7 +245,6 @@ class InvoiceService {
       // Delete file from storage (don't fail if file doesn't exist)
       try {
         await fileStorage.deleteFile(fullFilePath);
-        logger.debug('Deleted invoice file:', fullFilePath);
       } catch (fileError) {
         logger.warn('Failed to delete invoice file (continuing with database cleanup):', fileError);
       }
@@ -280,8 +270,6 @@ class InvoiceService {
    * @returns {Promise<Object|null>} Invoice metadata or null if not found
    */
   async getInvoiceMetadata(expenseId) {
-    logger.debug('Getting invoice metadata for expense:', expenseId);
-
     try {
       // Validate input
       if (!expenseId) {
@@ -313,8 +301,6 @@ class InvoiceService {
    * @returns {Promise<Object>} New invoice metadata
    */
   async replaceInvoice(expenseId, file, userId = null) {
-    logger.debug('Replacing invoice for expense:', expenseId);
-
     try {
       // Delete existing invoice first
       await this.deleteInvoice(expenseId, userId);

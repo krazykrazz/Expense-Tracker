@@ -11,6 +11,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.12.7] - 2026-01-17
+
+### Fixed
+- **Invoice Storage Path Detection**: Fixed containerized environment detection for invoice storage
+  - Added `/config/invoices` and `/config/invoices/temp` directories to Dockerfile initialization
+  - Added path detection logging to help diagnose environment issues
+  - Ensures invoice files are stored in the correct mounted volume location
+
+---
+
 ## [4.12.6] - 2026-01-17
 
 ### Fixed

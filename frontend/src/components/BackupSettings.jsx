@@ -800,6 +800,15 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v4.12.7</div>
+                <div className="changelog-date">January 17, 2026</div>
+                <ul className="changelog-items">
+                  <li>Fixed invoice storage path detection in Docker containers</li>
+                  <li>Added invoices directory to Dockerfile initialization</li>
+                  <li>Added path detection logging for debugging</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v4.12.6</div>
                 <div className="changelog-date">January 17, 2026</div>
                 <ul className="changelog-items">
@@ -833,35 +842,6 @@ const BackupSettings = () => {
                   <li>Fixed invoice upload error in Docker environments</li>
                   <li>Resolved cross-device link error (EXDEV) when attaching invoices</li>
                   <li>Improved file handling for Docker volume mounts</li>
-                </ul>
-              </div>
-              <div className="changelog-entry">
-                <div className="changelog-version">v4.12.2</div>
-                <div className="changelog-date">January 16, 2026</div>
-                <ul className="changelog-items">
-                  <li>Fixed merchant analytics "Previous Year" period validation</li>
-                  <li>Removed verbose debug logging from invoice feature</li>
-                  <li>Cleaned up console messages for cleaner production logs</li>
-                </ul>
-              </div>
-              <div className="changelog-entry">
-                <div className="changelog-version">v4.12.1</div>
-                <div className="changelog-date">January 16, 2026</div>
-                <ul className="changelog-items">
-                  <li>Improved invoice indicator visibility for medical expenses</li>
-                  <li>Different icons for expenses with invoices (📄) vs without (📋)</li>
-                  <li>Color-coded indicators: green for with invoice, amber for without</li>
-                </ul>
-              </div>
-              <div className="changelog-entry">
-                <div className="changelog-version">v4.12.0</div>
-                <div className="changelog-date">January 16, 2026</div>
-                <ul className="changelog-items">
-                  <li>Added medical expense invoice attachments feature</li>
-                  <li>Upload, view, and manage PDF invoices for medical expenses</li>
-                  <li>Built-in PDF viewer with zoom, download, and print capabilities</li>
-                  <li>Invoice indicators in expense lists and tax reports</li>
-                  <li>Comprehensive security validation and file management</li>
                 </ul>
               </div>
               <div className="changelog-entry">

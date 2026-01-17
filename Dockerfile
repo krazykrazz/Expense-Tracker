@@ -54,7 +54,7 @@ COPY --from=backend-deps /build/backend/node_modules ./node_modules
 
 # Create /config directory structure and set ownership
 # Note: node:18-alpine already has a 'node' user with UID 1000
-RUN mkdir -p /config/database /config/backups /config/config && \
+RUN mkdir -p /config/database /config/backups /config/config /config/invoices /config/invoices/temp && \
     chown -R node:node /config /app
 
 # Switch to non-root user (node user has UID 1000)

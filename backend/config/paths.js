@@ -12,6 +12,9 @@ const isContainerized = fs.existsSync('/config');
 // Base configuration directory
 const CONFIG_DIR = isContainerized ? '/config' : path.join(__dirname, '..', 'config');
 
+// Log the detected environment on module load (helps debug path issues)
+console.log(`[paths.js] Environment detection: isContainerized=${isContainerized}, CONFIG_DIR=${CONFIG_DIR}`);
+
 /**
  * Get the base configuration directory path
  * @returns {string} Path to configuration directory

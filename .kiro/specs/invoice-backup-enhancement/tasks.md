@@ -6,8 +6,8 @@ This implementation plan converts the database-only backup system to a comprehen
 
 ## Tasks
 
-- [ ] 1. Create Archive Utilities Module
-  - [ ] 1.1 Install tar package and create archiveUtils.js
+- [x] 1. Create Archive Utilities Module
+  - [x] 1.1 Install tar package and create archiveUtils.js
     - Add `tar` package to backend dependencies
     - Create `backend/utils/archiveUtils.js` with ArchiveUtils class
     - Implement `createArchive()` method using tar.create()
@@ -15,46 +15,46 @@ This implementation plan converts the database-only backup system to a comprehen
     - Implement `listArchiveContents()` method using tar.list()
     - _Requirements: 1.1, 4.1_
   
-  - [ ] 1.2 Write unit tests for archiveUtils
+  - [x] 1.2 Write unit tests for archiveUtils
     - Test archive creation with multiple files
     - Test archive extraction
     - Test listing archive contents
     - Test error handling for invalid paths
     - _Requirements: 1.1, 1.5, 4.1, 4.4_
 
-- [ ] 2. Update BackupService for Archive Backups
-  - [ ] 2.1 Modify performBackup() to create tar.gz archives
+- [x] 2. Update BackupService for Archive Backups
+  - [x] 2.1 Modify performBackup() to create tar.gz archives
     - Update to collect database, invoices, and config paths
     - Use archiveUtils.createArchive() instead of fs.copyFileSync()
     - Update filename format to use .tar.gz extension
     - Handle empty invoice directory gracefully
     - _Requirements: 1.1, 1.2, 1.3, 1.4_
   
-  - [ ] 2.2 Write property test for archive contents
+  - [x] 2.2 Write property test for archive contents
     - **Property 1: Archive Contains All Data**
     - **Validates: Requirements 1.1**
   
-  - [ ] 2.3 Write property test for filename format
+  - [x] 2.3 Write property test for filename format
     - **Property 2: Filename Format Compliance**
     - **Validates: Requirements 1.3**
 
-- [ ] 3. Implement Restore Functionality
-  - [ ] 3.1 Add restoreBackup() method to BackupService
+- [x] 3. Implement Restore Functionality
+  - [x] 3.1 Add restoreBackup() method to BackupService
     - Accept backup file path as parameter
     - Use archiveUtils.extractArchive() to restore files
     - Restore to appropriate directories (database, invoices, config)
     - Return count of files restored
     - _Requirements: 4.1, 4.2, 4.3_
   
-  - [ ] 3.2 Write property test for backup/restore round-trip
+  - [x] 3.2 Write property test for backup/restore round-trip
     - **Property 3: Backup/Restore Round-Trip**
     - **Validates: Requirements 1.2, 4.1, 4.2**
   
-  - [ ] 3.3 Write property test for restore file count
+  - [x] 3.3 Write property test for restore file count
     - **Property 6: Restore File Count Accuracy**
     - **Validates: Requirements 4.3**
 
-- [ ] 4. Checkpoint - Verify core backup/restore functionality
+- [x] 4. Checkpoint - Verify core backup/restore functionality
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 5. Update Backup Listing and Cleanup

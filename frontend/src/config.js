@@ -77,6 +77,7 @@ export const API_ENDPOINTS = {
   // Multi-invoice support endpoints
   INVOICES_FOR_EXPENSE: (expenseId) => `${API_BASE_URL}/api/invoices/${expenseId}`,
   INVOICE_FILE: (expenseId, invoiceId) => `${API_BASE_URL}/api/invoices/${expenseId}/${invoiceId}`,
+  INVOICE_FILE_LEGACY: (expenseId) => `${API_BASE_URL}/api/invoices/${expenseId}/file`,
   INVOICE_BY_ID: (invoiceId) => `${API_BASE_URL}/api/invoices/${invoiceId}`,
   INVOICE_DELETE_ALL: (expenseId) => `${API_BASE_URL}/api/invoices/expense/${expenseId}`
 };

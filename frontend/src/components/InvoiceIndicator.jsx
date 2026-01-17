@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import InvoicePDFViewer from './InvoicePDFViewer';
+import InvoiceList from './InvoiceList';
 import './InvoiceIndicator.css';
 
 /**
@@ -27,9 +28,12 @@ const InvoiceIndicator = ({
   size = 'medium',
   showText = false,
   className = '',
-  alwaysShow = false // New prop to force rendering even without invoice
+  alwaysShow = false, // New prop to force rendering even without invoice
+  onInvoiceUpdated = null,  // Callback when invoice is updated
+  onInvoiceDeleted = null   // Callback when invoice is deleted
 }) => {
   const [showPDFViewer, setShowPDFViewer] = useState(false);
+  const [showInvoiceListModal, setShowInvoiceListModal] = useState(false);
   
   // Derive effective count from props (invoiceCount takes precedence, then invoices array, then hasInvoice)
   const effectiveCount = invoiceCount > 0 ? invoiceCount : (invoices.length > 0 ? invoices.length : (hasInvoice ? 1 : 0));
@@ -44,10 +48,16 @@ const InvoiceIndicator = ({
 
     if (onClick) {
       onClick();
-    } else if (hasInvoice && expenseId) {
-      setShowPDFViewer(true);
+    } else if ((hasInvoice || effectiveCount > 0) && expenseId) {
+      if (hasMultipleInvoices) {
+        // Show invoice list modal for multiple invoices
+        setShowInvoiceListModal(true);
+      } else {
+        // Show PDF viewer for single invoice
+        setShowPDFViewer(true);
+      }
     }
-  }, [onClick, hasInvoice, expenseId]);
+  }, [onClick, hasInvoice, effectiveCount, expenseId, hasMultipleInvoices]);
 
   /**
    * Handle closing PDF viewer
@@ -55,6 +65,22 @@ const InvoiceIndicator = ({
   const handleClosePDFViewer = useCallback(() => {
     setShowPDFViewer(false);
   }, []);
+
+  /**
+   * Handle closing invoice list modal
+   */
+  const handleCloseInvoiceListModal = useCallback(() => {
+    setShowInvoiceListModal(false);
+  }, []);
+
+  /**
+   * Handle invoice deleted from list
+   */
+  const handleInvoiceDeleted = useCallback((invoiceId) => {
+    if (onInvoiceDeleted) {
+      onInvoiceDeleted(invoiceId);
+    }
+  }, [onInvoiceDeleted]);
 
   /**
    * Format file size for display
@@ -206,9 +232,48 @@ const InvoiceIndicator = ({
         <InvoicePDFViewer
           isOpen={showPDFViewer}
           expenseId={expenseId}
-          invoiceName={invoiceInfo?.originalFilename || 'Invoice'}
+          invoiceId={invoices.length > 0 ? invoices[0].id : (invoiceInfo?.id || null)}
+          invoiceName={invoiceInfo?.originalFilename || (invoices.length > 0 ? invoices[0].originalFilename : 'Invoice')}
           onClose={handleClosePDFViewer}
         />
+      )}
+
+      {/* Invoice List Modal - for multiple invoices */}
+      {showInvoiceListModal && hasMultipleInvoices && (
+        <div 
+          className="invoice-list-modal-overlay"
+          onClick={handleCloseInvoiceListModal}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="invoice-list-modal-title"
+        >
+          <div 
+            className="invoice-list-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="invoice-list-modal-header">
+              <h3 id="invoice-list-modal-title">Invoices ({effectiveCount})</h3>
+              <button
+                type="button"
+                className="invoice-list-modal-close"
+                onClick={handleCloseInvoiceListModal}
+                aria-label="Close invoice list"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="invoice-list-modal-content">
+              <InvoiceList
+                invoices={invoices}
+                expenseId={expenseId}
+                people={[]}
+                onInvoiceDeleted={handleInvoiceDeleted}
+                onPersonLinkUpdated={() => {}}
+                disabled={false}
+              />
+            </div>
+          </div>
+        </div>
       )}
     </>
   );

@@ -3,8 +3,9 @@ import { Document, Page, pdfjs } from 'react-pdf';
 import { API_ENDPOINTS } from '../config';
 import './InvoicePDFViewer.css';
 
-// Set up PDF.js worker
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
+// Set up PDF.js worker - use CDN with specific version
+// Note: The worker must match the pdfjs-dist version used by react-pdf
+pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
 /**
  * InvoicePDFViewer Modal Component
@@ -88,11 +89,24 @@ const InvoicePDFViewer = ({
       // Check if response is actually a PDF
       const contentType = response.headers.get('content-type');
       if (!contentType || !contentType.includes('application/pdf')) {
-        throw new Error('Invalid file format - expected PDF');
+        // Try to get error message from JSON response
+        const text = await response.text();
+        try {
+          const errorData = JSON.parse(text);
+          throw new Error(errorData.error || 'Server returned an error instead of PDF');
+        } catch (parseError) {
+          throw new Error('Invalid file format - expected PDF');
+        }
       }
 
       // Create blob URL for PDF
       const blob = await response.blob();
+      
+      // Verify blob is not empty
+      if (blob.size === 0) {
+        throw new Error('Received empty file from server');
+      }
+      
       const url = URL.createObjectURL(blob);
       setPdfUrl(url);
 
@@ -140,7 +154,20 @@ const InvoicePDFViewer = ({
    */
   const onDocumentLoadError = useCallback((error) => {
     console.error('PDF load error:', error);
-    setError('Failed to load PDF document');
+    // Provide more specific error messages
+    let errorMessage = 'Failed to load PDF document';
+    if (error && error.message) {
+      if (error.message.includes('worker')) {
+        errorMessage = 'PDF viewer initialization failed. Please refresh the page.';
+      } else if (error.message.includes('Invalid PDF')) {
+        errorMessage = 'The file appears to be corrupted or not a valid PDF.';
+      } else if (error.message.includes('password')) {
+        errorMessage = 'This PDF is password protected and cannot be displayed.';
+      } else {
+        errorMessage = `PDF error: ${error.message}`;
+      }
+    }
+    setError(errorMessage);
     setLoading(false);
   }, []);
 
@@ -178,7 +205,11 @@ const InvoicePDFViewer = ({
       // Create temporary link for download
       const link = document.createElement('a');
       link.href = pdfUrl;
-      link.download = `${invoiceName}.pdf`;
+      // Ensure we don't add double .pdf extension
+      const downloadName = invoiceName.toLowerCase().endsWith('.pdf') 
+        ? invoiceName 
+        : `${invoiceName}.pdf`;
+      link.download = downloadName;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);

@@ -11,6 +11,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.12.6] - 2026-01-17
+
+### Fixed
+- **Invoice Download Filename**: Fixed double `.pdf` extension when downloading invoices
+  - Download now correctly handles filenames that already have `.pdf` extension
+- **PDF Viewer**: Improved PDF viewer error handling and reliability
+  - Changed PDF.js worker CDN from unpkg to cdnjs for better reliability
+  - Added more specific error messages for different PDF loading failures
+  - Added validation for empty file responses
+  - Better handling of server error responses
+
+---
+
 ## [4.12.5] - 2026-01-17
 
 ### Fixed

@@ -37,14 +37,14 @@ async function initializeInvoiceStorage() {
     const tempPermInfo = await filePermissions.getPermissionInfo(tempDir);
 
     logger.info('Invoice storage initialization completed successfully');
-    logger.info('Base directory permissions:', {
+    logger.debug('Base directory permissions:', {
       path: baseDir,
       permissions: basePermInfo.permissions,
       readable: basePermInfo.readable,
       writable: basePermInfo.writable,
       issues: basePermInfo.securityIssues
     });
-    logger.info('Temp directory permissions:', {
+    logger.debug('Temp directory permissions:', {
       path: tempDir,
       permissions: tempPermInfo.permissions,
       readable: tempPermInfo.readable,

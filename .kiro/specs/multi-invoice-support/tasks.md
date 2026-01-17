@@ -6,24 +6,24 @@ This implementation plan converts the single-invoice system to support multiple 
 
 ## Tasks
 
-- [ ] 1. Database Schema Migration
-  - [ ] 1.1 Create migration function `migrateMultiInvoiceSupport` in `backend/database/migrations.js`
+- [x] 1. Database Schema Migration
+  - [x] 1.1 Create migration function `migrateMultiInvoiceSupport` in `backend/database/migrations.js`
     - Remove UNIQUE constraint on expense_id
     - Add person_id column with FK to people table (ON DELETE SET NULL)
     - Preserve all existing invoice data
     - Create indexes for person_id
     - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
   
-  - [ ] 1.2 Write property test for migration data preservation
+  - [x] 1.2 Write property test for migration data preservation
     - **Property 7: Migration Data Preservation**
     - **Validates: Requirements 3.3**
   
-  - [ ] 1.3 Add migration to `runMigrations` function
+  - [x] 1.3 Add migration to `runMigrations` function
     - Ensure migration runs on container startup
     - _Requirements: 3.1, 3.2_
 
-- [ ] 2. Backend Repository Layer Updates
-  - [ ] 2.1 Modify `invoiceRepository.js` to support multiple invoices
+- [x] 2. Backend Repository Layer Updates
+  - [x] 2.1 Modify `invoiceRepository.js` to support multiple invoices
     - Update `create()` to accept optional personId parameter
     - Add `findAllByExpenseId()` method returning array with person info
     - Add `updatePersonId()` method for changing person association
@@ -32,7 +32,7 @@ This implementation plan converts the single-invoice system to support multiple 
     - Modify `deleteByExpenseId()` to delete all invoices for expense
     - _Requirements: 1.1, 1.2, 1.5, 2.2, 2.3, 2.5, 8.1_
   
-  - [ ] 2.2 Write property tests for repository layer
+  - [x] 2.2 Write property tests for repository layer
     - **Property 2: Invoice Uniqueness Within Expense**
     - **Property 4: Invoice Retrieval Ordering**
     - **Property 5: Person ID Storage Consistency**

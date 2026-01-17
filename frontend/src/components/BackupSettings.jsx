@@ -800,6 +800,14 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v4.12.11</div>
+                <div className="changelog-date">January 17, 2026</div>
+                <ul className="changelog-items">
+                  <li>Fixed DEBUG logs appearing when LOG_LEVEL is set to INFO</li>
+                  <li>Cleaned up verbose INFO logs - moved request details to DEBUG level</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v4.12.10</div>
                 <div className="changelog-date">January 17, 2026</div>
                 <ul className="changelog-items">

@@ -319,8 +319,8 @@ class UploadMiddleware {
     const userAgent = req.get('User-Agent') || 'unknown';
     const clientIP = req.ip || req.connection.remoteAddress || 'unknown';
     
-    // Log upload attempt with security info
-    logger.info('Invoice upload request:', {
+    // Log upload attempt with security info (debug level - verbose request details)
+    logger.debug('Invoice upload request:', {
       expenseId: req.body.expenseId,
       userAgent: userAgent.substring(0, 200), // Limit log size
       ip: clientIP,

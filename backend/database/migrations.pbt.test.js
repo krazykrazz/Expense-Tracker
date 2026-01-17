@@ -768,3 +768,387 @@ describe('Database Migrations - Property-Based Tests', () => {
     );
   });
 });
+
+
+// Helper function to create expense_invoices table with old schema (with UNIQUE constraint)
+function createOldExpenseInvoicesTable(db) {
+  return new Promise((resolve, reject) => {
+    db.run(`
+      CREATE TABLE expense_invoices (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        expense_id INTEGER NOT NULL,
+        filename TEXT NOT NULL,
+        original_filename TEXT NOT NULL,
+        file_path TEXT NOT NULL,
+        file_size INTEGER NOT NULL,
+        mime_type TEXT NOT NULL DEFAULT 'application/pdf',
+        upload_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (expense_id) REFERENCES expenses(id) ON DELETE CASCADE,
+        UNIQUE(expense_id)
+      )
+    `, (err) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve();
+      }
+    });
+  });
+}
+
+// Helper function to create expense_invoices table with new schema (without UNIQUE, with person_id)
+function createNewExpenseInvoicesTable(db) {
+  return new Promise((resolve, reject) => {
+    db.run(`
+      CREATE TABLE expense_invoices (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        expense_id INTEGER NOT NULL,
+        person_id INTEGER,
+        filename TEXT NOT NULL,
+        original_filename TEXT NOT NULL,
+        file_path TEXT NOT NULL,
+        file_size INTEGER NOT NULL,
+        mime_type TEXT NOT NULL DEFAULT 'application/pdf',
+        upload_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (expense_id) REFERENCES expenses(id) ON DELETE CASCADE,
+        FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE SET NULL
+      )
+    `, (err) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve();
+      }
+    });
+  });
+}
+
+// Helper function to create people table for FK reference
+function createPeopleTable(db) {
+  return new Promise((resolve, reject) => {
+    db.run(`
+      CREATE TABLE IF NOT EXISTS people (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        date_of_birth DATE,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+      )
+    `, (err) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve();
+      }
+    });
+  });
+}
+
+// Helper function to insert invoice (old schema)
+function insertOldInvoice(db, invoice) {
+  return new Promise((resolve, reject) => {
+    db.run(
+      `INSERT INTO expense_invoices (expense_id, filename, original_filename, file_path, file_size, mime_type, upload_date) 
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [invoice.expenseId, invoice.filename, invoice.originalFilename, invoice.filePath, invoice.fileSize, invoice.mimeType, invoice.uploadDate],
+      function(err) {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(this.lastID);
+        }
+      }
+    );
+  });
+}
+
+// Helper function to get all invoices
+function getAllInvoices(db) {
+  return new Promise((resolve, reject) => {
+    db.all('SELECT * FROM expense_invoices ORDER BY id', (err, rows) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(rows);
+      }
+    });
+  });
+}
+
+// Helper function to count invoices
+function countInvoices(db) {
+  return new Promise((resolve, reject) => {
+    db.get('SELECT COUNT(*) as count FROM expense_invoices', (err, row) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(row.count);
+      }
+    });
+  });
+}
+
+// Helper function to check if column exists in table
+function hasColumn(db, tableName, columnName) {
+  return new Promise((resolve, reject) => {
+    db.all(`PRAGMA table_info(${tableName})`, (err, columns) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(columns.some(col => col.name === columnName));
+      }
+    });
+  });
+}
+
+// Helper function to check if UNIQUE constraint exists on expense_id
+function hasUniqueConstraintOnExpenseId(db) {
+  return new Promise((resolve, reject) => {
+    db.get(
+      "SELECT sql FROM sqlite_master WHERE type='table' AND name='expense_invoices'",
+      (err, row) => {
+        if (err) {
+          reject(err);
+        } else if (!row) {
+          resolve(false);
+        } else {
+          // Check if UNIQUE(expense_id) is in the table definition
+          resolve(row.sql.includes('UNIQUE(expense_id)'));
+        }
+      }
+    );
+  });
+}
+
+describe('Multi-Invoice Support Migration - Property-Based Tests', () => {
+  /**
+   * Feature: multi-invoice-support, Property 7: Migration Data Preservation
+   * Validates: Requirements 3.3
+   * 
+   * For any database with existing invoices, running the migration SHALL preserve 
+   * all invoice records with identical data (except person_id which becomes NULL).
+   */
+  test('Property 7: Migration Data Preservation', async () => {
+    // Arbitrary for generating valid invoice data
+    const invoiceArbitrary = fc.record({
+      expenseId: fc.integer({ min: 1, max: 1000 }),
+      filename: fc.string({ minLength: 5, maxLength: 50 }).map(s => (s.replace(/[^a-zA-Z0-9]/g, '') || 'file') + '.pdf'),
+      originalFilename: fc.string({ minLength: 5, maxLength: 100 }).map(s => (s.replace(/[^a-zA-Z0-9 ]/g, '') || 'Original File') + '.pdf'),
+      filePath: fc.string({ minLength: 5, maxLength: 100 }).map(s => '/invoices/' + (s.replace(/[^a-zA-Z0-9]/g, '') || 'file') + '.pdf'),
+      fileSize: fc.integer({ min: 1000, max: 10000000 }),
+      mimeType: fc.constant('application/pdf'),
+      uploadDate: fc.integer({ min: 2020, max: 2025 })
+        .chain(year => fc.integer({ min: 1, max: 12 })
+          .chain(month => fc.integer({ min: 1, max: 28 })
+            .chain(day => fc.integer({ min: 0, max: 23 })
+              .map(hour => `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}T${hour.toString().padStart(2, '0')}:00:00.000Z`))))
+    });
+
+    // Generate array of 1-10 invoices with unique expense_ids (due to old UNIQUE constraint)
+    const invoicesArrayArbitrary = fc.array(invoiceArbitrary, { minLength: 1, maxLength: 10 })
+      .map(invoices => {
+        // Ensure uniqueness by expense_id (old schema has UNIQUE constraint)
+        const seen = new Set();
+        return invoices.filter(inv => {
+          if (seen.has(inv.expenseId)) return false;
+          seen.add(inv.expenseId);
+          return true;
+        });
+      })
+      .filter(invoices => invoices.length > 0);
+
+    await fc.assert(
+      fc.asyncProperty(
+        invoicesArrayArbitrary,
+        async (invoices) => {
+          const db = await createTestDatabase();
+          
+          try {
+            // Create expenses table first (for FK reference)
+            await createNewExpensesTable(db);
+            
+            // Create people table (for FK reference in new schema)
+            await createPeopleTable(db);
+            
+            // Create old schema table (with UNIQUE constraint, without person_id)
+            await createOldExpenseInvoicesTable(db);
+            
+            // Insert all invoices
+            for (const invoice of invoices) {
+              await insertOldInvoice(db, invoice);
+            }
+            
+            // Get count and data before migration
+            const countBefore = await countInvoices(db);
+            const invoicesBefore = await getAllInvoices(db);
+            
+            // Verify old schema has UNIQUE constraint
+            const hadUniqueConstraint = await hasUniqueConstraintOnExpenseId(db);
+            expect(hadUniqueConstraint).toBe(true);
+            
+            // Verify old schema does NOT have person_id column
+            const hadPersonIdBefore = await hasColumn(db, 'expense_invoices', 'person_id');
+            expect(hadPersonIdBefore).toBe(false);
+            
+            // Simulate migration: recreate table with new schema
+            await new Promise((resolve, reject) => {
+              db.serialize(() => {
+                db.run('BEGIN TRANSACTION', (err) => {
+                  if (err) return reject(err);
+                  
+                  // Create new table without UNIQUE constraint and with person_id
+                  db.run(`
+                    CREATE TABLE expense_invoices_new (
+                      id INTEGER PRIMARY KEY AUTOINCREMENT,
+                      expense_id INTEGER NOT NULL,
+                      person_id INTEGER,
+                      filename TEXT NOT NULL,
+                      original_filename TEXT NOT NULL,
+                      file_path TEXT NOT NULL,
+                      file_size INTEGER NOT NULL,
+                      mime_type TEXT NOT NULL DEFAULT 'application/pdf',
+                      upload_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+                      FOREIGN KEY (expense_id) REFERENCES expenses(id) ON DELETE CASCADE,
+                      FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE SET NULL
+                    )
+                  `, (err) => {
+                    if (err) {
+                      db.run('ROLLBACK');
+                      return reject(err);
+                    }
+                    
+                    // Copy existing data with person_id as NULL
+                    db.run(`
+                      INSERT INTO expense_invoices_new 
+                      (id, expense_id, person_id, filename, original_filename, file_path, file_size, mime_type, upload_date)
+                      SELECT id, expense_id, NULL as person_id, filename, original_filename, file_path, file_size, mime_type, upload_date
+                      FROM expense_invoices
+                    `, (err) => {
+                      if (err) {
+                        db.run('ROLLBACK');
+                        return reject(err);
+                      }
+                      
+                      db.run('DROP TABLE expense_invoices', (err) => {
+                        if (err) {
+                          db.run('ROLLBACK');
+                          return reject(err);
+                        }
+                        
+                        db.run('ALTER TABLE expense_invoices_new RENAME TO expense_invoices', (err) => {
+                          if (err) {
+                            db.run('ROLLBACK');
+                            return reject(err);
+                          }
+                          
+                          db.run('COMMIT', (err) => {
+                            if (err) {
+                              db.run('ROLLBACK');
+                              return reject(err);
+                            }
+                            resolve();
+                          });
+                        });
+                      });
+                    });
+                  });
+                });
+              });
+            });
+            
+            // Get count and data after migration
+            const countAfter = await countInvoices(db);
+            const invoicesAfter = await getAllInvoices(db);
+            
+            // Verify new schema does NOT have UNIQUE constraint on expense_id
+            const hasUniqueConstraintAfter = await hasUniqueConstraintOnExpenseId(db);
+            expect(hasUniqueConstraintAfter).toBe(false);
+            
+            // Verify new schema HAS person_id column
+            const hasPersonIdAfter = await hasColumn(db, 'expense_invoices', 'person_id');
+            expect(hasPersonIdAfter).toBe(true);
+            
+            // Verify count is preserved
+            expect(countAfter).toBe(countBefore);
+            expect(countAfter).toBe(invoices.length);
+            
+            // Verify all data is preserved
+            expect(invoicesAfter.length).toBe(invoicesBefore.length);
+            
+            for (let i = 0; i < invoicesBefore.length; i++) {
+              // All original fields must be preserved exactly
+              expect(invoicesAfter[i].id).toBe(invoicesBefore[i].id);
+              expect(invoicesAfter[i].expense_id).toBe(invoicesBefore[i].expense_id);
+              expect(invoicesAfter[i].filename).toBe(invoicesBefore[i].filename);
+              expect(invoicesAfter[i].original_filename).toBe(invoicesBefore[i].original_filename);
+              expect(invoicesAfter[i].file_path).toBe(invoicesBefore[i].file_path);
+              expect(invoicesAfter[i].file_size).toBe(invoicesBefore[i].file_size);
+              expect(invoicesAfter[i].mime_type).toBe(invoicesBefore[i].mime_type);
+              expect(invoicesAfter[i].upload_date).toBe(invoicesBefore[i].upload_date);
+              
+              // person_id should be NULL for migrated records
+              expect(invoicesAfter[i].person_id).toBeNull();
+            }
+            
+            return true;
+          } finally {
+            await closeDatabase(db);
+          }
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+
+  /**
+   * Additional test: Verify multiple invoices can be added to same expense after migration
+   */
+  test('Property 7 (extension): Multiple invoices per expense allowed after migration', async () => {
+    const db = await createTestDatabase();
+    
+    try {
+      // Create expenses table first (for FK reference)
+      await createNewExpensesTable(db);
+      
+      // Create people table (for FK reference)
+      await createPeopleTable(db);
+      
+      // Create new schema table directly (simulating post-migration state)
+      await createNewExpenseInvoicesTable(db);
+      
+      // Insert multiple invoices for the same expense_id
+      const expenseId = 1;
+      const invoices = [
+        { expenseId, filename: 'invoice1.pdf', originalFilename: 'Invoice 1.pdf', filePath: '/invoices/1.pdf', fileSize: 1000, mimeType: 'application/pdf', uploadDate: '2024-01-01T00:00:00.000Z' },
+        { expenseId, filename: 'invoice2.pdf', originalFilename: 'Invoice 2.pdf', filePath: '/invoices/2.pdf', fileSize: 2000, mimeType: 'application/pdf', uploadDate: '2024-01-02T00:00:00.000Z' },
+        { expenseId, filename: 'invoice3.pdf', originalFilename: 'Invoice 3.pdf', filePath: '/invoices/3.pdf', fileSize: 3000, mimeType: 'application/pdf', uploadDate: '2024-01-03T00:00:00.000Z' }
+      ];
+      
+      // All inserts should succeed (no UNIQUE constraint violation)
+      for (const invoice of invoices) {
+        const id = await new Promise((resolve, reject) => {
+          db.run(
+            `INSERT INTO expense_invoices (expense_id, person_id, filename, original_filename, file_path, file_size, mime_type, upload_date) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            [invoice.expenseId, null, invoice.filename, invoice.originalFilename, invoice.filePath, invoice.fileSize, invoice.mimeType, invoice.uploadDate],
+            function(err) {
+              if (err) reject(err);
+              else resolve(this.lastID);
+            }
+          );
+        });
+        expect(id).toBeGreaterThan(0);
+      }
+      
+      // Verify all 3 invoices were inserted for the same expense
+      const count = await countInvoices(db);
+      expect(count).toBe(3);
+      
+      const allInvoices = await getAllInvoices(db);
+      expect(allInvoices.every(inv => inv.expense_id === expenseId)).toBe(true);
+      
+    } finally {
+      await closeDatabase(db);
+    }
+  });
+});

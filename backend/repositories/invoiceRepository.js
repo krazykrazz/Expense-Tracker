@@ -4,11 +4,12 @@ const logger = require('../config/logger');
 /**
  * Repository for managing invoice metadata in the database
  * Handles CRUD operations for the expense_invoices table
+ * Supports multiple invoices per expense with optional person linking
  */
 class InvoiceRepository {
   /**
    * Create a new invoice record
-   * @param {Object} invoiceData - Invoice metadata
+   * @param {Object} invoiceData - Invoice metadata including optional personId
    * @returns {Promise<Object>} Created invoice with ID
    */
   async create(invoiceData) {
@@ -17,19 +18,21 @@ class InvoiceRepository {
     return new Promise((resolve, reject) => {
       const sql = `
         INSERT INTO expense_invoices (
-          expense_id, filename, original_filename, file_path, 
+          expense_id, person_id, filename, original_filename, file_path, 
           file_size, mime_type, upload_date
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `;
       
+      const uploadDate = invoiceData.uploadDate || new Date().toISOString();
       const params = [
         invoiceData.expenseId,
+        invoiceData.personId || null,
         invoiceData.filename,
         invoiceData.originalFilename,
         invoiceData.filePath,
         invoiceData.fileSize,
         invoiceData.mimeType || 'application/pdf',
-        invoiceData.uploadDate || new Date().toISOString()
+        uploadDate
       ];
       
       db.run(sql, params, function(err) {
@@ -39,25 +42,26 @@ class InvoiceRepository {
           return;
         }
         
-        logger.debug('Created invoice record:', { id: this.lastID, expenseId: invoiceData.expenseId });
+        logger.debug('Created invoice record:', { id: this.lastID, expenseId: invoiceData.expenseId, personId: invoiceData.personId });
         
         // Return the created invoice with its ID
         resolve({
           id: this.lastID,
           expenseId: invoiceData.expenseId,
+          personId: invoiceData.personId || null,
           filename: invoiceData.filename,
           originalFilename: invoiceData.originalFilename,
           filePath: invoiceData.filePath,
           fileSize: invoiceData.fileSize,
           mimeType: invoiceData.mimeType || 'application/pdf',
-          uploadDate: invoiceData.uploadDate || new Date().toISOString()
+          uploadDate: uploadDate
         });
       });
     });
   }
 
   /**
-   * Find invoice by expense ID
+   * Find invoice by expense ID (returns first invoice for backward compatibility)
    * @param {number} expenseId - Expense ID
    * @returns {Promise<Object|null>} Invoice record or null if not found
    */
@@ -66,10 +70,13 @@ class InvoiceRepository {
     
     return new Promise((resolve, reject) => {
       const sql = `
-        SELECT id, expense_id, filename, original_filename, file_path,
-               file_size, mime_type, upload_date
-        FROM expense_invoices 
-        WHERE expense_id = ?
+        SELECT ei.id, ei.expense_id, ei.person_id, ei.filename, ei.original_filename, ei.file_path,
+               ei.file_size, ei.mime_type, ei.upload_date, p.name as person_name
+        FROM expense_invoices ei
+        LEFT JOIN people p ON ei.person_id = p.id
+        WHERE ei.expense_id = ?
+        ORDER BY ei.upload_date ASC
+        LIMIT 1
       `;
       
       db.get(sql, [expenseId], (err, row) => {
@@ -83,6 +90,8 @@ class InvoiceRepository {
           const invoice = {
             id: row.id,
             expenseId: row.expense_id,
+            personId: row.person_id,
+            personName: row.person_name,
             filename: row.filename,
             originalFilename: row.original_filename,
             filePath: row.file_path,
@@ -100,6 +109,50 @@ class InvoiceRepository {
   }
 
   /**
+   * Find all invoices for an expense
+   * @param {number} expenseId - Expense ID
+   * @returns {Promise<Array>} Array of invoice records ordered by upload_date
+   */
+  async findAllByExpenseId(expenseId) {
+    const db = await getDatabase();
+    
+    return new Promise((resolve, reject) => {
+      const sql = `
+        SELECT ei.id, ei.expense_id, ei.person_id, ei.filename, ei.original_filename, ei.file_path,
+               ei.file_size, ei.mime_type, ei.upload_date, p.name as person_name
+        FROM expense_invoices ei
+        LEFT JOIN people p ON ei.person_id = p.id
+        WHERE ei.expense_id = ?
+        ORDER BY ei.upload_date ASC
+      `;
+      
+      db.all(sql, [expenseId], (err, rows) => {
+        if (err) {
+          logger.error('Failed to find all invoices by expense ID:', err);
+          reject(err);
+          return;
+        }
+        
+        const invoices = rows.map(row => ({
+          id: row.id,
+          expenseId: row.expense_id,
+          personId: row.person_id,
+          personName: row.person_name,
+          filename: row.filename,
+          originalFilename: row.original_filename,
+          filePath: row.file_path,
+          fileSize: row.file_size,
+          mimeType: row.mime_type,
+          uploadDate: row.upload_date
+        }));
+        
+        logger.debug('Found invoices for expense:', { expenseId, count: invoices.length });
+        resolve(invoices);
+      });
+    });
+  }
+
+  /**
    * Find invoice by ID
    * @param {number} id - Invoice ID
    * @returns {Promise<Object|null>} Invoice record or null if not found
@@ -109,10 +162,11 @@ class InvoiceRepository {
     
     return new Promise((resolve, reject) => {
       const sql = `
-        SELECT id, expense_id, filename, original_filename, file_path,
-               file_size, mime_type, upload_date
-        FROM expense_invoices 
-        WHERE id = ?
+        SELECT ei.id, ei.expense_id, ei.person_id, ei.filename, ei.original_filename, ei.file_path,
+               ei.file_size, ei.mime_type, ei.upload_date, p.name as person_name
+        FROM expense_invoices ei
+        LEFT JOIN people p ON ei.person_id = p.id
+        WHERE ei.id = ?
       `;
       
       db.get(sql, [id], (err, row) => {
@@ -126,6 +180,8 @@ class InvoiceRepository {
           const invoice = {
             id: row.id,
             expenseId: row.expense_id,
+            personId: row.person_id,
+            personName: row.person_name,
             filename: row.filename,
             originalFilename: row.original_filename,
             filePath: row.file_path,
@@ -181,6 +237,12 @@ class InvoiceRepository {
         params.push(updateData.mimeType);
       }
       
+      // Support updating personId (can be set to null)
+      if ('personId' in updateData) {
+        updateFields.push('person_id = ?');
+        params.push(updateData.personId);
+      }
+      
       if (updateFields.length === 0) {
         logger.warn('No fields to update for invoice:', id);
         resolve(null);
@@ -216,9 +278,35 @@ class InvoiceRepository {
   }
 
   /**
-   * Delete invoice record by expense ID
+   * Update person association for an invoice
+   * @param {number} id - Invoice ID
+   * @param {number|null} personId - Person ID or null to unlink
+   * @returns {Promise<boolean>} True if updated, false if not found
+   */
+  async updatePersonId(id, personId) {
+    const db = await getDatabase();
+    
+    return new Promise((resolve, reject) => {
+      const sql = 'UPDATE expense_invoices SET person_id = ? WHERE id = ?';
+      
+      db.run(sql, [personId, id], function(err) {
+        if (err) {
+          logger.error('Failed to update invoice person ID:', err);
+          reject(err);
+          return;
+        }
+        
+        const updated = this.changes > 0;
+        logger.debug('Update invoice person ID:', { id, personId, updated });
+        resolve(updated);
+      });
+    });
+  }
+
+  /**
+   * Delete all invoice records by expense ID
    * @param {number} expenseId - Expense ID
-   * @returns {Promise<boolean>} True if deleted, false if not found
+   * @returns {Promise<number>} Number of invoices deleted
    */
   async deleteByExpenseId(expenseId) {
     const db = await getDatabase();
@@ -228,14 +316,13 @@ class InvoiceRepository {
       
       db.run(sql, [expenseId], function(err) {
         if (err) {
-          logger.error('Failed to delete invoice by expense ID:', err);
+          logger.error('Failed to delete invoices by expense ID:', err);
           reject(err);
           return;
         }
         
-        const deleted = this.changes > 0;
-        logger.debug('Delete invoice by expense ID:', { expenseId, deleted, changes: this.changes });
-        resolve(deleted);
+        logger.debug('Delete invoices by expense ID:', { expenseId, deletedCount: this.changes });
+        resolve(this.changes);
       });
     });
   }
@@ -261,6 +348,56 @@ class InvoiceRepository {
         const deleted = this.changes > 0;
         logger.debug('Delete invoice by ID:', { id, deleted, changes: this.changes });
         resolve(deleted);
+      });
+    });
+  }
+
+  /**
+   * Get invoice count for an expense
+   * @param {number} expenseId - Expense ID
+   * @returns {Promise<number>} Count of invoices
+   */
+  async getCountByExpenseId(expenseId) {
+    const db = await getDatabase();
+    
+    return new Promise((resolve, reject) => {
+      const sql = 'SELECT COUNT(*) as count FROM expense_invoices WHERE expense_id = ?';
+      
+      db.get(sql, [expenseId], (err, row) => {
+        if (err) {
+          logger.error('Failed to get invoice count by expense ID:', err);
+          reject(err);
+          return;
+        }
+        
+        const count = row ? row.count : 0;
+        logger.debug('Invoice count for expense:', { expenseId, count });
+        resolve(count);
+      });
+    });
+  }
+
+  /**
+   * Clear person associations when person is removed from expense
+   * @param {number} expenseId - Expense ID
+   * @param {number} personId - Person ID being removed
+   * @returns {Promise<number>} Number of invoices updated
+   */
+  async clearPersonIdForExpense(expenseId, personId) {
+    const db = await getDatabase();
+    
+    return new Promise((resolve, reject) => {
+      const sql = 'UPDATE expense_invoices SET person_id = NULL WHERE expense_id = ? AND person_id = ?';
+      
+      db.run(sql, [expenseId, personId], function(err) {
+        if (err) {
+          logger.error('Failed to clear person ID for expense invoices:', err);
+          reject(err);
+          return;
+        }
+        
+        logger.debug('Cleared person ID for expense invoices:', { expenseId, personId, updatedCount: this.changes });
+        resolve(this.changes);
       });
     });
   }
@@ -366,11 +503,12 @@ class InvoiceRepository {
     
     return new Promise((resolve, reject) => {
       const sql = `
-        SELECT id, expense_id, filename, original_filename, file_path,
-               file_size, mime_type, upload_date
-        FROM expense_invoices 
-        WHERE upload_date >= ? AND upload_date <= ?
-        ORDER BY upload_date DESC
+        SELECT ei.id, ei.expense_id, ei.person_id, ei.filename, ei.original_filename, ei.file_path,
+               ei.file_size, ei.mime_type, ei.upload_date, p.name as person_name
+        FROM expense_invoices ei
+        LEFT JOIN people p ON ei.person_id = p.id
+        WHERE ei.upload_date >= ? AND ei.upload_date <= ?
+        ORDER BY ei.upload_date DESC
       `;
       
       db.all(sql, [startDate, endDate], (err, rows) => {
@@ -383,6 +521,8 @@ class InvoiceRepository {
         const invoices = rows.map(row => ({
           id: row.id,
           expenseId: row.expense_id,
+          personId: row.person_id,
+          personName: row.person_name,
           filename: row.filename,
           originalFilename: row.original_filename,
           filePath: row.file_path,

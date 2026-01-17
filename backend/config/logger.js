@@ -11,11 +11,19 @@ const LOG_LEVELS = {
   error: 3
 };
 
-// Get configured log level from environment (default: info)
-const configuredLevel = (process.env.LOG_LEVEL || 'info').toLowerCase();
-const currentLogLevel = LOG_LEVELS[configuredLevel] !== undefined 
-  ? LOG_LEVELS[configuredLevel] 
-  : LOG_LEVELS.info;
+/**
+ * Get the current log level from environment
+ * This is evaluated dynamically to handle any timing issues with env vars
+ * @returns {Object} Object with configuredLevel string and currentLogLevel number
+ */
+function getLogLevelConfig() {
+  const rawLogLevel = process.env.LOG_LEVEL;
+  const configuredLevel = (rawLogLevel || 'info').toLowerCase().trim();
+  const currentLogLevel = LOG_LEVELS[configuredLevel] !== undefined 
+    ? LOG_LEVELS[configuredLevel] 
+    : LOG_LEVELS.info;
+  return { configuredLevel, currentLogLevel };
+}
 
 /**
  * Format log message with timestamp and level
@@ -35,6 +43,7 @@ function formatMessage(level, message) {
  * @param {...any} args - Additional arguments
  */
 function log(level, message, ...args) {
+  const { currentLogLevel } = getLogLevelConfig();
   const levelValue = LOG_LEVELS[level] || LOG_LEVELS.info;
   
   if (levelValue >= currentLogLevel) {
@@ -98,6 +107,7 @@ function error(message, ...args) {
  * @returns {string} Current log level
  */
 function getLogLevel() {
+  const { configuredLevel } = getLogLevelConfig();
   return configuredLevel;
 }
 

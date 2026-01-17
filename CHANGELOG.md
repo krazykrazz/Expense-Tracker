@@ -11,6 +11,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.12.11] - 2026-01-17
+
+### Fixed
+- **Logging Level Filtering**: Fixed DEBUG logs appearing when LOG_LEVEL is set to INFO
+  - Logger now evaluates log level dynamically instead of caching at module load time
+  - Resolves timing issues with environment variable availability during module initialization
+- **Verbose Log Cleanup**: Changed verbose INFO logs to DEBUG level for cleaner production logs
+  - Invoice upload request details (user agent, IP, content length) now DEBUG
+  - Invoice API operation details (upload, delete, replace) now DEBUG
+  - Storage initialization details now DEBUG
+  - Operational logs (successful uploads, deletions) remain at INFO level
+
+---
+
 ## [4.12.10] - 2026-01-17
 
 ### Fixed

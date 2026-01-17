@@ -14,7 +14,7 @@ class FileStorageUtils {
     this.baseInvoiceDir = path.join(configDir, 'invoices');
     this.tempDir = path.join(this.baseInvoiceDir, 'temp');
     
-    logger.info('Invoice storage initialized:', { 
+    logger.debug('Invoice storage initialized:', { 
       baseDir: this.baseInvoiceDir,
       tempDir: this.tempDir 
     });
@@ -32,7 +32,7 @@ class FileStorageUtils {
       // Create temp directory for uploads
       await this.ensureDirectoryExists(this.tempDir);
       
-      logger.info('Invoice storage directories initialized');
+      logger.debug('Invoice storage directories initialized');
     } catch (error) {
       logger.error('Failed to initialize invoice directories:', error);
       throw error;

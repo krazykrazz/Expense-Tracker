@@ -39,7 +39,7 @@ async function uploadInvoice(req, res) {
     // Upload invoice using service
     const invoice = await invoiceService.uploadInvoice(expenseIdNum, file);
 
-    logger.info('Invoice uploaded via API:', { 
+    logger.debug('Invoice uploaded via API:', { 
       expenseId: expenseIdNum, 
       invoiceId: invoice.id,
       filename: invoice.originalFilename 
@@ -201,7 +201,7 @@ async function deleteInvoice(req, res) {
       });
     }
 
-    logger.info('Invoice deleted via API:', { expenseId });
+    logger.debug('Invoice deleted via API:', { expenseId });
 
     res.status(200).json({
       success: true,
@@ -314,7 +314,7 @@ async function replaceInvoice(req, res) {
     // Replace invoice using service
     const invoice = await invoiceService.replaceInvoice(expenseId, file);
 
-    logger.info('Invoice replaced via API:', { 
+    logger.debug('Invoice replaced via API:', { 
       expenseId, 
       newInvoiceId: invoice.id,
       filename: invoice.originalFilename 

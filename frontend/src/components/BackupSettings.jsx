@@ -800,6 +800,15 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v4.12.3</div>
+                <div className="changelog-date">January 16, 2026</div>
+                <ul className="changelog-items">
+                  <li>Fixed invoice upload error in Docker environments</li>
+                  <li>Resolved cross-device link error (EXDEV) when attaching invoices</li>
+                  <li>Improved file handling for Docker volume mounts</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v4.12.2</div>
                 <div className="changelog-date">January 16, 2026</div>
                 <ul className="changelog-items">

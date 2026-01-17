@@ -11,6 +11,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.12.3] - 2026-01-16
+
+### Fixed
+- **Invoice Upload**: Fixed EXDEV cross-device link error in Docker environments
+  - Replaced `fs.rename()` with `fs.copyFile()` + `fs.unlink()` in file storage utility
+  - Handles cross-device moves between Docker volumes correctly
+  - Added cleanup of partial copies on error
+  - Resolves "cross-device link not permitted" error when uploading invoices
+
+---
+
 ## [4.12.2] - 2026-01-16
 
 ### Fixed

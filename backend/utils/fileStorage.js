@@ -156,6 +156,7 @@ class FileStorageUtils {
 
   /**
    * Move file from temporary location to final storage
+   * Uses copy + delete to handle cross-device moves (EXDEV error)
    * @param {string} tempPath - Temporary file path
    * @param {string} finalPath - Final storage path
    */
@@ -165,11 +166,21 @@ class FileStorageUtils {
       const destDir = path.dirname(finalPath);
       await this.ensureDirectoryExists(destDir);
       
-      // Move file
-      await fs.promises.rename(tempPath, finalPath);
+      // Copy file to final location (handles cross-device moves)
+      await fs.promises.copyFile(tempPath, finalPath);
+      
+      // Delete temp file after successful copy
+      await fs.promises.unlink(tempPath);
+      
       logger.debug('Moved file from temp to final location:', { tempPath, finalPath });
     } catch (error) {
       logger.error('Failed to move file from temp:', error);
+      // Clean up partial copy if it exists
+      try {
+        await fs.promises.unlink(finalPath);
+      } catch (cleanupError) {
+        // Ignore cleanup errors
+      }
       throw error;
     }
   }

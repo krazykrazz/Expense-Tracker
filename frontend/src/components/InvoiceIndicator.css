@@ -86,6 +86,13 @@
 }
 
 /* Icon Styles */
+.invoice-icon-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .invoice-icon {
   display: inline-flex;
   align-items: center;
@@ -105,6 +112,57 @@
 .invoice-indicator.no-invoice .invoice-icon {
   color: #856404;
   opacity: 0.8;
+}
+
+/* Count Badge for Multiple Invoices */
+.invoice-count-badge {
+  position: absolute;
+  top: -6px;
+  right: -8px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  color: #fff;
+  background-color: #007bff;
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.invoice-indicator.small .invoice-count-badge {
+  min-width: 14px;
+  height: 14px;
+  font-size: 9px;
+  line-height: 14px;
+  top: -5px;
+  right: -6px;
+}
+
+.invoice-indicator.large .invoice-count-badge {
+  min-width: 18px;
+  height: 18px;
+  font-size: 11px;
+  line-height: 18px;
+  top: -7px;
+  right: -9px;
+}
+
+/* Multi-invoice indicator styling */
+.invoice-indicator.multi-invoice {
+  padding-right: 10px;
+}
+
+.invoice-indicator.multi-invoice.has-invoice {
+  background: rgba(0, 123, 255, 0.1);
+  border-color: rgba(0, 123, 255, 0.3);
+}
+
+.invoice-indicator.multi-invoice.clickable:hover {
+  background: rgba(0, 123, 255, 0.15);
+  border-color: rgba(0, 123, 255, 0.4);
 }
 
 /* Text Styles */
@@ -317,5 +375,51 @@
   }
   50% {
     opacity: 0.5;
+  }
+}
+
+/* Multi-Invoice Tooltip Styling */
+.invoice-indicator.multi-invoice[title] {
+  cursor: pointer;
+}
+
+/* Enhanced tooltip for multi-invoice (using native title attribute) */
+/* Note: For more advanced tooltip styling, consider using a tooltip library */
+/* The title attribute provides basic multi-line support with \n characters */
+
+/* Badge animation on hover */
+.invoice-indicator.multi-invoice:hover .invoice-count-badge {
+  transform: scale(1.1);
+  transition: transform 0.2s ease;
+}
+
+/* High contrast mode for count badge */
+@media (prefers-contrast: high) {
+  .invoice-count-badge {
+    background-color: #0056b3;
+    border: 1px solid #fff;
+  }
+  
+  .invoice-indicator.multi-invoice.has-invoice {
+    background: #cce5ff;
+    border-color: #007bff;
+  }
+}
+
+/* Reduced motion for badge */
+@media (prefers-reduced-motion: reduce) {
+  .invoice-indicator.multi-invoice:hover .invoice-count-badge {
+    transform: none;
+    transition: none;
+  }
+}
+
+/* Print styles for count badge */
+@media print {
+  .invoice-count-badge {
+    background: #000 !important;
+    color: #fff !important;
+    border: none !important;
+    box-shadow: none !important;
   }
 }

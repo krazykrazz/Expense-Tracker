@@ -6,6 +6,8 @@ This guide provides maintenance procedures for the Medical Expense Invoice Attac
 
 **Target Audience:** System administrators, DevOps engineers, and technical maintainers
 
+**Version:** 4.13.0 (Multi-Invoice Support)
+
 ---
 
 ## Regular Maintenance Tasks
@@ -51,6 +53,7 @@ tail -100 backend/logs/app.log | grep -i invoice
 - File not found errors
 - Permission denied errors
 - Storage full errors
+- Person validation errors (v4.13.0+)
 
 ---
 
@@ -90,6 +93,23 @@ sqlite3 backend/config/database/expenses.db \
    GROUP BY month 
    ORDER BY month DESC 
    LIMIT 6;"
+
+# Count invoices per expense (v4.13.0+)
+sqlite3 backend/config/database/expenses.db \
+  "SELECT expense_id, COUNT(*) as invoice_count 
+   FROM expense_invoices 
+   GROUP BY expense_id 
+   HAVING invoice_count > 1
+   ORDER BY invoice_count DESC
+   LIMIT 10;"
+
+# Count invoices linked to people (v4.13.0+)
+sqlite3 backend/config/database/expenses.db \
+  "SELECT 
+     COUNT(*) as total,
+     SUM(CASE WHEN person_id IS NOT NULL THEN 1 ELSE 0 END) as linked,
+     SUM(CASE WHEN person_id IS NULL THEN 1 ELSE 0 END) as unlinked
+   FROM expense_invoices;"
 ```
 
 **Metrics to Track:**
@@ -97,6 +117,8 @@ sqlite3 backend/config/database/expenses.db \
 - Uploads per month
 - Average file size
 - Storage growth rate
+- Invoices per expense distribution (v4.13.0+)
+- Person-linked invoice ratio (v4.13.0+)
 
 #### 3. Check for Orphaned Files
 
@@ -157,6 +179,23 @@ sqlite3 backend/config/database/expenses.db \
 
 # Storage by year
 find backend/config/invoices -type d -name "20*" -exec du -sh {} \;
+
+# Expenses with most invoices (v4.13.0+)
+sqlite3 backend/config/database/expenses.db \
+  "SELECT e.id, e.place, e.date, COUNT(i.id) as invoice_count
+   FROM expenses e
+   JOIN expense_invoices i ON e.id = i.expense_id
+   GROUP BY e.id
+   ORDER BY invoice_count DESC
+   LIMIT 10;"
+
+# Person invoice distribution (v4.13.0+)
+sqlite3 backend/config/database/expenses.db \
+  "SELECT p.name, COUNT(i.id) as invoice_count
+   FROM people p
+   LEFT JOIN expense_invoices i ON p.id = i.person_id
+   GROUP BY p.id
+   ORDER BY invoice_count DESC;"
 ```
 
 **Performance Metrics:**
@@ -164,6 +203,7 @@ find backend/config/invoices -type d -name "20*" -exec du -sh {} \;
 - Average file size
 - Storage growth rate
 - API response times
+- Multi-invoice expense count (v4.13.0+)
 
 #### 3. Security Audit
 
@@ -185,6 +225,7 @@ grep "invoice" backend/logs/access.log | grep -E "(40[13]|50[0-9])"
 - [ ] Review failed access attempts
 - [ ] Check for unusual upload patterns
 - [ ] Verify access control working correctly
+- [ ] Verify person validation working (v4.13.0+)
 
 ---
 
@@ -229,6 +270,7 @@ done
 - Projected usage in 6-12 months
 - Budget for storage expansion
 - Archival strategy
+- Multi-invoice growth impact (v4.13.0+)
 
 #### 3. Disaster Recovery Test
 
@@ -255,6 +297,8 @@ ls -la test-restore/backend/config/invoices/
 - [ ] Verify database integrity
 - [ ] Verify invoice files accessible
 - [ ] Test invoice upload/download
+- [ ] Test multi-invoice functionality (v4.13.0+)
+- [ ] Test person-linked invoices (v4.13.0+)
 - [ ] Document any issues
 - [ ] Update DR procedures
 
@@ -269,6 +313,7 @@ ls -la test-restore/backend/config/invoices/
 - **Storage Growth Rate**: MB/day or GB/month
 - **Available Space**: Remaining storage capacity
 - **File Count**: Total number of invoice files
+- **Invoices Per Expense**: Average and max (v4.13.0+)
 
 #### Performance Metrics
 - **Upload Success Rate**: Percentage of successful uploads
@@ -281,6 +326,8 @@ ls -la test-restore/backend/config/invoices/
 - **Downloads per Day**: Number of invoice views
 - **Active Users**: Users uploading/viewing invoices
 - **Average File Size**: Mean size of uploaded invoices
+- **Multi-Invoice Expenses**: Count of expenses with >1 invoice (v4.13.0+)
+- **Person-Linked Invoices**: Percentage linked to people (v4.13.0+)
 
 ### Setting Up Alerts
 
@@ -329,8 +376,9 @@ sqlite3 backend/config/database/expenses.db "ANALYZE expense_invoices;"
 # Vacuum database
 sqlite3 backend/config/database/expenses.db "VACUUM;"
 
-# Rebuild indexes
+# Rebuild indexes (v4.13.0+ has additional indexes)
 sqlite3 backend/config/database/expenses.db "REINDEX idx_expense_invoices_expense_id;"
+sqlite3 backend/config/database/expenses.db "REINDEX idx_expense_invoices_person_id;"
 sqlite3 backend/config/database/expenses.db "REINDEX idx_expense_invoices_upload_date;"
 ```
 
@@ -374,13 +422,13 @@ async function getInvoiceWithCache(expenseId) {
     return cache.get(expenseId);
   }
   
-  const invoice = await getInvoice(expenseId);
-  cache.set(expenseId, invoice);
+  const invoices = await getInvoicesForExpense(expenseId);
+  cache.set(expenseId, invoices);
   
   // Expire after 1 hour
   setTimeout(() => cache.delete(expenseId), 3600000);
   
-  return invoice;
+  return invoices;
 }
 ```
 
@@ -397,6 +445,10 @@ find backend/config/invoices -type f -exec ls -lh {} \; | sort -k5 -hr | head -2
 
 # Check for duplicate files
 find backend/config/invoices -type f -exec md5sum {} \; | sort | uniq -w32 -dD
+
+# Find expenses with many invoices (v4.13.0+)
+sqlite3 backend/config/database/expenses.db \
+  "SELECT expense_id, COUNT(*) as cnt FROM expense_invoices GROUP BY expense_id ORDER BY cnt DESC LIMIT 10;"
 ```
 
 **Solutions:**
@@ -459,6 +511,23 @@ chown -R node:node backend/config/invoices/
 # For Docker
 docker exec expense-tracker-backend chmod -R 755 /config/invoices
 ```
+
+### Issue: Person Link Validation Errors (v4.13.0+)
+
+**Diagnosis:**
+```bash
+# Check for invoices with invalid person links
+sqlite3 backend/config/database/expenses.db \
+  "SELECT i.id, i.expense_id, i.person_id 
+   FROM expense_invoices i 
+   LEFT JOIN expense_people ep ON i.expense_id = ep.expense_id AND i.person_id = ep.person_id
+   WHERE i.person_id IS NOT NULL AND ep.id IS NULL;"
+```
+
+**Solutions:**
+1. Clear invalid person links
+2. Re-assign invoices to valid people
+3. Check expense_people table integrity
 
 ---
 
@@ -524,13 +593,26 @@ ls -lh backend/config/invoices/2026/01/123_1704067200_receipt.pdf
 ### Database Tuning
 
 ```sql
--- Add indexes for common queries
+-- Indexes for common queries (v4.13.0+)
+CREATE INDEX IF NOT EXISTS idx_expense_invoices_expense_id 
+ON expense_invoices(expense_id);
+
+CREATE INDEX IF NOT EXISTS idx_expense_invoices_person_id 
+ON expense_invoices(person_id);
+
 CREATE INDEX IF NOT EXISTS idx_expense_invoices_upload_date 
 ON expense_invoices(upload_date);
 
 -- Analyze query performance
 EXPLAIN QUERY PLAN 
 SELECT * FROM expense_invoices WHERE expense_id = 123;
+
+-- Query with person join (v4.13.0+)
+EXPLAIN QUERY PLAN 
+SELECT i.*, p.name as person_name 
+FROM expense_invoices i 
+LEFT JOIN people p ON i.person_id = p.id 
+WHERE i.expense_id = 123;
 ```
 
 ### File System Tuning
@@ -578,6 +660,9 @@ grep "GET /api/invoices" backend/logs/access.log | \
 # Check for suspicious activity
 grep "POST /api/invoices/upload" backend/logs/access.log | \
   grep -E "(40[13]|50[0-9])"
+
+# Check person link update attempts (v4.13.0+)
+grep "PATCH /api/invoices" backend/logs/access.log
 ```
 
 #### 2. Permission Audit
@@ -656,6 +741,6 @@ Escalate to Level 3 if:
 
 ---
 
-**Last Updated:** January 15, 2026  
-**Version:** 1.0  
+**Last Updated:** January 17, 2026  
+**Version:** 2.0 (Multi-Invoice Support)  
 **Maintainer:** System Administrator

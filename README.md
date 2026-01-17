@@ -70,12 +70,13 @@ A full-stack expense tracking application built with React and Node.js.
 - 👤 People management in Settings for adding/editing family members
 
 ### Medical Expense Invoice Attachments
-- 📄 Attach PDF invoices to medical expenses for record keeping
+- 📄 Attach multiple PDF invoices to medical expenses for record keeping
+- 👤 Optionally link invoices to specific family members assigned to the expense
 - 📤 Upload invoices during expense creation or editing
 - 👁️ View invoices in built-in PDF viewer with zoom, download, and print
-- 🔄 Replace or delete invoice attachments as needed
-- 🏷️ Visual indicators showing which expenses have attached invoices
-- 📊 Invoice status visible in tax deductible reports
+- 🔄 Replace or delete individual invoice attachments as needed
+- 🏷️ Visual indicators showing invoice count for expenses with multiple invoices
+- 📊 Invoice status and counts visible in tax deductible reports
 - 🔍 Filter expenses by invoice attachment status
 - 🔒 Secure file storage with access control
 - 📱 Mobile-friendly upload and viewing interface
@@ -404,13 +405,16 @@ stop-servers.bat
 ### Medical Expense Invoice Attachments
 43. **Upload Invoice**: When creating or editing a medical expense, scroll to "Invoice Attachment" section
 44. **Choose File**: Click "Choose File" or drag and drop a PDF file (max 10MB)
-45. **View Invoice**: Click the 📄 icon next to medical expenses to open the PDF viewer
-46. **PDF Viewer Controls**: Use zoom in/out, download, and print functions
-47. **Replace Invoice**: Edit the expense and click "Replace" to upload a new invoice
-48. **Delete Invoice**: Edit the expense and click "Delete" to remove the invoice
-49. **Filter by Invoice**: In Tax Deductible view, filter expenses by invoice attachment status
-50. **Invoice Indicators**: See which expenses have invoices in expense lists and tax reports
-51. **Automatic Cleanup**: Invoices are automatically deleted when expenses are deleted
+45. **Link to Person**: Optionally select a family member to link the invoice to (v4.13.0+)
+46. **Add Multiple Invoices**: Click "Add Invoice" to attach additional invoices to the same expense
+47. **View Invoice**: Click the 📄 icon next to medical expenses to open the PDF viewer
+48. **Invoice Count**: Expenses with multiple invoices show a count badge (e.g., "📄 3")
+49. **PDF Viewer Controls**: Use zoom in/out, download, and print functions
+50. **Delete Specific Invoice**: In the invoice list, click delete on individual invoices
+51. **Change Person Link**: Update which family member an invoice is linked to
+52. **Filter by Invoice**: In Tax Deductible view, filter expenses by invoice attachment status
+53. **Invoice Indicators**: See invoice counts in expense lists and tax reports
+54. **Automatic Cleanup**: Invoices are automatically deleted when expenses are deleted
 
 ### Merchant Analytics
 52. **View Merchant Analytics**: Click the "🏪 Merchant Analytics" button in the main navigation to open analytics
@@ -523,10 +527,12 @@ expense-tracker/
 - `DELETE /api/people/:id` - Delete a person (cascades to expense associations)
 
 ### Invoices (Medical Expense Attachments)
-- `POST /api/invoices/upload` - Upload a PDF invoice for an expense
-- `GET /api/invoices/:expenseId` - Get invoice file for an expense
-- `GET /api/invoices/:expenseId/metadata` - Get invoice metadata without file
-- `DELETE /api/invoices/:expenseId` - Delete an invoice attachment
+- `POST /api/invoices/upload` - Upload a PDF invoice for an expense (with optional personId)
+- `GET /api/invoices/:expenseId` - Get all invoices for an expense (returns array)
+- `GET /api/invoices/:expenseId/:invoiceId` - Get specific invoice file
+- `GET /api/invoices/:expenseId/metadata` - Get invoice metadata without files
+- `DELETE /api/invoices/:invoiceId` - Delete a specific invoice by ID
+- `PATCH /api/invoices/:invoiceId` - Update invoice person association
 
 ### Merchant Analytics
 - `GET /api/analytics/merchants` - Get top merchants with analytics (query params: period, sortBy, includeFixedExpenses)
@@ -640,13 +646,14 @@ expense-tracker/
 ### Expense Invoices Table
 - id (INTEGER PRIMARY KEY)
 - expense_id (INTEGER) - Foreign key to expenses table (CASCADE DELETE)
+- person_id (INTEGER) - Optional foreign key to people table (SET NULL on delete)
 - filename (TEXT) - Stored filename
 - original_filename (TEXT) - Original upload filename
 - file_path (TEXT) - Full path to file
 - file_size (INTEGER) - File size in bytes
 - mime_type (TEXT) - File MIME type (application/pdf)
 - upload_date (TEXT) - When invoice was uploaded
-- UNIQUE constraint on (expense_id) - One invoice per expense
+- Indexes on expense_id, person_id, and upload_date for performance
 
 ## Documentation
 

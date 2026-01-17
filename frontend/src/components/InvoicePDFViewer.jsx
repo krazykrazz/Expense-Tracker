@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { API_ENDPOINTS } from '../config';
+import { createLogger } from '../utils/logger';
 import './InvoicePDFViewer.css';
+
+const logger = createLogger('InvoicePDFViewer');
 
 // Note: Using native browser PDF rendering via iframe/object instead of react-pdf
 // This is more reliable across browsers and doesn't require PDF.js worker configuration
@@ -22,6 +25,7 @@ import './InvoicePDFViewer.css';
 const InvoicePDFViewer = ({
   isOpen = false,
   expenseId = null,
+  invoiceId = null, // Optional: specific invoice ID for multi-invoice support
   invoiceName = 'Invoice',
   onClose = () => {}
 }) => {
@@ -58,7 +62,7 @@ const InvoicePDFViewer = ({
         URL.revokeObjectURL(pdfUrl);
       }
     };
-  }, [isOpen, expenseId]);
+  }, [isOpen, expenseId, invoiceId]);
 
   /**
    * Load PDF from server
@@ -70,7 +74,12 @@ const InvoicePDFViewer = ({
     setError(null);
 
     try {
-      const response = await fetch(API_ENDPOINTS.INVOICE_BY_EXPENSE(expenseId));
+      // Use specific invoice endpoint if invoiceId is provided, otherwise use legacy endpoint
+      const fetchUrl = invoiceId 
+        ? API_ENDPOINTS.INVOICE_FILE(expenseId, invoiceId)
+        : API_ENDPOINTS.INVOICE_BY_EXPENSE(expenseId);
+      
+      const response = await fetch(fetchUrl);
 
       if (!response.ok) {
         if (response.status === 404) {
@@ -101,16 +110,16 @@ const InvoicePDFViewer = ({
         throw new Error('Received empty file from server');
       }
       
-      const url = URL.createObjectURL(blob);
-      setPdfUrl(url);
+      const blobUrl = URL.createObjectURL(blob);
+      setPdfUrl(blobUrl);
 
     } catch (loadError) {
-      console.error('Failed to load PDF:', loadError);
+      logger.error('Failed to load PDF:', loadError);
       setError(loadError.message || 'Failed to load invoice');
     } finally {
       setLoading(false);
     }
-  }, [expenseId]);
+  }, [expenseId, invoiceId]);
 
   /**
    * Handle zoom in
@@ -152,7 +161,7 @@ const InvoicePDFViewer = ({
       link.click();
       document.body.removeChild(link);
     } catch (downloadError) {
-      console.error('Download failed:', downloadError);
+      logger.error('Download failed:', downloadError);
       setError('Failed to download invoice. Please try again.');
     }
   }, [pdfUrl, expenseId, invoiceName]);
@@ -180,7 +189,7 @@ const InvoicePDFViewer = ({
         throw new Error('Unable to open print window');
       }
     } catch (printError) {
-      console.error('Print failed:', printError);
+      logger.error('Print failed:', printError);
       setError('Failed to open print dialog. Please try downloading the file instead.');
     }
   }, [pdfUrl]);

@@ -852,3 +852,76 @@
     flex: 1;
   }
 }
+
+
+/* Invoice Modal Styles */
+.invoice-modal {
+  background: white;
+  border-radius: 6px;
+  padding: 25px;
+  max-width: 600px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+  position: relative;
+}
+
+.invoice-modal h3 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  color: #166534;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.invoice-modal-info {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 20px;
+  padding: 10px 15px;
+  background: #f0fdf4;
+  border: 1px solid #86efac;
+  border-radius: 4px;
+}
+
+.invoice-modal-date {
+  font-size: 14px;
+  color: #166534;
+  font-weight: 500;
+}
+
+.invoice-modal-amount {
+  font-size: 16px;
+  font-weight: 700;
+  color: #16a34a;
+}
+
+.invoice-modal-empty {
+  text-align: center;
+  padding: 30px;
+  color: #6b7280;
+  font-style: italic;
+}
+
+/* Total invoices count in stat cards */
+.stat-total-invoices {
+  margin-top: 8px;
+  font-size: 0.85rem;
+  color: #6b7280;
+  font-style: italic;
+}
+
+@media (max-width: 768px) {
+  .invoice-modal {
+    width: 95%;
+    padding: 20px;
+    max-height: 85vh;
+  }
+
+  .invoice-modal-info {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+}

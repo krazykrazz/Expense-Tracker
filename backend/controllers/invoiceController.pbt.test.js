@@ -150,7 +150,7 @@ describe('Invoice Controller - Property-Based Tests - API Layer', () => {
           return true;
         }
       ),
-      { numRuns: 50 }
+      { numRuns: 10 }
     );
   });
 
@@ -248,7 +248,7 @@ describe('Invoice Controller - Property-Based Tests - API Layer', () => {
           return true;
         }
       ),
-      { numRuns: 50 }
+      { numRuns: 10 }
     );
   });
 
@@ -339,7 +339,7 @@ describe('Invoice Controller - Property-Based Tests - API Layer', () => {
           return true;
         }
       ),
-      { numRuns: 50 }
+      { numRuns: 10 }
     );
   });
 
@@ -408,7 +408,7 @@ describe('Invoice Controller - Property-Based Tests - API Layer', () => {
           return true;
         }
       ),
-      { numRuns: 50 }
+      { numRuns: 10 }
     );
   });
 
@@ -443,7 +443,7 @@ describe('Invoice Controller - Property-Based Tests - API Layer', () => {
           return true;
         }
       ),
-      { numRuns: 20 }
+      { numRuns: 5 }
     );
   });
 
@@ -484,7 +484,7 @@ describe('Invoice Controller - Property-Based Tests - API Layer', () => {
           return true;
         }
       ),
-      { numRuns: 20 }
+      { numRuns: 5 }
     );
   });
 

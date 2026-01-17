@@ -3,6 +3,10 @@
  * Handles alert generation, message formatting, and severity determination
  */
 
+import { createLogger } from './logger';
+
+const logger = createLogger('BudgetAlerts');
+
 /**
  * Alert severity levels with their thresholds
  */
@@ -104,7 +108,7 @@ export const generateAlertMessage = (budgetProgress, severity) => {
         return `${category} budget needs attention.`;
     }
   } catch (error) {
-    console.warn('Error generating alert message:', error);
+    logger.warn('Error generating alert message:', error);
     return 'Budget alert - message unavailable';
   }
 };
@@ -128,7 +132,7 @@ export const createAlertFromBudget = (budgetProgress) => {
         typeof progress !== 'number' || isNaN(progress) ||
         typeof spent !== 'number' || isNaN(spent) ||
         !budget.id || !budget.category || typeof budget.limit !== 'number') {
-      console.warn('Invalid budget progress data:', budgetProgress);
+      logger.warn('Invalid budget progress data:', budgetProgress);
       return null;
     }
     
@@ -150,7 +154,7 @@ export const createAlertFromBudget = (budgetProgress) => {
       icon: getAlertIcon(severity)
     };
   } catch (error) {
-    console.warn('Error creating alert from budget:', error, budgetProgress);
+    logger.warn('Error creating alert from budget:', { error, budgetProgress });
     return null;
   }
 };
@@ -163,7 +167,7 @@ export const createAlertFromBudget = (budgetProgress) => {
 export const calculateAlerts = (budgets) => {
   try {
     if (!Array.isArray(budgets)) {
-      console.warn('calculateAlerts received non-array input:', budgets);
+      logger.warn('calculateAlerts received non-array input:', budgets);
       return [];
     }
     
@@ -200,7 +204,7 @@ export const calculateAlerts = (budgets) => {
     
     return sortAlertsBySeverity(alerts);
   } catch (error) {
-    console.error('Error calculating alerts:', error);
+    logger.error('Error calculating alerts:', error);
     return []; // Return empty array on error to prevent crashes
   }
 };

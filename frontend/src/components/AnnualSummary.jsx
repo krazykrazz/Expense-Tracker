@@ -2,6 +2,9 @@ import { useState, useEffect, useMemo } from 'react';
 import './AnnualSummary.css';
 import { formatAmount, getMonthNameShort } from '../utils/formatters';
 import { getAnnualIncomeByCategory } from '../services/incomeApi';
+import { createLogger } from '../utils/logger';
+
+const logger = createLogger('AnnualSummary');
 
 const AnnualSummary = ({ year }) => {
   const [summary, setSummary] = useState(null);
@@ -58,13 +61,13 @@ const AnnualSummary = ({ year }) => {
         const categoryData = await getAnnualIncomeByCategory(year);
         setIncomeByCategory(categoryData);
       } catch (categoryErr) {
-        console.error('Error fetching income by category:', categoryErr);
+        logger.error('Error fetching income by category:', categoryErr);
         // Don't fail the whole component if category data fails
         setIncomeByCategory(null);
       }
     } catch (err) {
       setError(err.message);
-      console.error('Error fetching annual summary:', err);
+      logger.error('Error fetching annual summary:', err);
     } finally {
       setLoading(false);
     }

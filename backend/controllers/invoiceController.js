@@ -1,6 +1,5 @@
 const invoiceService = require('../services/invoiceService');
 const logger = require('../config/logger');
-const path = require('path');
 const fs = require('fs');
 
 /**

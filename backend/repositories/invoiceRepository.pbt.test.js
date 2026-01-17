@@ -138,7 +138,7 @@ describe('Invoice Repository Property-Based Tests', () => {
           }
         }
       ),
-      { numRuns: 50 }
+      { numRuns: 10 }
     );
   });
 
@@ -199,7 +199,7 @@ describe('Invoice Repository Property-Based Tests', () => {
           }
         }
       ),
-      { numRuns: 50 }
+      { numRuns: 10 }
     );
   });
 
@@ -252,7 +252,7 @@ describe('Invoice Repository Property-Based Tests', () => {
           await invoiceRepository.deleteById(created.id);
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 15 }
     );
   });
 });

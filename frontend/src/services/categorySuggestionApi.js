@@ -4,6 +4,9 @@
  */
 
 import { API_ENDPOINTS } from '../config.js';
+import { createLogger } from '../utils/logger';
+
+const logger = createLogger('CategorySuggestionApi');
 
 /**
  * Fetch category suggestion for a place based on historical data
@@ -23,7 +26,7 @@ export const fetchCategorySuggestion = async (place) => {
 
     if (!response.ok) {
       // Graceful degradation - return null on error
-      console.warn('Category suggestion API returned error:', response.status);
+      logger.warn('Category suggestion API returned error:', response.status);
       return null;
     }
 
@@ -33,7 +36,7 @@ export const fetchCategorySuggestion = async (place) => {
     return data.suggestion || null;
   } catch (error) {
     // Graceful degradation - log error and return null
-    console.warn('Error fetching category suggestion:', error.message);
+    logger.warn('Error fetching category suggestion:', error.message);
     return null;
   }
 };

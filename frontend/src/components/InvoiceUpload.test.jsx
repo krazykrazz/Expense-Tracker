@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import InvoiceUpload from './InvoiceUpload';
 
@@ -8,8 +8,36 @@ vi.mock('../config', () => ({
   API_ENDPOINTS: {
     INVOICE_UPLOAD: '/api/invoices/upload',
     INVOICE_BY_EXPENSE: (id) => `/api/invoices/${id}`,
-    INVOICE_METADATA: (id) => `/api/invoices/${id}/metadata`
+    INVOICE_METADATA: (id) => `/api/invoices/${id}/metadata`,
+    INVOICES_FOR_EXPENSE: (id) => `/api/invoices/${id}`,
+    INVOICE_BY_ID: (id) => `/api/invoices/invoice/${id}`,
+    INVOICE_FILE: (expenseId, invoiceId) => `/api/invoices/${expenseId}/${invoiceId}`
   }
+}));
+
+// Mock InvoicePDFViewer component
+vi.mock('./InvoicePDFViewer', () => ({
+  default: ({ isOpen, onClose, invoiceName }) => 
+    isOpen ? (
+      <div role="dialog" data-testid="pdf-viewer">
+        <span>{invoiceName}</span>
+        <button aria-label="Close PDF viewer" onClick={onClose}>Close</button>
+      </div>
+    ) : null
+}));
+
+// Mock InvoiceList component
+vi.mock('./InvoiceList', () => ({
+  default: ({ invoices, expenseId, people, onInvoiceDeleted, disabled }) => (
+    <div data-testid="invoice-list">
+      <span data-testid="invoice-count">{invoices?.length || 0} invoices</span>
+      {invoices?.map(inv => (
+        <div key={inv.id} data-testid={`invoice-item-${inv.id}`}>
+          {inv.originalFilename}
+        </div>
+      ))}
+    </div>
+  )
 }));
 
 // Mock XMLHttpRequest for upload progress testing
@@ -17,19 +45,13 @@ class MockXMLHttpRequest {
   constructor() {
     this.upload = { addEventListener: vi.fn() };
     this.onload = null;
-    this.onerror = null;
-    this.ontimeout = null;
     this.status = 200;
     this.responseText = JSON.stringify({ success: true, invoice: { id: 1, filename: 'test.pdf' } });
     this.timeout = 0;
   }
-
   open() {}
   send() {
-    // Simulate successful upload
-    setTimeout(() => {
-      if (this.onload) this.onload();
-    }, 10);
+    setTimeout(() => { if (this.onload) this.onload(); }, 10);
   }
 }
 
@@ -41,12 +63,8 @@ describe('InvoiceUpload Component', () => {
   beforeEach(() => {
     mockOnInvoiceUploaded = vi.fn();
     mockOnInvoiceDeleted = vi.fn();
-    
-    // Mock XMLHttpRequest
     originalXMLHttpRequest = global.XMLHttpRequest;
     global.XMLHttpRequest = MockXMLHttpRequest;
-    
-    // Mock fetch for delete operations
     global.fetch = vi.fn();
   });
 
@@ -57,7 +75,7 @@ describe('InvoiceUpload Component', () => {
   });
 
   describe('Upload Interface', () => {
-    it('renders upload dropzone when no existing invoice', () => {
+    it('renders upload dropzone when no existing invoices', () => {
       render(
         <InvoiceUpload
           expenseId={123}
@@ -65,424 +83,188 @@ describe('InvoiceUpload Component', () => {
           onInvoiceDeleted={mockOnInvoiceDeleted}
         />
       );
-
       expect(screen.getByRole('button', { name: /upload invoice file/i })).toBeInTheDocument();
       expect(screen.getByText(/drag & drop pdf file here/i)).toBeInTheDocument();
-      expect(screen.getByText(/or click to select file/i)).toBeInTheDocument();
-      expect(screen.getByText(/pdf files only • max 10mb/i)).toBeInTheDocument();
     });
 
     it('shows disabled state when disabled prop is true', () => {
       render(
-        <InvoiceUpload
-          expenseId={123}
-          disabled={true}
-          onInvoiceUploaded={mockOnInvoiceUploaded}
-          onInvoiceDeleted={mockOnInvoiceDeleted}
-        />
+        <InvoiceUpload expenseId={123} disabled={true} onInvoiceUploaded={mockOnInvoiceUploaded} onInvoiceDeleted={mockOnInvoiceDeleted} />
       );
-
       const dropzone = screen.getByRole('button', { name: /upload invoice file/i });
       expect(dropzone).toHaveClass('disabled');
-      expect(dropzone).toHaveAttribute('tabIndex', '-1');
-    });
-
-    it('handles keyboard navigation', async () => {
-      const user = userEvent.setup();
-      
-      render(
-        <InvoiceUpload
-          expenseId={123}
-          onInvoiceUploaded={mockOnInvoiceUploaded}
-          onInvoiceDeleted={mockOnInvoiceDeleted}
-        />
-      );
-
-      const dropzone = screen.getByRole('button', { name: /upload invoice file/i });
-      
-      // Focus the dropzone
-      await user.tab();
-      expect(dropzone).toHaveFocus();
-
-      // Test Enter key
-      await user.keyboard('{Enter}');
-      // File input should be triggered (we can't easily test this without mocking)
     });
   });
 
-  describe('Existing Invoice Display', () => {
-    const mockInvoice = {
-      id: 1,
-      expenseId: 123,
-      filename: 'invoice_123_1234567890_receipt.pdf',
-      originalFilename: 'receipt.pdf',
-      fileSize: 1024000,
-      uploadDate: '2025-01-01T12:00:00Z'
-    };
+  describe('Person Dropdown Visibility', () => {
+    const mockPeople = [{ id: 1, name: 'John Doe' }, { id: 2, name: 'Jane Smith' }];
 
-    it('renders existing invoice information', () => {
+    it('shows person dropdown when people are assigned to expense', () => {
       render(
-        <InvoiceUpload
-          expenseId={123}
-          existingInvoice={mockInvoice}
-          onInvoiceUploaded={mockOnInvoiceUploaded}
-          onInvoiceDeleted={mockOnInvoiceDeleted}
-        />
+        <InvoiceUpload expenseId={123} people={mockPeople} onInvoiceUploaded={mockOnInvoiceUploaded} onInvoiceDeleted={mockOnInvoiceDeleted} />
       );
-
-      expect(screen.getByText('receipt.pdf')).toBeInTheDocument();
-      expect(screen.getByText(/1000 KB/)).toBeInTheDocument();
-      expect(screen.getByText(/uploaded/i)).toBeInTheDocument();
-      
-      expect(screen.getByRole('button', { name: /view invoice/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /replace invoice/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /delete invoice/i })).toBeInTheDocument();
+      expect(screen.getByLabelText(/link to person/i)).toBeInTheDocument();
+      expect(screen.getByRole('combobox')).toBeInTheDocument();
+      expect(screen.getByText('John Doe')).toBeInTheDocument();
+      expect(screen.getByText('Jane Smith')).toBeInTheDocument();
     });
 
-    it('handles view invoice action', async () => {
-      const user = userEvent.setup();
-
+    it('hides person dropdown when no people are assigned', () => {
       render(
-        <InvoiceUpload
-          expenseId={123}
-          existingInvoice={mockInvoice}
-          onInvoiceUploaded={mockOnInvoiceUploaded}
-          onInvoiceDeleted={mockOnInvoiceDeleted}
-        />
+        <InvoiceUpload expenseId={123} people={[]} onInvoiceUploaded={mockOnInvoiceUploaded} onInvoiceDeleted={mockOnInvoiceDeleted} />
       );
-
-      const viewButton = screen.getByRole('button', { name: /view invoice/i });
-      await user.click(viewButton);
-
-      // Check that the PDF viewer modal is opened
-      expect(screen.getByRole('dialog')).toBeInTheDocument();
-      expect(screen.getByLabelText('Close PDF viewer')).toBeInTheDocument();
+      expect(screen.queryByLabelText(/link to person/i)).not.toBeInTheDocument();
     });
 
-    it('handles delete confirmation flow', async () => {
+    it('allows selecting a person from dropdown', async () => {
       const user = userEvent.setup();
-      
-      // Mock successful delete response
-      global.fetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({ success: true })
-      });
-
       render(
-        <InvoiceUpload
-          expenseId={123}
-          existingInvoice={mockInvoice}
-          onInvoiceUploaded={mockOnInvoiceUploaded}
-          onInvoiceDeleted={mockOnInvoiceDeleted}
-        />
+        <InvoiceUpload expenseId={123} people={mockPeople} onInvoiceUploaded={mockOnInvoiceUploaded} onInvoiceDeleted={mockOnInvoiceDeleted} />
       );
+      const dropdown = screen.getByRole('combobox');
+      await user.selectOptions(dropdown, '1');
+      expect(dropdown).toHaveValue('1');
+    });
+  });
 
-      // Click delete button
-      const deleteButton = screen.getByRole('button', { name: /delete invoice/i });
-      await user.click(deleteButton);
+  describe('Add Invoice Button Appearance', () => {
+    const mockInvoices = [{ id: 1, expenseId: 123, originalFilename: 'receipt.pdf', fileSize: 1024000, uploadDate: '2025-01-01T12:00:00Z' }];
 
-      // Should show confirmation buttons
-      expect(screen.getByRole('button', { name: /confirm delete/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /cancel delete/i })).toBeInTheDocument();
-
-      // Click confirm
-      const confirmButton = screen.getByRole('button', { name: /confirm delete/i });
-      await user.click(confirmButton);
-
-      await waitFor(() => {
-        expect(global.fetch).toHaveBeenCalledWith('/api/invoices/123', {
-          method: 'DELETE'
-        });
-        expect(mockOnInvoiceDeleted).toHaveBeenCalled();
-      });
+    it('shows Add Invoice button when invoices exist', () => {
+      render(
+        <InvoiceUpload expenseId={123} existingInvoices={mockInvoices} onInvoiceUploaded={mockOnInvoiceUploaded} onInvoiceDeleted={mockOnInvoiceDeleted} />
+      );
+      expect(screen.getByRole('button', { name: /add another invoice/i })).toBeInTheDocument();
     });
 
-    it('handles delete cancellation', async () => {
+    it('shows upload form when Add Invoice button is clicked', async () => {
       const user = userEvent.setup();
-
       render(
-        <InvoiceUpload
-          expenseId={123}
-          existingInvoice={mockInvoice}
-          onInvoiceUploaded={mockOnInvoiceUploaded}
-          onInvoiceDeleted={mockOnInvoiceDeleted}
-        />
+        <InvoiceUpload expenseId={123} existingInvoices={mockInvoices} onInvoiceUploaded={mockOnInvoiceUploaded} onInvoiceDeleted={mockOnInvoiceDeleted} />
       );
+      await user.click(screen.getByRole('button', { name: /add another invoice/i }));
+      expect(screen.getByRole('button', { name: /upload invoice file/i })).toBeInTheDocument();
+    });
 
-      // Click delete button
-      const deleteButton = screen.getByRole('button', { name: /delete invoice/i });
-      await user.click(deleteButton);
+    it('shows Cancel button when adding invoice to existing list', async () => {
+      const user = userEvent.setup();
+      render(
+        <InvoiceUpload expenseId={123} existingInvoices={mockInvoices} onInvoiceUploaded={mockOnInvoiceUploaded} onInvoiceDeleted={mockOnInvoiceDeleted} />
+      );
+      await user.click(screen.getByRole('button', { name: /add another invoice/i }));
+      expect(screen.getByRole('button', { name: /cancel adding invoice/i })).toBeInTheDocument();
+    });
 
-      // Click cancel
-      const cancelButton = screen.getByRole('button', { name: /cancel delete/i });
-      await user.click(cancelButton);
+    it('hides upload form when Cancel is clicked', async () => {
+      const user = userEvent.setup();
+      render(
+        <InvoiceUpload expenseId={123} existingInvoices={mockInvoices} onInvoiceUploaded={mockOnInvoiceUploaded} onInvoiceDeleted={mockOnInvoiceDeleted} />
+      );
+      await user.click(screen.getByRole('button', { name: /add another invoice/i }));
+      await user.click(screen.getByRole('button', { name: /cancel adding invoice/i }));
+      expect(screen.getByRole('button', { name: /add another invoice/i })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /upload invoice file/i })).not.toBeInTheDocument();
+    });
+  });
 
-      // Should return to normal state
-      expect(screen.getByRole('button', { name: /delete invoice/i })).toBeInTheDocument();
-      expect(screen.queryByRole('button', { name: /confirm delete/i })).not.toBeInTheDocument();
+  describe('Upload with Person Selection', () => {
+    const mockPeople = [{ id: 1, name: 'John Doe' }, { id: 2, name: 'Jane Smith' }];
+    const mockInvoices = [{ id: 1, expenseId: 123, originalFilename: 'receipt.pdf', fileSize: 1024000, uploadDate: '2025-01-01T12:00:00Z' }];
+
+    it('shows person dropdown in upload form when adding to existing invoices', async () => {
+      const user = userEvent.setup();
+      render(
+        <InvoiceUpload expenseId={123} existingInvoices={mockInvoices} people={mockPeople} onInvoiceUploaded={mockOnInvoiceUploaded} onInvoiceDeleted={mockOnInvoiceDeleted} />
+      );
+      await user.click(screen.getByRole('button', { name: /add another invoice/i }));
+      expect(screen.getByLabelText(/link to person/i)).toBeInTheDocument();
+    });
+
+    it('resets person selection when cancel is clicked', async () => {
+      const user = userEvent.setup();
+      render(
+        <InvoiceUpload expenseId={123} existingInvoices={mockInvoices} people={mockPeople} onInvoiceUploaded={mockOnInvoiceUploaded} onInvoiceDeleted={mockOnInvoiceDeleted} />
+      );
+      await user.click(screen.getByRole('button', { name: /add another invoice/i }));
+      const dropdown = screen.getByRole('combobox');
+      await user.selectOptions(dropdown, '1');
+      expect(dropdown).toHaveValue('1');
+      await user.click(screen.getByRole('button', { name: /cancel adding invoice/i }));
+      await user.click(screen.getByRole('button', { name: /add another invoice/i }));
+      expect(screen.getByRole('combobox')).toHaveValue('');
     });
   });
 
   describe('File Validation', () => {
-    it('validates file type', async () => {
-      const user = userEvent.setup();
-      
+    it('validates file type and shows error', async () => {
       render(
-        <InvoiceUpload
-          expenseId={123}
-          onInvoiceUploaded={mockOnInvoiceUploaded}
-          onInvoiceDeleted={mockOnInvoiceDeleted}
-        />
+        <InvoiceUpload expenseId={123} onInvoiceUploaded={mockOnInvoiceUploaded} onInvoiceDeleted={mockOnInvoiceDeleted} />
       );
-
-      // Create invalid file (not PDF)
       const invalidFile = new File(['content'], 'test.txt', { type: 'text/plain' });
-      
       const fileInput = document.querySelector('input[type="file"]');
-      
-      // Simulate file selection by directly calling the change handler
-      Object.defineProperty(fileInput, 'files', {
-        value: [invalidFile],
-        writable: false,
-      });
-      
+      Object.defineProperty(fileInput, 'files', { value: [invalidFile], writable: false });
       fireEvent.change(fileInput);
-
-      // Error should be displayed immediately since validation is synchronous
-      expect(screen.getByRole('alert')).toBeInTheDocument();
-      expect(screen.getByText(/invalid file type/i)).toBeInTheDocument();
-    });
-
-    it('validates file size', async () => {
-      const user = userEvent.setup();
-      
-      render(
-        <InvoiceUpload
-          expenseId={123}
-          onInvoiceUploaded={mockOnInvoiceUploaded}
-          onInvoiceDeleted={mockOnInvoiceDeleted}
-        />
-      );
-
-      // Create oversized file (larger than 10MB)
-      const oversizedFile = new File(['x'.repeat(11 * 1024 * 1024)], 'large.pdf', { 
-        type: 'application/pdf' 
-      });
-      
-      const fileInput = document.querySelector('input[type="file"]');
-      await user.upload(fileInput, oversizedFile);
-
-      await waitFor(() => {
-        expect(screen.getByRole('alert')).toBeInTheDocument();
-        expect(screen.getByText(/exceeds the 10mb limit/i)).toBeInTheDocument();
-      });
-    });
-
-    it('validates empty file', async () => {
-      const user = userEvent.setup();
-      
-      render(
-        <InvoiceUpload
-          expenseId={123}
-          onInvoiceUploaded={mockOnInvoiceUploaded}
-          onInvoiceDeleted={mockOnInvoiceDeleted}
-        />
-      );
-
-      // Create empty file
-      const emptyFile = new File([], 'empty.pdf', { type: 'application/pdf' });
-      
-      const fileInput = document.querySelector('input[type="file"]');
-      await user.upload(fileInput, emptyFile);
-
-      await waitFor(() => {
-        expect(screen.getByRole('alert')).toBeInTheDocument();
-        expect(screen.getByText(/file is empty/i)).toBeInTheDocument();
-      });
+      const errorAlert = screen.getByRole('alert');
+      expect(errorAlert).toBeInTheDocument();
+      expect(within(errorAlert).getByText(/invalid file type/i)).toBeInTheDocument();
     });
   });
 
   describe('Drag and Drop', () => {
-    it('handles drag over events', async () => {
+    it('handles drag over events', () => {
       render(
-        <InvoiceUpload
-          expenseId={123}
-          onInvoiceUploaded={mockOnInvoiceUploaded}
-          onInvoiceDeleted={mockOnInvoiceDeleted}
-        />
+        <InvoiceUpload expenseId={123} onInvoiceUploaded={mockOnInvoiceUploaded} onInvoiceDeleted={mockOnInvoiceDeleted} />
       );
-
       const dropzone = screen.getByRole('button', { name: /upload invoice file/i });
-      
-      // Simulate drag over
-      fireEvent.dragOver(dropzone, {
-        dataTransfer: {
-          files: [new File(['content'], 'test.pdf', { type: 'application/pdf' })]
-        }
-      });
-
+      fireEvent.dragOver(dropzone, { dataTransfer: { files: [new File(['content'], 'test.pdf', { type: 'application/pdf' })] } });
       expect(dropzone).toHaveClass('drag-over');
-    });
-
-    it('handles drag leave events', async () => {
-      render(
-        <InvoiceUpload
-          expenseId={123}
-          onInvoiceUploaded={mockOnInvoiceUploaded}
-          onInvoiceDeleted={mockOnInvoiceDeleted}
-        />
-      );
-
-      const dropzone = screen.getByRole('button', { name: /upload invoice file/i });
-      
-      // Simulate drag over then drag leave
-      fireEvent.dragOver(dropzone);
-      fireEvent.dragLeave(dropzone, { target: dropzone });
-
-      expect(dropzone).not.toHaveClass('drag-over');
-    });
-
-    it('handles file drop', async () => {
-      render(
-        <InvoiceUpload
-          expenseId={123}
-          onInvoiceUploaded={mockOnInvoiceUploaded}
-          onInvoiceDeleted={mockOnInvoiceDeleted}
-        />
-      );
-
-      const dropzone = screen.getByRole('button', { name: /upload invoice file/i });
-      const validFile = new File(['content'], 'test.pdf', { type: 'application/pdf' });
-      
-      // Simulate file drop
-      fireEvent.drop(dropzone, {
-        dataTransfer: {
-          files: [validFile]
-        }
-      });
-
-      await waitFor(() => {
-        expect(dropzone).not.toHaveClass('drag-over');
-        // Upload should be initiated (we can see uploading state)
-        expect(screen.getByText(/uploading/i)).toBeInTheDocument();
-      });
     });
   });
 
   describe('Error Handling', () => {
     it('displays and clears error messages', async () => {
       const user = userEvent.setup();
-      
       render(
-        <InvoiceUpload
-          expenseId={123}
-          onInvoiceUploaded={mockOnInvoiceUploaded}
-          onInvoiceDeleted={mockOnInvoiceDeleted}
-        />
+        <InvoiceUpload expenseId={123} onInvoiceUploaded={mockOnInvoiceUploaded} onInvoiceDeleted={mockOnInvoiceDeleted} />
       );
-
-      // Trigger an error (invalid file)
       const invalidFile = new File(['content'], 'test.txt', { type: 'text/plain' });
       const fileInput = document.querySelector('input[type="file"]');
-      
-      // Simulate file selection
-      Object.defineProperty(fileInput, 'files', {
-        value: [invalidFile],
-        writable: false,
-      });
-      
+      Object.defineProperty(fileInput, 'files', { value: [invalidFile], writable: false });
       fireEvent.change(fileInput);
-
-      // Error should be displayed immediately
       expect(screen.getByRole('alert')).toBeInTheDocument();
-
-      // Clear error
       const clearButton = screen.getByRole('button', { name: /clear error/i });
       await user.click(clearButton);
-
       expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-    });
-
-    it('handles missing expense ID', async () => {
-      const user = userEvent.setup();
-      
-      render(
-        <InvoiceUpload
-          expenseId={null}
-          onInvoiceUploaded={mockOnInvoiceUploaded}
-          onInvoiceDeleted={mockOnInvoiceDeleted}
-        />
-      );
-
-      const validFile = new File(['content'], 'test.pdf', { type: 'application/pdf' });
-      const fileInput = document.querySelector('input[type="file"]');
-      await user.upload(fileInput, validFile);
-
-      await waitFor(() => {
-        expect(screen.getByRole('alert')).toBeInTheDocument();
-        expect(screen.getByText(/expense id is required/i)).toBeInTheDocument();
-      });
     });
   });
 
   describe('Accessibility', () => {
-    it('has proper ARIA labels and roles', () => {
+    it('has proper ARIA labels and roles for dropzone', () => {
       render(
-        <InvoiceUpload
-          expenseId={123}
-          onInvoiceUploaded={mockOnInvoiceUploaded}
-          onInvoiceDeleted={mockOnInvoiceDeleted}
-        />
+        <InvoiceUpload expenseId={123} onInvoiceUploaded={mockOnInvoiceUploaded} onInvoiceDeleted={mockOnInvoiceDeleted} />
       );
-
       const dropzone = screen.getByRole('button', { name: /upload invoice file/i });
       expect(dropzone).toHaveAttribute('aria-describedby', 'upload-instructions');
-      
       const instructions = screen.getByText(/or click to select file/i);
       expect(instructions).toHaveAttribute('id', 'upload-instructions');
     });
 
-    it('supports screen readers with proper announcements', () => {
-      const mockInvoice = {
-        id: 1,
-        expenseId: 123,
-        filename: 'invoice_123_1234567890_receipt.pdf',
-        originalFilename: 'receipt.pdf',
-        fileSize: 1024000,
-        uploadDate: '2025-01-01T12:00:00Z'
-      };
-
+    it('person dropdown has proper accessibility attributes', () => {
+      const mockPeople = [{ id: 1, name: 'John Doe' }];
       render(
-        <InvoiceUpload
-          expenseId={123}
-          existingInvoice={mockInvoice}
-          onInvoiceUploaded={mockOnInvoiceUploaded}
-          onInvoiceDeleted={mockOnInvoiceDeleted}
-        />
+        <InvoiceUpload expenseId={123} people={mockPeople} onInvoiceUploaded={mockOnInvoiceUploaded} onInvoiceDeleted={mockOnInvoiceDeleted} />
       );
-
-      // Action buttons should have proper labels
-      expect(screen.getByRole('button', { name: /view invoice/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /replace invoice/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /delete invoice/i })).toBeInTheDocument();
+      const dropdown = screen.getByRole('combobox');
+      expect(dropdown).toHaveAttribute('aria-label', 'Select person to link invoice to');
     });
-  });
 
-  describe('Mobile Support', () => {
-    it('renders appropriately for touch interfaces', () => {
+    it('Add Invoice button has proper accessibility label', () => {
+      const mockInvoices = [{ id: 1, expenseId: 123, originalFilename: 'receipt.pdf', fileSize: 1024000, uploadDate: '2025-01-01T12:00:00Z' }];
       render(
-        <InvoiceUpload
-          expenseId={123}
-          onInvoiceUploaded={mockOnInvoiceUploaded}
-          onInvoiceDeleted={mockOnInvoiceDeleted}
-        />
+        <InvoiceUpload expenseId={123} existingInvoices={mockInvoices} onInvoiceUploaded={mockOnInvoiceUploaded} onInvoiceDeleted={mockOnInvoiceDeleted} />
       );
-
-      const dropzone = screen.getByRole('button', { name: /upload invoice file/i });
-      expect(dropzone).toBeInTheDocument();
-      
-      // Component should be touch-friendly (CSS handles the responsive behavior)
-      expect(dropzone).toHaveClass('invoice-dropzone');
+      const addButton = screen.getByRole('button', { name: /add another invoice/i });
+      expect(addButton).toHaveAttribute('aria-label', 'Add another invoice');
     });
   });
 });

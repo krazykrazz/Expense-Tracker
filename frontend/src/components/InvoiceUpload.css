@@ -5,6 +5,134 @@
   margin: 8px 0;
 }
 
+.invoice-upload-container.has-invoices {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Upload Form Container */
+.invoice-upload-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.invoice-upload-form.adding-to-existing {
+  padding: 12px;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+}
+
+/* Person Selection Dropdown */
+.person-selection {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.person-select-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.person-select-dropdown {
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background-color: white;
+  font-size: 13px;
+  color: #374151;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.person-select-dropdown:hover:not(:disabled) {
+  border-color: #9ca3af;
+}
+
+.person-select-dropdown:focus {
+  outline: none;
+  border-color: #0ea5e9;
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+}
+
+.person-select-dropdown:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background-color: #f5f5f5;
+}
+
+/* Add Invoice Button */
+.add-invoice-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border: 2px dashed #d1d5db;
+  border-radius: 6px;
+  background-color: #fafafa;
+  color: #6b7280;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.add-invoice-btn:hover:not(:disabled) {
+  border-color: #0ea5e9;
+  background-color: #f0f9ff;
+  color: #0ea5e9;
+}
+
+.add-invoice-btn:focus {
+  outline: none;
+  border-color: #0ea5e9;
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+}
+
+.add-invoice-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.add-invoice-icon {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.add-invoice-text {
+  font-size: 13px;
+}
+
+/* Cancel Add Invoice Button */
+.cancel-add-invoice-btn {
+  padding: 8px 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  background-color: white;
+  color: #6b7280;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  align-self: flex-start;
+}
+
+.cancel-add-invoice-btn:hover {
+  background-color: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+.cancel-add-invoice-btn:focus {
+  outline: none;
+  border-color: #0ea5e9;
+  box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.1);
+}
+
 /* Drop Zone Styles */
 .invoice-dropzone {
   border: 2px dashed #d1d5db;
@@ -117,7 +245,7 @@
   text-align: center;
 }
 
-/* Existing Invoice Display */
+/* Existing Invoice Display (backward compatibility) */
 .invoice-existing {
   display: flex;
   align-items: center;
@@ -321,6 +449,24 @@
     justify-content: center;
     width: 100%;
   }
+
+  /* Person selection responsive */
+  .person-selection {
+    width: 100%;
+  }
+
+  .person-select-dropdown {
+    width: 100%;
+  }
+
+  /* Add invoice button responsive */
+  .add-invoice-btn {
+    padding: 14px 16px;
+  }
+
+  .invoice-upload-form.adding-to-existing {
+    padding: 10px;
+  }
 }
 
 /* Touch-friendly styles for mobile */
@@ -342,6 +488,20 @@
     align-items: center;
     justify-content: center;
   }
+
+  .person-select-dropdown {
+    min-height: 44px;
+    padding: 10px 12px;
+  }
+
+  .add-invoice-btn {
+    min-height: 48px;
+  }
+
+  .cancel-add-invoice-btn {
+    min-height: 44px;
+    padding: 10px 16px;
+  }
 }
 
 /* High contrast mode support */
@@ -358,13 +518,24 @@
   .progress-fill {
     background-color: #1e40af;
   }
+
+  .add-invoice-btn {
+    border-width: 3px;
+  }
+
+  .person-select-dropdown {
+    border-width: 2px;
+  }
 }
 
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
   .invoice-dropzone,
   .invoice-action-btn,
-  .progress-fill {
+  .progress-fill,
+  .add-invoice-btn,
+  .person-select-dropdown,
+  .cancel-add-invoice-btn {
     transition: none;
   }
 
@@ -386,6 +557,21 @@
 
 .error-close:focus-visible {
   outline: 2px solid #dc2626;
+  outline-offset: 1px;
+}
+
+.add-invoice-btn:focus-visible {
+  outline: 2px solid #0ea5e9;
+  outline-offset: 2px;
+}
+
+.person-select-dropdown:focus-visible {
+  outline: 2px solid #0ea5e9;
+  outline-offset: 1px;
+}
+
+.cancel-add-invoice-btn:focus-visible {
+  outline: 2px solid #0ea5e9;
   outline-offset: 1px;
 }
 

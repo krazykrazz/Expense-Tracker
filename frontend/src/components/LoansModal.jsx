@@ -3,8 +3,11 @@ import './LoansModal.css';
 import { getAllLoans, createLoan, updateLoan, deleteLoan } from '../services/loanApi';
 import { validateName, validateAmount } from '../utils/validation';
 import { formatCurrency, formatDate } from '../utils/formatters';
+import { createLogger } from '../utils/logger';
 import LoanDetailView from './LoanDetailView';
 import TotalDebtView from './TotalDebtView';
+
+const logger = createLogger('LoansModal');
 
 const LoansModal = ({ isOpen, onClose, year, month, onUpdate, highlightIds = [] }) => {
   const [loans, setLoans] = useState([]);
@@ -48,7 +51,7 @@ const LoansModal = ({ isOpen, onClose, year, month, onUpdate, highlightIds = [] 
     } catch (err) {
       const errorMessage = err.message || 'Network error. Unable to load loans. Please check your connection and try again.';
       setError(errorMessage);
-      console.error('Error fetching loans:', err);
+      logger.error('Error fetching loans:', err);
     } finally {
       setLoading(false);
     }
@@ -149,7 +152,7 @@ const LoansModal = ({ isOpen, onClose, year, month, onUpdate, highlightIds = [] 
     } catch (err) {
       const errorMessage = err.message || 'Network error. Unable to create loan. Please check your connection and try again.';
       setError(errorMessage);
-      console.error('Error creating loan:', err);
+      logger.error('Error creating loan:', err);
     } finally {
       setLoading(false);
     }
@@ -184,7 +187,7 @@ const LoansModal = ({ isOpen, onClose, year, month, onUpdate, highlightIds = [] 
     } catch (err) {
       const errorMessage = err.message || 'Network error. Unable to update loan. Please check your connection and try again.';
       setError(errorMessage);
-      console.error('Error updating loan:', err);
+      logger.error('Error updating loan:', err);
     } finally {
       setLoading(false);
     }
@@ -206,7 +209,7 @@ const LoansModal = ({ isOpen, onClose, year, month, onUpdate, highlightIds = [] 
     } catch (err) {
       const errorMessage = err.message || 'Network error. Unable to delete loan. Please check your connection and try again.';
       setError(errorMessage);
-      console.error('Error deleting loan:', err);
+      logger.error('Error deleting loan:', err);
     } finally {
       setLoading(false);
     }

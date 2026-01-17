@@ -10,6 +10,9 @@ import {
 import { validateName, validateAmount } from '../utils/validation';
 import { getMonthNameLong } from '../utils/formatters';
 import { CATEGORIES, PAYMENT_METHODS } from '../utils/constants';
+import { createLogger } from '../utils/logger';
+
+const logger = createLogger('FixedExpensesModal');
 
 const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
   const [fixedExpenses, setFixedExpenses] = useState([]);
@@ -56,7 +59,7 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
     } catch (err) {
       const errorMessage = err.message || 'Network error. Unable to load fixed expenses. Please check your connection and try again.';
       setError(errorMessage);
-      console.error('Error fetching fixed expenses:', err);
+      logger.error('Error fetching fixed expenses:', err);
     } finally {
       setLoading(false);
     }
@@ -142,7 +145,7 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
     } catch (err) {
       const errorMessage = err.message || 'Network error. Unable to add fixed expense. Please check your connection and try again.';
       setError(errorMessage);
-      console.error('Error creating fixed expense:', err);
+      logger.error('Error creating fixed expense:', err);
     } finally {
       setLoading(false);
     }
@@ -219,7 +222,7 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
     } catch (err) {
       const errorMessage = err.message || 'Network error. Unable to update fixed expense. Please check your connection and try again.';
       setError(errorMessage);
-      console.error('Error updating fixed expense:', err);
+      logger.error('Error updating fixed expense:', err);
     } finally {
       setLoading(false);
     }
@@ -252,7 +255,7 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
     } catch (err) {
       const errorMessage = err.message || 'Network error. Unable to delete fixed expense. Please check your connection and try again.';
       setError(errorMessage);
-      console.error('Error deleting fixed expense:', err);
+      logger.error('Error deleting fixed expense:', err);
     } finally {
       setLoading(false);
     }
@@ -282,7 +285,7 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
     } catch (err) {
       const errorMessage = err.message || 'Network error. Unable to carry forward fixed expenses. Please check your connection and try again.';
       setError(errorMessage);
-      console.error('Error carrying forward fixed expenses:', err);
+      logger.error('Error carrying forward fixed expenses:', err);
     } finally {
       setIsCarryingForward(false);
     }

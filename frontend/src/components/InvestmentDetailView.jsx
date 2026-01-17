@@ -4,6 +4,9 @@ import { getValueHistory, createOrUpdateValue, deleteValue } from '../services/i
 import { updateInvestment } from '../services/investmentApi';
 import { formatCurrency, formatMonthYear } from '../utils/formatters';
 import { validateAmount, validateName } from '../utils/validation';
+import { createLogger } from '../utils/logger';
+
+const logger = createLogger('InvestmentDetailView');
 
 const InvestmentDetailView = ({ investment, isOpen, onClose, onUpdate }) => {
   const [investmentData, setInvestmentData] = useState(investment);
@@ -57,7 +60,7 @@ const InvestmentDetailView = ({ investment, isOpen, onClose, onUpdate }) => {
     } catch (err) {
       const errorMessage = err.message || 'Failed to load value history';
       setError(errorMessage);
-      console.error('Error fetching value history:', err);
+      logger.error('Error fetching value history:', err);
     } finally {
       setLoading(false);
     }
@@ -129,7 +132,7 @@ const InvestmentDetailView = ({ investment, isOpen, onClose, onUpdate }) => {
     } catch (err) {
       const errorMessage = err.message || 'Failed to update value entry';
       setError(errorMessage);
-      console.error('Error updating value:', err);
+      logger.error('Error updating value:', err);
     } finally {
       setLoading(false);
     }
@@ -164,7 +167,7 @@ const InvestmentDetailView = ({ investment, isOpen, onClose, onUpdate }) => {
     } catch (err) {
       const errorMessage = err.message || 'Failed to delete value entry';
       setError(errorMessage);
-      console.error('Error deleting value:', err);
+      logger.error('Error deleting value:', err);
     } finally {
       setLoading(false);
     }
@@ -239,7 +242,7 @@ const InvestmentDetailView = ({ investment, isOpen, onClose, onUpdate }) => {
     } catch (err) {
       const errorMessage = err.message || 'Failed to add value entry';
       setError(errorMessage);
-      console.error('Error adding value:', err);
+      logger.error('Error adding value:', err);
     } finally {
       setLoading(false);
     }
@@ -315,7 +318,7 @@ const InvestmentDetailView = ({ investment, isOpen, onClose, onUpdate }) => {
     } catch (err) {
       const errorMessage = err.message || 'Failed to update investment details';
       setError(errorMessage);
-      console.error('Error updating investment:', err);
+      logger.error('Error updating investment:', err);
     } finally {
       setLoading(false);
     }

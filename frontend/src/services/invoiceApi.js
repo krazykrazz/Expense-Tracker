@@ -1,9 +1,13 @@
 /**
  * Invoice API Service
  * Handles API calls related to invoice management for medical expenses
+ * Supports multiple invoices per expense with optional person linking
  */
 
 import { API_ENDPOINTS } from '../config.js';
+import { createLogger } from '../utils/logger';
+
+const logger = createLogger('InvoiceApi');
 
 /**
  * Retry configuration for API calls
@@ -55,7 +59,7 @@ const fetchWithRetry = async (url, options = {}, retryCount = 0) => {
 };
 
 /**
- * Get invoice metadata for an expense
+ * Get invoice metadata for an expense (backward compatible - returns first invoice)
  * @param {number} expenseId - Expense ID
  * @returns {Promise<Object|null>} Invoice metadata or null if not found
  */
@@ -74,19 +78,44 @@ export const getInvoiceMetadata = async (expenseId) => {
     const data = await response.json();
     return data.invoice;
   } catch (error) {
-    console.error('Failed to fetch invoice metadata:', error);
+    logger.error('Failed to fetch invoice metadata:', error);
     throw new Error(`Unable to load invoice information: ${error.message}`);
   }
 };
 
 /**
- * Delete invoice for an expense
+ * Get all invoices for an expense
+ * @param {number} expenseId - Expense ID
+ * @returns {Promise<Array>} Array of invoice metadata with person info
+ */
+export const getInvoicesForExpense = async (expenseId) => {
+  try {
+    const response = await fetchWithRetry(API_ENDPOINTS.INVOICES_FOR_EXPENSE(expenseId));
+    
+    if (!response.ok) {
+      if (response.status === 404) {
+        return []; // No invoices found
+      }
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `Failed to fetch invoices (${response.status})`);
+    }
+    
+    const data = await response.json();
+    return data.invoices || [];
+  } catch (error) {
+    logger.error('Failed to fetch invoices for expense:', error);
+    throw new Error(`Unable to load invoices: ${error.message}`);
+  }
+};
+
+/**
+ * Delete all invoices for an expense (backward compatible)
  * @param {number} expenseId - Expense ID
  * @returns {Promise<Object>} Success response
  */
 export const deleteInvoice = async (expenseId) => {
   try {
-    const response = await fetchWithRetry(API_ENDPOINTS.INVOICE_BY_EXPENSE(expenseId), {
+    const response = await fetchWithRetry(API_ENDPOINTS.INVOICE_DELETE_ALL(expenseId), {
       method: 'DELETE'
     });
     
@@ -97,8 +126,59 @@ export const deleteInvoice = async (expenseId) => {
     
     return await response.json();
   } catch (error) {
-    console.error('Failed to delete invoice:', error);
+    logger.error('Failed to delete invoice:', error);
     throw new Error(`Unable to delete invoice: ${error.message}`);
+  }
+};
+
+/**
+ * Delete a specific invoice by ID
+ * @param {number} invoiceId - Invoice ID
+ * @returns {Promise<Object>} Success response
+ */
+export const deleteInvoiceById = async (invoiceId) => {
+  try {
+    const response = await fetchWithRetry(API_ENDPOINTS.INVOICE_BY_ID(invoiceId), {
+      method: 'DELETE'
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `Failed to delete invoice (${response.status})`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    logger.error('Failed to delete invoice by ID:', error);
+    throw new Error(`Unable to delete invoice: ${error.message}`);
+  }
+};
+
+/**
+ * Update person association for an invoice
+ * @param {number} invoiceId - Invoice ID
+ * @param {number|null} personId - Person ID to link, or null to unlink
+ * @returns {Promise<Object>} Updated invoice data
+ */
+export const updateInvoicePersonLink = async (invoiceId, personId) => {
+  try {
+    const response = await fetchWithRetry(API_ENDPOINTS.INVOICE_BY_ID(invoiceId), {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ personId })
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `Failed to update invoice person link (${response.status})`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    logger.error('Failed to update invoice person link:', error);
+    throw new Error(`Unable to update invoice: ${error.message}`);
   }
 };
 
@@ -106,14 +186,23 @@ export const deleteInvoice = async (expenseId) => {
  * Upload invoice for an expense with progress tracking
  * @param {number} expenseId - Expense ID
  * @param {File} file - Invoice file to upload
- * @param {Function} onProgress - Progress callback (optional)
+ * @param {Object} options - Upload options
+ * @param {number|null} options.personId - Optional person ID to link invoice to
+ * @param {Function} options.onProgress - Progress callback (optional)
  * @returns {Promise<Object>} Upload response with invoice data
  */
-export const uploadInvoice = async (expenseId, file, onProgress = null) => {
+export const uploadInvoice = async (expenseId, file, options = {}) => {
+  const { personId = null, onProgress = null } = options;
+  
   try {
     const formData = new FormData();
     formData.append('invoice', file);
     formData.append('expenseId', expenseId.toString());
+    
+    // Add personId if provided
+    if (personId !== null && personId !== undefined) {
+      formData.append('personId', personId.toString());
+    }
 
     // Use XMLHttpRequest for progress tracking if callback provided
     if (onProgress && typeof onProgress === 'function') {
@@ -173,7 +262,26 @@ export const uploadInvoice = async (expenseId, file, onProgress = null) => {
 
     return await response.json();
   } catch (error) {
-    console.error('Failed to upload invoice:', error);
+    logger.error('Failed to upload invoice:', error);
     throw new Error(`Unable to upload invoice: ${error.message}`);
   }
+};
+
+/**
+ * Get URL for viewing a specific invoice file
+ * @param {number} expenseId - Expense ID
+ * @param {number} invoiceId - Invoice ID
+ * @returns {string} URL to fetch the invoice file
+ */
+export const getInvoiceFileUrl = (expenseId, invoiceId) => {
+  return API_ENDPOINTS.INVOICE_FILE(expenseId, invoiceId);
+};
+
+/**
+ * Get URL for viewing the first invoice file (backward compatible)
+ * @param {number} expenseId - Expense ID
+ * @returns {string} URL to fetch the invoice file
+ */
+export const getInvoiceUrl = (expenseId) => {
+  return `${API_ENDPOINTS.INVOICE_BY_EXPENSE(expenseId)}/file`;
 };

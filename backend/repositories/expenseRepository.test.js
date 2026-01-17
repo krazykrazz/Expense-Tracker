@@ -184,7 +184,7 @@ describe('expenseRepository', () => {
   });
 
   describe('getTaxDeductibleExpenses', () => {
-    it('should return tax deductible expenses for year', async () => {
+    it('should return tax deductible expenses for year with invoice counts', async () => {
       const mockExpenses = [
         { 
           id: 1, 
@@ -195,14 +195,7 @@ describe('expenseRepository', () => {
           type: 'Tax - Medical',
           method: 'Debit',
           week: 3,
-          invoice_id: null,
-          invoice_filename: null,
-          invoice_original_filename: null,
-          invoice_file_path: null,
-          invoice_file_size: null,
-          invoice_mime_type: null,
-          invoice_upload_date: null,
-          has_invoice: 0
+          invoice_count: 0
         },
         { 
           id: 2, 
@@ -213,16 +206,11 @@ describe('expenseRepository', () => {
           type: 'Tax - Donation',
           method: 'Credit',
           week: 3,
-          invoice_id: null,
-          invoice_filename: null,
-          invoice_original_filename: null,
-          invoice_file_path: null,
-          invoice_file_size: null,
-          invoice_mime_type: null,
-          invoice_upload_date: null,
-          has_invoice: 0
+          invoice_count: 0
         }
       ];
+      
+      const mockInvoices = []; // No invoices for these expenses
       
       const expectedResult = [
         {
@@ -234,7 +222,9 @@ describe('expenseRepository', () => {
           type: 'Tax - Medical',
           method: 'Debit',
           week: 3,
-          hasInvoice: false
+          hasInvoice: false,
+          invoiceCount: 0,
+          invoices: []
         },
         {
           id: 2,
@@ -245,18 +235,103 @@ describe('expenseRepository', () => {
           type: 'Tax - Donation',
           method: 'Credit',
           week: 3,
-          hasInvoice: false
+          hasInvoice: false,
+          invoiceCount: 0,
+          invoices: []
         }
       ];
       
+      // Mock the two database calls: first for expenses, second for invoices
+      let callCount = 0;
       mockDb.all.mockImplementation((sql, params, callback) => {
-        callback(null, mockExpenses);
+        callCount++;
+        if (callCount === 1) {
+          // First call: get expenses
+          callback(null, mockExpenses);
+        } else {
+          // Second call: get invoices
+          callback(null, mockInvoices);
+        }
       });
 
       const result = await expenseRepository.getTaxDeductibleExpenses(2024);
 
-      expect(mockDb.all).toHaveBeenCalled();
+      expect(mockDb.all).toHaveBeenCalledTimes(2);
       expect(result).toEqual(expectedResult);
+    });
+
+    it('should return expenses with invoice data when invoices exist', async () => {
+      const mockExpenses = [
+        { 
+          id: 1, 
+          date: '2024-01-15',
+          place: 'Medical Clinic',
+          amount: 100.00, 
+          notes: 'Checkup',
+          type: 'Tax - Medical',
+          method: 'Debit',
+          week: 3,
+          invoice_count: 2
+        }
+      ];
+      
+      const mockInvoices = [
+        {
+          id: 101,
+          expense_id: 1,
+          person_id: null,
+          person_name: null,
+          filename: 'invoice1.pdf',
+          original_filename: 'receipt1.pdf',
+          file_path: '/invoices/invoice1.pdf',
+          file_size: 1024,
+          mime_type: 'application/pdf',
+          upload_date: '2024-01-15T10:00:00Z'
+        },
+        {
+          id: 102,
+          expense_id: 1,
+          person_id: 5,
+          person_name: 'John Doe',
+          filename: 'invoice2.pdf',
+          original_filename: 'receipt2.pdf',
+          file_path: '/invoices/invoice2.pdf',
+          file_size: 2048,
+          mime_type: 'application/pdf',
+          upload_date: '2024-01-16T10:00:00Z'
+        }
+      ];
+      
+      // Mock the two database calls
+      let callCount = 0;
+      mockDb.all.mockImplementation((sql, params, callback) => {
+        callCount++;
+        if (callCount === 1) {
+          callback(null, mockExpenses);
+        } else {
+          callback(null, mockInvoices);
+        }
+      });
+
+      const result = await expenseRepository.getTaxDeductibleExpenses(2024);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].hasInvoice).toBe(true);
+      expect(result[0].invoiceCount).toBe(2);
+      expect(result[0].invoices).toHaveLength(2);
+      expect(result[0].invoice).toEqual({
+        id: 101,
+        expenseId: 1,
+        personId: null,
+        personName: null,
+        filename: 'invoice1.pdf',
+        originalFilename: 'receipt1.pdf',
+        filePath: '/invoices/invoice1.pdf',
+        fileSize: 1024,
+        mimeType: 'application/pdf',
+        uploadDate: '2024-01-15T10:00:00Z'
+      });
+      expect(result[0].invoices[1].personName).toBe('John Doe');
     });
   });
 

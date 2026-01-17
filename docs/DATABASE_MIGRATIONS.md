@@ -22,6 +22,7 @@ Migrations are defined in `backend/database/migrations.js`:
 - `migrateAddPersonalCareCategory` - Adds "Personal Care" category
 - `migrateEnhanceFixedExpenses` - Adds category and payment_type fields to fixed_expenses table
 - `migrateAddIncomeCategoryColumn` - Adds category field to income_sources table
+- `migrateMultiInvoiceSupport` - Enables multiple invoices per expense with person linking (v4.13.0)
 
 ## Container Startup
 

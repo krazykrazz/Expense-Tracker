@@ -4,6 +4,9 @@ import { updateLoan, markPaidOff } from '../services/loanApi';
 import { getBalanceHistory, createOrUpdateBalance, deleteBalance } from '../services/loanBalanceApi';
 import { validateName, validateAmount } from '../utils/validation';
 import { formatCurrency, formatDate, formatMonthYear } from '../utils/formatters';
+import { createLogger } from '../utils/logger';
+
+const logger = createLogger('LoanDetailView');
 
 const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
   const [loanData, setLoanData] = useState(loan);
@@ -60,7 +63,7 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
     } catch (err) {
       const errorMessage = err.message || 'Failed to load balance history';
       setError(errorMessage);
-      console.error('Error fetching balance history:', err);
+      logger.error('Error fetching balance history:', err);
     } finally {
       setLoading(false);
     }
@@ -132,7 +135,7 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
     } catch (err) {
       const errorMessage = err.message || 'Failed to update loan details';
       setError(errorMessage);
-      console.error('Error updating loan:', err);
+      logger.error('Error updating loan:', err);
     } finally {
       setLoading(false);
     }
@@ -175,7 +178,7 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
     } catch (err) {
       const errorMessage = err.message || 'Failed to update paid-off status';
       setError(errorMessage);
-      console.error('Error updating paid-off status:', err);
+      logger.error('Error updating paid-off status:', err);
     } finally {
       setLoading(false);
     }
@@ -244,7 +247,7 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
     } catch (err) {
       const errorMessage = err.message || 'Failed to update balance entry';
       setError(errorMessage);
-      console.error('Error updating balance:', err);
+      logger.error('Error updating balance:', err);
     } finally {
       setLoading(false);
     }
@@ -279,7 +282,7 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
     } catch (err) {
       const errorMessage = err.message || 'Failed to delete balance entry';
       setError(errorMessage);
-      console.error('Error deleting balance:', err);
+      logger.error('Error deleting balance:', err);
     } finally {
       setLoading(false);
     }
@@ -368,7 +371,7 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
     } catch (err) {
       const errorMessage = err.message || 'Failed to add balance entry';
       setError(errorMessage);
-      console.error('Error adding balance:', err);
+      logger.error('Error adding balance:', err);
     } finally {
       setLoading(false);
     }

@@ -83,8 +83,8 @@ This implementation plan converts the single-invoice system to support multiple 
     - **Property 16: PATCH Updates Person Association**
     - **Validates: Requirements 8.1, 5.3, 8.3, 8.4**
 
-- [ ] 6. Frontend API Service Updates
-  - [ ] 6.1 Update `frontend/src/services/invoiceApi.js`
+- [x] 6. Frontend API Service Updates
+  - [x] 6.1 Update `frontend/src/services/invoiceApi.js`
     - Modify `uploadInvoice` to accept optional personId
     - Add `getInvoicesForExpense` returning array
     - Add `deleteInvoiceById` for specific invoice deletion
@@ -92,26 +92,26 @@ This implementation plan converts the single-invoice system to support multiple 
     - Update API endpoint constants in config.js
     - _Requirements: 8.1, 8.2, 8.3, 8.4_
 
-- [ ] 7. Frontend InvoiceList Component (New)
-  - [ ] 7.1 Create `InvoiceList.jsx` component
+- [x] 7. Frontend InvoiceList Component (New)
+  - [x] 7.1 Create `InvoiceList.jsx` component
     - Display scrollable list of invoices
     - Show filename, size, date, person name for each
     - Individual view and delete buttons
     - Click to open PDF viewer
     - _Requirements: 4.1, 4.2, 4.3, 4.4_
   
-  - [ ] 7.2 Create `InvoiceList.css` styles
+  - [x] 7.2 Create `InvoiceList.css` styles
     - Scrollable container with max-height
     - Invoice item styling with hover states
     - Action button styling
     - _Requirements: 4.1_
   
-  - [ ] 7.3 Write tests for InvoiceList component
+  - [x] 7.3 Write tests for InvoiceList component
     - **Property 8: Invoice Display Contains Required Fields**
     - **Validates: Requirements 4.2**
 
-- [ ] 8. Frontend InvoiceUpload Component Updates
-  - [ ] 8.1 Modify `InvoiceUpload.jsx` for multi-invoice support
+- [x] 8. Frontend InvoiceUpload Component Updates
+  - [x] 8.1 Modify `InvoiceUpload.jsx` for multi-invoice support
     - Accept `existingInvoices` array prop (rename from existingInvoice)
     - Accept `people` prop for person dropdown
     - Show InvoiceList when invoices exist
@@ -119,86 +119,86 @@ This implementation plan converts the single-invoice system to support multiple 
     - Add person selection dropdown in upload form
     - _Requirements: 5.1, 5.2, 2.1_
   
-  - [ ] 8.2 Update `InvoiceUpload.css` for new layout
+  - [x] 8.2 Update `InvoiceUpload.css` for new layout
     - Styling for Add Invoice button
     - Person dropdown styling
     - Layout adjustments for invoice list + upload area
     - _Requirements: 5.1, 5.2_
   
-  - [ ] 8.3 Write tests for updated InvoiceUpload
+  - [x] 8.3 Write tests for updated InvoiceUpload
     - Test person dropdown visibility
     - Test Add Invoice button appearance
     - Test upload with person selection
     - _Requirements: 2.1, 5.1, 5.2_
 
-- [ ] 9. Checkpoint - Core Multi-Invoice UI Complete
+- [x] 9. Checkpoint - Core Multi-Invoice UI Complete
   - Ensure frontend components render correctly
   - Test upload flow with person selection
   - Ask the user if questions arise
 
-- [ ] 10. Frontend InvoiceIndicator Updates
-  - [ ] 10.1 Modify `InvoiceIndicator.jsx` for count display
+- [x] 10. Frontend InvoiceIndicator Updates
+  - [x] 10.1 Modify `InvoiceIndicator.jsx` for count display
     - Accept `invoiceCount` prop
     - Accept `invoices` array for tooltip
     - Show count badge when count > 1
     - Update tooltip to list all filenames
     - _Requirements: 6.1, 6.2, 6.3, 6.4_
   
-  - [ ] 10.2 Update `InvoiceIndicator.css` for count badge
+  - [x] 10.2 Update `InvoiceIndicator.css` for count badge
     - Badge styling for count display
     - Tooltip styling for multiple filenames
     - _Requirements: 6.1_
   
-  - [ ] 10.3 Write property test for count display
+  - [x] 10.3 Write property test for count display
     - **Property 11: Invoice Count Display Accuracy**
     - **Validates: Requirements 6.1**
 
-- [ ] 11. Integration with Expense Components
-  - [ ] 11.1 Update `ExpenseForm.jsx` to pass people and invoices
+- [x] 11. Integration with Expense Components
+  - [x] 11.1 Update `ExpenseForm.jsx` to pass people and invoices
     - Fetch people assigned to expense
     - Fetch all invoices for expense
     - Pass to InvoiceUpload component
     - Handle invoice uploaded/deleted callbacks
     - _Requirements: 2.1, 4.5, 5.1_
   
-  - [ ] 11.2 Update `ExpenseList.jsx` for invoice counts
+  - [x] 11.2 Update `ExpenseList.jsx` for invoice counts
     - Fetch invoice counts for displayed expenses
     - Pass count to InvoiceIndicator
     - _Requirements: 6.1, 6.4_
 
-- [ ] 12. Tax Report Integration
-  - [ ] 12.1 Update `TaxDeductible.jsx` for multi-invoice display
+- [x] 12. Tax Report Integration
+  - [x] 12.1 Update `TaxDeductible.jsx` for multi-invoice display
     - Show invoice count for each expense
     - Add invoice status filter (with/without/all)
     - Display person-linked invoice info in grouped view
     - Add view invoices action from report
     - _Requirements: 7.1, 7.2, 7.3, 7.4_
   
-  - [ ] 12.2 Write property tests for tax report
+  - [x] 12.2 Write property tests for tax report
     - **Property 12: Tax Report Invoice Count Accuracy**
     - **Property 13: Invoice Filter Correctness**
     - **Validates: Requirements 7.1, 7.2**
 
-- [ ] 13. Backward Compatibility Verification
-  - [ ] 13.1 Verify single invoice workflow unchanged
+- [x] 13. Backward Compatibility Verification
+  - [x] 13.1 Verify single invoice workflow unchanged
     - Test upload without person selection
     - Test single invoice display (no count badge)
     - Test existing drag-and-drop behavior
     - _Requirements: 9.1, 9.2, 9.4, 9.5_
   
-  - [ ] 13.2 Write property test for backward compatibility
+  - [x] 13.2 Write property test for backward compatibility
     - **Property 17: Backward Compatible Single Upload**
     - **Validates: Requirements 9.1**
 
-- [ ] 14. Documentation Updates
-  - [ ] 14.1 Update `docs/features/MEDICAL_EXPENSE_INVOICES.md`
+- [x] 14. Documentation Updates
+  - [x] 14.1 Update `docs/features/MEDICAL_EXPENSE_INVOICES.md`
     - Document multi-invoice support
     - Update API documentation
     - Update database schema section
     - Add migration notes
     - _Requirements: All_
 
-- [ ] 15. Final Checkpoint
+- [x] 15. Final Checkpoint
   - Ensure all tests pass
   - Verify migration on fresh database
   - Test full workflow: upload multiple invoices, link to people, view in tax report

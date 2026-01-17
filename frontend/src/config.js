@@ -73,7 +73,12 @@ export const API_ENDPOINTS = {
   INVOICES: `${API_BASE_URL}/api/invoices`,
   INVOICE_UPLOAD: `${API_BASE_URL}/api/invoices/upload`,
   INVOICE_BY_EXPENSE: (expenseId) => `${API_BASE_URL}/api/invoices/${expenseId}`,
-  INVOICE_METADATA: (expenseId) => `${API_BASE_URL}/api/invoices/${expenseId}/metadata`
+  INVOICE_METADATA: (expenseId) => `${API_BASE_URL}/api/invoices/${expenseId}/metadata`,
+  // Multi-invoice support endpoints
+  INVOICES_FOR_EXPENSE: (expenseId) => `${API_BASE_URL}/api/invoices/${expenseId}`,
+  INVOICE_FILE: (expenseId, invoiceId) => `${API_BASE_URL}/api/invoices/${expenseId}/${invoiceId}`,
+  INVOICE_BY_ID: (invoiceId) => `${API_BASE_URL}/api/invoices/${invoiceId}`,
+  INVOICE_DELETE_ALL: (expenseId) => `${API_BASE_URL}/api/invoices/expense/${expenseId}`
 };
 
 export default API_BASE_URL;

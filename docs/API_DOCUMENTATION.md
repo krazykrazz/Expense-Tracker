@@ -16,7 +16,7 @@ All invoice endpoints require a valid session. Include session cookie in request
 
 ### 1. Upload Invoice
 
-Upload a PDF invoice for a medical expense.
+Upload a PDF invoice for a medical expense. Supports multiple invoices per expense with optional person linking.
 
 **Endpoint:** `POST /invoices/upload`
 
@@ -27,6 +27,7 @@ Upload a PDF invoice for a medical expense.
 |-------|------|----------|-------------|
 | expenseId | number | Yes | ID of the expense to attach invoice to |
 | invoice | File | Yes | PDF file to upload (max 10MB) |
+| personId | number | No | ID of person to link invoice to (v4.13.0+) |
 
 **Success Response:**
 ```json
@@ -38,6 +39,8 @@ Content-Type: application/json
   "invoice": {
     "id": 1,
     "expenseId": 123,
+    "personId": 5,
+    "personName": "John Doe",
     "filename": "123_1704067200_receipt.pdf",
     "originalFilename": "receipt.pdf",
     "fileSize": 245760,
@@ -56,6 +59,13 @@ HTTP/1.1 400 Bad Request
 ```
 
 ```json
+HTTP/1.1 400 Bad Request
+{
+  "error": "Person is not assigned to this expense"
+}
+```
+
+```json
 HTTP/1.1 413 Payload Too Large
 {
   "error": "File size exceeds 10MB limit"
@@ -69,18 +79,12 @@ HTTP/1.1 404 Not Found
 }
 ```
 
-```json
-HTTP/1.1 409 Conflict
-{
-  "error": "This expense already has an invoice attached"
-}
-```
-
 **Example:**
 ```javascript
 const formData = new FormData();
 formData.append('expenseId', 123);
 formData.append('invoice', pdfFile);
+formData.append('personId', 5); // Optional: link to person
 
 const response = await fetch('http://localhost:2424/api/invoices/upload', {
   method: 'POST',
@@ -93,9 +97,9 @@ const data = await response.json();
 
 ---
 
-### 2. Get Invoice File
+### 2. Get All Invoices for Expense
 
-Retrieve the PDF file for an expense.
+Retrieve all invoices attached to an expense.
 
 **Endpoint:** `GET /invoices/:expenseId`
 
@@ -103,6 +107,71 @@ Retrieve the PDF file for an expense.
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | expenseId | number | Yes | ID of the expense |
+
+**Success Response:**
+```json
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "invoices": [
+    {
+      "id": 1,
+      "expenseId": 123,
+      "personId": 5,
+      "personName": "John Doe",
+      "filename": "123_1704067200_receipt.pdf",
+      "originalFilename": "receipt.pdf",
+      "fileSize": 245760,
+      "uploadDate": "2025-01-01T12:00:00Z"
+    },
+    {
+      "id": 2,
+      "expenseId": 123,
+      "personId": 6,
+      "personName": "Jane Doe",
+      "filename": "123_1704153600_medical_bill.pdf",
+      "originalFilename": "medical_bill.pdf",
+      "fileSize": 512000,
+      "uploadDate": "2025-01-02T12:00:00Z"
+    }
+  ],
+  "count": 2
+}
+```
+
+**Error Responses:**
+
+```json
+HTTP/1.1 404 Not Found
+{
+  "error": "Expense not found"
+}
+```
+
+**Example:**
+```javascript
+const response = await fetch(`http://localhost:2424/api/invoices/${expenseId}`, {
+  credentials: 'include'
+});
+
+const data = await response.json();
+console.log(`Found ${data.count} invoices`);
+```
+
+---
+
+### 3. Get Specific Invoice File
+
+Retrieve a specific PDF file by invoice ID.
+
+**Endpoint:** `GET /invoices/:expenseId/:invoiceId`
+
+**URL Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| expenseId | number | Yes | ID of the expense |
+| invoiceId | number | Yes | ID of the specific invoice |
 
 **Success Response:**
 ```
@@ -132,7 +201,7 @@ HTTP/1.1 403 Forbidden
 
 **Example:**
 ```javascript
-const response = await fetch(`http://localhost:2424/api/invoices/${expenseId}`, {
+const response = await fetch(`http://localhost:2424/api/invoices/${expenseId}/${invoiceId}`, {
   credentials: 'include'
 });
 
@@ -145,9 +214,9 @@ if (response.ok) {
 
 ---
 
-### 3. Get Invoice Metadata
+### 4. Get Invoice Metadata
 
-Retrieve invoice information without downloading the file.
+Retrieve invoice information for all invoices without downloading files.
 
 **Endpoint:** `GET /invoices/:expenseId/metadata`
 
@@ -162,14 +231,19 @@ HTTP/1.1 200 OK
 Content-Type: application/json
 
 {
-  "invoice": {
-    "id": 1,
-    "expenseId": 123,
-    "filename": "123_1704067200_receipt.pdf",
-    "originalFilename": "receipt.pdf",
-    "fileSize": 245760,
-    "uploadDate": "2025-01-01T12:00:00Z"
-  }
+  "invoices": [
+    {
+      "id": 1,
+      "expenseId": 123,
+      "personId": 5,
+      "personName": "John Doe",
+      "filename": "123_1704067200_receipt.pdf",
+      "originalFilename": "receipt.pdf",
+      "fileSize": 245760,
+      "uploadDate": "2025-01-01T12:00:00Z"
+    }
+  ],
+  "count": 1
 }
 ```
 
@@ -178,7 +252,7 @@ Content-Type: application/json
 ```json
 HTTP/1.1 404 Not Found
 {
-  "error": "Invoice not found"
+  "error": "Expense not found"
 }
 ```
 
@@ -189,21 +263,21 @@ const response = await fetch(`http://localhost:2424/api/invoices/${expenseId}/me
 });
 
 const data = await response.json();
-console.log(`File size: ${data.invoice.fileSize} bytes`);
+console.log(`Total invoices: ${data.count}`);
 ```
 
 ---
 
-### 4. Delete Invoice
+### 5. Delete Specific Invoice
 
-Remove an invoice attachment from an expense.
+Remove a specific invoice by its ID.
 
-**Endpoint:** `DELETE /invoices/:expenseId`
+**Endpoint:** `DELETE /invoices/:invoiceId`
 
 **URL Parameters:**
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| expenseId | number | Yes | ID of the expense |
+| invoiceId | number | Yes | ID of the invoice to delete |
 
 **Success Response:**
 ```json
@@ -234,7 +308,7 @@ HTTP/1.1 403 Forbidden
 
 **Example:**
 ```javascript
-const response = await fetch(`http://localhost:2424/api/invoices/${expenseId}`, {
+const response = await fetch(`http://localhost:2424/api/invoices/${invoiceId}`, {
   method: 'DELETE',
   credentials: 'include'
 });
@@ -244,6 +318,106 @@ if (data.success) {
   console.log('Invoice deleted');
 }
 ```
+
+---
+
+### 6. Update Invoice Person Link
+
+Update the person association for an invoice.
+
+**Endpoint:** `PATCH /invoices/:invoiceId`
+
+**URL Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| invoiceId | number | Yes | ID of the invoice to update |
+
+**Request Body:**
+```json
+{
+  "personId": 5  // or null to unlink
+}
+```
+
+**Success Response:**
+```json
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "success": true,
+  "invoice": {
+    "id": 1,
+    "expenseId": 123,
+    "personId": 5,
+    "personName": "John Doe",
+    "filename": "123_1704067200_receipt.pdf",
+    "originalFilename": "receipt.pdf",
+    "fileSize": 245760,
+    "uploadDate": "2025-01-01T12:00:00Z"
+  }
+}
+```
+
+**Error Responses:**
+
+```json
+HTTP/1.1 404 Not Found
+{
+  "error": "Invoice not found"
+}
+```
+
+```json
+HTTP/1.1 400 Bad Request
+{
+  "error": "Person is not assigned to this expense"
+}
+```
+
+**Example:**
+```javascript
+const response = await fetch(`http://localhost:2424/api/invoices/${invoiceId}`, {
+  method: 'PATCH',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({ personId: 5 }),
+  credentials: 'include'
+});
+
+const data = await response.json();
+if (data.success) {
+  console.log(`Invoice linked to ${data.invoice.personName}`);
+}
+```
+
+---
+
+### 7. Delete Invoice by Expense ID (Legacy)
+
+Remove all invoices for an expense. Maintained for backward compatibility.
+
+**Endpoint:** `DELETE /invoices/expense/:expenseId`
+
+**URL Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| expenseId | number | Yes | ID of the expense |
+
+**Success Response:**
+```json
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "success": true,
+  "message": "All invoices deleted successfully",
+  "deletedCount": 3
+}
+```
+
+**Note:** This endpoint deletes ALL invoices for the expense. Use `DELETE /invoices/:invoiceId` to delete specific invoices.
 
 ---
 
@@ -276,13 +450,18 @@ Content-Type: application/json
         "amount": 150.00
       }
     ],
-    "invoice": {
-      "id": 1,
-      "filename": "123_1704067200_receipt.pdf",
-      "originalFilename": "receipt.pdf",
-      "fileSize": 245760,
-      "uploadDate": "2025-01-01T12:00:00Z"
-    },
+    "invoices": [
+      {
+        "id": 1,
+        "personId": 1,
+        "personName": "John Doe",
+        "filename": "123_1704067200_receipt.pdf",
+        "originalFilename": "receipt.pdf",
+        "fileSize": 245760,
+        "uploadDate": "2025-01-01T12:00:00Z"
+      }
+    ],
+    "invoiceCount": 1,
     "hasInvoice": true
   }
 }
@@ -292,7 +471,7 @@ Content-Type: application/json
 
 ### Get Tax Deductible Expenses (Enhanced)
 
-The tax deductible endpoint now includes invoice indicators.
+The tax deductible endpoint now includes invoice counts and supports filtering.
 
 **Endpoint:** `GET /expenses/tax-deductible`
 
@@ -300,6 +479,7 @@ The tax deductible endpoint now includes invoice indicators.
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | year | number | No | Filter by year (default: current year) |
+| invoiceStatus | string | No | Filter by invoice status: 'with', 'without', 'all' (default: 'all') |
 
 **Success Response:**
 ```json
@@ -315,6 +495,7 @@ Content-Type: application/json
       "amount": 150.00,
       "type": "Tax - Medical",
       "people": [...],
+      "invoiceCount": 2,
       "hasInvoice": true
     },
     {
@@ -324,6 +505,7 @@ Content-Type: application/json
       "amount": 45.00,
       "type": "Tax - Medical",
       "people": [...],
+      "invoiceCount": 0,
       "hasInvoice": false
     }
   ]
@@ -352,7 +534,6 @@ All errors follow this format:
 | 400 | Bad Request | Invalid input or validation error |
 | 403 | Forbidden | Access denied (ownership check failed) |
 | 404 | Not Found | Resource not found |
-| 409 | Conflict | Resource already exists |
 | 413 | Payload Too Large | File size exceeds limit |
 | 500 | Internal Server Error | Server error occurred |
 | 507 | Insufficient Storage | Storage space full |
@@ -370,6 +551,7 @@ All errors follow this format:
 - User doesn't own the expense
 - Invoice not found
 - Permission denied
+- Person not assigned to expense
 
 **Storage Errors:**
 - Insufficient storage space
@@ -419,7 +601,7 @@ Currently, no rate limiting is implemented. Consider implementing rate limiting 
 3. **Handle Errors:**
    ```javascript
    try {
-     const response = await uploadInvoice(file);
+     const response = await uploadInvoice(file, expenseId, personId);
      showSuccess('Invoice uploaded successfully');
    } catch (error) {
      showError(error.message);
@@ -442,6 +624,10 @@ Currently, no rate limiting is implemented. Consider implementing rate limiting 
    - Upload file first
    - Create database record
    - Rollback on failure
+
+4. **Person Validation:**
+   - Verify person is assigned to expense
+   - Return clear error if not assigned
 
 ---
 
@@ -471,12 +657,17 @@ Currently, no rate limiting is implemented. Consider implementing rate limiting 
    - Check before all operations
    - Log access attempts
 
-2. **Authentication:**
+2. **Person Validation:**
+   - Verify person is assigned to expense
+   - Prevent linking to unrelated people
+   - Clear error messages
+
+3. **Authentication:**
    - Require valid session
    - Check on every request
    - Timeout inactive sessions
 
-3. **Path Traversal Prevention:**
+4. **Path Traversal Prevention:**
    - Sanitize all paths
    - Use absolute paths
    - Validate file locations
@@ -530,19 +721,34 @@ Currently, no rate limiting is implemented. Consider implementing rate limiting 
 curl -X POST http://localhost:2424/api/invoices/upload \
   -F "expenseId=123" \
   -F "invoice=@receipt.pdf" \
+  -F "personId=5" \
   --cookie "session=..."
 ```
 
-**Download Test:**
+**Get All Invoices Test:**
 ```bash
 curl -X GET http://localhost:2424/api/invoices/123 \
+  --cookie "session=..."
+```
+
+**Get Specific Invoice Test:**
+```bash
+curl -X GET http://localhost:2424/api/invoices/123/1 \
   --cookie "session=..." \
   -o downloaded.pdf
 ```
 
-**Delete Test:**
+**Delete Specific Invoice Test:**
 ```bash
-curl -X DELETE http://localhost:2424/api/invoices/123 \
+curl -X DELETE http://localhost:2424/api/invoices/1 \
+  --cookie "session=..."
+```
+
+**Update Person Link Test:**
+```bash
+curl -X PATCH http://localhost:2424/api/invoices/1 \
+  -H "Content-Type: application/json" \
+  -d '{"personId": 5}' \
   --cookie "session=..."
 ```
 
@@ -550,12 +756,27 @@ curl -X DELETE http://localhost:2424/api/invoices/123 \
 
 See test files:
 - `backend/controllers/invoiceController.integration.test.js`
+- `backend/controllers/invoiceController.pbt.test.js`
 - `backend/services/invoiceService.test.js`
+- `backend/services/invoiceService.multiInvoice.pbt.test.js`
+- `backend/services/invoiceService.crudOperations.pbt.test.js`
+- `backend/repositories/invoiceRepository.pbt.test.js`
 - `backend/test/uploadIntegration.test.js`
 
 ---
 
 ## Changelog
+
+### Version 4.13.0 (January 2026)
+- Added multi-invoice support (multiple invoices per expense)
+- Added person-invoice linking (optional personId parameter)
+- Added `GET /invoices/:expenseId/:invoiceId` endpoint for specific invoice retrieval
+- Added `PATCH /invoices/:invoiceId` endpoint for updating person association
+- Modified `DELETE /invoices/:invoiceId` to delete specific invoice by ID
+- Added `DELETE /invoices/expense/:expenseId` for deleting all invoices (legacy)
+- Updated response format to return arrays of invoices
+- Added invoice count to expense and tax report endpoints
+- Added invoice status filtering to tax deductible endpoint
 
 ### Version 4.12.0 (January 2026)
 - Initial release of invoice attachment feature
@@ -565,6 +786,6 @@ See test files:
 
 ---
 
-**Last Updated:** January 15, 2026  
-**API Version:** 1.0  
+**Last Updated:** January 17, 2026  
+**API Version:** 1.1  
 **Status:** Active

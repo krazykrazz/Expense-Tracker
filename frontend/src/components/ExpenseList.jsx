@@ -3,13 +3,16 @@ import { API_ENDPOINTS } from '../config';
 import { PAYMENT_METHODS } from '../utils/constants';
 import { getPeople } from '../services/peopleApi';
 import { getExpenseWithPeople, updateExpense } from '../services/expenseApi';
-import { getInvoiceMetadata } from '../services/invoiceApi';
+import { getInvoicesForExpense, updateInvoicePersonLink } from '../services/invoiceApi';
+import { createLogger } from '../utils/logger';
 import PersonAllocationModal from './PersonAllocationModal';
 import FloatingAddButton from './FloatingAddButton';
 import InvoiceIndicator from './InvoiceIndicator';
 import InvoiceUpload from './InvoiceUpload';
 import './ExpenseList.css';
 import { formatAmount, formatLocalDate } from '../utils/formatters';
+
+const logger = createLogger('ExpenseList');
 
 /**
  * Renders people indicator for medical expenses
@@ -108,10 +111,10 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
   const people = propPeople || localPeople;
   const [selectedPeople, setSelectedPeople] = useState([]);
   const [showPersonAllocation, setShowPersonAllocation] = useState(false);
-  // Invoice state for editing
-  const [editInvoiceInfo, setEditInvoiceInfo] = useState(null);
-  // Invoice metadata cache
-  const [invoiceMetadata, setInvoiceMetadata] = useState(new Map());
+  // Invoice state for editing - now supports multiple invoices
+  const [editInvoices, setEditInvoices] = useState([]);
+  // Invoice data cache - now stores arrays of invoices per expense
+  const [invoiceData, setInvoiceData] = useState(new Map());
   const [loadingInvoices, setLoadingInvoices] = useState(new Set());
 
   // Fetch categories and people on mount
@@ -130,7 +133,7 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
         }
       } catch (err) {
         if (isMounted) {
-          console.error('Error fetching categories:', err);
+          logger.error('Error fetching categories:', err);
           // Fallback to empty array if fetch fails
           setCategories([]);
         }
@@ -147,7 +150,7 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
           }
         } catch (error) {
           if (isMounted) {
-            console.error('Failed to fetch people:', error);
+            logger.error('Failed to fetch people:', error);
           }
         }
       }
@@ -161,29 +164,60 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
     };
   }, [propPeople]);
 
-  // Handle invoice metadata updates
-  const handleInvoiceUpdated = useCallback((expenseId, newInvoiceInfo) => {
-    setInvoiceMetadata(prev => {
+  // Handle invoice data updates - now supports multiple invoices
+  const handleInvoiceUpdated = useCallback((expenseId, newInvoice) => {
+    setInvoiceData(prev => {
       const newMap = new Map(prev);
-      newMap.set(expenseId, newInvoiceInfo);
+      const existingInvoices = newMap.get(expenseId) || [];
+      // Add new invoice to the array
+      newMap.set(expenseId, [...existingInvoices, newInvoice]);
       return newMap;
     });
   }, []);
 
-  const handleInvoiceDeleted = useCallback((expenseId) => {
-    setInvoiceMetadata(prev => {
+  const handleInvoiceDeleted = useCallback((expenseId, invoiceId) => {
+    setInvoiceData(prev => {
       const newMap = new Map(prev);
-      newMap.set(expenseId, null);
+      const existingInvoices = newMap.get(expenseId) || [];
+      // Remove the specific invoice from the array
+      if (invoiceId) {
+        newMap.set(expenseId, existingInvoices.filter(inv => inv.id !== invoiceId));
+      } else {
+        // If no invoiceId provided, clear all invoices (backward compatibility)
+        newMap.set(expenseId, []);
+      }
       return newMap;
     });
   }, []);
 
-  // Load invoice metadata for medical expenses
+  // Handle person link updated for an invoice
+  const handlePersonLinkUpdated = useCallback(async (expenseId, invoiceId, personId) => {
+    try {
+      const result = await updateInvoicePersonLink(invoiceId, personId);
+      if (result.success) {
+        // Update the invoice in local state
+        setInvoiceData(prev => {
+          const newMap = new Map(prev);
+          const existingInvoices = newMap.get(expenseId) || [];
+          newMap.set(expenseId, existingInvoices.map(inv => 
+            inv.id === invoiceId 
+              ? { ...inv, personId, personName: result.invoice?.personName || null }
+              : inv
+          ));
+          return newMap;
+        });
+      }
+    } catch (error) {
+      logger.error('Failed to update invoice person link:', error);
+    }
+  }, []);
+
+  // Load invoice data for medical expenses - now fetches all invoices per expense
   useEffect(() => {
-    const loadInvoiceMetadata = async () => {
+    const loadInvoiceData = async () => {
       const medicalExpenses = expenses.filter(expense => expense.type === 'Tax - Medical');
       const expensesToLoad = medicalExpenses.filter(expense => 
-        !invoiceMetadata.has(expense.id) && !loadingInvoices.has(expense.id)
+        !invoiceData.has(expense.id) && !loadingInvoices.has(expense.id)
       );
 
       if (expensesToLoad.length === 0) return;
@@ -195,24 +229,24 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
         return newSet;
       });
 
-      // Load metadata for each expense
-      const metadataPromises = expensesToLoad.map(async (expense) => {
+      // Load all invoices for each expense
+      const invoicePromises = expensesToLoad.map(async (expense) => {
         try {
-          const metadata = await getInvoiceMetadata(expense.id);
-          return { expenseId: expense.id, metadata };
+          const invoices = await getInvoicesForExpense(expense.id);
+          return { expenseId: expense.id, invoices: invoices || [] };
         } catch (error) {
-          console.error(`Failed to load invoice metadata for expense ${expense.id}:`, error);
-          return { expenseId: expense.id, metadata: null };
+          logger.error(`Failed to load invoices for expense ${expense.id}:`, error);
+          return { expenseId: expense.id, invoices: [] };
         }
       });
 
       try {
-        const results = await Promise.all(metadataPromises);
+        const results = await Promise.all(invoicePromises);
         
-        setInvoiceMetadata(prev => {
+        setInvoiceData(prev => {
           const newMap = new Map(prev);
-          results.forEach(({ expenseId, metadata }) => {
-            newMap.set(expenseId, metadata);
+          results.forEach(({ expenseId, invoices }) => {
+            newMap.set(expenseId, invoices);
           });
           return newMap;
         });
@@ -226,8 +260,8 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
       }
     };
 
-    loadInvoiceMetadata();
-  }, [expenses, invoiceMetadata, loadingInvoices]);
+    loadInvoiceData();
+  }, [expenses, invoiceData, loadingInvoices]);
 
   const handleEditClick = useCallback(async (expense) => {
     setExpenseToEdit(expense);
@@ -256,22 +290,22 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
           setSelectedPeople([]);
         }
         
-        // Load invoice info if exists
-        const invoiceInfo = invoiceMetadata.get(expense.id);
-        setEditInvoiceInfo(invoiceInfo || null);
+        // Load invoices if exists - now supports multiple invoices
+        const invoices = invoiceData.get(expense.id) || [];
+        setEditInvoices(invoices);
       } catch (error) {
-        console.error('Failed to load people for expense:', error);
+        logger.error('Failed to load people for expense:', error);
         setSelectedPeople([]);
-        setEditInvoiceInfo(null);
+        setEditInvoices([]);
       }
     } else {
       setSelectedPeople([]);
-      setEditInvoiceInfo(null);
+      setEditInvoices([]);
     }
     
     setShowEditModal(true);
     setEditMessage({ text: '', type: '' });
-  }, [invoiceMetadata]);
+  }, [invoiceData]);
 
   const handleEditChange = useCallback((e) => {
     const { name, value } = e.target;
@@ -359,7 +393,7 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
       setExpenseToEdit(null);
       setSelectedPeople([]);
     } catch (error) {
-      console.error('Error updating expense:', error);
+      logger.error('Error updating expense:', error);
       setEditMessage({ text: error.message, type: 'error' });
     } finally {
       setIsSubmitting(false);
@@ -372,32 +406,64 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
     setEditFormData({});
     setEditMessage({ text: '', type: '' });
     setSelectedPeople([]);
-    setEditInvoiceInfo(null);
+    setEditInvoices([]);
   }, []);
 
-  // Handle invoice upload in edit modal
-  const handleEditInvoiceUploaded = useCallback((invoiceInfo) => {
-    setEditInvoiceInfo(invoiceInfo);
-    // Update the invoice metadata cache
+  // Handle invoice upload in edit modal - now supports multiple invoices
+  const handleEditInvoiceUploaded = useCallback((invoice) => {
+    setEditInvoices(prev => [...prev, invoice]);
+    // Update the invoice data cache
     if (expenseToEdit) {
-      setInvoiceMetadata(prev => {
+      setInvoiceData(prev => {
         const newMap = new Map(prev);
-        newMap.set(expenseToEdit.id, invoiceInfo);
+        const existingInvoices = newMap.get(expenseToEdit.id) || [];
+        newMap.set(expenseToEdit.id, [...existingInvoices, invoice]);
         return newMap;
       });
     }
   }, [expenseToEdit]);
 
-  // Handle invoice deletion in edit modal
-  const handleEditInvoiceDeleted = useCallback(() => {
-    setEditInvoiceInfo(null);
-    // Update the invoice metadata cache
+  // Handle invoice deletion in edit modal - now supports deleting specific invoice
+  const handleEditInvoiceDeleted = useCallback((invoiceId) => {
+    setEditInvoices(prev => prev.filter(inv => inv.id !== invoiceId));
+    // Update the invoice data cache
     if (expenseToEdit) {
-      setInvoiceMetadata(prev => {
+      setInvoiceData(prev => {
         const newMap = new Map(prev);
-        newMap.set(expenseToEdit.id, null);
+        const existingInvoices = newMap.get(expenseToEdit.id) || [];
+        newMap.set(expenseToEdit.id, existingInvoices.filter(inv => inv.id !== invoiceId));
         return newMap;
       });
+    }
+  }, [expenseToEdit]);
+
+  // Handle person link updated in edit modal
+  const handleEditPersonLinkUpdated = useCallback(async (invoiceId, personId) => {
+    try {
+      const result = await updateInvoicePersonLink(invoiceId, personId);
+      if (result.success) {
+        // Update the invoice in local state
+        setEditInvoices(prev => prev.map(inv => 
+          inv.id === invoiceId 
+            ? { ...inv, personId, personName: result.invoice?.personName || null }
+            : inv
+        ));
+        // Update the invoice data cache
+        if (expenseToEdit) {
+          setInvoiceData(prev => {
+            const newMap = new Map(prev);
+            const existingInvoices = newMap.get(expenseToEdit.id) || [];
+            newMap.set(expenseToEdit.id, existingInvoices.map(inv => 
+              inv.id === invoiceId 
+                ? { ...inv, personId, personName: result.invoice?.personName || null }
+                : inv
+            ));
+            return newMap;
+          });
+        }
+      }
+    } catch (error) {
+      logger.error('Failed to update invoice person link:', error);
     }
   }, [expenseToEdit]);
 
@@ -426,7 +492,7 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
         onExpenseDeleted(expenseToDelete.id);
       }
     } catch (error) {
-      console.error('Error deleting expense:', error);
+      logger.error('Error deleting expense:', error);
       alert('Failed to delete expense. Please try again.');
     } finally {
       setDeletingId(null);
@@ -459,7 +525,8 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
           return false;
         }
         
-        const hasInvoice = (invoiceMetadata.has(expense.id) && invoiceMetadata.get(expense.id) !== null) || expense.hasInvoice === true;
+        const invoices = invoiceData.get(expense.id) || [];
+        const hasInvoice = invoices.length > 0 || expense.hasInvoice === true || (expense.invoiceCount && expense.invoiceCount > 0);
         if (localFilterInvoice === 'with-invoice' && !hasInvoice) {
           return false;
         }
@@ -469,7 +536,7 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
       }
       return true;
     });
-  }, [expenses, localFilterType, localFilterMethod, localFilterInvoice, invoiceMetadata]);
+  }, [expenses, localFilterType, localFilterMethod, localFilterInvoice, invoiceData]);
 
   /**
    * Generates informative status messages based on filter state
@@ -650,14 +717,25 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
                       <PeopleIndicator expense={expense} />
                       {expense.type === 'Tax - Medical' && (
                         <InvoiceIndicator
-                          hasInvoice={(invoiceMetadata.has(expense.id) && invoiceMetadata.get(expense.id) !== null) || expense.hasInvoice === true}
-                          invoiceInfo={invoiceMetadata.get(expense.id) || expense.invoice}
+                          hasInvoice={(() => {
+                            const invoices = invoiceData.get(expense.id) || [];
+                            return invoices.length > 0 || expense.hasInvoice === true || (expense.invoiceCount && expense.invoiceCount > 0);
+                          })()}
+                          invoiceCount={(() => {
+                            const invoices = invoiceData.get(expense.id) || [];
+                            return invoices.length > 0 ? invoices.length : (expense.invoiceCount || 0);
+                          })()}
+                          invoices={invoiceData.get(expense.id) || []}
+                          invoiceInfo={(() => {
+                            const invoices = invoiceData.get(expense.id) || [];
+                            return invoices.length > 0 ? invoices[0] : expense.invoice;
+                          })()}
                           expenseId={expense.id}
                           size="small"
                           alwaysShow={true}
                           className={`list-item ${loadingInvoices.has(expense.id) ? 'loading' : ''}`}
                           onInvoiceUpdated={(invoiceInfo) => handleInvoiceUpdated(expense.id, invoiceInfo)}
-                          onInvoiceDeleted={() => handleInvoiceDeleted(expense.id)}
+                          onInvoiceDeleted={(invoiceId) => handleInvoiceDeleted(expense.id, invoiceId)}
                         />
                       )}
                     </div>
@@ -854,14 +932,16 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
                 </div>
               )}
 
-              {/* Invoice Upload for Medical Expenses */}
+              {/* Invoice Upload for Medical Expenses - now supports multiple invoices */}
               {isEditingMedicalExpense && expenseToEdit && (
                 <div className="form-group">
                   <InvoiceUpload
                     expenseId={expenseToEdit.id}
-                    existingInvoice={editInvoiceInfo}
+                    existingInvoices={editInvoices}
+                    people={selectedPeople.length > 0 ? selectedPeople : people}
                     onInvoiceUploaded={handleEditInvoiceUploaded}
                     onInvoiceDeleted={handleEditInvoiceDeleted}
+                    onPersonLinkUpdated={handleEditPersonLinkUpdated}
                     disabled={isSubmitting}
                   />
                 </div>

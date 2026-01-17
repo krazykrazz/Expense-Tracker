@@ -4,11 +4,15 @@ import { getTodayLocalDate } from '../utils/formatters';
 import { PAYMENT_METHODS } from '../utils/constants';
 import { fetchCategorySuggestion } from '../services/categorySuggestionApi';
 import { getPeople } from '../services/peopleApi';
-import { createExpense } from '../services/expenseApi';
+import { createExpense, getExpenseWithPeople } from '../services/expenseApi';
+import { getInvoicesForExpense, updateInvoicePersonLink } from '../services/invoiceApi';
+import { createLogger } from '../utils/logger';
 import PersonAllocationModal from './PersonAllocationModal';
 import InvoiceUpload from './InvoiceUpload';
 import InvoicePDFViewer from './InvoicePDFViewer';
 import './ExpenseForm.css';
+
+const logger = createLogger('ExpenseForm');
 
 // localStorage key for payment method persistence (Requirements 5.1, 5.3)
 const LAST_PAYMENT_METHOD_KEY = 'expense-tracker-last-payment-method';
@@ -28,7 +32,7 @@ const getLastPaymentMethod = () => {
       return saved;
     }
   } catch (error) {
-    console.error('Failed to read payment method from localStorage:', error);
+    logger.error('Failed to read payment method from localStorage:', error);
   }
   return DEFAULT_PAYMENT_METHOD;
 };
@@ -41,7 +45,7 @@ const saveLastPaymentMethod = (method) => {
   try {
     localStorage.setItem(LAST_PAYMENT_METHOD_KEY, method);
   } catch (error) {
-    console.error('Failed to save payment method to localStorage:', error);
+    logger.error('Failed to save payment method to localStorage:', error);
   }
 };
 
@@ -73,9 +77,13 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
   const [showPersonAllocation, setShowPersonAllocation] = useState(false);
 
   // Invoice state for medical expenses (Requirements 1.1, 1.2, 1.3, 1.5, 2.1, 2.2, 2.3, 2.4, 2.5)
-  const [invoiceInfo, setInvoiceInfo] = useState(expense?.invoice || null);
+  // Changed to support multiple invoices per expense
+  const [invoices, setInvoices] = useState(expense?.invoices || []);
   const [invoiceFile, setInvoiceFile] = useState(null);
   const [showInvoiceViewer, setShowInvoiceViewer] = useState(false);
+  
+  // People assigned to this expense (for invoice person linking)
+  const [expensePeople, setExpensePeople] = useState([]);
 
   // Refs for focus management and form state
   const placeInputRef = useRef(null);
@@ -96,7 +104,7 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
         }
       } catch (error) {
         if (isMounted) {
-          console.error('Failed to fetch categories:', error);
+          logger.error('Failed to fetch categories:', error);
         }
         // Keep default fallback value
       }
@@ -111,7 +119,7 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
         }
       } catch (error) {
         if (isMounted) {
-          console.error('Failed to fetch places:', error);
+          logger.error('Failed to fetch places:', error);
         }
       }
     };
@@ -126,24 +134,43 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
           }
         } catch (error) {
           if (isMounted) {
-            console.error('Failed to fetch people:', error);
+            logger.error('Failed to fetch people:', error);
           }
         }
       }
     };
 
     const fetchInvoiceData = async () => {
-      // Fetch invoice metadata if editing a medical expense
+      // Fetch all invoices if editing a medical expense
       if (isEditing && expense?.id && expense?.type === 'Tax - Medical') {
         try {
-          const { getInvoiceMetadata } = await import('../services/invoiceApi');
-          const invoiceData = await getInvoiceMetadata(expense.id);
-          if (isMounted && invoiceData) {
-            setInvoiceInfo(invoiceData);
+          const invoicesData = await getInvoicesForExpense(expense.id);
+          if (isMounted && invoicesData) {
+            setInvoices(invoicesData);
           }
         } catch (error) {
           if (isMounted) {
-            console.error('Failed to fetch invoice data:', error);
+            logger.error('Failed to fetch invoice data:', error);
+          }
+        }
+      }
+    };
+
+    // Fetch people assigned to this expense (for invoice person linking)
+    const fetchExpensePeople = async () => {
+      if (isEditing && expense?.id && expense?.type === 'Tax - Medical') {
+        try {
+          const expenseData = await getExpenseWithPeople(expense.id);
+          if (isMounted && expenseData?.people) {
+            setExpensePeople(expenseData.people);
+            // Also update selectedPeople if not already set
+            if (selectedPeople.length === 0 && expenseData.people.length > 0) {
+              setSelectedPeople(expenseData.people);
+            }
+          }
+        } catch (error) {
+          if (isMounted) {
+            logger.error('Failed to fetch expense people:', error);
           }
         }
       }
@@ -153,6 +180,7 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
     fetchPlaces();
     fetchPeopleData();
     fetchInvoiceData();
+    fetchExpensePeople();
 
     // Set initial focus to Place field (Requirements 1.1)
     if (placeInputRef.current && !isEditing) {
@@ -193,9 +221,10 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
       // Clear people selection when changing away from medical expenses
       if (value !== 'Tax - Medical') {
         setSelectedPeople([]);
-        // Clear invoice when changing away from medical expenses
-        setInvoiceInfo(null);
+        // Clear invoices when changing away from medical expenses
+        setInvoices([]);
         setInvoiceFile(null);
+        setExpensePeople([]);
       }
     }
   };
@@ -220,8 +249,9 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
   const isMedicalExpense = formData.type === 'Tax - Medical';
 
   // Handle invoice upload success (Requirements 1.1, 1.2, 2.1)
+  // Updated to support multiple invoices
   const handleInvoiceUploaded = (invoice) => {
-    setInvoiceInfo(invoice);
+    setInvoices(prev => [...prev, invoice]);
     setInvoiceFile(null); // Clear file state after successful upload
     setMessage({ text: 'Invoice uploaded successfully!', type: 'success' });
     
@@ -232,9 +262,9 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
   };
 
   // Handle invoice deletion (Requirements 2.3, 2.4)
-  const handleInvoiceDeleted = () => {
-    setInvoiceInfo(null);
-    setInvoiceFile(null);
+  // Updated to support deleting specific invoice by ID
+  const handleInvoiceDeleted = (invoiceId) => {
+    setInvoices(prev => prev.filter(inv => inv.id !== invoiceId));
     setMessage({ text: 'Invoice deleted successfully!', type: 'success' });
     
     // Clear success message after 3 seconds
@@ -243,15 +273,43 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
     }, 3000);
   };
 
+  // Handle person link updated for an invoice
+  const handlePersonLinkUpdated = async (invoiceId, personId) => {
+    try {
+      const result = await updateInvoicePersonLink(invoiceId, personId);
+      if (result.success) {
+        // Update the invoice in local state
+        setInvoices(prev => prev.map(inv => 
+          inv.id === invoiceId 
+            ? { ...inv, personId, personName: result.invoice?.personName || null }
+            : inv
+        ));
+        setMessage({ text: 'Invoice person link updated!', type: 'success' });
+        
+        // Clear success message after 3 seconds
+        setTimeout(() => {
+          setMessage({ text: '', type: '' });
+        }, 3000);
+      }
+    } catch (error) {
+      logger.error('Failed to update invoice person link:', error);
+      setMessage({ text: `Failed to update person link: ${error.message}`, type: 'error' });
+    }
+  };
+
   // Handle invoice file selection for new expenses (Requirements 1.1, 1.5)
   const handleInvoiceFileSelected = (file) => {
     setInvoiceFile(file);
   };
 
   // Handle viewing invoice (Requirements 3.1, 3.2, 3.3, 3.4, 3.5)
-  const handleViewInvoice = () => {
-    if (invoiceInfo && expense?.id) {
-      window.open(API_ENDPOINTS.INVOICE_BY_EXPENSE(expense.id), '_blank');
+  // Updated to support viewing specific invoice
+  const handleViewInvoice = (invoiceId) => {
+    if (invoices.length > 0 && expense?.id) {
+      const invoice = invoices.find(inv => inv.id === invoiceId);
+      if (invoice) {
+        window.open(API_ENDPOINTS.INVOICE_FILE(expense.id, invoiceId), '_blank');
+      }
     }
   };
 
@@ -432,12 +490,13 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
 
           const invoiceResult = await response.json();
           if (invoiceResult.success && invoiceResult.invoice) {
-            setInvoiceInfo(invoiceResult.invoice);
-            newExpense.invoice = invoiceResult.invoice;
+            setInvoices([invoiceResult.invoice]);
+            newExpense.invoices = [invoiceResult.invoice];
             newExpense.hasInvoice = true;
+            newExpense.invoiceCount = 1;
           }
         } catch (invoiceError) {
-          console.error('Invoice upload failed:', invoiceError);
+          logger.error('Invoice upload failed:', invoiceError);
           // Don't fail the entire form submission for invoice upload errors
           setMessage({ 
             text: `Expense ${isEditing ? 'updated' : 'added'} successfully, but invoice upload failed: ${invoiceError.message}`, 
@@ -474,8 +533,9 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
 
         // Clear people selection and invoice state
         setSelectedPeople([]);
-        setInvoiceInfo(null);
+        setInvoices([]);
         setInvoiceFile(null);
+        setExpensePeople([]);
       }
 
       // Notify parent component
@@ -647,12 +707,14 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
             <label htmlFor="invoice">Invoice Attachment</label>
             <div className="invoice-upload-wrapper">
               {isEditing ? (
-                // For editing existing expenses, use full InvoiceUpload component
+                // For editing existing expenses, use full InvoiceUpload component with multi-invoice support
                 <InvoiceUpload
                   expenseId={expense?.id}
-                  existingInvoice={invoiceInfo}
+                  existingInvoices={invoices}
+                  people={expensePeople.length > 0 ? expensePeople : selectedPeople}
                   onInvoiceUploaded={handleInvoiceUploaded}
                   onInvoiceDeleted={handleInvoiceDeleted}
+                  onPersonLinkUpdated={handlePersonLinkUpdated}
                   disabled={isSubmitting}
                 />
               ) : (

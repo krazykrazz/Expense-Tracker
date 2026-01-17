@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
 import { getBudgetHistory } from '../services/budgetApi';
 import { formatAmount, getMonthNameShort } from '../utils/formatters';
+import { createLogger } from '../utils/logger';
 import './BudgetHistoryView.css';
+
+const logger = createLogger('BudgetHistoryView');
 
 /**
  * BudgetHistoryView Component
@@ -30,7 +33,7 @@ const BudgetHistoryView = ({ year, month, onClose }) => {
       setHistoryData(data);
     } catch (err) {
       setError(err.message || 'Failed to load budget history');
-      console.error('Error fetching budget history:', err);
+      logger.error('Error fetching budget history:', err);
     } finally {
       setLoading(false);
     }

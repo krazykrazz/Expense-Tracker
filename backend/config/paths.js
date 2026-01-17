@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const logger = require('./logger');
 
 /**
  * Configuration module for managing application paths
@@ -13,7 +14,7 @@ const isContainerized = fs.existsSync('/config');
 const CONFIG_DIR = isContainerized ? '/config' : path.join(__dirname, '..', 'config');
 
 // Log the detected environment on module load (helps debug path issues)
-console.log(`[paths.js] Environment detection: isContainerized=${isContainerized}, CONFIG_DIR=${CONFIG_DIR}`);
+logger.info('Environment detection:', { isContainerized, CONFIG_DIR });
 
 /**
  * Get the base configuration directory path
@@ -74,7 +75,7 @@ async function ensureDirectories() {
       await fs.promises.mkdir(dir, { recursive: true });
     } catch (error) {
       // Log error but don't throw - allow application to continue
-      console.error(`Warning: Failed to create directory ${dir}:`, error.message);
+      logger.warn('Failed to create directory:', { dir, error: error.message });
     }
   }
 }

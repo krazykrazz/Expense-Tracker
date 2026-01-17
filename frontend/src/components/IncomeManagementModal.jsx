@@ -9,6 +9,9 @@ import {
 } from '../services/incomeApi';
 import { validateName, validateAmount } from '../utils/validation';
 import { getMonthNameLong } from '../utils/formatters';
+import { createLogger } from '../utils/logger';
+
+const logger = createLogger('IncomeManagementModal');
 
 const IncomeManagementModal = ({ isOpen, onClose, year, month, onUpdate }) => {
   const [incomeSources, setIncomeSources] = useState([]);
@@ -50,7 +53,7 @@ const IncomeManagementModal = ({ isOpen, onClose, year, month, onUpdate }) => {
     } catch (err) {
       const errorMessage = err.message || 'Network error. Unable to load income sources. Please check your connection and try again.';
       setError(errorMessage);
-      console.error('Error fetching income sources:', err);
+      logger.error('Error fetching income sources:', err);
     } finally {
       setLoading(false);
     }
@@ -128,7 +131,7 @@ const IncomeManagementModal = ({ isOpen, onClose, year, month, onUpdate }) => {
     } catch (err) {
       const errorMessage = err.message || 'Network error. Unable to add income source. Please check your connection and try again.';
       setError(errorMessage);
-      console.error('Error creating income source:', err);
+      logger.error('Error creating income source:', err);
     } finally {
       setLoading(false);
     }
@@ -190,7 +193,7 @@ const IncomeManagementModal = ({ isOpen, onClose, year, month, onUpdate }) => {
     } catch (err) {
       const errorMessage = err.message || 'Network error. Unable to update income source. Please check your connection and try again.';
       setError(errorMessage);
-      console.error('Error updating income source:', err);
+      logger.error('Error updating income source:', err);
     } finally {
       setLoading(false);
     }
@@ -220,7 +223,7 @@ const IncomeManagementModal = ({ isOpen, onClose, year, month, onUpdate }) => {
     } catch (err) {
       const errorMessage = err.message || 'Network error. Unable to delete income source. Please check your connection and try again.';
       setError(errorMessage);
-      console.error('Error deleting income source:', err);
+      logger.error('Error deleting income source:', err);
     } finally {
       setLoading(false);
     }
@@ -242,7 +245,7 @@ const IncomeManagementModal = ({ isOpen, onClose, year, month, onUpdate }) => {
     } catch (err) {
       const errorMessage = err.message || 'Network error. Unable to copy income sources. Please check your connection and try again.';
       setError(errorMessage);
-      console.error('Error copying income sources:', err);
+      logger.error('Error copying income sources:', err);
     } finally {
       setLoading(false);
     }

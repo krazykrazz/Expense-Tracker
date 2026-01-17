@@ -2,11 +2,29 @@
 
 ## Overview
 
-This document provides an index of all documentation created for the Medical Expense Invoice Attachments feature (v4.12.0).
+This document provides an index of all documentation created for the Medical Expense Invoice Attachments feature.
 
 **Feature Status:** Implementation Complete, Documentation Complete  
-**Version:** 4.12.0  
-**Date:** January 15, 2026
+**Current Version:** 4.13.0 (Multi-Invoice Support)  
+**Original Version:** 4.12.0  
+**Date:** January 17, 2026
+
+---
+
+## Version History
+
+### v4.13.0 - Multi-Invoice Support (January 2026)
+- Multiple invoices per expense (removed UNIQUE constraint)
+- Person-invoice linking (optional personId parameter)
+- New API endpoints for specific invoice operations
+- Invoice count display in UI
+- Tax report invoice filtering
+
+### v4.12.0 - Initial Release (January 2026)
+- Single invoice per expense
+- PDF upload, view, delete functionality
+- Built-in PDF viewer
+- Invoice indicators in expense lists
 
 ---
 
@@ -20,6 +38,8 @@ This document provides an index of all documentation created for the Medical Exp
 **Contents:**
 - Feature overview and key capabilities
 - Comprehensive user guide with step-by-step instructions
+- Multi-invoice support documentation (v4.13.0+)
+- Person-invoice linking guide (v4.13.0+)
 - Technical details (file storage, database schema, API endpoints)
 - Security measures and data protection
 - Performance optimization features
@@ -41,6 +61,8 @@ This document provides an index of all documentation created for the Medical Exp
 
 **Contents:**
 - Complete API endpoint reference
+- Multi-invoice endpoints (v4.13.0+)
+- Person linking endpoints (v4.13.0+)
 - Request/response formats with examples
 - Error handling and status codes
 - Authentication requirements
@@ -62,8 +84,9 @@ This document provides an index of all documentation created for the Medical Exp
 **Contents:**
 - Common issues and solutions
 - Upload issues (file size, type, network errors)
+- Person linking issues (v4.13.0+)
 - Viewing issues (PDF display, loading, zoom)
-- Management issues (deletion, indicators)
+- Management issues (deletion, indicators, count display)
 - Storage issues (insufficient space)
 - Docker-specific issues
 - Error messages reference
@@ -102,6 +125,8 @@ This document provides an index of all documentation created for the Medical Exp
 
 **Contents:**
 - Regular maintenance tasks (daily, weekly, monthly, quarterly)
+- Multi-invoice monitoring queries (v4.13.0+)
+- Person-linked invoice statistics (v4.13.0+)
 - Monitoring and alerts setup
 - Optimization procedures
 - Troubleshooting common issues
@@ -137,7 +162,8 @@ This document provides an index of all documentation created for the Medical Exp
 **Location:** `CHANGELOG.md`
 
 **Updates:**
-- Added v4.12.0 unreleased section
+- Added v4.13.0 multi-invoice support section
+- Added v4.12.0 initial invoice feature section
 - Documented all invoice feature additions
 - Listed key capabilities and features
 
@@ -185,13 +211,16 @@ node backend/scripts/cleanupOrphanedInvoices.js [--dry-run] [--backup]
 
 ✅ **User Guides**
 - How to upload invoices
+- How to upload multiple invoices (v4.13.0+)
+- How to link invoices to people (v4.13.0+)
 - How to view invoices
 - How to manage invoices
 - How to filter by invoice status
 
 ✅ **Technical Documentation**
 - API endpoints and usage
-- Database schema
+- Multi-invoice API endpoints (v4.13.0+)
+- Database schema (updated for v4.13.0)
 - File storage architecture
 - Security measures
 
@@ -203,6 +232,7 @@ node backend/scripts/cleanupOrphanedInvoices.js [--dry-run] [--backup]
 
 ✅ **Troubleshooting**
 - Common issues and solutions
+- Person linking issues (v4.13.0+)
 - Error messages reference
 - Diagnostic procedures
 - Support escalation
@@ -220,6 +250,8 @@ node backend/scripts/cleanupOrphanedInvoices.js [--dry-run] [--backup]
 ### Completeness
 - [x] All features documented
 - [x] All API endpoints documented
+- [x] Multi-invoice support documented (v4.13.0)
+- [x] Person linking documented (v4.13.0)
 - [x] All error scenarios covered
 - [x] All maintenance tasks documented
 - [x] All troubleshooting scenarios included
@@ -262,7 +294,7 @@ node backend/scripts/cleanupOrphanedInvoices.js [--dry-run] [--backup]
 ### For Developers
 1. Start with: `docs/API_DOCUMENTATION.md`
 2. Architecture: `docs/features/MEDICAL_EXPENSE_INVOICES.md` (Technical Details section)
-3. Testing: `.kiro/specs/medical-expense-invoices/` (spec files)
+3. Testing: `.kiro/specs/multi-invoice-support/` (spec files)
 
 ---
 
@@ -314,24 +346,41 @@ node backend/scripts/cleanupOrphanedInvoices.js [--dry-run] [--backup]
 ## Related Documentation
 
 ### Specification Files
-- Requirements: `.kiro/specs/medical-expense-invoices/requirements.md`
-- Design: `.kiro/specs/medical-expense-invoices/design.md`
-- Tasks: `.kiro/specs/medical-expense-invoices/tasks.md`
+- Requirements: `.kiro/specs/multi-invoice-support/requirements.md`
+- Design: `.kiro/specs/multi-invoice-support/design.md`
+- Tasks: `.kiro/specs/multi-invoice-support/tasks.md`
 
 ### Test Documentation
 - Unit tests: `backend/services/invoiceService.test.js`
 - Integration tests: `backend/controllers/invoiceController.integration.test.js`
 - Component tests: `frontend/src/components/InvoiceUpload.test.jsx`
-- PBT tests: `backend/services/invoiceService.*.pbt.test.js`
+- PBT tests (v4.13.0+):
+  - `backend/services/invoiceService.multiInvoice.pbt.test.js`
+  - `backend/services/invoiceService.crudOperations.pbt.test.js`
+  - `backend/services/invoiceService.fileUploadValidation.pbt.test.js`
+  - `backend/services/invoiceService.backwardCompatibility.pbt.test.js`
+  - `backend/repositories/invoiceRepository.pbt.test.js`
+  - `backend/controllers/invoiceController.pbt.test.js`
 
 ### Implementation Files
-- Backend: `backend/services/invoiceService.js`
-- Frontend: `frontend/src/components/InvoiceUpload.jsx`
-- API: `backend/routes/invoiceRoutes.js`
+- Backend Service: `backend/services/invoiceService.js`
+- Backend Repository: `backend/repositories/invoiceRepository.js`
+- Backend Controller: `backend/controllers/invoiceController.js`
+- Backend Routes: `backend/routes/invoiceRoutes.js`
+- Frontend Upload: `frontend/src/components/InvoiceUpload.jsx`
+- Frontend List: `frontend/src/components/InvoiceList.jsx`
+- Frontend Indicator: `frontend/src/components/InvoiceIndicator.jsx`
+- Frontend API: `frontend/src/services/invoiceApi.js`
 
 ---
 
 ## Version History
+
+### v2.0 (January 17, 2026)
+- Updated for multi-invoice support (v4.13.0)
+- Added person-invoice linking documentation
+- Updated test file references
+- Added new API endpoint documentation
 
 ### v1.0 (January 15, 2026)
 - Initial documentation release
@@ -344,8 +393,8 @@ node backend/scripts/cleanupOrphanedInvoices.js [--dry-run] [--backup]
 ## Contact
 
 **Documentation Maintainer:** Development Team  
-**Last Updated:** January 15, 2026  
-**Next Review:** April 15, 2026
+**Last Updated:** January 17, 2026  
+**Next Review:** April 17, 2026
 
 ---
 

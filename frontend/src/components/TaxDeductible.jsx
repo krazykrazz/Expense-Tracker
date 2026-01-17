@@ -7,6 +7,8 @@ import { API_ENDPOINTS } from '../config';
 import { PAYMENT_METHODS } from '../utils/constants';
 import PersonAllocationModal from './PersonAllocationModal';
 import InvoiceIndicator from './InvoiceIndicator';
+import InvoiceList from './InvoiceList';
+import { getInvoicesForExpense } from '../services/invoiceApi';
 
 const TaxDeductible = ({ year, refreshTrigger }) => {
   const [taxDeductible, setTaxDeductible] = useState(null);
@@ -34,6 +36,11 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
   const [editMessage, setEditMessage] = useState({ text: '', type: '' });
   const [selectedPeople, setSelectedPeople] = useState([]);
   const [showPersonAllocation, setShowPersonAllocation] = useState(false);
+  
+  // Invoice modal state
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [invoiceModalExpense, setInvoiceModalExpense] = useState(null);
+  const [invoiceModalInvoices, setInvoiceModalInvoices] = useState([]);
 
   useEffect(() => {
     fetchTaxDeductibleData();
@@ -254,6 +261,37 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
     setSelectedPeople([]);
   };
 
+  // Invoice modal handlers
+  const handleViewInvoices = useCallback(async (expense) => {
+    setInvoiceModalExpense(expense);
+    // Use invoices from expense if available, otherwise fetch them
+    if (expense.invoices && expense.invoices.length > 0) {
+      setInvoiceModalInvoices(expense.invoices);
+    } else {
+      try {
+        const invoices = await getInvoicesForExpense(expense.id);
+        setInvoiceModalInvoices(invoices);
+      } catch (error) {
+        console.error('Failed to fetch invoices:', error);
+        setInvoiceModalInvoices([]);
+      }
+    }
+    setShowInvoiceModal(true);
+  }, []);
+
+  const handleCloseInvoiceModal = useCallback(() => {
+    setShowInvoiceModal(false);
+    setInvoiceModalExpense(null);
+    setInvoiceModalInvoices([]);
+  }, []);
+
+  const handleInvoiceDeleted = useCallback((invoiceId) => {
+    // Update the invoices list in the modal
+    setInvoiceModalInvoices(prev => prev.filter(inv => inv.id !== invoiceId));
+    // Refresh the tax data to update counts
+    fetchTaxDeductibleData();
+  }, []);
+
   const formatDate = formatLocalDate;
 
   // Filter expenses based on invoice status
@@ -267,7 +305,7 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
   // Calculate invoice coverage statistics
   const invoiceStats = useMemo(() => {
     if (!taxDeductible || !taxDeductible.expenses) {
-      return { medicalWithInvoice: 0, medicalTotal: 0, donationsWithInvoice: 0, donationsTotal: 0 };
+      return { medicalWithInvoice: 0, medicalTotal: 0, donationsWithInvoice: 0, donationsTotal: 0, totalInvoices: 0 };
     }
 
     const medicalExpenses = taxDeductible.expenses.medical || [];
@@ -275,6 +313,10 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
 
     const medicalWithInvoice = medicalExpenses.filter(exp => exp.hasInvoice).length;
     const donationsWithInvoice = donationExpenses.filter(exp => exp.hasInvoice).length;
+    
+    // Calculate total invoice count across all expenses
+    const totalMedicalInvoices = medicalExpenses.reduce((sum, exp) => sum + (exp.invoiceCount || (exp.hasInvoice ? 1 : 0)), 0);
+    const totalDonationInvoices = donationExpenses.reduce((sum, exp) => sum + (exp.invoiceCount || (exp.hasInvoice ? 1 : 0)), 0);
 
     return {
       medicalWithInvoice,
@@ -282,7 +324,10 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
       donationsWithInvoice,
       donationsTotal: donationExpenses.length,
       medicalCoverage: medicalExpenses.length > 0 ? Math.round((medicalWithInvoice / medicalExpenses.length) * 100) : 0,
-      donationsCoverage: donationExpenses.length > 0 ? Math.round((donationsWithInvoice / donationExpenses.length) * 100) : 0
+      donationsCoverage: donationExpenses.length > 0 ? Math.round((donationsWithInvoice / donationExpenses.length) * 100) : 0,
+      totalMedicalInvoices,
+      totalDonationInvoices,
+      totalInvoices: totalMedicalInvoices + totalDonationInvoices
     };
   }, [taxDeductible]);
 
@@ -371,6 +416,11 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
                   <span className="stat-number">{invoiceStats.medicalWithInvoice}/{invoiceStats.medicalTotal}</span>
                   <span className="stat-percentage">({invoiceStats.medicalCoverage}%)</span>
                 </div>
+                {invoiceStats.totalMedicalInvoices > 0 && (
+                  <div className="stat-total-invoices">
+                    {invoiceStats.totalMedicalInvoices} total invoice{invoiceStats.totalMedicalInvoices !== 1 ? 's' : ''}
+                  </div>
+                )}
               </div>
               
               {invoiceStats.donationsTotal > 0 && (
@@ -380,6 +430,11 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
                     <span className="stat-number">{invoiceStats.donationsWithInvoice}/{invoiceStats.donationsTotal}</span>
                     <span className="stat-percentage">({invoiceStats.donationsCoverage}%)</span>
                   </div>
+                  {invoiceStats.totalDonationInvoices > 0 && (
+                    <div className="stat-total-invoices">
+                      {invoiceStats.totalDonationInvoices} total invoice{invoiceStats.totalDonationInvoices !== 1 ? 's' : ''}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -502,9 +557,12 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
                                     <InvoiceIndicator
                                       hasInvoice={expense.hasInvoice}
                                       invoiceInfo={expense.invoice}
+                                      invoiceCount={expense.invoiceCount || 0}
+                                      invoices={expense.invoices || []}
                                       expenseId={expense.id}
                                       size="small"
                                       alwaysShow={true}
+                                      onClick={expense.hasInvoice ? () => handleViewInvoices(expense) : undefined}
                                     />
                                   </div>
                                 </div>
@@ -556,9 +614,12 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
                                     <InvoiceIndicator
                                       hasInvoice={expense.hasInvoice}
                                       invoiceInfo={expense.invoice}
+                                      invoiceCount={expense.invoiceCount || 0}
+                                      invoices={expense.invoices || []}
                                       expenseId={expense.id}
                                       size="small"
                                       alwaysShow={true}
+                                      onClick={expense.hasInvoice ? () => handleViewInvoices(expense) : undefined}
                                     />
                                   </div>
                                   <div className="expense-actions">
@@ -617,9 +678,12 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
                           <InvoiceIndicator
                             hasInvoice={expense.hasInvoice}
                             invoiceInfo={expense.invoice}
+                            invoiceCount={expense.invoiceCount || 0}
+                            invoices={expense.invoices || []}
                             expenseId={expense.id}
                             size="small"
                             alwaysShow={true}
+                            onClick={expense.hasInvoice ? () => handleViewInvoices(expense) : undefined}
                           />
                         </div>
                       </div>
@@ -664,9 +728,12 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
                           <InvoiceIndicator
                             hasInvoice={expense.hasInvoice}
                             invoiceInfo={expense.invoice}
+                            invoiceCount={expense.invoiceCount || 0}
+                            invoices={expense.invoices || []}
                             expenseId={expense.id}
                             size="small"
                             alwaysShow={true}
+                            onClick={expense.hasInvoice ? () => handleViewInvoices(expense) : undefined}
                           />
                         </div>
                       </div>
@@ -844,6 +911,36 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
         onSave={handleEditPersonAllocation}
         onCancel={() => setShowPersonAllocation(false)}
       />
+
+      {/* Invoice List Modal */}
+      {showInvoiceModal && invoiceModalExpense && (
+        <div className="modal-overlay" onClick={handleCloseInvoiceModal}>
+          <div className="invoice-modal" onClick={(e) => e.stopPropagation()}>
+            <button 
+              className="modal-close-button" 
+              onClick={handleCloseInvoiceModal}
+              aria-label="Close"
+            >
+              ×
+            </button>
+            <h3>📄 Invoices for {invoiceModalExpense.place || 'Expense'}</h3>
+            <div className="invoice-modal-info">
+              <span className="invoice-modal-date">{formatDate(invoiceModalExpense.date)}</span>
+              <span className="invoice-modal-amount">${formatAmount(invoiceModalExpense.amount)}</span>
+            </div>
+            <InvoiceList
+              invoices={invoiceModalInvoices}
+              expenseId={invoiceModalExpense.id}
+              people={people}
+              onInvoiceDeleted={handleInvoiceDeleted}
+              onPersonLinkUpdated={() => fetchTaxDeductibleData()}
+            />
+            {invoiceModalInvoices.length === 0 && (
+              <div className="invoice-modal-empty">No invoices attached to this expense.</div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

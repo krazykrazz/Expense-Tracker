@@ -3,7 +3,10 @@ import './InvestmentsModal.css';
 import { getAllInvestments, createInvestment, updateInvestment, deleteInvestment } from '../services/investmentApi';
 import { validateName, validateAmount } from '../utils/validation';
 import { formatCurrency } from '../utils/formatters';
+import { createLogger } from '../utils/logger';
 import InvestmentDetailView from './InvestmentDetailView';
+
+const logger = createLogger('InvestmentsModal');
 
 const InvestmentsModal = ({ isOpen, onClose, onUpdate, highlightIds = [] }) => {
   const [investments, setInvestments] = useState([]);
@@ -43,7 +46,7 @@ const InvestmentsModal = ({ isOpen, onClose, onUpdate, highlightIds = [] }) => {
     } catch (err) {
       const errorMessage = err.message || 'Network error. Unable to load investments. Please check your connection and try again.';
       setError(errorMessage);
-      console.error('Error fetching investments:', err);
+      logger.error('Error fetching investments:', err);
     } finally {
       setLoading(false);
     }
@@ -133,7 +136,7 @@ const InvestmentsModal = ({ isOpen, onClose, onUpdate, highlightIds = [] }) => {
     } catch (err) {
       const errorMessage = err.message || 'Network error. Unable to create investment. Please check your connection and try again.';
       setError(errorMessage);
-      console.error('Error creating investment:', err);
+      logger.error('Error creating investment:', err);
     } finally {
       setLoading(false);
     }
@@ -176,7 +179,7 @@ const InvestmentsModal = ({ isOpen, onClose, onUpdate, highlightIds = [] }) => {
     } catch (err) {
       const errorMessage = err.message || 'Network error. Unable to update investment. Please check your connection and try again.';
       setError(errorMessage);
-      console.error('Error updating investment:', err);
+      logger.error('Error updating investment:', err);
     } finally {
       setLoading(false);
     }
@@ -198,7 +201,7 @@ const InvestmentsModal = ({ isOpen, onClose, onUpdate, highlightIds = [] }) => {
     } catch (err) {
       const errorMessage = err.message || 'Network error. Unable to delete investment. Please check your connection and try again.';
       setError(errorMessage);
-      console.error('Error deleting investment:', err);
+      logger.error('Error deleting investment:', err);
     } finally {
       setLoading(false);
     }

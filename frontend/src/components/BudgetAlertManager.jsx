@@ -3,7 +3,10 @@ import { getBudgets } from '../services/budgetApi';
 import { calculateAlerts } from '../utils/budgetAlerts';
 import BudgetAlertBanner from './BudgetAlertBanner';
 import BudgetAlertErrorBoundary from './BudgetAlertErrorBoundary';
+import { createLogger } from '../utils/logger';
 import './BudgetAlertErrorBoundary.css';
+
+const logger = createLogger('BudgetAlertManager');
 
 // Performance constants
 const DEBOUNCE_DELAY = 300; // 300ms debounce for rapid updates (Requirement 7.2)
@@ -42,20 +45,20 @@ const BudgetAlertManager = ({
    */
   const validateBudgetData = useCallback((budgets) => {
     if (!Array.isArray(budgets)) {
-      console.warn('Budget data is not an array, returning empty array');
+      logger.warn('Budget data is not an array, returning empty array');
       return [];
     }
 
     return budgets.filter(budget => {
       // Check if budget has required properties
       if (!budget || typeof budget !== 'object') {
-        console.warn('Invalid budget object:', budget);
+        logger.warn('Invalid budget object:', budget);
         return false;
       }
 
       // Check if budget has required nested structure
       if (!budget.budget || typeof budget.budget !== 'object') {
-        console.warn('Budget missing budget property:', budget);
+        logger.warn('Budget missing budget property:', budget);
         return false;
       }
 
@@ -66,25 +69,25 @@ const BudgetAlertManager = ({
       );
 
       if (missingFields.length > 0) {
-        console.warn(`Budget missing required fields [${missingFields.join(', ')}]:`, budget);
+        logger.warn(`Budget missing required fields [${missingFields.join(', ')}]:`, budget);
         return false;
       }
 
       // Check if limit is a valid number
       if (typeof budget.budget.limit !== 'number' || isNaN(budget.budget.limit) || budget.budget.limit < 0) {
-        console.warn('Budget has invalid limit:', budget);
+        logger.warn('Budget has invalid limit:', budget);
         return false;
       }
 
       // Check if spent is a valid number (if present)
       if (budget.spent !== undefined && (typeof budget.spent !== 'number' || isNaN(budget.spent))) {
-        console.warn('Budget has invalid spent amount:', budget);
+        logger.warn('Budget has invalid spent amount:', budget);
         return false;
       }
 
       // Check if progress is a valid number (if present)
       if (budget.progress !== undefined && (typeof budget.progress !== 'number' || isNaN(budget.progress))) {
-        console.warn('Budget has invalid progress:', budget);
+        logger.warn('Budget has invalid progress:', budget);
         return false;
       }
 
@@ -105,11 +108,11 @@ const BudgetAlertManager = ({
         if (Array.isArray(dismissedIds)) {
           return new Set(dismissedIds);
         } else {
-          console.warn('Invalid dismissal state format, using empty set');
+          logger.warn('Invalid dismissal state format, using empty set');
         }
       }
     } catch (error) {
-      console.warn('Failed to load dismissal state from sessionStorage:', error);
+      logger.warn('Failed to load dismissal state from sessionStorage:', error);
     }
     return new Set();
   }, [year, month]);
@@ -124,7 +127,7 @@ const BudgetAlertManager = ({
       const dismissedArray = Array.from(dismissedSet);
       sessionStorage.setItem(storageKey, JSON.stringify(dismissedArray));
     } catch (error) {
-      console.warn('Failed to save dismissal state to sessionStorage, continuing with memory-only storage:', error);
+      logger.warn('Failed to save dismissal state to sessionStorage, continuing with memory-only storage:', error);
       // Graceful degradation: dismissal still works in memory, just won't persist across page refreshes
     }
   }, [year, month]);
@@ -138,7 +141,7 @@ const BudgetAlertManager = ({
       const storageKey = `budget-alerts-dismissed-${year}-${month}`;
       sessionStorage.removeItem(storageKey);
     } catch (error) {
-      console.warn('Failed to clear dismissal state from sessionStorage, continuing with memory-only clear:', error);
+      logger.warn('Failed to clear dismissal state from sessionStorage, continuing with memory-only clear:', error);
     }
     setDismissedAlerts(new Set());
     alertSeverityRef.current.clear();
@@ -208,7 +211,7 @@ const BudgetAlertManager = ({
         setAlerts(cachedAlerts);
         return;
       } catch (err) {
-        console.warn('Error processing cached budget data, fetching fresh data:', err);
+        logger.warn('Error processing cached budget data, fetching fresh data:', err);
         // Clear invalid cache and continue to fetch fresh data
         budgetCacheRef.current = { key: null, data: null };
       }
@@ -225,7 +228,7 @@ const BudgetAlertManager = ({
       
       if (validBudgets.length === 0 && budgets.length > 0) {
         // All budget data was invalid
-        console.warn('All budget data was invalid, no alerts will be displayed');
+        logger.warn('All budget data was invalid, no alerts will be displayed');
         setError('Budget data format is invalid');
         setAlerts([]);
         return;
@@ -234,7 +237,7 @@ const BudgetAlertManager = ({
       if (validBudgets.length < budgets.length) {
         // Some budget data was invalid but we have valid entries
         const invalidCount = budgets.length - validBudgets.length;
-        console.warn(`${invalidCount} invalid budget entries were skipped`);
+        logger.warn(`${invalidCount} invalid budget entries were skipped`);
       }
       
       // Update cache with valid data
@@ -252,7 +255,7 @@ const BudgetAlertManager = ({
     } catch (err) {
       const errorMessage = err.message || 'Failed to load budget alerts';
       setError(errorMessage);
-      console.error('Budget alert calculation error:', err);
+      logger.error('Budget alert calculation error:', err);
       setAlerts([]);
     } finally {
       setLoading(false);

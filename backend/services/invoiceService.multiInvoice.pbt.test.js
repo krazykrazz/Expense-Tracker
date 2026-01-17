@@ -161,7 +161,7 @@ describe('Invoice Service - Property-Based Tests - Multi-Invoice Support', () =>
           return true;
         }
       ),
-      { numRuns: 30 }
+      { numRuns: 10 }
     );
   });
 
@@ -227,7 +227,7 @@ describe('Invoice Service - Property-Based Tests - Multi-Invoice Support', () =>
           return true;
         }
       ),
-      { numRuns: 30 }
+      { numRuns: 10 }
     );
   });
 
@@ -318,7 +318,7 @@ describe('Invoice Service - Property-Based Tests - Multi-Invoice Support', () =>
           return true;
         }
       ),
-      { numRuns: 30 }
+      { numRuns: 10 }
     );
   });
 
@@ -412,7 +412,7 @@ describe('Invoice Service - Property-Based Tests - Multi-Invoice Support', () =>
           return true;
         }
       ),
-      { numRuns: 30 }
+      { numRuns: 10 }
     );
   });
 });

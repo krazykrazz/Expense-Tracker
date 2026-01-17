@@ -4,6 +4,9 @@ import './BackupSettings.css';
 import { formatDateTime } from '../utils/formatters';
 import PlaceNameStandardization from './PlaceNameStandardization';
 import { getPeople, createPerson, updatePerson, deletePerson } from '../services/peopleApi';
+import { createLogger } from '../utils/logger';
+
+const logger = createLogger('BackupSettings');
 
 const BackupSettings = () => {
   const [activeTab, setActiveTab] = useState('backups');
@@ -52,7 +55,7 @@ const BackupSettings = () => {
         setVersionInfo(data);
       }
     } catch (error) {
-      console.error('Error fetching version info:', error);
+      logger.error('Error fetching version info:', error);
     }
   };
 
@@ -71,7 +74,7 @@ const BackupSettings = () => {
       });
       setNextBackup(data.nextBackup);
     } catch (error) {
-      console.error('Error fetching config:', error);
+      logger.error('Error fetching config:', error);
       setMessage({ text: 'Failed to load backup settings', type: 'error' });
     } finally {
       setLoading(false);
@@ -86,7 +89,7 @@ const BackupSettings = () => {
       const data = await response.json();
       setBackups(data);
     } catch (error) {
-      console.error('Error fetching backups:', error);
+      logger.error('Error fetching backups:', error);
     }
   };
 
@@ -185,7 +188,7 @@ const BackupSettings = () => {
         window.location.reload();
       }, 2000);
     } catch (error) {
-      console.error('Import error:', error);
+      logger.error('Import error:', error);
       setMessage({ text: 'Failed to import expenses. Please check your CSV format.', type: 'error' });
     }
 
@@ -224,7 +227,7 @@ const BackupSettings = () => {
         window.location.reload();
       }, 2000);
     } catch (error) {
-      console.error('Restore error:', error);
+      logger.error('Restore error:', error);
       setMessage({ text: error.message, type: 'error' });
     }
 

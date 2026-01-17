@@ -2,7 +2,10 @@ import React, { useState, useEffect } from 'react';
 import BudgetCard from './BudgetCard';
 import BudgetProgressBar from './BudgetProgressBar';
 import { getBudgets, getBudgetSummary } from '../services/budgetApi';
+import { createLogger } from '../utils/logger';
 import './BudgetSummaryPanel.css';
+
+const logger = createLogger('BudgetSummaryPanel');
 
 /**
  * BudgetSummaryPanel Component
@@ -34,7 +37,7 @@ const BudgetSummaryPanel = ({ year, month, onManageBudgets, refreshTrigger = 0 }
         setSummary(summaryData);
       } catch (err) {
         setError(err.message || 'Failed to load budget data');
-        console.error('Error fetching budget data:', err);
+        logger.error('Error fetching budget data:', err);
         setBudgets([]);
       } finally {
         setLoading(false);

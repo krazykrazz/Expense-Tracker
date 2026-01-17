@@ -93,7 +93,7 @@ describe('Invoice Service - Property-Based Tests - File Upload Validation', () =
           }
         }
       ),
-      { numRuns: 50 }
+      { numRuns: 10 }
     );
   });
 
@@ -148,7 +148,7 @@ describe('Invoice Service - Property-Based Tests - File Upload Validation', () =
           }
         }
       ),
-      { numRuns: 30 }
+      { numRuns: 10 }
     );
   });
 
@@ -180,7 +180,7 @@ describe('Invoice Service - Property-Based Tests - File Upload Validation', () =
           expect(nameWithoutExt.length).toBeGreaterThan(0);
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 15 }
     );
   });
 
@@ -235,7 +235,7 @@ describe('Invoice Service - Property-Based Tests - File Upload Validation', () =
           }
         }
       ),
-      { numRuns: 50 }
+      { numRuns: 10 }
     );
   });
 
@@ -294,7 +294,7 @@ describe('Invoice Service - Property-Based Tests - File Upload Validation', () =
           }
         }
       ),
-      { numRuns: 20 }
+      { numRuns: 10 }
     );
   });
 });

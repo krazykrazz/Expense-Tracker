@@ -1,4 +1,7 @@
 import { Component } from 'react';
+import { createLogger } from '../utils/logger';
+
+const logger = createLogger('BudgetAlertErrorBoundary');
 
 /**
  * BudgetAlertErrorBoundary Component
@@ -19,7 +22,7 @@ class BudgetAlertErrorBoundary extends Component {
 
   componentDidCatch(error, errorInfo) {
     // Log the error for debugging
-    console.error('Budget Alert Error Boundary caught an error:', error, errorInfo);
+    logger.error('Budget Alert Error Boundary caught an error:', { error, errorInfo });
     
     this.setState({
       error: error,

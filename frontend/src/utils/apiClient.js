@@ -3,6 +3,10 @@
  * Provides consistent error handling and request/response processing for all API calls
  */
 
+import { createLogger } from './logger';
+
+const logger = createLogger('ApiClient');
+
 /**
  * Custom error class for API errors
  */
@@ -129,19 +133,19 @@ export async function apiDelete(url, operation = 'delete resource') {
 }
 
 /**
- * Log API errors to console in development
+ * Log API errors using the centralized logger
  * In production, this could be extended to send to error tracking service
  * @param {string} context - Context of the error (e.g., 'fetching loans')
  * @param {Error} error - The error object
  */
 export function logApiError(context, error) {
   if (error instanceof ApiError) {
-    console.error(`[API Error] ${context}:`, {
+    logger.error(`${context}:`, {
       message: error.message,
       status: error.status,
       data: error.data
     });
   } else {
-    console.error(`[Error] ${context}:`, error);
+    logger.error(`${context}:`, error);
   }
 }

@@ -1,37 +1,54 @@
 import { useState, useRef, useCallback } from 'react';
 import { API_ENDPOINTS } from '../config';
+import { createLogger } from '../utils/logger';
 import InvoicePDFViewer from './InvoicePDFViewer';
+import InvoiceList from './InvoiceList';
 import './InvoiceUpload.css';
+
+const logger = createLogger('InvoiceUpload');
 
 /**
  * InvoiceUpload Component
  * 
  * A reusable component for uploading PDF invoices to medical expenses.
+ * Supports multiple invoices per expense with optional person linking.
  * Features:
  * - Drag and drop file upload
  * - File selection via click
  * - Upload progress indicator
  * - File validation with error display
- * - Replace and delete operations
+ * - Multiple invoice support with list display
+ * - Person selection dropdown for linking invoices
+ * - Add Invoice button when invoices exist
  * - Mobile-friendly touch interface
  * - Accessibility features
  * 
- * Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 2.1, 2.2, 2.3, 2.4, 2.5, 8.1, 8.2, 8.3, 8.4, 8.5
+ * Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 2.1, 2.2, 2.3, 2.4, 2.5, 5.1, 5.2, 8.1, 8.2, 8.3, 8.4, 8.5
  */
 const InvoiceUpload = ({
   expenseId = null,
-  existingInvoice = null,
+  existingInvoices = [],  // Changed from existingInvoice to support multiple invoices
+  existingInvoice = null, // Backward compatibility - will be converted to array
+  people = [],            // People assigned to the expense for person dropdown
   onInvoiceUploaded = () => {},
   onInvoiceDeleted = () => {},
+  onPersonLinkUpdated = () => {},
   disabled = false
 }) => {
+  // Normalize invoices - support both old single invoice and new array format
+  const invoices = existingInvoices.length > 0 
+    ? existingInvoices 
+    : (existingInvoice ? [existingInvoice] : []);
+
   // Component state
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState(null);
   const [dragOver, setDragOver] = useState(false);
-  const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [showUploadForm, setShowUploadForm] = useState(false);
+  const [selectedPersonId, setSelectedPersonId] = useState('');
   const [showPDFViewer, setShowPDFViewer] = useState(false);
+  const [viewingInvoice, setViewingInvoice] = useState(null);
 
   // Refs for file input and drag/drop
   const fileInputRef = useRef(null);
@@ -103,6 +120,11 @@ const InvoiceUpload = ({
       const formData = new FormData();
       formData.append('invoice', file);
       formData.append('expenseId', expenseId.toString());
+      
+      // Add personId if selected
+      if (selectedPersonId) {
+        formData.append('personId', selectedPersonId);
+      }
 
       // Create XMLHttpRequest for progress tracking
       const xhr = new XMLHttpRequest();
@@ -163,20 +185,22 @@ const InvoiceUpload = ({
           fileInputRef.current.value = '';
         }
         
-        // Clear error state
+        // Reset form state
         setError(null);
+        setShowUploadForm(false);
+        setSelectedPersonId('');
       } else {
         throw new Error(response.error || 'Upload failed');
       }
 
     } catch (uploadError) {
-      console.error('Invoice upload failed:', uploadError);
+      logger.error('Invoice upload failed:', uploadError);
       setError(uploadError.message || 'Upload failed. Please try again.');
       setUploadProgress(0);
     } finally {
       setUploading(false);
     }
-  }, [expenseId, onInvoiceUploaded]);
+  }, [expenseId, selectedPersonId, onInvoiceUploaded]);
 
   /**
    * Handle file selection (from input or drop)
@@ -262,58 +286,46 @@ const InvoiceUpload = ({
   }, [disabled, uploading]);
 
   /**
-   * Handle delete invoice with enhanced error handling and loading state
+   * Handle Add Invoice button click
    */
-  const handleDeleteInvoice = useCallback(async () => {
-    if (!existingInvoice || !expenseId) return;
-
-    setUploading(true); // Use uploading state for delete operation loading
+  const handleAddInvoiceClick = useCallback(() => {
+    setShowUploadForm(true);
     setError(null);
-
-    try {
-      const response = await fetch(API_ENDPOINTS.INVOICE_BY_EXPENSE(expenseId), {
-        method: 'DELETE'
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to delete invoice');
-      }
-
-      // Success feedback
-      onInvoiceDeleted();
-      setDeleteConfirm(false);
-      setError(null);
-
-      // Show success message briefly with visual feedback
-      setUploadProgress(100);
-      setTimeout(() => {
-        setUploadProgress(0);
-      }, 1500);
-
-    } catch (deleteError) {
-      console.error('Invoice deletion failed:', deleteError);
-      setError(deleteError.message || 'Failed to delete invoice');
-      setDeleteConfirm(false); // Close confirmation on error
-    } finally {
-      setUploading(false);
-    }
-  }, [existingInvoice, expenseId, onInvoiceDeleted]);
+    setSelectedPersonId('');
+  }, []);
 
   /**
-   * Handle replace invoice operation
+   * Handle cancel add invoice
    */
-  const handleReplaceInvoice = useCallback(() => {
-    if (disabled || uploading) return;
-    
-    // Clear any existing errors before starting replace operation
+  const handleCancelAddInvoice = useCallback(() => {
+    setShowUploadForm(false);
     setError(null);
-    
-    // Trigger file selection
+    setSelectedPersonId('');
     if (fileInputRef.current) {
-      fileInputRef.current.click();
+      fileInputRef.current.value = '';
     }
-  }, [disabled, uploading]);
+  }, []);
+
+  /**
+   * Handle person selection change
+   */
+  const handlePersonChange = useCallback((event) => {
+    setSelectedPersonId(event.target.value);
+  }, []);
+
+  /**
+   * Handle invoice deleted from list
+   */
+  const handleInvoiceDeleted = useCallback((invoiceId) => {
+    onInvoiceDeleted(invoiceId);
+  }, [onInvoiceDeleted]);
+
+  /**
+   * Handle person link updated from list
+   */
+  const handlePersonLinkUpdated = useCallback((invoiceId, personId) => {
+    onPersonLinkUpdated(invoiceId, personId);
+  }, [onPersonLinkUpdated]);
 
   /**
    * Get operation status text for accessibility
@@ -332,186 +344,40 @@ const InvoiceUpload = ({
   }, [uploading, uploadProgress, error]);
 
   /**
-   * Format file size for display
-   * @param {number} bytes - File size in bytes
-   * @returns {string} Formatted file size
-   */
-  const formatFileSize = useCallback((bytes) => {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-  }, []);
-
-  /**
-   * Handle viewing invoice in modal
-   */
-  const handleViewInvoice = useCallback(() => {
-    if (existingInvoice && expenseId) {
-      setShowPDFViewer(true);
-    }
-  }, [existingInvoice, expenseId]);
-
-  /**
-   * Handle closing PDF viewer
-   */
-  const handleClosePDFViewer = useCallback(() => {
-    setShowPDFViewer(false);
-  }, []);
-
-  /**
    * Clear error message
    */
   const clearError = useCallback(() => {
     setError(null);
   }, []);
 
-  // Render existing invoice display
-  if (existingInvoice) {
-    return (
-      <div className="invoice-upload-container">
-        <div className="invoice-existing">
-          <div className="invoice-info">
-            <div className="invoice-icon">📄</div>
-            <div className="invoice-details">
-              <div className="invoice-filename" title={existingInvoice.originalFilename}>
-                {existingInvoice.originalFilename}
-              </div>
-              <div className="invoice-metadata">
-                {formatFileSize(existingInvoice.fileSize)} • 
-                Uploaded {new Date(existingInvoice.uploadDate).toLocaleDateString()}
-              </div>
-            </div>
-          </div>
-          
-          <div className="invoice-actions">
-            <button
-              type="button"
-              className="invoice-action-btn view-btn"
-              onClick={handleViewInvoice}
-              disabled={uploading}
-              title="View invoice"
-              aria-label="View invoice"
-            >
-              👁️ View
-            </button>
-            
-            <button
-              type="button"
-              className="invoice-action-btn replace-btn"
-              onClick={handleReplaceInvoice}
-              disabled={disabled || uploading}
-              title="Replace invoice"
-              aria-label="Replace invoice"
-            >
-              🔄 Replace
-            </button>
-            
-            {!deleteConfirm ? (
-              <button
-                type="button"
-                className="invoice-action-btn delete-btn"
-                onClick={() => setDeleteConfirm(true)}
-                disabled={disabled || uploading}
-                title="Delete invoice"
-                aria-label="Delete invoice"
-              >
-                🗑️ Delete
-              </button>
-            ) : (
-              <div className="delete-confirm">
-                <button
-                  type="button"
-                  className="invoice-action-btn confirm-delete-btn"
-                  onClick={handleDeleteInvoice}
-                  disabled={uploading}
-                  title="Confirm delete"
-                  aria-label="Confirm delete invoice"
-                >
-                  {uploading ? '⏳' : '✓'} {uploading ? 'Deleting...' : 'Confirm'}
-                </button>
-                <button
-                  type="button"
-                  className="invoice-action-btn cancel-btn"
-                  onClick={() => setDeleteConfirm(false)}
-                  disabled={uploading}
-                  title="Cancel delete"
-                  aria-label="Cancel delete"
-                >
-                  ✕ Cancel
-                </button>
-              </div>
-            )}
-          </div>
+  // Render upload form (dropzone with optional person selection)
+  const renderUploadForm = (isAddingToExisting = false) => (
+    <div className={`invoice-upload-form ${isAddingToExisting ? 'adding-to-existing' : ''}`}>
+      {/* Person selection dropdown - only show if people are assigned */}
+      {people.length > 0 && (
+        <div className="person-selection">
+          <label htmlFor="invoice-person-select" className="person-select-label">
+            Link to person (optional):
+          </label>
+          <select
+            id="invoice-person-select"
+            className="person-select-dropdown"
+            value={selectedPersonId}
+            onChange={handlePersonChange}
+            disabled={disabled || uploading}
+            aria-label="Select person to link invoice to"
+          >
+            <option value="">No person selected</option>
+            {people.map((person) => (
+              <option key={person.id} value={person.id}>
+                {person.name}
+              </option>
+            ))}
+          </select>
         </div>
+      )}
 
-        {/* Hidden file input for replace functionality */}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".pdf,application/pdf"
-          onChange={handleFileInputChange}
-          style={{ display: 'none' }}
-          aria-hidden="true"
-        />
-
-        {/* Error display */}
-        {error && (
-          <div className="invoice-error" role="alert">
-            <span className="error-text">{error}</span>
-            <button
-              type="button"
-              className="error-close"
-              onClick={clearError}
-              aria-label="Clear error"
-            >
-              ✕
-            </button>
-          </div>
-        )}
-
-        {/* Upload progress for replace/delete operations */}
-        {uploading && (
-          <div className="upload-progress">
-            <div className="progress-bar">
-              <div 
-                className="progress-fill" 
-                style={{ width: `${uploadProgress}%` }}
-                role="progressbar"
-                aria-valuenow={uploadProgress}
-                aria-valuemin="0"
-                aria-valuemax="100"
-                aria-label={`Operation progress: ${uploadProgress}%`}
-              />
-            </div>
-            <div className="progress-text">
-              {deleteConfirm ? 'Deleting...' : 'Uploading...'} {uploadProgress}%
-            </div>
-          </div>
-        )}
-
-        {/* Operation status for screen readers */}
-        <div className="sr-only" aria-live="polite" aria-atomic="true">
-          {getOperationStatus()}
-        </div>
-
-        {/* PDF Viewer Modal */}
-        {showPDFViewer && (
-          <InvoicePDFViewer
-            isOpen={showPDFViewer}
-            expenseId={expenseId}
-            invoiceName={existingInvoice?.originalFilename || 'Invoice'}
-            onClose={handleClosePDFViewer}
-          />
-        )}
-      </div>
-    );
-  }
-
-  // Render upload interface
-  return (
-    <div className="invoice-upload-container">
+      {/* Dropzone */}
       <div
         ref={dropZoneRef}
         className={`invoice-dropzone ${dragOver ? 'drag-over' : ''} ${disabled ? 'disabled' : ''} ${uploading ? 'uploading' : ''}`}
@@ -569,6 +435,18 @@ const InvoiceUpload = ({
         </div>
       </div>
 
+      {/* Cancel button when adding to existing invoices */}
+      {isAddingToExisting && !uploading && (
+        <button
+          type="button"
+          className="cancel-add-invoice-btn"
+          onClick={handleCancelAddInvoice}
+          aria-label="Cancel adding invoice"
+        >
+          Cancel
+        </button>
+      )}
+
       {/* Hidden file input */}
       <input
         ref={fileInputRef}
@@ -594,13 +472,76 @@ const InvoiceUpload = ({
         </div>
       )}
 
+      {/* Operation status for screen readers */}
+      <div className="sr-only" aria-live="polite" aria-atomic="true">
+        {getOperationStatus()}
+      </div>
+    </div>
+  );
+
+  // Render when invoices exist
+  if (invoices.length > 0) {
+    return (
+      <div className="invoice-upload-container has-invoices">
+        {/* Invoice List */}
+        <InvoiceList
+          invoices={invoices}
+          expenseId={expenseId}
+          people={people}
+          onInvoiceDeleted={handleInvoiceDeleted}
+          onPersonLinkUpdated={handlePersonLinkUpdated}
+          disabled={disabled}
+        />
+
+        {/* Add Invoice section */}
+        {showUploadForm ? (
+          renderUploadForm(true)
+        ) : (
+          <button
+            type="button"
+            className="add-invoice-btn"
+            onClick={handleAddInvoiceClick}
+            disabled={disabled}
+            aria-label="Add another invoice"
+          >
+            <span className="add-invoice-icon">+</span>
+            <span className="add-invoice-text">Add Invoice</span>
+          </button>
+        )}
+
+        {/* PDF Viewer Modal */}
+        {showPDFViewer && viewingInvoice && (
+          <InvoicePDFViewer
+            isOpen={showPDFViewer}
+            expenseId={expenseId}
+            invoiceId={viewingInvoice.id}
+            invoiceName={viewingInvoice.originalFilename || 'Invoice'}
+            onClose={() => {
+              setShowPDFViewer(false);
+              setViewingInvoice(null);
+            }}
+          />
+        )}
+      </div>
+    );
+  }
+
+  // Render upload interface when no invoices exist
+  return (
+    <div className="invoice-upload-container">
+      {renderUploadForm(false)}
+
       {/* PDF Viewer Modal */}
-      {showPDFViewer && (
+      {showPDFViewer && viewingInvoice && (
         <InvoicePDFViewer
           isOpen={showPDFViewer}
           expenseId={expenseId}
-          invoiceName={existingInvoice?.originalFilename || 'Invoice'}
-          onClose={handleClosePDFViewer}
+          invoiceId={viewingInvoice.id}
+          invoiceName={viewingInvoice.originalFilename || 'Invoice'}
+          onClose={() => {
+            setShowPDFViewer(false);
+            setViewingInvoice(null);
+          }}
         />
       )}
     </div>

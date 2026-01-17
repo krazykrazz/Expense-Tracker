@@ -12,8 +12,11 @@ import {
 import { validateAmount } from '../utils/validation';
 import { getMonthNameLong } from '../utils/formatters';
 import { API_ENDPOINTS } from '../config';
+import { createLogger } from '../utils/logger';
 import BudgetCard from './BudgetCard';
 import BudgetProgressBar from './BudgetProgressBar';
+
+const logger = createLogger('BudgetManagementModal');
 
 const BudgetManagementModal = ({ isOpen, onClose, year, month, onBudgetUpdated, focusedCategory = null }) => {
   const [budgets, setBudgets] = useState([]);
@@ -41,7 +44,7 @@ const BudgetManagementModal = ({ isOpen, onClose, year, month, onBudgetUpdated, 
         const budgetableCategories = (data.budgetableCategories || data.categories || []);
         setCategories(budgetableCategories);
       } catch (err) {
-        console.error('Error fetching categories:', err);
+        logger.error('Error fetching categories:', err);
         // Fallback to empty array if fetch fails
         setCategories([]);
       }
@@ -79,7 +82,7 @@ const BudgetManagementModal = ({ isOpen, onClose, year, month, onBudgetUpdated, 
     } catch (err) {
       const errorMessage = err.message || 'Network error. Unable to load budgets. Please check your connection and try again.';
       setError(errorMessage);
-      console.error('Error fetching budgets:', err);
+      logger.error('Error fetching budgets:', err);
     } finally {
       setLoading(false);
     }
@@ -112,7 +115,7 @@ const BudgetManagementModal = ({ isOpen, onClose, year, month, onBudgetUpdated, 
         setEditAmount(suggestionData.suggestedAmount.toString());
       }
     } catch (err) {
-      console.error('Error fetching budget suggestion:', err);
+      logger.error('Error fetching budget suggestion:', err);
       // Don't show error to user, just skip suggestion
       setSuggestion(null);
     } finally {
@@ -169,7 +172,7 @@ const BudgetManagementModal = ({ isOpen, onClose, year, month, onBudgetUpdated, 
     } catch (err) {
       const errorMessage = err.message || 'Network error. Unable to save budget. Please check your connection and try again.';
       setError(errorMessage);
-      console.error('Error saving budget:', err);
+      logger.error('Error saving budget:', err);
     } finally {
       setLoading(false);
     }
@@ -211,7 +214,7 @@ const BudgetManagementModal = ({ isOpen, onClose, year, month, onBudgetUpdated, 
     } catch (err) {
       const errorMessage = err.message || 'Network error. Unable to delete budget. Please check your connection and try again.';
       setError(errorMessage);
-      console.error('Error deleting budget:', err);
+      logger.error('Error deleting budget:', err);
     } finally {
       setLoading(false);
     }
@@ -249,7 +252,7 @@ const BudgetManagementModal = ({ isOpen, onClose, year, month, onBudgetUpdated, 
     } catch (err) {
       const errorMessage = err.message || 'Network error. Unable to copy budgets. Please check your connection and try again.';
       setError(errorMessage);
-      console.error('Error copying budgets:', err);
+      logger.error('Error copying budgets:', err);
     } finally {
       setIsCopying(false);
     }

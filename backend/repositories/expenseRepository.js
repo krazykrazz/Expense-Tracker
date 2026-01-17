@@ -228,6 +228,7 @@ class ExpenseRepository {
 
   /**
    * Get tax-deductible expenses for a specific year
+   * Supports multiple invoices per expense with invoice count and details
    * @param {number} year - Year
    * @returns {Promise<Array>} Array of tax-deductible expense objects with invoice information
    */
@@ -235,19 +236,12 @@ class ExpenseRepository {
     const db = await getDatabase();
     
     return new Promise((resolve, reject) => {
-      const sql = `
+      // First, get all expenses with invoice counts
+      const expenseSql = `
         SELECT 
           e.id, e.date, e.place, e.amount, e.notes, e.type, e.method, e.week,
-          i.id as invoice_id,
-          i.filename as invoice_filename,
-          i.original_filename as invoice_original_filename,
-          i.file_path as invoice_file_path,
-          i.file_size as invoice_file_size,
-          i.mime_type as invoice_mime_type,
-          i.upload_date as invoice_upload_date,
-          CASE WHEN i.id IS NOT NULL THEN 1 ELSE 0 END as has_invoice
+          (SELECT COUNT(*) FROM expense_invoices WHERE expense_id = e.id) as invoice_count
         FROM expenses e
-        LEFT JOIN expense_invoices i ON e.id = i.expense_id
         WHERE strftime('%Y', e.date) = ?
           AND e.type IN ('Tax - Medical', 'Tax - Donation')
         ORDER BY e.date ASC
@@ -255,44 +249,85 @@ class ExpenseRepository {
       
       const params = [year.toString()];
       
-      db.all(sql, params, (err, rows) => {
+      db.all(expenseSql, params, async (err, expenseRows) => {
         if (err) {
           reject(err);
           return;
         }
         
-        // Transform the results to include invoice information
-        const expenses = (rows || []).map(row => {
-          const expense = {
-            id: row.id,
-            date: row.date,
-            place: row.place,
-            amount: row.amount,
-            notes: row.notes,
-            type: row.type,
-            method: row.method,
-            week: row.week,
-            hasInvoice: Boolean(row.has_invoice)
-          };
-          
-          // Add invoice information if present
-          if (row.invoice_id) {
-            expense.invoice = {
-              id: row.invoice_id,
-              expenseId: row.id,
-              filename: row.invoice_filename,
-              originalFilename: row.invoice_original_filename,
-              filePath: row.invoice_file_path,
-              fileSize: row.invoice_file_size,
-              mimeType: row.invoice_mime_type,
-              uploadDate: row.invoice_upload_date
-            };
+        if (!expenseRows || expenseRows.length === 0) {
+          resolve([]);
+          return;
+        }
+        
+        // Get all invoices for these expenses in a single query
+        const expenseIds = expenseRows.map(e => e.id);
+        const placeholders = expenseIds.map(() => '?').join(',');
+        
+        const invoiceSql = `
+          SELECT 
+            ei.id, ei.expense_id, ei.person_id, ei.filename, ei.original_filename,
+            ei.file_path, ei.file_size, ei.mime_type, ei.upload_date,
+            p.name as person_name
+          FROM expense_invoices ei
+          LEFT JOIN people p ON ei.person_id = p.id
+          WHERE ei.expense_id IN (${placeholders})
+          ORDER BY ei.expense_id, ei.upload_date ASC
+        `;
+        
+        db.all(invoiceSql, expenseIds, (invoiceErr, invoiceRows) => {
+          if (invoiceErr) {
+            reject(invoiceErr);
+            return;
           }
           
-          return expense;
+          // Group invoices by expense_id
+          const invoicesByExpense = {};
+          (invoiceRows || []).forEach(inv => {
+            if (!invoicesByExpense[inv.expense_id]) {
+              invoicesByExpense[inv.expense_id] = [];
+            }
+            invoicesByExpense[inv.expense_id].push({
+              id: inv.id,
+              expenseId: inv.expense_id,
+              personId: inv.person_id,
+              personName: inv.person_name,
+              filename: inv.filename,
+              originalFilename: inv.original_filename,
+              filePath: inv.file_path,
+              fileSize: inv.file_size,
+              mimeType: inv.mime_type,
+              uploadDate: inv.upload_date
+            });
+          });
+          
+          // Transform the results to include invoice information
+          const expenses = expenseRows.map(row => {
+            const invoices = invoicesByExpense[row.id] || [];
+            const expense = {
+              id: row.id,
+              date: row.date,
+              place: row.place,
+              amount: row.amount,
+              notes: row.notes,
+              type: row.type,
+              method: row.method,
+              week: row.week,
+              hasInvoice: invoices.length > 0,
+              invoiceCount: invoices.length,
+              invoices: invoices
+            };
+            
+            // For backward compatibility, also include first invoice as 'invoice'
+            if (invoices.length > 0) {
+              expense.invoice = invoices[0];
+            }
+            
+            return expense;
+          });
+          
+          resolve(expenses);
         });
-        
-        resolve(expenses);
       });
     });
   }

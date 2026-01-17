@@ -4,7 +4,9 @@
 
 The Medical Expense People Tracking feature enables users to associate medical expenses with specific family members and generate detailed tax reporting summaries organized by person and provider. This enhancement builds on the existing "Tax - Medical" category to provide more granular tracking for tax preparation and family expense management.
 
-**Related Feature:** This feature works seamlessly with [Medical Expense Invoice Attachments](./MEDICAL_EXPENSE_INVOICES.md) (v4.12.0), which allows attaching PDF invoices to medical expenses for comprehensive record keeping.
+**Related Features:** 
+- [Medical Expense Invoice Attachments](./MEDICAL_EXPENSE_INVOICES.md) (v4.12.0) - Attach PDF invoices to medical expenses
+- **Invoice-Person Linking** (v4.13.0) - Link individual invoices to specific family members for comprehensive record keeping
 
 ## Key Features
 
@@ -30,6 +32,7 @@ The Medical Expense People Tracking feature enables users to associate medical e
 - "Unassigned" indicators for medical expenses without people
 - Person count display for multi-person expenses
 - Allocation amounts shown for split expenses
+- Invoice-person links shown in invoice lists (v4.13.0+)
 
 ## Usage Guide
 
@@ -88,6 +91,17 @@ When you select multiple people for a medical expense:
 4. If multiple people, allocate amounts
 5. The expense moves to the appropriate person section
 
+### Linking Invoices to People (v4.13.0+)
+
+When uploading invoices to medical expenses, you can optionally link each invoice to a specific family member:
+
+1. Edit a medical expense with people assigned
+2. In the Invoice section, click "Add Invoice"
+3. Select a PDF file to upload
+4. Use the "Link to Person" dropdown to select a family member
+5. The invoice will be associated with that person
+6. View person-linked invoices in the Tax Deductible report's person-grouped view
+
 ## Database Schema
 
 ### People Table
@@ -135,6 +149,16 @@ CREATE TABLE expense_people (
 - They appear in the "Unassigned" section in person-grouped views
 - Users can retroactively add people to existing expenses
 - No data migration required for existing expenses
+- Existing invoices without person links continue to work (v4.13.0+)
+
+## Integration with Invoice Feature (v4.13.0+)
+
+The people tracking feature integrates with the multi-invoice support:
+
+- **Invoice-Person Linking**: When uploading an invoice, optionally select a person from those assigned to the expense
+- **Person Validation**: The system validates that the selected person is actually assigned to the expense
+- **Cascade Behavior**: When a person is removed from an expense, their invoice links are set to NULL (invoices preserved)
+- **Tax Report Integration**: Person-grouped tax reports show which invoices are linked to each family member
 
 ## Technical Details
 
@@ -155,5 +179,6 @@ The feature includes comprehensive property-based tests validating:
 
 ---
 
-**Version:** 4.6.0  
-**Last Updated:** December 14, 2025
+**Version:** 4.13.0 (Updated for Invoice-Person Linking)  
+**Original Version:** 4.6.0  
+**Last Updated:** January 17, 2026

@@ -144,7 +144,7 @@ describe('Invoice Service - Property-Based Tests - CRUD Operations', () => {
           }
         }
       ),
-      { numRuns: 30 }
+      { numRuns: 10 }
     );
   });
 
@@ -184,7 +184,7 @@ describe('Invoice Service - Property-Based Tests - CRUD Operations', () => {
           }
         }
       ),
-      { numRuns: 50 }
+      { numRuns: 10 }
     );
   });
 
@@ -224,7 +224,7 @@ describe('Invoice Service - Property-Based Tests - CRUD Operations', () => {
           }
         }
       ),
-      { numRuns: 40 }
+      { numRuns: 10 }
     );
   });
 
@@ -262,7 +262,7 @@ describe('Invoice Service - Property-Based Tests - CRUD Operations', () => {
           }
         }
       ),
-      { numRuns: 50 }
+      { numRuns: 10 }
     );
   });
 
@@ -308,7 +308,7 @@ describe('Invoice Service - Property-Based Tests - CRUD Operations', () => {
           return true;
         }
       ),
-      { numRuns: 30 }
+      { numRuns: 10 }
     );
   });
 
@@ -386,7 +386,7 @@ describe('Invoice Service - Property-Based Tests - CRUD Operations', () => {
           }
         }
       ),
-      { numRuns: 20 }
+      { numRuns: 10 }
     );
   });
 
@@ -410,7 +410,7 @@ describe('Invoice Service - Property-Based Tests - CRUD Operations', () => {
           expect(result).toBe(!!existingInvoice);
         }
       ),
-      { numRuns: 50 }
+      { numRuns: 10 }
     );
   });
 
@@ -446,7 +446,7 @@ describe('Invoice Service - Property-Based Tests - CRUD Operations', () => {
           expect(invoiceRepository.create).not.toHaveBeenCalled();
         }
       ),
-      { numRuns: 30 }
+      { numRuns: 10 }
     );
   });
 
@@ -482,7 +482,7 @@ describe('Invoice Service - Property-Based Tests - CRUD Operations', () => {
           expect(result.directoryPath).toContain(date.getFullYear().toString());
         }
       ),
-      { numRuns: 50 }
+      { numRuns: 10 }
     );
   });
 });

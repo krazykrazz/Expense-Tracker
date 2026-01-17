@@ -7,6 +7,7 @@ import { getInvoiceMetadata } from '../services/invoiceApi';
 import PersonAllocationModal from './PersonAllocationModal';
 import FloatingAddButton from './FloatingAddButton';
 import InvoiceIndicator from './InvoiceIndicator';
+import InvoiceUpload from './InvoiceUpload';
 import './ExpenseList.css';
 import { formatAmount, formatLocalDate } from '../utils/formatters';
 
@@ -107,6 +108,8 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
   const people = propPeople || localPeople;
   const [selectedPeople, setSelectedPeople] = useState([]);
   const [showPersonAllocation, setShowPersonAllocation] = useState(false);
+  // Invoice state for editing
+  const [editInvoiceInfo, setEditInvoiceInfo] = useState(null);
   // Invoice metadata cache
   const [invoiceMetadata, setInvoiceMetadata] = useState(new Map());
   const [loadingInvoices, setLoadingInvoices] = useState(new Set());
@@ -252,17 +255,23 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
         } else {
           setSelectedPeople([]);
         }
+        
+        // Load invoice info if exists
+        const invoiceInfo = invoiceMetadata.get(expense.id);
+        setEditInvoiceInfo(invoiceInfo || null);
       } catch (error) {
         console.error('Failed to load people for expense:', error);
         setSelectedPeople([]);
+        setEditInvoiceInfo(null);
       }
     } else {
       setSelectedPeople([]);
+      setEditInvoiceInfo(null);
     }
     
     setShowEditModal(true);
     setEditMessage({ text: '', type: '' });
-  }, []);
+  }, [invoiceMetadata]);
 
   const handleEditChange = useCallback((e) => {
     const { name, value } = e.target;
@@ -363,7 +372,34 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
     setEditFormData({});
     setEditMessage({ text: '', type: '' });
     setSelectedPeople([]);
+    setEditInvoiceInfo(null);
   }, []);
+
+  // Handle invoice upload in edit modal
+  const handleEditInvoiceUploaded = useCallback((invoiceInfo) => {
+    setEditInvoiceInfo(invoiceInfo);
+    // Update the invoice metadata cache
+    if (expenseToEdit) {
+      setInvoiceMetadata(prev => {
+        const newMap = new Map(prev);
+        newMap.set(expenseToEdit.id, invoiceInfo);
+        return newMap;
+      });
+    }
+  }, [expenseToEdit]);
+
+  // Handle invoice deletion in edit modal
+  const handleEditInvoiceDeleted = useCallback(() => {
+    setEditInvoiceInfo(null);
+    // Update the invoice metadata cache
+    if (expenseToEdit) {
+      setInvoiceMetadata(prev => {
+        const newMap = new Map(prev);
+        newMap.set(expenseToEdit.id, null);
+        return newMap;
+      });
+    }
+  }, [expenseToEdit]);
 
   const handleDeleteClick = useCallback((expense) => {
     setExpenseToDelete(expense);
@@ -815,6 +851,19 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
                       )}
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* Invoice Upload for Medical Expenses */}
+              {isEditingMedicalExpense && expenseToEdit && (
+                <div className="form-group">
+                  <InvoiceUpload
+                    expenseId={expenseToEdit.id}
+                    existingInvoice={editInvoiceInfo}
+                    onInvoiceUploaded={handleEditInvoiceUploaded}
+                    onInvoiceDeleted={handleEditInvoiceDeleted}
+                    disabled={isSubmitting}
+                  />
                 </div>
               )}
 

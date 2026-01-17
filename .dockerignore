@@ -29,8 +29,16 @@ docs/
 __tests__/
 coverage/
 
-# Scripts
-backend/scripts/
+# Scripts (exclude test/utility scripts but keep runtime scripts)
+backend/scripts/archive/
+backend/scripts/check*.js
+backend/scripts/clean*.js
+backend/scripts/find*.js
+backend/scripts/run*.js
+backend/scripts/seed*.js
+backend/scripts/simulate*.js
+backend/scripts/test*.js
+backend/scripts/verify*.js
 *.bat
 *.ps1
 *.vbs

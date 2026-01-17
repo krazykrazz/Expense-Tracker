@@ -4,6 +4,7 @@ const fs = require('fs');
 const crypto = require('crypto');
 const fileValidation = require('../utils/fileValidation');
 const logger = require('../config/logger');
+const { getConfigDir } = require('../config/paths');
 
 /**
  * Enhanced multer configuration for secure PDF invoice uploads
@@ -11,10 +12,14 @@ const logger = require('../config/logger');
  */
 class UploadMiddleware {
   constructor() {
-    this.tempDir = path.join(__dirname, '../../config/invoices/temp');
+    // Use centralized config directory (handles containerized vs development environments)
+    const configDir = getConfigDir();
+    this.tempDir = path.join(configDir, 'invoices', 'temp');
     this.maxFileSize = 10 * 1024 * 1024; // 10MB
     this.allowedMimeTypes = ['application/pdf'];
     this.allowedExtensions = ['.pdf'];
+    
+    logger.info('Upload middleware initialized:', { tempDir: this.tempDir });
     
     // Ensure temp directory exists
     this.ensureTempDirectory();

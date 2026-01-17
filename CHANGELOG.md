@@ -11,6 +11,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.12.5] - 2026-01-17
+
+### Fixed
+- **Invoice Storage Path**: Fixed critical bug where invoice files were stored in wrong directory in Docker
+  - Invoice files were being written to `/app/config/invoices` instead of `/config/invoices`
+  - Files were not persisting because `/app/config` is not mounted as a Docker volume
+  - Updated `fileStorage.js` to use centralized path configuration from `paths.js`
+  - Updated `uploadMiddleware.js` to use centralized path configuration
+  - Added `invoices` and `invoices/temp` directories to `ensureDirectories()` function
+  - Added `getInvoicesPath()` helper function to `paths.js`
+  - Invoice files now correctly persist in the mounted `/config/invoices` directory
+
+---
+
 ## [4.12.4] - 2026-01-17
 
 ### Fixed

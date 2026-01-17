@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const logger = require('../config/logger');
+const { getConfigDir } = require('../config/paths');
 
 /**
  * File storage utilities for invoice management
@@ -8,8 +9,15 @@ const logger = require('../config/logger');
  */
 class FileStorageUtils {
   constructor() {
-    this.baseInvoiceDir = path.join(process.cwd(), 'config', 'invoices');
+    // Use centralized config directory (handles containerized vs development environments)
+    const configDir = getConfigDir();
+    this.baseInvoiceDir = path.join(configDir, 'invoices');
     this.tempDir = path.join(this.baseInvoiceDir, 'temp');
+    
+    logger.info('Invoice storage initialized:', { 
+      baseDir: this.baseInvoiceDir,
+      tempDir: this.tempDir 
+    });
   }
 
   /**

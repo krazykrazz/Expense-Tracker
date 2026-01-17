@@ -141,8 +141,8 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
     };
 
     const fetchInvoiceData = async () => {
-      // Fetch all invoices if editing a medical expense
-      if (isEditing && expense?.id && expense?.type === 'Tax - Medical') {
+      // Fetch all invoices if editing a tax-deductible expense (medical or donation)
+      if (isEditing && expense?.id && (expense?.type === 'Tax - Medical' || expense?.type === 'Tax - Donation')) {
         try {
           const invoicesData = await getInvoicesForExpense(expense.id);
           if (isMounted && invoicesData) {
@@ -156,7 +156,7 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
       }
     };
 
-    // Fetch people assigned to this expense (for invoice person linking)
+    // Fetch people assigned to this expense (for invoice person linking) - medical only
     const fetchExpensePeople = async () => {
       if (isEditing && expense?.id && expense?.type === 'Tax - Medical') {
         try {
@@ -221,10 +221,12 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
       // Clear people selection when changing away from medical expenses
       if (value !== 'Tax - Medical') {
         setSelectedPeople([]);
-        // Clear invoices when changing away from medical expenses
+        setExpensePeople([]);
+      }
+      // Clear invoices when changing away from tax-deductible expenses
+      if (value !== 'Tax - Medical' && value !== 'Tax - Donation') {
         setInvoices([]);
         setInvoiceFiles([]);
-        setExpensePeople([]);
       }
     }
   };
@@ -245,8 +247,10 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
     setSelectedPeople(allocations);
   };
 
-  // Check if current expense type is medical
+  // Check if current expense type is medical or donation (tax-deductible)
   const isMedicalExpense = formData.type === 'Tax - Medical';
+  const isDonationExpense = formData.type === 'Tax - Donation';
+  const isTaxDeductible = isMedicalExpense || isDonationExpense;
 
   // Handle invoice upload success (Requirements 1.1, 1.2, 2.1)
   // Updated to support multiple invoices
@@ -465,8 +469,8 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
         newExpense = await createExpense(formData, peopleAllocations);
       }
 
-      // Handle invoice upload for new expenses or when invoice files are selected
-      if (isMedicalExpense && invoiceFiles.length > 0 && newExpense.id) {
+      // Handle invoice upload for new expenses or when invoice files are selected (medical or donation)
+      if (isTaxDeductible && invoiceFiles.length > 0 && newExpense.id) {
         const uploadedInvoices = [];
         
         for (const item of invoiceFiles) {
@@ -711,8 +715,8 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
           </div>
         )}
 
-        {/* Invoice Upload for Medical Expenses (Requirements 1.1, 1.2, 1.3, 1.5, 2.1, 2.2, 2.3, 2.4, 2.5) */}
-        {isMedicalExpense && (
+        {/* Invoice Upload for Tax-Deductible Expenses (Medical and Donations) */}
+        {isTaxDeductible && (
           <div className="form-group invoice-section">
             <label htmlFor="invoice">Invoice Attachment</label>
             <div className="invoice-upload-wrapper">
@@ -721,7 +725,7 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
                 <InvoiceUpload
                   expenseId={expense?.id}
                   existingInvoices={invoices}
-                  people={expensePeople.length > 0 ? expensePeople : selectedPeople}
+                  people={isMedicalExpense ? (expensePeople.length > 0 ? expensePeople : selectedPeople) : []}
                   onInvoiceUploaded={handleInvoiceUploaded}
                   onInvoiceDeleted={handleInvoiceDeleted}
                   onPersonLinkUpdated={handlePersonLinkUpdated}
@@ -788,7 +792,7 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
                       {invoiceFiles.map((item, index) => (
                         <div key={index} className="invoice-file-item">
                           <span className="file-name">📄 {item.file.name} ({(item.file.size / 1024 / 1024).toFixed(1)}MB)</span>
-                          {selectedPeople.length > 0 && (
+                          {isMedicalExpense && selectedPeople.length > 0 && (
                             <select
                               className="invoice-person-select-inline"
                               value={item.personId || ''}

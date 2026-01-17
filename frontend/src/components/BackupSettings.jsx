@@ -803,6 +803,15 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v4.13.1</div>
+                <div className="changelog-date">January 17, 2026</div>
+                <ul className="changelog-items">
+                  <li>Added invoice attachment support for donation expenses</li>
+                  <li>Fixed merchant analytics chart to show oldest to newest (left to right)</li>
+                  <li>Invoice backup enhancement - backups now include invoice files</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v4.13.0</div>
                 <div className="changelog-date">January 17, 2026</div>
                 <ul className="changelog-items">
@@ -834,24 +843,6 @@ const BackupSettings = () => {
                   <li>Fixed invoice indicator not showing green after upload</li>
                   <li>Invoice status now updates immediately after attaching a PDF</li>
                   <li>More reliable PDF display across different browsers</li>
-                </ul>
-              </div>
-              <div className="changelog-entry">
-                <div className="changelog-version">v4.12.7</div>
-                <div className="changelog-date">January 17, 2026</div>
-                <ul className="changelog-items">
-                  <li>Fixed invoice storage path detection in Docker containers</li>
-                  <li>Added invoices directory to Dockerfile initialization</li>
-                  <li>Added path detection logging for debugging</li>
-                </ul>
-              </div>
-              <div className="changelog-entry">
-                <div className="changelog-version">v4.12.6</div>
-                <div className="changelog-date">January 17, 2026</div>
-                <ul className="changelog-items">
-                  <li>Fixed double .pdf extension when downloading invoices</li>
-                  <li>Improved PDF viewer reliability and error handling</li>
-                  <li>Better error messages for PDF loading failures</li>
                 </ul>
               </div>
               <div className="changelog-entry">

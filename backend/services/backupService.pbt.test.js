@@ -674,4 +674,354 @@ describe('BackupService - Property-Based Tests', () => {
       { numRuns: 100 }
     );
   }, 120000);
+
+  /**
+   * Feature: invoice-backup-enhancement, Property 4: Backup Listing Accuracy
+   * **Validates: Requirements 2.1, 2.2, 2.3**
+   * 
+   * For any set of backup archives in the backup directory, the backup listing SHALL report 
+   * accurate filename, size, and creation timestamp for each backup.
+   */
+  test('Property 4: Backup Listing Accuracy - listing reports accurate filename, size, and timestamp', async () => {
+    const testListingPath = path.join(__dirname, '../../test-pbt-listing');
+    
+    // Clean up and create test directory
+    await fs.promises.rm(testListingPath, { recursive: true, force: true }).catch(() => {});
+    await fs.promises.mkdir(testListingPath, { recursive: true });
+    
+    // Arbitrary for number of backups to create (1-5)
+    const backupCountArbitrary = fc.integer({ min: 1, max: 5 });
+
+    // Save original config before all tests
+    const originalConfig = backupService.getConfig();
+
+    try {
+      await fc.assert(
+        fc.asyncProperty(backupCountArbitrary, async (backupCount) => {
+          // Clean the test directory before each run
+          const existingFiles = await fs.promises.readdir(testListingPath).catch(() => []);
+          for (const file of existingFiles) {
+            await fs.promises.unlink(path.join(testListingPath, file)).catch(() => {});
+          }
+
+          // Set high keepLastN BEFORE creating backups to prevent cleanup during creation
+          backupService.updateConfig({ targetPath: testListingPath, keepLastN: 100 });
+
+          // Step 1: Create multiple backups with sufficient delay to ensure unique timestamps
+          const createdBackups = [];
+          for (let i = 0; i < backupCount; i++) {
+            const result = await backupService.performBackup(testListingPath);
+            expect(result.success).toBe(true);
+            createdBackups.push({
+              filename: result.filename,
+              path: result.path,
+              size: result.size,
+              timestamp: result.timestamp
+            });
+            // Wait 1.1 seconds to ensure different timestamps (filename uses seconds precision)
+            if (i < backupCount - 1) {
+              await new Promise(resolve => setTimeout(resolve, 1100));
+            }
+          }
+
+          // Step 2: Get backup list
+          const backupList = backupService.getBackupList();
+
+          // Step 3: Verify the listing contains all created backups
+          expect(backupList.length).toBe(createdBackups.length);
+
+          // Step 4: Verify each backup in the listing has accurate information
+          for (const created of createdBackups) {
+            const listed = backupList.find(b => b.name === created.filename);
+            expect(listed).toBeDefined();
+            
+            if (listed) {
+              // Verify filename matches
+              expect(listed.name).toBe(created.filename);
+              expect(listed.name).toMatch(/\.tar\.gz$/);
+              
+              // Verify size matches (should be exact)
+              expect(listed.size).toBe(created.size);
+              expect(listed.size).toBeGreaterThan(0);
+              
+              // Verify path is correct
+              expect(listed.path).toBe(created.path);
+              
+              // Verify type is 'archive' for tar.gz files
+              expect(listed.type).toBe('archive');
+              
+              // Verify created timestamp is a valid ISO string
+              expect(listed.created).toBeDefined();
+              const createdDate = new Date(listed.created);
+              expect(createdDate.toString()).not.toBe('Invalid Date');
+              
+              // Verify the file actually exists on disk
+              expect(fs.existsSync(listed.path)).toBe(true);
+              
+              // Verify the size matches the actual file size on disk
+              const stats = fs.statSync(listed.path);
+              expect(listed.size).toBe(stats.size);
+            }
+          }
+
+          // Step 5: Verify listing is sorted by creation date (newest first)
+          for (let i = 1; i < backupList.length; i++) {
+            const prevDate = new Date(backupList[i - 1].created);
+            const currDate = new Date(backupList[i].created);
+            expect(prevDate.getTime()).toBeGreaterThanOrEqual(currDate.getTime());
+          }
+
+          return true;
+        }),
+        { numRuns: 50 } // Reduced runs due to longer delays
+      );
+    } finally {
+      // Restore original config
+      backupService.updateConfig({ targetPath: originalConfig.targetPath, keepLastN: originalConfig.keepLastN });
+      // Clean up test directory
+      await fs.promises.rm(testListingPath, { recursive: true, force: true }).catch(() => {});
+    }
+  }, 300000); // Longer timeout due to delays between backups
+
+  /**
+   * Feature: invoice-backup-enhancement, Property 5: Retention Policy Enforcement
+   * **Validates: Requirements 3.1, 3.2**
+   * 
+   * For any backup directory with N backups where N > keepLastN, after cleanup the directory 
+   * SHALL contain exactly keepLastN backups, and those backups SHALL be the N newest by creation time.
+   */
+  test('Property 5: Retention Policy Enforcement - cleanup keeps only newest backups', async () => {
+    const testRetentionPath = path.join(__dirname, '../../test-pbt-retention');
+    
+    // Clean up and create test directory
+    await fs.promises.rm(testRetentionPath, { recursive: true, force: true }).catch(() => {});
+    await fs.promises.mkdir(testRetentionPath, { recursive: true });
+
+    // Arbitrary for test parameters - reduced ranges due to time constraints
+    const retentionParamsArbitrary = fc.record({
+      totalBackups: fc.integer({ min: 3, max: 5 }),
+      keepLastN: fc.integer({ min: 1, max: 2 })
+    }).filter(params => params.totalBackups > params.keepLastN);
+
+    // Save original config before all tests
+    const originalConfig = backupService.getConfig();
+
+    try {
+      await fc.assert(
+        fc.asyncProperty(retentionParamsArbitrary, async ({ totalBackups, keepLastN }) => {
+          // Clean the test directory before each run
+          const existingFiles = await fs.promises.readdir(testRetentionPath).catch(() => []);
+          for (const file of existingFiles) {
+            await fs.promises.unlink(path.join(testRetentionPath, file)).catch(() => {});
+          }
+
+          // Step 1: Create multiple backups (more than keepLastN)
+          const createdBackups = [];
+          
+          // Set high keepLastN to prevent cleanup during creation
+          backupService.updateConfig({ targetPath: testRetentionPath, keepLastN: 100 });
+          
+          for (let i = 0; i < totalBackups; i++) {
+            const result = await backupService.performBackup(testRetentionPath);
+            expect(result.success).toBe(true);
+            createdBackups.push({
+              filename: result.filename,
+              path: result.path,
+              timestamp: new Date(result.timestamp).getTime()
+            });
+            // Wait 1.1 seconds to ensure different timestamps (filename uses seconds precision)
+            if (i < totalBackups - 1) {
+              await new Promise(resolve => setTimeout(resolve, 1100));
+            }
+          }
+
+          // Verify all backups were created
+          const filesBeforeCleanup = fs.readdirSync(testRetentionPath)
+            .filter(f => f.endsWith('.tar.gz'));
+          expect(filesBeforeCleanup.length).toBe(totalBackups);
+
+          // Step 2: Update config with the actual keepLastN and trigger cleanup
+          backupService.updateConfig({ keepLastN });
+          backupService.cleanupOldBackups(testRetentionPath);
+
+          // Step 3: Verify exactly keepLastN backups remain
+          const filesAfterCleanup = fs.readdirSync(testRetentionPath)
+            .filter(f => f.endsWith('.tar.gz'));
+          expect(filesAfterCleanup.length).toBe(keepLastN);
+
+          // Step 4: Verify the remaining backups are the newest ones
+          // Sort created backups by timestamp (newest first)
+          const sortedByNewest = [...createdBackups].sort((a, b) => b.timestamp - a.timestamp);
+          const expectedNewest = sortedByNewest.slice(0, keepLastN);
+          const expectedFilenames = expectedNewest.map(b => b.filename);
+
+          // Verify all remaining files are from the expected newest set
+          for (const remainingFile of filesAfterCleanup) {
+            expect(expectedFilenames).toContain(remainingFile);
+          }
+
+          // Verify the deleted files were the oldest ones
+          const expectedDeleted = sortedByNewest.slice(keepLastN);
+          for (const deleted of expectedDeleted) {
+            expect(fs.existsSync(deleted.path)).toBe(false);
+          }
+
+          return true;
+        }),
+        { numRuns: 30 } // Reduced runs due to longer delays
+      );
+    } finally {
+      // Restore original config
+      backupService.updateConfig({ targetPath: originalConfig.targetPath, keepLastN: originalConfig.keepLastN });
+      // Clean up test directory
+      await fs.promises.rm(testRetentionPath, { recursive: true, force: true }).catch(() => {});
+    }
+  }, 300000); // Longer timeout due to delays between backups
+
+  /**
+   * Feature: invoice-backup-enhancement, Property 7: Storage Statistics Accuracy
+   * **Validates: Requirements 5.1, 5.2, 5.3**
+   * 
+   * For any backup directory and invoice storage, the reported statistics SHALL accurately 
+   * reflect the total backup size (sum of all archive sizes), backup count, and invoice storage size.
+   */
+  test('Property 7: Storage Statistics Accuracy - stats accurately reflect actual storage', async () => {
+    const testStatsPath = path.join(__dirname, '../../test-pbt-stats');
+    const invoicesPath = getInvoicesPath();
+    
+    // Clean up and create test directory
+    await fs.promises.rm(testStatsPath, { recursive: true, force: true }).catch(() => {});
+    await fs.promises.mkdir(testStatsPath, { recursive: true });
+
+    // Arbitrary for test parameters
+    const statsParamsArbitrary = fc.record({
+      backupCount: fc.integer({ min: 1, max: 3 }),
+      invoiceFiles: fc.array(
+        fc.record({
+          year: fc.integer({ min: 2091, max: 2095 }), // Use unique year range to avoid conflicts
+          month: fc.integer({ min: 1, max: 12 }),
+          filename: fc.string({ minLength: 8, maxLength: 16, unit: 'grapheme-ascii' })
+            .filter(s => /^[a-zA-Z0-9]+$/.test(s))
+            .map(s => `stats_${s}.pdf`),
+          contentSize: fc.integer({ min: 100, max: 1000 }) // Size of content to write
+        }),
+        { minLength: 0, maxLength: 3 }
+      )
+    });
+
+    // Save original config before all tests
+    const originalConfig = backupService.getConfig();
+
+    try {
+      await fc.assert(
+        fc.asyncProperty(statsParamsArbitrary, async ({ backupCount, invoiceFiles }) => {
+          const createdInvoiceFiles = [];
+          
+          try {
+            // Clean the test directory before each run
+            const existingFiles = await fs.promises.readdir(testStatsPath).catch(() => []);
+            for (const file of existingFiles) {
+              await fs.promises.unlink(path.join(testStatsPath, file)).catch(() => {});
+            }
+
+            // Step 1: Create test invoice files
+            let expectedInvoiceSize = 0;
+            for (const invoice of invoiceFiles) {
+              const yearDir = path.join(invoicesPath, String(invoice.year));
+              const monthDir = path.join(yearDir, String(invoice.month).padStart(2, '0'));
+              const filePath = path.join(monthDir, invoice.filename);
+              
+              await fs.promises.mkdir(monthDir, { recursive: true });
+              // Create content of specified size
+              const content = '%PDF-1.4 ' + 'x'.repeat(invoice.contentSize);
+              await fs.promises.writeFile(filePath, content);
+              createdInvoiceFiles.push({ path: filePath, year: invoice.year, month: invoice.month });
+              expectedInvoiceSize += Buffer.byteLength(content);
+            }
+
+            // Step 2: Create backups
+            backupService.updateConfig({ targetPath: testStatsPath, keepLastN: 100 });
+            
+            let expectedBackupSize = 0;
+            for (let i = 0; i < backupCount; i++) {
+              const result = await backupService.performBackup(testStatsPath);
+              expect(result.success).toBe(true);
+              expectedBackupSize += result.size;
+              // Wait to ensure different timestamps
+              if (i < backupCount - 1) {
+                await new Promise(resolve => setTimeout(resolve, 1100));
+              }
+            }
+
+            // Step 3: Get storage stats
+            const stats = await backupService.getStorageStats();
+
+            // Step 4: Verify backup count is accurate
+            expect(stats.backupCount).toBe(backupCount);
+
+            // Step 5: Verify total backup size is accurate
+            // Calculate actual backup size from files on disk
+            const backupFiles = fs.readdirSync(testStatsPath)
+              .filter(f => f.startsWith('expense-tracker-backup-') && f.endsWith('.tar.gz'));
+            let actualBackupSize = 0;
+            for (const file of backupFiles) {
+              const fileStat = fs.statSync(path.join(testStatsPath, file));
+              actualBackupSize += fileStat.size;
+            }
+            expect(stats.totalBackupSize).toBe(actualBackupSize);
+
+            // Step 6: Verify totalBackupSizeMB is correctly calculated
+            const expectedMB = Math.round(actualBackupSize / (1024 * 1024) * 100) / 100;
+            expect(stats.totalBackupSizeMB).toBe(expectedMB);
+
+            // Step 7: Verify invoice count is accurate
+            expect(stats.invoiceCount).toBe(invoiceFiles.length);
+
+            // Step 8: Verify invoice storage size is accurate
+            // Calculate actual invoice size from files on disk
+            let actualInvoiceSize = 0;
+            for (const invoiceFile of createdInvoiceFiles) {
+              if (fs.existsSync(invoiceFile.path)) {
+                const fileStat = fs.statSync(invoiceFile.path);
+                actualInvoiceSize += fileStat.size;
+              }
+            }
+            expect(stats.invoiceStorageSize).toBe(actualInvoiceSize);
+
+            // Step 9: Verify invoiceStorageSizeMB is correctly calculated
+            const expectedInvoiceMB = Math.round(actualInvoiceSize / (1024 * 1024) * 100) / 100;
+            expect(stats.invoiceStorageSizeMB).toBe(expectedInvoiceMB);
+
+            return true;
+          } finally {
+            // Clean up created invoice files
+            for (const invoiceFile of createdInvoiceFiles) {
+              try {
+                await fs.promises.unlink(invoiceFile.path);
+              } catch (err) {
+                // Ignore cleanup errors
+              }
+            }
+            // Clean up empty directories
+            for (const invoice of invoiceFiles) {
+              try {
+                const monthDir = path.join(invoicesPath, String(invoice.year), String(invoice.month).padStart(2, '0'));
+                const yearDir = path.join(invoicesPath, String(invoice.year));
+                await fs.promises.rmdir(monthDir);
+                await fs.promises.rmdir(yearDir);
+              } catch (err) {
+                // Ignore cleanup errors (directory might not be empty)
+              }
+            }
+          }
+        }),
+        { numRuns: 50 } // Reduced runs due to delays
+      );
+    } finally {
+      // Restore original config
+      backupService.updateConfig({ targetPath: originalConfig.targetPath, keepLastN: originalConfig.keepLastN });
+      // Clean up test directory
+      await fs.promises.rm(testStatsPath, { recursive: true, force: true }).catch(() => {});
+    }
+  }, 300000); // Longer timeout due to delays between backups
 });

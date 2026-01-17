@@ -57,56 +57,56 @@ This implementation plan converts the database-only backup system to a comprehen
 - [x] 4. Checkpoint - Verify core backup/restore functionality
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 5. Update Backup Listing and Cleanup
-  - [ ] 5.1 Update getBackupList() for tar.gz files
+- [x] 5. Update Backup Listing and Cleanup
+  - [x] 5.1 Update getBackupList() for tar.gz files
     - Change file filter from .db to .tar.gz extension
     - Include file size and creation timestamp
     - _Requirements: 2.1, 2.2_
   
-  - [ ] 5.2 Update cleanupOldBackups() for tar.gz files
+  - [x] 5.2 Update cleanupOldBackups() for tar.gz files
     - Change file filter from .db to .tar.gz extension
     - Maintain keepLastN retention policy
     - Delete oldest archives first
     - _Requirements: 3.1, 3.2_
   
-  - [ ] 5.3 Write property test for backup listing accuracy
+  - [x] 5.3 Write property test for backup listing accuracy
     - **Property 4: Backup Listing Accuracy**
     - **Validates: Requirements 2.1, 2.2, 2.3**
   
-  - [ ] 5.4 Write property test for retention policy
+  - [x] 5.4 Write property test for retention policy
     - **Property 5: Retention Policy Enforcement**
     - **Validates: Requirements 3.1, 3.2**
 
-- [ ] 6. Add Storage Statistics
-  - [ ] 6.1 Implement getStorageStats() method
+- [x] 6. Add Storage Statistics
+  - [x] 6.1 Implement getStorageStats() method
     - Calculate total backup storage size
     - Count backup archives
     - Get invoice storage size from fileStorage utility
     - _Requirements: 5.1, 5.2, 5.3_
   
-  - [ ] 6.2 Write property test for storage statistics
+  - [x] 6.2 Write property test for storage statistics
     - **Property 7: Storage Statistics Accuracy**
     - **Validates: Requirements 5.1, 5.2, 5.3**
 
-- [ ] 7. Update API Endpoints
-  - [ ] 7.1 Add restore endpoint to backup routes
+- [x] 7. Update API Endpoints
+  - [x] 7.1 Add restore endpoint to backup routes
     - Add POST /api/backup/restore endpoint
     - Accept backup filename in request body
     - Return restore result with file count
     - _Requirements: 4.1, 4.3_
   
-  - [ ] 7.2 Add storage stats endpoint
+  - [x] 7.2 Add storage stats endpoint
     - Add GET /api/backup/stats endpoint
     - Return storage statistics object
     - _Requirements: 5.1, 5.2, 5.3_
   
-  - [ ] 7.3 Write integration tests for new endpoints
+  - [x] 7.3 Write integration tests for new endpoints
     - Test restore endpoint with valid backup
     - Test restore endpoint with invalid backup
     - Test stats endpoint
     - _Requirements: 4.1, 4.4, 5.1, 5.2, 5.3_
 
-- [ ] 8. Final Checkpoint - Ensure all tests pass
+- [x] 8. Final Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 ## Notes

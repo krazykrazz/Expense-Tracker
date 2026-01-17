@@ -2,7 +2,7 @@
   "enabled": false,
   "schedule": "daily",
   "time": "02:00",
-  "targetPath": "C:\\Users\\krazy\\Projects\\Expense Tracker\\backend\\config\\backups",
-  "keepLastN": 7,
-  "lastBackup": "2026-01-17T21:49:05.461Z"
+  "targetPath": "C:\\Users\\krazy\\Projects\\Expense Tracker\\test-pbt-retention",
+  "keepLastN": 100,
+  "lastBackup": "2026-01-17T22:16:48.749Z"
 }

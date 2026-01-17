@@ -180,8 +180,8 @@ const MerchantDetailView = ({ merchantName, period, includeFixedExpenses, isOpen
                   </div>
                   <div className="merchant-line-chart">
                     {(() => {
-                      // Prepare data in chronological order (oldest first)
-                      const chartData = [...trendData].reverse();
+                      // Data is already in chronological order (oldest first) from backend
+                      const chartData = [...trendData];
                       const maxAmount = Math.max(...chartData.map(entry => entry.amount), 1);
                       const minAmount = Math.min(...chartData.map(entry => entry.amount));
                       

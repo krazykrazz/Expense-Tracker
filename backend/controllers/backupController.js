@@ -128,6 +128,66 @@ async function getBackupList(req, res) {
 }
 
 /**
+ * Get storage statistics
+ * GET /api/backup/stats
+ */
+async function getStorageStats(req, res) {
+  try {
+    const stats = await backupService.getStorageStats();
+    res.status(200).json(stats);
+  } catch (error) {
+    logger.error('Error getting storage stats:', error);
+    res.status(500).json({ error: error.message });
+  }
+}
+
+/**
+ * Restore from existing backup archive by filename
+ * POST /api/backup/restore-archive
+ * Body: { filename: "expense-tracker-backup-2025-01-15_14-30-00.tar.gz" }
+ */
+async function restoreFromArchive(req, res) {
+  const { filename } = req.body;
+
+  if (!filename) {
+    return res.status(400).json({ error: 'Backup filename is required' });
+  }
+
+  // Validate filename format to prevent path traversal
+  if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+    return res.status(400).json({ error: 'Invalid backup filename' });
+  }
+
+  // Verify it's a tar.gz file
+  if (!filename.endsWith('.tar.gz')) {
+    return res.status(400).json({ error: 'Invalid backup file format. Expected .tar.gz archive' });
+  }
+
+  try {
+    // Get the backup path from config
+    const backupPath = backupService.getConfig().targetPath || require('../config/paths').getBackupPath();
+    const fullPath = path.join(backupPath, filename);
+
+    // Verify the file exists
+    if (!fs.existsSync(fullPath)) {
+      return res.status(404).json({ error: 'Backup file not found' });
+    }
+
+    // Perform the restore
+    const result = await backupService.restoreBackup(fullPath);
+
+    res.status(200).json({
+      success: result.success,
+      filesRestored: result.filesRestored,
+      message: result.message
+    });
+  } catch (error) {
+    logger.error('Restore from archive error:', error);
+    res.status(500).json({ error: error.message });
+  }
+}
+
+/**
  * Restore from backup file
  * POST /api/backup/restore
  */
@@ -190,5 +250,7 @@ module.exports = {
   performManualBackup,
   downloadBackup,
   getBackupList,
-  restoreBackup
+  getStorageStats,
+  restoreBackup,
+  restoreFromArchive
 };

@@ -467,6 +467,36 @@ class BackupService {
       return [];
     }
   }
+
+  /**
+   * Get backup storage statistics
+   * @returns {Promise<{totalBackupSize: number, totalBackupSizeMB: number, backupCount: number, invoiceStorageSize: number, invoiceStorageSizeMB: number, invoiceCount: number}>}
+   */
+  async getStorageStats() {
+    try {
+      const fileStorage = require('../utils/fileStorage');
+      
+      // Get backup statistics
+      const backupList = this.getBackupList();
+      const totalBackupSize = backupList.reduce((sum, backup) => sum + backup.size, 0);
+      const backupCount = backupList.length;
+      
+      // Get invoice storage statistics
+      const invoiceStats = await fileStorage.getStorageStats();
+      
+      return {
+        totalBackupSize,
+        totalBackupSizeMB: Math.round(totalBackupSize / (1024 * 1024) * 100) / 100,
+        backupCount,
+        invoiceStorageSize: invoiceStats.totalSize,
+        invoiceStorageSizeMB: invoiceStats.totalSizeMB,
+        invoiceCount: invoiceStats.totalFiles
+      };
+    } catch (error) {
+      logger.error('Error getting storage stats:', error);
+      throw error;
+    }
+  }
 }
 
 module.exports = new BackupService();

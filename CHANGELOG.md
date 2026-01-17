@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [4.12.1] - 2026-01-16
+
+### Changed
+- **Invoice Indicator Improvements**: Enhanced visual differentiation for medical expense invoice status
+  - Changed "no invoice" icon from 📄 to 📋 for better distinction
+  - Updated "no invoice" color scheme to amber/yellow (warning color) instead of gray
+  - Removed grayscale filter on "no invoice" icon for improved visibility
+  - Now immediately obvious which medical expenses have invoices attached
+
+---
+
+## [4.12.0] - 2026-01-16
+
 ### Added
 - **Medical Expense Invoice Attachments**: Comprehensive invoice management for medical expenses
   - **PDF Upload**: Attach PDF invoices to medical expenses during creation or editing (max 10MB)

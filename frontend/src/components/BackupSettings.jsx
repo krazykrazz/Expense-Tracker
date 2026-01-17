@@ -800,6 +800,15 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v4.12.1</div>
+                <div className="changelog-date">January 16, 2026</div>
+                <ul className="changelog-items">
+                  <li>Improved invoice indicator visibility for medical expenses</li>
+                  <li>Different icons for expenses with invoices (📄) vs without (📋)</li>
+                  <li>Color-coded indicators: green for with invoice, amber for without</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v4.12.0</div>
                 <div className="changelog-date">January 16, 2026</div>
                 <ul className="changelog-items">

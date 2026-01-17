@@ -91,10 +91,8 @@ class InvoiceRepository {
             uploadDate: row.upload_date
           };
           
-          logger.debug('Found invoice by expense ID:', { expenseId, invoiceId: invoice.id });
           resolve(invoice);
         } else {
-          logger.debug('No invoice found for expense ID:', expenseId);
           resolve(null);
         }
       });
@@ -136,10 +134,8 @@ class InvoiceRepository {
             uploadDate: row.upload_date
           };
           
-          logger.debug('Found invoice by ID:', { id, expenseId: invoice.expenseId });
           resolve(invoice);
         } else {
-          logger.debug('No invoice found with ID:', id);
           resolve(null);
         }
       });
@@ -207,7 +203,6 @@ class InvoiceRepository {
         }
         
         if (this.changes === 0) {
-          logger.debug('No invoice found to update with ID:', id);
           resolve(null);
           return;
         }

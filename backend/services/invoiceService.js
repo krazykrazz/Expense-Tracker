@@ -248,7 +248,6 @@ class InvoiceService {
       // Get invoice metadata
       const invoice = await invoiceRepository.findByExpenseId(expenseId);
       if (!invoice) {
-        logger.debug('No invoice found to delete for expense:', expenseId);
         return false;
       }
 
@@ -300,12 +299,6 @@ class InvoiceService {
 
       // Get invoice metadata from database
       const invoice = await invoiceRepository.findByExpenseId(expenseId);
-      
-      if (invoice) {
-        logger.debug('Retrieved invoice metadata:', { expenseId, invoiceId: invoice.id });
-      } else {
-        logger.debug('No invoice metadata found for expense:', expenseId);
-      }
 
       return invoice;
 

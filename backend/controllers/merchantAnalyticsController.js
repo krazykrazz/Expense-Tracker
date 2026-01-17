@@ -10,10 +10,10 @@ async function getTopMerchants(req, res) {
     const { period = 'year', sortBy = 'total', includeFixedExpenses = 'false', year, month } = req.query;
     
     // Validate period parameter
-    const validPeriods = ['all', 'year', 'month', '3months'];
+    const validPeriods = ['all', 'year', 'previousYear', 'month', '3months'];
     if (!validPeriods.includes(period)) {
       return res.status(400).json({ 
-        error: "Invalid period. Must be 'all', 'year', 'month', or '3months'" 
+        error: "Invalid period. Must be 'all', 'year', 'previousYear', 'month', or '3months'" 
       });
     }
     
@@ -51,10 +51,10 @@ async function getMerchantDetails(req, res) {
     const { period = 'year', includeFixedExpenses = 'false', year, month } = req.query;
     
     // Validate period parameter
-    const validPeriods = ['all', 'year', 'month', '3months'];
+    const validPeriods = ['all', 'year', 'previousYear', 'month', '3months'];
     if (!validPeriods.includes(period)) {
       return res.status(400).json({ 
-        error: "Invalid period. Must be 'all', 'year', 'month', or '3months'" 
+        error: "Invalid period. Must be 'all', 'year', 'previousYear', 'month', or '3months'" 
       });
     }
     
@@ -114,10 +114,10 @@ async function getMerchantExpenses(req, res) {
     const { period = 'year', includeFixedExpenses = 'false', year, month } = req.query;
     
     // Validate period parameter
-    const validPeriods = ['all', 'year', 'month', '3months'];
+    const validPeriods = ['all', 'year', 'previousYear', 'month', '3months'];
     if (!validPeriods.includes(period)) {
       return res.status(400).json({ 
-        error: "Invalid period. Must be 'all', 'year', 'month', or '3months'" 
+        error: "Invalid period. Must be 'all', 'year', 'previousYear', 'month', or '3months'" 
       });
     }
     

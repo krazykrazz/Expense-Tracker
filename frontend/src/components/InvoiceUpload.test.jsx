@@ -55,6 +55,7 @@ class MockXMLHttpRequest {
   }
 }
 
+
 describe('InvoiceUpload Component', () => {
   let mockOnInvoiceUploaded;
   let mockOnInvoiceDeleted;
@@ -166,6 +167,7 @@ describe('InvoiceUpload Component', () => {
       expect(screen.queryByRole('button', { name: /upload invoice file/i })).not.toBeInTheDocument();
     });
   });
+
 
   describe('Upload with Person Selection', () => {
     const mockPeople = [{ id: 1, name: 'John Doe' }, { id: 2, name: 'Jane Smith' }];

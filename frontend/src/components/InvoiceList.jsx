@@ -35,6 +35,9 @@ const InvoiceList = ({
   const [deletingId, setDeletingId] = useState(null);
   // State for errors
   const [error, setError] = useState(null);
+  // State for person link editing
+  const [editingPersonId, setEditingPersonId] = useState(null);
+  const [updatingPersonId, setUpdatingPersonId] = useState(null);
 
   /**
    * Format file size for display
@@ -104,6 +107,30 @@ const InvoiceList = ({
     setError(null);
   }, []);
 
+  /**
+   * Handle person link change for an invoice
+   * @param {number} invoiceId - Invoice ID
+   * @param {string} personId - New person ID (or empty string for no person)
+   */
+  const handlePersonLinkChange = useCallback(async (invoiceId, personId) => {
+    if (disabled) return;
+
+    setUpdatingPersonId(invoiceId);
+    setError(null);
+
+    try {
+      const newPersonId = personId === '' ? null : parseInt(personId);
+      await updateInvoicePersonLink(invoiceId, newPersonId);
+      onPersonLinkUpdated(invoiceId, newPersonId);
+      setEditingPersonId(null);
+    } catch (updateError) {
+      logger.error('Failed to update person link:', updateError);
+      setError(updateError.message || 'Failed to update person link');
+    } finally {
+      setUpdatingPersonId(null);
+    }
+  }, [disabled, onPersonLinkUpdated]);
+
   // Don't render if no invoices
   if (!invoices || invoices.length === 0) {
     return null;
@@ -145,17 +172,31 @@ const InvoiceList = ({
                   <span className="invoice-item-size">{formatFileSize(invoice.fileSize)}</span>
                   <span className="invoice-item-separator">•</span>
                   <span className="invoice-item-date">{formatDate(invoice.uploadDate)}</span>
-                  {invoice.personName && (
-                    <>
-                      <span className="invoice-item-separator">•</span>
-                      <span className="invoice-item-person" title={`Linked to ${invoice.personName}`}>
-                        👤 {invoice.personName}
-                      </span>
-                    </>
-                  )}
                 </div>
               </div>
             </div>
+
+            {/* Person link dropdown - show if people are available */}
+            {people.length > 0 && (
+              <div className="invoice-item-person-link">
+                <select
+                  className="invoice-person-select"
+                  value={invoice.personId || ''}
+                  onChange={(e) => handlePersonLinkChange(invoice.id, e.target.value)}
+                  disabled={disabled || updatingPersonId === invoice.id}
+                  onClick={(e) => e.stopPropagation()}
+                  aria-label={`Link invoice to person`}
+                >
+                  <option value="">No person</option>
+                  {people.map((person) => (
+                    <option key={person.id} value={person.id}>
+                      {person.name}
+                    </option>
+                  ))}
+                </select>
+                {updatingPersonId === invoice.id && <span className="updating-indicator">⏳</span>}
+              </div>
+            )}
 
             <div className="invoice-item-actions">
               <button

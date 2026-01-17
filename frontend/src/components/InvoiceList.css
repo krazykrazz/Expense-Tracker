@@ -135,6 +135,46 @@
   font-weight: 500;
 }
 
+/* Person link dropdown */
+.invoice-item-person-link {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+  flex-shrink: 0;
+}
+
+.invoice-person-select {
+  padding: 4px 8px;
+  font-size: 11px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  background-color: white;
+  color: #374151;
+  cursor: pointer;
+  max-width: 100px;
+  transition: border-color 0.15s ease;
+}
+
+.invoice-person-select:hover:not(:disabled) {
+  border-color: #9ca3af;
+}
+
+.invoice-person-select:focus {
+  outline: none;
+  border-color: #0ea5e9;
+  box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.2);
+}
+
+.invoice-person-select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.updating-indicator {
+  font-size: 12px;
+}
+
 /* Action buttons */
 .invoice-item-actions {
   display: flex;

@@ -77,9 +77,9 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
   const [showPersonAllocation, setShowPersonAllocation] = useState(false);
 
   // Invoice state for medical expenses (Requirements 1.1, 1.2, 1.3, 1.5, 2.1, 2.2, 2.3, 2.4, 2.5)
-  // Changed to support multiple invoices per expense
+  // Changed to support multiple invoices per expense with person assignments
   const [invoices, setInvoices] = useState(expense?.invoices || []);
-  const [invoiceFile, setInvoiceFile] = useState(null);
+  const [invoiceFiles, setInvoiceFiles] = useState([]); // Array of {file, personId} objects
   const [showInvoiceViewer, setShowInvoiceViewer] = useState(false);
   
   // People assigned to this expense (for invoice person linking)
@@ -223,7 +223,7 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
         setSelectedPeople([]);
         // Clear invoices when changing away from medical expenses
         setInvoices([]);
-        setInvoiceFile(null);
+        setInvoiceFiles([]);
         setExpensePeople([]);
       }
     }
@@ -252,7 +252,6 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
   // Updated to support multiple invoices
   const handleInvoiceUploaded = (invoice) => {
     setInvoices(prev => [...prev, invoice]);
-    setInvoiceFile(null); // Clear file state after successful upload
     setMessage({ text: 'Invoice uploaded successfully!', type: 'success' });
     
     // Clear success message after 3 seconds
@@ -295,11 +294,6 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
       logger.error('Failed to update invoice person link:', error);
       setMessage({ text: `Failed to update person link: ${error.message}`, type: 'error' });
     }
-  };
-
-  // Handle invoice file selection for new expenses (Requirements 1.1, 1.5)
-  const handleInvoiceFileSelected = (file) => {
-    setInvoiceFile(file);
   };
 
   // Handle viewing invoice (Requirements 3.1, 3.2, 3.3, 3.4, 3.5)
@@ -471,35 +465,51 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
         newExpense = await createExpense(formData, peopleAllocations);
       }
 
-      // Handle invoice upload for new expenses or when invoice file is selected
-      if (isMedicalExpense && invoiceFile && newExpense.id) {
-        try {
-          const formData = new FormData();
-          formData.append('invoice', invoiceFile);
-          formData.append('expenseId', newExpense.id.toString());
+      // Handle invoice upload for new expenses or when invoice files are selected
+      if (isMedicalExpense && invoiceFiles.length > 0 && newExpense.id) {
+        const uploadedInvoices = [];
+        
+        for (const item of invoiceFiles) {
+          try {
+            const formData = new FormData();
+            formData.append('invoice', item.file);
+            formData.append('expenseId', newExpense.id.toString());
+            
+            // Add personId if assigned
+            if (item.personId) {
+              formData.append('personId', item.personId.toString());
+            }
 
-          const response = await fetch(API_ENDPOINTS.INVOICE_UPLOAD, {
-            method: 'POST',
-            body: formData
-          });
+            const response = await fetch(API_ENDPOINTS.INVOICE_UPLOAD, {
+              method: 'POST',
+              body: formData
+            });
 
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.error || 'Invoice upload failed');
+            if (!response.ok) {
+              const errorData = await response.json().catch(() => ({}));
+              throw new Error(errorData.error || 'Invoice upload failed');
+            }
+
+            const invoiceResult = await response.json();
+            if (invoiceResult.success && invoiceResult.invoice) {
+              uploadedInvoices.push(invoiceResult.invoice);
+            }
+          } catch (invoiceError) {
+            logger.error('Invoice upload failed:', invoiceError);
+            // Continue with other files even if one fails
           }
-
-          const invoiceResult = await response.json();
-          if (invoiceResult.success && invoiceResult.invoice) {
-            setInvoices([invoiceResult.invoice]);
-            newExpense.invoices = [invoiceResult.invoice];
-            newExpense.hasInvoice = true;
-            newExpense.invoiceCount = 1;
-          }
-        } catch (invoiceError) {
-          logger.error('Invoice upload failed:', invoiceError);
-          // Don't fail the entire form submission for invoice upload errors
+        }
+        
+        if (uploadedInvoices.length > 0) {
+          setInvoices(uploadedInvoices);
+          newExpense.invoices = uploadedInvoices;
+          newExpense.hasInvoice = true;
+          newExpense.invoiceCount = uploadedInvoices.length;
+        }
+        
+        if (uploadedInvoices.length < invoiceFiles.length) {
           setMessage({ 
-            text: `Expense ${isEditing ? 'updated' : 'added'} successfully, but invoice upload failed: ${invoiceError.message}`, 
+            text: `Expense ${isEditing ? 'updated' : 'added'} successfully, but ${invoiceFiles.length - uploadedInvoices.length} invoice(s) failed to upload`, 
             type: 'warning' 
           });
         }
@@ -534,7 +544,7 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
         // Clear people selection and invoice state
         setSelectedPeople([]);
         setInvoices([]);
-        setInvoiceFile(null);
+        setInvoiceFiles([]);
         setExpensePeople([]);
       }
 
@@ -718,67 +728,102 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
                   disabled={isSubmitting}
                 />
               ) : (
-                // For new expenses, show file selection only
+                // For new expenses, show file selection only (supports multiple files)
                 <div className="invoice-new-expense">
                   <div className="invoice-file-input">
                     <input
                       type="file"
                       id="invoice-file"
                       accept=".pdf,application/pdf"
+                      multiple
                       onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          // Validate file
-                          const MAX_SIZE = 10 * 1024 * 1024; // 10MB
+                        const files = Array.from(e.target.files || []);
+                        if (files.length === 0) return;
+                        
+                        const MAX_SIZE = 10 * 1024 * 1024; // 10MB
+                        const validFiles = [];
+                        const errors = [];
+                        
+                        for (const file of files) {
                           if (file.size > MAX_SIZE) {
-                            setMessage({ 
-                              text: `File size (${(file.size / 1024 / 1024).toFixed(1)}MB) exceeds the 10MB limit`, 
-                              type: 'error' 
-                            });
-                            e.target.value = '';
-                            return;
+                            errors.push(`${file.name}: exceeds 10MB limit`);
+                            continue;
                           }
                           if (file.type !== 'application/pdf') {
-                            setMessage({ 
-                              text: 'Only PDF files are allowed', 
-                              type: 'error' 
-                            });
-                            e.target.value = '';
-                            return;
+                            errors.push(`${file.name}: not a PDF file`);
+                            continue;
                           }
-                          setInvoiceFile(file);
+                          validFiles.push(file);
+                        }
+                        
+                        if (errors.length > 0) {
+                          setMessage({ 
+                            text: errors.join('; '), 
+                            type: 'error' 
+                          });
+                        } else {
                           setMessage({ text: '', type: '' });
                         }
+                        
+                        // Add to existing files with default personId null
+                        setInvoiceFiles(prev => [...prev, ...validFiles.map(f => ({ file: f, personId: null }))]);
+                        e.target.value = ''; // Reset input to allow selecting same files again
                       }}
                       disabled={isSubmitting}
                     />
                     <label htmlFor="invoice-file" className="file-input-label">
-                      {invoiceFile ? (
+                      {invoiceFiles.length > 0 ? (
                         <span className="file-selected">
-                          📄 {invoiceFile.name} ({(invoiceFile.size / 1024 / 1024).toFixed(1)}MB)
+                          📄 {invoiceFiles.length} file{invoiceFiles.length > 1 ? 's' : ''} selected - Click to add more
                         </span>
                       ) : (
                         <span className="file-placeholder">
-                          📄 Select PDF invoice (optional)
+                          📄 Select PDF invoice(s) (optional)
                         </span>
                       )}
                     </label>
-                    {invoiceFile && (
-                      <button
-                        type="button"
-                        className="clear-file-btn"
-                        onClick={() => {
-                          setInvoiceFile(null);
-                          document.getElementById('invoice-file').value = '';
-                        }}
-                        disabled={isSubmitting}
-                      >
-                        ✕ Remove
-                      </button>
-                    )}
                   </div>
+                  {invoiceFiles.length > 0 && (
+                    <div className="invoice-files-list">
+                      {invoiceFiles.map((item, index) => (
+                        <div key={index} className="invoice-file-item">
+                          <span className="file-name">📄 {item.file.name} ({(item.file.size / 1024 / 1024).toFixed(1)}MB)</span>
+                          {selectedPeople.length > 0 && (
+                            <select
+                              className="invoice-person-select-inline"
+                              value={item.personId || ''}
+                              onChange={(e) => {
+                                const personId = e.target.value === '' ? null : parseInt(e.target.value);
+                                setInvoiceFiles(prev => prev.map((f, i) => 
+                                  i === index ? { ...f, personId } : f
+                                ));
+                              }}
+                              disabled={isSubmitting}
+                            >
+                              <option value="">No person</option>
+                              {selectedPeople.map((person) => (
+                                <option key={person.id} value={person.id}>
+                                  {person.name}
+                                </option>
+                              ))}
+                            </select>
+                          )}
+                          <button
+                            type="button"
+                            className="remove-file-btn"
+                            onClick={() => {
+                              setInvoiceFiles(prev => prev.filter((_, i) => i !== index));
+                            }}
+                            disabled={isSubmitting}
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   <div className="invoice-note">
-                    <small>PDF files only • Max 10MB • You can also add an invoice after creating the expense</small>
+                    <small>PDF files only • Max 10MB each • Select multiple files or add more after creating</small>
                   </div>
                 </div>
               )}

@@ -46,7 +46,6 @@ const fetchWithRetry = async (url, options = {}, retryCount = 0) => {
   } catch (error) {
     // Retry on network errors or retryable HTTP errors
     if (retryCount < RETRY_CONFIG.maxRetries) {
-      console.warn(`Request failed, retrying (${retryCount + 1}/${RETRY_CONFIG.maxRetries}):`, error.message);
       await sleep(RETRY_CONFIG.retryDelay * (retryCount + 1)); // Exponential backoff
       return fetchWithRetry(url, options, retryCount + 1);
     }

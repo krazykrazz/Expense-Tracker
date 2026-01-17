@@ -44,7 +44,7 @@ function formatMessage(level, message) {
  */
 function log(level, message, ...args) {
   const { currentLogLevel } = getLogLevelConfig();
-  const levelValue = LOG_LEVELS[level] || LOG_LEVELS.info;
+  const levelValue = LOG_LEVELS[level] !== undefined ? LOG_LEVELS[level] : LOG_LEVELS.info;
   
   if (levelValue >= currentLogLevel) {
     const formattedMessage = formatMessage(level, message);

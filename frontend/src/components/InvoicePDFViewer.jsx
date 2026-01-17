@@ -74,10 +74,10 @@ const InvoicePDFViewer = ({
     setError(null);
 
     try {
-      // Use specific invoice endpoint if invoiceId is provided, otherwise use legacy endpoint
+      // Use specific invoice endpoint if invoiceId is provided, otherwise use legacy file endpoint
       const fetchUrl = invoiceId 
         ? API_ENDPOINTS.INVOICE_FILE(expenseId, invoiceId)
-        : API_ENDPOINTS.INVOICE_BY_EXPENSE(expenseId);
+        : API_ENDPOINTS.INVOICE_FILE_LEGACY(expenseId);
       
       const response = await fetch(fetchUrl);
 

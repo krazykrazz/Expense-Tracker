@@ -11,6 +11,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.13.1] - 2026-01-17
+
+### Added
+- **Donation Invoice Support**: Extended invoice attachment functionality to donation expenses
+  - Tax - Donation expenses can now have PDF invoices attached (receipts, tax letters)
+  - Invoice upload available when creating or editing donation expenses
+  - Donation invoices displayed in Tax Deductible view with same filtering options as medical
+
+### Fixed
+- **Merchant Analytics Chart Order**: Fixed chart to display time from oldest to newest (left to right)
+  - Previously showed newest to oldest which was counterintuitive
+
+### Changed
+- **Invoice Backup Enhancement**: Backups now include invoice files in tar.gz archives
+  - Full backup includes all invoice PDFs alongside database
+  - Restore process handles invoice files automatically
+
+---
+
 ## [4.13.0] - 2026-01-17
 
 ### Added

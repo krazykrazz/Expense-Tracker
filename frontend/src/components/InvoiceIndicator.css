@@ -423,3 +423,115 @@
     box-shadow: none !important;
   }
 }
+
+
+/* Invoice List Modal Styles */
+.invoice-list-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.invoice-list-modal {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  max-width: 500px;
+  width: 100%;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.invoice-list-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e9ecef;
+  background: #f8f9fa;
+}
+
+.invoice-list-modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+}
+
+.invoice-list-modal-close {
+  background: none;
+  border: none;
+  font-size: 20px;
+  color: #666;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.invoice-list-modal-close:hover {
+  background: #e9ecef;
+  color: #333;
+}
+
+.invoice-list-modal-close:focus {
+  outline: 2px solid #007bff;
+  outline-offset: 2px;
+}
+
+.invoice-list-modal-content {
+  padding: 16px 20px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* Mobile responsiveness for modal */
+@media (max-width: 768px) {
+  .invoice-list-modal-overlay {
+    padding: 10px;
+  }
+
+  .invoice-list-modal {
+    max-height: 90vh;
+  }
+
+  .invoice-list-modal-header {
+    padding: 12px 16px;
+  }
+
+  .invoice-list-modal-header h3 {
+    font-size: 16px;
+  }
+
+  .invoice-list-modal-content {
+    padding: 12px 16px;
+  }
+}
+
+/* High contrast mode for modal */
+@media (prefers-contrast: high) {
+  .invoice-list-modal {
+    border: 2px solid #000;
+  }
+
+  .invoice-list-modal-header {
+    border-bottom: 2px solid #000;
+  }
+}
+
+/* Reduced motion for modal */
+@media (prefers-reduced-motion: reduce) {
+  .invoice-list-modal-overlay {
+    animation: none;
+  }
+}

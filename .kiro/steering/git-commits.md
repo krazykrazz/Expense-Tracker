@@ -4,6 +4,19 @@
 
 **IMPORTANT**: The user controls when git commits are made. The agent should NOT automatically commit changes.
 
+## Feature Branch for Spec Implementation
+
+**IMPORTANT**: Before starting to implement tasks from a spec, check if the user is on the `main` branch.
+
+If on `main`, ask the user:
+> "You're on the main branch. Would you like me to create a feature branch for this spec before starting implementation? Suggested branch name: `feature/<spec-name>`"
+
+Wait for user confirmation before:
+1. Creating the feature branch, OR
+2. Proceeding on main if they prefer
+
+This ensures feature work is isolated and can be merged with `--no-ff` for clean history.
+
 ## Rules
 
 1. **DO NOT** run `git add` or `git commit` automatically after making changes
@@ -29,6 +42,38 @@ When the user is ready to commit, suggest batching related changes:
 - **Feature commits**: One commit per complete feature
 - **Bug fix commits**: Batch related fixes into single commits when possible
 - **Version bumps**: Include version changes with the feature/fix they relate to
+
+## Feature Branch Merges
+
+**IMPORTANT**: Always use `--no-ff` (no fast-forward) when merging feature branches into main.
+
+### Why --no-ff?
+
+- Preserves the feature branch as a distinct line in git history
+- Creates a merge commit that clearly shows when a feature was integrated
+- Makes it easy to see all commits that were part of a feature
+- Allows easy revert of an entire feature if needed
+
+### Merge Command
+
+When merging a feature branch, always use:
+
+```bash
+git checkout main
+git merge --no-ff feature/branch-name -m "Merge feature/branch-name: description"
+```
+
+### Example
+
+```bash
+# Good - preserves branch history
+git merge --no-ff feature/multi-invoice-support -m "Merge feature/multi-invoice-support: improved invoice upload UX"
+
+# Bad - loses branch topology (don't do this)
+git merge feature/multi-invoice-support
+```
+
+The `scripts/promote-feature.ps1` script already uses `--no-ff` by default.
 
 ## Example Workflow
 

@@ -11,6 +11,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.13.0] - 2026-01-17
+
+### Added
+- **Improved Multi-Invoice Upload UX**: Enhanced invoice management for medical expenses
+  - **Multi-file upload during expense creation**: Select multiple invoice files at once when creating a new medical expense
+  - **Person selection per invoice**: Each uploaded invoice can be linked to a specific person during expense creation
+  - **Person dropdown in invoice list**: Change person links on existing invoices directly from the invoice list
+  - **Streamlined workflow**: Create expense → assign people → add invoices with person selection → save all at once
+  - **Visual improvements**: Inline person dropdowns with clear styling for invoice-person associations
+
+---
+
 ## [4.12.11] - 2026-01-17
 
 ### Fixed

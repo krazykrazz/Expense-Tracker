@@ -803,6 +803,15 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v4.13.0</div>
+                <div className="changelog-date">January 17, 2026</div>
+                <ul className="changelog-items">
+                  <li>Improved multi-invoice upload UX for medical expenses</li>
+                  <li>Upload multiple invoices with person selection during expense creation</li>
+                  <li>Change person links on existing invoices directly from invoice list</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v4.12.11</div>
                 <div className="changelog-date">January 17, 2026</div>
                 <ul className="changelog-items">
@@ -824,14 +833,6 @@ const BackupSettings = () => {
                 <ul className="changelog-items">
                   <li>Fixed invoice indicator not showing green after upload</li>
                   <li>Invoice status now updates immediately after attaching a PDF</li>
-                </ul>
-              </div>
-              <div className="changelog-entry">
-                <div className="changelog-version">v4.12.8</div>
-                <div className="changelog-date">January 17, 2026</div>
-                <ul className="changelog-items">
-                  <li>Fixed PDF viewing by switching to native browser iframe rendering</li>
-                  <li>Eliminated PDF.js worker configuration issues</li>
                   <li>More reliable PDF display across different browsers</li>
                 </ul>
               </div>

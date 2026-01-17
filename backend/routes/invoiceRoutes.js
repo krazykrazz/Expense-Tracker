@@ -21,7 +21,7 @@ const setDownloadHeaders = (req, res, next) => {
   next();
 };
 
-// POST /api/invoices/upload - Upload invoice for an expense
+// POST /api/invoices/upload - Upload invoice for an expense (with optional personId)
 router.post('/upload', 
   validateUploadRequest, 
   trackUploadProgress,
@@ -31,11 +31,11 @@ router.post('/upload',
   invoiceController.uploadInvoice
 );
 
-// GET /api/invoices/:expenseId - Get invoice file for an expense
-router.get('/:expenseId', setDownloadHeaders, invoiceController.getInvoice);
+// DELETE /api/invoices/expense/:expenseId - Delete all invoices for an expense (backward compatible)
+router.delete('/expense/:expenseId', invoiceController.deleteInvoice);
 
-// DELETE /api/invoices/:expenseId - Delete invoice for an expense
-router.delete('/:expenseId', invoiceController.deleteInvoice);
+// GET /api/invoices/:expenseId/file - Get first invoice file for an expense (backward compatible)
+router.get('/:expenseId/file', setDownloadHeaders, invoiceController.getInvoice);
 
 // GET /api/invoices/:expenseId/metadata - Get invoice metadata for an expense
 router.get('/:expenseId/metadata', invoiceController.getInvoiceMetadata);
@@ -49,5 +49,17 @@ router.put('/:expenseId',
   handleMulterError, 
   invoiceController.replaceInvoice
 );
+
+// GET /api/invoices/:expenseId/:invoiceId - Get specific invoice file by ID
+router.get('/:expenseId/:invoiceId', setDownloadHeaders, invoiceController.getInvoiceFile);
+
+// GET /api/invoices/:expenseId - Get all invoices for an expense (returns array)
+router.get('/:expenseId', invoiceController.getInvoicesForExpense);
+
+// DELETE /api/invoices/:invoiceId - Delete specific invoice by ID
+router.delete('/:invoiceId', invoiceController.deleteInvoiceById);
+
+// PATCH /api/invoices/:invoiceId - Update person association for an invoice
+router.patch('/:invoiceId', invoiceController.updateInvoicePersonLink);
 
 module.exports = router;

@@ -1,5 +1,6 @@
 const invoiceRepository = require('../repositories/invoiceRepository');
 const expenseRepository = require('../repositories/expenseRepository');
+const expensePeopleRepository = require('../repositories/expensePeopleRepository');
 const fileStorage = require('../utils/fileStorage');
 const fileValidation = require('../utils/fileValidation');
 const logger = require('../config/logger');
@@ -28,13 +29,14 @@ class InvoiceService {
   }
 
   /**
-   * Upload invoice for an expense
+   * Upload invoice for an expense with optional person link
    * @param {number} expenseId - Expense ID
    * @param {Object} file - Multer file object
+   * @param {number|null} personId - Optional person ID to link
    * @param {number} userId - User ID (for future use)
    * @returns {Promise<Object>} Created invoice metadata
    */
-  async uploadInvoice(expenseId, file, userId = null) {
+  async uploadInvoice(expenseId, file, personId = null, userId = null) {
     // Validate input parameters first
     if (!expenseId || !file) {
       throw new Error('Expense ID and file are required');
@@ -47,11 +49,12 @@ class InvoiceService {
       // Verify expense exists and is a medical expense
       await this.validateExpenseForInvoice(expenseId);
 
-      // Check if expense already has an invoice
-      const existingInvoice = await invoiceRepository.findByExpenseId(expenseId);
-      if (existingInvoice) {
-        throw new Error('This expense already has an invoice attached. Please delete the existing invoice first.');
+      // Validate person belongs to expense if personId is provided
+      if (personId !== null) {
+        await this.validatePersonBelongsToExpense(expenseId, personId);
       }
+
+      // Note: Removed single-invoice restriction to support multiple invoices per expense
 
       // Comprehensive file validation (using buffer for memory storage)
       const validation = await fileValidation.validateFileBuffer(file.buffer, file.originalname);
@@ -104,6 +107,7 @@ class InvoiceService {
       // Create database record with transaction-like behavior
       const invoiceData = {
         expenseId: expenseId,
+        personId: personId,
         filename: filePaths.filename,
         originalFilename: file.originalname,
         filePath: filePaths.relativePath,
@@ -136,7 +140,8 @@ class InvoiceService {
         invoiceId: invoice.id, 
         filename: invoice.filename,
         size: invoice.fileSize,
-        originalSize: file.size
+        originalSize: file.size,
+        personId: personId
       });
 
       return invoice;
@@ -294,19 +299,188 @@ class InvoiceService {
   }
 
   /**
+   * Get all invoices for an expense
+   * @param {number} expenseId - Expense ID
+   * @returns {Promise<Array>} Array of invoice metadata with person info
+   */
+  async getInvoicesForExpense(expenseId) {
+    try {
+      // Validate input
+      if (!expenseId) {
+        throw new Error('Expense ID is required');
+      }
+
+      // Check if expense exists first
+      const expense = await expenseRepository.findById(expenseId);
+      if (!expense) {
+        throw new Error('Expense not found');
+      }
+
+      // Get all invoices for the expense
+      const invoices = await invoiceRepository.findAllByExpenseId(expenseId);
+
+      logger.debug('Retrieved invoices for expense:', { expenseId, count: invoices.length });
+
+      return invoices;
+
+    } catch (error) {
+      logger.error('Failed to get invoices for expense:', { expenseId, error: error.message });
+      throw error;
+    }
+  }
+
+  /**
+   * Delete a specific invoice by ID
+   * @param {number} invoiceId - Invoice ID
+   * @param {number} userId - User ID (for future use)
+   * @returns {Promise<boolean>} True if deleted successfully
+   */
+  async deleteInvoiceById(invoiceId, userId = null) {
+    try {
+      // Validate input
+      if (!invoiceId) {
+        throw new Error('Invoice ID is required');
+      }
+
+      // Get invoice metadata
+      const invoice = await invoiceRepository.findById(invoiceId);
+      if (!invoice) {
+        return false;
+      }
+
+      // Verify expense exists and user has access
+      await this.validateExpenseAccess(invoice.expenseId, userId);
+
+      // Build full file path
+      const fullFilePath = path.join(fileStorage.baseInvoiceDir, invoice.filePath);
+
+      // Delete file from storage (don't fail if file doesn't exist)
+      try {
+        await fileStorage.deleteFile(fullFilePath);
+      } catch (fileError) {
+        logger.warn('Failed to delete invoice file (continuing with database cleanup):', fileError);
+      }
+
+      // Delete database record
+      const deleted = await invoiceRepository.deleteById(invoiceId);
+
+      if (deleted) {
+        logger.info('Invoice deleted successfully:', { invoiceId, expenseId: invoice.expenseId });
+      }
+
+      return deleted;
+
+    } catch (error) {
+      logger.error('Failed to delete invoice by ID:', { invoiceId, error: error.message });
+      throw error;
+    }
+  }
+
+  /**
+   * Update person link for an invoice
+   * @param {number} invoiceId - Invoice ID
+   * @param {number|null} personId - Person ID or null to unlink
+   * @returns {Promise<Object>} Updated invoice
+   */
+  async updateInvoicePersonLink(invoiceId, personId) {
+    try {
+      // Validate input
+      if (!invoiceId) {
+        throw new Error('Invoice ID is required');
+      }
+
+      // Get invoice metadata
+      const invoice = await invoiceRepository.findById(invoiceId);
+      if (!invoice) {
+        throw new Error('Invoice not found');
+      }
+
+      // Validate person belongs to expense if personId is provided
+      if (personId !== null) {
+        await this.validatePersonBelongsToExpense(invoice.expenseId, personId);
+      }
+
+      // Update person association
+      const updated = await invoiceRepository.updatePersonId(invoiceId, personId);
+      if (!updated) {
+        throw new Error('Failed to update invoice person link');
+      }
+
+      // Get updated invoice
+      const updatedInvoice = await invoiceRepository.findById(invoiceId);
+
+      logger.info('Invoice person link updated:', { invoiceId, personId, expenseId: invoice.expenseId });
+
+      return updatedInvoice;
+
+    } catch (error) {
+      logger.error('Failed to update invoice person link:', { invoiceId, personId, error: error.message });
+      throw error;
+    }
+  }
+
+  /**
+   * Get invoice by ID with file path
+   * @param {number} invoiceId - Invoice ID
+   * @param {number} userId - User ID (for future use)
+   * @returns {Promise<Object>} Invoice file path and metadata
+   */
+  async getInvoiceById(invoiceId, userId = null) {
+    try {
+      // Validate input
+      if (!invoiceId) {
+        throw new Error('Invoice ID is required');
+      }
+
+      // Get invoice metadata from database
+      const invoice = await invoiceRepository.findById(invoiceId);
+      if (!invoice) {
+        throw new Error('Invoice not found');
+      }
+
+      // Verify expense exists and user has access
+      await this.validateExpenseAccess(invoice.expenseId, userId);
+
+      // Build full file path
+      const fullFilePath = path.join(fileStorage.baseInvoiceDir, invoice.filePath);
+
+      // Verify file exists
+      const fileExists = await fileStorage.fileExists(fullFilePath);
+      if (!fileExists) {
+        logger.error('Invoice file not found on disk:', { invoiceId, filePath: fullFilePath });
+        throw new Error('Invoice file not found. The file may have been moved or deleted.');
+      }
+
+      // Get current file stats
+      const fileStats = await fileStorage.getFileStats(fullFilePath);
+
+      return {
+        ...invoice,
+        fullFilePath,
+        fileStats
+      };
+
+    } catch (error) {
+      logger.error('Failed to get invoice by ID:', { invoiceId, error: error.message });
+      throw error;
+    }
+  }
+
+  /**
    * Replace existing invoice with a new one
    * @param {number} expenseId - Expense ID
    * @param {Object} file - New file to upload
+   * @param {number|null} personId - Optional person ID to link
    * @param {number} userId - User ID (for future use)
    * @returns {Promise<Object>} New invoice metadata
    */
-  async replaceInvoice(expenseId, file, userId = null) {
+  async replaceInvoice(expenseId, file, personId = null, userId = null) {
     try {
       // Delete existing invoice first
       await this.deleteInvoice(expenseId, userId);
 
-      // Upload new invoice
-      const newInvoice = await this.uploadInvoice(expenseId, file, userId);
+      // Upload new invoice with optional person link
+      const newInvoice = await this.uploadInvoice(expenseId, file, personId, userId);
 
       logger.info('Invoice replaced successfully:', { expenseId, newInvoiceId: newInvoice.id });
 
@@ -425,6 +599,24 @@ class InvoiceService {
     // }
 
     return expense;
+  }
+
+  /**
+   * Validate that a person is assigned to an expense
+   * @param {number} expenseId - Expense ID
+   * @param {number} personId - Person ID to validate
+   * @throws {Error} If person is not assigned to the expense
+   */
+  async validatePersonBelongsToExpense(expenseId, personId) {
+    const people = await expensePeopleRepository.getPeopleForExpense(expenseId);
+    
+    const personAssigned = people.some(p => p.personId === personId);
+    
+    if (!personAssigned) {
+      throw new Error('Person is not assigned to this expense');
+    }
+
+    return true;
   }
 
   /**

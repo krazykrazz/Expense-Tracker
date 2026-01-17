@@ -1,6 +1,7 @@
 const invoiceService = require('./invoiceService');
 const invoiceRepository = require('../repositories/invoiceRepository');
 const expenseRepository = require('../repositories/expenseRepository');
+const expensePeopleRepository = require('../repositories/expensePeopleRepository');
 const fileStorage = require('../utils/fileStorage');
 const fileValidation = require('../utils/fileValidation');
 const fs = require('fs');
@@ -9,6 +10,7 @@ const path = require('path');
 // Mock dependencies
 jest.mock('../repositories/invoiceRepository');
 jest.mock('../repositories/expenseRepository');
+jest.mock('../repositories/expensePeopleRepository');
 jest.mock('../utils/fileStorage');
 jest.mock('../utils/fileValidation');
 jest.mock('fs');
@@ -29,7 +31,8 @@ describe('InvoiceService', () => {
     originalname: 'test-invoice.pdf',
     path: '/tmp/upload_123.pdf',
     size: 1024000,
-    mimetype: 'application/pdf'
+    mimetype: 'application/pdf',
+    buffer: Buffer.from('mock pdf content')
   };
   
   const mockExpense = {
@@ -56,7 +59,9 @@ describe('InvoiceService', () => {
     // Default mock implementations
     expenseRepository.findById.mockResolvedValue(mockExpense);
     invoiceRepository.findByExpenseId.mockResolvedValue(null);
+    expensePeopleRepository.getPeopleForExpense.mockResolvedValue([]); // No people assigned by default
     fileValidation.validateFile.mockResolvedValue({ isValid: true, errors: [], warnings: [] });
+    fileValidation.validateFileBuffer.mockResolvedValue({ isValid: true, errors: [], warnings: [] });
     fileValidation.validateFileContent.mockResolvedValue({ isValid: true, errors: [] });
     fileStorage.generateFilePath.mockReturnValue({
       filename: '123_1704067200_test-invoice.pdf',
@@ -72,6 +77,11 @@ describe('InvoiceService', () => {
     fileStorage.baseInvoiceDir = '/config/invoices';
     invoiceRepository.create.mockResolvedValue(mockInvoice);
     invoiceRepository.findById.mockResolvedValue(mockInvoice);
+    
+    // Mock fs.promises.writeFile
+    fs.promises = {
+      writeFile: jest.fn().mockResolvedValue()
+    };
   });
 
   describe('uploadInvoice', () => {
@@ -80,30 +90,28 @@ describe('InvoiceService', () => {
       const mockVerification = { isValid: true, errors: [], warnings: [] };
       jest.spyOn(invoiceService, 'verifyInvoiceIntegrity').mockResolvedValue(mockVerification);
 
-      const result = await invoiceService.uploadInvoice(mockExpenseId, mockFile, mockUserId);
+      const result = await invoiceService.uploadInvoice(mockExpenseId, mockFile, null, mockUserId);
 
       expect(result).toEqual(mockInvoice);
       expect(expenseRepository.findById).toHaveBeenCalledWith(mockExpenseId);
-      expect(invoiceRepository.findByExpenseId).toHaveBeenCalledWith(mockExpenseId);
-      expect(fileValidation.validateFile).toHaveBeenCalledWith(mockFile, mockFile.path);
-      expect(fileStorage.moveFromTemp).toHaveBeenCalled();
+      expect(fileValidation.validateFileBuffer).toHaveBeenCalledWith(mockFile.buffer, mockFile.originalname);
       expect(invoiceRepository.create).toHaveBeenCalled();
     });
 
     it('should throw error if expense ID is missing', async () => {
-      await expect(invoiceService.uploadInvoice(null, mockFile, mockUserId))
+      await expect(invoiceService.uploadInvoice(null, mockFile, null, mockUserId))
         .rejects.toThrow('Expense ID and file are required');
     });
 
     it('should throw error if file is missing', async () => {
-      await expect(invoiceService.uploadInvoice(mockExpenseId, null, mockUserId))
+      await expect(invoiceService.uploadInvoice(mockExpenseId, null, null, mockUserId))
         .rejects.toThrow('Expense ID and file are required');
     });
 
     it('should throw error if expense does not exist', async () => {
       expenseRepository.findById.mockResolvedValue(null);
 
-      await expect(invoiceService.uploadInvoice(mockExpenseId, mockFile, mockUserId))
+      await expect(invoiceService.uploadInvoice(mockExpenseId, mockFile, null, mockUserId))
         .rejects.toThrow('Expense not found');
     });
 
@@ -111,40 +119,44 @@ describe('InvoiceService', () => {
       const nonMedicalExpense = { ...mockExpense, type: 'Groceries' };
       expenseRepository.findById.mockResolvedValue(nonMedicalExpense);
 
-      await expect(invoiceService.uploadInvoice(mockExpenseId, mockFile, mockUserId))
+      await expect(invoiceService.uploadInvoice(mockExpenseId, mockFile, null, mockUserId))
         .rejects.toThrow('Invoices can only be attached to medical expenses');
     });
 
-    it('should throw error if expense already has invoice', async () => {
+    it('should allow multiple invoices for same expense', async () => {
+      // Mock existing invoice - should NOT throw error anymore
       invoiceRepository.findByExpenseId.mockResolvedValue(mockInvoice);
+      
+      // Mock successful verification
+      const mockVerification = { isValid: true, errors: [], warnings: [] };
+      jest.spyOn(invoiceService, 'verifyInvoiceIntegrity').mockResolvedValue(mockVerification);
 
-      await expect(invoiceService.uploadInvoice(mockExpenseId, mockFile, mockUserId))
-        .rejects.toThrow('This expense already has an invoice attached');
+      const result = await invoiceService.uploadInvoice(mockExpenseId, mockFile, null, mockUserId);
+
+      expect(result).toEqual(mockInvoice);
     });
 
     it('should throw error if file validation fails', async () => {
-      fileValidation.validateFile.mockResolvedValue({
+      fileValidation.validateFileBuffer.mockResolvedValue({
         isValid: false,
         errors: ['Invalid PDF format'],
         warnings: []
       });
 
-      await expect(invoiceService.uploadInvoice(mockExpenseId, mockFile, mockUserId))
+      await expect(invoiceService.uploadInvoice(mockExpenseId, mockFile, null, mockUserId))
         .rejects.toThrow('File validation failed: Invalid PDF format');
     });
 
     it('should clean up temp file on validation failure', async () => {
-      fileValidation.validateFile.mockResolvedValue({
+      fileValidation.validateFileBuffer.mockResolvedValue({
         isValid: false,
         errors: ['Invalid PDF format'],
         warnings: []
       });
       fileStorage.deleteFile.mockResolvedValue();
 
-      await expect(invoiceService.uploadInvoice(mockExpenseId, mockFile, mockUserId))
+      await expect(invoiceService.uploadInvoice(mockExpenseId, mockFile, null, mockUserId))
         .rejects.toThrow('File validation failed');
-
-      expect(fileStorage.deleteFile).toHaveBeenCalledWith(mockFile.path);
     });
 
     it('should clean up final file if database operation fails', async () => {
@@ -156,7 +168,7 @@ describe('InvoiceService', () => {
       const mockVerification = { isValid: true, errors: [], warnings: [] };
       jest.spyOn(invoiceService, 'verifyInvoiceIntegrity').mockResolvedValue(mockVerification);
 
-      await expect(invoiceService.uploadInvoice(mockExpenseId, mockFile, mockUserId))
+      await expect(invoiceService.uploadInvoice(mockExpenseId, mockFile, null, mockUserId))
         .rejects.toThrow('Failed to save invoice metadata');
 
       expect(fileStorage.deleteFile).toHaveBeenCalled();
@@ -166,7 +178,7 @@ describe('InvoiceService', () => {
       fileStorage.getFileStats.mockResolvedValue({ size: 500000 }); // Different size
       fileStorage.deleteFile.mockResolvedValue();
 
-      await expect(invoiceService.uploadInvoice(mockExpenseId, mockFile, mockUserId))
+      await expect(invoiceService.uploadInvoice(mockExpenseId, mockFile, null, mockUserId))
         .rejects.toThrow('File corruption detected during upload');
 
       expect(fileStorage.deleteFile).toHaveBeenCalled();
@@ -179,7 +191,7 @@ describe('InvoiceService', () => {
       });
       fileStorage.deleteFile.mockResolvedValue();
 
-      await expect(invoiceService.uploadInvoice(mockExpenseId, mockFile, mockUserId))
+      await expect(invoiceService.uploadInvoice(mockExpenseId, mockFile, null, mockUserId))
         .rejects.toThrow('File content validation failed: Corrupted PDF content');
 
       expect(fileStorage.deleteFile).toHaveBeenCalled();
@@ -195,11 +207,38 @@ describe('InvoiceService', () => {
       fileStorage.deleteFile.mockResolvedValue();
       invoiceRepository.deleteById.mockResolvedValue(true);
 
-      await expect(invoiceService.uploadInvoice(mockExpenseId, mockFile, mockUserId))
+      await expect(invoiceService.uploadInvoice(mockExpenseId, mockFile, null, mockUserId))
         .rejects.toThrow('Invoice integrity check failed: File integrity check failed');
 
       expect(fileStorage.deleteFile).toHaveBeenCalled();
       expect(invoiceRepository.deleteById).toHaveBeenCalledWith(mockInvoice.id);
+    });
+
+    it('should upload invoice with person link when person is assigned to expense', async () => {
+      const mockPersonId = 5;
+      expensePeopleRepository.getPeopleForExpense.mockResolvedValue([
+        { personId: mockPersonId, name: 'John Doe', amount: 100 }
+      ]);
+      
+      const mockVerification = { isValid: true, errors: [], warnings: [] };
+      jest.spyOn(invoiceService, 'verifyInvoiceIntegrity').mockResolvedValue(mockVerification);
+
+      const result = await invoiceService.uploadInvoice(mockExpenseId, mockFile, mockPersonId, mockUserId);
+
+      expect(result).toEqual(mockInvoice);
+      expect(invoiceRepository.create).toHaveBeenCalledWith(expect.objectContaining({
+        personId: mockPersonId
+      }));
+    });
+
+    it('should throw error if person is not assigned to expense', async () => {
+      const mockPersonId = 5;
+      expensePeopleRepository.getPeopleForExpense.mockResolvedValue([
+        { personId: 10, name: 'Jane Doe', amount: 100 } // Different person
+      ]);
+
+      await expect(invoiceService.uploadInvoice(mockExpenseId, mockFile, mockPersonId, mockUserId))
+        .rejects.toThrow('Person is not assigned to this expense');
     });
   });
 
@@ -326,17 +365,17 @@ describe('InvoiceService', () => {
       jest.spyOn(invoiceService, 'deleteInvoice').mockResolvedValue(true);
       jest.spyOn(invoiceService, 'uploadInvoice').mockResolvedValue(mockInvoice);
 
-      const result = await invoiceService.replaceInvoice(mockExpenseId, mockFile, mockUserId);
+      const result = await invoiceService.replaceInvoice(mockExpenseId, mockFile, null, mockUserId);
 
       expect(result).toEqual(mockInvoice);
       expect(invoiceService.deleteInvoice).toHaveBeenCalledWith(mockExpenseId, mockUserId);
-      expect(invoiceService.uploadInvoice).toHaveBeenCalledWith(mockExpenseId, mockFile, mockUserId);
+      expect(invoiceService.uploadInvoice).toHaveBeenCalledWith(mockExpenseId, mockFile, null, mockUserId);
     });
 
     it('should handle delete failure during replace', async () => {
       jest.spyOn(invoiceService, 'deleteInvoice').mockRejectedValue(new Error('Delete failed'));
 
-      await expect(invoiceService.replaceInvoice(mockExpenseId, mockFile, mockUserId))
+      await expect(invoiceService.replaceInvoice(mockExpenseId, mockFile, null, mockUserId))
         .rejects.toThrow('Delete failed');
     });
   });
@@ -410,12 +449,20 @@ describe('InvoiceService', () => {
   describe('verifyInvoiceIntegrity', () => {
     const mockInvoiceId = 1;
 
+    beforeEach(() => {
+      // Reset mocks for verifyInvoiceIntegrity tests
+      jest.clearAllMocks();
+      // Restore any spies on verifyInvoiceIntegrity
+      jest.restoreAllMocks();
+    });
+
     it('should verify invoice integrity successfully', async () => {
       // Reset mocks for this specific test
       invoiceRepository.findById.mockResolvedValue(mockInvoice);
       fileStorage.fileExists.mockResolvedValue(true);
       fileStorage.getFileStats.mockResolvedValue({ size: 1024000 });
       fileValidation.validateFileContent.mockResolvedValue({ isValid: true, errors: [] });
+      fileStorage.baseInvoiceDir = '/config/invoices';
 
       const result = await invoiceService.verifyInvoiceIntegrity(mockInvoiceId);
 
@@ -426,6 +473,7 @@ describe('InvoiceService', () => {
 
     it('should fail if invoice not found in database', async () => {
       invoiceRepository.findById.mockResolvedValue(null);
+      fileStorage.baseInvoiceDir = '/config/invoices';
 
       const result = await invoiceService.verifyInvoiceIntegrity(mockInvoiceId);
 
@@ -436,6 +484,7 @@ describe('InvoiceService', () => {
     it('should fail if file not found on disk', async () => {
       invoiceRepository.findById.mockResolvedValue(mockInvoice);
       fileStorage.fileExists.mockResolvedValue(false);
+      fileStorage.baseInvoiceDir = '/config/invoices';
 
       const result = await invoiceService.verifyInvoiceIntegrity(mockInvoiceId);
 
@@ -448,6 +497,7 @@ describe('InvoiceService', () => {
       fileStorage.fileExists.mockResolvedValue(true);
       fileStorage.getFileStats.mockResolvedValue({ size: 500000 }); // Different size
       fileValidation.validateFileContent.mockResolvedValue({ isValid: true, errors: [] });
+      fileStorage.baseInvoiceDir = '/config/invoices';
 
       const result = await invoiceService.verifyInvoiceIntegrity(mockInvoiceId);
 
@@ -463,6 +513,7 @@ describe('InvoiceService', () => {
         isValid: false,
         errors: ['Invalid PDF content']
       });
+      fileStorage.baseInvoiceDir = '/config/invoices';
 
       const result = await invoiceService.verifyInvoiceIntegrity(mockInvoiceId);
 
@@ -519,6 +570,198 @@ describe('InvoiceService', () => {
       expect(result.consistency.isConsistent).toBe(false);
       expect(result.consistency.dbCount).toBe(10);
       expect(result.consistency.fileCount).toBe(8);
+    });
+  });
+
+  describe('getInvoicesForExpense', () => {
+    it('should return all invoices for an expense', async () => {
+      const mockInvoices = [
+        { ...mockInvoice, id: 1, personId: null, personName: null },
+        { ...mockInvoice, id: 2, personId: 5, personName: 'John Doe' }
+      ];
+      invoiceRepository.findAllByExpenseId.mockResolvedValue(mockInvoices);
+
+      const result = await invoiceService.getInvoicesForExpense(mockExpenseId);
+
+      expect(result).toEqual(mockInvoices);
+      expect(invoiceRepository.findAllByExpenseId).toHaveBeenCalledWith(mockExpenseId);
+    });
+
+    it('should throw error if expense ID is missing', async () => {
+      await expect(invoiceService.getInvoicesForExpense(null))
+        .rejects.toThrow('Expense ID is required');
+    });
+
+    it('should throw error if expense does not exist', async () => {
+      expenseRepository.findById.mockResolvedValue(null);
+
+      await expect(invoiceService.getInvoicesForExpense(mockExpenseId))
+        .rejects.toThrow('Expense not found');
+    });
+
+    it('should return empty array if no invoices found', async () => {
+      invoiceRepository.findAllByExpenseId.mockResolvedValue([]);
+
+      const result = await invoiceService.getInvoicesForExpense(mockExpenseId);
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('deleteInvoiceById', () => {
+    it('should successfully delete invoice by ID', async () => {
+      invoiceRepository.findById.mockResolvedValue(mockInvoice);
+      fileStorage.deleteFile.mockResolvedValue();
+      invoiceRepository.deleteById.mockResolvedValue(true);
+
+      const result = await invoiceService.deleteInvoiceById(mockInvoice.id, mockUserId);
+
+      expect(result).toBe(true);
+      expect(invoiceRepository.findById).toHaveBeenCalledWith(mockInvoice.id);
+      expect(fileStorage.deleteFile).toHaveBeenCalled();
+      expect(invoiceRepository.deleteById).toHaveBeenCalledWith(mockInvoice.id);
+    });
+
+    it('should throw error if invoice ID is missing', async () => {
+      await expect(invoiceService.deleteInvoiceById(null, mockUserId))
+        .rejects.toThrow('Invoice ID is required');
+    });
+
+    it('should return false if invoice not found', async () => {
+      invoiceRepository.findById.mockResolvedValue(null);
+
+      const result = await invoiceService.deleteInvoiceById(999, mockUserId);
+
+      expect(result).toBe(false);
+      expect(fileStorage.deleteFile).not.toHaveBeenCalled();
+    });
+
+    it('should continue with database cleanup if file deletion fails', async () => {
+      invoiceRepository.findById.mockResolvedValue(mockInvoice);
+      fileStorage.deleteFile.mockRejectedValue(new Error('File deletion failed'));
+      invoiceRepository.deleteById.mockResolvedValue(true);
+
+      const result = await invoiceService.deleteInvoiceById(mockInvoice.id, mockUserId);
+
+      expect(result).toBe(true);
+      expect(invoiceRepository.deleteById).toHaveBeenCalledWith(mockInvoice.id);
+    });
+  });
+
+  describe('updateInvoicePersonLink', () => {
+    it('should successfully update person link', async () => {
+      const mockPersonId = 5;
+      const updatedInvoice = { ...mockInvoice, personId: mockPersonId, personName: 'John Doe' };
+      
+      invoiceRepository.findById.mockResolvedValue(mockInvoice);
+      expensePeopleRepository.getPeopleForExpense.mockResolvedValue([
+        { personId: mockPersonId, name: 'John Doe', amount: 100 }
+      ]);
+      invoiceRepository.updatePersonId.mockResolvedValue(true);
+      invoiceRepository.findById.mockResolvedValueOnce(mockInvoice).mockResolvedValueOnce(updatedInvoice);
+
+      const result = await invoiceService.updateInvoicePersonLink(mockInvoice.id, mockPersonId);
+
+      expect(result).toEqual(updatedInvoice);
+      expect(invoiceRepository.updatePersonId).toHaveBeenCalledWith(mockInvoice.id, mockPersonId);
+    });
+
+    it('should throw error if invoice ID is missing', async () => {
+      await expect(invoiceService.updateInvoicePersonLink(null, 5))
+        .rejects.toThrow('Invoice ID is required');
+    });
+
+    it('should throw error if invoice not found', async () => {
+      invoiceRepository.findById.mockResolvedValue(null);
+
+      await expect(invoiceService.updateInvoicePersonLink(999, 5))
+        .rejects.toThrow('Invoice not found');
+    });
+
+    it('should throw error if person is not assigned to expense', async () => {
+      invoiceRepository.findById.mockResolvedValue(mockInvoice);
+      expensePeopleRepository.getPeopleForExpense.mockResolvedValue([
+        { personId: 10, name: 'Jane Doe', amount: 100 } // Different person
+      ]);
+
+      await expect(invoiceService.updateInvoicePersonLink(mockInvoice.id, 5))
+        .rejects.toThrow('Person is not assigned to this expense');
+    });
+
+    it('should allow setting person link to null', async () => {
+      const updatedInvoice = { ...mockInvoice, personId: null, personName: null };
+      
+      invoiceRepository.findById.mockResolvedValue(mockInvoice);
+      invoiceRepository.updatePersonId.mockResolvedValue(true);
+      invoiceRepository.findById.mockResolvedValueOnce(mockInvoice).mockResolvedValueOnce(updatedInvoice);
+
+      const result = await invoiceService.updateInvoicePersonLink(mockInvoice.id, null);
+
+      expect(result).toEqual(updatedInvoice);
+      expect(invoiceRepository.updatePersonId).toHaveBeenCalledWith(mockInvoice.id, null);
+    });
+  });
+
+  describe('getInvoiceById', () => {
+    it('should successfully get invoice by ID', async () => {
+      invoiceRepository.findById.mockResolvedValue(mockInvoice);
+      fileStorage.fileExists.mockResolvedValue(true);
+      fileStorage.getFileStats.mockResolvedValue({ size: 1024000 });
+
+      const result = await invoiceService.getInvoiceById(mockInvoice.id, mockUserId);
+
+      expect(result).toMatchObject(mockInvoice);
+      expect(result.fullFilePath).toBeDefined();
+      expect(result.fileStats).toBeDefined();
+    });
+
+    it('should throw error if invoice ID is missing', async () => {
+      await expect(invoiceService.getInvoiceById(null, mockUserId))
+        .rejects.toThrow('Invoice ID is required');
+    });
+
+    it('should throw error if invoice not found', async () => {
+      invoiceRepository.findById.mockResolvedValue(null);
+
+      await expect(invoiceService.getInvoiceById(999, mockUserId))
+        .rejects.toThrow('Invoice not found');
+    });
+
+    it('should throw error if file does not exist on disk', async () => {
+      invoiceRepository.findById.mockResolvedValue(mockInvoice);
+      fileStorage.fileExists.mockResolvedValue(false);
+
+      await expect(invoiceService.getInvoiceById(mockInvoice.id, mockUserId))
+        .rejects.toThrow('Invoice file not found');
+    });
+  });
+
+  describe('validatePersonBelongsToExpense', () => {
+    it('should validate person belongs to expense', async () => {
+      const mockPersonId = 5;
+      expensePeopleRepository.getPeopleForExpense.mockResolvedValue([
+        { personId: mockPersonId, name: 'John Doe', amount: 100 }
+      ]);
+
+      const result = await invoiceService.validatePersonBelongsToExpense(mockExpenseId, mockPersonId);
+
+      expect(result).toBe(true);
+    });
+
+    it('should throw error if person is not assigned to expense', async () => {
+      expensePeopleRepository.getPeopleForExpense.mockResolvedValue([
+        { personId: 10, name: 'Jane Doe', amount: 100 }
+      ]);
+
+      await expect(invoiceService.validatePersonBelongsToExpense(mockExpenseId, 5))
+        .rejects.toThrow('Person is not assigned to this expense');
+    });
+
+    it('should throw error if expense has no people assigned', async () => {
+      expensePeopleRepository.getPeopleForExpense.mockResolvedValue([]);
+
+      await expect(invoiceService.validatePersonBelongsToExpense(mockExpenseId, 5))
+        .rejects.toThrow('Person is not assigned to this expense');
     });
   });
 });

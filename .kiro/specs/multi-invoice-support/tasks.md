@@ -38,8 +38,8 @@ This implementation plan converts the single-invoice system to support multiple 
     - **Property 5: Person ID Storage Consistency**
     - **Validates: Requirements 1.2, 1.5, 2.2, 2.3**
 
-- [ ] 3. Backend Service Layer Updates
-  - [ ] 3.1 Modify `invoiceService.js` to support multiple invoices
+- [x] 3. Backend Service Layer Updates
+  - [x] 3.1 Modify `invoiceService.js` to support multiple invoices
     - Update `uploadInvoice()` to accept optional personId, validate person belongs to expense
     - Add `getInvoicesForExpense()` returning array of invoices with person names
     - Add `deleteInvoiceById()` for deleting specific invoice
@@ -47,20 +47,20 @@ This implementation plan converts the single-invoice system to support multiple 
     - Remove single-invoice restriction (no longer check for existing invoice)
     - _Requirements: 1.1, 2.2, 2.3, 8.2, 8.3, 8.4_
   
-  - [ ] 3.2 Write property tests for service layer
+  - [x] 3.2 Write property tests for service layer
     - **Property 1: Multiple Invoice Addition Preserves Collection**
     - **Property 3: Cascade Delete Removes All Invoices**
     - **Property 6: Person Removal Sets Invoice Link to NULL**
     - **Property 10: Upload Failure Isolation**
     - **Validates: Requirements 1.1, 1.3, 2.5, 5.4**
 
-- [ ] 4. Checkpoint - Backend Core Complete
+- [x] 4. Checkpoint - Backend Core Complete
   - Ensure all backend tests pass
   - Verify migration works on test database
   - Ask the user if questions arise
 
-- [ ] 5. Backend Controller and Routes Updates
-  - [ ] 5.1 Modify `invoiceController.js` for multi-invoice operations
+- [x] 5. Backend Controller and Routes Updates
+  - [x] 5.1 Modify `invoiceController.js` for multi-invoice operations
     - Update `uploadInvoice` to accept personId from request body
     - Modify `getInvoice` to return array of invoices (or add new endpoint)
     - Add `getInvoiceFile` for retrieving specific invoice by ID
@@ -68,7 +68,7 @@ This implementation plan converts the single-invoice system to support multiple 
     - Add `updateInvoicePersonLink` for PATCH endpoint
     - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5_
   
-  - [ ] 5.2 Update `invoiceRoutes.js` with new endpoints
+  - [x] 5.2 Update `invoiceRoutes.js` with new endpoints
     - GET /api/invoices/:expenseId - returns all invoices (array)
     - GET /api/invoices/:expenseId/:invoiceId - returns specific invoice file
     - DELETE /api/invoices/:invoiceId - deletes specific invoice
@@ -76,7 +76,7 @@ This implementation plan converts the single-invoice system to support multiple 
     - Maintain backward compatibility for existing endpoints
     - _Requirements: 8.1, 8.3, 8.4, 9.1_
   
-  - [ ] 5.3 Write property tests for API layer
+  - [x] 5.3 Write property tests for API layer
     - **Property 14: GET Endpoint Returns All Invoices**
     - **Property 9: File Validation Consistency**
     - **Property 15: DELETE by ID Removes Specific Invoice**

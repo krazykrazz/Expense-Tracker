@@ -1,6 +1,6 @@
 {
   "name": "expense-tracker",
-  "version": "4.13.1",
+  "version": "4.13.2",
   "description": "Full-stack Expense Tracker Application",
   "main": "server.js",
   "scripts": {

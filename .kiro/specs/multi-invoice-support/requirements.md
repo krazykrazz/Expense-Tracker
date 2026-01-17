@@ -2,13 +2,13 @@
 
 ## Introduction
 
-This feature extends the existing medical expense invoice attachment system to support multiple invoices per expense. Currently, the system enforces a 1:1 relationship between expenses and invoices (via a UNIQUE constraint on expense_id). The new feature will allow multiple invoices to be attached to a single medical expense, with optional linking of invoices to specific people assigned to the expense. This is particularly useful when an expense is split between multiple family members, each with their own receipt or invoice.
+This feature extends the existing tax-deductible expense invoice attachment system to support multiple invoices per expense. Currently, the system enforces a 1:1 relationship between expenses and invoices (via a UNIQUE constraint on expense_id). The new feature will allow multiple invoices to be attached to a single tax-deductible expense (Tax - Medical or Tax - Donation), with optional linking of invoices to specific people assigned to the expense (medical expenses only). This is particularly useful when an expense is split between multiple family members, each with their own receipt or invoice.
 
 ## Glossary
 
 - **Invoice_System**: The backend service and repository layer responsible for managing invoice file uploads, storage, and metadata
 - **Invoice_UI**: The frontend components for uploading, viewing, and managing invoice attachments
-- **Expense**: A financial transaction record in the expense tracker, specifically medical expenses (Tax - Medical type)
+- **Expense**: A financial transaction record in the expense tracker, specifically tax-deductible expenses (Tax - Medical or Tax - Donation types)
 - **Person**: A family member tracked in the people table who can be associated with medical expenses
 - **Invoice_Metadata**: Database record containing invoice file information (filename, path, size, upload date)
 - **Person_Allocation**: The association between an expense and a person with an allocated amount (expense_people junction table)
@@ -17,7 +17,7 @@ This feature extends the existing medical expense invoice attachment system to s
 
 ### Requirement 1: Multiple Invoice Storage
 
-**User Story:** As a user, I want to attach multiple PDF invoices to a single medical expense, so that I can keep all related receipts together when an expense involves multiple documents.
+**User Story:** As a user, I want to attach multiple PDF invoices to a single tax-deductible expense, so that I can keep all related receipts together when an expense involves multiple documents.
 
 #### Acceptance Criteria
 
@@ -29,7 +29,7 @@ This feature extends the existing medical expense invoice attachment system to s
 
 ### Requirement 2: Person-Invoice Linking
 
-**User Story:** As a user, I want to optionally link an invoice to a specific person assigned to the expense, so that I can track which receipt belongs to which family member for tax purposes.
+**User Story:** As a user, I want to optionally link an invoice to a specific person assigned to the expense (medical expenses only), so that I can track which receipt belongs to which family member for tax purposes.
 
 #### Acceptance Criteria
 
@@ -92,7 +92,7 @@ This feature extends the existing medical expense invoice attachment system to s
 
 #### Acceptance Criteria
 
-1. WHEN displaying medical expenses in the tax report, THE Invoice_UI SHALL show the invoice count for each expense
+1. WHEN displaying tax-deductible expenses in the tax report, THE Invoice_UI SHALL show the invoice count for each expense
 2. THE Invoice_UI SHALL allow filtering to show only expenses with invoices, without invoices, or all
 3. WHEN an expense has invoices linked to specific people, THE Invoice_UI SHALL display this information in the person-grouped view
 4. THE Invoice_UI SHALL provide a way to view all invoices for an expense directly from the tax report

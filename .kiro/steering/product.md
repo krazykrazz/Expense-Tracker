@@ -26,8 +26,8 @@ A full-stack personal expense tracking application for managing household financ
 - Net worth tracking showing assets minus liabilities on annual and monthly summaries
 - Tax-deductible expense tracking (medical and donations)
 - Medical expense people tracking to associate expenses with family members
-- Medical expense invoice attachments for PDF record keeping and tax documentation
-- Multiple invoices per expense with optional person linking for family member receipts
+- Tax-deductible expense invoice attachments for PDF record keeping and tax documentation (medical and donation expenses)
+- Multiple invoices per expense with optional person linking for family member receipts (medical expenses)
 - Person-grouped tax reports with per-person subtotals by provider
 - Multi-person expense allocation with split equally option
 - Invoice upload, viewing, and management with built-in PDF viewer

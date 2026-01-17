@@ -16,7 +16,7 @@ All invoice endpoints require a valid session. Include session cookie in request
 
 ### 1. Upload Invoice
 
-Upload a PDF invoice for a medical expense. Supports multiple invoices per expense with optional person linking.
+Upload a PDF invoice for a tax-deductible expense (Tax - Medical or Tax - Donation). Supports multiple invoices per expense with optional person linking (medical expenses only).
 
 **Endpoint:** `POST /invoices/upload`
 
@@ -25,9 +25,9 @@ Upload a PDF invoice for a medical expense. Supports multiple invoices per expen
 **Request Body:**
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| expenseId | number | Yes | ID of the expense to attach invoice to |
+| expenseId | number | Yes | ID of the tax-deductible expense to attach invoice to |
 | invoice | File | Yes | PDF file to upload (max 10MB) |
-| personId | number | No | ID of person to link invoice to (v4.13.0+) |
+| personId | number | No | ID of person to link invoice to (v4.13.0+, medical expenses only) |
 
 **Success Response:**
 ```json
@@ -79,12 +79,19 @@ HTTP/1.1 404 Not Found
 }
 ```
 
+```json
+HTTP/1.1 409 Conflict
+{
+  "error": "Invoices can only be attached to tax-deductible expenses (Tax - Medical or Tax - Donation)"
+}
+```
+
 **Example:**
 ```javascript
 const formData = new FormData();
 formData.append('expenseId', 123);
 formData.append('invoice', pdfFile);
-formData.append('personId', 5); // Optional: link to person
+formData.append('personId', 5); // Optional: link to person (medical expenses only)
 
 const response = await fetch('http://localhost:2424/api/invoices/upload', {
   method: 'POST',

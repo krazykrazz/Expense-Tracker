@@ -716,7 +716,7 @@ When reporting issues, include:
 
 ### Where to Get Help
 
-- **Documentation**: Check docs/features/MEDICAL_EXPENSE_INVOICES.md
+- **Documentation**: Check docs/features/TAX_DEDUCTIBLE_INVOICES.md
 - **GitHub Issues**: Report bugs and issues
 - **Community Forums**: Ask questions
 - **Administrator**: For server/storage issues

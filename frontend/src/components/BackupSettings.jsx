@@ -803,6 +803,15 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v4.13.2</div>
+                <div className="changelog-date">January 17, 2026</div>
+                <ul className="changelog-items">
+                  <li>Full donation invoice support with documentation updates</li>
+                  <li>Invoice indicators now shown for both medical and donation expenses</li>
+                  <li>Updated API error messages for tax-deductible expense validation</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v4.13.1</div>
                 <div className="changelog-date">January 17, 2026</div>
                 <ul className="changelog-items">

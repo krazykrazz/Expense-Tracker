@@ -622,7 +622,7 @@ tar -tzf backup.tar.gz | grep invoices
 
 ### Documentation
 
-- User Guide: `docs/features/MEDICAL_EXPENSE_INVOICES.md`
+- User Guide: `docs/features/TAX_DEDUCTIBLE_INVOICES.md`
 - API Documentation: `docs/API_DOCUMENTATION.md`
 - Troubleshooting: `docs/TROUBLESHOOTING_INVOICES.md`
 

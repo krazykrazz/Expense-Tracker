@@ -212,11 +212,13 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
     }
   }, []);
 
-  // Load invoice data for medical expenses - now fetches all invoices per expense
+  // Load invoice data for tax-deductible expenses (medical and donations) - now fetches all invoices per expense
   useEffect(() => {
     const loadInvoiceData = async () => {
-      const medicalExpenses = expenses.filter(expense => expense.type === 'Tax - Medical');
-      const expensesToLoad = medicalExpenses.filter(expense => 
+      const taxDeductibleExpenses = expenses.filter(expense => 
+        expense.type === 'Tax - Medical' || expense.type === 'Tax - Donation'
+      );
+      const expensesToLoad = taxDeductibleExpenses.filter(expense => 
         !invoiceData.has(expense.id) && !loadingInvoices.has(expense.id)
       );
 
@@ -298,6 +300,11 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
         setSelectedPeople([]);
         setEditInvoices([]);
       }
+    } else if (expense.type === 'Tax - Donation') {
+      // Load invoices for donation expenses (no people assignments)
+      setSelectedPeople([]);
+      const invoices = invoiceData.get(expense.id) || [];
+      setEditInvoices(invoices);
     } else {
       setSelectedPeople([]);
       setEditInvoices([]);
@@ -335,8 +342,10 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
     setSelectedPeople(allocations);
   }, []);
 
-  // Check if current expense type is medical
+  // Check if current expense type is medical or donation (tax-deductible)
   const isEditingMedicalExpense = editFormData.type === 'Tax - Medical';
+  const isEditingDonationExpense = editFormData.type === 'Tax - Donation';
+  const isEditingTaxDeductible = isEditingMedicalExpense || isEditingDonationExpense;
 
   const handleEditSubmit = useCallback(async (e) => {
     e.preventDefault();
@@ -520,8 +529,8 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
       }
       // Apply local invoice filter (only for medical expenses)
       if (localFilterInvoice) {
-        // If invoice filter is active, only show medical expenses
-        if (expense.type !== 'Tax - Medical') {
+        // If invoice filter is active, only show tax-deductible expenses (medical and donations)
+        if (expense.type !== 'Tax - Medical' && expense.type !== 'Tax - Donation') {
           return false;
         }
         
@@ -715,7 +724,7 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
                     )}
                     <div className="expense-indicators">
                       <PeopleIndicator expense={expense} />
-                      {expense.type === 'Tax - Medical' && (
+                      {(expense.type === 'Tax - Medical' || expense.type === 'Tax - Donation') && (
                         <InvoiceIndicator
                           hasInvoice={(() => {
                             const invoices = invoiceData.get(expense.id) || [];
@@ -932,13 +941,13 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
                 </div>
               )}
 
-              {/* Invoice Upload for Medical Expenses - now supports multiple invoices */}
-              {isEditingMedicalExpense && expenseToEdit && (
+              {/* Invoice Upload for Tax-Deductible Expenses (Medical and Donations) - now supports multiple invoices */}
+              {isEditingTaxDeductible && expenseToEdit && (
                 <div className="form-group">
                   <InvoiceUpload
                     expenseId={expenseToEdit.id}
                     existingInvoices={editInvoices}
-                    people={selectedPeople.length > 0 ? selectedPeople : people}
+                    people={isEditingMedicalExpense ? (selectedPeople.length > 0 ? selectedPeople : people) : []}
                     onInvoiceUploaded={handleEditInvoiceUploaded}
                     onInvoiceDeleted={handleEditInvoiceDeleted}
                     onPersonLinkUpdated={handleEditPersonLinkUpdated}

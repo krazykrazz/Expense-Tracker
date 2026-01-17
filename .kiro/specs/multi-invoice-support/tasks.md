@@ -191,7 +191,7 @@ This implementation plan converts the single-invoice system to support multiple 
     - **Validates: Requirements 9.1**
 
 - [x] 14. Documentation Updates
-  - [x] 14.1 Update `docs/features/MEDICAL_EXPENSE_INVOICES.md`
+  - [x] 14.1 Update `docs/features/TAX_DEDUCTIBLE_INVOICES.md`
     - Document multi-invoice support
     - Update API documentation
     - Update database schema section

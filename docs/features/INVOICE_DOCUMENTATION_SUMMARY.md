@@ -32,8 +32,8 @@ This document provides an index of all documentation created for the Medical Exp
 
 ### 1. User Documentation
 
-#### Medical Expense Invoices Feature Guide
-**Location:** `docs/features/MEDICAL_EXPENSE_INVOICES.md`
+#### Tax-Deductible Expense Invoices Feature Guide
+**Location:** `docs/features/TAX_DEDUCTIBLE_INVOICES.md`
 
 **Contents:**
 - Feature overview and key capabilities
@@ -282,7 +282,7 @@ node backend/scripts/cleanupOrphanedInvoices.js [--dry-run] [--backup]
 ## Quick Reference
 
 ### For End Users
-1. Start with: `docs/features/MEDICAL_EXPENSE_INVOICES.md`
+1. Start with: `docs/features/TAX_DEDUCTIBLE_INVOICES.md`
 2. If issues: `docs/TROUBLESHOOTING_INVOICES.md`
 3. For API: `docs/API_DOCUMENTATION.md`
 
@@ -293,7 +293,7 @@ node backend/scripts/cleanupOrphanedInvoices.js [--dry-run] [--backup]
 
 ### For Developers
 1. Start with: `docs/API_DOCUMENTATION.md`
-2. Architecture: `docs/features/MEDICAL_EXPENSE_INVOICES.md` (Technical Details section)
+2. Architecture: `docs/features/TAX_DEDUCTIBLE_INVOICES.md` (Technical Details section)
 3. Testing: `.kiro/specs/multi-invoice-support/` (spec files)
 
 ---

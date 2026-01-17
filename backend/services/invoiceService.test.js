@@ -115,12 +115,12 @@ describe('InvoiceService', () => {
         .rejects.toThrow('Expense not found');
     });
 
-    it('should throw error if expense is not medical type', async () => {
-      const nonMedicalExpense = { ...mockExpense, type: 'Groceries' };
-      expenseRepository.findById.mockResolvedValue(nonMedicalExpense);
+    it('should throw error if expense is not tax-deductible type', async () => {
+      const nonTaxDeductibleExpense = { ...mockExpense, type: 'Groceries' };
+      expenseRepository.findById.mockResolvedValue(nonTaxDeductibleExpense);
 
       await expect(invoiceService.uploadInvoice(mockExpenseId, mockFile, null, mockUserId))
-        .rejects.toThrow('Invoices can only be attached to medical expenses');
+        .rejects.toThrow('Invoices can only be attached to tax-deductible expenses');
     });
 
     it('should allow multiple invoices for same expense', async () => {
@@ -421,12 +421,12 @@ describe('InvoiceService', () => {
         .rejects.toThrow('Expense not found');
     });
 
-    it('should throw error if expense is not medical type', async () => {
-      const nonMedicalExpense = { ...mockExpense, type: 'Groceries' };
-      expenseRepository.findById.mockResolvedValue(nonMedicalExpense);
+    it('should throw error if expense is not tax-deductible type', async () => {
+      const nonTaxDeductibleExpense = { ...mockExpense, type: 'Groceries' };
+      expenseRepository.findById.mockResolvedValue(nonTaxDeductibleExpense);
 
       await expect(invoiceService.validateExpenseForInvoice(mockExpenseId))
-        .rejects.toThrow('Invoices can only be attached to medical expenses');
+        .rejects.toThrow('Invoices can only be attached to tax-deductible expenses');
     });
   });
 

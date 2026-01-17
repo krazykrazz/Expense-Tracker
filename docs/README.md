@@ -22,7 +22,7 @@ Documentation for completed features and implementations:
 - `INVESTMENT_TRACKING.md` - Investment portfolio tracking with TFSA and RRSP accounts
 - `MONTHLY_DATA_REMINDERS.md` - Visual reminders to update investment values and loan balances
 - `MEDICAL_EXPENSE_PEOPLE_TRACKING.md` - Associate medical expenses with family members for tax reporting
-- `MEDICAL_EXPENSE_INVOICES.md` - Attach PDF invoices to medical expenses for record keeping
+- `TAX_DEDUCTIBLE_INVOICES.md` - Attach PDF invoices to tax-deductible expenses (medical and donations) for record keeping
 - `BUDGET_ALERT_NOTIFICATIONS.md` - Proactive budget alert notifications
 - `STICKY_SUMMARY_SCROLLING.md` - Enhanced UI with sticky summary scrolling
 - `MERCHANT_ANALYTICS.md` - Merchant spending analytics and insights

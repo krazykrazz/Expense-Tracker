@@ -173,7 +173,7 @@ The amber/yellow color scheme was chosen for "no invoice" state because:
 
 ## Related Documentation
 
-- [Medical Expense Invoices Feature](../features/MEDICAL_EXPENSE_INVOICES.md)
+- [Tax-Deductible Expense Invoices Feature](../features/TAX_DEDUCTIBLE_INVOICES.md)
 - [Invoice Maintenance Guide](../MAINTENANCE_GUIDE_INVOICES.md)
 - [Changelog](../../CHANGELOG.md)
 

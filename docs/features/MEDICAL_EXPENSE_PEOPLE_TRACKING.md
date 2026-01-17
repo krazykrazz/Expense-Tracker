@@ -5,7 +5,7 @@
 The Medical Expense People Tracking feature enables users to associate medical expenses with specific family members and generate detailed tax reporting summaries organized by person and provider. This enhancement builds on the existing "Tax - Medical" category to provide more granular tracking for tax preparation and family expense management.
 
 **Related Features:** 
-- [Medical Expense Invoice Attachments](./MEDICAL_EXPENSE_INVOICES.md) (v4.12.0) - Attach PDF invoices to medical expenses
+- [Tax-Deductible Expense Invoice Attachments](./TAX_DEDUCTIBLE_INVOICES.md) (v4.12.0) - Attach PDF invoices to tax-deductible expenses
 - **Invoice-Person Linking** (v4.13.0) - Link individual invoices to specific family members for comprehensive record keeping
 
 ## Key Features

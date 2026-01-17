@@ -2,7 +2,7 @@
 
 ## Overview
 
-This design extends the existing medical expense invoice system to support multiple invoices per expense with optional person linking. The current system enforces a 1:1 relationship between expenses and invoices via a UNIQUE constraint. This design removes that constraint and adds a person_id foreign key to enable linking invoices to specific family members.
+This design extends the existing tax-deductible expense invoice system to support multiple invoices per expense with optional person linking (medical expenses only). The current system enforces a 1:1 relationship between expenses and invoices via a UNIQUE constraint. This design removes that constraint and adds a person_id foreign key to enable linking invoices to specific family members.
 
 The implementation follows the existing layered architecture (Controller → Service → Repository → Database) and maintains backward compatibility with the current single-invoice workflow.
 
@@ -568,7 +568,7 @@ Based on the prework analysis of acceptance criteria, the following properties h
 
 ### Property 12: Tax Report Invoice Count Accuracy
 
-*For any* medical expense displayed in the tax report, the shown invoice count SHALL match the actual number of invoices attached to that expense.
+*For any* tax-deductible expense displayed in the tax report, the shown invoice count SHALL match the actual number of invoices attached to that expense.
 
 **Validates: Requirements 7.1**
 
@@ -609,7 +609,7 @@ Based on the prework analysis of acceptance criteria, the following properties h
 | Error Condition | HTTP Status | Error Message | Recovery Action |
 |-----------------|-------------|---------------|-----------------|
 | Expense not found | 404 | "Expense not found" | Return error, no state change |
-| Expense not medical type | 400 | "Invoices can only be attached to medical expenses" | Return error, no state change |
+| Expense not tax-deductible type | 409 | "Invoices can only be attached to tax-deductible expenses (Tax - Medical or Tax - Donation)" | Return error, no state change |
 | Person not assigned to expense | 400 | "Person is not assigned to this expense" | Return error, no state change |
 | Invalid person_id | 400 | "Invalid person ID" | Return error, no state change |
 | Invoice not found | 404 | "Invoice not found" | Return error, no state change |

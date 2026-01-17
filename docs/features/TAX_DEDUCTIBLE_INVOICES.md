@@ -1,19 +1,21 @@
-# Medical Expense Invoice Attachments
+# Tax-Deductible Expense Invoice Attachments
 
 ## Overview
 
-The Medical Expense Invoice Attachments feature enables users to attach PDF invoices to medical expenses for better record keeping, tax preparation, and insurance claims. This feature seamlessly integrates with the existing medical expense people tracking functionality.
+The Tax-Deductible Expense Invoice Attachments feature enables users to attach PDF invoices to tax-deductible expenses (both medical expenses and donations) for better record keeping, tax preparation, and insurance claims. This feature seamlessly integrates with the existing medical expense people tracking functionality.
 
 **Version Added:** 4.12.0  
 **Multi-Invoice Support Added:** 4.13.0  
+**Donation Invoice Support Added:** 4.13.2  
 **Status:** Active  
 **Related Features:** Medical Expense People Tracking, Tax Deductible Reporting
 
 ## Key Features
 
-- **Multiple Invoice Support**: Attach multiple PDF invoices to a single medical expense (v4.13.0+)
-- **Person-Invoice Linking**: Optionally link invoices to specific family members assigned to the expense
-- **PDF Invoice Upload**: Attach PDF invoices to medical expenses during creation or editing
+- **Multiple Invoice Support**: Attach multiple PDF invoices to a single tax-deductible expense (v4.13.0+)
+- **Tax-Deductible Types**: Supports both Tax - Medical and Tax - Donation expense types (v4.13.2+)
+- **Person-Invoice Linking**: Optionally link invoices to specific family members assigned to the expense (medical expenses only)
+- **PDF Invoice Upload**: Attach PDF invoices to tax-deductible expenses during creation or editing
 - **Invoice Management**: View, replace, and delete individual invoice attachments
 - **PDF Viewer**: Built-in PDF viewer with zoom, download, and print capabilities
 - **Visual Indicators**: Clear indicators showing invoice count for each expense
@@ -26,22 +28,22 @@ The Medical Expense Invoice Attachments feature enables users to attach PDF invo
 ### Uploading an Invoice
 
 1. **During Expense Creation:**
-   - Create a new medical expense (Tax - Medical category)
+   - Create a new tax-deductible expense (Tax - Medical or Tax - Donation category)
    - Scroll to the "Invoice Attachment" section
    - Click "Choose File" or drag and drop a PDF file
-   - Optionally select a person from the dropdown (if people are assigned to the expense)
+   - For medical expenses: Optionally select a person from the dropdown (if people are assigned)
    - The invoice will be uploaded when you save the expense
 
 2. **During Expense Editing:**
-   - Edit an existing medical expense
+   - Edit an existing tax-deductible expense
    - Scroll to the "Invoice Attachment" section
    - Upload a new invoice or add additional invoices
-   - Optionally link each invoice to a specific person
+   - For medical expenses: Optionally link each invoice to a specific person
    - Save the expense to apply changes
 
 3. **Adding Multiple Invoices:**
    - After uploading the first invoice, click "Add Invoice" to upload additional invoices
-   - Each invoice can be linked to a different person
+   - Each invoice can be linked to a different person (medical expenses only)
    - Useful when an expense covers multiple family members with separate receipts
 
 4. **File Requirements:**

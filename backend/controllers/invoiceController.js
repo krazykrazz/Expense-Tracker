@@ -90,7 +90,7 @@ async function uploadInvoice(req, res) {
     }
 
     if (error.message.includes('already has an invoice') || 
-        error.message.includes('only be attached to medical expenses')) {
+        error.message.includes('only be attached to tax-deductible expenses')) {
       return res.status(409).json({ 
         success: false, 
         error: error.message 
@@ -642,7 +642,7 @@ async function replaceInvoice(req, res) {
       });
     }
 
-    if (error.message.includes('only be attached to medical expenses')) {
+    if (error.message.includes('only be attached to tax-deductible expenses')) {
       return res.status(409).json({ 
         success: false, 
         error: error.message 

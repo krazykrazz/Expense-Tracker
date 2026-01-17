@@ -73,7 +73,7 @@ describe('Invoice Service - Property-Based Tests - CRUD Operations', () => {
    * Property 1: Upload operation consistency
    * Validates: Requirements 1.1, 1.4, 2.1
    */
-  test('Property 1: Upload operation - medical expenses only', () => {
+  test('Property 1: Upload operation - tax-deductible expenses only', () => {
     fc.assert(
       fc.property(
         fc.oneof(medicalExpenseArbitrary, nonMedicalExpenseArbitrary),
@@ -83,8 +83,10 @@ describe('Invoice Service - Property-Based Tests - CRUD Operations', () => {
           expenseRepository.findById.mockResolvedValue(expense);
           invoiceRepository.findByExpenseId.mockResolvedValue(null); // No existing invoice
           
-          if (expense.type === 'Tax - Medical') {
-            // Mock successful upload for medical expenses
+          const isTaxDeductible = expense.type === 'Tax - Medical' || expense.type === 'Tax - Donation';
+          
+          if (isTaxDeductible) {
+            // Mock successful upload for tax-deductible expenses
             const mockInvoice = {
               id: 1,
               expenseId: expense.id,
@@ -126,7 +128,7 @@ describe('Invoice Service - Property-Based Tests - CRUD Operations', () => {
               // Call uploadInvoice without personId (null) to avoid person validation
               const result = await invoiceService.uploadInvoice(expense.id, file, null, null);
               
-              // Property: Medical expenses should allow invoice upload
+              // Property: Tax-deductible expenses should allow invoice upload
               expect(result).toBeDefined();
               expect(result.expenseId).toBe(expense.id);
               expect(invoiceRepository.create).toHaveBeenCalled();
@@ -136,9 +138,9 @@ describe('Invoice Service - Property-Based Tests - CRUD Operations', () => {
             }
             
           } else {
-            // Property: Non-medical expenses should reject invoice upload
+            // Property: Non-tax-deductible expenses should reject invoice upload
             await expect(invoiceService.uploadInvoice(expense.id, file, null, null))
-              .rejects.toThrow(/medical expense/i);
+              .rejects.toThrow(/tax-deductible expense/i);
             
             expect(invoiceRepository.create).not.toHaveBeenCalled();
           }
@@ -436,10 +438,10 @@ describe('Invoice Service - Property-Based Tests - CRUD Operations', () => {
             await expect(invoiceService.uploadInvoice(1, file, userId))
               .rejects.toThrow(/expense not found/i);
               
-          } else if (expense.type !== 'Tax - Medical') {
-            // Property: Non-medical expense should throw specific error
+          } else if (expense.type !== 'Tax - Medical' && expense.type !== 'Tax - Donation') {
+            // Property: Non-tax-deductible expense should throw specific error
             await expect(invoiceService.uploadInvoice(expense.id, file, userId))
-              .rejects.toThrow(/medical expense/i);
+              .rejects.toThrow(/tax-deductible expense/i);
           }
           
           // Property: Failed operations should not create database records

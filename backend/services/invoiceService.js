@@ -570,9 +570,9 @@ class InvoiceService {
       throw new Error('Expense not found');
     }
 
-    // Check if expense is a medical expense (Tax - Medical)
-    if (expense.type !== 'Tax - Medical') {
-      throw new Error('Invoices can only be attached to medical expenses (Tax - Medical)');
+    // Check if expense is a tax-deductible expense (Tax - Medical or Tax - Donation)
+    if (expense.type !== 'Tax - Medical' && expense.type !== 'Tax - Donation') {
+      throw new Error('Invoices can only be attached to tax-deductible expenses (Tax - Medical or Tax - Donation)');
     }
 
     return expense;

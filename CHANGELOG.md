@@ -11,6 +11,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.13.2] - 2026-01-17
+
+### Added
+- **Donation Invoice Support**: Extended invoice attachment functionality to donation expenses
+  - Tax - Donation expenses can now have PDF invoices attached (receipts, tax letters)
+  - Invoice upload available when creating or editing donation expenses
+  - Donation invoices displayed in Tax Deductible view with same filtering options as medical
+  - Invoice indicators shown for both medical and donation expenses in expense lists
+
+### Changed
+- **Documentation Renamed**: `MEDICAL_EXPENSE_INVOICES.md` → `TAX_DEDUCTIBLE_INVOICES.md`
+  - Updated all documentation to reflect support for both medical and donation invoices
+  - Updated API documentation with new error messages
+  - Updated spec files to reference tax-deductible expenses instead of medical-only
+
+---
+
 ## [4.13.1] - 2026-01-17
 
 ### Added

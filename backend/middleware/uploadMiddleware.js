@@ -162,33 +162,12 @@ class UploadMiddleware {
 
   /**
    * Configure multer storage with security measures
+   * Using memoryStorage to avoid cross-device link errors (EXDEV)
+   * when temp and final directories are on different filesystems
    */
   getStorage() {
-    return multer.diskStorage({
-      destination: (req, file, cb) => {
-        try {
-          // Ensure temp directory exists for each request
-          this.ensureTempDirectory();
-          cb(null, this.tempDir);
-        } catch (error) {
-          logger.error('Storage destination error:', error);
-          cb(error);
-        }
-      },
-      filename: (req, file, cb) => {
-        try {
-          const secureFilename = this.generateSecureFilename(file);
-          logger.debug('Generated secure filename:', { 
-            original: file.originalname, 
-            secure: secureFilename 
-          });
-          cb(null, secureFilename);
-        } catch (error) {
-          logger.error('Filename generation error:', error);
-          cb(error);
-        }
-      }
-    });
+    // Use memory storage to avoid EXDEV errors with Docker volumes
+    return multer.memoryStorage();
   }
 
   /**

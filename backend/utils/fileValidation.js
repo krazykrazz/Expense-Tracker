@@ -103,6 +103,133 @@ class FileValidationUtils {
   }
 
   /**
+   * Validate file buffer (for memory storage uploads)
+   * @param {Buffer} buffer - File buffer
+   * @param {string} filename - Original filename
+   * @returns {Object} Validation result
+   */
+  async validateFileBuffer(buffer, filename) {
+    const result = {
+      isValid: false,
+      errors: [],
+      warnings: [],
+      fileInfo: {
+        originalName: filename,
+        size: buffer ? buffer.length : 0,
+        mimeType: 'application/pdf'
+      }
+    };
+
+    try {
+      // Basic buffer validation
+      if (!buffer || !Buffer.isBuffer(buffer)) {
+        result.errors.push('No valid file buffer provided');
+        return result;
+      }
+
+      // File size validation
+      const sizeValidation = this.validateFileSize(buffer.length);
+      if (!sizeValidation.isValid) {
+        result.errors.push(...sizeValidation.errors);
+      }
+
+      // File extension validation
+      const extensionValidation = this.validateFileExtension(filename);
+      if (!extensionValidation.isValid) {
+        result.errors.push(...extensionValidation.errors);
+      }
+
+      // Security validation
+      const securityValidation = this.validateFileSecurity(filename);
+      if (!securityValidation.isValid) {
+        result.errors.push(...securityValidation.errors);
+      }
+
+      // Content validation from buffer
+      if (result.errors.length === 0) {
+        const contentValidation = await this.validateBufferContent(buffer);
+        if (!contentValidation.isValid) {
+          result.errors.push(...contentValidation.errors);
+        }
+        if (contentValidation.warnings) {
+          result.warnings.push(...contentValidation.warnings);
+        }
+      }
+
+      result.isValid = result.errors.length === 0;
+      
+      if (result.isValid) {
+        logger.debug('File buffer validation passed:', result.fileInfo);
+      } else {
+        logger.warn('File buffer validation failed:', { errors: result.errors, file: result.fileInfo });
+      }
+
+      return result;
+    } catch (error) {
+      logger.error('File buffer validation error:', error);
+      result.errors.push('File validation failed due to system error');
+      return result;
+    }
+  }
+
+  /**
+   * Validate buffer content (PDF magic numbers and structure)
+   * @param {Buffer} buffer - File buffer
+   * @returns {Object} Validation result
+   */
+  async validateBufferContent(buffer) {
+    const result = { isValid: true, errors: [], warnings: [] };
+
+    try {
+      // Check PDF magic number
+      const isPDF = this.PDF_SIGNATURES.some(signature => 
+        buffer.subarray(0, signature.length).equals(signature)
+      );
+
+      if (!isPDF) {
+        result.isValid = false;
+        result.errors.push('File is not a valid PDF (invalid file signature)');
+        return result;
+      }
+
+      // Basic PDF structure validation from buffer
+      const contentStr = buffer.toString('binary');
+
+      // Check for PDF version
+      const versionMatch = contentStr.match(/%PDF-(\d+\.\d+)/);
+      if (!versionMatch) {
+        result.errors.push('Invalid PDF: No version header found');
+        result.isValid = false;
+        return result;
+      }
+
+      // Check for EOF marker
+      if (!contentStr.includes('%%EOF')) {
+        result.warnings.push('PDF may be incomplete: No EOF marker found');
+      }
+
+      // Check for basic PDF objects
+      if (!contentStr.includes('obj') || !contentStr.includes('endobj')) {
+        result.errors.push('Invalid PDF: No PDF objects found');
+        result.isValid = false;
+      }
+
+      // Check buffer size
+      if (buffer.length < 100) {
+        result.errors.push('PDF file appears to be corrupted or incomplete');
+        result.isValid = false;
+      }
+
+      return result;
+    } catch (error) {
+      logger.error('Buffer content validation error:', error);
+      result.isValid = false;
+      result.errors.push('Failed to validate file content');
+      return result;
+    }
+  }
+
+  /**
    * Validate file size
    * @param {number} size - File size in bytes
    * @returns {Object} Validation result

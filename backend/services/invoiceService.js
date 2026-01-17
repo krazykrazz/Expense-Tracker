@@ -46,9 +46,6 @@ class InvoiceService {
     let finalFilePath = null;
 
     try {
-      // Store temp file path for cleanup
-      tempFilePath = file.path;
-
       // Verify expense exists and is a medical expense
       await this.validateExpenseForInvoice(expenseId);
 
@@ -58,8 +55,8 @@ class InvoiceService {
         throw new Error('This expense already has an invoice attached. Please delete the existing invoice first.');
       }
 
-      // Comprehensive file validation
-      const validation = await fileValidation.validateFile(file, file.path);
+      // Comprehensive file validation (using buffer for memory storage)
+      const validation = await fileValidation.validateFileBuffer(file.buffer, file.originalname);
       if (!validation.isValid) {
         throw new Error(`File validation failed: ${validation.errors.join(', ')}`);
       }
@@ -81,14 +78,14 @@ class InvoiceService {
       // Ensure destination directory exists
       await fileStorage.ensureDirectoryExists(filePaths.directoryPath);
 
-      // Move file from temp location to final storage with atomic operation
+      // Write file buffer directly to final location (no temp file needed)
       finalFilePath = filePaths.fullPath;
       
       try {
-        await fileStorage.moveFromTemp(file.path, finalFilePath);
-        tempFilePath = null; // File moved successfully, no longer in temp
-      } catch (moveError) {
-        logger.error('Failed to move file from temp to final location:', moveError);
+        await fs.promises.writeFile(finalFilePath, file.buffer);
+        logger.debug('Wrote file to final location:', finalFilePath);
+      } catch (writeError) {
+        logger.error('Failed to write file to final location:', writeError);
         throw new Error('Failed to store invoice file. Please try again.');
       }
 

@@ -179,7 +179,18 @@ The amber/yellow color scheme was chosen for "no invoice" state because:
 
 ---
 
-**Deployment Status:** ✅ Completed Successfully  
+**Deployment Status:** ✅ Completed Successfully (Fixed)  
 **Deployed By:** Automated Build System  
-**Build Time:** ~54 seconds  
-**Image Size:** ~180MB
+**Build Time:** ~42 seconds  
+**Image Size:** ~180MB  
+**Git Commit:** 167b61e (includes .dockerignore fix)
+
+---
+
+## Hotfix Applied
+
+**Issue:** Container startup error - missing `initializeInvoiceStorage.js` script  
+**Cause:** `.dockerignore` was excluding all `backend/scripts/` directory  
+**Fix:** Updated `.dockerignore` to selectively exclude only test/utility scripts while keeping runtime scripts  
+**New Commit:** 167b61e  
+**Status:** ✅ Resolved

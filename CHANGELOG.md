@@ -11,6 +11,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.12.2] - 2026-01-16
+
+### Fixed
+- **Merchant Analytics**: Fixed "Previous Year" period validation error
+  - Added 'previousYear' to valid period options in merchant analytics controller
+  - Backend service already supported this period, only validation was missing
+- **Logging Cleanup**: Removed verbose debug logging from invoice feature
+  - Removed debug logs for "no invoice found" cases (normal behavior)
+  - Removed debug logs for routine invoice operations
+  - Cleaned up console.warn from invoice API retry logic
+  - Cleaner production logs with LOG_LEVEL=info
+
+---
+
 ## [4.12.1] - 2026-01-16
 
 ### Changed

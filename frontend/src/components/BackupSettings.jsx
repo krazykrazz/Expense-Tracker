@@ -800,6 +800,15 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v4.12.2</div>
+                <div className="changelog-date">January 16, 2026</div>
+                <ul className="changelog-items">
+                  <li>Fixed merchant analytics "Previous Year" period validation</li>
+                  <li>Removed verbose debug logging from invoice feature</li>
+                  <li>Cleaned up console messages for cleaner production logs</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v4.12.1</div>
                 <div className="changelog-date">January 16, 2026</div>
                 <ul className="changelog-items">

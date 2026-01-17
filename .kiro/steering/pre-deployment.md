@@ -2,6 +2,28 @@
 
 Before pushing any major changes to production, the agent should perform the following checks:
 
+## Git Commit Policy
+
+**IMPORTANT: Git commits are USER-CONTROLLED**
+
+The agent should NOT automatically commit changes to git. Instead:
+
+1. **Make all code changes** as requested
+2. **Update version numbers** in all required locations
+3. **Update CHANGELOG.md** and in-app changelog
+4. **Build the frontend** if needed
+5. **Build and push Docker image** if requested
+6. **DO NOT run `git add` or `git commit`** - wait for the user to commit when ready
+
+The user will decide when to commit and what commit message to use. This allows:
+- Batching related fixes into single commits
+- Better control over commit history
+- Avoiding multiple small commits for iterative fixes
+
+When work is complete, inform the user: "Changes are ready. You can commit when ready."
+
+---
+
 ## 1. Specification Review
 
 Check for any pending changes or updates to project specifications:

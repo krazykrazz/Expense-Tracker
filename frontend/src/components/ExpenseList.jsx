@@ -459,7 +459,7 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
           return false;
         }
         
-        const hasInvoice = invoiceMetadata.has(expense.id) && invoiceMetadata.get(expense.id) !== null;
+        const hasInvoice = (invoiceMetadata.has(expense.id) && invoiceMetadata.get(expense.id) !== null) || expense.hasInvoice === true;
         if (localFilterInvoice === 'with-invoice' && !hasInvoice) {
           return false;
         }
@@ -650,8 +650,8 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
                       <PeopleIndicator expense={expense} />
                       {expense.type === 'Tax - Medical' && (
                         <InvoiceIndicator
-                          hasInvoice={invoiceMetadata.has(expense.id) && invoiceMetadata.get(expense.id) !== null}
-                          invoiceInfo={invoiceMetadata.get(expense.id)}
+                          hasInvoice={(invoiceMetadata.has(expense.id) && invoiceMetadata.get(expense.id) !== null) || expense.hasInvoice === true}
+                          invoiceInfo={invoiceMetadata.get(expense.id) || expense.invoice}
                           expenseId={expense.id}
                           size="small"
                           alwaysShow={true}

@@ -87,17 +87,23 @@
 
 /* Icon Styles */
 .invoice-icon {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   line-height: 1;
   flex-shrink: 0;
 }
 
+.invoice-icon svg {
+  display: block;
+}
+
 .invoice-indicator.has-invoice .invoice-icon {
-  filter: grayscale(0%);
+  color: #28a745;
 }
 
 .invoice-indicator.no-invoice .invoice-icon {
-  filter: none;
+  color: #856404;
   opacity: 0.8;
 }
 

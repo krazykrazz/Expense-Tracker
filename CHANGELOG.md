@@ -11,6 +11,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.12.10] - 2026-01-17
+
+### Fixed
+- **Invoice Indicator Color**: Fixed invoice indicator icon not showing green when invoice is attached
+  - Replaced emoji icons (📄/📋) with SVG icons that properly inherit CSS color
+  - Invoice indicator now displays green when an invoice is attached
+  - Tooltip with filename and metadata continues to work correctly
+
+---
+
+## [4.12.9] - 2026-01-17
+
+### Fixed
+- **Invoice Indicator**: Fixed invoice indicator not showing green after uploading an invoice
+  - Removed duplicate `onExpenseAdded` call that was overwriting the `hasInvoice` flag
+  - Added fallback to check `expense.hasInvoice` property in addition to metadata map
+  - Invoice indicator now correctly shows green immediately after upload
+
+---
+
+## [4.12.8] - 2026-01-17
+
+### Fixed
+- **PDF Viewer**: Replaced react-pdf library with native browser iframe rendering for improved reliability
+  - PDF viewing now uses browser's built-in PDF renderer instead of PDF.js
+  - Eliminates PDF.js worker configuration issues and CDN dependencies
+  - More consistent rendering across different browsers
+  - Simplified codebase with fewer external dependencies
+  - Zoom controls still available via CSS transform
+
+---
+
 ## [4.12.7] - 2026-01-17
 
 ### Fixed

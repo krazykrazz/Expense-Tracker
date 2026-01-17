@@ -1,11 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Document, Page, pdfjs } from 'react-pdf';
 import { API_ENDPOINTS } from '../config';
 import './InvoicePDFViewer.css';
 
-// Set up PDF.js worker - use CDN with specific version
-// Note: The worker must match the pdfjs-dist version used by react-pdf
-pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+// Note: Using native browser PDF rendering via iframe/object instead of react-pdf
+// This is more reliable across browsers and doesn't require PDF.js worker configuration
 
 /**
  * InvoicePDFViewer Modal Component
@@ -32,8 +30,6 @@ const InvoicePDFViewer = ({
   const [error, setError] = useState(null);
   const [zoom, setZoom] = useState(1.0);
   const [pdfUrl, setPdfUrl] = useState(null);
-  const [numPages, setNumPages] = useState(null);
-  const [pageNumber, setPageNumber] = useState(1);
 
   // Zoom constants
   const MIN_ZOOM = 0.5;
@@ -54,8 +50,6 @@ const InvoicePDFViewer = ({
       }
       setError(null);
       setZoom(1.0);
-      setPageNumber(1);
-      setNumPages(null);
     }
 
     // Cleanup on unmount
@@ -140,62 +134,6 @@ const InvoicePDFViewer = ({
   }, []);
 
   /**
-   * Handle PDF document load success
-   */
-  const onDocumentLoadSuccess = useCallback(({ numPages }) => {
-    setNumPages(numPages);
-    setPageNumber(1);
-    setLoading(false);
-    setError(null);
-  }, []);
-
-  /**
-   * Handle PDF document load error
-   */
-  const onDocumentLoadError = useCallback((error) => {
-    console.error('PDF load error:', error);
-    // Provide more specific error messages
-    let errorMessage = 'Failed to load PDF document';
-    if (error && error.message) {
-      if (error.message.includes('worker')) {
-        errorMessage = 'PDF viewer initialization failed. Please refresh the page.';
-      } else if (error.message.includes('Invalid PDF')) {
-        errorMessage = 'The file appears to be corrupted or not a valid PDF.';
-      } else if (error.message.includes('password')) {
-        errorMessage = 'This PDF is password protected and cannot be displayed.';
-      } else {
-        errorMessage = `PDF error: ${error.message}`;
-      }
-    }
-    setError(errorMessage);
-    setLoading(false);
-  }, []);
-
-  /**
-   * Navigate to previous page
-   */
-  const goToPreviousPage = useCallback(() => {
-    setPageNumber(prevPage => Math.max(prevPage - 1, 1));
-  }, []);
-
-  /**
-   * Navigate to next page
-   */
-  const goToNextPage = useCallback(() => {
-    setPageNumber(prevPage => Math.min(prevPage + 1, numPages || 1));
-  }, [numPages]);
-
-  /**
-   * Navigate to specific page
-   */
-  const goToPage = useCallback((page) => {
-    const pageNum = parseInt(page, 10);
-    if (pageNum >= 1 && pageNum <= (numPages || 1)) {
-      setPageNumber(pageNum);
-    }
-  }, [numPages]);
-
-  /**
    * Handle download with enhanced error handling
    */
   const handleDownload = useCallback(async () => {
@@ -276,30 +214,10 @@ const InvoicePDFViewer = ({
           handleZoomReset();
         }
         break;
-      case 'ArrowLeft':
-        if (!event.ctrlKey && !event.metaKey) {
-          event.preventDefault();
-          goToPreviousPage();
-        }
-        break;
-      case 'ArrowRight':
-        if (!event.ctrlKey && !event.metaKey) {
-          event.preventDefault();
-          goToNextPage();
-        }
-        break;
-      case 'Home':
-        event.preventDefault();
-        setPageNumber(1);
-        break;
-      case 'End':
-        event.preventDefault();
-        setPageNumber(numPages || 1);
-        break;
       default:
         break;
     }
-  }, [isOpen, onClose, handleZoomIn, handleZoomOut, handleZoomReset, goToPreviousPage, goToNextPage, numPages]);
+  }, [isOpen, onClose, handleZoomIn, handleZoomOut, handleZoomReset]);
 
   /**
    * Handle modal backdrop click
@@ -341,47 +259,6 @@ const InvoicePDFViewer = ({
           </h3>
           
           <div className="pdf-viewer-controls">
-            {/* Page Navigation Controls */}
-            {numPages && numPages > 1 && (
-              <div className="page-controls">
-                <button
-                  type="button"
-                  className="control-btn page-btn"
-                  onClick={goToPreviousPage}
-                  disabled={pageNumber <= 1}
-                  title="Previous page (←)"
-                  aria-label="Previous page"
-                >
-                  ←
-                </button>
-                
-                <div className="page-display">
-                  <input
-                    type="number"
-                    className="page-input"
-                    value={pageNumber}
-                    onChange={(e) => goToPage(e.target.value)}
-                    min="1"
-                    max={numPages}
-                    title="Current page"
-                    aria-label="Page number"
-                  />
-                  <span className="page-total">of {numPages}</span>
-                </div>
-                
-                <button
-                  type="button"
-                  className="control-btn page-btn"
-                  onClick={goToNextPage}
-                  disabled={pageNumber >= numPages}
-                  title="Next page (→)"
-                  aria-label="Next page"
-                >
-                  →
-                </button>
-              </div>
-            )}
-
             {/* Zoom Controls */}
             <div className="zoom-controls">
               <button
@@ -486,36 +363,13 @@ const InvoicePDFViewer = ({
           )}
 
           {pdfUrl && !loading && !error && (
-            <div className="pdf-container">
-              <Document
-                file={pdfUrl}
-                onLoadSuccess={onDocumentLoadSuccess}
-                onLoadError={onDocumentLoadError}
-                loading={
-                  <div className="pdf-loading">
-                    <div className="loading-spinner"></div>
-                    <div className="loading-text">Loading PDF...</div>
-                  </div>
-                }
-                error={
-                  <div className="pdf-error">
-                    <div className="error-icon">⚠️</div>
-                    <div className="error-message">
-                      <h4>Failed to load PDF</h4>
-                      <p>The PDF file could not be displayed.</p>
-                    </div>
-                  </div>
-                }
-                className="pdf-document"
-              >
-                <Page
-                  pageNumber={pageNumber}
-                  scale={zoom}
-                  className="pdf-page"
-                  renderTextLayer={false}
-                  renderAnnotationLayer={false}
-                />
-              </Document>
+            <div className="pdf-container" style={{ transform: `scale(${zoom})`, transformOrigin: 'top center' }}>
+              <iframe
+                src={pdfUrl}
+                title="Invoice PDF"
+                className="pdf-iframe"
+                style={{ width: '100%', height: '100%', border: 'none' }}
+              />
             </div>
           )}
         </div>
@@ -524,7 +378,7 @@ const InvoicePDFViewer = ({
         <div className="pdf-viewer-footer">
           <div className="keyboard-shortcuts">
             <span className="shortcut-hint">
-              Keyboard shortcuts: Esc (close), Ctrl+/- (zoom), Ctrl+0 (reset), ←/→ (pages), Home/End (first/last page)
+              Keyboard shortcuts: Esc (close), Ctrl+/- (zoom), Ctrl+0 (reset)
             </span>
           </div>
         </div>

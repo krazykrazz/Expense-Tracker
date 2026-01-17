@@ -800,6 +800,31 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v4.12.10</div>
+                <div className="changelog-date">January 17, 2026</div>
+                <ul className="changelog-items">
+                  <li>Fixed invoice indicator icon color - now shows green when invoice attached</li>
+                  <li>Replaced emoji icons with SVG for proper color styling</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
+                <div className="changelog-version">v4.12.9</div>
+                <div className="changelog-date">January 17, 2026</div>
+                <ul className="changelog-items">
+                  <li>Fixed invoice indicator not showing green after upload</li>
+                  <li>Invoice status now updates immediately after attaching a PDF</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
+                <div className="changelog-version">v4.12.8</div>
+                <div className="changelog-date">January 17, 2026</div>
+                <ul className="changelog-items">
+                  <li>Fixed PDF viewing by switching to native browser iframe rendering</li>
+                  <li>Eliminated PDF.js worker configuration issues</li>
+                  <li>More reliable PDF display across different browsers</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v4.12.7</div>
                 <div className="changelog-date">January 17, 2026</div>
                 <ul className="changelog-items">
@@ -818,83 +843,12 @@ const BackupSettings = () => {
                 </ul>
               </div>
               <div className="changelog-entry">
-                <div className="changelog-version">v4.12.5</div>
-                <div className="changelog-date">January 17, 2026</div>
-                <ul className="changelog-items">
-                  <li>Fixed invoice storage path in Docker environments</li>
-                  <li>Invoice files now correctly persist in mounted volume</li>
-                  <li>Resolved "Invoice file not found" error after upload</li>
-                </ul>
-              </div>
-              <div className="changelog-entry">
-                <div className="changelog-version">v4.12.4</div>
-                <div className="changelog-date">January 17, 2026</div>
-                <ul className="changelog-items">
-                  <li>Fixed invoice indicator not updating after upload</li>
-                  <li>Fixed invoice viewing after upload</li>
-                  <li>Removed excessive debug logs from invoice system</li>
-                </ul>
-              </div>
-              <div className="changelog-entry">
-                <div className="changelog-version">v4.12.3</div>
+                <div className="changelog-version">v4.12.0</div>
                 <div className="changelog-date">January 16, 2026</div>
                 <ul className="changelog-items">
-                  <li>Fixed invoice upload error in Docker environments</li>
-                  <li>Resolved cross-device link error (EXDEV) when attaching invoices</li>
-                  <li>Improved file handling for Docker volume mounts</li>
-                </ul>
-              </div>
-              <div className="changelog-entry">
-                <div className="changelog-version">v4.11.2</div>
-                <div className="changelog-date">December 31, 2025</div>
-                <ul className="changelog-items">
-                  <li>Fixed floating add button to remain visible when navigating to future months</li>
-                  <li>Button visibility now based on current month expense count, not selected month</li>
-                </ul>
-              </div>
-              <div className="changelog-entry">
-                <div className="changelog-version">v4.11.1</div>
-                <div className="changelog-date">December 31, 2025</div>
-                <ul className="changelog-items">
-                  <li>Fixed floating add button disappearing when switching months</li>
-                  <li>Improved component re-rendering reliability for month navigation</li>
-                </ul>
-              </div>
-              <div className="changelog-entry">
-                <div className="changelog-version">v4.11.0</div>
-                <div className="changelog-date">December 31, 2025</div>
-                <ul className="changelog-items">
-                  <li>Sticky Summary Scrolling: Summary panel now scrolls independently from expense list for better usability</li>
-                  <li>Floating Add Button: Quick access to add expenses when viewing long lists (appears with &gt;10 expenses)</li>
-                  <li>Enhanced responsive design with accessibility features and smooth animations</li>
-                </ul>
-              </div>
-              <div className="changelog-entry">
-                <div className="changelog-version">v4.10.0</div>
-                <div className="changelog-date">December 23, 2025</div>
-                <ul className="changelog-items">
-                  <li>Added Budget Alert Notifications with proactive banner alerts</li>
-                  <li>Smart alert thresholds: Warning (80-89%), Danger (90-99%), Critical (≥100%)</li>
-                  <li>Dismissible alerts with session persistence and real-time updates</li>
-                  <li>Quick budget management access from alert banners</li>
-                </ul>
-              </div>
-              <div className="changelog-entry">
-                <div className="changelog-version">v4.9.1</div>
-                <div className="changelog-date">December 20, 2025</div>
-                <ul className="changelog-items">
-                  <li>Fixed critical calculation errors in merchant analytics when including fixed expenses</li>
-                  <li>Eliminated "total" entries appearing in merchant list</li>
-                  <li>Improved data validation and error handling</li>
-                </ul>
-              </div>
-              <div className="changelog-entry">
-                <div className="changelog-version">v4.9.0</div>
-                <div className="changelog-date">December 20, 2025</div>
-                <ul className="changelog-items">
-                  <li>Fixed Expenses Integration in Merchant Analytics: Added "Include Fixed Expenses" checkbox for comprehensive spending analysis</li>
-                  <li>Combined view shows total spending across both variable and recurring expenses</li>
-                  <li>Enhanced merchant rankings and statistics with fixed expenses like rent, utilities, and subscriptions</li>
+                  <li>Medical Expense Invoice Attachments: Attach PDF invoices to medical expenses</li>
+                  <li>Built-in PDF viewer with zoom, download, and print capabilities</li>
+                  <li>Visual indicators showing which expenses have attached invoices</li>
                 </ul>
               </div>
               <div className="changelog-entry">

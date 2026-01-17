@@ -435,11 +435,6 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
             setInvoiceInfo(invoiceResult.invoice);
             newExpense.invoice = invoiceResult.invoice;
             newExpense.hasInvoice = true;
-            
-            // Notify parent to refresh expense list with invoice indicator
-            if (onExpenseAdded) {
-              onExpenseAdded({ ...newExpense, hasInvoice: true });
-            }
           }
         } catch (invoiceError) {
           console.error('Invoice upload failed:', invoiceError);

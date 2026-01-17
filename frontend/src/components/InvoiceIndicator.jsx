@@ -111,8 +111,16 @@ const InvoiceIndicator = ({
         tabIndex={isClickable ? 0 : -1}
         aria-label={hasInvoice ? 'View invoice attachment' : 'No invoice attached'}
       >
-        <span className="invoice-icon">
-          {hasInvoice ? '📄' : '📋'}
+        <span className="invoice-icon" aria-hidden="true">
+          {hasInvoice ? (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm-1 7V3.5L18.5 9H13zm-3 4h6v2h-6v-2zm0 4h6v2h-6v-2zm0-8h2v2h-2V9z"/>
+            </svg>
+          ) : (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/>
+            </svg>
+          )}
         </span>
         
         {showText && (

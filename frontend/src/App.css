@@ -239,16 +239,17 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.6);
+  background-color: var(--bg-overlay, rgba(0, 0, 0, 0.5));
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 1000;
+  z-index: var(--z-modal-backdrop, 400);
   backdrop-filter: blur(4px);
-  animation: fadeIn 0.2s ease;
+  -webkit-backdrop-filter: blur(4px);
+  animation: modalOverlayFadeIn var(--transition-fast, 150ms ease);
 }
 
-@keyframes fadeIn {
+@keyframes modalOverlayFadeIn {
   from {
     opacity: 0;
   }
@@ -257,41 +258,78 @@
   }
 }
 
+@keyframes modalContentSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 .modal-content {
-  background: white;
-  border-radius: 8px;
+  background: var(--bg-card, white);
+  border-radius: var(--radius-xl, 16px);
   padding: 0;
   max-width: 600px;
   width: 90%;
   max-height: 90vh;
   overflow-y: auto;
   position: relative;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-xl, 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04));
+  animation: modalContentSlideUp var(--transition-normal, 200ms ease);
+  z-index: var(--z-modal, 500);
 }
 
 .modal-content-large {
   max-width: 900px;
+  border-radius: var(--radius-2xl, 24px);
 }
 
 .modal-close-button {
   position: absolute;
-  top: 10px;
-  right: 10px;
-  background: transparent;
+  top: var(--spacing-4, 16px);
+  right: var(--spacing-4, 16px);
+  background: var(--bg-muted, #f1f5f9);
   border: none;
-  font-size: 24px;
-  color: #666;
+  font-size: 18px;
+  color: var(--text-secondary, #475569);
   cursor: pointer;
-  width: 30px;
-  height: 30px;
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 10;
+  border-radius: var(--radius-md, 8px);
+  transition: all var(--transition-fast, 150ms ease);
 }
 
 .modal-close-button:hover {
-  color: #333;
+  background: var(--border-default, #e2e8f0);
+  color: var(--text-primary, #0f172a);
+  transform: scale(1.05);
+}
+
+.modal-close-button:active {
+  transform: scale(0.95);
+}
+
+/* Accessibility: Respect reduced motion preferences for modals */
+@media (prefers-reduced-motion: reduce) {
+  .modal-overlay {
+    animation: none;
+  }
+  
+  .modal-content {
+    animation: none;
+  }
+  
+  .modal-close-button {
+    transition: none;
+  }
 }
 
 /* Tablet breakpoint for intermediate responsive behavior */
@@ -376,6 +414,15 @@
 
   .modal-content {
     width: 95%;
+    border-radius: var(--radius-lg, 12px);
+  }
+  
+  .modal-close-button {
+    top: var(--spacing-3, 12px);
+    right: var(--spacing-3, 12px);
+    width: 32px;
+    height: 32px;
+    font-size: 16px;
   }
 }
 

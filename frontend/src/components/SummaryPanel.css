@@ -2,7 +2,7 @@
   background: var(--bg-card);
   border-radius: var(--radius-lg);
   padding: var(--spacing-5);
-  margin: var(--spacing-4) 0;
+  margin: var(--section-gap) 0;
   box-shadow: var(--shadow-sm);
   border: 1px solid var(--border-muted);
   transition: var(--transition-shadow);
@@ -16,17 +16,19 @@
   margin-top: 0;
   margin-bottom: var(--spacing-4);
   color: var(--text-primary);
-  font-size: var(--text-xl);
+  font-size: var(--heading-2);
   font-weight: var(--font-semibold);
+  line-height: var(--leading-tight);
+  letter-spacing: -0.02em;
   border-bottom: 2px solid var(--color-primary);
   padding-bottom: var(--spacing-2);
 }
 
-/* Card Grid Layout */
+/* Card Grid Layout - Section spacing (Requirement 8.5) */
 .summary-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: var(--spacing-4);
+  gap: var(--section-gap);
 }
 
 /* Card Styles - Modern with shadows instead of borders */
@@ -36,7 +38,7 @@
   padding: var(--spacing-5);
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-3);
+  gap: var(--element-gap-lg);
   box-shadow: var(--shadow-sm);
   border: 1px solid var(--border-muted);
   transition: var(--transition-all);
@@ -98,9 +100,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: var(--spacing-2);
+  gap: var(--element-gap);
   font-size: var(--text-sm);
-  margin-top: var(--spacing-2);
+  margin-top: var(--element-gap);
   color: var(--text-tertiary);
 }
 
@@ -121,15 +123,15 @@
 .horizontal-list {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: var(--spacing-2);
+  gap: var(--element-gap);
 }
 
 /* Card Header - Modern styling without heavy separators */
 .card-header {
   display: flex;
   align-items: center;
-  gap: var(--spacing-2);
-  padding-bottom: var(--spacing-2);
+  gap: var(--element-gap);
+  padding-bottom: var(--element-gap);
 }
 
 .card-icon {
@@ -138,20 +140,23 @@
 }
 
 .card-title {
-  font-size: var(--text-sm);
+  font-size: var(--caption-text-lg);
   font-weight: var(--font-semibold);
   color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  line-height: var(--leading-normal);
 }
 
-/* Card Value - Typography hierarchy */
+/* Card Value - Typography hierarchy with tabular numerals */
 .card-value {
   font-size: var(--text-3xl);
   font-weight: var(--font-bold);
   color: var(--color-primary);
   line-height: var(--leading-tight);
   font-family: var(--font-mono);
+  font-feature-settings: var(--font-feature-tabular);
+  font-variant-numeric: tabular-nums lining-nums;
   letter-spacing: -0.5px;
 }
 
@@ -168,9 +173,10 @@
 }
 
 .card-subtitle {
-  font-size: var(--text-xs);
+  font-size: var(--caption-text);
   color: var(--text-tertiary);
   margin-top: calc(-1 * var(--spacing-1));
+  line-height: var(--leading-normal);
 }
 
 /* Card Content */
@@ -181,14 +187,14 @@
 .compact-list {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-2);
+  gap: var(--element-gap);
 }
 
 .compact-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: var(--spacing-2) var(--spacing-3);
+  padding: var(--element-gap) var(--element-gap-lg);
   background: var(--bg-subtle);
   border-radius: var(--radius-md);
   font-size: var(--text-sm);
@@ -208,14 +214,16 @@
   color: var(--text-primary);
   font-weight: var(--font-semibold);
   font-family: var(--font-mono);
+  font-feature-settings: var(--font-feature-tabular);
+  font-variant-numeric: tabular-nums lining-nums;
 }
 
 .card-total {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: var(--spacing-3);
-  margin-top: var(--spacing-3);
+  padding: var(--element-gap-lg);
+  margin-top: var(--element-gap-lg);
   border-top: 2px solid var(--border-default);
   font-weight: var(--font-semibold);
 }
@@ -229,6 +237,8 @@
   color: var(--color-negative);
   font-size: var(--text-lg);
   font-family: var(--font-mono);
+  font-feature-settings: var(--font-feature-tabular);
+  font-variant-numeric: tabular-nums lining-nums;
 }
 
 .total-value.investment-value {
@@ -315,22 +325,67 @@
   cursor: pointer;
   user-select: none;
   padding: var(--spacing-1) 0;
-  transition: var(--transition-colors);
+  transition: var(--transition-colors, color 150ms ease, background-color 150ms ease);
+  border-radius: var(--radius-sm);
 }
 
 .collapsible-header:hover {
   opacity: 0.8;
 }
 
+.collapsible-header:active {
+  opacity: 0.7;
+}
+
 .collapse-icon {
   font-size: var(--text-base);
   color: var(--text-tertiary);
-  transition: var(--transition-transform);
+  transition: var(--transition-transform, transform 200ms ease), color var(--transition-fast, 150ms ease);
   font-weight: var(--font-bold);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-sm);
 }
 
 .collapsible-header:hover .collapse-icon {
   color: var(--color-primary);
+  background-color: var(--hover-overlay, rgba(0, 0, 0, 0.04));
+}
+
+/* Collapsible content animation */
+.collapsible-content {
+  overflow: hidden;
+  transition: var(--transition-collapse, height 250ms ease, opacity 200ms ease);
+}
+
+.collapsible-content.collapsed {
+  height: 0;
+  opacity: 0;
+  padding: 0;
+  margin: 0;
+}
+
+.collapsible-content.expanded {
+  opacity: 1;
+}
+
+/* Card content fade-in when collapsible opens */
+.card-content {
+  animation: contentFadeIn var(--transition-normal, 200ms ease);
+}
+
+@keyframes contentFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Responsive Design */
@@ -373,5 +428,35 @@
     font-size: var(--text-xs);
     gap: var(--spacing-2);
     flex-wrap: wrap;
+  }
+}
+
+
+/* Accessibility: Respect reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .summary-panel,
+  .summary-card,
+  .card-action-btn,
+  .collapsible-header,
+  .collapse-icon,
+  .collapsible-content,
+  .compact-item,
+  .trend-indicator,
+  .card-content {
+    transition: none;
+    animation: none;
+  }
+  
+  .summary-card:hover {
+    transform: none;
+  }
+  
+  .card-action-btn:hover,
+  .card-action-btn:active {
+    transform: none;
+  }
+  
+  .trend-indicator:hover {
+    transform: none;
   }
 }

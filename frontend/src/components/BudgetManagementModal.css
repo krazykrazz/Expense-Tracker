@@ -53,7 +53,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: var(--spacing-6, 24px);
+  padding: var(--section-gap-lg, 24px);
   border-bottom: 1px solid var(--border-muted, #f1f5f9);
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
@@ -62,9 +62,11 @@
 
 .budget-modal-header h2 {
   margin: 0;
-  font-size: var(--text-2xl, 20px);
+  font-size: var(--heading-2, 20px);
   font-weight: var(--font-semibold, 600);
   color: white;
+  line-height: var(--leading-tight, 1.25);
+  letter-spacing: -0.02em;
 }
 
 .budget-modal-close {
@@ -130,7 +132,7 @@
 
 /* Modal Content */
 .budget-modal-content {
-  padding: var(--spacing-6, 24px);
+  padding: var(--section-gap-lg, 24px);
 }
 
 /* Budget Overview Section */
@@ -283,12 +285,12 @@
 .budget-category-item {
   display: grid;
   grid-template-columns: 2fr 2fr 1fr;
-  gap: var(--spacing-3, 12px);
+  gap: var(--element-gap-lg, 12px);
   align-items: center;
-  padding: var(--spacing-4, 16px) var(--spacing-3, 12px);
+  padding: var(--section-gap, 16px) var(--element-gap-lg, 12px);
   border: 1px solid var(--border-default, #e2e8f0);
   border-radius: var(--radius-md, 8px);
-  margin-bottom: var(--spacing-3, 12px);
+  margin-bottom: var(--element-gap-lg, 12px);
   background-color: var(--bg-card, white);
   transition: all var(--transition-fast, 150ms ease);
 }

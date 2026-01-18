@@ -6,54 +6,117 @@
   flex-direction: column;
 }
 
+/* ============================================
+   HEADER STYLES - Modern Design
+   Requirements: 10.1, 10.2, 10.3, 10.4
+   ============================================ */
 .App-header {
-  background: linear-gradient(135deg, #475569 0%, #334155 100%);
-  padding: 15px 20px;
-  color: white;
+  background: linear-gradient(135deg, #1e293b 0%, #334155 50%, #475569 100%);
+  padding: var(--spacing-4) var(--spacing-6);
+  color: var(--text-inverse);
   display: flex;
   justify-content: space-between;
   align-items: center;
+  box-shadow: var(--shadow-md);
+  position: relative;
+  z-index: var(--z-sticky);
+}
+
+/* Subtle depth effect on header */
+.App-header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
 }
 
 .header-title {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--element-gap-lg);
 }
 
 .app-logo {
-  height: 40px;
+  height: 44px;
   width: auto;
   object-fit: contain;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+  transition: transform var(--transition-fast);
+}
+
+.app-logo:hover {
+  transform: scale(1.05);
 }
 
 .App-header h1 {
-  font-size: 1.5rem;
-  font-weight: 600;
+  font-size: var(--heading-2);
+  font-weight: var(--font-bold);
   margin: 0;
+  letter-spacing: -0.025em;
+  line-height: var(--leading-tight);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .header-buttons {
   display: flex;
-  gap: 8px;
+  gap: var(--element-gap);
 }
 
 .settings-button,
 .recurring-button {
-  background-color: rgba(255, 255, 255, 0.2);
-  color: white;
-  border: 1px solid white;
-  padding: 6px 12px;
-  font-size: 13px;
-  font-weight: 500;
-  border-radius: 4px;
+  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--text-inverse);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: var(--spacing-2) var(--spacing-4);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  border-radius: var(--radius-md);
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: all var(--transition-fast);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
 }
 
 .settings-button:hover,
 .recurring-button:hover {
-  background-color: rgba(255, 255, 255, 0.3);
+  background-color: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.settings-button:active,
+.recurring-button:active {
+  transform: translateY(0) scale(0.98);
+  box-shadow: none;
+}
+
+/* Focus states for accessibility */
+.settings-button:focus-visible,
+.recurring-button:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.5);
+  outline-offset: 2px;
+}
+
+/* Accessibility: Respect reduced motion preferences for header */
+@media (prefers-reduced-motion: reduce) {
+  .app-logo,
+  .settings-button,
+  .recurring-button {
+    transition: none;
+  }
+  
+  .app-logo:hover {
+    transform: none;
+  }
+  
+  .settings-button:hover,
+  .recurring-button:hover {
+    transform: none;
+  }
 }
 
 .App-main {
@@ -67,7 +130,7 @@
 .content-layout {
   display: grid;
   grid-template-columns: 1fr 400px;
-  gap: 15px;
+  gap: var(--section-gap);
   align-items: start;
   /* Smooth transition for responsive layout changes */
   transition: grid-template-columns 0.3s ease, gap 0.3s ease;
@@ -129,10 +192,7 @@
 }
 
 /* Keyboard navigation support */
-.content-right {
-  /* Make the summary panel focusable for keyboard navigation */
-  tabindex: 0;
-}
+/* Note: tabindex should be set in HTML/JSX, not CSS */
 
 /* Accessibility: Respect reduced motion preferences */
 @media (prefers-reduced-motion: reduce) {
@@ -192,6 +252,25 @@
   }
 }
 
+/* Subtle content fade-in for loaded content */
+@keyframes contentFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Utility class for fade-in animation */
+.fade-in {
+  animation: contentFadeIn var(--transition-normal, 200ms ease);
+}
+
+.fade-in-slow {
+  animation: contentFadeIn var(--transition-slow, 300ms ease);
+}
+
 .error-message {
   background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
   color: #c62828;
@@ -216,20 +295,24 @@
   background-color: #d32f2f;
   color: white;
   border: none;
-  padding: 8px 16px;
-  border-radius: 4px;
+  padding: var(--spacing-2, 8px) var(--spacing-4, 16px);
+  border-radius: var(--radius-md, 8px);
   cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  transition: background-color 0.2s;
+  font-size: var(--text-base, 14px);
+  font-weight: var(--font-medium, 500);
+  transition: var(--transition-button, background-color 150ms ease, transform 150ms ease, box-shadow 150ms ease);
+  box-shadow: var(--shadow-sm, 0 1px 3px rgba(0, 0, 0, 0.06));
 }
 
 .retry-button:hover {
   background-color: #b71c1c;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md, 0 4px 6px -1px rgba(0, 0, 0, 0.08));
 }
 
 .retry-button:active {
-  transform: scale(0.98);
+  transform: translateY(0) scale(0.98);
+  box-shadow: var(--shadow-xs, 0 1px 2px rgba(0, 0, 0, 0.04));
 }
 
 /* Modal Styles */
@@ -330,6 +413,30 @@
   .modal-close-button {
     transition: none;
   }
+  
+  .modal-close-button:hover,
+  .modal-close-button:active {
+    transform: none;
+  }
+  
+  .fade-in,
+  .fade-in-slow {
+    animation: none;
+  }
+  
+  .loading-message,
+  .error-message {
+    animation: none;
+  }
+  
+  .retry-button {
+    transition: none;
+  }
+  
+  .retry-button:hover,
+  .retry-button:active {
+    transform: none;
+  }
 }
 
 /* Tablet breakpoint for intermediate responsive behavior */
@@ -342,27 +449,54 @@
   .content-right {
     height: calc(100vh - 25px);
   }
+  
+  /* Header tablet adjustments */
+  .App-header {
+    padding: var(--spacing-3) var(--spacing-5);
+  }
+  
+  .App-header h1 {
+    font-size: var(--text-xl);
+  }
+  
+  .app-logo {
+    height: 38px;
+  }
 }
 
 /* Mobile breakpoint - maintain existing stacking behavior */
 @media (max-width: 768px) {
+  /* Header mobile styles - Requirements: 10.5, 12.4 */
   .App-header {
-    padding: 10px;
+    padding: var(--spacing-3) var(--spacing-4);
+    flex-wrap: wrap;
+    gap: var(--spacing-2);
+  }
+
+  .header-title {
+    gap: var(--spacing-2);
+  }
+
+  .app-logo {
+    height: 32px;
   }
 
   .App-header h1 {
-    font-size: 1.2rem;
+    font-size: var(--text-lg);
+    letter-spacing: -0.02em;
   }
 
   .header-buttons {
-    gap: 5px;
+    gap: var(--spacing-1);
   }
 
+  .settings-button,
   .recurring-button,
   .import-button,
   .backup-button {
-    font-size: 12px;
-    padding: 5px 10px;
+    font-size: var(--text-xs);
+    padding: var(--spacing-2) var(--spacing-3);
+    border-radius: var(--radius-sm);
   }
 
   .expense-list-header {
@@ -424,6 +558,11 @@
     height: 32px;
     font-size: 16px;
   }
+  
+  /* Footer mobile adjustments */
+  .App-footer {
+    padding: var(--spacing-2) var(--spacing-4);
+  }
 }
 
 /* Small mobile devices */
@@ -435,25 +574,84 @@
   .content-layout {
     gap: 12px;
   }
+  
+  /* Header small mobile adjustments */
+  .App-header {
+    padding: var(--spacing-2) var(--spacing-3);
+  }
+  
+  .header-title {
+    flex: 1;
+    min-width: 0;
+  }
+  
+  .app-logo {
+    height: 28px;
+  }
+  
+  .App-header h1 {
+    font-size: var(--text-base);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  .header-buttons {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  
+  .settings-button,
+  .recurring-button,
+  .import-button,
+  .backup-button {
+    font-size: 11px;
+    padding: var(--spacing-1) var(--spacing-2);
+  }
+  
+  /* Footer small mobile adjustments */
+  .App-footer {
+    padding: var(--spacing-2) var(--spacing-3);
+  }
+  
+  .version {
+    font-size: 10px;
+  }
 }
 
+/* ============================================
+   FOOTER STYLES - Modern Design
+   ============================================ */
 .App-footer {
-  padding: 10px 20px;
+  padding: var(--spacing-3) var(--spacing-6);
   text-align: center;
-  background: linear-gradient(135deg, #475569 0%, #334155 100%);
+  background: linear-gradient(135deg, #1e293b 0%, #334155 50%, #475569 100%);
   border-top: 1px solid rgba(255, 255, 255, 0.1);
+  position: relative;
+}
+
+/* Subtle top highlight */
+.App-footer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
 }
 
 .version {
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.7);
-  font-weight: 500;
+  font-size: var(--text-xs);
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: var(--font-medium);
+  letter-spacing: 0.025em;
 }
 
 .docker-tag {
   color: rgba(59, 130, 246, 0.9);
-  font-weight: 600;
-  margin-left: 4px;
+  font-weight: var(--font-semibold);
+  margin-left: var(--spacing-1);
 }
 
 /* View Mode Indicator */

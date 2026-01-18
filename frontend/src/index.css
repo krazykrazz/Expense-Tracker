@@ -111,3 +111,84 @@ pre {
   background-color: var(--color-primary-light);
   color: var(--color-primary-active);
 }
+
+/* ============================================
+   TYPOGRAPHY UTILITIES
+   Requirements: 8.1, 8.2, 8.3, 8.4
+   ============================================ */
+
+/* Heading Hierarchy (Requirement 8.1) */
+h1, .h1 {
+  font-size: var(--heading-1);
+  font-weight: var(--font-bold);
+  line-height: var(--leading-tight);
+  letter-spacing: -0.025em;
+}
+
+h2, .h2 {
+  font-size: var(--heading-2);
+  font-weight: var(--font-semibold);
+  line-height: var(--leading-tight);
+  letter-spacing: -0.02em;
+}
+
+h3, .h3 {
+  font-size: var(--heading-3);
+  font-weight: var(--font-semibold);
+  line-height: var(--leading-snug);
+  letter-spacing: -0.015em;
+}
+
+h4, .h4 {
+  font-size: var(--heading-4);
+  font-weight: var(--font-semibold);
+  line-height: var(--leading-snug);
+}
+
+h5, .h5 {
+  font-size: var(--heading-5);
+  font-weight: var(--font-medium);
+  line-height: var(--leading-normal);
+}
+
+h6, .h6 {
+  font-size: var(--heading-6);
+  font-weight: var(--font-medium);
+  line-height: var(--leading-normal);
+}
+
+/* Body Text (Requirement 8.2) */
+body, .body-text {
+  font-size: var(--body-text);
+  line-height: var(--body-line-height);
+}
+
+.body-text-lg {
+  font-size: var(--body-text-lg);
+  line-height: var(--body-line-height-relaxed);
+}
+
+/* Small/Caption Text (Requirement 8.3) */
+small, .caption, .text-caption {
+  font-size: var(--caption-text);
+  line-height: var(--leading-normal);
+}
+
+.caption-lg, .text-caption-lg {
+  font-size: var(--caption-text-lg);
+  line-height: var(--leading-normal);
+}
+
+/* Tabular Numerals for Monetary Values (Requirement 8.4) */
+.tabular-nums, .monetary-value {
+  font-family: var(--font-tabular);
+  font-feature-settings: var(--font-feature-tabular);
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+/* Monospace for amounts */
+.amount, .currency {
+  font-family: var(--font-mono);
+  font-feature-settings: var(--font-feature-tabular);
+  font-variant-numeric: tabular-nums lining-nums;
+}

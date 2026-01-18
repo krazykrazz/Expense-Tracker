@@ -15,21 +15,23 @@
   margin-top: 0;
   margin-bottom: var(--spacing-4);
   color: var(--text-primary);
-  font-size: var(--text-xl);
+  font-size: var(--heading-2);
   font-weight: var(--font-semibold);
+  line-height: var(--leading-tight);
+  letter-spacing: -0.02em;
   padding-bottom: var(--spacing-2);
 }
 
 .expense-form {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-3);
+  gap: var(--element-gap-lg);
 }
 
 .form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--spacing-3);
+  gap: var(--element-gap-lg);
 }
 
 .form-group {
@@ -41,7 +43,8 @@
   margin-bottom: var(--spacing-1);
   font-weight: var(--font-medium);
   color: var(--text-secondary);
-  font-size: var(--text-sm);
+  font-size: var(--caption-text-lg);
+  line-height: var(--leading-normal);
 }
 
 .form-group input,
@@ -50,8 +53,9 @@
   padding: var(--spacing-3) var(--spacing-4);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
-  font-size: var(--text-base);
+  font-size: var(--body-text);
   font-family: var(--font-sans);
+  line-height: var(--body-line-height);
   background-color: var(--bg-card);
   color: var(--text-primary);
   transition: var(--transition-colors), box-shadow var(--transition-fast);
@@ -166,7 +170,7 @@
 
 .recurring-fields {
   background: var(--bg-subtle);
-  padding: var(--spacing-4);
+  padding: var(--section-gap);
   border-radius: var(--radius-md);
   border: 1px solid var(--border-default);
   margin-top: var(--spacing-1);
@@ -176,7 +180,7 @@
   font-size: var(--text-sm);
   font-weight: var(--font-semibold);
   color: var(--color-primary);
-  margin-bottom: var(--spacing-3);
+  margin-bottom: var(--element-gap-lg);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -288,7 +292,7 @@
 /* Invoice Upload Section Styles */
 .invoice-section {
   background: var(--bg-subtle);
-  padding: var(--spacing-4);
+  padding: var(--section-gap);
   border-radius: var(--radius-md);
   border: 1px solid var(--border-default);
   margin-top: var(--spacing-1);
@@ -300,16 +304,16 @@
   font-size: var(--text-sm);
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  margin-bottom: var(--spacing-3);
+  margin-bottom: var(--element-gap-lg);
 }
 
 .invoice-upload-wrapper {
-  margin-top: var(--spacing-2);
+  margin-top: var(--element-gap);
 }
 
 .invoice-note {
-  margin-top: var(--spacing-2);
-  padding: var(--spacing-2) var(--spacing-3);
+  margin-top: var(--element-gap);
+  padding: var(--element-gap) var(--element-gap-lg);
   background-color: var(--color-primary-light);
   border: 1px solid var(--color-primary);
   border-radius: var(--radius-md);
@@ -470,4 +474,26 @@
 .invoice-person-select-inline:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+
+/* Accessibility: Respect reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .expense-form-container,
+  .form-group input,
+  .form-group select,
+  .form-group textarea,
+  .submit-button,
+  .autocomplete-item,
+  .file-input-label,
+  .clear-file-btn,
+  .remove-file-btn,
+  .invoice-person-select-inline {
+    transition: none;
+  }
+  
+  .submit-button:hover:not(:disabled),
+  .submit-button:active:not(:disabled) {
+    transform: none;
+  }
 }

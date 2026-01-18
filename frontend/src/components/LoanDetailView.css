@@ -1,4 +1,9 @@
-/* Loan Detail View Modal Overlay */
+/* Loan Detail View Modal Styles
+ * Modern design system implementation
+ * Requirements: 2.1, 8.1
+ */
+
+/* Modal Overlay */
 .loan-detail-overlay {
   position: fixed;
   top: 0;
@@ -6,23 +11,42 @@
   right: 0;
   bottom: 0;
   background-color: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 1001;
-  padding: 20px;
+  z-index: var(--z-modal);
+  padding: var(--spacing-5);
+  animation: fadeIn var(--transition-fast);
 }
 
-/* Loan Detail Container */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Modal Container - Requirement 2.1 */
 .loan-detail-container {
-  background-color: white;
-  border-radius: 8px;
+  background-color: var(--bg-card);
+  border-radius: var(--radius-xl);
   width: 100%;
   max-width: 1200px;
   max-height: 90vh;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--shadow-2xl);
+  animation: slideUp var(--transition-normal);
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 /* Header */
@@ -30,33 +54,41 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20px 24px;
-  border-bottom: 1px solid #e0e0e0;
-  background-color: #f8f9fa;
+  padding: var(--spacing-5) var(--spacing-6);
+  border-bottom: 1px solid var(--border-muted);
+  background-color: var(--bg-subtle);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
 }
 
 .loan-detail-header h2 {
   margin: 0;
-  font-size: 24px;
-  color: #333;
+  font-size: var(--heading-1);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
   flex: 1;
   text-align: center;
 }
 
 .loan-detail-back-button {
   background-color: transparent;
-  border: 1px solid #007bff;
-  color: #007bff;
-  padding: 8px 16px;
-  border-radius: 4px;
+  border: 1px solid var(--color-primary);
+  color: var(--color-primary);
+  padding: var(--spacing-2) var(--spacing-4);
+  border-radius: var(--radius-md);
   cursor: pointer;
-  font-size: 14px;
-  transition: all 0.2s;
+  font-size: var(--text-base);
+  font-family: var(--font-sans);
+  transition: var(--transition-button);
 }
 
 .loan-detail-back-button:hover {
-  background-color: #007bff;
-  color: white;
+  background-color: var(--color-primary);
+  color: var(--text-inverse);
+  transform: translateY(-1px);
+}
+
+.loan-detail-back-button:active {
+  transform: translateY(0) scale(0.98);
 }
 
 .loan-detail-close {
@@ -64,34 +96,36 @@
   border: none;
   font-size: 28px;
   cursor: pointer;
-  color: #666;
+  color: var(--text-tertiary);
   padding: 0;
   width: 32px;
   height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: color 0.2s;
+  border-radius: var(--radius-md);
+  transition: var(--transition-fast);
 }
 
 .loan-detail-close:hover {
-  color: #333;
+  color: var(--text-primary);
+  background-color: var(--bg-muted);
 }
 
 /* Messages */
 .loan-detail-error {
-  background-color: #f8d7da;
-  color: #721c24;
-  padding: 12px 24px;
-  border-left: 4px solid #dc3545;
+  background-color: var(--color-negative-light);
+  color: var(--color-negative-dark);
+  padding: var(--spacing-3) var(--spacing-6);
+  border-left: 4px solid var(--color-negative);
   margin: 0;
 }
 
 .loan-detail-success {
-  background-color: #d4edda;
-  color: #155724;
-  padding: 12px 24px;
-  border-left: 4px solid #28a745;
+  background-color: var(--color-positive-light);
+  color: var(--color-positive-dark);
+  padding: var(--spacing-3) var(--spacing-6);
+  border-left: 4px solid var(--color-positive);
   margin: 0;
 }
 
@@ -99,55 +133,63 @@
 .loan-detail-content {
   flex: 1;
   overflow-y: auto;
-  padding: 24px;
+  padding: var(--spacing-6);
 }
 
-/* Loan Summary Card */
+/* Loan Summary Card - Requirement 2.1 */
 .loan-summary-card {
-  background-color: #f8f9fa;
-  border: 1px solid #dee2e6;
-  border-radius: 8px;
-  padding: 24px;
-  margin-bottom: 24px;
+  background-color: var(--bg-subtle);
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-6);
+  margin-bottom: var(--spacing-6);
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition-card);
+}
+
+.loan-summary-card:hover {
+  box-shadow: var(--shadow-md);
 }
 
 .loan-summary-card h3 {
-  margin: 0 0 20px 0;
-  font-size: 20px;
-  color: #333;
+  margin: 0 0 var(--spacing-5) 0;
+  font-size: var(--heading-2);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
 }
 
 .loan-summary-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 16px;
-  margin-bottom: 20px;
+  gap: var(--spacing-4);
+  margin-bottom: var(--spacing-5);
 }
 
 .loan-summary-item {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--spacing-1);
 }
 
 .loan-summary-label {
-  font-size: 14px;
-  color: #666;
-  font-weight: 500;
+  font-size: var(--text-base);
+  color: var(--text-tertiary);
+  font-weight: var(--font-medium);
 }
 
 .loan-summary-value {
-  font-size: 18px;
-  color: #333;
-  font-weight: 600;
+  font-size: var(--text-xl);
+  color: var(--text-primary);
+  font-weight: var(--font-semibold);
+  font-feature-settings: var(--font-feature-tabular);
 }
 
 .loan-current-balance {
-  color: #007bff;
+  color: var(--color-primary);
 }
 
 .loan-paid-down {
-  color: #28a745;
+  color: var(--color-positive);
 }
 
 .loan-summary-notes {
@@ -155,80 +197,80 @@
 }
 
 .loan-summary-notes .loan-summary-value {
-  font-size: 14px;
-  font-weight: 400;
-  color: #555;
+  font-size: var(--text-base);
+  font-weight: var(--font-normal);
+  color: var(--text-secondary);
   white-space: pre-wrap;
 }
 
 /* Progress Indicator */
 .loan-progress-section {
-  margin: 20px 0;
+  margin: var(--spacing-5) 0;
 }
 
 .loan-progress-label {
-  font-size: 14px;
-  color: #666;
-  margin-bottom: 8px;
-  font-weight: 500;
+  font-size: var(--text-base);
+  color: var(--text-tertiary);
+  margin-bottom: var(--spacing-2);
+  font-weight: var(--font-medium);
 }
 
 .loan-progress-bar {
   width: 100%;
   height: 24px;
-  background-color: #e9ecef;
-  border-radius: 12px;
+  background-color: var(--bg-muted);
+  border-radius: var(--radius-full);
   overflow: hidden;
   position: relative;
 }
 
 .loan-progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #28a745 0%, #20c997 100%);
-  transition: width 0.3s ease;
+  background: linear-gradient(90deg, var(--color-positive) 0%, #20c997 100%);
+  transition: width var(--transition-slow);
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  padding-right: 8px;
-  color: white;
-  font-size: 12px;
-  font-weight: 600;
+  padding-right: var(--spacing-2);
+  color: var(--text-inverse);
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
 }
 
-/* Balance Line Chart for Lines of Credit */
+/* Balance Line Chart for Lines of Credit - Requirement 2.1 */
 .loan-balance-chart-section {
-  margin: 20px 0;
-  padding: 16px;
-  background-color: #f8f9fa;
-  border-radius: 8px;
+  margin: var(--spacing-5) 0;
+  padding: var(--spacing-4);
+  background-color: var(--bg-subtle);
+  border-radius: var(--radius-lg);
 }
 
 .loan-balance-chart-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: var(--spacing-4);
   flex-wrap: wrap;
-  gap: 10px;
+  gap: var(--spacing-3);
 }
 
 .loan-balance-chart-label {
-  font-size: 14px;
-  color: #666;
-  font-weight: 500;
+  font-size: var(--text-base);
+  color: var(--text-tertiary);
+  font-weight: var(--font-medium);
 }
 
 .loan-balance-chart-legend {
   display: flex;
-  gap: 16px;
-  font-size: 12px;
+  gap: var(--spacing-4);
+  font-size: var(--text-xs);
 }
 
 .legend-item {
   display: flex;
   align-items: center;
-  gap: 6px;
-  color: #666;
+  gap: var(--spacing-2);
+  color: var(--text-tertiary);
 }
 
 .legend-color {
@@ -238,10 +280,10 @@
 }
 
 .loan-balance-line-chart {
-  background-color: white;
-  border-radius: 4px;
-  border: 1px solid #dee2e6;
-  padding: 10px;
+  background-color: var(--bg-card);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-muted);
+  padding: var(--spacing-3);
   overflow-x: auto;
 }
 
@@ -252,41 +294,43 @@
 
 /* Loan Edit Form */
 .loan-edit-form {
-  margin-top: 16px;
+  margin-top: var(--spacing-4);
 }
 
 .loan-input-group {
-  margin-bottom: 16px;
+  margin-bottom: var(--spacing-4);
 }
 
 .loan-input-group label {
   display: block;
-  margin-bottom: 6px;
-  font-size: 14px;
-  color: #333;
-  font-weight: 500;
+  margin-bottom: var(--spacing-2);
+  font-size: var(--text-base);
+  color: var(--text-primary);
+  font-weight: var(--font-medium);
 }
 
 .loan-input-group input,
 .loan-input-group textarea {
   width: 100%;
-  padding: 10px;
-  border: 1px solid #ced4da;
-  border-radius: 4px;
-  font-size: 14px;
+  padding: var(--spacing-3);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  font-size: var(--text-base);
+  font-family: var(--font-sans);
   box-sizing: border-box;
+  transition: var(--transition-input);
 }
 
 .loan-input-group input:focus,
 .loan-input-group textarea:focus {
   outline: none;
-  border-color: #007bff;
-  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+  border-color: var(--color-primary);
+  box-shadow: var(--focus-ring);
 }
 
 .loan-input-group input.input-error,
 .loan-input-group textarea.input-error {
-  border-color: #dc3545;
+  border-color: var(--color-negative);
 }
 
 .loan-input-group textarea {
@@ -296,153 +340,184 @@
 
 .validation-error {
   display: block;
-  color: #dc3545;
-  font-size: 12px;
-  margin-top: 4px;
+  color: var(--color-negative);
+  font-size: var(--text-xs);
+  margin-top: var(--spacing-1);
 }
 
 /* Action Buttons */
 .loan-summary-actions {
   display: flex;
-  gap: 12px;
+  gap: var(--spacing-3);
   flex-wrap: wrap;
 }
 
 .loan-edit-details-button,
 .loan-paid-off-button {
-  padding: 10px 20px;
-  border-radius: 4px;
-  font-size: 14px;
-  font-weight: 500;
+  padding: var(--spacing-3) var(--spacing-5);
+  border-radius: var(--radius-md);
+  font-size: var(--text-base);
+  font-weight: var(--font-medium);
+  font-family: var(--font-sans);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: var(--transition-button);
   border: none;
 }
 
 .loan-edit-details-button {
-  background-color: #007bff;
-  color: white;
+  background-color: var(--color-primary);
+  color: var(--text-inverse);
 }
 
 .loan-edit-details-button:hover:not(:disabled) {
-  background-color: #0056b3;
+  background-color: var(--color-primary-hover);
+  transform: translateY(-1px);
+}
+
+.loan-edit-details-button:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
 }
 
 .loan-paid-off-button {
-  background-color: #6c757d;
-  color: white;
+  background-color: var(--text-tertiary);
+  color: var(--text-inverse);
 }
 
 .loan-paid-off-button:hover:not(:disabled) {
-  background-color: #5a6268;
+  background-color: var(--text-secondary);
+  transform: translateY(-1px);
+}
+
+.loan-paid-off-button:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
 }
 
 .loan-paid-off-button.active {
-  background-color: #28a745;
+  background-color: var(--color-positive);
 }
 
 .loan-paid-off-button.active:hover:not(:disabled) {
-  background-color: #218838;
+  background-color: var(--color-positive-dark);
 }
 
 .loan-edit-actions {
   display: flex;
-  gap: 12px;
-  margin-top: 16px;
+  gap: var(--spacing-3);
+  margin-top: var(--spacing-4);
 }
 
 .loan-save-button,
 .loan-cancel-button {
-  padding: 10px 20px;
-  border-radius: 4px;
-  font-size: 14px;
-  font-weight: 500;
+  padding: var(--spacing-3) var(--spacing-5);
+  border-radius: var(--radius-md);
+  font-size: var(--text-base);
+  font-weight: var(--font-medium);
+  font-family: var(--font-sans);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: var(--transition-button);
   border: none;
 }
 
 .loan-save-button {
-  background-color: #28a745;
-  color: white;
+  background-color: var(--color-positive);
+  color: var(--text-inverse);
 }
 
 .loan-save-button:hover:not(:disabled) {
-  background-color: #218838;
+  background-color: var(--color-positive-dark);
+  transform: translateY(-1px);
+}
+
+.loan-save-button:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
 }
 
 .loan-cancel-button {
-  background-color: #6c757d;
-  color: white;
+  background-color: var(--text-tertiary);
+  color: var(--text-inverse);
 }
 
 .loan-cancel-button:hover:not(:disabled) {
-  background-color: #5a6268;
+  background-color: var(--text-secondary);
+  transform: translateY(-1px);
 }
 
-/* Balance History Section */
+.loan-cancel-button:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
+}
+
+/* Balance History Section - Requirement 2.1 */
 .loan-balance-history-section {
-  background-color: white;
-  border: 1px solid #dee2e6;
-  border-radius: 8px;
-  padding: 24px;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-6);
+  box-shadow: var(--shadow-sm);
 }
 
 .loan-balance-history-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: var(--spacing-5);
 }
 
 .loan-balance-history-header h3 {
   margin: 0;
-  font-size: 20px;
-  color: #333;
+  font-size: var(--heading-2);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
 }
 
 .loan-add-balance-button {
-  background-color: #007bff;
-  color: white;
+  background-color: var(--color-primary);
+  color: var(--text-inverse);
   border: none;
-  padding: 10px 20px;
-  border-radius: 4px;
-  font-size: 14px;
-  font-weight: 500;
+  padding: var(--spacing-3) var(--spacing-5);
+  border-radius: var(--radius-md);
+  font-size: var(--text-base);
+  font-weight: var(--font-medium);
+  font-family: var(--font-sans);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: var(--transition-button);
 }
 
 .loan-add-balance-button:hover:not(:disabled) {
-  background-color: #0056b3;
+  background-color: var(--color-primary-hover);
+  transform: translateY(-1px);
+}
+
+.loan-add-balance-button:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
 }
 
 .loan-add-balance-button:disabled {
-  background-color: #6c757d;
+  background-color: var(--text-tertiary);
   cursor: not-allowed;
   opacity: 0.6;
 }
 
 /* Add Balance Form */
 .loan-add-balance-form {
-  background-color: #f8f9fa;
-  border: 1px solid #dee2e6;
-  border-radius: 8px;
-  padding: 20px;
-  margin-bottom: 20px;
+  background-color: var(--bg-subtle);
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-5);
+  margin-bottom: var(--spacing-5);
 }
 
 .loan-add-balance-form h4 {
-  margin: 0 0 16px 0;
-  font-size: 16px;
-  color: #333;
+  margin: 0 0 var(--spacing-4) 0;
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
 }
 
 .balance-form-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
-  margin-bottom: 16px;
+  gap: var(--spacing-4);
+  margin-bottom: var(--spacing-4);
 }
 
 .balance-input-group {
@@ -451,68 +526,81 @@
 }
 
 .balance-input-group label {
-  margin-bottom: 6px;
-  font-size: 14px;
-  color: #333;
-  font-weight: 500;
+  margin-bottom: var(--spacing-2);
+  font-size: var(--text-base);
+  color: var(--text-primary);
+  font-weight: var(--font-medium);
 }
 
 .balance-input-group input,
 .balance-input-group select {
-  padding: 10px;
-  border: 1px solid #ced4da;
-  border-radius: 4px;
-  font-size: 14px;
+  padding: var(--spacing-3);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  font-size: var(--text-base);
+  font-family: var(--font-sans);
   box-sizing: border-box;
+  transition: var(--transition-input);
 }
 
 .balance-input-group input:focus,
 .balance-input-group select:focus {
   outline: none;
-  border-color: #007bff;
-  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+  border-color: var(--color-primary);
+  box-shadow: var(--focus-ring);
 }
 
 .balance-input-group input.input-error,
 .balance-input-group select.input-error {
-  border-color: #dc3545;
+  border-color: var(--color-negative);
 }
 
 .balance-form-actions {
   display: flex;
-  gap: 12px;
+  gap: var(--spacing-3);
 }
 
 .balance-form-submit-button,
 .balance-form-cancel-button {
-  padding: 10px 20px;
-  border-radius: 4px;
-  font-size: 14px;
-  font-weight: 500;
+  padding: var(--spacing-3) var(--spacing-5);
+  border-radius: var(--radius-md);
+  font-size: var(--text-base);
+  font-weight: var(--font-medium);
+  font-family: var(--font-sans);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: var(--transition-button);
   border: none;
 }
 
 .balance-form-submit-button {
-  background-color: #28a745;
-  color: white;
+  background-color: var(--color-positive);
+  color: var(--text-inverse);
 }
 
 .balance-form-submit-button:hover:not(:disabled) {
-  background-color: #218838;
+  background-color: var(--color-positive-dark);
+  transform: translateY(-1px);
+}
+
+.balance-form-submit-button:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
 }
 
 .balance-form-cancel-button {
-  background-color: #6c757d;
-  color: white;
+  background-color: var(--text-tertiary);
+  color: var(--text-inverse);
 }
 
 .balance-form-cancel-button:hover:not(:disabled) {
-  background-color: #5a6268;
+  background-color: var(--text-secondary);
+  transform: translateY(-1px);
 }
 
-/* Balance History Table */
+.balance-form-cancel-button:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
+}
+
+/* Balance History Table - Requirement 8.1 Typography */
 .loan-balance-table-container {
   overflow-x: auto;
 }
@@ -520,51 +608,58 @@
 .loan-balance-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 14px;
+  font-size: var(--text-base);
 }
 
 .loan-balance-table thead {
-  background-color: #f8f9fa;
+  background-color: var(--bg-subtle);
 }
 
 .loan-balance-table th {
-  padding: 12px;
+  padding: var(--spacing-3);
   text-align: left;
-  font-weight: 600;
-  color: #333;
-  border-bottom: 2px solid #dee2e6;
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  border-bottom: 2px solid var(--border-default);
 }
 
 .loan-balance-table td {
-  padding: 12px;
-  border-bottom: 1px solid #e9ecef;
+  padding: var(--spacing-3);
+  border-bottom: 1px solid var(--border-muted);
   vertical-align: middle;
 }
 
+.loan-balance-table tbody tr {
+  transition: var(--transition-fast);
+}
+
 .loan-balance-table tbody tr:hover {
-  background-color: #f8f9fa;
+  background-color: var(--bg-subtle);
 }
 
 .loan-balance-table input {
   width: 100%;
-  padding: 6px 8px;
-  border: 1px solid #ced4da;
-  border-radius: 4px;
-  font-size: 13px;
+  padding: var(--spacing-2);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-family: var(--font-sans);
   box-sizing: border-box;
+  transition: var(--transition-input);
 }
 
 .loan-balance-table input:focus {
   outline: none;
-  border-color: #007bff;
+  border-color: var(--color-primary);
+  box-shadow: var(--focus-ring);
 }
 
 .loan-balance-table input.input-error {
-  border-color: #dc3545;
+  border-color: var(--color-negative);
 }
 
 .validation-error-small {
-  color: #dc3545;
+  color: var(--color-negative);
   font-size: 11px;
   margin-top: 2px;
 }
@@ -572,36 +667,36 @@
 /* Balance Change Indicators */
 .balance-change,
 .rate-change {
-  font-weight: 600;
+  font-weight: var(--font-semibold);
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--spacing-1);
 }
 
 .balance-change.decrease {
-  color: #28a745;
+  color: var(--color-positive);
 }
 
 .balance-change.increase {
-  color: #dc3545;
+  color: var(--color-negative);
 }
 
 .rate-change.decrease {
-  color: #28a745;
+  color: var(--color-positive);
 }
 
 .rate-change.increase {
-  color: #dc3545;
+  color: var(--color-negative);
 }
 
 .no-change {
-  color: #6c757d;
+  color: var(--text-tertiary);
 }
 
 /* Balance Actions */
 .balance-actions {
   display: flex;
-  gap: 8px;
+  gap: var(--spacing-2);
 }
 
 .balance-edit-button,
@@ -609,51 +704,56 @@
 .balance-save-button,
 .balance-cancel-button {
   background-color: transparent;
-  border: 1px solid #ced4da;
-  padding: 6px 12px;
-  border-radius: 4px;
+  border: 1px solid var(--border-default);
+  padding: var(--spacing-2) var(--spacing-3);
+  border-radius: var(--radius-md);
   cursor: pointer;
-  font-size: 14px;
-  transition: all 0.2s;
+  font-size: var(--text-base);
+  font-family: var(--font-sans);
+  transition: var(--transition-button);
 }
 
 .balance-edit-button:hover:not(:disabled) {
-  background-color: #007bff;
-  border-color: #007bff;
-  color: white;
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--text-inverse);
+  transform: translateY(-1px);
 }
 
 .balance-delete-button:hover:not(:disabled) {
-  background-color: #dc3545;
-  border-color: #dc3545;
-  color: white;
+  background-color: var(--color-negative);
+  border-color: var(--color-negative);
+  color: var(--text-inverse);
+  transform: translateY(-1px);
 }
 
 .balance-save-button {
-  background-color: #28a745;
-  border-color: #28a745;
-  color: white;
+  background-color: var(--color-positive);
+  border-color: var(--color-positive);
+  color: var(--text-inverse);
 }
 
 .balance-save-button:hover:not(:disabled) {
-  background-color: #218838;
-  border-color: #218838;
+  background-color: var(--color-positive-dark);
+  border-color: var(--color-positive-dark);
+  transform: translateY(-1px);
 }
 
 .balance-cancel-button {
-  background-color: #6c757d;
-  border-color: #6c757d;
-  color: white;
+  background-color: var(--text-tertiary);
+  border-color: var(--text-tertiary);
+  color: var(--text-inverse);
 }
 
 .balance-cancel-button:hover:not(:disabled) {
-  background-color: #5a6268;
-  border-color: #5a6268;
+  background-color: var(--text-secondary);
+  border-color: var(--text-secondary);
+  transform: translateY(-1px);
 }
 
 .balance-edit-actions {
   display: flex;
-  gap: 8px;
+  gap: var(--spacing-2);
   justify-content: center;
 }
 
@@ -661,15 +761,21 @@
 .loan-loading,
 .loan-empty-history {
   text-align: center;
-  padding: 40px 20px;
-  color: #6c757d;
-  font-size: 14px;
+  padding: var(--spacing-10) var(--spacing-5);
+  color: var(--text-tertiary);
+  font-size: var(--text-base);
 }
 
 /* Disabled State */
 button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* Months Left Styling */
+.loan-months-left {
+  color: var(--color-positive-dark);
+  font-weight: var(--font-semibold);
 }
 
 /* Responsive Design */
@@ -685,20 +791,20 @@ button:disabled {
   }
 
   .loan-detail-header {
-    padding: 16px;
+    padding: var(--spacing-4);
   }
 
   .loan-detail-header h2 {
-    font-size: 20px;
+    font-size: var(--text-xl);
   }
 
   .loan-detail-content {
-    padding: 16px;
+    padding: var(--spacing-4);
   }
 
   .loan-summary-card,
   .loan-balance-history-section {
-    padding: 16px;
+    padding: var(--spacing-4);
   }
 
   .loan-summary-grid {
@@ -710,12 +816,12 @@ button:disabled {
   }
 
   .loan-balance-table {
-    font-size: 12px;
+    font-size: var(--text-xs);
   }
 
   .loan-balance-table th,
   .loan-balance-table td {
-    padding: 8px;
+    padding: var(--spacing-2);
   }
 
   .loan-summary-actions,
@@ -733,7 +839,7 @@ button:disabled {
   .loan-balance-history-header {
     flex-direction: column;
     align-items: flex-start;
-    gap: 12px;
+    gap: var(--spacing-3);
   }
 
   .loan-add-balance-button {
@@ -743,8 +849,8 @@ button:disabled {
 
 @media (max-width: 480px) {
   .loan-detail-back-button {
-    padding: 6px 12px;
-    font-size: 12px;
+    padding: var(--spacing-2) var(--spacing-3);
+    font-size: var(--text-xs);
   }
 
   .loan-balance-table-container {
@@ -756,8 +862,49 @@ button:disabled {
   }
 }
 
-/* Months Left Styling */
-.loan-months-left {
-  color: #2e7d32;
-  font-weight: 600;
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .loan-detail-overlay,
+  .loan-detail-container {
+    animation: none;
+  }
+
+  .loan-summary-card,
+  .loan-balance-table tbody tr,
+  .loan-detail-back-button,
+  .loan-detail-close,
+  .loan-edit-details-button,
+  .loan-paid-off-button,
+  .loan-save-button,
+  .loan-cancel-button,
+  .loan-add-balance-button,
+  .balance-form-submit-button,
+  .balance-form-cancel-button,
+  .balance-edit-button,
+  .balance-delete-button,
+  .balance-save-button,
+  .balance-cancel-button,
+  .loan-input-group input,
+  .loan-input-group textarea,
+  .balance-input-group input,
+  .balance-input-group select,
+  .loan-balance-table input,
+  .loan-progress-fill {
+    transition: none;
+  }
+
+  .loan-detail-back-button:hover,
+  .loan-edit-details-button:hover:not(:disabled),
+  .loan-paid-off-button:hover:not(:disabled),
+  .loan-save-button:hover:not(:disabled),
+  .loan-cancel-button:hover:not(:disabled),
+  .loan-add-balance-button:hover:not(:disabled),
+  .balance-form-submit-button:hover:not(:disabled),
+  .balance-form-cancel-button:hover:not(:disabled),
+  .balance-edit-button:hover:not(:disabled),
+  .balance-delete-button:hover:not(:disabled),
+  .balance-save-button:hover:not(:disabled),
+  .balance-cancel-button:hover:not(:disabled) {
+    transform: none;
+  }
 }

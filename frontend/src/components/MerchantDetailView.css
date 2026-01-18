@@ -1,321 +1,385 @@
-/* Modal Overlay */
+/* MerchantDetailView Component Styles
+ * Modern design system implementation
+ * Requirements: 2.1, 5.1
+ */
+
+/* Modal Overlay - Requirement 5.4 */
 .merchant-detail-overlay {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: var(--bg-overlay);
+  backdrop-filter: blur(4px);
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 1000;
+  z-index: var(--z-modal);
+  animation: fadeIn var(--transition-fast);
 }
 
-/* Modal Container */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Modal Container - Requirement 5.1, 5.2 */
 .merchant-detail-container {
-  background: white;
-  border-radius: 8px;
+  background: var(--bg-card);
+  border-radius: var(--radius-xl);
   max-width: 900px;
   width: 90%;
   max-height: 90vh;
   overflow-y: auto;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-2xl);
+  animation: slideUp var(--transition-normal);
 }
 
-/* Header */
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Header - Requirement 5.6 */
 .merchant-detail-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px;
-  border-bottom: 1px solid #e0e0e0;
-  background-color: #f9f9f9;
+  padding: var(--spacing-5);
+  border-bottom: 1px solid var(--border-muted);
+  background-color: var(--bg-subtle);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
 }
 
 .merchant-detail-header h2 {
   margin: 0;
-  font-size: 1.5rem;
-  color: #333;
+  font-size: var(--text-2xl);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--spacing-3);
 }
 
 .merchant-detail-category-badge {
   display: inline-block;
-  padding: 4px 12px;
-  background-color: #e8f5e8;
-  color: #2e7d32;
-  font-size: 0.8rem;
-  font-weight: 500;
-  border-radius: 6px;
+  padding: var(--spacing-1) var(--spacing-3);
+  background-color: var(--color-positive-light);
+  color: var(--color-positive-dark);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  border-radius: var(--radius-full);
   vertical-align: middle;
 }
 
 .merchant-detail-back-button {
   background: none;
-  border: 1px solid #2196f3;
-  color: #2196f3;
-  padding: 8px 16px;
-  border-radius: 4px;
+  border: 1px solid var(--color-primary);
+  color: var(--color-primary);
+  padding: var(--spacing-2) var(--spacing-4);
+  border-radius: var(--radius-md);
   cursor: pointer;
-  font-size: 0.9rem;
-  transition: all 0.2s;
+  font-size: var(--text-sm);
+  font-family: var(--font-sans);
+  transition: var(--transition-button);
 }
 
 .merchant-detail-back-button:hover {
-  background-color: #2196f3;
-  color: white;
+  background-color: var(--color-primary);
+  color: var(--text-inverse);
+  transform: translateY(-1px);
 }
 
+.merchant-detail-back-button:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* Close Button - Requirement 5.5 */
 .merchant-detail-close {
   background: none;
   border: none;
   font-size: 1.5rem;
   cursor: pointer;
-  color: #666;
+  color: var(--text-tertiary);
   padding: 0;
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
+  border-radius: var(--radius-md);
+  transition: var(--transition-fast);
 }
 
 .merchant-detail-close:hover {
-  color: #333;
+  color: var(--text-primary);
+  background-color: var(--bg-muted);
 }
 
-/* Content */
+/* Content - Requirement 5.2 */
 .merchant-detail-content {
-  padding: 20px;
+  padding: var(--spacing-5);
 }
 
 /* Error Display */
 .merchant-detail-error {
-  background-color: #fee;
-  color: #c33;
-  padding: 12px;
-  border-radius: 4px;
-  margin-bottom: 15px;
-  border: 1px solid #fcc;
+  background-color: var(--color-negative-light);
+  color: var(--color-negative-dark);
+  padding: var(--spacing-3);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-4);
+  border: 1px solid #fecaca;
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
 .merchant-detail-error-retry-button {
-  padding: 6px 12px;
-  background-color: #d32f2f;
-  color: white;
+  padding: var(--spacing-2) var(--spacing-3);
+  background-color: var(--color-negative);
+  color: var(--text-inverse);
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-md);
   cursor: pointer;
-  font-size: 0.9rem;
-  transition: background-color 0.2s;
+  font-size: var(--text-sm);
+  font-family: var(--font-sans);
+  transition: var(--transition-button);
 }
 
 .merchant-detail-error-retry-button:hover {
-  background-color: #b71c1c;
+  background-color: var(--color-negative-dark);
+  transform: translateY(-1px);
 }
 
 /* Loading State */
 .merchant-detail-loading {
   text-align: center;
-  padding: 40px;
-  color: #666;
-  font-size: 1.1rem;
+  padding: var(--spacing-10);
+  color: var(--text-tertiary);
+  font-size: var(--text-lg);
 }
 
 /* Empty State */
 .merchant-detail-empty {
   text-align: center;
-  padding: 40px 20px;
-  color: #999;
+  padding: var(--spacing-10) var(--spacing-5);
+  color: var(--text-muted);
   font-style: italic;
-  font-size: 1rem;
+  font-size: var(--text-base);
 }
 
-/* Merchant Summary Card */
+/* Merchant Summary Card - Requirement 2.1 */
 .merchant-summary-card {
-  background-color: #f8f9fa;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  padding: 20px;
-  margin-bottom: 25px;
+  background-color: var(--bg-subtle);
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-5);
+  margin-bottom: var(--spacing-6);
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition-card);
+}
+
+.merchant-summary-card:hover {
+  box-shadow: var(--shadow-md);
 }
 
 .merchant-summary-card h3 {
-  margin: 0 0 20px 0;
-  font-size: 1.3rem;
-  color: #333;
+  margin: 0 0 var(--spacing-5) 0;
+  font-size: var(--text-xl);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
 }
 
 .merchant-summary-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 15px;
-  margin-bottom: 20px;
+  gap: var(--spacing-4);
+  margin-bottom: var(--spacing-5);
 }
 
 .merchant-summary-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px;
-  background-color: white;
-  border-radius: 6px;
-  border: 1px solid #e0e0e0;
+  padding: var(--spacing-3);
+  background-color: var(--bg-card);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-muted);
 }
 
 .merchant-summary-label {
-  font-weight: 500;
-  color: #555;
-  font-size: 0.9rem;
+  font-weight: var(--font-medium);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
 }
 
 .merchant-summary-value {
-  font-weight: 600;
-  color: #333;
-  font-size: 1rem;
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  font-size: var(--text-base);
+  font-feature-settings: var(--font-feature-tabular);
 }
 
 .merchant-total-spent {
-  color: #2196f3;
-  font-size: 1.1rem;
+  color: var(--color-primary);
+  font-size: var(--text-lg);
 }
 
 .merchant-summary-actions {
   display: flex;
   justify-content: center;
-  margin-top: 15px;
+  margin-top: var(--spacing-4);
 }
 
 .merchant-view-expenses-button {
-  padding: 12px 24px;
-  background-color: #4caf50;
-  color: white;
+  padding: var(--spacing-3) var(--spacing-6);
+  background-color: var(--color-positive);
+  color: var(--text-inverse);
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   cursor: pointer;
-  font-size: 1rem;
-  font-weight: 500;
-  transition: background-color 0.2s;
+  font-size: var(--text-base);
+  font-weight: var(--font-medium);
+  font-family: var(--font-sans);
+  transition: var(--transition-button);
 }
 
 .merchant-view-expenses-button:hover {
-  background-color: #45a049;
+  background-color: var(--color-positive-dark);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
 }
 
-/* Chart Section */
+.merchant-view-expenses-button:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* Chart Section - Requirement 2.1 */
 .merchant-chart-section {
-  background-color: white;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  padding: 20px;
-  margin-bottom: 25px;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-5);
+  margin-bottom: var(--spacing-6);
+  box-shadow: var(--shadow-sm);
 }
 
 .merchant-chart-header {
-  margin-bottom: 20px;
+  margin-bottom: var(--spacing-5);
 }
 
 .merchant-chart-header h3 {
-  margin: 0 0 5px 0;
-  font-size: 1.3rem;
-  color: #333;
+  margin: 0 0 var(--spacing-1) 0;
+  font-size: var(--text-xl);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
 }
 
 .merchant-chart-subtitle {
-  color: #666;
-  font-size: 0.9rem;
+  color: var(--text-tertiary);
+  font-size: var(--text-sm);
 }
 
 .merchant-line-chart {
   width: 100%;
   overflow-x: auto;
-  padding: 10px 0;
+  padding: var(--spacing-3) 0;
 }
 
-/* Breakdown Sections */
+/* Breakdown Sections - Requirement 2.1 */
 .merchant-breakdown-section {
-  background-color: white;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  padding: 20px;
-  margin-bottom: 25px;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-5);
+  margin-bottom: var(--spacing-6);
+  box-shadow: var(--shadow-sm);
 }
 
 .merchant-breakdown-section h3 {
-  margin: 0 0 20px 0;
-  font-size: 1.3rem;
-  color: #333;
+  margin: 0 0 var(--spacing-5) 0;
+  font-size: var(--text-xl);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
 }
 
 .merchant-breakdown-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--spacing-3);
 }
 
 .merchant-breakdown-item {
-  padding: 15px;
-  background-color: #f8f9fa;
-  border-radius: 6px;
-  border: 1px solid #e0e0e0;
+  padding: var(--spacing-4);
+  background-color: var(--bg-subtle);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-muted);
+  transition: var(--transition-card);
+}
+
+.merchant-breakdown-item:hover {
+  box-shadow: var(--shadow-sm);
+  border-color: var(--border-default);
 }
 
 .merchant-breakdown-info {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: var(--spacing-2);
 }
 
 .merchant-breakdown-name {
-  font-weight: 600;
-  color: #333;
-  font-size: 1rem;
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  font-size: var(--text-base);
 }
 
 .merchant-breakdown-count {
-  color: #666;
-  font-size: 0.85rem;
+  color: var(--text-tertiary);
+  font-size: var(--text-sm);
 }
 
 .merchant-breakdown-values {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: var(--spacing-2);
 }
 
 .merchant-breakdown-amount {
-  font-weight: 600;
-  color: #2196f3;
-  font-size: 1rem;
+  font-weight: var(--font-semibold);
+  color: var(--color-primary);
+  font-size: var(--text-base);
+  font-feature-settings: var(--font-feature-tabular);
 }
 
 .merchant-breakdown-percentage {
-  font-weight: 500;
-  color: #666;
-  font-size: 0.9rem;
+  font-weight: var(--font-medium);
+  color: var(--text-tertiary);
+  font-size: var(--text-sm);
 }
 
 .merchant-breakdown-bar {
   width: 100%;
   height: 6px;
-  background-color: #e0e0e0;
-  border-radius: 3px;
+  background-color: var(--bg-muted);
+  border-radius: var(--radius-full);
   overflow: hidden;
 }
 
 .merchant-breakdown-bar-fill {
   height: 100%;
-  background-color: #2196f3;
-  border-radius: 3px;
-  transition: width 0.3s ease;
+  background-color: var(--color-primary);
+  border-radius: var(--radius-full);
+  transition: width var(--transition-slow);
 }
 
 /* Responsive Design */
@@ -323,19 +387,21 @@
   .merchant-detail-container {
     width: 95%;
     max-height: 95vh;
+    border-radius: var(--radius-lg);
   }
 
   .merchant-detail-header {
     flex-direction: column;
-    gap: 15px;
+    gap: var(--spacing-4);
     align-items: flex-start;
+    padding: var(--spacing-4);
   }
 
   .merchant-detail-header h2 {
-    font-size: 1.2rem;
+    font-size: var(--text-xl);
     flex-direction: column;
     align-items: flex-start;
-    gap: 8px;
+    gap: var(--spacing-2);
   }
 
   .merchant-detail-back-button {
@@ -344,57 +410,61 @@
 
   .merchant-detail-close {
     position: absolute;
-    top: 15px;
-    right: 15px;
+    top: var(--spacing-4);
+    right: var(--spacing-4);
+  }
+
+  .merchant-detail-content {
+    padding: var(--spacing-4);
   }
 
   .merchant-summary-grid {
     grid-template-columns: 1fr;
-    gap: 10px;
+    gap: var(--spacing-3);
   }
 
   .merchant-summary-item {
     flex-direction: column;
     align-items: flex-start;
-    gap: 5px;
+    gap: var(--spacing-1);
   }
 
   .merchant-breakdown-info {
     flex-direction: column;
     align-items: flex-start;
-    gap: 5px;
+    gap: var(--spacing-1);
   }
 
   .merchant-breakdown-values {
     flex-direction: column;
     align-items: flex-start;
-    gap: 5px;
+    gap: var(--spacing-1);
   }
 }
 
 @media (max-width: 480px) {
   .merchant-detail-content {
-    padding: 15px;
+    padding: var(--spacing-4);
   }
 
   .merchant-summary-card,
   .merchant-chart-section,
   .merchant-breakdown-section {
-    padding: 15px;
+    padding: var(--spacing-4);
   }
 
   .merchant-detail-header h2 {
-    font-size: 1.1rem;
+    font-size: var(--text-lg);
   }
 
   .merchant-chart-header h3,
   .merchant-breakdown-section h3 {
-    font-size: 1.1rem;
+    font-size: var(--text-lg);
   }
 
   .merchant-view-expenses-button {
     width: 100%;
-    padding: 15px;
+    padding: var(--spacing-4);
   }
 }
 
@@ -402,5 +472,28 @@
 @media (max-width: 600px) {
   .merchant-line-chart svg {
     min-width: 500px;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .merchant-detail-overlay,
+  .merchant-detail-container {
+    animation: none;
+  }
+
+  .merchant-summary-card,
+  .merchant-breakdown-item,
+  .merchant-detail-back-button,
+  .merchant-detail-close,
+  .merchant-view-expenses-button,
+  .merchant-detail-error-retry-button,
+  .merchant-breakdown-bar-fill {
+    transition: none;
+  }
+
+  .merchant-detail-back-button:hover,
+  .merchant-view-expenses-button:hover {
+    transform: none;
   }
 }

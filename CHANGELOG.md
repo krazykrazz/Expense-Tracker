@@ -11,6 +11,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.14.0] - 2026-01-18
+
+### Added
+- **UI Modernization**: Comprehensive design system overhaul with modern styling
+  - New CSS variables-based design system in `frontend/src/styles/variables.css`
+  - Consistent color palette, typography, spacing, and shadows across all components
+  - Enhanced responsive breakpoints for mobile, tablet, and desktop
+  - Improved accessibility with `prefers-reduced-motion` support throughout
+  - Modern card-based layouts with subtle shadows and hover effects
+  - Compact expense table rows for better data density
+  - Bold text styling for tax-deductible expenses (medical and donation) for improved readability
+  - Wider filter dropdowns to prevent text truncation
+  - Property-based tests for CSS consistency validation
+
+### Changed
+- Migrated all component styles to use CSS custom properties (variables)
+- Improved visual hierarchy with consistent heading sizes and spacing
+- Enhanced button and form input styling with focus states
+- Updated modal and overlay styling for better UX
+
+---
+
 ## [4.13.2] - 2026-01-17
 
 ### Added

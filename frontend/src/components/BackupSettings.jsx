@@ -803,6 +803,17 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v4.14.0</div>
+                <div className="changelog-date">January 18, 2026</div>
+                <ul className="changelog-items">
+                  <li>UI Modernization: New design system with CSS variables</li>
+                  <li>Improved responsive design across all components</li>
+                  <li>Enhanced accessibility with reduced motion support</li>
+                  <li>Compact expense table rows for better data density</li>
+                  <li>Bold text for tax-deductible expenses for better readability</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v4.13.2</div>
                 <div className="changelog-date">January 17, 2026</div>
                 <ul className="changelog-items">

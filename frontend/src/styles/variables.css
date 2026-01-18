@@ -1,67 +1,247 @@
 /**
  * CSS Custom Properties (Variables)
- * Centralized color scheme and design tokens
+ * Modern Design System Tokens
+ * 
+ * This file defines the centralized design tokens for the expense tracker.
+ * All components should reference these variables for consistent styling.
  */
 
 :root {
-  /* Color Scheme - Expenses */
-  --color-fixed-expense: #3b82f6;
-  --color-fixed-expense-dark: #2563eb;
-  --color-variable-expense: #8b5cf6;
-  --color-variable-expense-dark: #7c3aed;
+  /* ============================================
+     SPACING SCALE
+     Modern 4px base with expanded range
+     Requirements: 8.5, 8.6
+     ============================================ */
+  --spacing-0: 0;
+  --spacing-1: 4px;
+  --spacing-2: 8px;
+  --spacing-3: 12px;
+  --spacing-4: 16px;
+  --spacing-5: 20px;
+  --spacing-6: 24px;
+  --spacing-8: 32px;
+  --spacing-10: 40px;
+  --spacing-12: 48px;
   
-  /* Color Scheme - Income */
-  --color-income: #f97316;
-  --color-income-dark: #ea580c;
+  /* Section Spacing (Requirement 8.5) - Minimum 16px between major sections */
+  --section-gap: var(--spacing-4);
+  --section-gap-lg: var(--spacing-6);
+  --section-gap-xl: var(--spacing-8);
   
-  /* Color Scheme - Status */
+  /* Element Spacing (Requirement 8.6) - Minimum 8px between related elements */
+  --element-gap: var(--spacing-2);
+  --element-gap-lg: var(--spacing-3);
+  
+  /* Legacy spacing aliases (for backward compatibility) */
+  --spacing-xs: var(--spacing-1);
+  --spacing-sm: var(--spacing-2);
+  --spacing-md: var(--spacing-3);
+  --spacing-lg: var(--spacing-4);
+  --spacing-xl: var(--spacing-5);
+  --spacing-2xl: var(--spacing-6);
+
+  /* ============================================
+     BORDER RADIUS
+     Larger, more modern values
+     ============================================ */
+  --radius-none: 0;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 24px;
+  --radius-full: 9999px;
+
+  /* ============================================
+     SHADOWS
+     Multi-level elevation system for depth
+     ============================================ */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+  --shadow-inner: inset 0 2px 4px rgba(0, 0, 0, 0.04);
+
+  /* ============================================
+     TYPOGRAPHY
+     Modern font stack with Inter
+     Requirements: 8.1, 8.2, 8.3, 8.4
+     ============================================ */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace;
+  
+  /* Font Sizes - Base scale */
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-base: 14px;
+  --text-md: 15px;
+  --text-lg: 16px;
+  --text-xl: 18px;
+  --text-2xl: 20px;
+  --text-3xl: 24px;
+  --text-4xl: 30px;
+  
+  /* Heading Sizes - Clear hierarchy (Requirement 8.1) */
+  --heading-1: 24px;
+  --heading-2: 20px;
+  --heading-3: 18px;
+  --heading-4: 16px;
+  --heading-5: 14px;
+  --heading-6: 13px;
+  
+  /* Body Text (Requirement 8.2) */
+  --body-text: 14px;
+  --body-text-lg: 15px;
+  
+  /* Small/Caption Text (Requirement 8.3) */
+  --caption-text: 12px;
+  --caption-text-lg: 13px;
+  
+  /* Line Heights */
+  --leading-none: 1;
+  --leading-tight: 1.25;
+  --leading-snug: 1.375;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.625;
+  --leading-loose: 2;
+  
+  /* Body line height for readability (Requirement 8.2) */
+  --body-line-height: 1.5;
+  --body-line-height-relaxed: 1.6;
+  
+  /* Font Weights */
+  --font-normal: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+  
+  /* Tabular Numerals for monetary values (Requirement 8.4) */
+  --font-tabular: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-feature-tabular: 'tnum' 1, 'lnum' 1;
+
+  /* ============================================
+     TRANSITIONS
+     Consistent timing functions
+     Requirements: 9.1, 9.5
+     ============================================ */
+  --transition-fast: 150ms ease;
+  --transition-normal: 200ms ease;
+  --transition-slow: 300ms ease;
+  --transition-bounce: 200ms cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  
+  /* Transition properties for common use cases */
+  --transition-colors: color 150ms ease, background-color 150ms ease, border-color 150ms ease;
+  --transition-transform: transform 200ms ease;
+  --transition-shadow: box-shadow 200ms ease;
+  --transition-all: all 200ms ease;
+  --transition-opacity: opacity 200ms ease;
+  
+  /* Interactive element transitions */
+  --transition-button: background-color 150ms ease, transform 150ms ease, box-shadow 150ms ease;
+  --transition-input: border-color 150ms ease, box-shadow 150ms ease;
+  --transition-card: box-shadow 200ms ease, transform 200ms ease, border-color 200ms ease;
+  
+  /* Collapsible/expandable transitions */
+  --transition-collapse: height 250ms ease, opacity 200ms ease;
+
+  /* ============================================
+     COLORS - Semantic
+     ============================================ */
+  /* Primary Brand */
+  --color-primary: #0ea5e9;
+  --color-primary-hover: #0284c7;
+  --color-primary-active: #0369a1;
+  --color-primary-light: #e0f2fe;
+  
+  /* Status Colors */
   --color-positive: #22c55e;
   --color-positive-dark: #16a34a;
+  --color-positive-light: #dcfce7;
   --color-negative: #ef4444;
+  --color-negative-dark: #dc2626;
+  --color-negative-light: #fee2e2;
+  --color-warning: #f59e0b;
+  --color-warning-dark: #d97706;
+  --color-warning-light: #fef3c7;
   --color-neutral: #64748b;
   
-  /* Color Scheme - Tax Deductible */
+  /* Expense Categories */
+  --color-fixed-expense: #3b82f6;
+  --color-fixed-expense-dark: #2563eb;
+  --color-fixed-expense-light: #dbeafe;
+  --color-variable-expense: #8b5cf6;
+  --color-variable-expense-dark: #7c3aed;
+  --color-variable-expense-light: #ede9fe;
+  
+  /* Income */
+  --color-income: #f97316;
+  --color-income-dark: #ea580c;
+  --color-income-light: #ffedd5;
+  
+  /* Tax Deductible */
   --color-medical: #3b82f6;
   --color-medical-dark: #2563eb;
+  --color-medical-light: #dbeafe;
   --color-donation: #f59e0b;
   --color-donation-dark: #d97706;
+  --color-donation-light: #fef3c7;
+
+
+  /* ============================================
+     COLORS - Surfaces & Backgrounds
+     ============================================ */
+  --bg-page: #f8fafc;
+  --bg-card: #ffffff;
+  --bg-card-hover: #fafbfc;
+  --bg-muted: #f1f5f9;
+  --bg-subtle: #f8fafc;
+  --bg-overlay: rgba(0, 0, 0, 0.5);
   
-  /* Background Colors */
-  --bg-light: #f8f9fa;
-  --bg-white: #ffffff;
-  --bg-gray: #f5f5f5;
+  /* Legacy aliases */
+  --bg-light: var(--bg-page);
+  --bg-white: var(--bg-card);
+  --bg-gray: var(--bg-muted);
+
+  /* ============================================
+     COLORS - Borders
+     ============================================ */
+  --border-default: #e2e8f0;
+  --border-muted: #f1f5f9;
+  --border-strong: #cbd5e1;
+  --border-focus: var(--color-primary);
   
-  /* Border Colors */
-  --border-light: #e0e0e0;
-  --border-medium: #d0d0d0;
-  
-  /* Text Colors */
-  --text-primary: #333;
-  --text-secondary: #555;
-  --text-tertiary: #666;
-  --text-muted: #888;
-  --text-light: #999;
-  
-  /* Spacing */
-  --spacing-xs: 4px;
-  --spacing-sm: 8px;
-  --spacing-md: 12px;
-  --spacing-lg: 16px;
-  --spacing-xl: 20px;
-  --spacing-2xl: 24px;
-  
-  /* Border Radius */
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 8px;
-  
-  /* Shadows */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 4px 6px rgba(0, 0, 0, 0.1);
-  
-  /* Transitions */
-  --transition-fast: 0.15s ease;
-  --transition-normal: 0.2s ease;
-  --transition-slow: 0.3s ease;
+  /* Legacy aliases */
+  --border-light: var(--border-default);
+  --border-medium: var(--border-strong);
+
+  /* ============================================
+     COLORS - Text
+     ============================================ */
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-tertiary: #64748b;
+  --text-muted: #94a3b8;
+  --text-light: #cbd5e1;
+  --text-inverse: #ffffff;
+
+  /* ============================================
+     INTERACTIVE STATES
+     ============================================ */
+  --hover-overlay: rgba(0, 0, 0, 0.04);
+  --active-overlay: rgba(0, 0, 0, 0.08);
+  --focus-ring: 0 0 0 3px rgba(14, 165, 233, 0.4);
+  --focus-ring-offset: 0 0 0 2px var(--bg-card), 0 0 0 4px var(--color-primary);
+
+  /* ============================================
+     Z-INDEX SCALE
+     ============================================ */
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-fixed: 300;
+  --z-modal-backdrop: 400;
+  --z-modal: 500;
+  --z-popover: 600;
+  --z-tooltip: 700;
 }

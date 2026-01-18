@@ -1,111 +1,131 @@
 /* Import shared chart styles */
 @import '../styles/charts.css';
 
+/* Annual Summary Styles */
+/* Requirements: 2.1, 8.1, 8.5 - Modern card styling, typography, and spacing */
+
 .annual-summary {
-  padding: 20px;
+  padding: var(--spacing-5, 20px);
   max-width: 1200px;
   margin: 0 auto;
 }
 
 .annual-summary h2 {
   margin-top: 0;
-  margin-bottom: 20px;
-  color: #333;
-  font-size: 1.5rem;
-  font-weight: 600;
+  margin-bottom: var(--spacing-5, 20px);
+  color: var(--text-primary, #333);
+  font-size: var(--heading-2, 20px);
+  font-weight: var(--font-semibold, 600);
+  font-family: var(--font-sans);
+  line-height: var(--leading-tight, 1.25);
+  letter-spacing: -0.02em;
 }
 
 .annual-summary h3 {
   margin-top: 0;
-  margin-bottom: 15px;
-  color: #555;
-  font-size: 1.1rem;
-  font-weight: 600;
+  margin-bottom: var(--spacing-4, 16px);
+  color: var(--text-secondary, #555);
+  font-size: var(--heading-4, 16px);
+  font-weight: var(--font-semibold, 600);
+  font-family: var(--font-sans);
+  line-height: var(--leading-snug, 1.375);
 }
 
 .summary-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 15px;
-  margin-bottom: 30px;
+  gap: var(--spacing-4, 16px);
+  margin-bottom: var(--spacing-8, 32px);
 }
 
 .summary-card {
-  background: white;
-  padding: 20px;
-  border-radius: 6px;
-  border: 1px solid #e0e0e0;
+  background: var(--bg-card, white);
+  padding: var(--spacing-5, 20px);
+  border-radius: var(--radius-lg, 12px);
+  border: 1px solid var(--border-muted, #f1f5f9);
   text-align: center;
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition-card);
+}
+
+.summary-card:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--border-default, #e2e8f0);
 }
 
 .summary-card h3 {
-  font-size: 14px;
-  color: #666;
-  margin-bottom: 10px;
-  font-weight: 500;
+  font-size: var(--text-base, 14px);
+  color: var(--text-tertiary, #666);
+  margin-bottom: var(--spacing-3, 12px);
+  font-weight: var(--font-medium, 500);
 }
 
 .big-number {
-  font-size: 2rem;
-  font-weight: 700;
-  color: #0ea5e9;
-  margin-bottom: 5px;
+  font-size: var(--text-3xl, 24px);
+  font-weight: var(--font-bold, 700);
+  color: var(--color-primary, #0ea5e9);
+  margin-bottom: var(--spacing-1, 4px);
+  font-family: var(--font-mono);
+  font-feature-settings: var(--font-feature-tabular);
+  font-variant-numeric: tabular-nums lining-nums;
 }
 
 .big-number.positive {
-  color: #22c55e;
+  color: var(--color-positive, #22c55e);
 }
 
 .big-number.negative {
-  color: #ef4444;
+  color: var(--color-negative, #ef4444);
 }
 
 .big-number.neutral {
-  color: #64748b;
+  color: var(--color-neutral, #64748b);
 }
 
 .sub-text {
-  font-size: 14px;
-  color: #888;
+  font-size: var(--text-base, 14px);
+  color: var(--text-muted, #888);
+  font-family: var(--font-sans);
 }
 
 .income-card {
-  background: #f0fdf4;
+  background: var(--color-positive-light, #f0fdf4);
   border: 1px solid #86efac;
 }
 
 .net-income-card {
-  background: white;
-  border: 1px solid #e0e0e0;
+  background: var(--bg-card, white);
+  border: 1px solid var(--border-default, #e0e0e0);
 }
 
 .net-income-card .sub-text {
-  font-weight: 500;
+  font-weight: var(--font-medium, 500);
 }
 
 .net-worth-card {
-  background: white;
-  border: 1px solid #e0e0e0;
+  background: var(--bg-card, white);
+  border: 1px solid var(--border-default, #e0e0e0);
 }
 
 .net-worth-breakdown {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  font-size: 0.9rem;
-  margin-top: 8px;
-  color: #64748b;
+  gap: var(--spacing-2, 8px);
+  font-size: var(--text-base, 14px);
+  margin-top: var(--spacing-2, 8px);
+  color: var(--color-neutral, #64748b);
+  font-family: var(--font-sans);
 }
 
 .assets-label {
-  color: #3b82f6;
-  font-weight: 500;
+  color: var(--color-fixed-expense, #3b82f6);
+  font-weight: var(--font-medium, 500);
 }
 
 .liabilities-label {
-  color: #ef4444;
-  font-weight: 500;
+  color: var(--color-negative, #ef4444);
+  font-weight: var(--font-medium, 500);
 }
 
 .income-card h3 {
@@ -113,41 +133,43 @@
 }
 
 .income-card .sub-text {
-  color: #16a34a;
-  font-weight: 500;
+  color: var(--color-positive-dark, #16a34a);
+  font-weight: var(--font-medium, 500);
 }
 
 .expense-breakdown {
-  font-size: 13px;
-  color: #666;
-  margin-top: 8px;
+  font-size: var(--text-sm, 13px);
+  color: var(--text-tertiary, #666);
+  margin-top: var(--spacing-2, 8px);
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: var(--spacing-1, 4px);
+  font-family: var(--font-sans);
 }
 
 .fixed-label {
-  color: #3b82f6;
-  font-weight: 500;
+  color: var(--color-fixed-expense, #3b82f6);
+  font-weight: var(--font-medium, 500);
 }
 
 .variable-label {
-  color: #8b5cf6;
-  font-weight: 500;
+  color: var(--color-variable-expense, #8b5cf6);
+  font-weight: var(--font-medium, 500);
 }
 
 .separator {
-  color: #999;
-  font-weight: 400;
+  color: var(--text-muted, #999);
+  font-weight: var(--font-normal, 400);
 }
 
 .summary-section {
-  background: white;
-  padding: 20px;
-  border-radius: 6px;
-  border: 1px solid #e0e0e0;
-  margin-bottom: 20px;
+  background: var(--bg-card, white);
+  padding: var(--spacing-5, 20px);
+  border-radius: var(--radius-lg, 12px);
+  border: 1px solid var(--border-muted, #f1f5f9);
+  margin-bottom: var(--spacing-5, 20px);
+  box-shadow: var(--shadow-sm);
 }
 
 /* Chart styles moved to shared charts.css */
@@ -155,47 +177,59 @@
 .category-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 15px;
+  gap: var(--spacing-4, 16px);
 }
 
 .category-item {
   background: #f8f9ff;
-  padding: 15px;
-  border-radius: 4px;
+  padding: var(--spacing-4, 16px);
+  border-radius: var(--radius-md, 8px);
   border: 1px solid #e0e4ff;
+  transition: var(--transition-card);
+}
+
+.category-item:hover {
+  box-shadow: var(--shadow-sm);
+  border-color: #c7d2fe;
 }
 
 .category-name {
-  font-size: 14px;
-  font-weight: 600;
-  color: #333;
-  margin-bottom: 8px;
+  font-size: var(--text-base, 14px);
+  font-weight: var(--font-semibold, 600);
+  color: var(--text-primary, #333);
+  margin-bottom: var(--spacing-2, 8px);
+  font-family: var(--font-sans);
 }
 
 .category-amount {
-  font-size: 1.3rem;
-  font-weight: 700;
-  color: #0ea5e9;
-  margin-bottom: 4px;
+  font-size: var(--text-xl, 18px);
+  font-weight: var(--font-bold, 700);
+  color: var(--color-primary, #0ea5e9);
+  margin-bottom: var(--spacing-1, 4px);
+  font-family: var(--font-mono);
+  font-feature-settings: var(--font-feature-tabular);
+  font-variant-numeric: tabular-nums lining-nums;
 }
 
 .category-percentage {
-  font-size: 12px;
-  color: #888;
+  font-size: var(--caption-text, 12px);
+  color: var(--text-muted, #888);
+  line-height: var(--leading-normal, 1.5);
+  font-family: var(--font-sans);
 }
 
 /* Income category items */
 .income-category-item {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  color: var(--text-inverse, white);
   border: 1px solid #5a67d8;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: 20px 15px;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  padding: var(--spacing-5, 20px) var(--spacing-4, 16px);
+  transition: var(--transition-card);
 }
 
 .income-category-item:hover {
@@ -206,66 +240,67 @@
 .income-category-item .category-name,
 .income-category-item .category-amount,
 .income-category-item .category-percentage {
-  color: white;
+  color: var(--text-inverse, white);
 }
 
 .income-category-item .category-name {
-  font-size: 15px;
-  font-weight: 600;
-  margin-bottom: 8px;
+  font-size: var(--text-md, 15px);
+  font-weight: var(--font-semibold, 600);
+  margin-bottom: var(--spacing-2, 8px);
 }
 
 .income-category-item .category-amount {
-  font-size: 1.5rem;
-  font-weight: 700;
-  margin-bottom: 4px;
+  font-size: var(--text-2xl, 20px);
+  font-weight: var(--font-bold, 700);
+  margin-bottom: var(--spacing-1, 4px);
 }
 
 .income-category-item .category-percentage {
-  font-size: 13px;
+  font-size: var(--text-sm, 13px);
   opacity: 0.9;
 }
 
 .category-icon-large {
   font-size: 36px;
-  margin-bottom: 10px;
+  margin-bottom: var(--spacing-3, 12px);
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
 }
 
 /* Loading and error states moved to shared charts.css */
 
 .tax-deductible-section {
-  background: #f0fdf4;
+  background: var(--color-positive-light, #f0fdf4);
   border: 1px solid #bbf7d0;
 }
 
 .tax-summary-cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 15px;
+  gap: var(--spacing-4, 16px);
 }
 
 .tax-card {
-  background: white;
+  background: var(--bg-card, white);
   border: 1px solid #86efac;
 }
 
 .tax-monthly-breakdown {
-  margin-top: 25px;
-  padding-top: 20px;
+  margin-top: var(--spacing-6, 24px);
+  padding-top: var(--spacing-5, 20px);
   border-top: 1px solid #bbf7d0;
 }
 
 .tax-monthly-breakdown h4 {
   margin-top: 0;
-  margin-bottom: 15px;
+  margin-bottom: var(--spacing-4, 16px);
   color: #166534;
-  font-size: 1rem;
-  font-weight: 600;
+  font-size: var(--text-lg, 16px);
+  font-weight: var(--font-semibold, 600);
+  font-family: var(--font-sans);
 }
 
 .tax-month-bar {
-  background: linear-gradient(90deg, #22c55e 0%, #16a34a 100%);
+  background: linear-gradient(90deg, var(--color-positive, #22c55e) 0%, var(--color-positive-dark, #16a34a) 100%);
 }
 
 /* Bar gradient styles moved to shared charts.css */
@@ -278,13 +313,13 @@
 
 /* Component-specific override for tax legend background */
 .tax-legend {
-  background: white;
+  background: var(--bg-card, white);
   border: 1px solid #d1fae5;
 }
 
 @media (max-width: 768px) {
   .annual-summary {
-    padding: 15px;
+    padding: var(--spacing-4, 16px);
   }
 
   .summary-grid {
@@ -292,7 +327,7 @@
   }
 
   .big-number {
-    font-size: 1.5rem;
+    font-size: var(--text-2xl, 20px);
   }
 
   .category-grid {
@@ -300,8 +335,8 @@
   }
 
   .net-worth-breakdown {
-    font-size: 0.8rem;
-    gap: 6px;
+    font-size: var(--text-sm, 13px);
+    gap: var(--spacing-2, 8px);
     flex-wrap: wrap;
   }
 
@@ -310,13 +345,13 @@
 
 /* Tax Deductible Detailed Expense Lists */
 .tax-details {
-  margin-top: 25px;
-  padding-top: 20px;
+  margin-top: var(--spacing-6, 24px);
+  padding-top: var(--spacing-5, 20px);
   border-top: 1px solid #bbf7d0;
 }
 
 .tax-category {
-  margin-bottom: 25px;
+  margin-bottom: var(--spacing-6, 24px);
 }
 
 .tax-category:last-child {
@@ -325,11 +360,12 @@
 
 .tax-category-header {
   margin-top: 0;
-  margin-bottom: 15px;
+  margin-bottom: var(--spacing-4, 16px);
   color: #166534;
-  font-size: 1rem;
-  font-weight: 600;
-  padding-bottom: 10px;
+  font-size: var(--text-lg, 16px);
+  font-weight: var(--font-semibold, 600);
+  font-family: var(--font-sans);
+  padding-bottom: var(--spacing-3, 12px);
   border-bottom: 2px solid #86efac;
 }
 
@@ -338,16 +374,18 @@
   align-items: center;
   justify-content: space-between;
   cursor: pointer;
-  padding: 15px;
-  background: white;
+  padding: var(--spacing-4, 16px);
+  background: var(--bg-card, white);
   border: 1px solid #86efac;
-  border-radius: 6px;
-  margin-bottom: 15px;
-  transition: background-color 0.2s ease;
+  border-radius: var(--radius-lg, 12px);
+  margin-bottom: var(--spacing-4, 16px);
+  transition: var(--transition-card);
+  box-shadow: var(--shadow-sm);
 }
 
 .tax-category-header-collapsible:hover {
   background: #f0fdf4;
+  box-shadow: var(--shadow-md);
 }
 
 .tax-category-header-collapsible .tax-category-header {
@@ -361,91 +399,120 @@
   background: none;
   border: none;
   color: #166534;
-  font-size: 16px;
+  font-size: var(--text-lg, 16px);
   cursor: pointer;
-  padding: 5px 10px;
-  transition: transform 0.2s ease;
+  padding: var(--spacing-1, 4px) var(--spacing-3, 12px);
+  transition: var(--transition-transform);
+  border-radius: var(--radius-md, 8px);
 }
 
 .collapse-toggle:hover {
   transform: scale(1.2);
+  background-color: rgba(22, 163, 74, 0.1);
+}
+
+.collapse-toggle:focus {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 .tax-expense-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--spacing-3, 12px);
 }
 
 .tax-expense-item {
   display: grid;
   grid-template-columns: 120px 1fr auto;
-  gap: 15px;
+  gap: var(--spacing-4, 16px);
   align-items: start;
-  padding: 12px 15px;
-  background: white;
+  padding: var(--spacing-3, 12px) var(--spacing-4, 16px);
+  background: var(--bg-card, white);
   border: 1px solid #d1fae5;
-  border-radius: 4px;
-  transition: box-shadow 0.2s ease;
+  border-radius: var(--radius-md, 8px);
+  transition: var(--transition-card);
 }
 
 .tax-expense-item:hover {
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-md);
+  border-color: #86efac;
 }
 
 .tax-expense-date {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: var(--text-sm, 13px);
+  font-weight: var(--font-semibold, 600);
   color: #166534;
   white-space: nowrap;
+  font-family: var(--font-sans);
 }
 
 .tax-expense-details {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--spacing-1, 4px);
 }
 
 .tax-expense-place {
-  font-size: 14px;
-  font-weight: 600;
-  color: #333;
+  font-size: var(--text-base, 14px);
+  font-weight: var(--font-semibold, 600);
+  color: var(--text-primary, #333);
+  font-family: var(--font-sans);
 }
 
 .tax-expense-notes {
-  font-size: 13px;
-  color: #666;
+  font-size: var(--text-sm, 13px);
+  color: var(--text-tertiary, #666);
   font-style: italic;
 }
 
 .tax-expense-amount {
-  font-size: 16px;
-  font-weight: 700;
-  color: #16a34a;
+  font-size: var(--text-lg, 16px);
+  font-weight: var(--font-bold, 700);
+  color: var(--color-positive-dark, #16a34a);
   text-align: right;
   white-space: nowrap;
+  font-family: var(--font-mono);
+  font-feature-settings: var(--font-feature-tabular);
 }
 
 @media (max-width: 768px) {
   .tax-expense-item {
     grid-template-columns: 1fr;
-    gap: 8px;
+    gap: var(--spacing-2, 8px);
   }
 
   .tax-expense-date {
-    font-size: 12px;
+    font-size: var(--text-xs, 12px);
   }
 
   .tax-expense-place {
-    font-size: 13px;
+    font-size: var(--text-sm, 13px);
   }
 
   .tax-expense-notes {
-    font-size: 12px;
+    font-size: var(--text-xs, 12px);
   }
 
   .tax-expense-amount {
-    font-size: 15px;
+    font-size: var(--text-md, 15px);
     text-align: left;
+  }
+}
+
+/* Accessibility: Respect reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .summary-card,
+  .category-item,
+  .income-category-item,
+  .tax-category-header-collapsible,
+  .tax-expense-item,
+  .collapse-toggle {
+    transition: none;
+  }
+  
+  .income-category-item:hover,
+  .collapse-toggle:hover {
+    transform: none;
   }
 }

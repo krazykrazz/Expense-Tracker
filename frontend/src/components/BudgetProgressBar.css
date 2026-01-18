@@ -144,3 +144,17 @@
     height: 16px;
   }
 }
+
+
+/* Accessibility: Respect reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .budget-status-badge.status-warning,
+  .budget-status-badge.status-danger,
+  .budget-status-badge.status-critical {
+    animation: none;
+  }
+  
+  .progress-bar-fill {
+    transition: none;
+  }
+}

@@ -5,22 +5,47 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: var(--bg-overlay, rgba(0, 0, 0, 0.5));
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 1000;
+  z-index: var(--z-modal-backdrop, 400);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  animation: peopleOverlayFadeIn var(--transition-fast, 150ms ease);
+}
+
+@keyframes peopleOverlayFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes peopleModalSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 /* Modal Container */
 .people-modal-container {
-  background: white;
-  border-radius: 8px;
+  background: var(--bg-card, white);
+  border-radius: var(--radius-xl, 16px);
   max-width: 700px;
   width: 90%;
   max-height: 85vh;
   overflow-y: auto;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-xl, 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04));
+  animation: peopleModalSlideUp var(--transition-normal, 200ms ease);
+  z-index: var(--z-modal, 500);
 }
 
 /* Modal Header */
@@ -28,77 +53,85 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px;
-  border-bottom: 1px solid #e0e0e0;
+  padding: var(--spacing-6, 24px);
+  border-bottom: 1px solid var(--border-muted, #f1f5f9);
   background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
   color: white;
-  border-radius: 8px 8px 0 0;
+  border-radius: var(--radius-xl, 16px) var(--radius-xl, 16px) 0 0;
 }
 
 .people-modal-header h2 {
   margin: 0;
-  font-size: 1.5rem;
+  font-size: var(--text-2xl, 20px);
+  font-weight: var(--font-semibold, 600);
   color: white;
 }
 
 .people-modal-close {
   background: rgba(255, 255, 255, 0.2);
   border: none;
-  font-size: 1.5rem;
+  font-size: 18px;
   cursor: pointer;
   color: white;
-  padding: 8px 12px;
-  border-radius: 4px;
-  transition: background-color 0.2s;
+  padding: var(--spacing-2, 8px) var(--spacing-3, 12px);
+  border-radius: var(--radius-md, 8px);
+  transition: all var(--transition-fast, 150ms ease);
 }
 
 .people-modal-close:hover {
   background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.05);
+}
+
+.people-modal-close:active {
+  transform: scale(0.95);
 }
 
 /* Modal Content */
 .people-modal-content {
-  padding: 20px;
+  padding: var(--spacing-6, 24px);
 }
 
 /* Error Display */
 .people-modal-error {
-  background-color: #ffebee;
-  border: 1px solid #f44336;
-  color: #c62828;
-  padding: 12px;
-  margin-bottom: 20px;
-  border-radius: 4px;
+  background-color: var(--color-negative-light, #fee2e2);
+  border: 1px solid var(--color-negative, #ef4444);
+  color: var(--color-negative-dark, #dc2626);
+  padding: var(--spacing-3, 12px);
+  margin-bottom: var(--spacing-5, 20px);
+  border-radius: var(--radius-md, 8px);
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
 .people-error-retry-button {
-  background-color: #f44336;
+  background-color: var(--color-negative, #ef4444);
   color: white;
   border: none;
-  padding: 6px 12px;
-  border-radius: 4px;
+  padding: var(--spacing-2, 8px) var(--spacing-3, 12px);
+  border-radius: var(--radius-md, 8px);
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: var(--text-sm, 13px);
+  transition: all var(--transition-fast, 150ms ease);
 }
 
 .people-error-retry-button:hover {
-  background-color: #d32f2f;
+  background-color: var(--color-negative-dark, #dc2626);
+  transform: translateY(-1px);
 }
 
 /* Loading State */
 .people-modal-loading {
   text-align: center;
-  padding: 40px;
-  color: #666;
-  font-size: 1.1rem;
+  padding: var(--spacing-10, 40px);
+  color: var(--text-secondary, #475569);
+  font-size: var(--text-lg, 16px);
 }
 
 /* Add Person Section */
 .people-add-section {
-  margin-bottom: 20px;
+  margin-bottom: var(--spacing-5, 20px);
   text-align: center;
 }
 
@@ -106,17 +139,22 @@
   background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
   color: white;
   border: none;
-  padding: 12px 24px;
-  border-radius: 6px;
+  padding: var(--spacing-3, 12px) var(--spacing-6, 24px);
+  border-radius: var(--radius-md, 8px);
   cursor: pointer;
-  font-size: 1rem;
-  font-weight: 500;
-  transition: transform 0.2s, box-shadow 0.2s;
+  font-size: var(--text-base, 14px);
+  font-weight: var(--font-medium, 500);
+  transition: all var(--transition-fast, 150ms ease);
+  box-shadow: var(--shadow-sm, 0 1px 3px rgba(0, 0, 0, 0.06));
 }
 
 .people-add-button:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3);
+  box-shadow: var(--shadow-md, 0 4px 8px rgba(76, 175, 80, 0.3));
+}
+
+.people-add-button:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
 }
 
 .people-add-button:disabled {
@@ -128,17 +166,18 @@
 
 /* Form Section */
 .people-form-section {
-  background: #f8f9fa;
-  border: 1px solid #e9ecef;
-  border-radius: 8px;
-  padding: 20px;
-  margin-bottom: 20px;
+  background: var(--bg-subtle, #f8fafc);
+  border: 1px solid var(--border-default, #e2e8f0);
+  border-radius: var(--radius-lg, 12px);
+  padding: var(--spacing-5, 20px);
+  margin-bottom: var(--spacing-5, 20px);
 }
 
 .people-form-section h3 {
-  margin: 0 0 20px 0;
-  color: #333;
-  font-size: 1.2rem;
+  margin: 0 0 var(--spacing-5, 20px) 0;
+  color: var(--text-primary, #0f172a);
+  font-size: var(--text-xl, 18px);
+  font-weight: var(--font-semibold, 600);
 }
 
 .people-form {
@@ -260,22 +299,22 @@
 .people-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--spacing-3, 12px);
 }
 
 .people-list-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px;
-  background: white;
-  border: 1px solid #e0e0e0;
-  border-radius: 6px;
-  transition: box-shadow 0.2s, border-color 0.2s;
+  padding: var(--spacing-4, 16px);
+  background: var(--bg-card, white);
+  border: 1px solid var(--border-default, #e2e8f0);
+  border-radius: var(--radius-md, 8px);
+  transition: all var(--transition-fast, 150ms ease);
 }
 
 .people-list-item:hover {
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-sm, 0 2px 4px rgba(0, 0, 0, 0.1));
   border-color: #4CAF50;
 }
 
@@ -351,41 +390,46 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.6);
+  background-color: var(--bg-overlay, rgba(0, 0, 0, 0.6));
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 1100;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  animation: peopleOverlayFadeIn var(--transition-fast, 150ms ease);
 }
 
 .people-delete-modal {
-  background: white;
-  border-radius: 8px;
-  padding: 24px;
+  background: var(--bg-card, white);
+  border-radius: var(--radius-xl, 16px);
+  padding: var(--spacing-6, 24px);
   max-width: 400px;
   width: 90%;
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-xl, 0 8px 16px rgba(0, 0, 0, 0.2));
+  animation: peopleModalSlideUp var(--transition-normal, 200ms ease);
 }
 
 .people-delete-modal h3 {
-  margin: 0 0 16px 0;
-  color: #333;
-  font-size: 1.3rem;
+  margin: 0 0 var(--spacing-4, 16px) 0;
+  color: var(--text-primary, #0f172a);
+  font-size: var(--text-xl, 18px);
+  font-weight: var(--font-semibold, 600);
 }
 
 .people-delete-modal p {
-  margin: 12px 0;
-  color: #555;
-  line-height: 1.4;
+  margin: var(--spacing-3, 12px) 0;
+  color: var(--text-secondary, #475569);
+  line-height: var(--leading-normal, 1.5);
 }
 
 .people-delete-warning {
-  background: #fff3cd;
+  background: var(--color-warning-light, #fff3cd);
   border: 1px solid #ffeaa7;
-  border-radius: 4px;
-  padding: 12px;
+  border-radius: var(--radius-md, 8px);
+  padding: var(--spacing-3, 12px);
   color: #856404;
-  font-size: 0.9rem;
+  font-size: var(--text-sm, 13px);
 }
 
 .people-delete-actions {
@@ -485,5 +529,32 @@
   
   .people-form-section {
     padding: 16px;
+  }
+}
+
+
+/* Accessibility: Respect reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .people-modal-overlay,
+  .people-delete-overlay {
+    animation: none;
+  }
+  
+  .people-modal-container,
+  .people-delete-modal {
+    animation: none;
+  }
+  
+  .people-modal-close,
+  .people-add-button,
+  .people-list-item,
+  .people-edit-button,
+  .people-delete-button,
+  .people-save-button,
+  .people-cancel-button,
+  .people-error-retry-button,
+  .people-delete-confirm-button,
+  .people-delete-cancel-button {
+    transition: none;
   }
 }

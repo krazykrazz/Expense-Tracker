@@ -1,40 +1,69 @@
-/* Total Debt View Modal */
+/* Total Debt View Modal Styles
+ * Modern design system implementation
+ * Requirements: 2.1
+ */
+
+/* Modal Overlay */
 .total-debt-modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: var(--bg-overlay);
+  backdrop-filter: blur(4px);
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 1000;
+  z-index: var(--z-modal);
+  animation: fadeIn var(--transition-fast);
 }
 
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Modal Container - Requirement 2.1 */
 .total-debt-modal-container {
-  background: white;
-  border-radius: 8px;
+  background: var(--bg-card);
+  border-radius: var(--radius-xl);
   width: 90%;
   max-width: 1000px;
   max-height: 90vh;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-2xl);
+  animation: slideUp var(--transition-normal);
 }
 
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Modal Header */
 .total-debt-modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px;
-  border-bottom: 1px solid #e5e7eb;
+  padding: var(--spacing-5);
+  border-bottom: 1px solid var(--border-muted);
+  background-color: var(--bg-subtle);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
 }
 
 .total-debt-modal-header h2 {
   margin: 0;
-  font-size: 1.5rem;
-  color: #1f2937;
+  font-size: var(--text-2xl);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
 }
 
 .total-debt-modal-close {
@@ -42,124 +71,145 @@
   border: none;
   font-size: 1.5rem;
   cursor: pointer;
-  color: #6b7280;
+  color: var(--text-tertiary);
   padding: 0;
   width: 32px;
   height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
-  transition: background-color 0.2s;
+  border-radius: var(--radius-md);
+  transition: var(--transition-fast);
 }
 
 .total-debt-modal-close:hover {
-  background-color: #f3f4f6;
+  background-color: var(--bg-muted);
+  color: var(--text-primary);
 }
 
+/* Modal Content */
 .total-debt-modal-content {
-  padding: 20px;
+  padding: var(--spacing-5);
   overflow-y: auto;
   flex: 1;
 }
 
+/* Loading and Empty States */
 .total-debt-loading,
 .total-debt-empty {
   text-align: center;
-  padding: 40px;
-  color: #6b7280;
+  padding: var(--spacing-10);
+  color: var(--text-tertiary);
 }
 
+/* Error Display */
 .total-debt-modal-error {
-  background-color: #fee2e2;
-  color: #991b1b;
-  padding: 12px 16px;
-  margin: 16px 20px;
-  border-radius: 4px;
+  background-color: var(--color-negative-light);
+  color: var(--color-negative-dark);
+  padding: var(--spacing-3) var(--spacing-4);
+  margin: var(--spacing-4) var(--spacing-5);
+  border-radius: var(--radius-md);
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
 .total-debt-error-retry-button {
-  background-color: #dc2626;
-  color: white;
+  background-color: var(--color-negative);
+  color: var(--text-inverse);
   border: none;
-  padding: 6px 12px;
-  border-radius: 4px;
+  padding: var(--spacing-2) var(--spacing-3);
+  border-radius: var(--radius-md);
   cursor: pointer;
-  font-size: 0.875rem;
+  font-size: var(--text-sm);
+  font-family: var(--font-sans);
+  transition: var(--transition-button);
 }
 
 .total-debt-error-retry-button:hover {
-  background-color: #b91c1c;
+  background-color: var(--color-negative-dark);
+  transform: translateY(-1px);
 }
 
-/* Summary Stats */
+.total-debt-error-retry-button:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* Summary Stats - Requirement 2.1 Card styling */
 .total-debt-summary {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
-  margin-bottom: 32px;
+  gap: var(--spacing-4);
+  margin-bottom: var(--spacing-8);
 }
 
 .total-debt-stat {
-  background-color: #f9fafb;
-  padding: 16px;
-  border-radius: 8px;
+  background-color: var(--bg-subtle);
+  padding: var(--spacing-4);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-muted);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--spacing-2);
+  transition: var(--transition-card);
+}
+
+.total-debt-stat:hover {
+  box-shadow: var(--shadow-sm);
+  border-color: var(--border-default);
 }
 
 .total-debt-stat-label {
-  font-size: 0.875rem;
-  color: #6b7280;
-  font-weight: 500;
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+  font-weight: var(--font-medium);
 }
 
 .total-debt-stat-value {
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: #1f2937;
+  font-size: var(--text-2xl);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  font-feature-settings: var(--font-feature-tabular);
 }
 
 .total-debt-reduction {
-  color: #059669;
+  color: var(--color-positive);
 }
 
-/* Chart */
+/* Chart - Requirement 2.1 */
 .total-debt-chart-container {
-  margin-bottom: 32px;
+  margin-bottom: var(--spacing-8);
 }
 
 .total-debt-chart-container h3 {
-  margin: 0 0 8px 0;
-  font-size: 1.125rem;
-  color: #1f2937;
+  margin: 0 0 var(--spacing-2) 0;
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
 }
 
 .chart-description {
-  margin: 0 0 16px 0;
-  font-size: 0.875rem;
-  color: #6b7280;
+  margin: 0 0 var(--spacing-4) 0;
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
 }
 
 .total-debt-chart {
   width: 100%;
   height: 300px;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  background-color: #ffffff;
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-lg);
+  background-color: var(--bg-card);
+  box-shadow: var(--shadow-sm);
 }
 
 .total-debt-grid-line {
-  stroke: #e5e7eb;
+  stroke: var(--border-muted);
   stroke-width: 0.2;
 }
 
 .loan-area {
-  transition: fill-opacity 0.2s;
+  transition: fill-opacity var(--transition-normal);
 }
 
 .loan-area:hover {
@@ -169,105 +219,111 @@
 .total-debt-chart-labels {
   display: flex;
   justify-content: space-between;
-  margin-top: 8px;
-  font-size: 0.875rem;
-  color: #6b7280;
+  margin-top: var(--spacing-2);
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
 }
 
 .total-debt-chart-legend {
   display: flex;
   flex-wrap: wrap;
-  gap: 16px;
-  margin-top: 16px;
-  padding: 12px;
-  background-color: #f9fafb;
-  border-radius: 4px;
+  gap: var(--spacing-4);
+  margin-top: var(--spacing-4);
+  padding: var(--spacing-3);
+  background-color: var(--bg-subtle);
+  border-radius: var(--radius-md);
 }
 
 .legend-item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-2);
 }
 
 .legend-color-box {
   width: 16px;
   height: 16px;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   opacity: 0.7;
 }
 
 .legend-label {
-  font-size: 0.875rem;
-  color: #374151;
-  font-weight: 500;
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  font-weight: var(--font-medium);
 }
 
-/* History Table */
+/* History Table - Requirement 2.1 */
 .total-debt-history-table {
-  margin-top: 32px;
+  margin-top: var(--spacing-8);
 }
 
 .total-debt-history-table h3 {
-  margin: 0 0 16px 0;
-  font-size: 1.125rem;
-  color: #1f2937;
+  margin: 0 0 var(--spacing-4) 0;
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
 }
 
 .total-debt-history-table table {
   width: 100%;
   border-collapse: collapse;
-  background-color: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-lg);
   overflow: hidden;
 }
 
 .total-debt-history-table thead {
-  background-color: #f9fafb;
+  background-color: var(--bg-subtle);
 }
 
 .total-debt-history-table th {
-  padding: 12px;
+  padding: var(--spacing-3);
   text-align: left;
-  font-weight: 600;
-  color: #374151;
-  border-bottom: 1px solid #e5e7eb;
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-default);
 }
 
 .total-debt-history-table td {
-  padding: 12px;
-  border-bottom: 1px solid #f3f4f6;
+  padding: var(--spacing-3);
+  border-bottom: 1px solid var(--border-muted);
 }
 
 .total-debt-history-table tbody tr:last-child td {
   border-bottom: none;
 }
 
+.total-debt-history-table tbody tr {
+  transition: var(--transition-fast);
+}
+
 .total-debt-history-table tbody tr:hover {
-  background-color: #f9fafb;
+  background-color: var(--bg-subtle);
 }
 
 .total-debt-amount {
-  font-weight: 600;
-  color: #1f2937;
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  font-feature-settings: var(--font-feature-tabular);
 }
 
 .total-debt-change {
-  font-weight: 500;
+  font-weight: var(--font-medium);
 }
 
 .total-debt-change.negative {
-  color: #059669;
+  color: var(--color-positive);
 }
 
 .total-debt-change.positive {
-  color: #dc2626;
+  color: var(--color-negative);
 }
 
 .total-debt-change-percent {
-  font-size: 0.875rem;
-  margin-left: 4px;
+  font-size: var(--text-sm);
+  margin-left: var(--spacing-1);
   opacity: 0.7;
 }
 
@@ -276,6 +332,19 @@
   .total-debt-modal-container {
     width: 95%;
     max-height: 95vh;
+    border-radius: var(--radius-lg);
+  }
+
+  .total-debt-modal-header {
+    padding: var(--spacing-4);
+  }
+
+  .total-debt-modal-header h2 {
+    font-size: var(--text-xl);
+  }
+
+  .total-debt-modal-content {
+    padding: var(--spacing-4);
   }
 
   .total-debt-summary {
@@ -291,11 +360,31 @@
   }
 
   .total-debt-history-table table {
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
   }
 
   .total-debt-history-table th,
   .total-debt-history-table td {
-    padding: 8px;
+    padding: var(--spacing-2);
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .total-debt-modal-overlay,
+  .total-debt-modal-container {
+    animation: none;
+  }
+
+  .total-debt-stat,
+  .total-debt-modal-close,
+  .total-debt-error-retry-button,
+  .total-debt-history-table tbody tr,
+  .loan-area {
+    transition: none;
+  }
+
+  .total-debt-error-retry-button:hover {
+    transform: none;
   }
 }

@@ -1,52 +1,71 @@
+/* Month Selector Styles */
+/* Requirements: 3.1, 4.1 - Modern button and input styling */
+
 .month-selector {
   display: flex;
-  gap: 15px;
+  gap: var(--spacing-4, 16px);
   align-items: center;
-  padding: 10px;
-  background: white;
-  border-radius: 4px;
-  margin-bottom: 15px;
-  border: 1px solid #ddd;
+  padding: var(--spacing-3, 12px) var(--spacing-4, 16px);
+  background: var(--bg-card, white);
+  border-radius: var(--radius-lg, 12px);
+  margin-bottom: var(--spacing-4, 16px);
+  border: 1px solid var(--border-muted, #f1f5f9);
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition-card);
+}
+
+.month-selector:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--border-default, #e2e8f0);
 }
 
 .selector-group {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-2, 8px);
 }
 
 .selector-group label {
-  font-weight: 500;
-  color: #333;
-  font-size: 13px;
+  font-weight: var(--font-medium, 500);
+  color: var(--text-secondary, #475569);
+  font-size: var(--text-sm, 13px);
+  font-family: var(--font-sans);
+  line-height: var(--leading-normal, 1.5);
 }
 
 .selector-group select {
-  padding: 6px 10px;
-  border: 1px solid #ddd;
-  border-radius: 3px;
-  font-size: 13px;
-  background-color: white;
+  padding: var(--spacing-2, 8px) var(--spacing-3, 12px);
+  border: 1px solid var(--border-default, #e2e8f0);
+  border-radius: var(--radius-md, 8px);
+  font-size: var(--text-base, 14px);
+  font-family: var(--font-sans);
+  background-color: var(--bg-card, white);
   cursor: pointer;
   min-width: 120px;
+  transition: var(--transition-input);
+}
+
+.selector-group select:hover:not(:disabled):not(:focus) {
+  border-color: var(--border-strong, #cbd5e1);
 }
 
 .selector-group select:focus {
   outline: none;
-  border-color: #0ea5e9;
+  border-color: var(--border-focus, #0ea5e9);
+  box-shadow: var(--focus-ring);
 }
 
 @media (max-width: 768px) {
   .month-selector {
     flex-direction: column;
-    gap: 10px;
+    gap: var(--spacing-3, 12px);
     align-items: stretch;
   }
 
   .selector-group {
     flex-direction: column;
     align-items: stretch;
-    gap: 5px;
+    gap: var(--spacing-1, 4px);
   }
 
   .selector-group select {
@@ -59,16 +78,18 @@
 .manage-budgets-button,
 .budget-history-button,
 .merchant-analytics-button {
-  padding: 6px 16px;
-  background: #0ea5e9;
-  color: white;
+  padding: var(--spacing-2, 8px) var(--spacing-4, 16px);
+  background: var(--color-primary, #0ea5e9);
+  color: var(--text-inverse, white);
   border: none;
-  border-radius: 3px;
-  font-size: 13px;
-  font-weight: 500;
+  border-radius: var(--radius-md, 8px);
+  font-size: var(--text-base, 14px);
+  font-weight: var(--font-medium, 500);
+  font-family: var(--font-sans);
   cursor: pointer;
-  transition: background 0.2s;
+  transition: var(--transition-button);
   white-space: nowrap;
+  box-shadow: var(--shadow-sm);
 }
 
 .annual-summary-button:hover,
@@ -76,15 +97,35 @@
 .manage-budgets-button:hover,
 .budget-history-button:hover,
 .merchant-analytics-button:hover {
-  background: #0284c7;
+  background: var(--color-primary-hover, #0284c7);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.annual-summary-button:active,
+.tax-deductible-button:active,
+.manage-budgets-button:active,
+.budget-history-button:active,
+.merchant-analytics-button:active {
+  transform: translateY(0) scale(0.98);
+  box-shadow: var(--shadow-xs);
+}
+
+.annual-summary-button:focus,
+.tax-deductible-button:focus,
+.manage-budgets-button:focus,
+.budget-history-button:focus,
+.merchant-analytics-button:focus {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 .tax-deductible-button {
-  background: #16a34a;
+  background: var(--color-positive, #22c55e);
 }
 
 .tax-deductible-button:hover {
-  background: #15803d;
+  background: var(--color-positive-dark, #16a34a);
 }
 
 .manage-budgets-button {
@@ -96,11 +137,11 @@
 }
 
 .budget-history-button {
-  background: #f59e0b;
+  background: var(--color-warning, #f59e0b);
 }
 
 .budget-history-button:hover {
-  background: #d97706;
+  background: var(--color-warning-dark, #d97706);
 }
 
 .merchant-analytics-button {
@@ -118,5 +159,35 @@
   .budget-history-button,
   .merchant-analytics-button {
     width: 100%;
+  }
+}
+
+
+/* Accessibility: Respect reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .month-selector,
+  .selector-group select,
+  .annual-summary-button,
+  .tax-deductible-button,
+  .manage-budgets-button,
+  .budget-history-button,
+  .merchant-analytics-button {
+    transition: none;
+  }
+  
+  .annual-summary-button:hover,
+  .tax-deductible-button:hover,
+  .manage-budgets-button:hover,
+  .budget-history-button:hover,
+  .merchant-analytics-button:hover {
+    transform: none;
+  }
+  
+  .annual-summary-button:active,
+  .tax-deductible-button:active,
+  .manage-budgets-button:active,
+  .budget-history-button:active,
+  .merchant-analytics-button:active {
+    transform: none;
   }
 }

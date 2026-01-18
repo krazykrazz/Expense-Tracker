@@ -90,3 +90,16 @@
 .floating-add-button {
   animation: fabSlideIn 0.3s ease-out;
 }
+
+
+/* Accessibility: Respect reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .floating-add-button {
+    animation: none;
+    transition: none;
+  }
+  
+  .floating-add-button:hover {
+    transform: none;
+  }
+}

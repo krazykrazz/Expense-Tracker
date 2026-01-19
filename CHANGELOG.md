@@ -11,6 +11,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.14.5] - 2026-01-18
+
+### Fixed
+- **Invoice PDF Viewer Portal**: Fixed invoice viewer appearing under monthly summary panel
+  - Used React Portal (`createPortal`) to render modal at document body level
+  - Modal now renders outside of any stacking context, ensuring it always appears on top
+  - This is the proper solution for modals that need to escape parent stacking contexts
+
+---
+
+## [4.14.4] - 2026-01-18
+
+### Fixed
+- **Z-Index Standardization**: Standardized z-index values across all frontend CSS files
+  - Added CSS variable fallbacks to all modal overlays (e.g., `var(--z-modal, 500)`)
+  - Fixed hardcoded z-index values in FloatingAddButton, PeopleManagementModal, BackupSettings
+  - Ensures consistent stacking behavior even if CSS variables fail to load
+  - Updated 12 CSS files to use design system z-index scale with fallbacks
+
+---
+
+## [4.14.3] - 2026-01-18
+
+### Fixed
+- **Invoice PDF Viewer Stacking Context**: Fixed invoice viewer still appearing under summary panel
+  - Removed competing stacking context from `.content-right` (summary panel container)
+  - Invoice PDF viewer modal now properly overlays all page content
+
+---
+
+## [4.14.2] - 2026-01-18
+
+### Fixed
+- **Invoice PDF Viewer Z-Index**: Fixed invoice viewer modal appearing under sticky summary panel
+  - Increased z-index for invoice PDF viewer overlay to use `--z-popover` (600)
+  - Invoice viewer now properly appears above all page content including sticky elements
+
+---
+
+## [4.14.1] - 2026-01-18
+
+### Fixed
+- **Modal Z-Index Bleed-Through**: Fixed sticky table headers appearing above modal overlays
+  - Added stacking context isolation to `.table-wrapper`, `.content-left`, and `.content-right`
+  - Modal dialogs now properly cover all page content including sticky elements
+
+### Changed
+- **Project Cleanup**: Archived completed specs and outdated documentation
+  - Moved 3 completed specs to archive (invoice-backup-enhancement, multi-invoice-support, ui-modernization)
+  - Archived older deployment docs (pre-v4.10.0)
+  - Cleaned up one-time backend scripts to archive subfolder
+
+---
+
 ## [4.14.0] - 2026-01-18
 
 ### Added

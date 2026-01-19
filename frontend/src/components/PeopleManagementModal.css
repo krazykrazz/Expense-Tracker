@@ -394,7 +394,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 1100;
+  z-index: var(--z-popover, 600);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   animation: peopleOverlayFadeIn var(--transition-fast, 150ms ease);

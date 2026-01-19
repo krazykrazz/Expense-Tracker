@@ -138,6 +138,10 @@
 
 .content-left {
   min-width: 0;
+  /* Isolate stacking context to prevent child elements from bleeding through modals */
+  isolation: isolate;
+  position: relative;
+  z-index: 0;
 }
 
 .content-right {
@@ -155,6 +159,7 @@
   will-change: scroll-position;
   /* Scroll event isolation - prevent bubbling */
   overscroll-behavior: contain;
+  /* Note: Do NOT set z-index here - it creates a stacking context that competes with fixed modals */
 }
 
 .content-right::-webkit-scrollbar {

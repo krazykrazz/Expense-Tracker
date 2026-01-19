@@ -1,7 +1,7 @@
 # Project Archive
 
 **Created:** 2025-11-24  
-**Last Updated:** 2025-12-14
+**Last Updated:** 2026-01-18
 
 This archive contains historical documentation and scripts that have served their purpose but are retained for reference.
 
@@ -21,12 +21,12 @@ Completion reports for various features and optimizations:
 - Test coverage analyses
 - Cleanup summaries
 
-### deployments/ (Updated - Dec 6, 2025)
+### deployments/ (Updated - Jan 18, 2026)
 Historical deployment documentation:
-- v4.0.3 through v4.4.7 deployment guides
+- v3.2.0 through v4.9.1 deployment guides
 - Deployment summaries and changelogs
 - Version-specific implementation notes
-- **Latest:** 11 deployment files added (v4.3.2 through v4.4.7)
+- **Latest:** Added v3.2.0-v3.3.2, v4.6.0-v4.9.1 deployment files
 
 ### migration-scripts/ (Nov 24, 2025)
 Database migration scripts (kept for reference):
@@ -35,16 +35,16 @@ Database migration scripts (kept for reference):
 - Recurring expenses removal
 - Quick migration utilities
 
-### reports/ (Updated - Dec 6, 2025)
+### reports/ (Updated - Jan 18, 2026)
 Point-in-time audit and analysis reports:
 - Code audit reports (2025-12-03)
 - Code optimization reports
 - Code quality reports
-- Cleanup reports (2025-11-30)
+- Cleanup reports (2025-11-30 through 2026-01-16)
 - Docker implementation documentation
 - Test fix summaries
 - Logging improvements documentation
-- **Latest:** 8 audit/cleanup reports added
+- Project cleanup summaries
 
 ### spec-implementations/ (NEW - Nov 30, 2025)
 Implementation summaries from completed specs:
@@ -59,12 +59,13 @@ Spec update summaries and cleanup documentation:
 - Cleanup analyses
 - Historical spec changes
 
-### specs/ (NEW - Dec 16, 2025)
+### specs/ (Updated - Jan 18, 2026)
 Completed feature specifications that have been fully implemented:
-- 18 archived spec directories for completed features
+- 27 archived spec directories for completed features
 - Includes deprecated features (recurring-expenses)
 - Infrastructure specs (code-optimization, containerization-optimization)
-- All major feature implementations from v3.0.0 through v4.6.0
+- All major feature implementations from v3.0.0 through v4.12.4
+- **Latest:** Added invoice-backup-enhancement, multi-invoice-support, ui-modernization
 
 ### test-scripts/ (Nov 24, 2025)
 One-time test scripts used during feature development:
@@ -163,9 +164,31 @@ Copy-Item archive/[subfolder]/[filename] ./
   - **Total archived specs:** 24 complete feature specifications (v3.0.0 through v4.12.0)
   - Root directory now extremely clean with only active documentation
 
+- **2026-01-18:** Post v4.12.4 comprehensive cleanup (25+ items)
+  - **Archived 3 completed specs** from .kiro/specs/ to archive/specs/:
+    - invoice-backup-enhancement (v4.12.x - archive backup system)
+    - multi-invoice-support (v4.12.x - multiple invoices per expense)
+    - ui-modernization (v4.12.x - modern CSS design system)
+  - **Archived 10 older deployment docs** from docs/deployments/ to archive/deployments/:
+    - CHANGELOG_v3.2.0.md, DATABASE_MIGRATION_COMPLETE.md
+    - DEPLOYMENT_v3.2.0.md, DEPLOYMENT_v3.3.1.md, DEPLOYMENT_v3.3.2.md
+    - DEPLOYMENT_v4.6.0.md, DEPLOYMENT_v4.8.0.md, DEPLOYMENT_v4.9.0.md, DEPLOYMENT_v4.9.1.md
+    - OPTIMIZATION_PROGRESS.md → archive/reports/
+  - **Archived root cleanup summary** to archive/reports/:
+    - PROJECT_CLEANUP_SUMMARY_2026-01-16.md
+  - **Archived 12 one-time backend scripts** to backend/scripts/archive/:
+    - Schema check scripts: checkBudgetsSchema.js, checkIncomeSchema.js, checkInvestmentSchema.js, checkPeopleSchema.js, checkPersonalCare.js
+    - One-time fix: fixCategoryConstraint.js
+    - Completed migrations: runPeopleMigration.js, runIncomeCategoryMigration.js, runPersonalCareMigration.js
+    - Verification scripts: testPeopleConstraints.js, verifyBudgetsTrigger.js, verifyPeopleTablesRequirements.js
+  - **Deleted outdated file**: .kiro/specs/CHANGELOG.md (main CHANGELOG.md is source of truth)
+  - **Result:** .kiro/specs/ now contains only 1 active spec (medical-insurance-tracking) + SPEC_AUDIT_REPORT.md
+  - **Total archived specs:** 27 complete feature specifications
+  - docs/deployments/ now contains only v4.10.0+ deployment docs
+
 ## Next Review
 
-**Scheduled:** 2026-07-16 (6 months from last cleanup)
+**Scheduled:** 2026-07-18 (6 months from last cleanup)
 
 **Actions to consider:**
 - Delete files older than 12 months if not referenced

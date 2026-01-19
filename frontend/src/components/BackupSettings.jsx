@@ -803,6 +803,49 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v4.14.5</div>
+                <div className="changelog-date">January 18, 2026</div>
+                <ul className="changelog-items">
+                  <li>Fixed invoice PDF viewer appearing under monthly summary panel</li>
+                  <li>Used React Portal to render modal at document body level</li>
+                  <li>Modal now properly appears above all content regardless of stacking contexts</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
+                <div className="changelog-version">v4.14.4</div>
+                <div className="changelog-date">January 18, 2026</div>
+                <ul className="changelog-items">
+                  <li>Standardized z-index values across all modal overlays</li>
+                  <li>Added CSS variable fallbacks for consistent stacking behavior</li>
+                  <li>Fixed hardcoded z-index values in floating button and modals</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
+                <div className="changelog-version">v4.14.3</div>
+                <div className="changelog-date">January 18, 2026</div>
+                <ul className="changelog-items">
+                  <li>Fixed invoice PDF viewer z-index stacking context issue</li>
+                  <li>Removed competing stacking context from summary panel</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
+                <div className="changelog-version">v4.14.2</div>
+                <div className="changelog-date">January 18, 2026</div>
+                <ul className="changelog-items">
+                  <li>Fixed invoice PDF viewer appearing under sticky summary panel</li>
+                  <li>Increased z-index for invoice viewer modal overlay</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
+                <div className="changelog-version">v4.14.1</div>
+                <div className="changelog-date">January 18, 2026</div>
+                <ul className="changelog-items">
+                  <li>Fixed modal z-index bleed-through issue</li>
+                  <li>Sticky table headers no longer appear above modal overlays</li>
+                  <li>Project structure cleanup and archive organization</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v4.14.0</div>
                 <div className="changelog-date">January 18, 2026</div>
                 <ul className="changelog-items">

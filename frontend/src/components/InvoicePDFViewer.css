@@ -15,7 +15,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: var(--z-modal);
+  /* Use higher z-index to ensure modal appears above sticky elements */
+  z-index: var(--z-popover, 600);
   padding: var(--spacing-5);
   animation: fadeIn var(--transition-fast);
 }

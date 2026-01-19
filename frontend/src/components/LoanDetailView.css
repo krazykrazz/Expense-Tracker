@@ -15,7 +15,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: var(--z-modal);
+  z-index: var(--z-modal, 500);
   padding: var(--spacing-5);
   animation: fadeIn var(--transition-fast);
 }

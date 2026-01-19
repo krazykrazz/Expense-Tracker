@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { API_ENDPOINTS } from '../config';
 import { createLogger } from '../utils/logger';
 import './InvoicePDFViewer.css';
@@ -252,7 +253,9 @@ const InvoicePDFViewer = ({
     return null;
   }
 
-  return (
+  // Use portal to render modal at document body level
+  // This ensures the modal appears above all other content regardless of stacking contexts
+  return createPortal(
     <div 
       className="invoice-pdf-viewer-overlay"
       onClick={handleBackdropClick}
@@ -392,7 +395,8 @@ const InvoicePDFViewer = ({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

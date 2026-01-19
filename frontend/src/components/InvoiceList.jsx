@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import InvoicePDFViewer from './InvoicePDFViewer';
-import { deleteInvoiceById, updateInvoicePersonLink, getInvoiceFileUrl } from '../services/invoiceApi';
+import { deleteInvoiceById, updateInvoicePersonLink } from '../services/invoiceApi';
 import { createLogger } from '../utils/logger';
 import './InvoiceList.css';
 
@@ -35,8 +35,7 @@ const InvoiceList = ({
   const [deletingId, setDeletingId] = useState(null);
   // State for errors
   const [error, setError] = useState(null);
-  // State for person link editing
-  const [editingPersonId, setEditingPersonId] = useState(null);
+  // State for person link updating
   const [updatingPersonId, setUpdatingPersonId] = useState(null);
 
   /**
@@ -122,7 +121,6 @@ const InvoiceList = ({
       const newPersonId = personId === '' ? null : parseInt(personId);
       await updateInvoicePersonLink(invoiceId, newPersonId);
       onPersonLinkUpdated(invoiceId, newPersonId);
-      setEditingPersonId(null);
     } catch (updateError) {
       logger.error('Failed to update person link:', updateError);
       setError(updateError.message || 'Failed to update person link');
@@ -176,8 +174,9 @@ const InvoiceList = ({
               </div>
             </div>
 
-            {/* Person link dropdown - show if people are available */}
-            {people.length > 0 && (
+            {/* Person link dropdown - show if multiple people are available */}
+            {/* When only one person is assigned, hide dropdown (invoice auto-links to that person) */}
+            {people.length > 1 && (
               <div className="invoice-item-person-link">
                 <select
                   className="invoice-person-select"
@@ -195,6 +194,12 @@ const InvoiceList = ({
                   ))}
                 </select>
                 {updatingPersonId === invoice.id && <span className="updating-indicator">⏳</span>}
+              </div>
+            )}
+            {/* When exactly one person is assigned, show their name as static text */}
+            {people.length === 1 && (
+              <div className="invoice-item-person-link single-person">
+                <span className="invoice-person-name">{people[0].name}</span>
               </div>
             )}
 

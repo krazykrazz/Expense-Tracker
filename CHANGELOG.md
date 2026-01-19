@@ -11,6 +11,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.14.6] - 2026-01-19
+
+### Fixed
+- **Single-Person Invoice Auto-Link**: Fixed invoice person dropdown for single-person medical expenses
+  - When a medical expense has exactly one person assigned, invoices now auto-link to that person
+  - Removed unnecessary "No person" dropdown option for single-person expenses
+  - Shows static person name badge instead of dropdown for cleaner UX
+
+### Added
+- **Retroactive Invoice Migration**: Added database migration to link existing invoices
+  - Automatically links unlinked invoices to the single assigned person on container startup
+  - Applies to all existing medical expenses with exactly one person assigned
+
+---
+
 ## [4.14.5] - 2026-01-18
 
 ### Fixed

@@ -2351,6 +2351,82 @@ function createMultiInvoiceIndexes(db, migrationName, resolve, reject) {
 }
 
 /**
+ * Migration: Link invoices to single person for single-person medical expenses
+ * 
+ * This migration retroactively links invoices to the assigned person when:
+ * - The expense is a medical expense (type = 'Tax - Medical')
+ * - The expense has exactly one person assigned
+ * - The invoice has no person linked (person_id IS NULL)
+ */
+async function migrateLinkInvoicesToSinglePerson(db) {
+  const migrationName = 'link_invoices_to_single_person_v1';
+  
+  // Check if already applied
+  const isApplied = await checkMigrationApplied(db, migrationName);
+  if (isApplied) {
+    logger.info(`Migration "${migrationName}" already applied, skipping`);
+    return;
+  }
+
+  logger.info(`Running migration: ${migrationName}`);
+
+  // Create backup
+  await createBackup();
+
+  return new Promise((resolve, reject) => {
+    db.serialize(() => {
+      db.run('BEGIN TRANSACTION', (err) => {
+        if (err) {
+          return reject(err);
+        }
+
+        // Find all medical expenses with exactly one person assigned
+        // and update their invoices that have no person linked
+        const updateSql = `
+          UPDATE expense_invoices
+          SET person_id = (
+            SELECT ep.person_id
+            FROM expense_people ep
+            WHERE ep.expense_id = expense_invoices.expense_id
+          )
+          WHERE expense_invoices.person_id IS NULL
+            AND expense_invoices.expense_id IN (
+              SELECT e.id
+              FROM expenses e
+              INNER JOIN expense_people ep ON e.id = ep.expense_id
+              WHERE e.type = 'Tax - Medical'
+              GROUP BY e.id
+              HAVING COUNT(ep.person_id) = 1
+            )
+        `;
+
+        db.run(updateSql, function(err) {
+          if (err) {
+            db.run('ROLLBACK');
+            return reject(err);
+          }
+
+          const updatedCount = this.changes;
+          logger.info(`Updated ${updatedCount} invoice(s) to link to single person`);
+
+          // Mark migration as applied and commit
+          markMigrationApplied(db, migrationName).then(() => {
+            db.run('COMMIT', (err) => {
+              if (err) {
+                db.run('ROLLBACK');
+                return reject(err);
+              }
+              logger.info(`Migration "${migrationName}" completed successfully`);
+              resolve();
+            });
+          }).catch(reject);
+        });
+      });
+    });
+  });
+}
+
+/**
  * Run all pending migrations
  */
 async function runMigrations(db) {
@@ -2369,6 +2445,7 @@ async function runMigrations(db) {
     await migrateAddPerformanceIndexes(db);
     await migrateAddExpenseInvoicesTable(db);
     await migrateMultiInvoiceSupport(db);
+    await migrateLinkInvoicesToSinglePerson(db);
     logger.info('All migrations completed');
   } catch (error) {
     logger.error('Migration failed:', error.message);
@@ -2382,5 +2459,6 @@ module.exports = {
   markMigrationApplied,
   migrateAddPeopleTables,
   migrateAddExpenseInvoicesTable,
-  migrateMultiInvoiceSupport
+  migrateMultiInvoiceSupport,
+  migrateLinkInvoicesToSinglePerson
 };

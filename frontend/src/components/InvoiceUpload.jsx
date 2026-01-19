@@ -121,9 +121,10 @@ const InvoiceUpload = ({
       formData.append('invoice', file);
       formData.append('expenseId', expenseId.toString());
       
-      // Add personId if selected
-      if (selectedPersonId) {
-        formData.append('personId', selectedPersonId);
+      // Add personId - use selected person, or auto-use single person if only one assigned
+      const effectivePersonId = selectedPersonId || (people.length === 1 ? people[0].id.toString() : '');
+      if (effectivePersonId) {
+        formData.append('personId', effectivePersonId);
       }
 
       // Create XMLHttpRequest for progress tracking
@@ -200,7 +201,7 @@ const InvoiceUpload = ({
     } finally {
       setUploading(false);
     }
-  }, [expenseId, selectedPersonId, onInvoiceUploaded]);
+  }, [expenseId, selectedPersonId, people, onInvoiceUploaded]);
 
   /**
    * Handle file selection (from input or drop)
@@ -353,8 +354,8 @@ const InvoiceUpload = ({
   // Render upload form (dropzone with optional person selection)
   const renderUploadForm = (isAddingToExisting = false) => (
     <div className={`invoice-upload-form ${isAddingToExisting ? 'adding-to-existing' : ''}`}>
-      {/* Person selection dropdown - only show if people are assigned */}
-      {people.length > 0 && (
+      {/* Person selection dropdown - only show if multiple people are assigned */}
+      {people.length > 1 && (
         <div className="person-selection">
           <label htmlFor="invoice-person-select" className="person-select-label">
             Link to person (optional):
@@ -374,6 +375,13 @@ const InvoiceUpload = ({
               </option>
             ))}
           </select>
+        </div>
+      )}
+      {/* When exactly one person is assigned, show their name as static text */}
+      {people.length === 1 && (
+        <div className="person-selection single-person">
+          <span className="person-select-label">Invoice for:</span>
+          <span className="person-name-display">{people[0].name}</span>
         </div>
       )}
 

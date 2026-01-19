@@ -803,6 +803,15 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v4.14.6</div>
+                <div className="changelog-date">January 19, 2026</div>
+                <ul className="changelog-items">
+                  <li>Fixed invoice person dropdown for single-person medical expenses</li>
+                  <li>Invoices now auto-link to the assigned person when only one person is assigned</li>
+                  <li>Added migration to retroactively link existing invoices to single-person expenses</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v4.14.5</div>
                 <div className="changelog-date">January 18, 2026</div>
                 <ul className="changelog-items">

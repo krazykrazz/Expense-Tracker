@@ -636,3 +636,27 @@
   white-space: nowrap;
   border: 0;
 }
+
+
+/* Single person display (when only one person is assigned) */
+.person-selection.single-person {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--spacing-2);
+  padding: var(--spacing-2) var(--spacing-3);
+  background-color: var(--color-primary-light);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-md);
+}
+
+.person-selection.single-person .person-select-label {
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.person-selection.single-person .person-name-display {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--color-primary);
+}

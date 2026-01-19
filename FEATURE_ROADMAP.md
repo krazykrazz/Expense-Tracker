@@ -1,7 +1,7 @@
 # Expense Tracker - Feature Roadmap
 
-**Last Updated**: January 15, 2026  
-**Current Version**: 4.12.0 (Unreleased)
+**Last Updated**: January 19, 2026  
+**Current Version**: 4.14.5
 
 This document tracks potential features and enhancements for the Expense Tracker application. Features are categorized by priority and implementation status.
 
@@ -155,25 +155,22 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ---
 
-### ⚪ 7. Receipt Attachments
-**Status**: Proposed  
+### 🟢 7. Tax-Deductible Invoice Attachments
+**Status**: Completed (v4.12.0 - v4.13.2)  
 **Priority**: Medium  
 **Effort**: High  
-**Description**: Upload and link receipt images to expenses.
+**Description**: Upload and link PDF invoices/receipts to tax-deductible expenses (medical and donations).
 
-**Key Features**:
-- Upload receipt photos/PDFs
-- Link multiple receipts to one expense
-- Receipt gallery view
-- OCR to auto-fill expense details (optional enhancement)
-- Receipt search and filtering
+**Features Delivered**:
+- Upload PDF invoices to medical and donation expenses
+- Multiple invoices per expense with person linking (medical)
+- Built-in PDF viewer with zoom, download, and print
+- Invoice indicators in expense lists and tax reports
+- Secure file storage with automatic cleanup
+- Backup integration for invoice files
+- OCR not implemented (optional future enhancement)
 
-**Benefits**:
-- Better record keeping
-- Easier expense verification
-- Tax documentation
-
-**Dependencies**: File storage solution, image upload handling
+**Note**: This feature covers the core use case of receipt attachments for tax-deductible expenses. General receipt attachments for all expense types could be a future enhancement.
 
 ---
 
@@ -428,6 +425,43 @@ This document tracks potential features and enhancements for the Expense Tracker
 ---
 
 ## 🟢 Completed Features
+
+### 🟢 UI Modernization (v4.14.0)
+**Completed**: January 18, 2026  
+**Spec**: `.kiro/specs/ui-modernization/` (archived)  
+**Description**: Comprehensive design system overhaul with modern styling, improved accessibility, and consistent visual language across all components.
+
+**Features Delivered**:
+- **CSS Variables Design System**: Centralized design tokens in `frontend/src/styles/variables.css` for colors, typography, spacing, shadows, and z-index
+- **Consistent Color Palette**: Semantic colors for primary, positive, negative, warning states with light/dark variants
+- **Typography System**: Clear heading hierarchy, body text sizes, and tabular numerals for monetary values
+- **Spacing Scale**: Modern 4px-based spacing system with section and element gap tokens
+- **Shadow System**: Multi-level elevation system (xs through 2xl) for depth
+- **Responsive Breakpoints**: Optimized for mobile (480px), tablet (768px), and desktop (1024px+)
+- **Accessibility Improvements**: `prefers-reduced-motion` support throughout, focus states, ARIA labels
+- **Modern Card Layouts**: Subtle shadows and hover effects replacing heavy borders
+- **Compact Expense Table**: Better data density with reduced row padding
+- **Tax-Deductible Styling**: Bold text for medical and donation expenses for improved readability
+- **Wider Filter Dropdowns**: Prevents text truncation in category/payment method filters
+- **Z-Index Scale**: Standardized stacking context management (dropdown, sticky, fixed, modal, popover, tooltip)
+
+---
+
+### 🟢 Multi-Invoice Support & Donation Invoices (v4.13.0 - v4.13.2)
+**Completed**: January 17, 2026  
+**Spec**: `.kiro/specs/multi-invoice-support/` (archived)  
+**Description**: Enhanced invoice management with multi-file upload, person linking per invoice, and extended support for donation expenses.
+
+**Features Delivered**:
+- **Multi-file Upload**: Select multiple invoice files at once when creating medical expenses
+- **Person Selection Per Invoice**: Each uploaded invoice can be linked to a specific person during expense creation
+- **Person Dropdown in Invoice List**: Change person links on existing invoices directly from the invoice list
+- **Streamlined Workflow**: Create expense → assign people → add invoices with person selection → save all at once
+- **Donation Invoice Support**: Tax - Donation expenses can now have PDF invoices attached (receipts, tax letters)
+- **Invoice Indicators**: Shown for both medical and donation expenses in expense lists and tax reports
+- **Documentation Updates**: Renamed medical-specific docs to tax-deductible to reflect broader support
+
+---
 
 ### 🟢 Medical Expense Invoice Attachments (v4.12.0)
 **Completed**: January 15, 2026  
@@ -766,6 +800,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 ---
 
 **Version History**:
+- v2.0 (2026-01-19): Added UI Modernization (v4.14.0) and Multi-Invoice Support (v4.13.0-v4.13.2) to completed features, marked Receipt Attachments as completed (via tax-deductible invoices), updated current version to 4.14.5
 - v1.8 (2026-01-15): Added Medical Expense Invoice Attachments (v4.12.0) to completed features, updated current version to 4.12.0
 - v1.7 (2025-12-31): Added Sticky Summary Scrolling (v4.11.0) to completed features, updated current version to 4.11.0
 - v1.6 (2025-12-23): Added Budget Alert Notifications (v4.10.0) to completed features, updated current version to 4.10.0

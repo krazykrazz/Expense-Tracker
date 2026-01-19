@@ -9,10 +9,11 @@
     "build": "cd client && npm install && npm run build",
     "db:check": "node scripts/checkDatabaseSchema.js",
     "db:migrate": "node scripts/addFixedExpensesTable.js",
-    "test": "jest --runInBand"
+    "test": "cross-env NODE_ENV=test jest --runInBand"
   },
   "jest": {
     "testTimeout": 30000,
+    "globalSetup": "<rootDir>/jest.globalSetup.js",
     "setupFilesAfterEnv": [
       "<rootDir>/jest.setup.js"
     ]
@@ -28,6 +29,7 @@
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",
+    "cross-env": "^7.0.3",
     "fast-check": "^4.3.0",
     "jest": "^30.2.0",
     "nodemon": "^3.0.1",

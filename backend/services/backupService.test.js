@@ -1,15 +1,29 @@
+/**
+ * Tests for Backup Service
+ * 
+ * NOTE: These tests work with real files and the production database,
+ * so they skip the in-memory test database setup.
+ */
+
+// Skip in-memory test database - backup tests need real file operations
+process.env.SKIP_TEST_DB = 'true';
+
 const fs = require('fs');
 const path = require('path');
 const sqlite3 = require('sqlite3').verbose();
 const backupService = require('./backupService');
 const archiveUtils = require('../utils/archiveUtils');
 const { getInvoicesPath } = require('../config/paths');
+const { initializeDatabase } = require('../database/db');
 
 describe('BackupService - Archive Backup', () => {
   const testBackupPath = path.join(__dirname, '../../test-backups');
   const testExtractPath = path.join(__dirname, '../../test-extract');
   
-  beforeAll(() => {
+  beforeAll(async () => {
+    // Initialize the real database for backup tests
+    await initializeDatabase();
+    
     // Create test directories
     if (!fs.existsSync(testBackupPath)) {
       fs.mkdirSync(testBackupPath, { recursive: true });

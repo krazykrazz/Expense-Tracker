@@ -1,3 +1,13 @@
+/**
+ * Backup API Integration Tests
+ * 
+ * NOTE: These tests work with real files and the production database,
+ * so they skip the in-memory test database setup.
+ */
+
+// Skip in-memory test database - backup tests need real file operations
+process.env.SKIP_TEST_DB = 'true';
+
 const request = require('supertest');
 const express = require('express');
 const path = require('path');
@@ -5,6 +15,7 @@ const fs = require('fs');
 const backupRoutes = require('../routes/backupRoutes');
 const backupService = require('../services/backupService');
 const { getBackupPath, getInvoicesPath } = require('../config/paths');
+const { initializeDatabase } = require('../database/db');
 
 // Create test app
 const app = express();
@@ -18,6 +29,9 @@ describe('Backup API Integration Tests', () => {
   let testBackupFilename;
 
   beforeAll(async () => {
+    // Initialize the real database for backup tests
+    await initializeDatabase();
+    
     // Save original config
     originalConfig = backupService.getConfig();
     

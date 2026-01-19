@@ -1,53 +1,55 @@
-// Jest setup file for backend tests
-const { getDatabase } = require('./database/db');
+/**
+ * Jest Setup File for Backend Tests
+ * 
+ * This file runs before each test file.
+ * It configures the test environment to use an in-memory SQLite database
+ * instead of the production database.
+ * 
+ * IMPORTANT: Tests that need to work with real files (like backup tests)
+ * should set process.env.SKIP_TEST_DB = 'true' before importing the database module.
+ * 
+ * NOTE: Database cleanup is handled by individual tests in their afterEach hooks.
+ * This setup only initializes the test database once.
+ */
+
+const { getTestDatabase, closeTestDatabase } = require('./database/db');
 
 // Global test timeout for property-based tests
 jest.setTimeout(30000);
 
-// Global cleanup after all tests
-afterAll(async () => {
-  try {
-    const db = await getDatabase();
-    
-    // Clean up test data
-    const tables = [
-      'expense_people',
-      'expenses', 
-      'people',
-      'fixed_expenses',
-      'income_sources',
-      'budgets',
-      'loans',
-      'loan_balances',
-      'investments',
-      'investment_values'
-    ];
-    
-    for (const table of tables) {
-      await new Promise((resolve, reject) => {
-        db.run(`DELETE FROM ${table} WHERE 1=1`, (err) => {
-          if (err && !err.message.includes('no such table')) {
-            console.warn(`Warning: Could not clean ${table}:`, err.message);
-          }
-          resolve();
-        });
-      });
-    }
-    
-    // Reset sequences
-    await new Promise((resolve) => {
-      db.run('DELETE FROM sqlite_sequence', (err) => {
-        if (err && !err.message.includes('no such table')) {
-          console.warn('Warning: Could not reset sequences:', err.message);
-        }
-        resolve();
-      });
-    });
-    
-    db.close();
-  } catch (error) {
-    console.warn('Warning: Global cleanup failed:', error.message);
+// Track if we've initialized the test database
+let testDbInitialized = false;
+
+// Before all tests in a file, ensure test database is ready
+beforeAll(async () => {
+  // Skip test database setup for tests that need real files
+  if (process.env.SKIP_TEST_DB === 'true') {
+    return;
   }
+  
+  try {
+    await getTestDatabase();
+    testDbInitialized = true;
+  } catch (err) {
+    console.error('Failed to initialize test database:', err);
+    throw err;
+  }
+});
+
+// NOTE: We do NOT reset the database in beforeEach anymore.
+// Each test is responsible for its own cleanup in afterEach.
+// This prevents race conditions with tests that store db references.
+
+// After all tests complete, close the database connection
+afterAll(async () => {
+  if (process.env.SKIP_TEST_DB === 'true') {
+    return;
+  }
+  
+  // Don't close the database here - it's shared across test files
+  // and Jest runs files in parallel. The database will be cleaned up
+  // when the process exits.
+  testDbInitialized = false;
 });
 
 // Suppress console output during tests unless explicitly needed
@@ -57,7 +59,8 @@ beforeAll(() => {
   if (process.env.CI || process.env.NODE_ENV === 'test') {
     console.log = jest.fn();
     console.warn = jest.fn();
-    console.error = jest.fn();
+    // Keep console.error for debugging test failures
+    // console.error = jest.fn();
   }
 });
 

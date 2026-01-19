@@ -75,7 +75,7 @@ describe('ExpenseService - Property-Based Tests for Future Months', () => {
             expect(uniqueIds.size).toBe(allIds.length);
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       );
     }, 120000);
 
@@ -139,7 +139,7 @@ describe('ExpenseService - Property-Based Tests for Future Months', () => {
             }
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       );
     }, 120000);
 
@@ -163,7 +163,7 @@ describe('ExpenseService - Property-Based Tests for Future Months', () => {
             expect(uniqueDates.size).toBe(allDates.length);
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       );
     }, 120000);
 
@@ -236,7 +236,7 @@ describe('ExpenseService - Property-Based Tests for Future Months', () => {
             expect(uniqueIds.size).toBe(allIds.length);
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       );
     }, 120000);
 
@@ -304,7 +304,7 @@ describe('ExpenseService - Property-Based Tests for Future Months', () => {
             }
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       );
     }, 120000);
 

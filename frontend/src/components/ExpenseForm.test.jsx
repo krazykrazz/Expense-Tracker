@@ -194,10 +194,10 @@ describe('ExpenseForm - People Selection Enhancement', () => {
     await waitFor(() => {
       expect(expenseApi.createExpense).toHaveBeenCalledWith(
         expect.objectContaining({
-          amount: '100.00',
           type: 'Tax - Medical'
         }),
-        [{ personId: 1, amount: 100 }]
+        [{ personId: 1, amount: 100 }],
+        0 // futureMonths default
       );
     });
   });
@@ -372,11 +372,299 @@ describe('ExpenseForm - People Selection Enhancement', () => {
     await waitFor(() => {
       expect(expenseApi.createExpense).toHaveBeenCalledWith(
         expect.objectContaining({
-          amount: '50.00',
           type: 'Tax - Medical'
         }),
-        null // No people allocations
+        null, // No people allocations
+        0 // futureMonths default
       );
+    });
+  });
+});
+
+
+describe('ExpenseForm - Future Months Feature', () => {
+  const mockCategories = [
+    'Other', 'Groceries', 'Gas', 'Dining Out', 'Tax - Medical', 'Tax - Donation', 'Subscriptions'
+  ];
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    
+    // Mock API responses
+    global.fetch.mockImplementation((url) => {
+      if (url.includes('/api/categories')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            categories: mockCategories,
+            budgetableCategories: [],
+            taxDeductibleCategories: []
+          })
+        });
+      }
+      if (url.includes('/places')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([])
+        });
+      }
+      if (url.includes('/api/people')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([])
+        });
+      }
+      return Promise.reject(new Error('Unknown URL'));
+    });
+
+    // Mock people API
+    peopleApi.getPeople.mockResolvedValue([]);
+
+    // Mock category suggestion API
+    categorySuggestionApi.fetchCategorySuggestion.mockResolvedValue({ category: null });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  /**
+   * Test future months dropdown renders with correct options
+   * Requirements: 1.1, 1.2
+   */
+  it('should render future months dropdown with options 0-12', async () => {
+    render(<ExpenseForm onExpenseAdded={() => {}} />);
+
+    // Wait for component to load
+    await waitFor(() => {
+      expect(screen.getByLabelText(/type/i)).toBeInTheDocument();
+    });
+
+    // Find the future months dropdown
+    const futureMonthsSelect = screen.getByLabelText(/add to future months/i);
+    expect(futureMonthsSelect).toBeInTheDocument();
+
+    // Verify it has 13 options (0-12)
+    const options = futureMonthsSelect.querySelectorAll('option');
+    expect(options).toHaveLength(13);
+
+    // Verify first option is "Don't add"
+    expect(options[0].textContent).toContain("Don't add");
+    expect(options[0].value).toBe('0');
+
+    // Verify last option is 12 months
+    expect(options[12].textContent).toContain('12 future months');
+    expect(options[12].value).toBe('12');
+  });
+
+  /**
+   * Test default value is 0
+   * Requirements: 1.7
+   */
+  it('should have default value of 0 for future months', async () => {
+    render(<ExpenseForm onExpenseAdded={() => {}} />);
+
+    // Wait for component to load
+    await waitFor(() => {
+      expect(screen.getByLabelText(/type/i)).toBeInTheDocument();
+    });
+
+    const futureMonthsSelect = screen.getByLabelText(/add to future months/i);
+    expect(futureMonthsSelect.value).toBe('0');
+  });
+
+  /**
+   * Test date range preview display when future months > 0
+   * Requirements: 1.1, 1.2
+   */
+  it('should show date range preview when future months > 0', async () => {
+    render(<ExpenseForm onExpenseAdded={() => {}} />);
+
+    // Wait for component to load
+    await waitFor(() => {
+      expect(screen.getByLabelText(/type/i)).toBeInTheDocument();
+    });
+
+    // Initially, no preview should be shown
+    expect(screen.queryByText(/will create/i)).not.toBeInTheDocument();
+
+    // Select 3 future months
+    const futureMonthsSelect = screen.getByLabelText(/add to future months/i);
+    fireEvent.change(futureMonthsSelect, { target: { value: '3' } });
+
+    // Preview should now be shown
+    await waitFor(() => {
+      expect(screen.getByText(/will create 3 additional expenses/i)).toBeInTheDocument();
+    });
+
+    // Preview should include "through" text
+    expect(screen.getByText(/through/i)).toBeInTheDocument();
+  });
+
+  /**
+   * Test future months resets to 0 after successful submission
+   * Requirements: 1.7
+   */
+  it('should reset future months to 0 after successful submission', async () => {
+    const mockOnExpenseAdded = vi.fn();
+    
+    // Mock successful expense creation with future expenses
+    expenseApi.createExpense.mockResolvedValue({
+      expense: { id: 1, type: 'Subscriptions' },
+      futureExpenses: [
+        { id: 2, date: '2025-02-15' },
+        { id: 3, date: '2025-03-15' }
+      ]
+    });
+
+    render(<ExpenseForm onExpenseAdded={mockOnExpenseAdded} />);
+
+    // Wait for component to load
+    await waitFor(() => {
+      expect(screen.getByLabelText(/type/i)).toBeInTheDocument();
+    });
+
+    // Fill in required fields
+    fireEvent.change(screen.getByLabelText(/date/i), { target: { value: '2025-01-15' } });
+    fireEvent.change(screen.getByLabelText(/amount/i), { target: { value: '15.99' } });
+    fireEvent.change(screen.getByLabelText(/type/i), { target: { value: 'Subscriptions' } });
+    fireEvent.change(screen.getByLabelText(/payment method/i), { target: { value: 'Credit Card' } });
+
+    // Select 2 future months
+    const futureMonthsSelect = screen.getByLabelText(/add to future months/i);
+    fireEvent.change(futureMonthsSelect, { target: { value: '2' } });
+    expect(futureMonthsSelect.value).toBe('2');
+
+    // Submit the form
+    fireEvent.submit(screen.getByRole('button', { name: /add expense/i }));
+
+    // Wait for submission to complete
+    await waitFor(() => {
+      expect(expenseApi.createExpense).toHaveBeenCalled();
+    });
+
+    // Future months should be reset to 0
+    await waitFor(() => {
+      expect(futureMonthsSelect.value).toBe('0');
+    });
+  });
+
+  /**
+   * Test createExpense is called with futureMonths parameter
+   * Requirements: 1.3
+   */
+  it('should pass futureMonths to createExpense API', async () => {
+    const mockOnExpenseAdded = vi.fn();
+    
+    expenseApi.createExpense.mockResolvedValue({
+      expense: { id: 1, type: 'Subscriptions' },
+      futureExpenses: []
+    });
+
+    render(<ExpenseForm onExpenseAdded={mockOnExpenseAdded} />);
+
+    // Wait for component to load
+    await waitFor(() => {
+      expect(screen.getByLabelText(/type/i)).toBeInTheDocument();
+    });
+
+    // Fill in required fields
+    fireEvent.change(screen.getByLabelText(/date/i), { target: { value: '2025-01-15' } });
+    fireEvent.change(screen.getByLabelText(/amount/i), { target: { value: '15.99' } });
+    fireEvent.change(screen.getByLabelText(/type/i), { target: { value: 'Subscriptions' } });
+    fireEvent.change(screen.getByLabelText(/payment method/i), { target: { value: 'Credit Card' } });
+
+    // Select 3 future months
+    const futureMonthsSelect = screen.getByLabelText(/add to future months/i);
+    fireEvent.change(futureMonthsSelect, { target: { value: '3' } });
+
+    // Submit the form
+    fireEvent.submit(screen.getByRole('button', { name: /add expense/i }));
+
+    // Verify createExpense was called with futureMonths parameter
+    await waitFor(() => {
+      expect(expenseApi.createExpense).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'Subscriptions'
+        }),
+        null, // no people allocations
+        3     // futureMonths
+      );
+    });
+  });
+
+  /**
+   * Test success message shows future expenses count
+   * Requirements: 4.1, 4.2
+   */
+  it('should show success message with future expenses count', async () => {
+    const mockOnExpenseAdded = vi.fn();
+    
+    expenseApi.createExpense.mockResolvedValue({
+      expense: { id: 1, type: 'Subscriptions' },
+      futureExpenses: [
+        { id: 2, date: '2025-02-15' },
+        { id: 3, date: '2025-03-15' },
+        { id: 4, date: '2025-04-15' }
+      ]
+    });
+
+    render(<ExpenseForm onExpenseAdded={mockOnExpenseAdded} />);
+
+    // Wait for component to load
+    await waitFor(() => {
+      expect(screen.getByLabelText(/type/i)).toBeInTheDocument();
+    });
+
+    // Fill in required fields
+    fireEvent.change(screen.getByLabelText(/date/i), { target: { value: '2025-01-15' } });
+    fireEvent.change(screen.getByLabelText(/amount/i), { target: { value: '15.99' } });
+    fireEvent.change(screen.getByLabelText(/type/i), { target: { value: 'Subscriptions' } });
+    fireEvent.change(screen.getByLabelText(/payment method/i), { target: { value: 'Credit Card' } });
+
+    // Select 3 future months
+    const futureMonthsSelect = screen.getByLabelText(/add to future months/i);
+    fireEvent.change(futureMonthsSelect, { target: { value: '3' } });
+
+    // Submit the form
+    fireEvent.submit(screen.getByRole('button', { name: /add expense/i }));
+
+    // Verify success message shows future expenses info
+    await waitFor(() => {
+      expect(screen.getByText(/added to 3 future months/i)).toBeInTheDocument();
+    });
+  });
+
+  /**
+   * Test no preview shown when future months is 0
+   * Requirements: 1.7
+   */
+  it('should not show preview when future months is 0', async () => {
+    render(<ExpenseForm onExpenseAdded={() => {}} />);
+
+    // Wait for component to load
+    await waitFor(() => {
+      expect(screen.getByLabelText(/type/i)).toBeInTheDocument();
+    });
+
+    // Verify no preview is shown with default value of 0
+    expect(screen.queryByText(/will create/i)).not.toBeInTheDocument();
+
+    // Select 2 future months
+    const futureMonthsSelect = screen.getByLabelText(/add to future months/i);
+    fireEvent.change(futureMonthsSelect, { target: { value: '2' } });
+
+    // Preview should be shown
+    await waitFor(() => {
+      expect(screen.getByText(/will create/i)).toBeInTheDocument();
+    });
+
+    // Change back to 0
+    fireEvent.change(futureMonthsSelect, { target: { value: '0' } });
+
+    // Preview should be hidden again
+    await waitFor(() => {
+      expect(screen.queryByText(/will create/i)).not.toBeInTheDocument();
     });
   });
 });

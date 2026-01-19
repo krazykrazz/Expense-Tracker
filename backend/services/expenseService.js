@@ -102,14 +102,87 @@ class ExpenseService {
   }
 
   /**
-   * Create a new expense
+   * Calculate a future date by adding months to a source date
+   * Preserves the day of month when possible, otherwise uses the last day of the target month
+   * @param {string} sourceDate - Source date in YYYY-MM-DD format
+   * @param {number} monthsAhead - Number of months to add (1-12)
+   * @returns {string} Future date in YYYY-MM-DD format
+   * @private
+   */
+  _calculateFutureDate(sourceDate, monthsAhead) {
+    // Parse the source date
+    const [year, month, day] = sourceDate.split('-').map(Number);
+    const sourceDay = day;
+    
+    // Calculate target year and month
+    let targetMonth = month + monthsAhead;
+    let targetYear = year;
+    
+    // Handle year rollover
+    while (targetMonth > 12) {
+      targetMonth -= 12;
+      targetYear += 1;
+    }
+    
+    // Get the number of days in the target month
+    // Using day 0 of the next month gives us the last day of the target month
+    const daysInTargetMonth = new Date(targetYear, targetMonth, 0).getDate();
+    
+    // Use the source day if it exists in the target month, otherwise use the last day
+    const targetDay = sourceDay > daysInTargetMonth ? daysInTargetMonth : sourceDay;
+    
+    // Format as YYYY-MM-DD
+    const yearStr = targetYear.toString();
+    const monthStr = targetMonth.toString().padStart(2, '0');
+    const dayStr = targetDay.toString().padStart(2, '0');
+    
+    return `${yearStr}-${monthStr}-${dayStr}`;
+  }
+
+  /**
+   * Validate futureMonths parameter
+   * @param {number} futureMonths - Number of future months (0-12)
+   * @throws {Error} If validation fails
+   * @private
+   */
+  _validateFutureMonths(futureMonths) {
+    if (futureMonths === undefined || futureMonths === null) {
+      return; // Optional parameter, default to 0
+    }
+    
+    if (!Number.isInteger(futureMonths)) {
+      throw new Error('Future months must be a whole number');
+    }
+    
+    if (futureMonths < 0 || futureMonths > 12) {
+      throw new Error('Future months must be between 0 and 12');
+    }
+  }
+
+  /**
+   * Validate that all people in the allocations exist in the database
+   * @param {Array} personAllocations - Array of {personId, amount} objects
+   * @throws {Error} If any person does not exist
+   * @private
+   */
+  async _validatePeopleExist(personAllocations) {
+    const peopleRepository = require('../repositories/peopleRepository');
+    
+    for (const allocation of personAllocations) {
+      const person = await peopleRepository.findById(allocation.personId);
+      if (!person) {
+        throw new Error(`Person with ID ${allocation.personId} does not exist. Please add people in the People Management section first.`);
+      }
+    }
+  }
+
+  /**
+   * Create a single expense (internal helper)
    * @param {Object} expenseData - Expense data
    * @returns {Promise<Object>} Created expense
+   * @private
    */
-  async createExpense(expenseData) {
-    // Validate the expense data
-    this.validateExpense(expenseData);
-
+  async _createSingleExpense(expenseData) {
     // Calculate week from date
     const week = calculateWeek(expenseData.date);
 
@@ -133,6 +206,73 @@ class ExpenseService {
     this._triggerBudgetRecalculation(expense.date, expense.type);
 
     return createdExpense;
+  }
+
+  /**
+   * Create a new expense with optional future months
+   * @param {Object} expenseData - Expense data
+   * @param {number} futureMonths - Number of future months to create (0-12, default 0)
+   * @returns {Promise<Object>} Created expense with futureExpenses array
+   */
+  async createExpense(expenseData, futureMonths = 0) {
+    // Validate the expense data
+    this.validateExpense(expenseData);
+    
+    // Validate futureMonths parameter
+    this._validateFutureMonths(futureMonths);
+    
+    // Normalize futureMonths to 0 if not provided
+    const monthsToCreate = futureMonths || 0;
+
+    // Create source expense
+    const sourceExpense = await this._createSingleExpense(expenseData);
+    
+    // If no future months requested, return simple response for backward compatibility
+    if (monthsToCreate === 0) {
+      return sourceExpense;
+    }
+
+    // Create future expenses
+    const futureExpenses = [];
+    const createdExpenseIds = [sourceExpense.id];
+    
+    try {
+      for (let i = 1; i <= monthsToCreate; i++) {
+        const futureDate = this._calculateFutureDate(expenseData.date, i);
+        
+        // Create future expense with same data but different date
+        const futureExpenseData = {
+          ...expenseData,
+          date: futureDate
+        };
+        
+        const futureExpense = await this._createSingleExpense(futureExpenseData);
+        futureExpenses.push(futureExpense);
+        createdExpenseIds.push(futureExpense.id);
+        
+        // If this is a medical expense with people allocations, copy them
+        // Note: People allocations are handled by createExpenseWithPeople, not here
+        // Invoices are NOT copied (they are unique per expense)
+      }
+    } catch (error) {
+      // Rollback: delete all created expenses on error (atomicity)
+      for (const expenseId of createdExpenseIds) {
+        try {
+          await expenseRepository.delete(expenseId);
+        } catch (deleteError) {
+          // Log but continue cleanup
+          const logger = require('../config/logger');
+          logger.error('Error during rollback cleanup:', deleteError);
+        }
+      }
+      throw new Error('Failed to create future expenses. Please try again.');
+    }
+
+    // Return response with source expense and futureExpenses array
+    return {
+      expense: sourceExpense,
+      futureExpenses: futureExpenses
+    };
   }
 
   /**
@@ -176,17 +316,24 @@ class ExpenseService {
   }
 
   /**
-   * Update an expense
+   * Update an expense with optional future months
    * @param {number} id - Expense ID
    * @param {Object} expenseData - Updated expense data
-   * @returns {Promise<Object|null>} Updated expense or null
+   * @param {number} futureMonths - Number of future months to create (0-12, default 0)
+   * @returns {Promise<Object|null>} Updated expense with futureExpenses array or null
    */
-  async updateExpense(id, expenseData) {
+  async updateExpense(id, expenseData, futureMonths = 0) {
     // Get the old expense data before updating
     const oldExpense = await expenseRepository.findById(id);
 
     // Validate the expense data
     this.validateExpense(expenseData);
+
+    // Validate futureMonths parameter
+    this._validateFutureMonths(futureMonths);
+
+    // Normalize futureMonths to 0 if not provided
+    const monthsToCreate = futureMonths || 0;
 
     // Calculate week from date
     const week = calculateWeek(expenseData.date);
@@ -223,7 +370,51 @@ class ExpenseService {
       }
     }
 
-    return updatedExpense;
+    // If no future months requested, return simple response for backward compatibility
+    if (monthsToCreate === 0) {
+      return updatedExpense;
+    }
+
+    // Create future expenses with updated values (Requirement 2.3, 2.4)
+    const futureExpenses = [];
+    const createdExpenseIds = [];
+    
+    try {
+      for (let i = 1; i <= monthsToCreate; i++) {
+        const futureDate = this._calculateFutureDate(expenseData.date, i);
+        
+        // Create future expense with updated values (not original values)
+        const futureExpenseData = {
+          ...expenseData,
+          date: futureDate
+        };
+        
+        const futureExpense = await this._createSingleExpense(futureExpenseData);
+        futureExpenses.push(futureExpense);
+        createdExpenseIds.push(futureExpense.id);
+        
+        // Note: People allocations are handled by updateExpenseWithPeople
+        // Invoices are NOT copied (they are unique per expense)
+      }
+    } catch (error) {
+      // Rollback: delete all created future expenses on error (atomicity)
+      for (const expenseId of createdExpenseIds) {
+        try {
+          await expenseRepository.delete(expenseId);
+        } catch (deleteError) {
+          // Log but continue cleanup
+          const logger = require('../config/logger');
+          logger.error('Error during rollback cleanup:', deleteError);
+        }
+      }
+      throw new Error('Failed to create future expenses. Please try again.');
+    }
+
+    // Return response with updated expense and futureExpenses array
+    return {
+      expense: updatedExpense,
+      futureExpenses: futureExpenses
+    };
   }
 
   /**
@@ -1265,81 +1456,234 @@ class ExpenseService {
   }
 
   /**
-   * Create a new expense with people associations
+   * Create a new expense with people associations and optional future months
    * @param {Object} expenseData - Expense data
    * @param {Array} personAllocations - Array of {personId, amount} objects
-   * @returns {Promise<Object>} Created expense with people data
+   * @param {number} futureMonths - Number of future months to create (0-12, default 0)
+   * @returns {Promise<Object>} Created expense with people data and futureExpenses array
    */
-  async createExpenseWithPeople(expenseData, personAllocations = []) {
+  async createExpenseWithPeople(expenseData, personAllocations = [], futureMonths = 0) {
     // Validate the expense data first
     this.validateExpense(expenseData);
+
+    // Validate futureMonths parameter
+    this._validateFutureMonths(futureMonths);
 
     // If people allocations are provided, validate them
     if (personAllocations && personAllocations.length > 0) {
       this.validatePersonAllocations(parseFloat(expenseData.amount), personAllocations);
+      
+      // Validate that all people exist in the database
+      await this._validatePeopleExist(personAllocations);
     }
 
-    // Create the expense first
-    const createdExpense = await this.createExpense(expenseData);
+    // Normalize futureMonths to 0 if not provided
+    const monthsToCreate = futureMonths || 0;
 
-    // If people allocations are provided, create the associations
+    // Create the source expense first
+    const createdExpense = await this._createSingleExpense(expenseData);
+    const createdExpenseIds = [createdExpense.id];
+
+    // If people allocations are provided, create the associations for source expense
     if (personAllocations && personAllocations.length > 0) {
       await expensePeopleRepository.createAssociations(
         createdExpense.id,
         personAllocations
       );
-
-      // Fetch full people data including names for the response
-      const peopleByExpense = await expensePeopleRepository.getPeopleForExpenses([createdExpense.id]);
-      const people = peopleByExpense[createdExpense.id] || [];
-
-      // Return expense with complete people data (including names)
-      return {
-        ...createdExpense,
-        people
-      };
     }
 
-    return createdExpense;
+    // If no future months requested, return simple response
+    if (monthsToCreate === 0) {
+      // Fetch full people data including names for the response
+      if (personAllocations && personAllocations.length > 0) {
+        const peopleByExpense = await expensePeopleRepository.getPeopleForExpenses([createdExpense.id]);
+        const people = peopleByExpense[createdExpense.id] || [];
+        return {
+          ...createdExpense,
+          people
+        };
+      }
+      return createdExpense;
+    }
+
+    // Create future expenses with people allocations
+    const futureExpenses = [];
+    
+    try {
+      for (let i = 1; i <= monthsToCreate; i++) {
+        const futureDate = this._calculateFutureDate(expenseData.date, i);
+        
+        // Create future expense with same data but different date
+        const futureExpenseData = {
+          ...expenseData,
+          date: futureDate
+        };
+        
+        const futureExpense = await this._createSingleExpense(futureExpenseData);
+        createdExpenseIds.push(futureExpense.id);
+        
+        // Copy people allocations for medical expenses (Requirement 1.8)
+        // Note: Invoices are NOT copied (Requirement 1.9)
+        if (personAllocations && personAllocations.length > 0) {
+          await expensePeopleRepository.createAssociations(
+            futureExpense.id,
+            personAllocations
+          );
+        }
+        
+        futureExpenses.push(futureExpense);
+      }
+    } catch (error) {
+      // Rollback: delete all created expenses on error (atomicity)
+      for (const expenseId of createdExpenseIds) {
+        try {
+          await expenseRepository.delete(expenseId);
+        } catch (deleteError) {
+          // Log but continue cleanup
+          const logger = require('../config/logger');
+          logger.error('Error during rollback cleanup:', deleteError);
+        }
+      }
+      throw new Error('Failed to create future expenses. Please try again.');
+    }
+
+    // Fetch full people data for all expenses
+    const allExpenseIds = [createdExpense.id, ...futureExpenses.map(e => e.id)];
+    const peopleByExpense = await expensePeopleRepository.getPeopleForExpenses(allExpenseIds);
+
+    // Attach people data to source expense
+    const sourceWithPeople = {
+      ...createdExpense,
+      people: peopleByExpense[createdExpense.id] || []
+    };
+
+    // Attach people data to future expenses
+    const futureWithPeople = futureExpenses.map(expense => ({
+      ...expense,
+      people: peopleByExpense[expense.id] || []
+    }));
+
+    // Return response with source expense and futureExpenses array
+    return {
+      expense: sourceWithPeople,
+      futureExpenses: futureWithPeople
+    };
   }
 
   /**
-   * Update an expense with people associations
+   * Update an expense with people associations and optional future months
    * @param {number} id - Expense ID
    * @param {Object} expenseData - Updated expense data
    * @param {Array} personAllocations - Array of {personId, amount} objects
-   * @returns {Promise<Object|null>} Updated expense with people data or null
+   * @param {number} futureMonths - Number of future months to create (0-12, default 0)
+   * @returns {Promise<Object|null>} Updated expense with people data and futureExpenses array or null
    */
-  async updateExpenseWithPeople(id, expenseData, personAllocations = []) {
+  async updateExpenseWithPeople(id, expenseData, personAllocations = [], futureMonths = 0) {
     // Validate the expense data first
     this.validateExpense(expenseData);
+
+    // Validate futureMonths parameter
+    this._validateFutureMonths(futureMonths);
 
     // If people allocations are provided, validate them
     if (personAllocations && personAllocations.length > 0) {
       this.validatePersonAllocations(parseFloat(expenseData.amount), personAllocations);
+      
+      // Validate that all people exist in the database
+      await this._validatePeopleExist(personAllocations);
     }
 
-    // Update the expense first
-    const updatedExpense = await this.updateExpense(id, expenseData);
+    // Normalize futureMonths to 0 if not provided
+    const monthsToCreate = futureMonths || 0;
+
+    // Update the expense first (without futureMonths to avoid double creation)
+    const updatedExpense = await this.updateExpense(id, expenseData, 0);
 
     if (!updatedExpense) {
       return null;
     }
 
-    // Update people associations
+    // Update people associations for the updated expense
     await expensePeopleRepository.updateExpenseAllocations(
       id,
       personAllocations || []
     );
 
-    // Fetch full people data including names for the response
-    const peopleByExpense = await expensePeopleRepository.getPeopleForExpenses([id]);
-    const people = peopleByExpense[id] || [];
+    // If no future months requested, return simple response
+    if (monthsToCreate === 0) {
+      // Fetch full people data including names for the response
+      const peopleByExpense = await expensePeopleRepository.getPeopleForExpenses([id]);
+      const people = peopleByExpense[id] || [];
 
-    // Return expense with complete people data (including names)
-    return {
+      // Return expense with complete people data (including names)
+      return {
+        ...updatedExpense,
+        people
+      };
+    }
+
+    // Create future expenses with updated values and people allocations (Requirement 2.3, 2.4)
+    const futureExpenses = [];
+    const createdExpenseIds = [];
+    
+    try {
+      for (let i = 1; i <= monthsToCreate; i++) {
+        const futureDate = this._calculateFutureDate(expenseData.date, i);
+        
+        // Create future expense with updated values
+        const futureExpenseData = {
+          ...expenseData,
+          date: futureDate
+        };
+        
+        const futureExpense = await this._createSingleExpense(futureExpenseData);
+        createdExpenseIds.push(futureExpense.id);
+        
+        // Copy people allocations for medical expenses (Requirement 1.8)
+        // Note: Invoices are NOT copied (Requirement 1.9)
+        if (personAllocations && personAllocations.length > 0) {
+          await expensePeopleRepository.createAssociations(
+            futureExpense.id,
+            personAllocations
+          );
+        }
+        
+        futureExpenses.push(futureExpense);
+      }
+    } catch (error) {
+      // Rollback: delete all created future expenses on error (atomicity)
+      for (const expenseId of createdExpenseIds) {
+        try {
+          await expenseRepository.delete(expenseId);
+        } catch (deleteError) {
+          // Log but continue cleanup
+          const logger = require('../config/logger');
+          logger.error('Error during rollback cleanup:', deleteError);
+        }
+      }
+      throw new Error('Failed to create future expenses. Please try again.');
+    }
+
+    // Fetch full people data for all expenses
+    const allExpenseIds = [id, ...futureExpenses.map(e => e.id)];
+    const peopleByExpense = await expensePeopleRepository.getPeopleForExpenses(allExpenseIds);
+
+    // Attach people data to updated expense
+    const updatedWithPeople = {
       ...updatedExpense,
-      people
+      people: peopleByExpense[id] || []
+    };
+
+    // Attach people data to future expenses
+    const futureWithPeople = futureExpenses.map(expense => ({
+      ...expense,
+      people: peopleByExpense[expense.id] || []
+    }));
+
+    // Return response with updated expense and futureExpenses array
+    return {
+      expense: updatedWithPeople,
+      futureExpenses: futureWithPeople
     };
   }
 

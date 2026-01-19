@@ -6,19 +6,19 @@ This implementation adds an "Add to future months" feature to the expense form, 
 
 ## Tasks
 
-- [ ] 1. Implement backend date calculation utility
-  - [ ] 1.1 Create `_calculateFutureDate` function in expenseService.js
+- [x] 1. Implement backend date calculation utility
+  - [x] 1.1 Create `_calculateFutureDate` function in expenseService.js
     - Implement date calculation that preserves day of month
     - Handle month-end edge cases (day 31 → shorter months)
     - Handle leap year edge cases (Feb 29)
     - _Requirements: 1.5, 1.6_
   
-  - [ ] 1.2 Write property test for date calculation
+  - [x] 1.2 Write property test for date calculation
     - **Property 3: Date Calculation Correctness**
     - **Validates: Requirements 1.5, 1.6**
 
-- [ ] 2. Implement backend future expense creation logic
-  - [ ] 2.1 Modify `createExpense` in expenseService.js to accept `futureMonths` parameter
+- [x] 2. Implement backend future expense creation logic
+  - [x] 2.1 Modify `createExpense` in expenseService.js to accept `futureMonths` parameter
     - Add futureMonths validation (0-12)
     - Create source expense first
     - Loop to create future expenses with calculated dates
@@ -28,101 +28,101 @@ This implementation adds an "Add to future months" feature to the expense form, 
     - Return response with source expense and futureExpenses array
     - _Requirements: 1.3, 1.4, 1.8, 1.9, 5.1, 5.2_
   
-  - [ ] 2.2 Write property test for future expense count
+  - [x] 2.2 Write property test for future expense count
     - **Property 1: Future Expense Count**
     - **Validates: Requirements 1.3**
   
-  - [ ] 2.3 Write property test for field consistency
+  - [x] 2.3 Write property test for field consistency
     - **Property 2: Field Consistency**
     - **Validates: Requirements 1.4, 2.4**
   
-  - [ ] 2.4 Write property test for budget integration
+  - [x] 2.4 Write property test for budget integration
     - **Property 7: Budget Integration**
     - **Validates: Requirements 5.1, 5.2**
 
-- [ ] 3. Implement backend update with future months
-  - [ ] 3.1 Modify `updateExpense` in expenseService.js to accept `futureMonths` parameter
+- [x] 3. Implement backend update with future months
+  - [x] 3.1 Modify `updateExpense` in expenseService.js to accept `futureMonths` parameter
     - Update existing expense with new values
     - Create new future expenses with updated values (not modify existing)
     - Copy people allocations for medical expenses
     - Do NOT copy invoices
     - _Requirements: 2.3, 2.4_
   
-  - [ ] 3.2 Write property test for edit creates new futures
+  - [x] 3.2 Write property test for edit creates new futures
     - **Property 4: Edit Creates New Future Expenses**
     - **Validates: Requirements 2.3**
 
-- [ ] 4. Checkpoint - Backend logic complete
+- [x] 4. Checkpoint - Backend logic complete
   - Ensure all backend tests pass, ask the user if questions arise.
 
-- [ ] 5. Update expense controller
-  - [ ] 5.1 Modify `createExpense` in expenseController.js
+- [x] 5. Update expense controller
+  - [x] 5.1 Modify `createExpense` in expenseController.js
     - Extract `futureMonths` from request body
     - Pass to service layer
     - Format response with futureExpenses array and success message
     - _Requirements: 1.3, 4.1, 4.2_
   
-  - [ ] 5.2 Modify `updateExpense` in expenseController.js
+  - [x] 5.2 Modify `updateExpense` in expenseController.js
     - Extract `futureMonths` from request body
     - Pass to service layer
     - Format response with futureExpenses array and success message
     - _Requirements: 2.3, 4.1, 4.2_
   
-  - [ ] 5.3 Write unit tests for controller changes
+  - [x] 5.3 Write unit tests for controller changes
     - Test futureMonths parameter handling
     - Test response format with futureExpenses
     - Test success message generation
     - _Requirements: 4.1, 4.2_
 
-- [ ] 6. Update frontend expense API
-  - [ ] 6.1 Modify `createExpense` in expenseApi.js
+- [x] 6. Update frontend expense API
+  - [x] 6.1 Modify `createExpense` in expenseApi.js
     - Add `futureMonths` parameter to request
     - Handle new response format with futureExpenses
     - _Requirements: 1.3_
   
-  - [ ] 6.2 Modify `updateExpense` in expenseApi.js
+  - [x] 6.2 Modify `updateExpense` in expenseApi.js
     - Add `futureMonths` parameter to request
     - Handle new response format with futureExpenses
     - _Requirements: 2.3_
 
-- [ ] 7. Update ExpenseForm component
-  - [ ] 7.1 Add "Add to future months" dropdown to ExpenseForm.jsx
+- [x] 7. Update ExpenseForm component
+  - [x] 7.1 Add "Add to future months" dropdown to ExpenseForm.jsx
     - Add `futureMonths` state (default 0)
     - Create dropdown with options 0-12
     - Show date range preview when > 0 selected
     - Reset to 0 after successful submission
     - _Requirements: 1.1, 1.2, 1.7, 2.1, 2.2_
   
-  - [ ] 7.2 Add CSS styling for the new dropdown
+  - [x] 7.2 Add CSS styling for the new dropdown
     - Style consistent with existing form elements
     - Style date range preview text
     - _Requirements: 1.1, 2.1_
   
-  - [ ] 7.3 Implement success message display
+  - [x] 7.3 Implement success message display
     - Show count of future expenses created
     - Show date range (e.g., "through September 2025")
     - _Requirements: 4.1, 4.2_
   
-  - [ ] 7.4 Write unit tests for ExpenseForm changes
+  - [x] 7.4 Write unit tests for ExpenseForm changes
     - Test dropdown renders with correct options
     - Test default value is 0
     - Test date range preview display
     - Test reset after submission
     - _Requirements: 1.1, 1.2, 1.7_
 
-- [ ] 8. Checkpoint - Feature complete
+- [x] 8. Checkpoint - Feature complete
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 9. Implement atomicity and independence tests
-  - [ ] 9.1 Write property test for expense independence
+- [x] 9. Implement atomicity and independence tests
+  - [x] 9.1 Write property test for expense independence
     - **Property 5: Expense Independence**
     - **Validates: Requirements 3.1, 3.2, 3.3, 3.4**
   
-  - [ ] 9.2 Write property test for creation atomicity
+  - [x] 9.2 Write property test for creation atomicity
     - **Property 6: Creation Atomicity**
     - **Validates: Requirements 4.3**
 
-- [ ] 10. Final checkpoint
+- [x] 10. Final checkpoint
   - Ensure all tests pass, ask the user if questions arise.
 
 ## Notes

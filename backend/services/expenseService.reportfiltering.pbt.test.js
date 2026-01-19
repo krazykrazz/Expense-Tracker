@@ -59,9 +59,10 @@ describe('ExpenseService - Report Filtering Properties', () => {
           // Generate expense amounts (positive, 2 decimal places)
           fc.array(fc.integer({ min: 100, max: 5000 }).map(cents => cents / 100), { minLength: 6, maxLength: 6 }),
           async (numAssigned, numUnassigned, amounts) => {
-            // Create a test person
+            // Create a test person with unique name
+            const uniqueSuffix = `${Date.now()}_${Math.random().toString(36).substring(7)}`;
             const person = await peopleRepository.create({
-              name: 'Test Person',
+              name: `Test Person ${uniqueSuffix}`,
               date_of_birth: null
             });
             testPeople.push(person);
@@ -145,15 +146,16 @@ describe('ExpenseService - Report Filtering Properties', () => {
           fc.integer({ min: 100, max: 5000 }).map(cents => cents / 100),
           fc.integer({ min: 100, max: 5000 }).map(cents => cents / 100),
           async (amount1, amount2, unassignedAmount) => {
-            // Create two test people
+            // Create two test people with unique names
+            const uniqueSuffix = `${Date.now()}_${Math.random().toString(36).substring(7)}`;
             const person1 = await peopleRepository.create({
-              name: 'Person One',
+              name: `Person One ${uniqueSuffix}`,
               date_of_birth: null
             });
             testPeople.push(person1);
 
             const person2 = await peopleRepository.create({
-              name: 'Person Two',
+              name: `Person Two ${uniqueSuffix}`,
               date_of_birth: null
             });
             testPeople.push(person2);
@@ -237,15 +239,16 @@ describe('ExpenseService - Report Filtering Properties', () => {
           // Generate total expense amount
           fc.integer({ min: 200, max: 10000 }).filter(cents => cents % 2 === 0).map(cents => cents / 100),
           async (totalAmount) => {
-            // Create two test people
+            // Create two test people with unique names
+            const uniqueSuffix = `${Date.now()}_${Math.random().toString(36).substring(7)}`;
             const person1 = await peopleRepository.create({
-              name: 'Person A',
+              name: `Person A ${uniqueSuffix}`,
               date_of_birth: null
             });
             testPeople.push(person1);
 
             const person2 = await peopleRepository.create({
-              name: 'Person B',
+              name: `Person B ${uniqueSuffix}`,
               date_of_birth: null
             });
             testPeople.push(person2);

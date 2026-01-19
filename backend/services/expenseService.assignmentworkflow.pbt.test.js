@@ -56,12 +56,14 @@ describe('ExpenseService - Assignment Workflow Properties', () => {
           fc.integer({ min: 100, max: 10000 }).map(cents => cents / 100),
           // Generate valid place name
           fc.string({ minLength: 1, maxLength: 50 }).filter(s => s.trim().length > 0),
-          // Generate valid person name
-          fc.string({ minLength: 1, maxLength: 50 }).filter(s => s.trim().length > 0),
-          async (amount, place, personName) => {
-            // Create a test person
+          // Generate valid person name (will be made unique)
+          fc.string({ minLength: 1, maxLength: 30 }).filter(s => s.trim().length > 0),
+          async (amount, place, personNameBase) => {
+            // Create a test person with unique name
+            const uniqueSuffix = `${Date.now()}_${Math.random().toString(36).substring(7)}`;
+            const personName = `${personNameBase.trim()}_${uniqueSuffix}`;
             const person = await peopleRepository.create({
-              name: personName.trim(),
+              name: personName,
               date_of_birth: null
             });
             testPeople.push(person);
@@ -117,7 +119,7 @@ describe('ExpenseService - Assignment Workflow Properties', () => {
             // The expense should now be in the grouped data
             const personGroup = taxSummary.groupedByPerson[person.id];
             expect(personGroup).toBeDefined();
-            expect(personGroup.personName).toBe(personName.trim());
+            expect(personGroup.personName).toBe(personName);
             
             // The expense should NOT be in unassigned anymore
             const unassignedExpenseIds = taxSummary.unassignedExpenses.providers
@@ -140,9 +142,10 @@ describe('ExpenseService - Assignment Workflow Properties', () => {
           // Generate valid notes
           fc.string({ minLength: 0, maxLength: 100 }),
           async (amount, place, notes) => {
-            // Create a test person
+            // Create a test person with unique name
+            const uniqueSuffix = `${Date.now()}_${Math.random().toString(36).substring(7)}`;
             const person = await peopleRepository.create({
-              name: 'Test Person',
+              name: `Test Person ${uniqueSuffix}`,
               date_of_birth: null
             });
             testPeople.push(person);
@@ -193,15 +196,16 @@ describe('ExpenseService - Assignment Workflow Properties', () => {
           // Generate valid expense amount
           fc.integer({ min: 100, max: 10000 }).map(cents => cents / 100),
           async (amount) => {
-            // Create two test people
+            // Create two test people with unique names
+            const uniqueSuffix = `${Date.now()}_${Math.random().toString(36).substring(7)}`;
             const person1 = await peopleRepository.create({
-              name: 'Person One',
+              name: `Person One ${uniqueSuffix}`,
               date_of_birth: null
             });
             testPeople.push(person1);
 
             const person2 = await peopleRepository.create({
-              name: 'Person Two',
+              name: `Person Two ${uniqueSuffix}`,
               date_of_birth: null
             });
             testPeople.push(person2);

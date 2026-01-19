@@ -417,12 +417,14 @@ function initializeDatabase() {
 
 // Get database connection
 // In test mode (NODE_ENV=test), returns the in-memory test database
+// Unless SKIP_TEST_DB is set, which forces use of the production database
 function getDatabase() {
   const nodeEnv = process.env.NODE_ENV;
+  const skipTestDb = process.env.SKIP_TEST_DB;
   
-  // If running tests, use the in-memory test database
+  // If running tests and SKIP_TEST_DB is not set, use the in-memory test database
   // Use trim() to handle any whitespace issues from Windows cmd
-  if (nodeEnv && nodeEnv.trim() === 'test') {
+  if (nodeEnv && nodeEnv.trim() === 'test' && skipTestDb !== 'true') {
     return getTestDatabase();
   }
   
@@ -551,6 +553,7 @@ function createTestDatabase() {
             notes TEXT,
             loan_type TEXT NOT NULL DEFAULT 'loan' CHECK(loan_type IN ('loan', 'line_of_credit')),
             is_paid_off INTEGER DEFAULT 0,
+            estimated_months_left INTEGER,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             updated_at TEXT DEFAULT CURRENT_TIMESTAMP
           )`,

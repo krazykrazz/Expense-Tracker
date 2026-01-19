@@ -176,7 +176,7 @@ describe('Invoice API Integration Tests', () => {
         .expect(409);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.error).toContain('medical expenses');
+      expect(response.body.error).toContain('tax-deductible expenses');
     });
 
     it('should allow multiple invoice uploads for same expense (multi-invoice support)', async () => {

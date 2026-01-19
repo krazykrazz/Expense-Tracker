@@ -12,23 +12,58 @@ const multer = require('multer');
 const upload = multer({ dest: 'uploads/' });
 
 /**
+ * Generate success message for future expenses creation
+ * @param {number} futureCount - Number of future expenses created
+ * @param {string} lastDate - Date of the last future expense (YYYY-MM-DD)
+ * @returns {string} Success message
+ */
+function generateFutureExpensesMessage(futureCount, lastDate) {
+  if (futureCount === 0) {
+    return 'Expense saved';
+  }
+  
+  // Parse the last date to get month name
+  const date = new Date(lastDate + 'T00:00:00');
+  const monthName = date.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+  
+  const monthText = futureCount === 1 ? 'month' : 'months';
+  return `Expense saved and added to ${futureCount} future ${monthText} through ${monthName}`;
+}
+
+/**
  * Create a new expense
  * POST /api/expenses
  */
 async function createExpense(req, res) {
   try {
-    const { peopleAllocations, ...expenseData } = req.body;
+    const { peopleAllocations, futureMonths, ...expenseData } = req.body;
     
-    let createdExpense;
+    // Parse futureMonths (default to 0 if not provided)
+    const parsedFutureMonths = futureMonths !== undefined ? parseInt(futureMonths, 10) : 0;
+    
+    let result;
     if (peopleAllocations && peopleAllocations.length > 0) {
       // Create expense with people allocations
-      createdExpense = await expenseService.createExpenseWithPeople(expenseData, peopleAllocations);
+      result = await expenseService.createExpenseWithPeople(expenseData, peopleAllocations, parsedFutureMonths);
     } else {
       // Create regular expense without people
-      createdExpense = await expenseService.createExpense(expenseData);
+      result = await expenseService.createExpense(expenseData, parsedFutureMonths);
     }
     
-    res.status(201).json(createdExpense);
+    // Format response based on whether future expenses were created
+    if (parsedFutureMonths > 0 && result.futureExpenses) {
+      const lastFutureExpense = result.futureExpenses[result.futureExpenses.length - 1];
+      const message = generateFutureExpensesMessage(result.futureExpenses.length, lastFutureExpense.date);
+      
+      res.status(201).json({
+        expense: result.expense,
+        futureExpenses: result.futureExpenses,
+        message: message
+      });
+    } else {
+      // Backward compatible response for single expense creation
+      res.status(201).json(result);
+    }
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -94,22 +129,38 @@ async function updateExpense(req, res) {
       return res.status(400).json({ error: 'Invalid expense ID' });
     }
     
-    const { peopleAllocations, ...expenseData } = req.body;
+    const { peopleAllocations, futureMonths, ...expenseData } = req.body;
     
-    let updatedExpense;
+    // Parse futureMonths (default to 0 if not provided)
+    const parsedFutureMonths = futureMonths !== undefined ? parseInt(futureMonths, 10) : 0;
+    
+    let result;
     if (peopleAllocations !== undefined) {
       // Update expense with people allocations (could be empty array to remove all people)
-      updatedExpense = await expenseService.updateExpenseWithPeople(id, expenseData, peopleAllocations);
+      result = await expenseService.updateExpenseWithPeople(id, expenseData, peopleAllocations, parsedFutureMonths);
     } else {
       // Update regular expense without touching people associations
-      updatedExpense = await expenseService.updateExpense(id, expenseData);
+      result = await expenseService.updateExpense(id, expenseData, parsedFutureMonths);
     }
     
-    if (!updatedExpense) {
+    if (!result) {
       return res.status(404).json({ error: 'Expense not found' });
     }
     
-    res.status(200).json(updatedExpense);
+    // Format response based on whether future expenses were created
+    if (parsedFutureMonths > 0 && result.futureExpenses) {
+      const lastFutureExpense = result.futureExpenses[result.futureExpenses.length - 1];
+      const message = generateFutureExpensesMessage(result.futureExpenses.length, lastFutureExpense.date);
+      
+      res.status(200).json({
+        expense: result.expense,
+        futureExpenses: result.futureExpenses,
+        message: message
+      });
+    } else {
+      // Backward compatible response for single expense update
+      res.status(200).json(result);
+    }
   } catch (error) {
     res.status(400).json({ error: error.message });
   }

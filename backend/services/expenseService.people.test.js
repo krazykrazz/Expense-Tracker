@@ -1,10 +1,12 @@
 const expenseService = require('./expenseService');
 const expenseRepository = require('../repositories/expenseRepository');
 const expensePeopleRepository = require('../repositories/expensePeopleRepository');
+const peopleRepository = require('../repositories/peopleRepository');
 
 // Mock the repositories
 jest.mock('../repositories/expenseRepository');
 jest.mock('../repositories/expensePeopleRepository');
+jest.mock('../repositories/peopleRepository');
 
 /**
  * Unit Tests for Expense Service - People Integration
@@ -16,6 +18,8 @@ jest.mock('../repositories/expensePeopleRepository');
 describe('ExpenseService - People Integration', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // Default mock for peopleRepository.findById - return a valid person
+    peopleRepository.findById.mockImplementation((id) => Promise.resolve({ id, name: `Person ${id}` }));
   });
 
   describe('Single person expense creation', () => {

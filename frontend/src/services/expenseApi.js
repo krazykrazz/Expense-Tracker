@@ -65,9 +65,10 @@ export const getExpenseWithPeople = async (id) => {
  * Create a new expense
  * @param {Object} expenseData - Expense data
  * @param {Array} peopleAllocations - Optional array of { personId, amount } for medical expenses
- * @returns {Promise<Object>} Created expense object
+ * @param {number} futureMonths - Optional number of future months to create copies (0-12)
+ * @returns {Promise<Object>} Response with expense, futureExpenses array, and message
  */
-export const createExpense = async (expenseData, peopleAllocations = null) => {
+export const createExpense = async (expenseData, peopleAllocations = null, futureMonths = 0) => {
   try {
     const requestBody = {
       date: expenseData.date,
@@ -83,6 +84,11 @@ export const createExpense = async (expenseData, peopleAllocations = null) => {
       requestBody.peopleAllocations = peopleAllocations;
     }
     
+    // Add futureMonths parameter if specified
+    if (futureMonths > 0) {
+      requestBody.futureMonths = futureMonths;
+    }
+    
     return await apiPost(API_ENDPOINTS.EXPENSES, requestBody, 'create expense');
   } catch (error) {
     logApiError('creating expense', error);
@@ -95,9 +101,10 @@ export const createExpense = async (expenseData, peopleAllocations = null) => {
  * @param {number} id - Expense ID
  * @param {Object} expenseData - Updated expense data
  * @param {Array} peopleAllocations - Optional array of { personId, amount } for medical expenses
- * @returns {Promise<Object>} Updated expense object
+ * @param {number} futureMonths - Optional number of future months to create copies (0-12)
+ * @returns {Promise<Object>} Response with updated expense, futureExpenses array, and message
  */
-export const updateExpense = async (id, expenseData, peopleAllocations = null) => {
+export const updateExpense = async (id, expenseData, peopleAllocations = null, futureMonths = 0) => {
   try {
     const requestBody = {
       date: expenseData.date,
@@ -111,6 +118,11 @@ export const updateExpense = async (id, expenseData, peopleAllocations = null) =
     // Add people allocations for medical expenses
     if (peopleAllocations !== null) {
       requestBody.peopleAllocations = peopleAllocations;
+    }
+    
+    // Add futureMonths parameter if specified
+    if (futureMonths > 0) {
+      requestBody.futureMonths = futureMonths;
     }
     
     return await apiPut(API_ENDPOINTS.EXPENSE_BY_ID(id), requestBody, 'update expense');

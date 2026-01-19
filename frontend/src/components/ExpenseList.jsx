@@ -14,6 +14,54 @@ import { formatAmount, formatLocalDate } from '../utils/formatters';
 
 const logger = createLogger('ExpenseList');
 
+// Future months dropdown options (Requirements 2.1, 2.2)
+const FUTURE_MONTHS_OPTIONS = [
+  { value: 1, label: "1" },
+  { value: 2, label: "2" },
+  { value: 3, label: "3" },
+  { value: 4, label: "4" },
+  { value: 5, label: "5" },
+  { value: 6, label: "6" },
+  { value: 7, label: "7" },
+  { value: 8, label: "8" },
+  { value: 9, label: "9" },
+  { value: 10, label: "10" },
+  { value: 11, label: "11" },
+  { value: 12, label: "12" }
+];
+
+/**
+ * Calculate the future date range preview text
+ * @param {string} sourceDate - The source date in YYYY-MM-DD format
+ * @param {number} futureMonths - Number of future months
+ * @returns {string} Preview text showing the date range
+ */
+const calculateFutureDatePreview = (sourceDate, futureMonths) => {
+  if (!sourceDate || futureMonths <= 0) return '';
+  
+  const date = new Date(sourceDate + 'T00:00:00');
+  const sourceDay = date.getDate();
+  
+  // Calculate the last future month date
+  const futureDate = new Date(date);
+  futureDate.setMonth(futureDate.getMonth() + futureMonths);
+  
+  // Handle month-end edge cases
+  const targetMonth = futureDate.getMonth();
+  const daysInTargetMonth = new Date(futureDate.getFullYear(), targetMonth + 1, 0).getDate();
+  
+  if (sourceDay > daysInTargetMonth) {
+    futureDate.setDate(daysInTargetMonth);
+  } else {
+    futureDate.setDate(sourceDay);
+  }
+  
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'];
+  
+  return `through ${monthNames[futureDate.getMonth()]} ${futureDate.getFullYear()}`;
+};
+
 /**
  * Renders people indicator for medical expenses
  * Shows person icon with count for assigned expenses, or "unassigned" indicator
@@ -116,6 +164,8 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
   // Invoice data cache - now stores arrays of invoices per expense
   const [invoiceData, setInvoiceData] = useState(new Map());
   const [loadingInvoices, setLoadingInvoices] = useState(new Set());
+  // Future months state for edit form (Requirements 2.1, 2.2)
+  const [editFutureMonths, setEditFutureMonths] = useState(0);
 
   // Fetch categories and people on mount
   useEffect(() => {
@@ -278,6 +328,9 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
       method: expense.method
     });
     
+    // Reset future months to 0 when opening edit modal (Requirements 2.1)
+    setEditFutureMonths(0);
+    
     // Load people assignments for medical expenses
     if (expense.type === 'Tax - Medical') {
       try {
@@ -391,23 +444,41 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
         amount: parseFloat(editFormData.amount),
         type: editFormData.type,
         method: editFormData.method
-      }, peopleAllocations);
+      }, peopleAllocations, editFutureMonths);
+      
+      // Handle response format - may include futureExpenses array
+      let resultExpense = updatedExpense;
+      let futureExpensesResult = [];
+      if (updatedExpense.expense) {
+        resultExpense = updatedExpense.expense;
+        futureExpensesResult = updatedExpense.futureExpenses || [];
+      }
+      
+      // Build success message including future expenses info (Requirements 4.1, 4.2)
+      if (futureExpensesResult.length > 0) {
+        const datePreview = calculateFutureDatePreview(dateValue, futureExpensesResult.length);
+        setEditMessage({ 
+          text: `Expense updated and added to ${futureExpensesResult.length} future month${futureExpensesResult.length > 1 ? 's' : ''} ${datePreview}`, 
+          type: 'success' 
+        });
+      }
       
       // Notify parent component to update the expense
       if (onExpenseUpdated) {
-        onExpenseUpdated(updatedExpense);
+        onExpenseUpdated(resultExpense);
       }
       
       setShowEditModal(false);
       setExpenseToEdit(null);
       setSelectedPeople([]);
+      setEditFutureMonths(0);
     } catch (error) {
       logger.error('Error updating expense:', error);
       setEditMessage({ text: error.message, type: 'error' });
     } finally {
       setIsSubmitting(false);
     }
-  }, [editFormData, isEditingMedicalExpense, selectedPeople, expenseToEdit, onExpenseUpdated]);
+  }, [editFormData, isEditingMedicalExpense, selectedPeople, expenseToEdit, onExpenseUpdated, editFutureMonths]);
 
   const handleCancelEdit = useCallback(() => {
     setShowEditModal(false);
@@ -416,6 +487,7 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
     setEditMessage({ text: '', type: '' });
     setSelectedPeople([]);
     setEditInvoices([]);
+    setEditFutureMonths(0);
   }, []);
 
   // Handle invoice upload in edit modal - now supports multiple invoices
@@ -908,6 +980,43 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
                   maxLength="200"
                   rows="3"
                 />
+              </div>
+
+              {/* Future Months Selection (Requirements 2.1, 2.2) */}
+              <div className="form-group future-months-section">
+                <div className="future-months-row">
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={editFutureMonths > 0}
+                      onChange={(e) => setEditFutureMonths(e.target.checked ? 1 : 0)}
+                    />
+                    <span>Add to Future Months</span>
+                  </label>
+                  {editFutureMonths > 0 && (
+                    <div className="future-months-count">
+                      <select
+                        id="edit-future-months"
+                        name="futureMonths"
+                        value={editFutureMonths}
+                        onChange={(e) => setEditFutureMonths(parseInt(e.target.value))}
+                        className="future-months-select"
+                      >
+                        {FUTURE_MONTHS_OPTIONS.map(option => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                      <span className="months-label">month{editFutureMonths > 1 ? 's' : ''}</span>
+                    </div>
+                  )}
+                </div>
+                {editFutureMonths > 0 && editFormData.date && (
+                  <div className="future-months-preview">
+                    📅 Will create {editFutureMonths} additional expense{editFutureMonths > 1 ? 's' : ''} {calculateFutureDatePreview(editFormData.date, editFutureMonths)}
+                  </div>
+                )}
               </div>
 
               {/* People Selection for Medical Expenses */}

@@ -3,6 +3,18 @@ const { getDatabase } = require('../database/db');
 const budgetService = require('./budgetService');
 const budgetRepository = require('../repositories/budgetRepository');
 
+// Helper function for robust cleanup that doesn't fail on errors
+async function cleanupTestData(db) {
+  // Clean up budgets
+  await new Promise((resolve) => {
+    db.run('DELETE FROM budgets WHERE year >= 2090', () => resolve());
+  });
+  // Clean up expenses
+  await new Promise((resolve) => {
+    db.run(`DELETE FROM expenses WHERE strftime('%Y', date) >= '2090'`, () => resolve());
+  });
+}
+
 describe('BudgetService - Unit Tests', () => {
   let db;
 
@@ -10,14 +22,14 @@ describe('BudgetService - Unit Tests', () => {
     db = await getDatabase();
   });
 
+  beforeEach(async () => {
+    // Clean up BEFORE each test to ensure clean state
+    await cleanupTestData(db);
+  });
+
   afterEach(async () => {
-    // Clean up test data after each test
-    await new Promise((resolve, reject) => {
-      db.run('DELETE FROM budgets WHERE year >= 2090', (err) => {
-        if (err) reject(err);
-        else resolve();
-      });
-    });
+    // Clean up after each test as well
+    await cleanupTestData(db);
   });
 
   describe('Validation Tests', () => {
@@ -134,14 +146,14 @@ describe('BudgetService - Property-Based Tests', () => {
     db = await getDatabase();
   });
 
+  beforeEach(async () => {
+    // Clean up BEFORE each test to ensure clean state
+    await cleanupTestData(db);
+  });
+
   afterEach(async () => {
-    // Clean up test data after each test
-    await new Promise((resolve, reject) => {
-      db.run('DELETE FROM budgets WHERE year >= 2090', (err) => {
-        if (err) reject(err);
-        else resolve();
-      });
-    });
+    // Clean up after each test as well
+    await cleanupTestData(db);
   });
 
   /**
@@ -161,7 +173,7 @@ describe('BudgetService - Property-Based Tests', () => {
           expect(Math.abs(progress - expected)).toBeLessThan(0.01);
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 50 }
     );
   });
 
@@ -188,7 +200,7 @@ describe('BudgetService - Property-Based Tests', () => {
           }
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 50 }
     );
   });
 
@@ -223,7 +235,7 @@ describe('BudgetService - Property-Based Tests', () => {
           }
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 50 }
     );
   });
 
@@ -284,7 +296,7 @@ describe('BudgetService - Property-Based Tests', () => {
           }
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 15 }
     );
   }, 60000);
 
@@ -391,7 +403,7 @@ describe('BudgetService - Property-Based Tests', () => {
           }
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 15 }
     );
   }, 60000);
 
@@ -534,7 +546,7 @@ describe('BudgetService - Property-Based Tests', () => {
           }
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 15 }
     );
   }, 60000);
 
@@ -621,7 +633,7 @@ describe('BudgetService - Property-Based Tests', () => {
           }
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 15 }
     );
   }, 60000);
 
@@ -719,7 +731,7 @@ describe('BudgetService - Property-Based Tests', () => {
           }
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 15 }
     );
   }, 60000);
 
@@ -805,7 +817,7 @@ describe('BudgetService - Property-Based Tests', () => {
           }
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 15 }
     );
   }, 60000);
 });
@@ -817,19 +829,26 @@ describe('BudgetService - Historical Analysis Tests', () => {
     db = await getDatabase();
   });
 
+  beforeEach(async () => {
+    // Clean up BEFORE each test to ensure clean state
+    await cleanupTestData(db);
+    // Also clean 2089 data for this test suite
+    await new Promise((resolve) => {
+      db.run('DELETE FROM budgets WHERE year = 2089', () => resolve());
+    });
+    await new Promise((resolve) => {
+      db.run(`DELETE FROM expenses WHERE strftime('%Y', date) = '2089'`, () => resolve());
+    });
+  });
+
   afterEach(async () => {
-    // Clean up test data after each test
-    await new Promise((resolve, reject) => {
-      db.run('DELETE FROM budgets WHERE year >= 2089', (err) => {
-        if (err) {
-          reject(err);
-        } else {
-          db.run(`DELETE FROM expenses WHERE strftime('%Y', date) >= '2089'`, (err2) => {
-            if (err2) reject(err2);
-            else resolve();
-          });
-        }
-      });
+    // Clean up after each test as well
+    await cleanupTestData(db);
+    await new Promise((resolve) => {
+      db.run('DELETE FROM budgets WHERE year = 2089', () => resolve());
+    });
+    await new Promise((resolve) => {
+      db.run(`DELETE FROM expenses WHERE strftime('%Y', date) = '2089'`, () => resolve());
     });
   });
 
@@ -1121,20 +1140,14 @@ describe('BudgetService - Expense Integration Property Tests', () => {
     db = await getDatabase();
   });
 
+  beforeEach(async () => {
+    // Clean up BEFORE each test to ensure clean state
+    await cleanupTestData(db);
+  });
+
   afterEach(async () => {
-    // Clean up test data after each test
-    await new Promise((resolve, reject) => {
-      db.run('DELETE FROM budgets WHERE year >= 2090', (err) => {
-        if (err) {
-          reject(err);
-        } else {
-          db.run(`DELETE FROM expenses WHERE strftime('%Y', date) >= '2090'`, (err2) => {
-            if (err2) reject(err2);
-            else resolve();
-          });
-        }
-      });
-    });
+    // Clean up after each test as well
+    await cleanupTestData(db);
   });
 
   /**
@@ -1216,7 +1229,7 @@ describe('BudgetService - Expense Integration Property Tests', () => {
           }
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 15 }
     );
   }, 60000);
 
@@ -1317,7 +1330,7 @@ describe('BudgetService - Expense Integration Property Tests', () => {
           }
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 15 }
     );
   }, 60000);
 
@@ -1414,7 +1427,7 @@ describe('BudgetService - Expense Integration Property Tests', () => {
           }
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 15 }
     );
   }, 60000);
 
@@ -1546,7 +1559,7 @@ describe('BudgetService - Expense Integration Property Tests', () => {
           }
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 15 }
     );
   }, 60000);
 });

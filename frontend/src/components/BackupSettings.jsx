@@ -803,6 +803,15 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v4.14.7</div>
+                <div className="changelog-date">January 19, 2026</div>
+                <ul className="changelog-items">
+                  <li>Improved backend test coverage with 145 new tests</li>
+                  <li>Fixed test database schema for loan estimated_months_left column</li>
+                  <li>Fixed backup service tests to use correct database in test mode</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v4.14.6</div>
                 <div className="changelog-date">January 19, 2026</div>
                 <ul className="changelog-items">
@@ -843,26 +852,6 @@ const BackupSettings = () => {
                 <ul className="changelog-items">
                   <li>Fixed invoice PDF viewer appearing under sticky summary panel</li>
                   <li>Increased z-index for invoice viewer modal overlay</li>
-                </ul>
-              </div>
-              <div className="changelog-entry">
-                <div className="changelog-version">v4.14.1</div>
-                <div className="changelog-date">January 18, 2026</div>
-                <ul className="changelog-items">
-                  <li>Fixed modal z-index bleed-through issue</li>
-                  <li>Sticky table headers no longer appear above modal overlays</li>
-                  <li>Project structure cleanup and archive organization</li>
-                </ul>
-              </div>
-              <div className="changelog-entry">
-                <div className="changelog-version">v4.14.0</div>
-                <div className="changelog-date">January 18, 2026</div>
-                <ul className="changelog-items">
-                  <li>UI Modernization: New design system with CSS variables</li>
-                  <li>Improved responsive design across all components</li>
-                  <li>Enhanced accessibility with reduced motion support</li>
-                  <li>Compact expense table rows for better data density</li>
-                  <li>Bold text for tax-deductible expenses for better readability</li>
                 </ul>
               </div>
               <div className="changelog-entry">

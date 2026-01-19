@@ -4,7 +4,7 @@ import { getTodayLocalDate } from '../utils/formatters';
 import { PAYMENT_METHODS } from '../utils/constants';
 import { fetchCategorySuggestion } from '../services/categorySuggestionApi';
 import { getPeople } from '../services/peopleApi';
-import { createExpense, getExpenseWithPeople } from '../services/expenseApi';
+import { createExpense, updateExpense, getExpenseWithPeople } from '../services/expenseApi';
 import { getInvoicesForExpense, updateInvoicePersonLink } from '../services/invoiceApi';
 import { createLogger } from '../utils/logger';
 import PersonAllocationModal from './PersonAllocationModal';
@@ -19,6 +19,54 @@ const LAST_PAYMENT_METHOD_KEY = 'expense-tracker-last-payment-method';
 
 // Default payment method when no saved value exists (Requirements 5.2)
 const DEFAULT_PAYMENT_METHOD = 'Cash';
+
+// Future months dropdown options (Requirements 1.1, 1.2, 2.1, 2.2)
+const FUTURE_MONTHS_OPTIONS = [
+  { value: 1, label: "1" },
+  { value: 2, label: "2" },
+  { value: 3, label: "3" },
+  { value: 4, label: "4" },
+  { value: 5, label: "5" },
+  { value: 6, label: "6" },
+  { value: 7, label: "7" },
+  { value: 8, label: "8" },
+  { value: 9, label: "9" },
+  { value: 10, label: "10" },
+  { value: 11, label: "11" },
+  { value: 12, label: "12" }
+];
+
+/**
+ * Calculate the future date range preview text
+ * @param {string} sourceDate - The source date in YYYY-MM-DD format
+ * @param {number} futureMonths - Number of future months
+ * @returns {string} Preview text showing the date range
+ */
+const calculateFutureDatePreview = (sourceDate, futureMonths) => {
+  if (!sourceDate || futureMonths <= 0) return '';
+  
+  const date = new Date(sourceDate + 'T00:00:00');
+  const sourceDay = date.getDate();
+  
+  // Calculate the last future month date
+  const futureDate = new Date(date);
+  futureDate.setMonth(futureDate.getMonth() + futureMonths);
+  
+  // Handle month-end edge cases
+  const targetMonth = futureDate.getMonth();
+  const daysInTargetMonth = new Date(futureDate.getFullYear(), targetMonth + 1, 0).getDate();
+  
+  if (sourceDay > daysInTargetMonth) {
+    futureDate.setDate(daysInTargetMonth);
+  } else {
+    futureDate.setDate(sourceDay);
+  }
+  
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'];
+  
+  return `through ${monthNames[futureDate.getMonth()]} ${futureDate.getFullYear()}`;
+};
 
 /**
  * Get the last used payment method from localStorage
@@ -84,6 +132,9 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
   
   // People assigned to this expense (for invoice person linking)
   const [expensePeople, setExpensePeople] = useState([]);
+
+  // Future months state for recurring expense creation (Requirements 1.1, 1.2, 1.7, 2.1, 2.2)
+  const [futureMonths, setFutureMonths] = useState(0);
 
   // Refs for focus management and form state
   const placeInputRef = useRef(null);
@@ -459,14 +510,28 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
       }
 
       let newExpense;
+      let futureExpensesResult = [];
       
       if (isEditing) {
-        // Update existing expense
-        const { updateExpense } = await import('../services/expenseApi');
-        newExpense = await updateExpense(expense.id, formData, peopleAllocations);
+        // Update existing expense with optional future months
+        const result = await updateExpense(expense.id, formData, peopleAllocations, futureMonths);
+        // Handle response format - may include futureExpenses array
+        if (result.expense) {
+          newExpense = result.expense;
+          futureExpensesResult = result.futureExpenses || [];
+        } else {
+          newExpense = result;
+        }
       } else {
-        // Create new expense
-        newExpense = await createExpense(formData, peopleAllocations);
+        // Create new expense with optional future months
+        const result = await createExpense(formData, peopleAllocations, futureMonths);
+        // Handle response format - may include futureExpenses array
+        if (result.expense) {
+          newExpense = result.expense;
+          futureExpensesResult = result.futureExpenses || [];
+        } else {
+          newExpense = result;
+        }
       }
 
       // Handle invoice upload for new expenses or when invoice files are selected (medical or donation)
@@ -524,8 +589,15 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
         saveLastPaymentMethod(formData.method);
       }
       
+      // Build success message including future expenses info (Requirements 4.1, 4.2)
+      let successText = `Expense ${isEditing ? 'updated' : 'added'} successfully!`;
+      if (futureExpensesResult.length > 0) {
+        const datePreview = calculateFutureDatePreview(formData.date, futureExpensesResult.length);
+        successText = `Expense ${isEditing ? 'updated' : 'added'} and added to ${futureExpensesResult.length} future month${futureExpensesResult.length > 1 ? 's' : ''} ${datePreview}`;
+      }
+      
       setMessage({ 
-        text: `Expense ${isEditing ? 'updated' : 'added'} successfully!`, 
+        text: successText, 
         type: 'success' 
       });
       
@@ -550,6 +622,9 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
         setInvoices([]);
         setInvoiceFiles([]);
         setExpensePeople([]);
+        
+        // Reset future months to 0 (Requirements 1.7)
+        setFutureMonths(0);
       }
 
       // Notify parent component
@@ -847,6 +922,46 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
             rows="3"
             placeholder="Additional notes..."
           />
+        </div>
+
+        {/* Add to Future Months checkbox + dropdown (Requirements 1.1, 1.2, 1.7, 2.1, 2.2) */}
+        <div className="form-group future-months-section">
+          <div className="future-months-row">
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={futureMonths > 0}
+                onChange={(e) => setFutureMonths(e.target.checked ? 1 : 0)}
+              />
+              <span>Add to Future Months</span>
+            </label>
+            {futureMonths > 0 && (
+              <div className="future-months-count">
+                <select
+                  id="futureMonths"
+                  name="futureMonths"
+                  value={futureMonths}
+                  onChange={(e) => setFutureMonths(parseInt(e.target.value, 10))}
+                  className="future-months-select"
+                >
+                  {FUTURE_MONTHS_OPTIONS.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <span className="months-label">month{futureMonths > 1 ? 's' : ''}</span>
+              </div>
+            )}
+          </div>
+          {futureMonths > 0 && formData.date && (
+            <div className="future-months-preview">
+              <span className="preview-icon">📅</span>
+              <span className="preview-text">
+                Will create {futureMonths} additional expense{futureMonths > 1 ? 's' : ''} {calculateFutureDatePreview(formData.date, futureMonths)}
+              </span>
+            </div>
+          )}
         </div>
 
         {message.text && (

@@ -11,6 +11,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.14.7] - 2026-01-19
+
+### Added
+- **Backend Test Coverage Improvements**: Added 145 new tests covering critical gaps
+  - `loanBalanceRepository.test.js` (20 tests) - CRUD, upsert, getBalanceHistory, getTotalDebtOverTime
+  - `loanRepository.test.js` (17 tests) - CRUD, markPaidOff, getCurrentBalance, getAllWithCurrentBalances
+  - `investmentRepository.test.js` (24 tests) - CRUD, getCurrentValue, getAllWithCurrentValues
+  - `loanService.test.js` (32 tests) - validation, CRUD, calculateTotalOutstandingDebt
+  - `investmentService.test.js` (29 tests) - validation, CRUD, calculateTotalInvestmentValue
+  - `categorySuggestionService.test.js` (23 tests) - getSuggestedCategory, getCategoryBreakdown
+
+### Fixed
+- **Test Database Schema**: Fixed missing `estimated_months_left` column in test database loans table
+- **Backup Service Tests**: Fixed `getDatabase()` to properly use test database when `SKIP_TEST_DB` is not set
+  - Tests that set `SKIP_TEST_DB=true` now correctly use production database for file-based operations
+  - Tests without `SKIP_TEST_DB` correctly use in-memory test database
+
+---
+
 ## [4.14.6] - 2026-01-19
 
 ### Fixed

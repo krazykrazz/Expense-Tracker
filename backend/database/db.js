@@ -416,7 +416,18 @@ function initializeDatabase() {
 }
 
 // Get database connection
+// In test mode (NODE_ENV=test), returns the in-memory test database
+// Unless SKIP_TEST_DB is set, which forces use of the production database
 function getDatabase() {
+  const nodeEnv = process.env.NODE_ENV;
+  const skipTestDb = process.env.SKIP_TEST_DB;
+  
+  // If running tests and SKIP_TEST_DB is not set, use the in-memory test database
+  // Use trim() to handle any whitespace issues from Windows cmd
+  if (nodeEnv && nodeEnv.trim() === 'test' && skipTestDb !== 'true') {
+    return getTestDatabase();
+  }
+  
   return new Promise((resolve, reject) => {
     // Use dynamic path from config (supports /config directory)
     const db = new sqlite3.Database(DB_PATH, (err) => {
@@ -439,8 +450,423 @@ function getDatabase() {
   });
 }
 
+/**
+ * Create an in-memory SQLite database for testing
+ * This creates all the same tables as the production database
+ * but uses a temporary file so it's isolated and can be shared across connections
+ */
+function createTestDatabase() {
+  return new Promise((resolve, reject) => {
+    // Use a temporary file instead of :memory: to allow sharing across connections
+    const testDbPath = path.join(__dirname, '..', 'config', 'database', 'test-expenses.db');
+    
+    // Only remove existing test database if we don't have an active connection
+    // This prevents corruption when the singleton is still in use
+    if (!testDbInstance && fs.existsSync(testDbPath)) {
+      try {
+        fs.unlinkSync(testDbPath);
+      } catch (err) {
+        // Ignore errors - file might be locked
+        logger.debug('Could not delete test database file:', err.message);
+      }
+    }
+    
+    const db = new sqlite3.Database(testDbPath, (err) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      
+      // Enable foreign keys
+      db.run('PRAGMA foreign_keys = ON', (err) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        
+        // Create all tables in sequence
+        const categoryList = CATEGORIES.map(c => `'${c}'`).join(', ');
+        const budgetCategoryList = BUDGETABLE_CATEGORIES.map(c => `'${c}'`).join(', ');
+        
+        const createStatements = [
+          // schema_migrations table (for tracking migrations)
+          `CREATE TABLE IF NOT EXISTS schema_migrations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            migration_name TEXT NOT NULL UNIQUE,
+            applied_at TEXT DEFAULT CURRENT_TIMESTAMP
+          )`,
+          
+          // expenses table
+          `CREATE TABLE IF NOT EXISTS expenses (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            date TEXT NOT NULL,
+            place TEXT,
+            notes TEXT,
+            amount REAL NOT NULL,
+            type TEXT NOT NULL CHECK(type IN (${categoryList})),
+            week INTEGER NOT NULL CHECK(week >= 1 AND week <= 5),
+            method TEXT NOT NULL CHECK(method IN ('Cash', 'Debit', 'Cheque', 'CIBC MC', 'PCF MC', 'WS VISA', 'VISA')),
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+          )`,
+          
+          // monthly_gross table
+          `CREATE TABLE IF NOT EXISTS monthly_gross (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            year INTEGER NOT NULL,
+            month INTEGER NOT NULL,
+            gross_amount REAL NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(year, month)
+          )`,
+          
+          // income_sources table
+          `CREATE TABLE IF NOT EXISTS income_sources (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            year INTEGER NOT NULL,
+            month INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            amount REAL NOT NULL CHECK(amount >= 0),
+            category TEXT DEFAULT 'Salary',
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+          )`,
+          
+          // fixed_expenses table
+          `CREATE TABLE IF NOT EXISTS fixed_expenses (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            year INTEGER NOT NULL,
+            month INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            amount REAL NOT NULL CHECK(amount >= 0),
+            category TEXT DEFAULT 'Other',
+            payment_type TEXT DEFAULT 'Fixed',
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+          )`,
+          
+          // loans table
+          `CREATE TABLE IF NOT EXISTS loans (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            initial_balance REAL NOT NULL CHECK(initial_balance >= 0),
+            start_date TEXT NOT NULL,
+            notes TEXT,
+            loan_type TEXT NOT NULL DEFAULT 'loan' CHECK(loan_type IN ('loan', 'line_of_credit')),
+            is_paid_off INTEGER DEFAULT 0,
+            estimated_months_left INTEGER,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+          )`,
+          
+          // loan_balances table
+          `CREATE TABLE IF NOT EXISTS loan_balances (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            loan_id INTEGER NOT NULL,
+            year INTEGER NOT NULL,
+            month INTEGER NOT NULL,
+            remaining_balance REAL NOT NULL CHECK(remaining_balance >= 0),
+            rate REAL NOT NULL CHECK(rate >= 0),
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (loan_id) REFERENCES loans(id) ON DELETE CASCADE,
+            UNIQUE(loan_id, year, month)
+          )`,
+          
+          // budgets table
+          `CREATE TABLE IF NOT EXISTS budgets (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            year INTEGER NOT NULL,
+            month INTEGER NOT NULL CHECK(month >= 1 AND month <= 12),
+            category TEXT NOT NULL CHECK(category IN (${budgetCategoryList})),
+            "limit" REAL NOT NULL CHECK("limit" > 0),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(year, month, category)
+          )`,
+          
+          // investments table
+          `CREATE TABLE IF NOT EXISTS investments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            type TEXT NOT NULL CHECK(type IN ('TFSA', 'RRSP')),
+            initial_value REAL NOT NULL CHECK(initial_value >= 0),
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+          )`,
+          
+          // investment_values table
+          `CREATE TABLE IF NOT EXISTS investment_values (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            investment_id INTEGER NOT NULL,
+            year INTEGER NOT NULL,
+            month INTEGER NOT NULL,
+            value REAL NOT NULL CHECK(value >= 0),
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (investment_id) REFERENCES investments(id) ON DELETE CASCADE,
+            UNIQUE(investment_id, year, month)
+          )`,
+          
+          // people table
+          `CREATE TABLE IF NOT EXISTS people (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL UNIQUE,
+            date_of_birth TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+          )`,
+          
+          // expense_people junction table
+          `CREATE TABLE IF NOT EXISTS expense_people (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            expense_id INTEGER NOT NULL,
+            person_id INTEGER NOT NULL,
+            amount DECIMAL(10,2) NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (expense_id) REFERENCES expenses(id) ON DELETE CASCADE,
+            FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE CASCADE,
+            UNIQUE(expense_id, person_id)
+          )`,
+          
+          // expense_invoices table (for medical expense invoice attachments)
+          `CREATE TABLE IF NOT EXISTS expense_invoices (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            expense_id INTEGER NOT NULL,
+            person_id INTEGER,
+            filename TEXT NOT NULL,
+            original_filename TEXT NOT NULL,
+            file_path TEXT NOT NULL,
+            file_size INTEGER NOT NULL,
+            mime_type TEXT NOT NULL DEFAULT 'application/pdf',
+            upload_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (expense_id) REFERENCES expenses(id) ON DELETE CASCADE,
+            FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE SET NULL
+          )`,
+          
+          // place_names table
+          `CREATE TABLE IF NOT EXISTS place_names (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            original_name TEXT NOT NULL,
+            standardized_name TEXT NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(original_name)
+          )`,
+          
+          // reminders table
+          `CREATE TABLE IF NOT EXISTS reminders (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            year INTEGER NOT NULL,
+            month INTEGER NOT NULL,
+            type TEXT NOT NULL CHECK(type IN ('investment_values', 'loan_balances')),
+            dismissed INTEGER DEFAULT 0,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(year, month, type)
+          )`
+        ];
+        
+        // Execute all create statements sequentially
+        let completed = 0;
+        const executeNext = () => {
+          if (completed >= createStatements.length) {
+            // All tables created, now create indexes
+            createTestIndexes(db, resolve, reject);
+            return;
+          }
+          
+          db.run(createStatements[completed], (err) => {
+            if (err) {
+              reject(err);
+              return;
+            }
+            completed++;
+            executeNext();
+          });
+        };
+        
+        executeNext();
+      });
+    });
+  });
+}
+
+/**
+ * Create indexes for the test database
+ */
+function createTestIndexes(db, resolve, reject) {
+  const indexes = [
+    'CREATE INDEX IF NOT EXISTS idx_date ON expenses(date)',
+    'CREATE INDEX IF NOT EXISTS idx_type ON expenses(type)',
+    'CREATE INDEX IF NOT EXISTS idx_method ON expenses(method)',
+    'CREATE INDEX IF NOT EXISTS idx_year_month ON monthly_gross(year, month)',
+    'CREATE INDEX IF NOT EXISTS idx_income_year_month ON income_sources(year, month)',
+    'CREATE INDEX IF NOT EXISTS idx_fixed_expenses_year_month ON fixed_expenses(year, month)',
+    'CREATE INDEX IF NOT EXISTS idx_loans_paid_off ON loans(is_paid_off)',
+    'CREATE INDEX IF NOT EXISTS idx_loan_balances_loan_id ON loan_balances(loan_id)',
+    'CREATE INDEX IF NOT EXISTS idx_loan_balances_year_month ON loan_balances(year, month)',
+    'CREATE INDEX IF NOT EXISTS idx_budgets_period ON budgets(year, month)',
+    'CREATE INDEX IF NOT EXISTS idx_budgets_category ON budgets(category)',
+    'CREATE INDEX IF NOT EXISTS idx_investments_type ON investments(type)',
+    'CREATE INDEX IF NOT EXISTS idx_investment_values_investment_id ON investment_values(investment_id)',
+    'CREATE INDEX IF NOT EXISTS idx_investment_values_year_month ON investment_values(year, month)',
+    'CREATE INDEX IF NOT EXISTS idx_expense_people_expense ON expense_people(expense_id)',
+    'CREATE INDEX IF NOT EXISTS idx_expense_people_person ON expense_people(person_id)',
+    'CREATE INDEX IF NOT EXISTS idx_expense_invoices_expense_id ON expense_invoices(expense_id)',
+    'CREATE INDEX IF NOT EXISTS idx_expense_invoices_upload_date ON expense_invoices(upload_date)'
+  ];
+  
+  let completed = 0;
+  indexes.forEach((indexSQL) => {
+    db.run(indexSQL, (err) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      completed++;
+      if (completed === indexes.length) {
+        resolve(db);
+      }
+    });
+  });
+}
+
+// Singleton for test database (reused across test files)
+let testDbInstance = null;
+let testDbPromise = null;
+
+/**
+ * Get or create the test database instance
+ * Uses a singleton pattern so all tests share the same in-memory database
+ * Returns a Promise that resolves to the database instance
+ */
+async function getTestDatabase() {
+  const testDbPath = path.join(__dirname, '..', 'config', 'database', 'test-expenses.db');
+  
+  // If we have an instance but the file was deleted, recreate it
+  if (testDbInstance && !fs.existsSync(testDbPath)) {
+    logger.debug('Test database file was deleted, recreating...');
+    testDbInstance = null;
+    testDbPromise = null;
+  }
+  
+  // If we already have an instance, return it
+  if (testDbInstance) {
+    return testDbInstance;
+  }
+  
+  // If creation is in progress, wait for it
+  if (testDbPromise) {
+    return testDbPromise;
+  }
+  
+  // Create new instance
+  testDbPromise = createTestDatabase().then(db => {
+    testDbInstance = db;
+    testDbPromise = null;
+    return db;
+  });
+  
+  return testDbPromise;
+}
+
+/**
+ * Reset the test database (clear all data but keep schema)
+ * This clears all data from tables but preserves the schema
+ */
+async function resetTestDatabase() {
+  const db = await getTestDatabase();
+  
+  const tables = [
+    'expense_invoices',
+    'expense_people',
+    'expenses',
+    'people',
+    'fixed_expenses',
+    'income_sources',
+    'budgets',
+    'loan_balances',
+    'loans',
+    'investment_values',
+    'investments',
+    'place_names',
+    'reminders',
+    'monthly_gross',
+    'schema_migrations'
+  ];
+  
+  // Use serialize to ensure operations complete in order
+  return new Promise((resolve, reject) => {
+    db.serialize(() => {
+      // Disable foreign keys temporarily for clean deletion
+      db.run('PRAGMA foreign_keys = OFF');
+      
+      for (const table of tables) {
+        db.run(`DELETE FROM ${table}`, (err) => {
+          if (err && !err.message.includes('no such table')) {
+            // Ignore "no such table" errors, log others
+            logger.debug(`Error clearing table ${table}:`, err.message);
+          }
+        });
+      }
+      
+      // Reset auto-increment sequences
+      db.run('DELETE FROM sqlite_sequence', (err) => {
+        // Ignore errors - table might not exist
+      });
+      
+      // Re-enable foreign keys
+      db.run('PRAGMA foreign_keys = ON', (err) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(db);
+        }
+      });
+    });
+  });
+}
+
+/**
+ * Close the test database connection and clear the singleton
+ * This allows a fresh database to be created for the next test file
+ */
+function closeTestDatabase() {
+  if (testDbInstance) {
+    try {
+      testDbInstance.close();
+    } catch (err) {
+      // Ignore close errors
+    }
+    testDbInstance = null;
+    testDbPromise = null;
+  }
+}
+
+/**
+ * Force recreation of the test database
+ * Useful when the database gets corrupted
+ */
+async function recreateTestDatabase() {
+  closeTestDatabase();
+  return getTestDatabase();
+}
+
+/**
+ * Check if we're in test mode
+ */
+function isTestMode() {
+  return process.env.NODE_ENV === 'test';
+}
+
 module.exports = {
   initializeDatabase,
   getDatabase,
+  createTestDatabase,
+  getTestDatabase,
+  resetTestDatabase,
+  closeTestDatabase,
+  recreateTestDatabase,
+  isTestMode,
   DB_PATH
 };

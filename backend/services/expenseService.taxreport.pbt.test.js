@@ -9,7 +9,7 @@
  */
 
 const fc = require('fast-check');
-const { getDatabase, initializeDatabase } = require('../database/db');
+const { getDatabase } = require('../database/db');
 const expenseService = require('./expenseService');
 const invoiceRepository = require('../repositories/invoiceRepository');
 
@@ -17,8 +17,8 @@ describe('ExpenseService - Property-Based Tests for Tax Report Multi-Invoice Sup
   let db;
 
   beforeAll(async () => {
-    // Initialize test database
-    db = await initializeDatabase(':memory:');
+    // Get test database (uses shared test database in test mode)
+    db = await getDatabase();
   });
 
   afterAll(async () => {

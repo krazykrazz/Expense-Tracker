@@ -13,6 +13,7 @@ import BudgetHistoryView from './components/BudgetHistoryView';
 import PeopleManagementModal from './components/PeopleManagementModal';
 import MerchantAnalyticsModal from './components/MerchantAnalyticsModal';
 import BudgetAlertManager from './components/BudgetAlertManager';
+import FloatingAddButton from './components/FloatingAddButton';
 import { API_ENDPOINTS } from './config';
 import { CATEGORIES, PAYMENT_METHODS } from './utils/constants';
 import { getPeople } from './services/peopleApi';
@@ -738,9 +739,15 @@ function App() {
         />
       )}
 
+      {/* Floating Add Button - Rendered outside content-layout to avoid stacking context issues */}
+      <FloatingAddButton
+        onAddExpense={() => setShowExpenseForm(true)}
+        expenseCount={currentMonthExpenseCount}
+      />
+
       <footer className="App-footer">
         <span className="version">
-          v{versionInfo?.version || '4.14.7'}
+          v{versionInfo?.version || '4.14.10'}
           {versionInfo?.docker && (
             <span className="docker-tag"> (Docker: {versionInfo.docker.tag})</span>
           )}

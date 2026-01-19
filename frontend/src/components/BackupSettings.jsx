@@ -23,6 +23,7 @@ const BackupSettings = () => {
   const [loading, setLoading] = useState(true);
   const [nextBackup, setNextBackup] = useState(null);
   const [versionInfo, setVersionInfo] = useState(null);
+  const [dbStats, setDbStats] = useState(null);
   const [showPlaceNameStandardization, setShowPlaceNameStandardization] = useState(false);
   
   // People management state
@@ -47,6 +48,13 @@ const BackupSettings = () => {
     }
   }, [activeTab]);
 
+  // Fetch stats when About tab is active
+  useEffect(() => {
+    if (activeTab === 'about') {
+      fetchDbStats();
+    }
+  }, [activeTab]);
+
   const fetchVersionInfo = async () => {
     try {
       const response = await fetch(API_ENDPOINTS.VERSION);
@@ -56,6 +64,18 @@ const BackupSettings = () => {
       }
     } catch (error) {
       logger.error('Error fetching version info:', error);
+    }
+  };
+
+  const fetchDbStats = async () => {
+    try {
+      const response = await fetch(API_ENDPOINTS.BACKUP_STATS);
+      if (response.ok) {
+        const data = await response.json();
+        setDbStats(data);
+      }
+    } catch (error) {
+      logger.error('Error fetching database stats:', error);
     }
   };
 
@@ -799,475 +819,164 @@ const BackupSettings = () => {
             )}
           </div>
 
+          {dbStats && (
+            <div className="settings-section">
+              <h3>Database Statistics</h3>
+              <div className="db-stats">
+                <div className="db-stat-item">
+                  <strong>Total Expenses:</strong> {dbStats.expenseCount.toLocaleString()}
+                </div>
+                <div className="db-stat-item">
+                  <strong>Total Invoices:</strong> {dbStats.invoiceCount.toLocaleString()}
+                </div>
+                <div className="db-stat-item">
+                  <strong>Database Size:</strong> {dbStats.databaseSizeMB} MB
+                </div>
+                <div className="db-stat-item">
+                  <strong>Invoice Storage:</strong> {dbStats.invoiceStorageSizeMB} MB
+                </div>
+                <div className="db-stat-item">
+                  <strong>Backup Storage:</strong> {dbStats.totalBackupSizeMB} MB ({dbStats.backupCount} backups)
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="settings-section">
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
-                <div className="changelog-version">v4.14.7</div>
-                <div className="changelog-date">January 19, 2026</div>
+                <div className="changelog-version">v4.14.10</div>
+                <div className="changelog-date">January 2026</div>
                 <ul className="changelog-items">
-                  <li>Improved backend test coverage with 145 new tests</li>
-                  <li>Fixed test database schema for loan estimated_months_left column</li>
-                  <li>Fixed backup service tests to use correct database in test mode</li>
+                  <li>Fixed floating add button stacking context (moved outside content-layout)</li>
                 </ul>
               </div>
               <div className="changelog-entry">
-                <div className="changelog-version">v4.14.6</div>
-                <div className="changelog-date">January 19, 2026</div>
+                <div className="changelog-version">v4.14.9</div>
+                <div className="changelog-date">January 2026</div>
                 <ul className="changelog-items">
-                  <li>Fixed invoice person dropdown for single-person medical expenses</li>
-                  <li>Invoices now auto-link to the assigned person when only one person is assigned</li>
-                  <li>Added migration to retroactively link existing invoices to single-person expenses</li>
+                  <li>Fixed floating add button z-index (now appears above summary panel)</li>
                 </ul>
               </div>
               <div className="changelog-entry">
-                <div className="changelog-version">v4.14.5</div>
-                <div className="changelog-date">January 18, 2026</div>
+                <div className="changelog-version">v4.14.8</div>
+                <div className="changelog-date">January 2026</div>
                 <ul className="changelog-items">
-                  <li>Fixed invoice PDF viewer appearing under monthly summary panel</li>
-                  <li>Used React Portal to render modal at document body level</li>
-                  <li>Modal now properly appears above all content regardless of stacking contexts</li>
+                  <li>Added database statistics to Settings → About</li>
+                  <li>Condensed changelog to show major version summaries</li>
                 </ul>
               </div>
               <div className="changelog-entry">
-                <div className="changelog-version">v4.14.4</div>
-                <div className="changelog-date">January 18, 2026</div>
+                <div className="changelog-version">v4.14</div>
+                <div className="changelog-date">January 2026</div>
                 <ul className="changelog-items">
-                  <li>Standardized z-index values across all modal overlays</li>
-                  <li>Added CSS variable fallbacks for consistent stacking behavior</li>
-                  <li>Fixed hardcoded z-index values in floating button and modals</li>
+                  <li>Invoice auto-linking for single-person medical expenses</li>
+                  <li>Improved backend test coverage (778 tests)</li>
+                  <li>Fixed PDF viewer z-index stacking issues</li>
                 </ul>
               </div>
               <div className="changelog-entry">
-                <div className="changelog-version">v4.14.3</div>
-                <div className="changelog-date">January 18, 2026</div>
+                <div className="changelog-version">v4.13</div>
+                <div className="changelog-date">January 2026</div>
                 <ul className="changelog-items">
-                  <li>Fixed invoice PDF viewer z-index stacking context issue</li>
-                  <li>Removed competing stacking context from summary panel</li>
+                  <li>Multi-invoice upload UX improvements</li>
+                  <li>Donation expense invoice support</li>
+                  <li>Invoice backup enhancement</li>
                 </ul>
               </div>
               <div className="changelog-entry">
-                <div className="changelog-version">v4.14.2</div>
-                <div className="changelog-date">January 18, 2026</div>
+                <div className="changelog-version">v4.12</div>
+                <div className="changelog-date">January 2026</div>
                 <ul className="changelog-items">
-                  <li>Fixed invoice PDF viewer appearing under sticky summary panel</li>
-                  <li>Increased z-index for invoice viewer modal overlay</li>
+                  <li>Medical expense invoice attachments with PDF viewer</li>
+                  <li>Visual indicators for expenses with invoices</li>
                 </ul>
               </div>
               <div className="changelog-entry">
-                <div className="changelog-version">v4.13.2</div>
-                <div className="changelog-date">January 17, 2026</div>
+                <div className="changelog-version">v4.11</div>
+                <div className="changelog-date">January 2026</div>
                 <ul className="changelog-items">
-                  <li>Full donation invoice support with documentation updates</li>
-                  <li>Invoice indicators now shown for both medical and donation expenses</li>
-                  <li>Updated API error messages for tax-deductible expense validation</li>
+                  <li>Sticky summary scrolling for long expense lists</li>
+                  <li>Floating add button for improved UX</li>
                 </ul>
               </div>
               <div className="changelog-entry">
-                <div className="changelog-version">v4.13.1</div>
-                <div className="changelog-date">January 17, 2026</div>
+                <div className="changelog-version">v4.10</div>
+                <div className="changelog-date">January 2026</div>
                 <ul className="changelog-items">
-                  <li>Added invoice attachment support for donation expenses</li>
-                  <li>Fixed merchant analytics chart to show oldest to newest (left to right)</li>
-                  <li>Invoice backup enhancement - backups now include invoice files</li>
+                  <li>Budget alert notifications with smart thresholds</li>
+                  <li>Dismissible session-based alerts</li>
                 </ul>
               </div>
               <div className="changelog-entry">
-                <div className="changelog-version">v4.13.0</div>
-                <div className="changelog-date">January 17, 2026</div>
+                <div className="changelog-version">v4.8 - v4.9</div>
+                <div className="changelog-date">December 2025</div>
                 <ul className="changelog-items">
-                  <li>Improved multi-invoice upload UX for medical expenses</li>
-                  <li>Upload multiple invoices with person selection during expense creation</li>
-                  <li>Change person links on existing invoices directly from invoice list</li>
+                  <li>Merchant analytics navigation improvements</li>
+                  <li>Loan reminder enhancements</li>
                 </ul>
               </div>
               <div className="changelog-entry">
-                <div className="changelog-version">v4.12.11</div>
-                <div className="changelog-date">January 17, 2026</div>
+                <div className="changelog-version">v4.6</div>
+                <div className="changelog-date">December 2025</div>
                 <ul className="changelog-items">
-                  <li>Fixed DEBUG logs appearing when LOG_LEVEL is set to INFO</li>
-                  <li>Cleaned up verbose INFO logs - moved request details to DEBUG level</li>
+                  <li>Medical expense people tracking</li>
+                  <li>Multi-person expense allocation</li>
+                  <li>Person-grouped tax reports</li>
                 </ul>
               </div>
               <div className="changelog-entry">
-                <div className="changelog-version">v4.12.10</div>
-                <div className="changelog-date">January 17, 2026</div>
+                <div className="changelog-version">v4.5</div>
+                <div className="changelog-date">December 2025</div>
                 <ul className="changelog-items">
-                  <li>Fixed invoice indicator icon color - now shows green when invoice attached</li>
-                  <li>Replaced emoji icons with SVG for proper color styling</li>
+                  <li>Monthly data reminders for investments and loans</li>
+                  <li>Reminder item highlighting</li>
                 </ul>
               </div>
               <div className="changelog-entry">
-                <div className="changelog-version">v4.12.9</div>
-                <div className="changelog-date">January 17, 2026</div>
+                <div className="changelog-version">v4.4</div>
+                <div className="changelog-date">December 2025</div>
                 <ul className="changelog-items">
-                  <li>Fixed invoice indicator not showing green after upload</li>
-                  <li>Invoice status now updates immediately after attaching a PDF</li>
-                  <li>More reliable PDF display across different browsers</li>
+                  <li>Net worth tracking in summaries</li>
+                  <li>Investment tracking with performance charts</li>
+                  <li>Income source categories</li>
                 </ul>
               </div>
               <div className="changelog-entry">
-                <div className="changelog-version">v4.12.0</div>
-                <div className="changelog-date">January 16, 2026</div>
+                <div className="changelog-version">v4.3</div>
+                <div className="changelog-date">November 2025</div>
                 <ul className="changelog-items">
-                  <li>Medical Expense Invoice Attachments: Attach PDF invoices to medical expenses</li>
-                  <li>Built-in PDF viewer with zoom, download, and print capabilities</li>
-                  <li>Visual indicators showing which expenses have attached invoices</li>
-                </ul>
-              </div>
-              <div className="changelog-entry">
-                <div className="changelog-version">v4.8.0</div>
-                <div className="changelog-date">December 19, 2025</div>
-                <ul className="changelog-items">
-                  <li>Improved Merchant Analytics Navigation: Moved merchant analytics button from summary panel to top navigation menu</li>
-                  <li>Enhanced accessibility and prominence of merchant analytics feature</li>
-                  <li>Added distinctive pink/magenta styling for merchant analytics button</li>
-                </ul>
-              </div>
-              <div className="changelog-entry">
-                <div className="changelog-version">v4.6.3</div>
-                <div className="changelog-date">December 15, 2025</div>
-                <ul className="changelog-items">
-                  <li>Fixed loan reminders to exclude loans that start in the future</li>
-                </ul>
-              </div>
-              <div className="changelog-entry">
-                <div className="changelog-version">v4.6.2</div>
-                <div className="changelog-date">December 15, 2025</div>
-                <ul className="changelog-items">
-                  <li>Fixed tax deductible edit form to support multiple person selection</li>
-                  <li>Fixed person grouping to only include medical expenses (not donations)</li>
-                  <li>Added proper edit modal in tax deductible view for assigning people</li>
-                </ul>
-              </div>
-              <div className="changelog-entry">
-                <div className="changelog-version">v4.6.1</div>
-                <div className="changelog-date">December 15, 2025</div>
-                <ul className="changelog-items">
-                  <li>Improved multi-person medical expense display with vertical stacking</li>
-                  <li>Each person shown on separate line with allocation amount</li>
-                  <li>Consistent font styling between single and multi-person displays</li>
-                </ul>
-              </div>
-              <div className="changelog-entry">
-                <div className="changelog-version">v4.6.0</div>
-                <div className="changelog-date">December 14, 2025</div>
-                <ul className="changelog-items">
-                  <li>Medical Expense People Tracking: Associate medical expenses with family members</li>
-                  <li>People management in Settings → People tab for adding/editing family members</li>
-                  <li>Split medical expenses across multiple people with custom allocations</li>
-                  <li>Person-grouped view in Tax Deductible for tax preparation</li>
-                  <li>Visual indicators showing assigned people on expense list</li>
-                </ul>
-              </div>
-              <div className="changelog-entry">
-                <div className="changelog-version">v4.5.1</div>
-                <div className="changelog-date">December 6, 2025</div>
-                <ul className="changelog-items">
-                  <li>Reminder Item Highlighting: Investments and loans needing updates are now highlighted with orange borders and warning badges</li>
-                  <li>Pulsing "⚠️ Update Needed" badge draws attention to items missing data</li>
-                  <li>Clear visual distinction between complete and incomplete items</li>
-                </ul>
-              </div>
-              <div className="changelog-entry">
-                <div className="changelog-version">v4.5.0</div>
-                <div className="changelog-date">December 6, 2025</div>
-                <ul className="changelog-items">
-                  <li>Monthly Data Reminders: Visual notification banners prompt users to update investment values and loan balances</li>
-                  <li>Clickable reminders open relevant modals (Investments or Loans)</li>
-                  <li>Dismissible reminders with session-based persistence</li>
-                </ul>
-              </div>
-              <div className="changelog-entry">
-                <div className="changelog-version">v4.4.7</div>
-                <div className="changelog-date">December 6, 2025</div>
-                <ul className="changelog-items">
-                  <li>Added Net Worth tracking in monthly and annual summaries</li>
-                  <li>Net Worth = Total Investments - Total Debt with color-coded display</li>
-                </ul>
-              </div>
-              <div className="changelog-entry">
-                <div className="changelog-version">v4.4.6</div>
-                <div className="changelog-date">December 3, 2025</div>
-                <ul className="changelog-items">
-                  <li>Improved monthly summary card order for better financial flow</li>
-                  <li>Now displays: Income → Fixed Expenses → Variable Expenses → Balance</li>
-                </ul>
-              </div>
-              <div className="changelog-entry">
-                <div className="changelog-version">v4.4.4</div>
-                <div className="changelog-date">December 3, 2025</div>
-                <ul className="changelog-items">
-                  <li>Fixed weekly breakdown display showing "Week week1" instead of "Week 1"</li>
-                </ul>
-              </div>
-              <div className="changelog-entry">
-                <div className="changelog-version">v4.4.3</div>
-                <div className="changelog-date">December 3, 2025</div>
-                <ul className="changelog-items">
-                  <li>Fixed expense list not refreshing after adding new expense</li>
-                  <li>Improved date parsing to avoid timezone issues</li>
-                  <li>Expenses now appear immediately in monthly view</li>
-                </ul>
-              </div>
-              <div className="changelog-entry">
-                <div className="changelog-version">v4.4.2</div>
-                <div className="changelog-date">December 3, 2025</div>
-                <ul className="changelog-items">
-                  <li>Fixed missing trend arrows in monthly summary collapsible sections</li>
-                  <li>Trend arrows now show in Weekly Breakdown, Payment Methods, and Expense Types</li>
-                  <li>Month-over-month changes displayed with percentage tooltips</li>
-                </ul>
-              </div>
-              <div className="changelog-entry">
-                <div className="changelog-version">v4.4.1</div>
-                <div className="changelog-date">December 3, 2025</div>
-                <ul className="changelog-items">
-                  <li>Fixed "Clear Filters" button not appearing on first global search</li>
-                  <li>SearchBar now properly syncs search text across both instances</li>
-                </ul>
-              </div>
-              <div className="changelog-entry">
-                <div className="changelog-version">v4.4.0</div>
-                <div className="changelog-date">December 3, 2025</div>
-                <ul className="changelog-items">
-                  <li>Investment Tracking: Track TFSA and RRSP portfolios with performance charts</li>
-                  <li>Income Source Categories: Categorize income (Salary, Government, Gifts, Other)</li>
-                  <li>Improved logging consistency across backend services</li>
-                  <li>Comprehensive codebase audit completed with Grade A</li>
-                </ul>
-              </div>
-              <div className="changelog-entry">
-                <div className="changelog-version">v4.3.2</div>
-                <div className="changelog-date">November 29, 2025</div>
-                <ul className="changelog-items">
-                  <li>Fixed ExpenseList filters incorrectly triggering global view mode</li>
-                  <li>Monthly expense filters now work correctly without switching views</li>
-                  <li>Fixed application crash when payment method data is undefined</li>
-                  <li>Improved stability and error handling in SummaryPanel</li>
-                </ul>
-              </div>
-              <div className="changelog-entry">
-                <div className="changelog-version">v4.3.1</div>
-                <div className="changelog-date">November 29, 2025</div>
-                <ul className="changelog-items">
-                  <li>Improved filter layout alignment and spacing</li>
-                  <li>Filters now properly align with monthly summary panel</li>
-                  <li>Reduced gap between filter dropdowns for cleaner appearance</li>
-                </ul>
-              </div>
-              <div className="changelog-entry">
-                <div className="changelog-version">v4.3.0</div>
-                <div className="changelog-date">November 29, 2025</div>
-                <ul className="changelog-items">
-                  <li>Added global expense filtering across all time periods</li>
-                  <li>Filter by category and payment method from any view</li>
+                  <li>Global expense filtering across all time periods</li>
                   <li>Combined text search with category and payment filters</li>
-                  <li>Automatic switch to global view when filters are active</li>
-                  <li>Clear all filters button for easy reset</li>
                 </ul>
               </div>
               <div className="changelog-entry">
-                <div className="changelog-version">v4.2.3</div>
-                <div className="changelog-date">November 27, 2025</div>
+                <div className="changelog-version">v4.0 - v4.2</div>
+                <div className="changelog-date">November 2025</div>
                 <ul className="changelog-items">
-                  <li>Fixed category field flashing when selecting place from autocomplete dropdown</li>
-                  <li>Prevented blur handler from overwriting category selection</li>
-                  <li>Improved race condition handling between dropdown selection and blur events</li>
+                  <li>Enhanced fixed expenses with category tracking</li>
+                  <li>Personal Care expense category</li>
+                  <li>Removed recurring expenses (use Fixed Expenses)</li>
                 </ul>
               </div>
               <div className="changelog-entry">
-                <div className="changelog-version">v4.2.2</div>
-                <div className="changelog-date">November 27, 2025</div>
+                <div className="changelog-version">v3.5 - v3.8</div>
+                <div className="changelog-date">November 2025</div>
                 <ul className="changelog-items">
-                  <li>Fixed category field flashing issue when adding expenses</li>
-                  <li>Improved form submission handling to prevent race conditions</li>
+                  <li>Place name standardization tool</li>
+                  <li>Budget tracking with alerts</li>
+                  <li>Expense trend indicators</li>
+                  <li>Enhanced annual summary</li>
                 </ul>
               </div>
               <div className="changelog-entry">
-                <div className="changelog-version">v4.2.1</div>
-                <div className="changelog-date">November 27, 2025</div>
+                <div className="changelog-version">v3.2 - v3.4</div>
+                <div className="changelog-date">November 2025</div>
                 <ul className="changelog-items">
-                  <li>Centralized API endpoint configuration for better maintainability</li>
-                  <li>Eliminated code duplication in SummaryPanel component</li>
-                  <li>Improved code quality and consistency across frontend</li>
-                </ul>
-              </div>
-              <div className="changelog-entry">
-                <div className="changelog-version">v4.2.0</div>
-                <div className="changelog-date">November 25, 2025</div>
-                <ul className="changelog-items">
-                  <li>Enhanced Fixed Expenses: Added category and payment type tracking</li>
-                  <li>Categorize fixed expenses (Housing, Utilities, Subscriptions, Insurance, etc.)</li>
-                  <li>Track payment methods (Credit Card, Debit Card, Cash, Cheque, E-Transfer)</li>
-                  <li>Automatic database migration with backward compatibility</li>
-                  <li>Improved UI with dropdown selectors for better organization</li>
-                </ul>
-              </div>
-              <div className="changelog-entry">
-                <div className="changelog-version">v4.1.0</div>
-                <div className="changelog-date">November 24, 2025</div>
-                <ul className="changelog-items">
-                  <li>Added "Personal Care" expense category for haircuts, cosmetics, toiletries, and spa services</li>
-                  <li>Personal Care category is budgetable and appears in all summaries and reports</li>
-                  <li>Automatic database migration updates constraints on startup</li>
-                  <li>CSV import/export fully supports Personal Care expenses</li>
-                </ul>
-              </div>
-              <div className="changelog-entry">
-                <div className="changelog-version">v4.0.3</div>
-                <div className="changelog-date">November 24, 2025</div>
-                <ul className="changelog-items">
-                  <li>Fixed database migration for "Gifts" category support</li>
-                  <li>Automatic migration runs on container startup</li>
-                  <li>Added comprehensive migration documentation and test scripts</li>
-                </ul>
-              </div>
-              <div className="changelog-entry">
-                <div className="changelog-version">v4.0.2</div>
-                <div className="changelog-date">November 24, 2025</div>
-                <ul className="changelog-items">
-                  <li>Project cleanup: Archived 45 historical files for better organization</li>
-                  <li>Removed empty folders and organized documentation</li>
-                </ul>
-              </div>
-              <div className="changelog-entry">
-                <div className="changelog-version">v4.0.1</div>
-                <div className="changelog-date">November 24, 2025</div>
-                <ul className="changelog-items">
-                  <li>Fixed bar graph white space issues in annual summary charts</li>
-                  <li>Improved chart layout with consistent horizontal bars</li>
-                  <li>Database cleanup: standardized 58 expense categories by place name</li>
-                </ul>
-              </div>
-
-              <div className="changelog-entry">
-                <div className="changelog-version">v4.0.0</div>
-                <div className="changelog-date">November 24, 2025</div>
-                <ul className="changelog-items">
-                  <li>Removed recurring expenses feature (use Fixed Expenses instead)</li>
-                  <li>All previously generated expenses converted to regular expenses</li>
-                  <li>Simplified expense management workflow</li>
-                </ul>
-              </div>
-
-              <div className="changelog-entry">
-                <div className="changelog-version">v3.8.1</div>
-                <div className="changelog-date">November 24, 2025</div>
-                <ul className="changelog-items">
-                  <li>Updated documentation to reflect 14 expense categories</li>
-                  <li>Improved product overview with comprehensive category listing</li>
-                </ul>
-              </div>
-
-              <div className="changelog-entry">
-                <div className="changelog-version">v3.8.0</div>
-                <div className="changelog-date">November 23, 2025</div>
-                <ul className="changelog-items">
-                  <li>Place Name Standardization: Find and fix inconsistent place names in expenses</li>
-                  <li>Fuzzy matching algorithm identifies similar place name variations</li>
-                  <li>Bulk update tool with preview before applying changes</li>
-                  <li>Transaction-safe updates ensure data integrity</li>
-                  <li>Performance optimized for large datasets (10,000+ records)</li>
-                </ul>
-              </div>
-
-              <div className="changelog-entry">
-                <div className="changelog-version">v3.7.0</div>
-                <div className="changelog-date">November 22, 2025</div>
-                <ul className="changelog-items">
-                  <li>Budget Tracking & Alerts: Set monthly budget limits with real-time progress tracking</li>
-                  <li>Color-coded budget status indicators (green/yellow/orange/red)</li>
-                  <li>Automatic budget carry-forward from previous month</li>
-                  <li>Historical budget analysis (3, 6, or 12 months)</li>
-                  <li>Budget vs actual spending comparisons with success rates</li>
-                </ul>
-              </div>
-
-              <div className="changelog-entry">
-                <div className="changelog-version">v3.6.1</div>
-                <div className="changelog-date">November 19, 2025</div>
-                <ul className="changelog-items">
-                  <li>Fixed critical bug: application crash when viewing years without data</li>
-                  <li>Code optimization: eliminated ~200 lines of duplicate CSS</li>
-                  <li>Performance improvements: added memoization for chart calculations</li>
-                  <li>Created shared chart styling system for consistency</li>
-                </ul>
-              </div>
-
-              <div className="changelog-entry">
-                <div className="changelog-version">v3.6.0</div>
-                <div className="changelog-date">November 19, 2025</div>
-                <ul className="changelog-items">
-                  <li>Enhanced annual summary with income and net income tracking</li>
-                  <li>Fixed vs variable expense breakdown in summary cards</li>
-                  <li>Horizontal stacked bar chart for monthly expense visualization</li>
-                  <li>Property-based testing for financial calculations</li>
-                </ul>
-              </div>
-
-              <div className="changelog-entry">
-                <div className="changelog-version">v3.5.0</div>
-                <div className="changelog-date">November 19, 2025</div>
-                <ul className="changelog-items">
-                  <li>Expense trend indicators with month-over-month comparisons</li>
-                  <li>Place autocomplete for faster expense entry</li>
-                  <li>Visual arrows showing spending increases/decreases</li>
-                  <li>Percentage change tooltips on hover</li>
-                  <li>Property-based testing for trend calculations</li>
-                </ul>
-              </div>
-
-              <div className="changelog-entry">
-                <div className="changelog-version">v3.4.0</div>
-                <div className="changelog-date">November 19, 2025</div>
-                <ul className="changelog-items">
-                  <li>Unified Docker container with frontend and backend</li>
-                  <li>Added health check endpoint and monitoring</li>
-                  <li>Configurable logging and timezone support</li>
-                  <li>Automated CI/CD pipeline for local registry</li>
-                  <li>Enhanced security with non-root user</li>
-                  <li>Standardized /config directory for all data</li>
-                </ul>
-              </div>
-
-              <div className="changelog-entry">
-                <div className="changelog-version">v3.3.4</div>
-                <div className="changelog-date">November 18, 2025</div>
-                <ul className="changelog-items">
-                  <li>Improved tax deduction summary display</li>
-                  <li>Enhanced monthly summary layout</li>
-                  <li>Better readability with stacked label/value layout</li>
-                </ul>
-              </div>
-
-              <div className="changelog-entry">
-                <div className="changelog-version">v3.3.3</div>
-                <div className="changelog-date">November 18, 2025</div>
-                <ul className="changelog-items">
-                  <li>Fixed date input timezone issues</li>
-                  <li>Prevented off-by-one day errors</li>
-                </ul>
-              </div>
-
-              <div className="changelog-entry">
-                <div className="changelog-version">v3.3.0</div>
-                <div className="changelog-date">November 14, 2025</div>
-                <ul className="changelog-items">
-                  <li>Total debt overview with aggregate tracking</li>
-                  <li>Dual-axis charts for balance and interest rates</li>
-                  <li>Loan type differentiation (loans vs lines of credit)</li>
-                  <li>Automatic estimated months calculation</li>
-                </ul>
-              </div>
-
-              <div className="changelog-entry">
-                <div className="changelog-version">v3.2.0</div>
-                <div className="changelog-date">November 10, 2025</div>
-                <ul className="changelog-items">
-                  <li>Fixed monthly expenses management</li>
-                  <li>Multiple income sources tracking</li>
-                  <li>Carry forward functionality</li>
+                  <li>Unified Docker container</li>
+                  <li>Total debt overview with charts</li>
+                  <li>Multiple income sources</li>
                 </ul>
               </div>
             </div>

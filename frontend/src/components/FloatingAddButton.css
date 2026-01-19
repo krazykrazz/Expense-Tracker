@@ -15,7 +15,7 @@
   cursor: pointer;
   box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
   transition: all 0.3s ease;
-  z-index: var(--z-dropdown, 100);
+  z-index: var(--z-fixed, 300);
   min-height: 56px;
 }
 

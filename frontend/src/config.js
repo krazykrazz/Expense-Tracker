@@ -56,6 +56,7 @@ export const API_ENDPOINTS = {
   BACKUP_LIST: `${API_BASE_URL}/api/backup/list`,
   BACKUP_MANUAL: `${API_BASE_URL}/api/backup/manual`,
   BACKUP_RESTORE: `${API_BASE_URL}/api/backup/restore`,
+  BACKUP_STATS: `${API_BASE_URL}/api/backup/stats`,
   
   // Import
   IMPORT: `${API_BASE_URL}/api/import`,

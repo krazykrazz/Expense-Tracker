@@ -453,6 +453,32 @@
   display: inline-block;
 }
 
+/* Database Stats Styles */
+.db-stats {
+  background: var(--bg-card, white);
+  padding: var(--spacing-4, 16px);
+  border-radius: var(--radius-md, 8px);
+  border: 1px solid #e0e4ff;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--spacing-3, 12px);
+}
+
+.db-stat-item {
+  padding: var(--spacing-2, 8px);
+  background: var(--bg-muted, #f8f9ff);
+  border-radius: var(--radius-sm, 4px);
+  font-size: var(--text-base, 14px);
+  font-family: var(--font-sans);
+}
+
+.db-stat-item strong {
+  color: var(--text-secondary, #555);
+  display: block;
+  margin-bottom: var(--spacing-1, 4px);
+  font-size: var(--text-sm, 12px);
+}
+
 /* Changelog Styles */
 .changelog {
   max-height: 500px;

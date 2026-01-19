@@ -11,6 +11,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.14.10] - 2026-01-19
+
+### Fixed
+- **Floating Add Button Stacking Context**: Moved FloatingAddButton from ExpenseList to App.jsx
+  - Button was trapped in `.content-left` stacking context due to `isolation: isolate`
+  - Now renders outside content-layout, properly appearing above all page content
+
+---
+
+## [4.14.9] - 2026-01-19
+
+### Fixed
+- **Floating Add Button Z-Index**: Fixed floating add expense button appearing under the monthly summary panel
+  - Changed z-index from `--z-dropdown` (100) to `--z-fixed` (300)
+  - Button now correctly appears above the sticky summary panel
+
+---
+
+## [4.14.8] - 2026-01-19
+
+### Added
+- **Database Statistics in Settings**: Added database stats display in Settings → About tab
+  - Shows total expense count, invoice count, database size
+  - Shows invoice storage size and backup storage size
+- **Condensed Changelog**: Replaced detailed changelog with major version summaries for better readability
+
+---
+
 ## [4.14.7] - 2026-01-19
 
 ### Added

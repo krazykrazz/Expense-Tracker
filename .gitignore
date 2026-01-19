@@ -39,3 +39,9 @@ yarn-error.log*
 
 # Archived files
 *.old
+
+# Test coverage
+backend/coverage/
+
+# Root config folder (runtime only)
+/config/

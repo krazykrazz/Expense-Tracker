@@ -470,11 +470,13 @@ class BackupService {
 
   /**
    * Get backup storage statistics
-   * @returns {Promise<{totalBackupSize: number, totalBackupSizeMB: number, backupCount: number, invoiceStorageSize: number, invoiceStorageSizeMB: number, invoiceCount: number}>}
+   * @returns {Promise<{totalBackupSize: number, totalBackupSizeMB: number, backupCount: number, invoiceStorageSize: number, invoiceStorageSizeMB: number, invoiceCount: number, expenseCount: number, databaseSize: number, databaseSizeMB: number}>}
    */
   async getStorageStats() {
     try {
       const fileStorage = require('../utils/fileStorage');
+      const { getDatabase } = require('../database/db');
+      const { getDatabasePath } = require('../config/paths');
       
       // Get backup statistics
       const backupList = this.getBackupList();
@@ -484,13 +486,42 @@ class BackupService {
       // Get invoice storage statistics
       const invoiceStats = await fileStorage.getStorageStats();
       
+      // Get expense count from database
+      let expenseCount = 0;
+      try {
+        const db = await getDatabase();
+        expenseCount = await new Promise((resolve, reject) => {
+          db.get('SELECT COUNT(*) as count FROM expenses', [], (err, row) => {
+            if (err) reject(err);
+            else resolve(row ? row.count : 0);
+          });
+        });
+      } catch (dbError) {
+        logger.warn('Could not get expense count:', dbError);
+      }
+      
+      // Get database file size
+      let databaseSize = 0;
+      try {
+        const dbPath = getDatabasePath();
+        if (fs.existsSync(dbPath)) {
+          const dbStats = fs.statSync(dbPath);
+          databaseSize = dbStats.size;
+        }
+      } catch (fsError) {
+        logger.warn('Could not get database size:', fsError);
+      }
+      
       return {
         totalBackupSize,
         totalBackupSizeMB: Math.round(totalBackupSize / (1024 * 1024) * 100) / 100,
         backupCount,
         invoiceStorageSize: invoiceStats.totalSize,
         invoiceStorageSizeMB: invoiceStats.totalSizeMB,
-        invoiceCount: invoiceStats.totalFiles
+        invoiceCount: invoiceStats.totalFiles,
+        expenseCount,
+        databaseSize,
+        databaseSizeMB: Math.round(databaseSize / (1024 * 1024) * 100) / 100
       };
     } catch (error) {
       logger.error('Error getting storage stats:', error);

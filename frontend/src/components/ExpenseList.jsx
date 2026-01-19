@@ -6,7 +6,6 @@ import { getExpenseWithPeople, updateExpense } from '../services/expenseApi';
 import { getInvoicesForExpense, updateInvoicePersonLink } from '../services/invoiceApi';
 import { createLogger } from '../utils/logger';
 import PersonAllocationModal from './PersonAllocationModal';
-import FloatingAddButton from './FloatingAddButton';
 import InvoiceIndicator from './InvoiceIndicator';
 import InvoiceUpload from './InvoiceUpload';
 import './ExpenseList.css';
@@ -1099,13 +1098,6 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
         selectedPeople={selectedPeople}
         onSave={handleEditPersonAllocation}
         onCancel={() => setShowPersonAllocation(false)}
-      />
-
-      {/* Floating Add Button - Based on current month expense count, not selected month */}
-      <FloatingAddButton
-        key={`floating-button-${currentMonthExpenseCount}`}
-        onAddExpense={onAddExpense}
-        expenseCount={currentMonthExpenseCount}
       />
     </div>
   );

@@ -195,7 +195,10 @@ describe('expenseRepository', () => {
           type: 'Tax - Medical',
           method: 'Debit',
           week: 3,
-          invoice_count: 0
+          invoice_count: 0,
+          insurance_eligible: 0,
+          claim_status: null,
+          original_cost: null
         },
         { 
           id: 2, 
@@ -206,7 +209,10 @@ describe('expenseRepository', () => {
           type: 'Tax - Donation',
           method: 'Credit',
           week: 3,
-          invoice_count: 0
+          invoice_count: 0,
+          insurance_eligible: 0,
+          claim_status: null,
+          original_cost: null
         }
       ];
       
@@ -224,7 +230,11 @@ describe('expenseRepository', () => {
           week: 3,
           hasInvoice: false,
           invoiceCount: 0,
-          invoices: []
+          invoices: [],
+          insuranceEligible: false,
+          claimStatus: null,
+          originalCost: null,
+          reimbursement: null
         },
         {
           id: 2,
@@ -237,7 +247,11 @@ describe('expenseRepository', () => {
           week: 3,
           hasInvoice: false,
           invoiceCount: 0,
-          invoices: []
+          invoices: [],
+          insuranceEligible: false,
+          claimStatus: null,
+          originalCost: null,
+          reimbursement: null
         }
       ];
       
@@ -271,7 +285,10 @@ describe('expenseRepository', () => {
           type: 'Tax - Medical',
           method: 'Debit',
           week: 3,
-          invoice_count: 2
+          invoice_count: 2,
+          insurance_eligible: 1,
+          claim_status: 'paid',
+          original_cost: 150.00
         }
       ];
       
@@ -332,6 +349,11 @@ describe('expenseRepository', () => {
         uploadDate: '2024-01-15T10:00:00Z'
       });
       expect(result[0].invoices[1].personName).toBe('John Doe');
+      // Verify insurance fields
+      expect(result[0].insuranceEligible).toBe(true);
+      expect(result[0].claimStatus).toBe('paid');
+      expect(result[0].originalCost).toBe(150.00);
+      expect(result[0].reimbursement).toBe(50.00); // 150 - 100
     });
   });
 
@@ -350,6 +372,113 @@ describe('expenseRepository', () => {
 
       expect(mockDb.all).toHaveBeenCalled();
       expect(result).toEqual(['Store A', 'Store B']);
+    });
+  });
+
+  describe('updateInsuranceFields', () => {
+    it('should update insurance fields for an expense', async () => {
+      const updatedExpense = {
+        id: 1,
+        date: '2024-01-15',
+        place: 'Medical Clinic',
+        amount: 75.00,
+        type: 'Tax - Medical',
+        insurance_eligible: 1,
+        claim_status: 'paid',
+        original_cost: 100.00
+      };
+
+      mockDb.run.mockImplementation(function(sql, params, callback) {
+        callback.call({ changes: 1 }, null);
+      });
+      mockDb.get.mockImplementation((sql, params, callback) => {
+        callback(null, updatedExpense);
+      });
+
+      const result = await expenseRepository.updateInsuranceFields(1, {
+        insurance_eligible: true,
+        claim_status: 'paid',
+        original_cost: 100.00,
+        amount: 75.00
+      });
+
+      expect(mockDb.run).toHaveBeenCalled();
+      expect(result).toEqual(updatedExpense);
+    });
+
+    it('should return null when expense not found', async () => {
+      mockDb.run.mockImplementation(function(sql, params, callback) {
+        callback.call({ changes: 0 }, null);
+      });
+
+      const result = await expenseRepository.updateInsuranceFields(999, {
+        insurance_eligible: true
+      });
+
+      expect(result).toBeNull();
+    });
+
+    it('should handle database errors', async () => {
+      mockDb.run.mockImplementation((sql, params, callback) => {
+        callback(new Error('Database error'));
+      });
+
+      await expect(expenseRepository.updateInsuranceFields(1, {
+        insurance_eligible: true
+      })).rejects.toThrow('Database error');
+    });
+  });
+
+  describe('getExpensesByClaimStatus', () => {
+    it('should return expenses filtered by claim status', async () => {
+      const mockExpenses = [
+        {
+          id: 1,
+          date: '2024-01-15',
+          place: 'Medical Clinic',
+          amount: 75.00,
+          notes: 'Checkup',
+          type: 'Tax - Medical',
+          method: 'Debit',
+          week: 3,
+          insurance_eligible: 1,
+          claim_status: 'paid',
+          original_cost: 100.00,
+          invoice_count: 1
+        }
+      ];
+
+      mockDb.all.mockImplementation((sql, params, callback) => {
+        callback(null, mockExpenses);
+      });
+
+      const result = await expenseRepository.getExpensesByClaimStatus(2024, 'paid');
+
+      expect(mockDb.all).toHaveBeenCalled();
+      expect(result).toHaveLength(1);
+      expect(result[0].insuranceEligible).toBe(true);
+      expect(result[0].claimStatus).toBe('paid');
+      expect(result[0].originalCost).toBe(100.00);
+      expect(result[0].reimbursement).toBe(25.00); // 100 - 75
+    });
+
+    it('should return empty array when no expenses match', async () => {
+      mockDb.all.mockImplementation((sql, params, callback) => {
+        callback(null, []);
+      });
+
+      const result = await expenseRepository.getExpensesByClaimStatus(2024, 'denied');
+
+      expect(result).toEqual([]);
+    });
+
+    it('should handle database errors', async () => {
+      mockDb.all.mockImplementation((sql, params, callback) => {
+        callback(new Error('Database error'));
+      });
+
+      await expect(expenseRepository.getExpensesByClaimStatus(2024, 'paid'))
+        .rejects.toThrow('Database error');
     });
   });
 });

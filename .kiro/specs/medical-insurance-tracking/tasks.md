@@ -6,8 +6,8 @@ This implementation plan adds insurance tracking capabilities to medical expense
 
 ## Tasks
 
-- [ ] 1. Database Schema Migration
-  - [ ] 1.1 Create migration for expenses table insurance fields
+- [x] 1. Database Schema Migration
+  - [x] 1.1 Create migration for expenses table insurance fields
     - Add `insurance_eligible` INTEGER DEFAULT 0
     - Add `claim_status` TEXT DEFAULT NULL with CHECK constraint
     - Add `original_cost` REAL DEFAULT NULL
@@ -15,45 +15,45 @@ This implementation plan adds insurance tracking capabilities to medical expense
     - Include backup creation before migration
     - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5_
   
-  - [ ] 1.2 Create migration for expense_people table
+  - [x] 1.2 Create migration for expense_people table
     - Add `original_amount` REAL DEFAULT NULL column
     - Set existing allocations: original_amount=amount
     - _Requirements: 4.2, 8.1_
 
-- [ ] 2. Backend Repository Layer
-  - [ ] 2.1 Extend ExpenseRepository with insurance methods
+- [x] 2. Backend Repository Layer
+  - [x] 2.1 Extend ExpenseRepository with insurance methods
     - Add `updateInsuranceFields(id, insuranceData)` method
     - Extend `getTaxDeductibleExpenses` to include insurance fields
     - Add `getExpensesByClaimStatus(year, status)` method
     - _Requirements: 1.3, 2.3, 6.5, 7.4_
   
-  - [ ] 2.2 Write property test for insurance data persistence
+  - [x] 2.2 Write property test for insurance data persistence
     - **Property 3: Insurance Data Persistence Round-Trip**
     - **Validates: Requirements 1.3, 2.3, 5.4**
   
-  - [ ] 2.3 Extend ExpensePeopleRepository for original_amount
+  - [x] 2.3 Extend ExpensePeopleRepository for original_amount
     - Update `createAssociations` to accept original_amount
     - Update `updateExpenseAllocations` to handle original_amount
     - Update `getPeopleForExpense` to return original_amount
     - _Requirements: 4.1, 4.2_
 
-- [ ] 3. Backend Service Layer
-  - [ ] 3.1 Add insurance validation to ExpenseService
+- [x] 3. Backend Service Layer
+  - [x] 3.1 Add insurance validation to ExpenseService
     - Add `validateInsuranceData(insuranceData, expenseAmount)` method
     - Validate claim_status enum values
     - Validate amount <= original_cost
     - Validate person allocations
     - _Requirements: 2.2, 3.5, 4.4_
   
-  - [ ] 3.2 Write property test for claim status enum validation
+  - [x] 3.2 Write property test for claim status enum validation
     - **Property 4: Claim Status Enum Validation**
     - **Validates: Requirements 2.2**
   
-  - [ ] 3.3 Write property test for amount validation invariant
+  - [x] 3.3 Write property test for amount validation invariant
     - **Property 5: Amount Validation Invariant**
     - **Validates: Requirements 3.5, 4.4**
   
-  - [ ] 3.4 Extend ExpenseService for insurance operations
+  - [x] 3.4 Extend ExpenseService for insurance operations
     - Add `updateInsuranceStatus(id, status)` method for quick updates
     - Add `updateInsuranceEligibility(id, eligible, originalCost)` method
     - Extend `createExpense` to handle insurance fields
@@ -61,22 +61,22 @@ This implementation plan adds insurance tracking capabilities to medical expense
     - Apply defaults when insurance_eligible is set to true
     - _Requirements: 1.2, 1.3, 2.3, 2.4, 2.5, 5.4_
   
-  - [ ] 3.5 Write property test for insurance data defaults
+  - [x] 3.5 Write property test for insurance data defaults
     - **Property 2: Insurance Data Defaults**
     - **Validates: Requirements 1.2, 2.4, 2.5**
   
-  - [ ] 3.6 Extend getTaxDeductibleSummary for insurance totals
+  - [x] 3.6 Extend getTaxDeductibleSummary for insurance totals
     - Calculate total original costs
     - Calculate total out-of-pocket amounts
     - Calculate total reimbursements
     - Group by claim status
     - _Requirements: 6.1, 6.2, 6.3, 6.4_
   
-  - [ ] 3.7 Write property test for reimbursement calculation
+  - [x] 3.7 Write property test for reimbursement calculation
     - **Property 6: Reimbursement Calculation**
     - **Validates: Requirements 3.6**
   
-  - [ ] 3.8 Write property test for insurance totals aggregation
+  - [x] 3.8 Write property test for insurance totals aggregation
     - **Property 8: Insurance Totals Aggregation**
     - **Validates: Requirements 6.3, 6.4**
 

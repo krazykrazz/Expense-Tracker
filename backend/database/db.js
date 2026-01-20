@@ -506,6 +506,9 @@ function createTestDatabase() {
             type TEXT NOT NULL CHECK(type IN (${categoryList})),
             week INTEGER NOT NULL CHECK(week >= 1 AND week <= 5),
             method TEXT NOT NULL CHECK(method IN ('Cash', 'Debit', 'Cheque', 'CIBC MC', 'PCF MC', 'WS VISA', 'VISA')),
+            insurance_eligible INTEGER DEFAULT 0,
+            claim_status TEXT DEFAULT NULL CHECK(claim_status IS NULL OR claim_status IN ('not_claimed', 'in_progress', 'paid', 'denied')),
+            original_cost REAL DEFAULT NULL,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
           )`,
           
@@ -622,6 +625,7 @@ function createTestDatabase() {
             expense_id INTEGER NOT NULL,
             person_id INTEGER NOT NULL,
             amount DECIMAL(10,2) NOT NULL,
+            original_amount REAL DEFAULT NULL,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (expense_id) REFERENCES expenses(id) ON DELETE CASCADE,
             FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE CASCADE,
@@ -699,6 +703,8 @@ function createTestIndexes(db, resolve, reject) {
     'CREATE INDEX IF NOT EXISTS idx_date ON expenses(date)',
     'CREATE INDEX IF NOT EXISTS idx_type ON expenses(type)',
     'CREATE INDEX IF NOT EXISTS idx_method ON expenses(method)',
+    'CREATE INDEX IF NOT EXISTS idx_expenses_insurance_eligible ON expenses(insurance_eligible)',
+    'CREATE INDEX IF NOT EXISTS idx_expenses_claim_status ON expenses(claim_status)',
     'CREATE INDEX IF NOT EXISTS idx_year_month ON monthly_gross(year, month)',
     'CREATE INDEX IF NOT EXISTS idx_income_year_month ON income_sources(year, month)',
     'CREATE INDEX IF NOT EXISTS idx_fixed_expenses_year_month ON fixed_expenses(year, month)',

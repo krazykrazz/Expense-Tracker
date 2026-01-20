@@ -1,21 +1,20 @@
 # Git Commit Control
 
+## ⚠️ MANDATORY: Feature Branch Check for Spec Implementation ⚠️
+
+**THIS IS THE FIRST THING TO DO when implementing spec tasks:**
+
+1. Run `git branch --show-current`
+2. If on `main`, STOP and ask user about creating a feature branch
+3. Do NOT write any code until the branch question is resolved
+
+See `.kiro/steering/spec-task-execution.md` for the full rule (triggered automatically when reading tasks.md files).
+
+---
+
 ## User-Controlled Commits
 
 **IMPORTANT**: The user controls when git commits are made. The agent should NOT automatically commit changes.
-
-## Feature Branch for Spec Implementation
-
-**IMPORTANT**: Before starting to implement tasks from a spec, check if the user is on the `main` branch.
-
-If on `main`, ask the user:
-> "You're on the main branch. Would you like me to create a feature branch for this spec before starting implementation? Suggested branch name: `feature/<spec-name>`"
-
-Wait for user confirmation before:
-1. Creating the feature branch, OR
-2. Proceeding on main if they prefer
-
-This ensures feature work is isolated and can be merged with `--no-ff` for clean history.
 
 ## Rules
 

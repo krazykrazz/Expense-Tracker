@@ -5,7 +5,7 @@ class ExpensePeopleRepository {
   /**
    * Create expense-person associations with amounts
    * @param {number} expenseId - Expense ID
-   * @param {Array} personAllocations - Array of {personId, amount} objects
+   * @param {Array} personAllocations - Array of {personId, amount, originalAmount?} objects
    * @returns {Promise<Array>} Created associations
    */
   async createAssociations(expenseId, personAllocations) {
@@ -28,11 +28,16 @@ class ExpensePeopleRepository {
         
         personAllocations.forEach((allocation) => {
           const sql = `
-            INSERT INTO expense_people (expense_id, person_id, amount)
-            VALUES (?, ?, ?)
+            INSERT INTO expense_people (expense_id, person_id, amount, original_amount)
+            VALUES (?, ?, ?, ?)
           `;
           
-          db.run(sql, [expenseId, allocation.personId, allocation.amount], function(err) {
+          // Use originalAmount if provided, otherwise default to amount
+          const originalAmount = allocation.originalAmount !== undefined 
+            ? allocation.originalAmount 
+            : allocation.amount;
+          
+          db.run(sql, [expenseId, allocation.personId, allocation.amount, originalAmount], function(err) {
             if (err && !hasError) {
               hasError = true;
               logger.error('Error creating expense-person association:', err);
@@ -46,7 +51,8 @@ class ExpensePeopleRepository {
                 id: this.lastID,
                 expenseId: expenseId,
                 personId: allocation.personId,
-                amount: allocation.amount
+                amount: allocation.amount,
+                originalAmount: originalAmount
               });
               
               completed++;
@@ -70,7 +76,7 @@ class ExpensePeopleRepository {
   /**
    * Get people associated with an expense
    * @param {number} expenseId - Expense ID
-   * @returns {Promise<Array>} Array of people with their allocated amounts
+   * @returns {Promise<Array>} Array of people with their allocated amounts (including original_amount)
    */
   async getPeopleForExpense(expenseId) {
     const db = await getDatabase();
@@ -81,6 +87,7 @@ class ExpensePeopleRepository {
           ep.id as association_id,
           ep.person_id,
           ep.amount,
+          ep.original_amount,
           p.name,
           p.date_of_birth,
           p.created_at,
@@ -104,6 +111,7 @@ class ExpensePeopleRepository {
           name: row.name,
           dateOfBirth: row.date_of_birth,
           amount: row.amount,
+          originalAmount: row.original_amount,
           createdAt: row.created_at,
           updatedAt: row.updated_at
         }));
@@ -116,7 +124,7 @@ class ExpensePeopleRepository {
   /**
    * Update person allocations for an expense
    * @param {number} expenseId - Expense ID
-   * @param {Array} personAllocations - Array of {personId, amount} objects
+   * @param {Array} personAllocations - Array of {personId, amount, originalAmount?} objects
    * @returns {Promise<Array>} Updated associations
    */
   async updateExpenseAllocations(expenseId, personAllocations) {
@@ -148,11 +156,16 @@ class ExpensePeopleRepository {
           
           personAllocations.forEach((allocation) => {
             const sql = `
-              INSERT INTO expense_people (expense_id, person_id, amount)
-              VALUES (?, ?, ?)
+              INSERT INTO expense_people (expense_id, person_id, amount, original_amount)
+              VALUES (?, ?, ?, ?)
             `;
             
-            db.run(sql, [expenseId, allocation.personId, allocation.amount], function(err) {
+            // Use originalAmount if provided, otherwise default to amount
+            const originalAmount = allocation.originalAmount !== undefined 
+              ? allocation.originalAmount 
+              : allocation.amount;
+            
+            db.run(sql, [expenseId, allocation.personId, allocation.amount, originalAmount], function(err) {
               if (err && !hasError) {
                 hasError = true;
                 logger.error('Error creating new association:', err);
@@ -166,7 +179,8 @@ class ExpensePeopleRepository {
                   id: this.lastID,
                   expenseId: expenseId,
                   personId: allocation.personId,
-                  amount: allocation.amount
+                  amount: allocation.amount,
+                  originalAmount: originalAmount
                 });
                 
                 completed++;
@@ -336,7 +350,7 @@ class ExpensePeopleRepository {
   /**
    * Get people for multiple expenses at once
    * @param {Array<number>} expenseIds - Array of expense IDs
-   * @returns {Promise<Object>} Object mapping expense IDs to their people arrays
+   * @returns {Promise<Object>} Object mapping expense IDs to their people arrays (including original_amount)
    */
   async getPeopleForExpenses(expenseIds) {
     if (!expenseIds || expenseIds.length === 0) {
@@ -353,6 +367,7 @@ class ExpensePeopleRepository {
           ep.id as association_id,
           ep.person_id,
           ep.amount,
+          ep.original_amount,
           p.name,
           p.date_of_birth
         FROM expense_people ep
@@ -379,7 +394,8 @@ class ExpensePeopleRepository {
             personId: row.person_id,
             name: row.name,
             dateOfBirth: row.date_of_birth,
-            amount: row.amount
+            amount: row.amount,
+            originalAmount: row.original_amount
           });
         });
         

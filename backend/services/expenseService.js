@@ -86,6 +86,198 @@ class ExpenseService {
   }
 
   /**
+   * Valid claim status values for insurance tracking
+   * @type {Array<string>}
+   */
+  static VALID_CLAIM_STATUSES = ['not_claimed', 'in_progress', 'paid', 'denied'];
+
+  /**
+   * Validate insurance data for a medical expense
+   * @param {Object} insuranceData - Insurance data to validate
+   * @param {boolean} [insuranceData.insurance_eligible] - Whether expense is insurance eligible
+   * @param {string} [insuranceData.claim_status] - Claim status
+   * @param {number} [insuranceData.original_cost] - Original cost before reimbursement
+   * @param {number} expenseAmount - Current expense amount (out-of-pocket)
+   * @throws {Error} If validation fails
+   */
+  validateInsuranceData(insuranceData, expenseAmount) {
+    const errors = [];
+
+    // If no insurance data provided, nothing to validate
+    if (!insuranceData) {
+      return;
+    }
+
+    // Validate claim_status enum values (Requirement 2.2)
+    if (insuranceData.claim_status !== undefined && insuranceData.claim_status !== null) {
+      if (!ExpenseService.VALID_CLAIM_STATUSES.includes(insuranceData.claim_status)) {
+        errors.push(`Claim status must be one of: ${ExpenseService.VALID_CLAIM_STATUSES.join(', ')}`);
+      }
+    }
+
+    // Validate original_cost is a positive number
+    if (insuranceData.original_cost !== undefined && insuranceData.original_cost !== null) {
+      const originalCost = parseFloat(insuranceData.original_cost);
+      if (isNaN(originalCost) || originalCost < 0) {
+        errors.push('Original cost must be a non-negative number');
+      }
+    }
+
+    // Validate amount <= original_cost (Requirement 3.5)
+    if (insuranceData.original_cost !== undefined && insuranceData.original_cost !== null) {
+      const originalCost = parseFloat(insuranceData.original_cost);
+      const amount = parseFloat(expenseAmount);
+      
+      if (!isNaN(originalCost) && !isNaN(amount) && amount > originalCost) {
+        errors.push('Out-of-pocket amount cannot exceed original cost');
+      }
+    }
+
+    if (errors.length > 0) {
+      throw new Error(errors.join('; '));
+    }
+  }
+
+  /**
+   * Validate person allocations for insurance expenses
+   * Ensures per-person out-of-pocket amounts don't exceed their original cost allocations
+   * @param {Array} personAllocations - Array of {personId, amount, originalAmount} objects
+   * @throws {Error} If validation fails (Requirement 4.4)
+   */
+  validateInsurancePersonAllocations(personAllocations) {
+    if (!personAllocations || !Array.isArray(personAllocations)) {
+      return;
+    }
+
+    const errors = [];
+
+    for (const allocation of personAllocations) {
+      // Only validate if originalAmount is provided (insurance expense)
+      if (allocation.originalAmount !== undefined && allocation.originalAmount !== null) {
+        const amount = parseFloat(allocation.amount);
+        const originalAmount = parseFloat(allocation.originalAmount);
+
+        if (!isNaN(amount) && !isNaN(originalAmount) && amount > originalAmount) {
+          errors.push(`Person allocation amount (${amount.toFixed(2)}) cannot exceed their original cost allocation (${originalAmount.toFixed(2)})`);
+        }
+      }
+    }
+
+    if (errors.length > 0) {
+      throw new Error(errors.join('; '));
+    }
+  }
+
+  /**
+   * Update insurance status for a medical expense (quick status update)
+   * @param {number} id - Expense ID
+   * @param {string} status - New claim status ('not_claimed', 'in_progress', 'paid', 'denied')
+   * @returns {Promise<Object|null>} Updated expense or null if not found
+   * @throws {Error} If validation fails or expense is not a medical expense
+   * _Requirements: 5.1, 5.2, 5.3, 5.4_
+   */
+  async updateInsuranceStatus(id, status) {
+    // Validate the status
+    this.validateInsuranceData({ claim_status: status }, 0);
+
+    // Get the expense to verify it's a medical expense
+    const expense = await expenseRepository.findById(id);
+    if (!expense) {
+      return null;
+    }
+
+    if (expense.type !== 'Tax - Medical') {
+      throw new Error('Insurance fields are only valid for Tax - Medical expenses');
+    }
+
+    if (!expense.insurance_eligible) {
+      throw new Error('Expense is not marked as insurance eligible');
+    }
+
+    // Update the claim status
+    return await expenseRepository.updateInsuranceFields(id, { claim_status: status });
+  }
+
+  /**
+   * Update insurance eligibility for a medical expense
+   * @param {number} id - Expense ID
+   * @param {boolean} eligible - Whether expense is insurance eligible
+   * @param {number} [originalCost] - Original cost (required if eligible is true)
+   * @returns {Promise<Object|null>} Updated expense or null if not found
+   * @throws {Error} If validation fails or expense is not a medical expense
+   * _Requirements: 1.2, 1.3_
+   */
+  async updateInsuranceEligibility(id, eligible, originalCost = null) {
+    // Get the expense to verify it's a medical expense
+    const expense = await expenseRepository.findById(id);
+    if (!expense) {
+      return null;
+    }
+
+    if (expense.type !== 'Tax - Medical') {
+      throw new Error('Insurance fields are only valid for Tax - Medical expenses');
+    }
+
+    const insuranceData = {
+      insurance_eligible: eligible
+    };
+
+    if (eligible) {
+      // When setting eligible to true, apply defaults (Requirement 2.4, 2.5)
+      insuranceData.claim_status = 'not_claimed';
+      
+      // If originalCost is provided, use it; otherwise use current amount
+      if (originalCost !== null && originalCost !== undefined) {
+        insuranceData.original_cost = parseFloat(originalCost);
+      } else {
+        insuranceData.original_cost = expense.amount;
+      }
+
+      // Validate the insurance data
+      this.validateInsuranceData(insuranceData, expense.amount);
+    } else {
+      // When setting eligible to false, clear insurance fields
+      insuranceData.claim_status = null;
+      insuranceData.original_cost = null;
+    }
+
+    return await expenseRepository.updateInsuranceFields(id, insuranceData);
+  }
+
+  /**
+   * Apply insurance defaults when creating/updating an expense with insurance_eligible = true
+   * @param {Object} expenseData - Expense data
+   * @returns {Object} Expense data with defaults applied
+   * @private
+   * _Requirements: 1.2, 2.4, 2.5_
+   */
+  _applyInsuranceDefaults(expenseData) {
+    // Only apply defaults for medical expenses with insurance_eligible = true
+    if (expenseData.type !== 'Tax - Medical' || !expenseData.insurance_eligible) {
+      return expenseData;
+    }
+
+    const result = { ...expenseData };
+
+    // Default claim_status to 'not_claimed' if not provided (Requirement 2.4)
+    if (result.claim_status === undefined || result.claim_status === null) {
+      result.claim_status = 'not_claimed';
+    }
+
+    // Default original_cost to amount if not provided
+    if (result.original_cost === undefined || result.original_cost === null) {
+      result.original_cost = parseFloat(result.amount);
+    }
+
+    // When claim_status is 'not_claimed' or 'in_progress', amount should equal original_cost (Requirement 2.5)
+    if (result.claim_status === 'not_claimed' || result.claim_status === 'in_progress') {
+      result.amount = result.original_cost;
+    }
+
+    return result;
+  }
+
+  /**
    * Trigger budget recalculation for affected budgets
    * This is called after expense operations to ensure budget progress is updated
    * Uses event emitter to avoid circular dependency with budgetService
@@ -183,20 +375,39 @@ class ExpenseService {
    * @private
    */
   async _createSingleExpense(expenseData) {
+    // Apply insurance defaults if applicable
+    const processedData = this._applyInsuranceDefaults(expenseData);
+
+    // Validate insurance data if provided
+    if (processedData.insurance_eligible) {
+      this.validateInsuranceData(
+        {
+          insurance_eligible: processedData.insurance_eligible,
+          claim_status: processedData.claim_status,
+          original_cost: processedData.original_cost
+        },
+        processedData.amount
+      );
+    }
+
     // Calculate week from date
-    const week = calculateWeek(expenseData.date);
+    const week = calculateWeek(processedData.date);
 
     // Prepare expense object with calculated week
     const expense = {
-      date: expenseData.date,
-      place: expenseData.place || null,
-      notes: expenseData.notes || null,
-      amount: parseFloat(expenseData.amount),
-      type: expenseData.type,
+      date: processedData.date,
+      place: processedData.place || null,
+      notes: processedData.notes || null,
+      amount: parseFloat(processedData.amount),
+      type: processedData.type,
       week: week,
-      method: expenseData.method,
-      recurring_id: expenseData.recurring_id !== undefined ? expenseData.recurring_id : null,
-      is_generated: expenseData.is_generated !== undefined ? expenseData.is_generated : 0
+      method: processedData.method,
+      recurring_id: processedData.recurring_id !== undefined ? processedData.recurring_id : null,
+      is_generated: processedData.is_generated !== undefined ? processedData.is_generated : 0,
+      // Insurance fields (only meaningful for Tax - Medical)
+      insurance_eligible: processedData.insurance_eligible ? 1 : 0,
+      claim_status: processedData.claim_status || null,
+      original_cost: processedData.original_cost !== undefined ? processedData.original_cost : null
     };
 
     // Create expense in repository
@@ -332,21 +543,40 @@ class ExpenseService {
     // Validate futureMonths parameter
     this._validateFutureMonths(futureMonths);
 
+    // Apply insurance defaults if applicable
+    const processedData = this._applyInsuranceDefaults(expenseData);
+
+    // Validate insurance data if provided
+    if (processedData.insurance_eligible) {
+      this.validateInsuranceData(
+        {
+          insurance_eligible: processedData.insurance_eligible,
+          claim_status: processedData.claim_status,
+          original_cost: processedData.original_cost
+        },
+        processedData.amount
+      );
+    }
+
     // Normalize futureMonths to 0 if not provided
     const monthsToCreate = futureMonths || 0;
 
     // Calculate week from date
-    const week = calculateWeek(expenseData.date);
+    const week = calculateWeek(processedData.date);
 
     // Prepare expense object with calculated week
     const expense = {
-      date: expenseData.date,
-      place: expenseData.place || null,
-      notes: expenseData.notes || null,
-      amount: parseFloat(expenseData.amount),
-      type: expenseData.type,
+      date: processedData.date,
+      place: processedData.place || null,
+      notes: processedData.notes || null,
+      amount: parseFloat(processedData.amount),
+      type: processedData.type,
       week: week,
-      method: expenseData.method
+      method: processedData.method,
+      // Insurance fields (only meaningful for Tax - Medical)
+      insurance_eligible: processedData.insurance_eligible ? 1 : 0,
+      claim_status: processedData.claim_status || null,
+      original_cost: processedData.original_cost !== undefined ? processedData.original_cost : null
     };
 
     // Update expense in repository
@@ -381,11 +611,11 @@ class ExpenseService {
     
     try {
       for (let i = 1; i <= monthsToCreate; i++) {
-        const futureDate = this._calculateFutureDate(expenseData.date, i);
+        const futureDate = this._calculateFutureDate(processedData.date, i);
         
         // Create future expense with updated values (not original values)
         const futureExpenseData = {
-          ...expenseData,
+          ...processedData,
           date: futureDate
         };
         
@@ -1133,6 +1363,9 @@ class ExpenseService {
     const donationTotal = donationExpenses.reduce((sum, exp) => sum + exp.amount, 0);
     const totalDeductible = medicalTotal + donationTotal;
 
+    // Calculate insurance totals (Requirements 6.1, 6.2, 6.3, 6.4)
+    const insuranceSummary = this._calculateInsuranceSummary(medicalExpenses);
+
     // Generate monthly breakdown by grouping expenses by month
     const monthlyBreakdown = [];
     for (let month = 1; month <= 12; month++) {
@@ -1158,7 +1391,65 @@ class ExpenseService {
       expenses: {
         medical: medicalExpenses,
         donations: donationExpenses
+      },
+      // Insurance summary (Requirements 6.1, 6.2, 6.3, 6.4)
+      insuranceSummary: insuranceSummary
+    };
+  }
+
+  /**
+   * Calculate insurance summary from medical expenses
+   * @param {Array} medicalExpenses - Array of medical expenses
+   * @returns {Object} Insurance summary object
+   * @private
+   * _Requirements: 6.1, 6.2, 6.3, 6.4_
+   */
+  _calculateInsuranceSummary(medicalExpenses) {
+    // Filter to insurance-eligible expenses
+    const insuranceEligible = medicalExpenses.filter(exp => exp.insuranceEligible);
+    
+    // Calculate total original costs
+    const totalOriginalCost = insuranceEligible.reduce((sum, exp) => {
+      return sum + (exp.originalCost || exp.amount);
+    }, 0);
+
+    // Calculate total out-of-pocket amounts (the amount field represents out-of-pocket)
+    const totalOutOfPocket = insuranceEligible.reduce((sum, exp) => sum + exp.amount, 0);
+
+    // Calculate total reimbursements
+    const totalReimbursement = insuranceEligible.reduce((sum, exp) => {
+      return sum + (exp.reimbursement || 0);
+    }, 0);
+
+    // Group by claim status
+    const byStatus = {
+      not_claimed: { count: 0, originalCost: 0, outOfPocket: 0 },
+      in_progress: { count: 0, originalCost: 0, outOfPocket: 0 },
+      paid: { count: 0, originalCost: 0, outOfPocket: 0 },
+      denied: { count: 0, originalCost: 0, outOfPocket: 0 }
+    };
+
+    insuranceEligible.forEach(exp => {
+      const status = exp.claimStatus || 'not_claimed';
+      if (byStatus[status]) {
+        byStatus[status].count += 1;
+        byStatus[status].originalCost += (exp.originalCost || exp.amount);
+        byStatus[status].outOfPocket += exp.amount;
       }
+    });
+
+    // Round all values
+    Object.keys(byStatus).forEach(status => {
+      byStatus[status].originalCost = parseFloat(byStatus[status].originalCost.toFixed(2));
+      byStatus[status].outOfPocket = parseFloat(byStatus[status].outOfPocket.toFixed(2));
+    });
+
+    return {
+      totalOriginalCost: parseFloat(totalOriginalCost.toFixed(2)),
+      totalOutOfPocket: parseFloat(totalOutOfPocket.toFixed(2)),
+      totalReimbursement: parseFloat(totalReimbursement.toFixed(2)),
+      eligibleCount: insuranceEligible.length,
+      byStatus: byStatus
     };
   }
 

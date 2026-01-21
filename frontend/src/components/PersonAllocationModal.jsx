@@ -34,14 +34,24 @@ const PersonAllocationModal = ({
   useEffect(() => {
     if (isOpen && selectedPeople && selectedPeople.length > 0) {
       const initialAllocations = selectedPeople.map(person => ({
-        personId: person.id,
+        personId: person.id || person.personId,
         personName: person.name,
-        amount: 0,
-        originalAmount: insuranceEligible ? 0 : null
+        // Use existing amounts if available, otherwise start at 0
+        amount: person.amount || 0,
+        originalAmount: insuranceEligible ? (person.originalAmount || 0) : null
       }));
       setAllocations(initialAllocations);
-      setTotalAllocated(0);
-      setTotalOriginalAllocated(0);
+      
+      // Calculate initial totals from existing allocations
+      const initialTotal = initialAllocations.reduce((sum, a) => sum + (a.amount || 0), 0);
+      setTotalAllocated(initialTotal);
+      
+      if (insuranceEligible) {
+        const initialOriginalTotal = initialAllocations.reduce((sum, a) => sum + (a.originalAmount || 0), 0);
+        setTotalOriginalAllocated(initialOriginalTotal);
+      } else {
+        setTotalOriginalAllocated(0);
+      }
       setError('');
     }
   }, [isOpen, selectedPeople, insuranceEligible]);

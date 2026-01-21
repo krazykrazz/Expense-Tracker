@@ -11,6 +11,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.15.3] - 2026-01-21
+
+### Fixed
+- **Allocation Display in Edit Modal**: Fixed allocation display when editing medical expenses with multiple people
+  - The edit modal in ExpenseList now shows current allocation amounts for each person
+  - Added "Edit" button to open PersonAllocationModal for modifying allocations
+  - Passes insurance-related props (insuranceEligible, originalCost) to PersonAllocationModal
+  - Fixed person ID handling to support both `id` and `personId` formats
+
+---
+
+## [4.15.2] - 2026-01-21
+
+### Fixed
+- **Insurance Indicator Display Bug**: Fixed "0" showing for non-insurance-eligible medical expenses
+  - The issue was caused by JavaScript short-circuit evaluation rendering the number `0` as text
+  - Changed condition from `expense.insurance_eligible &&` to `expense.insurance_eligible === 1 &&`
+  - Affects migrated expenses where `insurance_eligible` defaults to `0`
+
+---
+
+## [4.15.1] - 2026-01-21
+
+### Fixed
+- **Allocation Display in Edit Mode**: When editing a medical expense with multiple people, allocations are now visible
+  - Shows current allocation amounts for each person
+  - Added "Edit" button to modify allocations
+  - PersonAllocationModal now pre-populates with existing amounts instead of starting at zero
+  - For insurance-eligible expenses, shows both original cost and out-of-pocket allocations
+
+---
+
 ## [4.15.0] - 2026-01-21
 
 ### Added

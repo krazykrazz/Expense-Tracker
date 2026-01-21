@@ -898,9 +898,38 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
             </select>
             {selectedPeople.length > 0 && (
               <div className="selected-people-info">
-                Selected: {selectedPeople.map(p => p.name).join(', ')}
-                {selectedPeople.length > 1 && (
-                  <span className="allocation-note"> (allocation required)</span>
+                {selectedPeople.length === 1 ? (
+                  <span>Selected: {selectedPeople[0].name}</span>
+                ) : (
+                  <>
+                    <div className="allocation-header-row">
+                      <span>Allocations ({selectedPeople.length} people)</span>
+                      <button
+                        type="button"
+                        className="edit-allocation-button"
+                        onClick={() => setShowPersonAllocation(true)}
+                      >
+                        ✏️ Edit
+                      </button>
+                    </div>
+                    {selectedPeople.some(p => p.amount) ? (
+                      <div className="current-allocations">
+                        {selectedPeople.map(p => (
+                          <div key={p.id || p.personId} className="allocation-item">
+                            <span className="person-name">{p.name}</span>
+                            <span className="person-amount">
+                              ${(p.amount || 0).toFixed(2)}
+                              {insuranceEligible && p.originalAmount && (
+                                <span className="original-amount"> (orig: ${p.originalAmount.toFixed(2)})</span>
+                              )}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="allocation-note">Click Edit to set amounts</span>
+                    )}
+                  </>
                 )}
               </div>
             )}

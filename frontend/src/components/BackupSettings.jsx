@@ -846,6 +846,30 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v4.15.3</div>
+                <div className="changelog-date">January 2026</div>
+                <ul className="changelog-items">
+                  <li>Fixed allocation display in edit modal for medical expenses with multiple people</li>
+                  <li>Added Edit button to view and modify allocations when editing expenses</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
+                <div className="changelog-version">v4.15.2</div>
+                <div className="changelog-date">January 2026</div>
+                <ul className="changelog-items">
+                  <li>Fixed "0" displaying for non-insurance-eligible medical expenses</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
+                <div className="changelog-version">v4.15.1</div>
+                <div className="changelog-date">January 2026</div>
+                <ul className="changelog-items">
+                  <li>Fixed allocation display when editing medical expenses with multiple people</li>
+                  <li>Added Edit button to modify allocations for existing expenses</li>
+                  <li>PersonAllocationModal now pre-populates with existing amounts</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v4.15.0</div>
                 <div className="changelog-date">January 2026</div>
                 <ul className="changelog-items">

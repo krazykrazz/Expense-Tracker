@@ -1555,7 +1555,8 @@ class ExpenseService {
           // Add expense to provider group
           grouped[person.personId].providers[provider].expenses.push({
             ...expense,
-            allocatedAmount: person.amount
+            allocatedAmount: person.amount,
+            originalAmount: person.originalAmount
           });
           grouped[person.personId].providers[provider].total += person.amount;
           grouped[person.personId].total += person.amount;

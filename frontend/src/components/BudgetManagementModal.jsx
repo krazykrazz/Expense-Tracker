@@ -9,6 +9,7 @@ import {
   copyBudgets,
   getBudgetSuggestion
 } from '../services/budgetApi';
+import { getCategories } from '../services/categoriesApi';
 import { validateAmount } from '../utils/validation';
 import { getMonthNameLong } from '../utils/formatters';
 import { API_ENDPOINTS } from '../config';
@@ -33,15 +34,14 @@ const BudgetManagementModal = ({ isOpen, onClose, year, month, onBudgetUpdated, 
 
   // Fetch categories on mount
   useEffect(() => {
-    const fetchCategories = async () => {
+    const fetchCategoriesData = async () => {
       try {
-        const response = await fetch(API_ENDPOINTS.CATEGORIES);
-        if (!response.ok) {
-          throw new Error('Failed to fetch categories');
-        }
-        const data = await response.json();
+        const categoriesData = await getCategories();
         // Filter to only budgetable categories (exclude tax-deductible)
-        const budgetableCategories = (data.budgetableCategories || data.categories || []);
+        // Note: getCategories returns all categories, we filter out tax-deductible ones
+        const budgetableCategories = (categoriesData || []).filter(
+          cat => !cat.startsWith('Tax -')
+        );
         setCategories(budgetableCategories);
       } catch (err) {
         logger.error('Error fetching categories:', err);
@@ -50,7 +50,7 @@ const BudgetManagementModal = ({ isOpen, onClose, year, month, onBudgetUpdated, 
       }
     };
 
-    fetchCategories();
+    fetchCategoriesData();
   }, []);
 
   // Fetch budgets when modal opens or year/month changes

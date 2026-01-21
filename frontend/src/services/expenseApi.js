@@ -7,6 +7,32 @@ import { API_ENDPOINTS } from '../config.js';
 import { apiGet, apiPost, apiPut, apiDelete, apiPatch, logApiError } from '../utils/apiClient.js';
 
 /**
+ * Build insurance fields for medical expense request body
+ * Extracts and formats insurance-related fields from expense data
+ * @param {Object} expenseData - Expense data object
+ * @returns {Object} Insurance fields to merge into request body
+ */
+const buildInsuranceFields = (expenseData) => {
+  if (expenseData.type !== 'Tax - Medical') {
+    return {};
+  }
+  
+  const fields = {};
+  
+  if (expenseData.insurance_eligible !== undefined) {
+    fields.insurance_eligible = expenseData.insurance_eligible ? 1 : 0;
+  }
+  if (expenseData.claim_status !== undefined) {
+    fields.claim_status = expenseData.claim_status;
+  }
+  if (expenseData.original_cost !== undefined && expenseData.original_cost !== null) {
+    fields.original_cost = parseFloat(expenseData.original_cost);
+  }
+  
+  return fields;
+};
+
+/**
  * Get expenses based on filters
  * @param {Object} filters - { year?, month?, isGlobalView? }
  * @returns {Promise<Array>} Array of expense objects
@@ -83,21 +109,9 @@ export const createExpense = async (expenseData, peopleAllocations = null, futur
       notes: expenseData.notes,
       amount: parseFloat(expenseData.amount),
       type: expenseData.type,
-      method: expenseData.method
+      method: expenseData.method,
+      ...buildInsuranceFields(expenseData)
     };
-    
-    // Add insurance fields for medical expenses (Requirement 1.3)
-    if (expenseData.type === 'Tax - Medical') {
-      if (expenseData.insurance_eligible !== undefined) {
-        requestBody.insurance_eligible = expenseData.insurance_eligible ? 1 : 0;
-      }
-      if (expenseData.claim_status !== undefined) {
-        requestBody.claim_status = expenseData.claim_status;
-      }
-      if (expenseData.original_cost !== undefined && expenseData.original_cost !== null) {
-        requestBody.original_cost = parseFloat(expenseData.original_cost);
-      }
-    }
     
     // Add people allocations for medical expenses
     if (peopleAllocations && peopleAllocations.length > 0) {
@@ -139,21 +153,9 @@ export const updateExpense = async (id, expenseData, peopleAllocations = null, f
       notes: expenseData.notes,
       amount: parseFloat(expenseData.amount),
       type: expenseData.type,
-      method: expenseData.method
+      method: expenseData.method,
+      ...buildInsuranceFields(expenseData)
     };
-    
-    // Add insurance fields for medical expenses (Requirement 1.3)
-    if (expenseData.type === 'Tax - Medical') {
-      if (expenseData.insurance_eligible !== undefined) {
-        requestBody.insurance_eligible = expenseData.insurance_eligible ? 1 : 0;
-      }
-      if (expenseData.claim_status !== undefined) {
-        requestBody.claim_status = expenseData.claim_status;
-      }
-      if (expenseData.original_cost !== undefined && expenseData.original_cost !== null) {
-        requestBody.original_cost = parseFloat(expenseData.original_cost);
-      }
-    }
     
     // Add people allocations for medical expenses
     if (peopleAllocations !== null) {

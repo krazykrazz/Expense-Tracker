@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import './TaxDeductible.css';
 import { formatAmount, formatLocalDate, getMonthNameShort } from '../utils/formatters';
+import { getCategories } from '../services/categoriesApi';
 import { getPeople } from '../services/peopleApi';
 import { getExpenseWithPeople, updateExpense, updateInsuranceStatus } from '../services/expenseApi';
 import { API_ENDPOINTS } from '../config';
@@ -65,20 +66,17 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
       }
     };
     
-    const fetchCategories = async () => {
+    const fetchCategoriesData = async () => {
       try {
-        const response = await fetch(API_ENDPOINTS.CATEGORIES);
-        if (response.ok) {
-          const data = await response.json();
-          setCategories(data.categories || []);
-        }
+        const categoriesData = await getCategories();
+        setCategories(categoriesData || []);
       } catch (err) {
         console.error('Error fetching categories:', err);
       }
     };
     
     fetchPeopleData();
-    fetchCategories();
+    fetchCategoriesData();
   }, [refreshTrigger]);
 
   // Listen for peopleUpdated event to refresh people list

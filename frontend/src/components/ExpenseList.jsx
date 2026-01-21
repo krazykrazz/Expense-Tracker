@@ -1,8 +1,9 @@
 import { useState, useEffect, memo, useMemo, useCallback } from 'react';
 import { API_ENDPOINTS } from '../config';
 import { PAYMENT_METHODS } from '../utils/constants';
+import { getCategories } from '../services/categoriesApi';
 import { getPeople } from '../services/peopleApi';
-import { getExpenseWithPeople, updateExpense, updateInsuranceStatus } from '../services/expenseApi';
+import { getExpenseWithPeople, updateExpense, updateInsuranceStatus, deleteExpense as deleteExpenseApi } from '../services/expenseApi';
 import { getInvoicesForExpense, updateInvoicePersonLink } from '../services/invoiceApi';
 import { createLogger } from '../utils/logger';
 import PersonAllocationModal from './PersonAllocationModal';
@@ -180,15 +181,11 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
   useEffect(() => {
     let isMounted = true;
 
-    const fetchCategories = async () => {
+    const fetchCategoriesData = async () => {
       try {
-        const response = await fetch(API_ENDPOINTS.CATEGORIES);
-        if (!response.ok) {
-          throw new Error('Failed to fetch categories');
-        }
-        const data = await response.json();
+        const categories = await getCategories();
         if (isMounted) {
-          setCategories(data.categories || []);
+          setCategories(categories || []);
         }
       } catch (err) {
         if (isMounted) {
@@ -215,7 +212,7 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
       }
     };
 
-    fetchCategories();
+    fetchCategoriesData();
     fetchPeopleData();
 
     return () => {
@@ -589,13 +586,7 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
     setShowConfirmDialog(false);
 
     try {
-      const response = await fetch(API_ENDPOINTS.EXPENSE_BY_ID(expenseToDelete.id), {
-        method: 'DELETE'
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to delete expense');
-      }
+      await deleteExpenseApi(expenseToDelete.id);
 
       // Notify parent component
       if (onExpenseDeleted) {

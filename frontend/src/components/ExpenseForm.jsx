@@ -3,8 +3,9 @@ import { API_ENDPOINTS } from '../config';
 import { getTodayLocalDate } from '../utils/formatters';
 import { PAYMENT_METHODS } from '../utils/constants';
 import { fetchCategorySuggestion } from '../services/categorySuggestionApi';
+import { getCategories } from '../services/categoriesApi';
 import { getPeople } from '../services/peopleApi';
-import { createExpense, updateExpense, getExpenseWithPeople } from '../services/expenseApi';
+import { createExpense, updateExpense, getExpenseWithPeople, getPlaces } from '../services/expenseApi';
 import { getInvoicesForExpense, updateInvoicePersonLink } from '../services/invoiceApi';
 import { createLogger } from '../utils/logger';
 import PersonAllocationModal from './PersonAllocationModal';
@@ -152,12 +153,11 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
   useEffect(() => {
     let isMounted = true;
 
-    const fetchCategories = async () => {
+    const fetchCategoriesData = async () => {
       try {
-        const response = await fetch(API_ENDPOINTS.CATEGORIES);
-        if (response.ok && isMounted) {
-          const data = await response.json();
-          setTypeOptions(data.categories);
+        const categories = await getCategories();
+        if (isMounted && categories) {
+          setTypeOptions(categories);
         }
       } catch (error) {
         if (isMounted) {
@@ -167,11 +167,10 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
       }
     };
 
-    const fetchPlaces = async () => {
+    const fetchPlacesData = async () => {
       try {
-        const response = await fetch(`${API_ENDPOINTS.EXPENSES}/places`);
-        if (response.ok && isMounted) {
-          const data = await response.json();
+        const data = await getPlaces();
+        if (isMounted && data) {
           setPlaces(data);
         }
       } catch (error) {
@@ -233,8 +232,8 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
       }
     };
 
-    fetchCategories();
-    fetchPlaces();
+    fetchCategoriesData();
+    fetchPlacesData();
     fetchPeopleData();
     fetchInvoiceData();
     fetchExpensePeople();

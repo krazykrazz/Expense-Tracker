@@ -430,6 +430,84 @@ Content-Type: application/json
 
 ## Enhanced Expense Endpoints
 
+### Update Insurance Status (Quick)
+
+Quickly update the insurance claim status for a medical expense without modifying other fields.
+
+**Endpoint:** `PATCH /expenses/:id/insurance-status`
+
+**URL Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| id | number | Yes | ID of the medical expense |
+
+**Request Body:**
+```json
+{
+  "status": "in_progress"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| status | string | Yes | New claim status: 'not_claimed', 'in_progress', 'paid', 'denied' |
+
+**Success Response:**
+```json
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "id": 123,
+  "date": "2026-01-15",
+  "place": "Medical Clinic",
+  "amount": 50.00,
+  "type": "Tax - Medical",
+  "insurance_eligible": 1,
+  "claim_status": "in_progress",
+  "original_cost": 200.00
+}
+```
+
+**Error Responses:**
+
+```json
+HTTP/1.1 400 Bad Request
+{
+  "error": "Claim status must be one of: not_claimed, in_progress, paid, denied"
+}
+```
+
+```json
+HTTP/1.1 400 Bad Request
+{
+  "error": "Insurance fields are only valid for Tax - Medical expenses"
+}
+```
+
+```json
+HTTP/1.1 404 Not Found
+{
+  "error": "Expense not found"
+}
+```
+
+**Example:**
+```javascript
+const response = await fetch(`http://localhost:2424/api/expenses/${expenseId}/insurance-status`, {
+  method: 'PATCH',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({ status: 'paid' }),
+  credentials: 'include'
+});
+
+const updatedExpense = await response.json();
+```
+
+---
+
 ### Get Expense (Enhanced)
 
 The existing expense endpoint now includes invoice information.
@@ -774,6 +852,13 @@ See test files:
 
 ## Changelog
 
+### Version 4.14.0 (January 2026)
+- Added medical insurance tracking feature
+- Added `PATCH /expenses/:id/insurance-status` endpoint for quick claim status updates
+- Extended expense endpoints with insurance fields (insurance_eligible, claim_status, original_cost)
+- Added insurance summary to tax deductible endpoint
+- Added claim status filtering to tax deductible endpoint
+
 ### Version 4.13.0 (January 2026)
 - Added multi-invoice support (multiple invoices per expense)
 - Added person-invoice linking (optional personId parameter)
@@ -793,6 +878,6 @@ See test files:
 
 ---
 
-**Last Updated:** January 17, 2026  
-**API Version:** 1.1  
+**Last Updated:** January 21, 2026  
+**API Version:** 1.2  
 **Status:** Active

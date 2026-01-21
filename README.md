@@ -69,6 +69,17 @@ A full-stack expense tracking application built with React and Node.js.
 - 🔄 Backward compatible with existing medical expenses
 - 👤 People management in Settings for adding/editing family members
 
+### Medical Insurance Tracking
+- 🏥 Mark medical expenses as eligible or not eligible for insurance reimbursement
+- 📋 Track claim status: Not Claimed, In Progress, Paid, or Denied
+- 💵 Record original cost vs out-of-pocket amount after reimbursement
+- 📊 Automatic reimbursement calculation (original cost - out-of-pocket)
+- ⚡ Quick status update from expense list without opening edit form
+- 🏷️ Visual status indicators (📋 Not Claimed, ⏳ In Progress, ✅ Paid, ❌ Denied)
+- 📈 Insurance summary in Tax Deductible view with totals by status
+- 🔍 Filter expenses by claim status
+- 👨‍👩‍👧‍👦 Per-person original cost and out-of-pocket tracking for split expenses
+
 ### Medical Expense Invoice Attachments
 - 📄 Attach multiple PDF invoices to medical expenses for record keeping
 - 👤 Optionally link invoices to specific family members assigned to the expense
@@ -402,6 +413,16 @@ stop-servers.bat
 41. **Quick Assign**: Assign people to unassigned medical expenses directly from the Tax Deductible view
 42. **Tax Preparation**: Use person-grouped view to get per-person totals for tax forms
 
+### Medical Insurance Tracking
+43. **Mark Insurance Eligible**: When creating/editing a medical expense, check "Eligible for Insurance"
+44. **Enter Original Cost**: Enter the full expense amount before any insurance reimbursement
+45. **Track Out-of-Pocket**: The Amount field represents what you actually paid after reimbursement
+46. **Set Claim Status**: Choose from Not Claimed, In Progress, Paid, or Denied
+47. **Quick Status Update**: Click the status indicator in the expense list to quickly change status
+48. **View Reimbursement**: See calculated reimbursement (Original Cost - Out-of-Pocket) in the form
+49. **Insurance Summary**: View totals by claim status in the Tax Deductible view
+50. **Filter by Status**: Filter expenses by claim status in Tax Deductible view
+
 ### Medical Expense Invoice Attachments
 43. **Upload Invoice**: When creating or editing a medical expense, scroll to "Invoice Attachment" section
 44. **Choose File**: Click "Choose File" or drag and drop a PDF file (max 10MB)
@@ -526,6 +547,9 @@ expense-tracker/
 - `PUT /api/people/:id` - Update a person
 - `DELETE /api/people/:id` - Delete a person (cascades to expense associations)
 
+### Insurance Status (Medical Expenses)
+- `PATCH /api/expenses/:id/insurance-status` - Quick update claim status (body: `{ "status": "in_progress" }`)
+
 ### Invoices (Medical Expense Attachments)
 - `POST /api/invoices/upload` - Upload a PDF invoice for an expense (with optional personId)
 - `GET /api/invoices/:expenseId` - Get all invoices for an expense (returns array)
@@ -551,10 +575,13 @@ expense-tracker/
 - date (TEXT)
 - place (TEXT)
 - notes (TEXT)
-- amount (REAL)
+- amount (REAL) - Out-of-pocket cost (or full amount if not insurance eligible)
 - type (TEXT) - Categories include: Clothing, Dining Out, Entertainment, Gas, Gifts, Groceries, Housing, Insurance, Personal Care, Pet Care, Recreation Activities, Subscriptions, Utilities, Vehicle Maintenance, Other, Tax - Medical, Tax - Donation
 - week (INTEGER) - 1-5
 - method (TEXT) - Payment method
+- insurance_eligible (INTEGER) - 0 or 1 (Tax - Medical only)
+- claim_status (TEXT) - 'not_claimed', 'in_progress', 'paid', 'denied' (Tax - Medical only)
+- original_cost (REAL) - Original cost before insurance reimbursement (Tax - Medical only)
 - created_at (TEXT)
 
 ### Income Sources Table
@@ -639,7 +666,8 @@ expense-tracker/
 - id (INTEGER PRIMARY KEY)
 - expense_id (INTEGER) - Foreign key to expenses table (CASCADE DELETE)
 - person_id (INTEGER) - Foreign key to people table (CASCADE DELETE)
-- amount (DECIMAL) - Amount allocated to this person
+- amount (DECIMAL) - Out-of-pocket amount allocated to this person
+- original_amount (REAL) - Original cost allocation for insurance tracking
 - created_at (TEXT)
 - UNIQUE constraint on (expense_id, person_id)
 

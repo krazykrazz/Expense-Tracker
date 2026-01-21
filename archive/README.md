@@ -1,7 +1,7 @@
 # Project Archive
 
 **Created:** 2025-11-24  
-**Last Updated:** 2026-01-18
+**Last Updated:** 2026-01-21
 
 This archive contains historical documentation and scripts that have served their purpose but are retained for reference.
 
@@ -35,7 +35,7 @@ Database migration scripts (kept for reference):
 - Recurring expenses removal
 - Quick migration utilities
 
-### reports/ (Updated - Jan 18, 2026)
+### reports/ (Updated - Jan 21, 2026)
 Point-in-time audit and analysis reports:
 - Code audit reports (2025-12-03)
 - Code optimization reports
@@ -45,6 +45,7 @@ Point-in-time audit and analysis reports:
 - Test fix summaries
 - Logging improvements documentation
 - Project cleanup summaries
+- Feature completion reports and bug fix documentation
 
 ### spec-implementations/ (NEW - Nov 30, 2025)
 Implementation summaries from completed specs:
@@ -59,13 +60,13 @@ Spec update summaries and cleanup documentation:
 - Cleanup analyses
 - Historical spec changes
 
-### specs/ (Updated - Jan 18, 2026)
+### specs/ (Updated - Jan 21, 2026)
 Completed feature specifications that have been fully implemented:
-- 27 archived spec directories for completed features
+- 29 archived spec directories for completed features
 - Includes deprecated features (recurring-expenses)
 - Infrastructure specs (code-optimization, containerization-optimization)
-- All major feature implementations from v3.0.0 through v4.12.4
-- **Latest:** Added invoice-backup-enhancement, multi-invoice-support, ui-modernization
+- All major feature implementations from v3.0.0 through v4.14.0
+- **Latest:** Added medical-insurance-tracking, recurring-expenses-v2
 
 ### test-scripts/ (Nov 24, 2025)
 One-time test scripts used during feature development:
@@ -185,6 +186,23 @@ Copy-Item archive/[subfolder]/[filename] ./
   - **Result:** .kiro/specs/ now contains only 1 active spec (medical-insurance-tracking) + SPEC_AUDIT_REPORT.md
   - **Total archived specs:** 27 complete feature specifications
   - docs/deployments/ now contains only v4.10.0+ deployment docs
+
+- **2026-01-21:** Post v4.14.0 cleanup (10 items)
+  - **Archived 2 completed specs** from .kiro/specs/ to archive/specs/:
+    - medical-insurance-tracking (v4.14.0 - insurance claim tracking for medical expenses)
+    - recurring-expenses-v2 (v4.13.0 - add to future months feature)
+  - **Moved 8 completion/summary docs** from docs/features/ to archive/reports/:
+    - AUTOMATIC_ESTIMATED_MONTHS_COMPLETE.md
+    - BACKUP_VERIFICATION_SUMMARY.md
+    - FUTURE_BALANCE_BUG_FIX.md
+    - LINE_OF_CREDIT_ZERO_BALANCE_FIX.md
+    - LOAN_TYPE_FEATURE_SUMMARY.md
+    - LOAN_TYPE_IMPLEMENTATION_COMPLETE.md
+    - LOANS_INTEGRATION_TEST_RESULTS.md
+    - INVOICE_DOCUMENTATION_SUMMARY.md
+  - **Result:** .kiro/specs/ now contains only 1 active spec (expense-form-consolidation)
+  - **Total archived specs:** 29 complete feature specifications
+  - docs/features/ now contains only active feature documentation (15 files)
 
 ## Next Review
 

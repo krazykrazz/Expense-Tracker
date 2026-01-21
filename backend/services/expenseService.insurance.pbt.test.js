@@ -313,7 +313,7 @@ describe('ExpenseService Insurance Property-Based Tests', () => {
       );
     });
 
-    test('should keep amount equal to original_cost when claim_status is not_claimed or in_progress', () => {
+    test('should preserve user-entered amount regardless of claim_status', () => {
       return fc.assert(
         fc.asyncProperty(
           fc.record({
@@ -324,18 +324,21 @@ describe('ExpenseService Insurance Property-Based Tests', () => {
             claim_status: fc.constantFrom('not_claimed', 'in_progress')
           }),
           async (expenseData) => {
-            const differentAmount = Math.round((expenseData.original_cost * 0.5) * 100) / 100;
+            // User enters a different amount (out-of-pocket) than original_cost
+            const userEnteredAmount = Math.round((expenseData.original_cost * 0.5) * 100) / 100;
             const expense = await expenseService.createExpense({
               date: expenseData.date,
               place: expenseData.place,
-              amount: differentAmount,
+              amount: userEnteredAmount,
               type: 'Tax - Medical',
               method: expenseData.method,
               insurance_eligible: true,
               claim_status: expenseData.claim_status,
               original_cost: expenseData.original_cost
             });
-            expect(expense.amount).toBeCloseTo(expenseData.original_cost, 2);
+            // Amount should be preserved as user entered it, not overwritten with original_cost
+            expect(expense.amount).toBeCloseTo(userEnteredAmount, 2);
+            expect(expense.original_cost).toBeCloseTo(expenseData.original_cost, 2);
           }
         ),
         { numRuns: 50 }
@@ -774,6 +777,122 @@ describe('ExpenseService Insurance Property-Based Tests', () => {
           }
         ),
         { numRuns: 30 }
+      );
+    });
+  });
+
+  /**
+   * **Property 9: Quick Status Update Preserves Amount**
+   * **Validates: Requirements 2.5, 5.4**
+   * 
+   * When updating insurance status via updateInsuranceStatus(), the expense amount
+   * (out-of-pocket cost) SHALL NOT be modified. Only the claim_status field should change.
+   */
+  describe('Property 9: Quick Status Update Preserves Amount', () => {
+    beforeEach(async () => {
+      await new Promise((resolve, reject) => {
+        db.run('DELETE FROM expense_people', (err) => {
+          if (err) reject(err);
+          else {
+            db.run('DELETE FROM expenses', (err) => {
+              if (err) reject(err);
+              else resolve();
+            });
+          }
+        });
+      });
+    });
+
+    afterEach(async () => {
+      await new Promise((resolve) => {
+        db.run('DELETE FROM expense_people', () => {
+          db.run('DELETE FROM expenses', () => {
+            resolve();
+          });
+        });
+      });
+    });
+
+    test('updateInsuranceStatus should preserve amount when changing status', () => {
+      return fc.assert(
+        fc.asyncProperty(
+          fc.record({
+            date: validDateArb,
+            place: fc.string({ minLength: 1, maxLength: 50 }).filter(s => s.trim().length > 0),
+            original_cost: fc.double({ min: 10, max: 10000, noNaN: true }).map(v => Math.round(v * 100) / 100),
+            method: paymentMethodArb,
+            initial_status: fc.constantFrom('not_claimed', 'in_progress'),
+            new_status: fc.constantFrom('in_progress', 'paid', 'denied')
+          }),
+          async (expenseData) => {
+            // Create expense with a specific out-of-pocket amount different from original_cost
+            const outOfPocket = Math.round((expenseData.original_cost * 0.5) * 100) / 100;
+            
+            const expense = await expenseService.createExpense({
+              date: expenseData.date,
+              place: expenseData.place,
+              amount: outOfPocket,
+              type: 'Tax - Medical',
+              method: expenseData.method,
+              insurance_eligible: true,
+              claim_status: expenseData.initial_status,
+              original_cost: expenseData.original_cost
+            });
+
+            // Verify initial amount
+            expect(expense.amount).toBeCloseTo(outOfPocket, 2);
+
+            // Update status using quick status update
+            const updatedExpense = await expenseService.updateInsuranceStatus(expense.id, expenseData.new_status);
+
+            // Amount should be preserved - NOT changed to original_cost
+            expect(updatedExpense.amount).toBeCloseTo(outOfPocket, 2);
+            expect(updatedExpense.claim_status).toBe(expenseData.new_status);
+            expect(updatedExpense.original_cost).toBeCloseTo(expenseData.original_cost, 2);
+          }
+        ),
+        { numRuns: 50 }
+      );
+    });
+
+    test('updateInsuranceStatus should preserve amount when reverting to in_progress', () => {
+      return fc.assert(
+        fc.asyncProperty(
+          fc.record({
+            date: validDateArb,
+            place: fc.string({ minLength: 1, maxLength: 50 }).filter(s => s.trim().length > 0),
+            original_cost: fc.double({ min: 10, max: 10000, noNaN: true }).map(v => Math.round(v * 100) / 100),
+            method: paymentMethodArb,
+            initial_status: fc.constantFrom('paid', 'denied')
+          }),
+          async (expenseData) => {
+            // Create expense with a specific out-of-pocket amount different from original_cost
+            const outOfPocket = Math.round((expenseData.original_cost * 0.3) * 100) / 100;
+            
+            const expense = await expenseService.createExpense({
+              date: expenseData.date,
+              place: expenseData.place,
+              amount: outOfPocket,
+              type: 'Tax - Medical',
+              method: expenseData.method,
+              insurance_eligible: true,
+              claim_status: expenseData.initial_status,
+              original_cost: expenseData.original_cost
+            });
+
+            // Verify initial amount
+            expect(expense.amount).toBeCloseTo(outOfPocket, 2);
+
+            // Revert status to in_progress (the user's reported scenario)
+            const updatedExpense = await expenseService.updateInsuranceStatus(expense.id, 'in_progress');
+
+            // Amount should be preserved - NOT changed to original_cost
+            expect(updatedExpense.amount).toBeCloseTo(outOfPocket, 2);
+            expect(updatedExpense.claim_status).toBe('in_progress');
+            expect(updatedExpense.original_cost).toBeCloseTo(expenseData.original_cost, 2);
+          }
+        ),
+        { numRuns: 50 }
       );
     });
   });

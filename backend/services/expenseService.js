@@ -269,10 +269,8 @@ class ExpenseService {
       result.original_cost = parseFloat(result.amount);
     }
 
-    // When claim_status is 'not_claimed' or 'in_progress', amount should equal original_cost (Requirement 2.5)
-    if (result.claim_status === 'not_claimed' || result.claim_status === 'in_progress') {
-      result.amount = result.original_cost;
-    }
+    // Note: Amount represents out-of-pocket cost and should NOT be overwritten
+    // Original cost is informational only - the user controls the amount field
 
     return result;
   }

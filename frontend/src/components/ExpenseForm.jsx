@@ -603,15 +603,17 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
       if (isMedicalExpense && selectedPeople.length > 0) {
         if (selectedPeople.length === 1) {
           // Single person - assign full amount (and original_amount for insurance)
+          // Note: selectedPeople may have 'id' (from dropdown selection) or 'personId' (from backend)
           peopleAllocations = [{
-            personId: selectedPeople[0].id,
+            personId: selectedPeople[0].id || selectedPeople[0].personId,
             amount: parseFloat(formData.amount),
             originalAmount: insuranceEligible && originalCost ? parseFloat(originalCost) : null
           }];
         } else {
           // Multiple people - use allocated amounts (with original_amount for insurance)
+          // Note: selectedPeople may have 'id' (from dropdown selection) or 'personId' (from backend)
           peopleAllocations = selectedPeople.map(person => ({
-            personId: person.id,
+            personId: person.id || person.personId,
             amount: person.amount,
             originalAmount: person.originalAmount || null
           }));

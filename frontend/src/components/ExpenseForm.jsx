@@ -914,7 +914,7 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
             
             {/* Insurance Eligibility Checkbox (Requirement 1.1) */}
             <div className="insurance-eligibility-row">
-              <label className="checkbox-label insurance-checkbox">
+              <label className="insurance-checkbox">
                 <input
                   type="checkbox"
                   checked={insuranceEligible}

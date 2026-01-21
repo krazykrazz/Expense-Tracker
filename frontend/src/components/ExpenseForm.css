@@ -628,7 +628,7 @@
 .insurance-checkbox {
   display: flex;
   align-items: center;
-  gap: var(--spacing-2);
+  gap: var(--spacing-3);
   cursor: pointer;
   font-weight: var(--font-medium);
   color: var(--text-primary);
@@ -636,10 +636,14 @@
 }
 
 .insurance-checkbox input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  min-height: 20px;
   cursor: pointer;
   accent-color: var(--color-primary);
+  margin: 0;
+  flex-shrink: 0;
 }
 
 .insurance-details {

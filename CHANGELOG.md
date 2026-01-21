@@ -11,6 +11,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.15.0] - 2026-01-21
+
+### Added
+- **Medical Insurance Tracking**: Track insurance eligibility, claim status, and reimbursements for medical expenses
+  - Insurance eligibility checkbox on medical expense form
+  - Original cost tracking with automatic out-of-pocket calculation
+  - Claim status workflow: not_claimed → in_progress → paid/denied
+  - Quick status update dropdown in expense list and tax deductible view
+  - Visual status indicators with color coding
+  - Insurance summary in Tax Deductible view with totals by status
+  - Person-level insurance tracking with original cost and out-of-pocket amounts
+  - Claim status filtering in expense list and tax deductible view
+- **Database Migration**: Added insurance fields to expenses and expense_people tables
+  - `insurance_eligible`, `claim_status`, `original_cost` columns on expenses
+  - `original_amount` column on expense_people for per-person tracking
+- **Property-Based Tests**: Comprehensive PBT coverage for insurance functionality
+
+### Fixed
+- Minor CSS improvements for insurance checkbox styling in expense form
+
+---
+
 ## [4.14.10] - 2026-01-19
 
 ### Fixed

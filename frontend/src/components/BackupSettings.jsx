@@ -846,34 +846,23 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
-                <div className="changelog-version">v4.14.10</div>
+                <div className="changelog-version">v4.15.0</div>
                 <div className="changelog-date">January 2026</div>
                 <ul className="changelog-items">
-                  <li>Fixed floating add button stacking context (moved outside content-layout)</li>
-                </ul>
-              </div>
-              <div className="changelog-entry">
-                <div className="changelog-version">v4.14.9</div>
-                <div className="changelog-date">January 2026</div>
-                <ul className="changelog-items">
-                  <li>Fixed floating add button z-index (now appears above summary panel)</li>
-                </ul>
-              </div>
-              <div className="changelog-entry">
-                <div className="changelog-version">v4.14.8</div>
-                <div className="changelog-date">January 2026</div>
-                <ul className="changelog-items">
-                  <li>Added database statistics to Settings → About</li>
-                  <li>Condensed changelog to show major version summaries</li>
+                  <li>Medical Insurance Tracking - track insurance eligibility, claim status, and reimbursements</li>
+                  <li>Quick status updates for insurance claims (not claimed → in progress → paid/denied)</li>
+                  <li>Insurance summary in Tax Deductible view with totals and filtering</li>
+                  <li>Person-level insurance tracking with original cost and out-of-pocket amounts</li>
                 </ul>
               </div>
               <div className="changelog-entry">
                 <div className="changelog-version">v4.14</div>
                 <div className="changelog-date">January 2026</div>
                 <ul className="changelog-items">
+                  <li>Fixed floating add button stacking context and z-index issues</li>
+                  <li>Added database statistics to Settings → About</li>
                   <li>Invoice auto-linking for single-person medical expenses</li>
                   <li>Improved backend test coverage (778 tests)</li>
-                  <li>Fixed PDF viewer z-index stacking issues</li>
                 </ul>
               </div>
               <div className="changelog-entry">

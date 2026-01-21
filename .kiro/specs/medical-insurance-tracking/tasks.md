@@ -80,28 +80,28 @@ This implementation plan adds insurance tracking capabilities to medical expense
     - **Property 8: Insurance Totals Aggregation**
     - **Validates: Requirements 6.3, 6.4**
 
-- [ ] 4. Checkpoint - Backend Complete
+- [x] 4. Checkpoint - Backend Complete
   - Ensure all backend tests pass, ask the user if questions arise.
 
-- [ ] 5. Backend Controller Layer
-  - [ ] 5.1 Add insurance status update endpoint
+- [x] 5. Backend Controller Layer
+  - [x] 5.1 Add insurance status update endpoint
     - Create PATCH `/api/expenses/:id/insurance-status` endpoint
     - Accept `{ status: string }` body
     - Return updated expense
     - _Requirements: 5.1, 5.2, 5.3, 5.4_
   
-  - [ ] 5.2 Extend expense endpoints for insurance fields
+  - [x] 5.2 Extend expense endpoints for insurance fields
     - Update POST `/api/expenses` to accept insurance fields
     - Update PUT `/api/expenses/:id` to accept insurance fields
     - Update GET `/api/expenses/tax-deductible` response to include insurance data
     - _Requirements: 1.3, 1.5, 6.1, 6.2_
   
-  - [ ] 5.3 Write property test for claim status filtering
+  - [x] 5.3 Write property test for claim status filtering
     - **Property 9: Claim Status Filtering**
     - **Validates: Requirements 6.5, 7.4**
 
-- [ ] 6. Frontend Insurance Components
-  - [ ] 6.1 Create InsuranceStatusIndicator component
+- [x] 6. Frontend Insurance Components
+  - [x] 6.1 Create InsuranceStatusIndicator component
     - Display visual indicator based on claim_status
     - Support 'small' and 'medium' sizes
     - Handle click events for quick status update
@@ -109,101 +109,101 @@ This implementation plan adds insurance tracking capabilities to medical expense
     - Create InsuranceStatusIndicator.jsx and InsuranceStatusIndicator.css
     - _Requirements: 7.1, 7.2, 7.3_
   
-  - [ ] 6.2 Create QuickStatusUpdate component
+  - [x] 6.2 Create QuickStatusUpdate component
     - Dropdown/popover for status changes
     - Support transitions: not_claimed → in_progress → paid/denied
     - Call PATCH endpoint on selection
     - Create QuickStatusUpdate.jsx and QuickStatusUpdate.css
     - _Requirements: 5.1, 5.2, 5.3, 5.4_
   
-  - [ ] 6.3 Create insurance API service functions
+  - [x] 6.3 Create insurance API service functions
     - Add `updateInsuranceStatus(expenseId, status)` function
     - Extend `createExpense` to include insurance fields
     - Extend `updateExpense` to include insurance fields
     - Add to frontend/src/services/expenseApi.js
     - _Requirements: 1.3, 2.3, 5.4_
 
-- [ ] 7. Frontend ExpenseForm Integration
-  - [ ] 7.1 Add insurance section to ExpenseForm
+- [x] 7. Frontend ExpenseForm Integration
+  - [x] 7.1 Add insurance section to ExpenseForm
     - Add insurance eligibility checkbox (shown for Tax - Medical only)
     - Add original cost input field (shown when eligible)
     - Add claim status dropdown (shown when eligible)
     - Display calculated reimbursement
     - _Requirements: 1.1, 1.4, 2.1, 3.1, 3.2, 3.3, 3.4, 3.6_
   
-  - [ ] 7.2 Add insurance validation to ExpenseForm
+  - [x] 7.2 Add insurance validation to ExpenseForm
     - Validate amount <= original_cost
     - Show validation error messages
     - _Requirements: 3.5_
   
-  - [ ] 7.3 Integrate insurance with people allocation
+  - [x] 7.3 Integrate insurance with people allocation
     - Use original_cost for allocation base
     - Track both original_amount and amount per person
     - Update PersonAllocationModal for insurance expenses
     - _Requirements: 4.1, 4.2, 4.3, 4.4_
 
-- [ ] 8. Frontend ExpenseList Integration
-  - [ ] 8.1 Add InsuranceStatusIndicator to ExpenseList
+- [x] 8. Frontend ExpenseList Integration
+  - [x] 8.1 Add InsuranceStatusIndicator to ExpenseList
     - Show indicator for insurance-eligible medical expenses
     - Integrate QuickStatusUpdate on indicator click
     - _Requirements: 7.1, 7.2, 7.3_
   
-  - [ ] 8.2 Add insurance status filter to ExpenseList
+  - [x] 8.2 Add insurance status filter to ExpenseList
     - Add filter dropdown for claim status
     - Filter expenses by selected status
     - _Requirements: 7.4_
 
-- [ ] 9. Frontend TaxDeductible Integration
-  - [ ] 9.1 Extend TaxDeductible view with insurance data
+- [x] 9. Frontend TaxDeductible Integration
+  - [x] 9.1 Extend TaxDeductible view with insurance data
     - Display insurance eligibility status per expense
     - Show claim status with visual indicators
     - Display original cost and out-of-pocket columns
     - _Requirements: 6.1, 6.2_
   
-  - [ ] 9.2 Add insurance summary to TaxDeductible
+  - [x] 9.2 Add insurance summary to TaxDeductible
     - Show total original costs
     - Show total out-of-pocket (deductible) amount
     - Show total reimbursements
     - Show breakdown by claim status
     - _Requirements: 6.3, 6.4_
   
-  - [ ] 9.3 Add claim status filter to TaxDeductible
+  - [x] 9.3 Add claim status filter to TaxDeductible
     - Add filter dropdown for claim status
     - Filter displayed expenses by status
     - _Requirements: 6.5_
   
-  - [ ] 9.4 Update person-grouped view for insurance
+  - [x] 9.4 Update person-grouped view for insurance
     - Show both original cost and out-of-pocket per person
     - Display reimbursement amounts
     - _Requirements: 4.5_
 
-- [ ] 10. Checkpoint - Frontend Complete
+- [x] 10. Checkpoint - Frontend Complete
   - Ensure all frontend components render correctly, ask the user if questions arise.
 
-- [ ] 11. Migration and Backup Integration
-  - [ ] 11.1 Integrate migration with startup
+- [x] 11. Migration and Backup Integration
+  - [x] 11.1 Integrate migration with startup
     - Add migration to database initialization
     - Ensure migration runs on container start
     - _Requirements: 8.1, 8.4, 8.5_
   
-  - [ ] 11.2 Write property test for migration data preservation
+  - [x] 11.2 Write property test for migration data preservation
     - **Property 10: Migration Data Preservation**
     - **Validates: Requirements 8.1, 8.4**
   
-  - [ ] 11.3 Write property test for migration defaults
+  - [x] 11.3 Write property test for migration defaults
     - **Property 11: Migration Defaults**
     - **Validates: Requirements 8.2, 8.3**
   
-  - [ ] 11.4 Extend backup service for insurance fields
+  - [x] 11.4 Extend backup service for insurance fields
     - Ensure insurance fields included in backup
     - Ensure insurance fields restored from backup
     - _Requirements: 9.1, 9.2_
   
-  - [ ] 11.5 Write property test for backup/restore round-trip
+  - [x] 11.5 Write property test for backup/restore round-trip
     - **Property 12: Backup/Restore Round-Trip**
     - **Validates: Requirements 9.1, 9.2, 9.3**
 
-- [ ] 12. Final Checkpoint
+- [x] 12. Final Checkpoint
   - Ensure all tests pass, ask the user if questions arise.
 
 ## Notes

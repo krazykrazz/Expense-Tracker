@@ -553,6 +553,52 @@ async function getSuggestedCategory(req, res) {
   }
 }
 
+/**
+ * Update insurance status for a medical expense (quick status update)
+ * PATCH /api/expenses/:id/insurance-status
+ * 
+ * Allows quick status updates without opening the full edit form.
+ * Supports transitions: not_claimed → in_progress → paid/denied
+ * 
+ * @param {Object} req.body - Request body
+ * @param {string} req.body.status - New claim status ('not_claimed', 'in_progress', 'paid', 'denied')
+ * 
+ * _Requirements: 5.1, 5.2, 5.3, 5.4_
+ */
+async function updateInsuranceStatus(req, res) {
+  try {
+    const id = parseInt(req.params.id);
+    
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'Invalid expense ID' });
+    }
+    
+    const { status } = req.body;
+    
+    if (!status) {
+      return res.status(400).json({ error: 'Status is required' });
+    }
+    
+    const updatedExpense = await expenseService.updateInsuranceStatus(id, status);
+    
+    if (!updatedExpense) {
+      return res.status(404).json({ error: 'Expense not found' });
+    }
+    
+    res.status(200).json(updatedExpense);
+  } catch (error) {
+    // Handle specific validation errors with 400 status
+    if (error.message.includes('Claim status must be one of') ||
+        error.message.includes('Insurance fields are only valid') ||
+        error.message.includes('not marked as insurance eligible')) {
+      return res.status(400).json({ error: error.message });
+    }
+    
+    logger.error('Error updating insurance status:', error);
+    res.status(500).json({ error: error.message });
+  }
+}
+
 module.exports = {
   createExpense,
   getExpenses,
@@ -568,5 +614,6 @@ module.exports = {
   backupDatabase,
   getDistinctPlaces,
   getSuggestedCategory,
+  updateInsuranceStatus,
   upload
 };

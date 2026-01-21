@@ -600,3 +600,232 @@
     transition: none;
   }
 }
+
+
+/* Insurance Section Styles (Requirements 1.1, 1.4, 2.1, 3.1, 3.2, 3.3, 3.4, 3.6) */
+.insurance-section {
+  background: var(--bg-subtle);
+  padding: var(--section-gap);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-default);
+  margin-top: var(--spacing-1);
+}
+
+.insurance-section-title {
+  display: block;
+  color: var(--color-primary);
+  font-weight: var(--font-semibold);
+  font-size: var(--text-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: var(--element-gap-lg);
+}
+
+.insurance-eligibility-row {
+  margin-bottom: var(--element-gap-lg);
+}
+
+.insurance-checkbox {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  cursor: pointer;
+  font-weight: var(--font-medium);
+  color: var(--text-primary);
+  font-size: var(--body-text);
+}
+
+.insurance-checkbox input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: var(--color-primary);
+}
+
+.insurance-details {
+  display: flex;
+  flex-direction: column;
+  gap: var(--element-gap-lg);
+  padding-top: var(--element-gap);
+  border-top: 1px solid var(--border-muted);
+}
+
+.insurance-field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--element-gap-lg);
+}
+
+.insurance-field {
+  display: flex;
+  flex-direction: column;
+}
+
+.insurance-field label {
+  margin-bottom: var(--spacing-1);
+  font-weight: var(--font-medium);
+  color: var(--text-secondary);
+  font-size: var(--caption-text-lg);
+}
+
+.insurance-field input,
+.insurance-field select {
+  padding: var(--spacing-2) var(--spacing-3);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  font-size: var(--body-text);
+  font-family: var(--font-sans);
+  background-color: var(--bg-card);
+  color: var(--text-primary);
+  transition: var(--transition-colors), box-shadow var(--transition-fast);
+}
+
+.insurance-field input:hover:not(:disabled):not(:focus),
+.insurance-field select:hover:not(:disabled):not(:focus) {
+  border-color: var(--border-strong);
+}
+
+.insurance-field input:focus,
+.insurance-field select:focus {
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: var(--focus-ring);
+}
+
+.insurance-field input:disabled,
+.insurance-field select:disabled {
+  background-color: var(--bg-muted);
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+.insurance-field .amount-input-wrapper {
+  display: flex;
+  align-items: center;
+  position: relative;
+  width: 100%;
+}
+
+.insurance-field .amount-input-wrapper .currency-symbol {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-secondary);
+  font-size: var(--body-text);
+  font-weight: var(--font-medium);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.insurance-field .amount-input-wrapper input[type="number"] {
+  padding-left: 28px !important;
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  font-size: var(--body-text);
+  background-color: var(--bg-card);
+  transition: border-color var(--transition-fast);
+}
+
+/* Original Cost input should look clearly editable */
+.insurance-field .amount-input-wrapper input[type="number"]:not(:disabled) {
+  background-color: var(--bg-card);
+  border-color: var(--border-default);
+}
+
+.insurance-field .amount-input-wrapper input[type="number"]:hover:not(:disabled):not(:focus) {
+  border-color: var(--border-strong);
+}
+
+.insurance-field .amount-input-wrapper input[type="number"]:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary-light);
+}
+
+.insurance-field .amount-input-wrapper input[type="number"]:disabled {
+  background-color: var(--bg-muted);
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+.out-of-pocket-display {
+  padding: var(--spacing-2) var(--spacing-3);
+  background-color: var(--bg-muted);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  font-size: var(--body-text);
+  font-weight: var(--font-medium);
+  color: var(--text-muted);
+}
+
+.reimbursement-display {
+  padding: var(--spacing-2) var(--spacing-3);
+  background-color: var(--bg-muted);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  font-size: var(--body-text);
+  font-weight: var(--font-medium);
+  color: var(--text-secondary);
+}
+
+.reimbursement-display.has-reimbursement {
+  background-color: var(--color-positive-light);
+  border-color: var(--color-positive);
+  color: var(--color-positive-dark);
+}
+
+.claim-status-select {
+  width: 100%;
+}
+
+.insurance-validation-error {
+  padding: var(--spacing-2) var(--spacing-3);
+  background-color: var(--color-negative-light);
+  border: 1px solid var(--color-negative);
+  border-radius: var(--radius-md);
+  color: var(--color-negative-dark);
+  font-size: var(--text-sm);
+}
+
+.insurance-status-note {
+  padding: var(--spacing-2) var(--spacing-3);
+  background-color: var(--color-primary-light);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-md);
+  color: var(--color-primary-active);
+}
+
+.insurance-status-note.insurance-status-paid {
+  background-color: var(--color-positive-light);
+  border-color: var(--color-positive);
+  color: var(--color-positive-dark);
+}
+
+.insurance-status-note.insurance-status-denied {
+  background-color: var(--color-negative-light);
+  border-color: var(--color-negative);
+  color: var(--color-negative-dark);
+}
+
+.insurance-status-note small {
+  font-size: var(--text-xs);
+  line-height: var(--leading-normal);
+}
+
+/* Responsive adjustments for insurance section */
+@media (max-width: 768px) {
+  .insurance-field-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Accessibility: Respect reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .insurance-field input,
+  .insurance-field select {
+    transition: none;
+  }
+}

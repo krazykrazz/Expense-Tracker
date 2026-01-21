@@ -133,6 +133,31 @@ export async function apiDelete(url, operation = 'delete resource') {
 }
 
 /**
+ * Make a PATCH request
+ * @param {string} url - API endpoint URL
+ * @param {Object} data - Request body data
+ * @param {string} operation - Description of operation for error messages
+ * @returns {Promise<any>} Response data
+ */
+export async function apiPatch(url, data, operation = 'patch resource') {
+  try {
+    const response = await fetch(url, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(data)
+    });
+    return await handleResponse(response, operation);
+  } catch (error) {
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    throw new ApiError(`Network error: ${error.message}`, 0, { originalError: error });
+  }
+}
+
+/**
  * Log API errors using the centralized logger
  * In production, this could be extended to send to error tracking service
  * @param {string} context - Context of the error (e.g., 'fetching loans')

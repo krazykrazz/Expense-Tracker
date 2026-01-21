@@ -315,6 +315,11 @@
   min-width: 140px;
 }
 
+/* Insurance filter specific styling (Requirement 7.4) */
+.filter-select.insurance-filter {
+  min-width: 140px;
+}
+
 /* People indicator styles - Modern badge styling */
 .people-indicator {
   display: inline-flex;

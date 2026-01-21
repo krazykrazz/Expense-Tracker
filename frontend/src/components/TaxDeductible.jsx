@@ -2,12 +2,14 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import './TaxDeductible.css';
 import { formatAmount, formatLocalDate, getMonthNameShort } from '../utils/formatters';
 import { getPeople } from '../services/peopleApi';
-import { getExpenseWithPeople, updateExpense } from '../services/expenseApi';
+import { getExpenseWithPeople, updateExpense, updateInsuranceStatus } from '../services/expenseApi';
 import { API_ENDPOINTS } from '../config';
 import { PAYMENT_METHODS } from '../utils/constants';
 import PersonAllocationModal from './PersonAllocationModal';
 import InvoiceIndicator from './InvoiceIndicator';
 import InvoiceList from './InvoiceList';
+import InsuranceStatusIndicator from './InsuranceStatusIndicator';
+import QuickStatusUpdate from './QuickStatusUpdate';
 import { getInvoicesForExpense } from '../services/invoiceApi';
 
 const TaxDeductible = ({ year, refreshTrigger }) => {
@@ -23,6 +25,12 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
   
   // Invoice filtering state
   const [invoiceFilter, setInvoiceFilter] = useState('all'); // 'all', 'with-invoice', 'without-invoice'
+  
+  // Insurance claim status filter state
+  const [claimStatusFilter, setClaimStatusFilter] = useState('all'); // 'all', 'not_claimed', 'in_progress', 'paid', 'denied'
+  
+  // Quick status update state
+  const [quickStatusExpense, setQuickStatusExpense] = useState(null);
   
   // People and categories state
   const [people, setPeople] = useState([]);
@@ -302,6 +310,53 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
     return expenses;
   }, [invoiceFilter]);
 
+  // Filter expenses based on claim status (for medical expenses only)
+  const filterExpensesByClaimStatus = useCallback((expenses) => {
+    if (claimStatusFilter === 'all') return expenses;
+    return expenses.filter(exp => {
+      // Only filter insurance-eligible expenses
+      if (!exp.insuranceEligible) {
+        // Show non-eligible expenses when filtering for specific status? No, hide them
+        return claimStatusFilter === 'all';
+      }
+      const status = exp.claimStatus || 'not_claimed';
+      return status === claimStatusFilter;
+    });
+  }, [claimStatusFilter]);
+
+  // Combined filter for medical expenses (invoice + claim status)
+  const filterMedicalExpenses = useCallback((expenses) => {
+    let filtered = filterExpensesByInvoice(expenses);
+    filtered = filterExpensesByClaimStatus(filtered);
+    return filtered;
+  }, [filterExpensesByInvoice, filterExpensesByClaimStatus]);
+
+  // Handle quick status update
+  const handleQuickStatusClick = useCallback((expense, event) => {
+    event.stopPropagation();
+    setQuickStatusExpense(expense);
+  }, []);
+
+  // Handle status change from QuickStatusUpdate
+  const handleStatusChange = useCallback(async (expenseId, newStatus) => {
+    try {
+      await updateInsuranceStatus(expenseId, newStatus);
+      // Refresh the data
+      await fetchTaxDeductibleData();
+      // Dispatch event to notify other components
+      window.dispatchEvent(new CustomEvent('expensesUpdated'));
+    } catch (error) {
+      console.error('Error updating insurance status:', error);
+    } finally {
+      setQuickStatusExpense(null);
+    }
+  }, []);
+
+  // Close quick status update
+  const handleCloseQuickStatus = useCallback(() => {
+    setQuickStatusExpense(null);
+  }, []);
+
   // Calculate invoice coverage statistics
   const invoiceStats = useMemo(() => {
     if (!taxDeductible || !taxDeductible.expenses) {
@@ -440,6 +495,94 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
             </div>
           </div>
 
+          {/* Insurance Summary Section - Requirements 6.3, 6.4 */}
+          {taxDeductible.insuranceSummary && taxDeductible.insuranceSummary.eligibleCount > 0 && (
+            <div className="insurance-summary-section">
+              <h4>🏥 Insurance Tracking Summary</h4>
+              
+              {/* Insurance Summary Cards */}
+              <div className="insurance-summary-cards">
+                <div className="insurance-summary-card original-cost">
+                  <h5>Total Original Cost</h5>
+                  <div className="summary-value">${formatAmount(taxDeductible.insuranceSummary.totalOriginalCost)}</div>
+                </div>
+                
+                <div className="insurance-summary-card out-of-pocket">
+                  <h5>Out-of-Pocket</h5>
+                  <div className="summary-value">${formatAmount(taxDeductible.insuranceSummary.totalOutOfPocket)}</div>
+                </div>
+                
+                <div className="insurance-summary-card reimbursement">
+                  <h5>Total Reimbursement</h5>
+                  <div className="summary-value">${formatAmount(taxDeductible.insuranceSummary.totalReimbursement)}</div>
+                </div>
+                
+                <div className="insurance-summary-card eligible-count">
+                  <h5>Eligible Expenses</h5>
+                  <div className="summary-value">{taxDeductible.insuranceSummary.eligibleCount}</div>
+                </div>
+              </div>
+
+              {/* Status Breakdown */}
+              <div className="insurance-status-breakdown">
+                <h5>Breakdown by Claim Status</h5>
+                <div className="status-breakdown-grid">
+                  <div className="status-breakdown-item">
+                    <span className="status-icon">📋</span>
+                    <div className="status-info">
+                      <span className="status-label">Not Claimed</span>
+                      <span className="status-count">{taxDeductible.insuranceSummary.byStatus.not_claimed.count} expenses</span>
+                      <span className="status-amount">${formatAmount(taxDeductible.insuranceSummary.byStatus.not_claimed.originalCost)}</span>
+                    </div>
+                  </div>
+                  
+                  <div className="status-breakdown-item">
+                    <span className="status-icon">⏳</span>
+                    <div className="status-info">
+                      <span className="status-label">In Progress</span>
+                      <span className="status-count">{taxDeductible.insuranceSummary.byStatus.in_progress.count} expenses</span>
+                      <span className="status-amount">${formatAmount(taxDeductible.insuranceSummary.byStatus.in_progress.originalCost)}</span>
+                    </div>
+                  </div>
+                  
+                  <div className="status-breakdown-item">
+                    <span className="status-icon">✅</span>
+                    <div className="status-info">
+                      <span className="status-label">Paid</span>
+                      <span className="status-count">{taxDeductible.insuranceSummary.byStatus.paid.count} expenses</span>
+                      <span className="status-amount">${formatAmount(taxDeductible.insuranceSummary.byStatus.paid.originalCost)}</span>
+                    </div>
+                  </div>
+                  
+                  <div className="status-breakdown-item">
+                    <span className="status-icon">❌</span>
+                    <div className="status-info">
+                      <span className="status-label">Denied</span>
+                      <span className="status-count">{taxDeductible.insuranceSummary.byStatus.denied.count} expenses</span>
+                      <span className="status-amount">${formatAmount(taxDeductible.insuranceSummary.byStatus.denied.originalCost)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Claim Status Filter - Requirement 6.5 */}
+              <div className="claim-status-filter">
+                <label className="filter-label">Filter by Claim Status:</label>
+                <select 
+                  value={claimStatusFilter} 
+                  onChange={(e) => setClaimStatusFilter(e.target.value)}
+                  className="claim-status-select"
+                >
+                  <option value="all">All Statuses</option>
+                  <option value="not_claimed">📋 Not Claimed</option>
+                  <option value="in_progress">⏳ In Progress</option>
+                  <option value="paid">✅ Paid</option>
+                  <option value="denied">❌ Denied</option>
+                </select>
+              </div>
+            </div>
+          )}
+
           {/* Monthly Breakdown for Tax Deductible Expenses */}
           <div className="tax-monthly-breakdown">
             <h4>Monthly Breakdown</h4>
@@ -542,8 +685,8 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
                               <span className="provider-total">${formatAmount(provider.total)}</span>
                             </div>
                             <div className="provider-expenses">
-                              {filterExpensesByInvoice(provider.expenses).map((expense) => (
-                                <div key={expense.id} className="tax-expense-item">
+                              {filterMedicalExpenses(provider.expenses).map((expense) => (
+                                <div key={expense.id} className={`tax-expense-item ${expense.insuranceEligible ? 'insurance-eligible' : ''}`}>
                                   <div className="tax-expense-date">
                                     {formatDate(expense.date)}
                                   </div>
@@ -552,7 +695,43 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
                                       <div className="tax-expense-notes">{expense.notes}</div>
                                     )}
                                   </div>
-                                  <div className="tax-expense-amount">${formatAmount(expense.allocatedAmount)}</div>
+                                  {/* Insurance Status Indicator - Requirement 4.5 */}
+                                  <div className="tax-expense-insurance">
+                                    <InsuranceStatusIndicator
+                                      insuranceEligible={expense.insuranceEligible}
+                                      claimStatus={expense.claimStatus}
+                                      originalCost={expense.originalCost}
+                                      outOfPocket={expense.amount}
+                                      size="small"
+                                      showText={false}
+                                      onClick={expense.insuranceEligible ? (e) => handleQuickStatusClick(expense, e) : undefined}
+                                    />
+                                  </div>
+                                  {/* Original Cost per Person - Requirement 4.5 */}
+                                  {expense.insuranceEligible && expense.originalAmount && (
+                                    <div className="tax-expense-original-cost">
+                                      <span className="cost-label">Orig:</span>
+                                      <span className="cost-value">${formatAmount(expense.originalAmount)}</span>
+                                    </div>
+                                  )}
+                                  {/* Out-of-Pocket Amount per Person */}
+                                  <div className="tax-expense-amount">
+                                    {expense.insuranceEligible && expense.originalAmount ? (
+                                      <>
+                                        <span className="amount-label">OOP:</span>
+                                        <span className="amount-value">${formatAmount(expense.allocatedAmount)}</span>
+                                      </>
+                                    ) : (
+                                      <>${formatAmount(expense.allocatedAmount)}</>
+                                    )}
+                                  </div>
+                                  {/* Reimbursement per Person - Requirement 4.5 */}
+                                  {expense.insuranceEligible && expense.originalAmount && expense.originalAmount > expense.allocatedAmount && (
+                                    <div className="tax-expense-reimbursement">
+                                      <span className="reimbursement-label">Reimb:</span>
+                                      <span className="reimbursement-value">${formatAmount(expense.originalAmount - expense.allocatedAmount)}</span>
+                                    </div>
+                                  )}
                                   <div className="tax-expense-invoice">
                                     <InvoiceIndicator
                                       hasInvoice={expense.hasInvoice}
@@ -599,8 +778,8 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
                               <span className="provider-total">${formatAmount(provider.total)}</span>
                             </div>
                             <div className="provider-expenses">
-                              {filterExpensesByInvoice(provider.expenses).map((expense) => (
-                                <div key={expense.id} className="tax-expense-item unassigned-expense">
+                              {filterMedicalExpenses(provider.expenses).map((expense) => (
+                                <div key={expense.id} className={`tax-expense-item unassigned-expense ${expense.insuranceEligible ? 'insurance-eligible' : ''}`}>
                                   <div className="tax-expense-date">
                                     {formatDate(expense.date)}
                                   </div>
@@ -609,7 +788,36 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
                                       <div className="tax-expense-notes">{expense.notes}</div>
                                     )}
                                   </div>
-                                  <div className="tax-expense-amount">${formatAmount(expense.amount)}</div>
+                                  {/* Insurance Status Indicator */}
+                                  <div className="tax-expense-insurance">
+                                    <InsuranceStatusIndicator
+                                      insuranceEligible={expense.insuranceEligible}
+                                      claimStatus={expense.claimStatus}
+                                      originalCost={expense.originalCost}
+                                      outOfPocket={expense.amount}
+                                      size="small"
+                                      showText={false}
+                                      onClick={expense.insuranceEligible ? (e) => handleQuickStatusClick(expense, e) : undefined}
+                                    />
+                                  </div>
+                                  {/* Original Cost */}
+                                  {expense.insuranceEligible && expense.originalCost && (
+                                    <div className="tax-expense-original-cost">
+                                      <span className="cost-label">Orig:</span>
+                                      <span className="cost-value">${formatAmount(expense.originalCost)}</span>
+                                    </div>
+                                  )}
+                                  {/* Out-of-Pocket Amount */}
+                                  <div className="tax-expense-amount">
+                                    {expense.insuranceEligible && expense.originalCost ? (
+                                      <>
+                                        <span className="amount-label">OOP:</span>
+                                        <span className="amount-value">${formatAmount(expense.amount)}</span>
+                                      </>
+                                    ) : (
+                                      <>${formatAmount(expense.amount)}</>
+                                    )}
+                                  </div>
                                   <div className="tax-expense-invoice">
                                     <InvoiceIndicator
                                       hasInvoice={expense.hasInvoice}
@@ -651,9 +859,12 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
                   onClick={() => setMedicalExpanded(!medicalExpanded)}
                 >
                   <h4 className="tax-category-header">
-                    🏥 Medical Expenses ({filterExpensesByInvoice(taxDeductible.expenses.medical).length} items - ${formatAmount(filterExpensesByInvoice(taxDeductible.expenses.medical).reduce((sum, exp) => sum + exp.amount, 0))})
+                    🏥 Medical Expenses ({filterMedicalExpenses(taxDeductible.expenses.medical).length} items - ${formatAmount(filterMedicalExpenses(taxDeductible.expenses.medical).reduce((sum, exp) => sum + exp.amount, 0))})
                     {invoiceFilter !== 'all' && (
                       <span className="filter-indicator"> - {invoiceFilter === 'with-invoice' ? 'With Invoice' : 'Without Invoice'}</span>
+                    )}
+                    {claimStatusFilter !== 'all' && (
+                      <span className="filter-indicator"> - {claimStatusFilter.replace('_', ' ')}</span>
                     )}
                   </h4>
                   <button className="collapse-toggle" aria-label={medicalExpanded ? "Collapse" : "Expand"}>
@@ -662,8 +873,8 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
                 </div>
                 {medicalExpanded && (
                   <div className="tax-expense-list">
-                    {filterExpensesByInvoice(taxDeductible.expenses.medical).map((expense) => (
-                      <div key={expense.id} className="tax-expense-item">
+                    {filterMedicalExpenses(taxDeductible.expenses.medical).map((expense) => (
+                      <div key={expense.id} className={`tax-expense-item ${expense.insuranceEligible ? 'insurance-eligible' : ''}`}>
                         <div className="tax-expense-date">
                           {formatDate(expense.date)}
                         </div>
@@ -673,7 +884,36 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
                             <div className="tax-expense-notes">{expense.notes}</div>
                           )}
                         </div>
-                        <div className="tax-expense-amount">${formatAmount(expense.amount)}</div>
+                        {/* Insurance Status Indicator - Requirements 6.1, 6.2 */}
+                        <div className="tax-expense-insurance">
+                          <InsuranceStatusIndicator
+                            insuranceEligible={expense.insuranceEligible}
+                            claimStatus={expense.claimStatus}
+                            originalCost={expense.originalCost}
+                            outOfPocket={expense.amount}
+                            size="small"
+                            showText={false}
+                            onClick={expense.insuranceEligible ? (e) => handleQuickStatusClick(expense, e) : undefined}
+                          />
+                        </div>
+                        {/* Original Cost Column - shown for insurance eligible expenses */}
+                        {expense.insuranceEligible && expense.originalCost && (
+                          <div className="tax-expense-original-cost">
+                            <span className="cost-label">Orig:</span>
+                            <span className="cost-value">${formatAmount(expense.originalCost)}</span>
+                          </div>
+                        )}
+                        {/* Out-of-Pocket Amount */}
+                        <div className="tax-expense-amount">
+                          {expense.insuranceEligible && expense.originalCost ? (
+                            <>
+                              <span className="amount-label">OOP:</span>
+                              <span className="amount-value">${formatAmount(expense.amount)}</span>
+                            </>
+                          ) : (
+                            <>${formatAmount(expense.amount)}</>
+                          )}
+                        </div>
                         <div className="tax-expense-invoice">
                           <InvoiceIndicator
                             hasInvoice={expense.hasInvoice}
@@ -940,6 +1180,18 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
             )}
           </div>
         </div>
+      )}
+
+      {/* Quick Status Update Component */}
+      {quickStatusExpense && (
+        <QuickStatusUpdate
+          expenseId={quickStatusExpense.id}
+          currentStatus={quickStatusExpense.claimStatus || 'not_claimed'}
+          onStatusChange={handleStatusChange}
+          onClose={handleCloseQuickStatus}
+          isOpen={true}
+          position={{ top: 100, left: 100 }}
+        />
       )}
     </div>
   );

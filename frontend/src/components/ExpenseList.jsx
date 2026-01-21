@@ -2,12 +2,14 @@ import { useState, useEffect, memo, useMemo, useCallback } from 'react';
 import { API_ENDPOINTS } from '../config';
 import { PAYMENT_METHODS } from '../utils/constants';
 import { getPeople } from '../services/peopleApi';
-import { getExpenseWithPeople, updateExpense } from '../services/expenseApi';
+import { getExpenseWithPeople, updateExpense, updateInsuranceStatus } from '../services/expenseApi';
 import { getInvoicesForExpense, updateInvoicePersonLink } from '../services/invoiceApi';
 import { createLogger } from '../utils/logger';
 import PersonAllocationModal from './PersonAllocationModal';
 import InvoiceIndicator from './InvoiceIndicator';
 import InvoiceUpload from './InvoiceUpload';
+import InsuranceStatusIndicator from './InsuranceStatusIndicator';
+import QuickStatusUpdate from './QuickStatusUpdate';
 import './ExpenseList.css';
 import { formatAmount, formatLocalDate } from '../utils/formatters';
 
@@ -153,6 +155,7 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
   const [localFilterType, setLocalFilterType] = useState('');
   const [localFilterMethod, setLocalFilterMethod] = useState('');
   const [localFilterInvoice, setLocalFilterInvoice] = useState(''); // New invoice filter
+  const [localFilterInsurance, setLocalFilterInsurance] = useState(''); // Insurance status filter (Requirement 7.4)
   // People selection state for medical expenses
   const [localPeople, setLocalPeople] = useState([]);
   const people = propPeople || localPeople;
@@ -165,6 +168,13 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
   const [loadingInvoices, setLoadingInvoices] = useState(new Set());
   // Future months state for edit form (Requirements 2.1, 2.2)
   const [editFutureMonths, setEditFutureMonths] = useState(0);
+  // Insurance quick status update state (Requirements 5.1, 5.2, 5.3, 5.4)
+  const [quickStatusExpenseId, setQuickStatusExpenseId] = useState(null);
+  const [quickStatusPosition, setQuickStatusPosition] = useState({ top: 0, left: 0 });
+  // Insurance tracking state for edit form
+  const [editInsuranceEligible, setEditInsuranceEligible] = useState(false);
+  const [editClaimStatus, setEditClaimStatus] = useState('not_claimed');
+  const [editOriginalCost, setEditOriginalCost] = useState('');
 
   // Fetch categories and people on mount
   useEffect(() => {
@@ -330,6 +340,17 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
     // Reset future months to 0 when opening edit modal (Requirements 2.1)
     setEditFutureMonths(0);
     
+    // Set insurance fields for medical expenses
+    if (expense.type === 'Tax - Medical') {
+      setEditInsuranceEligible(expense.insurance_eligible === 1 || expense.insurance_eligible === true);
+      setEditClaimStatus(expense.claim_status || 'not_claimed');
+      setEditOriginalCost(expense.original_cost?.toString() || '');
+    } else {
+      setEditInsuranceEligible(false);
+      setEditClaimStatus('not_claimed');
+      setEditOriginalCost('');
+    }
+    
     // Load people assignments for medical expenses
     if (expense.type === 'Tax - Medical') {
       try {
@@ -442,7 +463,13 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
         notes: editFormData.notes,
         amount: parseFloat(editFormData.amount),
         type: editFormData.type,
-        method: editFormData.method
+        method: editFormData.method,
+        // Include insurance fields for medical expenses
+        ...(isEditingMedicalExpense && {
+          insurance_eligible: editInsuranceEligible,
+          claim_status: editInsuranceEligible ? editClaimStatus : null,
+          original_cost: editInsuranceEligible && editOriginalCost ? parseFloat(editOriginalCost) : null
+        })
       }, peopleAllocations, editFutureMonths);
       
       // Handle response format - may include futureExpenses array
@@ -477,7 +504,7 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
     } finally {
       setIsSubmitting(false);
     }
-  }, [editFormData, isEditingMedicalExpense, selectedPeople, expenseToEdit, onExpenseUpdated, editFutureMonths]);
+  }, [editFormData, isEditingMedicalExpense, selectedPeople, expenseToEdit, onExpenseUpdated, editFutureMonths, editInsuranceEligible, editClaimStatus, editOriginalCost]);
 
   const handleCancelEdit = useCallback(() => {
     setShowEditModal(false);
@@ -487,6 +514,9 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
     setSelectedPeople([]);
     setEditInvoices([]);
     setEditFutureMonths(0);
+    setEditInsuranceEligible(false);
+    setEditClaimStatus('not_claimed');
+    setEditOriginalCost('');
   }, []);
 
   // Handle invoice upload in edit modal - now supports multiple invoices
@@ -585,6 +615,52 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
     setExpenseToDelete(null);
   }, []);
 
+  /**
+   * Handle insurance status indicator click
+   * Opens the QuickStatusUpdate dropdown at the indicator position
+   * Requirements: 5.1, 7.1, 7.2
+   */
+  const handleInsuranceIndicatorClick = useCallback((event, expenseId) => {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    const rect = event.currentTarget.getBoundingClientRect();
+    // Use viewport-relative coordinates (fixed positioning)
+    setQuickStatusPosition({
+      top: rect.bottom + 4,
+      left: rect.left
+    });
+    setQuickStatusExpenseId(expenseId);
+  }, []);
+
+  /**
+   * Handle insurance status change from QuickStatusUpdate
+   * Calls the API and updates the expense in the list
+   * Requirements: 5.2, 5.3, 5.4
+   */
+  const handleInsuranceStatusChange = useCallback(async (expenseId, newStatus) => {
+    try {
+      const result = await updateInsuranceStatus(expenseId, newStatus);
+      
+      // Notify parent component to update the expense
+      if (onExpenseUpdated && result) {
+        onExpenseUpdated(result);
+      }
+      
+      return result;
+    } catch (error) {
+      logger.error('Failed to update insurance status:', error);
+      throw error;
+    }
+  }, [onExpenseUpdated]);
+
+  /**
+   * Close the QuickStatusUpdate dropdown
+   */
+  const handleCloseQuickStatus = useCallback(() => {
+    setQuickStatusExpenseId(null);
+  }, []);
+
   const formatDate = formatLocalDate;
 
   // Filter expenses based on local filters (for current month only)
@@ -614,9 +690,26 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
           return false;
         }
       }
+      // Apply insurance status filter (Requirement 7.4)
+      if (localFilterInsurance) {
+        // Only medical expenses can have insurance status
+        if (expense.type !== 'Tax - Medical') {
+          return false;
+        }
+        // Filter by insurance eligibility and claim status
+        if (localFilterInsurance === 'eligible') {
+          if (!expense.insurance_eligible) return false;
+        } else if (localFilterInsurance === 'not-eligible') {
+          if (expense.insurance_eligible) return false;
+        } else {
+          // Filter by specific claim status
+          if (!expense.insurance_eligible) return false;
+          if (expense.claim_status !== localFilterInsurance) return false;
+        }
+      }
       return true;
     });
-  }, [expenses, localFilterType, localFilterMethod, localFilterInvoice, invoiceData]);
+  }, [expenses, localFilterType, localFilterMethod, localFilterInvoice, localFilterInsurance, invoiceData]);
 
   /**
    * Generates informative status messages based on filter state
@@ -632,6 +725,21 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
    * @returns {string|null} Status message or null if no message needed
    */
   const getFilterStatusMessage = () => {
+    /**
+     * Get human-readable insurance filter text
+     */
+    const getInsuranceFilterText = (filterValue) => {
+      switch (filterValue) {
+        case 'eligible': return 'insurance eligible';
+        case 'not-eligible': return 'not insurance eligible';
+        case 'not_claimed': return 'not claimed';
+        case 'in_progress': return 'claim in progress';
+        case 'paid': return 'claim paid';
+        case 'denied': return 'claim denied';
+        default: return filterValue;
+      }
+    };
+
     if (filteredExpenses.length === 0 && expenses.length > 0) {
       // Expenses exist but all filtered out by local filters
       const activeFilters = [];
@@ -640,6 +748,9 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
       if (localFilterInvoice) {
         const invoiceFilterText = localFilterInvoice === 'with-invoice' ? 'with invoices' : 'without invoices';
         activeFilters.push(`${invoiceFilterText}`);
+      }
+      if (localFilterInsurance) {
+        activeFilters.push(`insurance: ${getInsuranceFilterText(localFilterInsurance)}`);
       }
       
       return `No expenses match the selected filters (${activeFilters.join(', ')}). Try adjusting your filters or clearing them to see all expenses.`;
@@ -651,13 +762,16 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
     }
     
     // Show result count when local filters are active
-    if (localFilterType || localFilterMethod || localFilterInvoice) {
+    if (localFilterType || localFilterMethod || localFilterInvoice || localFilterInsurance) {
       const activeFilters = [];
       if (localFilterType) activeFilters.push(localFilterType);
       if (localFilterMethod) activeFilters.push(localFilterMethod);
       if (localFilterInvoice) {
         const invoiceFilterText = localFilterInvoice === 'with-invoice' ? 'with invoices' : 'without invoices';
         activeFilters.push(invoiceFilterText);
+      }
+      if (localFilterInsurance) {
+        activeFilters.push(getInsuranceFilterText(localFilterInsurance));
       }
       
       const expenseWord = filteredExpenses.length === 1 ? 'expense' : 'expenses';
@@ -710,13 +824,29 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
               <option value="with-invoice">With Invoice</option>
               <option value="without-invoice">Without Invoice</option>
             </select>
-            {(localFilterType || localFilterMethod || localFilterInvoice) && (
+            {/* Insurance Status Filter (Requirement 7.4) */}
+            <select 
+              className="filter-select insurance-filter"
+              value={localFilterInsurance} 
+              onChange={(e) => setLocalFilterInsurance(e.target.value)}
+              title="Filter medical expenses by insurance claim status"
+            >
+              <option value="">All Insurance</option>
+              <option value="eligible">Insurance Eligible</option>
+              <option value="not-eligible">Not Eligible</option>
+              <option value="not_claimed">Not Claimed</option>
+              <option value="in_progress">In Progress</option>
+              <option value="paid">Paid</option>
+              <option value="denied">Denied</option>
+            </select>
+            {(localFilterType || localFilterMethod || localFilterInvoice || localFilterInsurance) && (
               <button 
                 className="clear-filters-btn"
                 onClick={() => {
                   setLocalFilterType('');
                   setLocalFilterMethod('');
                   setLocalFilterInvoice('');
+                  setLocalFilterInsurance('');
                 }}
                 title="Clear filters"
               >
@@ -816,6 +946,17 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
                           className={`list-item ${loadingInvoices.has(expense.id) ? 'loading' : ''}`}
                           onInvoiceUpdated={(invoiceInfo) => handleInvoiceUpdated(expense.id, invoiceInfo)}
                           onInvoiceDeleted={(invoiceId) => handleInvoiceDeleted(expense.id, invoiceId)}
+                        />
+                      )}
+                      {/* Insurance Status Indicator for medical expenses (Requirements 7.1, 7.2, 7.3) */}
+                      {expense.type === 'Tax - Medical' && expense.insurance_eligible && (
+                        <InsuranceStatusIndicator
+                          insuranceEligible={expense.insurance_eligible}
+                          claimStatus={expense.claim_status}
+                          originalCost={expense.original_cost}
+                          outOfPocket={expense.amount}
+                          size="small"
+                          onClick={(event) => handleInsuranceIndicatorClick(event, expense.id)}
                         />
                       )}
                     </div>
@@ -1049,6 +1190,96 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
                 </div>
               )}
 
+              {/* Insurance Section for Medical Expenses */}
+              {isEditingMedicalExpense && (
+                <div className="form-group insurance-section">
+                  <label className="insurance-section-title">Insurance Tracking</label>
+                  
+                  {/* Insurance Eligibility Checkbox */}
+                  <div className="insurance-eligibility-row">
+                    <label className="checkbox-label insurance-checkbox">
+                      <input
+                        type="checkbox"
+                        checked={editInsuranceEligible}
+                        onChange={(e) => {
+                          const eligible = e.target.checked;
+                          setEditInsuranceEligible(eligible);
+                          if (eligible && !editOriginalCost && editFormData.amount) {
+                            setEditOriginalCost(editFormData.amount);
+                          }
+                          if (!eligible) {
+                            setEditClaimStatus('not_claimed');
+                            setEditOriginalCost('');
+                          }
+                        }}
+                        disabled={isSubmitting}
+                      />
+                      <span>Eligible for Insurance Reimbursement</span>
+                    </label>
+                  </div>
+                  
+                  {/* Insurance Details (shown when eligible) */}
+                  {editInsuranceEligible && (
+                    <div className="insurance-details">
+                      {/* Original Cost and Out-of-Pocket Row */}
+                      <div className="insurance-field-row">
+                        <div className="insurance-field">
+                          <label htmlFor="edit-originalCost">Original Cost</label>
+                          <div className="amount-input-wrapper">
+                            <span className="currency-symbol">$</span>
+                            <input
+                              type="number"
+                              id="edit-originalCost"
+                              value={editOriginalCost}
+                              onChange={(e) => setEditOriginalCost(e.target.value)}
+                              step="0.01"
+                              min="0.01"
+                              placeholder="0.00"
+                              disabled={isSubmitting}
+                            />
+                          </div>
+                        </div>
+                        
+                        <div className="insurance-field">
+                          <label>Out-of-Pocket</label>
+                          <div className="out-of-pocket-display">
+                            ${editFormData.amount ? parseFloat(editFormData.amount).toFixed(2) : '0.00'}
+                          </div>
+                          <small className="field-hint">Set via Amount field above</small>
+                        </div>
+                      </div>
+                      
+                      {/* Claim Status and Reimbursement Row */}
+                      <div className="insurance-field-row">
+                        <div className="insurance-field">
+                          <label htmlFor="edit-claimStatus">Claim Status</label>
+                          <select
+                            id="edit-claimStatus"
+                            value={editClaimStatus}
+                            onChange={(e) => setEditClaimStatus(e.target.value)}
+                            disabled={isSubmitting}
+                            className="claim-status-select"
+                          >
+                            <option value="not_claimed">Not Claimed</option>
+                            <option value="in_progress">In Progress</option>
+                            <option value="paid">Paid</option>
+                            <option value="denied">Denied</option>
+                          </select>
+                        </div>
+                        
+                        <div className="insurance-field">
+                          <label>Reimbursement</label>
+                          <div className={`reimbursement-display ${(parseFloat(editOriginalCost) || 0) - (parseFloat(editFormData.amount) || 0) > 0 ? 'has-reimbursement' : ''}`}>
+                            ${Math.max(0, (parseFloat(editOriginalCost) || 0) - (parseFloat(editFormData.amount) || 0)).toFixed(2)}
+                          </div>
+                          <small className="field-hint">Original cost - Out-of-pocket</small>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Invoice Upload for Tax-Deductible Expenses (Medical and Donations) - now supports multiple invoices */}
               {isEditingTaxDeductible && expenseToEdit && (
                 <div className="form-group">
@@ -1099,6 +1330,20 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
         onSave={handleEditPersonAllocation}
         onCancel={() => setShowPersonAllocation(false)}
       />
+
+      {/* Quick Status Update Dropdown for Insurance (Requirements 5.1, 5.2, 5.3, 5.4) */}
+      {quickStatusExpenseId && (
+        <QuickStatusUpdate
+          expenseId={quickStatusExpenseId}
+          currentStatus={
+            expenses.find(e => e.id === quickStatusExpenseId)?.claim_status || 'not_claimed'
+          }
+          onStatusChange={handleInsuranceStatusChange}
+          onClose={handleCloseQuickStatus}
+          isOpen={true}
+          position={quickStatusPosition}
+        />
+      )}
     </div>
   );
 });

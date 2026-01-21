@@ -1,0 +1,255 @@
+/* QuickStatusUpdate Component Styles */
+
+.quick-status-dropdown {
+  position: fixed;
+  z-index: var(--z-popover);
+  min-width: 200px;
+  max-width: 280px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+/* Header showing current status */
+.quick-status-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  padding: var(--spacing-3) var(--spacing-4);
+  background: var(--bg-subtle);
+  border-bottom: 1px solid var(--border-muted);
+}
+
+.quick-status-current-icon {
+  font-size: var(--text-lg);
+}
+
+.quick-status-current-label {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  font-weight: var(--font-medium);
+}
+
+/* Divider */
+.quick-status-divider {
+  height: 1px;
+  background: var(--border-muted);
+}
+
+/* Options container */
+.quick-status-options {
+  padding: var(--spacing-2);
+}
+
+/* Individual status option */
+.quick-status-option {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  width: 100%;
+  padding: var(--spacing-3) var(--spacing-3);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  text-align: left;
+  transition: all var(--transition-fast);
+}
+
+.quick-status-option:hover:not(:disabled) {
+  background: var(--hover-overlay);
+}
+
+.quick-status-option:focus {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.quick-status-option:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Status-specific hover colors */
+.quick-status-option.status-in_progress:hover:not(:disabled) {
+  background: var(--color-warning-light);
+}
+
+.quick-status-option.status-paid:hover:not(:disabled) {
+  background: var(--color-positive-light);
+}
+
+.quick-status-option.status-denied:hover:not(:disabled) {
+  background: var(--color-negative-light);
+}
+
+.quick-status-option.status-not_claimed:hover:not(:disabled) {
+  background: var(--bg-muted);
+}
+
+/* Option icon */
+.quick-status-option-icon {
+  font-size: var(--text-xl);
+  flex-shrink: 0;
+}
+
+/* Option content */
+.quick-status-option-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.quick-status-option-label {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-primary);
+}
+
+.quick-status-option-description {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+/* No options message */
+.quick-status-no-options {
+  padding: var(--spacing-4);
+  text-align: center;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+/* Error message */
+.quick-status-error {
+  padding: var(--spacing-2) var(--spacing-4);
+  background: var(--color-negative-light);
+  color: var(--color-negative-dark);
+  font-size: var(--text-xs);
+  border-top: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+/* Loading state */
+.quick-status-dropdown.updating {
+  pointer-events: none;
+}
+
+.quick-status-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-2);
+  padding: var(--spacing-3) var(--spacing-4);
+  background: var(--bg-subtle);
+  border-top: 1px solid var(--border-muted);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+/* Spinner animation */
+.quick-status-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--border-default);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  .quick-status-dropdown {
+    min-width: 180px;
+    max-width: 250px;
+  }
+
+  .quick-status-header {
+    padding: var(--spacing-2) var(--spacing-3);
+  }
+
+  .quick-status-option {
+    padding: var(--spacing-2) var(--spacing-2);
+  }
+
+  .quick-status-option-icon {
+    font-size: var(--text-lg);
+  }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .quick-status-dropdown {
+    border-width: 2px;
+    border-color: #000;
+  }
+
+  .quick-status-option:focus {
+    outline: 3px solid #000;
+    outline-offset: 2px;
+  }
+
+  .quick-status-option.status-in_progress:hover:not(:disabled) {
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+  }
+
+  .quick-status-option.status-paid:hover:not(:disabled) {
+    background: #d4edda;
+    border: 1px solid #28a745;
+  }
+
+  .quick-status-option.status-denied:hover:not(:disabled) {
+    background: #f8d7da;
+    border: 1px solid #dc3545;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .quick-status-option {
+    transition: none;
+  }
+
+  .quick-status-spinner {
+    animation: none;
+    border-top-color: var(--color-primary);
+    opacity: 0.7;
+  }
+}
+
+/* Print styles - hide dropdown */
+@media print {
+  .quick-status-dropdown {
+    display: none;
+  }
+}
+
+/* Animation for dropdown appearance */
+@keyframes dropdown-appear {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.quick-status-dropdown {
+  animation: dropdown-appear 0.15s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .quick-status-dropdown {
+    animation: none;
+  }
+}

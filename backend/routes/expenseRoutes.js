@@ -29,6 +29,9 @@ router.get('/expenses/:id', expenseController.getExpenseWithPeople);
 // PUT /api/expenses/:id - Update an expense by ID
 router.put('/expenses/:id', expenseController.updateExpense);
 
+// PATCH /api/expenses/:id/insurance-status - Quick insurance status update
+router.patch('/expenses/:id/insurance-status', expenseController.updateInsuranceStatus);
+
 // DELETE /api/expenses/:id - Delete an expense by ID
 router.delete('/expenses/:id', expenseController.deleteExpense);
 

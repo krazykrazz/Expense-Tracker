@@ -70,6 +70,9 @@ export const API_ENDPOINTS = {
   MERCHANT_TREND: (name) => `${API_BASE_URL}/api/analytics/merchants/${encodeURIComponent(name)}/trend`,
   MERCHANT_EXPENSES: (name) => `${API_BASE_URL}/api/analytics/merchants/${encodeURIComponent(name)}/expenses`,
   
+  // Insurance Status
+  INSURANCE_STATUS: (id) => `${API_BASE_URL}/api/expenses/${id}/insurance-status`,
+  
   // Invoices
   INVOICES: `${API_BASE_URL}/api/invoices`,
   INVOICE_UPLOAD: `${API_BASE_URL}/api/invoices/upload`,

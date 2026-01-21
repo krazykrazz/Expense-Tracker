@@ -18,19 +18,35 @@ describe('Budget Service - End-to-End Integration Tests', () => {
   });
 
   afterEach(async () => {
-    // Clean up test data after each test
-    await new Promise((resolve, reject) => {
-      db.run('DELETE FROM budgets WHERE year >= 2090', (err) => {
-        if (err) {
-          reject(err);
-        } else {
-          db.run(`DELETE FROM expenses WHERE strftime('%Y', date) >= '2090'`, (err2) => {
-            if (err2) reject(err2);
-            else resolve();
+    // Clean up test data after each test with retry logic for busy database
+    const cleanupWithRetry = async (retries = 3, delay = 100) => {
+      for (let attempt = 0; attempt < retries; attempt++) {
+        try {
+          await new Promise((resolve, reject) => {
+            db.run('DELETE FROM budgets WHERE year >= 2089', (err) => {
+              if (err) {
+                reject(err);
+              } else {
+                db.run(`DELETE FROM expenses WHERE strftime('%Y', date) >= '2089'`, (err2) => {
+                  if (err2) reject(err2);
+                  else resolve();
+                });
+              }
+            });
           });
+          return; // Success, exit retry loop
+        } catch (err) {
+          if (err.message && err.message.includes('SQLITE_BUSY') && attempt < retries - 1) {
+            // Wait and retry
+            await new Promise(resolve => setTimeout(resolve, delay * (attempt + 1)));
+          } else {
+            throw err;
+          }
         }
-      });
-    });
+      }
+    };
+    
+    await cleanupWithRetry();
   });
 
   /**
@@ -751,7 +767,7 @@ describe('Budget Service - End-to-End Integration Tests', () => {
     });
 
     test('should handle 3-month, 6-month, and 12-month periods', async () => {
-      const year = 2090;
+      const year = 2092; // Use unique year to avoid conflicts with other tests
 
       // Create budgets and expenses for 12 months
       for (let month = 1; month <= 12; month++) {
@@ -772,22 +788,22 @@ describe('Budget Service - End-to-End Integration Tests', () => {
       const history3 = await budgetService.getBudgetHistory(year, 12, 3);
       expect(history3.period.months).toBe(3);
       expect(history3.categories.Groceries.history.length).toBe(3);
-      expect(history3.period.start).toBe('2090-10-01');
-      expect(history3.period.end).toBe('2090-12-01');
+      expect(history3.period.start).toBe('2092-10-01');
+      expect(history3.period.end).toBe('2092-12-01');
 
       // Test 6-month period
       const history6 = await budgetService.getBudgetHistory(year, 12, 6);
       expect(history6.period.months).toBe(6);
       expect(history6.categories.Groceries.history.length).toBe(6);
-      expect(history6.period.start).toBe('2090-07-01');
-      expect(history6.period.end).toBe('2090-12-01');
+      expect(history6.period.start).toBe('2092-07-01');
+      expect(history6.period.end).toBe('2092-12-01');
 
       // Test 12-month period
       const history12 = await budgetService.getBudgetHistory(year, 12, 12);
       expect(history12.period.months).toBe(12);
       expect(history12.categories.Groceries.history.length).toBe(12);
-      expect(history12.period.start).toBe('2090-01-01');
-      expect(history12.period.end).toBe('2090-12-01');
+      expect(history12.period.start).toBe('2092-01-01');
+      expect(history12.period.end).toBe('2092-12-01');
 
       // Clean up
       await new Promise((resolve) => {

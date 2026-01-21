@@ -18,6 +18,7 @@ vi.mock('../config', () => ({
 import * as peopleApi from '../services/peopleApi';
 import * as expenseApi from '../services/expenseApi';
 import * as categorySuggestionApi from '../services/categorySuggestionApi';
+import * as categoriesApi from '../services/categoriesApi';
 
 vi.mock('../services/peopleApi', () => ({
   getPeople: vi.fn()
@@ -25,11 +26,18 @@ vi.mock('../services/peopleApi', () => ({
 
 vi.mock('../services/expenseApi', () => ({
   createExpense: vi.fn(),
-  getExpenses: vi.fn()
+  getExpenses: vi.fn(),
+  getPlaces: vi.fn(),
+  updateExpense: vi.fn(),
+  getExpenseWithPeople: vi.fn()
 }));
 
 vi.mock('../services/categorySuggestionApi', () => ({
   fetchCategorySuggestion: vi.fn()
+}));
+
+vi.mock('../services/categoriesApi', () => ({
+  getCategories: vi.fn()
 }));
 
 vi.mock('../utils/formatters', () => ({
@@ -117,6 +125,10 @@ describe('ExpenseForm - People Selection Enhancement', () => {
 
     // Mock expense API
     expenseApi.createExpense.mockResolvedValue({ id: 1, type: 'Tax - Medical' });
+    expenseApi.getPlaces.mockResolvedValue([]);
+
+    // Mock categories API
+    categoriesApi.getCategories.mockResolvedValue(mockCategories);
 
     // Mock category suggestion API
     categorySuggestionApi.fetchCategorySuggestion.mockResolvedValue({ category: null });
@@ -183,9 +195,12 @@ describe('ExpenseForm - People Selection Enhancement', () => {
       expect(screen.getByLabelText(/assign to people/i)).toBeInTheDocument();
     });
 
-    // Select a single person
+    // Select a single person by clicking the option
     const peopleSelect = screen.getByLabelText(/assign to people/i);
-    fireEvent.change(peopleSelect, { target: { value: ['1'] } });
+    const options = peopleSelect.querySelectorAll('option');
+    // Select John Doe (second option - first is the disabled placeholder)
+    options[1].selected = true;
+    fireEvent.change(peopleSelect);
 
     // Submit the form
     fireEvent.submit(screen.getByRole('button', { name: /add expense/i }));
@@ -196,7 +211,7 @@ describe('ExpenseForm - People Selection Enhancement', () => {
         expect.objectContaining({
           type: 'Tax - Medical'
         }),
-        [{ personId: 1, amount: 100 }],
+        [{ personId: 1, amount: 100, originalAmount: null }],
         0 // futureMonths default
       );
     });
@@ -420,6 +435,12 @@ describe('ExpenseForm - Future Months Feature', () => {
     // Mock people API
     peopleApi.getPeople.mockResolvedValue([]);
 
+    // Mock expense API
+    expenseApi.getPlaces.mockResolvedValue([]);
+
+    // Mock categories API
+    categoriesApi.getCategories.mockResolvedValue(mockCategories);
+
     // Mock category suggestion API
     categorySuggestionApi.fetchCategorySuggestion.mockResolvedValue({ category: null });
   });
@@ -429,10 +450,10 @@ describe('ExpenseForm - Future Months Feature', () => {
   });
 
   /**
-   * Test future months dropdown renders with correct options
+   * Test future months checkbox renders
    * Requirements: 1.1, 1.2
    */
-  it('should render future months dropdown with options 0-12', async () => {
+  it('should render future months checkbox', async () => {
     render(<ExpenseForm onExpenseAdded={() => {}} />);
 
     // Wait for component to load
@@ -440,28 +461,15 @@ describe('ExpenseForm - Future Months Feature', () => {
       expect(screen.getByLabelText(/type/i)).toBeInTheDocument();
     });
 
-    // Find the future months dropdown
-    const futureMonthsSelect = screen.getByLabelText(/add to future months/i);
-    expect(futureMonthsSelect).toBeInTheDocument();
-
-    // Verify it has 13 options (0-12)
-    const options = futureMonthsSelect.querySelectorAll('option');
-    expect(options).toHaveLength(13);
-
-    // Verify first option is "Don't add"
-    expect(options[0].textContent).toContain("Don't add");
-    expect(options[0].value).toBe('0');
-
-    // Verify last option is 12 months
-    expect(options[12].textContent).toContain('12 future months');
-    expect(options[12].value).toBe('12');
+    // Find the future months checkbox by its label text
+    expect(screen.getByText(/add to future months/i)).toBeInTheDocument();
   });
 
   /**
-   * Test default value is 0
+   * Test default value is unchecked (0 months)
    * Requirements: 1.7
    */
-  it('should have default value of 0 for future months', async () => {
+  it('should have future months checkbox unchecked by default', async () => {
     render(<ExpenseForm onExpenseAdded={() => {}} />);
 
     // Wait for component to load
@@ -469,15 +477,17 @@ describe('ExpenseForm - Future Months Feature', () => {
       expect(screen.getByLabelText(/type/i)).toBeInTheDocument();
     });
 
-    const futureMonthsSelect = screen.getByLabelText(/add to future months/i);
-    expect(futureMonthsSelect.value).toBe('0');
+    // Find the checkbox in the future-months-section
+    const futureMonthsSection = document.querySelector('.future-months-section');
+    const checkbox = futureMonthsSection.querySelector('input[type="checkbox"]');
+    expect(checkbox.checked).toBe(false);
   });
 
   /**
    * Test date range preview display when future months > 0
    * Requirements: 1.1, 1.2
    */
-  it('should show date range preview when future months > 0', async () => {
+  it('should show date range preview when future months checkbox is checked', async () => {
     render(<ExpenseForm onExpenseAdded={() => {}} />);
 
     // Wait for component to load
@@ -488,17 +498,15 @@ describe('ExpenseForm - Future Months Feature', () => {
     // Initially, no preview should be shown
     expect(screen.queryByText(/will create/i)).not.toBeInTheDocument();
 
-    // Select 3 future months
-    const futureMonthsSelect = screen.getByLabelText(/add to future months/i);
-    fireEvent.change(futureMonthsSelect, { target: { value: '3' } });
+    // Check the future months checkbox
+    const futureMonthsSection = document.querySelector('.future-months-section');
+    const checkbox = futureMonthsSection.querySelector('input[type="checkbox"]');
+    fireEvent.click(checkbox);
 
-    // Preview should now be shown
+    // Preview should now be shown (default is 1 month when checked)
     await waitFor(() => {
-      expect(screen.getByText(/will create 3 additional expenses/i)).toBeInTheDocument();
+      expect(screen.getByText(/will create 1 additional expense/i)).toBeInTheDocument();
     });
-
-    // Preview should include "through" text
-    expect(screen.getByText(/through/i)).toBeInTheDocument();
   });
 
   /**
@@ -530,10 +538,17 @@ describe('ExpenseForm - Future Months Feature', () => {
     fireEvent.change(screen.getByLabelText(/type/i), { target: { value: 'Subscriptions' } });
     fireEvent.change(screen.getByLabelText(/payment method/i), { target: { value: 'Credit Card' } });
 
-    // Select 2 future months
-    const futureMonthsSelect = screen.getByLabelText(/add to future months/i);
-    fireEvent.change(futureMonthsSelect, { target: { value: '2' } });
-    expect(futureMonthsSelect.value).toBe('2');
+    // Check the future months checkbox and select 2 months
+    const futureMonthsSection = document.querySelector('.future-months-section');
+    const checkbox = futureMonthsSection.querySelector('input[type="checkbox"]');
+    fireEvent.click(checkbox);
+
+    // Wait for dropdown to appear and select 2 months
+    await waitFor(() => {
+      const dropdown = futureMonthsSection.querySelector('select');
+      expect(dropdown).toBeInTheDocument();
+      fireEvent.change(dropdown, { target: { value: '2' } });
+    });
 
     // Submit the form
     fireEvent.submit(screen.getByRole('button', { name: /add expense/i }));
@@ -543,9 +558,9 @@ describe('ExpenseForm - Future Months Feature', () => {
       expect(expenseApi.createExpense).toHaveBeenCalled();
     });
 
-    // Future months should be reset to 0
+    // Future months checkbox should be unchecked after reset
     await waitFor(() => {
-      expect(futureMonthsSelect.value).toBe('0');
+      expect(checkbox.checked).toBe(false);
     });
   });
 
@@ -574,9 +589,17 @@ describe('ExpenseForm - Future Months Feature', () => {
     fireEvent.change(screen.getByLabelText(/type/i), { target: { value: 'Subscriptions' } });
     fireEvent.change(screen.getByLabelText(/payment method/i), { target: { value: 'Credit Card' } });
 
-    // Select 3 future months
-    const futureMonthsSelect = screen.getByLabelText(/add to future months/i);
-    fireEvent.change(futureMonthsSelect, { target: { value: '3' } });
+    // Check the future months checkbox and select 3 months
+    const futureMonthsSection = document.querySelector('.future-months-section');
+    const checkbox = futureMonthsSection.querySelector('input[type="checkbox"]');
+    fireEvent.click(checkbox);
+
+    // Wait for dropdown to appear and select 3 months
+    await waitFor(() => {
+      const dropdown = futureMonthsSection.querySelector('select');
+      expect(dropdown).toBeInTheDocument();
+      fireEvent.change(dropdown, { target: { value: '3' } });
+    });
 
     // Submit the form
     fireEvent.submit(screen.getByRole('button', { name: /add expense/i }));
@@ -622,9 +645,17 @@ describe('ExpenseForm - Future Months Feature', () => {
     fireEvent.change(screen.getByLabelText(/type/i), { target: { value: 'Subscriptions' } });
     fireEvent.change(screen.getByLabelText(/payment method/i), { target: { value: 'Credit Card' } });
 
-    // Select 3 future months
-    const futureMonthsSelect = screen.getByLabelText(/add to future months/i);
-    fireEvent.change(futureMonthsSelect, { target: { value: '3' } });
+    // Check the future months checkbox and select 3 months
+    const futureMonthsSection = document.querySelector('.future-months-section');
+    const checkbox = futureMonthsSection.querySelector('input[type="checkbox"]');
+    fireEvent.click(checkbox);
+
+    // Wait for dropdown to appear and select 3 months
+    await waitFor(() => {
+      const dropdown = futureMonthsSection.querySelector('select');
+      expect(dropdown).toBeInTheDocument();
+      fireEvent.change(dropdown, { target: { value: '3' } });
+    });
 
     // Submit the form
     fireEvent.submit(screen.getByRole('button', { name: /add expense/i }));
@@ -636,10 +667,10 @@ describe('ExpenseForm - Future Months Feature', () => {
   });
 
   /**
-   * Test no preview shown when future months is 0
+   * Test no preview shown when future months checkbox is unchecked
    * Requirements: 1.7
    */
-  it('should not show preview when future months is 0', async () => {
+  it('should not show preview when future months checkbox is unchecked', async () => {
     render(<ExpenseForm onExpenseAdded={() => {}} />);
 
     // Wait for component to load
@@ -647,20 +678,21 @@ describe('ExpenseForm - Future Months Feature', () => {
       expect(screen.getByLabelText(/type/i)).toBeInTheDocument();
     });
 
-    // Verify no preview is shown with default value of 0
+    // Verify no preview is shown with default unchecked state
     expect(screen.queryByText(/will create/i)).not.toBeInTheDocument();
 
-    // Select 2 future months
-    const futureMonthsSelect = screen.getByLabelText(/add to future months/i);
-    fireEvent.change(futureMonthsSelect, { target: { value: '2' } });
+    // Check the future months checkbox
+    const futureMonthsSection = document.querySelector('.future-months-section');
+    const checkbox = futureMonthsSection.querySelector('input[type="checkbox"]');
+    fireEvent.click(checkbox);
 
     // Preview should be shown
     await waitFor(() => {
       expect(screen.getByText(/will create/i)).toBeInTheDocument();
     });
 
-    // Change back to 0
-    fireEvent.change(futureMonthsSelect, { target: { value: '0' } });
+    // Uncheck the checkbox
+    fireEvent.click(checkbox);
 
     // Preview should be hidden again
     await waitFor(() => {

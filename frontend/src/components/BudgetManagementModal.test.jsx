@@ -2,9 +2,11 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import BudgetManagementModal from './BudgetManagementModal';
 import * as budgetApi from '../services/budgetApi';
+import * as categoriesApi from '../services/categoriesApi';
 
 // Mock the budget API
 vi.mock('../services/budgetApi');
+vi.mock('../services/categoriesApi');
 
 describe('BudgetManagementModal', () => {
   const mockOnClose = vi.fn();
@@ -32,17 +34,8 @@ describe('BudgetManagementModal', () => {
     vi.clearAllMocks();
     budgetApi.getBudgets.mockResolvedValue({ budgets: mockBudgets });
     budgetApi.getBudgetSuggestion.mockResolvedValue({ suggestedAmount: 300 });
-    
-    // Mock fetch for categories endpoint
-    global.fetch = vi.fn((url) => {
-      if (url.includes('/api/categories')) {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({ budgetableCategories: mockBudgetableCategories })
-        });
-      }
-      return Promise.reject(new Error('Unknown endpoint'));
-    });
+    budgetApi.getBudgetSummary.mockResolvedValue({ totalBudget: 700, totalSpent: 350, categories: [] });
+    categoriesApi.getCategories.mockResolvedValue(mockBudgetableCategories);
   });
 
   afterEach(() => {

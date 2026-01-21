@@ -178,8 +178,8 @@ describe('PersonAllocationModal', () => {
       fireEvent.click(screen.getByText('Save Allocation'));
       
       expect(mockOnSave).toHaveBeenCalledWith([
-        { id: 1, name: 'John Doe', amount: 50 },
-        { id: 2, name: 'Jane Doe', amount: 50 }
+        { id: 1, name: 'John Doe', amount: 50, originalAmount: null },
+        { id: 2, name: 'Jane Doe', amount: 50, originalAmount: null }
       ]);
     });
 

@@ -267,7 +267,7 @@ describe('SearchBar Visual Regression Tests', () => {
       expect(inputWrapper).toBeTruthy();
 
       const dropdownWrappers = container.querySelectorAll('.filter-dropdown-wrapper');
-      expect(dropdownWrappers.length).toBe(2);
+      expect(dropdownWrappers.length).toBe(3); // category, payment method, and year filters
     });
 
     it('should maintain structure with all filters active', () => {
@@ -283,7 +283,7 @@ describe('SearchBar Visual Regression Tests', () => {
 
       // Verify all elements are present
       expect(container.querySelector('.search-input-wrapper')).toBeTruthy();
-      expect(container.querySelectorAll('.filter-dropdown-wrapper').length).toBe(2);
+      expect(container.querySelectorAll('.filter-dropdown-wrapper').length).toBe(3); // category, payment method, and year filters
       expect(screen.getByRole('button', { name: /clear all filters/i })).toBeTruthy();
     });
   });

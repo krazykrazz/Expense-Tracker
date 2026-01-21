@@ -17,7 +17,9 @@ vi.mock('../config', () => ({
 // Mock the API services
 vi.mock('../services/expenseApi', () => ({
   createExpense: vi.fn(() => Promise.resolve({ id: 1 })),
-  updateExpense: vi.fn(() => Promise.resolve({ id: 123 }))
+  updateExpense: vi.fn(() => Promise.resolve({ id: 123 })),
+  getPlaces: vi.fn(() => Promise.resolve(['Clinic', 'Hospital'])),
+  getExpenseWithPeople: vi.fn(() => Promise.resolve(null))
 }));
 
 vi.mock('../services/peopleApi', () => ({
@@ -31,12 +33,27 @@ vi.mock('../services/categorySuggestionApi', () => ({
   fetchCategorySuggestion: vi.fn(() => Promise.resolve(null))
 }));
 
+vi.mock('../services/categoriesApi', () => ({
+  getCategories: vi.fn(() => Promise.resolve(['Other', 'Tax - Medical', 'Groceries']))
+}));
+
+vi.mock('../services/invoiceApi', () => ({
+  getInvoicesForExpense: vi.fn((expenseId) => {
+    // Return invoice for expense 123 (used in the editing test)
+    if (expenseId === 123) {
+      return Promise.resolve([{ id: 1, filename: 'existing.pdf' }]);
+    }
+    return Promise.resolve([]);
+  }),
+  updateInvoicePersonLink: vi.fn(() => Promise.resolve({}))
+}));
+
 // Mock InvoiceUpload component
 vi.mock('./InvoiceUpload', () => ({
-  default: ({ expenseId, existingInvoice, onInvoiceUploaded, onInvoiceDeleted, disabled }) => (
+  default: ({ expenseId, existingInvoices, onInvoiceUploaded, onInvoiceDeleted, disabled }) => (
     <div data-testid="invoice-upload">
       <div>ExpenseId: {expenseId || 'null'}</div>
-      <div>HasInvoice: {existingInvoice ? 'true' : 'false'}</div>
+      <div>HasInvoice: {existingInvoices && existingInvoices.length > 0 ? 'true' : 'false'}</div>
       <div>Disabled: {disabled ? 'true' : 'false'}</div>
       <button onClick={() => onInvoiceUploaded({ id: 1, filename: 'test.pdf' })}>
         Mock Upload
@@ -152,7 +169,7 @@ describe('ExpenseForm - Invoice Integration', () => {
     fireEvent.change(fileInput, { target: { files: [invalidFile] } });
 
     await waitFor(() => {
-      expect(screen.getByText('Only PDF files are allowed')).toBeInTheDocument();
+      expect(screen.getByText(/not a PDF file/)).toBeInTheDocument();
     });
 
     // Test file too large (create a mock file over 10MB)
@@ -162,7 +179,7 @@ describe('ExpenseForm - Invoice Integration', () => {
     fireEvent.change(fileInput, { target: { files: [largeFile] } });
 
     await waitFor(() => {
-      expect(screen.getByText(/exceeds the 10MB limit/)).toBeInTheDocument();
+      expect(screen.getByText(/exceeds 10MB limit/)).toBeInTheDocument();
     });
   });
 

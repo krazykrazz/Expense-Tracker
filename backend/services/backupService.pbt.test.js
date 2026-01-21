@@ -1048,3 +1048,386 @@ describe('BackupService - Property-Based Tests', () => {
     }
   }, 300000); // Longer timeout due to delays between backups
 });
+
+
+/**
+ * Feature: medical-insurance-tracking, Property 12: Backup/Restore Round-Trip
+ * **Validates: Requirements 9.1, 9.2, 9.3**
+ * 
+ * For any expense with insurance data, creating a backup and restoring from that backup 
+ * SHALL produce an expense with identical values for all fields including insurance_eligible, 
+ * claim_status, original_cost, and amount.
+ */
+describe('Medical Insurance Tracking - Backup/Restore', () => {
+  const testBackupPath = path.join(__dirname, '../../test-pbt-insurance-backup');
+  const expenseRepository = require('../repositories/expenseRepository');
+  
+  beforeAll(async () => {
+    // Initialize the real database for backup tests
+    await initializeDatabase();
+    
+    // Create test backup directory
+    if (!fs.existsSync(testBackupPath)) {
+      fs.mkdirSync(testBackupPath, { recursive: true });
+    }
+  });
+
+  afterAll(async () => {
+    // Clean up test backup directory
+    if (fs.existsSync(testBackupPath)) {
+      const files = fs.readdirSync(testBackupPath);
+      files.forEach(file => {
+        fs.unlinkSync(path.join(testBackupPath, file));
+      });
+      fs.rmdirSync(testBackupPath);
+    }
+  });
+
+  beforeEach(async () => {
+    // Clean up any existing test expenses in the test year range to avoid conflicts
+    const { getDatabase } = require('../database/db');
+    const db = await getDatabase();
+    
+    await new Promise((resolve, reject) => {
+      db.run("DELETE FROM expenses WHERE strftime('%Y', date) >= '2095' AND strftime('%Y', date) <= '2099'", (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+  });
+
+  test('Property 12: Backup/Restore Round-Trip - insurance data is preserved after backup and restore', async () => {
+    // Define arbitrary for valid claim statuses
+    const claimStatusArb = fc.constantFrom('not_claimed', 'in_progress', 'paid', 'denied', null);
+    
+    // Define arbitrary for generating valid medical expenses with insurance data
+    const medicalExpenseArb = fc.record({
+      date: fc.integer({ min: 2095, max: 2099 }).chain(year => 
+        fc.integer({ min: 1, max: 12 }).chain(month => 
+          fc.integer({ min: 1, max: 28 }).map(day => 
+            `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+          )
+        )
+      ),
+      place: fc.string({ minLength: 1, maxLength: 50, unit: 'grapheme-ascii' })
+        .filter(s => /^[a-zA-Z0-9\s]+$/.test(s) && s.trim().length > 0)
+        .map(s => s.trim()),
+      notes: fc.option(
+        fc.string({ minLength: 1, maxLength: 100, unit: 'grapheme-ascii' })
+          .filter(s => /^[a-zA-Z0-9\s]+$/.test(s))
+          .map(s => s.trim()),
+        { nil: null }
+      ),
+      amount: fc.float({ min: Math.fround(0.01), max: Math.fround(5000), noNaN: true, noDefaultInfinity: true }),
+      type: fc.constant('Tax - Medical'),
+      method: fc.constantFrom('Cash', 'Debit', 'CIBC MC', 'PCF MC', 'WS VISA', 'VISA'),
+      insurance_eligible: fc.boolean(),
+      claim_status: claimStatusArb,
+      original_cost: fc.float({ min: Math.fround(0.01), max: Math.fround(10000), noNaN: true, noDefaultInfinity: true })
+    }).map(expense => {
+      // Ensure amount <= original_cost when insurance is eligible
+      if (expense.insurance_eligible && expense.original_cost !== null) {
+        // Make sure amount doesn't exceed original_cost
+        expense.amount = Math.min(expense.amount, expense.original_cost);
+      }
+      // If not insurance eligible, clear insurance-specific fields
+      if (!expense.insurance_eligible) {
+        expense.claim_status = null;
+        expense.original_cost = null;
+      }
+      return expense;
+    });
+
+    // Generate an array of 1-3 medical expenses with insurance data
+    const expensesArrayArb = fc.array(medicalExpenseArb, { minLength: 1, maxLength: 3 });
+
+    await fc.assert(
+      fc.asyncProperty(expensesArrayArb, async (expenses) => {
+        const createdExpenses = [];
+        
+        try {
+          // Step 1: Create medical expenses with insurance data in the database
+          for (const expense of expenses) {
+            // Calculate week from date
+            const dateObj = new Date(expense.date);
+            const dayOfMonth = dateObj.getDate();
+            const week = Math.min(Math.ceil(dayOfMonth / 7), 5);
+            
+            const expenseWithWeek = {
+              ...expense,
+              week
+            };
+            
+            const created = await expenseRepository.create(expenseWithWeek);
+            createdExpenses.push({
+              ...created,
+              // Store original values for comparison
+              originalInsuranceEligible: expense.insurance_eligible,
+              originalClaimStatus: expense.claim_status,
+              originalOriginalCost: expense.original_cost,
+              originalAmount: expense.amount
+            });
+          }
+
+          // Step 2: Perform backup
+          const backupResult = await backupService.performBackup(testBackupPath);
+          expect(backupResult.success).toBe(true);
+
+          // Step 3: Delete all created expenses
+          for (const expense of createdExpenses) {
+            await expenseRepository.delete(expense.id);
+          }
+
+          // Verify expenses are deleted
+          for (const expense of createdExpenses) {
+            const found = await expenseRepository.findById(expense.id);
+            expect(found).toBeNull();
+          }
+
+          // Step 4: Restore from backup
+          const restoreResult = await backupService.restoreBackup(backupResult.path);
+          expect(restoreResult.success).toBe(true);
+
+          // Reinitialize database connection after restore
+          await initializeDatabase();
+
+          // Step 5: Verify all expenses are restored with identical insurance data
+          for (const originalExpense of createdExpenses) {
+            // First try by ID
+            let restored = await expenseRepository.findById(originalExpense.id);
+            
+            // If not found by ID, search by date and place
+            if (!restored) {
+              const { getDatabase } = require('../database/db');
+              const db = await getDatabase();
+              restored = await new Promise((resolve, reject) => {
+                db.get(
+                  'SELECT * FROM expenses WHERE date = ? AND place = ? AND type = ?',
+                  [originalExpense.date, originalExpense.place, originalExpense.type],
+                  (err, row) => {
+                    if (err) reject(err);
+                    else resolve(row || null);
+                  }
+                );
+              });
+            }
+            
+            expect(restored).not.toBeNull();
+            
+            if (restored) {
+              // Verify core expense fields
+              expect(restored.date).toBe(originalExpense.date);
+              expect(restored.place).toBe(originalExpense.place);
+              expect(restored.type).toBe(originalExpense.type);
+              expect(restored.method).toBe(originalExpense.method);
+              
+              // Verify amount with floating point tolerance
+              expect(restored.amount).toBeCloseTo(originalExpense.originalAmount, 2);
+              
+              // Verify insurance_eligible field (Requirements 9.1, 9.2)
+              const restoredInsuranceEligible = restored.insurance_eligible === 1 || restored.insurance_eligible === true;
+              expect(restoredInsuranceEligible).toBe(originalExpense.originalInsuranceEligible);
+              
+              // Verify claim_status field (Requirements 9.1, 9.2)
+              expect(restored.claim_status).toBe(originalExpense.originalClaimStatus);
+              
+              // Verify original_cost field (Requirements 9.1, 9.2)
+              if (originalExpense.originalOriginalCost !== null) {
+                expect(restored.original_cost).toBeCloseTo(originalExpense.originalOriginalCost, 2);
+              } else {
+                expect(restored.original_cost).toBeNull();
+              }
+              
+              // Verify round-trip property (Requirement 9.3)
+              // Serializing then deserializing produces equivalent object
+              const roundTripValid = 
+                restoredInsuranceEligible === originalExpense.originalInsuranceEligible &&
+                restored.claim_status === originalExpense.originalClaimStatus &&
+                (originalExpense.originalOriginalCost === null 
+                  ? restored.original_cost === null 
+                  : Math.abs(restored.original_cost - originalExpense.originalOriginalCost) < 0.01) &&
+                Math.abs(restored.amount - originalExpense.originalAmount) < 0.01;
+              
+              expect(roundTripValid).toBe(true);
+            }
+          }
+
+          // Clean up: delete restored expenses
+          for (const expense of createdExpenses) {
+            try {
+              await expenseRepository.delete(expense.id);
+            } catch (err) {
+              // Expense might not exist, ignore
+            }
+          }
+
+          return true;
+        } catch (error) {
+          // Clean up on error
+          for (const expense of createdExpenses) {
+            try {
+              await expenseRepository.delete(expense.id);
+            } catch (err) {
+              // Ignore cleanup errors
+            }
+          }
+          throw error;
+        }
+      }),
+      { numRuns: 100 }
+    );
+  }, 300000); // Longer timeout for comprehensive round-trip test with 100 iterations
+
+  test('Property 12 (Edge Case): Non-eligible expenses preserve null insurance fields after backup/restore', async () => {
+    // Test specifically for non-insurance-eligible medical expenses
+    const nonEligibleExpenseArb = fc.record({
+      date: fc.integer({ min: 2095, max: 2099 }).chain(year => 
+        fc.integer({ min: 1, max: 12 }).chain(month => 
+          fc.integer({ min: 1, max: 28 }).map(day => 
+            `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+          )
+        )
+      ),
+      place: fc.string({ minLength: 1, maxLength: 50, unit: 'grapheme-ascii' })
+        .filter(s => /^[a-zA-Z0-9\s]+$/.test(s) && s.trim().length > 0)
+        .map(s => s.trim()),
+      notes: fc.constant(null),
+      amount: fc.float({ min: Math.fround(0.01), max: Math.fround(5000), noNaN: true, noDefaultInfinity: true }),
+      type: fc.constant('Tax - Medical'),
+      method: fc.constantFrom('Cash', 'Debit', 'CIBC MC'),
+      insurance_eligible: fc.constant(false), // Always not eligible
+      claim_status: fc.constant(null),
+      original_cost: fc.constant(null)
+    });
+
+    await fc.assert(
+      fc.asyncProperty(nonEligibleExpenseArb, async (expense) => {
+        let createdExpense = null;
+        
+        try {
+          // Calculate week from date
+          const dateObj = new Date(expense.date);
+          const dayOfMonth = dateObj.getDate();
+          const week = Math.min(Math.ceil(dayOfMonth / 7), 5);
+          
+          const expenseWithWeek = { ...expense, week };
+          
+          // Step 1: Create non-eligible expense
+          createdExpense = await expenseRepository.create(expenseWithWeek);
+
+          // Step 2: Perform backup
+          const backupResult = await backupService.performBackup(testBackupPath);
+          expect(backupResult.success).toBe(true);
+
+          // Step 3: Delete expense
+          await expenseRepository.delete(createdExpense.id);
+
+          // Step 4: Restore from backup
+          const restoreResult = await backupService.restoreBackup(backupResult.path);
+          expect(restoreResult.success).toBe(true);
+
+          // Reinitialize database connection after restore
+          await initializeDatabase();
+
+          // Step 5: Verify expense is restored with null insurance fields
+          const restored = await expenseRepository.findById(createdExpense.id);
+          expect(restored).not.toBeNull();
+          
+          if (restored) {
+            // Verify insurance_eligible is false (0)
+            const restoredInsuranceEligible = restored.insurance_eligible === 1 || restored.insurance_eligible === true;
+            expect(restoredInsuranceEligible).toBe(false);
+            
+            // Verify claim_status is null
+            expect(restored.claim_status).toBeNull();
+            
+            // Verify original_cost is null
+            expect(restored.original_cost).toBeNull();
+          }
+
+          // Clean up
+          try {
+            await expenseRepository.delete(createdExpense.id);
+          } catch (err) {
+            // Ignore cleanup errors
+          }
+
+          return true;
+        } catch (error) {
+          // Clean up on error
+          if (createdExpense) {
+            try {
+              await expenseRepository.delete(createdExpense.id);
+            } catch (err) {
+              // Ignore cleanup errors
+            }
+          }
+          throw error;
+        }
+      }),
+      { numRuns: 50 }
+    );
+  }, 180000);
+
+  test('Property 12 (Edge Case): All claim statuses are preserved after backup/restore', async () => {
+    // Test each claim status value explicitly
+    const claimStatuses = ['not_claimed', 'in_progress', 'paid', 'denied'];
+    
+    for (const claimStatus of claimStatuses) {
+      let createdExpense = null;
+      
+      try {
+        // Create expense with specific claim status
+        const expense = {
+          date: '2097-06-15',
+          place: `Test Provider ${claimStatus}`,
+          notes: null,
+          amount: 50.00,
+          type: 'Tax - Medical',
+          method: 'Cash',
+          week: 3,
+          insurance_eligible: true,
+          claim_status: claimStatus,
+          original_cost: 100.00
+        };
+        
+        createdExpense = await expenseRepository.create(expense);
+
+        // Perform backup
+        const backupResult = await backupService.performBackup(testBackupPath);
+        expect(backupResult.success).toBe(true);
+
+        // Delete expense
+        await expenseRepository.delete(createdExpense.id);
+
+        // Restore from backup
+        const restoreResult = await backupService.restoreBackup(backupResult.path);
+        expect(restoreResult.success).toBe(true);
+
+        // Reinitialize database connection after restore
+        await initializeDatabase();
+
+        // Verify claim status is preserved
+        const restored = await expenseRepository.findById(createdExpense.id);
+        expect(restored).not.toBeNull();
+        expect(restored.claim_status).toBe(claimStatus);
+        expect(restored.insurance_eligible).toBe(1);
+        expect(restored.original_cost).toBeCloseTo(100.00, 2);
+        expect(restored.amount).toBeCloseTo(50.00, 2);
+
+        // Clean up
+        await expenseRepository.delete(createdExpense.id);
+      } catch (error) {
+        // Clean up on error
+        if (createdExpense) {
+          try {
+            await expenseRepository.delete(createdExpense.id);
+          } catch (err) {
+            // Ignore cleanup errors
+          }
+        }
+        throw error;
+      }
+    }
+  }, 120000);
+});

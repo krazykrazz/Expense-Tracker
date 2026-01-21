@@ -2427,6 +2427,346 @@ async function migrateLinkInvoicesToSinglePerson(db) {
 }
 
 /**
+ * Migration: Add insurance tracking fields to expenses table
+ * 
+ * Adds the following columns to the expenses table:
+ * - insurance_eligible INTEGER DEFAULT 0 (0 = not eligible, 1 = eligible)
+ * - claim_status TEXT DEFAULT NULL with CHECK constraint for valid values
+ * - original_cost REAL DEFAULT NULL (original cost before reimbursement)
+ * 
+ * For existing medical expenses:
+ * - Sets insurance_eligible = 0
+ * - Sets original_cost = amount (preserves original amount)
+ */
+async function migrateAddInsuranceFieldsToExpenses(db) {
+  const migrationName = 'add_insurance_fields_to_expenses_v1';
+  
+  // Check if already applied
+  const isApplied = await checkMigrationApplied(db, migrationName);
+  if (isApplied) {
+    logger.info(`Migration "${migrationName}" already applied, skipping`);
+    return;
+  }
+
+  logger.info(`Running migration: ${migrationName}`);
+
+  // Create backup
+  await createBackup();
+
+  return new Promise((resolve, reject) => {
+    db.serialize(() => {
+      db.run('BEGIN TRANSACTION', (err) => {
+        if (err) {
+          return reject(err);
+        }
+
+        // Check if expenses table exists
+        db.get(
+          "SELECT name FROM sqlite_master WHERE type='table' AND name='expenses'",
+          (err, row) => {
+            if (err) {
+              db.run('ROLLBACK');
+              return reject(err);
+            }
+
+            if (!row) {
+              logger.info('expenses table does not exist, skipping migration');
+              markMigrationApplied(db, migrationName).then(() => {
+                db.run('COMMIT', (err) => {
+                  if (err) {
+                    db.run('ROLLBACK');
+                    return reject(err);
+                  }
+                  logger.info(`Migration "${migrationName}" completed successfully`);
+                  resolve();
+                });
+              }).catch(reject);
+              return;
+            }
+
+            // Check if columns already exist
+            db.all('PRAGMA table_info(expenses)', (err, columns) => {
+              if (err) {
+                db.run('ROLLBACK');
+                return reject(err);
+              }
+
+              const hasInsuranceEligible = columns.some(col => col.name === 'insurance_eligible');
+              const hasClaimStatus = columns.some(col => col.name === 'claim_status');
+              const hasOriginalCost = columns.some(col => col.name === 'original_cost');
+
+              if (hasInsuranceEligible && hasClaimStatus && hasOriginalCost) {
+                logger.info('expenses table already has insurance fields');
+                markMigrationApplied(db, migrationName).then(() => {
+                  db.run('COMMIT', (err) => {
+                    if (err) {
+                      db.run('ROLLBACK');
+                      return reject(err);
+                    }
+                    logger.info(`Migration "${migrationName}" completed successfully`);
+                    resolve();
+                  });
+                }).catch(reject);
+                return;
+              }
+
+              // Add insurance_eligible column
+              const addInsuranceEligible = () => {
+                if (hasInsuranceEligible) {
+                  return Promise.resolve();
+                }
+                return new Promise((res, rej) => {
+                  db.run(`
+                    ALTER TABLE expenses 
+                    ADD COLUMN insurance_eligible INTEGER DEFAULT 0
+                  `, (err) => {
+                    if (err) {
+                      rej(err);
+                    } else {
+                      logger.info('Added insurance_eligible column to expenses');
+                      res();
+                    }
+                  });
+                });
+              };
+
+              // Add claim_status column with CHECK constraint
+              const addClaimStatus = () => {
+                if (hasClaimStatus) {
+                  return Promise.resolve();
+                }
+                return new Promise((res, rej) => {
+                  db.run(`
+                    ALTER TABLE expenses 
+                    ADD COLUMN claim_status TEXT DEFAULT NULL 
+                    CHECK(claim_status IS NULL OR claim_status IN ('not_claimed', 'in_progress', 'paid', 'denied'))
+                  `, (err) => {
+                    if (err) {
+                      rej(err);
+                    } else {
+                      logger.info('Added claim_status column to expenses');
+                      res();
+                    }
+                  });
+                });
+              };
+
+              // Add original_cost column
+              const addOriginalCost = () => {
+                if (hasOriginalCost) {
+                  return Promise.resolve();
+                }
+                return new Promise((res, rej) => {
+                  db.run(`
+                    ALTER TABLE expenses 
+                    ADD COLUMN original_cost REAL DEFAULT NULL
+                  `, (err) => {
+                    if (err) {
+                      rej(err);
+                    } else {
+                      logger.info('Added original_cost column to expenses');
+                      res();
+                    }
+                  });
+                });
+              };
+
+              // Set original_cost = amount for existing medical expenses
+              const setOriginalCostForMedical = () => {
+                return new Promise((res, rej) => {
+                  db.run(`
+                    UPDATE expenses 
+                    SET original_cost = amount 
+                    WHERE type = 'Tax - Medical' AND original_cost IS NULL
+                  `, function(err) {
+                    if (err) {
+                      rej(err);
+                    } else {
+                      if (this.changes > 0) {
+                        logger.info(`Set original_cost = amount for ${this.changes} existing medical expense(s)`);
+                      }
+                      res();
+                    }
+                  });
+                });
+              };
+
+              // Execute all column additions sequentially
+              addInsuranceEligible()
+                .then(() => addClaimStatus())
+                .then(() => addOriginalCost())
+                .then(() => setOriginalCostForMedical())
+                .then(() => {
+                  // Create index for insurance_eligible for better query performance
+                  db.run('CREATE INDEX IF NOT EXISTS idx_expenses_insurance_eligible ON expenses(insurance_eligible)', (err) => {
+                    if (err) {
+                      db.run('ROLLBACK');
+                      return reject(err);
+                    }
+                    
+                    // Create index for claim_status
+                    db.run('CREATE INDEX IF NOT EXISTS idx_expenses_claim_status ON expenses(claim_status)', (err) => {
+                      if (err) {
+                        db.run('ROLLBACK');
+                        return reject(err);
+                      }
+
+                      logger.info('Created indexes for insurance fields');
+
+                      // Mark migration as applied and commit
+                      markMigrationApplied(db, migrationName).then(() => {
+                        db.run('COMMIT', (err) => {
+                          if (err) {
+                            db.run('ROLLBACK');
+                            return reject(err);
+                          }
+                          logger.info(`Migration "${migrationName}" completed successfully`);
+                          resolve();
+                        });
+                      }).catch(reject);
+                    });
+                  });
+                })
+                .catch((err) => {
+                  db.run('ROLLBACK');
+                  reject(err);
+                });
+            });
+          }
+        );
+      });
+    });
+  });
+}
+
+/**
+ * Migration: Add original_amount column to expense_people table
+ * 
+ * Adds the original_amount column to track the original cost allocation per person
+ * before any insurance reimbursement.
+ * 
+ * For existing allocations:
+ * - Sets original_amount = amount (preserves original allocation)
+ */
+async function migrateAddOriginalAmountToExpensePeople(db) {
+  const migrationName = 'add_original_amount_to_expense_people_v1';
+  
+  // Check if already applied
+  const isApplied = await checkMigrationApplied(db, migrationName);
+  if (isApplied) {
+    logger.info(`Migration "${migrationName}" already applied, skipping`);
+    return;
+  }
+
+  logger.info(`Running migration: ${migrationName}`);
+
+  // Create backup
+  await createBackup();
+
+  return new Promise((resolve, reject) => {
+    db.serialize(() => {
+      db.run('BEGIN TRANSACTION', (err) => {
+        if (err) {
+          return reject(err);
+        }
+
+        // Check if expense_people table exists
+        db.get(
+          "SELECT name FROM sqlite_master WHERE type='table' AND name='expense_people'",
+          (err, row) => {
+            if (err) {
+              db.run('ROLLBACK');
+              return reject(err);
+            }
+
+            if (!row) {
+              logger.info('expense_people table does not exist, skipping migration');
+              markMigrationApplied(db, migrationName).then(() => {
+                db.run('COMMIT', (err) => {
+                  if (err) {
+                    db.run('ROLLBACK');
+                    return reject(err);
+                  }
+                  logger.info(`Migration "${migrationName}" completed successfully`);
+                  resolve();
+                });
+              }).catch(reject);
+              return;
+            }
+
+            // Check if original_amount column already exists
+            db.all('PRAGMA table_info(expense_people)', (err, columns) => {
+              if (err) {
+                db.run('ROLLBACK');
+                return reject(err);
+              }
+
+              const hasOriginalAmount = columns.some(col => col.name === 'original_amount');
+
+              if (hasOriginalAmount) {
+                logger.info('expense_people table already has original_amount column');
+                markMigrationApplied(db, migrationName).then(() => {
+                  db.run('COMMIT', (err) => {
+                    if (err) {
+                      db.run('ROLLBACK');
+                      return reject(err);
+                    }
+                    logger.info(`Migration "${migrationName}" completed successfully`);
+                    resolve();
+                  });
+                }).catch(reject);
+                return;
+              }
+
+              // Add original_amount column
+              db.run(`
+                ALTER TABLE expense_people 
+                ADD COLUMN original_amount REAL DEFAULT NULL
+              `, (err) => {
+                if (err) {
+                  db.run('ROLLBACK');
+                  return reject(err);
+                }
+                
+                logger.info('Added original_amount column to expense_people');
+
+                // Set original_amount = amount for existing allocations
+                db.run(`
+                  UPDATE expense_people 
+                  SET original_amount = amount 
+                  WHERE original_amount IS NULL
+                `, function(err) {
+                  if (err) {
+                    db.run('ROLLBACK');
+                    return reject(err);
+                  }
+
+                  if (this.changes > 0) {
+                    logger.info(`Set original_amount = amount for ${this.changes} existing allocation(s)`);
+                  }
+
+                  // Mark migration as applied and commit
+                  markMigrationApplied(db, migrationName).then(() => {
+                    db.run('COMMIT', (err) => {
+                      if (err) {
+                        db.run('ROLLBACK');
+                        return reject(err);
+                      }
+                      logger.info(`Migration "${migrationName}" completed successfully`);
+                      resolve();
+                    });
+                  }).catch(reject);
+                });
+              });
+            });
+          }
+        );
+      });
+    });
+  });
+}
+
+/**
  * Run all pending migrations
  */
 async function runMigrations(db) {
@@ -2446,6 +2786,8 @@ async function runMigrations(db) {
     await migrateAddExpenseInvoicesTable(db);
     await migrateMultiInvoiceSupport(db);
     await migrateLinkInvoicesToSinglePerson(db);
+    await migrateAddInsuranceFieldsToExpenses(db);
+    await migrateAddOriginalAmountToExpensePeople(db);
     logger.info('All migrations completed');
   } catch (error) {
     logger.error('Migration failed:', error.message);
@@ -2460,5 +2802,7 @@ module.exports = {
   migrateAddPeopleTables,
   migrateAddExpenseInvoicesTable,
   migrateMultiInvoiceSupport,
-  migrateLinkInvoicesToSinglePerson
+  migrateLinkInvoicesToSinglePerson,
+  migrateAddInsuranceFieldsToExpenses,
+  migrateAddOriginalAmountToExpensePeople
 };

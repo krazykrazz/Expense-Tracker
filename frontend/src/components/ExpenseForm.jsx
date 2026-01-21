@@ -109,6 +109,12 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
     method: expense?.method || getLastPaymentMethod() // Load last used payment method (Requirements 5.1)
   });
 
+  // Insurance tracking state for medical expenses (Requirements 1.1, 1.4, 2.1, 3.1, 3.2, 3.3, 3.4, 3.6)
+  const [insuranceEligible, setInsuranceEligible] = useState(expense?.insurance_eligible === 1 || false);
+  const [claimStatus, setClaimStatus] = useState(expense?.claim_status || 'not_claimed');
+  const [originalCost, setOriginalCost] = useState(expense?.original_cost?.toString() || '');
+  const [insuranceValidationError, setInsuranceValidationError] = useState('');
+
   const [message, setMessage] = useState({ text: '', type: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [places, setPlaces] = useState([]);
@@ -266,6 +272,11 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
       }
     }
 
+    // Validate insurance amounts when amount changes (Requirement 3.5)
+    if (name === 'amount' && insuranceEligible) {
+      validateInsuranceAmounts(value, originalCost);
+    }
+
     // Clear suggestion indicator when user manually changes category (Requirements 2.4)
     if (name === 'type') {
       setIsCategorySuggested(false);
@@ -273,6 +284,11 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
       if (value !== 'Tax - Medical') {
         setSelectedPeople([]);
         setExpensePeople([]);
+        // Reset insurance fields when changing away from medical expenses
+        setInsuranceEligible(false);
+        setClaimStatus('not_claimed');
+        setOriginalCost('');
+        setInsuranceValidationError('');
       }
       // Clear invoices when changing away from tax-deductible expenses
       if (value !== 'Tax - Medical' && value !== 'Tax - Donation') {
@@ -289,6 +305,70 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
       name: option.text
     }));
     setSelectedPeople(selectedOptions);
+  };
+
+  // Handle insurance eligibility toggle (Requirements 1.1, 1.2, 1.3, 2.4, 2.5)
+  const handleInsuranceEligibleChange = (e) => {
+    const eligible = e.target.checked;
+    setInsuranceEligible(eligible);
+    
+    if (eligible) {
+      // Set defaults when enabling insurance (Requirements 1.2, 2.4, 2.5)
+      setClaimStatus('not_claimed');
+      // Set original_cost to current amount if not already set
+      if (!originalCost && formData.amount) {
+        setOriginalCost(formData.amount);
+      }
+    } else {
+      // Clear insurance fields when disabling
+      setClaimStatus('not_claimed');
+      setOriginalCost('');
+      setInsuranceValidationError('');
+    }
+  };
+
+  // Handle original cost change (Requirements 3.1, 3.5)
+  const handleOriginalCostChange = (e) => {
+    const value = e.target.value;
+    setOriginalCost(value);
+    
+    // Validate amount <= original_cost (Requirement 3.5)
+    validateInsuranceAmounts(formData.amount, value);
+  };
+
+  // Handle claim status change (Requirements 2.1, 2.2, 2.3)
+  const handleClaimStatusChange = (e) => {
+    const status = e.target.value;
+    setClaimStatus(status);
+    // Clear validation error when status changes
+    setInsuranceValidationError('');
+  };
+
+  // Validate insurance amounts (Requirement 3.5)
+  const validateInsuranceAmounts = (amount, origCost) => {
+    if (!insuranceEligible) {
+      setInsuranceValidationError('');
+      return true;
+    }
+    
+    const amountNum = parseFloat(amount) || 0;
+    const origCostNum = parseFloat(origCost) || 0;
+    
+    if (origCostNum > 0 && amountNum > origCostNum) {
+      setInsuranceValidationError('Out-of-pocket amount cannot exceed original cost');
+      return false;
+    }
+    
+    setInsuranceValidationError('');
+    return true;
+  };
+
+  // Calculate reimbursement (Requirement 3.6)
+  const calculateReimbursement = () => {
+    if (!insuranceEligible || !originalCost || !formData.amount) return 0;
+    const origCostNum = parseFloat(originalCost) || 0;
+    const amountNum = parseFloat(formData.amount) || 0;
+    return Math.max(0, origCostNum - amountNum);
   };
 
   // Handle person allocation modal save
@@ -470,6 +550,22 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
       return false;
     }
     
+    // Insurance validation for medical expenses (Requirement 3.5)
+    if (isMedicalExpense && insuranceEligible) {
+      const amountNum = parseFloat(formData.amount) || 0;
+      const origCostNum = parseFloat(originalCost) || 0;
+      
+      if (origCostNum <= 0) {
+        setMessage({ text: 'Original cost is required for insurance-eligible expenses', type: 'error' });
+        return false;
+      }
+      
+      if (amountNum > origCostNum) {
+        setMessage({ text: 'Out-of-pocket amount cannot exceed original cost', type: 'error' });
+        return false;
+      }
+    }
+    
     return true;
   };
 
@@ -491,20 +587,35 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
     isSubmittingRef.current = true; // Mark that we're submitting to prevent blur handler
 
     try {
+      // Prepare form data with insurance fields for medical expenses (Requirements 1.3, 2.3)
+      const expenseFormData = {
+        ...formData,
+        // Add insurance fields for medical expenses
+        ...(isMedicalExpense && {
+          insurance_eligible: insuranceEligible,
+          claim_status: insuranceEligible ? claimStatus : null,
+          original_cost: insuranceEligible && originalCost ? parseFloat(originalCost) : null
+        })
+      };
+
       // Prepare people allocations for medical expenses
       let peopleAllocations = null;
       if (isMedicalExpense && selectedPeople.length > 0) {
         if (selectedPeople.length === 1) {
-          // Single person - assign full amount
+          // Single person - assign full amount (and original_amount for insurance)
+          // Note: selectedPeople may have 'id' (from dropdown selection) or 'personId' (from backend)
           peopleAllocations = [{
-            personId: selectedPeople[0].id,
-            amount: parseFloat(formData.amount)
+            personId: selectedPeople[0].id || selectedPeople[0].personId,
+            amount: parseFloat(formData.amount),
+            originalAmount: insuranceEligible && originalCost ? parseFloat(originalCost) : null
           }];
         } else {
-          // Multiple people - use allocated amounts
+          // Multiple people - use allocated amounts (with original_amount for insurance)
+          // Note: selectedPeople may have 'id' (from dropdown selection) or 'personId' (from backend)
           peopleAllocations = selectedPeople.map(person => ({
-            personId: person.id,
-            amount: person.amount
+            personId: person.id || person.personId,
+            amount: person.amount,
+            originalAmount: person.originalAmount || null
           }));
         }
       }
@@ -514,7 +625,7 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
       
       if (isEditing) {
         // Update existing expense with optional future months
-        const result = await updateExpense(expense.id, formData, peopleAllocations, futureMonths);
+        const result = await updateExpense(expense.id, expenseFormData, peopleAllocations, futureMonths);
         // Handle response format - may include futureExpenses array
         if (result.expense) {
           newExpense = result.expense;
@@ -524,7 +635,7 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
         }
       } else {
         // Create new expense with optional future months
-        const result = await createExpense(formData, peopleAllocations, futureMonths);
+        const result = await createExpense(expenseFormData, peopleAllocations, futureMonths);
         // Handle response format - may include futureExpenses array
         if (result.expense) {
           newExpense = result.expense;
@@ -622,6 +733,12 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
         setInvoices([]);
         setInvoiceFiles([]);
         setExpensePeople([]);
+        
+        // Reset insurance fields
+        setInsuranceEligible(false);
+        setClaimStatus('not_claimed');
+        setOriginalCost('');
+        setInsuranceValidationError('');
         
         // Reset future months to 0 (Requirements 1.7)
         setFutureMonths(0);
@@ -784,6 +901,117 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
                 Selected: {selectedPeople.map(p => p.name).join(', ')}
                 {selectedPeople.length > 1 && (
                   <span className="allocation-note"> (allocation required)</span>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Insurance Section for Medical Expenses (Requirements 1.1, 1.4, 2.1, 3.1, 3.2, 3.3, 3.4, 3.6) */}
+        {isMedicalExpense && (
+          <div className="form-group insurance-section">
+            <label className="insurance-section-title">Insurance Tracking</label>
+            
+            {/* Insurance Eligibility Checkbox (Requirement 1.1) */}
+            <div className="insurance-eligibility-row">
+              <label className="insurance-checkbox">
+                <input
+                  type="checkbox"
+                  checked={insuranceEligible}
+                  onChange={handleInsuranceEligibleChange}
+                  disabled={isSubmitting}
+                />
+                <span>Eligible for Insurance Reimbursement</span>
+              </label>
+            </div>
+            
+            {/* Insurance Details (shown when eligible) */}
+            {insuranceEligible && (
+              <div className="insurance-details">
+                {/* Original Cost Field (Requirement 3.1) */}
+                <div className="insurance-field-row">
+                  <div className="insurance-field">
+                    <label htmlFor="originalCost">Original Cost</label>
+                    <div className="amount-input-wrapper">
+                      <span className="currency-symbol">$</span>
+                      <input
+                        type="number"
+                        id="originalCost"
+                        value={originalCost}
+                        onChange={handleOriginalCostChange}
+                        step="0.01"
+                        min="0.01"
+                        placeholder="0.00"
+                        disabled={isSubmitting}
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* Out-of-Pocket Display (read-only, shows Amount value) */}
+                  <div className="insurance-field">
+                    <label>Out-of-Pocket</label>
+                    <div className="out-of-pocket-display">
+                      ${formData.amount ? parseFloat(formData.amount).toFixed(2) : '0.00'}
+                    </div>
+                    <small className="field-hint">Set via Amount field above</small>
+                  </div>
+                </div>
+                
+                {/* Claim Status Dropdown (Requirement 2.1, 2.2) */}
+                <div className="insurance-field-row">
+                  <div className="insurance-field">
+                    <label htmlFor="claimStatus">Claim Status</label>
+                    <select
+                      id="claimStatus"
+                      value={claimStatus}
+                      onChange={handleClaimStatusChange}
+                      disabled={isSubmitting}
+                      className="claim-status-select"
+                    >
+                      <option value="not_claimed">Not Claimed</option>
+                      <option value="in_progress">In Progress</option>
+                      <option value="paid">Paid</option>
+                      <option value="denied">Denied</option>
+                    </select>
+                  </div>
+                  
+                  {/* Reimbursement Display (Requirement 3.6) */}
+                  <div className="insurance-field">
+                    <label>Reimbursement</label>
+                    <div className={`reimbursement-display ${calculateReimbursement() > 0 ? 'has-reimbursement' : ''}`}>
+                      ${calculateReimbursement().toFixed(2)}
+                    </div>
+                    <small className="field-hint">Original cost - Out-of-pocket</small>
+                  </div>
+                </div>
+                
+                {/* Insurance Validation Error (Requirement 3.5) */}
+                {insuranceValidationError && (
+                  <div className="insurance-validation-error">
+                    {insuranceValidationError}
+                  </div>
+                )}
+                
+                {/* Status Info Note */}
+                {claimStatus === 'paid' && (
+                  <div className="insurance-status-note insurance-status-paid">
+                    <small>✅ Claim paid. Enter your actual out-of-pocket cost after reimbursement.</small>
+                  </div>
+                )}
+                {claimStatus === 'denied' && (
+                  <div className="insurance-status-note insurance-status-denied">
+                    <small>❌ Claim denied. Out-of-pocket typically equals original cost.</small>
+                  </div>
+                )}
+                {claimStatus === 'in_progress' && (
+                  <div className="insurance-status-note">
+                    <small>⏳ Claim in progress. Update out-of-pocket when resolved.</small>
+                  </div>
+                )}
+                {claimStatus === 'not_claimed' && (
+                  <div className="insurance-status-note">
+                    <small>💡 Not yet claimed. Submit to insurance to track reimbursement.</small>
+                  </div>
                 )}
               </div>
             )}
@@ -982,6 +1210,8 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
         selectedPeople={selectedPeople}
         onSave={handlePersonAllocation}
         onCancel={() => setShowPersonAllocation(false)}
+        insuranceEligible={insuranceEligible}
+        originalCost={insuranceEligible && originalCost ? parseFloat(originalCost) : null}
       />
     </div>
   );

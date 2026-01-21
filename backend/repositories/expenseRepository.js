@@ -12,8 +12,8 @@ class ExpenseRepository {
     
     return new Promise((resolve, reject) => {
       const sql = `
-        INSERT INTO expenses (date, place, notes, amount, type, week, method)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO expenses (date, place, notes, amount, type, week, method, insurance_eligible, claim_status, original_cost)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
       
       const params = [
@@ -23,7 +23,10 @@ class ExpenseRepository {
         expense.amount,
         expense.type,
         expense.week,
-        expense.method
+        expense.method,
+        expense.insurance_eligible !== undefined ? expense.insurance_eligible : 0,
+        expense.claim_status || null,
+        expense.original_cost !== undefined ? expense.original_cost : null
       ];
       
       db.run(sql, params, function(err) {
@@ -113,7 +116,8 @@ class ExpenseRepository {
     return new Promise((resolve, reject) => {
       const sql = `
         UPDATE expenses 
-        SET date = ?, place = ?, notes = ?, amount = ?, type = ?, week = ?, method = ?
+        SET date = ?, place = ?, notes = ?, amount = ?, type = ?, week = ?, method = ?,
+            insurance_eligible = ?, claim_status = ?, original_cost = ?
         WHERE id = ?
       `;
       
@@ -125,6 +129,9 @@ class ExpenseRepository {
         expense.type,
         expense.week,
         expense.method,
+        expense.insurance_eligible !== undefined ? expense.insurance_eligible : 0,
+        expense.claim_status || null,
+        expense.original_cost !== undefined ? expense.original_cost : null,
         id
       ];
       
@@ -229,17 +236,19 @@ class ExpenseRepository {
   /**
    * Get tax-deductible expenses for a specific year
    * Supports multiple invoices per expense with invoice count and details
+   * Includes insurance tracking fields for medical expenses
    * @param {number} year - Year
-   * @returns {Promise<Array>} Array of tax-deductible expense objects with invoice information
+   * @returns {Promise<Array>} Array of tax-deductible expense objects with invoice and insurance information
    */
   async getTaxDeductibleExpenses(year) {
     const db = await getDatabase();
     
     return new Promise((resolve, reject) => {
-      // First, get all expenses with invoice counts
+      // First, get all expenses with invoice counts and insurance fields
       const expenseSql = `
         SELECT 
           e.id, e.date, e.place, e.amount, e.notes, e.type, e.method, e.week,
+          e.insurance_eligible, e.claim_status, e.original_cost,
           (SELECT COUNT(*) FROM expense_invoices WHERE expense_id = e.id) as invoice_count
         FROM expenses e
         WHERE strftime('%Y', e.date) = ?
@@ -301,7 +310,7 @@ class ExpenseRepository {
             });
           });
           
-          // Transform the results to include invoice information
+          // Transform the results to include invoice and insurance information
           const expenses = expenseRows.map(row => {
             const invoices = invoicesByExpense[row.id] || [];
             const expense = {
@@ -315,7 +324,13 @@ class ExpenseRepository {
               week: row.week,
               hasInvoice: invoices.length > 0,
               invoiceCount: invoices.length,
-              invoices: invoices
+              invoices: invoices,
+              // Insurance fields (only meaningful for Tax - Medical)
+              insuranceEligible: row.insurance_eligible === 1,
+              claimStatus: row.claim_status,
+              originalCost: row.original_cost,
+              // Computed reimbursement (original_cost - amount)
+              reimbursement: row.original_cost !== null ? row.original_cost - row.amount : null
             };
             
             // For backward compatibility, also include first invoice as 'invoice'
@@ -945,6 +960,127 @@ class ExpenseRepository {
             });
           });
         });
+      });
+    });
+  }
+
+  /**
+   * Update insurance-related fields for an expense
+   * @param {number} id - Expense ID
+   * @param {Object} insuranceData - Insurance fields to update
+   * @param {boolean} [insuranceData.insurance_eligible] - Whether expense is insurance eligible
+   * @param {string} [insuranceData.claim_status] - Claim status ('not_claimed', 'in_progress', 'paid', 'denied')
+   * @param {number} [insuranceData.original_cost] - Original cost before reimbursement
+   * @param {number} [insuranceData.amount] - Out-of-pocket amount
+   * @returns {Promise<Object|null>} Updated expense or null if not found
+   */
+  async updateInsuranceFields(id, insuranceData) {
+    const db = await getDatabase();
+    
+    return new Promise((resolve, reject) => {
+      // Build dynamic update query based on provided fields
+      const updates = [];
+      const params = [];
+      
+      if (insuranceData.insurance_eligible !== undefined) {
+        updates.push('insurance_eligible = ?');
+        params.push(insuranceData.insurance_eligible ? 1 : 0);
+      }
+      
+      if (insuranceData.claim_status !== undefined) {
+        updates.push('claim_status = ?');
+        params.push(insuranceData.claim_status);
+      }
+      
+      if (insuranceData.original_cost !== undefined) {
+        updates.push('original_cost = ?');
+        params.push(insuranceData.original_cost);
+      }
+      
+      if (insuranceData.amount !== undefined) {
+        updates.push('amount = ?');
+        params.push(insuranceData.amount);
+      }
+      
+      if (updates.length === 0) {
+        // No fields to update, just return the existing expense
+        return this.findById(id).then(resolve).catch(reject);
+      }
+      
+      params.push(id);
+      
+      const sql = `UPDATE expenses SET ${updates.join(', ')} WHERE id = ?`;
+      
+      db.run(sql, params, function(err) {
+        if (err) {
+          reject(err);
+          return;
+        }
+        
+        if (this.changes === 0) {
+          resolve(null);
+          return;
+        }
+        
+        // Return the updated expense
+        db.get('SELECT * FROM expenses WHERE id = ?', [id], (err, row) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+          resolve(row);
+        });
+      });
+    });
+  }
+
+  /**
+   * Get expenses filtered by claim status for a specific year
+   * @param {number} year - Year
+   * @param {string} status - Claim status ('not_claimed', 'in_progress', 'paid', 'denied')
+   * @returns {Promise<Array>} Array of expenses with the specified claim status
+   */
+  async getExpensesByClaimStatus(year, status) {
+    const db = await getDatabase();
+    
+    return new Promise((resolve, reject) => {
+      const sql = `
+        SELECT 
+          e.id, e.date, e.place, e.amount, e.notes, e.type, e.method, e.week,
+          e.insurance_eligible, e.claim_status, e.original_cost,
+          (SELECT COUNT(*) FROM expense_invoices WHERE expense_id = e.id) as invoice_count
+        FROM expenses e
+        WHERE strftime('%Y', e.date) = ?
+          AND e.type = 'Tax - Medical'
+          AND e.insurance_eligible = 1
+          AND e.claim_status = ?
+        ORDER BY e.date ASC
+      `;
+      
+      db.all(sql, [year.toString(), status], (err, rows) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        
+        // Transform rows to include computed fields
+        const expenses = (rows || []).map(row => ({
+          id: row.id,
+          date: row.date,
+          place: row.place,
+          amount: row.amount,
+          notes: row.notes,
+          type: row.type,
+          method: row.method,
+          week: row.week,
+          insuranceEligible: row.insurance_eligible === 1,
+          claimStatus: row.claim_status,
+          originalCost: row.original_cost,
+          reimbursement: row.original_cost !== null ? row.original_cost - row.amount : 0,
+          invoiceCount: row.invoice_count
+        }));
+        
+        resolve(expenses);
       });
     });
   }

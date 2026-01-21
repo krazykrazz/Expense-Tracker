@@ -37,7 +37,7 @@ This feature adds insurance tracking capabilities to medical expenses (Tax - Med
 2. THE Expense_Tracker SHALL support the following claim statuses: "Not Claimed", "In Progress", "Paid", "Denied"
 3. WHEN a user changes the claim status, THE Expense_Tracker SHALL persist the new status to the database
 4. THE Expense_Tracker SHALL default the claim status to "Not Claimed" for newly eligible expenses
-5. WHEN the claim status is "Not Claimed" or "In Progress", THE Expense_Tracker SHALL keep the amount field equal to the original cost
+5. THE Expense_Tracker SHALL allow the user to set the amount (out-of-pocket) independently of the original cost for any claim status
 
 ### Requirement 3: Original Cost and Out-of-Pocket Tracking
 

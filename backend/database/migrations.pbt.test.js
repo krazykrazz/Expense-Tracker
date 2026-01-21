@@ -1158,3 +1158,874 @@ describe('Multi-Invoice Support Migration - Property-Based Tests', () => {
     }
   });
 });
+
+
+// Helper function to create expenses table with pre-insurance schema (without insurance fields)
+function createPreInsuranceExpensesTable(db) {
+  return new Promise((resolve, reject) => {
+    const categoryList = CATEGORIES.map(c => `'${c}'`).join(', ');
+    
+    db.run(`
+      CREATE TABLE expenses (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        date TEXT NOT NULL,
+        place TEXT,
+        notes TEXT,
+        amount REAL NOT NULL,
+        type TEXT NOT NULL CHECK(type IN (${categoryList})),
+        week INTEGER NOT NULL CHECK(week >= 1 AND week <= 5),
+        method TEXT NOT NULL CHECK(method IN ('Cash', 'Debit', 'Cheque', 'CIBC MC', 'PCF MC', 'WS VISA', 'VISA')),
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+      )
+    `, (err) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve();
+      }
+    });
+  });
+}
+
+// Helper function to create expense_people table with pre-insurance schema (without original_amount)
+function createPreInsuranceExpensePeopleTable(db) {
+  return new Promise((resolve, reject) => {
+    db.run(`
+      CREATE TABLE expense_people (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        expense_id INTEGER NOT NULL,
+        person_id INTEGER NOT NULL,
+        amount REAL NOT NULL,
+        FOREIGN KEY (expense_id) REFERENCES expenses(id) ON DELETE CASCADE,
+        FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE CASCADE,
+        UNIQUE(expense_id, person_id)
+      )
+    `, (err) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve();
+      }
+    });
+  });
+}
+
+// Helper function to insert expense (pre-insurance schema)
+function insertPreInsuranceExpense(db, expense) {
+  return new Promise((resolve, reject) => {
+    db.run(
+      `INSERT INTO expenses (date, place, notes, amount, type, week, method) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [expense.date, expense.place, expense.notes, expense.amount, expense.type, expense.week, expense.method],
+      function(err) {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(this.lastID);
+        }
+      }
+    );
+  });
+}
+
+// Helper function to insert expense_people allocation (pre-insurance schema)
+function insertPreInsuranceExpensePerson(db, expenseId, personId, amount) {
+  return new Promise((resolve, reject) => {
+    db.run(
+      `INSERT INTO expense_people (expense_id, person_id, amount) VALUES (?, ?, ?)`,
+      [expenseId, personId, amount],
+      function(err) {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(this.lastID);
+        }
+      }
+    );
+  });
+}
+
+// Helper function to insert person
+function insertPerson(db, name) {
+  return new Promise((resolve, reject) => {
+    db.run(
+      `INSERT INTO people (name) VALUES (?)`,
+      [name],
+      function(err) {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(this.lastID);
+        }
+      }
+    );
+  });
+}
+
+// Helper function to get all expense_people allocations
+function getAllExpensePeople(db) {
+  return new Promise((resolve, reject) => {
+    db.all('SELECT * FROM expense_people ORDER BY id', (err, rows) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(rows);
+      }
+    });
+  });
+}
+
+describe('Medical Insurance Tracking Migration - Property-Based Tests', () => {
+  /**
+   * Feature: medical-insurance-tracking, Property 10: Migration Data Preservation
+   * Validates: Requirements 8.1, 8.4
+   * 
+   * For any existing medical expense before migration, after migration the expense 
+   * SHALL retain all original field values (date, place, notes, amount, type, week, method, people allocations).
+   */
+  test('Property 10: Migration Data Preservation', async () => {
+    // Arbitrary for generating valid medical expense data (pre-migration)
+    const medicalExpenseArbitrary = fc.record({
+      date: fc.integer({ min: 2020, max: 2025 })
+        .chain(year => fc.integer({ min: 1, max: 12 })
+          .chain(month => fc.integer({ min: 1, max: 28 })
+            .map(day => `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`))),
+      place: fc.oneof(
+        fc.constant(null),
+        fc.string({ minLength: 1, maxLength: 100 }).filter(s => s.trim().length > 0)
+      ),
+      notes: fc.oneof(
+        fc.constant(null),
+        fc.string({ minLength: 1, maxLength: 200 }).filter(s => s.trim().length > 0)
+      ),
+      amount: fc.float({ min: Math.fround(0.01), max: Math.fround(10000), noNaN: true })
+        .map(n => Math.round(n * 100) / 100),
+      type: fc.constant('Tax - Medical'),
+      week: fc.integer({ min: 1, max: 5 }),
+      method: fc.constantFrom('Cash', 'Debit', 'Cheque', 'CIBC MC', 'PCF MC', 'WS VISA', 'VISA')
+    });
+
+    // Generate array of 1-10 medical expenses
+    const expensesArrayArbitrary = fc.array(medicalExpenseArbitrary, { minLength: 1, maxLength: 10 });
+
+    await fc.assert(
+      fc.asyncProperty(
+        expensesArrayArbitrary,
+        async (expenses) => {
+          const db = await createTestDatabase();
+          
+          try {
+            // Create pre-insurance schema tables
+            await createPreInsuranceExpensesTable(db);
+            await createPeopleTable(db);
+            await createPreInsuranceExpensePeopleTable(db);
+            
+            // Insert people for allocations
+            const personIds = [];
+            for (let i = 0; i < 3; i++) {
+              const personId = await insertPerson(db, `Person ${i + 1}`);
+              personIds.push(personId);
+            }
+            
+            // Insert all expenses and track their IDs
+            const expenseIds = [];
+            for (const expense of expenses) {
+              const id = await insertPreInsuranceExpense(db, expense);
+              expenseIds.push(id);
+            }
+            
+            // Add people allocations for each expense (split amount among people)
+            const allocations = [];
+            for (let i = 0; i < expenseIds.length; i++) {
+              const expenseId = expenseIds[i];
+              const expense = expenses[i];
+              // Allocate to 1-2 people
+              const numPeople = Math.min(2, personIds.length);
+              const allocationAmount = Math.round((expense.amount / numPeople) * 100) / 100;
+              
+              for (let j = 0; j < numPeople; j++) {
+                await insertPreInsuranceExpensePerson(db, expenseId, personIds[j], allocationAmount);
+                allocations.push({
+                  expense_id: expenseId,
+                  person_id: personIds[j],
+                  amount: allocationAmount
+                });
+              }
+            }
+            
+            // Get data before migration
+            const expensesBefore = await getAllExpenses(db);
+            const allocationsBefore = await getAllExpensePeople(db);
+            
+            // Simulate insurance fields migration: add columns via ALTER TABLE
+            await new Promise((resolve, reject) => {
+              db.serialize(() => {
+                db.run('BEGIN TRANSACTION', (err) => {
+                  if (err) return reject(err);
+                  
+                  // Add insurance_eligible column
+                  db.run(`
+                    ALTER TABLE expenses 
+                    ADD COLUMN insurance_eligible INTEGER DEFAULT 0
+                  `, (err) => {
+                    if (err) {
+                      db.run('ROLLBACK');
+                      return reject(err);
+                    }
+                    
+                    // Add claim_status column
+                    db.run(`
+                      ALTER TABLE expenses 
+                      ADD COLUMN claim_status TEXT DEFAULT NULL
+                    `, (err) => {
+                      if (err) {
+                        db.run('ROLLBACK');
+                        return reject(err);
+                      }
+                      
+                      // Add original_cost column
+                      db.run(`
+                        ALTER TABLE expenses 
+                        ADD COLUMN original_cost REAL DEFAULT NULL
+                      `, (err) => {
+                        if (err) {
+                          db.run('ROLLBACK');
+                          return reject(err);
+                        }
+                        
+                        // Set original_cost = amount for medical expenses (as per migration)
+                        db.run(`
+                          UPDATE expenses 
+                          SET original_cost = amount 
+                          WHERE type = 'Tax - Medical' AND original_cost IS NULL
+                        `, (err) => {
+                          if (err) {
+                            db.run('ROLLBACK');
+                            return reject(err);
+                          }
+                          
+                          // Add original_amount to expense_people
+                          db.run(`
+                            ALTER TABLE expense_people 
+                            ADD COLUMN original_amount REAL DEFAULT NULL
+                          `, (err) => {
+                            if (err) {
+                              db.run('ROLLBACK');
+                              return reject(err);
+                            }
+                            
+                            // Set original_amount = amount for existing allocations
+                            db.run(`
+                              UPDATE expense_people 
+                              SET original_amount = amount 
+                              WHERE original_amount IS NULL
+                            `, (err) => {
+                              if (err) {
+                                db.run('ROLLBACK');
+                                return reject(err);
+                              }
+                              
+                              db.run('COMMIT', (err) => {
+                                if (err) {
+                                  db.run('ROLLBACK');
+                                  return reject(err);
+                                }
+                                resolve();
+                              });
+                            });
+                          });
+                        });
+                      });
+                    });
+                  });
+                });
+              });
+            });
+            
+            // Get data after migration
+            const expensesAfter = await getAllExpenses(db);
+            const allocationsAfter = await getAllExpensePeople(db);
+            
+            // Verify count is preserved
+            expect(expensesAfter.length).toBe(expensesBefore.length);
+            expect(allocationsAfter.length).toBe(allocationsBefore.length);
+            
+            // Verify all original expense data is preserved
+            for (let i = 0; i < expensesBefore.length; i++) {
+              const before = expensesBefore[i];
+              const after = expensesAfter[i];
+              
+              // All original fields must be preserved exactly
+              expect(after.id).toBe(before.id);
+              expect(after.date).toBe(before.date);
+              expect(after.place).toBe(before.place);
+              expect(after.notes).toBe(before.notes);
+              expect(after.amount).toBe(before.amount);
+              expect(after.type).toBe(before.type);
+              expect(after.week).toBe(before.week);
+              expect(after.method).toBe(before.method);
+              
+              // New insurance fields should have correct defaults
+              expect(after.insurance_eligible).toBe(0);
+              expect(after.claim_status).toBeNull();
+              // original_cost should equal amount for medical expenses
+              expect(after.original_cost).toBe(before.amount);
+            }
+            
+            // Verify all people allocations are preserved
+            for (let i = 0; i < allocationsBefore.length; i++) {
+              const before = allocationsBefore[i];
+              const after = allocationsAfter[i];
+              
+              // All original allocation fields must be preserved
+              expect(after.id).toBe(before.id);
+              expect(after.expense_id).toBe(before.expense_id);
+              expect(after.person_id).toBe(before.person_id);
+              expect(after.amount).toBe(before.amount);
+              
+              // original_amount should equal amount after migration
+              expect(after.original_amount).toBe(before.amount);
+            }
+            
+            return true;
+          } finally {
+            await closeDatabase(db);
+          }
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+
+  /**
+   * Feature: medical-insurance-tracking, Property 10 (extension): Non-medical expenses preserved
+   * Validates: Requirements 8.1
+   * 
+   * For any existing non-medical expense before migration, after migration the expense 
+   * SHALL retain all original field values and have NULL for original_cost.
+   */
+  test('Property 10 (extension): Non-medical expenses preserved with NULL original_cost', async () => {
+    // Arbitrary for generating valid non-medical expense data
+    const nonMedicalCategories = CATEGORIES.filter(c => c !== 'Tax - Medical');
+    const nonMedicalExpenseArbitrary = fc.record({
+      date: fc.integer({ min: 2020, max: 2025 })
+        .chain(year => fc.integer({ min: 1, max: 12 })
+          .chain(month => fc.integer({ min: 1, max: 28 })
+            .map(day => `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`))),
+      place: fc.oneof(
+        fc.constant(null),
+        fc.string({ minLength: 1, maxLength: 100 }).filter(s => s.trim().length > 0)
+      ),
+      notes: fc.oneof(
+        fc.constant(null),
+        fc.string({ minLength: 1, maxLength: 200 }).filter(s => s.trim().length > 0)
+      ),
+      amount: fc.float({ min: Math.fround(0.01), max: Math.fround(10000), noNaN: true })
+        .map(n => Math.round(n * 100) / 100),
+      type: fc.constantFrom(...nonMedicalCategories),
+      week: fc.integer({ min: 1, max: 5 }),
+      method: fc.constantFrom('Cash', 'Debit', 'Cheque', 'CIBC MC', 'PCF MC', 'WS VISA', 'VISA')
+    });
+
+    // Generate array of 1-10 non-medical expenses
+    const expensesArrayArbitrary = fc.array(nonMedicalExpenseArbitrary, { minLength: 1, maxLength: 10 });
+
+    await fc.assert(
+      fc.asyncProperty(
+        expensesArrayArbitrary,
+        async (expenses) => {
+          const db = await createTestDatabase();
+          
+          try {
+            // Create pre-insurance schema table
+            await createPreInsuranceExpensesTable(db);
+            
+            // Insert all expenses
+            for (const expense of expenses) {
+              await insertPreInsuranceExpense(db, expense);
+            }
+            
+            // Get data before migration
+            const expensesBefore = await getAllExpenses(db);
+            
+            // Simulate insurance fields migration
+            await new Promise((resolve, reject) => {
+              db.serialize(() => {
+                db.run('BEGIN TRANSACTION', (err) => {
+                  if (err) return reject(err);
+                  
+                  db.run(`ALTER TABLE expenses ADD COLUMN insurance_eligible INTEGER DEFAULT 0`, (err) => {
+                    if (err) { db.run('ROLLBACK'); return reject(err); }
+                    
+                    db.run(`ALTER TABLE expenses ADD COLUMN claim_status TEXT DEFAULT NULL`, (err) => {
+                      if (err) { db.run('ROLLBACK'); return reject(err); }
+                      
+                      db.run(`ALTER TABLE expenses ADD COLUMN original_cost REAL DEFAULT NULL`, (err) => {
+                        if (err) { db.run('ROLLBACK'); return reject(err); }
+                        
+                        // Only set original_cost for medical expenses
+                        db.run(`
+                          UPDATE expenses 
+                          SET original_cost = amount 
+                          WHERE type = 'Tax - Medical' AND original_cost IS NULL
+                        `, (err) => {
+                          if (err) { db.run('ROLLBACK'); return reject(err); }
+                          
+                          db.run('COMMIT', (err) => {
+                            if (err) { db.run('ROLLBACK'); return reject(err); }
+                            resolve();
+                          });
+                        });
+                      });
+                    });
+                  });
+                });
+              });
+            });
+            
+            // Get data after migration
+            const expensesAfter = await getAllExpenses(db);
+            
+            // Verify count is preserved
+            expect(expensesAfter.length).toBe(expensesBefore.length);
+            
+            // Verify all original data is preserved
+            for (let i = 0; i < expensesBefore.length; i++) {
+              const before = expensesBefore[i];
+              const after = expensesAfter[i];
+              
+              // All original fields must be preserved exactly
+              expect(after.id).toBe(before.id);
+              expect(after.date).toBe(before.date);
+              expect(after.place).toBe(before.place);
+              expect(after.notes).toBe(before.notes);
+              expect(after.amount).toBe(before.amount);
+              expect(after.type).toBe(before.type);
+              expect(after.week).toBe(before.week);
+              expect(after.method).toBe(before.method);
+              
+              // Insurance fields should have defaults
+              expect(after.insurance_eligible).toBe(0);
+              expect(after.claim_status).toBeNull();
+              // original_cost should be NULL for non-medical expenses
+              expect(after.original_cost).toBeNull();
+            }
+            
+            return true;
+          } finally {
+            await closeDatabase(db);
+          }
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+
+  /**
+   * Feature: medical-insurance-tracking, Property 11: Migration Defaults
+   * Validates: Requirements 8.2, 8.3
+   * 
+   * For any existing medical expense after migration, insurance_eligible SHALL be 0 (false),
+   * claim_status SHALL be null, and original_cost SHALL equal the pre-migration amount value.
+   */
+  test('Property 11: Migration Defaults', async () => {
+    // Arbitrary for generating valid medical expense data (pre-migration)
+    const medicalExpenseArbitrary = fc.record({
+      date: fc.integer({ min: 2020, max: 2025 })
+        .chain(year => fc.integer({ min: 1, max: 12 })
+          .chain(month => fc.integer({ min: 1, max: 28 })
+            .map(day => `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`))),
+      place: fc.oneof(
+        fc.constant(null),
+        fc.string({ minLength: 1, maxLength: 100 }).filter(s => s.trim().length > 0)
+      ),
+      notes: fc.oneof(
+        fc.constant(null),
+        fc.string({ minLength: 1, maxLength: 200 }).filter(s => s.trim().length > 0)
+      ),
+      amount: fc.float({ min: Math.fround(0.01), max: Math.fround(10000), noNaN: true })
+        .map(n => Math.round(n * 100) / 100),
+      type: fc.constant('Tax - Medical'),
+      week: fc.integer({ min: 1, max: 5 }),
+      method: fc.constantFrom('Cash', 'Debit', 'Cheque', 'CIBC MC', 'PCF MC', 'WS VISA', 'VISA')
+    });
+
+    // Generate array of 1-10 medical expenses
+    const expensesArrayArbitrary = fc.array(medicalExpenseArbitrary, { minLength: 1, maxLength: 10 });
+
+    await fc.assert(
+      fc.asyncProperty(
+        expensesArrayArbitrary,
+        async (expenses) => {
+          const db = await createTestDatabase();
+          
+          try {
+            // Create pre-insurance schema table (without insurance fields)
+            await createPreInsuranceExpensesTable(db);
+            
+            // Insert all medical expenses and track their original amounts
+            const originalAmounts = [];
+            for (const expense of expenses) {
+              const id = await insertPreInsuranceExpense(db, expense);
+              originalAmounts.push({ id, amount: expense.amount });
+            }
+            
+            // Get data before migration to capture pre-migration amounts
+            const expensesBefore = await getAllExpenses(db);
+            
+            // Simulate insurance fields migration: add columns and set defaults
+            await new Promise((resolve, reject) => {
+              db.serialize(() => {
+                db.run('BEGIN TRANSACTION', (err) => {
+                  if (err) return reject(err);
+                  
+                  // Add insurance_eligible column with default 0
+                  db.run(`
+                    ALTER TABLE expenses 
+                    ADD COLUMN insurance_eligible INTEGER DEFAULT 0
+                  `, (err) => {
+                    if (err) {
+                      db.run('ROLLBACK');
+                      return reject(err);
+                    }
+                    
+                    // Add claim_status column with default NULL
+                    db.run(`
+                      ALTER TABLE expenses 
+                      ADD COLUMN claim_status TEXT DEFAULT NULL
+                    `, (err) => {
+                      if (err) {
+                        db.run('ROLLBACK');
+                        return reject(err);
+                      }
+                      
+                      // Add original_cost column with default NULL
+                      db.run(`
+                        ALTER TABLE expenses 
+                        ADD COLUMN original_cost REAL DEFAULT NULL
+                      `, (err) => {
+                        if (err) {
+                          db.run('ROLLBACK');
+                          return reject(err);
+                        }
+                        
+                        // Set original_cost = amount for medical expenses (migration default)
+                        db.run(`
+                          UPDATE expenses 
+                          SET original_cost = amount 
+                          WHERE type = 'Tax - Medical' AND original_cost IS NULL
+                        `, (err) => {
+                          if (err) {
+                            db.run('ROLLBACK');
+                            return reject(err);
+                          }
+                          
+                          db.run('COMMIT', (err) => {
+                            if (err) {
+                              db.run('ROLLBACK');
+                              return reject(err);
+                            }
+                            resolve();
+                          });
+                        });
+                      });
+                    });
+                  });
+                });
+              });
+            });
+            
+            // Get data after migration
+            const expensesAfter = await getAllExpenses(db);
+            
+            // Verify count is preserved
+            expect(expensesAfter.length).toBe(expensesBefore.length);
+            
+            // Verify migration defaults for each medical expense
+            for (let i = 0; i < expensesAfter.length; i++) {
+              const before = expensesBefore[i];
+              const after = expensesAfter[i];
+              
+              // Requirement 8.2: insurance_eligible SHALL be 0 (false)
+              expect(after.insurance_eligible).toBe(0);
+              
+              // Requirement 8.2: claim_status SHALL be null
+              expect(after.claim_status).toBeNull();
+              
+              // Requirement 8.3: original_cost SHALL equal the pre-migration amount value
+              expect(after.original_cost).toBe(before.amount);
+              
+              // Verify the original amount is preserved in the amount field
+              expect(after.amount).toBe(before.amount);
+            }
+            
+            return true;
+          } finally {
+            await closeDatabase(db);
+          }
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+
+  /**
+   * Feature: medical-insurance-tracking, Property 11 (mixed): Migration Defaults for mixed expense types
+   * Validates: Requirements 8.2, 8.3
+   * 
+   * For any database with both medical and non-medical expenses, after migration:
+   * - Medical expenses: insurance_eligible=0, claim_status=null, original_cost=amount
+   * - Non-medical expenses: insurance_eligible=0, claim_status=null, original_cost=null
+   */
+  test('Property 11 (mixed): Migration Defaults for mixed expense types', async () => {
+    // Arbitrary for generating valid medical expense data
+    const medicalExpenseArbitrary = fc.record({
+      date: fc.integer({ min: 2020, max: 2025 })
+        .chain(year => fc.integer({ min: 1, max: 12 })
+          .chain(month => fc.integer({ min: 1, max: 28 })
+            .map(day => `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`))),
+      place: fc.oneof(
+        fc.constant(null),
+        fc.string({ minLength: 1, maxLength: 100 }).filter(s => s.trim().length > 0)
+      ),
+      notes: fc.oneof(
+        fc.constant(null),
+        fc.string({ minLength: 1, maxLength: 200 }).filter(s => s.trim().length > 0)
+      ),
+      amount: fc.float({ min: Math.fround(0.01), max: Math.fround(10000), noNaN: true })
+        .map(n => Math.round(n * 100) / 100),
+      type: fc.constant('Tax - Medical'),
+      week: fc.integer({ min: 1, max: 5 }),
+      method: fc.constantFrom('Cash', 'Debit', 'Cheque', 'CIBC MC', 'PCF MC', 'WS VISA', 'VISA')
+    });
+
+    // Arbitrary for generating valid non-medical expense data
+    const nonMedicalCategories = CATEGORIES.filter(c => c !== 'Tax - Medical');
+    const nonMedicalExpenseArbitrary = fc.record({
+      date: fc.integer({ min: 2020, max: 2025 })
+        .chain(year => fc.integer({ min: 1, max: 12 })
+          .chain(month => fc.integer({ min: 1, max: 28 })
+            .map(day => `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`))),
+      place: fc.oneof(
+        fc.constant(null),
+        fc.string({ minLength: 1, maxLength: 100 }).filter(s => s.trim().length > 0)
+      ),
+      notes: fc.oneof(
+        fc.constant(null),
+        fc.string({ minLength: 1, maxLength: 200 }).filter(s => s.trim().length > 0)
+      ),
+      amount: fc.float({ min: Math.fround(0.01), max: Math.fround(10000), noNaN: true })
+        .map(n => Math.round(n * 100) / 100),
+      type: fc.constantFrom(...nonMedicalCategories),
+      week: fc.integer({ min: 1, max: 5 }),
+      method: fc.constantFrom('Cash', 'Debit', 'Cheque', 'CIBC MC', 'PCF MC', 'WS VISA', 'VISA')
+    });
+
+    // Generate arrays of both medical and non-medical expenses
+    const mixedExpensesArbitrary = fc.tuple(
+      fc.array(medicalExpenseArbitrary, { minLength: 1, maxLength: 5 }),
+      fc.array(nonMedicalExpenseArbitrary, { minLength: 1, maxLength: 5 })
+    );
+
+    await fc.assert(
+      fc.asyncProperty(
+        mixedExpensesArbitrary,
+        async ([medicalExpenses, nonMedicalExpenses]) => {
+          const db = await createTestDatabase();
+          
+          try {
+            // Create pre-insurance schema table
+            await createPreInsuranceExpensesTable(db);
+            
+            // Insert all expenses (medical first, then non-medical)
+            const allExpenses = [...medicalExpenses, ...nonMedicalExpenses];
+            for (const expense of allExpenses) {
+              await insertPreInsuranceExpense(db, expense);
+            }
+            
+            // Get data before migration
+            const expensesBefore = await getAllExpenses(db);
+            
+            // Simulate insurance fields migration
+            await new Promise((resolve, reject) => {
+              db.serialize(() => {
+                db.run('BEGIN TRANSACTION', (err) => {
+                  if (err) return reject(err);
+                  
+                  db.run(`ALTER TABLE expenses ADD COLUMN insurance_eligible INTEGER DEFAULT 0`, (err) => {
+                    if (err) { db.run('ROLLBACK'); return reject(err); }
+                    
+                    db.run(`ALTER TABLE expenses ADD COLUMN claim_status TEXT DEFAULT NULL`, (err) => {
+                      if (err) { db.run('ROLLBACK'); return reject(err); }
+                      
+                      db.run(`ALTER TABLE expenses ADD COLUMN original_cost REAL DEFAULT NULL`, (err) => {
+                        if (err) { db.run('ROLLBACK'); return reject(err); }
+                        
+                        // Only set original_cost for medical expenses
+                        db.run(`
+                          UPDATE expenses 
+                          SET original_cost = amount 
+                          WHERE type = 'Tax - Medical' AND original_cost IS NULL
+                        `, (err) => {
+                          if (err) { db.run('ROLLBACK'); return reject(err); }
+                          
+                          db.run('COMMIT', (err) => {
+                            if (err) { db.run('ROLLBACK'); return reject(err); }
+                            resolve();
+                          });
+                        });
+                      });
+                    });
+                  });
+                });
+              });
+            });
+            
+            // Get data after migration
+            const expensesAfter = await getAllExpenses(db);
+            
+            // Verify count is preserved
+            expect(expensesAfter.length).toBe(expensesBefore.length);
+            
+            // Verify migration defaults for each expense based on type
+            for (let i = 0; i < expensesAfter.length; i++) {
+              const before = expensesBefore[i];
+              const after = expensesAfter[i];
+              
+              // All expenses: insurance_eligible SHALL be 0 (false)
+              expect(after.insurance_eligible).toBe(0);
+              
+              // All expenses: claim_status SHALL be null
+              expect(after.claim_status).toBeNull();
+              
+              if (after.type === 'Tax - Medical') {
+                // Medical expenses: original_cost SHALL equal the pre-migration amount
+                expect(after.original_cost).toBe(before.amount);
+              } else {
+                // Non-medical expenses: original_cost SHALL be null
+                expect(after.original_cost).toBeNull();
+              }
+              
+              // Amount should always be preserved
+              expect(after.amount).toBe(before.amount);
+            }
+            
+            return true;
+          } finally {
+            await closeDatabase(db);
+          }
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+
+  /**
+   * Feature: medical-insurance-tracking, Property 10 (rollback): Migration rollback on failure
+   * Validates: Requirements 8.4
+   * 
+   * If the migration fails at any step, all changes SHALL be rolled back and 
+   * the original data SHALL remain intact.
+   */
+  test('Property 10 (rollback): Migration rollback preserves original data on failure', async () => {
+    // Arbitrary for generating valid medical expense data
+    const medicalExpenseArbitrary = fc.record({
+      date: fc.integer({ min: 2020, max: 2025 })
+        .chain(year => fc.integer({ min: 1, max: 12 })
+          .chain(month => fc.integer({ min: 1, max: 28 })
+            .map(day => `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`))),
+      place: fc.oneof(fc.constant(null), fc.string({ minLength: 1, maxLength: 50 })),
+      notes: fc.oneof(fc.constant(null), fc.string({ minLength: 1, maxLength: 100 })),
+      amount: fc.float({ min: Math.fround(0.01), max: Math.fround(1000), noNaN: true })
+        .map(n => Math.round(n * 100) / 100),
+      type: fc.constant('Tax - Medical'),
+      week: fc.integer({ min: 1, max: 5 }),
+      method: fc.constantFrom('Cash', 'Debit', 'Cheque', 'CIBC MC', 'PCF MC', 'WS VISA', 'VISA')
+    });
+
+    // Generate array of 1-5 expenses
+    const expensesArrayArbitrary = fc.array(medicalExpenseArbitrary, { minLength: 1, maxLength: 5 });
+
+    await fc.assert(
+      fc.asyncProperty(
+        expensesArrayArbitrary,
+        async (expenses) => {
+          const db = await createTestDatabase();
+          
+          try {
+            // Create pre-insurance schema table
+            await createPreInsuranceExpensesTable(db);
+            
+            // Insert all expenses
+            for (const expense of expenses) {
+              await insertPreInsuranceExpense(db, expense);
+            }
+            
+            // Get data before attempted migration
+            const expensesBefore = await getAllExpenses(db);
+            const countBefore = await countExpenses(db);
+            
+            // Simulate a migration that fails partway through and rolls back
+            try {
+              await new Promise((resolve, reject) => {
+                db.serialize(() => {
+                  db.run('BEGIN TRANSACTION', (err) => {
+                    if (err) return reject(err);
+                    
+                    // Add first column successfully
+                    db.run(`ALTER TABLE expenses ADD COLUMN insurance_eligible INTEGER DEFAULT 0`, (err) => {
+                      if (err) { db.run('ROLLBACK'); return reject(err); }
+                      
+                      // Simulate failure by trying to add a column that would cause an error
+                      // (In real migration, this could be any error condition)
+                      // Force a rollback to test data preservation
+                      db.run('ROLLBACK', (err) => {
+                        if (err) return reject(err);
+                        reject(new Error('Simulated migration failure'));
+                      });
+                    });
+                  });
+                });
+              });
+            } catch (error) {
+              // Expected - migration failed and rolled back
+              expect(error.message).toBe('Simulated migration failure');
+            }
+            
+            // Verify original data is still intact after rollback
+            const expensesAfter = await getAllExpenses(db);
+            const countAfter = await countExpenses(db);
+            
+            // Count should be preserved
+            expect(countAfter).toBe(countBefore);
+            
+            // All original data should be preserved
+            expect(expensesAfter.length).toBe(expensesBefore.length);
+            
+            for (let i = 0; i < expensesBefore.length; i++) {
+              const before = expensesBefore[i];
+              const after = expensesAfter[i];
+              
+              expect(after.id).toBe(before.id);
+              expect(after.date).toBe(before.date);
+              expect(after.place).toBe(before.place);
+              expect(after.notes).toBe(before.notes);
+              expect(after.amount).toBe(before.amount);
+              expect(after.type).toBe(before.type);
+              expect(after.week).toBe(before.week);
+              expect(after.method).toBe(before.method);
+            }
+            
+            // Verify insurance columns were NOT added (rollback worked)
+            const hasInsuranceColumn = await hasColumn(db, 'expenses', 'insurance_eligible');
+            expect(hasInsuranceColumn).toBe(false);
+            
+            return true;
+          } finally {
+            await closeDatabase(db);
+          }
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+});

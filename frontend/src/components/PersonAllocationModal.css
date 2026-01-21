@@ -270,3 +270,172 @@
     width: 100%;
   }
 }
+
+
+/* Insurance Mode Styles (Requirements 4.1, 4.2, 4.3, 4.4) */
+.person-allocation-modal.insurance-mode {
+  max-width: 600px;
+}
+
+/* Insurance expense info layout */
+.expense-info-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.expense-info-row:last-child {
+  margin-bottom: 0;
+}
+
+.expense-info-item {
+  flex: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.expense-info-item .info-label {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.expense-info-item .info-value {
+  font-weight: 600;
+  color: #111827;
+}
+
+.expense-info-item.remaining-zero {
+  background-color: #d1fae5;
+}
+
+.expense-info-item.remaining-zero .info-value {
+  color: #059669;
+}
+
+.expense-info-item.remaining-positive {
+  background-color: #fef3c7;
+}
+
+.expense-info-item.remaining-positive .info-value {
+  color: #d97706;
+}
+
+.expense-info-item.remaining-negative {
+  background-color: #fee2e2;
+}
+
+.expense-info-item.remaining-negative .info-value {
+  color: #dc2626;
+}
+
+/* Allocation header for insurance mode */
+.allocation-header {
+  display: grid;
+  grid-template-columns: 1fr 120px 120px;
+  gap: 12px;
+  padding: 8px 12px;
+  background-color: #f3f4f6;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.header-person {
+  text-align: left;
+}
+
+.header-original,
+.header-oop {
+  text-align: right;
+}
+
+/* Insurance allocation row */
+.allocation-row.insurance-row {
+  display: grid;
+  grid-template-columns: 1fr 120px 120px;
+  gap: 12px;
+  align-items: center;
+}
+
+.allocation-row.insurance-row .person-label {
+  margin-right: 0;
+}
+
+.allocation-row.insurance-row .amount-input-wrapper {
+  justify-content: flex-end;
+}
+
+.allocation-row.insurance-row .amount-input-wrapper.original-amount .amount-input {
+  background-color: #f0f9ff;
+  border-color: #0ea5e9;
+}
+
+/* Insurance allocation note */
+.insurance-allocation-note {
+  margin-top: 16px;
+  padding: 12px;
+  background-color: #f0f9ff;
+  border: 1px solid #0ea5e9;
+  border-radius: 6px;
+  color: #0369a1;
+}
+
+.insurance-allocation-note small {
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+/* Responsive adjustments for insurance mode */
+@media (max-width: 640px) {
+  .person-allocation-modal.insurance-mode {
+    max-width: 95%;
+  }
+  
+  .expense-info-row {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .allocation-header {
+    display: none;
+  }
+  
+  .allocation-row.insurance-row {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .allocation-row.insurance-row .person-label {
+    font-weight: 600;
+    border-bottom: 1px solid #e5e7eb;
+    padding-bottom: 8px;
+    margin-bottom: 4px;
+  }
+  
+  .allocation-row.insurance-row .amount-input-wrapper {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .allocation-row.insurance-row .amount-input-wrapper::before {
+    content: 'Out-of-Pocket:';
+    font-size: 13px;
+    color: #6b7280;
+  }
+  
+  .allocation-row.insurance-row .amount-input-wrapper.original-amount::before {
+    content: 'Original Cost:';
+  }
+  
+  .allocation-row.insurance-row .amount-input {
+    width: 100px;
+  }
+}

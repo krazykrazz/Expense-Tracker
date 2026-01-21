@@ -1,17 +1,34 @@
 import { useState, useEffect } from 'react';
 import './PersonAllocationModal.css';
 
+/**
+ * PersonAllocationModal - Modal for allocating expense amounts to multiple people
+ * 
+ * For insurance-eligible medical expenses (Requirements 4.1, 4.2, 4.3, 4.4):
+ * - Uses original_cost for allocation base
+ * - Tracks both original_amount and amount per person
+ * - Validates per-person out-of-pocket amounts don't exceed original cost allocations
+ */
 const PersonAllocationModal = ({ 
   isOpen, 
   expense, 
   selectedPeople, 
   onSave, 
-  onCancel 
+  onCancel,
+  // Insurance-related props (Requirements 4.1, 4.2, 4.3, 4.4)
+  insuranceEligible = false,
+  originalCost = null
 }) => {
   const [allocations, setAllocations] = useState([]);
   const [totalAllocated, setTotalAllocated] = useState(0);
+  const [totalOriginalAllocated, setTotalOriginalAllocated] = useState(0);
   const [isValid, setIsValid] = useState(false);
   const [error, setError] = useState('');
+
+  // Determine the base amount for allocation
+  // For insurance expenses, use original_cost; otherwise use expense amount
+  const allocationBase = insuranceEligible && originalCost ? originalCost : (expense?.amount || 0);
+  const expenseAmount = expense?.amount || 0;
 
   // Initialize allocations when modal opens or people change
   useEffect(() => {
@@ -19,33 +36,65 @@ const PersonAllocationModal = ({
       const initialAllocations = selectedPeople.map(person => ({
         personId: person.id,
         personName: person.name,
-        amount: 0
+        amount: 0,
+        originalAmount: insuranceEligible ? 0 : null
       }));
       setAllocations(initialAllocations);
       setTotalAllocated(0);
+      setTotalOriginalAllocated(0);
       setError('');
     }
-  }, [isOpen, selectedPeople]);
+  }, [isOpen, selectedPeople, insuranceEligible]);
 
-  // Calculate total and validate whenever allocations change
+  // Calculate totals and validate whenever allocations change
   useEffect(() => {
     const total = allocations.reduce((sum, allocation) => sum + (allocation.amount || 0), 0);
     setTotalAllocated(total);
     
-    const expenseAmount = expense?.amount || 0;
-    const isValidTotal = Math.abs(total - expenseAmount) < 0.01; // Allow for floating point precision
-    setIsValid(isValidTotal && allocations.every(a => a.amount > 0));
-    
-    if (total > expenseAmount) {
-      setError(`Total allocated ($${total.toFixed(2)}) exceeds expense amount ($${expenseAmount.toFixed(2)})`);
-    } else if (total < expenseAmount && total > 0) {
-      setError(`Total allocated ($${total.toFixed(2)}) is less than expense amount ($${expenseAmount.toFixed(2)})`);
-    } else if (allocations.some(a => a.amount <= 0) && total > 0) {
-      setError('All amounts must be greater than zero');
+    if (insuranceEligible) {
+      const totalOriginal = allocations.reduce((sum, allocation) => sum + (allocation.originalAmount || 0), 0);
+      setTotalOriginalAllocated(totalOriginal);
+      
+      // For insurance expenses, validate both original and out-of-pocket allocations
+      const isValidOriginal = Math.abs(totalOriginal - allocationBase) < 0.01;
+      const isValidAmount = Math.abs(total - expenseAmount) < 0.01;
+      const allPositive = allocations.every(a => a.amount > 0 && a.originalAmount > 0);
+      const amountsValid = allocations.every(a => (a.amount || 0) <= (a.originalAmount || 0));
+      
+      setIsValid(isValidOriginal && isValidAmount && allPositive && amountsValid);
+      
+      // Set appropriate error messages
+      if (totalOriginal > allocationBase) {
+        setError(`Total original cost allocated ($${totalOriginal.toFixed(2)}) exceeds original cost ($${allocationBase.toFixed(2)})`);
+      } else if (totalOriginal < allocationBase && totalOriginal > 0) {
+        setError(`Total original cost allocated ($${totalOriginal.toFixed(2)}) is less than original cost ($${allocationBase.toFixed(2)})`);
+      } else if (total > expenseAmount) {
+        setError(`Total out-of-pocket allocated ($${total.toFixed(2)}) exceeds expense amount ($${expenseAmount.toFixed(2)})`);
+      } else if (total < expenseAmount && total > 0) {
+        setError(`Total out-of-pocket allocated ($${total.toFixed(2)}) is less than expense amount ($${expenseAmount.toFixed(2)})`);
+      } else if (!amountsValid) {
+        setError('Out-of-pocket amount cannot exceed original cost for any person');
+      } else if (allocations.some(a => (a.amount <= 0 || a.originalAmount <= 0)) && (total > 0 || totalOriginal > 0)) {
+        setError('All amounts must be greater than zero');
+      } else {
+        setError('');
+      }
     } else {
-      setError('');
+      // Standard validation for non-insurance expenses
+      const isValidTotal = Math.abs(total - expenseAmount) < 0.01;
+      setIsValid(isValidTotal && allocations.every(a => a.amount > 0));
+      
+      if (total > expenseAmount) {
+        setError(`Total allocated ($${total.toFixed(2)}) exceeds expense amount ($${expenseAmount.toFixed(2)})`);
+      } else if (total < expenseAmount && total > 0) {
+        setError(`Total allocated ($${total.toFixed(2)}) is less than expense amount ($${expenseAmount.toFixed(2)})`);
+      } else if (allocations.some(a => a.amount <= 0) && total > 0) {
+        setError('All amounts must be greater than zero');
+      } else {
+        setError('');
+      }
     }
-  }, [allocations, expense]);
+  }, [allocations, expense, insuranceEligible, allocationBase, expenseAmount]);
 
   const handleAmountChange = (personId, value) => {
     const amount = parseFloat(value) || 0;
@@ -58,16 +107,41 @@ const PersonAllocationModal = ({
     );
   };
 
-  const handleSplitEqually = () => {
-    if (!expense || allocations.length === 0) return;
-    
-    const amountPerPerson = expense.amount / allocations.length;
+  const handleOriginalAmountChange = (personId, value) => {
+    const originalAmount = parseFloat(value) || 0;
     setAllocations(prev => 
-      prev.map(allocation => ({
-        ...allocation,
-        amount: parseFloat(amountPerPerson.toFixed(2))
-      }))
+      prev.map(allocation => 
+        allocation.personId === personId 
+          ? { ...allocation, originalAmount }
+          : allocation
+      )
     );
+  };
+
+  const handleSplitEqually = () => {
+    if (allocations.length === 0) return;
+    
+    if (insuranceEligible) {
+      // Split both original cost and out-of-pocket equally
+      const originalPerPerson = allocationBase / allocations.length;
+      const amountPerPerson = expenseAmount / allocations.length;
+      setAllocations(prev => 
+        prev.map(allocation => ({
+          ...allocation,
+          originalAmount: parseFloat(originalPerPerson.toFixed(2)),
+          amount: parseFloat(amountPerPerson.toFixed(2))
+        }))
+      );
+    } else {
+      // Standard split for non-insurance expenses
+      const amountPerPerson = expenseAmount / allocations.length;
+      setAllocations(prev => 
+        prev.map(allocation => ({
+          ...allocation,
+          amount: parseFloat(amountPerPerson.toFixed(2))
+        }))
+      );
+    }
   };
 
   const handleSave = () => {
@@ -77,7 +151,8 @@ const PersonAllocationModal = ({
     const formattedAllocations = allocations.map(allocation => ({
       id: allocation.personId,
       name: allocation.personName,
-      amount: allocation.amount
+      amount: allocation.amount,
+      originalAmount: insuranceEligible ? allocation.originalAmount : null
     }));
     
     onSave(formattedAllocations);
@@ -86,18 +161,19 @@ const PersonAllocationModal = ({
   const handleCancel = () => {
     setAllocations([]);
     setTotalAllocated(0);
+    setTotalOriginalAllocated(0);
     setError('');
     onCancel();
   };
 
   if (!isOpen) return null;
 
-  const expenseAmount = expense?.amount || 0;
   const remaining = expenseAmount - totalAllocated;
+  const remainingOriginal = insuranceEligible ? allocationBase - totalOriginalAllocated : 0;
 
   return (
     <div className="modal-overlay">
-      <div className="person-allocation-modal">
+      <div className={`person-allocation-modal ${insuranceEligible ? 'insurance-mode' : ''}`}>
         <div className="modal-header">
           <h3>Allocate Expense Amount</h3>
           <button 
@@ -112,11 +188,48 @@ const PersonAllocationModal = ({
 
         <div className="modal-body">
           <div className="expense-info">
-            <p><strong>Total Expense:</strong> ${expenseAmount.toFixed(2)}</p>
-            <p><strong>Total Allocated:</strong> ${totalAllocated.toFixed(2)}</p>
-            <p className={remaining === 0 ? 'remaining-zero' : remaining < 0 ? 'remaining-negative' : 'remaining-positive'}>
-              <strong>Remaining:</strong> ${remaining.toFixed(2)}
-            </p>
+            {insuranceEligible ? (
+              <>
+                <div className="expense-info-row">
+                  <div className="expense-info-item">
+                    <span className="info-label">Original Cost:</span>
+                    <span className="info-value">${allocationBase.toFixed(2)}</span>
+                  </div>
+                  <div className="expense-info-item">
+                    <span className="info-label">Out-of-Pocket:</span>
+                    <span className="info-value">${expenseAmount.toFixed(2)}</span>
+                  </div>
+                </div>
+                <div className="expense-info-row">
+                  <div className="expense-info-item">
+                    <span className="info-label">Original Allocated:</span>
+                    <span className="info-value">${totalOriginalAllocated.toFixed(2)}</span>
+                  </div>
+                  <div className="expense-info-item">
+                    <span className="info-label">OOP Allocated:</span>
+                    <span className="info-value">${totalAllocated.toFixed(2)}</span>
+                  </div>
+                </div>
+                <div className="expense-info-row">
+                  <div className={`expense-info-item ${remainingOriginal === 0 ? 'remaining-zero' : remainingOriginal < 0 ? 'remaining-negative' : 'remaining-positive'}`}>
+                    <span className="info-label">Original Remaining:</span>
+                    <span className="info-value">${remainingOriginal.toFixed(2)}</span>
+                  </div>
+                  <div className={`expense-info-item ${remaining === 0 ? 'remaining-zero' : remaining < 0 ? 'remaining-negative' : 'remaining-positive'}`}>
+                    <span className="info-label">OOP Remaining:</span>
+                    <span className="info-value">${remaining.toFixed(2)}</span>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <p><strong>Total Expense:</strong> ${expenseAmount.toFixed(2)}</p>
+                <p><strong>Total Allocated:</strong> ${totalAllocated.toFixed(2)}</p>
+                <p className={remaining === 0 ? 'remaining-zero' : remaining < 0 ? 'remaining-negative' : 'remaining-positive'}>
+                  <strong>Remaining:</strong> ${remaining.toFixed(2)}
+                </p>
+              </>
+            )}
           </div>
 
           <div className="allocation-controls">
@@ -130,11 +243,32 @@ const PersonAllocationModal = ({
           </div>
 
           <div className="allocations-list">
+            {insuranceEligible && (
+              <div className="allocation-header">
+                <span className="header-person">Person</span>
+                <span className="header-original">Original Cost</span>
+                <span className="header-oop">Out-of-Pocket</span>
+              </div>
+            )}
             {allocations.map(allocation => (
-              <div key={allocation.personId} className="allocation-row">
+              <div key={allocation.personId} className={`allocation-row ${insuranceEligible ? 'insurance-row' : ''}`}>
                 <label className="person-label">
                   {allocation.personName}
                 </label>
+                {insuranceEligible && (
+                  <div className="amount-input-wrapper original-amount">
+                    <span className="currency-symbol">$</span>
+                    <input
+                      type="number"
+                      value={allocation.originalAmount || ''}
+                      onChange={(e) => handleOriginalAmountChange(allocation.personId, e.target.value)}
+                      placeholder="0.00"
+                      step="0.01"
+                      min="0"
+                      className="amount-input"
+                    />
+                  </div>
+                )}
                 <div className="amount-input-wrapper">
                   <span className="currency-symbol">$</span>
                   <input
@@ -154,6 +288,12 @@ const PersonAllocationModal = ({
           {error && (
             <div className="error-message">
               {error}
+            </div>
+          )}
+          
+          {insuranceEligible && (
+            <div className="insurance-allocation-note">
+              <small>💡 Original cost is the full expense before reimbursement. Out-of-pocket is what each person actually paid.</small>
             </div>
           )}
         </div>

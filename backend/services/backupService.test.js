@@ -352,3 +352,304 @@ describe('BackupService - Restore Functionality', () => {
     }
   });
 });
+
+
+describe('BackupService - Insurance Fields', () => {
+  const testBackupPath = path.join(__dirname, '../../test-insurance-backups');
+  const testExtractPath = path.join(__dirname, '../../test-insurance-extract');
+  
+  beforeAll(async () => {
+    // Initialize the real database for backup tests
+    await initializeDatabase();
+    
+    // Create test directories
+    if (!fs.existsSync(testBackupPath)) {
+      fs.mkdirSync(testBackupPath, { recursive: true });
+    }
+    if (!fs.existsSync(testExtractPath)) {
+      fs.mkdirSync(testExtractPath, { recursive: true });
+    }
+  });
+
+  afterAll(async () => {
+    // Clean up test directories
+    if (fs.existsSync(testBackupPath)) {
+      try {
+        await fs.promises.rm(testBackupPath, { recursive: true, force: true });
+      } catch (error) {
+        // Ignore cleanup errors
+      }
+    }
+    if (fs.existsSync(testExtractPath)) {
+      try {
+        await fs.promises.rm(testExtractPath, { recursive: true, force: true });
+      } catch (error) {
+        // Ignore cleanup errors
+      }
+    }
+  });
+
+  /**
+   * Test: Backup preserves insurance fields in expenses table
+   * Validates: Requirements 9.1 - When creating a database backup, include all insurance-related fields
+   */
+  test('backup preserves insurance fields (insurance_eligible, claim_status, original_cost)', async () => {
+    const expenseRepository = require('../repositories/expenseRepository');
+    
+    // Create a test medical expense with insurance fields
+    const testExpense = await expenseRepository.create({
+      date: '2099-06-15',
+      place: 'Test Medical Clinic',
+      notes: 'Insurance backup test',
+      amount: 75.00,
+      type: 'Tax - Medical',
+      week: 3,
+      method: 'Debit',
+      insurance_eligible: 1,
+      claim_status: 'in_progress',
+      original_cost: 150.00
+    });
+
+    try {
+      // Perform a backup
+      const result = await backupService.performBackup(testBackupPath);
+      expect(result.success).toBe(true);
+
+      // Extract the archive
+      const extractResult = await archiveUtils.extractArchive(result.path, testExtractPath);
+      expect(extractResult.success).toBe(true);
+
+      // Open the extracted database and verify insurance fields exist
+      const extractedDbPath = path.join(testExtractPath, 'database', 'expenses.db');
+      const db = new sqlite3.Database(extractedDbPath);
+      
+      const expenseData = await new Promise((resolve, reject) => {
+        db.get(
+          'SELECT * FROM expenses WHERE id = ?',
+          [testExpense.id],
+          (err, row) => {
+            if (err) reject(err);
+            else resolve(row);
+          }
+        );
+      });
+
+      db.close();
+
+      // Verify insurance fields are preserved
+      expect(expenseData).toBeDefined();
+      expect(expenseData.insurance_eligible).toBe(1);
+      expect(expenseData.claim_status).toBe('in_progress');
+      expect(expenseData.original_cost).toBe(150.00);
+      expect(expenseData.amount).toBe(75.00);
+    } finally {
+      // Clean up test expense
+      await expenseRepository.delete(testExpense.id);
+    }
+  });
+
+  /**
+   * Test: Restore preserves insurance fields in expenses table
+   * Validates: Requirements 9.2 - When restoring from a backup, restore all insurance-related fields
+   */
+  test('restore preserves insurance fields (insurance_eligible, claim_status, original_cost)', async () => {
+    const expenseRepository = require('../repositories/expenseRepository');
+    
+    // Create a test medical expense with insurance fields
+    const testExpense = await expenseRepository.create({
+      date: '2099-07-20',
+      place: 'Test Hospital',
+      notes: 'Insurance restore test',
+      amount: 200.00,
+      type: 'Tax - Medical',
+      week: 4,
+      method: 'CIBC MC',
+      insurance_eligible: 1,
+      claim_status: 'paid',
+      original_cost: 500.00
+    });
+
+    try {
+      // Perform a backup
+      const backupResult = await backupService.performBackup(testBackupPath);
+      expect(backupResult.success).toBe(true);
+
+      // Delete the test expense
+      await expenseRepository.delete(testExpense.id);
+      
+      // Verify it's deleted
+      const deletedExpense = await expenseRepository.findById(testExpense.id);
+      expect(deletedExpense).toBeNull();
+
+      // Restore from backup
+      const restoreResult = await backupService.restoreBackup(backupResult.path);
+      
+      expect(restoreResult.success).toBe(true);
+      expect(restoreResult.filesRestored).toBeGreaterThanOrEqual(1);
+
+      // Reinitialize database connection after restore
+      await initializeDatabase();
+
+      // Verify expense is restored with insurance fields
+      const restoredExpense = await expenseRepository.findById(testExpense.id);
+      expect(restoredExpense).not.toBeNull();
+      expect(restoredExpense.insurance_eligible).toBe(1);
+      expect(restoredExpense.claim_status).toBe('paid');
+      expect(restoredExpense.original_cost).toBe(500.00);
+      expect(restoredExpense.amount).toBe(200.00);
+    } finally {
+      // Clean up
+      try {
+        await expenseRepository.delete(testExpense.id);
+      } catch (err) {
+        // Ignore cleanup errors
+      }
+    }
+  });
+
+  /**
+   * Test: Backup preserves original_amount in expense_people table
+   * Validates: Requirements 9.1 - Include all insurance-related fields (including expense_people.original_amount)
+   */
+  test('backup preserves original_amount in expense_people allocations', async () => {
+    const expenseRepository = require('../repositories/expenseRepository');
+    const peopleRepository = require('../repositories/peopleRepository');
+    const expensePeopleRepository = require('../repositories/expensePeopleRepository');
+    
+    // Create a test person
+    const testPerson = await peopleRepository.create({
+      name: 'Insurance Backup Test Person',
+      date_of_birth: '1990-01-01'
+    });
+
+    // Create a test medical expense with insurance fields
+    const testExpense = await expenseRepository.create({
+      date: '2099-08-10',
+      place: 'Test Pharmacy',
+      notes: 'Expense people backup test',
+      amount: 50.00,
+      type: 'Tax - Medical',
+      week: 2,
+      method: 'Cash',
+      insurance_eligible: 1,
+      claim_status: 'not_claimed',
+      original_cost: 100.00
+    });
+
+    // Create allocation with originalAmount
+    await expensePeopleRepository.createAssociations(testExpense.id, [
+      { personId: testPerson.id, amount: 50.00, originalAmount: 100.00 }
+    ]);
+
+    try {
+      // Perform a backup
+      const result = await backupService.performBackup(testBackupPath);
+      expect(result.success).toBe(true);
+
+      // Extract the archive
+      const extractResult = await archiveUtils.extractArchive(result.path, testExtractPath);
+      expect(extractResult.success).toBe(true);
+
+      // Open the extracted database and verify original_amount exists
+      const extractedDbPath = path.join(testExtractPath, 'database', 'expenses.db');
+      const db = new sqlite3.Database(extractedDbPath);
+      
+      const allocationData = await new Promise((resolve, reject) => {
+        db.get(
+          'SELECT * FROM expense_people WHERE expense_id = ? AND person_id = ?',
+          [testExpense.id, testPerson.id],
+          (err, row) => {
+            if (err) reject(err);
+            else resolve(row);
+          }
+        );
+      });
+
+      db.close();
+
+      // Verify original_amount is preserved
+      expect(allocationData).toBeDefined();
+      expect(allocationData.amount).toBe(50.00);
+      expect(allocationData.original_amount).toBe(100.00);
+    } finally {
+      // Clean up
+      await expensePeopleRepository.deleteByExpenseId(testExpense.id);
+      await expenseRepository.delete(testExpense.id);
+      await peopleRepository.delete(testPerson.id);
+    }
+  });
+
+  /**
+   * Test: Restore preserves original_amount in expense_people table
+   * Validates: Requirements 9.2 - Restore all insurance-related fields (including expense_people.original_amount)
+   */
+  test('restore preserves original_amount in expense_people allocations', async () => {
+    const expenseRepository = require('../repositories/expenseRepository');
+    const peopleRepository = require('../repositories/peopleRepository');
+    const expensePeopleRepository = require('../repositories/expensePeopleRepository');
+    
+    // Create a test person
+    const testPerson = await peopleRepository.create({
+      name: 'Insurance Restore Test Person',
+      date_of_birth: '1985-05-15'
+    });
+
+    // Create a test medical expense with insurance fields
+    const testExpense = await expenseRepository.create({
+      date: '2099-09-05',
+      place: 'Test Specialist',
+      notes: 'Expense people restore test',
+      amount: 75.00,
+      type: 'Tax - Medical',
+      week: 1,
+      method: 'WS VISA',
+      insurance_eligible: 1,
+      claim_status: 'denied',
+      original_cost: 75.00
+    });
+
+    // Create allocation with originalAmount
+    await expensePeopleRepository.createAssociations(testExpense.id, [
+      { personId: testPerson.id, amount: 75.00, originalAmount: 75.00 }
+    ]);
+
+    try {
+      // Perform a backup
+      const backupResult = await backupService.performBackup(testBackupPath);
+      expect(backupResult.success).toBe(true);
+
+      // Delete the allocation and expense
+      await expensePeopleRepository.deleteByExpenseId(testExpense.id);
+      await expenseRepository.delete(testExpense.id);
+      
+      // Verify they're deleted
+      const deletedExpense = await expenseRepository.findById(testExpense.id);
+      expect(deletedExpense).toBeNull();
+
+      // Restore from backup
+      const restoreResult = await backupService.restoreBackup(backupResult.path);
+      expect(restoreResult.success).toBe(true);
+
+      // Reinitialize database connection after restore
+      await initializeDatabase();
+
+      // Verify expense and allocation are restored
+      const restoredExpense = await expenseRepository.findById(testExpense.id);
+      expect(restoredExpense).not.toBeNull();
+
+      const restoredAllocations = await expensePeopleRepository.getPeopleForExpense(testExpense.id);
+      expect(restoredAllocations.length).toBe(1);
+      expect(restoredAllocations[0].amount).toBe(75.00);
+      expect(restoredAllocations[0].originalAmount).toBe(75.00);
+    } finally {
+      // Clean up
+      try {
+        await expensePeopleRepository.deleteByExpenseId(testExpense.id);
+        await expenseRepository.delete(testExpense.id);
+        await peopleRepository.delete(testPerson.id);
+      } catch (err) {
+        // Ignore cleanup errors
+      }
+    }
+  });
+});

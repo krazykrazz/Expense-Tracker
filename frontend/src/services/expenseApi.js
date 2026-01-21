@@ -4,7 +4,7 @@
  */
 
 import { API_ENDPOINTS } from '../config.js';
-import { apiGet, apiPost, apiPut, apiDelete, logApiError } from '../utils/apiClient.js';
+import { apiGet, apiPost, apiPut, apiDelete, apiPatch, logApiError } from '../utils/apiClient.js';
 
 /**
  * Get expenses based on filters
@@ -63,10 +63,17 @@ export const getExpenseWithPeople = async (id) => {
 
 /**
  * Create a new expense
- * @param {Object} expenseData - Expense data
- * @param {Array} peopleAllocations - Optional array of { personId, amount } for medical expenses
+ * @param {Object} expenseData - Expense data including optional insurance fields
+ * @param {Array} peopleAllocations - Optional array of { personId, amount, originalAmount } for medical expenses
  * @param {number} futureMonths - Optional number of future months to create copies (0-12)
  * @returns {Promise<Object>} Response with expense, futureExpenses array, and message
+ * 
+ * Insurance fields (for Tax - Medical expenses):
+ * - insurance_eligible: boolean - Whether expense is eligible for insurance
+ * - claim_status: string - 'not_claimed', 'in_progress', 'paid', 'denied'
+ * - original_cost: number - Original cost before reimbursement
+ * 
+ * _Requirements: 1.3, 2.3, 5.4_
  */
 export const createExpense = async (expenseData, peopleAllocations = null, futureMonths = 0) => {
   try {
@@ -78,6 +85,19 @@ export const createExpense = async (expenseData, peopleAllocations = null, futur
       type: expenseData.type,
       method: expenseData.method
     };
+    
+    // Add insurance fields for medical expenses (Requirement 1.3)
+    if (expenseData.type === 'Tax - Medical') {
+      if (expenseData.insurance_eligible !== undefined) {
+        requestBody.insurance_eligible = expenseData.insurance_eligible ? 1 : 0;
+      }
+      if (expenseData.claim_status !== undefined) {
+        requestBody.claim_status = expenseData.claim_status;
+      }
+      if (expenseData.original_cost !== undefined && expenseData.original_cost !== null) {
+        requestBody.original_cost = parseFloat(expenseData.original_cost);
+      }
+    }
     
     // Add people allocations for medical expenses
     if (peopleAllocations && peopleAllocations.length > 0) {
@@ -99,10 +119,17 @@ export const createExpense = async (expenseData, peopleAllocations = null, futur
 /**
  * Update an existing expense
  * @param {number} id - Expense ID
- * @param {Object} expenseData - Updated expense data
- * @param {Array} peopleAllocations - Optional array of { personId, amount } for medical expenses
+ * @param {Object} expenseData - Updated expense data including optional insurance fields
+ * @param {Array} peopleAllocations - Optional array of { personId, amount, originalAmount } for medical expenses
  * @param {number} futureMonths - Optional number of future months to create copies (0-12)
  * @returns {Promise<Object>} Response with updated expense, futureExpenses array, and message
+ * 
+ * Insurance fields (for Tax - Medical expenses):
+ * - insurance_eligible: boolean - Whether expense is eligible for insurance
+ * - claim_status: string - 'not_claimed', 'in_progress', 'paid', 'denied'
+ * - original_cost: number - Original cost before reimbursement
+ * 
+ * _Requirements: 1.3, 2.3, 5.4_
  */
 export const updateExpense = async (id, expenseData, peopleAllocations = null, futureMonths = 0) => {
   try {
@@ -114,6 +141,19 @@ export const updateExpense = async (id, expenseData, peopleAllocations = null, f
       type: expenseData.type,
       method: expenseData.method
     };
+    
+    // Add insurance fields for medical expenses (Requirement 1.3)
+    if (expenseData.type === 'Tax - Medical') {
+      if (expenseData.insurance_eligible !== undefined) {
+        requestBody.insurance_eligible = expenseData.insurance_eligible ? 1 : 0;
+      }
+      if (expenseData.claim_status !== undefined) {
+        requestBody.claim_status = expenseData.claim_status;
+      }
+      if (expenseData.original_cost !== undefined && expenseData.original_cost !== null) {
+        requestBody.original_cost = parseFloat(expenseData.original_cost);
+      }
+    }
     
     // Add people allocations for medical expenses
     if (peopleAllocations !== null) {
@@ -214,6 +254,35 @@ export const getPlaces = async () => {
     return await apiGet(`${API_ENDPOINTS.EXPENSES}/places`, 'fetch places');
   } catch (error) {
     logApiError('fetching places', error);
+    throw error;
+  }
+};
+
+
+/**
+ * Update insurance status for a medical expense (quick status update)
+ * Allows quick status updates without opening the full edit form.
+ * 
+ * @param {number} expenseId - Expense ID
+ * @param {string} status - New claim status ('not_claimed', 'in_progress', 'paid', 'denied')
+ * @returns {Promise<Object>} Updated expense object
+ * 
+ * Status transitions:
+ * - not_claimed → in_progress
+ * - in_progress → paid | denied
+ * - paid/denied → in_progress (via edit form)
+ * 
+ * _Requirements: 5.1, 5.2, 5.3, 5.4_
+ */
+export const updateInsuranceStatus = async (expenseId, status) => {
+  try {
+    return await apiPatch(
+      API_ENDPOINTS.INSURANCE_STATUS(expenseId),
+      { status },
+      'update insurance status'
+    );
+  } catch (error) {
+    logApiError('updating insurance status', error);
     throw error;
   }
 };

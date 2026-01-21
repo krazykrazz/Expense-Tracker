@@ -1,0 +1,233 @@
+/* InsuranceStatusIndicator Component Styles */
+
+.insurance-status-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  border-radius: var(--radius-full);
+  transition: all var(--transition-fast);
+  vertical-align: middle;
+  font-weight: var(--font-medium);
+  white-space: nowrap;
+}
+
+/* Size Variants */
+.insurance-status-indicator.small {
+  font-size: var(--text-xs);
+  padding: var(--spacing-1) var(--spacing-2);
+}
+
+.insurance-status-indicator.small .insurance-status-icon {
+  font-size: var(--text-sm);
+}
+
+.insurance-status-indicator.medium {
+  font-size: var(--text-sm);
+  padding: var(--spacing-1) var(--spacing-3);
+}
+
+.insurance-status-indicator.medium .insurance-status-icon {
+  font-size: var(--text-lg);
+}
+
+/* Status Color Variants */
+
+/* Not Claimed - Gray */
+.insurance-status-indicator.status-not-claimed {
+  background: var(--bg-muted);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-default);
+}
+
+/* In Progress - Yellow/Orange */
+.insurance-status-indicator.status-in-progress {
+  background: var(--color-warning-light);
+  color: var(--color-warning-dark);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+/* Paid - Green */
+.insurance-status-indicator.status-paid {
+  background: var(--color-positive-light);
+  color: var(--color-positive-dark);
+  border: 1px solid rgba(34, 197, 94, 0.25);
+}
+
+/* Denied - Red */
+.insurance-status-indicator.status-denied {
+  background: var(--color-negative-light);
+  color: var(--color-negative-dark);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+/* Clickable State */
+.insurance-status-indicator.clickable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.insurance-status-indicator.clickable:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.insurance-status-indicator.clickable.status-not-claimed:hover {
+  background: #e2e8f0;
+  border-color: var(--border-strong);
+}
+
+.insurance-status-indicator.clickable.status-in-progress:hover {
+  background: rgba(245, 158, 11, 0.2);
+  border-color: rgba(245, 158, 11, 0.35);
+}
+
+.insurance-status-indicator.clickable.status-paid:hover {
+  background: rgba(34, 197, 94, 0.2);
+  border-color: rgba(34, 197, 94, 0.35);
+}
+
+.insurance-status-indicator.clickable.status-denied:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+.insurance-status-indicator.clickable:active {
+  transform: translateY(0) scale(0.98);
+  box-shadow: var(--shadow-xs);
+}
+
+/* Focus Styles for Accessibility */
+.insurance-status-indicator.clickable:focus {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* Icon Styles */
+.insurance-status-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+/* Text Styles */
+.insurance-status-text {
+  font-weight: var(--font-medium);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  .insurance-status-indicator.medium {
+    font-size: var(--text-xs);
+    padding: var(--spacing-1) var(--spacing-2);
+  }
+
+  .insurance-status-indicator.medium .insurance-status-icon {
+    font-size: var(--text-base);
+  }
+}
+
+@media (max-width: 480px) {
+  .insurance-status-indicator .insurance-status-text {
+    display: none;
+  }
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+  .insurance-status-indicator.status-not-claimed {
+    background: #e9ecef;
+    border-color: #6c757d;
+    color: #495057;
+  }
+
+  .insurance-status-indicator.status-in-progress {
+    background: #fff3cd;
+    border-color: #ffc107;
+    color: #856404;
+  }
+
+  .insurance-status-indicator.status-paid {
+    background: #d4edda;
+    border-color: #28a745;
+    color: #155724;
+  }
+
+  .insurance-status-indicator.status-denied {
+    background: #f8d7da;
+    border-color: #dc3545;
+    color: #721c24;
+  }
+
+  .insurance-status-indicator.clickable:focus {
+    outline-width: 3px;
+  }
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  .insurance-status-indicator {
+    transition: none;
+  }
+
+  .insurance-status-indicator.clickable:hover {
+    transform: none;
+  }
+}
+
+/* Print Styles */
+@media print {
+  .insurance-status-indicator {
+    background: transparent !important;
+    border: 1px solid #000 !important;
+    color: #000 !important;
+  }
+
+  .insurance-status-indicator::after {
+    content: attr(title);
+    font-size: 8px;
+    display: block;
+    margin-top: 2px;
+  }
+}
+
+/* Animation for Status Changes */
+@keyframes status-change {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.7;
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.insurance-status-indicator.animate-change {
+  animation: status-change 0.3s ease-out;
+}
+
+/* Loading State */
+.insurance-status-indicator.loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.insurance-status-indicator.loading .insurance-status-icon {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}

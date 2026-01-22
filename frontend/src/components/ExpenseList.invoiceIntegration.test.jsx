@@ -4,7 +4,8 @@ import ExpenseList from './ExpenseList';
 
 // Mock the invoice API
 vi.mock('../services/invoiceApi', () => ({
-  getInvoiceMetadata: vi.fn()
+  getInvoicesForExpense: vi.fn(),
+  updateInvoicePersonLink: vi.fn()
 }));
 
 // Mock fetch globally
@@ -61,21 +62,21 @@ describe('ExpenseList - Invoice Integration', () => {
    * Test: Invoice filter shows only medical expenses
    */
   it('should show invoice filter and apply it correctly', async () => {
-    const { getInvoiceMetadata } = await import('../services/invoiceApi');
+    const { getInvoicesForExpense } = await import('../services/invoiceApi');
     
-    // Mock invoice metadata - expense 1 has invoice, expense 2 doesn't
-    getInvoiceMetadata.mockImplementation((expenseId) => {
+    // Mock invoice data - expense 1 has invoice, expense 2 doesn't
+    getInvoicesForExpense.mockImplementation((expenseId) => {
       if (expenseId === 1) {
-        return Promise.resolve({
+        return Promise.resolve([{
           id: 1,
           expenseId: 1,
           filename: 'receipt.pdf',
           originalFilename: 'medical_receipt.pdf',
           fileSize: 245760,
           uploadDate: '2025-01-15T12:00:00Z'
-        });
+        }]);
       }
-      return Promise.resolve(null);
+      return Promise.resolve([]);
     });
 
     const { container } = render(
@@ -90,7 +91,7 @@ describe('ExpenseList - Invoice Integration', () => {
     // Wait for categories and invoice metadata to load
     await waitFor(() => {
       const selects = container.querySelectorAll('.filter-select');
-      expect(selects.length).toBe(3); // Category, Payment Method, Invoice
+      expect(selects.length).toBe(4); // Category, Payment Method, Invoice, Insurance
     });
 
     // Find the invoice filter
@@ -135,21 +136,21 @@ describe('ExpenseList - Invoice Integration', () => {
    * Test: Invoice indicators appear for medical expenses
    */
   it('should display invoice indicators for medical expenses', async () => {
-    const { getInvoiceMetadata } = await import('../services/invoiceApi');
+    const { getInvoicesForExpense } = await import('../services/invoiceApi');
     
-    // Mock invoice metadata
-    getInvoiceMetadata.mockImplementation((expenseId) => {
+    // Mock invoice data
+    getInvoicesForExpense.mockImplementation((expenseId) => {
       if (expenseId === 1) {
-        return Promise.resolve({
+        return Promise.resolve([{
           id: 1,
           expenseId: 1,
           filename: 'receipt.pdf',
           originalFilename: 'medical_receipt.pdf',
           fileSize: 245760,
           uploadDate: '2025-01-15T12:00:00Z'
-        });
+        }]);
       }
-      return Promise.resolve(null);
+      return Promise.resolve([]);
     });
 
     render(
@@ -161,10 +162,10 @@ describe('ExpenseList - Invoice Integration', () => {
       />
     );
 
-    // Wait for invoice metadata to load
+    // Wait for invoice data to load
     await waitFor(() => {
-      expect(getInvoiceMetadata).toHaveBeenCalledWith(1);
-      expect(getInvoiceMetadata).toHaveBeenCalledWith(2);
+      expect(getInvoicesForExpense).toHaveBeenCalledWith(1);
+      expect(getInvoicesForExpense).toHaveBeenCalledWith(2);
     });
 
     // Check that invoice indicators are present for medical expenses
@@ -186,8 +187,8 @@ describe('ExpenseList - Invoice Integration', () => {
    * Test: Clear filters includes invoice filter
    */
   it('should clear invoice filter when clear button is clicked', async () => {
-    const { getInvoiceMetadata } = await import('../services/invoiceApi');
-    getInvoiceMetadata.mockResolvedValue(null);
+    const { getInvoicesForExpense } = await import('../services/invoiceApi');
+    getInvoicesForExpense.mockResolvedValue([]);
 
     const { container } = render(
       <ExpenseList
@@ -201,7 +202,7 @@ describe('ExpenseList - Invoice Integration', () => {
     // Wait for categories to load
     await waitFor(() => {
       const selects = container.querySelectorAll('.filter-select');
-      expect(selects.length).toBe(3);
+      expect(selects.length).toBe(4); // Category, Payment Method, Invoice, Insurance
     });
 
     // Apply filters including invoice filter

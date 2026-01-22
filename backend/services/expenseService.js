@@ -195,7 +195,19 @@ class ExpenseService {
     }
 
     // Update the claim status
-    return await expenseRepository.updateInsuranceFields(id, { claim_status: status });
+    const updatedExpense = await expenseRepository.updateInsuranceFields(id, { claim_status: status });
+    
+    if (!updatedExpense) {
+      return null;
+    }
+    
+    // Include people data in the response to preserve UI state
+    const people = await expensePeopleRepository.getPeopleForExpense(id);
+    
+    return {
+      ...updatedExpense,
+      people: people || []
+    };
   }
 
   /**

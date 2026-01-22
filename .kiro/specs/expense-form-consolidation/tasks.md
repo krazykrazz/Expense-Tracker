@@ -6,19 +6,19 @@ This implementation plan consolidates the duplicate expense form code by having 
 
 ## Tasks
 
-- [ ] 1. Prepare ExpenseList for refactoring
-  - [ ] 1.1 Add ExpenseForm import to ExpenseList.jsx
+- [x] 1. Prepare ExpenseList for refactoring
+  - [x] 1.1 Add ExpenseForm import to ExpenseList.jsx
     - Add `import ExpenseForm from './ExpenseForm';` at the top of the file
     - _Requirements: 2.1_
 
-  - [ ] 1.2 Create simplified edit handlers
+  - [x] 1.2 Create simplified edit handlers
     - Create `handleExpenseUpdated` callback that calls `onExpenseUpdated` and closes modal
     - Simplify `handleEditClick` to only set `expenseToEdit` and `showEditModal`
     - Simplify `handleCancelEdit` to only close modal and clear `expenseToEdit`
     - _Requirements: 2.4, 5.2, 5.3_
 
-- [ ] 2. Replace inline edit form with ExpenseForm
-  - [ ] 2.1 Update edit modal JSX to render ExpenseForm
+- [x] 2. Replace inline edit form with ExpenseForm
+  - [x] 2.1 Update edit modal JSX to render ExpenseForm
     - Replace the entire `<form onSubmit={handleEditSubmit}>` block with ExpenseForm component
     - Pass `expense={expenseToEdit}` prop
     - Pass `people={people}` prop
@@ -27,12 +27,12 @@ This implementation plan consolidates the duplicate expense form code by having 
     - Keep close button (×) in modal header
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 3.1, 3.2_
 
-  - [ ] 2.2 Write property test for modal rendering with correct props
+  - [x] 2.2 Write property test for modal rendering with correct props
     - **Property 1: Modal Renders ExpenseForm with Correct Props**
     - **Validates: Requirements 2.1, 2.2, 2.3, 2.4, 2.5**
 
-- [ ] 3. Remove duplicate state variables
-  - [ ] 3.1 Remove edit form state from ExpenseList
+- [x] 3. Remove duplicate state variables
+  - [x] 3.1 Remove edit form state from ExpenseList
     - Remove `editFormData` state and `setEditFormData`
     - Remove `editInsuranceEligible` state and `setEditInsuranceEligible`
     - Remove `editClaimStatus` state and `setEditClaimStatus`
@@ -45,8 +45,8 @@ This implementation plan consolidates the duplicate expense form code by having 
     - Remove `editMessage` state and `setEditMessage`
     - _Requirements: 1.1, 1.4_
 
-- [ ] 4. Remove duplicate handler functions
-  - [ ] 4.1 Remove edit form handlers from ExpenseList
+- [x] 4. Remove duplicate handler functions
+  - [x] 4.1 Remove edit form handlers from ExpenseList
     - Remove `handleEditChange` function
     - Remove `handleEditSubmit` function
     - Remove `handleEditPeopleChange` function
@@ -56,48 +56,48 @@ This implementation plan consolidates the duplicate expense form code by having 
     - Remove `handleEditPersonLinkUpdated` function
     - _Requirements: 1.2_
 
-- [ ] 5. Remove duplicate constants and utilities
-  - [ ] 5.1 Remove duplicate constants from ExpenseList
+- [x] 5. Remove duplicate constants and utilities
+  - [x] 5.1 Remove duplicate constants from ExpenseList
     - Remove `FUTURE_MONTHS_OPTIONS` constant (already exists in ExpenseForm)
     - Remove `calculateFutureDatePreview` function (already exists in ExpenseForm)
     - _Requirements: 1.3_
 
-- [ ] 6. Remove unused imports and components
-  - [ ] 6.1 Clean up ExpenseList imports
+- [x] 6. Remove unused imports and components
+  - [x] 6.1 Clean up ExpenseList imports
     - Remove `InvoiceUpload` import (now handled by ExpenseForm)
     - Remove `PersonAllocationModal` usage for edit (keep if used elsewhere)
     - Remove any other imports that are no longer needed
     - _Requirements: 1.1, 1.2, 1.3_
 
-- [ ] 7. Checkpoint - Verify refactoring
+- [x] 7. Checkpoint - Verify refactoring
   - Ensure all tests pass, ask the user if questions arise.
   - Verify ExpenseList compiles without errors
   - Verify edit modal opens and displays ExpenseForm
   - Verify expense data is pre-populated in form
 
-- [ ] 8. Test feature parity
-  - [ ] 8.1 Write property test for form pre-population
+- [x] 8. Test feature parity
+  - [x] 8.1 Write property test for form pre-population
     - **Property 3: Form Pre-population**
     - **Validates: Requirements 3.5**
 
-  - [ ] 8.2 Write property test for medical expense sections
+  - [x] 8.2 Write property test for medical expense sections
     - **Property 4: Medical Expense Sections Visibility**
     - **Validates: Requirements 4.1, 4.2**
 
-  - [ ] 8.3 Write property test for tax-deductible invoice section
+  - [x] 8.3 Write property test for tax-deductible invoice section
     - **Property 5: Tax-Deductible Invoice Section Visibility**
     - **Validates: Requirements 4.3**
 
-  - [ ] 8.4 Write property test for general form features
+  - [x] 8.4 Write property test for general form features
     - **Property 6: General Form Features Availability**
     - **Validates: Requirements 4.4, 4.5, 4.6**
 
-- [ ] 9. Test callback chain and error handling
-  - [ ] 9.1 Write property test for successful update callback chain
+- [x] 9. Test callback chain and error handling
+  - [x] 9.1 Write property test for successful update callback chain
     - **Property 7: Successful Update Callback Chain**
     - **Validates: Requirements 5.1, 5.2, 5.3, 3.3**
 
-  - [ ] 9.2 Write property test for error handling
+  - [x] 9.2 Write property test for error handling
     - **Property 8: Error Handling Preserves Modal State**
     - **Validates: Requirements 5.4**
 

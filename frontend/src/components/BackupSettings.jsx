@@ -792,6 +792,16 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v4.15.4</div>
+                <div className="changelog-date">January 2026</div>
+                <ul className="changelog-items">
+                  <li>Fixed 47 frontend tests - improved async handling and mock cleanup</li>
+                  <li>Consolidated expense form - edit modal now uses shared ExpenseForm component</li>
+                  <li>Added GitHub Actions CI/CD spec for automated testing</li>
+                  <li>Code cleanup and removed deprecated CSV import utilities</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v4.15.3</div>
                 <div className="changelog-date">January 2026</div>
                 <ul className="changelog-items">

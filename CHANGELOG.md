@@ -11,6 +11,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.15.4] - 2026-01-23
+
+### Fixed
+- **Frontend Test Suite**: Fixed 47 failing frontend tests
+  - Improved async handling in integration tests
+  - Better mock cleanup between test runs
+  - Fixed timing issues in BudgetAlert and Invoice tests
+
+### Changed
+- **Expense Form Consolidation**: Edit modal now uses shared ExpenseForm component
+  - Removed ~600 lines of duplicate code from ExpenseList.jsx
+  - Added property-based tests for edit modal behavior
+  - Created spec documentation for the consolidation
+
+### Added
+- **GitHub Actions CI/CD Spec**: Created specification for automated testing workflows
+  - Parallel backend (Jest) and frontend (Vitest) test execution
+  - Performance test exclusion for CI environments
+  - Documentation for future Docker build integration
+
+### Removed
+- Deprecated CSV import utilities (xls_to_csv.py, validate_csv.py)
+- Old integration test scripts
+- Stale database backup files from config directory
+
+---
+
 ## [4.15.3] - 2026-01-21
 
 ### Fixed

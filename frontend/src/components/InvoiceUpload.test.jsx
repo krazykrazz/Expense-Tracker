@@ -252,7 +252,8 @@ describe('InvoiceUpload Component', () => {
     });
 
     it('person dropdown has proper accessibility attributes', () => {
-      const mockPeople = [{ id: 1, name: 'John Doe' }];
+      // Need at least 2 people to show the dropdown (single person shows static text)
+      const mockPeople = [{ id: 1, name: 'John Doe' }, { id: 2, name: 'Jane Doe' }];
       render(
         <InvoiceUpload expenseId={123} people={mockPeople} onInvoiceUploaded={mockOnInvoiceUploaded} onInvoiceDeleted={mockOnInvoiceDeleted} />
       );

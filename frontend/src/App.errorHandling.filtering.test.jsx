@@ -116,9 +116,9 @@ describe('App Error Handling and Edge Cases for Filtering', () => {
     });
 
     it('should allow retry after API failure', async () => {
-      let callCount = 0;
+      let shouldFail = true;
       
-      // Mock API failure on first call, success on second
+      // Mock API failure initially, success after retry
       fetch.mockImplementation((url) => {
         if (url.includes('/api/version')) {
           return Promise.resolve({
@@ -133,13 +133,15 @@ describe('App Error Handling and Edge Cases for Filtering', () => {
           });
         }
         if (url.includes('/api/expenses')) {
-          callCount++;
-          if (callCount === 1) {
+          if (shouldFail) {
+            // Return error
             return Promise.resolve({
               ok: false,
+              status: 500,
               text: async () => JSON.stringify({ error: 'Temporary error' })
             });
           }
+          // Return success
           return Promise.resolve({
             ok: true,
             json: async () => ([
@@ -150,16 +152,21 @@ describe('App Error Handling and Edge Cases for Filtering', () => {
         return Promise.resolve({ ok: true, json: async () => ([]) });
       });
 
-      render(<App />);
+      const { container } = render(<App />);
 
-      // Wait for error message
+      // Wait for error message to appear
       await waitFor(() => {
-        expect(screen.getByText(/Temporary error/i)).toBeTruthy();
+        const errorDiv = container.querySelector('.error-message');
+        expect(errorDiv).toBeTruthy();
+        expect(errorDiv.textContent).toContain('Temporary error');
       }, { timeout: 3000 });
 
       // Verify retry button is present
       const retryButton = screen.getByText(/Retry/i);
       expect(retryButton).toBeTruthy();
+      
+      // Now set shouldFail to false so retry succeeds
+      shouldFail = false;
       
       // Click retry button
       fireEvent.click(retryButton);
@@ -167,20 +174,19 @@ describe('App Error Handling and Edge Cases for Filtering', () => {
       // Wait for error to be cleared and content to load
       await waitFor(() => {
         // Error should be gone
-        expect(screen.queryByText(/Temporary error/i)).toBeNull();
+        expect(container.querySelector('.error-message')).toBeNull();
       }, { timeout: 3000 });
 
-      // Verify expenses loaded (check for expense list container instead of specific text)
+      // Verify search bar appears (indicates successful load)
       await waitFor(() => {
-        const expenseListContainer = screen.getByText(/Expense List/i);
-        expect(expenseListContainer).toBeTruthy();
+        expect(container.querySelector('.search-bar-container')).toBeTruthy();
       }, { timeout: 3000 });
     });
 
     it('should handle errors gracefully during filter operations', async () => {
-      let callCount = 0;
+      let shouldFail = false;
       
-      // Mock API to succeed first, then fail on filter change
+      // Mock API to succeed initially, then fail when shouldFail is true
       fetch.mockImplementation((url) => {
         if (url.includes('/api/version')) {
           return Promise.resolve({
@@ -195,18 +201,20 @@ describe('App Error Handling and Edge Cases for Filtering', () => {
           });
         }
         if (url.includes('/api/expenses')) {
-          callCount++;
-          // First call succeeds (initial load), subsequent calls fail
-          if (callCount === 1) {
+          if (shouldFail) {
+            // Return error
             return Promise.resolve({
-              ok: true,
-              json: async () => ([])
+              ok: false,
+              status: 500,
+              text: async () => JSON.stringify({ error: 'Server error during filter' })
             });
           }
-          // Fail the request on filter change
+          // Return success
           return Promise.resolve({
-            ok: false,
-            text: async () => JSON.stringify({ error: 'Server error during filter' })
+            ok: true,
+            json: async () => ([
+              { id: 1, date: '2025-01-15', place: 'Store', amount: 50, type: 'Groceries', method: 'Cash', week: 3 }
+            ])
           });
         }
         return Promise.resolve({ ok: true, json: async () => ([]) });
@@ -214,23 +222,24 @@ describe('App Error Handling and Edge Cases for Filtering', () => {
 
       const { container } = render(<App />);
 
-      // Wait for component to load
+      // Wait for component to load successfully first (search bar should be visible)
       await waitFor(() => {
         expect(container.querySelector('.search-bar-container')).toBeTruthy();
-      });
+      }, { timeout: 3000 });
 
-      // Apply a filter (which will trigger an error on the second API call)
+      // Now set shouldFail to true so filter change triggers error
+      shouldFail = true;
+
+      // Apply a filter (which will trigger an error)
       const categorySelect = container.querySelector('#category-filter');
       fireEvent.change(categorySelect, { target: { value: 'Groceries' } });
 
-      // Wait for error message
+      // Wait for error message to appear
       await waitFor(() => {
-        expect(screen.getByText(/Server error during filter/i)).toBeTruthy();
+        const errorDiv = container.querySelector('.error-message');
+        expect(errorDiv).toBeTruthy();
+        expect(errorDiv.textContent).toContain('Server error during filter');
       }, { timeout: 3000 });
-
-      // Error message should be displayed
-      const errorMessage = screen.getByText(/Server error during filter/i);
-      expect(errorMessage).toBeTruthy();
       
       // Retry button should be present
       const retryButton = screen.getByText(/Retry/i);

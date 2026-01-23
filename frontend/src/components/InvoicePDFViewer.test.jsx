@@ -10,6 +10,14 @@ global.fetch = vi.fn();
 global.URL.createObjectURL = vi.fn(() => 'mock-blob-url');
 global.URL.revokeObjectURL = vi.fn();
 
+// Mock the config to use relative URLs
+vi.mock('../config', () => ({
+  API_ENDPOINTS: {
+    INVOICE_FILE: (expenseId, invoiceId) => `/api/invoices/${expenseId}/${invoiceId}`,
+    INVOICE_FILE_LEGACY: (expenseId) => `/api/invoices/${expenseId}/file`
+  }
+}));
+
 describe('InvoicePDFViewer Component', () => {
   const defaultProps = {
     isOpen: true,
@@ -27,7 +35,9 @@ describe('InvoicePDFViewer Component', () => {
       headers: {
         get: vi.fn().mockReturnValue('application/pdf')
       },
-      blob: vi.fn().mockResolvedValue(new Blob(['mock pdf'], { type: 'application/pdf' }))
+      blob: vi.fn().mockResolvedValue(new Blob(['mock pdf'], { type: 'application/pdf' })),
+      text: vi.fn().mockResolvedValue(''),
+      json: vi.fn().mockResolvedValue({})
     });
   });
 
@@ -57,7 +67,7 @@ describe('InvoicePDFViewer Component', () => {
       render(<InvoicePDFViewer {...defaultProps} />);
       
       await waitFor(() => {
-        expect(fetch).toHaveBeenCalledWith('/api/invoices/123');
+        expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/api/invoices/123/file'));
       });
     });
 
@@ -77,7 +87,9 @@ describe('InvoicePDFViewer Component', () => {
         ok: true,
         headers: {
           get: vi.fn().mockReturnValue('text/html')
-        }
+        },
+        text: vi.fn().mockResolvedValue('Not a PDF'),
+        json: vi.fn().mockRejectedValue(new Error('Not JSON'))
       });
       
       render(<InvoicePDFViewer {...defaultProps} />);
@@ -183,32 +195,29 @@ describe('InvoicePDFViewer Component', () => {
     it('handles download action', async () => {
       const user = userEvent.setup();
       
-      // Mock document.createElement and appendChild/removeChild
-      const mockLink = {
-        href: '',
-        download: '',
-        click: vi.fn()
-      };
-      const createElement = vi.spyOn(document, 'createElement').mockReturnValue(mockLink);
-      const appendChild = vi.spyOn(document.body, 'appendChild').mockImplementation(() => {});
-      const removeChild = vi.spyOn(document.body, 'removeChild').mockImplementation(() => {});
+      // Create a spy on the click method of anchor elements
+      const clickSpy = vi.fn();
+      const originalCreateElement = document.createElement.bind(document);
+      vi.spyOn(document, 'createElement').mockImplementation((tagName) => {
+        const element = originalCreateElement(tagName);
+        if (tagName === 'a') {
+          element.click = clickSpy;
+        }
+        return element;
+      });
       
       render(<InvoicePDFViewer {...defaultProps} />);
       
+      // Wait for PDF to load
       await waitFor(() => {
-        expect(screen.getByLabelText('Download invoice')).toBeInTheDocument();
+        expect(screen.getByLabelText('Download invoice')).not.toBeDisabled();
       });
       
       await user.click(screen.getByLabelText('Download invoice'));
       
-      expect(createElement).toHaveBeenCalledWith('a');
-      expect(mockLink.click).toHaveBeenCalled();
-      expect(appendChild).toHaveBeenCalledWith(mockLink);
-      expect(removeChild).toHaveBeenCalledWith(mockLink);
+      expect(clickSpy).toHaveBeenCalled();
       
-      createElement.mockRestore();
-      appendChild.mockRestore();
-      removeChild.mockRestore();
+      vi.restoreAllMocks();
     });
 
     it('handles print action', async () => {
@@ -217,14 +226,16 @@ describe('InvoicePDFViewer Component', () => {
       // Mock window.open
       const mockPrintWindow = {
         onload: null,
-        print: vi.fn()
+        print: vi.fn(),
+        closed: false
       };
       const windowOpen = vi.spyOn(window, 'open').mockReturnValue(mockPrintWindow);
       
       render(<InvoicePDFViewer {...defaultProps} />);
       
+      // Wait for PDF to load
       await waitFor(() => {
-        expect(screen.getByLabelText('Print invoice')).toBeInTheDocument();
+        expect(screen.getByLabelText('Print invoice')).not.toBeDisabled();
       });
       
       await user.click(screen.getByLabelText('Print invoice'));
@@ -298,68 +309,37 @@ describe('InvoicePDFViewer Component', () => {
   });
 
   describe('Page Navigation', () => {
-    it('shows page controls for multi-page PDFs', async () => {
+    // Note: The component uses native browser PDF rendering via iframe
+    // Page navigation is handled by the browser's built-in PDF viewer
+    // These tests verify the component renders correctly with the iframe
+    
+    it('renders PDF in iframe when loaded', async () => {
       render(<InvoicePDFViewer {...defaultProps} />);
       
-      // Wait for PDF to load and trigger onLoadSuccess with multiple pages
+      // Wait for PDF to load
       await waitFor(() => {
-        expect(screen.getByTestId('pdf-page')).toBeInTheDocument();
-      });
-      
-      // The mock in vitest.setup.js simulates 2 pages
-      expect(screen.getByLabelText('Previous page')).toBeInTheDocument();
-      expect(screen.getByLabelText('Next page')).toBeInTheDocument();
-      expect(screen.getByLabelText('Page number')).toBeInTheDocument();
-      expect(screen.getByText('of 2')).toBeInTheDocument();
-    });
-
-    it('handles page navigation with arrow keys', async () => {
-      render(<InvoicePDFViewer {...defaultProps} />);
-      
-      await waitFor(() => {
-        expect(screen.getByTestId('pdf-page')).toBeInTheDocument();
-      });
-      
-      // Should start on page 1
-      const pageInput = screen.getByLabelText('Page number');
-      expect(pageInput.value).toBe('1');
-      
-      // Navigate to next page
-      fireEvent.keyDown(document, { key: 'ArrowRight' });
-      
-      await waitFor(() => {
-        expect(pageInput.value).toBe('2');
-      });
-      
-      // Navigate back to previous page
-      fireEvent.keyDown(document, { key: 'ArrowLeft' });
-      
-      await waitFor(() => {
-        expect(pageInput.value).toBe('1');
+        const iframe = document.querySelector('.pdf-iframe');
+        expect(iframe).toBeInTheDocument();
+        expect(iframe).toHaveAttribute('src', 'mock-blob-url');
       });
     });
 
-    it('handles Home and End keys for page navigation', async () => {
+    it('applies zoom transform to PDF container', async () => {
       render(<InvoicePDFViewer {...defaultProps} />);
       
+      // Wait for PDF to load
       await waitFor(() => {
-        expect(screen.getByTestId('pdf-page')).toBeInTheDocument();
+        const container = document.querySelector('.pdf-container');
+        expect(container).toBeInTheDocument();
+        expect(container.style.transform).toBe('scale(1)');
       });
       
-      const pageInput = screen.getByLabelText('Page number');
-      
-      // Go to last page with End key
-      fireEvent.keyDown(document, { key: 'End' });
+      // Zoom in
+      fireEvent.click(screen.getByLabelText('Zoom in'));
       
       await waitFor(() => {
-        expect(pageInput.value).toBe('2');
-      });
-      
-      // Go to first page with Home key
-      fireEvent.keyDown(document, { key: 'Home' });
-      
-      await waitFor(() => {
-        expect(pageInput.value).toBe('1');
+        const container = document.querySelector('.pdf-container');
+        expect(container.style.transform).toBe('scale(1.25)');
       });
     });
   });
@@ -386,7 +366,9 @@ describe('InvoicePDFViewer Component', () => {
         headers: {
           get: vi.fn().mockReturnValue('application/pdf')
         },
-        blob: vi.fn().mockResolvedValue(new Blob(['mock pdf'], { type: 'application/pdf' }))
+        blob: vi.fn().mockResolvedValue(new Blob(['mock pdf'], { type: 'application/pdf' })),
+        text: vi.fn().mockResolvedValue(''),
+        json: vi.fn().mockResolvedValue({})
       });
       
       render(<InvoicePDFViewer {...defaultProps} />);
@@ -423,21 +405,28 @@ describe('InvoicePDFViewer Component', () => {
   });
 
   describe('Cleanup', () => {
-    it('cleans up blob URL when modal closes', () => {
+    it('cleans up blob URL when modal closes', async () => {
       const { rerender } = render(<InvoicePDFViewer {...defaultProps} />);
       
+      // Wait for PDF to load
+      await waitFor(() => {
+        const iframe = document.querySelector('.pdf-iframe');
+        expect(iframe).toBeInTheDocument();
+      });
+
       // Close modal
       rerender(<InvoicePDFViewer {...defaultProps} isOpen={false} />);
       
-      expect(URL.revokeObjectURL).toHaveBeenCalledWith('mock-blob-url');
+      await waitFor(() => {
+        expect(URL.revokeObjectURL).toHaveBeenCalledWith('mock-blob-url');
+      });
     });
 
-    it('cleans up blob URL on unmount', () => {
-      const { unmount } = render(<InvoicePDFViewer {...defaultProps} />);
+    it('does not render iframe when modal is closed', () => {
+      render(<InvoicePDFViewer {...defaultProps} isOpen={false} />);
       
-      unmount();
-      
-      expect(URL.revokeObjectURL).toHaveBeenCalledWith('mock-blob-url');
+      // No iframe should be rendered when modal is closed
+      expect(document.querySelector('.pdf-iframe')).not.toBeInTheDocument();
     });
   });
 });

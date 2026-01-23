@@ -602,17 +602,15 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
       if (isMedicalExpense && selectedPeople.length > 0) {
         if (selectedPeople.length === 1) {
           // Single person - assign full amount (and original_amount for insurance)
-          // Note: selectedPeople may have 'id' (from dropdown selection) or 'personId' (from backend)
           peopleAllocations = [{
-            personId: selectedPeople[0].id || selectedPeople[0].personId,
+            personId: selectedPeople[0].id,
             amount: parseFloat(formData.amount),
             originalAmount: insuranceEligible && originalCost ? parseFloat(originalCost) : null
           }];
         } else {
           // Multiple people - use allocated amounts (with original_amount for insurance)
-          // Note: selectedPeople may have 'id' (from dropdown selection) or 'personId' (from backend)
           peopleAllocations = selectedPeople.map(person => ({
-            personId: person.id || person.personId,
+            personId: person.id,
             amount: person.amount,
             originalAmount: person.originalAmount || null
           }));
@@ -744,8 +742,15 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
       }
 
       // Notify parent component
+      // When editing, include the current invoice state so the expense list updates correctly
       if (onExpenseAdded) {
-        onExpenseAdded(newExpense);
+        const expenseToReturn = { ...newExpense };
+        // Include invoice info from current state (for edits where invoices were uploaded via InvoiceUpload)
+        if (isEditing && invoices.length > 0) {
+          expenseToReturn.hasInvoice = true;
+          expenseToReturn.invoiceCount = invoices.length;
+        }
+        onExpenseAdded(expenseToReturn);
       }
 
       // Clear success message after 3 seconds
@@ -914,7 +919,7 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
                     {selectedPeople.some(p => p.amount) ? (
                       <div className="current-allocations">
                         {selectedPeople.map(p => (
-                          <div key={p.id || p.personId} className="allocation-item">
+                          <div key={p.id} className="allocation-item">
                             <span className="person-name">{p.name}</span>
                             <span className="person-amount">
                               ${(p.amount || 0).toFixed(2)}

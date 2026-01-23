@@ -6,6 +6,13 @@ frontend/node_modules/
 # Database
 backend/database/*.db
 backend/data/*.db
+backend/config/database/*.db
+
+# Invoices (user uploaded files)
+backend/config/invoices/
+
+# Backups (runtime data)
+backend/config/backups/
 
 # Build outputs
 frontend/dist/

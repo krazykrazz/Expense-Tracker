@@ -132,7 +132,7 @@ describe('ExpenseService Backward Compatibility Property Tests', () => {
             expect(updatedExpense).toBeTruthy();
             expect(updatedExpense.people).toBeDefined();
             expect(updatedExpense.people.length).toBe(1);
-            expect(updatedExpense.people[0].personId).toBe(testPerson.id);
+            expect(updatedExpense.people[0].id).toBe(testPerson.id);
             expect(updatedExpense.people[0].amount).toBeCloseTo(expenseToEdit.amount, 2);
             
             // Clean up test person

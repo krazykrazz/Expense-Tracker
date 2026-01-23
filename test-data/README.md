@@ -4,21 +4,12 @@ This directory contains test data files used for development and testing purpose
 
 ## Contents
 
-- CSV files for import testing
-- Sample expense data
+- Sample expense data for testing
 - Test database files
 
-## CSV Import Format
+## Valid Expense Categories
 
-The expense tracker supports CSV imports with the following format:
-
-```
-Date,Place,Amount,Notes,Type,Week,Method
-```
-
-### Valid Expense Categories
-
-The system supports the following 14 expense categories:
+The system supports the following expense categories:
 
 **Essential Living:**
 - Housing
@@ -38,6 +29,11 @@ The system supports the following 14 expense categories:
 - Subscriptions
 - Recreation Activities
 
+**Personal:**
+- Personal Care
+- Clothing
+- Gifts
+
 **Family & Pets:**
 - Pet Care
 
@@ -47,17 +43,6 @@ The system supports the following 14 expense categories:
 
 **Other:**
 - Other
-
-### Sample CSV
-
-See `sample-import.csv` for a complete example with all category types.
-
-### Important Notes
-
-- The "Food" category has been replaced with "Groceries" and "Dining Out"
-- Use "Groceries" for grocery store purchases
-- Use "Dining Out" for restaurants and takeout
-- Tax-deductible categories are prefixed with "Tax - "
 
 ## Usage
 

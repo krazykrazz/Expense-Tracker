@@ -101,16 +101,16 @@ This implementation plan consolidates the duplicate expense form code by having 
     - **Property 8: Error Handling Preserves Modal State**
     - **Validates: Requirements 5.4**
 
-- [ ] 10. Test data loading
-  - [ ] 10.1 Write property test for invoice data loading
+- [x] 10. Test data loading
+  - [x] 10.1 Write property test for invoice data loading
     - **Property 9: Invoice Data Loading and Display**
     - **Validates: Requirements 6.1, 6.2**
 
-  - [ ] 10.2 Write property test for people data loading
+  - [x] 10.2 Write property test for people data loading
     - **Property 11: People Data Loading and Display**
     - **Validates: Requirements 7.1, 7.2**
 
-- [ ] 11. Final checkpoint - Ensure all tests pass
+- [x] 11. Final checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
   - Verify complete edit flow works end-to-end
   - Verify all expense types can be edited

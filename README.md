@@ -10,7 +10,6 @@ A full-stack expense tracking application built with React and Node.js.
 - 🔎 Search expenses by place or notes globally
 - 📊 View monthly summaries with weekly breakdowns
 - 📅 Filter expenses by month and year
-- 📥 CSV import for bulk expense entry
 - ✨ Smart category suggestions based on place history
 - 💳 Payment method memory (remembers last used)
 - 📱 **Sticky summary scrolling** - Summary panel scrolls independently from expense list for better usability
@@ -123,7 +122,7 @@ A full-stack expense tracking application built with React and Node.js.
 
 ### Data Management
 - 💾 Automated and manual database backups (includes all data)
-- 📤 CSV export functionality
+- 🔄 Backup restore functionality
 - 💡 Monthly data reminders for investments and loans
 - 🌐 Access from any device on your local network
 

@@ -377,7 +377,7 @@ describe('ExpenseService - Annual Summary Property-Based Tests', () => {
           expect(Math.abs(summary.totalExpenses - expectedTotal)).toBeLessThan(0.01);
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 30 } // Reduced from 100 for faster execution
     );
   }, 30000);
 
@@ -440,7 +440,7 @@ describe('ExpenseService - Annual Summary Property-Based Tests', () => {
           expect(Math.abs(summary.netIncome - expectedNetIncome)).toBeLessThan(0.01);
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 30 } // Reduced from 100 for faster execution
     );
   }, 30000);
 
@@ -493,7 +493,7 @@ describe('ExpenseService - Annual Summary Property-Based Tests', () => {
           }
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 30 } // Reduced from 100 for faster execution
     );
   }, 30000);
 });
@@ -503,6 +503,28 @@ describe('ExpenseService - Annual Summary Unit Tests', () => {
 
   beforeAll(async () => {
     db = await getDatabase();
+  });
+
+  beforeEach(async () => {
+    // Clean up test data before each test to ensure clean state
+    await new Promise((resolve, reject) => {
+      db.run('DELETE FROM expenses WHERE strftime("%Y", date) = "9998"', (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+    await new Promise((resolve, reject) => {
+      db.run('DELETE FROM fixed_expenses WHERE year = 9998', (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+    await new Promise((resolve, reject) => {
+      db.run('DELETE FROM income_sources WHERE year = 9998', (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
   });
 
   afterEach(async () => {

@@ -34,7 +34,7 @@ const PersonAllocationModal = ({
   useEffect(() => {
     if (isOpen && selectedPeople && selectedPeople.length > 0) {
       const initialAllocations = selectedPeople.map(person => ({
-        personId: person.id || person.personId,
+        personId: person.id,
         personName: person.name,
         // Use existing amounts if available, otherwise start at 0
         amount: person.amount || 0,

@@ -107,7 +107,7 @@ class ExpensePeopleRepository {
         
         const people = rows.map(row => ({
           associationId: row.association_id,
-          personId: row.person_id,
+          id: row.person_id,  // Use 'id' for frontend compatibility
           name: row.name,
           dateOfBirth: row.date_of_birth,
           amount: row.amount,
@@ -391,7 +391,7 @@ class ExpensePeopleRepository {
           }
           result[row.expense_id].push({
             associationId: row.association_id,
-            personId: row.person_id,
+            id: row.person_id,  // Use 'id' for frontend compatibility
             name: row.name,
             dateOfBirth: row.date_of_birth,
             amount: row.amount,

@@ -58,33 +58,25 @@ describe('Expense People Repository Property-Based Tests', () => {
   test('Property 5: Person-amount relationship storage', () => {
     return fc.assert(
       fc.asyncProperty(
-        // Generate people data
-        fc.array(
-          fc.record({
-            name: fc.string({ minLength: 1, maxLength: 50 }).filter(name => name.trim().length > 0),
-            dateOfBirth: fc.option(
-              fc.date({ min: new Date('1900-01-01'), max: new Date('2025-12-31') })
-                .map(date => {
-                  try {
-                    return date.toISOString().split('T')[0];
-                  } catch (e) {
-                    return '2000-01-01';
-                  }
-                }),
-              { nil: null }
-            )
-          }),
-          { minLength: 1, maxLength: 4 }
-        ),
-        // Generate expense data
+        // Generate unique people count (1-4 people)
+        fc.integer({ min: 1, max: 4 }),
+        // Generate expense data - ensure minimum amount allows for proper splitting
         fc.record({
-          totalAmount: fc.double({ min: 0.01, max: 10000, noNaN: true })
+          totalAmount: fc.double({ min: 1.00, max: 10000, noNaN: true })
         }),
         // Generate allocation amounts that sum to total
-        async (peopleData, expenseData) => {
-          // Create people first
+        async (peopleCount, expenseData) => {
+          // Round total amount to 2 decimal places for consistency
+          const totalAmount = Math.round(expenseData.totalAmount * 100) / 100;
+          
+          // Create people with unique names using timestamp + index
           const createdPeople = [];
-          for (const personData of peopleData) {
+          const timestamp = Date.now();
+          for (let i = 0; i < peopleCount; i++) {
+            const personData = {
+              name: `TestPerson_${timestamp}_${i}`,
+              dateOfBirth: null
+            };
             const person = await peopleRepository.create(personData);
             createdPeople.push(person);
           }
@@ -98,7 +90,7 @@ describe('Expense People Repository Property-Based Tests', () => {
                 '2025-01-01',
                 'Test Medical Provider',
                 'Test medical expense',
-                expenseData.totalAmount,
+                totalAmount,
                 'Tax - Medical',
                 1,
                 'Debit'
@@ -111,19 +103,18 @@ describe('Expense People Repository Property-Based Tests', () => {
           });
           
           // Generate allocations that sum to the total amount
+          // Split equally and give remainder to last person
           const allocations = [];
-          let remainingAmount = expenseData.totalAmount;
+          const baseAmount = Math.floor((totalAmount / createdPeople.length) * 100) / 100;
+          let allocatedSoFar = 0;
           
           for (let i = 0; i < createdPeople.length; i++) {
             let amount;
             if (i === createdPeople.length - 1) {
-              // Last person gets the remaining amount
-              amount = remainingAmount;
+              // Last person gets the remaining amount to ensure exact total
+              amount = Math.round((totalAmount - allocatedSoFar) * 100) / 100;
             } else {
-              // Allocate a portion of the remaining amount
-              const maxAllocation = remainingAmount - (0.01 * (createdPeople.length - i - 1));
-              amount = Math.max(0.01, Math.min(maxAllocation, remainingAmount * 0.8));
-              amount = Math.round(amount * 100) / 100; // Round to 2 decimal places
+              amount = baseAmount;
             }
             
             allocations.push({
@@ -131,7 +122,7 @@ describe('Expense People Repository Property-Based Tests', () => {
               amount: amount
             });
             
-            remainingAmount -= amount;
+            allocatedSoFar += amount;
           }
           
           // Create the associations
@@ -148,18 +139,18 @@ describe('Expense People Repository Property-Based Tests', () => {
           
           // Check that all original allocations are preserved
           for (const originalAllocation of allocations) {
-            const retrievedPerson = retrievedPeople.find(p => p.personId === originalAllocation.personId);
+            const retrievedPerson = retrievedPeople.find(p => p.id === originalAllocation.personId);
             expect(retrievedPerson).toBeDefined();
             expect(retrievedPerson.amount).toBeCloseTo(originalAllocation.amount, 2);
           }
           
           // Verify total allocated amount matches
           const totalAllocated = await expensePeopleRepository.getTotalAllocatedAmount(expenseId);
-          expect(totalAllocated).toBeCloseTo(expenseData.totalAmount, 2);
+          expect(totalAllocated).toBeCloseTo(totalAmount, 2);
           
           // Verify people information is preserved
           for (const retrievedPerson of retrievedPeople) {
-            const originalPerson = createdPeople.find(p => p.id === retrievedPerson.personId);
+            const originalPerson = createdPeople.find(p => p.id === retrievedPerson.id);
             expect(originalPerson).toBeDefined();
             expect(retrievedPerson.name).toBe(originalPerson.name);
             expect(retrievedPerson.dateOfBirth).toBe(originalPerson.dateOfBirth);

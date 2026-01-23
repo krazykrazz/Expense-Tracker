@@ -1,5 +1,5 @@
 /**
- * Property-Based Tests for CSV Import Validation
+ * Property-Based Tests for Category Validation
  * Using fast-check library for property-based testing
  */
 
@@ -7,18 +7,15 @@ const fc = require('fast-check');
 const { CATEGORIES } = require('../utils/categories');
 const { isValid: isValidCategory } = require('../utils/categories');
 
-describe('CSV Import - Property-Based Tests', () => {
+describe('Category Validation - Property-Based Tests', () => {
   /**
-   * Feature: expanded-expense-categories, Property 9: CSV import category validation
+   * Feature: expanded-expense-categories, Property 9: Category validation
    * Validates: Requirements 5.1, 5.3, 5.4
    * 
-   * For any CSV row with a category value, the import should succeed if and only if 
+   * For any category value, validation should succeed if and only if 
    * the category is in the approved list
-   * 
-   * This test validates the category validation logic that would be used during CSV import.
-   * The actual CSV import process is tested through integration tests.
    */
-  test('Property 9: CSV import category validation - valid categories accepted, invalid rejected', () => {
+  test('Property 9: Category validation - valid categories accepted, invalid rejected', () => {
     // Test 1: All valid categories should pass validation
     fc.assert(
       fc.property(
@@ -115,9 +112,8 @@ describe('CSV Import - Property-Based Tests', () => {
 
   /**
    * Additional property test: Category validation is consistent with categories module
-   * Validates that CSV import uses the same validation as the categories module
    */
-  test('Property: CSV import validation matches categories module validation', () => {
+  test('Property: Category validation matches categories module', () => {
     fc.assert(
       fc.property(
         fc.string({ minLength: 0, maxLength: 100 }),
@@ -146,7 +142,7 @@ describe('CSV Import - Property-Based Tests', () => {
    * Additional property test: Legacy "Food" category is rejected
    * Validates that the old "Food" category is no longer accepted after migration
    */
-  test('Property: Legacy "Food" category is rejected in CSV import', () => {
+  test('Property: Legacy "Food" category is rejected', () => {
     // "Food" should not be in the valid categories list
     expect(CATEGORIES.includes('Food')).toBe(false);
     expect(isValidCategory('Food')).toBe(false);
@@ -157,13 +153,12 @@ describe('CSV Import - Property-Based Tests', () => {
   });
 
   /**
-   * Feature: personal-care-category, Property 6: CSV import accepts Personal Care
+   * Feature: personal-care-category, Property 6: Personal Care category validation
    * Validates: Requirements 4.1, 4.2
    * 
-   * For any CSV file containing expenses with "Personal Care" category, 
-   * the import process should successfully create expense records
+   * Personal Care should be accepted as a valid category
    */
-  test('Property 6: CSV import accepts Personal Care', () => {
+  test('Property 6: Personal Care is a valid category', () => {
     // Test that "Personal Care" is in the valid categories list
     expect(CATEGORIES.includes('Personal Care')).toBe(true);
     

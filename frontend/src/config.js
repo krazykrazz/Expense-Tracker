@@ -58,9 +58,6 @@ export const API_ENDPOINTS = {
   BACKUP_RESTORE: `${API_BASE_URL}/api/backup/restore`,
   BACKUP_STATS: `${API_BASE_URL}/api/backup/stats`,
   
-  // Import
-  IMPORT: `${API_BASE_URL}/api/import`,
-  
   // Version
   VERSION: `${API_BASE_URL}/api/version`,
   

@@ -195,7 +195,19 @@ class ExpenseService {
     }
 
     // Update the claim status
-    return await expenseRepository.updateInsuranceFields(id, { claim_status: status });
+    const updatedExpense = await expenseRepository.updateInsuranceFields(id, { claim_status: status });
+    
+    if (!updatedExpense) {
+      return null;
+    }
+    
+    // Include people data in the response to preserve UI state
+    const people = await expensePeopleRepository.getPeopleForExpense(id);
+    
+    return {
+      ...updatedExpense,
+      people: people || []
+    };
   }
 
   /**
@@ -1528,9 +1540,10 @@ class ExpenseService {
       if (expense.people && expense.people.length > 0) {
         expense.people.forEach(person => {
           // Initialize person group if not exists
-          if (!grouped[person.personId]) {
-            grouped[person.personId] = {
-              personId: person.personId,
+          // Note: person.id comes from the repository (was personId, now id for frontend compatibility)
+          if (!grouped[person.id]) {
+            grouped[person.id] = {
+              personId: person.id,  // Keep personId in output for backward compatibility with tax reports
               personName: person.name,
               providers: {},
               total: 0
@@ -1539,8 +1552,8 @@ class ExpenseService {
 
           // Initialize provider group if not exists
           const provider = expense.place || 'Unknown Provider';
-          if (!grouped[person.personId].providers[provider]) {
-            grouped[person.personId].providers[provider] = {
+          if (!grouped[person.id].providers[provider]) {
+            grouped[person.id].providers[provider] = {
               providerName: provider,
               expenses: [],
               total: 0
@@ -1548,18 +1561,18 @@ class ExpenseService {
           }
 
           // Ensure expenses array exists before pushing
-          if (!grouped[person.personId].providers[provider].expenses) {
-            grouped[person.personId].providers[provider].expenses = [];
+          if (!grouped[person.id].providers[provider].expenses) {
+            grouped[person.id].providers[provider].expenses = [];
           }
 
           // Add expense to provider group
-          grouped[person.personId].providers[provider].expenses.push({
+          grouped[person.id].providers[provider].expenses.push({
             ...expense,
             allocatedAmount: person.amount,
             originalAmount: person.originalAmount
           });
-          grouped[person.personId].providers[provider].total += person.amount;
-          grouped[person.personId].total += person.amount;
+          grouped[person.id].providers[provider].total += person.amount;
+          grouped[person.id].total += person.amount;
         });
       }
     });
@@ -1592,9 +1605,10 @@ class ExpenseService {
     expenses.forEach(expense => {
       if (expense.people && expense.people.length > 0) {
         expense.people.forEach(person => {
-          if (!totals[person.personId]) {
-            totals[person.personId] = {
-              personId: person.personId,
+          // Note: person.id comes from the repository (was personId, now id for frontend compatibility)
+          if (!totals[person.id]) {
+            totals[person.id] = {
+              personId: person.id,  // Keep personId in output for backward compatibility
               personName: person.name,
               medicalTotal: 0,
               donationTotal: 0,
@@ -1604,11 +1618,11 @@ class ExpenseService {
 
           const amount = person.amount;
           if (expense.type === 'Tax - Medical') {
-            totals[person.personId].medicalTotal += amount;
+            totals[person.id].medicalTotal += amount;
           } else if (expense.type === 'Tax - Donation') {
-            totals[person.personId].donationTotal += amount;
+            totals[person.id].donationTotal += amount;
           }
-          totals[person.personId].total += amount;
+          totals[person.id].total += amount;
         });
       }
     });
@@ -1994,13 +2008,15 @@ class ExpenseService {
     const people = await expensePeopleRepository.getPeopleForExpense(id);
 
     // Return expense with people data
+    // Note: Repository now returns 'id' for frontend compatibility
     return {
       ...expense,
       people: people.map(person => ({
-        personId: person.personId,
+        id: person.id,
         name: person.name,
         dateOfBirth: person.dateOfBirth,
-        amount: person.amount
+        amount: person.amount,
+        originalAmount: person.originalAmount
       }))
     };
   }

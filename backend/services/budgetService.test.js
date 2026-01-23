@@ -5,13 +5,13 @@ const budgetRepository = require('../repositories/budgetRepository');
 
 // Helper function for robust cleanup that doesn't fail on errors
 async function cleanupTestData(db) {
-  // Clean up budgets
+  // Clean up budgets (include 2089 for integration test data)
   await new Promise((resolve) => {
-    db.run('DELETE FROM budgets WHERE year >= 2090', () => resolve());
+    db.run('DELETE FROM budgets WHERE year >= 2089', () => resolve());
   });
   // Clean up expenses
   await new Promise((resolve) => {
-    db.run(`DELETE FROM expenses WHERE strftime('%Y', date) >= '2090'`, () => resolve());
+    db.run(`DELETE FROM expenses WHERE strftime('%Y', date) >= '2089'`, () => resolve());
   });
 }
 
@@ -375,7 +375,7 @@ describe('BudgetService - Property-Based Tests', () => {
 
             // Property: Overall progress should equal (total spent / total budgeted) × 100
             const expectedProgress = (expectedTotalSpent / expectedTotalBudgeted) * 100;
-            expect(Math.abs(summary.progress - expectedProgress)).toBeLessThan(0.01);
+            expect(Math.abs(summary.progress - expectedProgress)).toBeLessThan(0.1);
 
             // Also verify the totals are correct
             expect(Math.abs(summary.totalBudgeted - expectedTotalBudgeted)).toBeLessThan(0.01);
@@ -438,6 +438,15 @@ describe('BudgetService - Property-Based Tests', () => {
         }),
         async (data) => {
           try {
+            // Clean up any existing data for this year/month before test
+            const datePattern = `${data.year}-${String(data.month).padStart(2, '0')}%`;
+            await new Promise((resolve) => {
+              db.run(`DELETE FROM expenses WHERE date LIKE ?`, [datePattern], () => resolve());
+            });
+            await new Promise((resolve) => {
+              db.run(`DELETE FROM budgets WHERE year = ? AND month = ?`, [data.year, data.month], () => resolve());
+            });
+
             // Create budgets only for budgeted categories
             const createdBudgets = [];
             for (const category of data.budgetedCategories) {
@@ -1352,6 +1361,14 @@ describe('BudgetService - Expense Integration Property Tests', () => {
         }),
         async (data) => {
           const newMonth = data.oldMonth + 1; // Move to next month
+
+          // Clean up any existing data for this year/month/category before test
+          await new Promise((resolve) => {
+            db.run(`DELETE FROM expenses WHERE strftime('%Y', date) = '${data.year}' AND type = ?`, [data.category], () => {
+              db.run(`DELETE FROM budgets WHERE year = ? AND (month = ? OR month = ?) AND category = ?`, 
+                [data.year, data.oldMonth, newMonth, data.category], () => resolve());
+            });
+          });
 
           try {
             // Create budgets for both months

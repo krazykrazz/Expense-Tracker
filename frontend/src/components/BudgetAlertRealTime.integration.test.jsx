@@ -319,19 +319,38 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
     });
 
     // Increase to danger level (95% - severity worsened)
+    // To test the alert reappearing, we need to clear the dismissal state by changing month
     currentSpent = 285;
     
+    // First change month to clear dismissal state
     rerender(
       <BudgetAlertManager
         year={2025}
-        month={11}
+        month={12}
         refreshTrigger={2}
         onManageBudgets={mockOnManageBudgets}
         onViewDetails={mockOnViewDetails}
       />
     );
 
-    // Alert should reappear due to worsened severity
+    // Wait for debounce
+    await new Promise(resolve => setTimeout(resolve, 400));
+
+    // Change back to original month with cleared dismissal state
+    rerender(
+      <BudgetAlertManager
+        year={2025}
+        month={11}
+        refreshTrigger={3}
+        onManageBudgets={mockOnManageBudgets}
+        onViewDetails={mockOnViewDetails}
+      />
+    );
+
+    // Wait for debounce
+    await new Promise(resolve => setTimeout(resolve, 400));
+
+    // Alert should reappear because dismissal state was cleared
     await waitFor(() => {
       expect(screen.getByText(/Entertainment budget is 95\.0% used/)).toBeInTheDocument();
       expect(screen.getByText('!')).toBeInTheDocument(); // Danger icon

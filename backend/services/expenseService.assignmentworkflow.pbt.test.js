@@ -103,13 +103,13 @@ describe('ExpenseService - Assignment Workflow Properties', () => {
             // Verify the expense was updated with people association
             expect(updatedExpense).not.toBeNull();
             expect(updatedExpense.people).toHaveLength(1);
-            expect(updatedExpense.people[0].personId).toBe(person.id);
+            expect(updatedExpense.people[0].id).toBe(person.id);
             expect(updatedExpense.people[0].amount).toBe(amount);
 
             // Verify the association is persisted
             const persistedPeople = await expensePeopleRepository.getPeopleForExpense(expense.id);
             expect(persistedPeople).toHaveLength(1);
-            expect(persistedPeople[0].personId).toBe(person.id);
+            expect(persistedPeople[0].id).toBe(person.id);
             expect(persistedPeople[0].amount).toBe(amount);
 
             // Verify the expense appears in person-grouped tax summary
@@ -241,7 +241,7 @@ describe('ExpenseService - Assignment Workflow Properties', () => {
             // Verify first assignment
             let people = await expensePeopleRepository.getPeopleForExpense(expense.id);
             expect(people).toHaveLength(1);
-            expect(people[0].personId).toBe(person1.id);
+            expect(people[0].id).toBe(person1.id);
 
             // Re-assign to person2
             await expenseService.updateExpenseWithPeople(
@@ -260,7 +260,7 @@ describe('ExpenseService - Assignment Workflow Properties', () => {
             // Verify re-assignment
             people = await expensePeopleRepository.getPeopleForExpense(expense.id);
             expect(people).toHaveLength(1);
-            expect(people[0].personId).toBe(person2.id);
+            expect(people[0].id).toBe(person2.id);
             expect(people[0].amount).toBe(amount);
           }
         ),

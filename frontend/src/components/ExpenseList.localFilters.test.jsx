@@ -83,7 +83,7 @@ describe('ExpenseList - Local Filtering (Monthly View)', () => {
     // Wait for categories to load
     await waitFor(() => {
       const selects = container.querySelectorAll('.filter-select');
-      expect(selects.length).toBe(3); // Now includes invoice filter
+      expect(selects.length).toBe(4); // Category, Payment Method, Invoice, Insurance filters
     });
 
     // Get the filter dropdowns
@@ -122,7 +122,7 @@ describe('ExpenseList - Local Filtering (Monthly View)', () => {
     // Wait for categories to load
     await waitFor(() => {
       const selects = container.querySelectorAll('.filter-select');
-      expect(selects.length).toBe(3); // Now includes invoice filter
+      expect(selects.length).toBe(4); // Category, Payment Method, Invoice, Insurance filters
     });
 
     // Initially, all 4 expenses should be visible
@@ -163,7 +163,7 @@ describe('ExpenseList - Local Filtering (Monthly View)', () => {
     // Wait for categories to load
     await waitFor(() => {
       const selects = container.querySelectorAll('.filter-select');
-      expect(selects.length).toBe(3); // Now includes invoice filter
+      expect(selects.length).toBe(4); // Category, Payment Method, Invoice, Insurance filters
     });
 
     // Initially, all 4 expenses should be visible
@@ -204,7 +204,7 @@ describe('ExpenseList - Local Filtering (Monthly View)', () => {
     // Wait for categories to load
     await waitFor(() => {
       const selects = container.querySelectorAll('.filter-select');
-      expect(selects.length).toBe(3); // Now includes invoice filter
+      expect(selects.length).toBe(4); // Category, Payment Method, Invoice, Insurance filters
     });
 
     // Apply category filter for "Dining Out"
@@ -245,7 +245,7 @@ describe('ExpenseList - Local Filtering (Monthly View)', () => {
     // Wait for categories to load
     await waitFor(() => {
       const selects = container.querySelectorAll('.filter-select');
-      expect(selects.length).toBe(3); // Now includes invoice filter
+      expect(selects.length).toBe(4); // Category, Payment Method, Invoice, Insurance filters
     });
 
     // Apply filters
@@ -292,7 +292,7 @@ describe('ExpenseList - Local Filtering (Monthly View)', () => {
     // Wait for categories to load
     await waitFor(() => {
       const selects = container.querySelectorAll('.filter-select');
-      expect(selects.length).toBe(3); // Now includes invoice filter
+      expect(selects.length).toBe(4); // Category, Payment Method, Invoice, Insurance filters
     });
 
     // Apply category filter
@@ -325,7 +325,7 @@ describe('ExpenseList - Local Filtering (Monthly View)', () => {
     // Wait for categories to load
     await waitFor(() => {
       const selects = container.querySelectorAll('.filter-select');
-      expect(selects.length).toBe(3); // Now includes invoice filter
+      expect(selects.length).toBe(4); // Category, Payment Method, Invoice, Insurance filters
     });
 
     // Apply filter that excludes the only expense
@@ -355,7 +355,7 @@ describe('ExpenseList - Local Filtering (Monthly View)', () => {
     // Wait for categories to load
     await waitFor(() => {
       const selects = container.querySelectorAll('.filter-select');
-      expect(selects.length).toBe(3); // Now includes invoice filter
+      expect(selects.length).toBe(4); // Category, Payment Method, Invoice, Insurance filters
     });
 
     // Apply filter

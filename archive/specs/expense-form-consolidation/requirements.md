@@ -94,3 +94,4 @@ This document specifies the requirements for consolidating the expense form comp
 2. WHEN ExpenseForm is rendered in edit mode for a medical expense, THE ExpenseForm component SHALL display the currently assigned people
 3. WHEN a user modifies people assignments during editing, THE changes SHALL be saved when the expense is updated
 4. WHEN multiple people are assigned, THE PersonAllocationModal SHALL open to allow amount allocation
+

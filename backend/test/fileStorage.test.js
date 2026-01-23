@@ -75,8 +75,8 @@ describe('File Storage Infrastructure', () => {
       const originalName = 'receipt.pdf';
       
       const path1 = fileStorage.generateFilePath(expenseId, originalName);
-      // Add small delay to ensure different timestamps
-      await new Promise(resolve => setTimeout(resolve, 1));
+      // Add delay to ensure different timestamps (Date.now() has ms precision)
+      await new Promise(resolve => setTimeout(resolve, 5));
       const path2 = fileStorage.generateFilePath(expenseId, originalName);
       
       expect(path1.filename).not.toBe(path2.filename);

@@ -152,11 +152,8 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
       try {
         const expenseWithPeople = await getExpenseWithPeople(expense.id);
         if (expenseWithPeople.people && expenseWithPeople.people.length > 0) {
-          setSelectedPeople(expenseWithPeople.people.map(p => ({
-            id: p.personId,
-            name: p.name,
-            amount: p.amount
-          })));
+          // Backend now returns 'id' directly, no mapping needed
+          setSelectedPeople(expenseWithPeople.people);
         } else {
           setSelectedPeople([]);
         }

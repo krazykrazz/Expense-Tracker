@@ -176,46 +176,6 @@ const BackupSettings = () => {
     window.location.href = `${API_ENDPOINTS.EXPENSES.replace('/expenses', '/backup')}`;
   };
 
-  const handleImportCSV = async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    setMessage({ text: 'Importing expenses...', type: 'info' });
-
-    const formData = new FormData();
-    formData.append('file', file);
-
-    try {
-      const response = await fetch(API_ENDPOINTS.IMPORT, {
-        method: 'POST',
-        body: formData
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to import expenses');
-      }
-
-      const result = await response.json();
-      
-      let messageText = `Import completed! ${result.successCount} expenses imported successfully.`;
-      if (result.errorCount > 0) {
-        messageText += ` ${result.errorCount} errors occurred.`;
-      }
-      
-      setMessage({ text: messageText, type: 'success' });
-      
-      setTimeout(() => {
-        window.location.reload();
-      }, 2000);
-    } catch (error) {
-      logger.error('Import error:', error);
-      setMessage({ text: 'Failed to import expenses. Please check your CSV format.', type: 'error' });
-    }
-
-    // Reset file input
-    event.target.value = '';
-  };
-
   const handleRestoreBackup = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
@@ -417,7 +377,7 @@ const BackupSettings = () => {
           className={`tab-button ${activeTab === 'import' ? 'active' : ''}`}
           onClick={() => setActiveTab('import')}
         >
-          📥 Import & Restore
+          🔄 Restore
         </button>
         <button 
           className={`tab-button ${activeTab === 'people' ? 'active' : ''}`}
@@ -552,20 +512,6 @@ const BackupSettings = () => {
 
       {activeTab === 'import' && (
         <div className="tab-panel">
-          <div className="settings-section">
-            <h3>Import from CSV</h3>
-            <p>Import expenses from a CSV file. The file should have columns for date, place, amount, type, method, and notes.</p>
-            <label className="file-upload-button">
-              📄 Choose CSV File
-              <input 
-                type="file" 
-                accept=".csv"
-                onChange={handleImportCSV}
-                style={{ display: 'none' }}
-              />
-            </label>
-          </div>
-
           <div className="settings-section">
             <h3>Restore from Backup</h3>
             <p className="warning-text">⚠️ WARNING: This will replace ALL current data. This action cannot be undone!</p>

@@ -28,12 +28,17 @@ vi.mock('./config', () => {
       INCOME_COPY_PREVIOUS: (year, month) => `${API_BASE_URL}/api/income/${year}/${month}/copy-previous`,
       LOANS: `${API_BASE_URL}/api/loans`,
       LOAN_BALANCES: `${API_BASE_URL}/api/loan-balances`,
+      INVESTMENTS: `${API_BASE_URL}/api/investments`,
+      INVESTMENT_VALUES: `${API_BASE_URL}/api/investment-values`,
+      PEOPLE: `${API_BASE_URL}/api/people`,
+      PEOPLE_BY_ID: (id) => `${API_BASE_URL}/api/people/${id}`,
       BUDGETS: `${API_BASE_URL}/api/budgets`,
       BUDGET_SUMMARY: `${API_BASE_URL}/api/budgets/summary`,
       BUDGET_HISTORY: `${API_BASE_URL}/api/budgets/history`,
       BUDGET_COPY: `${API_BASE_URL}/api/budgets/copy`,
       BUDGET_SUGGEST: `${API_BASE_URL}/api/budgets/suggest`,
       CATEGORIES: `${API_BASE_URL}/api/categories`,
+      REMINDER_STATUS: (year, month) => `${API_BASE_URL}/api/reminders/status/${year}/${month}`,
       BACKUP_CONFIG: `${API_BASE_URL}/api/backup/config`,
       BACKUP_LIST: `${API_BASE_URL}/api/backup/list`,
       BACKUP_MANUAL: `${API_BASE_URL}/api/backup/manual`,
@@ -66,13 +71,23 @@ describe('App Performance Tests', () => {
   beforeEach(() => {
     // Mock fetch for version info
     global.fetch = vi.fn((url) => {
-      if (url.includes('/api/version')) {
+      // Handle undefined or null url
+      if (!url) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([])
+        });
+      }
+      
+      const urlStr = String(url);
+      
+      if (urlStr.includes('/api/version')) {
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve({ version: '4.2.3' })
         });
       }
-      if (url.includes('/api/categories')) {
+      if (urlStr.includes('/api/categories')) {
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve({ 
@@ -80,7 +95,7 @@ describe('App Performance Tests', () => {
           })
         });
       }
-      if (url.includes('/api/summary')) {
+      if (urlStr.includes('/api/summary')) {
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve({
@@ -103,37 +118,55 @@ describe('App Performance Tests', () => {
           })
         });
       }
-      if (url.includes('/api/budgets/summary')) {
+      if (urlStr.includes('/api/budgets/summary')) {
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve({ totalBudget: 0, totalSpent: 0 })
         });
       }
-      if (url.includes('/api/budgets')) {
+      if (urlStr.includes('/api/budgets')) {
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve([])
         });
       }
-      if (url.includes('/api/fixed-expenses')) {
+      if (urlStr.includes('/api/fixed-expenses')) {
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve([])
         });
       }
-      if (url.includes('/api/income')) {
+      if (urlStr.includes('/api/income')) {
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve([])
         });
       }
-      if (url.includes('/api/loans')) {
+      if (urlStr.includes('/api/loans')) {
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve([])
         });
       }
-      if (url.includes('/api/expenses')) {
+      if (urlStr.includes('/api/people')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([])
+        });
+      }
+      if (urlStr.includes('/api/reminders')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ needsReminder: false })
+        });
+      }
+      if (urlStr.includes('/api/investments')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([])
+        });
+      }
+      if (urlStr.includes('/api/expenses')) {
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve(generateExpenses(1000))

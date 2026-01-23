@@ -10,7 +10,6 @@ import { getInvoicesForExpense, updateInvoicePersonLink } from '../services/invo
 import { createLogger } from '../utils/logger';
 import PersonAllocationModal from './PersonAllocationModal';
 import InvoiceUpload from './InvoiceUpload';
-import InvoicePDFViewer from './InvoicePDFViewer';
 import './ExpenseForm.css';
 
 const logger = createLogger('ExpenseForm');
@@ -135,7 +134,6 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
   // Changed to support multiple invoices per expense with person assignments
   const [invoices, setInvoices] = useState(expense?.invoices || []);
   const [invoiceFiles, setInvoiceFiles] = useState([]); // Array of {file, personId} objects
-  const [showInvoiceViewer, setShowInvoiceViewer] = useState(false);
   
   // People assigned to this expense (for invoice person linking)
   const [expensePeople, setExpensePeople] = useState([]);
@@ -430,17 +428,6 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
     }
   };
 
-  // Handle viewing invoice (Requirements 3.1, 3.2, 3.3, 3.4, 3.5)
-  // Updated to support viewing specific invoice
-  const handleViewInvoice = (invoiceId) => {
-    if (invoices.length > 0 && expense?.id) {
-      const invoice = invoices.find(inv => inv.id === invoiceId);
-      if (invoice) {
-        window.open(API_ENDPOINTS.INVOICE_FILE(expense.id, invoiceId), '_blank');
-      }
-    }
-  };
-
   // Fetch category suggestion for a place and auto-select if available (Requirements 1.3, 1.4, 2.1, 2.3)
   const fetchAndApplyCategorySuggestion = async (place) => {
     if (!place || !place.trim()) {
@@ -602,17 +589,15 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
       if (isMedicalExpense && selectedPeople.length > 0) {
         if (selectedPeople.length === 1) {
           // Single person - assign full amount (and original_amount for insurance)
-          // Note: selectedPeople may have 'id' (from dropdown selection) or 'personId' (from backend)
           peopleAllocations = [{
-            personId: selectedPeople[0].id || selectedPeople[0].personId,
+            personId: selectedPeople[0].id,
             amount: parseFloat(formData.amount),
             originalAmount: insuranceEligible && originalCost ? parseFloat(originalCost) : null
           }];
         } else {
           // Multiple people - use allocated amounts (with original_amount for insurance)
-          // Note: selectedPeople may have 'id' (from dropdown selection) or 'personId' (from backend)
           peopleAllocations = selectedPeople.map(person => ({
-            personId: person.id || person.personId,
+            personId: person.id,
             amount: person.amount,
             originalAmount: person.originalAmount || null
           }));
@@ -744,8 +729,15 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
       }
 
       // Notify parent component
+      // When editing, include the current invoice state so the expense list updates correctly
       if (onExpenseAdded) {
-        onExpenseAdded(newExpense);
+        const expenseToReturn = { ...newExpense };
+        // Include invoice info from current state (for edits where invoices were uploaded via InvoiceUpload)
+        if (isEditing && invoices.length > 0) {
+          expenseToReturn.hasInvoice = true;
+          expenseToReturn.invoiceCount = invoices.length;
+        }
+        onExpenseAdded(expenseToReturn);
       }
 
       // Clear success message after 3 seconds
@@ -914,7 +906,7 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
                     {selectedPeople.some(p => p.amount) ? (
                       <div className="current-allocations">
                         {selectedPeople.map(p => (
-                          <div key={p.id || p.personId} className="allocation-item">
+                          <div key={p.id} className="allocation-item">
                             <span className="person-name">{p.name}</span>
                             <span className="person-amount">
                               ${(p.amount || 0).toFixed(2)}

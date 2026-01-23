@@ -474,18 +474,21 @@ describe('ExpenseService - People Integration', () => {
         method: 'VISA'
       };
 
+      // Mock data matches what repository actually returns (id, not personId)
       const mockPeople = [
         {
-          personId: 123,
+          id: 123,
           name: 'John Doe',
           dateOfBirth: '1990-01-01',
-          amount: 150.00
+          amount: 150.00,
+          originalAmount: 150.00
         },
         {
-          personId: 456,
+          id: 456,
           name: 'Jane Doe',
           dateOfBirth: '1992-05-15',
-          amount: 150.00
+          amount: 150.00,
+          originalAmount: 150.00
         }
       ];
 
@@ -503,16 +506,18 @@ describe('ExpenseService - People Integration', () => {
         ...mockExpense,
         people: [
           {
-            personId: 123,
+            id: 123,
             name: 'John Doe',
             dateOfBirth: '1990-01-01',
-            amount: 150.00
+            amount: 150.00,
+            originalAmount: 150.00
           },
           {
-            personId: 456,
+            id: 456,
             name: 'Jane Doe',
             dateOfBirth: '1992-05-15',
-            amount: 150.00
+            amount: 150.00,
+            originalAmount: 150.00
           }
         ]
       });

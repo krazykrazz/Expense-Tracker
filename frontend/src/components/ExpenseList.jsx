@@ -1,68 +1,18 @@
 import { useState, useEffect, memo, useMemo, useCallback } from 'react';
-import { API_ENDPOINTS } from '../config';
 import { PAYMENT_METHODS } from '../utils/constants';
 import { getCategories } from '../services/categoriesApi';
 import { getPeople } from '../services/peopleApi';
-import { getExpenseWithPeople, updateExpense, updateInsuranceStatus, deleteExpense as deleteExpenseApi } from '../services/expenseApi';
+import { updateInsuranceStatus, deleteExpense as deleteExpenseApi } from '../services/expenseApi';
 import { getInvoicesForExpense, updateInvoicePersonLink } from '../services/invoiceApi';
 import { createLogger } from '../utils/logger';
-import PersonAllocationModal from './PersonAllocationModal';
 import InvoiceIndicator from './InvoiceIndicator';
-import InvoiceUpload from './InvoiceUpload';
 import InsuranceStatusIndicator from './InsuranceStatusIndicator';
 import QuickStatusUpdate from './QuickStatusUpdate';
+import ExpenseForm from './ExpenseForm';
 import './ExpenseList.css';
 import { formatAmount, formatLocalDate } from '../utils/formatters';
 
 const logger = createLogger('ExpenseList');
-
-// Future months dropdown options (Requirements 2.1, 2.2)
-const FUTURE_MONTHS_OPTIONS = [
-  { value: 1, label: "1" },
-  { value: 2, label: "2" },
-  { value: 3, label: "3" },
-  { value: 4, label: "4" },
-  { value: 5, label: "5" },
-  { value: 6, label: "6" },
-  { value: 7, label: "7" },
-  { value: 8, label: "8" },
-  { value: 9, label: "9" },
-  { value: 10, label: "10" },
-  { value: 11, label: "11" },
-  { value: 12, label: "12" }
-];
-
-/**
- * Calculate the future date range preview text
- * @param {string} sourceDate - The source date in YYYY-MM-DD format
- * @param {number} futureMonths - Number of future months
- * @returns {string} Preview text showing the date range
- */
-const calculateFutureDatePreview = (sourceDate, futureMonths) => {
-  if (!sourceDate || futureMonths <= 0) return '';
-  
-  const date = new Date(sourceDate + 'T00:00:00');
-  const sourceDay = date.getDate();
-  
-  // Calculate the last future month date
-  const futureDate = new Date(date);
-  futureDate.setMonth(futureDate.getMonth() + futureMonths);
-  
-  // Handle month-end edge cases
-  const targetMonth = futureDate.getMonth();
-  const daysInTargetMonth = new Date(futureDate.getFullYear(), targetMonth + 1, 0).getDate();
-  
-  if (sourceDay > daysInTargetMonth) {
-    futureDate.setDate(daysInTargetMonth);
-  } else {
-    futureDate.setDate(sourceDay);
-  }
-  
-  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'];
-  
-  return `through ${monthNames[futureDate.getMonth()]} ${futureDate.getFullYear()}`;
-};
 
 /**
  * Renders people indicator for medical expenses
@@ -148,9 +98,6 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
   const [expenseToDelete, setExpenseToDelete] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [expenseToEdit, setExpenseToEdit] = useState(null);
-  const [editFormData, setEditFormData] = useState({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [editMessage, setEditMessage] = useState({ text: '', type: '' });
   const [categories, setCategories] = useState([]);
   // Local filters for monthly view only (don't trigger global view)
   const [localFilterType, setLocalFilterType] = useState('');
@@ -160,22 +107,12 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
   // People selection state for medical expenses
   const [localPeople, setLocalPeople] = useState([]);
   const people = propPeople || localPeople;
-  const [selectedPeople, setSelectedPeople] = useState([]);
-  const [showPersonAllocation, setShowPersonAllocation] = useState(false);
-  // Invoice state for editing - now supports multiple invoices
-  const [editInvoices, setEditInvoices] = useState([]);
   // Invoice data cache - now stores arrays of invoices per expense
   const [invoiceData, setInvoiceData] = useState(new Map());
   const [loadingInvoices, setLoadingInvoices] = useState(new Set());
-  // Future months state for edit form (Requirements 2.1, 2.2)
-  const [editFutureMonths, setEditFutureMonths] = useState(0);
   // Insurance quick status update state (Requirements 5.1, 5.2, 5.3, 5.4)
   const [quickStatusExpenseId, setQuickStatusExpenseId] = useState(null);
   const [quickStatusPosition, setQuickStatusPosition] = useState({ top: 0, left: 0 });
-  // Insurance tracking state for edit form
-  const [editInsuranceEligible, setEditInsuranceEligible] = useState(false);
-  const [editClaimStatus, setEditClaimStatus] = useState('not_claimed');
-  const [editOriginalCost, setEditOriginalCost] = useState('');
 
   // Fetch categories and people on mount
   useEffect(() => {
@@ -321,258 +258,26 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
     loadInvoiceData();
   }, [expenses, invoiceData, loadingInvoices]);
 
-  const handleEditClick = useCallback(async (expense) => {
+  // Simplified edit click handler - ExpenseForm handles all state internally
+  const handleEditClick = useCallback((expense) => {
     setExpenseToEdit(expense);
-    // Ensure date is in YYYY-MM-DD format for the date input
-    const dateValue = expense.date.includes('T') ? expense.date.split('T')[0] : expense.date;
-    setEditFormData({
-      date: dateValue,
-      place: expense.place || '',
-      notes: expense.notes || '',
-      amount: expense.amount.toString(),
-      type: expense.type,
-      method: expense.method
-    });
-    
-    // Reset future months to 0 when opening edit modal (Requirements 2.1)
-    setEditFutureMonths(0);
-    
-    // Set insurance fields for medical expenses
-    if (expense.type === 'Tax - Medical') {
-      setEditInsuranceEligible(expense.insurance_eligible === 1 || expense.insurance_eligible === true);
-      setEditClaimStatus(expense.claim_status || 'not_claimed');
-      setEditOriginalCost(expense.original_cost?.toString() || '');
-    } else {
-      setEditInsuranceEligible(false);
-      setEditClaimStatus('not_claimed');
-      setEditOriginalCost('');
-    }
-    
-    // Load people assignments for medical expenses
-    if (expense.type === 'Tax - Medical') {
-      try {
-        const expenseWithPeople = await getExpenseWithPeople(expense.id);
-        if (expenseWithPeople.people && expenseWithPeople.people.length > 0) {
-          setSelectedPeople(expenseWithPeople.people.map(p => ({
-            id: p.personId,
-            name: p.name,
-            amount: p.amount
-          })));
-        } else {
-          setSelectedPeople([]);
-        }
-        
-        // Load invoices if exists - now supports multiple invoices
-        const invoices = invoiceData.get(expense.id) || [];
-        setEditInvoices(invoices);
-      } catch (error) {
-        logger.error('Failed to load people for expense:', error);
-        setSelectedPeople([]);
-        setEditInvoices([]);
-      }
-    } else if (expense.type === 'Tax - Donation') {
-      // Load invoices for donation expenses (no people assignments)
-      setSelectedPeople([]);
-      const invoices = invoiceData.get(expense.id) || [];
-      setEditInvoices(invoices);
-    } else {
-      setSelectedPeople([]);
-      setEditInvoices([]);
-    }
-    
     setShowEditModal(true);
-    setEditMessage({ text: '', type: '' });
-  }, [invoiceData]);
-
-  const handleEditChange = useCallback((e) => {
-    const { name, value } = e.target;
-    setEditFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    
-    // Clear people selection when changing away from medical expenses
-    if (name === 'type' && value !== 'Tax - Medical') {
-      setSelectedPeople([]);
-    }
   }, []);
 
-  // Handle people selection for medical expenses
-  const handleEditPeopleChange = useCallback((e) => {
-    const selectedOptions = Array.from(e.target.selectedOptions, option => ({
-      id: parseInt(option.value),
-      name: option.text
-    }));
-    setSelectedPeople(selectedOptions);
-  }, []);
-
-  // Handle person allocation modal save
-  const handleEditPersonAllocation = useCallback((allocations) => {
-    setShowPersonAllocation(false);
-    setSelectedPeople(allocations);
-  }, []);
-
-  // Check if current expense type is medical or donation (tax-deductible)
-  const isEditingMedicalExpense = editFormData.type === 'Tax - Medical';
-  const isEditingDonationExpense = editFormData.type === 'Tax - Donation';
-  const isEditingTaxDeductible = isEditingMedicalExpense || isEditingDonationExpense;
-
-  const handleEditSubmit = useCallback(async (e) => {
-    e.preventDefault();
-    setEditMessage({ text: '', type: '' });
-
-    // For medical expenses with multiple people, show allocation modal if amounts not set
-    if (isEditingMedicalExpense && selectedPeople.length > 1 && !selectedPeople[0].amount) {
-      setShowPersonAllocation(true);
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      // Ensure date is in YYYY-MM-DD format
-      const dateValue = editFormData.date.includes('T') ? editFormData.date.split('T')[0] : editFormData.date;
-      
-      // Prepare people allocations for medical expenses
-      let peopleAllocations = null;
-      if (isEditingMedicalExpense && selectedPeople.length > 0) {
-        if (selectedPeople.length === 1) {
-          // Single person - assign full amount
-          peopleAllocations = [{
-            personId: selectedPeople[0].id,
-            amount: parseFloat(editFormData.amount)
-          }];
-        } else {
-          // Multiple people - use allocated amounts
-          peopleAllocations = selectedPeople.map(person => ({
-            personId: person.id,
-            amount: person.amount
-          }));
-        }
-      } else if (isEditingMedicalExpense) {
-        // Medical expense with no people selected - clear allocations
-        peopleAllocations = [];
-      }
-
-      const updatedExpense = await updateExpense(expenseToEdit.id, {
-        date: dateValue,
-        place: editFormData.place,
-        notes: editFormData.notes,
-        amount: parseFloat(editFormData.amount),
-        type: editFormData.type,
-        method: editFormData.method,
-        // Include insurance fields for medical expenses
-        ...(isEditingMedicalExpense && {
-          insurance_eligible: editInsuranceEligible,
-          claim_status: editInsuranceEligible ? editClaimStatus : null,
-          original_cost: editInsuranceEligible && editOriginalCost ? parseFloat(editOriginalCost) : null
-        })
-      }, peopleAllocations, editFutureMonths);
-      
-      // Handle response format - may include futureExpenses array
-      let resultExpense = updatedExpense;
-      let futureExpensesResult = [];
-      if (updatedExpense.expense) {
-        resultExpense = updatedExpense.expense;
-        futureExpensesResult = updatedExpense.futureExpenses || [];
-      }
-      
-      // Build success message including future expenses info (Requirements 4.1, 4.2)
-      if (futureExpensesResult.length > 0) {
-        const datePreview = calculateFutureDatePreview(dateValue, futureExpensesResult.length);
-        setEditMessage({ 
-          text: `Expense updated and added to ${futureExpensesResult.length} future month${futureExpensesResult.length > 1 ? 's' : ''} ${datePreview}`, 
-          type: 'success' 
-        });
-      }
-      
-      // Notify parent component to update the expense
-      if (onExpenseUpdated) {
-        onExpenseUpdated(resultExpense);
-      }
-      
-      setShowEditModal(false);
-      setExpenseToEdit(null);
-      setSelectedPeople([]);
-      setEditFutureMonths(0);
-    } catch (error) {
-      logger.error('Error updating expense:', error);
-      setEditMessage({ text: error.message, type: 'error' });
-    } finally {
-      setIsSubmitting(false);
-    }
-  }, [editFormData, isEditingMedicalExpense, selectedPeople, expenseToEdit, onExpenseUpdated, editFutureMonths, editInsuranceEligible, editClaimStatus, editOriginalCost]);
-
+  // Simplified cancel handler - just close modal and clear expense
   const handleCancelEdit = useCallback(() => {
     setShowEditModal(false);
     setExpenseToEdit(null);
-    setEditFormData({});
-    setEditMessage({ text: '', type: '' });
-    setSelectedPeople([]);
-    setEditInvoices([]);
-    setEditFutureMonths(0);
-    setEditInsuranceEligible(false);
-    setEditClaimStatus('not_claimed');
-    setEditOriginalCost('');
   }, []);
 
-  // Handle invoice upload in edit modal - now supports multiple invoices
-  const handleEditInvoiceUploaded = useCallback((invoice) => {
-    setEditInvoices(prev => [...prev, invoice]);
-    // Update the invoice data cache
-    if (expenseToEdit) {
-      setInvoiceData(prev => {
-        const newMap = new Map(prev);
-        const existingInvoices = newMap.get(expenseToEdit.id) || [];
-        newMap.set(expenseToEdit.id, [...existingInvoices, invoice]);
-        return newMap;
-      });
+  // Callback for ExpenseForm - handles update and closes modal
+  const handleExpenseUpdated = useCallback((updatedExpense) => {
+    if (onExpenseUpdated) {
+      onExpenseUpdated(updatedExpense);
     }
-  }, [expenseToEdit]);
-
-  // Handle invoice deletion in edit modal - now supports deleting specific invoice
-  const handleEditInvoiceDeleted = useCallback((invoiceId) => {
-    setEditInvoices(prev => prev.filter(inv => inv.id !== invoiceId));
-    // Update the invoice data cache
-    if (expenseToEdit) {
-      setInvoiceData(prev => {
-        const newMap = new Map(prev);
-        const existingInvoices = newMap.get(expenseToEdit.id) || [];
-        newMap.set(expenseToEdit.id, existingInvoices.filter(inv => inv.id !== invoiceId));
-        return newMap;
-      });
-    }
-  }, [expenseToEdit]);
-
-  // Handle person link updated in edit modal
-  const handleEditPersonLinkUpdated = useCallback(async (invoiceId, personId) => {
-    try {
-      const result = await updateInvoicePersonLink(invoiceId, personId);
-      if (result.success) {
-        // Update the invoice in local state
-        setEditInvoices(prev => prev.map(inv => 
-          inv.id === invoiceId 
-            ? { ...inv, personId, personName: result.invoice?.personName || null }
-            : inv
-        ));
-        // Update the invoice data cache
-        if (expenseToEdit) {
-          setInvoiceData(prev => {
-            const newMap = new Map(prev);
-            const existingInvoices = newMap.get(expenseToEdit.id) || [];
-            newMap.set(expenseToEdit.id, existingInvoices.map(inv => 
-              inv.id === invoiceId 
-                ? { ...inv, personId, personName: result.invoice?.personName || null }
-                : inv
-            ));
-            return newMap;
-          });
-        }
-      }
-    } catch (error) {
-      logger.error('Failed to update invoice person link:', error);
-    }
-  }, [expenseToEdit]);
+    setShowEditModal(false);
+    setExpenseToEdit(null);
+  }, [onExpenseUpdated]);
 
   const handleDeleteClick = useCallback((expense) => {
     setExpenseToDelete(expense);
@@ -1025,333 +730,14 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
             >
               ×
             </button>
-            <h3>Edit Expense</h3>
-            <form onSubmit={handleEditSubmit} className="edit-form">
-              <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="edit-date">Date *</label>
-                  <input
-                    type="date"
-                    id="edit-date"
-                    name="date"
-                    value={editFormData.date}
-                    onChange={handleEditChange}
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="edit-amount">Amount *</label>
-                  <input
-                    type="number"
-                    id="edit-amount"
-                    name="amount"
-                    value={editFormData.amount}
-                    onChange={handleEditChange}
-                    step="0.01"
-                    min="0.01"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="edit-type">Type *</label>
-                  <select
-                    id="edit-type"
-                    name="type"
-                    value={editFormData.type}
-                    onChange={handleEditChange}
-                    required
-                  >
-                    {categories.map((category) => (
-                      <option key={category} value={category}>
-                        {category}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="edit-method">Payment Method *</label>
-                  <select
-                    id="edit-method"
-                    name="method"
-                    value={editFormData.method}
-                    onChange={handleEditChange}
-                    required
-                  >
-                    {PAYMENT_METHODS.map((method) => (
-                      <option key={method} value={method}>{method}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="edit-place">Place</label>
-                <input
-                  type="text"
-                  id="edit-place"
-                  name="place"
-                  value={editFormData.place}
-                  onChange={handleEditChange}
-                  maxLength="200"
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="edit-notes">Notes</label>
-                <textarea
-                  id="edit-notes"
-                  name="notes"
-                  value={editFormData.notes}
-                  onChange={handleEditChange}
-                  maxLength="200"
-                  rows="3"
-                />
-              </div>
-
-              {/* Future Months Selection (Requirements 2.1, 2.2) */}
-              <div className="form-group future-months-section">
-                <div className="future-months-row">
-                  <label className="checkbox-label">
-                    <input
-                      type="checkbox"
-                      checked={editFutureMonths > 0}
-                      onChange={(e) => setEditFutureMonths(e.target.checked ? 1 : 0)}
-                    />
-                    <span>Add to Future Months</span>
-                  </label>
-                  {editFutureMonths > 0 && (
-                    <div className="future-months-count">
-                      <select
-                        id="edit-future-months"
-                        name="futureMonths"
-                        value={editFutureMonths}
-                        onChange={(e) => setEditFutureMonths(parseInt(e.target.value))}
-                        className="future-months-select"
-                      >
-                        {FUTURE_MONTHS_OPTIONS.map(option => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                      <span className="months-label">month{editFutureMonths > 1 ? 's' : ''}</span>
-                    </div>
-                  )}
-                </div>
-                {editFutureMonths > 0 && editFormData.date && (
-                  <div className="future-months-preview">
-                    📅 Will create {editFutureMonths} additional expense{editFutureMonths > 1 ? 's' : ''} {calculateFutureDatePreview(editFormData.date, editFutureMonths)}
-                  </div>
-                )}
-              </div>
-
-              {/* People Selection for Medical Expenses */}
-              {isEditingMedicalExpense && (
-                <div className="form-group">
-                  <label htmlFor="edit-people">Assign to People</label>
-                  <select
-                    id="edit-people"
-                    name="people"
-                    multiple
-                    value={selectedPeople.map(p => (p.id || p.personId).toString())}
-                    onChange={handleEditPeopleChange}
-                    className="people-select"
-                    size={Math.min(people.length + 1, 4)}
-                  >
-                    <option value="" disabled>Select family members...</option>
-                    {people.map(person => (
-                      <option key={person.id} value={person.id}>
-                        {person.name}
-                      </option>
-                    ))}
-                  </select>
-                  {selectedPeople.length > 0 && (
-                    <div className="selected-people-info">
-                      {selectedPeople.length === 1 ? (
-                        <span>Selected: {selectedPeople[0].name}</span>
-                      ) : (
-                        <>
-                          <div className="allocation-header-row">
-                            <span>Allocations ({selectedPeople.length} people)</span>
-                            <button
-                              type="button"
-                              className="edit-allocation-button"
-                              onClick={() => setShowPersonAllocation(true)}
-                            >
-                              ✏️ Edit
-                            </button>
-                          </div>
-                          {selectedPeople.some(p => p.amount) ? (
-                            <div className="current-allocations">
-                              {selectedPeople.map(p => (
-                                <div key={p.id || p.personId} className="allocation-item">
-                                  <span className="person-name">{p.name}</span>
-                                  <span className="person-amount">
-                                    ${(p.amount || 0).toFixed(2)}
-                                    {editInsuranceEligible && p.originalAmount && (
-                                      <span className="original-amount"> (orig: ${p.originalAmount.toFixed(2)})</span>
-                                    )}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <span className="allocation-note">Click Edit to set amounts</span>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Insurance Section for Medical Expenses */}
-              {isEditingMedicalExpense && (
-                <div className="form-group insurance-section">
-                  <label className="insurance-section-title">Insurance Tracking</label>
-                  
-                  {/* Insurance Eligibility Checkbox */}
-                  <div className="insurance-eligibility-row">
-                    <label className="checkbox-label insurance-checkbox">
-                      <input
-                        type="checkbox"
-                        checked={editInsuranceEligible}
-                        onChange={(e) => {
-                          const eligible = e.target.checked;
-                          setEditInsuranceEligible(eligible);
-                          if (eligible && !editOriginalCost && editFormData.amount) {
-                            setEditOriginalCost(editFormData.amount);
-                          }
-                          if (!eligible) {
-                            setEditClaimStatus('not_claimed');
-                            setEditOriginalCost('');
-                          }
-                        }}
-                        disabled={isSubmitting}
-                      />
-                      <span>Eligible for Insurance Reimbursement</span>
-                    </label>
-                  </div>
-                  
-                  {/* Insurance Details (shown when eligible) */}
-                  {editInsuranceEligible && (
-                    <div className="insurance-details">
-                      {/* Original Cost and Out-of-Pocket Row */}
-                      <div className="insurance-field-row">
-                        <div className="insurance-field">
-                          <label htmlFor="edit-originalCost">Original Cost</label>
-                          <div className="amount-input-wrapper">
-                            <span className="currency-symbol">$</span>
-                            <input
-                              type="number"
-                              id="edit-originalCost"
-                              value={editOriginalCost}
-                              onChange={(e) => setEditOriginalCost(e.target.value)}
-                              step="0.01"
-                              min="0.01"
-                              placeholder="0.00"
-                              disabled={isSubmitting}
-                            />
-                          </div>
-                        </div>
-                        
-                        <div className="insurance-field">
-                          <label>Out-of-Pocket</label>
-                          <div className="out-of-pocket-display">
-                            ${editFormData.amount ? parseFloat(editFormData.amount).toFixed(2) : '0.00'}
-                          </div>
-                          <small className="field-hint">Set via Amount field above</small>
-                        </div>
-                      </div>
-                      
-                      {/* Claim Status and Reimbursement Row */}
-                      <div className="insurance-field-row">
-                        <div className="insurance-field">
-                          <label htmlFor="edit-claimStatus">Claim Status</label>
-                          <select
-                            id="edit-claimStatus"
-                            value={editClaimStatus}
-                            onChange={(e) => setEditClaimStatus(e.target.value)}
-                            disabled={isSubmitting}
-                            className="claim-status-select"
-                          >
-                            <option value="not_claimed">Not Claimed</option>
-                            <option value="in_progress">In Progress</option>
-                            <option value="paid">Paid</option>
-                            <option value="denied">Denied</option>
-                          </select>
-                        </div>
-                        
-                        <div className="insurance-field">
-                          <label>Reimbursement</label>
-                          <div className={`reimbursement-display ${(parseFloat(editOriginalCost) || 0) - (parseFloat(editFormData.amount) || 0) > 0 ? 'has-reimbursement' : ''}`}>
-                            ${Math.max(0, (parseFloat(editOriginalCost) || 0) - (parseFloat(editFormData.amount) || 0)).toFixed(2)}
-                          </div>
-                          <small className="field-hint">Original cost - Out-of-pocket</small>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Invoice Upload for Tax-Deductible Expenses (Medical and Donations) - now supports multiple invoices */}
-              {isEditingTaxDeductible && expenseToEdit && (
-                <div className="form-group">
-                  <InvoiceUpload
-                    expenseId={expenseToEdit.id}
-                    existingInvoices={editInvoices}
-                    people={isEditingMedicalExpense ? (selectedPeople.length > 0 ? selectedPeople : people) : []}
-                    onInvoiceUploaded={handleEditInvoiceUploaded}
-                    onInvoiceDeleted={handleEditInvoiceDeleted}
-                    onPersonLinkUpdated={handleEditPersonLinkUpdated}
-                    disabled={isSubmitting}
-                  />
-                </div>
-              )}
-
-              {editMessage.text && (
-                <div className={`message ${editMessage.type}`}>
-                  {editMessage.text}
-                </div>
-              )}
-
-              <div className="dialog-actions">
-                <button 
-                  type="button"
-                  className="cancel-button" 
-                  onClick={handleCancelEdit}
-                >
-                  Cancel
-                </button>
-                <button 
-                  type="submit"
-                  className="save-button" 
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? 'Saving...' : 'Save Changes'}
-                </button>
-              </div>
-            </form>
+            <ExpenseForm
+              expense={expenseToEdit}
+              people={people}
+              onExpenseAdded={handleExpenseUpdated}
+            />
           </div>
         </div>
       )}
-
-      {/* Person Allocation Modal for Edit */}
-      <PersonAllocationModal
-        isOpen={showPersonAllocation}
-        expense={{ amount: parseFloat(editFormData.amount) || 0 }}
-        selectedPeople={selectedPeople}
-        onSave={handleEditPersonAllocation}
-        onCancel={() => setShowPersonAllocation(false)}
-        insuranceEligible={editInsuranceEligible}
-        originalCost={editInsuranceEligible && editOriginalCost ? parseFloat(editOriginalCost) : null}
-      />
 
       {/* Quick Status Update Dropdown for Insurance (Requirements 5.1, 5.2, 5.3, 5.4) */}
       {quickStatusExpenseId && (

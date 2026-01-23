@@ -24,6 +24,39 @@ describe('Medical Expense People Tracking - End-to-End Integration Tests', () =>
     db = await getDatabase();
   });
 
+  beforeEach(async () => {
+    // Clean up test data before each test to ensure clean state
+    try {
+      // Delete expense_people associations first (due to foreign key)
+      await new Promise((resolve, reject) => {
+        db.run(`DELETE FROM expense_people WHERE expense_id IN (
+          SELECT id FROM expenses WHERE strftime('%Y', date) = '${testYear}'
+        )`, (err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+      
+      // Delete test expenses
+      await new Promise((resolve, reject) => {
+        db.run(`DELETE FROM expenses WHERE strftime('%Y', date) = '${testYear}'`, (err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+      
+      // Delete test people (names starting with 'Test_')
+      await new Promise((resolve, reject) => {
+        db.run(`DELETE FROM people WHERE name LIKE 'Test_%'`, (err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+    } catch (error) {
+      console.warn('Test cleanup warning:', error.message);
+    }
+  });
+
   afterEach(async () => {
     // Clean up test data after each test
     try {
@@ -112,7 +145,7 @@ describe('Medical Expense People Tracking - End-to-End Integration Tests', () =>
       expect(expense.amount).toBe(150.00);
       expect(expense.people).toBeDefined();
       expect(expense.people.length).toBe(1);
-      expect(expense.people[0].personId).toBe(person.id);
+      expect(expense.people[0].id).toBe(person.id);
       expect(expense.people[0].amount).toBe(150.00);
 
       // Step 3: View in tax deductible summary
@@ -306,8 +339,8 @@ describe('Medical Expense People Tracking - End-to-End Integration Tests', () =>
       expect(retrievedExpense.people.length).toBe(2);
       
       // Verify allocations are correct
-      const person1Allocation = retrievedExpense.people.find(p => p.personId === person1.id);
-      const person2Allocation = retrievedExpense.people.find(p => p.personId === person2.id);
+      const person1Allocation = retrievedExpense.people.find(p => p.id === person1.id);
+      const person2Allocation = retrievedExpense.people.find(p => p.id === person2.id);
       
       expect(person1Allocation).toBeDefined();
       expect(person1Allocation.amount).toBe(300.00);
@@ -410,7 +443,7 @@ describe('Medical Expense People Tracking - End-to-End Integration Tests', () =>
       // Verify initial state
       let retrievedExpense = await expenseService.getExpenseWithPeople(expense.id);
       expect(retrievedExpense.people.length).toBe(1);
-      expect(retrievedExpense.people[0].personId).toBe(person1.id);
+      expect(retrievedExpense.people[0].id).toBe(person1.id);
 
       // Update to split between two people
       const updatedExpense = await expenseService.updateExpenseWithPeople(
@@ -433,8 +466,8 @@ describe('Medical Expense People Tracking - End-to-End Integration Tests', () =>
       retrievedExpense = await expenseService.getExpenseWithPeople(expense.id);
       expect(retrievedExpense.people.length).toBe(2);
       
-      const p1Alloc = retrievedExpense.people.find(p => p.personId === person1.id);
-      const p2Alloc = retrievedExpense.people.find(p => p.personId === person2.id);
+      const p1Alloc = retrievedExpense.people.find(p => p.id === person1.id);
+      const p2Alloc = retrievedExpense.people.find(p => p.id === person2.id);
       
       expect(p1Alloc.amount).toBe(250.00);
       expect(p2Alloc.amount).toBe(150.00);

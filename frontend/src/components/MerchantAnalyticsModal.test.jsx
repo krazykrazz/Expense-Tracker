@@ -178,13 +178,14 @@ describe('MerchantAnalyticsModal', () => {
       const periodSelect = document.querySelector('select[class*="merchant-analytics-filter-select"]');
       fireEvent.change(periodSelect, { target: { value: 'month' } });
 
-      // Verify API was called with new period
+      // Verify API was called with new period (includeFixedExpenses defaults to false)
       await waitFor(() => {
-        expect(merchantAnalyticsApi.getTopMerchants).toHaveBeenCalledWith('month', 'total');
+        expect(merchantAnalyticsApi.getTopMerchants).toHaveBeenCalledWith('month', 'total', false);
       });
 
-      // Verify display text updates
-      expect(screen.getByText(/This Month/)).toBeInTheDocument();
+      // Verify display text updates - check within the current-filters section
+      const currentFilters = document.querySelector('.merchant-analytics-current-filters');
+      expect(currentFilters).toHaveTextContent('This Month');
     });
 
     it('handles all period options correctly', async () => {
@@ -207,8 +208,10 @@ describe('MerchantAnalyticsModal', () => {
         fireEvent.change(periodSelect, { target: { value: period.value } });
         
         await waitFor(() => {
-          expect(merchantAnalyticsApi.getTopMerchants).toHaveBeenCalledWith(period.value, 'total');
-          expect(screen.getByText(new RegExp(period.display))).toBeInTheDocument();
+          expect(merchantAnalyticsApi.getTopMerchants).toHaveBeenCalledWith(period.value, 'total', false);
+          // Check within the current-filters section to avoid matching dropdown options
+          const currentFilters = document.querySelector('.merchant-analytics-current-filters');
+          expect(currentFilters).toHaveTextContent(period.display);
         });
       }
     });
@@ -231,13 +234,14 @@ describe('MerchantAnalyticsModal', () => {
       const sortSelect = document.querySelectorAll('select[class*="merchant-analytics-filter-select"]')[1];
       fireEvent.change(sortSelect, { target: { value: 'visits' } });
 
-      // Verify API was called with new sort criteria
+      // Verify API was called with new sort criteria (includeFixedExpenses defaults to false)
       await waitFor(() => {
-        expect(merchantAnalyticsApi.getTopMerchants).toHaveBeenCalledWith('year', 'visits');
+        expect(merchantAnalyticsApi.getTopMerchants).toHaveBeenCalledWith('year', 'visits', false);
       });
 
-      // Verify display text updates
-      expect(screen.getByText(/Visit Count/)).toBeInTheDocument();
+      // Verify display text updates - check within the current-filters section
+      const currentFilters = document.querySelector('.merchant-analytics-current-filters');
+      expect(currentFilters).toHaveTextContent('Visit Count');
     });
 
     it('handles all sort options correctly', async () => {
@@ -259,8 +263,10 @@ describe('MerchantAnalyticsModal', () => {
         fireEvent.change(sortSelect, { target: { value: sort.value } });
         
         await waitFor(() => {
-          expect(merchantAnalyticsApi.getTopMerchants).toHaveBeenCalledWith('year', sort.value);
-          expect(screen.getByText(new RegExp(sort.display))).toBeInTheDocument();
+          expect(merchantAnalyticsApi.getTopMerchants).toHaveBeenCalledWith('year', sort.value, false);
+          // Check within the current-filters section to avoid matching dropdown options
+          const currentFilters = document.querySelector('.merchant-analytics-current-filters');
+          expect(currentFilters).toHaveTextContent(sort.display);
         });
       }
     });
@@ -433,8 +439,8 @@ describe('MerchantAnalyticsModal', () => {
       fireEvent.change(periodSelect, { target: { value: 'month' } });
       fireEvent.change(sortSelect, { target: { value: 'visits' } });
 
-      // Close modal
-      rerender(<MerchantAnalyticsModal {...defaultProps} isOpen={false} />);
+      // Close modal by clicking close button (which triggers handleClose that resets state)
+      fireEvent.click(screen.getByText('✕'));
       
       // Reopen modal
       rerender(<MerchantAnalyticsModal {...defaultProps} isOpen={true} />);

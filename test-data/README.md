@@ -4,8 +4,8 @@ This directory contains test data files used for development and testing purpose
 
 ## Contents
 
-- Sample expense data for testing
-- Test database files
+- Sample data files for testing
+- Test database files (gitignored)
 
 ## Valid Expense Categories
 
@@ -50,4 +50,4 @@ These files are for development use only and should not be committed to version 
 
 ## Note
 
-All CSV and database files in this directory are ignored by git to prevent accidental commits of test data.
+All data files in this directory are ignored by git to prevent accidental commits of test data.

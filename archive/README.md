@@ -1,7 +1,7 @@
 # Project Archive
 
 **Created:** 2025-11-24  
-**Last Updated:** 2026-01-21
+**Last Updated:** 2026-01-22
 
 This archive contains historical documentation and scripts that have served their purpose but are retained for reference.
 
@@ -21,12 +21,12 @@ Completion reports for various features and optimizations:
 - Test coverage analyses
 - Cleanup summaries
 
-### deployments/ (Updated - Jan 18, 2026)
+### deployments/ (Updated - Jan 22, 2026)
 Historical deployment documentation:
-- v3.2.0 through v4.9.1 deployment guides
+- v3.2.0 through v4.12.4 deployment guides
 - Deployment summaries and changelogs
 - Version-specific implementation notes
-- **Latest:** Added v3.2.0-v3.3.2, v4.6.0-v4.9.1 deployment files
+- **Latest:** Added v4.12.0-v4.12.4 deployment files
 
 ### migration-scripts/ (Nov 24, 2025)
 Database migration scripts (kept for reference):
@@ -60,13 +60,13 @@ Spec update summaries and cleanup documentation:
 - Cleanup analyses
 - Historical spec changes
 
-### specs/ (Updated - Jan 21, 2026)
+### specs/ (Updated - Jan 22, 2026)
 Completed feature specifications that have been fully implemented:
-- 29 archived spec directories for completed features
+- 30 archived spec directories for completed features
 - Includes deprecated features (recurring-expenses)
 - Infrastructure specs (code-optimization, containerization-optimization)
-- All major feature implementations from v3.0.0 through v4.14.0
-- **Latest:** Added medical-insurance-tracking, recurring-expenses-v2
+- All major feature implementations from v3.0.0 through v4.15.0
+- **Latest:** Added expense-form-consolidation (v4.15.x)
 
 ### test-scripts/ (Nov 24, 2025)
 One-time test scripts used during feature development:
@@ -204,9 +204,25 @@ Copy-Item archive/[subfolder]/[filename] ./
   - **Total archived specs:** 29 complete feature specifications
   - docs/features/ now contains only active feature documentation (15 files)
 
+- **2026-01-22:** Post v4.15.x cleanup - CSV removal & spec archival (12 items)
+  - **Archived 1 completed spec** from .kiro/specs/ to archive/specs/:
+    - expense-form-consolidation (v4.15.x - consolidated duplicate edit form code)
+  - **Archived 5 deployment docs** from docs/deployments/ to archive/deployments/:
+    - DEPLOYMENT_v4.12.0.md through DEPLOYMENT_v4.12.4.md
+  - **Deleted empty folder**: utils/ (Python CSV utilities removed with CSV import feature)
+  - **Deleted test data file**: test-data/all_expenses.csv (real user data, CSV import removed)
+  - **Deleted obsolete CSV test scripts**:
+    - archive/test-scripts/testCSVIntegration.js
+    - archive/test-scripts/testIntegration.js
+    - backend/scripts/archive/integration-tests/testPersonalCareIntegration.js
+  - **Updated**: test-data/README.md (removed CSV import references)
+  - **Result:** .kiro/specs/ is now empty (no active specs)
+  - **Total archived specs:** 30 complete feature specifications
+  - docs/deployments/ now contains only DEPLOYMENT.md (general guide)
+
 ## Next Review
 
-**Scheduled:** 2026-07-18 (6 months from last cleanup)
+**Scheduled:** 2026-07-22 (6 months from last cleanup)
 
 **Actions to consider:**
 - Delete files older than 12 months if not referenced

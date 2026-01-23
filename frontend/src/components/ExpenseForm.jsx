@@ -10,7 +10,6 @@ import { getInvoicesForExpense, updateInvoicePersonLink } from '../services/invo
 import { createLogger } from '../utils/logger';
 import PersonAllocationModal from './PersonAllocationModal';
 import InvoiceUpload from './InvoiceUpload';
-import InvoicePDFViewer from './InvoicePDFViewer';
 import './ExpenseForm.css';
 
 const logger = createLogger('ExpenseForm');
@@ -135,7 +134,6 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
   // Changed to support multiple invoices per expense with person assignments
   const [invoices, setInvoices] = useState(expense?.invoices || []);
   const [invoiceFiles, setInvoiceFiles] = useState([]); // Array of {file, personId} objects
-  const [showInvoiceViewer, setShowInvoiceViewer] = useState(false);
   
   // People assigned to this expense (for invoice person linking)
   const [expensePeople, setExpensePeople] = useState([]);
@@ -427,17 +425,6 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
     } catch (error) {
       logger.error('Failed to update invoice person link:', error);
       setMessage({ text: `Failed to update person link: ${error.message}`, type: 'error' });
-    }
-  };
-
-  // Handle viewing invoice (Requirements 3.1, 3.2, 3.3, 3.4, 3.5)
-  // Updated to support viewing specific invoice
-  const handleViewInvoice = (invoiceId) => {
-    if (invoices.length > 0 && expense?.id) {
-      const invoice = invoices.find(inv => inv.id === invoiceId);
-      if (invoice) {
-        window.open(API_ENDPOINTS.INVOICE_FILE(expense.id, invoiceId), '_blank');
-      }
     }
   };
 

@@ -792,6 +792,15 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v4.16.5</div>
+                <div className="changelog-date">January 2026</div>
+                <ul className="changelog-items">
+                  <li>Improved CI test reliability with shared PBT utilities</li>
+                  <li>Fixed ExpenseForm timeout cleanup on unmount</li>
+                  <li>Added GitHub Actions CI/CD workflows</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v4.16.4</div>
                 <div className="changelog-date">January 2026</div>
                 <ul className="changelog-items">

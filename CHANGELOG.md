@@ -11,6 +11,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.16.5] - 2026-01-24
+
+### Added
+- **GitHub Actions CI/CD**: Automated testing workflows for frontend and backend
+  - Parallel test execution for Jest (backend) and Vitest (frontend)
+  - Performance test exclusion in CI environment
+  - Docker build workflow (manual trigger)
+
+### Fixed
+- **CI Test Reliability**: Comprehensive improvements for stable GitHub Actions tests
+  - Created shared PBT arbitraries modules with safe date/amount/string generators
+  - Added CI-specific timeouts (45s vs 30s local) for property-based tests
+  - Fixed seeds (12345) for reproducible PBT runs in CI
+  - Added retry logic (2 retries) for flaky tests in CI
+  - Fixed ExpenseForm timeout cleanup on component unmount
+  - Fixed date arbitrary edge cases in invoice CRUD tests
+  - Fixed amount arbitrary NaN/Infinity issues in merchant ranking tests
+  - Increased timeouts for visit frequency PBT tests
+
+### Documentation
+- Added `docs/development/CI_TEST_RELIABILITY.md` with CI testing best practices
+- Added `docs/development/GITHUB_ACTIONS_CICD.md` with workflow documentation
+
+---
+
 ## [4.16.4] - 2026-01-24
 
 ### Fixed

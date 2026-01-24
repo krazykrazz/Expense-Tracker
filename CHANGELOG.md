@@ -11,6 +11,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.16.4] - 2026-01-24
+
+### Fixed
+- **Income by Category Layout**: Fixed Income by Category section to display all 4 categories on one row
+  - Changed from auto-fill grid (3+1 layout) to explicit 4-column grid
+  - All income categories (Salary, Government, Gifts, Other) now display evenly
+
+---
+
 ## [4.16.3] - 2026-01-24
 
 ### Added

@@ -180,6 +180,11 @@
   gap: var(--spacing-4, 16px);
 }
 
+/* Income by Category - always 4 columns */
+.income-category-grid {
+  grid-template-columns: repeat(4, 1fr);
+}
+
 .category-item {
   background: #f8f9ff;
   padding: var(--spacing-4, 16px);

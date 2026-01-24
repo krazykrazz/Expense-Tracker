@@ -13,7 +13,6 @@ const expenseRepository = require('../repositories/expenseRepository');
 const fileStorage = require('../utils/fileStorage');
 const path = require('path');
 const fs = require('fs');
-const os = require('os');
 
 // Mock dependencies for isolated testing
 jest.mock('../repositories/invoiceRepository');
@@ -42,7 +41,13 @@ describe('Invoice Service - Property-Based Tests - CRUD Operations', () => {
   const medicalExpenseArbitrary = fc.record({
     id: expenseIdArbitrary,
     type: fc.constant('Tax - Medical'),
-    date: fc.date({ min: new Date('2020-01-01'), max: new Date('2025-12-31') }).map(d => d.toISOString().split('T')[0]),
+    date: fc.date({ min: new Date('2020-01-01'), max: new Date('2025-12-31') }).map(d => {
+      try {
+        return d.toISOString().split('T')[0];
+      } catch (e) {
+        return '2024-01-01'; // fallback date
+      }
+    }),
     place: fc.string({ minLength: 1, maxLength: 100 }),
     amount: fc.float({ min: Math.fround(0.01), max: Math.fround(10000), noNaN: true })
   });
@@ -50,7 +55,13 @@ describe('Invoice Service - Property-Based Tests - CRUD Operations', () => {
   const nonMedicalExpenseArbitrary = fc.record({
     id: expenseIdArbitrary,
     type: fc.constantFrom('Groceries', 'Gas', 'Dining Out', 'Entertainment'),
-    date: fc.date({ min: new Date('2020-01-01'), max: new Date('2025-12-31') }).map(d => d.toISOString().split('T')[0]),
+    date: fc.date({ min: new Date('2020-01-01'), max: new Date('2025-12-31') }).map(d => {
+      try {
+        return d.toISOString().split('T')[0];
+      } catch (e) {
+        return '2024-01-01'; // fallback date
+      }
+    }),
     place: fc.string({ minLength: 1, maxLength: 100 }),
     amount: fc.float({ min: Math.fround(0.01), max: Math.fround(10000), noNaN: true })
   });

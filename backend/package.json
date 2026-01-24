@@ -16,7 +16,11 @@
     "globalSetup": "<rootDir>/jest.globalSetup.js",
     "setupFilesAfterEnv": [
       "<rootDir>/jest.setup.js"
-    ]
+    ],
+    "testEnvironment": "node",
+    "verbose": true,
+    "detectOpenHandles": true,
+    "forceExit": true
   },
   "dependencies": {
     "body-parser": "^1.20.2",

@@ -146,6 +146,14 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
   const amountInputRef = useRef(null);
   const isSubmittingRef = useRef(false); // Track if form is being submitted to prevent blur handler interference
   const justSelectedFromDropdownRef = useRef(false); // Track if we just selected from dropdown to prevent blur handler
+  const timeoutIdsRef = useRef([]); // Track all timeouts for cleanup on unmount
+
+  // Helper to create tracked timeouts that get cleaned up on unmount
+  const setTrackedTimeout = (callback, delay) => {
+    const timeoutId = setTimeout(callback, delay);
+    timeoutIdsRef.current.push(timeoutId);
+    return timeoutId;
+  };
 
   // Fetch categories, places, people, and invoice data on component mount
   useEffect(() => {
@@ -243,6 +251,9 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
 
     return () => {
       isMounted = false;
+      // Clear all tracked timeouts to prevent state updates after unmount
+      timeoutIdsRef.current.forEach(id => clearTimeout(id));
+      timeoutIdsRef.current = [];
     };
   }, [isEditing, expense?.id, expense?.type]);
 
@@ -387,7 +398,7 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
     setMessage({ text: 'Invoice uploaded successfully!', type: 'success' });
     
     // Clear success message after 3 seconds
-    setTimeout(() => {
+    setTrackedTimeout(() => {
       setMessage({ text: '', type: '' });
     }, 3000);
   };
@@ -399,7 +410,7 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
     setMessage({ text: 'Invoice deleted successfully!', type: 'success' });
     
     // Clear success message after 3 seconds
-    setTimeout(() => {
+    setTrackedTimeout(() => {
       setMessage({ text: '', type: '' });
     }, 3000);
   };
@@ -418,7 +429,7 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
         setMessage({ text: 'Invoice person link updated!', type: 'success' });
         
         // Clear success message after 3 seconds
-        setTimeout(() => {
+        setTrackedTimeout(() => {
           setMessage({ text: '', type: '' });
         }, 3000);
       }
@@ -486,7 +497,7 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
     }
     
     // Reset the flag after a delay (longer than blur handler delay)
-    setTimeout(() => {
+    setTrackedTimeout(() => {
       justSelectedFromDropdownRef.current = false;
     }, 300);
   };
@@ -494,7 +505,7 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
   // Handle place field blur - fetch suggestion if place was typed manually (Requirements 1.3)
   const handlePlaceBlur = async () => {
     // Delay to allow click on suggestion dropdown
-    setTimeout(async () => {
+    setTrackedTimeout(async () => {
       setShowSuggestions(false);
       
       // Don't fetch suggestion if:
@@ -741,7 +752,7 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
       }
 
       // Clear success message after 3 seconds
-      setTimeout(() => {
+      setTrackedTimeout(() => {
         setMessage({ text: '', type: '' });
       }, 3000);
 
@@ -750,7 +761,7 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
     } finally {
       setIsSubmitting(false);
       // Reset submitting ref after a delay to ensure blur handler has completed
-      setTimeout(() => {
+      setTrackedTimeout(() => {
         isSubmittingRef.current = false;
       }, 300);
     }

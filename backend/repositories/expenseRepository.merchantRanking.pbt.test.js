@@ -90,7 +90,8 @@ describe('ExpenseRepository - Merchant Ranking Property Tests', () => {
             place: fc.string({ minLength: 1, maxLength: 50 }).filter(s => s.trim().length > 0),
             expenses: fc.array(
               fc.record({
-                amount: fc.float({ min: Math.fround(0.01), max: Math.fround(100) }),
+                amount: fc.float({ min: Math.fround(0.01), max: Math.fround(100), noNaN: true })
+                  .filter(n => !isNaN(n) && isFinite(n) && n > 0),
                 date: fc.date({ min: new Date('2020-01-01'), max: new Date('2024-12-31') })
                   .map(d => {
                     try {

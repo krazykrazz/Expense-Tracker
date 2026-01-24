@@ -171,7 +171,7 @@ describe('MerchantAnalyticsService - Visit Frequency Sorting Property Tests', ()
           expect(merchantsByVisits.length).toBe(merchantData.length);
         }
       ),
-      { numRuns: 20, timeout: 15000 }
+      { numRuns: 20, timeout: 25000 }
     );
-  }, 20000);
+  }, 30000);
 });

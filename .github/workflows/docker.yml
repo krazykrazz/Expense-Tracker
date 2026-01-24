@@ -1,0 +1,75 @@
+# Docker Build Workflow
+# This workflow builds the Docker image when code is merged to main.
+# 
+# IMPORTANT LIMITATION:
+# This workflow builds the image but CANNOT push to localhost:5000 because
+# GitHub Actions runners do not have access to your local network.
+# The image is built to verify the Dockerfile works correctly.
+#
+# For actual deployment, use the local build-and-push.ps1 script:
+#   .\build-and-push.ps1 -Tag latest
+
+name: Docker Build
+
+on:
+  # Trigger on push to main branch only
+  push:
+    branches: [main]
+  
+  # Allow manual triggering from GitHub Actions UI
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      # Checkout the repository
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Extract version from package.json for tagging
+      - name: Extract version from package.json
+        id: version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Extracted version: $VERSION"
+
+      # Set up Docker Buildx for advanced build features
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Build the Docker image with version tag
+      # NOTE: We only build here, we do NOT push because:
+      # 1. GitHub Actions cannot access localhost:5000 (your local registry)
+      # 2. No external registry is configured for this project
+      # 
+      # To push to your local registry, run locally:
+      #   .\build-and-push.ps1 -Tag ${{ steps.version.outputs.version }}
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false  # Cannot push to localhost:5000 from GitHub Actions
+          tags: |
+            expense-tracker:${{ steps.version.outputs.version }}
+            expense-tracker:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Summary of what was built
+      - name: Build Summary
+        run: |
+          echo "## Docker Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version**: ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Tags**: expense-tracker:${{ steps.version.outputs.version }}, expense-tracker:latest" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Note" >> $GITHUB_STEP_SUMMARY
+          echo "Image was built but not pushed. GitHub Actions cannot access localhost:5000." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "To deploy locally, run:" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`powershell" >> $GITHUB_STEP_SUMMARY
+          echo ".\build-and-push.ps1 -Tag ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY

@@ -22,9 +22,27 @@ const generateTestPrefix = () => `PBT_FILTER_${Date.now()}_${Math.random().toStr
 // Test data generators
 const claimStatusArb = fc.constantFrom(...VALID_CLAIM_STATUSES);
 
+// Helper to safely format date to ISO string
+const safeFormatDate = (d) => {
+  try {
+    // Ensure we have a valid date
+    const date = new Date(d);
+    if (isNaN(date.getTime())) {
+      return '2024-06-15'; // Fallback to a valid date
+    }
+    return date.toISOString().split('T')[0];
+  } catch {
+    return '2024-06-15'; // Fallback to a valid date
+  }
+};
+
 const createMedicalExpenseArb = (testPrefix) => fc.record({
-  date: fc.date({ min: new Date('2024-01-01'), max: new Date('2024-12-31') })
-    .map(d => d.toISOString().split('T')[0]),
+  date: fc.integer({ min: 0, max: 364 })
+    .map(dayOffset => {
+      const baseDate = new Date('2024-01-01');
+      baseDate.setDate(baseDate.getDate() + dayOffset);
+      return safeFormatDate(baseDate);
+    }),
   place: fc.constant(testPrefix),
   amount: fc.integer({ min: 10, max: 500 }).map(n => n + 0.00),
   notes: fc.option(fc.string({ minLength: 0, maxLength: 50 }), { nil: null }),

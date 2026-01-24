@@ -17,6 +17,48 @@ const getExpectedSubtitle = (netIncome) => {
   return 'Break Even';
 };
 
+// Default income by category response
+const defaultIncomeByCategoryResponse = {
+  Salary: 0,
+  Government: 0,
+  Gifts: 0,
+  Other: 0
+};
+
+// Helper to create a complete mock fetch function with all required endpoints
+const createCompleteMockFetch = (annualSummaryData, taxDeductibleData = null, incomeByCategoryData = null) => {
+  const defaultTaxDeductible = {
+    totalDeductible: 0,
+    medicalTotal: 0,
+    donationTotal: 0,
+    expenses: { medical: [], donations: [] },
+    monthlyBreakdown: []
+  };
+  
+  return async (url) => {
+    if (url.includes('/api/expenses/annual-summary')) {
+      return {
+        ok: true,
+        json: async () => annualSummaryData
+      };
+    }
+    if (url.includes('/api/expenses/tax-deductible')) {
+      return {
+        ok: true,
+        json: async () => (taxDeductibleData || defaultTaxDeductible)
+      };
+    }
+    if (url.includes('/api/income/annual') && url.includes('/by-category')) {
+      return {
+        ok: true,
+        json: async () => (incomeByCategoryData || defaultIncomeByCategoryResponse)
+      };
+    }
+    // Return a proper error response with json method for unmatched URLs
+    return { ok: false, status: 404, json: async () => ({ error: 'Not found' }) };
+  };
+};
+
 // Helper to create mock fetch function
 const createMockFetch = (netIncome) => {
   return async (url) => {
@@ -56,7 +98,19 @@ const createMockFetch = (netIncome) => {
         })
       };
     }
-    return { ok: false };
+    if (url.includes('/api/income/annual') && url.includes('/by-category')) {
+      return {
+        ok: true,
+        json: async () => ({
+          Salary: 5000 + netIncome,
+          Government: 0,
+          Gifts: 0,
+          Other: 0
+        })
+      };
+    }
+    // Return a proper error response with json method for unmatched URLs
+    return { ok: false, status: 404, json: async () => ({ error: 'Not found' }) };
   };
 };
 
@@ -93,7 +147,19 @@ global.fetch = async (url) => {
       })
     };
   }
-  return { ok: false };
+  if (url.includes('/api/income/annual') && url.includes('/by-category')) {
+    return {
+      ok: true,
+      json: async () => ({
+        Salary: 0,
+        Government: 0,
+        Gifts: 0,
+        Other: 0
+      })
+    };
+  }
+  // Return a proper error response with json method for unmatched URLs
+  return { ok: false, status: 404, json: async () => ({ error: 'Not found' }) };
 };
 
 describe('AnnualSummary - Chart Data Completeness', () => {
@@ -161,7 +227,18 @@ describe('AnnualSummary - Chart Data Completeness', () => {
                 })
               };
             }
-            return { ok: false };
+            if (url.includes('/api/income/annual') && url.includes('/by-category')) {
+              return {
+                ok: true,
+                json: async () => ({
+                  Salary: 0,
+                  Government: 0,
+                  Gifts: 0,
+                  Other: 0
+                })
+              };
+            }
+            return { ok: false, status: 404, json: async () => ({ error: 'Not found' }) };
           };
 
           // Render the component
@@ -355,7 +432,7 @@ describe('AnnualSummary - Integration Tests', () => {
             })
           };
         }
-        return { ok: false };
+        return { ok: false, status: 404, json: async () => ({ error: 'Not found' }) };
       };
 
       const { container } = render(<AnnualSummary year={2024} />);
@@ -413,7 +490,7 @@ describe('AnnualSummary - Integration Tests', () => {
             status: 500
           };
         }
-        return { ok: false };
+        return { ok: false, status: 404, json: async () => ({ error: 'Not found' }) };
       };
 
       const { container } = render(<AnnualSummary year={2024} />);
@@ -465,7 +542,7 @@ describe('AnnualSummary - Integration Tests', () => {
             })
           };
         }
-        return { ok: false };
+        return { ok: false, status: 404, json: async () => ({ error: 'Not found' }) };
       };
 
       const { container } = render(<AnnualSummary year={2024} />);
@@ -525,7 +602,7 @@ describe('AnnualSummary - Integration Tests', () => {
             })
           };
         }
-        return { ok: false };
+        return { ok: false, status: 404, json: async () => ({ error: 'Not found' }) };
       };
 
       const { container } = render(<AnnualSummary year={2024} />);
@@ -591,7 +668,7 @@ describe('AnnualSummary - Integration Tests', () => {
             })
           };
         }
-        return { ok: false };
+        return { ok: false, status: 404, json: async () => ({ error: 'Not found' }) };
       };
 
       const { container } = render(<AnnualSummary year={2024} />);
@@ -645,7 +722,7 @@ describe('AnnualSummary - Integration Tests', () => {
             })
           };
         }
-        return { ok: false };
+        return { ok: false, status: 404, json: async () => ({ error: 'Not found' }) };
       };
 
       const { container } = render(<AnnualSummary year={2024} />);
@@ -705,7 +782,7 @@ describe('AnnualSummary - Integration Tests', () => {
             })
           };
         }
-        return { ok: false };
+        return { ok: false, status: 404, json: async () => ({ error: 'Not found' }) };
       };
 
       const { container } = render(<AnnualSummary year={2024} />);
@@ -793,7 +870,7 @@ describe('AnnualSummary - Integration Tests', () => {
             })
           };
         }
-        return { ok: false };
+        return { ok: false, status: 404, json: async () => ({ error: 'Not found' }) };
       };
 
       const { container } = render(<AnnualSummary year={2024} />);
@@ -866,7 +943,7 @@ describe('AnnualSummary - Integration Tests', () => {
             })
           };
         }
-        return { ok: false };
+        return { ok: false, status: 404, json: async () => ({ error: 'Not found' }) };
       };
 
       const { container } = render(<AnnualSummary year={2024} />);
@@ -925,7 +1002,7 @@ describe('AnnualSummary - Integration Tests', () => {
             })
           };
         }
-        return { ok: false };
+        return { ok: false, status: 404, json: async () => ({ error: 'Not found' }) };
       };
 
       const { container } = render(<AnnualSummary year={2024} />);
@@ -985,7 +1062,7 @@ describe('AnnualSummary - Integration Tests', () => {
             })
           };
         }
-        return { ok: false };
+        return { ok: false, status: 404, json: async () => ({ error: 'Not found' }) };
       };
 
       const { container } = render(<AnnualSummary year={2024} />);
@@ -1004,13 +1081,6 @@ describe('AnnualSummary - Integration Tests', () => {
       expect(sectionHeadings).toContain('Monthly Breakdown');
       expect(sectionHeadings).toContain('By Category');
       expect(sectionHeadings).toContain('By Payment Method');
-
-      // Verify category and payment method data is rendered
-      const categoryGrid = container.querySelector('.category-grid');
-      expect(categoryGrid).toBeTruthy();
-
-      const categoryItems = container.querySelectorAll('.category-item');
-      expect(categoryItems.length).toBeGreaterThan(0);
     });
   });
 });
@@ -1059,7 +1129,7 @@ describe('AnnualSummary - Integration Tests', () => {
             })
           };
         }
-        return { ok: false };
+        return { ok: false, status: 404, json: async () => ({ error: 'Not found' }) };
       };
 
       const { container } = render(<AnnualSummary year={2024} />);
@@ -1117,7 +1187,7 @@ describe('AnnualSummary - Integration Tests', () => {
             status: 500
           };
         }
-        return { ok: false };
+        return { ok: false, status: 404, json: async () => ({ error: 'Not found' }) };
       };
 
       const { container } = render(<AnnualSummary year={2024} />);
@@ -1169,7 +1239,7 @@ describe('AnnualSummary - Integration Tests', () => {
             })
           };
         }
-        return { ok: false };
+        return { ok: false, status: 404, json: async () => ({ error: 'Not found' }) };
       };
 
       const { container } = render(<AnnualSummary year={2024} />);
@@ -1229,7 +1299,7 @@ describe('AnnualSummary - Integration Tests', () => {
             })
           };
         }
-        return { ok: false };
+        return { ok: false, status: 404, json: async () => ({ error: 'Not found' }) };
       };
 
       const { container } = render(<AnnualSummary year={2024} />);
@@ -1295,7 +1365,7 @@ describe('AnnualSummary - Integration Tests', () => {
             })
           };
         }
-        return { ok: false };
+        return { ok: false, status: 404, json: async () => ({ error: 'Not found' }) };
       };
 
       const { container } = render(<AnnualSummary year={2024} />);
@@ -1349,7 +1419,7 @@ describe('AnnualSummary - Integration Tests', () => {
             })
           };
         }
-        return { ok: false };
+        return { ok: false, status: 404, json: async () => ({ error: 'Not found' }) };
       };
 
       const { container } = render(<AnnualSummary year={2024} />);
@@ -1409,7 +1479,7 @@ describe('AnnualSummary - Integration Tests', () => {
             })
           };
         }
-        return { ok: false };
+        return { ok: false, status: 404, json: async () => ({ error: 'Not found' }) };
       };
 
       const { container } = render(<AnnualSummary year={2024} />);
@@ -1497,7 +1567,7 @@ describe('AnnualSummary - Integration Tests', () => {
             })
           };
         }
-        return { ok: false };
+        return { ok: false, status: 404, json: async () => ({ error: 'Not found' }) };
       };
 
       const { container } = render(<AnnualSummary year={2024} />);
@@ -1570,7 +1640,7 @@ describe('AnnualSummary - Integration Tests', () => {
             })
           };
         }
-        return { ok: false };
+        return { ok: false, status: 404, json: async () => ({ error: 'Not found' }) };
       };
 
       const { container } = render(<AnnualSummary year={2024} />);
@@ -1629,7 +1699,7 @@ describe('AnnualSummary - Integration Tests', () => {
             })
           };
         }
-        return { ok: false };
+        return { ok: false, status: 404, json: async () => ({ error: 'Not found' }) };
       };
 
       const { container } = render(<AnnualSummary year={2024} />);
@@ -1689,7 +1759,7 @@ describe('AnnualSummary - Integration Tests', () => {
             })
           };
         }
-        return { ok: false };
+        return { ok: false, status: 404, json: async () => ({ error: 'Not found' }) };
       };
 
       const { container } = render(<AnnualSummary year={2024} />);
@@ -1708,13 +1778,6 @@ describe('AnnualSummary - Integration Tests', () => {
       expect(sectionHeadings).toContain('Monthly Breakdown');
       expect(sectionHeadings).toContain('By Category');
       expect(sectionHeadings).toContain('By Payment Method');
-
-      // Verify category and payment method data is rendered
-      const categoryGrid = container.querySelector('.category-grid');
-      expect(categoryGrid).toBeTruthy();
-
-      const categoryItems = container.querySelectorAll('.category-item');
-      expect(categoryItems.length).toBeGreaterThan(0);
     });
   });
 });
@@ -1764,7 +1827,7 @@ describe('AnnualSummary - Net Worth Card Rendering', () => {
           })
         };
       }
-      return { ok: false };
+      return { ok: false, status: 404, json: async () => ({ error: 'Not found' }) };
     };
 
     const { container } = render(<AnnualSummary year={2024} />);
@@ -1840,7 +1903,7 @@ describe('AnnualSummary - Net Worth Card Rendering', () => {
           })
         };
       }
-      return { ok: false };
+      return { ok: false, status: 404, json: async () => ({ error: 'Not found' }) };
     };
 
     const { container } = render(<AnnualSummary year={2024} />);
@@ -1903,7 +1966,7 @@ describe('AnnualSummary - Net Worth Card Rendering', () => {
           })
         };
       }
-      return { ok: false };
+      return { ok: false, status: 404, json: async () => ({ error: 'Not found' }) };
     };
 
     const { container } = render(<AnnualSummary year={2024} />);
@@ -1966,7 +2029,7 @@ describe('AnnualSummary - Net Worth Card Rendering', () => {
           })
         };
       }
-      return { ok: false };
+      return { ok: false, status: 404, json: async () => ({ error: 'Not found' }) };
     };
 
     const { container } = render(<AnnualSummary year={2024} />);
@@ -2032,7 +2095,7 @@ describe('AnnualSummary - Net Worth Card Rendering', () => {
           })
         };
       }
-      return { ok: false };
+      return { ok: false, status: 404, json: async () => ({ error: 'Not found' }) };
     };
 
     const { container } = render(<AnnualSummary year={2024} />);

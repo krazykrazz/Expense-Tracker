@@ -71,8 +71,8 @@ describe('Invoice Management Operations Integration', () => {
       // Check that invoice metadata is displayed
       expect(screen.getByText('receipt.pdf')).toBeInTheDocument();
       expect(screen.getByText(/1000 KB/)).toBeInTheDocument();
-      // Date is displayed without "Uploaded" prefix
-      expect(screen.getByText('2025-01-01')).toBeInTheDocument();
+      // Date is displayed (format may vary by locale)
+      expect(screen.getByText(/2025-01-01|1\/1\/2025/)).toBeInTheDocument();
     });
 
     it('should handle view operation with modal', async () => {

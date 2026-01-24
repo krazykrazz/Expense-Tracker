@@ -1,6 +1,6 @@
 # Feature Branch Promotion Model
 
-**Last Updated**: December 20, 2025  
+**Last Updated**: January 24, 2026  
 **Status**: Active
 
 This document outlines the feature branch promotion workflow for the Expense Tracker application, ensuring clean development practices and stable main branch deployments.
@@ -232,6 +232,111 @@ Before promoting any feature, run through the existing pre-deployment checklist:
 4. **Documentation**: Update README, feature docs
 5. **Testing**: All tests passing
 6. **Version Management**: Proper version bump applied
+
+## CI/CD Integration
+
+### GitHub Actions Workflows
+
+This project uses GitHub Actions for automated testing and Docker builds. The CI/CD integration works seamlessly with the feature branch model.
+
+### Automated Test Execution
+
+When you push to a feature branch or create a pull request, GitHub Actions automatically runs tests:
+
+| Event | Branches | What Runs |
+|-------|----------|-----------|
+| Push | `main`, `feature/**` | Backend + Frontend tests |
+| Pull Request | `main` | Backend + Frontend tests |
+| Merge to main | `main` | Docker build (optional) |
+
+### How CI/CD Interacts with Feature Branches
+
+1. **During Development**: Every push to your feature branch triggers the CI workflow
+2. **Pull Requests**: Opening a PR to main shows test status as a check
+3. **Before Promotion**: Ensure all CI checks pass before merging to main
+4. **After Merge**: Docker build workflow runs automatically on main
+
+### Viewing Workflow Results
+
+#### From GitHub UI
+1. Navigate to your repository on GitHub
+2. Click the **Actions** tab
+3. Select a workflow run to see details
+4. Click on individual jobs (Backend Tests, Frontend Tests) for logs
+
+#### From Pull Requests
+1. Open your pull request
+2. Scroll to the "Checks" section at the bottom
+3. Click "Details" next to any check to see logs
+4. All checks must pass (green) before merging
+
+#### Status Indicators
+- ✅ **Green checkmark**: All tests passed
+- ❌ **Red X**: Tests failed - click for details
+- 🟡 **Yellow dot**: Tests in progress
+- ⚪ **Gray circle**: Tests pending/queued
+
+### CI Workflow Details
+
+The CI workflow (`.github/workflows/ci.yml`) runs:
+
+**Backend Tests** (Jest):
+- Runs in `backend/` directory
+- Uses Node.js 20
+- Executes `npm test` with `--runInBand` flag
+- Tests run sequentially to avoid database conflicts
+
+**Frontend Tests** (Vitest):
+- Runs in `frontend/` directory
+- Uses Node.js 20
+- Excludes performance tests (`App.performance.test.jsx`)
+- Tests run in parallel for speed
+
+Both jobs run simultaneously for faster feedback (~3-5 minutes total).
+
+### Docker Build Workflow
+
+The Docker workflow (`.github/workflows/docker.yml`) runs on merge to main:
+
+- Builds the Docker image to verify Dockerfile correctness
+- Tags with version from `package.json`
+- **Does NOT push** to registry (localhost:5000 not accessible from GitHub)
+
+For actual deployment, use the local script:
+```powershell
+.\build-and-push.ps1 -Tag latest
+```
+
+### Updated Promotion Checklist
+
+Before promoting a feature branch, verify:
+
+- [ ] All feature tasks completed
+- [ ] All tests passing locally
+- [ ] **CI workflow passing on GitHub** ← New
+- [ ] Code reviewed (self-review minimum)
+- [ ] Documentation updated
+- [ ] Version numbers updated
+- [ ] CHANGELOG.md updated
+
+### Troubleshooting CI Failures
+
+**Tests pass locally but fail in CI:**
+- Check for environment-specific issues
+- Ensure all dependencies are in `package.json`
+- Look for timing-sensitive tests
+
+**CI is slow:**
+- Tests run in parallel by default
+- Performance tests are excluded
+- npm dependencies are cached
+
+**Docker build fails:**
+- Check Dockerfile syntax
+- Verify all required files are present
+- Review build logs in Actions tab
+
+See [GITHUB_ACTIONS_CICD.md](./GITHUB_ACTIONS_CICD.md) for detailed CI/CD documentation.
 
 ## Branch Protection Rules
 

@@ -446,7 +446,7 @@ const AnnualSummary = ({ year }) => {
       {incomeByCategory && Object.keys(incomeByCategory).length > 0 && (
         <div className="summary-section">
           <h3>Income by Category</h3>
-          <div className="category-grid">
+          <div className="category-grid income-category-grid">
             {Object.entries(incomeByCategory).map(([category, total]) => (
               <div key={category} className="category-item income-category-item">
                 <div className="category-icon-large">{getCategoryIcon(category)}</div>

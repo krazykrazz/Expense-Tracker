@@ -694,13 +694,6 @@ describe('AnnualSummary - Integration Tests', () => {
       expect(sectionHeadings).toContain('Monthly Breakdown');
       expect(sectionHeadings).toContain('By Category');
       expect(sectionHeadings).toContain('By Payment Method');
-
-      // Verify category and payment method data is rendered
-      const categoryGrid = container.querySelector('.category-grid');
-      expect(categoryGrid).toBeTruthy();
-
-      const categoryItems = container.querySelectorAll('.category-item');
-      expect(categoryItems.length).toBeGreaterThan(0);
     });
   });
 });

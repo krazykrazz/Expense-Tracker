@@ -56,6 +56,20 @@ A full-stack expense tracking application built with React and Node.js.
 - 💰 Automatic calculation from investment values and loan balances
 - 📈 Year-end value selection (December preferred, fallback to latest month)
 
+### Enhanced Annual Summary
+- 📊 Comprehensive yearly financial overview with 13 summary cards (4 per row)
+- 📈 **Year-over-Year Comparison**: Compare income, expenses, savings rate, and net worth vs previous year
+- 📅 **YTD Comparison**: For current year, compares only months 1 through current month to avoid misleading comparisons
+- 💰 **Savings Rate**: Percentage of income saved with color-coded display
+- 🔢 **Transaction Count**: Total variable expense transactions with average amount
+- 🏆 **Top Category**: Highlights #1 spending category with amount and percentage
+- 📆 **Daily Spend**: Average daily variable spending (uses actual days for current year)
+- 🧾 **Tax Deductible**: Combined Medical + Donation totals for quick tax reference
+- 📊 **Income by Category**: Visual breakdown of income sources (Salary, Government, Gifts, Other)
+- 📉 **Monthly Net Balance**: Line graph showing surplus/deficit trends throughout the year
+- 🔽 **Collapsible Sections**: By Category and By Payment Method sections collapse to reduce clutter
+- 📊 Monthly breakdown chart with stacked fixed/variable expenses and income bars
+
 ### Medical Expense People Tracking
 - 👨‍👩‍👧‍👦 Associate medical expenses with specific family members
 - 💊 Track which family member incurred each medical expense

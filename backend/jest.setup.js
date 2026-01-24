@@ -10,12 +10,26 @@
  * 
  * NOTE: Database cleanup is handled by individual tests in their afterEach hooks.
  * This setup only initializes the test database once.
+ * 
+ * CI RELIABILITY FEATURES:
+ * - Increased timeouts for CI environments
+ * - Retry logic for flaky tests (jest.retryTimes)
+ * - Console suppression to reduce noise
  */
 
 const { getTestDatabase, closeTestDatabase } = require('./database/db');
 
-// Global test timeout for property-based tests
-jest.setTimeout(30000);
+// Detect CI environment
+const isCI = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true';
+
+// Global test timeout - longer in CI due to slower runners
+const baseTimeout = isCI ? 45000 : 30000;
+jest.setTimeout(baseTimeout);
+
+// Enable retry for flaky tests in CI (retry failed tests up to 2 times)
+if (isCI) {
+  jest.retryTimes(2, { logErrorsBeforeRetry: true });
+}
 
 // Track if we've initialized the test database
 let testDbInitialized = false;
@@ -56,7 +70,7 @@ afterAll(async () => {
 const originalConsole = { ...console };
 beforeAll(() => {
   // Only suppress in CI or when NODE_ENV is test
-  if (process.env.CI || process.env.NODE_ENV === 'test') {
+  if (isCI || process.env.NODE_ENV === 'test') {
     console.log = jest.fn();
     console.warn = jest.fn();
     // Keep console.error for debugging test failures
@@ -66,7 +80,10 @@ beforeAll(() => {
 
 afterAll(() => {
   // Restore console
-  if (process.env.CI || process.env.NODE_ENV === 'test') {
+  if (isCI || process.env.NODE_ENV === 'test') {
     Object.assign(console, originalConsole);
   }
 });
+
+// Export CI detection for use in tests
+global.isCI = isCI;

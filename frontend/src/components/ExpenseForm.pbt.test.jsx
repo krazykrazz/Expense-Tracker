@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, waitFor, fireEvent } from '@testing-library/react';
+import { render, waitFor, fireEvent, cleanup, act } from '@testing-library/react';
 import * as fc from 'fast-check';
 import ExpenseForm from './ExpenseForm';
 import { CATEGORIES } from '../../../backend/utils/categories';
@@ -8,12 +8,67 @@ import { PAYMENT_METHODS } from '../utils/constants';
 // Mock fetch globally
 global.fetch = vi.fn();
 
+// Helper to create a comprehensive mock implementation
+const createMockFetch = (additionalHandlers = {}) => {
+  return (url) => {
+    // Categories API
+    if (url.includes('/api/categories') || url.includes('/categories')) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({
+          categories: CATEGORIES,
+          budgetableCategories: [],
+          taxDeductibleCategories: []
+        })
+      });
+    }
+    // Places API
+    if (url.includes('/places')) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve([])
+      });
+    }
+    // People API
+    if (url.includes('/people')) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve([])
+      });
+    }
+    // Category suggestion API
+    if (url.includes('/suggest-category')) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ category: null, confidence: 0 })
+      });
+    }
+    // Check for additional handlers
+    for (const [pattern, handler] of Object.entries(additionalHandlers)) {
+      if (url.includes(pattern)) {
+        return handler(url);
+      }
+    }
+    // Default response for any other URL
+    return Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve([])
+    });
+  };
+};
+
+
 describe('ExpenseForm Property-Based Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    // Wait for any pending state updates to complete
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    });
+    cleanup();
     vi.restoreAllMocks();
   });
 
@@ -32,29 +87,7 @@ describe('ExpenseForm Property-Based Tests', () => {
         fc.subarray(CATEGORIES, { minLength: 1, maxLength: CATEGORIES.length }),
         async (categoriesToCheck) => {
           // Mock the API responses
-          global.fetch.mockImplementation((url) => {
-            if (url.includes('/api/categories') || url.includes('/categories')) {
-              return Promise.resolve({
-                ok: true,
-                json: () => Promise.resolve({
-                  categories: CATEGORIES,
-                  budgetableCategories: [],
-                  taxDeductibleCategories: []
-                })
-              });
-            }
-            if (url.includes('/places')) {
-              return Promise.resolve({
-                ok: true,
-                json: () => Promise.resolve([])
-              });
-            }
-            // Default response for any other URL
-            return Promise.resolve({
-              ok: true,
-              json: () => Promise.resolve([])
-            });
-          });
+          global.fetch.mockImplementation(createMockFetch());
 
           // Render the component
           const { container } = render(<ExpenseForm onExpenseAdded={() => {}} />);
@@ -81,6 +114,7 @@ describe('ExpenseForm Property-Based Tests', () => {
     );
   });
 
+
   /**
    * **Feature: smart-expense-entry, Property 5: Payment Method Persistence**
    * 
@@ -100,32 +134,13 @@ describe('ExpenseForm Property-Based Tests', () => {
           // Clear localStorage before each test
           localStorage.clear();
 
-          // Mock the API responses
-          global.fetch.mockImplementation((url) => {
-            if (url === '/api/categories') {
-              return Promise.resolve({
-                ok: true,
-                json: () => Promise.resolve({
-                  categories: CATEGORIES,
-                  budgetableCategories: [],
-                  taxDeductibleCategories: []
-                })
-              });
-            }
-            if (url.includes('/places')) {
-              return Promise.resolve({
-                ok: true,
-                json: () => Promise.resolve([])
-              });
-            }
-            if (url.includes('/expenses') && !url.includes('/places')) {
-              return Promise.resolve({
-                ok: true,
-                json: () => Promise.resolve({ id: 1, method })
-              });
-            }
-            return Promise.reject(new Error('Unknown URL'));
-          });
+          // Mock the API responses with expense creation handler
+          global.fetch.mockImplementation(createMockFetch({
+            '/expenses': () => Promise.resolve({
+              ok: true,
+              json: () => Promise.resolve({ id: 1, method })
+            })
+          }));
 
           // Render the first form instance
           const { container, unmount } = render(<ExpenseForm onExpenseAdded={() => {}} />);
@@ -141,19 +156,28 @@ describe('ExpenseForm Property-Based Tests', () => {
           const amountInput = container.querySelector('input[name="amount"]');
           const methodSelect = container.querySelector('select[name="method"]');
 
-          fireEvent.change(dateInput, { target: { value: '2025-01-15' } });
-          fireEvent.change(amountInput, { target: { value: '50.00' } });
-          fireEvent.change(methodSelect, { target: { value: method } });
+          await act(async () => {
+            fireEvent.change(dateInput, { target: { value: '2025-01-15' } });
+            fireEvent.change(amountInput, { target: { value: '50.00' } });
+            fireEvent.change(methodSelect, { target: { value: method } });
+          });
 
           // Submit the form
-          const form = container.querySelector('form');
-          fireEvent.submit(form);
+          await act(async () => {
+            const form = container.querySelector('form');
+            fireEvent.submit(form);
+          });
 
           // Wait for submission to complete
           await waitFor(() => {
             // Check that localStorage was updated with the payment method
             const savedMethod = localStorage.getItem('expense-tracker-last-payment-method');
             expect(savedMethod).toBe(method);
+          });
+
+          // Wait for any pending state updates before unmount
+          await act(async () => {
+            await new Promise(resolve => setTimeout(resolve, 100));
           });
 
           // Unmount the first form
@@ -172,6 +196,11 @@ describe('ExpenseForm Property-Based Tests', () => {
           const newMethodSelect = newContainer.querySelector('select[name="method"]');
           expect(newMethodSelect.value).toBe(method);
 
+          // Wait for any pending state updates before cleanup
+          await act(async () => {
+            await new Promise(resolve => setTimeout(resolve, 100));
+          });
+
           // Clean up
           unmount2();
           localStorage.clear();
@@ -180,6 +209,7 @@ describe('ExpenseForm Property-Based Tests', () => {
       { numRuns: 100 }
     );
   });
+
 
   /**
    * **Feature: smart-expense-entry, Property 4: Form Validation Enables Submit**
@@ -229,31 +259,7 @@ describe('ExpenseForm Property-Based Tests', () => {
         validPlaceArb,
         async (date, amount, category, method, place) => {
           // Mock the API responses
-          global.fetch.mockImplementation((url) => {
-            if (url === '/api/categories') {
-              return Promise.resolve({
-                ok: true,
-                json: () => Promise.resolve({
-                  categories: CATEGORIES,
-                  budgetableCategories: [],
-                  taxDeductibleCategories: []
-                })
-              });
-            }
-            if (url.includes('/places')) {
-              return Promise.resolve({
-                ok: true,
-                json: () => Promise.resolve([])
-              });
-            }
-            if (url.includes('/suggest-category')) {
-              return Promise.resolve({
-                ok: true,
-                json: () => Promise.resolve({ category: null, confidence: 0 })
-              });
-            }
-            return Promise.reject(new Error('Unknown URL'));
-          });
+          global.fetch.mockImplementation(createMockFetch());
 
           // Render the component
           const { container, unmount } = render(<ExpenseForm onExpenseAdded={() => {}} />);
@@ -271,14 +277,16 @@ describe('ExpenseForm Property-Based Tests', () => {
           const methodSelect = container.querySelector('select[name="method"]');
           const placeInput = container.querySelector('input[name="place"]');
 
-          // Set values using fireEvent
-          fireEvent.change(dateInput, { target: { value: date } });
-          fireEvent.change(amountInput, { target: { value: amount } });
-          fireEvent.change(typeSelect, { target: { value: category } });
-          fireEvent.change(methodSelect, { target: { value: method } });
-          if (place) {
-            fireEvent.change(placeInput, { target: { value: place } });
-          }
+          // Set values using fireEvent wrapped in act
+          await act(async () => {
+            fireEvent.change(dateInput, { target: { value: date } });
+            fireEvent.change(amountInput, { target: { value: amount } });
+            fireEvent.change(typeSelect, { target: { value: category } });
+            fireEvent.change(methodSelect, { target: { value: method } });
+            if (place) {
+              fireEvent.change(placeInput, { target: { value: place } });
+            }
+          });
 
           // Get the submit button
           const submitButton = container.querySelector('button[type="submit"]');
@@ -286,6 +294,11 @@ describe('ExpenseForm Property-Based Tests', () => {
           // The submit button should be enabled (not disabled) when all required fields are valid
           // Note: The button is only disabled during submission (isSubmitting state)
           expect(submitButton.disabled).toBe(false);
+
+          // Wait for any pending state updates before cleanup
+          await act(async () => {
+            await new Promise(resolve => setTimeout(resolve, 100));
+          });
 
           // Clean up
           unmount();

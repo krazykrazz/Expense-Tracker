@@ -73,6 +73,23 @@ describe('MerchantAnalyticsService - Expense Filtering Property Tests', () => {
   });
 
   test('**Feature: merchant-analytics, Property 10: Merchant expense filter returns only matching expenses**', async () => {
+    // Helper function to clean database within property test iterations
+    const cleanDbForIteration = async () => {
+      await new Promise((resolve, reject) => {
+        db.serialize(() => {
+          db.run('BEGIN TRANSACTION');
+          db.run('DELETE FROM expense_people', () => {});
+          db.run('DELETE FROM expenses', () => {});
+          db.run('COMMIT', (err) => {
+            if (err) reject(err);
+            else resolve();
+          });
+        });
+      });
+      // Small delay to ensure cleanup is complete
+      await new Promise(resolve => setTimeout(resolve, 10));
+    };
+
     await fc.assert(
       fc.asyncProperty(
         // Generate target merchant name
@@ -95,6 +112,9 @@ describe('MerchantAnalyticsService - Expense Filtering Property Tests', () => {
         fc.constantFrom('all', 'year', 'month'),
         async (targetMerchant, expenses, period) => {
           try {
+            // CRITICAL: Clean database at the start of each property test iteration
+            await cleanDbForIteration();
+
             // Ensure at least some expenses match the target merchant (case variations)
             const matchingExpenses = expenses.slice(0, Math.max(1, Math.floor(expenses.length / 3)));
             for (let i = 0; i < matchingExpenses.length; i++) {

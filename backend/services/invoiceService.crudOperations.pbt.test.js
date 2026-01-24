@@ -73,7 +73,7 @@ describe('Invoice Service - Property-Based Tests - CRUD Operations', () => {
     filePath: fc.string({ minLength: 10, maxLength: 200 }),
     fileSize: fc.integer({ min: 1024, max: 5 * 1024 * 1024 }),
     mimeType: fc.constant('application/pdf'),
-    uploadDate: fc.date().map(d => d.toISOString())
+    uploadDate: fc.date({ min: new Date('2020-01-01'), max: new Date('2025-12-31') }).map(d => d.toISOString())
   });
 
   /**

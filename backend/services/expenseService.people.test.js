@@ -43,9 +43,10 @@ describe('ExpenseService - People Integration', () => {
 
       expenseRepository.create.mockResolvedValue(mockExpense);
       expensePeopleRepository.createAssociations.mockResolvedValue([mockAssociation]);
+      // Note: getPeopleForExpenses returns 'id' (not 'personId') for frontend compatibility
       expensePeopleRepository.getPeopleForExpenses.mockResolvedValue({
         1: [{
-          personId: 123,
+          id: 123,
           amount: 150.00
         }]
       });
@@ -81,7 +82,7 @@ describe('ExpenseService - People Integration', () => {
       expect(result).toEqual({
         ...mockExpense,
         people: [{
-          personId: 123,
+          id: 123,
           amount: 150.00
         }]
       });
@@ -138,10 +139,11 @@ describe('ExpenseService - People Integration', () => {
 
       expenseRepository.create.mockResolvedValue(mockExpense);
       expensePeopleRepository.createAssociations.mockResolvedValue(mockAssociations);
+      // Note: getPeopleForExpenses returns 'id' (not 'personId') for frontend compatibility
       expensePeopleRepository.getPeopleForExpenses.mockResolvedValue({
         1: [
-          { personId: 123, amount: 150.00 },
-          { personId: 456, amount: 150.00 }
+          { id: 123, amount: 150.00 },
+          { id: 456, amount: 150.00 }
         ]
       });
 
@@ -169,8 +171,8 @@ describe('ExpenseService - People Integration', () => {
       expect(result).toEqual({
         ...mockExpense,
         people: [
-          { personId: 123, amount: 150.00 },
-          { personId: 456, amount: 150.00 }
+          { id: 123, amount: 150.00 },
+          { id: 456, amount: 150.00 }
         ]
       });
     });
@@ -193,10 +195,11 @@ describe('ExpenseService - People Integration', () => {
 
       expenseRepository.create.mockResolvedValue(mockExpense);
       expensePeopleRepository.createAssociations.mockResolvedValue(mockAssociations);
+      // Note: getPeopleForExpenses returns 'id' (not 'personId') for frontend compatibility
       expensePeopleRepository.getPeopleForExpenses.mockResolvedValue({
         1: [
-          { personId: 123, amount: 100.00 },
-          { personId: 456, amount: 150.00 }
+          { id: 123, amount: 100.00 },
+          { id: 456, amount: 150.00 }
         ]
       });
 
@@ -219,8 +222,8 @@ describe('ExpenseService - People Integration', () => {
 
       // Verify
       expect(result.people).toEqual([
-        { personId: 123, amount: 100.00 },
-        { personId: 456, amount: 150.00 }
+        { id: 123, amount: 100.00 },
+        { id: 456, amount: 150.00 }
       ]);
     });
   });
@@ -357,8 +360,9 @@ describe('ExpenseService - People Integration', () => {
 
       expenseRepository.update.mockResolvedValue(mockUpdatedExpense);
       expensePeopleRepository.updateExpenseAllocations.mockResolvedValue(mockUpdatedAssociations);
+      // Note: getPeopleForExpenses returns 'id' (not 'personId') for frontend compatibility
       expensePeopleRepository.getPeopleForExpenses.mockResolvedValue({
-        1: [{ personId: 789, amount: 200.00 }]
+        1: [{ id: 789, amount: 200.00 }]
       });
 
       // Test data
@@ -392,7 +396,7 @@ describe('ExpenseService - People Integration', () => {
       expect(result).toEqual({
         ...mockUpdatedExpense,
         people: [{
-          personId: 789,
+          id: 789,
           amount: 200.00
         }]
       });

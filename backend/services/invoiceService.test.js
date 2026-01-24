@@ -216,8 +216,9 @@ describe('InvoiceService', () => {
 
     it('should upload invoice with person link when person is assigned to expense', async () => {
       const mockPersonId = 5;
+      // Note: getPeopleForExpense returns 'id' (not 'personId') for frontend compatibility
       expensePeopleRepository.getPeopleForExpense.mockResolvedValue([
-        { personId: mockPersonId, name: 'John Doe', amount: 100 }
+        { id: mockPersonId, name: 'John Doe', amount: 100 }
       ]);
       
       const mockVerification = { isValid: true, errors: [], warnings: [] };
@@ -233,8 +234,9 @@ describe('InvoiceService', () => {
 
     it('should throw error if person is not assigned to expense', async () => {
       const mockPersonId = 5;
+      // Note: getPeopleForExpense returns 'id' (not 'personId') for frontend compatibility
       expensePeopleRepository.getPeopleForExpense.mockResolvedValue([
-        { personId: 10, name: 'Jane Doe', amount: 100 } // Different person
+        { id: 10, name: 'Jane Doe', amount: 100 } // Different person
       ]);
 
       await expect(invoiceService.uploadInvoice(mockExpenseId, mockFile, mockPersonId, mockUserId))
@@ -654,8 +656,9 @@ describe('InvoiceService', () => {
       const updatedInvoice = { ...mockInvoice, personId: mockPersonId, personName: 'John Doe' };
       
       invoiceRepository.findById.mockResolvedValue(mockInvoice);
+      // Note: getPeopleForExpense returns 'id' (not 'personId') for frontend compatibility
       expensePeopleRepository.getPeopleForExpense.mockResolvedValue([
-        { personId: mockPersonId, name: 'John Doe', amount: 100 }
+        { id: mockPersonId, name: 'John Doe', amount: 100 }
       ]);
       invoiceRepository.updatePersonId.mockResolvedValue(true);
       invoiceRepository.findById.mockResolvedValueOnce(mockInvoice).mockResolvedValueOnce(updatedInvoice);
@@ -680,8 +683,9 @@ describe('InvoiceService', () => {
 
     it('should throw error if person is not assigned to expense', async () => {
       invoiceRepository.findById.mockResolvedValue(mockInvoice);
+      // Note: getPeopleForExpense returns 'id' (not 'personId') for frontend compatibility
       expensePeopleRepository.getPeopleForExpense.mockResolvedValue([
-        { personId: 10, name: 'Jane Doe', amount: 100 } // Different person
+        { id: 10, name: 'Jane Doe', amount: 100 } // Different person
       ]);
 
       await expect(invoiceService.updateInvoicePersonLink(mockInvoice.id, 5))
@@ -739,8 +743,9 @@ describe('InvoiceService', () => {
   describe('validatePersonBelongsToExpense', () => {
     it('should validate person belongs to expense', async () => {
       const mockPersonId = 5;
+      // Note: getPeopleForExpense returns 'id' (not 'personId') for frontend compatibility
       expensePeopleRepository.getPeopleForExpense.mockResolvedValue([
-        { personId: mockPersonId, name: 'John Doe', amount: 100 }
+        { id: mockPersonId, name: 'John Doe', amount: 100 }
       ]);
 
       const result = await invoiceService.validatePersonBelongsToExpense(mockExpenseId, mockPersonId);
@@ -749,8 +754,9 @@ describe('InvoiceService', () => {
     });
 
     it('should throw error if person is not assigned to expense', async () => {
+      // Note: getPeopleForExpense returns 'id' (not 'personId') for frontend compatibility
       expensePeopleRepository.getPeopleForExpense.mockResolvedValue([
-        { personId: 10, name: 'Jane Doe', amount: 100 }
+        { id: 10, name: 'Jane Doe', amount: 100 }
       ]);
 
       await expect(invoiceService.validatePersonBelongsToExpense(mockExpenseId, 5))

@@ -11,6 +11,70 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.16.3] - 2026-01-24
+
+### Added
+- **Daily Spend Card**: New Annual Summary card showing average daily variable spending
+  - For current year: calculates based on days elapsed so far
+  - For past years: calculates based on 365 days
+- **Tax Deductible Card**: New Annual Summary card showing combined Medical + Donation totals
+  - Green-themed styling to match tax deductible section
+  - Quick reference for tax planning
+
+---
+
+## [4.16.2] - 2026-01-24
+
+### Fixed
+- **YoY Comparison Layout**: Fixed squished Year-over-Year comparison cards in Annual Summary
+  - Changed from 4-column to 2-column grid layout for better readability
+  - Net Worth and other values no longer get cut off
+  - Improved padding and spacing for comparison cards
+
+---
+
+## [4.16.1] - 2026-01-24
+
+### Changed
+- **YTD Comparison for Current Year**: Year-over-year comparison now uses Year-to-Date (YTD) logic
+  - For current year: compares only months 1 through current month for both years
+  - For past years: compares full 12 months (unchanged)
+  - Header shows "YTD Comparison" with month range badge for current year
+  - Prevents misleading comparisons when future income is pre-logged
+
+---
+
+## [4.16.0] - 2026-01-24
+
+### Added
+- **Year-over-Year Comparison**: New collapsible section in Annual Summary showing:
+  - Income change (% and absolute difference)
+  - Expenses change (% and absolute difference)
+  - Savings rate change (percentage points)
+  - Net worth change (absolute difference)
+  - Visual indicators with green/red color coding for positive/negative changes
+- **Savings Rate Card**: Shows percentage of income saved with color-coded display
+- **Transaction Count Card**: Displays total variable expense transactions with average amount
+- **Top Category Card**: Highlights #1 spending category with amount and percentage
+- **Collapsible Sections**: "By Category" and "By Payment Method" sections are now collapsible
+
+### Changed
+- **Annual Summary Layout**: Cards now display 4 per row for better information density
+- **Monthly Summary Layout**: Fixed to display 1 card per row (single column) as intended
+
+---
+
+## [4.15.5] - 2026-01-23
+
+### Fixed
+- **Invoice Upload Bug**: Fixed "Person is not assigned to this expense" error when uploading invoices
+  - The `validatePersonBelongsToExpense` function was checking `p.personId` but repository returns `p.id`
+  - Updated invoiceService.js to use correct property name
+  - Fixed test mocks in invoiceService.test.js and expenseService.people.test.js to match actual repository return format
+  - This was a regression from the personId→id refactor for frontend compatibility
+
+---
+
 ## [4.15.4] - 2026-01-23
 
 ### Fixed

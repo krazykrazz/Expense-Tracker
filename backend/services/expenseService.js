@@ -836,7 +836,8 @@ class ExpenseService {
       categoryTotals,
       methodTotals,
       yearEndInvestments,
-      yearEndLoans
+      yearEndLoans,
+      transactionCount
     ] = await Promise.all([
       this._getMonthlyVariableExpenses(year),
       this._getMonthlyFixedExpenses(year),
@@ -844,7 +845,8 @@ class ExpenseService {
       this._getCategoryTotals(year),
       this._getMethodTotals(year),
       this._getYearEndInvestmentValues(year),
-      this._getYearEndLoanBalances(year)
+      this._getYearEndLoanBalances(year),
+      this._getTransactionCount(year)
     ]);
 
     // Calculate net worth components
@@ -867,7 +869,8 @@ class ExpenseService {
       ...summary,
       netWorth,
       totalAssets,
-      totalLiabilities
+      totalLiabilities,
+      transactionCount
     };
   }
 
@@ -1057,6 +1060,29 @@ class ExpenseService {
       db.all(query, [year], (err, rows) => {
         if (err) reject(err);
         else resolve(rows || []);
+      });
+    });
+  }
+
+  /**
+   * Get total transaction count for a year (variable expenses only)
+   * @param {number} year - Year
+   * @returns {Promise<number>} Transaction count
+   * @private
+   */
+  async _getTransactionCount(year) {
+    const db = await require('../database/db').getDatabase();
+    
+    return new Promise((resolve, reject) => {
+      const query = `
+        SELECT COUNT(*) as count
+        FROM expenses
+        WHERE strftime('%Y', date) = ?
+      `;
+      
+      db.get(query, [year.toString()], (err, row) => {
+        if (err) reject(err);
+        else resolve(row?.count || 0);
       });
     });
   }

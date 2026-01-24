@@ -792,6 +792,49 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v4.16.3</div>
+                <div className="changelog-date">January 2026</div>
+                <ul className="changelog-items">
+                  <li>New Daily Spend card (avg variable spending per day)</li>
+                  <li>New Tax Deductible card (Medical + Donations total)</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
+                <div className="changelog-version">v4.16.2</div>
+                <div className="changelog-date">January 2026</div>
+                <ul className="changelog-items">
+                  <li>Fixed YoY comparison cards layout (2 columns instead of 4)</li>
+                  <li>Improved readability for Net Worth and other comparison values</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
+                <div className="changelog-version">v4.16.1</div>
+                <div className="changelog-date">January 2026</div>
+                <ul className="changelog-items">
+                  <li>YTD comparison for current year (compares same months only)</li>
+                  <li>Full year comparison for past years</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
+                <div className="changelog-version">v4.16.0</div>
+                <div className="changelog-date">January 2026</div>
+                <ul className="changelog-items">
+                  <li>Year-over-Year comparison in Annual Summary</li>
+                  <li>New Savings Rate, Transaction Count, and Top Category cards</li>
+                  <li>Collapsible By Category and By Payment Method sections</li>
+                  <li>Monthly Summary layout fix (single column)</li>
+                  <li>Annual Summary cards now display 4 per row</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
+                <div className="changelog-version">v4.15.5</div>
+                <div className="changelog-date">January 2026</div>
+                <ul className="changelog-items">
+                  <li>Fixed invoice upload error "Person is not assigned to this expense"</li>
+                  <li>Fixed test mocks to match repository return format (id vs personId)</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v4.15.4</div>
                 <div className="changelog-date">January 2026</div>
                 <ul className="changelog-items">
@@ -817,41 +860,29 @@ const BackupSettings = () => {
                 </ul>
               </div>
               <div className="changelog-entry">
-                <div className="changelog-version">v4.15.1</div>
-                <div className="changelog-date">January 2026</div>
-                <ul className="changelog-items">
-                  <li>Fixed allocation display when editing medical expenses with multiple people</li>
-                  <li>Added Edit button to modify allocations for existing expenses</li>
-                  <li>PersonAllocationModal now pre-populates with existing amounts</li>
-                </ul>
-              </div>
-              <div className="changelog-entry">
                 <div className="changelog-version">v4.15.0</div>
                 <div className="changelog-date">January 2026</div>
                 <ul className="changelog-items">
-                  <li>Medical Insurance Tracking - track insurance eligibility, claim status, and reimbursements</li>
-                  <li>Quick status updates for insurance claims (not claimed → in progress → paid/denied)</li>
-                  <li>Insurance summary in Tax Deductible view with totals and filtering</li>
-                  <li>Person-level insurance tracking with original cost and out-of-pocket amounts</li>
+                  <li>Medical insurance tracking with claim status</li>
+                  <li>Quick status update for insurance claims</li>
+                  <li>Reimbursement calculations and out-of-pocket tracking</li>
                 </ul>
               </div>
               <div className="changelog-entry">
                 <div className="changelog-version">v4.14</div>
                 <div className="changelog-date">January 2026</div>
                 <ul className="changelog-items">
-                  <li>Fixed floating add button stacking context and z-index issues</li>
-                  <li>Added database statistics to Settings → About</li>
-                  <li>Invoice auto-linking for single-person medical expenses</li>
-                  <li>Improved backend test coverage (778 tests)</li>
+                  <li>Multi-invoice upload UX improvements</li>
+                  <li>Donation expense invoice support</li>
+                  <li>Invoice backup enhancement</li>
                 </ul>
               </div>
               <div className="changelog-entry">
                 <div className="changelog-version">v4.13</div>
                 <div className="changelog-date">January 2026</div>
                 <ul className="changelog-items">
-                  <li>Multi-invoice upload UX improvements</li>
-                  <li>Donation expense invoice support</li>
-                  <li>Invoice backup enhancement</li>
+                  <li>Multi-invoice support per expense</li>
+                  <li>Optional person linking for invoices</li>
                 </ul>
               </div>
               <div className="changelog-entry">

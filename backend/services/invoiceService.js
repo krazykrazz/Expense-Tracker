@@ -610,7 +610,8 @@ class InvoiceService {
   async validatePersonBelongsToExpense(expenseId, personId) {
     const people = await expensePeopleRepository.getPeopleForExpense(expenseId);
     
-    const personAssigned = people.some(p => p.personId === personId);
+    // Note: getPeopleForExpense returns 'id' (not 'personId') for frontend compatibility
+    const personAssigned = people.some(p => p.id === personId);
     
     if (!personAssigned) {
       throw new Error('Person is not assigned to this expense');

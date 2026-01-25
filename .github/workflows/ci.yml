@@ -13,6 +13,8 @@ jobs:
   backend-tests:
     name: Backend Tests
     runs-on: ubuntu-latest
+    # Skip CI for Dependabot PRs - tests run when merged to main
+    if: github.actor != 'dependabot[bot]'
     defaults:
       run:
         working-directory: backend
@@ -37,6 +39,8 @@ jobs:
   frontend-tests:
     name: Frontend Tests
     runs-on: ubuntu-latest
+    # Skip CI for Dependabot PRs - tests run when merged to main
+    if: github.actor != 'dependabot[bot]'
     defaults:
       run:
         working-directory: frontend

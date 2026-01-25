@@ -26,7 +26,7 @@ jobs:
     steps:
       # Checkout the repository
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       # Extract version from package.json for tagging
       - name: Extract version from package.json
@@ -48,7 +48,7 @@ jobs:
       # To push to your local registry, run locally:
       #   .\build-and-push.ps1 -Tag ${{ steps.version.outputs.version }}
       - name: Build Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           push: false  # Cannot push to localhost:5000 from GitHub Actions

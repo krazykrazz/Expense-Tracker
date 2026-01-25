@@ -1,4 +1,5 @@
 const fc = require('fast-check');
+const { pbtOptions } = require('../test/pbtArbitraries');
 const expenseService = require('./expenseService');
 
 /**
@@ -34,7 +35,7 @@ describe('ExpenseService - Single Person Assignment Properties', () => {
             expect(allocations.length).toBe(1);
           }
         ),
-        { numRuns: 100 }
+        pbtOptions()
       );
     });
 
@@ -61,7 +62,7 @@ describe('ExpenseService - Single Person Assignment Properties', () => {
             }).toThrow(/Total allocated amount .* must equal expense amount/);
           }
         ),
-        { numRuns: 100 }
+        pbtOptions()
       );
     });
 
@@ -88,7 +89,7 @@ describe('ExpenseService - Single Person Assignment Properties', () => {
             }).toThrow(/Total allocated amount .* must equal expense amount/);
           }
         ),
-        { numRuns: 100 }
+        pbtOptions()
       );
     });
 
@@ -118,7 +119,7 @@ describe('ExpenseService - Single Person Assignment Properties', () => {
             }).toThrow(/Each allocation must have a valid personId/);
           }
         ),
-        { numRuns: 100 }
+        pbtOptions()
       );
     });
 
@@ -148,7 +149,7 @@ describe('ExpenseService - Single Person Assignment Properties', () => {
             }).toThrow(); // Should throw some validation error
           }
         ),
-        { numRuns: 100 }
+        pbtOptions()
       );
     });
 
@@ -174,7 +175,7 @@ describe('ExpenseService - Single Person Assignment Properties', () => {
             }).not.toThrow();
           }
         ),
-        { numRuns: 100 }
+        pbtOptions()
       );
     });
 
@@ -197,7 +198,7 @@ describe('ExpenseService - Single Person Assignment Properties', () => {
             }).toThrow(/Allocation amounts must have at most 2 decimal places/);
           }
         ),
-        { numRuns: 100 }
+        pbtOptions()
       );
     });
   });

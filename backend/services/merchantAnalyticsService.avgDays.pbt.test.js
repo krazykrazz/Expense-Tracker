@@ -1,4 +1,5 @@
 const fc = require('fast-check');
+const { pbtOptions } = require('../test/pbtArbitraries');
 const merchantAnalyticsService = require('./merchantAnalyticsService');
 const { getDatabase } = require('../database/db');
 
@@ -123,7 +124,7 @@ describe('MerchantAnalyticsService - Average Days Between Visits Property Tests'
           expect(details.lastVisit).toBe(testData.dates[testData.dates.length - 1]);
         }
       ),
-      { numRuns: 50 }
+      pbtOptions()
     );
   });
 });

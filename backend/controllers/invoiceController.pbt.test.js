@@ -7,6 +7,7 @@
  */
 
 const fc = require('fast-check');
+const { pbtOptions } = require('../test/pbtArbitraries');
 const invoiceService = require('../services/invoiceService');
 const invoiceRepository = require('../repositories/invoiceRepository');
 const expenseRepository = require('../repositories/expenseRepository');
@@ -150,7 +151,7 @@ describe('Invoice Controller - Property-Based Tests - API Layer', () => {
           return true;
         }
       ),
-      { numRuns: 10 }
+      pbtOptions()
     );
   });
 
@@ -248,7 +249,7 @@ describe('Invoice Controller - Property-Based Tests - API Layer', () => {
           return true;
         }
       ),
-      { numRuns: 10 }
+      pbtOptions()
     );
   });
 
@@ -339,7 +340,7 @@ describe('Invoice Controller - Property-Based Tests - API Layer', () => {
           return true;
         }
       ),
-      { numRuns: 10 }
+      pbtOptions()
     );
   });
 
@@ -408,7 +409,7 @@ describe('Invoice Controller - Property-Based Tests - API Layer', () => {
           return true;
         }
       ),
-      { numRuns: 10 }
+      pbtOptions()
     );
   });
 
@@ -443,7 +444,7 @@ describe('Invoice Controller - Property-Based Tests - API Layer', () => {
           return true;
         }
       ),
-      { numRuns: 5 }
+      pbtOptions()
     );
   });
 
@@ -484,7 +485,7 @@ describe('Invoice Controller - Property-Based Tests - API Layer', () => {
           return true;
         }
       ),
-      { numRuns: 5 }
+      pbtOptions()
     );
   });
 

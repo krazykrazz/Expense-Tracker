@@ -10,6 +10,7 @@
 process.env.SKIP_TEST_DB = 'true';
 
 const fc = require('fast-check');
+const { pbtOptions } = require('../test/pbtArbitraries');
 const fs = require('fs');
 const path = require('path');
 const backupService = require('./backupService');
@@ -117,7 +118,7 @@ describe('BackupService - Property-Based Tests', () => {
           throw error;
         }
       }),
-      { numRuns: 10 }
+      pbtOptions()
     );
   }, 60000); // Increase timeout for property-based test
 
@@ -242,7 +243,7 @@ describe('BackupService - Property-Based Tests', () => {
           await fs.promises.rm(testExtractPath, { recursive: true, force: true }).catch(() => {});
         }
       }),
-      { numRuns: 10 }
+      pbtOptions()
     );
   }, 60000); // Increase timeout for property-based test
 
@@ -339,7 +340,7 @@ describe('BackupService - Property-Based Tests', () => {
           }
         }
       }),
-      { numRuns: 10 }
+      pbtOptions()
     );
   }, 60000);
 
@@ -405,7 +406,7 @@ describe('BackupService - Property-Based Tests', () => {
         
         return true;
       }),
-      { numRuns: 10 }
+      pbtOptions()
     );
   }, 60000);
 
@@ -581,7 +582,7 @@ describe('BackupService - Property-Based Tests', () => {
           }
         }
       }),
-      { numRuns: 10 }
+      pbtOptions()
     );
   }, 120000); // Longer timeout for comprehensive round-trip test
 
@@ -693,7 +694,7 @@ describe('BackupService - Property-Based Tests', () => {
           }
         }
       }),
-      { numRuns: 10 }
+      pbtOptions()
     );
   }, 120000);
 
@@ -795,7 +796,7 @@ describe('BackupService - Property-Based Tests', () => {
 
           return true;
         }),
-        { numRuns: 50 } // Reduced runs due to longer delays
+        pbtOptions() // Reduced runs due to longer delays
       );
     } finally {
       // Restore original config
@@ -890,7 +891,7 @@ describe('BackupService - Property-Based Tests', () => {
 
           return true;
         }),
-        { numRuns: 30 } // Reduced runs due to longer delays
+        pbtOptions() // Reduced runs due to longer delays
       );
     } finally {
       // Restore original config
@@ -1038,7 +1039,7 @@ describe('BackupService - Property-Based Tests', () => {
             }
           }
         }),
-        { numRuns: 50 } // Reduced runs due to delays
+        pbtOptions() // Reduced runs due to delays
       );
     } finally {
       // Restore original config
@@ -1274,7 +1275,7 @@ describe('Medical Insurance Tracking - Backup/Restore', () => {
           throw error;
         }
       }),
-      { numRuns: 100 }
+      pbtOptions()
     );
   }, 300000); // Longer timeout for comprehensive round-trip test with 100 iterations
 
@@ -1365,7 +1366,7 @@ describe('Medical Insurance Tracking - Backup/Restore', () => {
           throw error;
         }
       }),
-      { numRuns: 50 }
+      pbtOptions()
     );
   }, 180000);
 

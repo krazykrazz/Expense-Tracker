@@ -1,4 +1,5 @@
 const fc = require('fast-check');
+const { pbtOptions } = require('../test/pbtArbitraries');
 const merchantAnalyticsService = require('./merchantAnalyticsService');
 const { getDatabase } = require('../database/db');
 
@@ -182,7 +183,7 @@ describe('MerchantAnalyticsService - Visit Dates Property Tests', () => {
           }
         }
       ),
-      { numRuns: 5 }
+      pbtOptions()
     );
   });
 });

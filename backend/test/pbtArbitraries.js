@@ -208,8 +208,16 @@ const safeExpenseWithId = (options = {}) => fc.record({
  * @returns {Object} fast-check options
  */
 const pbtOptions = (options = {}) => {
+  // Allow environment variable to override numRuns for fast testing
+  const envNumRuns = process.env.FAST_CHECK_NUM_RUNS 
+    ? parseInt(process.env.FAST_CHECK_NUM_RUNS, 10) 
+    : null;
+  
+  const defaultNumRuns = isCI ? 25 : 50;
+  const numRuns = envNumRuns || options.numRuns || defaultNumRuns;
+  
   const defaults = {
-    numRuns: isCI ? (options.numRuns || 10) : (options.numRuns || 20),
+    numRuns,
     timeout: isCI ? 30000 : 15000,
     // Use fixed seed in CI for reproducibility
     seed: isCI ? CI_SEED : undefined,
@@ -236,9 +244,14 @@ const asyncPbtOptions = (options = {}) => {
  * Get database PBT options (even longer timeouts for DB operations)
  */
 const dbPbtOptions = (options = {}) => {
+  // Allow environment variable to override numRuns for fast testing
+  const envNumRuns = process.env.FAST_CHECK_NUM_RUNS 
+    ? parseInt(process.env.FAST_CHECK_NUM_RUNS, 10) 
+    : null;
+  
   return pbtOptions({
     timeout: isCI ? 60000 : 30000,
-    numRuns: isCI ? 10 : 15,
+    numRuns: envNumRuns || (isCI ? 10 : 15),
     ...options
   });
 };

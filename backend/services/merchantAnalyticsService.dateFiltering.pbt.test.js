@@ -1,4 +1,5 @@
 const fc = require('fast-check');
+const { pbtOptions } = require('../test/pbtArbitraries');
 const merchantAnalyticsService = require('./merchantAnalyticsService');
 const { getDatabase } = require('../database/db');
 
@@ -200,7 +201,7 @@ describe('MerchantAnalyticsService - Date Range Filtering Property Tests', () =>
           }
         }
       ),
-      { numRuns: 10, timeout: 5000 }
+      pbtOptions({ timeout: 5000 })
     );
   }, 10000);
 });

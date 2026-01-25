@@ -4,6 +4,7 @@
  */
 
 const fc = require('fast-check');
+const { pbtOptions } = require('../test/pbtArbitraries');
 const sqlite3 = require('sqlite3').verbose();
 
 // Helper function to create an in-memory test database
@@ -204,7 +205,7 @@ describe('Investment Repository - Property-Based Tests', () => {
           }
         }
       ),
-      { numRuns: 100 }
+      pbtOptions()
     );
   });
 
@@ -255,7 +256,7 @@ describe('Investment Repository - Property-Based Tests', () => {
           }
         }
       ),
-      { numRuns: 100 }
+      pbtOptions()
     );
   });
 
@@ -307,7 +308,7 @@ describe('Investment Repository - Property-Based Tests', () => {
           }
         }
       ),
-      { numRuns: 100 }
+      pbtOptions()
     );
   });
 
@@ -356,7 +357,7 @@ describe('Investment Repository - Property-Based Tests', () => {
           }
         }
       ),
-      { numRuns: 100 }
+      pbtOptions()
     );
   });
 
@@ -415,7 +416,7 @@ describe('Investment Repository - Property-Based Tests', () => {
           }
         }
       ),
-      { numRuns: 100 }
+      pbtOptions()
     );
   });
 });

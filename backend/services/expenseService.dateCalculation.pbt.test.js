@@ -1,4 +1,5 @@
 const fc = require('fast-check');
+const { pbtOptions } = require('../test/pbtArbitraries');
 const expenseService = require('./expenseService');
 
 describe('ExpenseService - Property-Based Tests for Date Calculation', () => {
@@ -51,7 +52,7 @@ describe('ExpenseService - Property-Based Tests for Date Calculation', () => {
             expect(result).toMatch(/^\d{4}-\d{2}-\d{2}$/);
           }
         ),
-        { numRuns: 100 }
+        pbtOptions()
       );
     }, 30000);
 
@@ -96,7 +97,7 @@ describe('ExpenseService - Property-Based Tests for Date Calculation', () => {
             expect(target.year).toBe(expectedYear);
           }
         ),
-        { numRuns: 100 }
+        pbtOptions()
       );
     }, 30000);
 
@@ -169,7 +170,7 @@ describe('ExpenseService - Property-Based Tests for Date Calculation', () => {
             expect(target.day).toBe(source.day);
           }
         ),
-        { numRuns: 100 }
+        pbtOptions()
       );
     }, 30000);
 
@@ -206,7 +207,7 @@ describe('ExpenseService - Property-Based Tests for Date Calculation', () => {
             expect(parsed.day).toBeLessThanOrEqual(daysInTargetMonth);
           }
         ),
-        { numRuns: 100 }
+        pbtOptions()
       );
     }, 30000);
   });

@@ -4,6 +4,7 @@
  */
 
 const fc = require('fast-check');
+const { pbtOptions } = require('../test/pbtArbitraries');
 const sqlite3 = require('sqlite3').verbose();
 const investmentValueService = require('./investmentValueService');
 
@@ -169,7 +170,7 @@ describe('Investment Value Service - Property-Based Tests', () => {
           return true;
         }
       ),
-      { numRuns: 100 }
+      pbtOptions()
     );
   });
 
@@ -206,7 +207,7 @@ describe('Investment Value Service - Property-Based Tests', () => {
           return true;
         }
       ),
-      { numRuns: 100 }
+      pbtOptions()
     );
   });
 
@@ -234,7 +235,7 @@ describe('Investment Value Service - Property-Based Tests', () => {
           return true;
         }
       ),
-      { numRuns: 100 }
+      pbtOptions()
     );
   });
 
@@ -336,7 +337,7 @@ describe('Investment Value Service - Property-Based Tests', () => {
           }
         }
       ),
-      { numRuns: 100 }
+      pbtOptions()
     );
   });
 });

@@ -7,6 +7,7 @@
  */
 
 const fc = require('fast-check');
+const { pbtOptions } = require('../test/pbtArbitraries');
 const invoiceService = require('./invoiceService');
 const invoiceRepository = require('../repositories/invoiceRepository');
 const expenseRepository = require('../repositories/expenseRepository');
@@ -171,7 +172,7 @@ describe('Invoice Service - Property-Based Tests - CRUD Operations', () => {
           }
         }
       ),
-      { numRuns: 10 }
+      pbtOptions()
     );
   });
 
@@ -214,7 +215,7 @@ describe('Invoice Service - Property-Based Tests - CRUD Operations', () => {
           }
         }
       ),
-      { numRuns: 10 }
+      pbtOptions()
     );
   });
 
@@ -260,7 +261,7 @@ describe('Invoice Service - Property-Based Tests - CRUD Operations', () => {
           }
         }
       ),
-      { numRuns: 10 }
+      pbtOptions()
     );
   });
 
@@ -302,7 +303,7 @@ describe('Invoice Service - Property-Based Tests - CRUD Operations', () => {
           }
         }
       ),
-      { numRuns: 10 }
+      pbtOptions()
     );
   });
 
@@ -348,7 +349,7 @@ describe('Invoice Service - Property-Based Tests - CRUD Operations', () => {
           return true;
         }
       ),
-      { numRuns: 10 }
+      pbtOptions()
     );
   });
 
@@ -443,7 +444,7 @@ describe('Invoice Service - Property-Based Tests - CRUD Operations', () => {
           }
         }
       ),
-      { numRuns: 10 }
+      pbtOptions()
     );
   });
 
@@ -467,7 +468,7 @@ describe('Invoice Service - Property-Based Tests - CRUD Operations', () => {
           expect(result).toBe(!!existingInvoice);
         }
       ),
-      { numRuns: 10 }
+      pbtOptions()
     );
   });
 
@@ -503,7 +504,7 @@ describe('Invoice Service - Property-Based Tests - CRUD Operations', () => {
           expect(invoiceRepository.create).not.toHaveBeenCalled();
         }
       ),
-      { numRuns: 10 }
+      pbtOptions()
     );
   });
 
@@ -539,7 +540,7 @@ describe('Invoice Service - Property-Based Tests - CRUD Operations', () => {
           expect(result.directoryPath).toContain(date.getFullYear().toString());
         }
       ),
-      { numRuns: 10 }
+      pbtOptions()
     );
   });
 });

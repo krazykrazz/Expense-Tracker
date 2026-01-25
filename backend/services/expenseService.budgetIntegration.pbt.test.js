@@ -1,4 +1,5 @@
 const fc = require('fast-check');
+const { pbtOptions } = require('../test/pbtArbitraries');
 const expenseService = require('./expenseService');
 const budgetEvents = require('../events/budgetEvents');
 const { getDatabase } = require('../database/db');
@@ -68,7 +69,7 @@ describe('ExpenseService - Property-Based Tests for Budget Integration', () => {
             expect(emitSpy).toHaveBeenCalledWith(expenseData.date, expenseData.type);
           }
         ),
-        { numRuns: 50 }
+        pbtOptions()
       );
     }, 60000);
 
@@ -98,7 +99,7 @@ describe('ExpenseService - Property-Based Tests for Budget Integration', () => {
             }
           }
         ),
-        { numRuns: 50 }
+        pbtOptions()
       );
     }, 120000);
 
@@ -129,7 +130,7 @@ describe('ExpenseService - Property-Based Tests for Budget Integration', () => {
             expect(calledCategories.every(cat => cat === expenseData.type)).toBe(true);
           }
         ),
-        { numRuns: 50 }
+        pbtOptions()
       );
     }, 120000);
   });

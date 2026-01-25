@@ -7,6 +7,7 @@
 
 const { describe, test, expect, beforeEach, afterEach } = require('@jest/globals');
 const fc = require('fast-check');
+const { pbtOptions } = require('../test/pbtArbitraries');
 const invoiceRepository = require('./invoiceRepository');
 const { getDatabase } = require('../database/db');
 
@@ -138,7 +139,7 @@ describe('Invoice Repository Property-Based Tests', () => {
           }
         }
       ),
-      { numRuns: 10 }
+      pbtOptions()
     );
   });
 
@@ -199,7 +200,7 @@ describe('Invoice Repository Property-Based Tests', () => {
           }
         }
       ),
-      { numRuns: 10 }
+      pbtOptions()
     );
   });
 
@@ -252,7 +253,7 @@ describe('Invoice Repository Property-Based Tests', () => {
           await invoiceRepository.deleteById(created.id);
         }
       ),
-      { numRuns: 15 }
+      pbtOptions()
     );
   });
 });

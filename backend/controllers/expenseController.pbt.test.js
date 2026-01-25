@@ -4,6 +4,7 @@
  */
 
 const fc = require('fast-check');
+const { pbtOptions } = require('../test/pbtArbitraries');
 const { CATEGORIES } = require('../utils/categories');
 const { isValid: isValidCategory } = require('../utils/categories');
 
@@ -31,7 +32,7 @@ describe('Category Validation - Property-Based Tests', () => {
           return true;
         }
       ),
-      { numRuns: 100 }
+      pbtOptions()
     );
 
     // Test 2: Invalid categories should fail validation
@@ -52,7 +53,7 @@ describe('Category Validation - Property-Based Tests', () => {
           return true;
         }
       ),
-      { numRuns: 100 }
+      pbtOptions()
     );
 
     // Test 3: Case sensitivity - categories with different casing should be rejected
@@ -75,7 +76,7 @@ describe('Category Validation - Property-Based Tests', () => {
           return true;
         }
       ),
-      { numRuns: 100 }
+      pbtOptions()
     );
 
     // Test 4: Categories with extra whitespace should be rejected
@@ -101,7 +102,7 @@ describe('Category Validation - Property-Based Tests', () => {
           return true;
         }
       ),
-      { numRuns: 100 }
+      pbtOptions()
     );
 
     // Test 5: Empty string and null should be rejected
@@ -134,7 +135,7 @@ describe('Category Validation - Property-Based Tests', () => {
           return true;
         }
       ),
-      { numRuns: 100 }
+      pbtOptions()
     );
   });
 
@@ -182,7 +183,7 @@ describe('Category Validation - Property-Based Tests', () => {
           return true;
         }
       ),
-      { numRuns: 100 }
+      pbtOptions()
     );
     
     // Test that "Personal Care" appears in alphabetical order between "Insurance" and "Pet Care"

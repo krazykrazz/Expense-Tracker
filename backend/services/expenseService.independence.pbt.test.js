@@ -1,4 +1,5 @@
 const fc = require('fast-check');
+const { pbtOptions } = require('../test/pbtArbitraries');
 const expenseService = require('./expenseService');
 const expenseRepository = require('../repositories/expenseRepository');
 const { getDatabase } = require('../database/db');
@@ -71,7 +72,7 @@ describe('ExpenseService - Property-Based Tests for Independence and Atomicity',
             expect(sourceRetrieved.id).toBe(result.expense.id);
           }
         ),
-        { numRuns: 50 }
+        pbtOptions()
       );
     }, 120000);
 
@@ -114,7 +115,7 @@ describe('ExpenseService - Property-Based Tests for Independence and Atomicity',
             }
           }
         ),
-        { numRuns: 50 }
+        pbtOptions()
       );
     }, 120000);
 
@@ -153,7 +154,7 @@ describe('ExpenseService - Property-Based Tests for Independence and Atomicity',
             expect(deletedExpense).toBeNull();
           }
         ),
-        { numRuns: 50 }
+        pbtOptions()
       );
     }, 120000);
 
@@ -186,7 +187,7 @@ describe('ExpenseService - Property-Based Tests for Independence and Atomicity',
             expect(sourceAfterDelete).toBeNull();
           }
         ),
-        { numRuns: 50 }
+        pbtOptions()
       );
     }, 120000);
   });

@@ -10,6 +10,7 @@
  */
 
 const fc = require('fast-check');
+const { pbtOptions } = require('../test/pbtArbitraries');
 const invoiceService = require('./invoiceService');
 const invoiceRepository = require('../repositories/invoiceRepository');
 const expenseRepository = require('../repositories/expenseRepository');
@@ -160,7 +161,7 @@ describe('Invoice Service - Backward Compatibility Property Tests', () => {
           return true;
         }
       ),
-      { numRuns: 10 }
+      pbtOptions()
     );
   });
 
@@ -216,7 +217,7 @@ describe('Invoice Service - Backward Compatibility Property Tests', () => {
           return true;
         }
       ),
-      { numRuns: 10 }
+      pbtOptions()
     );
   });
 
@@ -327,7 +328,7 @@ describe('Invoice Service - Backward Compatibility Property Tests', () => {
           return true;
         }
       ),
-      { numRuns: 10 }
+      pbtOptions()
     );
   });
 
@@ -399,7 +400,7 @@ describe('Invoice Service - Backward Compatibility Property Tests', () => {
           return true;
         }
       ),
-      { numRuns: 10 }
+      pbtOptions()
     );
   });
 
@@ -463,7 +464,7 @@ describe('Invoice Service - Backward Compatibility Property Tests', () => {
           return true;
         }
       ),
-      { numRuns: 10 }
+      pbtOptions()
     );
   });
 
@@ -526,7 +527,7 @@ describe('Invoice Service - Backward Compatibility Property Tests', () => {
           return true;
         }
       ),
-      { numRuns: 30 }
+      pbtOptions()
     );
   });
 });

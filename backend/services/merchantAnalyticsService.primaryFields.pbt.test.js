@@ -1,4 +1,5 @@
 const fc = require('fast-check');
+const { pbtOptions } = require('../test/pbtArbitraries');
 const merchantAnalyticsService = require('./merchantAnalyticsService');
 const { getDatabase } = require('../database/db');
 
@@ -217,7 +218,7 @@ describe('MerchantAnalyticsService - Primary Fields Property Tests', () => {
           }
         }
       ),
-      { numRuns: 20, timeout: 10000 }
+      pbtOptions({ timeout: 10000 })
     );
   }, 15000);
 });

@@ -1,4 +1,5 @@
 const fc = require('fast-check');
+const { pbtOptions } = require('../test/pbtArbitraries');
 const merchantAnalyticsService = require('./merchantAnalyticsService');
 const expenseRepository = require('../repositories/expenseRepository');
 const { getDatabase } = require('../database/db');
@@ -193,7 +194,7 @@ describe('MerchantAnalyticsService - Expense Filtering Property Tests', () => {
           }
         }
       ),
-      { numRuns: 20, timeout: 10000 } // Reduced runs and added timeout
+      pbtOptions({ timeout: 10000 })
     );
   }, 15000); // Test timeout
 

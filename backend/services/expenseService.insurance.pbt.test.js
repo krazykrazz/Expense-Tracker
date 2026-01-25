@@ -7,6 +7,7 @@
 
 const { describe, test, expect, beforeEach, afterEach } = require('@jest/globals');
 const fc = require('fast-check');
+const { pbtOptions } = require('../test/pbtArbitraries');
 const expenseService = require('./expenseService');
 const { getDatabase } = require('../database/db');
 
@@ -54,7 +55,7 @@ describe('ExpenseService Insurance Property-Based Tests', () => {
             }).not.toThrow();
           }
         ),
-        { numRuns: 100 }
+        pbtOptions()
       );
     });
 
@@ -71,7 +72,7 @@ describe('ExpenseService Insurance Property-Based Tests', () => {
             }).not.toThrow();
           }
         ),
-        { numRuns: 50 }
+        pbtOptions()
       );
     });
 
@@ -89,7 +90,7 @@ describe('ExpenseService Insurance Property-Based Tests', () => {
             }).toThrow(/Claim status must be one of/);
           }
         ),
-        { numRuns: 100 }
+        pbtOptions()
       );
     });
 
@@ -123,7 +124,7 @@ describe('ExpenseService Insurance Property-Based Tests', () => {
             }).not.toThrow();
           }
         ),
-        { numRuns: 100 }
+        pbtOptions()
       );
     });
 
@@ -140,7 +141,7 @@ describe('ExpenseService Insurance Property-Based Tests', () => {
             }).not.toThrow();
           }
         ),
-        { numRuns: 100 }
+        pbtOptions()
       );
     });
 
@@ -159,7 +160,7 @@ describe('ExpenseService Insurance Property-Based Tests', () => {
             }).toThrow(/Out-of-pocket amount cannot exceed original cost/);
           }
         ),
-        { numRuns: 100 }
+        pbtOptions()
       );
     });
 
@@ -176,7 +177,7 @@ describe('ExpenseService Insurance Property-Based Tests', () => {
             }).not.toThrow();
           }
         ),
-        { numRuns: 100 }
+        pbtOptions()
       );
     });
 
@@ -194,7 +195,7 @@ describe('ExpenseService Insurance Property-Based Tests', () => {
             }).toThrow(/Person allocation amount.*cannot exceed their original cost allocation/);
           }
         ),
-        { numRuns: 100 }
+        pbtOptions()
       );
     });
 
@@ -210,7 +211,7 @@ describe('ExpenseService Insurance Property-Based Tests', () => {
             }).not.toThrow();
           }
         ),
-        { numRuns: 50 }
+        pbtOptions()
       );
     });
   });
@@ -264,7 +265,7 @@ describe('ExpenseService Insurance Property-Based Tests', () => {
             expect(expense.original_cost).toBeNull();
           }
         ),
-        { numRuns: 50 }
+        pbtOptions()
       );
     });
 
@@ -287,7 +288,7 @@ describe('ExpenseService Insurance Property-Based Tests', () => {
             expect(expense.claim_status).toBe('not_claimed');
           }
         ),
-        { numRuns: 50 }
+        pbtOptions()
       );
     });
 
@@ -309,7 +310,7 @@ describe('ExpenseService Insurance Property-Based Tests', () => {
             expect(expense.original_cost).toBeCloseTo(expenseData.amount, 2);
           }
         ),
-        { numRuns: 50 }
+        pbtOptions()
       );
     });
 
@@ -341,7 +342,7 @@ describe('ExpenseService Insurance Property-Based Tests', () => {
             expect(expense.original_cost).toBeCloseTo(expenseData.original_cost, 2);
           }
         ),
-        { numRuns: 50 }
+        pbtOptions()
       );
     });
 
@@ -371,7 +372,7 @@ describe('ExpenseService Insurance Property-Based Tests', () => {
             expect(expense.original_cost).toBeCloseTo(expenseData.original_cost, 2);
           }
         ),
-        { numRuns: 50 }
+        pbtOptions()
       );
     });
   });
@@ -448,7 +449,7 @@ describe('ExpenseService Insurance Property-Based Tests', () => {
             expect(foundExpense.reimbursement).toBeGreaterThanOrEqual(0);
           }
         ),
-        { numRuns: 50 }
+        pbtOptions()
       );
     });
 
@@ -482,7 +483,7 @@ describe('ExpenseService Insurance Property-Based Tests', () => {
             expect(foundExpense.reimbursement).toBeCloseTo(0, 2);
           }
         ),
-        { numRuns: 50 }
+        pbtOptions()
       );
     });
 
@@ -522,7 +523,7 @@ describe('ExpenseService Insurance Property-Based Tests', () => {
             expect(foundExpense.reimbursement).toBeGreaterThanOrEqual(0);
           }
         ),
-        { numRuns: 50 }
+        pbtOptions()
       );
     });
   });
@@ -614,7 +615,7 @@ describe('ExpenseService Insurance Property-Based Tests', () => {
             expect(summary.insuranceSummary.totalOriginalCost).toBeCloseTo(expectedTotalOriginalCost, 2);
           }
         ),
-        { numRuns: 30 }
+        pbtOptions()
       );
     });
 
@@ -672,7 +673,7 @@ describe('ExpenseService Insurance Property-Based Tests', () => {
             expect(summary.insuranceSummary.totalOutOfPocket).toBeCloseTo(expectedTotalOutOfPocket, 2);
           }
         ),
-        { numRuns: 30 }
+        pbtOptions()
       );
     });
 
@@ -720,7 +721,7 @@ describe('ExpenseService Insurance Property-Based Tests', () => {
             expect(summary.insuranceSummary.eligibleCount).toBe(4);
           }
         ),
-        { numRuns: 5 }
+        pbtOptions()
       );
     });
 
@@ -776,7 +777,7 @@ describe('ExpenseService Insurance Property-Based Tests', () => {
             expect(summary.insuranceSummary.totalReimbursement).toBeCloseTo(expectedTotalReimbursement, 2);
           }
         ),
-        { numRuns: 30 }
+        pbtOptions()
       );
     });
   });
@@ -851,7 +852,7 @@ describe('ExpenseService Insurance Property-Based Tests', () => {
             expect(updatedExpense.original_cost).toBeCloseTo(expenseData.original_cost, 2);
           }
         ),
-        { numRuns: 50 }
+        pbtOptions()
       );
     });
 
@@ -892,7 +893,7 @@ describe('ExpenseService Insurance Property-Based Tests', () => {
             expect(updatedExpense.original_cost).toBeCloseTo(expenseData.original_cost, 2);
           }
         ),
-        { numRuns: 50 }
+        pbtOptions()
       );
     });
   });

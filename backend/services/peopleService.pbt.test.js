@@ -5,6 +5,7 @@
 
 const { describe, test, expect, beforeEach, afterEach } = require('@jest/globals');
 const fc = require('fast-check');
+const { pbtOptions } = require('../test/pbtArbitraries');
 const peopleService = require('./peopleService');
 const { getDatabase } = require('../database/db');
 
@@ -218,7 +219,7 @@ describe('People Service Property-Based Tests', () => {
           }
         }
       ),
-      { numRuns: 20 } // Fewer runs since this test involves more database operations
+      pbtOptions() // Fewer runs since this test involves more database operations
     );
   });
 });

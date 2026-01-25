@@ -7,6 +7,7 @@
  */
 
 const fc = require('fast-check');
+const { pbtOptions } = require('../test/pbtArbitraries');
 const invoiceService = require('./invoiceService');
 const fileValidation = require('../utils/fileValidation');
 const path = require('path');
@@ -93,7 +94,7 @@ describe('Invoice Service - Property-Based Tests - File Upload Validation', () =
           }
         }
       ),
-      { numRuns: 10 }
+      pbtOptions()
     );
   });
 
@@ -148,7 +149,7 @@ describe('Invoice Service - Property-Based Tests - File Upload Validation', () =
           }
         }
       ),
-      { numRuns: 10 }
+      pbtOptions()
     );
   });
 
@@ -180,7 +181,7 @@ describe('Invoice Service - Property-Based Tests - File Upload Validation', () =
           expect(nameWithoutExt.length).toBeGreaterThan(0);
         }
       ),
-      { numRuns: 15 }
+      pbtOptions()
     );
   });
 
@@ -235,7 +236,7 @@ describe('Invoice Service - Property-Based Tests - File Upload Validation', () =
           }
         }
       ),
-      { numRuns: 10 }
+      pbtOptions()
     );
   });
 
@@ -270,7 +271,7 @@ describe('Invoice Service - Property-Based Tests - File Upload Validation', () =
           return true;
         }
       ),
-      { numRuns: 10 }
+      pbtOptions()
     );
   });
 });

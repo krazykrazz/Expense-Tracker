@@ -1,4 +1,5 @@
 const fc = require('fast-check');
+const { pbtOptions } = require('../test/pbtArbitraries');
 const categorySuggestionService = require('./categorySuggestionService');
 const { getDatabase } = require('../database/db');
 const { CATEGORIES } = require('../utils/categories');
@@ -123,7 +124,7 @@ describe('CategorySuggestionService - Property-Based Tests', () => {
           expect(suggestion.confidence).toBe(0.5);
         }
       ),
-      { numRuns: 100 }
+      pbtOptions()
     );
   }, 120000);
 
@@ -146,7 +147,7 @@ describe('CategorySuggestionService - Property-Based Tests', () => {
           expect(suggestion).toBeNull();
         }
       ),
-      { numRuns: 100 }
+      pbtOptions()
     );
   }, 60000);
 

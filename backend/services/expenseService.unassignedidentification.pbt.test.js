@@ -1,4 +1,5 @@
 const fc = require('fast-check');
+const { pbtOptions } = require('../test/pbtArbitraries');
 const expenseService = require('./expenseService');
 const peopleService = require('./peopleService');
 
@@ -245,7 +246,7 @@ describe('ExpenseService Unassigned Expense Identification Property Tests', () =
           }
         }
       ),
-      { numRuns: 10 }
+      pbtOptions()
     );
   });
 });

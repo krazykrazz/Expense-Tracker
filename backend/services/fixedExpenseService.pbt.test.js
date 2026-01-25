@@ -1,4 +1,5 @@
 const fc = require('fast-check');
+const { pbtOptions } = require('../test/pbtArbitraries');
 const fixedExpenseService = require('./fixedExpenseService');
 const { CATEGORIES } = require('../utils/categories');
 
@@ -29,7 +30,7 @@ describe('FixedExpenseService Property-Based Tests', () => {
             }).toThrow();
           }
         ),
-        { numRuns: 100 }
+        pbtOptions()
       );
     });
 
@@ -60,7 +61,7 @@ describe('FixedExpenseService Property-Based Tests', () => {
             }).toThrow();
           }
         ),
-        { numRuns: 100 }
+        pbtOptions()
       );
     });
 
@@ -89,7 +90,7 @@ describe('FixedExpenseService Property-Based Tests', () => {
             }).toThrow(/Category is required/);
           }
         ),
-        { numRuns: 100 }
+        pbtOptions()
       );
     });
 
@@ -118,7 +119,7 @@ describe('FixedExpenseService Property-Based Tests', () => {
             }).toThrow(/Payment type is required/);
           }
         ),
-        { numRuns: 100 }
+        pbtOptions()
       );
     });
   });
@@ -198,7 +199,7 @@ describe('FixedExpenseService Property-Based Tests', () => {
             }
           }
         ),
-        { numRuns: 20 } // Reduced runs since this involves database operations
+        pbtOptions() // Reduced runs since this involves database operations
       );
     });
   });

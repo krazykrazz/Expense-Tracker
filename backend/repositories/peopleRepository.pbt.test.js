@@ -5,6 +5,7 @@
 
 const { describe, test, expect, beforeEach, afterEach } = require('@jest/globals');
 const fc = require('fast-check');
+const { pbtOptions } = require('../test/pbtArbitraries');
 const peopleRepository = require('./peopleRepository');
 const { getDatabase } = require('../database/db');
 
@@ -94,7 +95,7 @@ describe('People Repository Property-Based Tests', () => {
           expect(deleted).toBe(true);
         }
       ),
-      { numRuns: 100 }
+      pbtOptions()
     );
   });
 
@@ -211,7 +212,7 @@ describe('People Repository Property-Based Tests', () => {
           }
         }
       ),
-      { numRuns: 20 } // Fewer runs since this test involves more database operations
+      pbtOptions() // Fewer runs since this test involves more database operations
     );
   });
 });

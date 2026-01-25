@@ -9,6 +9,7 @@
  */
 
 const fc = require('fast-check');
+const { pbtOptions } = require('../test/pbtArbitraries');
 const expenseRepository = require('../repositories/expenseRepository');
 const expenseService = require('../services/expenseService');
 const { getDatabase } = require('../database/db');
@@ -177,7 +178,7 @@ describe('ExpenseController Insurance Property-Based Tests', () => {
             }
           }
         ),
-        { numRuns: 20, timeout: 30000 }
+        pbtOptions({ timeout: 30000 })
       );
     });
 
@@ -239,7 +240,7 @@ describe('ExpenseController Insurance Property-Based Tests', () => {
             }
           }
         ),
-        { numRuns: 10, timeout: 30000 }
+        pbtOptions({ timeout: 30000 })
       );
     });
 
@@ -305,7 +306,7 @@ describe('ExpenseController Insurance Property-Based Tests', () => {
             }
           }
         ),
-        { numRuns: 10, timeout: 30000 }
+        pbtOptions({ timeout: 30000 })
       );
     });
 
@@ -332,7 +333,7 @@ describe('ExpenseController Insurance Property-Based Tests', () => {
             return true;
           }
         ),
-        { numRuns: 20, timeout: 15000 }
+        pbtOptions({ timeout: 15000 })
       );
     });
   });

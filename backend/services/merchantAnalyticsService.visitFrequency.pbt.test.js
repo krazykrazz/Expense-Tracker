@@ -1,4 +1,5 @@
 const fc = require('fast-check');
+const { pbtOptions } = require('../test/pbtArbitraries');
 const merchantAnalyticsService = require('./merchantAnalyticsService');
 const { getDatabase } = require('../database/db');
 
@@ -171,7 +172,7 @@ describe('MerchantAnalyticsService - Visit Frequency Sorting Property Tests', ()
           expect(merchantsByVisits.length).toBe(merchantData.length);
         }
       ),
-      { numRuns: 20, timeout: 25000 }
+      pbtOptions({ timeout: 25000 })
     );
   }, 30000);
 });

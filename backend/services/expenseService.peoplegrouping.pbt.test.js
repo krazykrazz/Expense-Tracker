@@ -4,6 +4,7 @@
  */
 
 const fc = require('fast-check');
+const { pbtOptions } = require('../test/pbtArbitraries');
 const expenseService = require('./expenseService');
 const peopleService = require('./peopleService');
 const expensePeopleRepository = require('../repositories/expensePeopleRepository');
@@ -214,7 +215,7 @@ describe('ExpenseService - Property-Based Tests for People Grouping', () => {
           }
         }
       ),
-      { numRuns: 100 }
+      pbtOptions()
     );
   }, 120000); // Increased timeout for multiple database operations
 
@@ -389,7 +390,7 @@ describe('ExpenseService - Property-Based Tests for People Grouping', () => {
           expect(totalDonationFromPersons).toBeCloseTo(expectedDonationTotal, 2);
         }
       ),
-      { numRuns: 100 }
+      pbtOptions()
     );
   }, 120000); // Increased timeout for multiple database operations
 
@@ -661,7 +662,7 @@ describe('ExpenseService - Property-Based Tests for People Grouping', () => {
           expect(allUnassignedExpenses.length).toBe(unassignedExpenses.length);
         }
       ),
-      { numRuns: 100 }
+      pbtOptions()
     );
   }, 120000); // Increased timeout for multiple database operations
 });

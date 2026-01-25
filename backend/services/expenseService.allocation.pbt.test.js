@@ -1,4 +1,5 @@
 const fc = require('fast-check');
+const { pbtOptions } = require('../test/pbtArbitraries');
 const expenseService = require('./expenseService');
 
 /**
@@ -68,7 +69,7 @@ describe('ExpenseService - Amount Allocation Validation Properties', () => {
             }).toThrow(/Total allocated amount .* must equal expense amount/);
           }
         ),
-        { numRuns: 100 }
+        pbtOptions()
       );
     });
 
@@ -89,7 +90,7 @@ describe('ExpenseService - Amount Allocation Validation Properties', () => {
             }).toThrow(/Each allocation amount must be a positive number/);
           }
         ),
-        { numRuns: 100 }
+        pbtOptions()
       );
     });
 
@@ -109,7 +110,7 @@ describe('ExpenseService - Amount Allocation Validation Properties', () => {
             }).toThrow(/Each allocation amount must be a positive number/);
           }
         ),
-        { numRuns: 100 }
+        pbtOptions()
       );
     });
 
@@ -130,7 +131,7 @@ describe('ExpenseService - Amount Allocation Validation Properties', () => {
             }).toThrow(/Cannot allocate to the same person multiple times/);
           }
         ),
-        { numRuns: 100 }
+        pbtOptions()
       );
     });
 
@@ -146,7 +147,7 @@ describe('ExpenseService - Amount Allocation Validation Properties', () => {
             }).toThrow(/At least one person allocation is required/);
           }
         ),
-        { numRuns: 100 }
+        pbtOptions()
       );
     });
 
@@ -171,7 +172,7 @@ describe('ExpenseService - Amount Allocation Validation Properties', () => {
             }).toThrow(/Each allocation must have a valid personId/);
           }
         ),
-        { numRuns: 100 }
+        pbtOptions()
       );
     });
 
@@ -192,7 +193,7 @@ describe('ExpenseService - Amount Allocation Validation Properties', () => {
             }).not.toThrow();
           }
         ),
-        { numRuns: 100 }
+        pbtOptions()
       );
     });
 
@@ -221,7 +222,7 @@ describe('ExpenseService - Amount Allocation Validation Properties', () => {
             // If the amount gets rounded, the property holds vacuously (test passes)
           }
         ),
-        { numRuns: 100 }
+        pbtOptions()
       );
     });
   });

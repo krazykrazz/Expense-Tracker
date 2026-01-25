@@ -4,6 +4,7 @@
  */
 
 const fc = require('fast-check');
+const { pbtOptions } = require('../test/pbtArbitraries');
 const sqlite3 = require('sqlite3').verbose();
 const { CATEGORIES } = require('../utils/categories');
 
@@ -139,7 +140,7 @@ describe('Fixed Expense Repository - Property-Based Tests', () => {
           }
         }
       ),
-      { numRuns: 100 }
+      pbtOptions()
     );
   });
 
@@ -193,7 +194,7 @@ describe('Fixed Expense Repository - Property-Based Tests', () => {
           }
         }
       ),
-      { numRuns: 100 }
+      pbtOptions()
     );
   });
 });

@@ -4,6 +4,7 @@
  */
 
 const fc = require('fast-check');
+const { pbtOptions } = require('../test/pbtArbitraries');
 const budgetService = require('./budgetService');
 const { getDatabase } = require('../database/db');
 const { BUDGETABLE_CATEGORIES } = require('../utils/categories');
@@ -98,7 +99,7 @@ describe('BudgetService - Property-Based Tests', () => {
           expect(Math.abs(actualIncrease - expectedAdditional)).toBeLessThan(0.01);
         }
       ),
-      { numRuns: 100 }
+      pbtOptions()
     );
   }, 120000); // 2 minute timeout for database operations
 
@@ -169,7 +170,7 @@ describe('BudgetService - Property-Based Tests', () => {
           expect(progress.remaining).toBeLessThan(0);
         }
       ),
-      { numRuns: 100 }
+      pbtOptions()
     );
   }, 120000); // 2 minute timeout for database operations
 });

@@ -4,6 +4,7 @@
  */
 
 const fc = require('fast-check');
+const { pbtOptions } = require('../test/pbtArbitraries');
 const { CATEGORIES, BUDGETABLE_CATEGORIES, TAX_DEDUCTIBLE_CATEGORIES, isValid, isBudgetable, isTaxDeductible } = require('./categories');
 
 describe('Categories - Property-Based Tests', () => {
@@ -25,7 +26,7 @@ describe('Categories - Property-Based Tests', () => {
           return true;
         }
       ),
-      { numRuns: 100 }
+      pbtOptions()
     );
 
     // Test 2: Invalid categories should be rejected
@@ -42,7 +43,7 @@ describe('Categories - Property-Based Tests', () => {
           return true;
         }
       ),
-      { numRuns: 100 }
+      pbtOptions()
     );
 
     // Test 3: Case sensitivity - categories with different casing should be rejected
@@ -65,7 +66,7 @@ describe('Categories - Property-Based Tests', () => {
           return true;
         }
       ),
-      { numRuns: 100 }
+      pbtOptions()
     );
 
     // Test 4: Categories with extra whitespace should be rejected
@@ -91,7 +92,7 @@ describe('Categories - Property-Based Tests', () => {
           return true;
         }
       ),
-      { numRuns: 100 }
+      pbtOptions()
     );
   });
 
@@ -110,7 +111,7 @@ describe('Categories - Property-Based Tests', () => {
           return true;
         }
       ),
-      { numRuns: 100 }
+      pbtOptions()
     );
   });
 
@@ -131,7 +132,7 @@ describe('Categories - Property-Based Tests', () => {
           return true;
         }
       ),
-      { numRuns: 100 }
+      pbtOptions()
     );
   });
 
@@ -156,7 +157,7 @@ describe('Categories - Property-Based Tests', () => {
           return true;
         }
       ),
-      { numRuns: 100 }
+      pbtOptions()
     );
   });
 
@@ -187,7 +188,7 @@ describe('Categories - Property-Based Tests', () => {
           return true;
         }
       ),
-      { numRuns: 100 }
+      pbtOptions()
     );
   });
 
@@ -210,7 +211,7 @@ describe('Categories - Property-Based Tests', () => {
           return true;
         }
       ),
-      { numRuns: 100 }
+      pbtOptions()
     );
   });
 
@@ -233,7 +234,7 @@ describe('Categories - Property-Based Tests', () => {
           return true;
         }
       ),
-      { numRuns: 100 }
+      pbtOptions()
     );
   });
 
@@ -256,7 +257,7 @@ describe('Categories - Property-Based Tests', () => {
           return true;
         }
       ),
-      { numRuns: 100 }
+      pbtOptions()
     );
   });
 
@@ -316,7 +317,7 @@ describe('Categories - Property-Based Tests', () => {
           return true;
         }
       ),
-      { numRuns: 100 }
+      pbtOptions()
     );
   });
 });

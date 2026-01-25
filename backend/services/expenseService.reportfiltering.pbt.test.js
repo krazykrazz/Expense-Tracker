@@ -1,4 +1,5 @@
 const fc = require('fast-check');
+const { pbtOptions } = require('../test/pbtArbitraries');
 const expenseService = require('./expenseService');
 const expenseRepository = require('../repositories/expenseRepository');
 const expensePeopleRepository = require('../repositories/expensePeopleRepository');
@@ -134,7 +135,7 @@ describe('ExpenseService - Report Filtering Properties', () => {
             expect(report.medicalTotal).toBeCloseTo(expectedMedicalTotal, 2);
           }
         ),
-        { numRuns: 15 } // Reduced runs due to database operations
+        pbtOptions()
       );
     });
 
@@ -229,7 +230,7 @@ describe('ExpenseService - Report Filtering Properties', () => {
             expect(report.medicalTotal).toBeCloseTo(expectedMedicalTotal, 2);
           }
         ),
-        { numRuns: 15 }
+        pbtOptions()
       );
     });
 
@@ -296,7 +297,7 @@ describe('ExpenseService - Report Filtering Properties', () => {
             expect(sumOfAllocations).toBeCloseTo(totalAmount, 2);
           }
         ),
-        { numRuns: 15 }
+        pbtOptions()
       );
     });
   });

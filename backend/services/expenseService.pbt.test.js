@@ -1,4 +1,5 @@
 const fc = require('fast-check');
+const { pbtOptions } = require('../test/pbtArbitraries');
 const expenseService = require('./expenseService');
 const { getDatabase, recreateTestDatabase } = require('../database/db');
 const { CATEGORIES } = require('../utils/categories');
@@ -70,7 +71,7 @@ describe('ExpenseService - Property-Based Tests for Category Persistence', () =>
             expect(retrievedExpense.type).toBe(createdExpense.type);
           }
         ),
-        { numRuns: 50 } // Reduced from 100 to minimize database stress
+        pbtOptions() // Reduced from 100 to minimize database stress
       );
     } finally {
       // Clean up created expenses

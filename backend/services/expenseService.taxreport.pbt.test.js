@@ -9,6 +9,7 @@
  */
 
 const fc = require('fast-check');
+const { pbtOptions } = require('../test/pbtArbitraries');
 const { getDatabase } = require('../database/db');
 const expenseService = require('./expenseService');
 const invoiceRepository = require('../repositories/invoiceRepository');
@@ -129,7 +130,7 @@ describe('ExpenseService - Property-Based Tests for Tax Report Multi-Invoice Sup
           return true;
         }
       ),
-      { numRuns: 50 }
+      pbtOptions()
     );
   });
 
@@ -235,7 +236,7 @@ describe('ExpenseService - Property-Based Tests for Tax Report Multi-Invoice Sup
           return true;
         }
       ),
-      { numRuns: 50 }
+      pbtOptions()
     );
   });
 
@@ -310,7 +311,7 @@ describe('ExpenseService - Property-Based Tests for Tax Report Multi-Invoice Sup
           return true;
         }
       ),
-      { numRuns: 30 }
+      pbtOptions()
     );
   });
 });

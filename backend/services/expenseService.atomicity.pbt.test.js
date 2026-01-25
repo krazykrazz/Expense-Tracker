@@ -1,4 +1,5 @@
 const fc = require('fast-check');
+const { pbtOptions } = require('../test/pbtArbitraries');
 const expenseService = require('./expenseService');
 const expenseRepository = require('../repositories/expenseRepository');
 const { getDatabase } = require('../database/db');
@@ -72,7 +73,7 @@ describe('ExpenseService - Property-Based Tests for Creation Atomicity', () => {
             }
           }
         ),
-        { numRuns: 50 }
+        pbtOptions()
       );
     }, 120000);
 
@@ -126,7 +127,7 @@ describe('ExpenseService - Property-Based Tests for Creation Atomicity', () => {
             }
           }
         ),
-        { numRuns: 30 }
+        pbtOptions()
       );
     }, 180000);
 
@@ -159,7 +160,7 @@ describe('ExpenseService - Property-Based Tests for Creation Atomicity', () => {
             }
           }
         ),
-        { numRuns: 30 }
+        pbtOptions()
       );
     }, 60000);
 
@@ -186,7 +187,7 @@ describe('ExpenseService - Property-Based Tests for Creation Atomicity', () => {
             }
           }
         ),
-        { numRuns: 30 }
+        pbtOptions()
       );
     }, 60000);
   });

@@ -1,4 +1,5 @@
 const fc = require('fast-check');
+const { pbtOptions } = require('../test/pbtArbitraries');
 const expenseService = require('./expenseService');
 const { getDatabase } = require('../database/db');
 const { CATEGORIES } = require('../utils/categories');
@@ -112,7 +113,7 @@ describe('ExpenseService - Property-Based Tests for Category Aggregation', () =>
           }
         }
       ),
-      { numRuns: 100 }
+      pbtOptions()
     );
   }, 180000); // 3 minute timeout for comprehensive test
 });

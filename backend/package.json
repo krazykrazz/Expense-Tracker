@@ -9,7 +9,11 @@
     "build": "cd client && npm install && npm run build",
     "db:check": "node scripts/checkDatabaseSchema.js",
     "db:migrate": "node scripts/addFixedExpensesTable.js",
-    "test": "cross-env NODE_ENV=test jest --runInBand"
+    "test": "cross-env NODE_ENV=test jest --runInBand",
+    "test:fast": "cross-env NODE_ENV=test FAST_CHECK_NUM_RUNS=10 jest --runInBand",
+    "test:unit": "cross-env NODE_ENV=test jest --runInBand --testPathIgnorePatterns=pbt",
+    "test:pbt": "cross-env NODE_ENV=test jest --runInBand --testNamePattern=pbt",
+    "test:ci": "cross-env NODE_ENV=test CI=true FAST_CHECK_NUM_RUNS=25 jest --runInBand --bail"
   },
   "jest": {
     "testTimeout": 30000,
@@ -18,8 +22,7 @@
       "<rootDir>/jest.setup.js"
     ],
     "testEnvironment": "node",
-    "verbose": true,
-    "detectOpenHandles": true,
+    "verbose": false,
     "forceExit": true
   },
   "dependencies": {

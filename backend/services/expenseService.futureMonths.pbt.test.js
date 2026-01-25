@@ -1,4 +1,5 @@
 const fc = require('fast-check');
+const { pbtOptions } = require('../test/pbtArbitraries');
 const expenseService = require('./expenseService');
 const expenseRepository = require('../repositories/expenseRepository');
 const { getDatabase } = require('../database/db');
@@ -75,7 +76,7 @@ describe('ExpenseService - Property-Based Tests for Future Months', () => {
             expect(uniqueIds.size).toBe(allIds.length);
           }
         ),
-        { numRuns: 20 }
+        pbtOptions()
       );
     }, 120000);
 
@@ -98,7 +99,7 @@ describe('ExpenseService - Property-Based Tests for Future Months', () => {
             expect(result.id).toBeGreaterThan(0);
           }
         ),
-        { numRuns: 50 }
+        pbtOptions()
       );
     }, 60000);
   });
@@ -139,7 +140,7 @@ describe('ExpenseService - Property-Based Tests for Future Months', () => {
             }
           }
         ),
-        { numRuns: 20 }
+        pbtOptions()
       );
     }, 120000);
 
@@ -163,7 +164,7 @@ describe('ExpenseService - Property-Based Tests for Future Months', () => {
             expect(uniqueDates.size).toBe(allDates.length);
           }
         ),
-        { numRuns: 20 }
+        pbtOptions()
       );
     }, 120000);
 
@@ -191,7 +192,7 @@ describe('ExpenseService - Property-Based Tests for Future Months', () => {
             }
           }
         ),
-        { numRuns: 50 }
+        pbtOptions()
       );
     }, 120000);
   });
@@ -236,7 +237,7 @@ describe('ExpenseService - Property-Based Tests for Future Months', () => {
             expect(uniqueIds.size).toBe(allIds.length);
           }
         ),
-        { numRuns: 20 }
+        pbtOptions()
       );
     }, 120000);
 
@@ -269,7 +270,7 @@ describe('ExpenseService - Property-Based Tests for Future Months', () => {
             expect(result.method).toBe(updatedData.method);
           }
         ),
-        { numRuns: 50 }
+        pbtOptions()
       );
     }, 60000);
 
@@ -304,7 +305,7 @@ describe('ExpenseService - Property-Based Tests for Future Months', () => {
             }
           }
         ),
-        { numRuns: 20 }
+        pbtOptions()
       );
     }, 120000);
 
@@ -331,7 +332,7 @@ describe('ExpenseService - Property-Based Tests for Future Months', () => {
             expect(expense2After.method).toBe(expense2Data.method);
           }
         ),
-        { numRuns: 50 }
+        pbtOptions()
       );
     }, 120000);
   });

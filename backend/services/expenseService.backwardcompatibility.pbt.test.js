@@ -1,4 +1,5 @@
 const fc = require('fast-check');
+const { pbtOptions } = require('../test/pbtArbitraries');
 const expenseService = require('./expenseService');
 const peopleService = require('./peopleService');
 
@@ -158,7 +159,7 @@ describe('ExpenseService Backward Compatibility Property Tests', () => {
           }
         }
       ),
-      { numRuns: 10 }
+      pbtOptions()
     );
   });
 });

@@ -1,4 +1,5 @@
 const fc = require('fast-check');
+const { pbtOptions } = require('../test/pbtArbitraries');
 const expenseService = require('./expenseService');
 const { getDatabase } = require('../database/db');
 
@@ -134,7 +135,7 @@ describe('ExpenseService - Net Worth Property-Based Tests', () => {
           expect(Math.abs(summary.netWorth - (summary.totalAssets - summary.totalLiabilities))).toBeLessThan(0.01);
         }
       ),
-      { numRuns: 100 }
+      pbtOptions()
     );
   }, 60000);
 
@@ -222,7 +223,7 @@ describe('ExpenseService - Net Worth Property-Based Tests', () => {
           expect(summary.totalLiabilities).toBeGreaterThanOrEqual(0);
         }
       ),
-      { numRuns: 100 }
+      pbtOptions()
     );
   }, 60000);
 });

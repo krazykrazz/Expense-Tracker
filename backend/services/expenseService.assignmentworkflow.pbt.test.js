@@ -1,4 +1,5 @@
 const fc = require('fast-check');
+const { pbtOptions } = require('../test/pbtArbitraries');
 const expenseService = require('./expenseService');
 const expenseRepository = require('../repositories/expenseRepository');
 const expensePeopleRepository = require('../repositories/expensePeopleRepository');
@@ -128,7 +129,7 @@ describe('ExpenseService - Assignment Workflow Properties', () => {
             expect(unassignedExpenseIds).not.toContain(expense.id);
           }
         ),
-        { numRuns: 20 } // Reduced runs due to database operations
+        pbtOptions() // Reduced runs due to database operations
       );
     });
 
@@ -186,7 +187,7 @@ describe('ExpenseService - Assignment Workflow Properties', () => {
             expect(updatedExpense.method).toBe(validPaymentMethod);
           }
         ),
-        { numRuns: 20 }
+        pbtOptions()
       );
     });
 
@@ -264,7 +265,7 @@ describe('ExpenseService - Assignment Workflow Properties', () => {
             expect(people[0].amount).toBe(amount);
           }
         ),
-        { numRuns: 20 }
+        pbtOptions()
       );
     });
   });

@@ -1,4 +1,5 @@
 const fc = require('fast-check');
+const { pbtOptions } = require('../test/pbtArbitraries');
 const expenseService = require('./expenseService');
 const fixedExpenseService = require('./fixedExpenseService');
 const { getDatabase } = require('../database/db');
@@ -124,7 +125,7 @@ describe('ExpenseService - Property-Based Tests for Fixed Expense Aggregation', 
           }
         }
       ),
-      { numRuns: 100 }
+      pbtOptions()
     );
   }, 180000);
 
@@ -216,7 +217,7 @@ describe('ExpenseService - Property-Based Tests for Fixed Expense Aggregation', 
           }
         }
       ),
-      { numRuns: 100 }
+      pbtOptions()
     );
   }, 180000);
 
@@ -270,7 +271,7 @@ describe('ExpenseService - Property-Based Tests for Fixed Expense Aggregation', 
           }
         }
       ),
-      { numRuns: 100 }
+      pbtOptions()
     );
   }, 180000);
 
@@ -324,7 +325,7 @@ describe('ExpenseService - Property-Based Tests for Fixed Expense Aggregation', 
           }
         }
       ),
-      { numRuns: 100 }
+      pbtOptions()
     );
   }, 180000);
 });

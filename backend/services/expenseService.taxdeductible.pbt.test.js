@@ -4,6 +4,7 @@
  */
 
 const fc = require('fast-check');
+const { pbtOptions } = require('../test/pbtArbitraries');
 const expenseService = require('./expenseService');
 const { getDatabase } = require('../database/db');
 const { TAX_DEDUCTIBLE_CATEGORIES, CATEGORIES } = require('../utils/categories');
@@ -146,7 +147,7 @@ describe('ExpenseService - Property-Based Tests for Tax-Deductible Identificatio
           }
         }
       ),
-      { numRuns: 100 }
+      pbtOptions()
     );
   }, 120000); // Increased timeout for multiple database operations
 
@@ -207,7 +208,7 @@ describe('ExpenseService - Property-Based Tests for Tax-Deductible Identificatio
           }
         }
       ),
-      { numRuns: 50 }
+      pbtOptions()
     );
   }, 120000);
 
@@ -294,7 +295,7 @@ describe('ExpenseService - Property-Based Tests for Tax-Deductible Identificatio
           }
         }
       ),
-      { numRuns: 30 }
+      pbtOptions()
     );
   }, 120000);
 
@@ -332,7 +333,7 @@ describe('ExpenseService - Property-Based Tests for Tax-Deductible Identificatio
           expect(found.type).toBe(category);
         }
       ),
-      { numRuns: 100 }
+      pbtOptions()
     );
   }, 60000);
 });

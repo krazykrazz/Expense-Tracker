@@ -351,6 +351,7 @@ class UploadMiddleware {
 
   /**
    * Progress tracking middleware (for future enhancement)
+   * Note: This runs BEFORE multer processes the request, so req.body may not be populated yet
    * @param {Object} req - Express request
    * @param {Object} res - Express response
    * @param {Function} next - Next middleware
@@ -358,12 +359,12 @@ class UploadMiddleware {
   trackUploadProgress(req, res, next) {
     // This is a placeholder for future upload progress tracking
     // Could be enhanced with WebSocket or Server-Sent Events
+    // Note: req.body.expenseId is not available here as multer hasn't processed the request yet
     
     const contentLength = parseInt(req.get('Content-Length') || '0');
     if (contentLength > 1024 * 1024) { // 1MB threshold
       logger.debug('Large file upload detected:', {
-        contentLength,
-        expenseId: req.body.expenseId
+        contentLength
       });
     }
     

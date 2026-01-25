@@ -194,16 +194,24 @@ class UploadMiddleware {
    * @param {Function} next - Next middleware
    */
   handleMulterError(error, req, res, next) {
-    logger.error('Upload middleware error:', {
-      error: error.message,
-      code: error.code,
-      field: error.field,
-      storageErrors: error.storageErrors
-    });
+    // Only log if there's an actual error
+    if (error) {
+      logger.error('Upload middleware error:', {
+        error: error.message,
+        code: error.code,
+        field: error.field,
+        storageErrors: error.storageErrors
+      });
+    }
 
     // Clean up any temporary files on error
     if (req.file && req.file.path) {
       this.cleanupTempFile(req.file.path);
+    }
+
+    // If no error, pass to next middleware
+    if (!error) {
+      return next();
     }
 
     if (error instanceof multer.MulterError) {
@@ -304,6 +312,7 @@ class UploadMiddleware {
 
   /**
    * Request validation middleware for upload endpoints
+   * Note: This runs BEFORE multer processes the request, so req.body may not be populated yet
    * @param {Object} req - Express request
    * @param {Object} res - Express response
    * @param {Function} next - Next middleware
@@ -320,8 +329,8 @@ class UploadMiddleware {
     const clientIP = req.ip || req.connection.remoteAddress || 'unknown';
     
     // Log upload attempt with security info (debug level - verbose request details)
+    // Note: req.body.expenseId may not be available yet as multer hasn't processed the request
     logger.debug('Invoice upload request:', {
-      expenseId: req.body.expenseId,
       userAgent: userAgent.substring(0, 200), // Limit log size
       ip: clientIP,
       timestamp: new Date().toISOString(),
@@ -363,42 +372,16 @@ class UploadMiddleware {
 
   /**
    * Concurrent upload protection middleware
+   * Note: This runs BEFORE multer processes the request, so req.body may not be populated yet
+   * The actual protection happens after multer processes the request in the controller
    * @param {Object} req - Express request
    * @param {Object} res - Express response
    * @param {Function} next - Next middleware
    */
   protectConcurrentUploads(req, res, next) {
-    // Simple in-memory tracking (could be enhanced with Redis for production)
-    const expenseId = req.body.expenseId;
-    const clientIP = req.ip;
-    
-    if (expenseId) {
-      const uploadKey = `upload_${expenseId}_${clientIP}`;
-      
-      // Check if upload is already in progress (this is a simplified check)
-      // In production, you might want to use a more sophisticated locking mechanism
-      if (req.app.locals.activeUploads && req.app.locals.activeUploads.has(uploadKey)) {
-        return res.status(409).json({
-          success: false,
-          error: 'Upload already in progress for this expense',
-          code: 'UPLOAD_IN_PROGRESS'
-        });
-      }
-      
-      // Mark upload as active
-      if (!req.app.locals.activeUploads) {
-        req.app.locals.activeUploads = new Set();
-      }
-      req.app.locals.activeUploads.add(uploadKey);
-      
-      // Clean up on response finish
-      res.on('finish', () => {
-        if (req.app.locals.activeUploads) {
-          req.app.locals.activeUploads.delete(uploadKey);
-        }
-      });
-    }
-    
+    // Note: req.body.expenseId is not available here as multer hasn't processed the request yet
+    // Concurrent upload protection is handled at the controller/service level instead
+    // This middleware is kept for future enhancement when we can access the expenseId earlier
     next();
   }
 }

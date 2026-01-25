@@ -15,8 +15,11 @@
  * - Increased timeouts for CI environments
  * - Retry logic for flaky tests (jest.retryTimes)
  * - Console suppression to reduce noise
+ * - Directory initialization for file-based tests
  */
 
+const fs = require('fs');
+const path = require('path');
 const { getTestDatabase, closeTestDatabase } = require('./database/db');
 
 // Detect CI environment
@@ -30,6 +33,27 @@ jest.setTimeout(baseTimeout);
 if (isCI) {
   jest.retryTimes(2, { logErrorsBeforeRetry: true });
 }
+
+// Ensure required directories exist for file-based tests
+const ensureTestDirectories = () => {
+  const configDir = path.join(__dirname, 'config');
+  const directories = [
+    path.join(configDir, 'database'),
+    path.join(configDir, 'backups'),
+    path.join(configDir, 'invoices'),
+    path.join(configDir, 'invoices', 'temp'),
+    path.join(configDir, 'config')
+  ];
+
+  for (const dir of directories) {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+  }
+};
+
+// Initialize directories before any tests run
+ensureTestDirectories();
 
 // Track if we've initialized the test database
 let testDbInitialized = false;

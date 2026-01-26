@@ -263,6 +263,27 @@ async function getTaxDeductibleSummary(req, res) {
 }
 
 /**
+ * Get lightweight tax-deductible summary for YoY comparison
+ * GET /api/expenses/tax-deductible/summary?year=2024
+ * Returns only totals and counts, not full expense lists
+ */
+async function getTaxDeductibleYoYSummary(req, res) {
+  try {
+    const { year } = req.query;
+    
+    if (!year) {
+      return res.status(400).json({ error: 'Year query parameter is required' });
+    }
+    
+    const summary = await expenseService.getTaxDeductibleYoYSummary(parseInt(year));
+    res.status(200).json(summary);
+  } catch (error) {
+    logger.error('Error fetching tax-deductible YoY summary:', error);
+    res.status(500).json({ error: 'Failed to retrieve tax-deductible summary' });
+  }
+}
+
+/**
  * Get monthly gross income
  * GET /api/monthly-gross?year=2024&month=11
  */
@@ -446,6 +467,7 @@ module.exports = {
   getSummary,
   getAnnualSummary,
   getTaxDeductibleSummary,
+  getTaxDeductibleYoYSummary,
   getMonthlyGross,
   setMonthlyGross,
   backupDatabase,

@@ -288,3 +288,19 @@ export const updateInsuranceStatus = async (expenseId, status) => {
     throw error;
   }
 };
+
+/**
+ * Get lightweight tax deductible summary for YoY comparison
+ * Returns only totals and counts, not full expense lists
+ * 
+ * @param {number} year - Year to get summary for
+ * @returns {Promise<Object>} Summary with medicalTotal, donationTotal, totalDeductible, counts
+ */
+export const getTaxDeductibleSummary = async (year) => {
+  try {
+    return await apiGet(API_ENDPOINTS.TAX_DEDUCTIBLE_SUMMARY(year), 'fetch tax deductible summary');
+  } catch (error) {
+    logApiError('fetching tax deductible summary', error);
+    throw error;
+  }
+};

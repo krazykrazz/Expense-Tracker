@@ -1434,6 +1434,46 @@ class ExpenseService {
   }
 
   /**
+   * Get lightweight tax-deductible summary for YoY comparison
+   * Returns only totals and counts, not full expense lists
+   * @param {number} year - The year to get summary for
+   * @returns {Promise<Object>} Lightweight summary object
+   */
+  async getTaxDeductibleYoYSummary(year) {
+    // Validate year parameter
+    if (!year) {
+      throw new Error('Year parameter is required');
+    }
+
+    const yearNum = parseInt(year);
+    if (isNaN(yearNum)) {
+      throw new Error('Year must be a valid number');
+    }
+
+    // Call repository method to fetch expenses
+    const expenses = await expenseRepository.getTaxDeductibleExpenses(yearNum);
+
+    // Separate expenses into medical and donations arrays
+    const medicalExpenses = expenses.filter(exp => exp.type === 'Tax - Medical');
+    const donationExpenses = expenses.filter(exp => exp.type === 'Tax - Donation');
+
+    // Calculate totals
+    const medicalTotal = medicalExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+    const donationTotal = donationExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+    const totalDeductible = medicalTotal + donationTotal;
+
+    // Return lightweight summary (no expense lists)
+    return {
+      year: yearNum,
+      medicalTotal: parseFloat(medicalTotal.toFixed(2)),
+      donationTotal: parseFloat(donationTotal.toFixed(2)),
+      totalDeductible: parseFloat(totalDeductible.toFixed(2)),
+      medicalCount: medicalExpenses.length,
+      donationCount: donationExpenses.length
+    };
+  }
+
+  /**
    * Calculate insurance summary from medical expenses
    * @param {Array} medicalExpenses - Array of medical expenses
    * @returns {Object} Insurance summary object

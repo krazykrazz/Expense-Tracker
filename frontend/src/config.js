@@ -79,6 +79,9 @@ export const API_ENDPOINTS = {
   // Insurance Status
   INSURANCE_STATUS: (id) => `${API_BASE_URL}/api/expenses/${id}/insurance-status`,
   
+  // Tax Deductible
+  TAX_DEDUCTIBLE_SUMMARY: (year) => `${API_BASE_URL}/api/expenses/tax-deductible/summary?year=${year}`,
+  
   // Invoices
   INVOICES: `${API_BASE_URL}/api/invoices`,
   INVOICE_UPLOAD: `${API_BASE_URL}/api/invoices/upload`,

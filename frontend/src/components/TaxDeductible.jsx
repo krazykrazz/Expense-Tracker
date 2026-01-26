@@ -3,8 +3,7 @@ import './TaxDeductible.css';
 import { formatAmount, formatLocalDate, getMonthNameShort } from '../utils/formatters';
 import { getCategories } from '../services/categoriesApi';
 import { getPeople } from '../services/peopleApi';
-import { getExpenseWithPeople, updateExpense, updateInsuranceStatus } from '../services/expenseApi';
-import { API_ENDPOINTS } from '../config';
+import { getExpenseWithPeople, updateExpense, updateInsuranceStatus, getTaxDeductibleSummary } from '../services/expenseApi';
 import { PAYMENT_METHODS } from '../utils/constants';
 import PersonAllocationModal from './PersonAllocationModal';
 import InvoiceIndicator from './InvoiceIndicator';
@@ -12,6 +11,11 @@ import InvoiceList from './InvoiceList';
 import InsuranceStatusIndicator from './InsuranceStatusIndicator';
 import QuickStatusUpdate from './QuickStatusUpdate';
 import { getInvoicesForExpense } from '../services/invoiceApi';
+import { calculatePercentageChange, getChangeIndicator } from '../utils/yoyComparison';
+import { getNetIncomeForYear, saveNetIncomeForYear, getSelectedProvince, saveSelectedProvince } from '../utils/taxSettingsStorage';
+import { calculateAllTaxCredits } from '../utils/taxCreditCalculator';
+import { TAX_RATES } from '../utils/taxRatesConfig';
+import { getAnnualIncomeByCategory } from '../services/incomeApi';
 
 const TaxDeductible = ({ year, refreshTrigger }) => {
   const [taxDeductible, setTaxDeductible] = useState(null);
@@ -50,6 +54,17 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [invoiceModalExpense, setInvoiceModalExpense] = useState(null);
   const [invoiceModalInvoices, setInvoiceModalInvoices] = useState([]);
+
+  // YoY comparison state
+  const [previousYearData, setPreviousYearData] = useState(null);
+  const [yoyLoading, setYoyLoading] = useState(false);
+  const [yoyError, setYoyError] = useState(null);
+
+  // Tax Credit Calculator state - Requirements 3.1, 3.2, 3.3, 6.1, 6.2
+  const [netIncome, setNetIncome] = useState(null);
+  const [netIncomeInput, setNetIncomeInput] = useState('');
+  const [selectedProvince, setSelectedProvince] = useState('ON');
+  const [loadingAppIncome, setLoadingAppIncome] = useState(false);
 
   useEffect(() => {
     fetchTaxDeductibleData();
@@ -101,6 +116,38 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
       window.removeEventListener('peopleUpdated', handlePeopleUpdated);
     };
   }, [year, groupByPerson]);
+
+  // Fetch previous year data for YoY comparison
+  useEffect(() => {
+    const fetchPreviousYearData = async () => {
+      setYoyLoading(true);
+      setYoyError(null);
+      
+      try {
+        const previousYear = year - 1;
+        const data = await getTaxDeductibleSummary(previousYear);
+        setPreviousYearData(data);
+      } catch (err) {
+        console.error('Error fetching previous year data:', err);
+        setYoyError('Unable to load previous year data');
+        setPreviousYearData(null);
+      } finally {
+        setYoyLoading(false);
+      }
+    };
+    
+    fetchPreviousYearData();
+  }, [year, refreshTrigger]);
+
+  // Load saved tax settings when year changes - Requirements 3.3, 3.6, 6.2
+  useEffect(() => {
+    const savedNetIncome = getNetIncomeForYear(year);
+    setNetIncome(savedNetIncome);
+    setNetIncomeInput(savedNetIncome !== null ? savedNetIncome.toString() : '');
+    
+    const savedProvince = getSelectedProvince();
+    setSelectedProvince(savedProvince);
+  }, [year]);
 
   const fetchTaxDeductibleData = async () => {
     setLoading(true);
@@ -352,6 +399,46 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
     setQuickStatusExpense(null);
   }, []);
 
+  // Tax Credit Calculator handlers - Requirements 3.1, 3.2, 3.3, 3.4, 3.5, 6.1, 6.2
+  const handleNetIncomeChange = useCallback((e) => {
+    const value = e.target.value;
+    setNetIncomeInput(value);
+    
+    // Parse and save if valid
+    const numValue = parseFloat(value);
+    if (!isNaN(numValue) && numValue >= 0) {
+      setNetIncome(numValue);
+      saveNetIncomeForYear(year, numValue);
+    } else if (value === '') {
+      setNetIncome(null);
+    }
+  }, [year]);
+
+  const handleProvinceChange = useCallback((e) => {
+    const provinceCode = e.target.value;
+    setSelectedProvince(provinceCode);
+    saveSelectedProvince(provinceCode);
+  }, []);
+
+  // Fetch annual income from app data - Requirement 3.5
+  const handleUseAppIncome = useCallback(async () => {
+    setLoadingAppIncome(true);
+    try {
+      const incomeData = await getAnnualIncomeByCategory(year);
+      const totalIncome = incomeData.total || 0;
+      
+      if (totalIncome > 0) {
+        setNetIncome(totalIncome);
+        setNetIncomeInput(totalIncome.toString());
+        saveNetIncomeForYear(year, totalIncome);
+      }
+    } catch (error) {
+      console.error('Error fetching app income data:', error);
+    } finally {
+      setLoadingAppIncome(false);
+    }
+  }, [year]);
+
   // Calculate invoice coverage statistics
   const invoiceStats = useMemo(() => {
     if (!taxDeductible || !taxDeductible.expenses) {
@@ -395,6 +482,48 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
     return { highestMonthTotal };
   }, [taxDeductible]);
 
+  // Calculate YoY comparison data
+  const yoyComparison = useMemo(() => {
+    if (!taxDeductible) return null;
+    
+    const currentYear = {
+      year: year,
+      medicalTotal: taxDeductible.medicalTotal || 0,
+      donationTotal: taxDeductible.donationTotal || 0,
+      totalDeductible: taxDeductible.totalDeductible || 0
+    };
+    
+    const previousYear = previousYearData ? {
+      year: year - 1,
+      medicalTotal: previousYearData.medicalTotal || 0,
+      donationTotal: previousYearData.donationTotal || 0,
+      totalDeductible: previousYearData.totalDeductible || 0
+    } : null;
+    
+    return {
+      currentYear,
+      previousYear,
+      changes: {
+        medical: calculatePercentageChange(currentYear.medicalTotal, previousYear?.medicalTotal || 0),
+        donations: calculatePercentageChange(currentYear.donationTotal, previousYear?.donationTotal || 0),
+        total: calculatePercentageChange(currentYear.totalDeductible, previousYear?.totalDeductible || 0)
+      }
+    };
+  }, [taxDeductible, previousYearData, year]);
+
+  // Calculate tax credits - Requirements 4.1, 4.2, 4.6, 5.1, 5.2, 5.4, 6.3, 6.4, 6.6
+  const taxCredits = useMemo(() => {
+    if (!taxDeductible || netIncome === null) return null;
+    
+    return calculateAllTaxCredits({
+      medicalTotal: taxDeductible.medicalTotal || 0,
+      donationTotal: taxDeductible.donationTotal || 0,
+      netIncome: netIncome,
+      year: year,
+      provinceCode: selectedProvince
+    });
+  }, [taxDeductible, netIncome, year, selectedProvince]);
+
   if (loading) {
     return (
       <div className="tax-deductible">
@@ -427,6 +556,286 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
               <h3>Donations</h3>
               <div className="big-number">${formatAmount(taxDeductible.donationTotal)}</div>
             </div>
+          </div>
+
+          {/* YoY Comparison Section - Requirements 2.1, 2.2, 2.3, 2.4, 2.5, 2.6 */}
+          {yoyComparison && (
+            <div className="yoy-comparison-section">
+              <h4>📊 Year-over-Year Comparison</h4>
+              {yoyLoading ? (
+                <div className="yoy-loading">Loading previous year data...</div>
+              ) : yoyError ? (
+                <div className="yoy-error">{yoyError}</div>
+              ) : (
+                <div className="yoy-comparison-cards">
+                  {/* Medical YoY Card */}
+                  <div className="yoy-card">
+                    <h5>Medical Expenses</h5>
+                    <div className="yoy-values">
+                      <div className="yoy-current">
+                        <span className="yoy-label">{year}</span>
+                        <span className="yoy-amount">${formatAmount(yoyComparison.currentYear.medicalTotal)}</span>
+                      </div>
+                      <div className="yoy-previous">
+                        <span className="yoy-label">{year - 1}</span>
+                        <span className="yoy-amount">
+                          {yoyComparison.previousYear 
+                            ? `$${formatAmount(yoyComparison.previousYear.medicalTotal)}`
+                            : '—'
+                          }
+                        </span>
+                      </div>
+                    </div>
+                    <div className={`yoy-change yoy-change-${yoyComparison.changes.medical.direction}`}>
+                      <span className="yoy-indicator">{getChangeIndicator(yoyComparison.changes.medical.direction)}</span>
+                      <span className="yoy-percentage">{yoyComparison.changes.medical.formatted}</span>
+                    </div>
+                  </div>
+
+                  {/* Donations YoY Card */}
+                  <div className="yoy-card">
+                    <h5>Donations</h5>
+                    <div className="yoy-values">
+                      <div className="yoy-current">
+                        <span className="yoy-label">{year}</span>
+                        <span className="yoy-amount">${formatAmount(yoyComparison.currentYear.donationTotal)}</span>
+                      </div>
+                      <div className="yoy-previous">
+                        <span className="yoy-label">{year - 1}</span>
+                        <span className="yoy-amount">
+                          {yoyComparison.previousYear 
+                            ? `$${formatAmount(yoyComparison.previousYear.donationTotal)}`
+                            : '—'
+                          }
+                        </span>
+                      </div>
+                    </div>
+                    <div className={`yoy-change yoy-change-${yoyComparison.changes.donations.direction}`}>
+                      <span className="yoy-indicator">{getChangeIndicator(yoyComparison.changes.donations.direction)}</span>
+                      <span className="yoy-percentage">{yoyComparison.changes.donations.formatted}</span>
+                    </div>
+                  </div>
+
+                  {/* Total YoY Card */}
+                  <div className="yoy-card yoy-card-total">
+                    <h5>Total Deductible</h5>
+                    <div className="yoy-values">
+                      <div className="yoy-current">
+                        <span className="yoy-label">{year}</span>
+                        <span className="yoy-amount">${formatAmount(yoyComparison.currentYear.totalDeductible)}</span>
+                      </div>
+                      <div className="yoy-previous">
+                        <span className="yoy-label">{year - 1}</span>
+                        <span className="yoy-amount">
+                          {yoyComparison.previousYear 
+                            ? `$${formatAmount(yoyComparison.previousYear.totalDeductible)}`
+                            : '—'
+                          }
+                        </span>
+                      </div>
+                    </div>
+                    <div className={`yoy-change yoy-change-${yoyComparison.changes.total.direction}`}>
+                      <span className="yoy-indicator">{getChangeIndicator(yoyComparison.changes.total.direction)}</span>
+                      <span className="yoy-percentage">{yoyComparison.changes.total.formatted}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Tax Credit Calculator Section - Requirements 3.1-3.5, 4.1-4.6, 5.1-5.4, 6.1-6.6, 8.1-8.4 */}
+          <div className="tax-credit-calculator-section">
+            <h4>🧮 Tax Credit Calculator</h4>
+            
+            {/* Configuration Section - Requirements 3.1, 3.2, 3.3, 3.4, 3.5, 6.1, 6.2 */}
+            <div className="tax-calculator-config">
+              <div className="config-row">
+                {/* Net Income Input - Requirements 3.1, 3.2, 3.3 */}
+                <div className="config-group">
+                  <label htmlFor="net-income-input">Annual Net Income ({year})</label>
+                  <div className="income-input-wrapper">
+                    <span className="currency-prefix">$</span>
+                    <input
+                      type="number"
+                      id="net-income-input"
+                      value={netIncomeInput}
+                      onChange={handleNetIncomeChange}
+                      placeholder="Enter your net income"
+                      min="0"
+                      max="10000000"
+                      step="100"
+                      className="net-income-input"
+                    />
+                    {/* Use App Income Button - Requirements 3.4, 3.5 */}
+                    <button
+                      type="button"
+                      onClick={handleUseAppIncome}
+                      disabled={loadingAppIncome}
+                      className="use-app-income-btn"
+                      title="Pull income from app's income sources"
+                    >
+                      {loadingAppIncome ? '...' : '📥 Use App Data'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Province Selector - Requirements 6.1, 6.2 */}
+                <div className="config-group">
+                  <label htmlFor="province-select">Province/Territory</label>
+                  <select
+                    id="province-select"
+                    value={selectedProvince}
+                    onChange={handleProvinceChange}
+                    className="province-select"
+                  >
+                    {TAX_RATES.provinces.map(province => (
+                      <option key={province.code} value={province.code}>
+                        {province.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Show prompt if no net income configured - Requirement 3.4 */}
+            {netIncome === null ? (
+              <div className="tax-calculator-prompt">
+                <p>💡 Enter your annual net income above to calculate your estimated tax credits.</p>
+                <p className="prompt-hint">Your net income is used to calculate the medical expense threshold (3% of net income or the federal maximum, whichever is lower).</p>
+              </div>
+            ) : (
+              <>
+                {/* AGI Threshold Progress Section - Requirements 4.3, 4.4, 4.5, 4.6 */}
+                {taxCredits && (
+                  <div className="agi-threshold-section">
+                    <h5>Medical Expense Threshold</h5>
+                    <div className="threshold-info">
+                      <div className="threshold-calculation">
+                        <span className="threshold-label">Your threshold:</span>
+                        <span className="threshold-value">${formatAmount(taxCredits.agiThreshold)}</span>
+                        <span className="threshold-note">
+                          (lesser of 3% × ${formatAmount(netIncome)} = ${formatAmount(netIncome * 0.03)} or ${formatAmount(taxCredits.agiThresholdMax)})
+                        </span>
+                      </div>
+                    </div>
+                    
+                    {/* Progress Bar - Requirements 4.4, 4.5 */}
+                    <div className="threshold-progress-container">
+                      <div className="threshold-progress-bar">
+                        <div 
+                          className={`threshold-progress-fill ${taxCredits.thresholdProgress >= 1 ? 'exceeded' : ''}`}
+                          style={{ width: `${Math.min(taxCredits.thresholdProgress * 100, 100)}%` }}
+                        />
+                        <div className="threshold-marker" style={{ left: '100%' }} />
+                      </div>
+                      <div className="threshold-progress-labels">
+                        <span className="progress-current">
+                          ${formatAmount(taxDeductible?.medicalTotal || 0)} medical expenses
+                        </span>
+                        <span className="progress-threshold">
+                          ${formatAmount(taxCredits.agiThreshold)} threshold
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Deductible Amount - Requirement 4.6 */}
+                    <div className="deductible-amount-display">
+                      {taxCredits.deductibleMedical > 0 ? (
+                        <div className="deductible-positive">
+                          <span className="deductible-label">✅ Deductible amount:</span>
+                          <span className="deductible-value">${formatAmount(taxCredits.deductibleMedical)}</span>
+                          <span className="deductible-note">(medical expenses above threshold)</span>
+                        </div>
+                      ) : (
+                        <div className="deductible-zero">
+                          <span className="deductible-label">Medical expenses below threshold</span>
+                          <span className="deductible-note">
+                            Need ${formatAmount(taxCredits.agiThreshold - (taxDeductible?.medicalTotal || 0))} more to start claiming medical credits
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Tax Credit Breakdown - Requirements 5.3, 5.4, 6.5, 6.6 */}
+                {taxCredits && (
+                  <div className="tax-credit-breakdown">
+                    <h5>Tax Credit Breakdown</h5>
+                    
+                    <div className="credit-breakdown-grid">
+                      {/* Federal Credits - Requirements 5.3, 5.4 */}
+                      <div className="credit-breakdown-card federal">
+                        <h6>🇨🇦 Federal Credits</h6>
+                        <div className="credit-line-items">
+                          <div className="credit-line">
+                            <span className="credit-label">Medical (15%)</span>
+                            <span className="credit-value">${formatAmount(taxCredits.federal.medicalCredit)}</span>
+                          </div>
+                          <div className="credit-line">
+                            <span className="credit-label">Donations (15%/29%)</span>
+                            <span className="credit-value">${formatAmount(taxCredits.federal.donationCredit)}</span>
+                          </div>
+                          <div className="credit-line credit-total">
+                            <span className="credit-label">Federal Total</span>
+                            <span className="credit-value">${formatAmount(taxCredits.federal.total)}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Provincial Credits - Requirements 6.5, 6.6 */}
+                      <div className="credit-breakdown-card provincial">
+                        <h6>🏛️ {taxCredits.provincial.provinceName} Credits</h6>
+                        <div className="credit-line-items">
+                          <div className="credit-line">
+                            <span className="credit-label">Medical ({(taxCredits.provincial.rates?.medicalCreditRate * 100).toFixed(2)}%)</span>
+                            <span className="credit-value">${formatAmount(taxCredits.provincial.medicalCredit)}</span>
+                          </div>
+                          <div className="credit-line">
+                            <span className="credit-label">Donations (tiered)</span>
+                            <span className="credit-value">${formatAmount(taxCredits.provincial.donationCredit)}</span>
+                          </div>
+                          <div className="credit-line credit-total">
+                            <span className="credit-label">Provincial Total</span>
+                            <span className="credit-value">${formatAmount(taxCredits.provincial.total)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Tax Savings Summary Card - Requirements 8.1, 8.2, 8.3, 8.4 */}
+                {taxCredits && (
+                  <div className="tax-savings-summary">
+                    <div className="savings-card">
+                      <h5>💰 Estimated Tax Savings</h5>
+                      <div className="savings-total">
+                        <span className="savings-amount">${formatAmount(taxCredits.totalTaxSavings)}</span>
+                      </div>
+                      <div className="savings-breakdown">
+                        <div className="savings-line">
+                          <span>Federal:</span>
+                          <span>${formatAmount(taxCredits.federal.total)}</span>
+                        </div>
+                        <div className="savings-line">
+                          <span>{taxCredits.provincial.provinceName}:</span>
+                          <span>${formatAmount(taxCredits.provincial.total)}</span>
+                        </div>
+                      </div>
+                      {/* Fallback Warning - Requirement 8.4 */}
+                      {taxCredits.fallbackUsed && (
+                        <div className="fallback-warning">
+                          ⚠️ Using {taxCredits.fallbackYear} tax rates (rates for {year} not yet available)
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
           </div>
 
           {/* Person Grouping Toggle - Only for Medical Expenses */}

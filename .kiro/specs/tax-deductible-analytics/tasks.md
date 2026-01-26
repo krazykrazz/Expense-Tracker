@@ -76,77 +76,77 @@ This implementation adds Year-over-Year comparison and Tax Credit Calculator fea
 - [ ] 5. Checkpoint - Ensure all utility tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 6. Create backend endpoint for YoY summary data
-  - [ ] 6.1 Add route in `backend/routes/expenseRoutes.js`
+- [x] 6. Create backend endpoint for YoY summary data
+  - [x] 6.1 Add route in `backend/routes/expenseRoutes.js`
     - Add GET `/api/expenses/tax-deductible/summary` route
     - _Requirements: 1.1_
   
-  - [ ] 6.2 Add controller method in `backend/controllers/expenseController.js`
+  - [x] 6.2 Add controller method in `backend/controllers/expenseController.js`
     - Implement `getTaxDeductibleSummary(req, res)`
     - Extract year from query params, validate input
     - _Requirements: 1.1_
   
-  - [ ] 6.3 Add service method in `backend/services/expenseService.js`
+  - [x] 6.3 Add service method in `backend/services/expenseService.js`
     - Implement `getTaxDeductibleSummary(year)` returning lightweight summary
     - Return medicalTotal, donationTotal, totalDeductible, counts
     - _Requirements: 1.1_
   
-  - [ ] 6.4 Add endpoint to `frontend/src/config.js`
+  - [x] 6.4 Add endpoint to `frontend/src/config.js`
     - Add `TAX_DEDUCTIBLE_SUMMARY` endpoint constant
     - _Requirements: 1.1_
   
-  - [ ] 6.5 Add API function in `frontend/src/services/expenseApi.js`
+  - [x] 6.5 Add API function in `frontend/src/services/expenseApi.js`
     - Implement `getTaxDeductibleSummary(year)` function
     - _Requirements: 1.1_
 
-- [ ] 7. Implement YoY Comparison UI section
-  - [ ] 7.1 Create YoY comparison section in TaxDeductible component
+- [x] 7. Implement YoY Comparison UI section
+  - [x] 7.1 Create YoY comparison section in TaxDeductible component
     - Add state for previous year data and loading state
     - Fetch both current and previous year data on load
     - _Requirements: 1.1, 1.2, 1.3_
   
-  - [ ] 7.2 Create YoY comparison cards UI
+  - [x] 7.2 Create YoY comparison cards UI
     - Display side-by-side comparison for medical, donations, and total
     - Show percentage change with up/down indicators
     - Handle edge cases (no previous data, API errors)
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6_
   
-  - [ ] 7.3 Add CSS styles for YoY comparison section
+  - [x] 7.3 Add CSS styles for YoY comparison section
     - Style comparison cards with current/previous columns
     - Style change indicators (green for up, red for down, gray for same/new)
     - _Requirements: 2.1_
 
-- [ ] 8. Implement Tax Credit Calculator UI
-  - [ ] 8.1 Create net income configuration section
+- [x] 8. Implement Tax Credit Calculator UI
+  - [x] 8.1 Create net income configuration section
     - Add input field for annual net income
     - Add "Use app income data" button to pull from income_sources
     - Persist to localStorage on change
     - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
   
-  - [ ] 8.2 Create province selector
+  - [x] 8.2 Create province selector
     - Add dropdown with all Canadian provinces
     - Default to Ontario, persist selection
     - _Requirements: 6.1, 6.2_
   
-  - [ ] 8.3 Create AGI threshold progress section
+  - [x] 8.3 Create AGI threshold progress section
     - Display calculated threshold amount
     - Show progress bar for medical expenses vs threshold
     - Display deductible amount when threshold exceeded
     - _Requirements: 4.3, 4.4, 4.5, 4.6_
   
-  - [ ] 8.4 Create tax credit breakdown display
+  - [x] 8.4 Create tax credit breakdown display
     - Show federal credits (medical and donation line items)
     - Show provincial credits (medical and donation line items)
     - Display totals for each level
     - _Requirements: 5.3, 5.4, 6.5, 6.6_
   
-  - [ ] 8.5 Create tax savings summary card
+  - [x] 8.5 Create tax savings summary card
     - Display total estimated tax savings prominently
     - Show federal/provincial breakdown
     - Show fallback warning if using non-current year rates
     - _Requirements: 8.1, 8.2, 8.3, 8.4_
   
-  - [ ] 8.6 Add CSS styles for Tax Credit Calculator
+  - [x] 8.6 Add CSS styles for Tax Credit Calculator
     - Style configuration inputs and selectors
     - Style progress bar for AGI threshold
     - Style credit breakdown tables and summary card

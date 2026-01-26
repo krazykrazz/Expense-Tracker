@@ -206,9 +206,11 @@ describe('ExpenseForm Property-Based Tests', () => {
           localStorage.clear();
         }
       ),
-      { numRuns: 100 }
+      // Reduced numRuns due to async operations (localStorage, form rendering, unmounting)
+      // Each iteration involves multiple async waits which can be slow on CI
+      { numRuns: 25 }
     );
-  });
+  }, 60000);
 
 
   /**

@@ -64,7 +64,7 @@ describe('BudgetAlertManager', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    budgetApi.getBudgets.mockResolvedValue(mockBudgets);
+    budgetApi.getBudgets.mockResolvedValue({ budgets: mockBudgets });
   });
 
   describe('Alert Calculation and State Management', () => {
@@ -149,7 +149,7 @@ describe('BudgetAlertManager', () => {
     });
 
     test('should handle empty budget array', async () => {
-      budgetApi.getBudgets.mockResolvedValue([]);
+      budgetApi.getBudgets.mockResolvedValue({ budgets: [] });
 
       const { container } = render(
         <BudgetAlertManager 
@@ -178,7 +178,7 @@ describe('BudgetAlertManager', () => {
         }
       ];
 
-      budgetApi.getBudgets.mockResolvedValue(safeBudgets);
+      budgetApi.getBudgets.mockResolvedValue({ budgets: safeBudgets });
 
       const { container } = render(
         <BudgetAlertManager 
@@ -414,7 +414,7 @@ describe('BudgetAlertManager', () => {
         { budget: { id: 2, category: 'Gas', limit: 200 }, spent: 185, progress: 92.5 }
       ];
 
-      budgetApi.getBudgets.mockResolvedValue(malformedBudgets);
+      budgetApi.getBudgets.mockResolvedValue({ budgets: malformedBudgets });
 
       render(
         <BudgetAlertManager 
@@ -521,8 +521,8 @@ describe('BudgetAlertManager', () => {
       // Should render nothing while loading
       expect(container.firstChild).toBeNull();
 
-      // Resolve the promise
-      resolvePromise(mockBudgets);
+      // Resolve the promise with wrapped format
+      resolvePromise({ budgets: mockBudgets });
 
       // Should render alerts after loading
       await waitFor(() => {
@@ -595,11 +595,11 @@ describe('BudgetAlertManager', () => {
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       
       // Return all invalid data to trigger "Budget data format is invalid" error
-      budgetApi.getBudgets.mockResolvedValue([
+      budgetApi.getBudgets.mockResolvedValue({ budgets: [
         null,
         undefined,
         { budget: null }
-      ]);
+      ] });
 
       render(
         <BudgetAlertManager 
@@ -628,9 +628,9 @@ describe('BudgetAlertManager', () => {
       const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       
       // First call returns invalid data to trigger error UI
-      budgetApi.getBudgets.mockResolvedValueOnce([null, undefined, { budget: null }]);
+      budgetApi.getBudgets.mockResolvedValueOnce({ budgets: [null, undefined, { budget: null }] });
       // Second call succeeds
-      budgetApi.getBudgets.mockResolvedValueOnce(mockBudgets);
+      budgetApi.getBudgets.mockResolvedValueOnce({ budgets: mockBudgets });
 
       render(
         <BudgetAlertManager 
@@ -681,7 +681,7 @@ describe('BudgetAlertManager', () => {
 
       // Clear the mock and set new data
       budgetApi.getBudgets.mockClear();
-      budgetApi.getBudgets.mockResolvedValue(invalidBudgets);
+      budgetApi.getBudgets.mockResolvedValue({ budgets: invalidBudgets });
 
       const { rerender } = render(
         <BudgetAlertManager 
@@ -851,7 +851,7 @@ describe('BudgetAlertManager', () => {
         status: 'warning'
       }));
 
-      budgetApi.getBudgets.mockResolvedValue(manyBudgets);
+      budgetApi.getBudgets.mockResolvedValue({ budgets: manyBudgets });
 
       render(
         <BudgetAlertManager 

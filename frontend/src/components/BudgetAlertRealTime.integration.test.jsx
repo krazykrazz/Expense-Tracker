@@ -59,7 +59,7 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
               currentSpent >= budgetLimit * 0.8 ? 'warning' : 'safe'
     }];
 
-    budgetApi.getBudgets.mockImplementation(async () => getBudgetData());
+    budgetApi.getBudgets.mockImplementation(async () => ({ budgets: getBudgetData() }));
 
     const { rerender } = render(
       <BudgetAlertManager
@@ -185,7 +185,7 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
     const budgetLimit = 1000;
     let currentSpent = 700; // Start at 70% (no alert)
 
-    budgetApi.getBudgets.mockImplementation(async () => [{
+    budgetApi.getBudgets.mockImplementation(async () => ({ budgets: [{
       budget: { id: 2, category: 'Gas', limit: budgetLimit },
       spent: currentSpent,
       progress: (currentSpent / budgetLimit) * 100,
@@ -193,7 +193,7 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
       status: currentSpent >= budgetLimit ? 'critical' : 
               currentSpent >= budgetLimit * 0.9 ? 'danger' :
               currentSpent >= budgetLimit * 0.8 ? 'warning' : 'safe'
-    }]);
+    }] }));
 
     const { rerender } = render(
       <BudgetAlertManager
@@ -260,7 +260,7 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
     const budgetLimit = 300;
     let currentSpent = 240; // Start at 80% (warning)
 
-    budgetApi.getBudgets.mockImplementation(async () => [{
+    budgetApi.getBudgets.mockImplementation(async () => ({ budgets: [{
       budget: { id: 3, category: 'Entertainment', limit: budgetLimit },
       spent: currentSpent,
       progress: (currentSpent / budgetLimit) * 100,
@@ -268,7 +268,7 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
       status: currentSpent >= budgetLimit ? 'critical' : 
               currentSpent >= budgetLimit * 0.9 ? 'danger' :
               currentSpent >= budgetLimit * 0.8 ? 'warning' : 'safe'
-    }]);
+    }] }));
 
     const { rerender } = render(
       <BudgetAlertManager
@@ -369,7 +369,7 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
     const budgetLimit = 100;
     let currentSpent = 79.99; // Just below 80% threshold
 
-    budgetApi.getBudgets.mockImplementation(async () => [{
+    budgetApi.getBudgets.mockImplementation(async () => ({ budgets: [{
       budget: { id: 4, category: 'Other', limit: budgetLimit },
       spent: currentSpent,
       progress: (currentSpent / budgetLimit) * 100,
@@ -377,7 +377,7 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
       status: currentSpent >= budgetLimit ? 'critical' : 
               currentSpent >= budgetLimit * 0.9 ? 'danger' :
               currentSpent >= budgetLimit * 0.8 ? 'warning' : 'safe'
-    }]);
+    }] }));
 
     const { rerender } = render(
       <BudgetAlertManager

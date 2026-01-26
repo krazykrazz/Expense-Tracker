@@ -29,7 +29,7 @@ describe('Budget Alert Interactions - Integration Tests', () => {
     const mockOnViewDetails = vi.fn();
 
     // Mock budget API to return budget data that triggers alerts
-    budgetApi.getBudgets.mockResolvedValue([
+    budgetApi.getBudgets.mockResolvedValue({ budgets: [
       {
         budget: { id: 1, category: 'Groceries', limit: 500 },
         spent: 450,
@@ -37,7 +37,7 @@ describe('Budget Alert Interactions - Integration Tests', () => {
         remaining: 50,
         status: 'danger'
       }
-    ]);
+    ] });
 
     render(
       <BudgetAlertManager
@@ -68,7 +68,7 @@ describe('Budget Alert Interactions - Integration Tests', () => {
     const mockOnViewDetails = vi.fn();
 
     // Mock budget API to return budget data that triggers alerts
-    budgetApi.getBudgets.mockResolvedValue([
+    budgetApi.getBudgets.mockResolvedValue({ budgets: [
       {
         budget: { id: 1, category: 'Gas', limit: 200 },
         spent: 180,
@@ -76,7 +76,7 @@ describe('Budget Alert Interactions - Integration Tests', () => {
         remaining: 20,
         status: 'danger'
       }
-    ]);
+    ] });
 
     render(
       <BudgetAlertManager
@@ -108,7 +108,7 @@ describe('Budget Alert Interactions - Integration Tests', () => {
 
     let budgetSpent = 450; // Initial state: 90% spent (danger alert)
 
-    budgetApi.getBudgets.mockImplementation(async () => [
+    budgetApi.getBudgets.mockImplementation(async () => ({ budgets: [
       {
         budget: { id: 1, category: 'Groceries', limit: 500 },
         spent: budgetSpent,
@@ -116,7 +116,7 @@ describe('Budget Alert Interactions - Integration Tests', () => {
         remaining: 500 - budgetSpent,
         status: budgetSpent >= 450 ? 'danger' : 'safe'
       }
-    ]);
+    ] }));
 
     const { rerender } = render(
       <BudgetAlertManager
@@ -159,7 +159,7 @@ describe('Budget Alert Interactions - Integration Tests', () => {
     const mockOnViewDetails = vi.fn();
 
     // Mock budget API to return multiple budgets that trigger alerts
-    budgetApi.getBudgets.mockResolvedValue([
+    budgetApi.getBudgets.mockResolvedValue({ budgets: [
       {
         budget: { id: 1, category: 'Groceries', limit: 500 },
         spent: 450,
@@ -174,7 +174,7 @@ describe('Budget Alert Interactions - Integration Tests', () => {
         remaining: -10,
         status: 'critical'
       }
-    ]);
+    ] });
 
     render(
       <BudgetAlertManager
@@ -223,7 +223,7 @@ describe('Budget Alert Interactions - Integration Tests', () => {
     const mockOnViewDetails = vi.fn();
 
     // Mock budget API to return budget data that triggers alerts
-    budgetApi.getBudgets.mockResolvedValue([
+    budgetApi.getBudgets.mockResolvedValue({ budgets: [
       {
         budget: { id: 1, category: 'Groceries', limit: 500 },
         spent: 450,
@@ -231,7 +231,7 @@ describe('Budget Alert Interactions - Integration Tests', () => {
         remaining: 50,
         status: 'danger'
       }
-    ]);
+    ] });
 
     const { rerender } = render(
       <BudgetAlertManager
@@ -303,7 +303,7 @@ describe('Budget Alert Interactions - Integration Tests', () => {
     let budgetLimit = 500;
     const budgetSpent = 450;
 
-    budgetApi.getBudgets.mockImplementation(async () => [
+    budgetApi.getBudgets.mockImplementation(async () => ({ budgets: [
       {
         budget: { id: 1, category: 'Groceries', limit: budgetLimit },
         spent: budgetSpent,
@@ -311,7 +311,7 @@ describe('Budget Alert Interactions - Integration Tests', () => {
         remaining: budgetLimit - budgetSpent,
         status: (budgetSpent / budgetLimit) >= 0.9 ? 'danger' : 'safe'
       }
-    ]);
+    ] }));
 
     const { rerender } = render(
       <BudgetAlertManager

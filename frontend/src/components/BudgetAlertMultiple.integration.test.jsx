@@ -70,7 +70,7 @@ describe('Budget Alert Multiple Alerts - Integration Test', () => {
       }
     ];
 
-    budgetApi.getBudgets.mockResolvedValue(budgetData);
+    budgetApi.getBudgets.mockResolvedValue({ budgets: budgetData });
 
     render(
       <BudgetAlertManager

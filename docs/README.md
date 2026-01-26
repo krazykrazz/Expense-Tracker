@@ -49,7 +49,6 @@ Code optimization reports and analysis:
 ### guides/
 User and developer guides:
 - `STARTUP_GUIDE.md` - How to start the application
-- `TRAY_ICON_GUIDE.md` - System tray icon setup
 - `DATABASE_MIGRATION_GUIDE.md` - Database migration procedures
 
 ## Main Documentation

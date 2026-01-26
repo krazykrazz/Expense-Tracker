@@ -7,7 +7,7 @@
  */
 
 const fc = require('fast-check');
-const { pbtOptions } = require('../test/pbtArbitraries');
+const { pbtOptions, safeISODate, safeDateObject } = require('../test/pbtArbitraries');
 const invoiceService = require('./invoiceService');
 const invoiceRepository = require('../repositories/invoiceRepository');
 const expenseRepository = require('../repositories/expenseRepository');
@@ -85,7 +85,7 @@ describe('Invoice Service - Property-Based Tests - CRUD Operations', () => {
     filePath: fc.string({ minLength: 10, maxLength: 200 }),
     fileSize: fc.integer({ min: 1024, max: 5 * 1024 * 1024 }),
     mimeType: fc.constant('application/pdf'),
-    uploadDate: fc.date({ min: new Date('2020-01-01'), max: new Date('2025-12-31') }).map(d => d.toISOString())
+    uploadDate: safeISODate() // Use safe ISO date to avoid RangeError: Invalid time value
   });
 
   /**
@@ -517,7 +517,7 @@ describe('Invoice Service - Property-Based Tests - CRUD Operations', () => {
       fc.property(
         expenseIdArbitrary,
         fc.string({ minLength: 1, maxLength: 50 }).map(name => name + '.pdf'),
-        fc.date({ min: new Date('2020-01-01'), max: new Date('2025-12-31') }),
+        safeDateObject(), // Use safe date object to avoid invalid dates
         (expenseId, filename, date) => {
           // Mock file storage path generation
           const mockPaths = {
@@ -536,7 +536,10 @@ describe('Invoice Service - Property-Based Tests - CRUD Operations', () => {
           expect(result.filename).toContain('.pdf');
           expect(result.relativePath).toContain(date.getFullYear().toString());
           expect(result.relativePath).toContain(String(date.getMonth() + 1).padStart(2, '0'));
-          expect(result.fullPath).toContain(result.relativePath);
+          // Normalize path separators for cross-platform compatibility
+          const normalizedFullPath = result.fullPath.replace(/\\/g, '/');
+          const normalizedRelativePath = result.relativePath.replace(/\\/g, '/');
+          expect(normalizedFullPath).toContain(normalizedRelativePath);
           expect(result.directoryPath).toContain(date.getFullYear().toString());
         }
       ),

@@ -1,7 +1,7 @@
 # Expense Tracker - Feature Roadmap
 
-**Last Updated**: January 19, 2026  
-**Current Version**: 4.14.5
+**Last Updated**: January 26, 2026  
+**Current Version**: 4.17.0
 
 This document tracks potential features and enhancements for the Expense Tracker application. Features are categorized by priority and implementation status.
 
@@ -19,25 +19,31 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ## 📊 Analytics & Insights
 
-### ⚪ 1. Spending Patterns & Predictions
-**Status**: Proposed  
+### 🟢 1. Spending Patterns & Predictions (Analytics Hub)
+**Status**: Completed (v4.17.0)  
 **Priority**: High  
 **Effort**: High  
-**Description**: Analyze spending patterns and predict future expenses based on historical data.
+**Spec**: `.kiro/specs/spending-patterns-predictions/`  
+**Description**: Comprehensive analytics hub analyzing spending patterns and predicting future expenses based on historical data.
 
-**Key Features**:
-- Identify recurring spending patterns
-- Predict end-of-month totals based on current trajectory
-- Seasonal spending analysis (compare months/quarters)
-- Day-of-week spending patterns
-- Anomaly detection (unusual spending alerts)
+**Features Delivered**:
+- **Analytics Hub**: Unified modal with 5 tabs (Patterns, Predictions, Seasonal, Anomalies, Merchants)
+- **Recurring Pattern Detection**: Identifies regular spending patterns with merchant, amount, and frequency
+- **Month-End Predictions**: Predicts end-of-month totals with confidence intervals and budget integration
+- **Seasonal Analysis**: Compares spending across months/quarters with year-over-year trends
+- **Day-of-Week Patterns**: Shows spending distribution by day of week
+- **Anomaly Detection**: Flags unusual spending with dismissible alerts
+- **Data Sufficiency Checks**: Graceful handling when insufficient historical data
+- **Merchant Analytics Integration**: Consolidated merchant analytics into the hub (removed standalone button)
+- **Budget Alert Integration**: Predictions view shows current budget status
 
 **Benefits**:
-- Better financial planning
-- Early warning of overspending
-- Data-driven insights
+- Better financial planning with predictive insights
+- Early warning of overspending through anomaly detection
+- Data-driven insights for budgeting decisions
+- Unified analytics experience
 
-**Dependencies**: Requires sufficient historical data (3+ months)
+**Dependencies**: Requires 3+ months of historical data for full functionality
 
 ---
 
@@ -447,6 +453,27 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ---
 
+### 🟢 Spending Patterns & Predictions / Analytics Hub (v4.17.0)
+**Completed**: January 26, 2026  
+**Spec**: `.kiro/specs/spending-patterns-predictions/`  
+**Description**: Comprehensive analytics hub providing spending pattern analysis, predictions, seasonal trends, anomaly detection, and merchant analytics in a unified interface.
+
+**Features Delivered**:
+- **Analytics Hub Modal**: Unified 5-tab interface (Patterns, Predictions, Seasonal, Anomalies, Merchants)
+- **Recurring Pattern Detection**: Identifies regular spending patterns with merchant, amount, frequency, and confidence scores
+- **Month-End Predictions**: Predicts end-of-month totals with confidence intervals, pace indicators, and budget integration
+- **Seasonal Analysis**: Year-over-year spending comparison with monthly and quarterly trends
+- **Day-of-Week Patterns**: Spending distribution analysis by day of week with peak day identification
+- **Anomaly Detection**: Flags unusual spending (amount anomalies, new merchants, daily spikes) with dismissible alerts
+- **Data Sufficiency Messaging**: Graceful handling when insufficient historical data with clear user guidance
+- **Merchant Analytics Consolidation**: Integrated existing merchant analytics as a tab (removed standalone button)
+- **Budget Alert Integration**: Predictions view displays current budget status for affected categories
+- **Backend Services**: SpendingPatternsService, PredictionService, AnomalyDetectionService with comprehensive API
+- **Property-Based Testing**: 91 backend PBT tests across all analytics services
+- **Frontend Components**: SpendingPatternsView, PredictionsView, SeasonalAnalysisView, AnomalyAlertsView, DataSufficiencyMessage
+
+---
+
 ### 🟢 Multi-Invoice Support & Donation Invoices (v4.13.0 - v4.13.2)
 **Completed**: January 17, 2026  
 **Spec**: `.kiro/specs/multi-invoice-support/` (archived)  
@@ -525,10 +552,10 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ---
 
-### 🟢 Merchant Analytics (v4.7.0 - v4.9.0)
-**Completed**: December 16, 2025 (v4.7.0), December 20, 2025 (v4.9.0)  
+### 🟢 Merchant Analytics (v4.7.0 - v4.9.0, consolidated in v4.17.0)
+**Completed**: December 16, 2025 (v4.7.0), December 20, 2025 (v4.9.0), January 2026 (consolidated into Analytics Hub)  
 **Spec**: `.kiro/specs/merchant-analytics/`  
-**Description**: Comprehensive merchant spending analytics providing insights into spending patterns by location with detailed statistics and trend analysis. Enhanced in v4.9.0 with fixed expenses integration for complete spending analysis.
+**Description**: Comprehensive merchant spending analytics providing insights into spending patterns by location with detailed statistics and trend analysis. Enhanced in v4.9.0 with fixed expenses integration for complete spending analysis. **Consolidated into Analytics Hub in v4.17.0** - now accessed via "📈 Analytics" button → "Merchants" tab.
 
 **Features Delivered**:
 - Merchant Analytics modal accessible from main navigation with "🏪 Merchant Analytics" button
@@ -756,9 +783,8 @@ This document tracks potential features and enhancements for the Expense Tracker
 ## Priority Matrix
 
 ### High Priority (Implement Next)
-1. Spending Patterns & Predictions
-2. Expense Templates
-3. Financial Goals Dashboard
+1. Expense Templates
+2. Financial Goals Dashboard
 
 ### Medium Priority
 1. Financial Goals Dashboard

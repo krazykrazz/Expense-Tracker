@@ -118,6 +118,7 @@ A full-stack expense tracking application built with React and Node.js.
 - 📊 Month-over-month change tracking with percentage indicators
 - 🔗 Drill-down to view all expenses at any specific merchant
 - 🏠 **Fixed Expenses Integration**: Optional "Include Fixed Expenses" toggle to combine variable and recurring expenses for complete spending analysis
+- 📈 **Analytics Hub Integration**: Access via "📈 Analytics" button → "Merchants" tab (v4.17.0+)
 
 ### Budget Tracking & Alerts
 - 💵 Set monthly budget limits for expense categories (Food, Gas, Other)
@@ -451,7 +452,7 @@ stop-servers.bat
 54. **Automatic Cleanup**: Invoices are automatically deleted when expenses are deleted
 
 ### Merchant Analytics
-52. **View Merchant Analytics**: Click the "🏪 Merchant Analytics" button in the main navigation to open analytics
+52. **View Merchant Analytics**: Click the "📈 Analytics" button in the main navigation, then select the "Merchants" tab
 53. **Analyze Top Merchants**: View merchants ranked by total spending, visit frequency, or average spend per visit
 54. **Filter by Time Period**: Use the period dropdown to analyze different time ranges (All Time, This Year, This Month, Last 3 Months)
 55. **Sort Options**: Toggle between sorting by total spend, number of visits, or average spend per visit

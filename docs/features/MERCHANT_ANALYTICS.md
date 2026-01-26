@@ -38,7 +38,8 @@ The Merchant Analytics feature provides comprehensive insights into spending pat
 ## User Interface
 
 ### Main Navigation Access
-- **Entry Point**: Click the "🏪 Merchant Analytics" button in the main navigation area
+- **Entry Point**: Click the "📈 Analytics" button in the main navigation area, then select the "Merchants" tab
+- **Analytics Hub Integration**: Merchant Analytics is now part of the unified Analytics Hub (v4.17.0+), alongside Spending Patterns, Predictions, Seasonal Analysis, and Anomaly Detection
 - **Modal Interface**: Analytics open in a full-screen modal overlay for focused analysis
 - **Responsive Design**: Optimized for both desktop and mobile viewing
 

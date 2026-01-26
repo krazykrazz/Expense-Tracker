@@ -7,7 +7,7 @@
  */
 
 const fc = require('fast-check');
-const { pbtOptions } = require('../test/pbtArbitraries');
+const { pbtOptions, safeDate } = require('../test/pbtArbitraries');
 const invoiceService = require('./invoiceService');
 const invoiceRepository = require('../repositories/invoiceRepository');
 const expenseRepository = require('../repositories/expenseRepository');
@@ -54,7 +54,7 @@ describe('Invoice Service - Property-Based Tests - Multi-Invoice Support', () =>
   const medicalExpenseArbitrary = fc.record({
     id: expenseIdArbitrary,
     type: fc.constant('Tax - Medical'),
-    date: fc.date({ min: new Date('2020-01-01'), max: new Date('2025-12-31') }).map(d => d.toISOString().split('T')[0]),
+    date: safeDate(), // Use safe date to avoid RangeError: Invalid time value
     place: fc.string({ minLength: 1, maxLength: 100 }),
     amount: fc.float({ min: Math.fround(0.01), max: Math.fround(10000), noNaN: true })
   });

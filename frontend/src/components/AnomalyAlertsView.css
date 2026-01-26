@@ -1,0 +1,483 @@
+/**
+ * AnomalyAlertsView Component Styles
+ * Requirements: 5.1, 5.2, 5.3, 5.4, 5.5
+ */
+
+.anomaly-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-5);
+}
+
+/* Loading State */
+.anomaly-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-10);
+  color: var(--text-tertiary);
+}
+
+.anomaly-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--border-default);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: anomalySpin 1s linear infinite;
+  margin-bottom: var(--spacing-4);
+}
+
+@keyframes anomalySpin {
+  to { transform: rotate(360deg); }
+}
+
+/* Error State */
+.anomaly-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-10);
+  text-align: center;
+}
+
+.anomaly-error p {
+  color: var(--color-negative);
+  margin-bottom: var(--spacing-4);
+}
+
+.anomaly-retry-btn {
+  padding: var(--spacing-2) var(--spacing-4);
+  background-color: var(--color-primary);
+  color: var(--text-inverse);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  font-family: var(--font-sans);
+  transition: var(--transition-button);
+}
+
+.anomaly-retry-btn:hover {
+  background-color: var(--color-primary-hover);
+}
+
+/* Summary Stats */
+.anomaly-summary {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--spacing-3);
+}
+
+.anomaly-summary-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-1);
+  padding: var(--spacing-4);
+  background-color: var(--bg-subtle);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-muted);
+}
+
+.anomaly-summary-stat.severity-high {
+  border-color: var(--color-negative);
+  background-color: var(--color-negative-light);
+}
+
+.anomaly-summary-stat.severity-medium {
+  border-color: var(--color-warning);
+  background-color: var(--color-warning-light);
+}
+
+.anomaly-summary-stat.severity-low {
+  border-color: var(--border-default);
+}
+
+.anomaly-summary-count {
+  font-size: var(--text-2xl);
+  font-weight: var(--font-bold);
+  color: var(--text-primary);
+}
+
+.anomaly-summary-stat.severity-high .anomaly-summary-count {
+  color: var(--color-negative-dark);
+}
+
+.anomaly-summary-stat.severity-medium .anomaly-summary-count {
+  color: var(--color-warning-dark);
+}
+
+.anomaly-summary-label {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Filter Tabs */
+.anomaly-filters {
+  display: flex;
+  gap: var(--spacing-2);
+  flex-wrap: wrap;
+}
+
+.anomaly-filter-btn {
+  padding: var(--spacing-2) var(--spacing-3);
+  background-color: var(--bg-subtle);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-secondary);
+  transition: var(--transition-fast);
+  font-family: var(--font-sans);
+}
+
+.anomaly-filter-btn:hover {
+  background-color: var(--bg-muted);
+  color: var(--text-primary);
+}
+
+.anomaly-filter-btn.active {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--text-inverse);
+}
+
+/* Empty State */
+.anomaly-empty {
+  text-align: center;
+  padding: var(--spacing-10);
+  background-color: var(--color-positive-light);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-positive);
+}
+
+.anomaly-empty-icon {
+  font-size: 48px;
+  margin-bottom: var(--spacing-3);
+}
+
+.anomaly-empty p {
+  margin: 0;
+  color: var(--color-positive-dark);
+  font-weight: var(--font-medium);
+}
+
+.anomaly-empty-hint {
+  margin-top: var(--spacing-2) !important;
+  font-size: var(--text-sm);
+  font-weight: var(--font-normal) !important;
+  color: var(--text-secondary) !important;
+}
+
+/* Anomaly List */
+.anomaly-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+}
+
+/* Anomaly Card */
+.anomaly-card {
+  background-color: var(--bg-subtle);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  transition: var(--transition-card);
+}
+
+.anomaly-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.anomaly-card.severity-high {
+  border-left: 4px solid var(--color-negative);
+}
+
+.anomaly-card.severity-medium {
+  border-left: 4px solid var(--color-warning);
+}
+
+.anomaly-card.severity-low {
+  border-left: 4px solid var(--text-tertiary);
+}
+
+.anomaly-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-3) var(--spacing-4);
+  background-color: var(--bg-muted);
+  border-bottom: 1px solid var(--border-muted);
+}
+
+.anomaly-type {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+
+.anomaly-type-icon {
+  font-size: var(--text-lg);
+}
+
+.anomaly-type-label {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+.anomaly-severity {
+  font-size: var(--text-xs);
+  font-weight: var(--font-bold);
+  padding: var(--spacing-1) var(--spacing-2);
+  border-radius: var(--radius-full);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.anomaly-severity.severity-high {
+  background-color: var(--color-negative);
+  color: var(--text-inverse);
+}
+
+.anomaly-severity.severity-medium {
+  background-color: var(--color-warning);
+  color: var(--text-inverse);
+}
+
+.anomaly-severity.severity-low {
+  background-color: var(--bg-muted);
+  color: var(--text-tertiary);
+}
+
+.anomaly-card-body {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: var(--spacing-4);
+  gap: var(--spacing-4);
+}
+
+.anomaly-expense-info {
+  flex: 1;
+}
+
+.anomaly-place {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-2);
+}
+
+.anomaly-meta {
+  display: flex;
+  gap: var(--spacing-3);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.anomaly-category {
+  padding: 2px var(--spacing-2);
+  background-color: var(--bg-muted);
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+}
+
+.anomaly-amount-section {
+  text-align: right;
+}
+
+.anomaly-amount {
+  font-size: var(--text-2xl);
+  font-weight: var(--font-bold);
+  color: var(--color-negative);
+  font-feature-settings: var(--font-feature-tabular);
+}
+
+.anomaly-comparison {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin-top: var(--spacing-1);
+}
+
+.anomaly-comparison-label {
+  margin-right: var(--spacing-1);
+}
+
+.anomaly-comparison-value {
+  font-weight: var(--font-medium);
+  font-feature-settings: var(--font-feature-tabular);
+}
+
+.anomaly-deviation {
+  font-size: var(--text-xs);
+  color: var(--color-negative);
+  font-weight: var(--font-medium);
+  margin-top: var(--spacing-1);
+}
+
+.anomaly-reason {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-2);
+  padding: var(--spacing-3) var(--spacing-4);
+  background-color: var(--bg-card);
+  border-top: 1px solid var(--border-muted);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.anomaly-reason-icon {
+  flex-shrink: 0;
+}
+
+.anomaly-reason-text {
+  line-height: 1.5;
+}
+
+.anomaly-card-actions {
+  padding: var(--spacing-3) var(--spacing-4);
+  border-top: 1px solid var(--border-muted);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.anomaly-dismiss-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  padding: var(--spacing-2) var(--spacing-4);
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-secondary);
+  transition: var(--transition-button);
+  font-family: var(--font-sans);
+}
+
+.anomaly-dismiss-btn:hover:not(:disabled) {
+  background-color: var(--color-positive-light);
+  border-color: var(--color-positive);
+  color: var(--color-positive-dark);
+}
+
+.anomaly-dismiss-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.anomaly-dismiss-icon {
+  font-size: var(--text-base);
+}
+
+.anomaly-dismiss-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--border-default);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: anomalyDismissSpin 0.8s linear infinite;
+}
+
+@keyframes anomalyDismissSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* Info Footer */
+.anomaly-info {
+  padding: var(--spacing-4);
+  background-color: var(--color-primary-light);
+  border-radius: var(--radius-lg);
+  font-size: var(--text-sm);
+  color: var(--color-primary-hover);
+}
+
+.anomaly-info p {
+  margin: 0;
+}
+
+.anomaly-info strong {
+  font-weight: var(--font-semibold);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .anomaly-summary {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .anomaly-card-body {
+    flex-direction: column;
+    gap: var(--spacing-3);
+  }
+
+  .anomaly-amount-section {
+    text-align: left;
+    width: 100%;
+    padding-top: var(--spacing-3);
+    border-top: 1px solid var(--border-muted);
+  }
+
+  .anomaly-filters {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: var(--spacing-2);
+  }
+
+  .anomaly-filter-btn {
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 480px) {
+  .anomaly-summary {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .anomaly-summary-stat {
+    padding: var(--spacing-3);
+  }
+
+  .anomaly-summary-count {
+    font-size: var(--text-xl);
+  }
+
+  .anomaly-meta {
+    flex-direction: column;
+    gap: var(--spacing-1);
+  }
+
+  .anomaly-card-actions {
+    justify-content: stretch;
+  }
+
+  .anomaly-dismiss-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .anomaly-spinner,
+  .anomaly-dismiss-spinner {
+    animation: none;
+  }
+
+  .anomaly-card,
+  .anomaly-filter-btn,
+  .anomaly-retry-btn,
+  .anomaly-dismiss-btn {
+    transition: none;
+  }
+}

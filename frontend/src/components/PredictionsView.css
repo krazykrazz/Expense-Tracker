@@ -1,0 +1,504 @@
+/**
+ * PredictionsView Component Styles
+ * Requirements: 2.1, 2.3, 2.4, 2.5
+ */
+
+.predictions-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-5);
+}
+
+/* Loading State */
+.predictions-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-10);
+  color: var(--text-tertiary);
+}
+
+.predictions-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--border-default);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: predictionsSpin 1s linear infinite;
+  margin-bottom: var(--spacing-4);
+}
+
+@keyframes predictionsSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* Error State */
+.predictions-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-10);
+  text-align: center;
+}
+
+.predictions-error p {
+  color: var(--color-negative);
+  margin-bottom: var(--spacing-4);
+}
+
+.predictions-retry-btn {
+  padding: var(--spacing-2) var(--spacing-4);
+  background-color: var(--color-primary);
+  color: var(--text-inverse);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  font-family: var(--font-sans);
+  transition: var(--transition-button);
+}
+
+.predictions-retry-btn:hover {
+  background-color: var(--color-primary-hover);
+}
+
+/* Empty State */
+.predictions-empty {
+  text-align: center;
+  padding: var(--spacing-10);
+  color: var(--text-tertiary);
+}
+
+/* Main Prediction Card */
+.predictions-main-card {
+  background-color: var(--bg-subtle);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-5);
+}
+
+.predictions-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-4);
+}
+
+.predictions-header h3 {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+.predictions-confidence {
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  padding: var(--spacing-1) var(--spacing-3);
+  border-radius: var(--radius-full);
+}
+
+.predictions-confidence.confidence-high {
+  background-color: var(--color-positive-light);
+  color: var(--color-positive-dark);
+}
+
+.predictions-confidence.confidence-medium {
+  background-color: var(--color-warning-light);
+  color: var(--color-warning-dark);
+}
+
+.predictions-confidence.confidence-low {
+  background-color: var(--bg-muted);
+  color: var(--text-tertiary);
+}
+
+/* Predicted Total */
+.predictions-total {
+  text-align: center;
+  padding: var(--spacing-5);
+  background: linear-gradient(135deg, var(--color-primary-light) 0%, var(--bg-card) 100%);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--spacing-4);
+}
+
+.predictions-total-label {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin-bottom: var(--spacing-2);
+}
+
+.predictions-total-amount {
+  font-size: var(--text-4xl);
+  font-weight: var(--font-bold);
+  color: var(--text-primary);
+  font-feature-settings: var(--font-feature-tabular);
+}
+
+/* Warnings */
+.predictions-warning {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  padding: var(--spacing-3);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-3);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+}
+
+.predictions-warning-icon {
+  font-size: var(--text-lg);
+}
+
+.predictions-warning.income-warning {
+  background-color: var(--color-negative-light);
+  color: var(--color-negative-dark);
+  border: 1px solid var(--color-negative);
+}
+
+.predictions-warning.yoy-warning {
+  background-color: var(--color-warning-light);
+  color: var(--color-warning-dark);
+  border: 1px solid var(--color-warning);
+}
+
+/* Progress Bar */
+.predictions-progress {
+  margin-bottom: var(--spacing-4);
+}
+
+.predictions-progress-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin-bottom: var(--spacing-2);
+}
+
+.predictions-progress-bar {
+  height: 8px;
+  background-color: var(--bg-muted);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.predictions-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-primary) 0%, var(--color-primary-hover) 100%);
+  border-radius: var(--radius-full);
+  transition: width var(--transition-slow);
+}
+
+/* Stats Grid */
+.predictions-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--spacing-3);
+  margin-bottom: var(--spacing-4);
+}
+
+.predictions-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-1);
+  padding: var(--spacing-3);
+  background-color: var(--bg-card);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-muted);
+}
+
+.predictions-stat-label {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.predictions-stat-value {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  font-feature-settings: var(--font-feature-tabular);
+}
+
+/* Year-over-Year */
+.predictions-yoy {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--spacing-2);
+  padding: var(--spacing-3);
+  background-color: var(--bg-card);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-muted);
+}
+
+.predictions-yoy-label {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.predictions-yoy-value {
+  font-size: var(--text-lg);
+  font-weight: var(--font-bold);
+}
+
+.predictions-yoy-value.increase {
+  color: var(--color-negative);
+}
+
+.predictions-yoy-value.decrease {
+  color: var(--color-positive);
+}
+
+/* Budget Section */
+.predictions-budget-section {
+  background-color: var(--bg-subtle);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-4);
+}
+
+.predictions-budget-section h4 {
+  margin: 0 0 var(--spacing-3) 0;
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+.predictions-budget-alerts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
+}
+
+.predictions-budget-alert {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  padding: var(--spacing-2) var(--spacing-3);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+}
+
+.predictions-budget-alert.warning {
+  background-color: var(--color-warning-light);
+  color: var(--color-warning-dark);
+}
+
+.predictions-budget-alert.danger {
+  background-color: var(--color-negative-light);
+  color: var(--color-negative-dark);
+}
+
+.predictions-budget-alert.critical {
+  background-color: var(--color-negative-light);
+  color: var(--color-negative-dark);
+  border: 1px solid var(--color-negative);
+}
+
+.predictions-budget-alert.ok {
+  background-color: var(--color-positive-light);
+  color: var(--color-positive-dark);
+}
+
+.predictions-budget-category {
+  font-weight: var(--font-medium);
+}
+
+.predictions-budget-percent {
+  font-weight: var(--font-bold);
+}
+
+/* Category Breakdown */
+.predictions-categories {
+  background-color: var(--bg-subtle);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-4);
+}
+
+.predictions-categories h4 {
+  margin: 0 0 var(--spacing-4) 0;
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+.predictions-category-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+}
+
+.predictions-category-item {
+  padding: var(--spacing-3);
+  background-color: var(--bg-card);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-muted);
+}
+
+.predictions-category-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-2);
+}
+
+.predictions-category-name {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-primary);
+}
+
+.predictions-category-predicted {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  font-feature-settings: var(--font-feature-tabular);
+}
+
+.predictions-category-bar-container {
+  height: 6px;
+  background-color: var(--bg-muted);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  margin-bottom: var(--spacing-2);
+}
+
+.predictions-category-current {
+  height: 100%;
+  background-color: var(--color-primary);
+  border-radius: var(--radius-full);
+  transition: width var(--transition-slow);
+}
+
+.predictions-category-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+/* Income Comparison */
+.predictions-income-comparison {
+  background-color: var(--bg-subtle);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-4);
+}
+
+.predictions-income-comparison h4 {
+  margin: 0 0 var(--spacing-4) 0;
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+.predictions-income-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin-bottom: var(--spacing-2);
+}
+
+.predictions-income-visual {
+  height: 24px;
+  background-color: var(--bg-muted);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  position: relative;
+}
+
+.predictions-income-spent {
+  height: 100%;
+  background-color: var(--color-positive);
+  border-radius: var(--radius-md);
+  transition: width var(--transition-slow);
+}
+
+.predictions-income-spent.exceeds {
+  background-color: var(--color-warning);
+}
+
+.predictions-income-overflow {
+  position: absolute;
+  right: 0;
+  top: 0;
+  height: 100%;
+  background-color: var(--color-negative);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+}
+
+.predictions-income-savings {
+  margin-top: var(--spacing-3);
+  text-align: center;
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+}
+
+.predictions-surplus {
+  color: var(--color-positive-dark);
+}
+
+.predictions-deficit {
+  color: var(--color-negative-dark);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .predictions-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-2);
+  }
+
+  .predictions-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .predictions-total-amount {
+    font-size: var(--text-3xl);
+  }
+}
+
+@media (max-width: 480px) {
+  .predictions-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .predictions-stat {
+    flex-direction: row;
+    justify-content: space-between;
+  }
+
+  .predictions-income-labels {
+    flex-direction: column;
+    gap: var(--spacing-1);
+  }
+
+  .predictions-category-meta {
+    flex-direction: column;
+    gap: var(--spacing-1);
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .predictions-spinner {
+    animation: none;
+  }
+
+  .predictions-retry-btn,
+  .predictions-progress-fill,
+  .predictions-category-current,
+  .predictions-income-spent {
+    transition: none;
+  }
+}

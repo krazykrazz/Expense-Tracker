@@ -221,7 +221,8 @@ const BudgetAlertManager = ({
     setError(null);
     
     try {
-      const budgets = await getBudgets(year, month);
+      const response = await getBudgets(year, month);
+      const budgets = response?.budgets || [];
       
       // Validate and filter budget data (Requirements: 7.1, 8.1 - Handle invalid budget data gracefully)
       const validBudgets = validateBudgetData(budgets);

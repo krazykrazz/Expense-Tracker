@@ -11,8 +11,8 @@ import './BudgetAlertBanner.css';
 const BudgetAlertBanner = memo(({ 
   alert, 
   onDismiss, 
-  onManageBudgets, 
-  onViewDetails 
+  onManageBudgets,
+  onViewExpenses 
 }) => {
   if (!alert) {
     return null;
@@ -30,9 +30,9 @@ const BudgetAlertBanner = memo(({
     }
   };
 
-  const handleViewDetails = () => {
-    if (onViewDetails) {
-      onViewDetails(alert.category);
+  const handleViewExpenses = () => {
+    if (onViewExpenses) {
+      onViewExpenses(alert.category);
     }
   };
 
@@ -56,10 +56,10 @@ const BudgetAlertBanner = memo(({
           <button
             type="button"
             className="budget-alert-action-btn budget-alert-view-btn"
-            onClick={handleViewDetails}
-            aria-label={`View details for ${alert.category} budget`}
+            onClick={handleViewExpenses}
+            aria-label={`View ${alert.category} expenses`}
           >
-            View Details
+            View Expenses
           </button>
           
           <button
@@ -68,7 +68,7 @@ const BudgetAlertBanner = memo(({
             onClick={handleManageBudgets}
             aria-label={`Manage ${alert.category} budget`}
           >
-            Manage Budgets
+            Manage Budget
           </button>
           
           <button

@@ -38,10 +38,9 @@ const BudgetManagementModal = ({ isOpen, onClose, year, month, onBudgetUpdated, 
       try {
         const categoriesData = await getCategories();
         // Filter to only budgetable categories (exclude tax-deductible)
-        // Note: getCategories returns all categories, we filter out tax-deductible ones
-        const budgetableCategories = (categoriesData || []).filter(
-          cat => !cat.startsWith('Tax -')
-        );
+        // Also ensure all categories are strings (defensive check)
+        const budgetableCategories = (categoriesData || [])
+          .filter(cat => typeof cat === 'string' && !cat.startsWith('Tax -'));
         setCategories(budgetableCategories);
       } catch (err) {
         logger.error('Error fetching categories:', err);
@@ -58,8 +57,8 @@ const BudgetManagementModal = ({ isOpen, onClose, year, month, onBudgetUpdated, 
     if (isOpen) {
       fetchBudgets();
       
-      // Auto-focus on the specified category if provided
-      if (focusedCategory) {
+      // Auto-focus on the specified category if provided (must be a valid string)
+      if (focusedCategory && typeof focusedCategory === 'string') {
         // Small delay to ensure modal is rendered
         setTimeout(() => {
           handleEditBudget(focusedCategory);
@@ -97,6 +96,12 @@ const BudgetManagementModal = ({ isOpen, onClose, year, month, onBudgetUpdated, 
   };
 
   const handleEditBudget = async (category) => {
+    // Validate category is a string (defensive check)
+    if (!category || typeof category !== 'string') {
+      logger.warn('handleEditBudget called with invalid category:', category);
+      return;
+    }
+    
     const budget = getBudgetForCategory(category);
     setEditingCategory(category);
     setEditAmount(budget ? budget.limit.toString() : '');

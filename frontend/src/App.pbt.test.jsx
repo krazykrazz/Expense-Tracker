@@ -104,87 +104,140 @@ describe('App Component Property-Based Tests', () => {
    * **Feature: global-expense-filtering, Property 3: Global view activation**
    * 
    * Property 3: Global view activation
-   * For any filter state where at least one filter (search text, category, or payment method) 
-   * is active, the system should fetch and display expenses from all time periods
+   * For any filter state where search text, payment method, or year filter is active,
+   * the system should fetch and display expenses from all time periods.
+   * 
+   * Note: Category filter (filterType) alone does NOT trigger global view.
+   * This allows users to filter the current month's expenses by category
+   * (e.g., from budget alerts) without switching to global view.
    * **Validates: Requirements 1.2, 2.2, 4.5**
    */
-  it('Property 3: should determine global view when any filter is active', async () => {
+  it('Property 3: should determine global view when search, method, or year filter is active', async () => {
     // Generator for search text (non-empty, trimmed)
     const nonEmptySearchTextArb = fc.string({ minLength: 1, maxLength: 50 })
       .filter(s => s.trim().length > 0);
 
-    // Generator for category filter (non-empty)
-    const nonEmptyCategoryArb = fc.constantFrom(...CATEGORIES);
-
     // Generator for payment method filter (non-empty)
     const nonEmptyPaymentMethodArb = fc.constantFrom(...PAYMENT_METHODS);
 
-    // Generator for filter states with at least one active filter
-    const activeFilterStateArb = fc.oneof(
+    // Generator for year filter (non-empty)
+    const nonEmptyYearArb = fc.integer({ min: 2020, max: 2030 }).map(String);
+
+    // Generator for filter states that SHOULD trigger global view
+    // (search text, payment method, or year - but NOT category alone)
+    const globalViewFilterStateArb = fc.oneof(
       // Only search text active
       fc.record({
         searchText: nonEmptySearchTextArb,
         filterType: fc.constant(''),
-        filterMethod: fc.constant('')
-      }),
-      // Only category active
-      fc.record({
-        searchText: fc.constant(''),
-        filterType: nonEmptyCategoryArb,
-        filterMethod: fc.constant('')
+        filterMethod: fc.constant(''),
+        filterYear: fc.constant('')
       }),
       // Only payment method active
       fc.record({
         searchText: fc.constant(''),
         filterType: fc.constant(''),
-        filterMethod: nonEmptyPaymentMethodArb
+        filterMethod: nonEmptyPaymentMethodArb,
+        filterYear: fc.constant('')
       }),
-      // Search text and category active
+      // Only year filter active
       fc.record({
-        searchText: nonEmptySearchTextArb,
-        filterType: nonEmptyCategoryArb,
-        filterMethod: fc.constant('')
+        searchText: fc.constant(''),
+        filterType: fc.constant(''),
+        filterMethod: fc.constant(''),
+        filterYear: nonEmptyYearArb
       }),
       // Search text and payment method active
       fc.record({
         searchText: nonEmptySearchTextArb,
         filterType: fc.constant(''),
-        filterMethod: nonEmptyPaymentMethodArb
+        filterMethod: nonEmptyPaymentMethodArb,
+        filterYear: fc.constant('')
       }),
-      // Category and payment method active
-      fc.record({
-        searchText: fc.constant(''),
-        filterType: nonEmptyCategoryArb,
-        filterMethod: nonEmptyPaymentMethodArb
-      }),
-      // All filters active
+      // Search text and year active
       fc.record({
         searchText: nonEmptySearchTextArb,
-        filterType: nonEmptyCategoryArb,
-        filterMethod: nonEmptyPaymentMethodArb
+        filterType: fc.constant(''),
+        filterMethod: fc.constant(''),
+        filterYear: nonEmptyYearArb
+      }),
+      // Payment method and year active
+      fc.record({
+        searchText: fc.constant(''),
+        filterType: fc.constant(''),
+        filterMethod: nonEmptyPaymentMethodArb,
+        filterYear: nonEmptyYearArb
       })
     );
 
     await fc.assert(
       fc.asyncProperty(
-        activeFilterStateArb,
+        globalViewFilterStateArb,
         async (filterState) => {
           // This is the logic from App.jsx that determines global view
+          // Note: filterType is intentionally excluded
           const isGlobalView = Boolean(
             filterState.searchText.trim().length > 0 || 
-            filterState.filterType || 
-            filterState.filterMethod
+            filterState.filterMethod || 
+            filterState.filterYear
           );
 
-          // Property: When any filter is active, isGlobalView should be true
+          // Property: When search, method, or year filter is active, isGlobalView should be true
           expect(isGlobalView).toBe(true);
 
-          // Verify that at least one filter is actually active
+          // Verify that at least one global-triggering filter is actually active
           const hasSearchText = filterState.searchText.trim().length > 0;
-          const hasCategory = Boolean(filterState.filterType);
           const hasPaymentMethod = Boolean(filterState.filterMethod);
+          const hasYearFilter = Boolean(filterState.filterYear);
           
-          expect(hasSearchText || hasCategory || hasPaymentMethod).toBe(true);
+          expect(hasSearchText || hasPaymentMethod || hasYearFilter).toBe(true);
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+
+  /**
+   * **Feature: global-expense-filtering, Property 3b: Category filter alone stays in monthly view**
+   * 
+   * Property 3b: Category filter alone does NOT trigger global view
+   * When only the category filter is active (no search, method, or year), the system
+   * should remain in monthly view. This allows budget alert "View Expenses" to show
+   * only the current month's expenses for that category.
+   * **Validates: Requirements 1.2 (monthly scoping for budget alerts)**
+   */
+  it('Property 3b: should stay in monthly view when only category filter is active', async () => {
+    // Generator for category filter (non-empty)
+    const nonEmptyCategoryArb = fc.constantFrom(...CATEGORIES);
+
+    // Generator for filter states with ONLY category active
+    const categoryOnlyFilterStateArb = fc.record({
+      searchText: fc.constant(''),
+      filterType: nonEmptyCategoryArb,
+      filterMethod: fc.constant(''),
+      filterYear: fc.constant('')
+    });
+
+    await fc.assert(
+      fc.asyncProperty(
+        categoryOnlyFilterStateArb,
+        async (filterState) => {
+          // This is the logic from App.jsx that determines global view
+          // filterType is intentionally excluded
+          const isGlobalView = Boolean(
+            filterState.searchText.trim().length > 0 || 
+            filterState.filterMethod || 
+            filterState.filterYear
+          );
+
+          // Property: When ONLY category filter is active, isGlobalView should be false
+          expect(isGlobalView).toBe(false);
+
+          // Verify that category IS active but global-triggering filters are NOT
+          expect(Boolean(filterState.filterType)).toBe(true);
+          expect(filterState.searchText.trim().length > 0).toBe(false);
+          expect(Boolean(filterState.filterMethod)).toBe(false);
+          expect(Boolean(filterState.filterYear)).toBe(false);
         }
       ),
       { numRuns: 100 }
@@ -195,23 +248,26 @@ describe('App Component Property-Based Tests', () => {
    * **Feature: global-expense-filtering, Property 4: Monthly view restoration**
    * 
    * Property 4: Monthly view restoration
-   * For any filter state where all filters are cleared (empty search text, no category selected, 
-   * no payment method selected), the system should return to monthly view displaying only 
-   * expenses for the currently selected month
+   * For any filter state where all global-triggering filters are cleared (empty search text, 
+   * no payment method selected, no year filter), the system should return to monthly view 
+   * displaying only expenses for the currently selected month.
+   * Note: Category filter alone does not affect view mode.
    * **Validates: Requirements 3.3, 3.5**
    */
-  it('Property 4: should determine monthly view when all filters are cleared', async () => {
+  it('Property 4: should determine monthly view when global-triggering filters are cleared', async () => {
     // Generator for empty/whitespace search text
     const emptySearchTextArb = fc.oneof(
       fc.constant(''),
       fc.stringMatching(/^\s*$/) // Only whitespace
     );
 
-    // Generator for cleared filter states (all filters empty)
+    // Generator for cleared filter states (global-triggering filters empty)
+    // Category may or may not be set - it doesn't affect global view
     const clearedFilterStateArb = fc.record({
       searchText: emptySearchTextArb,
-      filterType: fc.constant(''),
-      filterMethod: fc.constant('')
+      filterType: fc.option(fc.constantFrom(...CATEGORIES), { nil: '' }),
+      filterMethod: fc.constant(''),
+      filterYear: fc.constant('')
     });
 
     await fc.assert(
@@ -219,23 +275,24 @@ describe('App Component Property-Based Tests', () => {
         clearedFilterStateArb,
         async (filterState) => {
           // This is the logic from App.jsx that determines global view
+          // Note: filterType is intentionally excluded
           const isGlobalView = Boolean(
             filterState.searchText.trim().length > 0 || 
-            filterState.filterType || 
-            filterState.filterMethod
+            filterState.filterMethod || 
+            filterState.filterYear
           );
 
-          // Property: When all filters are cleared, isGlobalView should be false (monthly view)
+          // Property: When global-triggering filters are cleared, isGlobalView should be false
           expect(isGlobalView).toBe(false);
 
-          // Verify that all filters are actually cleared
+          // Verify that global-triggering filters are actually cleared
           const hasSearchText = filterState.searchText.trim().length > 0;
-          const hasCategory = Boolean(filterState.filterType);
           const hasPaymentMethod = Boolean(filterState.filterMethod);
+          const hasYearFilter = Boolean(filterState.filterYear);
           
           expect(hasSearchText).toBe(false);
-          expect(hasCategory).toBe(false);
           expect(hasPaymentMethod).toBe(false);
+          expect(hasYearFilter).toBe(false);
         }
       ),
       { numRuns: 100 }
@@ -301,9 +358,9 @@ describe('App Component Property-Based Tests', () => {
           expect(hasActiveFiltersAfter).toBe(hadActiveFiltersBefore);
 
           // Verify that the view mode determination still works correctly
-          // (assuming no search text for this test)
-          const isGlobalViewBefore = Boolean(filtersBefore.filterType || filtersBefore.filterMethod);
-          const isGlobalViewAfter = Boolean(filtersAfter.filterType || filtersAfter.filterMethod);
+          // Note: Only filterMethod triggers global view, not filterType alone
+          const isGlobalViewBefore = Boolean(filtersBefore.filterMethod);
+          const isGlobalViewAfter = Boolean(filtersAfter.filterMethod);
           expect(isGlobalViewAfter).toBe(isGlobalViewBefore);
         }
       ),
@@ -316,7 +373,7 @@ describe('App Component Property-Based Tests', () => {
    * 
    * Property 6: Clear filters completeness
    * For any filter state with at least one active filter, clicking the clear filters button 
-   * should reset all filters (search text, category, and payment method) to their default empty state
+   * should reset all filters (search text, category, payment method, year) to their default empty state
    * **Validates: Requirements 3.2, 3.4**
    */
   it('Property 6: should reset all filters to empty state when clear filters is called', async () => {
@@ -324,49 +381,45 @@ describe('App Component Property-Based Tests', () => {
     const nonEmptySearchTextArb = fc.string({ minLength: 1, maxLength: 50 })
       .filter(s => s.trim().length > 0);
 
+    // Generator for year filter
+    const nonEmptyYearArb = fc.integer({ min: 2020, max: 2030 }).map(String);
+
     // Generator for filter states with at least one active filter
     const activeFilterStateArb = fc.oneof(
       // Only search text active
       fc.record({
         searchText: nonEmptySearchTextArb,
         filterType: fc.constant(''),
-        filterMethod: fc.constant('')
+        filterMethod: fc.constant(''),
+        filterYear: fc.constant('')
       }),
       // Only category active
       fc.record({
         searchText: fc.constant(''),
         filterType: fc.constantFrom(...CATEGORIES),
-        filterMethod: fc.constant('')
+        filterMethod: fc.constant(''),
+        filterYear: fc.constant('')
       }),
       // Only payment method active
       fc.record({
         searchText: fc.constant(''),
         filterType: fc.constant(''),
-        filterMethod: fc.constantFrom(...PAYMENT_METHODS)
+        filterMethod: fc.constantFrom(...PAYMENT_METHODS),
+        filterYear: fc.constant('')
       }),
-      // Search text and category active
-      fc.record({
-        searchText: nonEmptySearchTextArb,
-        filterType: fc.constantFrom(...CATEGORIES),
-        filterMethod: fc.constant('')
-      }),
-      // Search text and payment method active
-      fc.record({
-        searchText: nonEmptySearchTextArb,
-        filterType: fc.constant(''),
-        filterMethod: fc.constantFrom(...PAYMENT_METHODS)
-      }),
-      // Category and payment method active
+      // Only year active
       fc.record({
         searchText: fc.constant(''),
-        filterType: fc.constantFrom(...CATEGORIES),
-        filterMethod: fc.constantFrom(...PAYMENT_METHODS)
+        filterType: fc.constant(''),
+        filterMethod: fc.constant(''),
+        filterYear: nonEmptyYearArb
       }),
-      // All filters active
+      // Multiple filters active
       fc.record({
         searchText: nonEmptySearchTextArb,
         filterType: fc.constantFrom(...CATEGORIES),
-        filterMethod: fc.constantFrom(...PAYMENT_METHODS)
+        filterMethod: fc.constantFrom(...PAYMENT_METHODS),
+        filterYear: nonEmptyYearArb
       })
     );
 
@@ -378,7 +431,8 @@ describe('App Component Property-Based Tests', () => {
           const hasActiveFilter = Boolean(
             initialFilterState.searchText.trim().length > 0 ||
             initialFilterState.filterType ||
-            initialFilterState.filterMethod
+            initialFilterState.filterMethod ||
+            initialFilterState.filterYear
           );
           expect(hasActiveFilter).toBe(true);
 
@@ -386,26 +440,24 @@ describe('App Component Property-Based Tests', () => {
           const clearedState = {
             searchText: '',
             filterType: '',
-            filterMethod: ''
+            filterMethod: '',
+            filterYear: ''
           };
 
           // Property: After clearing, all filters should be empty strings
           expect(clearedState.searchText).toBe('');
           expect(clearedState.filterType).toBe('');
           expect(clearedState.filterMethod).toBe('');
+          expect(clearedState.filterYear).toBe('');
 
           // Verify that the cleared state results in monthly view (not global view)
+          // Note: Only searchText, filterMethod, and filterYear trigger global view
           const isGlobalViewAfterClear = Boolean(
             clearedState.searchText.trim().length > 0 ||
-            clearedState.filterType ||
-            clearedState.filterMethod
+            clearedState.filterMethod ||
+            clearedState.filterYear
           );
           expect(isGlobalViewAfterClear).toBe(false);
-
-          // Verify completeness: no filter should remain active
-          expect(clearedState.searchText.trim()).toBe('');
-          expect(clearedState.filterType).toBe('');
-          expect(clearedState.filterMethod).toBe('');
         }
       ),
       { numRuns: 100 }

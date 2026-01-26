@@ -61,17 +61,19 @@ function App() {
    * 
    * The application operates in two modes:
    * - Monthly View: Shows expenses for the selected month only (default)
-   * - Global View: Shows expenses from all time periods (when any filter is active)
+   * - Global View: Shows expenses from all time periods (when certain filters are active)
    * 
    * Global view is triggered when ANY of the following filters are active:
    * - searchText: User has entered text to search place/notes
-   * - filterType: User has selected a category filter
    * - filterMethod: User has selected a payment method filter
    * - filterYear: User has selected a year filter
    * 
-   * This allows users to filter expenses globally without requiring text search.
+   * Note: filterType (category filter) alone does NOT trigger global view.
+   * This allows users to filter the current month's expenses by category
+   * (e.g., from budget alerts) without switching to global view.
+   * To search globally by category, combine with searchText or filterYear.
    */
-  const isGlobalView = searchText.trim().length > 0 || filterType || filterMethod || filterYear;
+  const isGlobalView = searchText.trim().length > 0 || filterMethod || filterYear;
 
   // Fetch version info on mount
   useEffect(() => {
@@ -584,23 +586,14 @@ function App() {
           month={selectedMonth}
           refreshTrigger={budgetAlertRefreshTrigger}
           onManageBudgets={handleManageBudgets}
-          onViewDetails={(category) => {
-            // Navigate to budget summary section by scrolling to SummaryPanel
-            const summaryPanel = document.querySelector('.summary-panel');
-            if (summaryPanel) {
-              summaryPanel.scrollIntoView({ behavior: 'smooth' });
-              
-              // Highlight the specific category budget card if it exists
-              setTimeout(() => {
-                const budgetCard = document.querySelector(`[data-budget-category="${category}"]`);
-                if (budgetCard) {
-                  budgetCard.classList.add('budget-card-highlighted');
-                  setTimeout(() => {
-                    budgetCard.classList.remove('budget-card-highlighted');
-                  }, 3000);
-                }
-              }, 500);
-            }
+          onViewExpenses={(category) => {
+            // Clear other filters to stay in monthly view, then set category filter
+            // This ensures we show only the current month's expenses for this category
+            // (the month that generated the budget alert)
+            setSearchText('');
+            setFilterMethod('');
+            setFilterYear('');
+            setFilterType(category);
           }}
         />
 
@@ -797,7 +790,7 @@ function App() {
 
       <footer className="App-footer">
         <span className="version">
-          v{versionInfo?.version || '4.17.0'}
+          v{versionInfo?.version || '4.17.4'}
           {versionInfo?.docker && (
             <span className="docker-tag"> (Docker: {versionInfo.docker.tag})</span>
           )}

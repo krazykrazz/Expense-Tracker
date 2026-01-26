@@ -218,13 +218,13 @@ const AnomalyAlertsView = ({ onDismiss }) => {
 
                 <div className="anomaly-amount-section">
                   <div className="anomaly-amount">
-                    ${formatCurrency(anomaly.amount)}
+                    {formatCurrency(anomaly.amount)}
                   </div>
                   {anomaly.categoryAverage > 0 && (
                     <div className="anomaly-comparison">
                       <span className="anomaly-comparison-label">Category avg:</span>
                       <span className="anomaly-comparison-value">
-                        ${formatCurrency(anomaly.categoryAverage)}
+                        {formatCurrency(anomaly.categoryAverage)}
                       </span>
                     </div>
                   )}

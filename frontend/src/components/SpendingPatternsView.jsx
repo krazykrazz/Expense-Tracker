@@ -145,13 +145,13 @@ const SpendingPatternsView = ({ dataSufficiency, onPatternClick }) => {
                     <div className="spending-pattern-detail">
                       <span className="spending-pattern-label">Average Amount</span>
                       <span className="spending-pattern-value spending-pattern-amount">
-                        ${formatCurrency(pattern.averageAmount)}
+                        {formatCurrency(pattern.averageAmount)}
                       </span>
                     </div>
                     <div className="spending-pattern-detail">
                       <span className="spending-pattern-label">Variance</span>
                       <span className="spending-pattern-value">
-                        ${formatCurrency(pattern.amountVariance?.min || 0)} - ${formatCurrency(pattern.amountVariance?.max || 0)}
+                        {formatCurrency(pattern.amountVariance?.min || 0)} - {formatCurrency(pattern.amountVariance?.max || 0)}
                       </span>
                     </div>
                   </div>
@@ -196,7 +196,7 @@ const SpendingPatternsView = ({ dataSufficiency, onPatternClick }) => {
                 <div className="day-of-week-stat">
                   <span className="day-of-week-stat-label">Weekly Average</span>
                   <span className="day-of-week-stat-value">
-                    ${formatCurrency(dayOfWeek.weeklyAverage)}
+                    {formatCurrency(dayOfWeek.weeklyAverage)}
                   </span>
                 </div>
                 <div className="day-of-week-stat highlight-high">
@@ -228,7 +228,7 @@ const SpendingPatternsView = ({ dataSufficiency, onPatternClick }) => {
                     </div>
 
                     <div className="day-of-week-amount">
-                      ${formatCurrency(day.averageSpend)}
+                      {formatCurrency(day.averageSpend)}
                       <span className="day-of-week-avg-label">avg</span>
                     </div>
 

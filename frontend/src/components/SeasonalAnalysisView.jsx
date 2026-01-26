@@ -127,7 +127,7 @@ const SeasonalAnalysisView = ({ months = 12 }) => {
                     }}
                   >
                     <span className="seasonal-chart-value">
-                      ${formatCurrency(month.totalSpent)}
+                      {formatCurrency(month.totalSpent)}
                     </span>
                   </div>
                 </div>
@@ -153,7 +153,7 @@ const SeasonalAnalysisView = ({ months = 12 }) => {
                   {month.monthName} {month.year}
                 </span>
                 <span className="seasonal-table-amount">
-                  ${formatCurrency(month.totalSpent)}
+                  {formatCurrency(month.totalSpent)}
                 </span>
                 <span className={`seasonal-table-change ${getChangeClass(month.previousMonthChange)}`}>
                   {formatPercentage(month.previousMonthChange)}
@@ -187,7 +187,7 @@ const SeasonalAnalysisView = ({ months = 12 }) => {
                   )}
                 </div>
                 <div className="seasonal-quarter-amount">
-                  ${formatCurrency(quarter.totalSpent)}
+                  {formatCurrency(quarter.totalSpent)}
                 </div>
                 <div className="seasonal-quarter-bar-container">
                   <div

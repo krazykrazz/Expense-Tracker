@@ -792,6 +792,22 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v4.17.4</div>
+                <div className="changelog-date">January 2026</div>
+                <ul className="changelog-items">
+                  <li>Budget alert "View Expenses" now shows only current month's expenses</li>
+                  <li>Category filter alone no longer triggers global view</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
+                <div className="changelog-version">v4.17.3</div>
+                <div className="changelog-date">January 2026</div>
+                <ul className="changelog-items">
+                  <li>Budget alert "View Expenses" now stays in monthly view</li>
+                  <li>Category filter alone no longer triggers global view</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v4.17.0</div>
                 <div className="changelog-date">January 2026</div>
                 <ul className="changelog-items">

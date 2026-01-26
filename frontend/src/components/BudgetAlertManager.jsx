@@ -23,8 +23,8 @@ const BudgetAlertManager = ({
   year, 
   month, 
   refreshTrigger, 
-  onManageBudgets, 
-  onViewDetails 
+  onManageBudgets,
+  onViewExpenses 
 }) => {
   const [alerts, setAlerts] = useState([]);
   const [dismissedAlerts, setDismissedAlerts] = useState(new Set());
@@ -40,59 +40,65 @@ const BudgetAlertManager = ({
   const budgetCacheRef = useRef({ key: null, data: null }); // Cache for budget data
 
   /**
-   * Validate and filter budget data to handle invalid entries gracefully
-   * Requirements: 7.1, 8.1 - Handle invalid budget data gracefully (skip invalid, continue with valid)
+   * Transform flat budget data from API to the nested structure expected by calculateAlerts
+   * API returns: { id, year, month, category, limit, spent }
+   * calculateAlerts expects: { budget: { id, category, limit }, progress, spent }
    */
-  const validateBudgetData = useCallback((budgets) => {
+  const transformBudgetData = useCallback((budgets) => {
     if (!Array.isArray(budgets)) {
       logger.warn('Budget data is not an array, returning empty array');
       return [];
     }
 
-    return budgets.filter(budget => {
-      // Check if budget has required properties
-      if (!budget || typeof budget !== 'object') {
-        logger.warn('Invalid budget object:', budget);
-        return false;
-      }
+    return budgets
+      .filter(budget => {
+        // Check if budget has required properties (flat structure from API)
+        if (!budget || typeof budget !== 'object') {
+          logger.warn('Invalid budget object:', budget);
+          return false;
+        }
 
-      // Check if budget has required nested structure
-      if (!budget.budget || typeof budget.budget !== 'object') {
-        logger.warn('Budget missing budget property:', budget);
-        return false;
-      }
+        // Check required fields for flat structure
+        const requiredFields = ['id', 'category', 'limit'];
+        const missingFields = requiredFields.filter(field => 
+          budget[field] === undefined || budget[field] === null
+        );
 
-      // Check required fields
-      const requiredFields = ['id', 'category', 'limit'];
-      const missingFields = requiredFields.filter(field => 
-        budget.budget[field] === undefined || budget.budget[field] === null
-      );
+        if (missingFields.length > 0) {
+          logger.warn(`Budget missing required fields [${missingFields.join(', ')}]:`, budget);
+          return false;
+        }
 
-      if (missingFields.length > 0) {
-        logger.warn(`Budget missing required fields [${missingFields.join(', ')}]:`, budget);
-        return false;
-      }
+        // Check if limit is a valid number
+        if (typeof budget.limit !== 'number' || isNaN(budget.limit) || budget.limit < 0) {
+          logger.warn('Budget has invalid limit:', budget);
+          return false;
+        }
 
-      // Check if limit is a valid number
-      if (typeof budget.budget.limit !== 'number' || isNaN(budget.budget.limit) || budget.budget.limit < 0) {
-        logger.warn('Budget has invalid limit:', budget);
-        return false;
-      }
+        // Check if spent is a valid number (if present)
+        if (budget.spent !== undefined && (typeof budget.spent !== 'number' || isNaN(budget.spent))) {
+          logger.warn('Budget has invalid spent amount:', budget);
+          return false;
+        }
 
-      // Check if spent is a valid number (if present)
-      if (budget.spent !== undefined && (typeof budget.spent !== 'number' || isNaN(budget.spent))) {
-        logger.warn('Budget has invalid spent amount:', budget);
-        return false;
-      }
+        return true;
+      })
+      .map(budget => {
+        // Transform flat structure to nested structure expected by calculateAlerts
+        const spent = budget.spent || 0;
+        const limit = budget.limit;
+        const progress = limit > 0 ? (spent / limit) * 100 : 0;
 
-      // Check if progress is a valid number (if present)
-      if (budget.progress !== undefined && (typeof budget.progress !== 'number' || isNaN(budget.progress))) {
-        logger.warn('Budget has invalid progress:', budget);
-        return false;
-      }
-
-      return true;
-    });
+        return {
+          budget: {
+            id: budget.id,
+            category: budget.category,
+            limit: budget.limit
+          },
+          spent,
+          progress
+        };
+      });
   }, []);
 
   /**
@@ -205,8 +211,8 @@ const BudgetAlertManager = ({
     // Check cache first (Requirements: 7.1 - Cache alert calculations)
     if (budgetCacheRef.current.key === cacheKey && budgetCacheRef.current.data) {
       try {
-        const validBudgets = validateBudgetData(budgetCacheRef.current.data);
-        const cachedAlerts = calculateAlerts(validBudgets);
+        const transformedBudgets = transformBudgetData(budgetCacheRef.current.data);
+        const cachedAlerts = calculateAlerts(transformedBudgets);
         updateAlertSeverityTracking(cachedAlerts);
         setAlerts(cachedAlerts);
         return;
@@ -224,10 +230,11 @@ const BudgetAlertManager = ({
       const response = await getBudgets(year, month);
       const budgets = response?.budgets || [];
       
-      // Validate and filter budget data (Requirements: 7.1, 8.1 - Handle invalid budget data gracefully)
-      const validBudgets = validateBudgetData(budgets);
+      // Transform flat budget data to nested structure expected by calculateAlerts
+      // Requirements: 7.1, 8.1 - Handle budget data transformation gracefully
+      const transformedBudgets = transformBudgetData(budgets);
       
-      if (validBudgets.length === 0 && budgets.length > 0) {
+      if (transformedBudgets.length === 0 && budgets.length > 0) {
         // All budget data was invalid
         logger.warn('All budget data was invalid, no alerts will be displayed');
         setError('Budget data format is invalid');
@@ -235,19 +242,19 @@ const BudgetAlertManager = ({
         return;
       }
       
-      if (validBudgets.length < budgets.length) {
+      if (transformedBudgets.length < budgets.length) {
         // Some budget data was invalid but we have valid entries
-        const invalidCount = budgets.length - validBudgets.length;
+        const invalidCount = budgets.length - transformedBudgets.length;
         logger.warn(`${invalidCount} invalid budget entries were skipped`);
       }
       
-      // Update cache with valid data
+      // Update cache with original data (not transformed)
       budgetCacheRef.current = {
         key: cacheKey,
-        data: validBudgets
+        data: budgets
       };
       
-      const newAlerts = calculateAlerts(validBudgets);
+      const newAlerts = calculateAlerts(transformedBudgets);
       
       // Update severity tracking for dismissal override logic
       updateAlertSeverityTracking(newAlerts);
@@ -261,7 +268,7 @@ const BudgetAlertManager = ({
     } finally {
       setLoading(false);
     }
-  }, [getCacheKey, updateAlertSeverityTracking, validateBudgetData]);
+  }, [getCacheKey, updateAlertSeverityTracking, transformBudgetData]);
 
   /**
    * Load dismissal state from sessionStorage on mount
@@ -328,14 +335,13 @@ const BudgetAlertManager = ({
   }, [onManageBudgets]);
 
   /**
-   * Handle view details action with category context
-   * Requirements: 4.3, 4.4 - Navigate to budget summary section
+   * Handle view expenses action - filters expense list by category
    */
-  const handleViewDetails = useCallback((category) => {
-    if (onViewDetails) {
-      onViewDetails(category);
+  const handleViewExpenses = useCallback((category) => {
+    if (onViewExpenses) {
+      onViewExpenses(category);
     }
-  }, [onViewDetails]);
+  }, [onViewExpenses]);
 
   // Filter out dismissed alerts with dismissal override logic
   // Requirements: 3.4, 3.5 - Handle multiple alert dismissal independently with override
@@ -461,7 +467,7 @@ const BudgetAlertManager = ({
             alert={alert}
             onDismiss={dismissAlert}
             onManageBudgets={handleManageBudgets}
-            onViewDetails={handleViewDetails}
+            onViewExpenses={handleViewExpenses}
           />
         ))}
         
@@ -474,10 +480,10 @@ const BudgetAlertManager = ({
               <button
                 type="button"
                 className="budget-alert-more-btn"
-                onClick={handleViewDetails}
-                aria-label="View all budget alerts"
+                onClick={() => handleManageBudgets(null)}
+                aria-label="Manage all budgets"
               >
-                View All
+                Manage All
               </button>
             </div>
           </div>

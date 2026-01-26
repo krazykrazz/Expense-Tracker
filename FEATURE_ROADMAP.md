@@ -49,28 +49,6 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ### ⚪ 2. Financial Goals Dashboard
 **Status**: Proposed  
-**Priority**: High  
-**Effort**: High  
-**Description**: Analyze spending patterns and predict future expenses based on historical data.
-
-**Key Features**:
-- Identify recurring spending patterns
-- Predict end-of-month totals based on current trajectory
-- Seasonal spending analysis (compare months/quarters)
-- Day-of-week spending patterns
-- Anomaly detection (unusual spending alerts)
-
-**Benefits**:
-- Better financial planning
-- Early warning of overspending
-- Data-driven insights
-
-**Dependencies**: Requires sufficient historical data (3+ months)
-
----
-
-### ⚪ 3. Financial Goals Dashboard
-**Status**: Proposed  
 **Priority**: Medium  
 **Effort**: Medium  
 **Description**: Set and track progress toward financial goals with visual indicators.
@@ -787,8 +765,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 2. Financial Goals Dashboard
 
 ### Medium Priority
-1. Financial Goals Dashboard
-2. Advanced Expense Search
+1. Advanced Expense Search
 3. Custom Reports
 4. Category Insights
 5. Savings Rate Tracker
@@ -826,6 +803,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 ---
 
 **Version History**:
+- v2.1 (2026-01-26): Added Spending Patterns & Predictions / Analytics Hub (v4.17.0) to completed features, consolidated Merchant Analytics into Analytics Hub, updated current version to 4.17.0
 - v2.0 (2026-01-19): Added UI Modernization (v4.14.0) and Multi-Invoice Support (v4.13.0-v4.13.2) to completed features, marked Receipt Attachments as completed (via tax-deductible invoices), updated current version to 4.14.5
 - v1.8 (2026-01-15): Added Medical Expense Invoice Attachments (v4.12.0) to completed features, updated current version to 4.12.0
 - v1.7 (2025-12-31): Added Sticky Summary Scrolling (v4.11.0) to completed features, updated current version to 4.11.0

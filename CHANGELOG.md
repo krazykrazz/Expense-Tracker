@@ -11,6 +11,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.17.4] - 2026-01-26
+
+### Fixed
+- **Budget Alert Monthly Scoping**: Clicking "View Expenses" from a budget alert now correctly shows only the current month's expenses
+  - Category filter alone no longer triggers global view mode
+  - Budget alerts show expenses scoped to the month generating the alert
+  - Updated PBT tests to reflect new isGlobalView logic
+
+---
+
+## [4.17.3] - 2026-01-26
+
+### Fixed
+- **Budget Alert View Expenses**: "View Expenses" button now correctly scopes to current month
+  - Category filter alone no longer triggers global view mode
+  - Clicking "View Expenses" shows only the current month's expenses for that category
+  - Clears other filters (search, payment method, year) to ensure monthly view
+
+---
+
+## [4.17.2] - 2026-01-26
+
+### Fixed
+- **Budget Management Modal**: Fixed error when opening budget management where category was passed as object instead of string
+  - Added defensive validation to ensure category is always a string before API calls
+  - Prevents "[object Object]" being sent to budget suggestion API
+
+---
+
+## [4.17.1] - 2026-01-26
+
+### Fixed
+- **Budget Alerts**: Fixed "Budget data format is invalid" error by properly transforming API response format
+  - BudgetAlertManager now correctly handles flat budget data structure from API
+  - Calculates progress percentage from spent/limit values
+
+---
+
 ## [4.17.0] - 2026-01-26
 
 ### Added

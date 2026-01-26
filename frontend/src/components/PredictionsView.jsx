@@ -103,7 +103,7 @@ const PredictionsView = ({ year, month, monthlyIncome, budgetAlerts }) => {
         <div className="predictions-total">
           <div className="predictions-total-label">Predicted End-of-Month Total</div>
           <div className="predictions-total-amount">
-            ${formatCurrency(prediction.predictedTotal)}
+            {formatCurrency(prediction.predictedTotal)}
           </div>
         </div>
 
@@ -143,19 +143,19 @@ const PredictionsView = ({ year, month, monthlyIncome, budgetAlerts }) => {
           <div className="predictions-stat">
             <span className="predictions-stat-label">Current Spent</span>
             <span className="predictions-stat-value">
-              ${formatCurrency(prediction.currentSpent)}
+              {formatCurrency(prediction.currentSpent)}
             </span>
           </div>
           <div className="predictions-stat">
             <span className="predictions-stat-label">Daily Average</span>
             <span className="predictions-stat-value">
-              ${formatCurrency(prediction.dailyAverage)}
+              {formatCurrency(prediction.dailyAverage)}
             </span>
           </div>
           <div className="predictions-stat">
             <span className="predictions-stat-label">Historical Avg</span>
             <span className="predictions-stat-value">
-              ${formatCurrency(prediction.historicalMonthlyAverage)}
+              {formatCurrency(prediction.historicalMonthlyAverage)}
             </span>
           </div>
           <div className="predictions-stat">
@@ -208,7 +208,7 @@ const PredictionsView = ({ year, month, monthlyIncome, budgetAlerts }) => {
                   <div className="predictions-category-header">
                     <span className="predictions-category-name">{cat.category}</span>
                     <span className="predictions-category-predicted">
-                      ${formatCurrency(cat.predicted)}
+                      {formatCurrency(cat.predicted)}
                     </span>
                   </div>
                   <div className="predictions-category-bar-container">
@@ -220,8 +220,8 @@ const PredictionsView = ({ year, month, monthlyIncome, budgetAlerts }) => {
                     />
                   </div>
                   <div className="predictions-category-meta">
-                    <span>Current: ${formatCurrency(cat.currentSpent)}</span>
-                    <span>Remaining: ${formatCurrency(Math.max(0, cat.predicted - cat.currentSpent))}</span>
+                    <span>Current: {formatCurrency(cat.currentSpent)}</span>
+                    <span>Remaining: {formatCurrency(Math.max(0, cat.predicted - cat.currentSpent))}</span>
                   </div>
                 </div>
               ))}
@@ -235,8 +235,8 @@ const PredictionsView = ({ year, month, monthlyIncome, budgetAlerts }) => {
           <h4>Income Comparison</h4>
           <div className="predictions-income-bar">
             <div className="predictions-income-labels">
-              <span>Predicted: ${formatCurrency(prediction.predictedTotal)}</span>
-              <span>Income: ${formatCurrency(monthlyIncome)}</span>
+              <span>Predicted: {formatCurrency(prediction.predictedTotal)}</span>
+              <span>Income: {formatCurrency(monthlyIncome)}</span>
             </div>
             <div className="predictions-income-visual">
               <div
@@ -257,11 +257,11 @@ const PredictionsView = ({ year, month, monthlyIncome, budgetAlerts }) => {
             <div className="predictions-income-savings">
               {prediction.exceedsIncome ? (
                 <span className="predictions-deficit">
-                  Deficit: ${formatCurrency(prediction.predictedTotal - monthlyIncome)}
+                  Deficit: {formatCurrency(prediction.predictedTotal - monthlyIncome)}
                 </span>
               ) : (
                 <span className="predictions-surplus">
-                  Projected Savings: ${formatCurrency(monthlyIncome - prediction.predictedTotal)}
+                  Projected Savings: {formatCurrency(monthlyIncome - prediction.predictedTotal)}
                 </span>
               )}
             </div>

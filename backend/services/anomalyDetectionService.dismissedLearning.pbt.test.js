@@ -30,7 +30,7 @@ describe('AnomalyDetectionService - Dismissed Anomaly Learning Property Tests', 
       });
     });
     // Clear dismissed anomalies
-    anomalyDetectionService.clearDismissedAnomalies();
+    await anomalyDetectionService.clearDismissedAnomalies();
   });
 
   afterEach(async () => {
@@ -220,13 +220,27 @@ describe('AnomalyDetectionService - Dismissed Anomaly Learning Property Tests', 
         // Number of anomalies to dismiss
         fc.integer({ min: 1, max: 5 }),
         async (dismissCount) => {
-          anomalyDetectionService.clearDismissedAnomalies();
+          // Clear database and dismissed anomalies
+          await new Promise((resolve, reject) => {
+            db.run('DELETE FROM expenses', (err) => {
+              if (err) reject(err);
+              else resolve();
+            });
+          });
+          await anomalyDetectionService.clearDismissedAnomalies();
 
           const expenseIds = [];
           
-          // Dismiss multiple anomalies
+          // Create actual expenses and dismiss them
           for (let i = 0; i < dismissCount; i++) {
-            const expenseId = 1000 + i;
+            const expenseId = await insertExpense({
+              date: generateDate(i + 1),
+              amount: 100 + i,
+              type: 'Groceries',
+              method: 'Cash',
+              week: 1,
+              place: `Test Store ${i}`
+            });
             expenseIds.push(expenseId);
             await anomalyDetectionService.dismissAnomaly(expenseId);
           }
@@ -246,9 +260,24 @@ describe('AnomalyDetectionService - Dismissed Anomaly Learning Property Tests', 
   });
 
   test('Property 20: Dismissing same expense multiple times has no effect', async () => {
-    anomalyDetectionService.clearDismissedAnomalies();
+    // Clear database and dismissed anomalies
+    await new Promise((resolve, reject) => {
+      db.run('DELETE FROM expenses', (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+    await anomalyDetectionService.clearDismissedAnomalies();
 
-    const expenseId = 12345;
+    // Create an actual expense
+    const expenseId = await insertExpense({
+      date: generateDate(1),
+      amount: 100,
+      type: 'Groceries',
+      method: 'Cash',
+      week: 1,
+      place: 'Test Store'
+    });
 
     // Dismiss the same expense multiple times
     await anomalyDetectionService.dismissAnomaly(expenseId);
@@ -264,16 +293,50 @@ describe('AnomalyDetectionService - Dismissed Anomaly Learning Property Tests', 
   });
 
   test('Property 20: clearDismissedAnomalies resets the dismissed list', async () => {
-    // Dismiss some anomalies
-    await anomalyDetectionService.dismissAnomaly(1);
-    await anomalyDetectionService.dismissAnomaly(2);
-    await anomalyDetectionService.dismissAnomaly(3);
+    // Clear database and dismissed anomalies
+    await new Promise((resolve, reject) => {
+      db.run('DELETE FROM expenses', (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+    await anomalyDetectionService.clearDismissedAnomalies();
+
+    // Create actual expenses and dismiss them
+    const expenseId1 = await insertExpense({
+      date: generateDate(1),
+      amount: 100,
+      type: 'Groceries',
+      method: 'Cash',
+      week: 1,
+      place: 'Test Store 1'
+    });
+    const expenseId2 = await insertExpense({
+      date: generateDate(2),
+      amount: 200,
+      type: 'Groceries',
+      method: 'Cash',
+      week: 1,
+      place: 'Test Store 2'
+    });
+    const expenseId3 = await insertExpense({
+      date: generateDate(3),
+      amount: 300,
+      type: 'Groceries',
+      method: 'Cash',
+      week: 1,
+      place: 'Test Store 3'
+    });
+
+    await anomalyDetectionService.dismissAnomaly(expenseId1);
+    await anomalyDetectionService.dismissAnomaly(expenseId2);
+    await anomalyDetectionService.dismissAnomaly(expenseId3);
 
     let dismissed = await anomalyDetectionService.getDismissedAnomalies();
     expect(dismissed.length).toBe(3);
 
     // Clear dismissed anomalies
-    anomalyDetectionService.clearDismissedAnomalies();
+    await anomalyDetectionService.clearDismissedAnomalies();
 
     // Property: List should be empty after clear
     dismissed = await anomalyDetectionService.getDismissedAnomalies();

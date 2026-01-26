@@ -11,6 +11,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.17.6] - 2026-01-26
+
+### Fixed
+- **Dismissed Anomalies Persistence**: Fixed bug where dismissed anomalies were lost on container restart
+  - Anomalies marked as "expected" now persist to database instead of in-memory storage
+  - Added `dismissed_anomalies` table with database migration
+  - Dismissals survive Docker container restarts and server reboots
+
+---
+
+## [4.17.5] - 2026-01-26
+
+### Improved
+- **Daily Spending Anomaly Display**: Enhanced anomaly alerts to show expense count for high-spending days
+  - Days with multiple expenses now display "X expenses on this day" instead of showing a single place name
+  - Backend returns `expenseCount` field for daily anomalies
+  - Reason message now shows "X expenses totaling $Y" format for clarity
+
+---
+
 ## [4.17.4] - 2026-01-26
 
 ### Fixed

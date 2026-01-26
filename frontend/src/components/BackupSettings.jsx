@@ -792,6 +792,22 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v4.17.6</div>
+                <div className="changelog-date">January 2026</div>
+                <ul className="changelog-items">
+                  <li>Fixed dismissed anomalies not persisting across container restarts</li>
+                  <li>Anomalies marked as "expected" now survive Docker container restarts</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
+                <div className="changelog-version">v4.17.5</div>
+                <div className="changelog-date">January 2026</div>
+                <ul className="changelog-items">
+                  <li>Improved daily spending anomaly display to show expense count</li>
+                  <li>Days with multiple expenses now show "X expenses on this day" instead of single place</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v4.17.4</div>
                 <div className="changelog-date">January 2026</div>
                 <ul className="changelog-items">

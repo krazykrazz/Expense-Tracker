@@ -2767,6 +2767,73 @@ async function migrateAddOriginalAmountToExpensePeople(db) {
 }
 
 /**
+ * Migration: Add dismissed_anomalies table for persisting anomaly dismissals
+ */
+async function migrateAddDismissedAnomaliesTable(db) {
+  const migrationName = 'add_dismissed_anomalies_table_v1';
+  
+  // Check if already applied
+  const isApplied = await checkMigrationApplied(db, migrationName);
+  if (isApplied) {
+    logger.info(`Migration "${migrationName}" already applied, skipping`);
+    return;
+  }
+
+  logger.info(`Running migration: ${migrationName}`);
+
+  return new Promise((resolve, reject) => {
+    db.serialize(() => {
+      db.run('BEGIN TRANSACTION', (err) => {
+        if (err) {
+          return reject(err);
+        }
+
+        // Create dismissed_anomalies table
+        db.run(`
+          CREATE TABLE IF NOT EXISTS dismissed_anomalies (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            expense_id INTEGER NOT NULL,
+            dismissed_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(expense_id),
+            FOREIGN KEY (expense_id) REFERENCES expenses(id) ON DELETE CASCADE
+          )
+        `, (err) => {
+          if (err) {
+            db.run('ROLLBACK');
+            return reject(err);
+          }
+
+          logger.info('Created dismissed_anomalies table');
+
+          // Create index for faster lookups
+          db.run(`
+            CREATE INDEX IF NOT EXISTS idx_dismissed_anomalies_expense_id 
+            ON dismissed_anomalies(expense_id)
+          `, (err) => {
+            if (err) {
+              db.run('ROLLBACK');
+              return reject(err);
+            }
+
+            // Mark migration as applied and commit
+            markMigrationApplied(db, migrationName).then(() => {
+              db.run('COMMIT', (err) => {
+                if (err) {
+                  db.run('ROLLBACK');
+                  return reject(err);
+                }
+                logger.info(`Migration "${migrationName}" completed successfully`);
+                resolve();
+              });
+            }).catch(reject);
+          });
+        });
+      });
+    });
+  });
+}
+
+/**
  * Run all pending migrations
  */
 async function runMigrations(db) {
@@ -2788,6 +2855,7 @@ async function runMigrations(db) {
     await migrateLinkInvoicesToSinglePerson(db);
     await migrateAddInsuranceFieldsToExpenses(db);
     await migrateAddOriginalAmountToExpensePeople(db);
+    await migrateAddDismissedAnomaliesTable(db);
     logger.info('All migrations completed');
   } catch (error) {
     logger.error('Migration failed:', error.message);
@@ -2804,5 +2872,6 @@ module.exports = {
   migrateMultiInvoiceSupport,
   migrateLinkInvoicesToSinglePerson,
   migrateAddInsuranceFieldsToExpenses,
-  migrateAddOriginalAmountToExpensePeople
+  migrateAddOriginalAmountToExpensePeople,
+  migrateAddDismissedAnomaliesTable
 };

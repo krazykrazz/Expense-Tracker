@@ -9,6 +9,7 @@
  */
 
 const expenseRepository = require('../repositories/expenseRepository');
+const { getDatabase } = require('../database/db');
 const logger = require('../config/logger');
 const { 
   ANALYTICS_CONFIG, 
@@ -18,9 +19,62 @@ const {
 
 class AnomalyDetectionService {
   constructor() {
-    // In-memory storage for dismissed anomalies (MVP approach)
-    // In production, this could be persisted to database
-    this.dismissedExpenseIds = new Set();
+    // Cache for dismissed expense IDs (loaded from database on first use)
+    this._dismissedExpenseIdsCache = null;
+  }
+
+  /**
+   * Load dismissed expense IDs from database
+   * @returns {Promise<Set<number>>}
+   */
+  async _loadDismissedExpenseIds() {
+    if (this._dismissedExpenseIdsCache !== null) {
+      return this._dismissedExpenseIdsCache;
+    }
+
+    // Get database (may be a promise in test mode)
+    let db = getDatabase();
+    if (db && typeof db.then === 'function') {
+      db = await db;
+    }
+
+    if (!db || typeof db.get !== 'function') {
+      this._dismissedExpenseIdsCache = new Set();
+      return this._dismissedExpenseIdsCache;
+    }
+
+    return new Promise((resolve) => {
+      // Check if table exists first
+      db.get(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='dismissed_anomalies'",
+        (err, row) => {
+          if (err) {
+            logger.error('Error checking dismissed_anomalies table:', err);
+            // Return empty set on error to avoid breaking anomaly detection
+            this._dismissedExpenseIdsCache = new Set();
+            return resolve(this._dismissedExpenseIdsCache);
+          }
+
+          if (!row) {
+            // Table doesn't exist yet (migration not run)
+            this._dismissedExpenseIdsCache = new Set();
+            return resolve(this._dismissedExpenseIdsCache);
+          }
+
+          db.all('SELECT expense_id FROM dismissed_anomalies', (err, rows) => {
+            if (err) {
+              logger.error('Error loading dismissed anomalies:', err);
+              this._dismissedExpenseIdsCache = new Set();
+              return resolve(this._dismissedExpenseIdsCache);
+            }
+
+            this._dismissedExpenseIdsCache = new Set(rows.map(r => r.expense_id));
+            logger.debug(`Loaded ${this._dismissedExpenseIdsCache.size} dismissed anomalies from database`);
+            resolve(this._dismissedExpenseIdsCache);
+          });
+        }
+      );
+    });
   }
 
   /**
@@ -151,8 +205,9 @@ class AnomalyDetectionService {
       const merchantAnomalies = await this._detectNewMerchantAnomalies(recentExpenses, expenses);
       anomalies.push(...merchantAnomalies);
 
-      // Filter out dismissed anomalies
-      const filteredAnomalies = anomalies.filter(a => !this.dismissedExpenseIds.has(a.expenseId));
+      // Filter out dismissed anomalies (loaded from database)
+      const dismissedExpenseIds = await this._loadDismissedExpenseIds();
+      const filteredAnomalies = anomalies.filter(a => !dismissedExpenseIds.has(a.expenseId));
 
       // Sort by date descending
       filteredAnomalies.sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -242,6 +297,7 @@ class AnomalyDetectionService {
       if (total > threshold) {
         // Find the expenses for this day to report
         const dayExpenses = recentExpenses.filter(e => e.date === date);
+        const expenseCount = dayExpenses.length;
         const multiplier = total / dailyAverage;
         const severity = this._calculateDailySeverity(multiplier);
 
@@ -257,10 +313,11 @@ class AnomalyDetectionService {
           amount: total,
           category: 'Multiple',
           anomalyType: ANOMALY_TYPES.DAILY_TOTAL,
-          reason: `Daily spending of $${total.toFixed(2)} is ${multiplier.toFixed(1)}x the daily average of $${dailyAverage.toFixed(2)}`,
+          reason: `${expenseCount} expense${expenseCount > 1 ? 's' : ''} totaling $${total.toFixed(2)} (${multiplier.toFixed(1)}x daily avg of $${dailyAverage.toFixed(2)})`,
           severity,
           categoryAverage: dailyAverage,
           standardDeviations: multiplier,
+          expenseCount: expenseCount,
           dismissed: false
         });
       }
@@ -423,12 +480,87 @@ class AnomalyDetectionService {
 
   /**
    * Dismiss an anomaly (mark as expected behavior)
+   * Persists to database so it survives container restarts
    * @param {number} expenseId - The expense ID to dismiss
    * @returns {Promise<void>}
    */
   async dismissAnomaly(expenseId) {
-    this.dismissedExpenseIds.add(expenseId);
-    logger.debug('Dismissed anomaly for expense:', expenseId);
+    // Update cache immediately
+    if (!this._dismissedExpenseIdsCache) {
+      this._dismissedExpenseIdsCache = new Set();
+    }
+    this._dismissedExpenseIdsCache.add(expenseId);
+
+    // Get database (may be a promise in test mode)
+    let db = getDatabase();
+    if (db && typeof db.then === 'function') {
+      db = await db;
+    }
+
+    if (!db || typeof db.get !== 'function') {
+      logger.debug('Database not available for persisting dismissed anomaly');
+      return;
+    }
+
+    return new Promise((resolve, reject) => {
+      // Check if table exists first
+      db.get(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='dismissed_anomalies'",
+        (err, row) => {
+          if (err) {
+            logger.error('Error checking dismissed_anomalies table:', err);
+            return reject(err);
+          }
+
+          if (!row) {
+            // Table doesn't exist yet - create it inline
+            db.run(`
+              CREATE TABLE IF NOT EXISTS dismissed_anomalies (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                expense_id INTEGER NOT NULL,
+                dismissed_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(expense_id),
+                FOREIGN KEY (expense_id) REFERENCES expenses(id) ON DELETE CASCADE
+              )
+            `, (err) => {
+              if (err) {
+                logger.error('Error creating dismissed_anomalies table:', err);
+                return reject(err);
+              }
+              // Now insert
+              this._insertDismissedAnomaly(db, expenseId, resolve, reject);
+            });
+          } else {
+            this._insertDismissedAnomaly(db, expenseId, resolve, reject);
+          }
+        }
+      );
+    });
+  }
+
+  /**
+   * Helper to insert dismissed anomaly
+   * @private
+   */
+  _insertDismissedAnomaly(db, expenseId, resolve, reject) {
+    db.run(
+      'INSERT OR IGNORE INTO dismissed_anomalies (expense_id) VALUES (?)',
+      [expenseId],
+      (err) => {
+        if (err) {
+          logger.error('Error dismissing anomaly:', err);
+          return reject(err);
+        }
+        
+        // Update cache
+        if (this._dismissedExpenseIdsCache) {
+          this._dismissedExpenseIdsCache.add(expenseId);
+        }
+        
+        logger.debug('Dismissed anomaly for expense:', expenseId);
+        resolve();
+      }
+    );
   }
 
   /**
@@ -436,14 +568,44 @@ class AnomalyDetectionService {
    * @returns {Promise<Array<number>>}
    */
   async getDismissedAnomalies() {
-    return Array.from(this.dismissedExpenseIds);
+    const dismissedIds = await this._loadDismissedExpenseIds();
+    return Array.from(dismissedIds);
   }
 
   /**
    * Clear dismissed anomalies (for testing)
+   * @returns {Promise<void>}
    */
-  clearDismissedAnomalies() {
-    this.dismissedExpenseIds.clear();
+  async clearDismissedAnomalies() {
+    // Clear cache
+    this._dismissedExpenseIdsCache = new Set();
+    
+    // Also clear from database if in test environment
+    if (process.env.NODE_ENV === 'test') {
+      return new Promise((resolve) => {
+        const db = getDatabase();
+        
+        // Handle both sync and async getDatabase
+        const clearTable = (database) => {
+          database.run('DELETE FROM dismissed_anomalies', (err) => {
+            if (err) {
+              logger.debug('Could not clear dismissed_anomalies table (may not exist):', err.message);
+            }
+            resolve();
+          });
+        };
+
+        if (db && typeof db.then === 'function') {
+          // It's a promise
+          db.then(clearTable).catch(() => resolve());
+        } else if (db && typeof db.run === 'function') {
+          // It's already a database instance
+          clearTable(db);
+        } else {
+          resolve();
+        }
+      });
+    }
   }
 }
 

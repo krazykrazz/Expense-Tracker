@@ -667,6 +667,15 @@ function createTestDatabase() {
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
             UNIQUE(year, month, type)
+          )`,
+          
+          // dismissed_anomalies table (for persisting anomaly dismissals)
+          `CREATE TABLE IF NOT EXISTS dismissed_anomalies (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            expense_id INTEGER NOT NULL,
+            dismissed_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(expense_id),
+            FOREIGN KEY (expense_id) REFERENCES expenses(id) ON DELETE CASCADE
           )`
         ];
         
@@ -719,7 +728,8 @@ function createTestIndexes(db, resolve, reject) {
     'CREATE INDEX IF NOT EXISTS idx_expense_people_expense ON expense_people(expense_id)',
     'CREATE INDEX IF NOT EXISTS idx_expense_people_person ON expense_people(person_id)',
     'CREATE INDEX IF NOT EXISTS idx_expense_invoices_expense_id ON expense_invoices(expense_id)',
-    'CREATE INDEX IF NOT EXISTS idx_expense_invoices_upload_date ON expense_invoices(upload_date)'
+    'CREATE INDEX IF NOT EXISTS idx_expense_invoices_upload_date ON expense_invoices(upload_date)',
+    'CREATE INDEX IF NOT EXISTS idx_dismissed_anomalies_expense_id ON dismissed_anomalies(expense_id)'
   ];
   
   let completed = 0;

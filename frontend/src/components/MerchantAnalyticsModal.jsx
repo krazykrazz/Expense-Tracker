@@ -4,7 +4,7 @@ import { getTopMerchants, getPeriodDisplayName, getSortByDisplayName } from '../
 import { formatCurrency } from '../utils/formatters';
 import MerchantDetailView from './MerchantDetailView';
 
-const MerchantAnalyticsModal = ({ isOpen, onClose, onViewExpenses }) => {
+const MerchantAnalyticsModal = ({ isOpen, onClose, onViewExpenses, embedded = false }) => {
   const [merchants, setMerchants] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -86,7 +86,7 @@ const MerchantAnalyticsModal = ({ isOpen, onClose, onViewExpenses }) => {
   }
 
   return (
-    <div className="merchant-analytics-modal-overlay" onClick={handleClose}>
+    <div className={`merchant-analytics-modal-overlay ${embedded ? 'embedded' : ''}`} onClick={embedded ? undefined : handleClose}>
       <div className="merchant-analytics-modal-container" onClick={(e) => e.stopPropagation()}>
         <div className="merchant-analytics-modal-header">
           <h2>Merchant Analytics</h2>

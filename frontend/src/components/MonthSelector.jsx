@@ -1,6 +1,6 @@
 import './MonthSelector.css';
 
-const MonthSelector = ({ selectedYear, selectedMonth, onMonthChange, onViewAnnualSummary, onViewTaxDeductible, onManageBudgets, onViewBudgetHistory, onOpenMerchantAnalytics }) => {
+const MonthSelector = ({ selectedYear, selectedMonth, onMonthChange, onViewAnnualSummary, onViewTaxDeductible, onManageBudgets, onViewBudgetHistory, onOpenMerchantAnalytics, onOpenAnalyticsHub }) => {
   // Generate year range from 2020 to 2030
   const years = [];
   for (let year = 2020; year <= 2030; year++) {
@@ -73,6 +73,14 @@ const MonthSelector = ({ selectedYear, selectedMonth, onMonthChange, onViewAnnua
         title="View merchant analytics"
       >
         🏪 Merchant Analytics
+      </button>
+
+      <button 
+        className="analytics-hub-button"
+        onClick={onOpenAnalyticsHub}
+        title="View spending patterns and predictions"
+      >
+        📈 Analytics
       </button>
 
       <div className="selector-group">

@@ -1,6 +1,8 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const path = require('path');
 const { initializeDatabase } = require('./database/db');
 const expenseRoutes = require('./routes/expenseRoutes');
@@ -18,6 +20,7 @@ const investmentValueRoutes = require('./routes/investmentValueRoutes');
 const reminderRoutes = require('./routes/reminderRoutes');
 const peopleRoutes = require('./routes/peopleRoutes');
 const merchantAnalyticsRoutes = require('./routes/merchantAnalyticsRoutes');
+const analyticsRoutes = require('./routes/analyticsRoutes');
 const invoiceRoutes = require('./routes/invoiceRoutes');
 const backupService = require('./services/backupService');
 const logger = require('./config/logger');
@@ -30,19 +33,80 @@ configureTimezone();
 const app = express();
 const PORT = process.env.PORT || 2626;
 
+// Security middleware - Helmet sets various HTTP headers for security
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "blob:"],
+      connectSrc: ["'self'"],
+      fontSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      frameSrc: ["'none'"],
+      upgradeInsecureRequests: null // Disable for local network use
+    }
+  },
+  crossOriginEmbedderPolicy: false, // Allow embedding for local network
+  crossOriginResourcePolicy: { policy: "cross-origin" } // Allow cross-origin for local network
+}));
+
+// Rate limiting configuration
+// General API rate limit: 200 requests per minute per IP
+const generalLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 200,
+  message: { error: 'Too many requests, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => req.path === '/api/health' // Skip health checks
+});
+
+// Stricter rate limit for write operations: 60 per minute
+const writeLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  message: { error: 'Too many write requests, please slow down' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+// Very strict rate limit for file uploads: 10 per 15 minutes
+const uploadLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10,
+  message: { error: 'Too many file uploads, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+// Strict rate limit for backup/restore: 5 per hour
+const backupLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 5,
+  message: { error: 'Too many backup operations, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+// Apply general rate limiting to all API routes
+app.use('/api', generalLimiter);
+
 // Middleware
 app.use(cors()); // Enable CORS for all routes
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 // API routes
-// Health check endpoint
+// Health check endpoint (no rate limiting)
 app.use('/api', healthRoutes);
 
 // Expense API routes
 app.use('/api', expenseRoutes);
 
-// Backup API routes
+// Backup API routes - apply strict backup rate limiting
+app.use('/api/backup', backupLimiter);
 app.use('/api', backupRoutes);
 
 // Income API routes
@@ -81,7 +145,11 @@ app.use('/api/people', peopleRoutes);
 // Merchant Analytics API routes
 app.use('/api', merchantAnalyticsRoutes);
 
-// Invoice API routes
+// Spending Patterns & Predictions Analytics API routes
+app.use('/api/analytics', analyticsRoutes);
+
+// Invoice API routes - apply upload rate limiting for POST requests
+app.post('/api/invoices/upload', uploadLimiter);
 app.use('/api/invoices', invoiceRoutes);
 
 // Serve static files from the React app (after build)
@@ -110,6 +178,10 @@ initializeDatabase()
       logger.info(`  - SERVICE_TZ: ${getTimezone()}`);
       logger.info(`  - PORT: ${PORT}`);
       logger.info(`  - NODE_ENV: ${process.env.NODE_ENV || 'development'}`);
+      logger.info('');
+      logger.info('Security features enabled:');
+      logger.info('  - Helmet security headers');
+      logger.info('  - Rate limiting (200 req/min general, 10 uploads/15min, 5 backups/hr)');
       logger.info('');
       logger.info(`Server is running on port ${PORT}`);
       logger.info(`API available at http://localhost:${PORT}/api`);

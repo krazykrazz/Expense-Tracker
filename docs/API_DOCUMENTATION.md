@@ -647,12 +647,25 @@ All errors follow this format:
 
 ## Rate Limiting
 
-Currently, no rate limiting is implemented. Consider implementing rate limiting for production deployments to prevent abuse.
+Rate limiting is implemented to prevent abuse and ensure fair usage:
 
-**Recommended Limits:**
-- Upload: 10 requests per minute per user
-- Download: 50 requests per minute per user
-- Delete: 10 requests per minute per user
+| Endpoint Type | Limit | Window |
+|--------------|-------|--------|
+| General API | 200 requests | 1 minute |
+| File Uploads | 10 requests | 15 minutes |
+| Backup/Restore | 5 requests | 1 hour |
+
+**Response when rate limited:**
+```json
+{
+  "error": "Too many requests, please try again later"
+}
+```
+
+**Headers returned:**
+- `RateLimit-Limit`: Maximum requests allowed
+- `RateLimit-Remaining`: Requests remaining in window
+- `RateLimit-Reset`: Time when the rate limit resets (Unix timestamp)
 
 ---
 

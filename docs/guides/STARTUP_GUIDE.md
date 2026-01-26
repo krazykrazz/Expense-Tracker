@@ -1,19 +1,22 @@
-# Expense Tracker - Automatic Startup Guide
+# Expense Tracker - Startup Guide
 
-## Quick Start (Development Mode)
+## Quick Start (Docker - Recommended)
 
-### Option 1: System Tray Icon ⭐⭐ BEST for Daily Use
-1. Double-click `start-tray-icon.vbs` in the project root
-2. Icon appears in system tray (bottom-right of taskbar)
-3. Servers start automatically in background
-4. **Right-click icon** for menu:
-   - Open Expense Tracker (browser)
-   - Start/Stop Servers
-   - Exit
-5. **Double-click icon** to open app in browser
-6. Access at http://localhost:5173
+### Docker Deployment (Production)
+1. Ensure Docker is installed and running
+2. Run `docker-compose up -d` or use `build-and-push.ps1`
+3. Access the app at http://localhost:2424
+4. To stop: `docker-compose down` or `stop-docker.bat`
 
-### Option 2: Silent Mode (No Windows)
+**Benefits:**
+- ✅ Single container deployment
+- ✅ Automatic database persistence via volumes
+- ✅ Easy updates with image pulls
+- ✅ Consistent environment
+
+## Development Mode
+
+### Option 1: Silent Mode (No Windows)
 1. Double-click `start-silent.vbs` in the project root
 2. Servers start in background (no terminal windows)
 3. Brief notification popup appears
@@ -52,71 +55,24 @@
 - Watches: `.js` files in `backend/`
 - Automatically restarts server when you save changes
 
-## Windows Startup (Run on Boot)
-
-### Method 1: Startup Folder - System Tray Icon (Recommended) ⭐⭐
-
-1. Press `Win + R` and type: `shell:startup`
-2. Right-click in the folder → New → Shortcut
-3. Browse to `start-tray-icon.vbs`
-4. Name it "Expense Tracker"
-5. The app will start with a system tray icon when Windows boots
-
-**Benefits:**
-- ✅ System tray icon for easy control
-- ✅ Right-click menu to start/stop servers
-- ✅ Double-click to open app
-- ✅ No terminal windows
-- ✅ Clean and professional
-
-### Method 2: Startup Folder - Silent Mode
-
-1. Press `Win + R` and type: `shell:startup`
-2. Right-click in the folder → New → Shortcut
-3. Browse to `start-silent.vbs` or `start-silent-prod.vbs`
-4. Name it "Expense Tracker"
-5. The app will start silently when Windows boots (no windows!)
-
-**To stop the app:**
-- Create another shortcut to `stop-servers-silent.vbs` on your desktop
-- Or run `stop-servers.bat`
-
-### Method 2: Startup Folder - With Terminals
-
-1. Press `Win + R` and type: `shell:startup`
-2. Create a shortcut to `start-dev.bat` or `start-prod.bat`
-3. The app will start with visible terminal windows when Windows boots
-
-### Method 3: Task Scheduler (More Control)
-
-**For Silent Mode:**
-1. Open Task Scheduler (search in Start menu)
-2. Click "Create Basic Task"
-3. Name: "Expense Tracker"
-4. Trigger: "When I log on"
-5. Action: "Start a program"
-6. Program: `wscript.exe`
-7. Arguments: `"C:\Users\YourUsername\Projects\Expense Tracker\start-silent.vbs"`
-8. Finish
-
-**Advanced Options:**
-- Run whether user is logged on or not
-- Run with highest privileges
-- Configure for: Windows 10/11
-- Hidden: Check "Hidden" to run completely in background
-
 ## Installing Dependencies
 
-Before first run, install nodemon for backend auto-reload:
+Before first run, install dependencies:
 
 ```cmd
-cd backend
-npm install
+npm run install-all
 ```
 
-This will install nodemon as a dev dependency.
+Or manually:
+```cmd
+cd backend && npm install
+cd ../frontend && npm install
+```
 
 ## Stopping the Application
+
+### Docker:
+- Run `docker-compose down` or `stop-docker.bat`
 
 ### Silent Mode (No Windows):
 - **Easy way**: Double-click `stop-servers-silent.vbs`
@@ -175,19 +131,14 @@ To access from other devices on your network:
    netsh advfirewall firewall add rule name="Expense Tracker Backend" dir=in action=allow protocol=TCP localport=2424
    ```
 
-## Recommended Setup for Daily Use
+## Recommended Setup
 
-1. **Development** (if you're making changes):
+1. **Daily Use (Production)**:
+   - Use Docker: `docker-compose up -d`
+   - Access at http://localhost:2424
+   - Stable and resource-efficient
+
+2. **Development** (if you're making changes):
    - Use `start-dev.bat`
    - Keep terminal windows open
    - Enjoy auto-reload on every save
-
-2. **Production** (for regular use):
-   - Use `start-prod.bat`
-   - Minimize terminal window
-   - More stable, less resource usage
-
-3. **Auto-start on Windows Boot**:
-   - Add shortcut to Startup folder
-   - Use production mode for daily use
-   - Use development mode when coding

@@ -12,11 +12,15 @@ import BudgetManagementModal from './components/BudgetManagementModal';
 import BudgetHistoryView from './components/BudgetHistoryView';
 import PeopleManagementModal from './components/PeopleManagementModal';
 import MerchantAnalyticsModal from './components/MerchantAnalyticsModal';
+import AnalyticsHubModal from './components/AnalyticsHubModal';
 import BudgetAlertManager from './components/BudgetAlertManager';
 import FloatingAddButton from './components/FloatingAddButton';
 import { API_ENDPOINTS } from './config';
 import { CATEGORIES, PAYMENT_METHODS } from './utils/constants';
 import { getPeople } from './services/peopleApi';
+import { getMonthlyIncomeSources } from './services/incomeApi';
+import { getBudgets } from './services/budgetApi';
+import { calculateAlerts } from './utils/budgetAlerts';
 import logo from './assets/tracker.png.png';
 
 function App() {
@@ -37,6 +41,7 @@ function App() {
   const [showBudgetHistory, setShowBudgetHistory] = useState(false);
   const [showPeopleManagement, setShowPeopleManagement] = useState(false);
   const [showMerchantAnalytics, setShowMerchantAnalytics] = useState(false);
+  const [showAnalyticsHub, setShowAnalyticsHub] = useState(false);
   const [filterType, setFilterType] = useState('');
   const [filterMethod, setFilterMethod] = useState('');
   const [filterYear, setFilterYear] = useState(''); // Year filter for global search
@@ -44,6 +49,10 @@ function App() {
   
   // Budget alert refresh trigger for real-time updates
   const [budgetAlertRefreshTrigger, setBudgetAlertRefreshTrigger] = useState(0);
+  
+  // Budget alerts state for Analytics Hub integration (Requirement 7.4)
+  const [budgetAlerts, setBudgetAlerts] = useState([]);
+  const [monthlyIncome, setMonthlyIncome] = useState(null);
   
   // People state management for medical expense tracking
   const [people, setPeople] = useState([]);
@@ -114,6 +123,44 @@ function App() {
       isMounted = false;
     };
   }, [peopleRefreshTrigger]);
+
+  // Fetch monthly income and budget alerts for Analytics Hub integration (Requirement 7.4)
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchAnalyticsData = async () => {
+      try {
+        // Fetch monthly income
+        const incomeData = await getMonthlyIncomeSources(selectedYear, selectedMonth);
+        if (isMounted) {
+          setMonthlyIncome(incomeData.total || 0);
+        }
+
+        // Fetch budget alerts
+        const budgets = await getBudgets(selectedYear, selectedMonth);
+        if (isMounted && budgets) {
+          const alerts = calculateAlerts(budgets);
+          // Transform alerts to the format expected by PredictionsView
+          const formattedAlerts = alerts.map(alert => ({
+            category: alert.category,
+            percentUsed: Math.round(alert.progress),
+            status: alert.severity
+          }));
+          setBudgetAlerts(formattedAlerts);
+        }
+      } catch (err) {
+        if (isMounted) {
+          console.error('Error fetching analytics data:', err);
+        }
+      }
+    };
+
+    fetchAnalyticsData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedYear, selectedMonth, budgetAlertRefreshTrigger]);
 
   // Fetch current month expense count for floating button visibility
   useEffect(() => {
@@ -452,6 +499,13 @@ function App() {
     setShowMerchantAnalytics(false);
   };
 
+  const handleViewExpensesFromAnalytics = (merchantName) => {
+    // Set search text to the merchant name to filter expenses
+    setSearchText(merchantName);
+    // Close the analytics hub modal
+    setShowAnalyticsHub(false);
+  };
+
   /**
    * Client-Side Expense Filtering (Memoized)
    * 
@@ -569,6 +623,7 @@ function App() {
             onManageBudgets={handleManageBudgets}
             onViewBudgetHistory={handleViewBudgetHistory}
             onOpenMerchantAnalytics={() => setShowMerchantAnalytics(true)}
+            onOpenAnalyticsHub={() => setShowAnalyticsHub(true)}
           />
         </div>
         
@@ -736,6 +791,18 @@ function App() {
           isOpen={showMerchantAnalytics}
           onClose={() => setShowMerchantAnalytics(false)}
           onViewExpenses={handleViewExpensesFromMerchant}
+        />
+      )}
+
+      {showAnalyticsHub && (
+        <AnalyticsHubModal
+          isOpen={showAnalyticsHub}
+          onClose={() => setShowAnalyticsHub(false)}
+          currentYear={selectedYear}
+          currentMonth={selectedMonth}
+          monthlyIncome={monthlyIncome}
+          budgetAlerts={budgetAlerts}
+          onViewExpenses={handleViewExpensesFromAnalytics}
         />
       )}
 

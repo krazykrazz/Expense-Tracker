@@ -67,6 +67,15 @@ export const API_ENDPOINTS = {
   MERCHANT_TREND: (name) => `${API_BASE_URL}/api/analytics/merchants/${encodeURIComponent(name)}/trend`,
   MERCHANT_EXPENSES: (name) => `${API_BASE_URL}/api/analytics/merchants/${encodeURIComponent(name)}/expenses`,
   
+  // Spending Patterns & Predictions Analytics
+  ANALYTICS_PATTERNS: `${API_BASE_URL}/api/analytics/patterns`,
+  ANALYTICS_PATTERNS_DAY_OF_WEEK: `${API_BASE_URL}/api/analytics/patterns/day-of-week`,
+  ANALYTICS_SEASONAL: `${API_BASE_URL}/api/analytics/seasonal`,
+  ANALYTICS_PREDICTIONS: (year, month) => `${API_BASE_URL}/api/analytics/predictions/${year}/${month}`,
+  ANALYTICS_ANOMALIES: `${API_BASE_URL}/api/analytics/anomalies`,
+  ANALYTICS_ANOMALY_DISMISS: (expenseId) => `${API_BASE_URL}/api/analytics/anomalies/${expenseId}/dismiss`,
+  ANALYTICS_DATA_SUFFICIENCY: `${API_BASE_URL}/api/analytics/data-sufficiency`,
+  
   // Insurance Status
   INSURANCE_STATUS: (id) => `${API_BASE_URL}/api/expenses/${id}/insurance-status`,
   

@@ -8,7 +8,6 @@
 
 const fc = require('fast-check');
 const { pbtOptions } = require('../test/pbtArbitraries');
-const invoiceService = require('./invoiceService');
 const fileValidation = require('../utils/fileValidation');
 const path = require('path');
 const fs = require('fs');

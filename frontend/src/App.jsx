@@ -11,7 +11,6 @@ import TaxDeductible from './components/TaxDeductible';
 import BudgetManagementModal from './components/BudgetManagementModal';
 import BudgetHistoryView from './components/BudgetHistoryView';
 import PeopleManagementModal from './components/PeopleManagementModal';
-import MerchantAnalyticsModal from './components/MerchantAnalyticsModal';
 import AnalyticsHubModal from './components/AnalyticsHubModal';
 import BudgetAlertManager from './components/BudgetAlertManager';
 import FloatingAddButton from './components/FloatingAddButton';
@@ -40,7 +39,6 @@ function App() {
   const [budgetManagementFocusCategory, setBudgetManagementFocusCategory] = useState(null);
   const [showBudgetHistory, setShowBudgetHistory] = useState(false);
   const [showPeopleManagement, setShowPeopleManagement] = useState(false);
-  const [showMerchantAnalytics, setShowMerchantAnalytics] = useState(false);
   const [showAnalyticsHub, setShowAnalyticsHub] = useState(false);
   const [filterType, setFilterType] = useState('');
   const [filterMethod, setFilterMethod] = useState('');
@@ -137,8 +135,9 @@ function App() {
         }
 
         // Fetch budget alerts
-        const budgets = await getBudgets(selectedYear, selectedMonth);
-        if (isMounted && budgets) {
+        const budgetResponse = await getBudgets(selectedYear, selectedMonth);
+        const budgets = budgetResponse?.budgets || [];
+        if (isMounted && budgets.length > 0) {
           const alerts = calculateAlerts(budgets);
           // Transform alerts to the format expected by PredictionsView
           const formattedAlerts = alerts.map(alert => ({
@@ -492,13 +491,6 @@ function App() {
     setShowPeopleManagement(false);
   };
 
-  const handleViewExpensesFromMerchant = (merchantName) => {
-    // Set search text to the merchant name to filter expenses
-    setSearchText(merchantName);
-    // Close the merchant analytics modal
-    setShowMerchantAnalytics(false);
-  };
-
   const handleViewExpensesFromAnalytics = (merchantName) => {
     // Set search text to the merchant name to filter expenses
     setSearchText(merchantName);
@@ -622,7 +614,6 @@ function App() {
             onViewTaxDeductible={() => setShowTaxDeductible(true)}
             onManageBudgets={handleManageBudgets}
             onViewBudgetHistory={handleViewBudgetHistory}
-            onOpenMerchantAnalytics={() => setShowMerchantAnalytics(true)}
             onOpenAnalyticsHub={() => setShowAnalyticsHub(true)}
           />
         </div>
@@ -783,14 +774,6 @@ function App() {
           isOpen={showPeopleManagement}
           onClose={handleClosePeopleManagement}
           onPeopleUpdated={handlePeopleUpdated}
-        />
-      )}
-
-      {showMerchantAnalytics && (
-        <MerchantAnalyticsModal
-          isOpen={showMerchantAnalytics}
-          onClose={() => setShowMerchantAnalytics(false)}
-          onViewExpenses={handleViewExpensesFromMerchant}
         />
       )}
 

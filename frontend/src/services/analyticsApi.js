@@ -46,7 +46,9 @@ export const getRecurringPatterns = async (options = {}) => {
       ? `${API_ENDPOINTS.ANALYTICS_PATTERNS}?${queryString}`
       : API_ENDPOINTS.ANALYTICS_PATTERNS;
     
-    return await apiGet(url, 'fetch recurring patterns');
+    const response = await apiGet(url, 'fetch recurring patterns');
+    // API returns { patterns: [], metadata: {...} }, extract patterns array
+    return response?.patterns || [];
   } catch (error) {
     logApiError('fetching recurring patterns', error);
     throw error;
@@ -166,7 +168,9 @@ export const getAnomalies = async (options = {}) => {
       ? `${API_ENDPOINTS.ANALYTICS_ANOMALIES}?${queryString}`
       : API_ENDPOINTS.ANALYTICS_ANOMALIES;
     
-    return await apiGet(url, 'fetch anomalies');
+    const response = await apiGet(url, 'fetch anomalies');
+    // API returns { anomalies: [], metadata: {...} }, extract anomalies array
+    return response?.anomalies || [];
   } catch (error) {
     logApiError('fetching anomalies', error);
     throw error;

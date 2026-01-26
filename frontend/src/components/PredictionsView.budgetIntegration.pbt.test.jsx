@@ -14,6 +14,7 @@ import * as fc from 'fast-check';
 import PredictionsView from './PredictionsView';
 import * as analyticsApi from '../services/analyticsApi';
 import { CATEGORIES } from '../utils/constants';
+import { uiPbtOptions } from '../test/pbtArbitraries';
 
 // Mock the analytics API
 vi.mock('../services/analyticsApi', () => ({
@@ -115,7 +116,7 @@ describe('PredictionsView - Budget Integration Property Tests', () => {
           });
         }
       ),
-      { numRuns: 50 }
+      uiPbtOptions()
     );
   });
 
@@ -158,7 +159,7 @@ describe('PredictionsView - Budget Integration Property Tests', () => {
           expect(alertElement.classList.contains(budgetAlert.status)).toBe(true);
         }
       ),
-      { numRuns: 50 }
+      uiPbtOptions()
     );
   });
 
@@ -199,7 +200,7 @@ describe('PredictionsView - Budget Integration Property Tests', () => {
           expect(budgetSection).toBeNull();
         }
       ),
-      { numRuns: 50 }
+      uiPbtOptions()
     );
   });
 
@@ -244,7 +245,7 @@ describe('PredictionsView - Budget Integration Property Tests', () => {
           expect(container.querySelector('.predictions-view')).not.toBeNull();
         }
       ),
-      { numRuns: 20 }
+      uiPbtOptions()
     );
   });
 
@@ -300,7 +301,7 @@ describe('PredictionsView - Budget Integration Property Tests', () => {
           expect(budgetSection).toBeVisible();
         }
       ),
-      { numRuns: 50 }
+      uiPbtOptions()
     );
   });
 });

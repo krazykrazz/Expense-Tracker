@@ -412,3 +412,270 @@ describe('Tax Credit Calculator Property-Based Tests', () => {
     );
   });
 });
+
+
+/**
+ * **Feature: tax-deductible-analytics, Property 11: Year-Specific Rate Usage**
+ * **Validates: Requirements 7.5**
+ * 
+ * For any tax year Y with configured rates, all calculations for year Y
+ * should use the rates configured for year Y, not rates from any other year.
+ */
+describe('Year-Specific Rate Usage Property Tests', () => {
+  // Years with configured rates
+  const configuredYears = [2022, 2023, 2024, 2025, 2026];
+  
+  test('Property 11: AGI threshold uses year-specific federal max', () => {
+    fc.assert(
+      fc.property(
+        safeIncome.filter(n => n > 100000), // High income to hit the max threshold
+        fc.constantFrom(...configuredYears),
+        (netIncome, year) => {
+          const { federal } = getTaxRatesForYear(year);
+          const threshold = calculateAGIThreshold(netIncome, year);
+          
+          // For high income, threshold should equal the year-specific max
+          expect(threshold).toBe(federal.agiThresholdMax);
+          
+          // Verify the max is different for different years
+          const otherYears = configuredYears.filter(y => y !== year);
+          const otherMaxes = otherYears.map(y => getTaxRatesForYear(y).federal.agiThresholdMax);
+          
+          // At least some years should have different thresholds
+          const hasDifferentThresholds = otherMaxes.some(max => max !== federal.agiThresholdMax);
+          // This is expected to be true since thresholds change with inflation
+          expect(hasDifferentThresholds || otherMaxes.length === 0).toBe(true);
+        }
+      ),
+      pbtOptions({ numRuns: 50 })
+    );
+  });
+
+  test('Property 11: Federal rates are year-specific', () => {
+    fc.assert(
+      fc.property(
+        fc.constantFrom(...configuredYears),
+        (year) => {
+          const { federal } = getTaxRatesForYear(year);
+          
+          // Verify the rates object has all required properties
+          expect(federal).toHaveProperty('medicalCreditRate');
+          expect(federal).toHaveProperty('donationFirstTierRate');
+          expect(federal).toHaveProperty('donationSecondTierRate');
+          expect(federal).toHaveProperty('donationFirstTierLimit');
+          expect(federal).toHaveProperty('agiThresholdPercent');
+          expect(federal).toHaveProperty('agiThresholdMax');
+          
+          // Verify the rates are from the correct year's configuration
+          expect(TAX_RATES.federal[year]).toBeDefined();
+          expect(federal.agiThresholdMax).toBe(TAX_RATES.federal[year].agiThresholdMax);
+        }
+      ),
+      pbtOptions({ numRuns: 20 })
+    );
+  });
+
+  test('Property 11: Provincial rates are year-specific', () => {
+    fc.assert(
+      fc.property(
+        fc.constantFrom(...configuredYears),
+        provinceCode,
+        (year, province) => {
+          const { provincial } = getTaxRatesForYear(year);
+          
+          // Verify the provincial rates for this year and province exist
+          expect(provincial[province]).toBeDefined();
+          expect(provincial[province]).toHaveProperty('medicalCreditRate');
+          expect(provincial[province]).toHaveProperty('donationFirstTierRate');
+          expect(provincial[province]).toHaveProperty('donationSecondTierRate');
+          expect(provincial[province]).toHaveProperty('name');
+          
+          // Verify the rates match the year's configuration
+          expect(TAX_RATES.provincial[year][province]).toBeDefined();
+          expect(provincial[province].medicalCreditRate).toBe(
+            TAX_RATES.provincial[year][province].medicalCreditRate
+          );
+        }
+      ),
+      pbtOptions({ numRuns: 50 })
+    );
+  });
+
+  test('Property 11: calculateAllTaxCredits uses year-specific rates', () => {
+    fc.assert(
+      fc.property(
+        safeExpenseAmount,
+        safeExpenseAmount,
+        safeIncome,
+        fc.constantFrom(...configuredYears),
+        provinceCode,
+        (medicalTotal, donationTotal, netIncome, year, province) => {
+          const result = calculateAllTaxCredits({
+            medicalTotal,
+            donationTotal,
+            netIncome,
+            year,
+            provinceCode: province
+          });
+          
+          // Verify the rates in the result match the year's configuration
+          expect(result.federal.rates.agiThresholdMax).toBe(
+            TAX_RATES.federal[year].agiThresholdMax
+          );
+          expect(result.provincial.rates.medicalCreditRate).toBe(
+            TAX_RATES.provincial[year][province].medicalCreditRate
+          );
+          
+          // Verify fallbackUsed is false for configured years
+          expect(result.fallbackUsed).toBe(false);
+        }
+      ),
+      pbtOptions({ numRuns: 50 })
+    );
+  });
+});
+
+/**
+ * **Feature: tax-deductible-analytics, Property 12: Rate Fallback Behavior**
+ * **Validates: Requirements 7.6**
+ * 
+ * For any tax year Y without configured rates, the system should use rates
+ * from the most recent configured year and set the fallbackUsed flag to true.
+ */
+describe('Rate Fallback Behavior Property Tests', () => {
+  // Years without configured rates (future years beyond configuration)
+  const unconfiguredYears = [2027, 2028, 2029, 2030];
+  
+  // Most recent configured year
+  const mostRecentYear = Math.max(...Object.keys(TAX_RATES.federal).map(Number));
+  
+  test('Property 12: Unconfigured years use most recent rates', () => {
+    fc.assert(
+      fc.property(
+        fc.constantFrom(...unconfiguredYears),
+        (year) => {
+          const { federal, provincial, fallbackUsed, fallbackYear } = getTaxRatesForYear(year);
+          
+          // Should use fallback
+          expect(fallbackUsed).toBe(true);
+          expect(fallbackYear).toBe(mostRecentYear);
+          
+          // Rates should match the most recent year
+          expect(federal.agiThresholdMax).toBe(TAX_RATES.federal[mostRecentYear].agiThresholdMax);
+          expect(federal.medicalCreditRate).toBe(TAX_RATES.federal[mostRecentYear].medicalCreditRate);
+        }
+      ),
+      pbtOptions({ numRuns: 20 })
+    );
+  });
+
+  test('Property 12: Fallback provincial rates match most recent year', () => {
+    fc.assert(
+      fc.property(
+        fc.constantFrom(...unconfiguredYears),
+        provinceCode,
+        (year, province) => {
+          const { provincial, fallbackUsed } = getTaxRatesForYear(year);
+          
+          expect(fallbackUsed).toBe(true);
+          
+          // Provincial rates should match the most recent year
+          expect(provincial[province].medicalCreditRate).toBe(
+            TAX_RATES.provincial[mostRecentYear][province].medicalCreditRate
+          );
+          expect(provincial[province].donationFirstTierRate).toBe(
+            TAX_RATES.provincial[mostRecentYear][province].donationFirstTierRate
+          );
+        }
+      ),
+      pbtOptions({ numRuns: 30 })
+    );
+  });
+
+  test('Property 12: calculateAllTaxCredits sets fallbackUsed for unconfigured years', () => {
+    fc.assert(
+      fc.property(
+        safeExpenseAmount,
+        safeExpenseAmount,
+        safeIncome,
+        fc.constantFrom(...unconfiguredYears),
+        provinceCode,
+        (medicalTotal, donationTotal, netIncome, year, province) => {
+          const result = calculateAllTaxCredits({
+            medicalTotal,
+            donationTotal,
+            netIncome,
+            year,
+            provinceCode: province
+          });
+          
+          // Verify fallbackUsed is true for unconfigured years
+          expect(result.fallbackUsed).toBe(true);
+          expect(result.fallbackYear).toBe(mostRecentYear);
+          
+          // Verify calculations still work correctly with fallback rates
+          expect(result.totalTaxSavings).toBeGreaterThanOrEqual(0);
+          expect(result.federal.total).toBeGreaterThanOrEqual(0);
+          expect(result.provincial.total).toBeGreaterThanOrEqual(0);
+        }
+      ),
+      pbtOptions({ numRuns: 30 })
+    );
+  });
+
+  test('Property 12: Fallback calculations produce valid results', () => {
+    fc.assert(
+      fc.property(
+        safeExpenseAmount.filter(n => n > 0),
+        safeExpenseAmount.filter(n => n > 0),
+        safeIncome.filter(n => n > 0),
+        fc.constantFrom(...unconfiguredYears),
+        provinceCode,
+        (medicalTotal, donationTotal, netIncome, year, province) => {
+          const result = calculateAllTaxCredits({
+            medicalTotal,
+            donationTotal,
+            netIncome,
+            year,
+            provinceCode: province
+          });
+          
+          // Even with fallback, calculations should be valid
+          expect(result.agiThreshold).toBeGreaterThan(0);
+          expect(result.federal.rates).toBeDefined();
+          expect(result.provincial.rates).toBeDefined();
+          expect(result.provincial.provinceName).toBeDefined();
+          
+          // Total should equal sum of federal and provincial
+          expect(result.totalTaxSavings).toBeCloseTo(
+            result.federal.total + result.provincial.total,
+            2
+          );
+        }
+      ),
+      pbtOptions({ numRuns: 30 })
+    );
+  });
+
+  test('Property 12: Very old years also use fallback (oldest configured)', () => {
+    // Years before the oldest configured year
+    const veryOldYears = [2018, 2019, 2020, 2021];
+    const oldestConfiguredYear = Math.min(...Object.keys(TAX_RATES.federal).map(Number));
+    
+    fc.assert(
+      fc.property(
+        fc.constantFrom(...veryOldYears.filter(y => y < oldestConfiguredYear)),
+        (year) => {
+          // Skip if year is actually configured
+          if (TAX_RATES.federal[year]) return true;
+          
+          const { fallbackUsed } = getTaxRatesForYear(year);
+          
+          // Should use fallback for years before configuration
+          expect(fallbackUsed).toBe(true);
+        }
+      ),
+      pbtOptions({ numRuns: 10 })
+    );
+  });
+});

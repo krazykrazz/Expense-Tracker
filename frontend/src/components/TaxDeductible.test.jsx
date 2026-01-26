@@ -142,7 +142,9 @@ describe('TaxDeductible', () => {
         // Check that summary cards are rendered
         const summaryCards = document.querySelectorAll('.summary-card');
         expect(summaryCards.length).toBe(3);
-        expect(screen.getByText('Total Deductible')).toBeInTheDocument();
+        // Use getAllByText since "Total Deductible" appears in both summary card and YoY section
+        const totalDeductibleElements = screen.getAllByText('Total Deductible');
+        expect(totalDeductibleElements.length).toBeGreaterThanOrEqual(1);
       });
     });
 

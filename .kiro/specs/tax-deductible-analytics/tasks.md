@@ -73,7 +73,7 @@ This implementation adds Year-over-Year comparison and Tax Credit Calculator fea
     - **Property 4: Change Indicator Correctness**
     - **Validates: Requirements 2.2, 2.3, 2.4, 2.5, 2.6**
 
-- [ ] 5. Checkpoint - Ensure all utility tests pass
+- [x] 5. Checkpoint - Ensure all utility tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 - [x] 6. Create backend endpoint for YoY summary data
@@ -152,26 +152,26 @@ This implementation adds Year-over-Year comparison and Tax Credit Calculator fea
     - Style credit breakdown tables and summary card
     - _Requirements: 8.1, 8.2, 8.3_
 
-- [ ] 9. Checkpoint - Ensure all components work together
+- [x] 9. Checkpoint - Ensure all components work together
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 10. Write integration tests
-  - [ ] 10.1 Write unit tests for UI rendering
+- [x] 10. Write integration tests
+  - [x] 10.1 Write unit tests for UI rendering
     - Test YoY comparison renders correctly with various data states
     - Test Tax Credit Calculator renders correctly with/without net income
     - _Requirements: 2.1, 8.1, 8.4_
   
-  - [ ] 10.2 Write property tests for YoY data fetching
+  - [x] 10.2 Write property tests for YoY data fetching
     - **Property 1: YoY Data Fetching**
     - **Property 2: YoY Display Completeness**
     - **Validates: Requirements 1.1, 2.1**
   
-  - [ ] 10.3 Write property tests for year-specific behavior
+  - [x] 10.3 Write property tests for year-specific behavior
     - **Property 11: Year-Specific Rate Usage**
     - **Property 12: Rate Fallback Behavior**
     - **Validates: Requirements 7.5, 7.6**
 
-- [ ] 11. Final checkpoint - Ensure all tests pass
+- [x] 11. Final checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 ## Notes

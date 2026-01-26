@@ -209,7 +209,11 @@ const AnomalyAlertsView = ({ onDismiss }) => {
 
               <div className="anomaly-card-body">
                 <div className="anomaly-expense-info">
-                  <div className="anomaly-place">{anomaly.place}</div>
+                  <div className="anomaly-place">
+                    {anomaly.anomalyType === 'daily_total' && anomaly.expenseCount > 1
+                      ? `${anomaly.expenseCount} expenses on this day`
+                      : anomaly.place}
+                  </div>
                   <div className="anomaly-meta">
                     <span className="anomaly-date">{formatLocalDate(anomaly.date)}</span>
                     <span className="anomaly-category">{anomaly.category}</span>

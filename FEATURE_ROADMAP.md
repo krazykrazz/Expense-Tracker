@@ -47,7 +47,34 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ---
 
-### ⚪ 2. Financial Goals Dashboard
+### ⚪ 2. Adaptive Anomaly Detection (Learning from Dismissals)
+**Status**: Proposed  
+**Priority**: Medium  
+**Effort**: Medium  
+**Description**: Use dismissed anomaly history to improve detection accuracy over time.
+
+**Key Features**:
+- Analyze patterns in dismissed anomalies (merchant, category, amount ranges)
+- Adjust detection thresholds based on user feedback
+- Reduce false positives for merchants/categories frequently dismissed
+- Learn user's spending patterns that appear anomalous but are normal for them
+- Optional "reset learning" to start fresh
+
+**Current State**:
+- Dismissed anomalies are persisted to database (v4.17.6)
+- Currently only used to filter anomalies from display
+- No threshold adjustment based on dismissal patterns
+
+**Benefits**:
+- Fewer false positive alerts over time
+- Personalized anomaly detection
+- Better user experience with relevant alerts only
+
+**Dependencies**: Extends existing anomaly detection service (v4.17.0)
+
+---
+
+### ⚪ 3. Financial Goals Dashboard
 **Status**: Proposed  
 **Priority**: Medium  
 **Effort**: Medium  
@@ -71,7 +98,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ## 🔍 Enhanced Search & Filtering
 
-### ⚪ 4. Advanced Expense Search
+### ⚪ 5. Advanced Expense Search
 **Status**: Proposed  
 **Priority**: Medium  
 **Effort**: Low  
@@ -93,7 +120,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ---
 
-### ⚪ 5. Tags System
+### ⚪ 6. Tags System
 **Status**: Proposed  
 **Priority**: Low  
 **Effort**: Medium  
@@ -117,7 +144,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ## 📱 User Experience
 
-### ⚪ 6. Expense Templates
+### ⚪ 7. Expense Templates
 **Status**: Proposed  
 **Priority**: High  
 **Effort**: Low  
@@ -139,7 +166,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ---
 
-### 🟢 7. Tax-Deductible Invoice Attachments
+### 🟢 8. Tax-Deductible Invoice Attachments
 **Status**: Completed (v4.12.0 - v4.13.2)  
 **Priority**: Medium  
 **Effort**: High  
@@ -158,7 +185,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ---
 
-### ⚪ 8. Multi-Currency Support
+### ⚪ 9. Multi-Currency Support
 **Status**: Proposed  
 **Priority**: Low  
 **Effort**: High  
@@ -182,7 +209,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ## 📈 Reporting & Export
 
-### ⚪ 9. Custom Reports
+### ⚪ 10. Custom Reports
 **Status**: Proposed  
 **Priority**: Medium  
 **Effort**: Medium  
@@ -204,7 +231,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ---
 
-### ⚪ 10. Category Insights
+### ⚪ 11. Category Insights
 **Status**: Proposed  
 **Priority**: Medium  
 **Effort**: Low  
@@ -228,7 +255,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ## 🔔 Smart Features
 
-### ⚪ 11. Expense Reminders
+### ⚪ 12. Expense Reminders
 **Status**: Proposed  
 **Priority**: Low  
 **Effort**: Low  
@@ -250,7 +277,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ---
 
-### ⚪ 12. Duplicate Detection
+### ⚪ 13. Duplicate Detection
 **Status**: Proposed  
 **Priority**: Low  
 **Effort**: Medium  
@@ -274,7 +301,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ## 💰 Financial Health
 
-### ⚪ 13. Savings Rate Tracker
+### ⚪ 14. Savings Rate Tracker
 **Status**: Proposed  
 **Priority**: Medium  
 **Effort**: Low  
@@ -296,7 +323,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ---
 
-### ⚪ 14. Debt Payoff Planner
+### ⚪ 15. Debt Payoff Planner
 **Status**: Proposed  
 **Priority**: Medium  
 **Effort**: High  
@@ -318,9 +345,43 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ---
 
+### ⚪ 16. Mortgage Tracking
+**Status**: Proposed  
+**Priority**: Medium  
+**Effort**: Medium  
+**Description**: Dedicated mortgage loan type with enhanced tracking for amortization, equity, and variable rate support.
+
+**Key Features**:
+- New "mortgage" loan type (alongside existing "loan" and "line_of_credit")
+- Amortization period tracking (e.g., 25 years)
+- Term length and renewal date tracking
+- Rate type indicator (fixed vs variable)
+- Variable rate updates with rate history (leverages existing loan_balances table)
+- Payment frequency options (monthly, bi-weekly, accelerated bi-weekly)
+- Current estimated property value for equity tracking
+- Principal vs interest breakdown per payment period
+- Equity calculation (estimated value - remaining balance)
+
+**Analytics**:
+- Principal paid vs interest paid over time visualization
+- Equity buildup chart
+- Amortization schedule projection
+- Interest rate history chart (especially useful for variable rates)
+- Comparison of different payment frequencies impact
+
+**Benefits**:
+- Better visibility into mortgage progress
+- Track equity growth over time
+- Understand impact of rate changes on variable mortgages
+- More accurate net worth calculations with property equity
+
+**Dependencies**: Extends existing loans infrastructure, database migration for mortgage-specific fields
+
+---
+
 ## 🎯 Quick Wins (Easy to Implement)
 
-### ⚪ 15. Expense Notes Enhancement
+### ⚪ 17. Expense Notes Enhancement
 **Status**: Proposed  
 **Priority**: Low  
 **Effort**: Very Low  
@@ -342,7 +403,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ---
 
-### ⚪ 16. Dark Mode
+### ⚪ 18. Dark Mode
 **Status**: Proposed  
 **Priority**: Low  
 **Effort**: Low  
@@ -364,7 +425,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ---
 
-### ⚪ 17. Keyboard Shortcuts
+### ⚪ 19. Keyboard Shortcuts
 **Status**: Proposed  
 **Priority**: Low  
 **Effort**: Low  
@@ -386,7 +447,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ---
 
-### ⚪ 18. Export Enhancements
+### ⚪ 20. Export Enhancements
 **Status**: Proposed  
 **Priority**: Medium  
 **Effort**: Low  
@@ -765,12 +826,14 @@ This document tracks potential features and enhancements for the Expense Tracker
 2. Financial Goals Dashboard
 
 ### Medium Priority
-1. Advanced Expense Search
-3. Custom Reports
-4. Category Insights
-5. Savings Rate Tracker
-6. Debt Payoff Planner
-7. Export Enhancements
+1. Adaptive Anomaly Detection (Learning from Dismissals)
+2. Advanced Expense Search
+3. Mortgage Tracking
+4. Custom Reports
+5. Category Insights
+6. Savings Rate Tracker
+7. Debt Payoff Planner
+8. Export Enhancements
 
 ### Low Priority
 1. Tags System
@@ -803,6 +866,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 ---
 
 **Version History**:
+- v2.2 (2026-01-26): Added Adaptive Anomaly Detection (Learning from Dismissals) as proposed feature #2 in Analytics & Insights section
 - v2.1 (2026-01-26): Added Spending Patterns & Predictions / Analytics Hub (v4.17.0) to completed features, consolidated Merchant Analytics into Analytics Hub, updated current version to 4.17.0
 - v2.0 (2026-01-19): Added UI Modernization (v4.14.0) and Multi-Invoice Support (v4.13.0-v4.13.2) to completed features, marked Receipt Attachments as completed (via tax-deductible invoices), updated current version to 4.14.5
 - v1.8 (2026-01-15): Added Medical Expense Invoice Attachments (v4.12.0) to completed features, updated current version to 4.12.0

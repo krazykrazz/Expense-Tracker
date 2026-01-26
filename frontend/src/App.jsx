@@ -797,7 +797,7 @@ function App() {
 
       <footer className="App-footer">
         <span className="version">
-          v{versionInfo?.version || '4.16.5'}
+          v{versionInfo?.version || '4.17.0'}
           {versionInfo?.docker && (
             <span className="docker-tag"> (Docker: {versionInfo.docker.tag})</span>
           )}

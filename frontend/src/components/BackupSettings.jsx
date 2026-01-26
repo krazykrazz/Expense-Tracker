@@ -792,6 +792,17 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v4.17.0</div>
+                <div className="changelog-date">January 2026</div>
+                <ul className="changelog-items">
+                  <li>Analytics Hub: Unified analytics dashboard with 5 tabs</li>
+                  <li>Spending Patterns: Day-of-week analysis, recurring patterns, amount variance</li>
+                  <li>Predictions: Monthly spending forecasts with confidence intervals</li>
+                  <li>Seasonal Analysis: Identify seasonal spending trends</li>
+                  <li>Anomaly Detection: Unusual spending alerts with dismissal learning</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v4.16.5</div>
                 <div className="changelog-date">January 2026</div>
                 <ul className="changelog-items">

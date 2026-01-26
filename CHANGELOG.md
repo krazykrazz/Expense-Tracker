@@ -11,6 +11,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.17.0] - 2026-01-26
+
+### Added
+- **Analytics Hub**: Unified analytics dashboard accessible via "📊 Analytics Hub" button in navigation
+  - **Spending Patterns Tab**: Day-of-week analysis, recurring patterns, and amount variance insights
+  - **Predictions Tab**: Monthly spending forecasts with confidence intervals and budget integration
+  - **Seasonal Analysis Tab**: Identify seasonal spending trends across categories
+  - **Anomaly Detection Tab**: Unusual spending alerts with dismissal learning
+  - **Merchants Tab**: Integrated merchant analytics (moved from standalone modal)
+- **Backend Services**: New analytics services for spending patterns, predictions, and anomaly detection
+  - `spendingPatternsService.js`: Day-of-week patterns, recurring expenses, seasonal trends
+  - `predictionService.js`: Monthly forecasts with confidence intervals and early-month warnings
+  - `anomalyDetectionService.js`: Amount anomalies, new merchant detection, gap exclusion
+- **Property-Based Tests**: Comprehensive PBT coverage for all new analytics services
+  - 15+ PBT test files covering spending patterns, predictions, and anomaly detection
+  - Data sufficiency validation, confidence calculations, and edge case handling
+
+### Changed
+- Removed standalone "🏪 Merchant Analytics" button from MonthSelector (now in Analytics Hub)
+- Analytics Hub provides unified access to all spending insights in one modal
+
+### Fixed
+- Fixed Express catch-all route compatibility with newer path-to-regexp (`'*'` → `'/{*splat}'`)
+- Fixed API response handling in analyticsApi.js for wrapped responses
+- Fixed budget alert warnings for non-array budget data
+
+---
+
 ## [4.16.5] - 2026-01-24
 
 ### Added

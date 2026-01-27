@@ -43,31 +43,13 @@ describe('Budget Alert Multiple Alerts - Integration Test', () => {
   it('should handle multiple alerts with correct severity ordering', async () => {
     // Requirements: 1.4, 3.5
     const mockOnManageBudgets = vi.fn();
-    const mockOnViewDetails = vi.fn();
+    const mockonViewExpenses = vi.fn();
 
-    // Create multiple budgets with different alert levels
+    // Create multiple budgets with different alert levels (flat format from API)
     const budgetData = [
-      {
-        budget: { id: 1, category: 'Food', limit: 500 },
-        spent: 550, // 110% - Critical
-        progress: 110,
-        remaining: -50,
-        status: 'critical'
-      },
-      {
-        budget: { id: 2, category: 'Gas', limit: 300 },
-        spent: 270, // 90% - Danger
-        progress: 90,
-        remaining: 30,
-        status: 'danger'
-      },
-      {
-        budget: { id: 3, category: 'Entertainment', limit: 200 },
-        spent: 160, // 80% - Warning
-        progress: 80,
-        remaining: 40,
-        status: 'warning'
-      }
+      { id: 1, year: 2025, month: 11, category: 'Food', limit: 500, spent: 550 }, // 110% - Critical
+      { id: 2, year: 2025, month: 11, category: 'Gas', limit: 300, spent: 270 }, // 90% - Danger
+      { id: 3, year: 2025, month: 11, category: 'Entertainment', limit: 200, spent: 160 } // 80% - Warning
     ];
 
     budgetApi.getBudgets.mockResolvedValue({ budgets: budgetData });
@@ -78,7 +60,7 @@ describe('Budget Alert Multiple Alerts - Integration Test', () => {
         month={11}
         refreshTrigger={0}
         onManageBudgets={mockOnManageBudgets}
-        onViewDetails={mockOnViewDetails}
+        onViewExpenses={mockonViewExpenses}
       />
     );
 

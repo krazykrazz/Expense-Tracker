@@ -35,6 +35,9 @@ const BudgetAlertManager = ({
   // Requirements: 3.4 - Handle dismissal override when budget conditions worsen
   const alertSeverityRef = useRef(new Map());
   
+  // Track previous year/month to detect actual changes vs initial mount
+  const prevYearMonthRef = useRef({ year: null, month: null });
+  
   // Performance optimizations
   const debounceTimerRef = useRef(null);
   const budgetCacheRef = useRef({ key: null, data: null }); // Cache for budget data
@@ -295,11 +298,22 @@ const BudgetAlertManager = ({
   }, [debouncedCalculateAlerts, year, month, refreshTrigger]);
 
   /**
-   * Clear dismissal state when year or month changes
+   * Clear dismissal state when year or month changes (not on initial mount)
    * Requirements: 3.2, 3.3
    */
   useEffect(() => {
-    clearDismissalState();
+    const prevYear = prevYearMonthRef.current.year;
+    const prevMonth = prevYearMonthRef.current.month;
+    
+    // Only clear if year/month actually changed (not on initial mount)
+    if (prevYear !== null && prevMonth !== null) {
+      if (prevYear !== year || prevMonth !== month) {
+        clearDismissalState();
+      }
+    }
+    
+    // Update the ref with current values
+    prevYearMonthRef.current = { year, month };
   }, [year, month, clearDismissalState]);
 
   /**

@@ -15,56 +15,35 @@ vi.mock('../services/budgetApi');
 
 // Mock the BudgetAlertBanner component
 vi.mock('./BudgetAlertBanner', () => ({
-  default: ({ alert, onDismiss, onManageBudgets, onViewDetails }) => (
+  default: ({ alert, onDismiss, onManageBudgets, onViewExpenses }) => (
     <div data-testid={`alert-${alert.id}`} className="mock-alert-banner">
       <span>{alert.message}</span>
       <button onClick={() => onDismiss && onDismiss(alert.id)}>Dismiss</button>
       <button onClick={() => onManageBudgets && onManageBudgets(alert.category)}>Manage</button>
-      <button onClick={() => onViewDetails && onViewDetails(alert.category)}>View</button>
+      <button onClick={() => onViewExpenses && onViewExpenses(alert.category)}>View</button>
     </div>
   )
 }));
 
 describe('BudgetAlertManager', () => {
+  // Mock budgets in flat format (as returned by the API)
   const mockBudgets = [
-    {
-      budget: { id: 1, category: 'Groceries', limit: 500 },
-      spent: 427.50,
-      progress: 85.5,
-      remaining: 72.50,
-      status: 'warning'
-    },
-    {
-      budget: { id: 2, category: 'Gas', limit: 200 },
-      spent: 185.00,
-      progress: 92.5,
-      remaining: 15.00,
-      status: 'danger'
-    },
-    {
-      budget: { id: 3, category: 'Entertainment', limit: 150 },
-      spent: 160.00,
-      progress: 106.7,
-      remaining: -10.00,
-      status: 'critical'
-    },
-    {
-      budget: { id: 4, category: 'Dining Out', limit: 300 },
-      spent: 150.00,
-      progress: 50.0,
-      remaining: 150.00,
-      status: 'safe'
-    }
+    { id: 1, year: 2025, month: 12, category: 'Groceries', limit: 500, spent: 427.50 },
+    { id: 2, year: 2025, month: 12, category: 'Gas', limit: 200, spent: 185.00 },
+    { id: 3, year: 2025, month: 12, category: 'Entertainment', limit: 150, spent: 160.00 },
+    { id: 4, year: 2025, month: 12, category: 'Dining Out', limit: 300, spent: 150.00 }
   ];
 
   const mockCallbacks = {
     onManageBudgets: vi.fn(),
-    onViewDetails: vi.fn()
+    onViewExpenses: vi.fn()
   };
 
   beforeEach(() => {
     vi.clearAllMocks();
     budgetApi.getBudgets.mockResolvedValue({ budgets: mockBudgets });
+    // Clear sessionStorage to ensure clean state between tests
+    sessionStorage.clear();
   });
 
   describe('Alert Calculation and State Management', () => {
@@ -169,13 +148,7 @@ describe('BudgetAlertManager', () => {
 
     test('should handle budgets with no alerts needed', async () => {
       const safeBudgets = [
-        {
-          budget: { id: 1, category: 'Groceries', limit: 500 },
-          spent: 200.00,
-          progress: 40.0,
-          remaining: 300.00,
-          status: 'safe'
-        }
+        { id: 1, year: 2025, month: 12, category: 'Groceries', limit: 500, spent: 200.00 }
       ];
 
       budgetApi.getBudgets.mockResolvedValue({ budgets: safeBudgets });
@@ -408,10 +381,10 @@ describe('BudgetAlertManager', () => {
 
     test('should handle malformed budget data', async () => {
       const malformedBudgets = [
-        { budget: { id: 1 } }, // Missing required fields
+        { id: 1 }, // Missing required fields (category, limit)
         null,
         undefined,
-        { budget: { id: 2, category: 'Gas', limit: 200 }, spent: 185, progress: 92.5 }
+        { id: 2, year: 2025, month: 12, category: 'Gas', limit: 200, spent: 185 } // Valid - 92.5%
       ];
 
       budgetApi.getBudgets.mockResolvedValue({ budgets: malformedBudgets });
@@ -458,7 +431,7 @@ describe('BudgetAlertManager', () => {
       expect(mockCallbacks.onManageBudgets).toHaveBeenCalledWith('Entertainment');
     });
 
-    test('should call onViewDetails with correct category', async () => {
+    test('should call onViewExpenses with correct category', async () => {
       render(
         <BudgetAlertManager 
           year={2025} 
@@ -475,7 +448,7 @@ describe('BudgetAlertManager', () => {
       const viewButtons = screen.getAllByText('View');
       viewButtons[1].click();
 
-      expect(mockCallbacks.onViewDetails).toHaveBeenCalledWith('Gas');
+      expect(mockCallbacks.onViewExpenses).toHaveBeenCalledWith('Gas');
     });
 
     test('should handle missing callbacks gracefully', async () => {
@@ -672,11 +645,10 @@ describe('BudgetAlertManager', () => {
       const invalidBudgets = [
         null, // Invalid
         undefined, // Invalid
-        { budget: null }, // Invalid budget object
-        { budget: { id: 1 } }, // Missing required fields
-        { budget: { id: 2, category: 'Gas', limit: 'invalid' } }, // Invalid limit type
-        { budget: { id: 3, category: 'Food', limit: 500 }, spent: 'invalid' }, // Invalid spent type
-        { budget: { id: 4, category: 'Valid', limit: 200 }, spent: 180, progress: 90 } // Valid - 90% is danger level
+        { id: 1 }, // Missing required fields (category, limit)
+        { id: 2, category: 'Gas', limit: 'invalid' }, // Invalid limit type
+        { id: 3, category: 'Food', limit: 500, spent: 'invalid' }, // Invalid spent type
+        { id: 4, year: 2025, month: 12, category: 'Valid', limit: 200, spent: 180 } // Valid - 90% is danger level
       ];
 
       // Clear the mock and set new data
@@ -842,13 +814,9 @@ describe('BudgetAlertManager', () => {
     });
 
     test('should display "and X more" indicator when alerts exceed limit', async () => {
-      // Create more than 5 alerts
+      // Create more than 5 alerts (flat format from API)
       const manyBudgets = Array.from({ length: 7 }, (_, i) => ({
-        budget: { id: i + 1, category: `Category${i + 1}`, limit: 100 },
-        spent: 85,
-        progress: 85,
-        remaining: 15,
-        status: 'warning'
+        id: i + 1, year: 2025, month: 12, category: `Category${i + 1}`, limit: 100, spent: 85
       }));
 
       budgetApi.getBudgets.mockResolvedValue({ budgets: manyBudgets });
@@ -873,8 +841,8 @@ describe('BudgetAlertManager', () => {
 
       // Should display "and 2 more" indicator
       await waitFor(() => {
-        expect(screen.getByText('and 2 more budget alerts')).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: 'View all budget alerts' })).toBeInTheDocument();
+        expect(screen.getByText(/and\s+2\s+more budget alert/)).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Manage all budgets' })).toBeInTheDocument();
       });
     });
 

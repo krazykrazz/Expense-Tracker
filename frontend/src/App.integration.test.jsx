@@ -173,7 +173,12 @@ describe('App Integration Tests - Global Expense Filtering', () => {
 
   /**
    * Test 1: Complete filter workflow
-   * Apply category → add payment method → add search text → clear all
+   * Apply payment method → add category → add search text → clear all
+   * 
+   * Note: Category filter alone does NOT trigger global view (by design).
+   * Global view is triggered by: searchText, filterMethod, or filterYear.
+   * This allows users to filter current month by category from budget alerts
+   * without switching to global view.
    */
   it('should handle complete filter workflow: category → payment method → search → clear', async () => {
     const user = userEvent.setup();
@@ -186,28 +191,31 @@ describe('App Integration Tests - Global Expense Filtering', () => {
       );
     });
 
-    // Step 1: Apply category filter (Groceries)
-    const categoryFilter = screen.getByLabelText(/filter by expense category/i);
-    await user.selectOptions(categoryFilter, 'Groceries');
+    // Step 1: Apply payment method filter (Debit) - this triggers global view
+    const paymentFilter = screen.getByLabelText(/filter by payment method/i);
+    await user.selectOptions(paymentFilter, 'Debit');
 
     // Should switch to global view and fetch all expenses
     await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringMatching(/\/api\/expenses(?!\?year=)/)
+      const globalCall = mockFetch.mock.calls.find(call => 
+        call[0].includes('/api/expenses') && 
+        !call[0].includes('year=') &&
+        !call[0].includes('month=')
       );
+      expect(globalCall).toBeDefined();
     });
 
-    // Should show only Groceries expenses (2 total)
+    // Should show only Debit expenses
     await waitFor(() => {
-      const expenseRows = screen.getAllByRole('row').filter(row => 
-        row.textContent.includes('Groceries')
-      );
-      expect(expenseRows.length).toBeGreaterThan(0);
+      const expenseTable = screen.getByRole('table');
+      const rows = within(expenseTable).getAllByRole('row');
+      const dataRows = rows.filter(row => row.querySelector('td'));
+      expect(dataRows.length).toBeGreaterThan(0);
     });
 
-    // Step 2: Add payment method filter (Debit)
-    const paymentFilter = screen.getByLabelText(/filter by payment method/i);
-    await user.selectOptions(paymentFilter, 'Debit');
+    // Step 2: Add category filter (Groceries)
+    const categoryFilter = screen.getByLabelText(/filter by expense category/i);
+    await user.selectOptions(categoryFilter, 'Groceries');
 
     // Should still be in global view, now filtering by both category AND payment method
     await waitFor(() => {
@@ -451,6 +459,9 @@ describe('App Integration Tests - Global Expense Filtering', () => {
   /**
    * Test 4: API calls for different filter states
    * Verify correct API endpoints are called for global vs monthly views
+   * 
+   * Note: Category filter alone does NOT trigger global view (by design).
+   * Global view is triggered by: searchText, filterMethod, or filterYear.
    */
   it('should call correct API endpoints for global vs monthly views', async () => {
     const user = userEvent.setup();
@@ -468,9 +479,9 @@ describe('App Integration Tests - Global Expense Filtering', () => {
       expect(monthlyCall).toBeDefined();
     });
 
-    // Apply category filter → should trigger global API call
-    const categoryFilter = screen.getByLabelText(/filter by expense category/i);
-    await user.selectOptions(categoryFilter, 'Groceries');
+    // Apply payment method filter → should trigger global API call
+    const paymentFilter = screen.getByLabelText(/filter by payment method/i);
+    await user.selectOptions(paymentFilter, 'Debit');
 
     await waitFor(() => {
       const globalCall = mockFetch.mock.calls.find(call => 

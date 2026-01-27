@@ -44,19 +44,13 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
   it('should update alerts in real-time when expenses change', async () => {
     // Requirements: 5.1, 5.2, 5.3, 5.4
     const mockOnManageBudgets = vi.fn();
-    const mockOnViewDetails = vi.fn();
+    const mockOnViewExpenses = vi.fn();
 
     const budgetLimit = 500;
     let currentSpent = 450; // Start at 90% (danger alert)
 
     const getBudgetData = () => [{
-      budget: { id: 1, category: 'Groceries', limit: budgetLimit },
-      spent: currentSpent,
-      progress: (currentSpent / budgetLimit) * 100,
-      remaining: budgetLimit - currentSpent,
-      status: currentSpent >= budgetLimit ? 'critical' : 
-              currentSpent >= budgetLimit * 0.9 ? 'danger' :
-              currentSpent >= budgetLimit * 0.8 ? 'warning' : 'safe'
+      id: 1, year: 2025, month: 11, category: 'Groceries', limit: budgetLimit, spent: currentSpent
     }];
 
     budgetApi.getBudgets.mockImplementation(async () => ({ budgets: getBudgetData() }));
@@ -67,7 +61,7 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
         month={11}
         refreshTrigger={0}
         onManageBudgets={mockOnManageBudgets}
-        onViewDetails={mockOnViewDetails}
+        onViewExpenses={mockOnViewExpenses}
       />
     );
 
@@ -92,7 +86,7 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
         month={11}
         refreshTrigger={1}
         onManageBudgets={mockOnManageBudgets}
-        onViewDetails={mockOnViewDetails}
+        onViewExpenses={mockOnViewExpenses}
       />
     );
 
@@ -111,7 +105,7 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
         month={11}
         refreshTrigger={2}
         onManageBudgets={mockOnManageBudgets}
-        onViewDetails={mockOnViewDetails}
+        onViewExpenses={mockOnViewExpenses}
       />
     );
 
@@ -136,7 +130,7 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
         month={11}
         refreshTrigger={3}
         onManageBudgets={mockOnManageBudgets}
-        onViewDetails={mockOnViewDetails}
+        onViewExpenses={mockOnViewExpenses}
       />
     );
 
@@ -160,7 +154,7 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
         month={11}
         refreshTrigger={4}
         onManageBudgets={mockOnManageBudgets}
-        onViewDetails={mockOnViewDetails}
+        onViewExpenses={mockOnViewExpenses}
       />
     );
 
@@ -180,19 +174,13 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
   it('should handle rapid expense changes with debouncing', async () => {
     // Requirements: 5.1, 5.2, 7.2 (debouncing for performance)
     const mockOnManageBudgets = vi.fn();
-    const mockOnViewDetails = vi.fn();
+    const mockOnViewExpenses = vi.fn();
 
     const budgetLimit = 1000;
     let currentSpent = 700; // Start at 70% (no alert)
 
     budgetApi.getBudgets.mockImplementation(async () => ({ budgets: [{
-      budget: { id: 2, category: 'Gas', limit: budgetLimit },
-      spent: currentSpent,
-      progress: (currentSpent / budgetLimit) * 100,
-      remaining: budgetLimit - currentSpent,
-      status: currentSpent >= budgetLimit ? 'critical' : 
-              currentSpent >= budgetLimit * 0.9 ? 'danger' :
-              currentSpent >= budgetLimit * 0.8 ? 'warning' : 'safe'
+      id: 2, year: 2025, month: 11, category: 'Gas', limit: budgetLimit, spent: currentSpent
     }] }));
 
     const { rerender } = render(
@@ -201,7 +189,7 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
         month={11}
         refreshTrigger={0}
         onManageBudgets={mockOnManageBudgets}
-        onViewDetails={mockOnViewDetails}
+        onViewExpenses={mockOnViewExpenses}
       />
     );
 
@@ -218,7 +206,7 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
         month={11}
         refreshTrigger={1}
         onManageBudgets={mockOnManageBudgets}
-        onViewDetails={mockOnViewDetails}
+        onViewExpenses={mockOnViewExpenses}
       />
     );
 
@@ -229,7 +217,7 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
         month={11}
         refreshTrigger={2}
         onManageBudgets={mockOnManageBudgets}
-        onViewDetails={mockOnViewDetails}
+        onViewExpenses={mockOnViewExpenses}
       />
     );
 
@@ -240,7 +228,7 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
         month={11}
         refreshTrigger={3}
         onManageBudgets={mockOnManageBudgets}
-        onViewDetails={mockOnViewDetails}
+        onViewExpenses={mockOnViewExpenses}
       />
     );
 
@@ -255,19 +243,13 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
   it('should maintain alert state consistency during real-time updates', async () => {
     // Requirements: 5.1, 5.2, 5.3, 5.4
     const mockOnManageBudgets = vi.fn();
-    const mockOnViewDetails = vi.fn();
+    const mockOnViewExpenses = vi.fn();
 
     const budgetLimit = 300;
     let currentSpent = 240; // Start at 80% (warning)
 
     budgetApi.getBudgets.mockImplementation(async () => ({ budgets: [{
-      budget: { id: 3, category: 'Entertainment', limit: budgetLimit },
-      spent: currentSpent,
-      progress: (currentSpent / budgetLimit) * 100,
-      remaining: budgetLimit - currentSpent,
-      status: currentSpent >= budgetLimit ? 'critical' : 
-              currentSpent >= budgetLimit * 0.9 ? 'danger' :
-              currentSpent >= budgetLimit * 0.8 ? 'warning' : 'safe'
+      id: 3, year: 2025, month: 11, category: 'Entertainment', limit: budgetLimit, spent: currentSpent
     }] }));
 
     const { rerender } = render(
@@ -276,7 +258,7 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
         month={11}
         refreshTrigger={0}
         onManageBudgets={mockOnManageBudgets}
-        onViewDetails={mockOnViewDetails}
+        onViewExpenses={mockOnViewExpenses}
       />
     );
 
@@ -286,11 +268,11 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
     });
 
     // Test action buttons work during real-time updates
-    fireEvent.click(screen.getByText('Manage Budgets'));
+    fireEvent.click(screen.getByText('Manage Budget'));
     expect(mockOnManageBudgets).toHaveBeenCalledWith('Entertainment');
 
-    fireEvent.click(screen.getByText('View Details'));
-    expect(mockOnViewDetails).toHaveBeenCalledWith('Entertainment');
+    fireEvent.click(screen.getByText('View Expenses'));
+    expect(mockOnViewExpenses).toHaveBeenCalledWith('Entertainment');
 
     // Dismiss the alert
     const dismissButton = screen.getByLabelText(/Dismiss.*budget alert/);
@@ -309,7 +291,7 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
         month={11}
         refreshTrigger={1}
         onManageBudgets={mockOnManageBudgets}
-        onViewDetails={mockOnViewDetails}
+        onViewExpenses={mockOnViewExpenses}
       />
     );
 
@@ -329,7 +311,7 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
         month={12}
         refreshTrigger={2}
         onManageBudgets={mockOnManageBudgets}
-        onViewDetails={mockOnViewDetails}
+        onViewExpenses={mockOnViewExpenses}
       />
     );
 
@@ -343,7 +325,7 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
         month={11}
         refreshTrigger={3}
         onManageBudgets={mockOnManageBudgets}
-        onViewDetails={mockOnViewDetails}
+        onViewExpenses={mockOnViewExpenses}
       />
     );
 
@@ -357,26 +339,20 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
     });
 
     // Verify action buttons still work after dismissal override
-    fireEvent.click(screen.getByText('Manage Budgets'));
+    fireEvent.click(screen.getByText('Manage Budget'));
     expect(mockOnManageBudgets).toHaveBeenCalledWith('Entertainment');
   });
 
   it('should handle edge cases in real-time updates', async () => {
     // Requirements: 5.1, 5.2, 5.3, 5.4
     const mockOnManageBudgets = vi.fn();
-    const mockOnViewDetails = vi.fn();
+    const mockOnViewExpenses = vi.fn();
 
     const budgetLimit = 100;
     let currentSpent = 79.99; // Just below 80% threshold
 
     budgetApi.getBudgets.mockImplementation(async () => ({ budgets: [{
-      budget: { id: 4, category: 'Other', limit: budgetLimit },
-      spent: currentSpent,
-      progress: (currentSpent / budgetLimit) * 100,
-      remaining: budgetLimit - currentSpent,
-      status: currentSpent >= budgetLimit ? 'critical' : 
-              currentSpent >= budgetLimit * 0.9 ? 'danger' :
-              currentSpent >= budgetLimit * 0.8 ? 'warning' : 'safe'
+      id: 4, year: 2025, month: 11, category: 'Other', limit: budgetLimit, spent: currentSpent
     }] }));
 
     const { rerender } = render(
@@ -385,7 +361,7 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
         month={11}
         refreshTrigger={0}
         onManageBudgets={mockOnManageBudgets}
-        onViewDetails={mockOnViewDetails}
+        onViewExpenses={mockOnViewExpenses}
       />
     );
 
@@ -403,7 +379,7 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
         month={11}
         refreshTrigger={1}
         onManageBudgets={mockOnManageBudgets}
-        onViewDetails={mockOnViewDetails}
+        onViewExpenses={mockOnViewExpenses}
       />
     );
 
@@ -421,7 +397,7 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
         month={11}
         refreshTrigger={2}
         onManageBudgets={mockOnManageBudgets}
-        onViewDetails={mockOnViewDetails}
+        onViewExpenses={mockOnViewExpenses}
       />
     );
 
@@ -439,7 +415,7 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
         month={11}
         refreshTrigger={3}
         onManageBudgets={mockOnManageBudgets}
-        onViewDetails={mockOnViewDetails}
+        onViewExpenses={mockOnViewExpenses}
       />
     );
 
@@ -456,7 +432,7 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
         month={11}
         refreshTrigger={4}
         onManageBudgets={mockOnManageBudgets}
-        onViewDetails={mockOnViewDetails}
+        onViewExpenses={mockOnViewExpenses}
       />
     );
 
@@ -474,7 +450,7 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
         month={11}
         refreshTrigger={5}
         onManageBudgets={mockOnManageBudgets}
-        onViewDetails={mockOnViewDetails}
+        onViewExpenses={mockOnViewExpenses}
       />
     );
 

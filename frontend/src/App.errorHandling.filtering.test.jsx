@@ -230,9 +230,10 @@ describe('App Error Handling and Edge Cases for Filtering', () => {
       // Now set shouldFail to true so filter change triggers error
       shouldFail = true;
 
-      // Apply a filter (which will trigger an error)
-      const categorySelect = container.querySelector('#category-filter');
-      fireEvent.change(categorySelect, { target: { value: 'Groceries' } });
+      // Apply a payment method filter (which triggers global view and a new API call)
+      // Note: Category filter alone does NOT trigger global view, so we use payment method
+      const methodSelect = container.querySelector('#payment-method-filter');
+      fireEvent.change(methodSelect, { target: { value: 'Cash' } });
 
       // Wait for error message to appear
       await waitFor(() => {

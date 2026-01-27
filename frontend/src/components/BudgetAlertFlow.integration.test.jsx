@@ -44,20 +44,14 @@ describe('Budget Alert Flow - Complete Integration Test', () => {
   it('should show complete alert flow from warning to critical with dismissal and persistence', async () => {
     // Requirements: 1.1, 1.2, 1.3, 3.2, 3.3
     const mockOnManageBudgets = vi.fn();
-    const mockOnViewDetails = vi.fn();
+    const mockOnViewExpenses = vi.fn();
 
     // Step 1: Create budget with $500 limit, start with no expenses (0%)
     let currentSpent = 0;
     const budgetLimit = 500;
 
     const getBudgetData = () => [{
-      budget: { id: 1, category: 'Food', limit: budgetLimit },
-      spent: currentSpent,
-      progress: (currentSpent / budgetLimit) * 100,
-      remaining: budgetLimit - currentSpent,
-      status: currentSpent >= budgetLimit ? 'critical' : 
-              currentSpent >= budgetLimit * 0.9 ? 'danger' :
-              currentSpent >= budgetLimit * 0.8 ? 'warning' : 'safe'
+      id: 1, year: 2025, month: 11, category: 'Food', limit: budgetLimit, spent: currentSpent
     }];
 
     budgetApi.getBudgets.mockImplementation(async () => ({ budgets: getBudgetData() }));
@@ -68,7 +62,7 @@ describe('Budget Alert Flow - Complete Integration Test', () => {
         month={11}
         refreshTrigger={0}
         onManageBudgets={mockOnManageBudgets}
-        onViewDetails={mockOnViewDetails}
+        onViewExpenses={mockOnViewExpenses}
       />
     );
 
@@ -86,7 +80,7 @@ describe('Budget Alert Flow - Complete Integration Test', () => {
         month={11}
         refreshTrigger={1}
         onManageBudgets={mockOnManageBudgets}
-        onViewDetails={mockOnViewDetails}
+        onViewExpenses={mockOnViewExpenses}
       />
     );
 
@@ -110,7 +104,7 @@ describe('Budget Alert Flow - Complete Integration Test', () => {
         month={11}
         refreshTrigger={2}
         onManageBudgets={mockOnManageBudgets}
-        onViewDetails={mockOnViewDetails}
+        onViewExpenses={mockOnViewExpenses}
       />
     );
 
@@ -134,7 +128,7 @@ describe('Budget Alert Flow - Complete Integration Test', () => {
         month={11}
         refreshTrigger={3}
         onManageBudgets={mockOnManageBudgets}
-        onViewDetails={mockOnViewDetails}
+        onViewExpenses={mockOnViewExpenses}
       />
     );
 
@@ -171,7 +165,7 @@ describe('Budget Alert Flow - Complete Integration Test', () => {
         month={11}
         refreshTrigger={4}
         onManageBudgets={mockOnManageBudgets}
-        onViewDetails={mockOnViewDetails}
+        onViewExpenses={mockOnViewExpenses}
       />
     );
 
@@ -191,7 +185,7 @@ describe('Budget Alert Flow - Complete Integration Test', () => {
         month={12}
         refreshTrigger={5}
         onManageBudgets={mockOnManageBudgets}
-        onViewDetails={mockOnViewDetails}
+        onViewExpenses={mockOnViewExpenses}
       />
     );
 
@@ -205,7 +199,7 @@ describe('Budget Alert Flow - Complete Integration Test', () => {
         month={11}
         refreshTrigger={6}
         onManageBudgets={mockOnManageBudgets}
-        onViewDetails={mockOnViewDetails}
+        onViewExpenses={mockOnViewExpenses}
       />
     );
 
@@ -219,34 +213,28 @@ describe('Budget Alert Flow - Complete Integration Test', () => {
     }, { timeout: 3000 });
 
     // Verify all action buttons are present and functional
-    expect(screen.getByText('Manage Budgets')).toBeInTheDocument();
-    expect(screen.getByText('View Details')).toBeInTheDocument();
+    expect(screen.getByText('Manage Budget')).toBeInTheDocument();
+    expect(screen.getByText('View Expenses')).toBeInTheDocument();
     expect(screen.getByLabelText(/Dismiss.*budget alert/)).toBeInTheDocument();
 
     // Test action button functionality
-    fireEvent.click(screen.getByText('Manage Budgets'));
+    fireEvent.click(screen.getByText('Manage Budget'));
     expect(mockOnManageBudgets).toHaveBeenCalledWith('Food');
 
-    fireEvent.click(screen.getByText('View Details'));
-    expect(mockOnViewDetails).toHaveBeenCalledWith('Food');
+    fireEvent.click(screen.getByText('View Expenses'));
+    expect(mockOnViewExpenses).toHaveBeenCalledWith('Food');
   });
 
   it('should handle alert progression with different spending patterns', async () => {
     // Requirements: 1.1, 1.2, 1.3
     const mockOnManageBudgets = vi.fn();
-    const mockOnViewDetails = vi.fn();
+    const mockOnViewExpenses = vi.fn();
 
     const budgetLimit = 1000;
     let currentSpent = 750; // Start at 75% (no alert)
 
     budgetApi.getBudgets.mockImplementation(async () => ({ budgets: [{
-      budget: { id: 2, category: 'Gas', limit: budgetLimit },
-      spent: currentSpent,
-      progress: (currentSpent / budgetLimit) * 100,
-      remaining: budgetLimit - currentSpent,
-      status: currentSpent >= budgetLimit ? 'critical' : 
-              currentSpent >= budgetLimit * 0.9 ? 'danger' :
-              currentSpent >= budgetLimit * 0.8 ? 'warning' : 'safe'
+      id: 2, year: 2025, month: 12, category: 'Gas', limit: budgetLimit, spent: currentSpent
     }] }));
 
     const { rerender } = render(
@@ -255,7 +243,7 @@ describe('Budget Alert Flow - Complete Integration Test', () => {
         month={12}
         refreshTrigger={0}
         onManageBudgets={mockOnManageBudgets}
-        onViewDetails={mockOnViewDetails}
+        onViewExpenses={mockOnViewExpenses}
       />
     );
 
@@ -273,7 +261,7 @@ describe('Budget Alert Flow - Complete Integration Test', () => {
         month={12}
         refreshTrigger={1}
         onManageBudgets={mockOnManageBudgets}
-        onViewDetails={mockOnViewDetails}
+        onViewExpenses={mockOnViewExpenses}
       />
     );
 
@@ -292,7 +280,7 @@ describe('Budget Alert Flow - Complete Integration Test', () => {
         month={12}
         refreshTrigger={2}
         onManageBudgets={mockOnManageBudgets}
-        onViewDetails={mockOnViewDetails}
+        onViewExpenses={mockOnViewExpenses}
       />
     );
 
@@ -311,7 +299,7 @@ describe('Budget Alert Flow - Complete Integration Test', () => {
         month={12}
         refreshTrigger={3}
         onManageBudgets={mockOnManageBudgets}
-        onViewDetails={mockOnViewDetails}
+        onViewExpenses={mockOnViewExpenses}
       />
     );
 
@@ -327,18 +315,14 @@ describe('Budget Alert Flow - Complete Integration Test', () => {
     // at one severity level and conditions worsen to a higher severity, the alert should reappear.
     // This is implemented by comparing the severity at dismissal time with the current severity.
     const mockOnManageBudgets = vi.fn();
-    const mockOnViewDetails = vi.fn();
+    const mockOnViewExpenses = vi.fn();
 
     const budgetLimit = 500;
     let currentSpent = 450; // Start at 90% (danger)
     let currentSeverity = 'danger';
 
     budgetApi.getBudgets.mockImplementation(async () => ({ budgets: [{
-      budget: { id: 3, category: 'Entertainment', limit: budgetLimit },
-      spent: currentSpent,
-      progress: (currentSpent / budgetLimit) * 100,
-      remaining: budgetLimit - currentSpent,
-      status: currentSeverity
+      id: 3, year: 2025, month: 11, category: 'Entertainment', limit: budgetLimit, spent: currentSpent
     }] }));
 
     const { rerender } = render(
@@ -347,7 +331,7 @@ describe('Budget Alert Flow - Complete Integration Test', () => {
         month={11}
         refreshTrigger={0}
         onManageBudgets={mockOnManageBudgets}
-        onViewDetails={mockOnViewDetails}
+        onViewExpenses={mockOnViewExpenses}
       />
     );
 
@@ -377,7 +361,7 @@ describe('Budget Alert Flow - Complete Integration Test', () => {
         month={12}
         refreshTrigger={1}
         onManageBudgets={mockOnManageBudgets}
-        onViewDetails={mockOnViewDetails}
+        onViewExpenses={mockOnViewExpenses}
       />
     );
 
@@ -391,7 +375,7 @@ describe('Budget Alert Flow - Complete Integration Test', () => {
         month={11}
         refreshTrigger={2}
         onManageBudgets={mockOnManageBudgets}
-        onViewDetails={mockOnViewDetails}
+        onViewExpenses={mockOnViewExpenses}
       />
     );
 

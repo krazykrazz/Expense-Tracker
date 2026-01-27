@@ -24,7 +24,7 @@ describe('BudgetAlertBanner', () => {
   const mockCallbacks = {
     onDismiss: vi.fn(),
     onManageBudgets: vi.fn(),
-    onViewDetails: vi.fn()
+    onViewExpenses: vi.fn()
   };
 
   beforeEach(() => {
@@ -47,7 +47,7 @@ describe('BudgetAlertBanner', () => {
       expect(screen.getByText(mockAlert.message)).toBeInTheDocument();
       
       // Check action buttons
-      expect(screen.getByRole('button', { name: /view details/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /view.*expenses/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /manage.*budget/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /dismiss.*budget alert/i })).toBeInTheDocument();
     });
@@ -114,14 +114,14 @@ describe('BudgetAlertBanner', () => {
       expect(mockCallbacks.onManageBudgets).toHaveBeenCalledWith(mockAlert.category);
     });
 
-    test('should call onViewDetails when view details button clicked', () => {
+    test('should call onViewExpenses when view expenses button clicked', () => {
       render(<BudgetAlertBanner alert={mockAlert} {...mockCallbacks} />);
       
-      const viewButton = screen.getByRole('button', { name: /view details/i });
+      const viewButton = screen.getByRole('button', { name: /view.*expenses/i });
       fireEvent.click(viewButton);
       
-      expect(mockCallbacks.onViewDetails).toHaveBeenCalledTimes(1);
-      expect(mockCallbacks.onViewDetails).toHaveBeenCalledWith(mockAlert.category);
+      expect(mockCallbacks.onViewExpenses).toHaveBeenCalledTimes(1);
+      expect(mockCallbacks.onViewExpenses).toHaveBeenCalledWith(mockAlert.category);
     });
 
     test('should handle missing callback functions gracefully', () => {
@@ -130,7 +130,7 @@ describe('BudgetAlertBanner', () => {
       // Should not throw errors when callbacks are undefined
       const dismissButton = screen.getByRole('button', { name: /dismiss.*budget alert/i });
       const manageButton = screen.getByRole('button', { name: /manage.*budget/i });
-      const viewButton = screen.getByRole('button', { name: /view details/i });
+      const viewButton = screen.getByRole('button', { name: /view.*expenses/i });
       
       expect(() => {
         fireEvent.click(dismissButton);
@@ -179,7 +179,7 @@ describe('BudgetAlertBanner', () => {
       render(<BudgetAlertBanner alert={mockAlert} {...mockCallbacks} />);
       
       expect(screen.getByRole('button', { 
-        name: `View details for ${mockAlert.category} budget` 
+        name: `View ${mockAlert.category} expenses` 
       })).toBeInTheDocument();
       
       expect(screen.getByRole('button', { 
@@ -252,10 +252,10 @@ describe('BudgetAlertBanner', () => {
         fireEvent.click(manageButton);
         expect(mockCallbacks.onManageBudgets).toHaveBeenCalledWith(category);
         
-        // Test view details callback
-        const viewButton = screen.getByRole('button', { name: /view details/i });
+        // Test view expenses callback
+        const viewButton = screen.getByRole('button', { name: /view.*expenses/i });
         fireEvent.click(viewButton);
-        expect(mockCallbacks.onViewDetails).toHaveBeenCalledWith(category);
+        expect(mockCallbacks.onViewExpenses).toHaveBeenCalledWith(category);
         
         vi.clearAllMocks();
         rerender(<div />); // Clear for next test

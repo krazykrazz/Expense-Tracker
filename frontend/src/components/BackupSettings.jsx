@@ -792,35 +792,13 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
-                <div className="changelog-version">v4.17.6</div>
+                <div className="changelog-version">v4.18.0</div>
                 <div className="changelog-date">January 2026</div>
                 <ul className="changelog-items">
-                  <li>Fixed dismissed anomalies not persisting across container restarts</li>
-                  <li>Anomalies marked as "expected" now survive Docker container restarts</li>
-                </ul>
-              </div>
-              <div className="changelog-entry">
-                <div className="changelog-version">v4.17.5</div>
-                <div className="changelog-date">January 2026</div>
-                <ul className="changelog-items">
-                  <li>Improved daily spending anomaly display to show expense count</li>
-                  <li>Days with multiple expenses now show "X expenses on this day" instead of single place</li>
-                </ul>
-              </div>
-              <div className="changelog-entry">
-                <div className="changelog-version">v4.17.4</div>
-                <div className="changelog-date">January 2026</div>
-                <ul className="changelog-items">
-                  <li>Budget alert "View Expenses" now shows only current month's expenses</li>
-                  <li>Category filter alone no longer triggers global view</li>
-                </ul>
-              </div>
-              <div className="changelog-entry">
-                <div className="changelog-version">v4.17.3</div>
-                <div className="changelog-date">January 2026</div>
-                <ul className="changelog-items">
-                  <li>Budget alert "View Expenses" now stays in monthly view</li>
-                  <li>Category filter alone no longer triggers global view</li>
+                  <li>Tax Deductible Analytics: Year-over-year comparison for medical and donation expenses</li>
+                  <li>Tax credit calculator with federal/provincial estimates</li>
+                  <li>Customizable tax settings (province, rates)</li>
+                  <li>Budget alert dismissal persistence fix</li>
                 </ul>
               </div>
               <div className="changelog-entry">

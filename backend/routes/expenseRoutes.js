@@ -20,6 +20,9 @@ router.get('/expenses/summary', expenseController.getSummary);
 // GET /api/expenses/annual-summary - Get annual summary data
 router.get('/expenses/annual-summary', expenseController.getAnnualSummary);
 
+// GET /api/expenses/tax-deductible/summary - Get lightweight tax-deductible summary (for YoY comparison)
+router.get('/expenses/tax-deductible/summary', expenseController.getTaxDeductibleYoYSummary);
+
 // GET /api/expenses/tax-deductible - Get tax-deductible expenses summary
 router.get('/expenses/tax-deductible', expenseController.getTaxDeductibleSummary);
 

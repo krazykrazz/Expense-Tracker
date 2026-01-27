@@ -17,7 +17,7 @@ graph TB
         MDV --> AC[AmortizationChart]
         MDV --> RHC[RateHistoryChart]
     end
-    
+
     subgraph Backend
         LC[LoanController] --> LS[LoanService]
         LS --> MS[MortgageService]
@@ -26,12 +26,12 @@ graph TB
         LS --> LR[LoanRepository]
         LS --> LBR[LoanBalanceRepository]
     end
-    
+
     subgraph Database
         LR --> LT[(loans table)]
         LBR --> LBT[(loan_balances table)]
     end
-    
+
     Frontend --> Backend
 ```
 
@@ -182,7 +182,7 @@ class LoanRepository {
 // Additions to frontend/src/components/LoansModal.jsx
 // Conditional form fields when loan_type === 'mortgage':
 // - Amortization Period (years) - number input
-// - Term Length (years) - number input  
+// - Term Length (years) - number input
 // - Renewal Date - date picker
 // - Rate Type - select (Fixed/Variable)
 // - Payment Frequency - select (Monthly/Bi-weekly/Accelerated Bi-weekly)
@@ -208,7 +208,7 @@ class LoanRepository {
 // frontend/src/components/EquityChart.jsx
 // SVG line chart showing equity buildup over time
 
-// frontend/src/components/AmortizationChart.jsx  
+// frontend/src/components/AmortizationChart.jsx
 // Stacked area chart showing principal vs interest over loan life
 
 // frontend/src/components/RateHistoryChart.jsx
@@ -257,7 +257,7 @@ interface Loan {
   estimated_months_left: number | null;
   created_at: string;
   updated_at: string;
-  
+
   // Mortgage-specific fields (null for non-mortgages)
   amortization_period: number | null;      // Years (1-40)
   term_length: number | null;              // Years (1-10)
@@ -498,9 +498,9 @@ const invalidMortgageArb = fc.record({
   renewal_date: fc.option(fc.date().map(d => d.toISOString().split('T')[0])),
   rate_type: fc.option(fc.constantFrom('fixed', 'variable')),
   payment_frequency: fc.option(fc.constantFrom('monthly', 'bi-weekly', 'accelerated_bi-weekly'))
-}).filter(m => 
-  m.amortization_period === null || 
-  m.term_length === null || 
+}).filter(m =>
+  m.amortization_period === null ||
+  m.term_length === null ||
   m.renewal_date === null ||
   m.rate_type === null ||
   m.payment_frequency === null

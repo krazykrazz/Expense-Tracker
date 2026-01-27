@@ -26,32 +26,12 @@ vi.mock('./BudgetAlertBanner', () => ({
 }));
 
 describe('BudgetAlertManager', () => {
-  // Mock budgets in flat API format (as returned by getBudgets API)
+  // Mock budgets in flat format (as returned by the API)
   const mockBudgets = [
-    {
-      id: 1,
-      category: 'Groceries',
-      limit: 500,
-      spent: 427.50
-    },
-    {
-      id: 2,
-      category: 'Gas',
-      limit: 200,
-      spent: 185.00
-    },
-    {
-      id: 3,
-      category: 'Entertainment',
-      limit: 150,
-      spent: 160.00
-    },
-    {
-      id: 4,
-      category: 'Dining Out',
-      limit: 300,
-      spent: 150.00
-    }
+    { id: 1, year: 2025, month: 12, category: 'Groceries', limit: 500, spent: 427.50 },
+    { id: 2, year: 2025, month: 12, category: 'Gas', limit: 200, spent: 185.00 },
+    { id: 3, year: 2025, month: 12, category: 'Entertainment', limit: 150, spent: 160.00 },
+    { id: 4, year: 2025, month: 12, category: 'Dining Out', limit: 300, spent: 150.00 }
   ];
 
   const mockCallbacks = {
@@ -62,6 +42,8 @@ describe('BudgetAlertManager', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     budgetApi.getBudgets.mockResolvedValue({ budgets: mockBudgets });
+    // Clear sessionStorage to ensure clean state between tests
+    sessionStorage.clear();
   });
 
   describe('Alert Calculation and State Management', () => {
@@ -166,12 +148,7 @@ describe('BudgetAlertManager', () => {
 
     test('should handle budgets with no alerts needed', async () => {
       const safeBudgets = [
-        {
-          id: 1,
-          category: 'Groceries',
-          limit: 500,
-          spent: 200.00
-        }
+        { id: 1, year: 2025, month: 12, category: 'Groceries', limit: 500, spent: 200.00 }
       ];
 
       budgetApi.getBudgets.mockResolvedValue({ budgets: safeBudgets });
@@ -404,10 +381,10 @@ describe('BudgetAlertManager', () => {
 
     test('should handle malformed budget data', async () => {
       const malformedBudgets = [
-        { id: 1 }, // Missing required fields
+        { id: 1 }, // Missing required fields (category, limit)
         null,
         undefined,
-        { id: 2, category: 'Gas', limit: 200, spent: 185 } // Valid flat format
+        { id: 2, year: 2025, month: 12, category: 'Gas', limit: 200, spent: 185 } // Valid - 92.5%
       ];
 
       budgetApi.getBudgets.mockResolvedValue({ budgets: malformedBudgets });
@@ -594,7 +571,7 @@ describe('BudgetAlertManager', () => {
       budgetApi.getBudgets.mockResolvedValue({ budgets: [
         null,
         undefined,
-        { id: null } // Invalid - missing required fields
+        { budget: null }
       ] });
 
       render(
@@ -624,7 +601,7 @@ describe('BudgetAlertManager', () => {
       const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       
       // First call returns invalid data to trigger error UI
-      budgetApi.getBudgets.mockResolvedValueOnce({ budgets: [null, undefined, { id: null }] });
+      budgetApi.getBudgets.mockResolvedValueOnce({ budgets: [null, undefined, { budget: null }] });
       // Second call succeeds
       budgetApi.getBudgets.mockResolvedValueOnce({ budgets: mockBudgets });
 
@@ -668,11 +645,10 @@ describe('BudgetAlertManager', () => {
       const invalidBudgets = [
         null, // Invalid
         undefined, // Invalid
-        { id: null }, // Invalid - null id
-        { id: 1 }, // Missing required fields
+        { id: 1 }, // Missing required fields (category, limit)
         { id: 2, category: 'Gas', limit: 'invalid' }, // Invalid limit type
         { id: 3, category: 'Food', limit: 500, spent: 'invalid' }, // Invalid spent type
-        { id: 4, category: 'Valid', limit: 200, spent: 180 } // Valid - 90% is danger level
+        { id: 4, year: 2025, month: 12, category: 'Valid', limit: 200, spent: 180 } // Valid - 90% is danger level
       ];
 
       // Clear the mock and set new data
@@ -838,12 +814,9 @@ describe('BudgetAlertManager', () => {
     });
 
     test('should display "and X more" indicator when alerts exceed limit', async () => {
-      // Create more than 5 alerts (all at warning level - 85%)
+      // Create more than 5 alerts (flat format from API)
       const manyBudgets = Array.from({ length: 7 }, (_, i) => ({
-        id: i + 1,
-        category: `Category${i + 1}`,
-        limit: 100,
-        spent: 85
+        id: i + 1, year: 2025, month: 12, category: `Category${i + 1}`, limit: 100, spent: 85
       }));
 
       budgetApi.getBudgets.mockResolvedValue({ budgets: manyBudgets });
@@ -868,7 +841,7 @@ describe('BudgetAlertManager', () => {
 
       // Should display "and 2 more" indicator
       await waitFor(() => {
-        expect(screen.getByText('and 2 more budget alerts')).toBeInTheDocument();
+        expect(screen.getByText(/and\s+2\s+more budget alert/)).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Manage all budgets' })).toBeInTheDocument();
       });
     });

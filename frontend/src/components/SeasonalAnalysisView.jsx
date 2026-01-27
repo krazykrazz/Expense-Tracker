@@ -208,7 +208,7 @@ const SeasonalAnalysisView = ({ months = 12 }) => {
         <div className="seasonal-section">
           <h3 className="seasonal-section-title">
             Categories with Seasonal Variation
-            <span className="seasonal-section-subtitle">(>25% variance from annual average)</span>
+            <span className="seasonal-section-subtitle">(&gt;25% variance from annual average)</span>
           </h3>
           
           {!analysis.seasonalCategories || analysis.seasonalCategories.length === 0 ? (

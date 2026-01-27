@@ -11,23 +11,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [4.17.6] - 2026-01-26
+## [4.18.0] - 2026-01-26
+
+### Added
+- **Tax Deductible Analytics**: Comprehensive analytics for tax-deductible expenses
+  - Year-over-year comparison showing changes in medical and donation expenses
+  - Tax credit calculator with federal and provincial estimates
+  - Customizable tax settings (province selection, custom rates)
+  - Settings persistence in localStorage
+  - Property-based tests for tax calculations and YoY comparisons
 
 ### Fixed
-- **Dismissed Anomalies Persistence**: Fixed bug where dismissed anomalies were lost on container restart
-  - Anomalies marked as "expected" now persist to database instead of in-memory storage
-  - Added `dismissed_anomalies` table with database migration
-  - Dismissals survive Docker container restarts and server reboots
-
----
-
-## [4.17.5] - 2026-01-26
-
-### Improved
-- **Daily Spending Anomaly Display**: Enhanced anomaly alerts to show expense count for high-spending days
-  - Days with multiple expenses now display "X expenses on this day" instead of showing a single place name
-  - Backend returns `expenseCount` field for daily anomalies
-  - Reason message now shows "X expenses totaling $Y" format for clarity
+- **Budget Alert Dismissal Persistence**: Fixed bug where dismissed budget alerts would reappear after page refresh
+  - Added tracking of previous year/month to prevent clearing dismissals on initial mount
+  - Dismissals now correctly persist within the same browser session
 
 ---
 

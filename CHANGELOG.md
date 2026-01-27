@@ -11,6 +11,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.18.0] - 2026-01-26
+
+### Added
+- **Tax Deductible Analytics**: Comprehensive analytics for tax-deductible expenses
+  - Year-over-year comparison showing changes in medical and donation expenses
+  - Tax credit calculator with federal and provincial estimates
+  - Customizable tax settings (province selection, custom rates)
+  - Settings persistence in localStorage
+  - Property-based tests for tax calculations and YoY comparisons
+
+### Fixed
+- **Budget Alert Dismissal Persistence**: Fixed bug where dismissed budget alerts would reappear after page refresh
+  - Added tracking of previous year/month to prevent clearing dismissals on initial mount
+  - Dismissals now correctly persist within the same browser session
+
+---
+
 ## [4.17.4] - 2026-01-26
 
 ### Fixed

@@ -99,7 +99,7 @@ The budgets table creation has been integrated into `backend/database/db.js`:
 
 ### Server Startup Log
 ```
-Connected to SQLite database at: C:\Users\krazy\Projects\Expense Tracker\backend\config\database\expenses.db
+Connected to SQLite database at: backend/config/database/expenses.db
 Expenses table created or already exists
 Monthly gross table created or already exists
 Recurring expenses table created or already exists

@@ -1,8 +1,0 @@
-{
-  "enabled": false,
-  "schedule": "daily",
-  "time": "02:00",
-  "targetPath": "C:\\Users\\krazy\\Projects\\Expense Tracker\\test-pbt-retention",
-  "keepLastN": 100,
-  "lastBackup": "2026-01-26T15:12:04.337Z"
-}

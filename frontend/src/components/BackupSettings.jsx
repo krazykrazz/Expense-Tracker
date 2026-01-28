@@ -792,6 +792,13 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v4.18.1</div>
+                <div className="changelog-date">January 2026</div>
+                <ul className="changelog-items">
+                  <li>Fixed "Use App Data" button in Tax Credit Calculator not populating income</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v4.18.0</div>
                 <div className="changelog-date">January 2026</div>
                 <ul className="changelog-items">

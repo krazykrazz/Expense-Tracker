@@ -2,12 +2,45 @@ param(
     [Parameter(Mandatory=$true)]
     [string]$FeatureName,
     [switch]$SkipTests,
-    [switch]$Force
+    [switch]$Force,
+    [switch]$DirectMerge
 )
 
 $BranchName = "feature/$FeatureName"
 
-Write-Host "🚀 Promoting feature branch: $BranchName to main" -ForegroundColor Green
+# Function to convert kebab-case to Title Case for PR titles
+function ConvertTo-PRTitle {
+    param([string]$FeatureName)
+    return ($FeatureName -replace '-', ' ') -replace '\b(\w)', { $_.Groups[1].Value.ToUpper() }
+}
+
+# Function to get GitHub compare URL for manual PR creation
+function Get-GitHubCompareUrl {
+    param([string]$BranchName)
+    
+    $remoteUrl = git remote get-url origin 2>$null
+    if (-not $remoteUrl) {
+        return $null
+    }
+    
+    # Convert SSH URL to HTTPS if needed
+    if ($remoteUrl -match 'git@github\.com:(.+)\.git') {
+        $repoPath = $Matches[1]
+        return "https://github.com/$repoPath/compare/main...$BranchName`?expand=1"
+    }
+    elseif ($remoteUrl -match 'https://github\.com/(.+?)(\.git)?$') {
+        $repoPath = $Matches[1] -replace '\.git$', ''
+        return "https://github.com/$repoPath/compare/main...$BranchName`?expand=1"
+    }
+    
+    return $null
+}
+
+if ($DirectMerge) {
+    Write-Host "🚀 Promoting feature branch: $BranchName to main (Direct Merge)" -ForegroundColor Green
+} else {
+    Write-Host "🚀 Creating PR for feature branch: $BranchName" -ForegroundColor Green
+}
 Write-Host ""
 
 # Check if we're in a git repository
@@ -141,57 +174,155 @@ if (Test-Path $specPath) {
     }
 }
 
-# Final confirmation
-if (-not $Force) {
+# Branch based on DirectMerge flag
+if ($DirectMerge) {
+    # ============================================
+    # DIRECT MERGE WORKFLOW (Original behavior)
+    # ============================================
+    
+    # Final confirmation
+    if (-not $Force) {
+        Write-Host ""
+        Write-Host "🤔 Ready to promote '$FeatureName' to main branch?" -ForegroundColor Yellow
+        $confirmation = Read-Host "Type 'yes' to continue"
+        if ($confirmation -ne 'yes') {
+            Write-Host "❌ Promotion cancelled" -ForegroundColor Red
+            exit 1
+        }
+    }
+
+    # Merge to main
     Write-Host ""
-    Write-Host "🤔 Ready to promote '$FeatureName' to main branch?" -ForegroundColor Yellow
-    $confirmation = Read-Host "Type 'yes' to continue"
-    if ($confirmation -ne 'yes') {
-        Write-Host "❌ Promotion cancelled" -ForegroundColor Red
+    Write-Host "🔀 Merging feature to main..." -ForegroundColor Yellow
+    git checkout main
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "❌ Failed to checkout main branch" -ForegroundColor Red
         exit 1
     }
+
+    git merge $BranchName --no-ff -m "feat: merge $FeatureName feature"
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "❌ Failed to merge feature branch" -ForegroundColor Red
+        exit 1
+    }
+
+    # Push to main
+    Write-Host "📤 Pushing to origin/main..." -ForegroundColor Yellow
+    git push origin main
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "❌ Failed to push to origin/main" -ForegroundColor Red
+        Write-Host "You may need to resolve this manually" -ForegroundColor Yellow
+        exit 1
+    }
+
+    Write-Host ""
+    Write-Host "🎉 Feature '$FeatureName' successfully promoted to main!" -ForegroundColor Green
+    Write-Host ""
+    Write-Host "Next steps:" -ForegroundColor Cyan
+    Write-Host "1. Consider building and pushing Docker image: .\build-and-push.ps1 -Tag latest" -ForegroundColor White
+    Write-Host "2. Monitor application for any issues" -ForegroundColor White
+    Write-Host "3. Clean up feature branch (optional):" -ForegroundColor White
+    Write-Host "   git branch -d $BranchName" -ForegroundColor Gray
+    Write-Host "   git push origin --delete $BranchName" -ForegroundColor Gray
+    Write-Host ""
+
+    # Offer to clean up branch
+    $cleanup = Read-Host "Delete feature branch '$BranchName'? (y/n)"
+    if ($cleanup -eq 'y' -or $cleanup -eq 'yes') {
+        Write-Host "🧹 Cleaning up feature branch..." -ForegroundColor Yellow
+        git branch -d $BranchName
+        git push origin --delete $BranchName
+        Write-Host "✅ Feature branch deleted" -ForegroundColor Green
+    }
 }
-
-# Merge to main
-Write-Host ""
-Write-Host "🔀 Merging feature to main..." -ForegroundColor Yellow
-git checkout main
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "❌ Failed to checkout main branch" -ForegroundColor Red
-    exit 1
-}
-
-git merge $BranchName --no-ff -m "feat: merge $FeatureName feature"
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "❌ Failed to merge feature branch" -ForegroundColor Red
-    exit 1
-}
-
-# Push to main
-Write-Host "📤 Pushing to origin/main..." -ForegroundColor Yellow
-git push origin main
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "❌ Failed to push to origin/main" -ForegroundColor Red
-    Write-Host "You may need to resolve this manually" -ForegroundColor Yellow
-    exit 1
-}
-
-Write-Host ""
-Write-Host "🎉 Feature '$FeatureName' successfully promoted to main!" -ForegroundColor Green
-Write-Host ""
-Write-Host "Next steps:" -ForegroundColor Cyan
-Write-Host "1. Consider building and pushing Docker image: .\build-and-push.ps1 -Tag latest" -ForegroundColor White
-Write-Host "2. Monitor application for any issues" -ForegroundColor White
-Write-Host "3. Clean up feature branch (optional):" -ForegroundColor White
-Write-Host "   git branch -d $BranchName" -ForegroundColor Gray
-Write-Host "   git push origin --delete $BranchName" -ForegroundColor Gray
-Write-Host ""
-
-# Offer to clean up branch
-$cleanup = Read-Host "Delete feature branch '$BranchName'? (y/n)"
-if ($cleanup -eq 'y' -or $cleanup -eq 'yes') {
-    Write-Host "🧹 Cleaning up feature branch..." -ForegroundColor Yellow
-    git branch -d $BranchName
-    git push origin --delete $BranchName
-    Write-Host "✅ Feature branch deleted" -ForegroundColor Green
+else {
+    # ============================================
+    # PR WORKFLOW (New default behavior)
+    # ============================================
+    
+    # Generate PR title from feature name
+    $prTitle = ConvertTo-PRTitle -FeatureName $FeatureName
+    $prBody = "## Summary`n`nThis PR promotes the ``$FeatureName`` feature to main.`n`n## Checklist`n`n- [ ] CI passes`n- [ ] Code reviewed`n- [ ] Ready to merge"
+    
+    # Push feature branch to origin
+    Write-Host ""
+    Write-Host "📤 Pushing feature branch to origin..." -ForegroundColor Yellow
+    git push -u origin $BranchName
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "❌ Failed to push feature branch to origin" -ForegroundColor Red
+        Write-Host "You may need to resolve this manually" -ForegroundColor Yellow
+        exit 1
+    }
+    Write-Host "✅ Feature branch pushed to origin" -ForegroundColor Green
+    
+    # Check if GitHub CLI is available
+    $ghAvailable = Get-Command gh -ErrorAction SilentlyContinue
+    
+    if ($ghAvailable) {
+        # Create PR via GitHub CLI
+        Write-Host ""
+        Write-Host "🔗 Creating Pull Request via GitHub CLI..." -ForegroundColor Yellow
+        
+        $prUrl = gh pr create --base main --head $BranchName --title $prTitle --body $prBody 2>&1
+        
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host ""
+            Write-Host "🎉 Pull Request created successfully!" -ForegroundColor Green
+            Write-Host ""
+            Write-Host "PR URL: $prUrl" -ForegroundColor Cyan
+            Write-Host ""
+            Write-Host "Next steps:" -ForegroundColor Cyan
+            Write-Host "1. CI will run automatically on the PR" -ForegroundColor White
+            Write-Host "2. Check CI status at the PR page" -ForegroundColor White
+            Write-Host "3. When CI passes and ready to merge:" -ForegroundColor White
+            Write-Host "   gh pr merge --merge --delete-branch" -ForegroundColor Gray
+            Write-Host "   Or merge via the GitHub web UI" -ForegroundColor Gray
+            Write-Host ""
+        } else {
+            # Check if PR already exists
+            if ($prUrl -match "already exists") {
+                Write-Host "⚠️  A PR for this branch already exists" -ForegroundColor Yellow
+                $existingPr = gh pr view $BranchName --json url --jq '.url' 2>$null
+                if ($existingPr) {
+                    Write-Host "PR URL: $existingPr" -ForegroundColor Cyan
+                }
+            } else {
+                Write-Host "❌ Failed to create PR: $prUrl" -ForegroundColor Red
+                Write-Host ""
+                Write-Host "You can create the PR manually via the GitHub web UI" -ForegroundColor Yellow
+                $compareUrl = Get-GitHubCompareUrl -BranchName $BranchName
+                if ($compareUrl) {
+                    Write-Host "Open: $compareUrl" -ForegroundColor Cyan
+                }
+            }
+        }
+    } else {
+        # GitHub CLI not available - provide web UI instructions
+        Write-Host ""
+        Write-Host "⚠️  GitHub CLI (gh) not found" -ForegroundColor Yellow
+        Write-Host "To install: https://cli.github.com/" -ForegroundColor Gray
+        Write-Host ""
+        Write-Host "Create your PR manually via the GitHub web UI:" -ForegroundColor Cyan
+        
+        $compareUrl = Get-GitHubCompareUrl -BranchName $BranchName
+        if ($compareUrl) {
+            Write-Host ""
+            Write-Host "Open this URL to create the PR:" -ForegroundColor White
+            Write-Host $compareUrl -ForegroundColor Green
+            Write-Host ""
+            Write-Host "Suggested PR title: $prTitle" -ForegroundColor Gray
+        } else {
+            Write-Host ""
+            Write-Host "1. Go to your repository on GitHub" -ForegroundColor White
+            Write-Host "2. Click 'Pull requests' > 'New pull request'" -ForegroundColor White
+            Write-Host "3. Set base: main, compare: $BranchName" -ForegroundColor White
+            Write-Host "4. Click 'Create pull request'" -ForegroundColor White
+        }
+        
+        Write-Host ""
+        Write-Host "Next steps after creating PR:" -ForegroundColor Cyan
+        Write-Host "1. CI will run automatically on the PR" -ForegroundColor White
+        Write-Host "2. Check CI status at the PR page" -ForegroundColor White
+        Write-Host "3. Merge when CI passes and code is reviewed" -ForegroundColor White
+    }
 }

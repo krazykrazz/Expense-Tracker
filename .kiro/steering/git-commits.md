@@ -74,6 +74,84 @@ git merge feature/multi-invoice-support
 
 The `scripts/promote-feature.ps1` script already uses `--no-ff` by default.
 
+---
+
+## PR-Based Workflow (Default)
+
+**IMPORTANT**: PR-based promotion is now the default workflow. This ensures CI runs before code reaches main.
+
+### Feature Branch Promotion
+
+When promoting a feature branch to main, use the `promote-feature.ps1` script:
+
+```powershell
+.\scripts\promote-feature.ps1 -FeatureName your-feature
+```
+
+**What the script does:**
+1. Verifies the feature branch exists
+2. Checks for uncommitted changes
+3. Syncs with main (merges main into feature branch)
+4. Runs local tests (unless `-SkipTests` is used)
+5. Pushes the feature branch to origin
+6. Creates a PR via GitHub CLI (or provides web UI URL)
+7. Outputs the PR URL and next steps
+
+**After PR creation:**
+1. GitHub Actions CI runs automatically on the PR
+2. Check CI status on the PR page
+3. If CI passes, merge via web UI or `gh pr merge`
+4. Delete the feature branch
+
+### Quick Fixes on Main
+
+When making quick changes directly on main (bug fixes, version bumps, etc.), use the `create-pr-from-main.ps1` script:
+
+```powershell
+.\scripts\create-pr-from-main.ps1 -Title "Fix: description of fix"
+```
+
+**What the script does:**
+1. Verifies you're on the main branch
+2. Creates a temporary hotfix branch (e.g., `hotfix/20260127-143022`)
+3. Pushes the branch and creates a PR
+4. Switches back to main
+5. Provides instructions to pull merged changes
+
+### When to Use Each Script
+
+| Scenario | Script to Use |
+|----------|---------------|
+| Promoting a feature branch | `promote-feature.ps1 -FeatureName <name>` |
+| Quick fix made on main | `create-pr-from-main.ps1 -Title "<description>"` |
+| Emergency hotfix (skip CI) | `promote-feature.ps1 -FeatureName <name> -DirectMerge` |
+| CI already verified on branch | `promote-feature.ps1 -FeatureName <name> -DirectMerge` |
+
+### Direct Merge (Bypass PR)
+
+Use the `-DirectMerge` flag only when:
+- Making an emergency hotfix that needs immediate deployment
+- CI was already run and verified on the feature branch
+- The change is documentation-only and doesn't affect code
+
+```powershell
+.\scripts\promote-feature.ps1 -FeatureName your-feature -DirectMerge
+```
+
+### Agent Guidance
+
+When assisting with feature promotion:
+1. **Default to PR workflow** - Use `promote-feature.ps1` without `-DirectMerge`
+2. **For quick fixes on main** - Use `create-pr-from-main.ps1`
+3. **Only suggest `-DirectMerge`** when the user explicitly needs to bypass CI
+
+When assisting with changes directly on main:
+1. After making changes, suggest using `create-pr-from-main.ps1`
+2. Explain that this ensures CI runs before the changes are finalized
+3. Provide the command with an appropriate title
+
+---
+
 ## Example Workflow
 
 ```

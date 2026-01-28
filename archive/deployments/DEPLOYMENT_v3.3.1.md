@@ -42,7 +42,7 @@
 
 ### Server Status
 - ✅ Backend running on port 2424
-- ✅ Database location: `C:\Users\krazy\Projects\Expense Tracker\backend\config\database\expenses.db`
+- ✅ Database location: `backend/config/database/expenses.db`
 - ✅ All tables initialized successfully
 - ✅ Automatic backups enabled (next: 2025-11-17, 2:00 AM)
 

@@ -43,8 +43,8 @@ app.use(helmet({
       imgSrc: ["'self'", "data:", "blob:"],
       connectSrc: ["'self'"],
       fontSrc: ["'self'"],
-      objectSrc: ["'none'"],
-      frameSrc: ["'none'"],
+      objectSrc: ["'self'", "blob:"], // Allow PDF objects from blob URLs
+      frameSrc: ["'self'", "blob:"], // Allow iframes with blob URLs for PDF viewing
       upgradeInsecureRequests: null // Disable for local network use
     }
   },

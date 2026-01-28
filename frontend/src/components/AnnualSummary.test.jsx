@@ -19,10 +19,13 @@ const getExpectedSubtitle = (netIncome) => {
 
 // Default income by category response
 const defaultIncomeByCategoryResponse = {
-  Salary: 0,
-  Government: 0,
-  Gifts: 0,
-  Other: 0
+  byCategory: {
+    Salary: 0,
+    Government: 0,
+    Gifts: 0,
+    Other: 0
+  },
+  total: 0
 };
 
 // Helper to create a complete mock fetch function with all required endpoints

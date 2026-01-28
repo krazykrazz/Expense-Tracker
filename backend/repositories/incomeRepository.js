@@ -91,7 +91,7 @@ class IncomeRepository {
   /**
    * Get income totals by category for entire year
    * @param {number} year - Year
-   * @returns {Promise<Object>} Object with category totals for the year
+   * @returns {Promise<Object>} Object with category totals and grand total for the year
    */
   async getIncomeByCategoryForYear(year) {
     const db = await getDatabase();
@@ -110,13 +110,20 @@ class IncomeRepository {
           return;
         }
         
-        // Convert array to object
-        const result = {};
+        // Convert array to object and calculate grand total
+        const byCategory = {};
+        let grandTotal = 0;
+        
         rows.forEach(row => {
-          result[row.category] = parseFloat(row.total.toFixed(2));
+          const categoryTotal = parseFloat(row.total.toFixed(2));
+          byCategory[row.category] = categoryTotal;
+          grandTotal += categoryTotal;
         });
         
-        resolve(result);
+        resolve({
+          byCategory,
+          total: parseFloat(grandTotal.toFixed(2))
+        });
       });
     });
   }

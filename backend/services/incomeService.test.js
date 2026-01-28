@@ -297,18 +297,23 @@ describe('incomeService', () => {
   });
 
   describe('getAnnualIncomeByCategory', () => {
-    it('should return annual income breakdown by category', async () => {
+    it('should return annual income breakdown by category with total', async () => {
       const mockCategoryBreakdown = {
-        Salary: 60000,
-        Government: 5000,
-        Gifts: 2000,
-        Other: 3000
+        byCategory: {
+          Salary: 60000,
+          Government: 5000,
+          Gifts: 2000,
+          Other: 3000
+        },
+        total: 70000
       };
       incomeRepository.getIncomeByCategoryForYear.mockResolvedValue(mockCategoryBreakdown);
 
       const result = await incomeService.getAnnualIncomeByCategory(2024);
 
       expect(result).toEqual(mockCategoryBreakdown);
+      expect(result.total).toBe(70000);
+      expect(result.byCategory.Salary).toBe(60000);
       expect(incomeRepository.getIncomeByCategoryForYear).toHaveBeenCalledWith(2024);
     });
 

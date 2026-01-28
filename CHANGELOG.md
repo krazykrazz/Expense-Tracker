@@ -11,6 +11,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.18.1] - 2026-01-27
+
+### Fixed
+- **Use App Data Button**: Fixed "Use App Data" button in Tax Credit Calculator not populating income
+  - Backend API now returns `total` field alongside category breakdown for annual income
+  - Updated AnnualSummary component to use new response structure
+  - Tax Credit Calculator now correctly pulls annual income from app data
+
+---
+
 ## [4.18.0] - 2026-01-26
 
 ### Added

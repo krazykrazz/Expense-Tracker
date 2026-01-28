@@ -71,35 +71,35 @@ This implementation adds a Pull Request-based workflow to the existing feature b
 - [x] 3. Checkpoint - Scripts complete
   - Ensure scripts work correctly, ask the user if questions arise.
 
-- [ ] 4. Update Documentation
-  - [ ] 4.1 Update `docs/development/FEATURE_BRANCH_WORKFLOW.md` with PR workflow
+- [x] 4. Update Documentation
+  - [x] 4.1 Update `docs/development/FEATURE_BRANCH_WORKFLOW.md` with PR workflow
     - Add "PR Workflow" section explaining the new default behavior
     - Document that CI runs automatically on PRs to main
     - Include instructions for both CLI (`gh pr create`) and web UI methods
     - Document when `-DirectMerge` flag is acceptable
     - _Requirements: 2.1, 2.2, 2.3, 2.4_
 
-  - [ ] 4.2 Add quick fix PR workflow section to documentation
+  - [x] 4.2 Add quick fix PR workflow section to documentation
     - Document `create-pr-from-main.ps1` usage
     - Explain when to use quick fix workflow vs feature branch workflow
     - Include example commands and expected output
     - _Requirements: 2.1_
 
-  - [ ] 4.3 Update `docs/development/GITHUB_ACTIONS_CICD.md`
+  - [x] 4.3 Update `docs/development/GITHUB_ACTIONS_CICD.md`
     - Add note about CI running automatically on PRs to main
     - Explain how to check CI status on PR page
     - Document the PR merge process after CI passes
     - _Requirements: 2.2_
 
-- [ ] 5. Update Steering Files
-  - [ ] 5.1 Update `.kiro/steering/git-commits.md` with PR workflow guidance
+- [x] 5. Update Steering Files
+  - [x] 5.1 Update `.kiro/steering/git-commits.md` with PR workflow guidance
     - Add section explaining PR-based promotion is now the default
     - Guide agent to use `promote-feature.ps1` for feature promotion
     - Guide agent to use `create-pr-from-main.ps1` for quick fixes on main
     - Document when each script should be used
     - _Requirements: 4.1, 4.2, 4.3, 4.4_
 
-- [ ] 6. Final Checkpoint
+- [x] 6. Final Checkpoint
   - Ensure all documentation is accurate, ask the user if questions arise.
 
 ## Notes

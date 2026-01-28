@@ -1,6 +1,6 @@
 # GitHub Actions CI/CD
 
-**Last Updated**: January 24, 2026  
+**Last Updated**: January 27, 2026  
 **Status**: Active
 
 This document provides detailed documentation for the GitHub Actions CI/CD workflows used in the Expense Tracker application.
@@ -11,6 +11,16 @@ The project uses two GitHub Actions workflows:
 
 1. **CI Workflow** (`ci.yml`) - Automated testing on pushes and pull requests
 2. **Docker Workflow** (`docker.yml`) - Docker image builds on merge to main
+
+### PR-Based CI Integration
+
+**CI runs automatically on all Pull Requests to main.** This is the primary way to verify code before it reaches the main branch.
+
+When you create a PR (using `promote-feature.ps1` or `create-pr-from-main.ps1`):
+1. GitHub Actions triggers the CI workflow
+2. Both backend and frontend tests run in parallel
+3. Results appear as status checks on the PR
+4. You can merge once all checks pass
 
 ## CI Workflow
 
@@ -74,6 +84,82 @@ Both test jobs run simultaneously (no `needs` dependency), providing:
 - Faster feedback (~3-5 minutes total)
 - Independent failure reporting
 - Efficient use of CI resources
+
+## Checking CI Status on PRs
+
+When you create a PR, CI status is displayed directly on the PR page.
+
+### Status Indicators
+
+| Icon | Status | Meaning |
+|------|--------|---------|
+| 🟡 | Pending | CI is running |
+| ✅ | Passed | All checks passed - safe to merge |
+| ❌ | Failed | One or more checks failed - fix before merging |
+
+### Viewing CI Results
+
+#### From the PR Page
+
+1. Scroll to the bottom of the PR conversation
+2. Look for the "Checks" section
+3. Click "Details" next to any check to see logs
+
+#### From the Actions Tab
+
+1. Go to your repository on GitHub
+2. Click **Actions** in the top navigation
+3. Find the workflow run for your PR
+4. Click to see detailed logs
+
+### Understanding Check Results
+
+Each PR shows two checks:
+- **Backend Tests** - Jest tests from `backend/`
+- **Frontend Tests** - Vitest tests from `frontend/`
+
+Both must pass (green checkmark) before merging.
+
+## Merging PRs After CI Passes
+
+Once CI passes, you can merge the PR.
+
+### Method 1: GitHub CLI
+
+```bash
+# Merge and delete the branch
+gh pr merge --merge --delete-branch
+
+# Or specify the PR number/branch
+gh pr merge 123 --merge --delete-branch
+gh pr merge feature/your-feature --merge --delete-branch
+```
+
+### Method 2: GitHub Web UI
+
+1. Go to the PR page
+2. Click the green "Merge pull request" button
+3. Confirm the merge
+4. Optionally delete the branch
+
+### After Merging
+
+Update your local main branch:
+
+```bash
+git checkout main
+git pull origin main
+```
+
+### Merge Options
+
+| Option | Command | When to Use |
+|--------|---------|-------------|
+| Merge commit | `--merge` | Default, preserves branch history |
+| Squash | `--squash` | Combine all commits into one |
+| Rebase | `--rebase` | Linear history, no merge commit |
+
+We recommend `--merge` (default) to preserve the feature branch history.
 
 ## Docker Workflow
 

@@ -1,6 +1,6 @@
 # Feature Branch Promotion Model
 
-**Last Updated**: January 24, 2026  
+**Last Updated**: January 27, 2026  
 **Status**: Active
 
 This document outlines the feature branch promotion workflow for the Expense Tracker application, ensuring clean development practices and stable main branch deployments.
@@ -63,7 +63,117 @@ Before promoting to main, ensure:
 - [ ] Version numbers updated
 - [ ] CHANGELOG.md updated
 
-### 4. Promotion to Main
+### 4. Promotion to Main (via PR)
+
+The default promotion method creates a Pull Request, allowing CI to run before merging:
+
+```powershell
+# Run the promotion script (creates a PR by default)
+.\scripts\promote-feature.ps1 -FeatureName budget-alert-notifications
+```
+
+The script will:
+1. Sync your feature branch with main
+2. Run local tests (unless `-SkipTests` is used)
+3. Push the feature branch to origin
+4. Create a PR via GitHub CLI (or provide web UI instructions)
+
+See [PR Workflow](#pr-workflow) below for details.
+
+## PR Workflow
+
+**Default behavior**: The promotion script creates a Pull Request instead of directly merging to main. This allows CI to run and verify the code before it reaches main.
+
+### Why Use PRs?
+
+- **CI Verification**: GitHub Actions runs automatically on PRs to main
+- **Visibility**: Clear place to see test status before merging
+- **Review**: Opportunity for code review (even self-review)
+- **History**: Clean merge commits in git history
+
+### Using the Promotion Script
+
+```powershell
+# Create a PR for your feature (default behavior)
+.\scripts\promote-feature.ps1 -FeatureName your-feature
+
+# Skip local tests (CI will still run on the PR)
+.\scripts\promote-feature.ps1 -FeatureName your-feature -SkipTests
+
+# Force promotion even with incomplete tasks
+.\scripts\promote-feature.ps1 -FeatureName your-feature -Force
+```
+
+### PR Creation Methods
+
+#### Method 1: GitHub CLI (Recommended)
+
+If you have the [GitHub CLI](https://cli.github.com/) installed, the script creates the PR automatically:
+
+```
+🔗 Creating Pull Request via GitHub CLI...
+
+🎉 Pull Request created successfully!
+
+PR URL: https://github.com/user/repo/pull/123
+
+Next steps:
+1. CI will run automatically on the PR
+2. Check CI status at the PR page
+3. When CI passes and ready to merge:
+   gh pr merge --merge --delete-branch
+   Or merge via the GitHub web UI
+```
+
+#### Method 2: Web UI Fallback
+
+If GitHub CLI is not installed, the script provides a URL for manual PR creation:
+
+```
+⚠️  GitHub CLI (gh) not found
+To install: https://cli.github.com/
+
+Create your PR manually via the GitHub web UI:
+
+Open this URL to create the PR:
+https://github.com/user/repo/compare/main...feature/your-feature?expand=1
+
+Suggested PR title: Your Feature
+```
+
+### After Creating the PR
+
+1. **CI runs automatically** - GitHub Actions tests run on the PR
+2. **Check status** - View results on the PR page or Actions tab
+3. **Merge when ready** - Use web UI or CLI:
+   ```bash
+   gh pr merge --merge --delete-branch
+   ```
+4. **Pull changes** - Update your local main:
+   ```bash
+   git checkout main
+   git pull origin main
+   ```
+
+### When to Use Direct Merge
+
+The `-DirectMerge` flag bypasses PR creation and merges directly to main:
+
+```powershell
+.\scripts\promote-feature.ps1 -FeatureName your-feature -DirectMerge
+```
+
+Use direct merge when:
+- **CI already verified** - You ran CI on the feature branch
+- **Emergency hotfix** - Critical fix needed immediately
+- **Documentation-only** - Changes that don't affect code behavior
+- **Local-only development** - Not using GitHub for this project
+
+**Note**: Direct merge still runs local tests and uses `--no-ff` for clean history.
+
+### Legacy Promotion (Manual)
+
+For reference, the manual promotion process (equivalent to `-DirectMerge`):
 
 ```bash
 # Final sync with main
@@ -73,18 +183,18 @@ git checkout feature/budget-alert-notifications
 git merge main
 
 # Run final tests
-npm test  # or your test command
+npm test
 
 # Switch to main and merge feature
 git checkout main
-git merge feature/budget-alert-notifications
+git merge --no-ff feature/budget-alert-notifications
 
 # Push to main
 git push origin main
 
 # Clean up feature branch (optional)
 git branch -d feature/budget-alert-notifications
-git push origin --delete feature/budget-notifications
+git push origin --delete feature/budget-alert-notifications
 ```
 
 ## Hotfix Workflow
@@ -112,87 +222,145 @@ git branch -d hotfix/fix-critical-bug
 git push origin --delete hotfix/fix-critical-bug
 ```
 
+## Quick Fix PR Workflow
+
+For changes made directly on main that need CI verification before pushing, use the `create-pr-from-main.ps1` script.
+
+### When to Use Quick Fix PR
+
+Use this workflow when you've:
+- Made a quick bug fix directly on main
+- Updated version numbers or documentation on main
+- Made changes that should go through CI before pushing
+
+### Using the Script
+
+```powershell
+# Create a PR from changes on main
+.\scripts\create-pr-from-main.ps1 -Title "Fix calculation error in budget alerts"
+
+# With optional description
+.\scripts\create-pr-from-main.ps1 -Title "Update dependencies" -Description "Bump lodash to fix security vulnerability"
+```
+
+### How It Works
+
+1. **Verifies you're on main** - Script only works from main branch
+2. **Handles uncommitted changes** - Prompts to commit if needed
+3. **Creates temporary branch** - Named `hotfix/YYYYMMDD-HHMMSS`
+4. **Pushes branch to origin** - Makes it available for PR
+5. **Resets main** - Removes local commits from main
+6. **Creates PR** - Via GitHub CLI or provides web UI URL
+
+### Example Output
+
+```
+🔧 Creating PR from main branch changes
+
+✅ On main branch
+
+📝 Uncommitted changes detected:
+ M backend/services/budgetService.js
+
+You have unstaged changes.
+Stage and commit all changes? (y/n) y
+💾 Staging and committing all changes...
+✅ Changes committed
+
+🔍 Checking for local commits...
+✅ Found local commits:
+   abc1234 Fix calculation error in budget alerts
+
+🌿 Creating temporary branch: hotfix/20260127-143022
+✅ Branch created
+📤 Pushing branch to origin...
+✅ Branch pushed to origin
+
+🔄 Resetting main to origin/main...
+
+🔗 Creating Pull Request via GitHub CLI...
+
+🎉 Pull Request created successfully!
+
+PR URL: https://github.com/user/repo/pull/124
+
+Next steps:
+1. CI will run automatically on the PR
+2. Check CI status at the PR page
+3. When CI passes, merge the PR:
+   gh pr merge hotfix/20260127-143022 --merge --delete-branch
+   Or merge via the GitHub web UI
+
+4. After merging, pull the changes:
+   git pull origin main
+
+📍 You are now on the main branch
+The hotfix branch 'hotfix/20260127-143022' is ready for PR review
+```
+
+### After Merging
+
+Once the PR is merged:
+
+```bash
+# Pull the merged changes back to main
+git pull origin main
+```
+
+### Quick Fix vs Feature Branch
+
+| Scenario | Use |
+|----------|-----|
+| New feature development | Feature branch + `promote-feature.ps1` |
+| Quick bug fix on main | `create-pr-from-main.ps1` |
+| Version bump on main | `create-pr-from-main.ps1` |
+| Documentation update | Either (or direct push if no CI needed) |
+| Emergency hotfix | `create-pr-from-main.ps1` or direct push |
+
 ## Automated Scripts
 
 ### Create Feature Branch Script
 
-Create `scripts/create-feature-branch.ps1`:
+The `scripts/create-feature-branch.ps1` script automates feature branch creation:
 
 ```powershell
-param(
-    [Parameter(Mandatory=$true)]
-    [string]$FeatureName
-)
-
-$BranchName = "feature/$FeatureName"
-
-Write-Host "Creating feature branch: $BranchName" -ForegroundColor Green
-
-# Ensure we're on main and up to date
-git checkout main
-git pull origin main
-
-# Create and switch to feature branch
-git checkout -b $BranchName
-
-# Push to remote
-git push -u origin $BranchName
-
-Write-Host "Feature branch '$BranchName' created and pushed to remote" -ForegroundColor Green
-Write-Host "You can now start development on this branch" -ForegroundColor Yellow
+# Create a new feature branch
+.\scripts\create-feature-branch.ps1 -FeatureName budget-alert-notifications
 ```
+
+This script:
+1. Ensures you're on an up-to-date main branch
+2. Creates the feature branch
+3. Pushes it to the remote
 
 ### Promote Feature Script
 
-Create `scripts/promote-feature.ps1`:
+The `scripts/promote-feature.ps1` script handles feature promotion with PR support:
 
 ```powershell
-param(
-    [Parameter(Mandatory=$true)]
-    [string]$FeatureName,
-    [switch]$SkipTests
-)
+# Create a PR (default behavior)
+.\scripts\promote-feature.ps1 -FeatureName budget-alert-notifications
 
-$BranchName = "feature/$FeatureName"
-
-Write-Host "Promoting feature branch: $BranchName to main" -ForegroundColor Green
-
-# Ensure we're on the feature branch
-git checkout $BranchName
-
-# Sync with main
-Write-Host "Syncing with main..." -ForegroundColor Yellow
-git checkout main
-git pull origin main
-git checkout $BranchName
-git merge main
-
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "Merge conflicts detected. Please resolve and try again." -ForegroundColor Red
-    exit 1
-}
-
-# Run tests unless skipped
-if (-not $SkipTests) {
-    Write-Host "Running tests..." -ForegroundColor Yellow
-    npm test
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host "Tests failed. Please fix and try again." -ForegroundColor Red
-        exit 1
-    }
-}
-
-# Merge to main
-Write-Host "Merging to main..." -ForegroundColor Yellow
-git checkout main
-git merge $BranchName
-
-# Push to main
-git push origin main
-
-Write-Host "Feature '$FeatureName' successfully promoted to main!" -ForegroundColor Green
-Write-Host "Consider deleting the feature branch: git branch -d $BranchName" -ForegroundColor Yellow
+# Available parameters:
+#   -FeatureName    (required) Name of the feature (without 'feature/' prefix)
+#   -SkipTests      Skip running local tests before promotion
+#   -Force          Proceed even with incomplete tasks or uncommitted changes
+#   -DirectMerge    Bypass PR and merge directly to main
 ```
+
+**Default behavior (PR workflow)**:
+1. Verifies feature branch exists
+2. Checks for uncommitted changes
+3. Syncs with main (merges main into feature)
+4. Runs local tests (unless `-SkipTests`)
+5. Pushes feature branch to origin
+6. Creates PR via GitHub CLI (or provides web UI URL)
+
+**With `-DirectMerge` flag**:
+1. Steps 1-4 same as above
+2. Merges feature to main with `--no-ff`
+3. Pushes to origin/main
+4. Offers to delete feature branch
 
 ## Integration with Existing Workflow
 
@@ -313,11 +481,19 @@ Before promoting a feature branch, verify:
 
 - [ ] All feature tasks completed
 - [ ] All tests passing locally
-- [ ] **CI workflow passing on GitHub** ← New
+- [ ] **CI workflow passing on GitHub** (after PR is created)
 - [ ] Code reviewed (self-review minimum)
 - [ ] Documentation updated
 - [ ] Version numbers updated
 - [ ] CHANGELOG.md updated
+
+### PR Merge Checklist
+
+After creating a PR:
+
+- [ ] CI checks pass (green checkmark on PR)
+- [ ] No merge conflicts
+- [ ] Ready to merge
 
 ### Troubleshooting CI Failures
 

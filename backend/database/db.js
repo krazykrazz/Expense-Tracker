@@ -169,8 +169,15 @@ function initializeDatabase() {
         initial_balance REAL NOT NULL CHECK(initial_balance >= 0),
         start_date TEXT NOT NULL,
         notes TEXT,
-        loan_type TEXT NOT NULL DEFAULT 'loan' CHECK(loan_type IN ('loan', 'line_of_credit')),
+        loan_type TEXT NOT NULL DEFAULT 'loan' CHECK(loan_type IN ('loan', 'line_of_credit', 'mortgage')),
         is_paid_off INTEGER DEFAULT 0,
+        estimated_months_left INTEGER,
+        amortization_period INTEGER,
+        term_length INTEGER,
+        renewal_date TEXT,
+        rate_type TEXT CHECK(rate_type IS NULL OR rate_type IN ('fixed', 'variable')),
+        payment_frequency TEXT CHECK(payment_frequency IS NULL OR payment_frequency IN ('monthly', 'bi-weekly', 'accelerated_bi-weekly')),
+        estimated_property_value REAL,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         updated_at TEXT DEFAULT CURRENT_TIMESTAMP
       )
@@ -365,6 +372,7 @@ function initializeDatabase() {
                             'CREATE INDEX IF NOT EXISTS idx_income_year_month ON income_sources(year, month)',
                             'CREATE INDEX IF NOT EXISTS idx_fixed_expenses_year_month ON fixed_expenses(year, month)',
                             'CREATE INDEX IF NOT EXISTS idx_loans_paid_off ON loans(is_paid_off)',
+                            'CREATE INDEX IF NOT EXISTS idx_loans_loan_type ON loans(loan_type)',
                             'CREATE INDEX IF NOT EXISTS idx_loan_balances_loan_id ON loan_balances(loan_id)',
                             'CREATE INDEX IF NOT EXISTS idx_loan_balances_year_month ON loan_balances(year, month)',
                             'CREATE INDEX IF NOT EXISTS idx_budgets_period ON budgets(year, month)',
@@ -554,9 +562,15 @@ function createTestDatabase() {
             initial_balance REAL NOT NULL CHECK(initial_balance >= 0),
             start_date TEXT NOT NULL,
             notes TEXT,
-            loan_type TEXT NOT NULL DEFAULT 'loan' CHECK(loan_type IN ('loan', 'line_of_credit')),
+            loan_type TEXT NOT NULL DEFAULT 'loan' CHECK(loan_type IN ('loan', 'line_of_credit', 'mortgage')),
             is_paid_off INTEGER DEFAULT 0,
             estimated_months_left INTEGER,
+            amortization_period INTEGER,
+            term_length INTEGER,
+            renewal_date TEXT,
+            rate_type TEXT CHECK(rate_type IS NULL OR rate_type IN ('fixed', 'variable')),
+            payment_frequency TEXT CHECK(payment_frequency IS NULL OR payment_frequency IN ('monthly', 'bi-weekly', 'accelerated_bi-weekly')),
+            estimated_property_value REAL,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             updated_at TEXT DEFAULT CURRENT_TIMESTAMP
           )`,
@@ -573,6 +587,18 @@ function createTestDatabase() {
             updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (loan_id) REFERENCES loans(id) ON DELETE CASCADE,
             UNIQUE(loan_id, year, month)
+          )`,
+          
+          // mortgage_payments table (for tracking payment amounts over time)
+          `CREATE TABLE IF NOT EXISTS mortgage_payments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            loan_id INTEGER NOT NULL,
+            payment_amount REAL NOT NULL,
+            effective_date TEXT NOT NULL,
+            notes TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (loan_id) REFERENCES loans(id) ON DELETE CASCADE
           )`,
           
           // budgets table
@@ -718,8 +744,11 @@ function createTestIndexes(db, resolve, reject) {
     'CREATE INDEX IF NOT EXISTS idx_income_year_month ON income_sources(year, month)',
     'CREATE INDEX IF NOT EXISTS idx_fixed_expenses_year_month ON fixed_expenses(year, month)',
     'CREATE INDEX IF NOT EXISTS idx_loans_paid_off ON loans(is_paid_off)',
+    'CREATE INDEX IF NOT EXISTS idx_loans_loan_type ON loans(loan_type)',
     'CREATE INDEX IF NOT EXISTS idx_loan_balances_loan_id ON loan_balances(loan_id)',
     'CREATE INDEX IF NOT EXISTS idx_loan_balances_year_month ON loan_balances(year, month)',
+    'CREATE INDEX IF NOT EXISTS idx_mortgage_payments_loan_id ON mortgage_payments(loan_id)',
+    'CREATE INDEX IF NOT EXISTS idx_mortgage_payments_loan_effective_date ON mortgage_payments(loan_id, effective_date)',
     'CREATE INDEX IF NOT EXISTS idx_budgets_period ON budgets(year, month)',
     'CREATE INDEX IF NOT EXISTS idx_budgets_category ON budgets(category)',
     'CREATE INDEX IF NOT EXISTS idx_investments_type ON investments(type)',
@@ -801,6 +830,7 @@ async function resetTestDatabase() {
     'fixed_expenses',
     'income_sources',
     'budgets',
+    'mortgage_payments',
     'loan_balances',
     'loans',
     'investment_values',

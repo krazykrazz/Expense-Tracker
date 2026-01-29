@@ -62,6 +62,30 @@ To add a new migration:
 6. Mark as applied with `markMigrationApplied()`
 7. Add the migration to `runMigrations()` function
 
+### ⚠️ CRITICAL: Foreign Key Cascade Prevention
+
+When recreating tables that have foreign key references from other tables (with `ON DELETE CASCADE`), you **MUST** disable foreign keys before dropping the old table. Otherwise, SQLite will cascade delete all related data.
+
+**Tables with CASCADE DELETE foreign keys:**
+- `loan_balances` → `loans` (loan_id)
+- `expense_people` → `expenses` (expense_id)
+- `expense_people` → `people` (person_id)
+- `expense_invoices` → `expenses` (expense_id)
+- `investment_values` → `investments` (investment_id)
+
+Use the helper functions:
+```javascript
+// BEFORE BEGIN TRANSACTION
+await disableForeignKeys(db);
+
+// ... do the table recreation ...
+
+// After COMMIT (and in all error handlers)
+await enableForeignKeys(db);
+```
+
+See `.kiro/steering/database-migrations.md` for the full template.
+
 Example:
 
 ```javascript

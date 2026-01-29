@@ -1,10 +1,14 @@
 const express = require('express');
 const router = express.Router();
+const path = require('path');
+const os = require('os');
 const backupController = require('../controllers/backupController');
 const multer = require('multer');
 
 // Configure multer for backup file upload
-const upload = multer({ dest: 'uploads/' });
+// Use system temp directory instead of relative 'uploads/' path
+// This ensures the directory exists and is writable in all environments
+const upload = multer({ dest: path.join(os.tmpdir(), 'expense-tracker-restore') });
 
 // Get backup configuration
 router.get('/backup/config', backupController.getBackupConfig);

@@ -44,7 +44,6 @@ router.get('/monthly-gross', expenseController.getMonthlyGross);
 // POST /api/monthly-gross - Set monthly gross income
 router.post('/monthly-gross', expenseController.setMonthlyGross);
 
-// GET /api/backup - Download database backup
-router.get('/backup', expenseController.backupDatabase);
+// NOTE: /api/backup route moved to backupRoutes.js - now returns .tar.gz archive
 
 module.exports = router;

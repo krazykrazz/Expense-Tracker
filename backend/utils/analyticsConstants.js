@@ -14,6 +14,14 @@ const ANALYTICS_CONFIG = {
   // Pattern detection
   PATTERN_TOLERANCE_DAYS: 3,       // ±3 days tolerance for matching recurring expenses
   MIN_OCCURRENCES_FOR_PATTERN: 3,  // Minimum occurrences to identify a pattern
+  PATTERN_MATCH_THRESHOLD: 0.6,    // 60% of intervals must match for pattern detection
+  
+  // Frequency intervals (in days)
+  WEEKLY_INTERVAL: 7,
+  BI_WEEKLY_INTERVAL: 14,
+  MONTHLY_INTERVAL_MIN: 28,
+  MONTHLY_INTERVAL_MAX: 31,
+  MONTHLY_INTERVAL_AVG: 30,
   
   // Anomaly detection
   ANOMALY_STD_DEVIATIONS: 3,       // Standard deviations for amount anomaly detection
@@ -23,6 +31,19 @@ const ANALYTICS_CONFIG = {
   HIGH_SPENDING_DAY_THRESHOLD: 0.30,   // 30% above average marks high-spending day
   SEASONAL_VARIANCE_THRESHOLD: 0.25,   // 25% variance for seasonal category detection
   YOY_WARNING_THRESHOLD: 0.20,         // 20% year-over-year increase triggers warning
+  
+  // Quality score weights
+  COVERAGE_WEIGHT: 0.7,            // Weight for coverage in quality score
+  CONSISTENCY_WEIGHT: 0.3,         // Weight for consistency in quality score
+  CV_MULTIPLIER: 50,               // Coefficient of variation multiplier
+  
+  // Confidence score weights
+  OCCURRENCE_WEIGHT: 0.4,          // Weight for occurrence count in confidence
+  AMOUNT_CONSISTENCY_WEIGHT: 0.6,  // Weight for amount consistency in confidence
+  OCCURRENCE_DIVISOR: 10,          // Divisor for occurrence score calculation
+  
+  // Display limits
+  TOP_CATEGORIES_LIMIT: 3,         // Number of top categories to show per day
   
   // Confidence levels (based on months of data)
   CONFIDENCE_HIGH_MONTHS: 12,      // 12+ months = high confidence

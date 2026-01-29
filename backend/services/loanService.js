@@ -1,5 +1,6 @@
 const loanRepository = require('../repositories/loanRepository');
 const loanBalanceRepository = require('../repositories/loanBalanceRepository');
+const mortgageService = require('./mortgageService');
 const { validateNumber, validateString } = require('../utils/validators');
 
 class LoanService {
@@ -31,8 +32,8 @@ class LoanService {
     }
 
     // Validate loan type if provided
-    if (loan.loan_type && !['loan', 'line_of_credit'].includes(loan.loan_type)) {
-      throw new Error('Loan type must be either "loan" or "line_of_credit"');
+    if (loan.loan_type && !['loan', 'line_of_credit', 'mortgage'].includes(loan.loan_type)) {
+      throw new Error('Loan type must be "loan", "line_of_credit", or "mortgage"');
     }
 
     // Validate estimated_months_left if provided
@@ -84,6 +85,110 @@ class LoanService {
     };
 
     return await loanRepository.update(id, loanData);
+  }
+
+  /**
+   * Create a new mortgage
+   * @param {Object} data - Mortgage data including mortgage-specific fields
+   * @returns {Promise<Object>} Created mortgage
+   */
+  async createMortgage(data) {
+    // Validate standard loan fields first
+    this.validateLoan({ ...data, loan_type: 'mortgage' });
+    
+    // Validate mortgage-specific fields
+    mortgageService.validateMortgageFields(data);
+    
+    const mortgageData = {
+      name: data.name.trim(),
+      initial_balance: data.initial_balance,
+      start_date: data.start_date,
+      notes: data.notes ? data.notes.trim() : null,
+      loan_type: 'mortgage',
+      is_paid_off: 0,
+      estimated_months_left: data.estimated_months_left || null,
+      // Mortgage-specific fields
+      amortization_period: data.amortization_period,
+      term_length: data.term_length,
+      renewal_date: data.renewal_date,
+      rate_type: data.rate_type,
+      payment_frequency: data.payment_frequency,
+      estimated_property_value: data.estimated_property_value || null
+    };
+
+    return await loanRepository.create(mortgageData);
+  }
+
+  /**
+   * Update mortgage-specific fields
+   * Only allows updating: name, notes, estimated_property_value, renewal_date
+   * Prevents modification of: initial_balance, start_date, amortization_period, term_length
+   * @param {number} id - Loan ID
+   * @param {Object} data - Updated mortgage data
+   * @returns {Promise<Object|null>} Updated mortgage or null if not found
+   */
+  async updateMortgage(id, data) {
+    // First, verify the loan exists and is a mortgage
+    const existingLoan = await loanRepository.findById(id);
+    
+    if (!existingLoan) {
+      return null;
+    }
+    
+    if (existingLoan.loan_type !== 'mortgage') {
+      throw new Error('Cannot use updateMortgage on a non-mortgage loan');
+    }
+    
+    // Validate the allowed fields
+    if (data.name !== undefined) {
+      validateString(data.name, 'Mortgage name', { minLength: 1, maxLength: 100 });
+    }
+    
+    if (data.estimated_property_value !== undefined && data.estimated_property_value !== null) {
+      if (typeof data.estimated_property_value !== 'number' || data.estimated_property_value <= 0) {
+        throw new Error('Estimated property value must be greater than zero');
+      }
+    }
+    
+    if (data.renewal_date !== undefined && data.renewal_date !== null) {
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      if (!dateRegex.test(data.renewal_date)) {
+        throw new Error('Renewal date must be in YYYY-MM-DD format');
+      }
+      
+      const renewalDate = new Date(data.renewal_date);
+      if (isNaN(renewalDate.getTime())) {
+        throw new Error('Renewal date must be in YYYY-MM-DD format');
+      }
+      
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (renewalDate <= today) {
+        throw new Error('Renewal date must be in the future');
+      }
+    }
+    
+    // Build the update object with only allowed fields
+    const updates = {};
+    
+    if (data.name !== undefined) {
+      updates.name = data.name.trim();
+    }
+    
+    if (data.notes !== undefined) {
+      updates.notes = data.notes ? data.notes.trim() : null;
+    }
+    
+    if (data.estimated_property_value !== undefined) {
+      updates.estimated_property_value = data.estimated_property_value;
+    }
+    
+    if (data.renewal_date !== undefined) {
+      updates.renewal_date = data.renewal_date;
+    }
+    
+    // Use the repository method that only updates allowed fields
+    return await loanRepository.updateMortgageFields(id, updates);
   }
 
   /**

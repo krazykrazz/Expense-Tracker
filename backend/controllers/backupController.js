@@ -82,34 +82,58 @@ async function performManualBackup(req, res) {
 }
 
 /**
- * Download backup file (legacy endpoint for browser download)
+ * Download comprehensive backup archive (tar.gz with database, invoices, config)
  * GET /api/backup
  */
 async function downloadBackup(req, res) {
   try {
-    // Check if database file exists
-    if (!fs.existsSync(DB_PATH)) {
-      return res.status(404).json({ error: 'Database file not found' });
+    // Create a temporary backup archive for download
+    const os = require('os');
+    const tempDir = path.join(os.tmpdir(), 'expense-tracker-download');
+    
+    // Ensure temp directory exists
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
     }
 
     // Generate filename with timestamp
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0];
-    const filename = `expense-tracker-backup-${timestamp}.db`;
+    const filename = `expense-tracker-backup-${timestamp}.tar.gz`;
+    const tempFilePath = path.join(tempDir, filename);
+
+    // Create the backup archive
+    const result = await backupService.performBackup(tempDir);
+    
+    // The backup service creates a file with its own timestamp, rename it
+    const createdFile = result.path;
+    if (createdFile !== tempFilePath && fs.existsSync(createdFile)) {
+      fs.renameSync(createdFile, tempFilePath);
+    }
 
     // Set headers for file download
-    res.setHeader('Content-Type', 'application/octet-stream');
+    res.setHeader('Content-Type', 'application/gzip');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
 
-    // Stream the database file
-    const fileStream = fs.createReadStream(DB_PATH);
-    fileStream.pipe(res);
+    // Stream the archive file
+    const fileStream = fs.createReadStream(tempFilePath);
+    
+    fileStream.on('end', () => {
+      // Clean up temp file after download
+      try {
+        fs.unlinkSync(tempFilePath);
+      } catch (cleanupError) {
+        logger.warn('Failed to clean up temp backup file:', cleanupError.message);
+      }
+    });
 
     fileStream.on('error', (error) => {
-      logger.error('Error streaming database file:', error);
-      res.status(500).json({ error: 'Failed to backup database' });
+      logger.error('Error streaming backup file:', error);
+      res.status(500).json({ error: 'Failed to download backup' });
     });
+
+    fileStream.pipe(res);
   } catch (error) {
-    logger.error('Backup error:', error);
+    logger.error('Download backup error:', error);
     res.status(500).json({ error: error.message });
   }
 }
@@ -188,7 +212,7 @@ async function restoreFromArchive(req, res) {
 }
 
 /**
- * Restore from backup file
+ * Restore from backup file (supports both .tar.gz archives and legacy .db files)
  * POST /api/backup/restore
  */
 async function restoreBackup(req, res) {
@@ -197,42 +221,93 @@ async function restoreBackup(req, res) {
   }
 
   try {
-    // Check if database file exists
-    if (!fs.existsSync(DB_PATH)) {
-      return res.status(404).json({ error: 'Database file not found' });
-    }
-
     const uploadedFile = req.file.path;
+    const originalName = req.file.originalname || '';
     
-    // Validate that it's a SQLite database file
-    const fileBuffer = fs.readFileSync(uploadedFile);
-    const header = fileBuffer.toString('utf8', 0, 16);
+    // Determine file type
+    const isTarGz = originalName.endsWith('.tar.gz') || originalName.endsWith('.tgz');
+    const isDb = originalName.endsWith('.db');
     
-    if (!header.startsWith('SQLite format 3')) {
+    if (!isTarGz && !isDb) {
       fs.unlinkSync(uploadedFile);
-      return res.status(400).json({ error: 'Invalid backup file. Must be a SQLite database.' });
+      return res.status(400).json({ 
+        error: 'Invalid backup file format. Must be .tar.gz archive or .db database file.' 
+      });
     }
 
-    // Create a backup of current database before restoring
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').replace('T', '_').split('.')[0];
-    const preRestoreBackup = path.join(path.dirname(DB_PATH), `pre-restore-backup-${timestamp}.db`);
-    fs.copyFileSync(DB_PATH, preRestoreBackup);
+    if (isTarGz) {
+      // Handle .tar.gz archive restore
+      logger.info('Restoring from .tar.gz archive:', originalName);
+      
+      // Verify it's a valid gzip file
+      const archiveUtils = require('../utils/archiveUtils');
+      try {
+        const contents = await archiveUtils.listArchiveContents(uploadedFile);
+        logger.debug('Archive contents:', contents.map(c => c.name));
+      } catch (archiveError) {
+        fs.unlinkSync(uploadedFile);
+        return res.status(400).json({ 
+          error: 'Invalid or corrupted backup archive.' 
+        });
+      }
 
-    // Replace current database with uploaded backup
-    fs.copyFileSync(uploadedFile, DB_PATH);
-    
-    // Clean up uploaded file
-    fs.unlinkSync(uploadedFile);
+      // Perform the restore using backupService
+      // Skip extension check since temp file doesn't have .tar.gz extension
+      const result = await backupService.restoreBackup(uploadedFile, { skipExtensionCheck: true });
+      
+      // Clean up uploaded file
+      fs.unlinkSync(uploadedFile);
 
-    // Re-initialize database to ensure schema is up to date
-    // This will create any missing tables/columns from newer versions
-    const { initializeDatabase } = require('../database/db');
-    await initializeDatabase();
+      // Re-initialize database to ensure schema is up to date
+      const { initializeDatabase } = require('../database/db');
+      await initializeDatabase();
 
-    res.status(200).json({ 
-      message: 'Backup restored successfully. Database schema updated to current version.',
-      preRestoreBackup: path.basename(preRestoreBackup)
-    });
+      res.status(200).json({ 
+        success: true,
+        message: `Backup restored successfully. ${result.filesRestored} files restored.`,
+        filesRestored: result.filesRestored
+      });
+    } else {
+      // Handle legacy .db file restore
+      logger.info('Restoring from legacy .db file:', originalName);
+      
+      // Check if database file exists
+      if (!fs.existsSync(DB_PATH)) {
+        fs.unlinkSync(uploadedFile);
+        return res.status(404).json({ error: 'Database file not found' });
+      }
+      
+      // Validate that it's a SQLite database file
+      const fileBuffer = fs.readFileSync(uploadedFile);
+      const header = fileBuffer.toString('utf8', 0, 16);
+      
+      if (!header.startsWith('SQLite format 3')) {
+        fs.unlinkSync(uploadedFile);
+        return res.status(400).json({ error: 'Invalid backup file. Must be a SQLite database.' });
+      }
+
+      // Create a backup of current database before restoring
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').replace('T', '_').split('.')[0];
+      const preRestoreBackup = path.join(path.dirname(DB_PATH), `pre-restore-backup-${timestamp}.db`);
+      fs.copyFileSync(DB_PATH, preRestoreBackup);
+
+      // Replace current database with uploaded backup
+      fs.copyFileSync(uploadedFile, DB_PATH);
+      
+      // Clean up uploaded file
+      fs.unlinkSync(uploadedFile);
+
+      // Re-initialize database to ensure schema is up to date
+      const { initializeDatabase } = require('../database/db');
+      await initializeDatabase();
+
+      res.status(200).json({ 
+        success: true,
+        message: 'Database restored successfully. Schema updated to current version.',
+        preRestoreBackup: path.basename(preRestoreBackup),
+        note: 'Note: This was a database-only restore. Invoice files were not included.'
+      });
+    }
   } catch (error) {
     // Clean up uploaded file on error
     if (req.file && fs.existsSync(req.file.path)) {

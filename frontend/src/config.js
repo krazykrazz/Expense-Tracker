@@ -28,7 +28,26 @@ export const API_ENDPOINTS = {
   
   // Loans
   LOANS: `${API_BASE_URL}/api/loans`,
+  LOAN_BY_ID: (id) => `${API_BASE_URL}/api/loans/${id}`,
   LOAN_BALANCES: `${API_BASE_URL}/api/loan-balances`,
+  
+  // Mortgage-specific endpoints
+  LOAN_AMORTIZATION: (id) => `${API_BASE_URL}/api/loans/${id}/amortization`,
+  LOAN_EQUITY_HISTORY: (id) => `${API_BASE_URL}/api/loans/${id}/equity-history`,
+  LOAN_PROPERTY_VALUE: (id) => `${API_BASE_URL}/api/loans/${id}/property-value`,
+  
+  // Mortgage Insights endpoints
+  MORTGAGE_INSIGHTS: (id) => `${API_BASE_URL}/api/loans/${id}/insights`,
+  MORTGAGE_PAYMENTS: (id) => `${API_BASE_URL}/api/loans/${id}/payments`,
+  MORTGAGE_PAYMENT: (id, paymentId) => `${API_BASE_URL}/api/loans/${id}/payments/${paymentId}`,
+  MORTGAGE_SCENARIO: (id) => `${API_BASE_URL}/api/loans/${id}/insights/scenario`,
+  MORTGAGE_RATE: (id) => `${API_BASE_URL}/api/loans/${id}/rate`,
+  
+  // Aliases for loanApi.js compatibility
+  LOAN_INSIGHTS: (id) => `${API_BASE_URL}/api/loans/${id}/insights`,
+  LOAN_PAYMENTS: (id) => `${API_BASE_URL}/api/loans/${id}/payments`,
+  LOAN_SCENARIO: (id) => `${API_BASE_URL}/api/loans/${id}/insights/scenario`,
+  LOAN_RATE: (id) => `${API_BASE_URL}/api/loans/${id}/rate`,
   
   // Investments
   INVESTMENTS: `${API_BASE_URL}/api/investments`,
@@ -57,6 +76,7 @@ export const API_ENDPOINTS = {
   BACKUP_MANUAL: `${API_BASE_URL}/api/backup/manual`,
   BACKUP_RESTORE: `${API_BASE_URL}/api/backup/restore`,
   BACKUP_STATS: `${API_BASE_URL}/api/backup/stats`,
+  BACKUP_DOWNLOAD: `${API_BASE_URL}/api/backup`,
   
   // Version
   VERSION: `${API_BASE_URL}/api/version`,

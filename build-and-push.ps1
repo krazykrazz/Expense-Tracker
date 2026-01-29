@@ -4,7 +4,7 @@
 
 param(
     [Parameter(Mandatory=$false)]
-    [ValidateSet('latest', 'dev')]
+    [ValidateSet('latest', 'dev', 'staging')]
     [string]$Tag = 'latest',
     
     [Parameter(Mandatory=$false)]
@@ -25,14 +25,18 @@ function Write-Warning { Write-Host "WARNING: $args" -ForegroundColor Yellow }
 
 # Determine branch-based tag if not explicitly set
 $currentBranch = git rev-parse --abbrev-ref HEAD 2>$null
-if ($currentBranch -eq 'main') {
+# Only auto-detect tag if user didn't explicitly specify one via parameter
+$defaultTag = 'latest'
+if ($PSBoundParameters.ContainsKey('Tag')) {
+    Write-Info "Using explicitly specified tag: $Tag"
+} elseif ($currentBranch -eq 'main') {
     $Tag = 'latest'
     Write-Info "Detected main branch, using tag: latest"
 } elseif ($currentBranch -eq 'development') {
     $Tag = 'dev'
     Write-Info "Detected development branch, using tag: dev"
 } else {
-    Write-Info "Using tag: $Tag"
+    Write-Info "Using tag: $Tag (branch: $currentBranch)"
 }
 
 $imageName = "$Registry/expense-tracker"

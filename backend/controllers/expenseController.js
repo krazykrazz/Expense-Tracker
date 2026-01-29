@@ -1,10 +1,6 @@
 const expenseService = require('../services/expenseService');
 const categorySuggestionService = require('../services/categorySuggestionService');
-const { isValid: isValidCategory } = require('../utils/categories');
 const logger = require('../config/logger');
-const fs = require('fs');
-const path = require('path');
-const { DB_PATH } = require('../database/db');
 
 /**
  * Generate success message for future expenses creation
@@ -331,44 +327,6 @@ async function setMonthlyGross(req, res) {
 }
 
 /**
- * Backup database
- * GET /api/backup
- * 
- * Creates a complete backup of the SQLite database including:
- * - expenses table (with recurring_id and is_generated fields)
- * - monthly_gross table
- * - recurring_expenses table
- */
-async function backupDatabase(req, res) {
-  try {
-    // Check if database file exists
-    if (!fs.existsSync(DB_PATH)) {
-      return res.status(404).json({ error: 'Database file not found' });
-    }
-
-    // Generate filename with timestamp
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0];
-    const filename = `expense-tracker-backup-${timestamp}.db`;
-
-    // Set headers for file download
-    res.setHeader('Content-Type', 'application/octet-stream');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-
-    // Stream the database file (includes all tables: expenses, monthly_gross, recurring_expenses)
-    const fileStream = fs.createReadStream(DB_PATH);
-    fileStream.pipe(res);
-
-    fileStream.on('error', (error) => {
-      logger.error('Error streaming database file:', error);
-      res.status(500).json({ error: 'Failed to backup database' });
-    });
-  } catch (error) {
-    logger.error('Backup error:', error);
-    res.status(500).json({ error: error.message });
-  }
-}
-
-/**
  * Get distinct place names
  * GET /api/expenses/places
  */
@@ -470,7 +428,6 @@ module.exports = {
   getTaxDeductibleYoYSummary,
   getMonthlyGross,
   setMonthlyGross,
-  backupDatabase,
   getDistinctPlaces,
   getSuggestedCategory,
   updateInsuranceStatus

@@ -173,7 +173,7 @@ const BackupSettings = () => {
   };
 
   const handleDownloadBackup = () => {
-    window.location.href = `${API_ENDPOINTS.EXPENSES.replace('/expenses', '/backup')}`;
+    window.location.href = API_ENDPOINTS.BACKUP_DOWNLOAD;
   };
 
   const handleRestoreBackup = async (event) => {
@@ -477,7 +477,7 @@ const BackupSettings = () => {
 
       <div className="settings-section">
         <h3>Manual Backup</h3>
-        <p>Create a backup right now. Backups include all expenses, income sources, fixed expenses, loans, budgets, investments, and configuration data.</p>
+        <p>Create a backup right now. Backups include all expenses, income sources, fixed expenses, loans, budgets, investments, invoice files, and configuration data.</p>
         <div className="manual-backup-buttons">
           <button onClick={handleManualBackup} className="backup-button">
             💾 Create Backup Now
@@ -486,6 +486,7 @@ const BackupSettings = () => {
             📥 Download Backup
           </button>
         </div>
+        <small className="backup-hint">Download creates a .tar.gz archive with all data including invoice PDFs.</small>
       </div>
 
 
@@ -515,11 +516,14 @@ const BackupSettings = () => {
           <div className="settings-section">
             <h3>Restore from Backup</h3>
             <p className="warning-text">⚠️ WARNING: This will replace ALL current data. This action cannot be undone!</p>
+            <p className="restore-info">
+              Accepts <strong>.tar.gz</strong> archives (recommended - includes invoices) or legacy <strong>.db</strong> files (database only).
+            </p>
             <label className="file-upload-button restore-button">
-              🔄 Choose Backup File (.db)
+              🔄 Choose Backup File
               <input 
                 type="file" 
-                accept=".db"
+                accept=".tar.gz,.tgz,.db"
                 onChange={handleRestoreBackup}
                 style={{ display: 'none' }}
               />

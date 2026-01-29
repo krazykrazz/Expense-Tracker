@@ -851,117 +851,110 @@ class ExpenseRepository {
   async getSummary(year, month) {
     const db = await getDatabase();
     
-    return new Promise((resolve, reject) => {
-      const yearStr = year.toString();
-      const monthStr = month.toString().padStart(2, '0');
-      
-      // Query for weekly totals
-      const weeklySQL = `
-        SELECT week, SUM(amount) as total
-        FROM expenses
-        WHERE strftime("%Y", date) = ? AND strftime("%m", date) = ?
-        GROUP BY week
-      `;
-      
-      // Query for payment method totals
-      const methodSQL = `
-        SELECT method, SUM(amount) as total
-        FROM expenses
-        WHERE strftime("%Y", date) = ? AND strftime("%m", date) = ?
-        GROUP BY method
-      `;
-      
-      // Query for type totals (all categories)
-      const typeSQL = `
-        SELECT type, SUM(amount) as total
-        FROM expenses
-        WHERE strftime("%Y", date) = ? AND strftime("%m", date) = ?
-        GROUP BY type
-      `;
-      
-      // Query for overall total
-      const totalSQL = `
-        SELECT SUM(amount) as total
-        FROM expenses
-        WHERE strftime("%Y", date) = ? AND strftime("%m", date) = ?
-      `;
-      
-      // Initialize typeTotals with all categories set to 0
-      const typeTotals = {};
-      CATEGORIES.forEach(category => {
-        typeTotals[category] = 0;
-      });
-      
-      const summary = {
-        weeklyTotals: {
-          week1: 0,
-          week2: 0,
-          week3: 0,
-          week4: 0,
-          week5: 0
-        },
-        methodTotals: {
-          'Cash': 0,
-          'Debit': 0,
-          'Cheque': 0,
-          'CIBC MC': 0,
-          'PCF MC': 0,
-          'WS VISA': 0,
-          'VISA': 0
-        },
-        typeTotals: typeTotals,
-        total: 0
-      };
-      
-      // Execute all queries
-      db.all(weeklySQL, [yearStr, monthStr], (err, weeklyRows) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-        
-        // Populate weekly totals
-        weeklyRows.forEach(row => {
-          summary.weeklyTotals[`week${row.week}`] = parseFloat(row.total.toFixed(2));
-        });
-        
-        db.all(methodSQL, [yearStr, monthStr], (err, methodRows) => {
-          if (err) {
-            reject(err);
-            return;
-          }
-          
-          // Populate method totals
-          methodRows.forEach(row => {
-            summary.methodTotals[row.method] = parseFloat(row.total.toFixed(2));
-          });
-          
-          db.all(typeSQL, [yearStr, monthStr], (err, typeRows) => {
-            if (err) {
-              reject(err);
-              return;
-            }
-            
-            // Populate type totals
-            typeRows.forEach(row => {
-              summary.typeTotals[row.type] = parseFloat(row.total.toFixed(2));
-            });
-            
-            db.get(totalSQL, [yearStr, monthStr], (err, totalRow) => {
-              if (err) {
-                reject(err);
-                return;
-              }
-              
-              // Populate overall total
-              summary.total = totalRow.total ? parseFloat(totalRow.total.toFixed(2)) : 0;
-              
-              resolve(summary);
-            });
-          });
-        });
+    const yearStr = year.toString();
+    const monthStr = month.toString().padStart(2, '0');
+    
+    // Query for weekly totals
+    const weeklySQL = `
+      SELECT week, SUM(amount) as total
+      FROM expenses
+      WHERE strftime("%Y", date) = ? AND strftime("%m", date) = ?
+      GROUP BY week
+    `;
+    
+    // Query for payment method totals
+    const methodSQL = `
+      SELECT method, SUM(amount) as total
+      FROM expenses
+      WHERE strftime("%Y", date) = ? AND strftime("%m", date) = ?
+      GROUP BY method
+    `;
+    
+    // Query for type totals (all categories)
+    const typeSQL = `
+      SELECT type, SUM(amount) as total
+      FROM expenses
+      WHERE strftime("%Y", date) = ? AND strftime("%m", date) = ?
+      GROUP BY type
+    `;
+    
+    // Query for overall total
+    const totalSQL = `
+      SELECT SUM(amount) as total
+      FROM expenses
+      WHERE strftime("%Y", date) = ? AND strftime("%m", date) = ?
+    `;
+    
+    // Helper function to promisify db.all
+    const dbAll = (sql, params) => new Promise((resolve, reject) => {
+      db.all(sql, params, (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows || []);
       });
     });
+    
+    // Helper function to promisify db.get
+    const dbGet = (sql, params) => new Promise((resolve, reject) => {
+      db.get(sql, params, (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+    
+    // Execute all queries in parallel
+    const [weeklyRows, methodRows, typeRows, totalRow] = await Promise.all([
+      dbAll(weeklySQL, [yearStr, monthStr]),
+      dbAll(methodSQL, [yearStr, monthStr]),
+      dbAll(typeSQL, [yearStr, monthStr]),
+      dbGet(totalSQL, [yearStr, monthStr])
+    ]);
+    
+    // Initialize typeTotals with all categories set to 0
+    const typeTotals = {};
+    CATEGORIES.forEach(category => {
+      typeTotals[category] = 0;
+    });
+    
+    const summary = {
+      weeklyTotals: {
+        week1: 0,
+        week2: 0,
+        week3: 0,
+        week4: 0,
+        week5: 0
+      },
+      methodTotals: {
+        'Cash': 0,
+        'Debit': 0,
+        'Cheque': 0,
+        'CIBC MC': 0,
+        'PCF MC': 0,
+        'WS VISA': 0,
+        'VISA': 0
+      },
+      typeTotals: typeTotals,
+      total: 0
+    };
+    
+    // Populate weekly totals
+    weeklyRows.forEach(row => {
+      summary.weeklyTotals[`week${row.week}`] = parseFloat(row.total.toFixed(2));
+    });
+    
+    // Populate method totals
+    methodRows.forEach(row => {
+      summary.methodTotals[row.method] = parseFloat(row.total.toFixed(2));
+    });
+    
+    // Populate type totals
+    typeRows.forEach(row => {
+      summary.typeTotals[row.type] = parseFloat(row.total.toFixed(2));
+    });
+    
+    // Populate overall total
+    summary.total = totalRow?.total ? parseFloat(totalRow.total.toFixed(2)) : 0;
+    
+    return summary;
   }
 
   /**

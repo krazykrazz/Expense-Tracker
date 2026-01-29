@@ -1,0 +1,189 @@
+/**
+ * EquityChart Styles
+ * 
+ * Styles for the equity tracking chart component
+ * Requirements: 4.2, 4.3, 8.3
+ */
+
+/* Section Container */
+.equity-chart-section {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-5);
+  margin-bottom: var(--spacing-5);
+}
+
+/* Header */
+.equity-chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: var(--spacing-4);
+  margin-bottom: var(--spacing-5);
+  padding-bottom: var(--spacing-4);
+  border-bottom: 1px solid var(--border-muted);
+}
+
+.equity-chart-header h4 {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+/* Current Equity Summary */
+.equity-current-summary {
+  display: flex;
+  gap: var(--spacing-6);
+  flex-wrap: wrap;
+}
+
+.equity-stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+.equity-stat-label {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: var(--font-medium);
+}
+
+.equity-stat-value {
+  font-size: var(--text-xl);
+  font-weight: var(--font-bold);
+  color: var(--text-primary);
+  font-feature-settings: var(--font-feature-tabular);
+}
+
+.equity-stat-value.positive {
+  color: var(--color-positive);
+}
+
+/* Equity Progress Bar */
+.equity-progress-section {
+  margin-bottom: var(--spacing-5);
+}
+
+.equity-progress-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-2);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.equity-progress-bar {
+  display: flex;
+  height: 24px;
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  background-color: var(--bg-muted);
+}
+
+.equity-progress-mortgage {
+  background: linear-gradient(90deg, var(--color-negative) 0%, #e57373 100%);
+  transition: width var(--transition-slow);
+}
+
+.equity-progress-equity {
+  background: linear-gradient(90deg, #66bb6a 0%, var(--color-positive) 100%);
+  transition: width var(--transition-slow);
+}
+
+/* Chart Container */
+.equity-chart-container {
+  background-color: var(--bg-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-4);
+  overflow-x: auto;
+}
+
+.equity-chart-title {
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+  font-weight: var(--font-medium);
+  margin-bottom: var(--spacing-3);
+  text-align: center;
+}
+
+.equity-chart-svg {
+  display: block;
+  min-width: 400px;
+}
+
+/* Loading and Error States */
+.equity-chart-loading,
+.equity-chart-error,
+.equity-chart-no-history,
+.equity-no-data {
+  text-align: center;
+  padding: var(--spacing-8) var(--spacing-4);
+  color: var(--text-tertiary);
+  font-size: var(--text-base);
+}
+
+.equity-chart-error {
+  color: var(--color-negative);
+}
+
+.equity-no-data p,
+.equity-chart-no-history p {
+  margin: 0;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .equity-chart-section {
+    padding: var(--spacing-4);
+  }
+
+  .equity-chart-header {
+    flex-direction: column;
+    gap: var(--spacing-3);
+  }
+
+  .equity-current-summary {
+    width: 100%;
+    justify-content: space-between;
+    gap: var(--spacing-3);
+  }
+
+  .equity-stat-value {
+    font-size: var(--text-lg);
+  }
+
+  .equity-progress-labels {
+    font-size: var(--text-xs);
+  }
+
+  .equity-progress-bar {
+    height: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .equity-current-summary {
+    flex-direction: column;
+    gap: var(--spacing-2);
+  }
+
+  .equity-stat {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .equity-progress-mortgage,
+  .equity-progress-equity {
+    transition: none;
+  }
+}

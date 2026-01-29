@@ -1,0 +1,355 @@
+/**
+ * PayoffProjectionInsights Styles
+ * 
+ * Styles for the payoff projection comparison component
+ * Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6
+ */
+
+/* Main Container */
+.payoff-projection-insights {
+  background-color: var(--bg-subtle);
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-5);
+  margin-bottom: var(--spacing-5);
+}
+
+.payoff-projection-insights h4 {
+  margin: 0 0 var(--spacing-4) 0;
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  padding-bottom: var(--spacing-3);
+  border-bottom: 1px solid var(--border-muted);
+}
+
+/* No Data State */
+.projections-no-data {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-6);
+  text-align: center;
+  color: var(--text-tertiary);
+}
+
+.projections-no-data .no-data-icon {
+  font-size: 48px;
+  margin-bottom: var(--spacing-3);
+  opacity: 0.5;
+}
+
+.projections-no-data p {
+  margin: 0;
+  font-size: var(--text-base);
+}
+
+.projections-no-data .no-data-hint {
+  font-size: var(--text-sm);
+  margin-top: var(--spacing-2);
+  color: var(--text-tertiary);
+}
+
+/* Underpayment Warning Banner - Requirement 4.6 */
+.underpayment-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-3);
+  padding: var(--spacing-4);
+  background-color: var(--color-negative-light);
+  border: 1px solid var(--color-negative);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-4);
+}
+
+.underpayment-warning .warning-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.underpayment-warning .warning-content {
+  flex: 1;
+}
+
+.underpayment-warning .warning-content strong {
+  display: block;
+  color: var(--color-negative-dark);
+  font-size: var(--text-base);
+  margin-bottom: var(--spacing-1);
+}
+
+.underpayment-warning .warning-content p {
+  margin: 0;
+  color: var(--color-negative-dark);
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+}
+
+/* Projections Table - Requirements 4.1, 4.2, 4.3, 4.4 */
+.projections-table-container {
+  overflow-x: auto;
+  margin-bottom: var(--spacing-4);
+}
+
+.projections-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: var(--bg-primary);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.projections-table thead {
+  background-color: var(--bg-muted);
+}
+
+.projections-table th {
+  padding: var(--spacing-3) var(--spacing-4);
+  text-align: left;
+  font-weight: var(--font-semibold);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  border-bottom: 2px solid var(--border-default);
+}
+
+.projections-table th.metric-column {
+  width: 35%;
+}
+
+.projections-table th.scenario-column {
+  width: 32.5%;
+  text-align: center;
+}
+
+.projections-table th.scenario-column.current {
+  background-color: var(--color-primary-light);
+  border-bottom-color: var(--color-primary);
+}
+
+.projections-table th.scenario-column.minimum {
+  background-color: var(--bg-muted);
+}
+
+.projections-table .scenario-label {
+  display: block;
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-tertiary);
+  margin-bottom: var(--spacing-1);
+}
+
+.projections-table .scenario-amount {
+  display: block;
+  font-size: var(--text-base);
+  font-weight: var(--font-bold);
+  color: var(--text-primary);
+}
+
+.projections-table th.scenario-column.current .scenario-amount {
+  color: var(--color-primary);
+}
+
+.projections-table tbody tr {
+  border-bottom: 1px solid var(--border-muted);
+  transition: background-color var(--transition-fast);
+}
+
+.projections-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.projections-table tbody tr:hover {
+  background-color: var(--bg-subtle);
+}
+
+.projections-table td {
+  padding: var(--spacing-3) var(--spacing-4);
+  font-size: var(--text-sm);
+}
+
+.projections-table td.metric-name {
+  font-weight: var(--font-medium);
+  color: var(--text-secondary);
+}
+
+.projections-table td.metric-value {
+  text-align: center;
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+.projections-table td.metric-value.current {
+  background-color: rgba(14, 165, 233, 0.05);
+}
+
+.projections-table td.metric-value.underpayment {
+  color: var(--color-negative);
+}
+
+.projections-table .underpayment-text {
+  font-style: italic;
+  color: var(--color-negative);
+}
+
+.projections-table .interest-amount {
+  color: var(--color-negative);
+}
+
+.projections-table .total-paid {
+  font-weight: var(--font-bold);
+}
+
+/* Savings Highlight - Requirement 4.5 */
+.savings-highlight {
+  background: linear-gradient(135deg, var(--color-positive-light) 0%, rgba(34, 197, 94, 0.1) 100%);
+  border: 1px solid var(--color-positive);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-4);
+}
+
+.savings-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  margin-bottom: var(--spacing-3);
+}
+
+.savings-header .savings-icon {
+  font-size: 24px;
+}
+
+.savings-header .savings-title {
+  font-size: var(--text-lg);
+  font-weight: var(--font-bold);
+  color: var(--color-positive-dark);
+}
+
+.savings-details {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--spacing-4);
+  margin-bottom: var(--spacing-3);
+}
+
+.savings-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+  padding: var(--spacing-3);
+  background-color: var(--bg-primary);
+  border-radius: var(--radius-md);
+  text-align: center;
+}
+
+.savings-item .savings-label {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-tertiary);
+}
+
+.savings-item .savings-value {
+  font-size: var(--text-xl);
+  font-weight: var(--font-bold);
+}
+
+.savings-item .savings-value.positive {
+  color: var(--color-positive-dark);
+}
+
+.savings-message {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-positive-dark);
+  line-height: var(--leading-relaxed);
+  text-align: center;
+}
+
+/* No Savings Message */
+.no-savings-message {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-3);
+  padding: var(--spacing-4);
+  background-color: var(--bg-muted);
+  border-radius: var(--radius-md);
+}
+
+.no-savings-message .info-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.no-savings-message p {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: var(--leading-relaxed);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .payoff-projection-insights {
+    padding: var(--spacing-4);
+  }
+
+  .projections-table th,
+  .projections-table td {
+    padding: var(--spacing-2) var(--spacing-3);
+  }
+
+  .projections-table th.metric-column {
+    width: 40%;
+  }
+
+  .projections-table th.scenario-column {
+    width: 30%;
+  }
+
+  .projections-table .scenario-label {
+    font-size: 10px;
+  }
+
+  .projections-table .scenario-amount {
+    font-size: var(--text-sm);
+  }
+
+  .savings-details {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-2);
+  }
+
+  .underpayment-warning {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .projections-table {
+    font-size: var(--text-xs);
+  }
+
+  .projections-table th,
+  .projections-table td {
+    padding: var(--spacing-2);
+  }
+
+  .projections-table .scenario-amount {
+    font-size: var(--text-xs);
+  }
+
+  .savings-item .savings-value {
+    font-size: var(--text-lg);
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .projections-table tbody tr {
+    transition: none;
+  }
+}

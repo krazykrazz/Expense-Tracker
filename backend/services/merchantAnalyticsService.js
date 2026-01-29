@@ -208,20 +208,20 @@ class MerchantAnalyticsService {
       
       const trendData = await expenseRepository.getMerchantTrend(merchantName, months, includeFixedExpenses);
       
-      // Generate complete month range for gap filling
+      // Generate exactly 'months' number of entries, ending with current month
       const endDate = new Date();
-      const startDate = new Date();
-      startDate.setMonth(startDate.getMonth() - months + 1);
-      startDate.setDate(1); // Start from first day of month
+      const endYear = endDate.getFullYear();
+      const endMonth = endDate.getMonth(); // 0-indexed
       
       const completeMonths = [];
-      const current = new Date(startDate);
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                         'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
       
-      while (current <= endDate) {
-        const year = current.getFullYear();
-        const month = current.getMonth() + 1;
-        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-                           'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      // Generate exactly 'months' entries going backwards from current month
+      for (let i = months - 1; i >= 0; i--) {
+        const targetDate = new Date(endYear, endMonth - i, 1);
+        const year = targetDate.getFullYear();
+        const month = targetDate.getMonth() + 1; // Convert to 1-indexed
         
         // Find existing data for this month
         const existingData = trendData.find(d => d.year === year && d.month === month);
@@ -234,8 +234,6 @@ class MerchantAnalyticsService {
           visitCount: existingData ? existingData.visitCount : 0,
           changePercent: null // Will be calculated below
         });
-        
-        current.setMonth(current.getMonth() + 1);
       }
       
       // Calculate month-over-month change percentages

@@ -1145,3 +1145,24 @@
     transform: none;
   }
 }
+
+
+/* Backup hint text */
+.backup-hint {
+  display: block;
+  margin-top: var(--spacing-3, 12px);
+  font-size: var(--text-xs, 12px);
+  color: var(--text-muted, #888);
+  font-family: var(--font-sans);
+}
+
+/* Restore info text */
+.restore-info {
+  font-size: var(--text-sm, 13px);
+  color: var(--text-secondary, #555);
+  margin-bottom: var(--spacing-4, 16px);
+}
+
+.restore-info strong {
+  color: var(--color-primary, #0ea5e9);
+}

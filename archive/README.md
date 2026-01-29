@@ -1,7 +1,7 @@
 # Project Archive
 
 **Created:** 2025-11-24  
-**Last Updated:** 2026-01-22
+**Last Updated:** 2026-01-28
 
 This archive contains historical documentation and scripts that have served their purpose but are retained for reference.
 
@@ -220,9 +220,18 @@ Copy-Item archive/[subfolder]/[filename] ./
   - **Total archived specs:** 30 complete feature specifications
   - docs/deployments/ now contains only DEPLOYMENT.md (general guide)
 
+- **2026-01-28:** Post v4.18.0 cleanup - Mortgage feature completion (3 items)
+  - **Archived 2 completed specs** from .kiro/specs/ to archive/specs/:
+    - mortgage-tracking (v4.18.0 - dedicated mortgage loan type with amortization and equity tracking)
+    - mortgage-insights (v4.18.0 - mortgage insights panel with payoff projections and scenarios)
+  - **Archived 1 one-time script** to backend/scripts/archive/:
+    - restoreLoanData.js (one-time data recovery script from Nov 2025)
+  - **Result:** .kiro/specs/ is now empty (no active specs)
+  - **Total archived specs:** 32 complete feature specifications
+
 ## Next Review
 
-**Scheduled:** 2026-07-22 (6 months from last cleanup)
+**Scheduled:** 2026-07-28 (6 months from last cleanup)
 
 **Actions to consider:**
 - Delete files older than 12 months if not referenced

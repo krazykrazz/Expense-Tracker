@@ -246,8 +246,9 @@ class LoanBalanceService {
   async recalculateEstimatedMonths(loanId) {
     const loan = await loanRepository.findById(loanId);
     
-    // Only calculate for traditional loans, not lines of credit
-    if (!loan || loan.loan_type === 'line_of_credit') {
+    // Only calculate for traditional loans, not lines of credit or mortgages
+    // Mortgages have their own amortization schedule
+    if (!loan || loan.loan_type === 'line_of_credit' || loan.loan_type === 'mortgage') {
       return;
     }
 
@@ -266,14 +267,21 @@ class LoanBalanceService {
       estimatedMonths = 0;
     }
 
-    // Update the loan
+    // Update the loan - preserve all existing fields including mortgage fields
     await loanRepository.update(loanId, {
       name: loan.name,
       initial_balance: loan.initial_balance,
       start_date: loan.start_date,
       notes: loan.notes,
       loan_type: loan.loan_type,
-      estimated_months_left: estimatedMonths
+      estimated_months_left: estimatedMonths,
+      // Preserve mortgage fields (will be null for non-mortgages)
+      amortization_period: loan.amortization_period,
+      term_length: loan.term_length,
+      renewal_date: loan.renewal_date,
+      rate_type: loan.rate_type,
+      payment_frequency: loan.payment_frequency,
+      estimated_property_value: loan.estimated_property_value
     });
   }
 
@@ -283,6 +291,67 @@ class LoanBalanceService {
    */
   async getTotalDebtOverTime() {
     return await loanBalanceRepository.getTotalDebtOverTime();
+  }
+
+  /**
+   * Update just the interest rate for the current month's balance entry
+   * Creates a new entry if one doesn't exist for the current month
+   * Useful for variable rate mortgages where rate can change mid-month
+   * @param {number} loanId - Loan ID
+   * @param {number} newRate - New interest rate (percentage)
+   * @returns {Promise<Object>} Updated or created balance entry
+   */
+  async updateCurrentRate(loanId, newRate) {
+    // Validate inputs
+    validateNumber(loanId, 'Loan ID');
+    validateNumber(newRate, 'Interest rate', { min: 0, max: 100 });
+
+    // Get current date
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+
+    // Check if there's an existing balance entry for this month
+    const existingEntry = await loanBalanceRepository.findByLoanAndMonth(loanId, currentYear, currentMonth);
+
+    if (existingEntry) {
+      // Update the existing entry's rate only
+      const result = await loanBalanceRepository.update(existingEntry.id, {
+        year: existingEntry.year,
+        month: existingEntry.month,
+        remaining_balance: existingEntry.remaining_balance,
+        rate: newRate
+      });
+      return result;
+    }
+
+    // No entry for current month - need to create one
+    // Get the most recent balance to use as the current balance
+    const balanceHistory = await loanBalanceRepository.findByLoan(loanId);
+    let currentBalance;
+
+    if (balanceHistory.length > 0) {
+      // Use the most recent balance (sorted DESC by year, month)
+      currentBalance = balanceHistory[0].remaining_balance;
+    } else {
+      // No balance history - use initial balance from loan
+      const loan = await loanRepository.findById(loanId);
+      if (!loan) {
+        throw new Error('Loan not found');
+      }
+      currentBalance = loan.initial_balance;
+    }
+
+    // Create new balance entry with the new rate
+    const result = await loanBalanceRepository.create({
+      loan_id: loanId,
+      year: currentYear,
+      month: currentMonth,
+      remaining_balance: currentBalance,
+      rate: newRate
+    });
+
+    return result;
   }
 
 }

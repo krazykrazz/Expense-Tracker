@@ -1,0 +1,43 @@
+.environment-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: var(--z-fixed, 300);
+  padding: 8px 16px;
+  text-align: center;
+  font-weight: 600;
+  font-size: 0.875rem;
+  letter-spacing: 0.5px;
+  background: linear-gradient(90deg, #f59e0b, #d97706);
+  color: #1f2937;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.environment-banner.staging {
+  background: linear-gradient(90deg, #f59e0b, #d97706);
+  color: #1f2937;
+}
+
+.environment-banner.development {
+  background: linear-gradient(90deg, #3b82f6, #2563eb);
+  color: white;
+}
+
+.environment-icon {
+  margin-right: 8px;
+}
+
+.environment-text {
+  text-transform: uppercase;
+}
+
+/* Push down the header when environment banner is visible */
+.App:has(.environment-banner) .App-header {
+  margin-top: 40px;
+}
+
+/* Fallback for browsers that don't support :has() - use JS class */
+.App.has-env-banner .App-header {
+  margin-top: 40px;
+}

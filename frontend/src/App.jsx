@@ -14,6 +14,7 @@ import PeopleManagementModal from './components/PeopleManagementModal';
 import AnalyticsHubModal from './components/AnalyticsHubModal';
 import BudgetAlertManager from './components/BudgetAlertManager';
 import FloatingAddButton from './components/FloatingAddButton';
+import EnvironmentBanner from './components/EnvironmentBanner';
 import { API_ENDPOINTS } from './config';
 import { CATEGORIES, PAYMENT_METHODS } from './utils/constants';
 import { getPeople } from './services/peopleApi';
@@ -548,6 +549,7 @@ function App() {
 
   return (
     <div className="App">
+      <EnvironmentBanner />
       <header className="App-header">
         <div className="header-title">
           <img src={logo} alt="Expense Tracker Logo" className="app-logo" />

@@ -11,8 +11,9 @@ class LoanRepository {
     
     return new Promise((resolve, reject) => {
       const sql = `
-        INSERT INTO loans (name, initial_balance, start_date, notes, loan_type, is_paid_off, estimated_months_left)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO loans (name, initial_balance, start_date, notes, loan_type, is_paid_off, estimated_months_left,
+                          amortization_period, term_length, renewal_date, rate_type, payment_frequency, estimated_property_value)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
       
       const params = [
@@ -22,7 +23,13 @@ class LoanRepository {
         loan.notes || null,
         loan.loan_type || 'loan',
         loan.is_paid_off !== undefined ? loan.is_paid_off : 0,
-        loan.estimated_months_left || null
+        loan.estimated_months_left || null,
+        loan.amortization_period || null,
+        loan.term_length || null,
+        loan.renewal_date || null,
+        loan.rate_type || null,
+        loan.payment_frequency || null,
+        loan.estimated_property_value || null
       ];
       
       db.run(sql, params, function(err) {
@@ -36,7 +43,13 @@ class LoanRepository {
           id: this.lastID,
           ...loan,
           loan_type: loan.loan_type || 'loan',
-          is_paid_off: loan.is_paid_off !== undefined ? loan.is_paid_off : 0
+          is_paid_off: loan.is_paid_off !== undefined ? loan.is_paid_off : 0,
+          amortization_period: loan.amortization_period || null,
+          term_length: loan.term_length || null,
+          renewal_date: loan.renewal_date || null,
+          rate_type: loan.rate_type || null,
+          payment_frequency: loan.payment_frequency || null,
+          estimated_property_value: loan.estimated_property_value || null
         });
       });
     });
@@ -95,7 +108,9 @@ class LoanRepository {
     return new Promise((resolve, reject) => {
       const sql = `
         UPDATE loans 
-        SET name = ?, initial_balance = ?, start_date = ?, notes = ?, loan_type = ?, estimated_months_left = ?, updated_at = CURRENT_TIMESTAMP
+        SET name = ?, initial_balance = ?, start_date = ?, notes = ?, loan_type = ?, estimated_months_left = ?,
+            amortization_period = ?, term_length = ?, renewal_date = ?, rate_type = ?, payment_frequency = ?, 
+            estimated_property_value = ?, updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
       `;
       
@@ -106,6 +121,12 @@ class LoanRepository {
         loan.notes || null,
         loan.loan_type || 'loan',
         loan.estimated_months_left !== undefined ? loan.estimated_months_left : null,
+        loan.amortization_period !== undefined ? loan.amortization_period : null,
+        loan.term_length !== undefined ? loan.term_length : null,
+        loan.renewal_date !== undefined ? loan.renewal_date : null,
+        loan.rate_type !== undefined ? loan.rate_type : null,
+        loan.payment_frequency !== undefined ? loan.payment_frequency : null,
+        loan.estimated_property_value !== undefined ? loan.estimated_property_value : null,
         id
       ];
       
@@ -125,6 +146,71 @@ class LoanRepository {
           id: id,
           ...loan
         });
+      });
+    });
+  }
+
+  /**
+   * Update only allowed mortgage fields (for mortgages after creation)
+   * Allowed fields: name, notes, estimated_property_value, renewal_date
+   * Immutable fields: initial_balance, start_date, amortization_period, term_length
+   * @param {number} id - Loan ID
+   * @param {Object} updates - Fields to update (only allowed fields will be applied)
+   * @returns {Promise<Object|null>} Updated loan or null if not found
+   */
+  async updateMortgageFields(id, updates) {
+    const db = await getDatabase();
+    
+    // Only allow updating specific fields for mortgages
+    const allowedFields = ['name', 'notes', 'estimated_property_value', 'renewal_date'];
+    const fieldsToUpdate = [];
+    const params = [];
+    
+    for (const field of allowedFields) {
+      if (updates[field] !== undefined) {
+        fieldsToUpdate.push(`${field} = ?`);
+        params.push(updates[field]);
+      }
+    }
+    
+    if (fieldsToUpdate.length === 0) {
+      // No allowed fields to update, return current loan
+      return this.findById(id);
+    }
+    
+    params.push(id);
+    
+    return new Promise((resolve, reject) => {
+      const sql = `
+        UPDATE loans 
+        SET ${fieldsToUpdate.join(', ')}, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `;
+      
+      db.run(sql, params, async function(err) {
+        if (err) {
+          reject(err);
+          return;
+        }
+        
+        if (this.changes === 0) {
+          resolve(null); // No rows updated, loan not found
+          return;
+        }
+        
+        // Fetch and return the updated loan
+        try {
+          const db = await getDatabase();
+          db.get('SELECT * FROM loans WHERE id = ?', [id], (err, row) => {
+            if (err) {
+              reject(err);
+              return;
+            }
+            resolve(row);
+          });
+        } catch (fetchErr) {
+          reject(fetchErr);
+        }
       });
     });
   }

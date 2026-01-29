@@ -33,6 +33,10 @@ configureTimezone();
 const app = express();
 const PORT = process.env.PORT || 2626;
 
+// Trust proxy - required when running behind Docker/nginx/reverse proxy
+// This allows express-rate-limit to correctly identify client IPs from X-Forwarded-For header
+app.set('trust proxy', 1);
+
 // Security middleware - Helmet sets various HTTP headers for security
 app.use(helmet({
   contentSecurityPolicy: {
@@ -43,8 +47,8 @@ app.use(helmet({
       imgSrc: ["'self'", "data:", "blob:"],
       connectSrc: ["'self'"],
       fontSrc: ["'self'"],
-      objectSrc: ["'none'"],
-      frameSrc: ["'none'"],
+      objectSrc: ["'self'", "blob:"], // Allow PDF objects from blob URLs
+      frameSrc: ["'self'", "blob:"], // Allow iframes with blob URLs for PDF viewing
       upgradeInsecureRequests: null // Disable for local network use
     }
   },
@@ -105,8 +109,11 @@ app.use('/api', healthRoutes);
 // Expense API routes
 app.use('/api', expenseRoutes);
 
-// Backup API routes - apply strict backup rate limiting
-app.use('/api/backup', backupLimiter);
+// Backup API routes - apply strict backup rate limiting only to write operations
+// Download (GET /api/backup) and list (GET /api/backup/list) are excluded from rate limiting
+app.use('/api/backup/manual', backupLimiter);
+app.use('/api/backup/restore', backupLimiter);
+app.use('/api/backup/restore-archive', backupLimiter);
 app.use('/api', backupRoutes);
 
 // Income API routes

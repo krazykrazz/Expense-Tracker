@@ -1,7 +1,7 @@
 # Expense Tracker - Feature Roadmap
 
-**Last Updated**: January 26, 2026  
-**Current Version**: 4.17.0
+**Last Updated**: January 28, 2026  
+**Current Version**: 4.18.0
 
 This document tracks potential features and enhancements for the Expense Tracker application. Features are categorized by priority and implementation status.
 
@@ -345,35 +345,32 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ---
 
-### ⚪ 16. Mortgage Tracking
-**Status**: Proposed  
+### 🟢 16. Mortgage Tracking
+**Status**: Completed (v4.18.0)  
+**Completed**: January 2026  
 **Priority**: Medium  
 **Effort**: Medium  
-**Description**: Dedicated mortgage loan type with enhanced tracking for amortization, equity, and variable rate support.
+**Spec**: `.kiro/specs/mortgage-tracking/` and `.kiro/specs/mortgage-insights/`  
+**Description**: Dedicated mortgage loan type with enhanced tracking for amortization, equity, variable rate support, and comprehensive insights panel.
 
-**Key Features**:
-- New "mortgage" loan type (alongside existing "loan" and "line_of_credit")
-- Amortization period tracking (e.g., 25 years)
-- Term length and renewal date tracking
-- Rate type indicator (fixed vs variable)
-- Variable rate updates with rate history (leverages existing loan_balances table)
-- Payment frequency options (monthly, bi-weekly, accelerated bi-weekly)
-- Current estimated property value for equity tracking
-- Principal vs interest breakdown per payment period
-- Equity calculation (estimated value - remaining balance)
-
-**Analytics**:
-- Principal paid vs interest paid over time visualization
-- Equity buildup chart
-- Amortization schedule projection
-- Interest rate history chart (especially useful for variable rates)
-- Comparison of different payment frequencies impact
+**Features Delivered**:
+- **Mortgage Loan Type**: New "mortgage" type alongside existing "loan" and "line_of_credit"
+- **Mortgage-Specific Fields**: Amortization period, term length, renewal date, rate type (fixed/variable), payment frequency, estimated property value
+- **Amortization Schedule**: Full projection with principal vs interest breakdown per payment
+- **Equity Tracking**: Property value minus remaining balance with historical chart
+- **Mortgage Insights Panel**: Collapsible sections for current status, payoff projections, what-if scenarios, and payment history
+- **Variable Rate Support**: Quick rate update capability with rate history tracking
+- **Payment Tracking**: Record and manage payment amount changes over time
+- **What-If Calculator**: Extra payment impact analysis with interest savings calculation
+- **Interest Cost Breakdown**: Daily, weekly, monthly, and annual interest calculations
+- **Payoff Projections**: Estimated payoff date with comparison to minimum payment scenario
 
 **Benefits**:
 - Better visibility into mortgage progress
 - Track equity growth over time
 - Understand impact of rate changes on variable mortgages
 - More accurate net worth calculations with property equity
+- Plan extra payments with clear savings projections
 
 **Dependencies**: Extends existing loans infrastructure, database migration for mortgage-specific fields
 

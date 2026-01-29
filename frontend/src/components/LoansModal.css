@@ -514,6 +514,11 @@
     border-left: 4px solid #2196f3;
     border-bottom: 1px solid #e0e0e0;
   }
+
+  .loans-input-row {
+    flex-direction: column;
+    gap: 15px;
+  }
 }
 
 @media (max-width: 480px) {
@@ -540,6 +545,38 @@
   font-weight: 600;
   border-radius: 4px;
   vertical-align: middle;
+}
+
+.loan-type-badge.mortgage {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+}
+
+/* Mortgage Form Section */
+.loans-mortgage-section {
+  background-color: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 8px;
+}
+
+.loans-mortgage-section h4 {
+  margin: 0 0 16px 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #2e7d32;
+  border-bottom: 1px solid #e0e0e0;
+  padding-bottom: 8px;
+}
+
+.loans-input-row {
+  display: flex;
+  gap: 16px;
+}
+
+.loans-input-row .loans-input-group {
+  flex: 1;
 }
 
 /* Months Left Display */

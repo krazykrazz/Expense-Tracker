@@ -1,13 +1,16 @@
 const expenseRepository = require('../repositories/expenseRepository');
 const fixedExpenseRepository = require('../repositories/fixedExpenseRepository');
 const expensePeopleRepository = require('../repositories/expensePeopleRepository');
+const peopleRepository = require('../repositories/peopleRepository');
 const loanService = require('./loanService');
 const investmentService = require('./investmentService');
+const { getDatabase } = require('../database/db');
 const { calculateWeek } = require('../utils/dateUtils');
-const { CATEGORIES } = require('../utils/categories');
+const { CATEGORIES, BUDGETABLE_CATEGORIES } = require('../utils/categories');
 const { validateYearMonth } = require('../utils/validators');
 const { PAYMENT_METHODS } = require('../utils/constants');
 const budgetEvents = require('../events/budgetEvents');
+const logger = require('../config/logger');
 
 class ExpenseService {
   /**
@@ -297,7 +300,6 @@ class ExpenseService {
    */
   _triggerBudgetRecalculation(date, category) {
     // Only emit event for budgetable categories
-    const { BUDGETABLE_CATEGORIES } = require('../utils/categories');
     if (BUDGETABLE_CATEGORIES.includes(category)) {
       budgetEvents.emitBudgetRecalculation(date, category);
     }
@@ -368,8 +370,6 @@ class ExpenseService {
    * @private
    */
   async _validatePeopleExist(personAllocations) {
-    const peopleRepository = require('../repositories/peopleRepository');
-    
     for (const allocation of personAllocations) {
       const person = await peopleRepository.findById(allocation.personId);
       if (!person) {
@@ -482,7 +482,6 @@ class ExpenseService {
           await expenseRepository.delete(expenseId);
         } catch (deleteError) {
           // Log but continue cleanup
-          const logger = require('../config/logger');
           logger.error('Error during rollback cleanup:', deleteError);
         }
       }
@@ -643,7 +642,6 @@ class ExpenseService {
           await expenseRepository.delete(expenseId);
         } catch (deleteError) {
           // Log but continue cleanup
-          const logger = require('../config/logger');
           logger.error('Error during rollback cleanup:', deleteError);
         }
       }
@@ -881,7 +879,7 @@ class ExpenseService {
    * @private
    */
   async _getYearEndInvestmentValues(year) {
-    const db = await require('../database/db').getDatabase();
+    const db = await getDatabase();
     
     return new Promise((resolve, reject) => {
       // Try to get December values first
@@ -937,7 +935,7 @@ class ExpenseService {
    * @private
    */
   async _getYearEndLoanBalances(year) {
-    const db = await require('../database/db').getDatabase();
+    const db = await getDatabase();
     
     return new Promise((resolve, reject) => {
       // Try to get December balances first
@@ -994,7 +992,7 @@ class ExpenseService {
    * @private
    */
   async _getMonthlyVariableExpenses(year) {
-    const db = await require('../database/db').getDatabase();
+    const db = await getDatabase();
     
     return new Promise((resolve, reject) => {
       const query = `
@@ -1021,7 +1019,7 @@ class ExpenseService {
    * @private
    */
   async _getMonthlyFixedExpenses(year) {
-    const db = await require('../database/db').getDatabase();
+    const db = await getDatabase();
     
     return new Promise((resolve, reject) => {
       const query = `
@@ -1046,7 +1044,7 @@ class ExpenseService {
    * @private
    */
   async _getMonthlyIncome(year) {
-    const db = await require('../database/db').getDatabase();
+    const db = await getDatabase();
     
     return new Promise((resolve, reject) => {
       const query = `
@@ -1071,7 +1069,7 @@ class ExpenseService {
    * @private
    */
   async _getTransactionCount(year) {
-    const db = await require('../database/db').getDatabase();
+    const db = await getDatabase();
     
     return new Promise((resolve, reject) => {
       const query = `
@@ -1123,7 +1121,7 @@ class ExpenseService {
    * @private
    */
   async _getCategoryTotals(year) {
-    const db = await require('../database/db').getDatabase();
+    const db = await getDatabase();
     
     // Get regular expense totals
     const regularTotals = await new Promise((resolve, reject) => {
@@ -1207,7 +1205,7 @@ class ExpenseService {
    * @private
    */
   async _getMethodTotals(year) {
-    const db = await require('../database/db').getDatabase();
+    const db = await getDatabase();
     
     // Get regular expense totals
     const regularTotals = await new Promise((resolve, reject) => {
@@ -1910,7 +1908,6 @@ class ExpenseService {
           await expenseRepository.delete(expenseId);
         } catch (deleteError) {
           // Log but continue cleanup
-          const logger = require('../config/logger');
           logger.error('Error during rollback cleanup:', deleteError);
         }
       }
@@ -2027,7 +2024,6 @@ class ExpenseService {
           await expenseRepository.delete(expenseId);
         } catch (deleteError) {
           // Log but continue cleanup
-          const logger = require('../config/logger');
           logger.error('Error during rollback cleanup:', deleteError);
         }
       }

@@ -1,0 +1,224 @@
+/**
+ * AmortizationChart Styles
+ * 
+ * Styles for the amortization schedule chart component
+ * Requirements: 5.5, 6.3, 8.4
+ */
+
+/* Section Container */
+.amortization-chart-section {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-5);
+  margin-bottom: var(--spacing-5);
+}
+
+/* Header */
+.amortization-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--spacing-3);
+  margin-bottom: var(--spacing-4);
+  padding-bottom: var(--spacing-3);
+  border-bottom: 1px solid var(--border-muted);
+}
+
+.amortization-header h4 {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+/* View Toggle */
+.amortization-view-toggle {
+  display: flex;
+  gap: var(--spacing-1);
+  background-color: var(--bg-muted);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-1);
+}
+
+.amortization-view-toggle button {
+  padding: var(--spacing-2) var(--spacing-4);
+  border: none;
+  background-color: transparent;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  font-family: var(--font-sans);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.amortization-view-toggle button:hover {
+  color: var(--text-primary);
+}
+
+.amortization-view-toggle button.active {
+  background-color: var(--bg-card);
+  color: var(--color-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Payment Summary */
+.amortization-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-5);
+  margin-bottom: var(--spacing-4);
+  padding: var(--spacing-4);
+  background-color: var(--bg-subtle);
+  border-radius: var(--radius-md);
+}
+
+.amortization-stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+  min-width: 120px;
+}
+
+.amortization-stat-label {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: var(--font-medium);
+}
+
+.amortization-stat-value {
+  font-size: var(--text-lg);
+  font-weight: var(--font-bold);
+  color: var(--text-primary);
+  font-feature-settings: var(--font-feature-tabular);
+}
+
+.amortization-stat-value.principal {
+  color: var(--color-positive);
+}
+
+.amortization-stat-value.interest {
+  color: var(--color-negative);
+}
+
+/* Legend */
+.amortization-legend {
+  display: flex;
+  gap: var(--spacing-5);
+  margin-bottom: var(--spacing-3);
+  justify-content: center;
+}
+
+.amortization-legend .legend-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.amortization-legend .legend-color {
+  width: 16px;
+  height: 16px;
+  border-radius: var(--radius-sm);
+}
+
+.amortization-legend .legend-color.principal {
+  background-color: var(--color-positive);
+}
+
+.amortization-legend .legend-color.interest {
+  background-color: var(--color-negative);
+}
+
+/* Chart Container */
+.amortization-chart-container {
+  background-color: var(--bg-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-3);
+  overflow-x: auto;
+}
+
+.amortization-chart-svg {
+  display: block;
+  min-width: 500px;
+}
+
+/* Loading and Error States */
+.amortization-loading,
+.amortization-error,
+.amortization-no-data {
+  text-align: center;
+  padding: var(--spacing-8) var(--spacing-4);
+  color: var(--text-tertiary);
+  font-size: var(--text-base);
+}
+
+.amortization-error {
+  color: var(--color-negative);
+}
+
+.amortization-no-data p {
+  margin: 0;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .amortization-chart-section {
+    padding: var(--spacing-4);
+  }
+
+  .amortization-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .amortization-view-toggle {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .amortization-summary {
+    gap: var(--spacing-3);
+    padding: var(--spacing-3);
+  }
+
+  .amortization-stat {
+    min-width: 100px;
+    flex: 1;
+  }
+
+  .amortization-stat-value {
+    font-size: var(--text-base);
+  }
+
+  .amortization-legend {
+    gap: var(--spacing-4);
+  }
+}
+
+@media (max-width: 480px) {
+  .amortization-summary {
+    flex-direction: column;
+    gap: var(--spacing-2);
+  }
+
+  .amortization-stat {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    min-width: auto;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .amortization-view-toggle button {
+    transition: none;
+  }
+}

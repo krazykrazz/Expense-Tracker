@@ -309,9 +309,11 @@ class BackupService {
    * Restore from an archive backup
    * Extracts and restores the database, invoice files, and configuration
    * @param {string} backupPath - Path to the backup archive file
+   * @param {Object} options - Optional parameters
+   * @param {boolean} options.skipExtensionCheck - Skip .tar.gz extension check (for temp files from uploads)
    * @returns {Promise<{success: boolean, filesRestored: number, message: string}>}
    */
-  async restoreBackup(backupPath) {
+  async restoreBackup(backupPath, options = {}) {
     if (!backupPath) {
       throw new Error('Backup file path is required');
     }
@@ -321,8 +323,8 @@ class BackupService {
       throw new Error('Backup file not found');
     }
 
-    // Verify it's a tar.gz file
-    if (!backupPath.endsWith('.tar.gz')) {
+    // Verify it's a tar.gz file (skip for temp files from uploads where controller already validated)
+    if (!options.skipExtensionCheck && !backupPath.endsWith('.tar.gz')) {
       throw new Error('Invalid backup file format. Expected .tar.gz archive');
     }
 
@@ -351,12 +353,20 @@ class BackupService {
         }
 
         // Restore invoices (preserving directory structure)
+        // Check for both new 'invoices/' and old 'uploads/' paths for backward compatibility
         const extractedInvoicesPath = path.join(tempExtractPath, 'invoices');
+        const extractedUploadsPath = path.join(tempExtractPath, 'uploads');
+        const invoicesPath = getInvoicesPath();
+        
         if (fs.existsSync(extractedInvoicesPath)) {
-          const invoicesPath = getInvoicesPath();
           const invoiceFilesRestored = await this._restoreDirectory(extractedInvoicesPath, invoicesPath);
           filesRestored += invoiceFilesRestored;
           logger.info(`Invoices restored: ${invoiceFilesRestored} files`);
+        } else if (fs.existsSync(extractedUploadsPath)) {
+          // Handle old backup format with 'uploads/' directory
+          const invoiceFilesRestored = await this._restoreDirectory(extractedUploadsPath, invoicesPath);
+          filesRestored += invoiceFilesRestored;
+          logger.info(`Invoices restored from legacy 'uploads/' path: ${invoiceFilesRestored} files`);
         } else {
           logger.debug('No invoices directory found in backup archive');
         }

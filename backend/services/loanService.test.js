@@ -97,7 +97,7 @@ describe('LoanService', () => {
         loan_type: 'invalid_type'
       };
 
-      expect(() => loanService.validateLoan(invalidLoan)).toThrow('Loan type must be either "loan" or "line_of_credit"');
+      expect(() => loanService.validateLoan(invalidLoan)).toThrow('Loan type must be "loan", "line_of_credit", or "mortgage"');
     });
 
     test('should accept valid loan types', () => {
@@ -115,8 +115,16 @@ describe('LoanService', () => {
         loan_type: 'line_of_credit'
       };
 
+      const mortgageType = {
+        name: 'Test Mortgage',
+        initial_balance: 10000,
+        start_date: '2024-01-15',
+        loan_type: 'mortgage'
+      };
+
       expect(() => loanService.validateLoan(loanType)).not.toThrow();
       expect(() => loanService.validateLoan(locType)).not.toThrow();
+      expect(() => loanService.validateLoan(mortgageType)).not.toThrow();
     });
 
     test('should reject negative estimated_months_left', () => {

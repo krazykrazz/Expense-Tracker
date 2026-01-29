@@ -25,13 +25,27 @@ const LoansModal = ({ isOpen, onClose, year, month, onUpdate, highlightIds = [] 
     initial_balance: '',
     start_date: '',
     loan_type: 'loan', // Default to 'loan'
-    notes: ''
+    notes: '',
+    // Mortgage-specific fields
+    amortization_period: '',
+    term_length: '',
+    renewal_date: '',
+    rate_type: 'fixed',
+    payment_frequency: 'monthly',
+    estimated_property_value: ''
   });
   
   const [validationErrors, setValidationErrors] = useState({
     name: '',
     initial_balance: '',
-    start_date: ''
+    start_date: '',
+    // Mortgage-specific validation errors
+    amortization_period: '',
+    term_length: '',
+    renewal_date: '',
+    rate_type: '',
+    payment_frequency: '',
+    estimated_property_value: ''
   });
 
   // Fetch loans when modal opens
@@ -66,7 +80,13 @@ const LoansModal = ({ isOpen, onClose, year, month, onUpdate, highlightIds = [] 
     setValidationErrors({
       name: '',
       initial_balance: '',
-      start_date: ''
+      start_date: '',
+      amortization_period: '',
+      term_length: '',
+      renewal_date: '',
+      rate_type: '',
+      payment_frequency: '',
+      estimated_property_value: ''
     });
   };
 
@@ -76,7 +96,13 @@ const LoansModal = ({ isOpen, onClose, year, month, onUpdate, highlightIds = [] 
       initial_balance: '',
       start_date: '',
       loan_type: 'loan',
-      notes: ''
+      notes: '',
+      amortization_period: '',
+      term_length: '',
+      renewal_date: '',
+      rate_type: 'fixed',
+      payment_frequency: 'monthly',
+      estimated_property_value: ''
     });
     clearValidationErrors();
   };
@@ -101,6 +127,61 @@ const LoansModal = ({ isOpen, onClose, year, month, onUpdate, highlightIds = [] 
       errors.start_date = 'Start date is required';
     }
     
+    // Mortgage-specific validation
+    if (formData.loan_type === 'mortgage') {
+      // Validate amortization_period (required, 1-40 years)
+      if (!formData.amortization_period || formData.amortization_period === '') {
+        errors.amortization_period = 'Amortization period is required for mortgages';
+      } else {
+        const amortPeriod = parseInt(formData.amortization_period, 10);
+        if (isNaN(amortPeriod) || amortPeriod < 1 || amortPeriod > 40) {
+          errors.amortization_period = 'Amortization period must be between 1 and 40 years';
+        }
+      }
+      
+      // Validate term_length (required, 1-10 years)
+      if (!formData.term_length || formData.term_length === '') {
+        errors.term_length = 'Term length is required for mortgages';
+      } else {
+        const termLength = parseInt(formData.term_length, 10);
+        if (isNaN(termLength) || termLength < 1 || termLength > 10) {
+          errors.term_length = 'Term length must be between 1 and 10 years';
+        } else if (formData.amortization_period && termLength > parseInt(formData.amortization_period, 10)) {
+          errors.term_length = 'Term length cannot exceed amortization period';
+        }
+      }
+      
+      // Validate renewal_date (required, must be in the future)
+      if (!formData.renewal_date || formData.renewal_date.trim() === '') {
+        errors.renewal_date = 'Renewal date is required for mortgages';
+      } else {
+        const renewalDate = new Date(formData.renewal_date);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        if (renewalDate <= today) {
+          errors.renewal_date = 'Renewal date must be in the future';
+        }
+      }
+      
+      // Validate rate_type (required)
+      if (!formData.rate_type || !['fixed', 'variable'].includes(formData.rate_type)) {
+        errors.rate_type = 'Rate type must be fixed or variable';
+      }
+      
+      // Validate payment_frequency (required)
+      if (!formData.payment_frequency || !['monthly', 'bi-weekly', 'accelerated_bi-weekly'].includes(formData.payment_frequency)) {
+        errors.payment_frequency = 'Payment frequency must be monthly, bi-weekly, or accelerated bi-weekly';
+      }
+      
+      // Validate estimated_property_value (optional, but if provided must be > 0)
+      if (formData.estimated_property_value && formData.estimated_property_value !== '') {
+        const propertyValue = parseFloat(formData.estimated_property_value);
+        if (isNaN(propertyValue) || propertyValue <= 0) {
+          errors.estimated_property_value = 'Estimated property value must be greater than zero';
+        }
+      }
+    }
+    
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -117,7 +198,14 @@ const LoansModal = ({ isOpen, onClose, year, month, onUpdate, highlightIds = [] 
       initial_balance: loan.initial_balance.toString(),
       start_date: loan.start_date,
       loan_type: loan.loan_type || 'loan',
-      notes: loan.notes || ''
+      notes: loan.notes || '',
+      // Mortgage-specific fields
+      amortization_period: loan.amortization_period ? loan.amortization_period.toString() : '',
+      term_length: loan.term_length ? loan.term_length.toString() : '',
+      renewal_date: loan.renewal_date || '',
+      rate_type: loan.rate_type || 'fixed',
+      payment_frequency: loan.payment_frequency || 'monthly',
+      estimated_property_value: loan.estimated_property_value ? loan.estimated_property_value.toString() : ''
     });
     setEditingLoanId(loan.id);
     setShowAddForm(true);
@@ -135,13 +223,27 @@ const LoansModal = ({ isOpen, onClose, year, month, onUpdate, highlightIds = [] 
     setLoading(true);
 
     try {
-      await createLoan({
+      const loanData = {
         name: formData.name.trim(),
         initial_balance: parseFloat(formData.initial_balance),
         start_date: formData.start_date,
         loan_type: formData.loan_type,
         notes: formData.notes.trim() || null
-      });
+      };
+      
+      // Add mortgage-specific fields if loan_type is mortgage
+      if (formData.loan_type === 'mortgage') {
+        loanData.amortization_period = parseInt(formData.amortization_period, 10);
+        loanData.term_length = parseInt(formData.term_length, 10);
+        loanData.renewal_date = formData.renewal_date;
+        loanData.rate_type = formData.rate_type;
+        loanData.payment_frequency = formData.payment_frequency;
+        loanData.estimated_property_value = formData.estimated_property_value 
+          ? parseFloat(formData.estimated_property_value) 
+          : null;
+      }
+      
+      await createLoan(loanData);
       
       // Refresh loans list
       await fetchLoans();
@@ -168,14 +270,53 @@ const LoansModal = ({ isOpen, onClose, year, month, onUpdate, highlightIds = [] 
       setError('Please fix the validation errors before saving.');
       return;
     }
+    
+    // For mortgage updates, validate editable mortgage fields
+    if (formData.loan_type === 'mortgage') {
+      const errors = { ...validationErrors, name: '' };
+      
+      // Validate renewal_date if provided (must be in the future)
+      if (formData.renewal_date && formData.renewal_date.trim() !== '') {
+        const renewalDate = new Date(formData.renewal_date);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        if (renewalDate <= today) {
+          errors.renewal_date = 'Renewal date must be in the future';
+        }
+      }
+      
+      // Validate estimated_property_value if provided (must be > 0)
+      if (formData.estimated_property_value && formData.estimated_property_value !== '') {
+        const propertyValue = parseFloat(formData.estimated_property_value);
+        if (isNaN(propertyValue) || propertyValue <= 0) {
+          errors.estimated_property_value = 'Estimated property value must be greater than zero';
+        }
+      }
+      
+      if (errors.renewal_date || errors.estimated_property_value) {
+        setValidationErrors(errors);
+        setError('Please fix the validation errors before saving.');
+        return;
+      }
+    }
 
     setLoading(true);
 
     try {
-      await updateLoan(editingLoanId, {
+      const updateData = {
         name: formData.name.trim(),
         notes: formData.notes.trim() || null
-      });
+      };
+      
+      // For mortgages, include editable mortgage fields
+      if (formData.loan_type === 'mortgage') {
+        updateData.renewal_date = formData.renewal_date || null;
+        updateData.estimated_property_value = formData.estimated_property_value 
+          ? parseFloat(formData.estimated_property_value) 
+          : null;
+      }
+      
+      await updateLoan(editingLoanId, updateData);
       
       // Refresh loans list
       await fetchLoans();
@@ -376,15 +517,135 @@ const LoansModal = ({ isOpen, onClose, year, month, onUpdate, highlightIds = [] 
                       <select
                         value={formData.loan_type}
                         onChange={(e) => setFormData({ ...formData, loan_type: e.target.value })}
-                        disabled={loading}
+                        disabled={loading || editingLoanId}
                       >
                         <option value="loan">Loan (balance decreases only)</option>
                         <option value="line_of_credit">Line of Credit (balance can fluctuate)</option>
+                        <option value="mortgage">Mortgage (with amortization tracking)</option>
                       </select>
                       <span className="loans-field-hint">
-                        Choose "Loan" for mortgages, car loans, etc. Choose "Line of Credit" for credit cards, HELOCs, etc.
+                        {formData.loan_type === 'mortgage' 
+                          ? 'Mortgages include amortization schedules, equity tracking, and renewal reminders.'
+                          : 'Choose "Loan" for car loans, personal loans, etc. Choose "Line of Credit" for credit cards, HELOCs, etc.'}
                       </span>
                     </div>
+
+                    {/* Mortgage-specific fields */}
+                    {formData.loan_type === 'mortgage' && (
+                      <>
+                        <div className="loans-mortgage-section">
+                          <h4>Mortgage Details</h4>
+                          
+                          <div className="loans-input-row">
+                            <div className="loans-input-group">
+                              <label>Amortization Period (years) * {editingLoanId && '(cannot be changed)'}</label>
+                              <input
+                                type="number"
+                                value={formData.amortization_period}
+                                onChange={(e) => setFormData({ ...formData, amortization_period: e.target.value })}
+                                placeholder="25"
+                                min="1"
+                                max="40"
+                                className={validationErrors.amortization_period ? 'input-error' : ''}
+                                disabled={loading || editingLoanId}
+                              />
+                              {validationErrors.amortization_period && (
+                                <span className="validation-error">{validationErrors.amortization_period}</span>
+                              )}
+                            </div>
+
+                            <div className="loans-input-group">
+                              <label>Term Length (years) * {editingLoanId && '(cannot be changed)'}</label>
+                              <input
+                                type="number"
+                                value={formData.term_length}
+                                onChange={(e) => setFormData({ ...formData, term_length: e.target.value })}
+                                placeholder="5"
+                                min="1"
+                                max="10"
+                                className={validationErrors.term_length ? 'input-error' : ''}
+                                disabled={loading || editingLoanId}
+                              />
+                              {validationErrors.term_length && (
+                                <span className="validation-error">{validationErrors.term_length}</span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="loans-input-group">
+                            <label>Renewal Date * {editingLoanId && '(can be updated)'}</label>
+                            <input
+                              type="date"
+                              value={formData.renewal_date}
+                              onChange={(e) => setFormData({ ...formData, renewal_date: e.target.value })}
+                              className={validationErrors.renewal_date ? 'input-error' : ''}
+                              disabled={loading}
+                            />
+                            {validationErrors.renewal_date && (
+                              <span className="validation-error">{validationErrors.renewal_date}</span>
+                            )}
+                            <span className="loans-field-hint">
+                              The date when your mortgage term ends and needs to be renewed.
+                            </span>
+                          </div>
+
+                          <div className="loans-input-row">
+                            <div className="loans-input-group">
+                              <label>Rate Type * {editingLoanId && '(cannot be changed)'}</label>
+                              <select
+                                value={formData.rate_type}
+                                onChange={(e) => setFormData({ ...formData, rate_type: e.target.value })}
+                                className={validationErrors.rate_type ? 'input-error' : ''}
+                                disabled={loading || editingLoanId}
+                              >
+                                <option value="fixed">Fixed Rate</option>
+                                <option value="variable">Variable Rate</option>
+                              </select>
+                              {validationErrors.rate_type && (
+                                <span className="validation-error">{validationErrors.rate_type}</span>
+                              )}
+                            </div>
+
+                            <div className="loans-input-group">
+                              <label>Payment Frequency * {editingLoanId && '(cannot be changed)'}</label>
+                              <select
+                                value={formData.payment_frequency}
+                                onChange={(e) => setFormData({ ...formData, payment_frequency: e.target.value })}
+                                className={validationErrors.payment_frequency ? 'input-error' : ''}
+                                disabled={loading || editingLoanId}
+                              >
+                                <option value="monthly">Monthly</option>
+                                <option value="bi-weekly">Bi-weekly</option>
+                                <option value="accelerated_bi-weekly">Accelerated Bi-weekly</option>
+                              </select>
+                              {validationErrors.payment_frequency && (
+                                <span className="validation-error">{validationErrors.payment_frequency}</span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="loans-input-group">
+                            <label>Estimated Property Value {editingLoanId && '(can be updated)'}</label>
+                            <input
+                              type="number"
+                              value={formData.estimated_property_value}
+                              onChange={(e) => setFormData({ ...formData, estimated_property_value: e.target.value })}
+                              placeholder="0.00"
+                              step="0.01"
+                              min="0"
+                              className={validationErrors.estimated_property_value ? 'input-error' : ''}
+                              disabled={loading}
+                            />
+                            {validationErrors.estimated_property_value && (
+                              <span className="validation-error">{validationErrors.estimated_property_value}</span>
+                            )}
+                            <span className="loans-field-hint">
+                              Optional. Used to calculate home equity (property value minus mortgage balance).
+                            </span>
+                          </div>
+                        </div>
+                      </>
+                    )}
 
                     <div className="loans-input-group">
                       <label>Notes</label>
@@ -456,6 +717,9 @@ const LoansModal = ({ isOpen, onClose, year, month, onUpdate, highlightIds = [] 
                             {loan.name}
                             {loan.loan_type === 'line_of_credit' && (
                               <span className="loan-type-badge">LOC</span>
+                            )}
+                            {loan.loan_type === 'mortgage' && (
+                              <span className="loan-type-badge mortgage">Mortgage</span>
                             )}
                             {needsUpdate && (
                               <span className="needs-update-badge" title="Missing balance for current month">

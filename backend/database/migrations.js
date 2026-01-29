@@ -90,6 +90,56 @@ function createBackup() {
 }
 
 /**
+ * Disable foreign key constraints
+ * IMPORTANT: Call this before any migration that recreates tables with foreign key references
+ * This prevents CASCADE DELETE from triggering when dropping the old table
+ */
+function disableForeignKeys(db) {
+  return new Promise((resolve, reject) => {
+    db.run('PRAGMA foreign_keys = OFF', (err) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      logger.debug('Foreign key constraints disabled');
+      resolve();
+    });
+  });
+}
+
+/**
+ * Enable foreign key constraints
+ * IMPORTANT: Call this after the migration completes to restore normal FK behavior
+ */
+function enableForeignKeys(db) {
+  return new Promise((resolve, reject) => {
+    db.run('PRAGMA foreign_keys = ON', (err) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      logger.debug('Foreign key constraints enabled');
+      resolve();
+    });
+  });
+}
+
+/**
+ * Check current foreign key status
+ */
+function checkForeignKeyStatus(db) {
+  return new Promise((resolve, reject) => {
+    db.get('PRAGMA foreign_keys', (err, row) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      resolve(row ? row.foreign_keys === 1 : false);
+    });
+  });
+}
+
+/**
  * Migration: Expand expense categories
  */
 async function migrateExpandCategories(db) {
@@ -2767,6 +2817,189 @@ async function migrateAddOriginalAmountToExpensePeople(db) {
 }
 
 /**
+ * Migration: Add mortgage fields to loans table
+ * Adds columns for mortgage-specific data: amortization_period, term_length, 
+ * renewal_date, rate_type, payment_frequency, estimated_property_value
+ * Also updates loan_type CHECK constraint to include 'mortgage'
+ * 
+ * IMPORTANT: This migration disables foreign keys before dropping the loans table
+ * to prevent CASCADE DELETE from removing loan_balances data.
+ */
+async function migrateAddMortgageFields(db) {
+  const migrationName = 'add_mortgage_fields_v1';
+  
+  // Check if already applied
+  const isApplied = await checkMigrationApplied(db, migrationName);
+  if (isApplied) {
+    logger.info(`Migration "${migrationName}" already applied, skipping`);
+    return;
+  }
+
+  logger.info(`Running migration: ${migrationName}`);
+
+  // Create backup
+  await createBackup();
+
+  // CRITICAL: Disable foreign keys BEFORE the transaction to prevent CASCADE DELETE
+  // when we drop the loans table (loan_balances has FK reference with ON DELETE CASCADE)
+  await disableForeignKeys(db);
+
+  return new Promise((resolve, reject) => {
+    db.serialize(() => {
+      db.run('BEGIN TRANSACTION', (err) => {
+        if (err) {
+          enableForeignKeys(db).catch(() => {});
+          return reject(err);
+        }
+
+        // Check current columns in loans table
+        db.all("PRAGMA table_info(loans)", (err, columns) => {
+          if (err) {
+            db.run('ROLLBACK');
+            enableForeignKeys(db).catch(() => {});
+            return reject(err);
+          }
+
+          const hasAmortizationPeriod = columns.some(col => col.name === 'amortization_period');
+
+          if (hasAmortizationPeriod) {
+            logger.info('loans table already has mortgage fields');
+            markMigrationApplied(db, migrationName).then(() => {
+              db.run('COMMIT', (err) => {
+                enableForeignKeys(db).catch(() => {});
+                if (err) {
+                  db.run('ROLLBACK');
+                  return reject(err);
+                }
+                logger.info(`Migration "${migrationName}" completed successfully`);
+                resolve();
+              });
+            }).catch((err) => {
+              enableForeignKeys(db).catch(() => {});
+              reject(err);
+            });
+            return;
+          }
+
+          // Check if estimated_months_left column exists in the old table
+          db.all("PRAGMA table_info(loans)", (err, oldColumns) => {
+            if (err) {
+              db.run('ROLLBACK');
+              enableForeignKeys(db).catch(() => {});
+              return reject(err);
+            }
+
+            const hasEstimatedMonthsLeft = oldColumns.some(col => col.name === 'estimated_months_left');
+
+            // SQLite doesn't support adding CHECK constraints via ALTER TABLE
+            // We need to recreate the table with the new constraint and columns
+            db.run(`
+              CREATE TABLE loans_new (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                initial_balance REAL NOT NULL CHECK(initial_balance >= 0),
+                start_date TEXT NOT NULL,
+                notes TEXT,
+                loan_type TEXT NOT NULL DEFAULT 'loan' CHECK(loan_type IN ('loan', 'line_of_credit', 'mortgage')),
+                is_paid_off INTEGER DEFAULT 0,
+                estimated_months_left INTEGER,
+                amortization_period INTEGER,
+                term_length INTEGER,
+                renewal_date TEXT,
+                rate_type TEXT CHECK(rate_type IS NULL OR rate_type IN ('fixed', 'variable')),
+                payment_frequency TEXT CHECK(payment_frequency IS NULL OR payment_frequency IN ('monthly', 'bi-weekly', 'accelerated_bi-weekly')),
+                estimated_property_value REAL,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+              )
+            `, (err) => {
+              if (err) {
+                db.run('ROLLBACK');
+                enableForeignKeys(db).catch(() => {});
+                return reject(err);
+              }
+
+              // Copy existing data to new table - handle case where estimated_months_left doesn't exist
+              const insertSql = hasEstimatedMonthsLeft
+                ? `INSERT INTO loans_new (id, name, initial_balance, start_date, notes, loan_type, is_paid_off, estimated_months_left, created_at, updated_at)
+                   SELECT id, name, initial_balance, start_date, notes, loan_type, is_paid_off, estimated_months_left, created_at, updated_at
+                   FROM loans`
+                : `INSERT INTO loans_new (id, name, initial_balance, start_date, notes, loan_type, is_paid_off, created_at, updated_at)
+                   SELECT id, name, initial_balance, start_date, notes, loan_type, is_paid_off, created_at, updated_at
+                   FROM loans`;
+
+              db.run(insertSql, function(err) {
+                if (err) {
+                  db.run('ROLLBACK');
+                  enableForeignKeys(db).catch(() => {});
+                  return reject(err);
+                }
+
+                logger.info(`Copied ${this.changes} loan records to new table`);
+
+                // Drop old table - FK constraints are OFF so this won't cascade delete loan_balances
+                db.run('DROP TABLE loans', (err) => {
+                  if (err) {
+                    db.run('ROLLBACK');
+                    enableForeignKeys(db).catch(() => {});
+                    return reject(err);
+                  }
+
+                  // Rename new table
+                  db.run('ALTER TABLE loans_new RENAME TO loans', (err) => {
+                    if (err) {
+                      db.run('ROLLBACK');
+                      enableForeignKeys(db).catch(() => {});
+                      return reject(err);
+                    }
+
+                    logger.info('Updated loans table with mortgage fields');
+
+                    // Recreate indexes
+                    db.run('CREATE INDEX IF NOT EXISTS idx_loans_paid_off ON loans(is_paid_off)', (err) => {
+                      if (err) {
+                        db.run('ROLLBACK');
+                        enableForeignKeys(db).catch(() => {});
+                        return reject(err);
+                      }
+
+                      db.run('CREATE INDEX IF NOT EXISTS idx_loans_loan_type ON loans(loan_type)', (err) => {
+                        if (err) {
+                          db.run('ROLLBACK');
+                          enableForeignKeys(db).catch(() => {});
+                          return reject(err);
+                        }
+
+                        // Mark migration as applied and commit
+                        markMigrationApplied(db, migrationName).then(() => {
+                          db.run('COMMIT', (err) => {
+                            // Re-enable foreign keys after commit
+                            enableForeignKeys(db).catch(() => {});
+                            if (err) {
+                              db.run('ROLLBACK');
+                              return reject(err);
+                            }
+                            logger.info(`Migration "${migrationName}" completed successfully`);
+                            resolve();
+                          });
+                        }).catch((err) => {
+                          enableForeignKeys(db).catch(() => {});
+                          reject(err);
+                        });
+                      });
+                    });
+                  });
+                });
+              });
+            });
+          });
+        });
+      });
+    });
+  });
+}
+
+/**
  * Migration: Add dismissed_anomalies table for persisting anomaly dismissals
  */
 async function migrateAddDismissedAnomaliesTable(db) {
@@ -2834,6 +3067,188 @@ async function migrateAddDismissedAnomaliesTable(db) {
 }
 
 /**
+ * Migration: Add mortgage_payments table for tracking payment amounts over time
+ * This table stores user-entered payment amounts with effective dates for mortgage insights
+ */
+async function migrateAddMortgagePaymentsTable(db) {
+  const migrationName = 'add_mortgage_payments_v1';
+  
+  // Check if already applied
+  const isApplied = await checkMigrationApplied(db, migrationName);
+  if (isApplied) {
+    logger.info(`Migration "${migrationName}" already applied, skipping`);
+    return;
+  }
+
+  logger.info(`Running migration: ${migrationName}`);
+
+  // Create backup
+  await createBackup();
+
+  return new Promise((resolve, reject) => {
+    db.serialize(() => {
+      db.run('BEGIN TRANSACTION', (err) => {
+        if (err) {
+          return reject(err);
+        }
+
+        // Create mortgage_payments table
+        db.run(`
+          CREATE TABLE IF NOT EXISTS mortgage_payments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            loan_id INTEGER NOT NULL,
+            payment_amount REAL NOT NULL,
+            effective_date TEXT NOT NULL,
+            notes TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (loan_id) REFERENCES loans(id) ON DELETE CASCADE
+          )
+        `, (err) => {
+          if (err) {
+            db.run('ROLLBACK');
+            return reject(err);
+          }
+
+          logger.info('Created mortgage_payments table');
+
+          // Create index for loan_id lookups
+          db.run(`
+            CREATE INDEX IF NOT EXISTS idx_mortgage_payments_loan_id 
+            ON mortgage_payments(loan_id)
+          `, (err) => {
+            if (err) {
+              db.run('ROLLBACK');
+              return reject(err);
+            }
+
+            // Create composite index for loan_id and effective_date
+            db.run(`
+              CREATE INDEX IF NOT EXISTS idx_mortgage_payments_loan_effective_date 
+              ON mortgage_payments(loan_id, effective_date)
+            `, (err) => {
+              if (err) {
+                db.run('ROLLBACK');
+                return reject(err);
+              }
+
+              // Mark migration as applied and commit
+              markMigrationApplied(db, migrationName).then(() => {
+                db.run('COMMIT', (err) => {
+                  if (err) {
+                    db.run('ROLLBACK');
+                    return reject(err);
+                  }
+                  logger.info(`Migration "${migrationName}" completed successfully`);
+                  resolve();
+                });
+              }).catch((err) => {
+                db.run('ROLLBACK');
+                reject(err);
+              });
+            });
+          });
+        });
+      });
+    });
+  });
+}
+
+/**
+ * Migration: Fix invoice file paths from old 'uploads/' structure to new '/config/invoices/' structure
+ * This handles backups created with older versions that stored invoices in backend/uploads/
+ */
+async function migrateFixInvoiceFilePaths(db) {
+  const migrationName = 'fix_invoice_file_paths_v1';
+  
+  const isApplied = await checkMigrationApplied(db, migrationName);
+  if (isApplied) {
+    logger.debug(`Migration "${migrationName}" already applied, skipping`);
+    return;
+  }
+
+  // Check if expense_invoices table exists
+  const tableExists = await new Promise((resolve, reject) => {
+    db.get(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='expense_invoices'",
+      (err, row) => {
+        if (err) reject(err);
+        else resolve(!!row);
+      }
+    );
+  });
+
+  if (!tableExists) {
+    logger.debug('expense_invoices table does not exist, skipping path migration');
+    await markMigrationApplied(db, migrationName);
+    return;
+  }
+
+  // Check if there are any records with old 'uploads/' paths
+  const oldPathCount = await new Promise((resolve, reject) => {
+    db.get(
+      "SELECT COUNT(*) as count FROM expense_invoices WHERE file_path LIKE 'uploads/%'",
+      (err, row) => {
+        if (err) reject(err);
+        else resolve(row ? row.count : 0);
+      }
+    );
+  });
+
+  if (oldPathCount === 0) {
+    logger.debug('No invoice records with old paths found, skipping');
+    await markMigrationApplied(db, migrationName);
+    return;
+  }
+
+  logger.info(`Running migration: ${migrationName} (${oldPathCount} records to update)`);
+
+  return new Promise((resolve, reject) => {
+    db.serialize(() => {
+      db.run('BEGIN TRANSACTION', (err) => {
+        if (err) {
+          return reject(err);
+        }
+
+        // Update file_path from 'uploads/xxx' to just 'xxx' (the filename)
+        // The old format stored 'uploads/hashname' but the new format stores
+        // paths relative to baseInvoiceDir. Since the files are now in the root
+        // of the invoices directory, we just need the filename.
+        db.run(
+          `UPDATE expense_invoices 
+           SET file_path = SUBSTR(file_path, 9) 
+           WHERE file_path LIKE 'uploads/%'`,
+          function(err) {
+            if (err) {
+              db.run('ROLLBACK');
+              return reject(err);
+            }
+
+            const updatedCount = this.changes;
+            logger.info(`Updated ${updatedCount} invoice file paths`);
+
+            db.run('COMMIT', async (err) => {
+              if (err) {
+                db.run('ROLLBACK');
+                return reject(err);
+              }
+
+              try {
+                await markMigrationApplied(db, migrationName);
+                logger.info(`Migration "${migrationName}" completed successfully`);
+                resolve();
+              } catch (markErr) {
+                reject(markErr);
+              }
+            });
+          }
+        );
+      });
+    });
+  });
+}
+
+/**
  * Run all pending migrations
  */
 async function runMigrations(db) {
@@ -2856,6 +3271,9 @@ async function runMigrations(db) {
     await migrateAddInsuranceFieldsToExpenses(db);
     await migrateAddOriginalAmountToExpensePeople(db);
     await migrateAddDismissedAnomaliesTable(db);
+    await migrateAddMortgageFields(db);
+    await migrateAddMortgagePaymentsTable(db);
+    await migrateFixInvoiceFilePaths(db);
     logger.info('All migrations completed');
   } catch (error) {
     logger.error('Migration failed:', error.message);
@@ -2873,5 +3291,7 @@ module.exports = {
   migrateLinkInvoicesToSinglePerson,
   migrateAddInsuranceFieldsToExpenses,
   migrateAddOriginalAmountToExpensePeople,
-  migrateAddDismissedAnomaliesTable
+  migrateAddDismissedAnomaliesTable,
+  migrateAddMortgageFields,
+  migrateAddMortgagePaymentsTable
 };

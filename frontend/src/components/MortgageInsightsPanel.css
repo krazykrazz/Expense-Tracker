@@ -1,0 +1,371 @@
+/**
+ * MortgageInsightsPanel Styles
+ * 
+ * Styles for the mortgage insights panel container and sections.
+ * Uses visual indicators (colors, icons) for positive/negative insights.
+ * 
+ * Requirements: 6.1, 6.2, 6.3, 6.4, 6.5
+ */
+
+.mortgage-insights-panel {
+  background: var(--card-bg, #ffffff);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  margin-top: 20px;
+  overflow: hidden;
+}
+
+/* Panel Header */
+.insights-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.insights-panel-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.insights-icon {
+  font-size: 1.4rem;
+}
+
+.loading-indicator {
+  font-size: 0.85rem;
+  opacity: 0.9;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.9; }
+  50% { opacity: 0.5; }
+}
+
+/* Error Display */
+.insights-panel-error {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  background: #fff5f5;
+  border-left: 4px solid #dc3545;
+  margin: 16px;
+  border-radius: 8px;
+}
+
+.insights-panel-error .error-icon {
+  font-size: 1.5rem;
+}
+
+.insights-panel-error p {
+  margin: 0;
+  flex: 1;
+  color: #dc3545;
+}
+
+.retry-button {
+  padding: 8px 16px;
+  background: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: background 0.2s;
+}
+
+.retry-button:hover {
+  background: #c82333;
+}
+
+/* Insufficient Data Message - Requirement 6.5 */
+.insights-insufficient-data {
+  display: flex;
+  gap: 12px;
+  padding: 20px;
+  background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
+  margin: 16px;
+  border-radius: 10px;
+  border: 1px solid #e1bee7;
+}
+
+.insights-insufficient-data .info-icon {
+  font-size: 2rem;
+  flex-shrink: 0;
+}
+
+.insights-insufficient-data .info-content {
+  flex: 1;
+}
+
+.insights-insufficient-data strong {
+  display: block;
+  color: #5e35b1;
+  margin-bottom: 6px;
+  font-size: 1rem;
+}
+
+.insights-insufficient-data p {
+  margin: 0;
+  color: #666;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+/* Insights Sections Container - Requirement 6.2 */
+.insights-sections {
+  padding: 8px;
+}
+
+/* Section Wrapper */
+.insights-section-wrapper {
+  margin-bottom: 8px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--card-bg, #ffffff);
+  border: 1px solid #e9ecef;
+  transition: box-shadow 0.2s;
+}
+
+.insights-section-wrapper:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.insights-section-wrapper:last-child {
+  margin-bottom: 0;
+}
+
+/* Section Toggle Button */
+.section-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  background: #f8f9fa;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.2s;
+}
+
+.section-toggle:hover {
+  background: #e9ecef;
+}
+
+.section-icon {
+  font-size: 1.2rem;
+}
+
+.section-title {
+  flex: 1;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.section-badge {
+  background: #667eea;
+  color: white;
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-weight: 500;
+}
+
+.toggle-icon {
+  font-size: 0.75rem;
+  color: #666;
+  transition: transform 0.2s;
+}
+
+.insights-section-wrapper.collapsed .toggle-icon {
+  transform: rotate(0deg);
+}
+
+/* Section Content */
+.section-content {
+  padding: 0;
+  animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Last Updated Info */
+.insights-last-updated {
+  padding: 12px 20px;
+  text-align: center;
+  font-size: 0.8rem;
+  color: #888;
+  border-top: 1px solid #e9ecef;
+  background: #fafafa;
+}
+
+/* Visual Indicators - Requirement 6.3 */
+.positive-indicator {
+  color: #28a745;
+}
+
+.negative-indicator {
+  color: #dc3545;
+}
+
+.neutral-indicator {
+  color: #6c757d;
+}
+
+.warning-indicator {
+  color: #ffc107;
+}
+
+/* Loading State - Requirement 6.4 */
+.insights-loading-skeleton {
+  padding: 20px;
+}
+
+.skeleton-line {
+  height: 16px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 4px;
+  margin-bottom: 12px;
+}
+
+.skeleton-line:last-child {
+  margin-bottom: 0;
+}
+
+.skeleton-line.short {
+  width: 60%;
+}
+
+.skeleton-line.medium {
+  width: 80%;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Reduced Motion Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .loading-indicator {
+    animation: none;
+    opacity: 0.7;
+  }
+
+  .section-content {
+    animation: none;
+  }
+
+  .skeleton-line {
+    animation: none;
+    background: #e0e0e0;
+  }
+
+  .toggle-icon {
+    transition: none;
+  }
+
+  .section-toggle,
+  .retry-button,
+  .insights-section-wrapper {
+    transition: none;
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .insights-panel-header {
+    padding: 14px 16px;
+  }
+
+  .insights-panel-header h3 {
+    font-size: 1.1rem;
+  }
+
+  .insights-sections {
+    padding: 6px;
+  }
+
+  .section-toggle {
+    padding: 12px 14px;
+  }
+
+  .section-title {
+    font-size: 0.95rem;
+  }
+
+  .insights-insufficient-data {
+    flex-direction: column;
+    text-align: center;
+    padding: 16px;
+    margin: 12px;
+  }
+
+  .insights-insufficient-data .info-icon {
+    font-size: 2.5rem;
+  }
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+  .mortgage-insights-panel {
+    background: var(--card-bg-dark, #1e1e1e);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  }
+
+  .section-toggle {
+    background: #2d2d2d;
+  }
+
+  .section-toggle:hover {
+    background: #3d3d3d;
+  }
+
+  .section-title {
+    color: #e0e0e0;
+  }
+
+  .insights-section-wrapper {
+    border-color: #3d3d3d;
+  }
+
+  .insights-insufficient-data {
+    background: linear-gradient(135deg, #1a237e 0%, #4a148c 100%);
+    border-color: #7c4dff;
+  }
+
+  .insights-insufficient-data strong {
+    color: #b388ff;
+  }
+
+  .insights-insufficient-data p {
+    color: #ccc;
+  }
+
+  .insights-last-updated {
+    background: #2d2d2d;
+    border-color: #3d3d3d;
+    color: #999;
+  }
+}

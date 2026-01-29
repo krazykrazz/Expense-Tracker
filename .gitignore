@@ -55,3 +55,6 @@ backend/coverage/
 
 # Root config folder (runtime only)
 /config/
+
+# Staging environment data (copy of production for testing)
+/staging-data/

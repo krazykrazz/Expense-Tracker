@@ -1,0 +1,175 @@
+/**
+ * MortgageDetailSection Styles
+ * 
+ * Styles for mortgage-specific detail view components
+ * Requirements: 8.1, 8.2, 8.5, 7.1
+ */
+
+/* Main Section Container */
+.mortgage-detail-section {
+  margin-bottom: var(--spacing-6);
+}
+
+/* Renewal Banner - Requirement 7.1 */
+.mortgage-renewal-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-4);
+  padding: var(--spacing-4) var(--spacing-5);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--spacing-5);
+  animation: slideDown var(--transition-normal);
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.mortgage-renewal-approaching {
+  background-color: var(--color-warning-light, #fff3cd);
+  border: 1px solid var(--color-warning, #ffc107);
+  border-left: 4px solid var(--color-warning, #ffc107);
+}
+
+.mortgage-renewal-overdue {
+  background-color: var(--color-negative-light);
+  border: 1px solid var(--color-negative);
+  border-left: 4px solid var(--color-negative);
+}
+
+.renewal-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.renewal-content {
+  flex: 1;
+}
+
+.renewal-content strong {
+  display: block;
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-1);
+}
+
+.renewal-content p {
+  margin: 0;
+  font-size: var(--text-base);
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* Mortgage Summary Section - Requirements 8.1, 8.2 */
+.mortgage-summary-section {
+  background-color: var(--bg-subtle);
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-5);
+}
+
+.mortgage-summary-section h4 {
+  margin: 0 0 var(--spacing-4) 0;
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  padding-bottom: var(--spacing-3);
+  border-bottom: 1px solid var(--border-muted);
+}
+
+.mortgage-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--spacing-4);
+}
+
+.mortgage-summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+.mortgage-label {
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+  font-weight: var(--font-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.mortgage-value {
+  font-size: var(--text-lg);
+  color: var(--text-primary);
+  font-weight: var(--font-semibold);
+}
+
+.mortgage-value.overdue {
+  color: var(--color-negative);
+}
+
+.mortgage-value.approaching {
+  color: var(--color-warning-dark, #856404);
+}
+
+.mortgage-value.rate-type-fixed {
+  color: var(--color-primary);
+}
+
+.mortgage-value.rate-type-variable {
+  color: var(--color-positive);
+}
+
+.mortgage-value.property-value {
+  color: var(--color-positive);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .mortgage-renewal-banner {
+    flex-direction: column;
+    gap: var(--spacing-2);
+    padding: var(--spacing-3) var(--spacing-4);
+  }
+
+  .renewal-icon {
+    font-size: 20px;
+  }
+
+  .mortgage-summary-section {
+    padding: var(--spacing-4);
+  }
+
+  .mortgage-summary-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-3);
+  }
+
+  .mortgage-label {
+    font-size: var(--text-xs);
+  }
+
+  .mortgage-value {
+    font-size: var(--text-base);
+  }
+}
+
+@media (max-width: 480px) {
+  .mortgage-summary-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .mortgage-renewal-banner {
+    animation: none;
+  }
+}

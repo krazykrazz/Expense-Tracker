@@ -147,11 +147,11 @@ class SpendingPatternsService {
       const stdDev = Math.sqrt(variance);
       const coefficientOfVariation = stdDev / avgExpenses;
       // Lower CV = more consistent = higher score
-      consistencyScore = Math.max(0, 100 - (coefficientOfVariation * 50));
+      consistencyScore = Math.max(0, 100 - (coefficientOfVariation * ANALYTICS_CONFIG.CV_MULTIPLIER));
     }
 
     // Combined score (weighted average)
-    const qualityScore = Math.round((coverageScore * 0.7) + (consistencyScore * 0.3));
+    const qualityScore = Math.round((coverageScore * ANALYTICS_CONFIG.COVERAGE_WEIGHT) + (consistencyScore * ANALYTICS_CONFIG.CONSISTENCY_WEIGHT));
     
     return Math.min(100, Math.max(0, qualityScore));
   }
@@ -335,32 +335,32 @@ class SpendingPatternsService {
     }
 
     // Check for weekly pattern (7 days ± tolerance)
-    const weeklyMatches = intervals.filter(d => Math.abs(d - 7) <= toleranceDays).length;
-    if (weeklyMatches >= intervals.length * 0.6) {
+    const weeklyMatches = intervals.filter(d => Math.abs(d - ANALYTICS_CONFIG.WEEKLY_INTERVAL) <= toleranceDays).length;
+    if (weeklyMatches >= intervals.length * ANALYTICS_CONFIG.PATTERN_MATCH_THRESHOLD) {
       return {
         frequency: PATTERN_FREQUENCIES.WEEKLY,
         occurrenceCount: sortedExpenses.length,
-        avgInterval: 7
+        avgInterval: ANALYTICS_CONFIG.WEEKLY_INTERVAL
       };
     }
 
     // Check for bi-weekly pattern (14 days ± tolerance)
-    const biWeeklyMatches = intervals.filter(d => Math.abs(d - 14) <= toleranceDays).length;
-    if (biWeeklyMatches >= intervals.length * 0.6) {
+    const biWeeklyMatches = intervals.filter(d => Math.abs(d - ANALYTICS_CONFIG.BI_WEEKLY_INTERVAL) <= toleranceDays).length;
+    if (biWeeklyMatches >= intervals.length * ANALYTICS_CONFIG.PATTERN_MATCH_THRESHOLD) {
       return {
         frequency: PATTERN_FREQUENCIES.BI_WEEKLY,
         occurrenceCount: sortedExpenses.length,
-        avgInterval: 14
+        avgInterval: ANALYTICS_CONFIG.BI_WEEKLY_INTERVAL
       };
     }
 
     // Check for monthly pattern (28-31 days ± tolerance)
-    const monthlyMatches = intervals.filter(d => d >= 28 - toleranceDays && d <= 31 + toleranceDays).length;
-    if (monthlyMatches >= intervals.length * 0.6) {
+    const monthlyMatches = intervals.filter(d => d >= ANALYTICS_CONFIG.MONTHLY_INTERVAL_MIN - toleranceDays && d <= ANALYTICS_CONFIG.MONTHLY_INTERVAL_MAX + toleranceDays).length;
+    if (monthlyMatches >= intervals.length * ANALYTICS_CONFIG.PATTERN_MATCH_THRESHOLD) {
       return {
         frequency: PATTERN_FREQUENCIES.MONTHLY,
         occurrenceCount: sortedExpenses.length,
-        avgInterval: 30
+        avgInterval: ANALYTICS_CONFIG.MONTHLY_INTERVAL_AVG
       };
     }
 
@@ -378,10 +378,10 @@ class SpendingPatternsService {
     
     switch (frequency) {
       case PATTERN_FREQUENCIES.WEEKLY:
-        date.setDate(date.getDate() + 7);
+        date.setDate(date.getDate() + ANALYTICS_CONFIG.WEEKLY_INTERVAL);
         break;
       case PATTERN_FREQUENCIES.BI_WEEKLY:
-        date.setDate(date.getDate() + 14);
+        date.setDate(date.getDate() + ANALYTICS_CONFIG.BI_WEEKLY_INTERVAL);
         break;
       case PATTERN_FREQUENCIES.MONTHLY:
         date.setMonth(date.getMonth() + 1);
@@ -403,7 +403,7 @@ class SpendingPatternsService {
     }
 
     // Factor 1: Number of occurrences (more = higher confidence)
-    const occurrenceScore = Math.min(100, (expenses.length / 10) * 100);
+    const occurrenceScore = Math.min(100, (expenses.length / ANALYTICS_CONFIG.OCCURRENCE_DIVISOR) * 100);
 
     // Factor 2: Amount consistency
     const amounts = expenses.map(e => e.amount);
@@ -414,7 +414,7 @@ class SpendingPatternsService {
     const amountScore = Math.max(0, 100 - (amountCV * 100));
 
     // Combined score
-    const confidence = Math.round((occurrenceScore * 0.4) + (amountScore * 0.6));
+    const confidence = Math.round((occurrenceScore * ANALYTICS_CONFIG.OCCURRENCE_WEIGHT) + (amountScore * ANALYTICS_CONFIG.AMOUNT_CONSISTENCY_WEIGHT));
     
     return Math.min(100, Math.max(0, confidence));
   }
@@ -494,7 +494,7 @@ class SpendingPatternsService {
         const topCategories = Object.entries(categoryTotals)
           .map(([category, amount]) => ({ category, amount: parseFloat(amount.toFixed(2)) }))
           .sort((a, b) => b.amount - a.amount)
-          .slice(0, 3);
+          .slice(0, ANALYTICS_CONFIG.TOP_CATEGORIES_LIMIT);
 
         days.push({
           dayName: dayNames[i],

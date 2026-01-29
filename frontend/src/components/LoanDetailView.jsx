@@ -5,6 +5,10 @@ import { getBalanceHistory, createOrUpdateBalance, deleteBalance } from '../serv
 import { validateName, validateAmount } from '../utils/validation';
 import { formatCurrency, formatDate, formatMonthYear } from '../utils/formatters';
 import { createLogger } from '../utils/logger';
+import MortgageDetailSection from './MortgageDetailSection';
+import MortgageInsightsPanel from './MortgageInsightsPanel';
+import EquityChart from './EquityChart';
+import AmortizationChart from './AmortizationChart';
 
 const logger = createLogger('LoanDetailView');
 
@@ -506,7 +510,8 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
                   <div className="loan-summary-item">
                     <span className="loan-summary-label">Type:</span>
                     <span className="loan-summary-value">
-                      {(loanData.loan_type || 'loan') === 'line_of_credit' ? 'Line of Credit' : 'Loan'}
+                      {loanData.loan_type === 'mortgage' ? 'Mortgage' : 
+                       loanData.loan_type === 'line_of_credit' ? 'Line of Credit' : 'Loan'}
                     </span>
                   </div>
                   
@@ -527,8 +532,8 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
                   )}
                 </div>
                 
-                {/* Progress Indicator - Only show for traditional loans */}
-                {loanData.loan_type !== 'line_of_credit' && (
+                {/* Progress Indicator - Only show for traditional loans (not lines of credit or mortgages) */}
+                {loanData.loan_type !== 'line_of_credit' && loanData.loan_type !== 'mortgage' && (
                   <div className="loan-progress-section">
                     <div className="loan-progress-label">
                       Paydown Progress: {paydownPercentage.toFixed(1)}%
@@ -766,6 +771,152 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
               </>
             )}
           </div>
+
+          {/* Mortgage-Specific Sections - Requirements 8.1, 8.2, 8.3, 8.4, 8.5 */}
+          {loanData.loan_type === 'mortgage' && (
+            <>
+              {/* Mortgage Detail Section - Requirements 8.1, 8.2, 8.5, 7.1 */}
+              <MortgageDetailSection mortgage={loanData} />
+
+              {/* Mortgage Insights Panel - Requirements 6.1, 6.2, 6.3, 6.4, 6.5, 8.1 */}
+              <MortgageInsightsPanel 
+                mortgageId={loanData.id}
+                mortgageData={loanData}
+              />
+
+              {/* Equity Chart - Requirements 4.2, 4.3, 8.3 */}
+              {loanData.estimated_property_value && (
+                <EquityChart 
+                  loanId={loanData.id}
+                  estimatedPropertyValue={loanData.estimated_property_value}
+                  currentBalance={currentBalance}
+                />
+              )}
+
+              {/* Amortization Chart - Requirements 5.5, 6.3, 8.4 */}
+              <AmortizationChart 
+                loanId={loanData.id}
+                currentBalance={currentBalance}
+                currentRate={currentRate}
+              />
+
+              {/* Rate History Chart for Variable Rate Mortgages - Requirement 3.3 */}
+              {loanData.rate_type === 'variable' && balanceHistory.length > 0 && (
+                <div className="loan-balance-chart-section">
+                  <div className="loan-balance-chart-header">
+                    <div className="loan-balance-chart-label">
+                      Interest Rate History
+                    </div>
+                    <div className="loan-balance-chart-legend">
+                      <span className="legend-item">
+                        <span className="legend-color" style={{ backgroundColor: '#dc3545' }}></span>
+                        Interest Rate
+                      </span>
+                    </div>
+                  </div>
+                  <div className="loan-balance-line-chart">
+                    {(() => {
+                      const chartData = [...balanceHistory].reverse();
+                      const maxRate = Math.max(...chartData.map(entry => entry.rate), 1);
+                      const minRate = Math.min(...chartData.map(entry => entry.rate), 0);
+                      const rateRange = maxRate - minRate || 1;
+                      
+                      const chartWidth = 600;
+                      const chartHeight = 180;
+                      const padding = { top: 20, right: 50, bottom: 40, left: 50 };
+                      const graphWidth = chartWidth - padding.left - padding.right;
+                      const graphHeight = chartHeight - padding.top - padding.bottom;
+                      
+                      const ratePoints = chartData.map((entry, index) => {
+                        const x = padding.left + (index / (chartData.length - 1 || 1)) * graphWidth;
+                        const y = padding.top + graphHeight - ((entry.rate - minRate) / rateRange) * graphHeight;
+                        return { x, y, entry };
+                      });
+                      
+                      const rateLinePath = ratePoints.map((point, index) => 
+                        `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`
+                      ).join(' ');
+                      
+                      return (
+                        <svg width="100%" height={chartHeight} viewBox={`0 0 ${chartWidth} ${chartHeight}`} preserveAspectRatio="xMidYMid meet">
+                          {[0, 0.25, 0.5, 0.75, 1].map((ratio) => {
+                            const y = padding.top + graphHeight * (1 - ratio);
+                            const value = minRate + rateRange * ratio;
+                            return (
+                              <g key={`rate-grid-${ratio}`}>
+                                <line
+                                  x1={padding.left}
+                                  y1={y}
+                                  x2={chartWidth - padding.right}
+                                  y2={y}
+                                  stroke="#e0e0e0"
+                                  strokeWidth="1"
+                                  strokeDasharray="4,4"
+                                />
+                                <text
+                                  x={padding.left - 10}
+                                  y={y + 4}
+                                  textAnchor="end"
+                                  fontSize="11"
+                                  fill="#dc3545"
+                                >
+                                  {value.toFixed(2)}%
+                                </text>
+                              </g>
+                            );
+                          })}
+                          
+                          <path
+                            d={rateLinePath}
+                            fill="none"
+                            stroke="#dc3545"
+                            strokeWidth="3"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                          
+                          {ratePoints.map((point, index) => (
+                            <circle
+                              key={`rate-point-${index}`}
+                              cx={point.x}
+                              cy={point.y}
+                              r="5"
+                              fill="#dc3545"
+                              stroke="white"
+                              strokeWidth="2"
+                              style={{ cursor: 'pointer' }}
+                            >
+                              <title>
+                                {formatMonthYear(point.entry.year, point.entry.month)}: {point.entry.rate}%
+                              </title>
+                            </circle>
+                          ))}
+                          
+                          {ratePoints.map((point, index) => {
+                            if (chartData.length <= 6 || index % 2 === 0) {
+                              return (
+                                <text
+                                  key={`rate-label-${index}`}
+                                  x={point.x}
+                                  y={chartHeight - padding.bottom + 20}
+                                  textAnchor="middle"
+                                  fontSize="11"
+                                  fill="#666"
+                                >
+                                  {new Date(point.entry.year, point.entry.month - 1).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })}
+                                </text>
+                              );
+                            }
+                            return null;
+                          })}
+                        </svg>
+                      );
+                    })()}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
 
           {/* Balance History Section */}
           <div className="loan-balance-history-section" ref={balanceHistoryRef}>

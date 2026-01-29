@@ -19,3 +19,30 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+
+  # Staging container for testing new versions with production data copy
+  # Usage:
+  #   1. Build with: .\build-and-push.ps1 -Tag staging
+  #   2. Copy a production backup to ./staging-data/
+  #   3. docker-compose --profile staging up expense-tracker-staging
+  #   4. Test at http://localhost:2627
+  #   5. If good, rebuild with -Tag latest and promote to production
+  expense-tracker-staging:
+    image: localhost:5000/expense-tracker:staging
+    container_name: expense-tracker-staging
+    ports:
+      - "2627:2424"
+    volumes:
+      - ./staging-data:/config
+    environment:
+      - LOG_LEVEL=debug
+      - SERVICE_TZ=Etc/UTC
+      - NODE_ENV=staging
+    profiles:
+      - staging
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:2424/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

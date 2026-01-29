@@ -11,6 +11,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.18.2] - 2026-01-28
+
+### Fixed
+- **Invoice PDF Viewing**: Fixed "content is blocked" error when viewing invoice PDFs
+  - Updated Content Security Policy (CSP) to allow blob URLs in frames and objects
+  - PDF invoices now display correctly in the built-in viewer
+
+---
+
 ## [4.18.1] - 2026-01-27
 
 ### Fixed

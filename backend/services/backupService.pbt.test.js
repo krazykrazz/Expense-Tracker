@@ -1497,10 +1497,16 @@ describe('BackupService - Payment Methods Property-Based Tests', () => {
     });
 
     // Arbitrary for generating credit card payment data
+    // Use integer-based date generation to avoid invalid date issues with fc.date()
     const paymentArbitrary = fc.record({
       amount: fc.float({ min: 10, max: 1000, noNaN: true, noDefaultInfinity: true }),
-      payment_date: fc.date({ min: new Date('2020-01-01'), max: new Date('2030-12-31') })
-        .map(d => d.toISOString().split('T')[0]),
+      payment_date: fc.integer({ min: 2020, max: 2030 }).chain(year =>
+        fc.integer({ min: 1, max: 12 }).chain(month =>
+          fc.integer({ min: 1, max: 28 }).map(day =>
+            `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+          )
+        )
+      ),
       notes: fc.option(fc.string({ minLength: 5, maxLength: 50, unit: 'grapheme-ascii' })
         .filter(s => /^[a-zA-Z0-9 ]+$/.test(s)), { nil: undefined })
     });

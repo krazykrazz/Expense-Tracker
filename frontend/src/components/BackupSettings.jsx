@@ -780,6 +780,15 @@ const BackupSettings = () => {
                   <strong>Total Invoices:</strong> {dbStats.invoiceCount.toLocaleString()}
                 </div>
                 <div className="db-stat-item">
+                  <strong>Payment Methods:</strong> {(dbStats.paymentMethodCount || 0).toLocaleString()}
+                </div>
+                <div className="db-stat-item">
+                  <strong>Credit Card Statements:</strong> {(dbStats.statementCount || 0).toLocaleString()}
+                </div>
+                <div className="db-stat-item">
+                  <strong>Credit Card Payments:</strong> {(dbStats.creditCardPaymentCount || 0).toLocaleString()}
+                </div>
+                <div className="db-stat-item">
                   <strong>Database Size:</strong> {dbStats.databaseSizeMB} MB
                 </div>
                 <div className="db-stat-item">

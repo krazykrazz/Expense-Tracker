@@ -9,7 +9,7 @@
     3. Optionally starts the staging container
 
 .PARAMETER BackupFile
-    Path to a backup zip file to restore. If not provided, copies current production data.
+    Path to a backup file (.tar.gz or .zip) to restore. If not provided, copies current production data.
 
 .PARAMETER Start
     If specified, starts the staging container after setup.
@@ -19,8 +19,12 @@
     # Copies current production data to staging
 
 .EXAMPLE
+    .\scripts\setup-staging.ps1 -BackupFile "test-data\expense-tracker-backup-2026-01-29_00-18-35.tar.gz"
+    # Restores a specific tar.gz backup to staging
+
+.EXAMPLE
     .\scripts\setup-staging.ps1 -BackupFile "G:\My Drive\Documents\Financial\Expense Tracker Backups\backup-2026-01-28.zip"
-    # Restores a specific backup to staging
+    # Restores a specific zip backup to staging
 
 .EXAMPLE
     .\scripts\setup-staging.ps1 -Start
@@ -73,8 +77,25 @@ if ($BackupFile) {
     if (Test-Path $tempDir) {
         Remove-Item $tempDir -Recurse -Force
     }
+    New-Item -ItemType Directory -Path $tempDir | Out-Null
     
-    Expand-Archive -Path $BackupFile -DestinationPath $tempDir -Force
+    # Determine archive type and extract accordingly
+    if ($BackupFile -match '\.tar\.gz$') {
+        # Extract tar.gz using tar command
+        Write-Host "  Extracting tar.gz archive..." -ForegroundColor Yellow
+        tar -xzf $BackupFile -C $tempDir
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "Error: Failed to extract tar.gz archive" -ForegroundColor Red
+            exit 1
+        }
+    } elseif ($BackupFile -match '\.zip$') {
+        # Extract zip using Expand-Archive
+        Write-Host "  Extracting zip archive..." -ForegroundColor Yellow
+        Expand-Archive -Path $BackupFile -DestinationPath $tempDir -Force
+    } else {
+        Write-Host "Error: Unsupported archive format. Use .tar.gz or .zip" -ForegroundColor Red
+        exit 1
+    }
     
     # Find and copy database
     $dbFile = Get-ChildItem -Path $tempDir -Filter "expenses.db" -Recurse | Select-Object -First 1
@@ -90,6 +111,16 @@ if ($BackupFile) {
     if ($invoicesDir) {
         Copy-Item "$($invoicesDir.FullName)\*" -Destination "$stagingDir\invoices\" -Recurse -Force
         Write-Host "  Invoices restored" -ForegroundColor Green
+    }
+    
+    # Copy statements if present
+    $statementsDir = Get-ChildItem -Path $tempDir -Directory -Filter "statements" -Recurse | Select-Object -First 1
+    if ($statementsDir) {
+        if (-not (Test-Path "$stagingDir\statements")) {
+            New-Item -ItemType Directory -Path "$stagingDir\statements" | Out-Null
+        }
+        Copy-Item "$($statementsDir.FullName)\*" -Destination "$stagingDir\statements\" -Recurse -Force -ErrorAction SilentlyContinue
+        Write-Host "  Statements restored" -ForegroundColor Green
     }
     
     # Cleanup temp

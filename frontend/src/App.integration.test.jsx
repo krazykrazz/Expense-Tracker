@@ -77,6 +77,24 @@ describe('App Integration Tests - Global Expense Filtering', () => {
           })
         });
       }
+      if (url.includes('/api/payment-methods')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            paymentMethods: [
+              { id: 1, display_name: 'Debit', type: 'debit', is_active: 1 },
+              { id: 2, display_name: 'CIBC MC', type: 'credit_card', is_active: 1 },
+              { id: 3, display_name: 'Cash', type: 'cash', is_active: 1 }
+            ]
+          })
+        });
+      }
+      if (url.includes('/api/people')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([])
+        });
+      }
       if (url.includes('/api/summary')) {
         // Mock summary endpoint
         return Promise.resolve({
@@ -322,6 +340,24 @@ describe('App Integration Tests - Global Expense Filtering', () => {
           json: () => Promise.resolve({
             categories: ['Groceries', 'Gas', 'Dining Out', 'Other']
           })
+        });
+      }
+      if (url.includes('/api/payment-methods')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            paymentMethods: [
+              { id: 1, display_name: 'Debit', type: 'debit', is_active: 1 },
+              { id: 2, display_name: 'CIBC MC', type: 'credit_card', is_active: 1 },
+              { id: 3, display_name: 'Cash', type: 'cash', is_active: 1 }
+            ]
+          })
+        });
+      }
+      if (url.includes('/api/people')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([])
         });
       }
       if (url.includes('/api/summary')) {

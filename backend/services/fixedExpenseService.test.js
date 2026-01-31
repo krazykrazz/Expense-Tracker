@@ -1,16 +1,28 @@
 const fixedExpenseService = require('./fixedExpenseService');
 const fixedExpenseRepository = require('../repositories/fixedExpenseRepository');
+const paymentMethodRepository = require('../repositories/paymentMethodRepository');
 const { validateYearMonth } = require('../utils/validators');
 
 // Mock dependencies
 jest.mock('../repositories/fixedExpenseRepository');
+jest.mock('../repositories/paymentMethodRepository');
 jest.mock('../utils/validators');
+
+// Default mock payment methods for validation
+const mockPaymentMethods = [
+  { id: 1, display_name: 'Cash', type: 'cash' },
+  { id: 2, display_name: 'Debit', type: 'debit' },
+  { id: 3, display_name: 'Cheque', type: 'cheque' },
+  { id: 4, display_name: 'CIBC MC', type: 'credit_card' }
+];
 
 describe('fixedExpenseService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     // Default validator mock to not throw
     validateYearMonth.mockImplementation(() => {});
+    // Default payment methods mock
+    paymentMethodRepository.findAll.mockResolvedValue(mockPaymentMethods);
   });
 
   describe('getMonthlyFixedExpenses', () => {

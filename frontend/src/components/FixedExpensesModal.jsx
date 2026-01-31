@@ -7,12 +7,50 @@ import {
   deleteFixedExpense,
   carryForwardFixedExpenses
 } from '../services/fixedExpenseApi';
+import { getActivePaymentMethods, getPaymentMethod } from '../services/paymentMethodApi';
 import { validateName, validateAmount } from '../utils/validation';
 import { getMonthNameLong } from '../utils/formatters';
-import { CATEGORIES, PAYMENT_METHODS } from '../utils/constants';
+import { CATEGORIES } from '../utils/constants';
 import { createLogger } from '../utils/logger';
 
 const logger = createLogger('FixedExpensesModal');
+
+/**
+ * Group payment methods by type for dropdown display
+ * @param {Array} methods - Array of payment methods
+ * @returns {Object} Methods grouped by type
+ */
+const groupPaymentMethodsByType = (methods) => {
+  const groups = {
+    cash: [],
+    debit: [],
+    cheque: [],
+    credit_card: []
+  };
+  
+  methods.forEach(method => {
+    if (groups[method.type]) {
+      groups[method.type].push(method);
+    }
+  });
+  
+  return groups;
+};
+
+/**
+ * Get display label for payment method type
+ * @param {string} type - Payment method type
+ * @returns {string} Display label
+ */
+const getTypeLabel = (type) => {
+  const labels = {
+    cash: 'Cash',
+    debit: 'Debit',
+    cheque: 'Cheque',
+    credit_card: 'Credit Cards'
+  };
+  return labels[type] || type;
+};
 
 const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
   const [fixedExpenses, setFixedExpenses] = useState([]);
@@ -30,6 +68,15 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
   const [loading, setLoading] = useState(false);
   const [isCarryingForward, setIsCarryingForward] = useState(false);
   const [error, setError] = useState(null);
+  
+  // Payment methods state - fetched from API (Requirements 5.1)
+  const [paymentMethods, setPaymentMethods] = useState([]);
+  const [paymentMethodsLoading, setPaymentMethodsLoading] = useState(true);
+  // Map of payment_method_id to payment method for quick lookup (for inactive method detection)
+  const [paymentMethodsMap, setPaymentMethodsMap] = useState({});
+  // Track inactive payment methods used by fixed expenses (for warning display)
+  const [inactivePaymentMethods, setInactivePaymentMethods] = useState({});
+  
   const [validationErrors, setValidationErrors] = useState({
     addName: '',
     addAmount: '',
@@ -45,8 +92,59 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
   useEffect(() => {
     if (isOpen) {
       fetchFixedExpenses();
+      fetchPaymentMethods();
     }
   }, [isOpen, year, month]);
+
+  // Fetch active payment methods from API (Requirements 5.1)
+  const fetchPaymentMethods = async () => {
+    setPaymentMethodsLoading(true);
+    try {
+      const methods = await getActivePaymentMethods();
+      setPaymentMethods(methods || []);
+      
+      // Build a map for quick lookup
+      const methodsMap = {};
+      (methods || []).forEach(m => {
+        methodsMap[m.id] = m;
+      });
+      setPaymentMethodsMap(methodsMap);
+    } catch (err) {
+      logger.error('Error fetching payment methods:', err);
+      setPaymentMethods([]);
+    } finally {
+      setPaymentMethodsLoading(false);
+    }
+  };
+
+  // Check for inactive payment methods used by fixed expenses (Requirements 5.4)
+  // This runs after both fixed expenses and payment methods are loaded
+  useEffect(() => {
+    const checkInactivePaymentMethods = async () => {
+      if (fixedExpenses.length === 0 || paymentMethodsLoading) return;
+      
+      const inactiveMethods = {};
+      
+      for (const expense of fixedExpenses) {
+        // Check if the expense has a payment_method_id that's not in active methods
+        if (expense.payment_method_id && !paymentMethodsMap[expense.payment_method_id]) {
+          // Fetch the inactive payment method details
+          try {
+            const inactiveMethod = await getPaymentMethod(expense.payment_method_id);
+            if (inactiveMethod) {
+              inactiveMethods[expense.payment_method_id] = inactiveMethod;
+            }
+          } catch (err) {
+            logger.error('Error fetching inactive payment method:', err);
+          }
+        }
+      }
+      
+      setInactivePaymentMethods(inactiveMethods);
+    };
+    
+    checkInactivePaymentMethods();
+  }, [fixedExpenses, paymentMethodsMap, paymentMethodsLoading]);
 
   const fetchFixedExpenses = async () => {
     setLoading(true);
@@ -409,12 +507,29 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
                               value={editPaymentType}
                               onChange={(e) => setEditPaymentType(e.target.value)}
                               className={`fixed-expense-edit-payment ${validationErrors.editPaymentType ? 'input-error' : ''}`}
-                              disabled={loading}
+                              disabled={loading || paymentMethodsLoading}
                             >
                               <option value="">Select Payment Type</option>
-                              {PAYMENT_METHODS.map(method => (
-                                <option key={method} value={method}>{method}</option>
+                              {/* Group payment methods by type */}
+                              {Object.entries(groupPaymentMethodsByType(paymentMethods)).map(([type, methods]) => (
+                                methods.length > 0 && (
+                                  <optgroup key={type} label={getTypeLabel(type)}>
+                                    {methods.map(method => (
+                                      <option key={method.id} value={method.display_name}>
+                                        {method.display_name}
+                                      </option>
+                                    ))}
+                                  </optgroup>
+                                )
                               ))}
+                              {/* Show inactive payment method if editing expense with one */}
+                              {editPaymentType && !paymentMethods.some(m => m.display_name === editPaymentType) && (
+                                <optgroup label="Inactive">
+                                  <option value={editPaymentType} disabled>
+                                    {editPaymentType} (inactive)
+                                  </option>
+                                </optgroup>
+                              )}
                             </select>
                             {validationErrors.editPaymentType && (
                               <span className="validation-error">{validationErrors.editPaymentType}</span>
@@ -454,7 +569,20 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
                         <div className="fixed-expense-display">
                           <span className="fixed-expense-name">{expense.name}</span>
                           <span className="fixed-expense-category">{expense.category || 'Other'}</span>
-                          <span className="fixed-expense-payment">{expense.payment_type || 'Debit'}</span>
+                          <span className={`fixed-expense-payment ${
+                            (expense.payment_method_id && inactivePaymentMethods[expense.payment_method_id]) ||
+                            (expense.payment_type && !paymentMethods.some(m => m.display_name === expense.payment_type))
+                              ? 'inactive-payment-method'
+                              : ''
+                          }`}>
+                            {expense.payment_type || 'Debit'}
+                            {/* Show warning indicator for inactive payment methods (Requirements 5.4) */}
+                            {((expense.payment_method_id && inactivePaymentMethods[expense.payment_method_id]) ||
+                              (expense.payment_type && !paymentMethodsLoading && paymentMethods.length > 0 && 
+                               !paymentMethods.some(m => m.display_name === expense.payment_type))) && (
+                              <span className="inactive-warning" title="This payment method is inactive">⚠️</span>
+                            )}
+                          </span>
                           <span className="fixed-expense-amount">
                             ${parseFloat(expense.amount).toFixed(2)}
                           </span>
@@ -529,11 +657,20 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
                         value={newExpensePaymentType}
                         onChange={(e) => setNewExpensePaymentType(e.target.value)}
                         className={`fixed-expense-add-payment ${validationErrors.addPaymentType ? 'input-error' : ''}`}
-                        disabled={loading}
+                        disabled={loading || paymentMethodsLoading}
                       >
                         <option value="">Select Payment Type</option>
-                        {PAYMENT_METHODS.map(method => (
-                          <option key={method} value={method}>{method}</option>
+                        {/* Group payment methods by type (Requirements 5.1) */}
+                        {Object.entries(groupPaymentMethodsByType(paymentMethods)).map(([type, methods]) => (
+                          methods.length > 0 && (
+                            <optgroup key={type} label={getTypeLabel(type)}>
+                              {methods.map(method => (
+                                <option key={method.id} value={method.display_name}>
+                                  {method.display_name}
+                                </option>
+                              ))}
+                            </optgroup>
+                          )
                         ))}
                       </select>
                       {validationErrors.addPaymentType && (

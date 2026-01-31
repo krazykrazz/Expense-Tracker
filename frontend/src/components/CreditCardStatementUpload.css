@@ -1,0 +1,509 @@
+/* CreditCardStatementUpload Component Styles
+ * Requirements: 3B.3
+ */
+
+.cc-statement-upload-container {
+  background-color: var(--bg-card);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-4);
+  border: 1px solid var(--border-default);
+}
+
+/* Header */
+.cc-statement-upload-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-4);
+  padding-bottom: var(--spacing-3);
+  border-bottom: 1px solid var(--border-default);
+}
+
+.cc-statement-upload-header h3 {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+.cc-statement-card-name {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  background-color: var(--bg-subtle);
+  padding: var(--spacing-1) var(--spacing-2);
+  border-radius: var(--radius-md);
+}
+
+/* Form */
+.cc-statement-upload-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+}
+
+/* Form Fields */
+.cc-statement-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+.cc-statement-label {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-primary);
+}
+
+.cc-statement-label .required {
+  color: var(--color-negative);
+}
+
+.cc-statement-input {
+  padding: var(--spacing-2) var(--spacing-3);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  font-size: var(--text-base);
+  font-family: var(--font-sans);
+  color: var(--text-primary);
+  background-color: var(--bg-card);
+  transition: var(--transition-input);
+}
+
+.cc-statement-input:hover:not(:disabled) {
+  border-color: var(--border-strong);
+}
+
+.cc-statement-input:focus {
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: var(--focus-ring);
+}
+
+.cc-statement-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background-color: var(--bg-muted);
+}
+
+.cc-statement-hint {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+/* Drop Zone */
+.cc-statement-dropzone {
+  border: 2px dashed var(--border-default);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-6);
+  text-align: center;
+  cursor: pointer;
+  transition: var(--transition-all);
+  background-color: var(--bg-subtle);
+  min-height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cc-statement-dropzone:hover:not(.disabled) {
+  border-color: var(--color-primary);
+  background-color: var(--color-primary-light);
+}
+
+.cc-statement-dropzone:focus:not(.disabled) {
+  outline: none;
+  border-color: var(--color-primary);
+  background-color: var(--color-primary-light);
+  box-shadow: var(--focus-ring);
+}
+
+.cc-statement-dropzone.drag-over {
+  border-color: var(--color-primary);
+  background-color: var(--color-primary-light);
+  transform: scale(1.02);
+}
+
+.cc-statement-dropzone.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background-color: var(--bg-muted);
+}
+
+.dropzone-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+
+.upload-icon {
+  font-size: 2rem;
+  opacity: 0.7;
+}
+
+.upload-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+.primary-text {
+  font-size: var(--text-base);
+  font-weight: var(--font-medium);
+  color: var(--text-primary);
+}
+
+.secondary-text {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+.upload-requirements {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: var(--spacing-1);
+}
+
+/* Selected File Display */
+.cc-statement-selected-file {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-3);
+  background-color: var(--color-primary-light);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-md);
+}
+
+.selected-file-info {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  flex: 1;
+  min-width: 0;
+}
+
+.file-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.file-details {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.file-name {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.file-size {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+.clear-file-btn {
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  padding: var(--spacing-1);
+  font-size: var(--text-lg);
+  line-height: 1;
+  border-radius: var(--radius-md);
+  transition: var(--transition-fast);
+}
+
+.clear-file-btn:hover:not(:disabled) {
+  background-color: var(--bg-muted);
+  color: var(--text-primary);
+}
+
+.clear-file-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Statement Period */
+.cc-statement-period {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.period-inputs {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--spacing-3);
+}
+
+.period-field {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+.period-label {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+.period-separator {
+  color: var(--text-tertiary);
+  font-size: var(--text-lg);
+  padding-bottom: var(--spacing-2);
+}
+
+/* Progress Bar */
+.cc-statement-progress {
+  padding: var(--spacing-3);
+  background-color: var(--bg-subtle);
+  border-radius: var(--radius-md);
+}
+
+.cc-statement-progress .progress-bar {
+  width: 100%;
+  height: 8px;
+  background-color: var(--bg-muted);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.cc-statement-progress .progress-fill {
+  height: 100%;
+  background-color: var(--color-primary);
+  transition: width 0.3s ease;
+  border-radius: var(--radius-full);
+}
+
+.cc-statement-progress .progress-text {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  text-align: center;
+  margin-top: var(--spacing-2);
+}
+
+/* Error Display */
+.cc-statement-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-2) var(--spacing-3);
+  background-color: var(--color-negative-light);
+  border: 1px solid #fecaca;
+  border-radius: var(--radius-md);
+}
+
+.cc-statement-error .error-text {
+  font-size: var(--text-sm);
+  color: var(--color-negative-dark);
+  flex: 1;
+}
+
+.cc-statement-error .error-close {
+  background: none;
+  border: none;
+  color: var(--color-negative-dark);
+  cursor: pointer;
+  padding: 0;
+  margin-left: var(--spacing-2);
+  font-size: var(--text-base);
+  line-height: 1;
+  opacity: 0.7;
+  transition: var(--transition-fast);
+}
+
+.cc-statement-error .error-close:hover {
+  opacity: 1;
+}
+
+/* Action Buttons */
+.cc-statement-actions {
+  display: flex;
+  gap: var(--spacing-3);
+  margin-top: var(--spacing-2);
+}
+
+.cc-statement-submit-btn {
+  flex: 1;
+  padding: var(--spacing-3) var(--spacing-4);
+  background-color: var(--color-primary);
+  color: var(--text-inverse);
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: var(--transition-button);
+}
+
+.cc-statement-submit-btn:hover:not(:disabled) {
+  background-color: var(--color-primary-hover);
+  transform: translateY(-1px);
+}
+
+.cc-statement-submit-btn:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
+}
+
+.cc-statement-submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.cc-statement-cancel-btn {
+  padding: var(--spacing-3) var(--spacing-4);
+  background-color: var(--bg-card);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: var(--transition-button);
+}
+
+.cc-statement-cancel-btn:hover:not(:disabled) {
+  background-color: var(--bg-muted);
+  border-color: var(--border-strong);
+}
+
+.cc-statement-cancel-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Mobile Responsive */
+@media (max-width: 600px) {
+  .cc-statement-upload-container {
+    padding: var(--spacing-3);
+  }
+
+  .cc-statement-upload-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-2);
+  }
+
+  .period-inputs {
+    flex-direction: column;
+    gap: var(--spacing-2);
+  }
+
+  .period-separator {
+    display: none;
+  }
+
+  .cc-statement-actions {
+    flex-direction: column;
+  }
+
+  .cc-statement-submit-btn,
+  .cc-statement-cancel-btn {
+    width: 100%;
+  }
+
+  .cc-statement-dropzone {
+    padding: var(--spacing-4);
+    min-height: 100px;
+  }
+}
+
+/* Touch-friendly styles */
+@media (max-width: 768px) and (pointer: coarse) {
+  .cc-statement-input {
+    min-height: 44px;
+    padding: var(--spacing-3);
+  }
+
+  .cc-statement-submit-btn,
+  .cc-statement-cancel-btn {
+    min-height: 48px;
+  }
+
+  .cc-statement-dropzone {
+    min-height: 120px;
+    padding: var(--spacing-6);
+  }
+
+  .clear-file-btn {
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .cc-statement-error .error-close {
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .cc-statement-dropzone,
+  .cc-statement-input,
+  .cc-statement-submit-btn,
+  .cc-statement-cancel-btn,
+  .clear-file-btn,
+  .cc-statement-progress .progress-fill {
+    transition: none;
+  }
+
+  .cc-statement-dropzone.drag-over {
+    transform: none;
+  }
+
+  .cc-statement-submit-btn:hover:not(:disabled) {
+    transform: none;
+  }
+}
+
+/* Focus visible support */
+.cc-statement-dropzone:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.cc-statement-input:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+}
+
+.cc-statement-submit-btn:focus-visible,
+.cc-statement-cancel-btn:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.clear-file-btn:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+}
+
+/* Loading animation */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.cc-statement-progress .progress-text {
+  animation: pulse 1.5s ease-in-out infinite;
+}

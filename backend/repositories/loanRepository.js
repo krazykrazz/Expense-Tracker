@@ -334,8 +334,10 @@ class LoanRepository {
     const db = await getDatabase();
     
     return new Promise((resolve, reject) => {
-      // Create a date string for comparison (YYYY-MM-01)
-      const selectedDate = `${year}-${month.toString().padStart(2, '0')}-01`;
+      // Create a date string for comparison - use last day of month
+      // A loan that starts any day in January should appear in January's summary
+      const lastDayOfMonth = new Date(year, month, 0).getDate();
+      const selectedDate = `${year}-${month.toString().padStart(2, '0')}-${lastDayOfMonth.toString().padStart(2, '0')}`;
       
       const sql = `
         SELECT 

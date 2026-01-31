@@ -1,10 +1,17 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import App from './App';
-import { CATEGORIES, PAYMENT_METHODS } from './utils/constants';
+import { CATEGORIES } from './utils/constants';
 
 // Mock fetch globally
 global.fetch = vi.fn();
+
+// Mock payment methods for testing
+const MOCK_PAYMENT_METHODS = [
+  { id: 1, display_name: 'Cash', type: 'cash', is_active: 1 },
+  { id: 2, display_name: 'Debit', type: 'debit', is_active: 1 },
+  { id: 3, display_name: 'VISA', type: 'credit_card', is_active: 1 }
+];
 
 // Mock SummaryPanel to avoid API calls and rendering issues
 vi.mock('./components/SummaryPanel', () => ({
@@ -29,6 +36,18 @@ describe('App Error Handling and Edge Cases for Filtering', () => {
         return Promise.resolve({
           ok: true,
           json: async () => ({ categories: CATEGORIES })
+        });
+      }
+      if (url.includes('/api/payment-methods')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ paymentMethods: MOCK_PAYMENT_METHODS })
+        });
+      }
+      if (url.includes('/api/people')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ([])
         });
       }
       // Default: return empty expenses
@@ -200,6 +219,18 @@ describe('App Error Handling and Edge Cases for Filtering', () => {
             json: async () => ({ categories: CATEGORIES })
           });
         }
+        if (url.includes('/api/payment-methods')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ paymentMethods: MOCK_PAYMENT_METHODS })
+          });
+        }
+        if (url.includes('/api/people')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ([])
+          });
+        }
         if (url.includes('/api/expenses')) {
           if (shouldFail) {
             // Return error
@@ -225,6 +256,14 @@ describe('App Error Handling and Edge Cases for Filtering', () => {
       // Wait for component to load successfully first (search bar should be visible)
       await waitFor(() => {
         expect(container.querySelector('.search-bar-container')).toBeTruthy();
+      }, { timeout: 3000 });
+
+      // Wait for payment methods to load
+      await waitFor(() => {
+        const methodSelect = container.querySelector('#payment-method-filter');
+        const options = Array.from(methodSelect.options).map(opt => opt.value);
+        const nonEmptyOptions = options.filter(opt => opt !== '');
+        expect(nonEmptyOptions.length).toBeGreaterThan(0);
       }, { timeout: 3000 });
 
       // Now set shouldFail to true so filter change triggers error
@@ -395,6 +434,18 @@ describe('App Error Handling and Edge Cases for Filtering', () => {
             json: async () => ({ categories: CATEGORIES })
           });
         }
+        if (url.includes('/api/payment-methods')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ paymentMethods: MOCK_PAYMENT_METHODS })
+          });
+        }
+        if (url.includes('/api/people')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ([])
+          });
+        }
         return Promise.resolve({
           ok: true,
           json: async () => ([])
@@ -403,8 +454,17 @@ describe('App Error Handling and Edge Cases for Filtering', () => {
 
       const { container } = render(<App />);
 
+      // Wait for payment methods to load
       await waitFor(() => {
         expect(container.querySelector('.search-bar-container')).toBeTruthy();
+      });
+
+      // Wait for payment methods dropdown to be populated
+      await waitFor(() => {
+        const methodSelect = container.querySelector('#payment-method-filter');
+        const options = Array.from(methodSelect.options).map(opt => opt.value);
+        const nonEmptyOptions = options.filter(opt => opt !== '');
+        expect(nonEmptyOptions.length).toBeGreaterThan(0);
       });
 
       const methodSelect = container.querySelector('#payment-method-filter');
@@ -412,10 +472,11 @@ describe('App Error Handling and Edge Cases for Filtering', () => {
       // Get all options from the dropdown
       const options = Array.from(methodSelect.options).map(opt => opt.value);
       
-      // Verify all non-empty options are in the approved PAYMENT_METHODS list
+      // Verify all non-empty options are in the API-fetched payment methods list
       const nonEmptyOptions = options.filter(opt => opt !== '');
+      const expectedMethods = MOCK_PAYMENT_METHODS.map(m => m.display_name);
       nonEmptyOptions.forEach(option => {
-        expect(PAYMENT_METHODS).toContain(option);
+        expect(expectedMethods).toContain(option);
       });
 
       // Verify we can select a valid payment method
@@ -487,6 +548,18 @@ describe('App Error Handling and Edge Cases for Filtering', () => {
             json: async () => ({ categories: CATEGORIES })
           });
         }
+        if (url.includes('/api/payment-methods')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ paymentMethods: MOCK_PAYMENT_METHODS })
+          });
+        }
+        if (url.includes('/api/people')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ([])
+          });
+        }
         return Promise.resolve({
           ok: true,
           json: async () => ([
@@ -501,10 +574,18 @@ describe('App Error Handling and Edge Cases for Filtering', () => {
         expect(container.querySelector('.search-bar-container')).toBeTruthy();
       });
 
+      // Wait for payment methods to load
+      await waitFor(() => {
+        const methodSelect = container.querySelector('#payment-method-filter');
+        const options = Array.from(methodSelect.options).map(opt => opt.value);
+        const nonEmptyOptions = options.filter(opt => opt !== '');
+        expect(nonEmptyOptions.length).toBeGreaterThan(0);
+      });
+
       const categorySelect = container.querySelector('#category-filter');
       const methodSelect = container.querySelector('#payment-method-filter');
 
-      // Rapidly change filters multiple times
+      // Rapidly change filters multiple times (using valid payment methods from mock)
       fireEvent.change(categorySelect, { target: { value: 'Groceries' } });
       fireEvent.change(methodSelect, { target: { value: 'Cash' } });
       fireEvent.change(categorySelect, { target: { value: 'Dining Out' } });
@@ -653,6 +734,18 @@ describe('App Error Handling and Edge Cases for Filtering', () => {
             json: async () => ({ categories: CATEGORIES })
           });
         }
+        if (url.includes('/api/payment-methods')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ paymentMethods: MOCK_PAYMENT_METHODS })
+          });
+        }
+        if (url.includes('/api/people')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ([])
+          });
+        }
         return Promise.resolve({
           ok: true,
           json: async () => ([])
@@ -663,6 +756,14 @@ describe('App Error Handling and Edge Cases for Filtering', () => {
 
       await waitFor(() => {
         expect(container.querySelector('.search-bar-container')).toBeTruthy();
+      }, { timeout: 3000 });
+
+      // Wait for payment methods to load
+      await waitFor(() => {
+        const methodSelect = container.querySelector('#payment-method-filter');
+        const options = Array.from(methodSelect.options).map(opt => opt.value);
+        const nonEmptyOptions = options.filter(opt => opt !== '');
+        expect(nonEmptyOptions.length).toBeGreaterThan(0);
       }, { timeout: 3000 });
 
       // Apply filters

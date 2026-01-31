@@ -17,36 +17,54 @@ describe('Budget Service - End-to-End Integration Tests', () => {
     db = await getDatabase();
   });
 
-  afterEach(async () => {
-    // Clean up test data after each test with retry logic for busy database
-    const cleanupWithRetry = async (retries = 3, delay = 100) => {
-      for (let attempt = 0; attempt < retries; attempt++) {
-        try {
-          await new Promise((resolve, reject) => {
+  // Helper function to run cleanup with retry logic
+  const cleanupWithRetry = async (retries = 5, delay = 200) => {
+    for (let attempt = 0; attempt < retries; attempt++) {
+      try {
+        await new Promise((resolve, reject) => {
+          db.serialize(() => {
             db.run('DELETE FROM budgets WHERE year >= 2089', (err) => {
               if (err) {
                 reject(err);
-              } else {
-                db.run(`DELETE FROM expenses WHERE strftime('%Y', date) >= '2089'`, (err2) => {
-                  if (err2) reject(err2);
+                return;
+              }
+              db.run(`DELETE FROM expenses WHERE strftime('%Y', date) >= '2089'`, (err2) => {
+                if (err2) {
+                  reject(err2);
+                  return;
+                }
+                db.run('DELETE FROM fixed_expenses WHERE year >= 2089', (err3) => {
+                  if (err3) reject(err3);
                   else resolve();
                 });
-              }
+              });
             });
           });
-          return; // Success, exit retry loop
-        } catch (err) {
-          if (err.message && err.message.includes('SQLITE_BUSY') && attempt < retries - 1) {
-            // Wait and retry
-            await new Promise(resolve => setTimeout(resolve, delay * (attempt + 1)));
-          } else {
-            throw err;
-          }
+        });
+        return; // Success, exit retry loop
+      } catch (err) {
+        if (err.message && err.message.includes('SQLITE_BUSY') && attempt < retries - 1) {
+          // Wait and retry
+          await new Promise(resolve => setTimeout(resolve, delay * (attempt + 1)));
+        } else {
+          throw err;
         }
       }
-    };
-    
+    }
+  };
+
+  beforeEach(async () => {
+    // Clean up test data BEFORE each test to ensure clean state
     await cleanupWithRetry();
+    // Add a longer delay to ensure database locks are released
+    await new Promise(resolve => setTimeout(resolve, 200));
+  });
+
+  afterEach(async () => {
+    // Clean up test data after each test with retry logic for busy database
+    await cleanupWithRetry();
+    // Add a longer delay to ensure database locks are released
+    await new Promise(resolve => setTimeout(resolve, 200));
   });
 
   /**
@@ -694,12 +712,15 @@ describe('Budget Service - End-to-End Integration Tests', () => {
       const periodMonths = 3;
 
       // Create budgets for Groceries, Gas, and Other for 3 months
+      // Use serialized operations to avoid database locking
       for (let month = 1; month <= 3; month++) {
         await budgetService.createBudget(year, month, 'Groceries', 500);
         await budgetService.createBudget(year, month, 'Gas', 200);
         await budgetService.createBudget(year, month, 'Other', 300);
+      }
 
-        // Create expenses
+      // Create expenses in a separate loop to avoid interleaving
+      for (let month = 1; month <= 3; month++) {
         const dateStr = `${year}-${String(month).padStart(2, '0')}-15`;
         
         await expenseService.createExpense({

@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { API_ENDPOINTS } from '../config';
 import { getTodayLocalDate } from '../utils/formatters';
-import { PAYMENT_METHODS } from '../utils/constants';
 import { fetchCategorySuggestion } from '../services/categorySuggestionApi';
 import { getCategories } from '../services/categoriesApi';
 import { getPeople } from '../services/peopleApi';
+import { getActivePaymentMethods, getPaymentMethod } from '../services/paymentMethodApi';
 import { createExpense, updateExpense, getExpenseWithPeople, getPlaces } from '../services/expenseApi';
 import { getInvoicesForExpense, updateInvoicePersonLink } from '../services/invoiceApi';
 import { createLogger } from '../utils/logger';
@@ -15,10 +15,15 @@ import './ExpenseForm.css';
 const logger = createLogger('ExpenseForm');
 
 // localStorage key for payment method persistence (Requirements 5.1, 5.3)
-const LAST_PAYMENT_METHOD_KEY = 'expense-tracker-last-payment-method';
+// Now stores payment_method_id instead of method string
+const LAST_PAYMENT_METHOD_KEY = 'expense-tracker-last-payment-method-id';
 
-// Default payment method when no saved value exists (Requirements 5.2)
-const DEFAULT_PAYMENT_METHOD = 'Cash';
+// Legacy localStorage key for migration
+const LEGACY_PAYMENT_METHOD_KEY = 'expense-tracker-last-payment-method';
+
+// Default payment method ID when no saved value exists (Requirements 5.2)
+// ID 1 corresponds to "Cash" in the migrated payment_methods table
+const DEFAULT_PAYMENT_METHOD_ID = 1;
 
 // Future months dropdown options (Requirements 1.1, 1.2, 2.1, 2.2)
 const FUTURE_MONTHS_OPTIONS = [
@@ -69,29 +74,48 @@ const calculateFutureDatePreview = (sourceDate, futureMonths) => {
 };
 
 /**
- * Get the last used payment method from localStorage
- * @returns {string} The last used payment method or default
+ * Get the last used payment method ID from localStorage
+ * Includes migration logic for existing localStorage values (map string to ID)
+ * @param {Array} paymentMethods - Available payment methods for validation/migration
+ * @returns {number|null} The last used payment method ID or null
  */
-const getLastPaymentMethod = () => {
+const getLastPaymentMethodId = (paymentMethods = []) => {
   try {
-    const saved = localStorage.getItem(LAST_PAYMENT_METHOD_KEY);
-    // Validate that the saved method is still a valid option
-    if (saved && PAYMENT_METHODS.includes(saved)) {
-      return saved;
+    // First try the new ID-based key
+    const savedId = localStorage.getItem(LAST_PAYMENT_METHOD_KEY);
+    if (savedId) {
+      const id = parseInt(savedId, 10);
+      // Validate that the ID exists in available payment methods
+      if (paymentMethods.some(pm => pm.id === id)) {
+        return id;
+      }
+    }
+    
+    // Migration: Check for legacy string-based value
+    const legacyMethod = localStorage.getItem(LEGACY_PAYMENT_METHOD_KEY);
+    if (legacyMethod && paymentMethods.length > 0) {
+      // Find the payment method by display_name
+      const matchingMethod = paymentMethods.find(pm => pm.display_name === legacyMethod);
+      if (matchingMethod) {
+        // Migrate to new format
+        localStorage.setItem(LAST_PAYMENT_METHOD_KEY, matchingMethod.id.toString());
+        localStorage.removeItem(LEGACY_PAYMENT_METHOD_KEY);
+        return matchingMethod.id;
+      }
     }
   } catch (error) {
     logger.error('Failed to read payment method from localStorage:', error);
   }
-  return DEFAULT_PAYMENT_METHOD;
+  return null;
 };
 
 /**
- * Save the payment method to localStorage
- * @param {string} method - The payment method to save
+ * Save the payment method ID to localStorage
+ * @param {number} paymentMethodId - The payment method ID to save
  */
-const saveLastPaymentMethod = (method) => {
+const saveLastPaymentMethodId = (paymentMethodId) => {
   try {
-    localStorage.setItem(LAST_PAYMENT_METHOD_KEY, method);
+    localStorage.setItem(LAST_PAYMENT_METHOD_KEY, paymentMethodId.toString());
   } catch (error) {
     logger.error('Failed to save payment method to localStorage:', error);
   }
@@ -106,14 +130,30 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
     notes: expense?.notes || '',
     amount: expense?.amount?.toString() || '',
     type: expense?.type || 'Other',
-    method: expense?.method || getLastPaymentMethod() // Load last used payment method (Requirements 5.1)
+    // Store payment_method_id instead of method string
+    payment_method_id: expense?.payment_method_id || null
   });
+
+  // Posted date state for credit card expenses (Requirements 1.5, 6.3)
+  // Initialize from expense prop when editing
+  const [postedDate, setPostedDate] = useState(expense?.posted_date || '');
+
+  // Payment methods state - fetched from API
+  const [paymentMethods, setPaymentMethods] = useState([]);
+  const [paymentMethodsLoading, setPaymentMethodsLoading] = useState(true);
+  const [paymentMethodsError, setPaymentMethodsError] = useState(null);
+  
+  // Track if the expense being edited has an inactive payment method
+  const [editingInactivePaymentMethod, setEditingInactivePaymentMethod] = useState(null);
 
   // Insurance tracking state for medical expenses (Requirements 1.1, 1.4, 2.1, 3.1, 3.2, 3.3, 3.4, 3.6)
   const [insuranceEligible, setInsuranceEligible] = useState(expense?.insurance_eligible === 1 || false);
   const [claimStatus, setClaimStatus] = useState(expense?.claim_status || 'not_claimed');
   const [originalCost, setOriginalCost] = useState(expense?.original_cost?.toString() || '');
   const [insuranceValidationError, setInsuranceValidationError] = useState('');
+  
+  // Posted date validation error state (Requirements 4.5)
+  const [postedDateError, setPostedDateError] = useState('');
 
   const [message, setMessage] = useState({ text: '', type: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -155,7 +195,7 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
     return timeoutId;
   };
 
-  // Fetch categories, places, people, and invoice data on component mount
+  // Fetch categories, places, people, payment methods, and invoice data on component mount
   useEffect(() => {
     let isMounted = true;
 
@@ -202,6 +242,55 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
       }
     };
 
+    const fetchPaymentMethodsData = async () => {
+      try {
+        setPaymentMethodsLoading(true);
+        setPaymentMethodsError(null);
+        
+        const methods = await getActivePaymentMethods();
+        if (isMounted && methods) {
+          setPaymentMethods(methods);
+          
+          // If editing and the expense has a payment method that's not in active list,
+          // fetch it separately to show in dropdown (disabled)
+          if (isEditing && expense?.payment_method_id) {
+            const isActive = methods.some(m => m.id === expense.payment_method_id);
+            if (!isActive) {
+              try {
+                const inactiveMethod = await getPaymentMethod(expense.payment_method_id);
+                if (isMounted && inactiveMethod) {
+                  setEditingInactivePaymentMethod(inactiveMethod);
+                }
+              } catch (err) {
+                logger.error('Failed to fetch inactive payment method:', err);
+              }
+            }
+          }
+          
+          // Set initial payment method if not editing
+          if (!isEditing && !formData.payment_method_id) {
+            const lastUsedId = getLastPaymentMethodId(methods);
+            if (lastUsedId) {
+              setFormData(prev => ({ ...prev, payment_method_id: lastUsedId }));
+            } else if (methods.length > 0) {
+              // Default to first available method (usually Cash with ID 1)
+              const defaultMethod = methods.find(m => m.id === DEFAULT_PAYMENT_METHOD_ID) || methods[0];
+              setFormData(prev => ({ ...prev, payment_method_id: defaultMethod.id }));
+            }
+          }
+        }
+      } catch (error) {
+        if (isMounted) {
+          logger.error('Failed to fetch payment methods:', error);
+          setPaymentMethodsError('Failed to load payment methods');
+        }
+      } finally {
+        if (isMounted) {
+          setPaymentMethodsLoading(false);
+        }
+      }
+    };
+
     const fetchInvoiceData = async () => {
       // Fetch all invoices if editing a tax-deductible expense (medical or donation)
       if (isEditing && expense?.id && (expense?.type === 'Tax - Medical' || expense?.type === 'Tax - Donation')) {
@@ -241,6 +330,7 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
     fetchCategoriesData();
     fetchPlacesData();
     fetchPeopleData();
+    fetchPaymentMethodsData();
     fetchInvoiceData();
     fetchExpensePeople();
 
@@ -255,10 +345,28 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
       timeoutIdsRef.current.forEach(id => clearTimeout(id));
       timeoutIdsRef.current = [];
     };
-  }, [isEditing, expense?.id, expense?.type]);
+  }, [isEditing, expense?.id, expense?.type, expense?.payment_method_id]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    
+    // Handle payment_method_id as a number
+    if (name === 'payment_method_id') {
+      const newPaymentMethodId = value ? parseInt(value, 10) : null;
+      setFormData(prev => ({
+        ...prev,
+        [name]: newPaymentMethodId
+      }));
+      
+      // Clear posted_date when switching away from credit card (Requirements 6.4)
+      const newPaymentMethod = paymentMethods.find(pm => pm.id === newPaymentMethodId);
+      if (!newPaymentMethod || newPaymentMethod.type !== 'credit_card') {
+        setPostedDate('');
+        setPostedDateError('');
+      }
+      return;
+    }
+    
     setFormData(prev => ({
       ...prev,
       [name]: value
@@ -283,6 +391,13 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
     // Validate insurance amounts when amount changes (Requirement 3.5)
     if (name === 'amount' && insuranceEligible) {
       validateInsuranceAmounts(value, originalCost);
+    }
+    
+    // Re-validate posted_date when transaction date changes (Requirements 4.5)
+    if (name === 'date' && postedDate && value && postedDate < value) {
+      setPostedDateError('Posted date cannot be before transaction date');
+    } else if (name === 'date') {
+      setPostedDateError('');
     }
 
     // Clear suggestion indicator when user manually changes category (Requirements 2.4)
@@ -352,6 +467,20 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
     setInsuranceValidationError('');
   };
 
+  // Handle posted date change for credit card expenses (Requirements 1.5, 6.3)
+  const handlePostedDateChange = (e) => {
+    const value = e.target.value;
+    setPostedDate(value);
+    
+    // Clear validation error when value changes
+    setPostedDateError('');
+    
+    // Validate posted_date >= date if both are set (Requirements 4.5)
+    if (value && formData.date && value < formData.date) {
+      setPostedDateError('Posted date cannot be before transaction date');
+    }
+  };
+
   // Validate insurance amounts (Requirement 3.5)
   const validateInsuranceAmounts = (amount, origCost) => {
     if (!insuranceEligible) {
@@ -390,6 +519,11 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
   const isMedicalExpense = formData.type === 'Tax - Medical';
   const isDonationExpense = formData.type === 'Tax - Donation';
   const isTaxDeductible = isMedicalExpense || isDonationExpense;
+  
+  // Check if selected payment method is a credit card (Requirements 1.1, 6.1, 6.4, 6.5)
+  const selectedPaymentMethod = paymentMethods.find(pm => pm.id === formData.payment_method_id) 
+    || editingInactivePaymentMethod;
+  const isCreditCard = selectedPaymentMethod?.type === 'credit_card';
 
   // Handle invoice upload success (Requirements 1.1, 1.2, 2.1)
   // Updated to support multiple invoices
@@ -534,7 +668,7 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
       setMessage({ text: 'Type is required', type: 'error' });
       return false;
     }
-    if (!formData.method) {
+    if (!formData.payment_method_id) {
       setMessage({ text: 'Payment method is required', type: 'error' });
       return false;
     }
@@ -563,6 +697,13 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
       }
     }
     
+    // Posted date validation for credit card expenses (Requirements 4.5)
+    if (isCreditCard && postedDate && formData.date && postedDate < formData.date) {
+      setMessage({ text: 'Posted date cannot be before transaction date', type: 'error' });
+      setPostedDateError('Posted date cannot be before transaction date');
+      return false;
+    }
+    
     return true;
   };
 
@@ -585,8 +726,11 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
 
     try {
       // Prepare form data with insurance fields for medical expenses (Requirements 1.3, 2.3)
+      // and posted_date for credit card expenses (Requirements 4.1, 4.2)
       const expenseFormData = {
         ...formData,
+        // Add posted_date for credit card expenses (null or empty string becomes null)
+        posted_date: isCreditCard && postedDate ? postedDate : null,
         // Add insurance fields for medical expenses
         ...(isMedicalExpense && {
           insurance_eligible: insuranceEligible,
@@ -691,8 +835,8 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
       }
       
       // Save payment method for next expense entry (Requirements 5.3)
-      if (!isEditing) {
-        saveLastPaymentMethod(formData.method);
+      if (!isEditing && formData.payment_method_id) {
+        saveLastPaymentMethodId(formData.payment_method_id);
       }
       
       // Build success message including future expenses info (Requirements 4.1, 4.2)
@@ -709,7 +853,7 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
       
       if (!isEditing) {
         // Clear form and reset suggestion indicator, but keep the last used payment method (Requirements 5.1)
-        const lastMethod = formData.method;
+        const lastPaymentMethodId = formData.payment_method_id;
         
         // Reset suggestion indicator first to prevent any pending blur handlers from triggering
         setIsCategorySuggested(false);
@@ -720,7 +864,7 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
           notes: '',
           amount: '',
           type: 'Other',
-          method: lastMethod // Pre-select last used payment method for next entry
+          payment_method_id: lastPaymentMethodId // Pre-select last used payment method for next entry
         });
 
         // Clear people selection and invoice state
@@ -734,6 +878,10 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
         setClaimStatus('not_claimed');
         setOriginalCost('');
         setInsuranceValidationError('');
+        
+        // Reset posted date fields
+        setPostedDate('');
+        setPostedDateError('');
         
         // Reset future months to 0 (Requirements 1.7)
         setFutureMonths(0);
@@ -862,21 +1010,121 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
           </div>
         </div>
 
-        {/* Row 3: Payment Method (Requirements 3.2) */}
+        {/* Row 3: Payment Method (Requirements 3.2, 4.1, 4.2, 4.5) */}
         <div className="form-group">
-          <label htmlFor="method">Payment Method *</label>
-          <select
-            id="method"
-            name="method"
-            value={formData.method}
-            onChange={handleChange}
-            required
-          >
-            {PAYMENT_METHODS.map(method => (
-              <option key={method} value={method}>{method}</option>
-            ))}
-          </select>
+          <label htmlFor="payment_method_id">
+            Payment Method *
+            {editingInactivePaymentMethod && (
+              <span className="inactive-warning" title="This payment method is inactive">
+                ⚠️ inactive
+              </span>
+            )}
+          </label>
+          {paymentMethodsLoading ? (
+            <div className="payment-methods-loading">Loading payment methods...</div>
+          ) : paymentMethodsError ? (
+            <div className="payment-methods-error">{paymentMethodsError}</div>
+          ) : paymentMethods.length === 0 && !editingInactivePaymentMethod ? (
+            <div className="payment-methods-empty">
+              <span>No payment methods configured.</span>
+              <button 
+                type="button" 
+                className="create-payment-method-link"
+                onClick={() => {
+                  // Dispatch event to open payment methods modal
+                  window.dispatchEvent(new CustomEvent('openPaymentMethods'));
+                }}
+              >
+                Create one
+              </button>
+            </div>
+          ) : (
+            <select
+              id="payment_method_id"
+              name="payment_method_id"
+              value={formData.payment_method_id || ''}
+              onChange={handleChange}
+              required
+              disabled={paymentMethodsLoading}
+            >
+              <option value="">Select payment method...</option>
+              {/* Group payment methods by type */}
+              {['cash', 'debit', 'cheque', 'credit_card'].map(type => {
+                const methodsOfType = paymentMethods.filter(m => m.type === type);
+                if (methodsOfType.length === 0) return null;
+                
+                const typeLabel = {
+                  'cash': 'Cash',
+                  'debit': 'Debit',
+                  'cheque': 'Cheque',
+                  'credit_card': 'Credit Card'
+                }[type];
+                
+                return (
+                  <optgroup key={type} label={typeLabel}>
+                    {methodsOfType.map(method => (
+                      <option key={method.id} value={method.id}>
+                        {method.display_name}
+                      </option>
+                    ))}
+                  </optgroup>
+                );
+              })}
+              {/* Show inactive payment method when editing (disabled for new selection) */}
+              {editingInactivePaymentMethod && (
+                <optgroup label="Inactive">
+                  <option 
+                    value={editingInactivePaymentMethod.id}
+                    disabled={formData.payment_method_id !== editingInactivePaymentMethod.id}
+                  >
+                    {editingInactivePaymentMethod.display_name} (inactive)
+                  </option>
+                </optgroup>
+              )}
+            </select>
+          )}
         </div>
+
+        {/* Posted Date Field for Credit Card Expenses (Requirements 1.1, 6.1, 6.2, 6.4, 6.5) */}
+        {isCreditCard && (
+          <div className="form-group posted-date-section">
+            <label htmlFor="posted_date">Posted Date (optional)</label>
+            <div className="posted-date-input-wrapper">
+              <input
+                type="date"
+                id="posted_date"
+                name="posted_date"
+                value={postedDate}
+                onChange={handlePostedDateChange}
+                disabled={isSubmitting}
+                className={postedDateError ? 'input-error' : ''}
+              />
+              {postedDate && (
+                <button
+                  type="button"
+                  className="clear-posted-date-btn"
+                  onClick={() => {
+                    setPostedDate('');
+                    setPostedDateError('');
+                  }}
+                  disabled={isSubmitting}
+                  title="Clear posted date"
+                  aria-label="Clear posted date"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+            <small className="form-hint">
+              Leave empty to use transaction date, or set when this posts to your statement
+            </small>
+            {postedDateError && (
+              <div className="posted-date-error">
+                {postedDateError}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* People Selection for Medical Expenses (Requirements 2.1, 2.2, 2.3) */}
         {isMedicalExpense && (

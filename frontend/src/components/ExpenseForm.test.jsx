@@ -19,6 +19,7 @@ import * as peopleApi from '../services/peopleApi';
 import * as expenseApi from '../services/expenseApi';
 import * as categorySuggestionApi from '../services/categorySuggestionApi';
 import * as categoriesApi from '../services/categoriesApi';
+import * as paymentMethodApi from '../services/paymentMethodApi';
 
 vi.mock('../services/peopleApi', () => ({
   getPeople: vi.fn()
@@ -38,6 +39,11 @@ vi.mock('../services/categorySuggestionApi', () => ({
 
 vi.mock('../services/categoriesApi', () => ({
   getCategories: vi.fn()
+}));
+
+vi.mock('../services/paymentMethodApi', () => ({
+  getActivePaymentMethods: vi.fn(),
+  getPaymentMethod: vi.fn()
 }));
 
 vi.mock('../utils/formatters', () => ({
@@ -90,6 +96,12 @@ describe('ExpenseForm - People Selection Enhancement', () => {
     'Other', 'Groceries', 'Gas', 'Dining Out', 'Tax - Medical', 'Tax - Donation'
   ];
 
+  const mockPaymentMethods = [
+    { id: 1, display_name: 'Cash', type: 'cash', is_active: 1 },
+    { id: 2, display_name: 'Credit Card', type: 'credit_card', is_active: 1 },
+    { id: 3, display_name: 'Debit Card', type: 'debit', is_active: 1 }
+  ];
+
   beforeEach(() => {
     vi.clearAllMocks();
     
@@ -132,6 +144,10 @@ describe('ExpenseForm - People Selection Enhancement', () => {
 
     // Mock category suggestion API
     categorySuggestionApi.fetchCategorySuggestion.mockResolvedValue({ category: null });
+
+    // Mock payment methods API
+    paymentMethodApi.getActivePaymentMethods.mockResolvedValue(mockPaymentMethods);
+    paymentMethodApi.getPaymentMethod.mockResolvedValue(mockPaymentMethods[0]);
   });
 
   afterEach(() => {
@@ -179,16 +195,18 @@ describe('ExpenseForm - People Selection Enhancement', () => {
 
     render(<ExpenseForm onExpenseAdded={mockOnExpenseAdded} />);
 
-    // Wait for component to load
+    // Wait for component to load and payment methods to be available
     await waitFor(() => {
       expect(screen.getByLabelText(/type/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/payment method/i)).toBeInTheDocument();
     });
 
     // Fill in required fields
     fireEvent.change(screen.getByLabelText(/date/i), { target: { value: '2025-01-15' } });
     fireEvent.change(screen.getByLabelText(/amount/i), { target: { value: '100.00' } });
     fireEvent.change(screen.getByLabelText(/type/i), { target: { value: 'Tax - Medical' } });
-    fireEvent.change(screen.getByLabelText(/payment method/i), { target: { value: 'Cash' } });
+    // Use payment method ID (1 = Cash)
+    fireEvent.change(screen.getByLabelText(/payment method/i), { target: { value: '1' } });
 
     // Wait for people dropdown to appear
     await waitFor(() => {
@@ -224,16 +242,18 @@ describe('ExpenseForm - People Selection Enhancement', () => {
   it('should trigger allocation modal for multiple people selection', async () => {
     render(<ExpenseForm onExpenseAdded={() => {}} />);
 
-    // Wait for component to load
+    // Wait for component to load and payment methods to be available
     await waitFor(() => {
       expect(screen.getByLabelText(/type/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/payment method/i)).toBeInTheDocument();
     });
 
     // Fill in required fields
     fireEvent.change(screen.getByLabelText(/date/i), { target: { value: '2025-01-15' } });
     fireEvent.change(screen.getByLabelText(/amount/i), { target: { value: '200.00' } });
     fireEvent.change(screen.getByLabelText(/type/i), { target: { value: 'Tax - Medical' } });
-    fireEvent.change(screen.getByLabelText(/payment method/i), { target: { value: 'Cash' } });
+    // Use payment method ID (1 = Cash)
+    fireEvent.change(screen.getByLabelText(/payment method/i), { target: { value: '1' } });
 
     // Wait for people dropdown to appear
     await waitFor(() => {
@@ -267,16 +287,18 @@ describe('ExpenseForm - People Selection Enhancement', () => {
 
     render(<ExpenseForm onExpenseAdded={mockOnExpenseAdded} />);
 
-    // Wait for component to load and set up form for multiple people
+    // Wait for component to load and payment methods to be available
     await waitFor(() => {
       expect(screen.getByLabelText(/type/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/payment method/i)).toBeInTheDocument();
     });
 
     // Fill in required fields
     fireEvent.change(screen.getByLabelText(/date/i), { target: { value: '2025-01-15' } });
     fireEvent.change(screen.getByLabelText(/amount/i), { target: { value: '200.00' } });
     fireEvent.change(screen.getByLabelText(/type/i), { target: { value: 'Tax - Medical' } });
-    fireEvent.change(screen.getByLabelText(/payment method/i), { target: { value: 'Cash' } });
+    // Use payment method ID (1 = Cash)
+    fireEvent.change(screen.getByLabelText(/payment method/i), { target: { value: '1' } });
 
     // Wait for people dropdown and select multiple people
     await waitFor(() => {
@@ -369,16 +391,18 @@ describe('ExpenseForm - People Selection Enhancement', () => {
   it('should validate form correctly with people selection', async () => {
     render(<ExpenseForm onExpenseAdded={() => {}} />);
 
-    // Wait for component to load
+    // Wait for component to load and payment methods to be available
     await waitFor(() => {
       expect(screen.getByLabelText(/type/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/payment method/i)).toBeInTheDocument();
     });
 
     // Fill in required fields for medical expense
     fireEvent.change(screen.getByLabelText(/date/i), { target: { value: '2025-01-15' } });
     fireEvent.change(screen.getByLabelText(/amount/i), { target: { value: '50.00' } });
     fireEvent.change(screen.getByLabelText(/type/i), { target: { value: 'Tax - Medical' } });
-    fireEvent.change(screen.getByLabelText(/payment method/i), { target: { value: 'Cash' } });
+    // Use payment method ID (1 = Cash)
+    fireEvent.change(screen.getByLabelText(/payment method/i), { target: { value: '1' } });
 
     // Submit without selecting people (should still work - people selection is optional)
     fireEvent.submit(screen.getByRole('button', { name: /add expense/i }));
@@ -400,6 +424,12 @@ describe('ExpenseForm - People Selection Enhancement', () => {
 describe('ExpenseForm - Future Months Feature', () => {
   const mockCategories = [
     'Other', 'Groceries', 'Gas', 'Dining Out', 'Tax - Medical', 'Tax - Donation', 'Subscriptions'
+  ];
+
+  const mockPaymentMethods = [
+    { id: 1, display_name: 'Cash', type: 'cash', is_active: 1 },
+    { id: 2, display_name: 'Credit Card', type: 'credit_card', is_active: 1 },
+    { id: 3, display_name: 'Debit Card', type: 'debit', is_active: 1 }
   ];
 
   beforeEach(() => {
@@ -443,6 +473,10 @@ describe('ExpenseForm - Future Months Feature', () => {
 
     // Mock category suggestion API
     categorySuggestionApi.fetchCategorySuggestion.mockResolvedValue({ category: null });
+
+    // Mock payment methods API
+    paymentMethodApi.getActivePaymentMethods.mockResolvedValue(mockPaymentMethods);
+    paymentMethodApi.getPaymentMethod.mockResolvedValue(mockPaymentMethods[0]);
   });
 
   afterEach(() => {
@@ -527,16 +561,18 @@ describe('ExpenseForm - Future Months Feature', () => {
 
     render(<ExpenseForm onExpenseAdded={mockOnExpenseAdded} />);
 
-    // Wait for component to load
+    // Wait for component to load and payment methods to be available
     await waitFor(() => {
       expect(screen.getByLabelText(/type/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/payment method/i)).toBeInTheDocument();
     });
 
     // Fill in required fields
     fireEvent.change(screen.getByLabelText(/date/i), { target: { value: '2025-01-15' } });
     fireEvent.change(screen.getByLabelText(/amount/i), { target: { value: '15.99' } });
     fireEvent.change(screen.getByLabelText(/type/i), { target: { value: 'Subscriptions' } });
-    fireEvent.change(screen.getByLabelText(/payment method/i), { target: { value: 'Credit Card' } });
+    // Use payment method ID (2 = Credit Card)
+    fireEvent.change(screen.getByLabelText(/payment method/i), { target: { value: '2' } });
 
     // Check the future months checkbox and select 2 months
     const futureMonthsSection = document.querySelector('.future-months-section');
@@ -578,16 +614,18 @@ describe('ExpenseForm - Future Months Feature', () => {
 
     render(<ExpenseForm onExpenseAdded={mockOnExpenseAdded} />);
 
-    // Wait for component to load
+    // Wait for component to load and payment methods to be available
     await waitFor(() => {
       expect(screen.getByLabelText(/type/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/payment method/i)).toBeInTheDocument();
     });
 
-    // Fill in required fields
-    fireEvent.change(screen.getByLabelText(/date/i), { target: { value: '2025-01-15' } });
+    // Fill in required fields - use more specific selector for date to avoid matching posted_date
+    fireEvent.change(screen.getByLabelText(/^date \*/i), { target: { value: '2025-01-15' } });
     fireEvent.change(screen.getByLabelText(/amount/i), { target: { value: '15.99' } });
     fireEvent.change(screen.getByLabelText(/type/i), { target: { value: 'Subscriptions' } });
-    fireEvent.change(screen.getByLabelText(/payment method/i), { target: { value: 'Credit Card' } });
+    // Use payment method ID (2 = Credit Card)
+    fireEvent.change(screen.getByLabelText(/payment method/i), { target: { value: '2' } });
 
     // Check the future months checkbox and select 3 months
     const futureMonthsSection = document.querySelector('.future-months-section');
@@ -634,16 +672,18 @@ describe('ExpenseForm - Future Months Feature', () => {
 
     render(<ExpenseForm onExpenseAdded={mockOnExpenseAdded} />);
 
-    // Wait for component to load
+    // Wait for component to load and payment methods to be available
     await waitFor(() => {
       expect(screen.getByLabelText(/type/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/payment method/i)).toBeInTheDocument();
     });
 
-    // Fill in required fields
-    fireEvent.change(screen.getByLabelText(/date/i), { target: { value: '2025-01-15' } });
+    // Fill in required fields - use more specific selector for date to avoid matching posted_date
+    fireEvent.change(screen.getByLabelText(/^date \*/i), { target: { value: '2025-01-15' } });
     fireEvent.change(screen.getByLabelText(/amount/i), { target: { value: '15.99' } });
     fireEvent.change(screen.getByLabelText(/type/i), { target: { value: 'Subscriptions' } });
-    fireEvent.change(screen.getByLabelText(/payment method/i), { target: { value: 'Credit Card' } });
+    // Use payment method ID (2 = Credit Card)
+    fireEvent.change(screen.getByLabelText(/payment method/i), { target: { value: '2' } });
 
     // Check the future months checkbox and select 3 months
     const futureMonthsSection = document.querySelector('.future-months-section');

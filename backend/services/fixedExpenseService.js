@@ -1,17 +1,17 @@
 const fixedExpenseRepository = require('../repositories/fixedExpenseRepository');
+const paymentMethodRepository = require('../repositories/paymentMethodRepository');
 const { validateYearMonth } = require('../utils/validators');
 const { CATEGORIES } = require('../utils/categories');
-
-// Valid payment types for fixed expenses
-const VALID_PAYMENT_TYPES = ['Cash', 'Debit', 'Cheque', 'CIBC MC', 'PCF MC', 'WS VISA', 'VISA'];
 
 class FixedExpenseService {
   /**
    * Validate fixed expense data
+   * Payment type is validated against database-driven payment methods
    * @param {Object} fixedExpense - Fixed expense data to validate
+   * @param {Array} validPaymentTypes - Array of valid payment type display names from database
    * @throws {Error} If validation fails
    */
-  validateFixedExpense(fixedExpense) {
+  validateFixedExpense(fixedExpense, validPaymentTypes = []) {
     const errors = [];
 
     // Required fields validation
@@ -30,11 +30,11 @@ class FixedExpenseService {
       errors.push(`Invalid category. Must be one of: ${CATEGORIES.join(', ')}`);
     }
 
-    // Payment type validation
+    // Payment type validation - validate against database-driven payment methods
     if (!fixedExpense.payment_type || fixedExpense.payment_type.trim() === '') {
       errors.push('Payment type is required');
-    } else if (!VALID_PAYMENT_TYPES.includes(fixedExpense.payment_type)) {
-      errors.push(`Invalid payment type. Must be one of: ${VALID_PAYMENT_TYPES.join(', ')}`);
+    } else if (validPaymentTypes.length > 0 && !validPaymentTypes.includes(fixedExpense.payment_type)) {
+      errors.push(`Invalid payment type. Must be one of: ${validPaymentTypes.join(', ')}`);
     }
 
     // String length validation
@@ -74,6 +74,15 @@ class FixedExpenseService {
     if (errors.length > 0) {
       throw new Error(errors.join('; '));
     }
+  }
+
+  /**
+   * Get valid payment type display names from database
+   * @returns {Promise<Array<string>>} Array of valid payment type display names
+   */
+  async getValidPaymentTypes() {
+    const paymentMethods = await paymentMethodRepository.findAll();
+    return paymentMethods.map(pm => pm.display_name);
   }
 
   /**
@@ -118,8 +127,11 @@ class FixedExpenseService {
       throw new Error('Year and month are required');
     }
 
+    // Get valid payment types from database
+    const validPaymentTypes = await this.getValidPaymentTypes();
+
     // Validate the fixed expense data
-    this.validateFixedExpense(data);
+    this.validateFixedExpense(data, validPaymentTypes);
 
     // Prepare fixed expense object
     const fixedExpense = {
@@ -147,8 +159,11 @@ class FixedExpenseService {
       throw new Error('Fixed expense ID is required');
     }
 
+    // Get valid payment types from database
+    const validPaymentTypes = await this.getValidPaymentTypes();
+
     // Validate the fixed expense data
-    this.validateFixedExpense(data);
+    this.validateFixedExpense(data, validPaymentTypes);
 
     // Prepare updates object
     const updates = {

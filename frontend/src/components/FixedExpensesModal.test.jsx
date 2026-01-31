@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import FixedExpensesModal from './FixedExpensesModal';
 import * as fixedExpenseApi from '../services/fixedExpenseApi';
+import * as paymentMethodApi from '../services/paymentMethodApi';
 
 // Mock the fixed expense API
 vi.mock('../services/fixedExpenseApi', () => ({
@@ -11,6 +12,21 @@ vi.mock('../services/fixedExpenseApi', () => ({
   deleteFixedExpense: vi.fn(),
   carryForwardFixedExpenses: vi.fn()
 }));
+
+// Mock the payment method API
+vi.mock('../services/paymentMethodApi', () => ({
+  getActivePaymentMethods: vi.fn(),
+  getPaymentMethod: vi.fn()
+}));
+
+// Mock payment methods data
+const mockPaymentMethods = [
+  { id: 1, type: 'cash', display_name: 'Cash', is_active: true },
+  { id: 2, type: 'debit', display_name: 'Debit', is_active: true },
+  { id: 3, type: 'cheque', display_name: 'Cheque', is_active: true },
+  { id: 4, type: 'credit_card', display_name: 'CIBC MC', full_name: 'CIBC Mastercard', is_active: true },
+  { id: 5, type: 'credit_card', display_name: 'RBC VISA', full_name: 'RBC VISA', is_active: true }
+];
 
 describe('FixedExpensesModal', () => {
   const mockOnClose = vi.fn();
@@ -35,6 +51,8 @@ describe('FixedExpensesModal', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     fixedExpenseApi.getMonthlyFixedExpenses.mockResolvedValue(mockFixedExpenses);
+    paymentMethodApi.getActivePaymentMethods.mockResolvedValue(mockPaymentMethods);
+    paymentMethodApi.getPaymentMethod.mockResolvedValue(null);
   });
 
   describe('Rendering', () => {

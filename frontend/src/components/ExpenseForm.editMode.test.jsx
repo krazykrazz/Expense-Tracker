@@ -45,6 +45,13 @@ vi.mock('../services/invoiceApi', () => ({
   updateInvoicePersonLink: vi.fn()
 }));
 
+vi.mock('../services/paymentMethodApi', () => ({
+  getActivePaymentMethods: vi.fn(),
+  getPaymentMethod: vi.fn()
+}));
+
+import * as paymentMethodApi from '../services/paymentMethodApi';
+
 vi.mock('../utils/formatters', () => ({
   getTodayLocalDate: () => '2025-01-15'
 }));
@@ -110,6 +117,11 @@ describe('ExpenseForm - Edit Mode with Backend Data Formats', () => {
     categorySuggestionApi.fetchCategorySuggestion.mockResolvedValue({ category: null });
     invoiceApi.getInvoicesForExpense.mockResolvedValue([]);
     expenseApi.getExpenseWithPeople.mockResolvedValue({ people: [] });
+    paymentMethodApi.getActivePaymentMethods.mockResolvedValue([
+      { id: 1, display_name: 'Cash', type: 'cash' },
+      { id: 2, display_name: 'Visa', type: 'credit_card' }
+    ]);
+    paymentMethodApi.getPaymentMethod.mockResolvedValue(null);
   });
 
   afterEach(() => {
@@ -133,7 +145,7 @@ describe('ExpenseForm - Edit Mode with Backend Data Formats', () => {
       place: 'Doctor Office',
       amount: 100,
       type: 'Tax - Medical',
-      method: 'Credit Card',
+      payment_method_id: 2,
       people: backendPeopleFormat
     };
 
@@ -173,7 +185,7 @@ describe('ExpenseForm - Edit Mode with Backend Data Formats', () => {
       place: 'Doctor Office',
       amount: 100,
       type: 'Tax - Medical',
-      method: 'Credit Card',
+      payment_method_id: 2,
       people: backendPeopleFormat
     };
 
@@ -210,7 +222,7 @@ describe('ExpenseForm - Edit Mode with Backend Data Formats', () => {
       place: 'Doctor Office',
       amount: 100,
       type: 'Tax - Medical',
-      method: 'Credit Card'
+      payment_method_id: 2
     };
 
     // Mock that there are existing invoices
@@ -225,7 +237,7 @@ describe('ExpenseForm - Edit Mode with Backend Data Formats', () => {
       place: 'Doctor Office',
       amount: 100,
       type: 'Tax - Medical',
-      method: 'Credit Card'
+      payment_method_id: 2
     });
 
     render(
@@ -274,7 +286,7 @@ describe('ExpenseForm - Edit Mode with Backend Data Formats', () => {
       place: 'Doctor Office',
       amount: 100,
       type: 'Tax - Medical',
-      method: 'Credit Card',
+      payment_method_id: 2,
       people: backendPeopleFormat
     };
 

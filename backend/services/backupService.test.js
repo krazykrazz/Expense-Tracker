@@ -108,10 +108,23 @@ describe('BackupService - Archive Backup', () => {
   test('backup file preserves budget data', async () => {
     const budgetRepository = require('../repositories/budgetRepository');
     
+    // Use a unique year/month combination to avoid conflicts
+    const uniqueYear = 2098;
+    const uniqueMonth = 11;
+    
+    // Clean up any existing test budget first
+    const db = await require('../database/db').getDatabase();
+    await new Promise((resolve, reject) => {
+      db.run('DELETE FROM budgets WHERE year = ? AND month = ? AND category = ?', 
+        [uniqueYear, uniqueMonth, 'Groceries'], 
+        (err) => err ? reject(err) : resolve()
+      );
+    });
+    
     // Create a test budget with valid category
     const testBudget = await budgetRepository.create({
-      year: 2099,
-      month: 12,
+      year: uniqueYear,
+      month: uniqueMonth,
       category: 'Groceries',
       limit: 999.99
     });

@@ -12,12 +12,14 @@ import BudgetManagementModal from './components/BudgetManagementModal';
 import BudgetHistoryView from './components/BudgetHistoryView';
 import PeopleManagementModal from './components/PeopleManagementModal';
 import AnalyticsHubModal from './components/AnalyticsHubModal';
+import PaymentMethodsModal from './components/PaymentMethodsModal';
 import BudgetAlertManager from './components/BudgetAlertManager';
 import FloatingAddButton from './components/FloatingAddButton';
 import EnvironmentBanner from './components/EnvironmentBanner';
 import { API_ENDPOINTS } from './config';
-import { CATEGORIES, PAYMENT_METHODS } from './utils/constants';
+import { CATEGORIES } from './utils/constants';
 import { getPeople } from './services/peopleApi';
+import { getPaymentMethods } from './services/paymentMethodApi';
 import { getMonthlyIncomeSources } from './services/incomeApi';
 import { getBudgets } from './services/budgetApi';
 import { calculateAlerts } from './utils/budgetAlerts';
@@ -41,6 +43,7 @@ function App() {
   const [showBudgetHistory, setShowBudgetHistory] = useState(false);
   const [showPeopleManagement, setShowPeopleManagement] = useState(false);
   const [showAnalyticsHub, setShowAnalyticsHub] = useState(false);
+  const [showPaymentMethods, setShowPaymentMethods] = useState(false);
   const [filterType, setFilterType] = useState('');
   const [filterMethod, setFilterMethod] = useState('');
   const [filterYear, setFilterYear] = useState(''); // Year filter for global search
@@ -56,6 +59,10 @@ function App() {
   // People state management for medical expense tracking
   const [people, setPeople] = useState([]);
   const [peopleRefreshTrigger, setPeopleRefreshTrigger] = useState(0);
+  
+  // Payment methods state for global filtering
+  const [paymentMethods, setPaymentMethods] = useState([]);
+  const [paymentMethodsRefreshTrigger, setPaymentMethodsRefreshTrigger] = useState(0);
 
   /**
    * Global View Mode Determination
@@ -124,6 +131,32 @@ function App() {
       isMounted = false;
     };
   }, [peopleRefreshTrigger]);
+
+  // Fetch payment methods for global filtering (includes inactive for historical data)
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchPaymentMethodsData = async () => {
+      try {
+        // Fetch all payment methods (including inactive) for filtering
+        const methods = await getPaymentMethods();
+        if (isMounted) {
+          // Extract display names for the SearchBar component
+          setPaymentMethods(methods.map(m => m.display_name) || []);
+        }
+      } catch (err) {
+        if (isMounted) {
+          console.error('Error fetching payment methods:', err);
+        }
+      }
+    };
+
+    fetchPaymentMethodsData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [paymentMethodsRefreshTrigger]);
 
   // Fetch monthly income and budget alerts for Analytics Hub integration (Requirement 7.4)
   useEffect(() => {
@@ -209,6 +242,19 @@ function App() {
     
     return () => {
       window.removeEventListener('peopleUpdated', handlePeopleUpdated);
+    };
+  }, []);
+
+  // Listen for openPaymentMethods event (e.g., from ExpenseForm when no payment methods exist)
+  useEffect(() => {
+    const handleOpenPaymentMethods = () => {
+      setShowPaymentMethods(true);
+    };
+
+    window.addEventListener('openPaymentMethods', handleOpenPaymentMethods);
+    
+    return () => {
+      window.removeEventListener('openPaymentMethods', handleOpenPaymentMethods);
     };
   }, []);
 
@@ -405,21 +451,21 @@ function App() {
   /**
    * Filter Method Change Handler
    * 
-   * Updates the payment method filter state with validation.
-   * Validates the selected payment method against the approved PAYMENT_METHODS list
-   * to prevent invalid selections.
+   * Updates the payment method filter state.
+   * Payment methods are now fetched from the API, so validation is done
+   * against the fetched list rather than a hardcoded constant.
    * 
    * @param {string} method - The selected payment method or empty string for "All"
    */
   const handleFilterMethodChange = useCallback((method) => {
-    // Validate payment method against approved list
-    if (method && !PAYMENT_METHODS.includes(method)) {
+    // Validate payment method against API-fetched list
+    if (method && paymentMethods.length > 0 && !paymentMethods.includes(method)) {
       console.warn(`Invalid payment method selected: ${method}. Resetting to empty.`);
       setFilterMethod('');
       return;
     }
     setFilterMethod(method);
-  }, []);
+  }, [paymentMethods]);
 
   /**
    * Filter Year Change Handler
@@ -557,6 +603,14 @@ function App() {
         </div>
         <div className="header-buttons">
           <button 
+            className="payment-methods-button" 
+            onClick={() => setShowPaymentMethods(true)}
+            aria-label="Payment Methods"
+            title="Manage payment methods"
+          >
+            💳 Payment Methods
+          </button>
+          <button 
             className="settings-button" 
             onClick={() => setShowBackupSettings(true)}
             aria-label="Settings"
@@ -642,7 +696,7 @@ function App() {
                 filterMethod={filterMethod}
                 filterYear={filterYear}
                 categories={CATEGORIES}
-                paymentMethods={PAYMENT_METHODS}
+                paymentMethods={paymentMethods}
                 loading={loading}
                 showOnlySearch={true}
               />
@@ -671,7 +725,7 @@ function App() {
                 filterMethod={filterMethod}
                 filterYear={filterYear}
                 categories={CATEGORIES}
-                paymentMethods={PAYMENT_METHODS}
+                paymentMethods={paymentMethods}
                 loading={loading}
                 showOnlyFilters={true}
               />
@@ -784,6 +838,17 @@ function App() {
         />
       )}
 
+      {showPaymentMethods && (
+        <PaymentMethodsModal
+          isOpen={showPaymentMethods}
+          onClose={() => setShowPaymentMethods(false)}
+          onUpdate={() => {
+            setRefreshTrigger(prev => prev + 1);
+            setPaymentMethodsRefreshTrigger(prev => prev + 1);
+          }}
+        />
+      )}
+
       {/* Floating Add Button - Rendered outside content-layout to avoid stacking context issues */}
       <FloatingAddButton
         onAddExpense={() => setShowExpenseForm(true)}
@@ -792,7 +857,7 @@ function App() {
 
       <footer className="App-footer">
         <span className="version">
-          v{versionInfo?.version || '4.18.2'}
+          v{versionInfo?.version || '4.19.0'}
           {versionInfo?.docker && (
             <span className="docker-tag"> (Docker: {versionInfo.docker.tag})</span>
           )}

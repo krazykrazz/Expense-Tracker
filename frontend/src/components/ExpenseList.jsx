@@ -1,7 +1,7 @@
 import { useState, useEffect, memo, useMemo, useCallback } from 'react';
-import { PAYMENT_METHODS } from '../utils/constants';
 import { getCategories } from '../services/categoriesApi';
 import { getPeople } from '../services/peopleApi';
+import { getPaymentMethods } from '../services/paymentMethodApi';
 import { updateInsuranceStatus, deleteExpense as deleteExpenseApi } from '../services/expenseApi';
 import { getInvoicesForExpense, updateInvoicePersonLink } from '../services/invoiceApi';
 import { createLogger } from '../utils/logger';
@@ -99,9 +99,12 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
   const [showEditModal, setShowEditModal] = useState(false);
   const [expenseToEdit, setExpenseToEdit] = useState(null);
   const [categories, setCategories] = useState([]);
+  // Payment methods state - fetched from API (includes inactive for historical filtering)
+  const [paymentMethods, setPaymentMethods] = useState([]);
   // Local filters for monthly view only (don't trigger global view)
   const [localFilterType, setLocalFilterType] = useState('');
   const [localFilterMethod, setLocalFilterMethod] = useState('');
+  const [localFilterMethodType, setLocalFilterMethodType] = useState(''); // Payment method type filter (cash, debit, cheque, credit_card)
   const [localFilterInvoice, setLocalFilterInvoice] = useState(''); // New invoice filter
   const [localFilterInsurance, setLocalFilterInsurance] = useState(''); // Insurance status filter (Requirement 7.4)
   // People selection state for medical expenses
@@ -149,8 +152,25 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
       }
     };
 
+    // Fetch all payment methods (including inactive) for filtering historical data
+    const fetchPaymentMethodsData = async () => {
+      try {
+        // Fetch all payment methods, not just active ones, for historical filtering
+        const methods = await getPaymentMethods();
+        if (isMounted) {
+          setPaymentMethods(methods || []);
+        }
+      } catch (err) {
+        if (isMounted) {
+          logger.error('Error fetching payment methods:', err);
+          setPaymentMethods([]);
+        }
+      }
+    };
+
     fetchCategoriesData();
     fetchPeopleData();
+    fetchPaymentMethodsData();
 
     return () => {
       isMounted = false;
@@ -370,6 +390,14 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
       if (localFilterMethod && expense.method !== localFilterMethod) {
         return false;
       }
+      // Apply local payment method type filter (Requirements 7.3)
+      if (localFilterMethodType) {
+        // Find the payment method to get its type
+        const paymentMethod = paymentMethods.find(pm => pm.display_name === expense.method);
+        if (!paymentMethod || paymentMethod.type !== localFilterMethodType) {
+          return false;
+        }
+      }
       // Apply local invoice filter (only for medical expenses)
       if (localFilterInvoice) {
         // If invoice filter is active, only show tax-deductible expenses (medical and donations)
@@ -405,7 +433,7 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
       }
       return true;
     });
-  }, [expenses, localFilterType, localFilterMethod, localFilterInvoice, localFilterInsurance, invoiceData]);
+  }, [expenses, localFilterType, localFilterMethod, localFilterMethodType, localFilterInvoice, localFilterInsurance, invoiceData, paymentMethods]);
 
   /**
    * Generates informative status messages based on filter state
@@ -436,11 +464,25 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
       }
     };
 
+    /**
+     * Get human-readable payment method type text
+     */
+    const getMethodTypeText = (typeValue) => {
+      switch (typeValue) {
+        case 'cash': return 'Cash';
+        case 'debit': return 'Debit';
+        case 'cheque': return 'Cheque';
+        case 'credit_card': return 'Credit Card';
+        default: return typeValue;
+      }
+    };
+
     if (filteredExpenses.length === 0 && expenses.length > 0) {
       // Expenses exist but all filtered out by local filters
       const activeFilters = [];
       if (localFilterType) activeFilters.push(`category: ${localFilterType}`);
       if (localFilterMethod) activeFilters.push(`payment: ${localFilterMethod}`);
+      if (localFilterMethodType) activeFilters.push(`payment type: ${getMethodTypeText(localFilterMethodType)}`);
       if (localFilterInvoice) {
         const invoiceFilterText = localFilterInvoice === 'with-invoice' ? 'with invoices' : 'without invoices';
         activeFilters.push(`${invoiceFilterText}`);
@@ -458,10 +500,11 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
     }
     
     // Show result count when local filters are active
-    if (localFilterType || localFilterMethod || localFilterInvoice || localFilterInsurance) {
+    if (localFilterType || localFilterMethod || localFilterMethodType || localFilterInvoice || localFilterInsurance) {
       const activeFilters = [];
       if (localFilterType) activeFilters.push(localFilterType);
       if (localFilterMethod) activeFilters.push(localFilterMethod);
+      if (localFilterMethodType) activeFilters.push(getMethodTypeText(localFilterMethodType));
       if (localFilterInvoice) {
         const invoiceFilterText = localFilterInvoice === 'with-invoice' ? 'with invoices' : 'without invoices';
         activeFilters.push(invoiceFilterText);
@@ -506,9 +549,28 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
               title="Filter by payment method (current month only)"
             >
               <option value="">All Methods</option>
-              {PAYMENT_METHODS.map((method) => (
-                <option key={method} value={method}>{method}</option>
+              {paymentMethods.map((method) => (
+                <option 
+                  key={method.id} 
+                  value={method.display_name}
+                  className={method.is_active === 0 ? 'inactive-option' : ''}
+                >
+                  {method.display_name}{method.is_active === 0 ? ' (inactive)' : ''}
+                </option>
               ))}
+            </select>
+            {/* Payment Method Type Filter (Requirement 7.3) */}
+            <select 
+              className="filter-select method-type-filter"
+              value={localFilterMethodType} 
+              onChange={(e) => setLocalFilterMethodType(e.target.value)}
+              title="Filter by payment method type (current month only)"
+            >
+              <option value="">All Types</option>
+              <option value="cash">Cash</option>
+              <option value="debit">Debit</option>
+              <option value="cheque">Cheque</option>
+              <option value="credit_card">Credit Card</option>
             </select>
             <select 
               className="filter-select invoice-filter"
@@ -535,12 +597,13 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
               <option value="paid">Paid</option>
               <option value="denied">Denied</option>
             </select>
-            {(localFilterType || localFilterMethod || localFilterInvoice || localFilterInsurance) && (
+            {(localFilterType || localFilterMethod || localFilterMethodType || localFilterInvoice || localFilterInsurance) && (
               <button 
                 className="clear-filters-btn"
                 onClick={() => {
                   setLocalFilterType('');
                   setLocalFilterMethod('');
+                  setLocalFilterMethodType('');
                   setLocalFilterInvoice('');
                   setLocalFilterInsurance('');
                 }}
@@ -664,7 +727,19 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
                 </td>
                 <td>{expense.type}</td>
                 <td>{expense.week}</td>
-                <td>{expense.method}</td>
+                <td>
+                  <span className={expense.payment_method_is_active === 0 ? 'inactive-payment-method' : ''}>
+                    {expense.method}
+                    {expense.payment_method_is_active === 0 && (
+                      <span 
+                        className="inactive-indicator" 
+                        title="This payment method is inactive"
+                      >
+                        ⚠️
+                      </span>
+                    )}
+                  </span>
+                </td>
                 <td>
                   <div className="action-buttons">
                     <button

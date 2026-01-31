@@ -16,8 +16,6 @@ vi.mock('./config', () => {
       SUGGEST_CATEGORY: `${API_BASE_URL}/api/expenses/suggest-category`,
       PLACE_NAMES_ANALYZE: `${API_BASE_URL}/api/expenses/place-names/analyze`,
       PLACE_NAMES_STANDARDIZE: `${API_BASE_URL}/api/expenses/place-names/standardize`,
-      RECURRING: `${API_BASE_URL}/api/recurring`,
-      RECURRING_BY_ID: (id) => `${API_BASE_URL}/api/recurring/${id}`,
       FIXED_EXPENSES: `${API_BASE_URL}/api/fixed-expenses`,
       FIXED_EXPENSES_BY_MONTH: (year, month) => `${API_BASE_URL}/api/fixed-expenses/${year}/${month}`,
       FIXED_EXPENSES_BY_ID: (id) => `${API_BASE_URL}/api/fixed-expenses/${id}`,
@@ -38,6 +36,9 @@ vi.mock('./config', () => {
       BUDGET_COPY: `${API_BASE_URL}/api/budgets/copy`,
       BUDGET_SUGGEST: `${API_BASE_URL}/api/budgets/suggest`,
       CATEGORIES: `${API_BASE_URL}/api/categories`,
+      PAYMENT_METHODS: `${API_BASE_URL}/api/payment-methods`,
+      PAYMENT_METHOD_ACTIVE: `${API_BASE_URL}/api/payment-methods/active`,
+      PAYMENT_METHOD_BY_ID: (id) => `${API_BASE_URL}/api/payment-methods/${id}`,
       REMINDER_STATUS: (year, month) => `${API_BASE_URL}/api/reminders/status/${year}/${month}`,
       BACKUP_CONFIG: `${API_BASE_URL}/api/backup/config`,
       BACKUP_LIST: `${API_BASE_URL}/api/backup/list`,
@@ -49,10 +50,17 @@ vi.mock('./config', () => {
   };
 });
 
+// Mock payment methods that will be returned by the API
+const MOCK_PAYMENT_METHODS = [
+  { id: 1, display_name: 'Cash', type: 'cash' },
+  { id: 2, display_name: 'Credit Card', type: 'credit_card' },
+  { id: 3, display_name: 'Debit', type: 'debit' }
+];
+
 // Helper to generate large dataset
 const generateExpenses = (count) => {
   const categories = ['Groceries', 'Dining Out', 'Gas', 'Entertainment', 'Utilities'];
-  const methods = ['Credit Card', 'Debit Card', 'Cash'];
+  const paymentMethodIds = [1, 2, 3]; // Cash, Credit Card, Debit
   const places = ['Store A', 'Store B', 'Restaurant C', 'Gas Station D', 'Shop E'];
   
   return Array.from({ length: count }, (_, i) => ({
@@ -62,7 +70,7 @@ const generateExpenses = (count) => {
     notes: `Note ${i}`,
     amount: Math.random() * 500,
     type: categories[i % categories.length],
-    method: methods[i % methods.length],
+    payment_method_id: paymentMethodIds[i % paymentMethodIds.length],
     week: Math.floor((i % 28) / 7) + 1
   }));
 };
@@ -164,6 +172,18 @@ describe('App Performance Tests', () => {
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve([])
+        });
+      }
+      if (urlStr.includes('/api/payment-methods/active')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(MOCK_PAYMENT_METHODS)
+        });
+      }
+      if (urlStr.includes('/api/payment-methods')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ paymentMethods: MOCK_PAYMENT_METHODS })
         });
       }
       if (urlStr.includes('/api/expenses')) {
@@ -272,6 +292,13 @@ describe('App Performance Tests', () => {
       expect(screen.getByRole('table')).toBeInTheDocument();
     }, { timeout: 15000 });
     
+    // Wait for payment methods to load in the dropdown
+    const paymentFilter = screen.getByLabelText(/filter by payment method/i);
+    await waitFor(() => {
+      const options = paymentFilter.querySelectorAll('option');
+      expect(options.length).toBeGreaterThan(1); // More than just "All Payment Methods"
+    }, { timeout: 5000 });
+    
     const startTime = performance.now();
     
     // Rapidly change filters
@@ -280,7 +307,6 @@ describe('App Performance Tests', () => {
     await user.selectOptions(categoryFilter, 'Dining Out');
     await user.selectOptions(categoryFilter, 'Gas');
     
-    const paymentFilter = screen.getByLabelText(/filter by payment method/i);
     await user.selectOptions(paymentFilter, 'Cash');
     await user.selectOptions(paymentFilter, 'Debit');
     
@@ -302,11 +328,17 @@ describe('App Performance Tests', () => {
       expect(screen.getByRole('table')).toBeInTheDocument();
     }, { timeout: 15000 });
     
+    // Wait for payment methods to load in the dropdown
+    const paymentFilter = screen.getByLabelText(/filter by payment method/i);
+    await waitFor(() => {
+      const options = paymentFilter.querySelectorAll('option');
+      expect(options.length).toBeGreaterThan(1); // More than just "All Payment Methods"
+    }, { timeout: 5000 });
+    
     // Apply multiple filters
     const categoryFilter = screen.getByLabelText(/filter by expense category/i);
     await user.selectOptions(categoryFilter, 'Groceries');
     
-    const paymentFilter = screen.getByLabelText(/filter by payment method/i);
     await user.selectOptions(paymentFilter, 'Cash');
     
     const searchInput = screen.getByPlaceholderText(/search by place or notes/i);

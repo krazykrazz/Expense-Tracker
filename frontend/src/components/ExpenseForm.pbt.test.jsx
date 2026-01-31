@@ -3,10 +3,18 @@ import { render, waitFor, fireEvent, cleanup, act } from '@testing-library/react
 import * as fc from 'fast-check';
 import ExpenseForm from './ExpenseForm';
 import { CATEGORIES } from '../../../backend/utils/categories';
-import { PAYMENT_METHODS } from '../utils/constants';
 
 // Mock fetch globally
 global.fetch = vi.fn();
+
+// Mock payment methods for testing (simulating API response)
+const MOCK_PAYMENT_METHODS = [
+  { id: 1, display_name: 'Cash', type: 'cash', is_active: 1 },
+  { id: 2, display_name: 'Debit', type: 'debit', is_active: 1 },
+  { id: 3, display_name: 'VISA', type: 'credit_card', is_active: 1 },
+  { id: 4, display_name: 'Mastercard', type: 'credit_card', is_active: 1 },
+  { id: 5, display_name: 'Cheque', type: 'cheque', is_active: 1 }
+];
 
 // Helper to create a comprehensive mock implementation
 const createMockFetch = (additionalHandlers = {}) => {
@@ -19,6 +27,24 @@ const createMockFetch = (additionalHandlers = {}) => {
           categories: CATEGORIES,
           budgetableCategories: [],
           taxDeductibleCategories: []
+        })
+      });
+    }
+    // Payment methods API (active only)
+    if (url.includes('/api/payment-methods/active')) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({
+          paymentMethods: MOCK_PAYMENT_METHODS
+        })
+      });
+    }
+    // Payment methods API (all)
+    if (url.includes('/api/payment-methods')) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({
+          paymentMethods: MOCK_PAYMENT_METHODS
         })
       });
     }
@@ -124,13 +150,16 @@ describe('ExpenseForm Property-Based Tests', () => {
    * **Validates: Requirements 5.1, 5.3**
    */
   it('Property 5: should persist payment method to localStorage and pre-select on next form open', async () => {
-    // Generator for valid payment methods
-    const validMethodArb = fc.constantFrom(...PAYMENT_METHODS);
+    // Generator for valid payment method IDs (using IDs from mock)
+    const validMethodIdArb = fc.constantFrom(...MOCK_PAYMENT_METHODS.map(m => String(m.id)));
+
+    // The localStorage key used by ExpenseForm (updated to match the new key)
+    const LAST_PAYMENT_METHOD_KEY = 'expense-tracker-last-payment-method-id';
 
     await fc.assert(
       fc.asyncProperty(
-        validMethodArb,
-        async (method) => {
+        validMethodIdArb,
+        async (methodId) => {
           // Clear localStorage before each test
           localStorage.clear();
 
@@ -138,28 +167,37 @@ describe('ExpenseForm Property-Based Tests', () => {
           global.fetch.mockImplementation(createMockFetch({
             '/expenses': () => Promise.resolve({
               ok: true,
-              json: () => Promise.resolve({ id: 1, method })
+              json: () => Promise.resolve({ id: 1, payment_method_id: parseInt(methodId) })
             })
           }));
 
           // Render the first form instance
           const { container, unmount } = render(<ExpenseForm onExpenseAdded={() => {}} />);
 
-          // Wait for categories to be fetched
+          // Wait for categories and payment methods to be fetched
           await waitFor(() => {
             const typeSelect = container.querySelector('select[name="type"]');
             expect(typeSelect).toBeTruthy();
           });
 
+          // Wait for payment methods to load
+          await waitFor(() => {
+            const methodSelect = container.querySelector('select[name="payment_method_id"]');
+            expect(methodSelect).toBeTruthy();
+            // Check that we have more than just the placeholder option
+            const options = methodSelect.querySelectorAll('option');
+            expect(options.length).toBeGreaterThan(1);
+          });
+
           // Fill in required fields
           const dateInput = container.querySelector('input[name="date"]');
           const amountInput = container.querySelector('input[name="amount"]');
-          const methodSelect = container.querySelector('select[name="method"]');
+          const methodSelect = container.querySelector('select[name="payment_method_id"]');
 
           await act(async () => {
             fireEvent.change(dateInput, { target: { value: '2025-01-15' } });
             fireEvent.change(amountInput, { target: { value: '50.00' } });
-            fireEvent.change(methodSelect, { target: { value: method } });
+            fireEvent.change(methodSelect, { target: { value: methodId } });
           });
 
           // Submit the form
@@ -170,9 +208,9 @@ describe('ExpenseForm Property-Based Tests', () => {
 
           // Wait for submission to complete
           await waitFor(() => {
-            // Check that localStorage was updated with the payment method
-            const savedMethod = localStorage.getItem('expense-tracker-last-payment-method');
-            expect(savedMethod).toBe(method);
+            // Check that localStorage was updated with the payment method ID
+            const savedMethod = localStorage.getItem(LAST_PAYMENT_METHOD_KEY);
+            expect(savedMethod).toBe(methodId);
           });
 
           // Wait for any pending state updates before unmount
@@ -186,15 +224,17 @@ describe('ExpenseForm Property-Based Tests', () => {
           // Render a new form instance (simulating opening the form again)
           const { container: newContainer, unmount: unmount2 } = render(<ExpenseForm onExpenseAdded={() => {}} />);
 
-          // Wait for the new form to render
+          // Wait for the new form to render and payment methods to load
           await waitFor(() => {
-            const newMethodSelect = newContainer.querySelector('select[name="method"]');
+            const newMethodSelect = newContainer.querySelector('select[name="payment_method_id"]');
             expect(newMethodSelect).toBeTruthy();
+            const options = newMethodSelect.querySelectorAll('option');
+            expect(options.length).toBeGreaterThan(1);
           });
 
           // Verify the payment method is pre-selected from localStorage
-          const newMethodSelect = newContainer.querySelector('select[name="method"]');
-          expect(newMethodSelect.value).toBe(method);
+          const newMethodSelect = newContainer.querySelector('select[name="payment_method_id"]');
+          expect(newMethodSelect.value).toBe(methodId);
 
           // Wait for any pending state updates before cleanup
           await act(async () => {
@@ -243,8 +283,8 @@ describe('ExpenseForm Property-Based Tests', () => {
     // Generator for valid categories
     const validCategoryArb = fc.constantFrom(...CATEGORIES);
 
-    // Generator for valid payment methods
-    const validMethodArb = fc.constantFrom(...PAYMENT_METHODS);
+    // Generator for valid payment method IDs (using IDs from mock)
+    const validMethodIdArb = fc.constantFrom(...MOCK_PAYMENT_METHODS.map(m => String(m.id)));
 
     // Generator for optional place (can be empty or have value)
     const validPlaceArb = fc.oneof(
@@ -257,26 +297,34 @@ describe('ExpenseForm Property-Based Tests', () => {
         validDateArb,
         validAmountArb,
         validCategoryArb,
-        validMethodArb,
+        validMethodIdArb,
         validPlaceArb,
-        async (date, amount, category, method, place) => {
+        async (date, amount, category, methodId, place) => {
           // Mock the API responses
           global.fetch.mockImplementation(createMockFetch());
 
           // Render the component
           const { container, unmount } = render(<ExpenseForm onExpenseAdded={() => {}} />);
 
-          // Wait for categories to be fetched
+          // Wait for categories and payment methods to be fetched
           await waitFor(() => {
             const typeSelect = container.querySelector('select[name="type"]');
             expect(typeSelect).toBeTruthy();
+          });
+
+          // Wait for payment methods to load
+          await waitFor(() => {
+            const methodSelect = container.querySelector('select[name="payment_method_id"]');
+            expect(methodSelect).toBeTruthy();
+            const options = methodSelect.querySelectorAll('option');
+            expect(options.length).toBeGreaterThan(1);
           });
 
           // Fill in all required fields
           const dateInput = container.querySelector('input[name="date"]');
           const amountInput = container.querySelector('input[name="amount"]');
           const typeSelect = container.querySelector('select[name="type"]');
-          const methodSelect = container.querySelector('select[name="method"]');
+          const methodSelect = container.querySelector('select[name="payment_method_id"]');
           const placeInput = container.querySelector('input[name="place"]');
 
           // Set values using fireEvent wrapped in act
@@ -284,7 +332,7 @@ describe('ExpenseForm Property-Based Tests', () => {
             fireEvent.change(dateInput, { target: { value: date } });
             fireEvent.change(amountInput, { target: { value: amount } });
             fireEvent.change(typeSelect, { target: { value: category } });
-            fireEvent.change(methodSelect, { target: { value: method } });
+            fireEvent.change(methodSelect, { target: { value: methodId } });
             if (place) {
               fireEvent.change(placeInput, { target: { value: place } });
             }

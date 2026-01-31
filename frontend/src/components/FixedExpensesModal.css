@@ -259,6 +259,21 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+/* Inactive payment method warning indicator (Requirements 5.4) */
+.fixed-expense-payment.inactive-payment-method {
+  background-color: #fff8e1;
+  border: 1px dashed #ff9800;
+}
+
+.fixed-expense-payment .inactive-warning {
+  font-size: 0.85em;
+  flex-shrink: 0;
 }
 
 .fixed-expense-amount {

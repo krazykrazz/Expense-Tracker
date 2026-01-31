@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { DB_PATH } = require('../database/db');
-const { getBackupPath, getBackupConfigPath, getInvoicesPath } = require('../config/paths');
+const { getBackupPath, getBackupConfigPath, getInvoicesPath, getStatementsPath } = require('../config/paths');
 const logger = require('../config/logger');
 const archiveUtils = require('../utils/archiveUtils');
 
@@ -147,6 +147,22 @@ class BackupService {
         }
       } else {
         logger.debug('Invoice directory does not exist, skipping in backup');
+      }
+
+      // Include credit card statements directory if it exists and has content
+      const statementsPath = getStatementsPath();
+      if (fs.existsSync(statementsPath)) {
+        const statementContents = this._getDirectoryContents(statementsPath);
+        if (statementContents.length > 0) {
+          entries.push({
+            source: statementsPath,
+            archivePath: 'statements'
+          });
+        } else {
+          logger.debug('Statements directory is empty, skipping in backup');
+        }
+      } else {
+        logger.debug('Statements directory does not exist, skipping in backup');
       }
 
       // Include backup config if it exists
@@ -307,7 +323,7 @@ class BackupService {
 
   /**
    * Restore from an archive backup
-   * Extracts and restores the database, invoice files, and configuration
+   * Extracts and restores the database, invoice files, credit card statements, and configuration
    * @param {string} backupPath - Path to the backup archive file
    * @param {Object} options - Optional parameters
    * @param {boolean} options.skipExtensionCheck - Skip .tar.gz extension check (for temp files from uploads)
@@ -371,6 +387,18 @@ class BackupService {
           logger.debug('No invoices directory found in backup archive');
         }
 
+        // Restore credit card statements (preserving directory structure)
+        const extractedStatementsPath = path.join(tempExtractPath, 'statements');
+        const statementsPath = getStatementsPath();
+        
+        if (fs.existsSync(extractedStatementsPath)) {
+          const statementFilesRestored = await this._restoreDirectory(extractedStatementsPath, statementsPath);
+          filesRestored += statementFilesRestored;
+          logger.info(`Credit card statements restored: ${statementFilesRestored} files`);
+        } else {
+          logger.debug('No statements directory found in backup archive');
+        }
+
         // Restore config
         const extractedConfigPath = path.join(tempExtractPath, 'config', 'backupConfig.json');
         if (fs.existsSync(extractedConfigPath)) {
@@ -388,6 +416,10 @@ class BackupService {
         } else {
           logger.debug('No configuration file found in backup archive');
         }
+
+        // Check if payment method migration is needed
+        // This handles restoring from backups created before the configurable payment methods feature
+        await this._checkAndRunPaymentMethodMigration();
 
         return {
           success: true,
@@ -536,6 +568,74 @@ class BackupService {
     } catch (error) {
       logger.error('Error getting storage stats:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Check if payment method migration is needed and run it if so
+   * This handles restoring from backups created before the configurable payment methods feature
+   * @private
+   */
+  async _checkAndRunPaymentMethodMigration() {
+    try {
+      const { getDatabase, initializeDatabase } = require('../database/db');
+      const { migrateConfigurablePaymentMethods } = require('../database/migrations');
+      
+      // Reinitialize database connection to work with restored database
+      await initializeDatabase();
+      const db = await getDatabase();
+      
+      // Check if payment_methods table exists
+      const tableExists = await new Promise((resolve, reject) => {
+        db.get(
+          "SELECT name FROM sqlite_master WHERE type='table' AND name='payment_methods'",
+          (err, row) => {
+            if (err) reject(err);
+            else resolve(!!row);
+          }
+        );
+      });
+      
+      if (!tableExists) {
+        // Table doesn't exist, need to run migration
+        logger.info('Payment methods table not found in restored database, running migration...');
+        await migrateConfigurablePaymentMethods(db);
+        logger.info('Payment method migration completed after restore');
+        return;
+      }
+      
+      // Check if payment_methods table is empty
+      const paymentMethodCount = await new Promise((resolve, reject) => {
+        db.get('SELECT COUNT(*) as count FROM payment_methods', (err, row) => {
+          if (err) reject(err);
+          else resolve(row ? row.count : 0);
+        });
+      });
+      
+      if (paymentMethodCount === 0) {
+        // Check if expenses exist
+        const expenseCount = await new Promise((resolve, reject) => {
+          db.get('SELECT COUNT(*) as count FROM expenses', (err, row) => {
+            if (err) reject(err);
+            else resolve(row ? row.count : 0);
+          });
+        });
+        
+        if (expenseCount > 0) {
+          // Payment methods table is empty but expenses exist, run migration
+          logger.info('Payment methods table is empty but expenses exist, running migration...');
+          await migrateConfigurablePaymentMethods(db);
+          logger.info('Payment method migration completed after restore');
+        } else {
+          logger.debug('Both payment_methods and expenses tables are empty, skipping migration');
+        }
+      } else {
+        logger.debug('Payment methods already exist in restored database, skipping migration');
+      }
+    } catch (error) {
+      logger.error('Error checking/running payment method migration:', error);
+      // Don't throw - migration failure shouldn't fail the entire restore
+      // The user can manually run migrations if needed
     }
   }
 }

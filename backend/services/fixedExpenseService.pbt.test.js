@@ -3,6 +3,9 @@ const { pbtOptions } = require('../test/pbtArbitraries');
 const fixedExpenseService = require('./fixedExpenseService');
 const { CATEGORIES } = require('../utils/categories');
 
+// Valid payment types for testing (simulating database-driven payment methods)
+const VALID_PAYMENT_TYPES = ['Cash', 'Debit', 'Cheque', 'CIBC MC', 'PCF MC', 'WS VISA', 'VISA'];
+
 describe('FixedExpenseService Property-Based Tests', () => {
   describe('Validation Properties', () => {
     /**
@@ -16,7 +19,7 @@ describe('FixedExpenseService Property-Based Tests', () => {
           fc.string().filter(str => !CATEGORIES.includes(str)),
           fc.string({ minLength: 1, maxLength: 100 }),
           fc.double({ min: 0, max: 10000, noNaN: true }),
-          fc.constantFrom(...['Cash', 'Debit', 'Cheque', 'CIBC MC', 'PCF MC', 'WS VISA', 'VISA']),
+          fc.constantFrom(...VALID_PAYMENT_TYPES),
           (invalidCategory, name, amount, paymentType) => {
             const fixedExpense = {
               name,
@@ -26,7 +29,7 @@ describe('FixedExpenseService Property-Based Tests', () => {
             };
 
             expect(() => {
-              fixedExpenseService.validateFixedExpense(fixedExpense);
+              fixedExpenseService.validateFixedExpense(fixedExpense, VALID_PAYMENT_TYPES);
             }).toThrow();
           }
         ),
@@ -39,12 +42,10 @@ describe('FixedExpenseService Property-Based Tests', () => {
      * Validates: Requirements 2.2
      */
     test('Property 3: Payment type validation rejects invalid payment types', () => {
-      const validPaymentTypes = ['Cash', 'Debit', 'Cheque', 'CIBC MC', 'PCF MC', 'WS VISA', 'VISA'];
-      
       fc.assert(
         fc.property(
           // Generate strings that are NOT in the valid payment types list
-          fc.string().filter(str => !validPaymentTypes.includes(str)),
+          fc.string().filter(str => !VALID_PAYMENT_TYPES.includes(str)),
           fc.string({ minLength: 1, maxLength: 100 }),
           fc.double({ min: 0, max: 10000, noNaN: true }),
           fc.constantFrom(...CATEGORIES),
@@ -57,7 +58,7 @@ describe('FixedExpenseService Property-Based Tests', () => {
             };
 
             expect(() => {
-              fixedExpenseService.validateFixedExpense(fixedExpense);
+              fixedExpenseService.validateFixedExpense(fixedExpense, VALID_PAYMENT_TYPES);
             }).toThrow();
           }
         ),
@@ -76,7 +77,7 @@ describe('FixedExpenseService Property-Based Tests', () => {
           fc.constantFrom('', '   ', '\t', '\n', '  \t  '),
           fc.string({ minLength: 1, maxLength: 100 }),
           fc.double({ min: 0, max: 10000, noNaN: true }),
-          fc.constantFrom(...['Cash', 'Debit', 'Cheque', 'CIBC MC', 'PCF MC', 'WS VISA', 'VISA']),
+          fc.constantFrom(...VALID_PAYMENT_TYPES),
           (emptyCategory, name, amount, paymentType) => {
             const fixedExpense = {
               name,
@@ -86,7 +87,7 @@ describe('FixedExpenseService Property-Based Tests', () => {
             };
 
             expect(() => {
-              fixedExpenseService.validateFixedExpense(fixedExpense);
+              fixedExpenseService.validateFixedExpense(fixedExpense, VALID_PAYMENT_TYPES);
             }).toThrow(/Category is required/);
           }
         ),
@@ -115,7 +116,7 @@ describe('FixedExpenseService Property-Based Tests', () => {
             };
 
             expect(() => {
-              fixedExpenseService.validateFixedExpense(fixedExpense);
+              fixedExpenseService.validateFixedExpense(fixedExpense, VALID_PAYMENT_TYPES);
             }).toThrow(/Payment type is required/);
           }
         ),
@@ -141,7 +142,7 @@ describe('FixedExpenseService Property-Based Tests', () => {
               name: fc.string({ minLength: 1, maxLength: 100 }),
               amount: fc.double({ min: 0.01, max: 10000, noNaN: true }).map(n => Math.round(n * 100) / 100),
               category: fc.constantFrom(...CATEGORIES),
-              payment_type: fc.constantFrom(...['Cash', 'Debit', 'Cheque', 'CIBC MC', 'PCF MC', 'WS VISA', 'VISA'])
+              payment_type: fc.constantFrom(...VALID_PAYMENT_TYPES)
             }),
             { minLength: 1, maxLength: 5 }
           ),

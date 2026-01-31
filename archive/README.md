@@ -1,7 +1,7 @@
 # Project Archive
 
 **Created:** 2025-11-24  
-**Last Updated:** 2026-01-28
+**Last Updated:** 2026-01-30
 
 This archive contains historical documentation and scripts that have served their purpose but are retained for reference.
 
@@ -60,13 +60,13 @@ Spec update summaries and cleanup documentation:
 - Cleanup analyses
 - Historical spec changes
 
-### specs/ (Updated - Jan 22, 2026)
+### specs/ (Updated - Jan 30, 2026)
 Completed feature specifications that have been fully implemented:
-- 30 archived spec directories for completed features
+- 34 archived spec directories for completed features
 - Includes deprecated features (recurring-expenses)
 - Infrastructure specs (code-optimization, containerization-optimization)
-- All major feature implementations from v3.0.0 through v4.15.0
-- **Latest:** Added expense-form-consolidation (v4.15.x)
+- All major feature implementations from v3.0.0 through v4.20.0
+- **Latest:** Added configurable-payment-methods, credit-card-posted-date (v4.20.0)
 
 ### test-scripts/ (Nov 24, 2025)
 One-time test scripts used during feature development:
@@ -228,6 +228,13 @@ Copy-Item archive/[subfolder]/[filename] ./
     - restoreLoanData.js (one-time data recovery script from Nov 2025)
   - **Result:** .kiro/specs/ is now empty (no active specs)
   - **Total archived specs:** 32 complete feature specifications
+
+- **2026-01-30:** Feature branch cleanup - Payment methods & posted date (2 items)
+  - **Archived 2 completed specs** from .kiro/specs/ to archive/specs/:
+    - configurable-payment-methods (v4.20.0 - database-driven payment method management with credit card tracking)
+    - credit-card-posted-date (v4.20.0 - optional posted date for credit card balance calculations)
+  - **Result:** .kiro/specs/ now contains only 1 active spec (mortgage-payment-date-tracking)
+  - **Total archived specs:** 34 complete feature specifications
 
 ## Next Review
 

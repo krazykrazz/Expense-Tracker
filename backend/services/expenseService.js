@@ -2,13 +2,15 @@ const expenseRepository = require('../repositories/expenseRepository');
 const fixedExpenseRepository = require('../repositories/fixedExpenseRepository');
 const expensePeopleRepository = require('../repositories/expensePeopleRepository');
 const peopleRepository = require('../repositories/peopleRepository');
+const paymentMethodRepository = require('../repositories/paymentMethodRepository');
 const loanService = require('./loanService');
 const investmentService = require('./investmentService');
 const { getDatabase } = require('../database/db');
 const { calculateWeek } = require('../utils/dateUtils');
 const { CATEGORIES, BUDGETABLE_CATEGORIES } = require('../utils/categories');
 const { validateYearMonth } = require('../utils/validators');
-const { PAYMENT_METHODS } = require('../utils/constants');
+// Note: PAYMENT_METHODS constant is deprecated. Payment methods are now stored in the database.
+// See paymentMethodRepository for database-driven payment method management.
 const budgetEvents = require('../events/budgetEvents');
 const logger = require('../config/logger');
 
@@ -34,7 +36,9 @@ class ExpenseService {
       errors.push('Type is required');
     }
 
-    if (!expense.method) {
+    // Payment method validation - support both payment_method_id and method string
+    // payment_method_id takes precedence if both are provided
+    if (!expense.payment_method_id && !expense.method) {
       errors.push('Payment method is required');
     }
 
@@ -59,10 +63,11 @@ class ExpenseService {
       errors.push(`Type must be one of: ${CATEGORIES.join(', ')}`);
     }
 
-    // Method validation
-    if (expense.method && !PAYMENT_METHODS.includes(expense.method)) {
-      errors.push(`Payment method must be one of: ${PAYMENT_METHODS.join(', ')}`);
-    }
+    // Method validation is now handled by _resolvePaymentMethod which queries the database
+    // The PAYMENT_METHODS constant is deprecated and only kept for backward compatibility
+    // with legacy test files. New payment methods can be added via the API.
+    // Note: We no longer validate against the hardcoded list here since users can
+    // create custom payment methods. The actual validation happens in _resolvePaymentMethod.
 
     // String length validation
     if (expense.place && expense.place.length > 200) {
@@ -86,6 +91,30 @@ class ExpenseService {
   isValidDate(dateString) {
     const date = new Date(dateString);
     return date instanceof Date && !isNaN(date) && dateString.match(/^\d{4}-\d{2}-\d{2}$/);
+  }
+
+  /**
+   * Validate posted_date field for credit card expenses
+   * Posted date is optional but if provided must be a valid date >= transaction date
+   * @param {Object} expense - Expense data with date and optional posted_date
+   * @throws {Error} If validation fails
+   * _Requirements: 4.4, 4.5, 4.6, 4.7_
+   */
+  validatePostedDate(expense) {
+    // NULL, undefined, or empty string are all valid (means "use transaction date")
+    if (expense.posted_date === undefined || expense.posted_date === null || expense.posted_date === '') {
+      return;
+    }
+
+    // Validate format is YYYY-MM-DD
+    if (!this.isValidDate(expense.posted_date)) {
+      throw new Error('Posted date must be a valid date in YYYY-MM-DD format');
+    }
+
+    // Validate posted_date >= date (transaction date)
+    if (expense.date && expense.posted_date < expense.date) {
+      throw new Error('Posted date cannot be before transaction date');
+    }
   }
 
   /**
@@ -379,6 +408,116 @@ class ExpenseService {
   }
 
   /**
+   * Resolve payment method from either payment_method_id or method string
+   * Returns both the payment_method_id and display_name (method string)
+   * @param {Object} expenseData - Expense data with payment_method_id or method
+   * @returns {Promise<Object>} { payment_method_id, method, paymentMethod }
+   * @private
+   * _Requirements: 10.1, 10.4_
+   */
+  async _resolvePaymentMethod(expenseData) {
+    // If payment_method_id is provided, use it directly
+    if (expenseData.payment_method_id) {
+      const paymentMethod = await paymentMethodRepository.findById(expenseData.payment_method_id);
+      if (!paymentMethod) {
+        throw new Error(`Payment method with ID ${expenseData.payment_method_id} not found`);
+      }
+      return {
+        payment_method_id: paymentMethod.id,
+        method: paymentMethod.display_name,
+        paymentMethod
+      };
+    }
+
+    // Backward compatibility: if method string is provided, look up the payment method
+    if (expenseData.method) {
+      const paymentMethod = await paymentMethodRepository.findByDisplayName(expenseData.method);
+      if (paymentMethod) {
+        return {
+          payment_method_id: paymentMethod.id,
+          method: paymentMethod.display_name,
+          paymentMethod
+        };
+      }
+      // If no payment method found by display name, allow the string for backward compatibility
+      // This handles cases where the payment_methods table hasn't been migrated yet
+      return {
+        payment_method_id: null,
+        method: expenseData.method,
+        paymentMethod: null
+      };
+    }
+
+    throw new Error('Payment method is required');
+  }
+
+  /**
+   * Check if a date is in the future (after today)
+   * @param {string} dateString - Date string in YYYY-MM-DD format
+   * @returns {boolean} True if the date is in the future
+   * @private
+   */
+  _isFutureDate(dateString) {
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    return dateString > todayStr;
+  }
+
+  /**
+   * Get the effective posting date for an expense (for credit card balance calculations)
+   * Uses COALESCE logic: posted_date if set, otherwise transaction date
+   * @param {Object} expense - Expense object with date and optional posted_date
+   * @returns {string} Effective posting date in YYYY-MM-DD format
+   * @private
+   * _Requirements: 2.1, 2.2_
+   */
+  _getEffectivePostingDate(expense) {
+    return expense.posted_date || expense.date;
+  }
+
+  /**
+   * Update credit card balance after expense creation
+   * Updates the stored balance for ALL expenses (including future-dated ones).
+   * The displayed balance is calculated dynamically to exclude future expenses.
+   * @param {Object} paymentMethod - Payment method object
+   * @param {number} amount - Expense amount to add to balance
+   * @param {string} expenseDate - Expense date in YYYY-MM-DD format (unused, kept for API compatibility)
+   * @private
+   * _Requirements: 3.3_
+   */
+  async _updateCreditCardBalanceOnCreate(paymentMethod, amount, expenseDate) {
+    if (paymentMethod && paymentMethod.type === 'credit_card') {
+      await paymentMethodRepository.updateBalance(paymentMethod.id, amount);
+      logger.debug('Updated credit card balance after expense creation:', {
+        paymentMethodId: paymentMethod.id,
+        displayName: paymentMethod.display_name,
+        amountAdded: amount
+      });
+    }
+  }
+
+  /**
+   * Update credit card balance after expense deletion
+   * Updates the stored balance for ALL expenses (including future-dated ones).
+   * The displayed balance is calculated dynamically to exclude future expenses.
+   * @param {Object} paymentMethod - Payment method object
+   * @param {number} amount - Expense amount to subtract from balance
+   * @param {string} expenseDate - Expense date in YYYY-MM-DD format (unused, kept for API compatibility)
+   * @private
+   * _Requirements: 3.3_
+   */
+  async _updateCreditCardBalanceOnDelete(paymentMethod, amount, expenseDate) {
+    if (paymentMethod && paymentMethod.type === 'credit_card') {
+      await paymentMethodRepository.updateBalance(paymentMethod.id, -amount);
+      logger.debug('Updated credit card balance after expense deletion:', {
+        paymentMethodId: paymentMethod.id,
+        displayName: paymentMethod.display_name,
+        amountSubtracted: amount
+      });
+    }
+  }
+
+  /**
    * Create a single expense (internal helper)
    * @param {Object} expenseData - Expense data
    * @returns {Promise<Object>} Created expense
@@ -387,6 +526,9 @@ class ExpenseService {
   async _createSingleExpense(expenseData) {
     // Apply insurance defaults if applicable
     const processedData = this._applyInsuranceDefaults(expenseData);
+
+    // Validate posted_date if provided (Requirements 4.4, 4.5, 4.6, 4.7)
+    this.validatePostedDate(processedData);
 
     // Validate insurance data if provided
     if (processedData.insurance_eligible) {
@@ -400,18 +542,23 @@ class ExpenseService {
       );
     }
 
+    // Resolve payment method (supports both payment_method_id and method string)
+    const { payment_method_id, method, paymentMethod } = await this._resolvePaymentMethod(processedData);
+
     // Calculate week from date
     const week = calculateWeek(processedData.date);
 
     // Prepare expense object with calculated week
     const expense = {
       date: processedData.date,
+      posted_date: processedData.posted_date || null,
       place: processedData.place || null,
       notes: processedData.notes || null,
       amount: parseFloat(processedData.amount),
       type: processedData.type,
       week: week,
-      method: processedData.method,
+      method: method,
+      payment_method_id: payment_method_id,
       recurring_id: processedData.recurring_id !== undefined ? processedData.recurring_id : null,
       is_generated: processedData.is_generated !== undefined ? processedData.is_generated : 0,
       // Insurance fields (only meaningful for Tax - Medical)
@@ -422,6 +569,10 @@ class ExpenseService {
 
     // Create expense in repository
     const createdExpense = await expenseRepository.create(expense);
+
+    // Update credit card balance if applicable (Requirement 3.3)
+    // Pass the expense date to skip balance updates for future-dated expenses
+    await this._updateCreditCardBalanceOnCreate(paymentMethod, expense.amount, expense.date);
 
     // Trigger budget recalculation for affected budget
     this._triggerBudgetRecalculation(expense.date, expense.type);
@@ -546,8 +697,15 @@ class ExpenseService {
     // Get the old expense data before updating
     const oldExpense = await expenseRepository.findById(id);
 
+    if (!oldExpense) {
+      return null;
+    }
+
     // Validate the expense data
     this.validateExpense(expenseData);
+
+    // Validate posted_date if provided (Requirements 4.4, 4.5, 4.6, 4.7)
+    this.validatePostedDate(expenseData);
 
     // Validate futureMonths parameter
     this._validateFutureMonths(futureMonths);
@@ -570,18 +728,29 @@ class ExpenseService {
     // Normalize futureMonths to 0 if not provided
     const monthsToCreate = futureMonths || 0;
 
+    // Resolve payment method (supports both payment_method_id and method string)
+    const { payment_method_id, method, paymentMethod } = await this._resolvePaymentMethod(processedData);
+
+    // Get old payment method for balance adjustment
+    let oldPaymentMethod = null;
+    if (oldExpense.payment_method_id) {
+      oldPaymentMethod = await paymentMethodRepository.findById(oldExpense.payment_method_id);
+    }
+
     // Calculate week from date
     const week = calculateWeek(processedData.date);
 
     // Prepare expense object with calculated week
     const expense = {
       date: processedData.date,
+      posted_date: processedData.posted_date || null,
       place: processedData.place || null,
       notes: processedData.notes || null,
       amount: parseFloat(processedData.amount),
       type: processedData.type,
       week: week,
-      method: processedData.method,
+      method: method,
+      payment_method_id: payment_method_id,
       // Insurance fields (only meaningful for Tax - Medical)
       insurance_eligible: processedData.insurance_eligible ? 1 : 0,
       claim_status: processedData.claim_status || null,
@@ -591,11 +760,64 @@ class ExpenseService {
     // Update expense in repository
     const updatedExpense = await expenseRepository.update(id, expense);
 
+    // Handle credit card balance updates for payment method changes
+    // Note: Future-dated expenses (based on effective posting date) don't affect the balance
+    // Uses COALESCE(posted_date, date) logic for effective posting date
+    const paymentMethodChanged = oldExpense.payment_method_id !== payment_method_id;
+    const amountChanged = oldExpense.amount !== expense.amount;
+    const oldEffectiveDate = this._getEffectivePostingDate(oldExpense);
+    const newEffectiveDate = this._getEffectivePostingDate(expense);
+    const effectiveDateChanged = oldEffectiveDate !== newEffectiveDate;
+    const oldIsFuture = this._isFutureDate(oldEffectiveDate);
+    const newIsFuture = this._isFutureDate(newEffectiveDate);
+
+    if (paymentMethodChanged) {
+      // Decrement old payment method balance (only if old expense was not future-dated)
+      if (oldPaymentMethod && oldPaymentMethod.type === 'credit_card') {
+        await this._updateCreditCardBalanceOnDelete(oldPaymentMethod, oldExpense.amount, oldEffectiveDate);
+      }
+      // Increment new payment method balance (only if new expense is not future-dated)
+      if (paymentMethod && paymentMethod.type === 'credit_card') {
+        await this._updateCreditCardBalanceOnCreate(paymentMethod, expense.amount, newEffectiveDate);
+      }
+    } else if (paymentMethod && paymentMethod.type === 'credit_card') {
+      // Same payment method - handle amount and effective date changes
+      if (effectiveDateChanged && oldIsFuture !== newIsFuture) {
+        // Effective date changed from future to past or vice versa
+        if (oldIsFuture && !newIsFuture) {
+          // Was future, now past - add to balance
+          await paymentMethodRepository.updateBalance(paymentMethod.id, expense.amount);
+          logger.debug('Added expense to credit card balance (moved from future to past):', {
+            paymentMethodId: paymentMethod.id,
+            displayName: paymentMethod.display_name,
+            amount: expense.amount
+          });
+        } else if (!oldIsFuture && newIsFuture) {
+          // Was past, now future - remove from balance
+          await paymentMethodRepository.updateBalance(paymentMethod.id, -oldExpense.amount);
+          logger.debug('Removed expense from credit card balance (moved from past to future):', {
+            paymentMethodId: paymentMethod.id,
+            displayName: paymentMethod.display_name,
+            amount: oldExpense.amount
+          });
+        }
+      } else if (amountChanged && !oldIsFuture && !newIsFuture) {
+        // Amount changed and both dates are in the past - adjust the difference
+        const amountDiff = expense.amount - oldExpense.amount;
+        await paymentMethodRepository.updateBalance(paymentMethod.id, amountDiff);
+        logger.debug('Updated credit card balance after expense amount change:', {
+          paymentMethodId: paymentMethod.id,
+          displayName: paymentMethod.display_name,
+          amountDiff
+        });
+      }
+      // If both are future-dated, no balance change needed
+    }
+
     // Trigger budget recalculation for affected budgets
     if (oldExpense) {
       // If category, amount, or date changed, recalculate old budget
       const categoryChanged = oldExpense.type !== expense.type;
-      const amountChanged = oldExpense.amount !== expense.amount;
       const dateChanged = oldExpense.date !== expense.date;
 
       if (categoryChanged || amountChanged || dateChanged) {
@@ -625,7 +847,9 @@ class ExpenseService {
         // Create future expense with updated values (not original values)
         const futureExpenseData = {
           ...processedData,
-          date: futureDate
+          date: futureDate,
+          payment_method_id: payment_method_id,
+          method: method
         };
         
         const futureExpense = await this._createSingleExpense(futureExpenseData);
@@ -664,8 +888,24 @@ class ExpenseService {
     // Get the expense data before deleting
     const expense = await expenseRepository.findById(id);
 
+    if (!expense) {
+      return false;
+    }
+
+    // Get the payment method to check if it's a credit card
+    let paymentMethod = null;
+    if (expense.payment_method_id) {
+      paymentMethod = await paymentMethodRepository.findById(expense.payment_method_id);
+    }
+
     // Delete the expense
     const deleted = await expenseRepository.delete(id);
+
+    // Update credit card balance if applicable (Requirement 3.3)
+    // Pass the expense date to skip balance updates for future-dated expenses
+    if (deleted && paymentMethod) {
+      await this._updateCreditCardBalanceOnDelete(paymentMethod, expense.amount, expense.date);
+    }
 
     // Trigger budget recalculation for affected budget
     if (deleted && expense) {

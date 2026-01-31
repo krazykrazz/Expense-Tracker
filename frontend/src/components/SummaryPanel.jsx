@@ -6,6 +6,8 @@ import LoansModal from './LoansModal';
 import InvestmentsModal from './InvestmentsModal';
 import TrendIndicator from './TrendIndicator';
 import DataReminderBanner from './DataReminderBanner';
+import CreditCardReminderBanner from './CreditCardReminderBanner';
+import PaymentMethodsModal from './PaymentMethodsModal';
 import './SummaryPanel.css';
 
 const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
@@ -29,12 +31,24 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
     hasActiveInvestments: false,
     hasActiveLoans: false,
     investments: [],
-    loans: []
+    loans: [],
+    creditCardReminders: {
+      overdueCount: 0,
+      dueSoonCount: 0,
+      hasActiveCreditCards: false,
+      overdueCards: [],
+      dueSoonCards: []
+    }
   });
   const [dismissedReminders, setDismissedReminders] = useState({
     investments: false,
-    loans: false
+    loans: false,
+    creditCardOverdue: false,
+    creditCardDueSoon: false
   });
+  
+  // Payment Methods Modal state
+  const [showPaymentMethodsModal, setShowPaymentMethodsModal] = useState(false);
   
   // Collapsible panel states
   const [weeklyOpen, setWeeklyOpen] = useState(false);
@@ -113,7 +127,14 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
         hasActiveInvestments: data.hasActiveInvestments || false,
         hasActiveLoans: data.hasActiveLoans || false,
         investments: data.investments || [],
-        loans: data.loans || []
+        loans: data.loans || [],
+        creditCardReminders: data.creditCardReminders || {
+          overdueCount: 0,
+          dueSoonCount: 0,
+          hasActiveCreditCards: false,
+          overdueCards: [],
+          dueSoonCards: []
+        }
       });
     } catch (err) {
       // Fail silently - don't block summary panel loading
@@ -152,9 +173,12 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
   useEffect(() => {
     fetchSummaryData();
     fetchReminderStatus();
-    // Reset dismissed reminders when month changes
-    setDismissedReminders({ investments: false, loans: false });
   }, [fetchSummaryData, fetchReminderStatus, refreshTrigger]);
+
+  // Reset dismissed reminders only when month/year changes (not on every refresh)
+  useEffect(() => {
+    setDismissedReminders({ investments: false, loans: false, creditCardOverdue: false, creditCardDueSoon: false });
+  }, [selectedYear, selectedMonth]);
 
   // Modal handlers - simplified using shared fetch function
   const handleOpenIncomeModal = () => setShowIncomeModal(true);
@@ -200,12 +224,29 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
     setDismissedReminders(prev => ({ ...prev, loans: true }));
   };
 
+  const handleDismissCreditCardOverdueReminder = () => {
+    setDismissedReminders(prev => ({ ...prev, creditCardOverdue: true }));
+  };
+
+  const handleDismissCreditCardDueSoonReminder = () => {
+    setDismissedReminders(prev => ({ ...prev, creditCardDueSoon: true }));
+  };
+
   const handleInvestmentReminderClick = () => {
     setShowInvestmentsModal(true);
   };
 
   const handleLoanReminderClick = () => {
     setShowLoansModal(true);
+  };
+
+  const handleCreditCardReminderClick = () => {
+    setShowPaymentMethodsModal(true);
+  };
+
+  const handleClosePaymentMethodsModal = async () => {
+    setShowPaymentMethodsModal(false);
+    await fetchReminderStatus();
   };
 
   // Get IDs of investments/loans that need updates
@@ -261,6 +302,28 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
       <h2>Monthly Summary</h2>
 
       {/* Reminder Banners */}
+      {/* Credit Card Overdue Reminders - Most urgent, show first */}
+      {reminderStatus.creditCardReminders?.overdueCount > 0 && 
+       !dismissedReminders.creditCardOverdue && (
+        <CreditCardReminderBanner
+          cards={reminderStatus.creditCardReminders.overdueCards}
+          isOverdue={true}
+          onDismiss={handleDismissCreditCardOverdueReminder}
+          onClick={handleCreditCardReminderClick}
+        />
+      )}
+
+      {/* Credit Card Due Soon Reminders */}
+      {reminderStatus.creditCardReminders?.dueSoonCount > 0 && 
+       !dismissedReminders.creditCardDueSoon && (
+        <CreditCardReminderBanner
+          cards={reminderStatus.creditCardReminders.dueSoonCards}
+          isOverdue={false}
+          onDismiss={handleDismissCreditCardDueSoonReminder}
+          onClick={handleCreditCardReminderClick}
+        />
+      )}
+
       {reminderStatus.hasActiveInvestments && 
        reminderStatus.missingInvestments > 0 && 
        !dismissedReminders.investments && (
@@ -524,6 +587,13 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
           month={selectedMonth}
           onUpdate={handleInvestmentsUpdate}
           highlightIds={investmentsNeedingUpdate}
+        />
+      )}
+
+      {showPaymentMethodsModal && (
+        <PaymentMethodsModal
+          isOpen={showPaymentMethodsModal}
+          onClose={handleClosePaymentMethodsModal}
         />
       )}
     </div>

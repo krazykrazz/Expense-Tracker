@@ -492,8 +492,15 @@ function createTestDatabase() {
           return;
         }
         
-        // Create all tables in sequence
-        const categoryList = CATEGORIES.map(c => `'${c}'`).join(', ');
+        // Enable WAL mode for better concurrency
+        db.run('PRAGMA journal_mode = WAL', (err) => {
+          if (err) {
+            // WAL mode is optional, continue even if it fails
+            logger.debug('Could not enable WAL mode:', err.message);
+          }
+          
+          // Create all tables in sequence
+          const categoryList = CATEGORIES.map(c => `'${c}'`).join(', ');
         const budgetCategoryList = BUDGETABLE_CATEGORIES.map(c => `'${c}'`).join(', ');
         
         const createStatements = [
@@ -508,12 +515,14 @@ function createTestDatabase() {
           `CREATE TABLE IF NOT EXISTS expenses (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             date TEXT NOT NULL,
+            posted_date TEXT DEFAULT NULL,
             place TEXT,
             notes TEXT,
             amount REAL NOT NULL,
             type TEXT NOT NULL CHECK(type IN (${categoryList})),
             week INTEGER NOT NULL CHECK(week >= 1 AND week <= 5),
-            method TEXT NOT NULL CHECK(method IN ('Cash', 'Debit', 'Cheque', 'CIBC MC', 'PCF MC', 'WS VISA', 'VISA')),
+            method TEXT NOT NULL,
+            payment_method_id INTEGER REFERENCES payment_methods(id),
             insurance_eligible INTEGER DEFAULT 0,
             claim_status TEXT DEFAULT NULL CHECK(claim_status IS NULL OR claim_status IN ('not_claimed', 'in_progress', 'paid', 'denied')),
             original_cost REAL DEFAULT NULL,
@@ -551,6 +560,7 @@ function createTestDatabase() {
             amount REAL NOT NULL CHECK(amount >= 0),
             category TEXT DEFAULT 'Other',
             payment_type TEXT DEFAULT 'Fixed',
+            payment_method_id INTEGER REFERENCES payment_methods(id),
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             updated_at TEXT DEFAULT CURRENT_TIMESTAMP
           )`,
@@ -702,6 +712,50 @@ function createTestDatabase() {
             dismissed_at TEXT DEFAULT CURRENT_TIMESTAMP,
             UNIQUE(expense_id),
             FOREIGN KEY (expense_id) REFERENCES expenses(id) ON DELETE CASCADE
+          )`,
+          
+          // payment_methods table (for configurable payment methods)
+          `CREATE TABLE IF NOT EXISTS payment_methods (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            type TEXT NOT NULL CHECK(type IN ('cash', 'cheque', 'debit', 'credit_card')),
+            display_name TEXT NOT NULL UNIQUE,
+            full_name TEXT,
+            account_details TEXT,
+            credit_limit REAL CHECK(credit_limit IS NULL OR credit_limit > 0),
+            current_balance REAL DEFAULT 0 CHECK(current_balance >= 0),
+            payment_due_day INTEGER CHECK(payment_due_day IS NULL OR (payment_due_day >= 1 AND payment_due_day <= 31)),
+            billing_cycle_start INTEGER CHECK(billing_cycle_start IS NULL OR (billing_cycle_start >= 1 AND billing_cycle_start <= 31)),
+            billing_cycle_end INTEGER CHECK(billing_cycle_end IS NULL OR (billing_cycle_end >= 1 AND billing_cycle_end <= 31)),
+            is_active INTEGER DEFAULT 1,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+          )`,
+          
+          // credit_card_payments table (for tracking credit card payments)
+          `CREATE TABLE IF NOT EXISTS credit_card_payments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            payment_method_id INTEGER NOT NULL,
+            amount REAL NOT NULL CHECK(amount > 0),
+            payment_date TEXT NOT NULL,
+            notes TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (payment_method_id) REFERENCES payment_methods(id) ON DELETE CASCADE
+          )`,
+          
+          // credit_card_statements table (for storing credit card statement files)
+          `CREATE TABLE IF NOT EXISTS credit_card_statements (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            payment_method_id INTEGER NOT NULL,
+            statement_date TEXT NOT NULL,
+            statement_period_start TEXT NOT NULL,
+            statement_period_end TEXT NOT NULL,
+            filename TEXT NOT NULL,
+            original_filename TEXT NOT NULL,
+            file_path TEXT NOT NULL,
+            file_size INTEGER NOT NULL,
+            mime_type TEXT NOT NULL DEFAULT 'application/pdf',
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (payment_method_id) REFERENCES payment_methods(id) ON DELETE CASCADE
           )`
         ];
         
@@ -725,6 +779,7 @@ function createTestDatabase() {
         };
         
         executeNext();
+        });
       });
     });
   });
@@ -740,6 +795,7 @@ function createTestIndexes(db, resolve, reject) {
     'CREATE INDEX IF NOT EXISTS idx_method ON expenses(method)',
     'CREATE INDEX IF NOT EXISTS idx_expenses_insurance_eligible ON expenses(insurance_eligible)',
     'CREATE INDEX IF NOT EXISTS idx_expenses_claim_status ON expenses(claim_status)',
+    'CREATE INDEX IF NOT EXISTS idx_expenses_posted_date ON expenses(posted_date)',
     'CREATE INDEX IF NOT EXISTS idx_year_month ON monthly_gross(year, month)',
     'CREATE INDEX IF NOT EXISTS idx_income_year_month ON income_sources(year, month)',
     'CREATE INDEX IF NOT EXISTS idx_fixed_expenses_year_month ON fixed_expenses(year, month)',
@@ -758,7 +814,16 @@ function createTestIndexes(db, resolve, reject) {
     'CREATE INDEX IF NOT EXISTS idx_expense_people_person ON expense_people(person_id)',
     'CREATE INDEX IF NOT EXISTS idx_expense_invoices_expense_id ON expense_invoices(expense_id)',
     'CREATE INDEX IF NOT EXISTS idx_expense_invoices_upload_date ON expense_invoices(upload_date)',
-    'CREATE INDEX IF NOT EXISTS idx_dismissed_anomalies_expense_id ON dismissed_anomalies(expense_id)'
+    'CREATE INDEX IF NOT EXISTS idx_dismissed_anomalies_expense_id ON dismissed_anomalies(expense_id)',
+    'CREATE INDEX IF NOT EXISTS idx_expenses_payment_method_id ON expenses(payment_method_id)',
+    'CREATE INDEX IF NOT EXISTS idx_fixed_expenses_payment_method_id ON fixed_expenses(payment_method_id)',
+    'CREATE INDEX IF NOT EXISTS idx_payment_methods_type ON payment_methods(type)',
+    'CREATE INDEX IF NOT EXISTS idx_payment_methods_display_name ON payment_methods(display_name)',
+    'CREATE INDEX IF NOT EXISTS idx_payment_methods_is_active ON payment_methods(is_active)',
+    'CREATE INDEX IF NOT EXISTS idx_cc_payments_method_id ON credit_card_payments(payment_method_id)',
+    'CREATE INDEX IF NOT EXISTS idx_cc_payments_date ON credit_card_payments(payment_date)',
+    'CREATE INDEX IF NOT EXISTS idx_cc_statements_method_id ON credit_card_statements(payment_method_id)',
+    'CREATE INDEX IF NOT EXISTS idx_cc_statements_date ON credit_card_statements(statement_date)'
   ];
   
   let completed = 0;
@@ -770,9 +835,52 @@ function createTestIndexes(db, resolve, reject) {
       }
       completed++;
       if (completed === indexes.length) {
-        resolve(db);
+        // After indexes, seed default payment methods
+        seedTestPaymentMethods(db, resolve, reject);
       }
     });
+  });
+}
+
+/**
+ * Seed default payment methods for the test database
+ * These match the production migration defaults
+ */
+function seedTestPaymentMethods(db, resolve, reject) {
+  // Default payment methods matching the production migration
+  const defaultPaymentMethods = [
+    { id: 1, type: 'cash', display_name: 'Cash', full_name: 'Cash' },
+    { id: 2, type: 'debit', display_name: 'Debit', full_name: 'Debit Card' },
+    { id: 3, type: 'cheque', display_name: 'Cheque', full_name: 'Cheque' },
+    { id: 4, type: 'credit_card', display_name: 'CIBC MC', full_name: 'CIBC Mastercard' },
+    { id: 5, type: 'credit_card', display_name: 'PCF MC', full_name: 'PC Financial Mastercard' },
+    { id: 6, type: 'credit_card', display_name: 'WS VISA', full_name: 'WealthSimple VISA' },
+    { id: 7, type: 'credit_card', display_name: 'VISA', full_name: 'VISA' }
+  ];
+  
+  let completed = 0;
+  const total = defaultPaymentMethods.length;
+  
+  if (total === 0) {
+    resolve(db);
+    return;
+  }
+  
+  defaultPaymentMethods.forEach((pm) => {
+    db.run(
+      `INSERT OR IGNORE INTO payment_methods (id, type, display_name, full_name, is_active) VALUES (?, ?, ?, ?, 1)`,
+      [pm.id, pm.type, pm.display_name, pm.full_name],
+      (err) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        completed++;
+        if (completed === total) {
+          resolve(db);
+        }
+      }
+    );
   });
 }
 
@@ -823,6 +931,8 @@ async function resetTestDatabase() {
   const db = await getTestDatabase();
   
   const tables = [
+    'credit_card_statements',
+    'credit_card_payments',
     'expense_invoices',
     'expense_people',
     'expenses',
@@ -838,6 +948,7 @@ async function resetTestDatabase() {
     'place_names',
     'reminders',
     'monthly_gross',
+    'payment_methods',
     'schema_migrations'
   ];
   

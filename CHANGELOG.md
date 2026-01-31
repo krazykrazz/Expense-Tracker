@@ -9,6 +9,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Configurable Payment Methods**: Database-driven payment method management
+  - Four payment types: Cash, Cheque, Debit, Credit Card with type-specific fields
+  - Create, edit, activate/deactivate, and delete payment methods
+  - Credit card balance tracking with automatic updates on expense/payment
+  - Credit utilization indicators (color-coded: green < 30%, yellow 30-70%, red > 70%)
+  - Payment recording with automatic balance reduction
+  - Payment history viewing with dates and notes
+  - Statement uploads with billing period dates
+  - Due date reminders when payment due within 7 days
+  - Backward compatibility with existing expenses
+- **Credit Card Posted Date**: Optional posted date field for credit card expenses
+  - Distinguishes transaction date from posting date
+  - Affects balance calculations (uses posted date if set, otherwise transaction date)
+  - Validation ensures posted date >= transaction date
+  - Field shown only for credit card payment methods
+
+### Changed
+- Payment methods now stored in database instead of hardcoded constants
+- Expense form fetches payment methods from API
+- Filter dropdowns use API-fetched payment methods
+- Fixed expenses use configurable payment methods
+
+### Database
+- Added `payment_methods` table with type-specific attributes
+- Added `credit_card_payments` table for payment history
+- Added `credit_card_statements` table for statement storage
+- Added `payment_method_id` column to expenses and fixed_expenses tables
+- Added `posted_date` column to expenses table
+
+---
+
+## [4.19.0] - 2026-01-28
+
+### Added
+- **Mortgage Tracking**: Comprehensive mortgage analytics and insights
+  - Amortization schedule visualization with principal vs interest breakdown
+  - Equity tracking showing property value minus remaining balance over time
+  - Mortgage insights panel with current status, payoff projections, and what-if scenarios
+  - Payment history tracking with principal/interest breakdown per payment
+  - Variable rate mortgage support with quick rate update capability
+- **Environment Banner**: Visual indicator for staging and development environments
+  - Orange banner for staging environment
+  - Blue banner for development mode
+  - No banner in production
+
+### Fixed
+- **Merchant Trend Generation**: Fixed bug where `getMerchantTrend` could return more months than requested due to date comparison edge case
+
 ---
 
 ## [4.18.2] - 2026-01-28

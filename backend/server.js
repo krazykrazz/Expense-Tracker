@@ -22,6 +22,7 @@ const peopleRoutes = require('./routes/peopleRoutes');
 const merchantAnalyticsRoutes = require('./routes/merchantAnalyticsRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
 const invoiceRoutes = require('./routes/invoiceRoutes');
+const paymentMethodRoutes = require('./routes/paymentMethodRoutes');
 const backupService = require('./services/backupService');
 const logger = require('./config/logger');
 const { configureTimezone, getTimezone } = require('./config/timezone');
@@ -159,9 +160,14 @@ app.use('/api/analytics', analyticsRoutes);
 app.post('/api/invoices/upload', uploadLimiter);
 app.use('/api/invoices', invoiceRoutes);
 
+// Payment Method API routes - apply upload rate limiting for statement uploads
+app.post('/api/payment-methods/:id/statements', uploadLimiter);
+app.use('/api/payment-methods', paymentMethodRoutes);
+
 // Serve static files from the React app (after build)
-// In container: /app/frontend/dist, in development: ../frontend/dist
-const frontendPath = process.env.NODE_ENV === 'production' 
+// In container (production/staging): /app/frontend/dist, in development: ../frontend/dist
+const isContainerEnv = process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'staging';
+const frontendPath = isContainerEnv
   ? path.join('/app', 'frontend', 'dist')
   : path.join(__dirname, '..', 'frontend', 'dist');
 

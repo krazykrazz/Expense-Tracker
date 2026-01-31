@@ -1,5 +1,6 @@
 const { getDatabase } = require('../database/db');
 const { CATEGORIES } = require('../utils/categories');
+const logger = require('../config/logger');
 
 class ExpenseRepository {
   /**
@@ -12,18 +13,20 @@ class ExpenseRepository {
     
     return new Promise((resolve, reject) => {
       const sql = `
-        INSERT INTO expenses (date, place, notes, amount, type, week, method, insurance_eligible, claim_status, original_cost)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO expenses (date, posted_date, place, notes, amount, type, week, method, payment_method_id, insurance_eligible, claim_status, original_cost)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
       
       const params = [
         expense.date,
+        expense.posted_date || null,
         expense.place || null,
         expense.notes || null,
         expense.amount,
         expense.type,
         expense.week,
         expense.method,
+        expense.payment_method_id || null,
         expense.insurance_eligible !== undefined ? expense.insurance_eligible : 0,
         expense.claim_status || null,
         expense.original_cost !== undefined ? expense.original_cost : null
@@ -46,32 +49,41 @@ class ExpenseRepository {
 
   /**
    * Find all expenses with optional year/month filtering
+   * Includes payment method display_name and is_active from payment_methods table
    * @param {Object} filters - Optional filters { year, month }
-   * @returns {Promise<Array>} Array of expenses
+   * @returns {Promise<Array>} Array of expenses with payment method info
+   * _Requirements: 2.8_
    */
   async findAll(filters = {}) {
     const db = await getDatabase();
     
     return new Promise((resolve, reject) => {
-      let sql = 'SELECT * FROM expenses';
+      let sql = `
+        SELECT e.*, 
+               pm.display_name as payment_method_display_name,
+               pm.is_active as payment_method_is_active,
+               pm.type as payment_method_type
+        FROM expenses e
+        LEFT JOIN payment_methods pm ON e.payment_method_id = pm.id
+      `;
       const params = [];
       
       // Add filtering by year and month if provided
       if (filters.year && filters.month) {
-        sql += ' WHERE strftime("%Y", date) = ? AND strftime("%m", date) = ?';
+        sql += ' WHERE strftime("%Y", e.date) = ? AND strftime("%m", e.date) = ?';
         params.push(
           filters.year.toString(),
           filters.month.toString().padStart(2, '0')
         );
       } else if (filters.year) {
-        sql += ' WHERE strftime("%Y", date) = ?';
+        sql += ' WHERE strftime("%Y", e.date) = ?';
         params.push(filters.year.toString());
       } else if (filters.month) {
-        sql += ' WHERE strftime("%m", date) = ?';
+        sql += ' WHERE strftime("%m", e.date) = ?';
         params.push(filters.month.toString().padStart(2, '0'));
       }
       
-      sql += ' ORDER BY date ASC';
+      sql += ' ORDER BY e.date ASC';
       
       db.all(sql, params, (err, rows) => {
         if (err) {
@@ -85,14 +97,24 @@ class ExpenseRepository {
 
   /**
    * Find a single expense by ID
+   * Includes payment method display_name and is_active from payment_methods table
    * @param {number} id - Expense ID
-   * @returns {Promise<Object|null>} Expense object or null if not found
+   * @returns {Promise<Object|null>} Expense object with payment method info or null if not found
+   * _Requirements: 2.8_
    */
   async findById(id) {
     const db = await getDatabase();
     
     return new Promise((resolve, reject) => {
-      const sql = 'SELECT * FROM expenses WHERE id = ?';
+      const sql = `
+        SELECT e.*, 
+               pm.display_name as payment_method_display_name,
+               pm.is_active as payment_method_is_active,
+               pm.type as payment_method_type
+        FROM expenses e
+        LEFT JOIN payment_methods pm ON e.payment_method_id = pm.id
+        WHERE e.id = ?
+      `;
       
       db.get(sql, [id], (err, row) => {
         if (err) {
@@ -116,19 +138,21 @@ class ExpenseRepository {
     return new Promise((resolve, reject) => {
       const sql = `
         UPDATE expenses 
-        SET date = ?, place = ?, notes = ?, amount = ?, type = ?, week = ?, method = ?,
+        SET date = ?, posted_date = ?, place = ?, notes = ?, amount = ?, type = ?, week = ?, method = ?, payment_method_id = ?,
             insurance_eligible = ?, claim_status = ?, original_cost = ?
         WHERE id = ?
       `;
       
       const params = [
         expense.date,
+        expense.posted_date || null,
         expense.place || null,
         expense.notes || null,
         expense.amount,
         expense.type,
         expense.week,
         expense.method,
+        expense.payment_method_id || null,
         expense.insurance_eligible !== undefined ? expense.insurance_eligible : 0,
         expense.claim_status || null,
         expense.original_cost !== undefined ? expense.original_cost : null,
@@ -885,6 +909,11 @@ class ExpenseRepository {
       WHERE strftime("%Y", date) = ? AND strftime("%m", date) = ?
     `;
     
+    // Query for all payment method display names (for initialization)
+    const paymentMethodsSQL = `
+      SELECT display_name FROM payment_methods ORDER BY display_name
+    `;
+    
     // Helper function to promisify db.all
     const dbAll = (sql, params) => new Promise((resolve, reject) => {
       db.all(sql, params, (err, rows) => {
@@ -902,11 +931,12 @@ class ExpenseRepository {
     });
     
     // Execute all queries in parallel
-    const [weeklyRows, methodRows, typeRows, totalRow] = await Promise.all([
+    const [weeklyRows, methodRows, typeRows, totalRow, paymentMethods] = await Promise.all([
       dbAll(weeklySQL, [yearStr, monthStr]),
       dbAll(methodSQL, [yearStr, monthStr]),
       dbAll(typeSQL, [yearStr, monthStr]),
-      dbGet(totalSQL, [yearStr, monthStr])
+      dbGet(totalSQL, [yearStr, monthStr]),
+      dbAll(paymentMethodsSQL, [])
     ]);
     
     // Initialize typeTotals with all categories set to 0
@@ -914,6 +944,15 @@ class ExpenseRepository {
     CATEGORIES.forEach(category => {
       typeTotals[category] = 0;
     });
+    
+    // Initialize methodTotals dynamically from payment_methods table
+    // Falls back to empty object if no payment methods exist yet
+    const methodTotals = {};
+    if (paymentMethods && paymentMethods.length > 0) {
+      paymentMethods.forEach(pm => {
+        methodTotals[pm.display_name] = 0;
+      });
+    }
     
     const summary = {
       weeklyTotals: {
@@ -923,15 +962,7 @@ class ExpenseRepository {
         week4: 0,
         week5: 0
       },
-      methodTotals: {
-        'Cash': 0,
-        'Debit': 0,
-        'Cheque': 0,
-        'CIBC MC': 0,
-        'PCF MC': 0,
-        'WS VISA': 0,
-        'VISA': 0
-      },
+      methodTotals: methodTotals,
       typeTotals: typeTotals,
       total: 0
     };
@@ -1015,8 +1046,16 @@ class ExpenseRepository {
           return;
         }
         
-        // Return the updated expense
-        db.get('SELECT * FROM expenses WHERE id = ?', [id], (err, row) => {
+        // Return the updated expense with payment method info
+        db.get(`
+          SELECT e.*, 
+                 pm.display_name as payment_method_display_name,
+                 pm.is_active as payment_method_is_active,
+                 pm.type as payment_method_type
+          FROM expenses e
+          LEFT JOIN payment_methods pm ON e.payment_method_id = pm.id
+          WHERE e.id = ?
+        `, [id], (err, row) => {
           if (err) {
             reject(err);
             return;

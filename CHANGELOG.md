@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [5.0.1] - 2026-01-31
+
+### Added
+- **Database Statistics**: Added payment methods, credit card statements, and credit card payments counts to Settings → About
+
+### Fixed
+- Payment method deactivation bug (frontend was sending wrong field name)
+
+---
+
 ## [5.0.0] - 2026-01-31
 
 ### Added

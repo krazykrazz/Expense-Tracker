@@ -805,6 +805,14 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v5.0.1</div>
+                <div className="changelog-date">January 2026</div>
+                <ul className="changelog-items">
+                  <li>Database Statistics: Added payment methods, credit card statements, and payments counts</li>
+                  <li>Fixed payment method deactivation bug</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v5.0.0</div>
                 <div className="changelog-date">January 2026</div>
                 <ul className="changelog-items">

@@ -3,7 +3,9 @@ const { pbtOptions } = require('../test/pbtArbitraries');
 const expenseService = require('./expenseService');
 const peopleRepository = require('../repositories/peopleRepository');
 const db = require('../database/db');
-const { PAYMENT_METHODS } = require('../utils/constants');
+
+// Use safe default payment methods that should always exist in the database
+const SAFE_PAYMENT_METHODS = ['Cash', 'Debit', 'Cheque'];
 
 /**
  * Property-Based Tests for Expense Service - Report Filtering
@@ -15,8 +17,8 @@ describe('ExpenseService - Report Filtering Properties', () => {
   let testPeople = [];
   let testExpenses = [];
   
-  // Use a valid payment method from the constants
-  const validPaymentMethod = PAYMENT_METHODS[0]; // 'Cash'
+  // Use a valid payment method from the safe defaults
+  const validPaymentMethod = SAFE_PAYMENT_METHODS[0]; // 'Cash'
 
   beforeAll(async () => {
     // Ensure database is initialized

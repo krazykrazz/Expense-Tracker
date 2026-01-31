@@ -4,7 +4,9 @@ const expenseService = require('./expenseService');
 const expenseRepository = require('../repositories/expenseRepository');
 const { getDatabase } = require('../database/db');
 const { CATEGORIES } = require('../utils/categories');
-const { PAYMENT_METHODS } = require('../utils/constants');
+
+// Use safe default payment methods that should always exist in the database
+const SAFE_PAYMENT_METHODS = ['Cash', 'Debit', 'Cheque'];
 
 describe('ExpenseService - Property-Based Tests for Future Months', () => {
   let db;
@@ -39,7 +41,7 @@ describe('ExpenseService - Property-Based Tests for Future Months', () => {
     amount: fc.float({ min: Math.fround(0.01), max: Math.fround(1000), noNaN: true })
       .map(n => parseFloat(n.toFixed(2))),
     type: fc.constantFrom(...CATEGORIES),
-    method: fc.constantFrom(...PAYMENT_METHODS)
+    method: fc.constantFrom(...SAFE_PAYMENT_METHODS)
   });
 
   // **Feature: recurring-expenses-v2, Property 1: Future Expense Count**

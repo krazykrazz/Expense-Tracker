@@ -796,6 +796,18 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v5.0.0</div>
+                <div className="changelog-date">January 2026</div>
+                <ul className="changelog-items">
+                  <li>Configurable Payment Methods: Database-driven payment method management</li>
+                  <li>Credit Card Balance Types: Track current vs statement balance</li>
+                  <li>Credit Card Payments: Record payments with balance impact tracking</li>
+                  <li>Credit Card Statements: Upload and manage monthly statements</li>
+                  <li>Posted Date Support: Distinguish transaction date vs posting date</li>
+                  <li>Payment Method Reminders: Alerts for credit card due dates</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v4.19.0</div>
                 <div className="changelog-date">January 2026</div>
                 <ul className="changelog-items">

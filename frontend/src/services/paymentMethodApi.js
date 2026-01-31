@@ -220,7 +220,7 @@ export const setPaymentMethodActive = async (id, isActive) => {
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ is_active: isActive })
+      body: JSON.stringify({ isActive })
     });
     
     if (!response.ok) {

@@ -512,7 +512,7 @@ class BackupService {
 
   /**
    * Get backup storage statistics
-   * @returns {Promise<{totalBackupSize: number, totalBackupSizeMB: number, backupCount: number, invoiceStorageSize: number, invoiceStorageSizeMB: number, invoiceCount: number, expenseCount: number, databaseSize: number, databaseSizeMB: number}>}
+   * @returns {Promise<{totalBackupSize: number, totalBackupSizeMB: number, backupCount: number, invoiceStorageSize: number, invoiceStorageSizeMB: number, invoiceCount: number, expenseCount: number, databaseSize: number, databaseSizeMB: number, statementCount: number, paymentMethodCount: number, creditCardPaymentCount: number}>}
    */
   async getStorageStats() {
     try {
@@ -528,18 +528,60 @@ class BackupService {
       // Get invoice storage statistics
       const invoiceStats = await fileStorage.getStorageStats();
       
-      // Get expense count from database
+      // Get database counts
       let expenseCount = 0;
+      let statementCount = 0;
+      let paymentMethodCount = 0;
+      let creditCardPaymentCount = 0;
+      
       try {
         const db = await getDatabase();
+        
+        // Get expense count
         expenseCount = await new Promise((resolve, reject) => {
           db.get('SELECT COUNT(*) as count FROM expenses', [], (err, row) => {
             if (err) reject(err);
             else resolve(row ? row.count : 0);
           });
         });
+        
+        // Get credit card statement count
+        statementCount = await new Promise((resolve, reject) => {
+          db.get('SELECT COUNT(*) as count FROM credit_card_statements', [], (err, row) => {
+            if (err) {
+              logger.debug('credit_card_statements table may not exist:', err.message);
+              resolve(0);
+            } else {
+              resolve(row ? row.count : 0);
+            }
+          });
+        });
+        
+        // Get payment method count
+        paymentMethodCount = await new Promise((resolve, reject) => {
+          db.get('SELECT COUNT(*) as count FROM payment_methods', [], (err, row) => {
+            if (err) {
+              logger.debug('payment_methods table may not exist:', err.message);
+              resolve(0);
+            } else {
+              resolve(row ? row.count : 0);
+            }
+          });
+        });
+        
+        // Get credit card payment count
+        creditCardPaymentCount = await new Promise((resolve, reject) => {
+          db.get('SELECT COUNT(*) as count FROM credit_card_payments', [], (err, row) => {
+            if (err) {
+              logger.debug('credit_card_payments table may not exist:', err.message);
+              resolve(0);
+            } else {
+              resolve(row ? row.count : 0);
+            }
+          });
+        });
       } catch (dbError) {
-        logger.warn('Could not get expense count:', dbError);
+        logger.warn('Could not get database counts:', dbError);
       }
       
       // Get database file size
@@ -563,7 +605,10 @@ class BackupService {
         invoiceCount: invoiceStats.totalFiles,
         expenseCount,
         databaseSize,
-        databaseSizeMB: Math.round(databaseSize / (1024 * 1024) * 100) / 100
+        databaseSizeMB: Math.round(databaseSize / (1024 * 1024) * 100) / 100,
+        statementCount,
+        paymentMethodCount,
+        creditCardPaymentCount
       };
     } catch (error) {
       logger.error('Error getting storage stats:', error);

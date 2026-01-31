@@ -48,6 +48,14 @@ vi.mock('../services/invoiceApi', () => ({
   updateInvoicePersonLink: vi.fn(() => Promise.resolve({}))
 }));
 
+vi.mock('../services/paymentMethodApi', () => ({
+  getActivePaymentMethods: vi.fn(() => Promise.resolve([
+    { id: 1, display_name: 'Cash', type: 'cash' },
+    { id: 2, display_name: 'Visa', type: 'credit_card' }
+  ])),
+  getPaymentMethod: vi.fn(() => Promise.resolve(null))
+}));
+
 // Mock InvoiceUpload component
 vi.mock('./InvoiceUpload', () => ({
   default: ({ expenseId, existingInvoices, onInvoiceUploaded, onInvoiceDeleted, disabled }) => (
@@ -191,7 +199,7 @@ describe('ExpenseForm - Invoice Integration', () => {
       notes: 'Test notes',
       amount: 100,
       type: 'Tax - Medical',
-      method: 'Cash',
+      payment_method_id: 1,
       invoice: { id: 1, filename: 'existing.pdf' }
     };
 
@@ -246,7 +254,7 @@ describe('ExpenseForm - Invoice Integration', () => {
       date: '2025-01-01',
       place: 'Test Clinic',
       amount: 100,
-      method: 'Cash'
+      payment_method_id: 1
     };
 
     render(<ExpenseForm expense={mockExpense} />);

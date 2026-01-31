@@ -15,6 +15,14 @@ describe('CategorySuggestionService', () => {
     db = await getDatabase();
   });
 
+  beforeEach(async () => {
+    // Clean up any leftover test data before each test
+    // This ensures a clean state even if a previous test failed
+    await new Promise((resolve) => {
+      db.run(`DELETE FROM expenses WHERE place LIKE 'Test%'`, () => resolve());
+    });
+  });
+
   afterEach(async () => {
     // Clean up created expenses
     for (const id of createdExpenseIds) {

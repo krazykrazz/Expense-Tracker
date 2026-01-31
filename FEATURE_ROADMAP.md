@@ -1,7 +1,7 @@
 # Expense Tracker - Feature Roadmap
 
-**Last Updated**: January 28, 2026  
-**Current Version**: 4.18.0
+**Last Updated**: January 30, 2026  
+**Current Version**: 4.20.0
 
 This document tracks potential features and enhancements for the Expense Tracker application. Features are categorized by priority and implementation status.
 
@@ -468,6 +468,25 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ## 🟢 Completed Features
 
+### 🟢 Configurable Payment Methods (v4.20.0)
+**Completed**: January 30, 2026  
+**Spec**: `.kiro/specs/configurable-payment-methods/`  
+**Description**: Database-driven payment method management with full credit card tracking including balance management, payment history, and statement uploads.
+
+**Features Delivered**:
+- **Payment Method Types**: Cash, Cheque, Debit, Credit Card with type-specific fields
+- **Payment Method Management**: Create, edit, activate/deactivate, delete payment methods
+- **Credit Card Balance Tracking**: Automatic balance updates when expenses are added/deleted
+- **Credit Utilization**: Color-coded utilization indicators (green/yellow/red)
+- **Payment Recording**: Log credit card payments with automatic balance reduction
+- **Payment History**: View all recorded payments with dates and notes
+- **Statement Uploads**: Attach PDF statements with billing period dates
+- **Due Date Reminders**: Alerts when payment due within 7 days
+- **Credit Card Posted Date**: Optional posted date field for accurate balance calculations
+- **Backward Compatibility**: Existing expenses preserved, inactive methods shown in filters
+
+---
+
 ### 🟢 UI Modernization (v4.14.0)
 **Completed**: January 18, 2026  
 **Spec**: `.kiro/specs/ui-modernization/` (archived)  
@@ -825,12 +844,11 @@ This document tracks potential features and enhancements for the Expense Tracker
 ### Medium Priority
 1. Adaptive Anomaly Detection (Learning from Dismissals)
 2. Advanced Expense Search
-3. Mortgage Tracking
-4. Custom Reports
-5. Category Insights
-6. Savings Rate Tracker
-7. Debt Payoff Planner
-8. Export Enhancements
+3. Custom Reports
+4. Category Insights
+5. Savings Rate Tracker
+6. Debt Payoff Planner
+7. Export Enhancements
 
 ### Low Priority
 1. Tags System
@@ -863,6 +881,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 ---
 
 **Version History**:
+- v2.3 (2026-01-30): Added Configurable Payment Methods (v4.20.0) and Credit Card Posted Date to completed features, updated current version to 4.20.0
 - v2.2 (2026-01-26): Added Adaptive Anomaly Detection (Learning from Dismissals) as proposed feature #2 in Analytics & Insights section
 - v2.1 (2026-01-26): Added Spending Patterns & Predictions / Analytics Hub (v4.17.0) to completed features, consolidated Merchant Analytics into Analytics Hub, updated current version to 4.17.0
 - v2.0 (2026-01-19): Added UI Modernization (v4.14.0) and Multi-Invoice Support (v4.13.0-v4.13.2) to completed features, marked Receipt Attachments as completed (via tax-deductible invoices), updated current version to 4.14.5

@@ -57,6 +57,14 @@ function getInvoicesPath() {
 }
 
 /**
+ * Get the credit card statements directory path
+ * @returns {string} Path to statements directory
+ */
+function getStatementsPath() {
+  return path.join(CONFIG_DIR, 'statements');
+}
+
+/**
  * Ensure all required directories exist
  * Creates directory structure if it doesn't exist
  * @returns {Promise<void>}
@@ -67,7 +75,8 @@ async function ensureDirectories() {
     path.join(CONFIG_DIR, 'backups'),
     path.join(CONFIG_DIR, 'config'),
     path.join(CONFIG_DIR, 'invoices'),
-    path.join(CONFIG_DIR, 'invoices', 'temp')
+    path.join(CONFIG_DIR, 'invoices', 'temp'),
+    path.join(CONFIG_DIR, 'statements')
   ];
 
   for (const dir of directories) {
@@ -86,6 +95,7 @@ module.exports = {
   getBackupPath,
   getBackupConfigPath,
   getInvoicesPath,
+  getStatementsPath,
   ensureDirectories,
   isContainerized
 };

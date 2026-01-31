@@ -3249,6 +3249,394 @@ async function migrateFixInvoiceFilePaths(db) {
 }
 
 /**
+ * Migration: Add configurable payment methods tables
+ * Creates payment_methods, credit_card_payments, and credit_card_statements tables
+ * Adds payment_method_id foreign key to expenses and fixed_expenses tables
+ * Migrates existing payment method strings to the new table
+ * Removes CHECK constraint on method column to allow dynamic payment methods
+ */
+async function migrateConfigurablePaymentMethods(db) {
+  const migrationName = 'configurable_payment_methods_v1';
+  
+  // Check if already applied
+  const isApplied = await checkMigrationApplied(db, migrationName);
+  if (isApplied) {
+    logger.info(`Migration "${migrationName}" already applied, skipping`);
+    return;
+  }
+
+  logger.info(`Running migration: ${migrationName}`);
+
+  // Create backup
+  await createBackup();
+
+  // Define explicit migration mapping for existing payment methods
+  const migrationMapping = [
+    { id: 1, oldValue: 'Cash', displayName: 'Cash', fullName: 'Cash', type: 'cash' },
+    { id: 2, oldValue: 'Debit', displayName: 'Debit', fullName: 'Debit', type: 'debit' },
+    { id: 3, oldValue: 'Cheque', displayName: 'Cheque', fullName: 'Cheque', type: 'cheque' },
+    { id: 4, oldValue: 'CIBC MC', displayName: 'CIBC MC', fullName: 'CIBC Mastercard', type: 'credit_card' },
+    { id: 5, oldValue: 'PCF MC', displayName: 'PCF MC', fullName: 'PCF Mastercard', type: 'credit_card' },
+    { id: 6, oldValue: 'WS VISA', displayName: 'WS VISA', fullName: 'WealthSimple VISA', type: 'credit_card' },
+    { id: 7, oldValue: 'VISA', displayName: 'RBC VISA', fullName: 'RBC VISA', type: 'credit_card' }
+  ];
+
+  // Disable foreign keys before table recreation
+  await disableForeignKeys(db);
+
+  return new Promise((resolve, reject) => {
+    db.serialize(() => {
+      db.run('BEGIN TRANSACTION', async (err) => {
+        if (err) {
+          enableForeignKeys(db).catch(() => {});
+          return reject(err);
+        }
+
+        try {
+          // 1. Create payment_methods table
+          await runStatement(db, `
+            CREATE TABLE IF NOT EXISTS payment_methods (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              type TEXT NOT NULL CHECK(type IN ('cash', 'cheque', 'debit', 'credit_card')),
+              display_name TEXT NOT NULL UNIQUE,
+              full_name TEXT,
+              account_details TEXT,
+              credit_limit REAL CHECK(credit_limit IS NULL OR credit_limit > 0),
+              current_balance REAL DEFAULT 0 CHECK(current_balance >= 0),
+              payment_due_day INTEGER CHECK(payment_due_day IS NULL OR (payment_due_day >= 1 AND payment_due_day <= 31)),
+              billing_cycle_start INTEGER CHECK(billing_cycle_start IS NULL OR (billing_cycle_start >= 1 AND billing_cycle_start <= 31)),
+              billing_cycle_end INTEGER CHECK(billing_cycle_end IS NULL OR (billing_cycle_end >= 1 AND billing_cycle_end <= 31)),
+              is_active INTEGER DEFAULT 1,
+              created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+              updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+          `);
+          logger.info('Created payment_methods table');
+
+          // Create indexes for payment_methods
+          await runStatement(db, 'CREATE INDEX IF NOT EXISTS idx_payment_methods_type ON payment_methods(type)');
+          await runStatement(db, 'CREATE INDEX IF NOT EXISTS idx_payment_methods_display_name ON payment_methods(display_name)');
+          await runStatement(db, 'CREATE INDEX IF NOT EXISTS idx_payment_methods_is_active ON payment_methods(is_active)');
+          logger.info('Created payment_methods indexes');
+
+          // 2. Create credit_card_payments table
+          await runStatement(db, `
+            CREATE TABLE IF NOT EXISTS credit_card_payments (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              payment_method_id INTEGER NOT NULL,
+              amount REAL NOT NULL CHECK(amount > 0),
+              payment_date TEXT NOT NULL,
+              notes TEXT,
+              created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (payment_method_id) REFERENCES payment_methods(id) ON DELETE CASCADE
+            )
+          `);
+          logger.info('Created credit_card_payments table');
+
+          // Create indexes for credit_card_payments
+          await runStatement(db, 'CREATE INDEX IF NOT EXISTS idx_cc_payments_method_id ON credit_card_payments(payment_method_id)');
+          await runStatement(db, 'CREATE INDEX IF NOT EXISTS idx_cc_payments_date ON credit_card_payments(payment_date)');
+          logger.info('Created credit_card_payments indexes');
+
+          // 3. Create credit_card_statements table
+          await runStatement(db, `
+            CREATE TABLE IF NOT EXISTS credit_card_statements (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              payment_method_id INTEGER NOT NULL,
+              statement_date TEXT NOT NULL,
+              statement_period_start TEXT NOT NULL,
+              statement_period_end TEXT NOT NULL,
+              filename TEXT NOT NULL,
+              original_filename TEXT NOT NULL,
+              file_path TEXT NOT NULL,
+              file_size INTEGER NOT NULL,
+              mime_type TEXT NOT NULL DEFAULT 'application/pdf',
+              created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (payment_method_id) REFERENCES payment_methods(id) ON DELETE CASCADE
+            )
+          `);
+          logger.info('Created credit_card_statements table');
+
+          // Create indexes for credit_card_statements
+          await runStatement(db, 'CREATE INDEX IF NOT EXISTS idx_cc_statements_method_id ON credit_card_statements(payment_method_id)');
+          await runStatement(db, 'CREATE INDEX IF NOT EXISTS idx_cc_statements_date ON credit_card_statements(statement_date)');
+          logger.info('Created credit_card_statements indexes');
+
+          // 4. Insert payment methods with explicit IDs
+          for (const mapping of migrationMapping) {
+            await runStatement(db, 
+              `INSERT INTO payment_methods (id, type, display_name, full_name, is_active) 
+               VALUES (?, ?, ?, ?, 1)`,
+              [mapping.id, mapping.type, mapping.displayName, mapping.fullName]
+            );
+          }
+          logger.info(`Inserted ${migrationMapping.length} payment methods`);
+
+          // 5. Recreate expenses table without CHECK constraint on method column
+          // This allows dynamic payment methods instead of hardcoded values
+          const categoryList = CATEGORIES.map(c => `'${c}'`).join(', ');
+          
+          await runStatement(db, `
+            CREATE TABLE expenses_new (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              date TEXT NOT NULL,
+              place TEXT,
+              notes TEXT,
+              amount REAL NOT NULL,
+              type TEXT NOT NULL CHECK(type IN (${categoryList})),
+              week INTEGER NOT NULL CHECK(week >= 1 AND week <= 5),
+              method TEXT NOT NULL,
+              payment_method_id INTEGER REFERENCES payment_methods(id),
+              insurance_eligible INTEGER DEFAULT 0,
+              claim_status TEXT DEFAULT NULL CHECK(claim_status IS NULL OR claim_status IN ('not_claimed', 'in_progress', 'paid', 'denied')),
+              original_cost REAL DEFAULT NULL,
+              created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+          `);
+          
+          // Copy data from old table, updating VISA to RBC VISA
+          await runStatement(db, `
+            INSERT INTO expenses_new (id, date, place, notes, amount, type, week, method, insurance_eligible, claim_status, original_cost, created_at)
+            SELECT id, date, place, notes, amount, type, week, 
+                   CASE WHEN method = 'VISA' THEN 'RBC VISA' ELSE method END,
+                   COALESCE(insurance_eligible, 0), claim_status, original_cost, 
+                   COALESCE(created_at, CURRENT_TIMESTAMP)
+            FROM expenses
+          `);
+          
+          // Drop old table and rename new one
+          await runStatement(db, 'DROP TABLE expenses');
+          await runStatement(db, 'ALTER TABLE expenses_new RENAME TO expenses');
+          logger.info('Recreated expenses table without method CHECK constraint');
+
+          // Recreate indexes for expenses
+          await runStatement(db, 'CREATE INDEX IF NOT EXISTS idx_date ON expenses(date)');
+          await runStatement(db, 'CREATE INDEX IF NOT EXISTS idx_type ON expenses(type)');
+          await runStatement(db, 'CREATE INDEX IF NOT EXISTS idx_method ON expenses(method)');
+          await runStatement(db, 'CREATE INDEX IF NOT EXISTS idx_expenses_insurance_eligible ON expenses(insurance_eligible)');
+          await runStatement(db, 'CREATE INDEX IF NOT EXISTS idx_expenses_claim_status ON expenses(claim_status)');
+          await runStatement(db, 'CREATE INDEX IF NOT EXISTS idx_expenses_payment_method_id ON expenses(payment_method_id)');
+          logger.info('Recreated expenses indexes');
+
+          // 6. Populate payment_method_id for expenses based on method string
+          for (const mapping of migrationMapping) {
+            const methodToMatch = mapping.oldValue === 'VISA' ? 'RBC VISA' : mapping.oldValue;
+            await runStatement(db,
+              'UPDATE expenses SET payment_method_id = ? WHERE method = ?',
+              [mapping.id, methodToMatch]
+            );
+          }
+          logger.info('Populated payment_method_id for existing expenses');
+
+          // 7. Add payment_method_id column to fixed_expenses table
+          await runStatement(db, 'ALTER TABLE fixed_expenses ADD COLUMN payment_method_id INTEGER REFERENCES payment_methods(id)');
+          await runStatement(db, 'CREATE INDEX IF NOT EXISTS idx_fixed_expenses_payment_method_id ON fixed_expenses(payment_method_id)');
+          logger.info('Added payment_method_id column to fixed_expenses table');
+
+          // 8. Populate payment_method_id for fixed_expenses based on payment_type string
+          // First, handle standard payment methods
+          for (const mapping of migrationMapping) {
+            await runStatement(db,
+              'UPDATE fixed_expenses SET payment_method_id = ? WHERE payment_type = ?',
+              [mapping.id, mapping.oldValue]
+            );
+          }
+          
+          // Handle legacy payment types that were used before standardization
+          // Map legacy values to appropriate standard payment methods:
+          // - "Auto-Pay" -> Debit (id=2) - typically bank auto-withdrawals
+          // - "Credit Card" -> CIBC MC (id=4) - generic credit card reference
+          const legacyMapping = [
+            { oldValue: 'Auto-Pay', newId: 2, newDisplayName: 'Debit' },
+            { oldValue: 'Credit Card', newId: 4, newDisplayName: 'CIBC MC' },
+            { oldValue: 'Fixed', newId: 2, newDisplayName: 'Debit' }  // Another legacy value
+          ];
+          
+          for (const legacy of legacyMapping) {
+            await runStatement(db,
+              'UPDATE fixed_expenses SET payment_method_id = ?, payment_type = ? WHERE payment_type = ?',
+              [legacy.newId, legacy.newDisplayName, legacy.oldValue]
+            );
+          }
+          logger.info('Populated payment_method_id for existing fixed_expenses (including legacy values)');
+
+          // 9. Update display names where they changed (VISA → RBC VISA) in fixed_expenses
+          await runStatement(db,
+            'UPDATE fixed_expenses SET payment_type = ? WHERE payment_type = ?',
+            ['RBC VISA', 'VISA']
+          );
+          logger.info('Updated VISA to RBC VISA in fixed_expenses');
+
+          // 10. Calculate and set initial balances for credit cards based on existing expenses
+          // Get all credit card payment methods
+          const creditCards = await new Promise((resolve, reject) => {
+            db.all(
+              'SELECT id, display_name FROM payment_methods WHERE type = "credit_card"',
+              (err, rows) => err ? reject(err) : resolve(rows || [])
+            );
+          });
+
+          for (const card of creditCards) {
+            // Sum expenses for this card (payments table is empty at migration time)
+            // Only include expenses dated today or earlier (exclude future pre-logged expenses)
+            const todayForBalance = new Date();
+            const todayStrForBalance = `${todayForBalance.getFullYear()}-${String(todayForBalance.getMonth() + 1).padStart(2, '0')}-${String(todayForBalance.getDate()).padStart(2, '0')}`;
+            const expenseResult = await new Promise((resolve, reject) => {
+              db.get(
+                'SELECT COALESCE(SUM(amount), 0) as total FROM expenses WHERE payment_method_id = ? AND date <= ?',
+                [card.id, todayStrForBalance],
+                (err, row) => err ? reject(err) : resolve(row)
+              );
+            });
+            
+            const balance = Math.round((expenseResult?.total || 0) * 100) / 100;
+            
+            if (balance > 0) {
+              await runStatement(db,
+                'UPDATE payment_methods SET current_balance = ? WHERE id = ?',
+                [balance, card.id]
+              );
+              logger.info(`Set initial balance for ${card.display_name}: $${balance.toFixed(2)} (excluding future expenses)`);
+            }
+          }
+          logger.info('Calculated initial credit card balances from existing expenses (excluding future-dated)');
+
+          // Mark migration as applied
+          await markMigrationApplied(db, migrationName);
+
+          // Commit transaction
+          db.run('COMMIT', (err) => {
+            enableForeignKeys(db).catch(() => {});
+            if (err) {
+              db.run('ROLLBACK');
+              return reject(err);
+            }
+            logger.info(`Migration "${migrationName}" completed successfully`);
+            resolve();
+          });
+        } catch (error) {
+          db.run('ROLLBACK');
+          enableForeignKeys(db).catch(() => {});
+          logger.error(`Migration "${migrationName}" failed:`, error);
+          reject(error);
+        }
+      });
+    });
+  });
+}
+
+/**
+ * Migration: Add posted_date column to expenses table
+ * This allows distinguishing between transaction date and credit card posting date
+ * for accurate balance calculations when pre-logging future expenses.
+ * 
+ * Requirements: 3.1, 3.2, 3.3, 3.4
+ */
+async function migrateAddPostedDate(db) {
+  const migrationName = 'add_posted_date_v1';
+  
+  // Check if already applied
+  const isApplied = await checkMigrationApplied(db, migrationName);
+  if (isApplied) {
+    logger.info(`Migration "${migrationName}" already applied, skipping`);
+    return;
+  }
+
+  logger.info(`Running migration: ${migrationName}`);
+
+  // Create backup
+  await createBackup();
+
+  return new Promise((resolve, reject) => {
+    db.serialize(() => {
+      db.run('BEGIN TRANSACTION', (err) => {
+        if (err) {
+          return reject(err);
+        }
+
+        // Check if posted_date column already exists
+        db.all('PRAGMA table_info(expenses)', (err, columns) => {
+          if (err) {
+            db.run('ROLLBACK');
+            return reject(err);
+          }
+
+          const hasPostedDate = columns.some(col => col.name === 'posted_date');
+
+          if (hasPostedDate) {
+            logger.info('expenses table already has posted_date column');
+            markMigrationApplied(db, migrationName).then(() => {
+              db.run('COMMIT', (err) => {
+                if (err) {
+                  db.run('ROLLBACK');
+                  return reject(err);
+                }
+                logger.info(`Migration "${migrationName}" completed successfully`);
+                resolve();
+              });
+            }).catch(reject);
+            return;
+          }
+
+          // Add posted_date column (nullable, no default)
+          db.run(
+            'ALTER TABLE expenses ADD COLUMN posted_date TEXT DEFAULT NULL',
+            (err) => {
+              if (err) {
+                db.run('ROLLBACK');
+                return reject(err);
+              }
+              
+              logger.info('Added posted_date column to expenses table');
+
+              // Create index for query performance
+              db.run(
+                'CREATE INDEX IF NOT EXISTS idx_expenses_posted_date ON expenses(posted_date)',
+                (err) => {
+                  if (err) {
+                    db.run('ROLLBACK');
+                    return reject(err);
+                  }
+
+                  logger.info('Created index idx_expenses_posted_date');
+
+                  // Mark migration as applied and commit
+                  markMigrationApplied(db, migrationName).then(() => {
+                    db.run('COMMIT', (err) => {
+                      if (err) {
+                        db.run('ROLLBACK');
+                        return reject(err);
+                      }
+                      logger.info(`Migration "${migrationName}" completed successfully`);
+                      resolve();
+                    });
+                  }).catch(reject);
+                }
+              );
+            }
+          );
+        });
+      });
+    });
+  });
+}
+
+/**
+ * Helper function to run a SQL statement as a promise
+ */
+function runStatement(db, sql, params = []) {
+  return new Promise((resolve, reject) => {
+    db.run(sql, params, function(err) {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(this);
+      }
+    });
+  });
+}
+
+/**
  * Run all pending migrations
  */
 async function runMigrations(db) {
@@ -3274,6 +3662,8 @@ async function runMigrations(db) {
     await migrateAddMortgageFields(db);
     await migrateAddMortgagePaymentsTable(db);
     await migrateFixInvoiceFilePaths(db);
+    await migrateConfigurablePaymentMethods(db);
+    await migrateAddPostedDate(db);
     logger.info('All migrations completed');
   } catch (error) {
     logger.error('Migration failed:', error.message);
@@ -3293,5 +3683,7 @@ module.exports = {
   migrateAddOriginalAmountToExpensePeople,
   migrateAddDismissedAnomaliesTable,
   migrateAddMortgageFields,
-  migrateAddMortgagePaymentsTable
+  migrateAddMortgagePaymentsTable,
+  migrateConfigurablePaymentMethods,
+  migrateAddPostedDate
 };

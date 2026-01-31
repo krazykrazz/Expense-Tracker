@@ -22,70 +22,58 @@ describe('PredictionService - Prediction Formula Property Tests', () => {
     db = await getDatabase();
     // Initial cleanup
     await new Promise((resolve, reject) => {
-      db.serialize(() => {
-        db.run('DELETE FROM expenses', (err) => {
-          if (err) reject(err);
-          else resolve();
-        });
+      db.run('DELETE FROM expenses', (err) => {
+        if (err) reject(err);
+        else resolve();
       });
     });
   });
 
   beforeEach(async () => {
-    // Clear expenses and income tables with serialize
+    // Clear expenses table
     await new Promise((resolve, reject) => {
-      db.serialize(() => {
-        db.run('DELETE FROM expenses', (err) => {
-          if (err) reject(err);
-          else resolve();
-        });
+      db.run('DELETE FROM expenses', (err) => {
+        if (err) reject(err);
+        else resolve();
       });
     });
+    // Clear income_sources table
     await new Promise((resolve, reject) => {
-      db.serialize(() => {
-        db.run('DELETE FROM income_sources', (err) => {
-          if (err) reject(err);
-          else resolve();
-        });
+      db.run('DELETE FROM income_sources', (err) => {
+        if (err) reject(err);
+        else resolve();
       });
     });
-    await new Promise(resolve => setTimeout(resolve, 10));
+    // Small delay to ensure cleanup completes
+    await new Promise(resolve => setTimeout(resolve, 20));
   });
 
   afterEach(async () => {
     await new Promise((resolve, reject) => {
-      db.serialize(() => {
-        db.run('DELETE FROM expenses', (err) => {
-          if (err) reject(err);
-          else resolve();
-        });
+      db.run('DELETE FROM expenses', (err) => {
+        if (err) reject(err);
+        else resolve();
       });
     });
     await new Promise((resolve, reject) => {
-      db.serialize(() => {
-        db.run('DELETE FROM income_sources', (err) => {
-          if (err) reject(err);
-          else resolve();
-        });
+      db.run('DELETE FROM income_sources', (err) => {
+        if (err) reject(err);
+        else resolve();
       });
     });
   });
 
   afterAll(async () => {
     await new Promise((resolve, reject) => {
-      db.serialize(() => {
-        db.run('DELETE FROM expenses', (err) => {
-          if (err) reject(err);
-          else resolve();
-        });
+      db.run('DELETE FROM expenses', (err) => {
+        if (err) reject(err);
+        else resolve();
       });
     });
     await new Promise((resolve, reject) => {
-      db.serialize(() => {
-        db.run('DELETE FROM income_sources', (err) => {
-          if (err) reject(err);
-          else resolve();
-        });
+      db.run('DELETE FROM income_sources', (err) => {
+        if (err) reject(err);
+        else resolve();
       });
     });
   });
@@ -149,16 +137,15 @@ describe('PredictionService - Prediction Formula Property Tests', () => {
           const year = 2024;
           const month = 6; // June 2024 (past month)
 
-          // Clear database with serialize
+          // Clear database - get fresh connection
+          const freshDb = await getDatabase();
           await new Promise((resolve, reject) => {
-            db.serialize(() => {
-              db.run('DELETE FROM expenses', (err) => {
-                if (err) reject(err);
-                else resolve();
-              });
+            freshDb.run('DELETE FROM expenses', (err) => {
+              if (err) reject(err);
+              else resolve();
             });
           });
-          await new Promise(resolve => setTimeout(resolve, 5));
+          await new Promise(resolve => setTimeout(resolve, 20));
 
           // Insert expenses
           for (const exp of expenseData) {
@@ -198,16 +185,15 @@ describe('PredictionService - Prediction Formula Property Tests', () => {
           const year = 2024;
           const month = 6; // June 2024
 
-          // Clear database with serialize
+          // Clear database - get fresh connection
+          const freshDb = await getDatabase();
           await new Promise((resolve, reject) => {
-            db.serialize(() => {
-              db.run('DELETE FROM expenses', (err) => {
-                if (err) reject(err);
-                else resolve();
-              });
+            freshDb.run('DELETE FROM expenses', (err) => {
+              if (err) reject(err);
+              else resolve();
             });
           });
-          await new Promise(resolve => setTimeout(resolve, 5));
+          await new Promise(resolve => setTimeout(resolve, 20));
 
           // Insert one expense per day for numDays
           for (let day = 1; day <= numDays; day++) {

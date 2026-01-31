@@ -894,3 +894,821 @@ See test files:
 **Last Updated:** January 21, 2026  
 **API Version:** 1.2  
 **Status:** Active
+
+
+---
+
+# Payment Methods API
+
+## Overview
+
+The Payment Methods API provides endpoints for managing configurable payment methods. Payment methods are now stored in the database instead of being hardcoded, allowing users to create, update, and manage their own payment methods with type-specific attributes.
+
+### Payment Method Types
+
+| Type | Description | Required Fields | Optional Fields |
+|------|-------------|-----------------|-----------------|
+| `cash` | Cash payments | display_name | - |
+| `cheque` | Cheque payments | display_name | account_details |
+| `debit` | Debit card payments | display_name | account_details |
+| `credit_card` | Credit card payments | display_name, full_name | credit_limit, payment_due_day, billing_cycle_start, billing_cycle_end |
+
+---
+
+## Payment Method Endpoints
+
+### 1. Get All Payment Methods
+
+Retrieve all payment methods with optional filtering.
+
+**Endpoint:** `GET /payment-methods`
+
+**Query Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| type | string | No | Filter by type: 'cash', 'cheque', 'debit', 'credit_card' |
+| activeOnly | boolean | No | If true, return only active payment methods (default: false) |
+
+**Success Response:**
+```json
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "paymentMethods": [
+    {
+      "id": 1,
+      "type": "cash",
+      "display_name": "Cash",
+      "full_name": "Cash",
+      "account_details": null,
+      "credit_limit": null,
+      "current_balance": 0,
+      "payment_due_day": null,
+      "billing_cycle_start": null,
+      "billing_cycle_end": null,
+      "is_active": 1,
+      "expense_count": 45,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    },
+    {
+      "id": 4,
+      "type": "credit_card",
+      "display_name": "CIBC MC",
+      "full_name": "CIBC Mastercard",
+      "account_details": null,
+      "credit_limit": 5000.00,
+      "current_balance": 1250.50,
+      "payment_due_day": 15,
+      "billing_cycle_start": 16,
+      "billing_cycle_end": 15,
+      "is_active": 1,
+      "expense_count": 120,
+      "utilization_percentage": 25.01,
+      "days_until_due": 5,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-15T10:30:00Z"
+    }
+  ]
+}
+```
+
+**Example:**
+```javascript
+// Get all payment methods
+const response = await fetch('http://localhost:2424/api/payment-methods');
+
+// Get only active credit cards
+const response = await fetch('http://localhost:2424/api/payment-methods?type=credit_card&activeOnly=true');
+```
+
+---
+
+### 2. Get Payment Method by ID
+
+Retrieve a specific payment method with computed fields.
+
+**Endpoint:** `GET /payment-methods/:id`
+
+**URL Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| id | number | Yes | Payment method ID |
+
+**Success Response:**
+```json
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "paymentMethod": {
+    "id": 4,
+    "type": "credit_card",
+    "display_name": "CIBC MC",
+    "full_name": "CIBC Mastercard",
+    "credit_limit": 5000.00,
+    "current_balance": 1250.50,
+    "payment_due_day": 15,
+    "billing_cycle_start": 16,
+    "billing_cycle_end": 15,
+    "is_active": 1,
+    "expense_count": 120,
+    "utilization_percentage": 25.01,
+    "days_until_due": 5,
+    "current_cycle_spending": 450.00
+  }
+}
+```
+
+**Error Responses:**
+```json
+HTTP/1.1 404 Not Found
+{
+  "error": "Payment method not found"
+}
+```
+
+---
+
+### 3. Get Display Names
+
+Retrieve all payment method display names (for validation and dropdowns).
+
+**Endpoint:** `GET /payment-methods/display-names`
+
+**Success Response:**
+```json
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "displayNames": ["Cash", "Debit", "Cheque", "CIBC MC", "PCF MC", "WS VISA", "RBC VISA"]
+}
+```
+
+---
+
+### 4. Create Payment Method
+
+Create a new payment method.
+
+**Endpoint:** `POST /payment-methods`
+
+**Request Body:**
+```json
+{
+  "type": "credit_card",
+  "display_name": "Amex Gold",
+  "full_name": "American Express Gold Card",
+  "credit_limit": 10000.00,
+  "payment_due_day": 20,
+  "billing_cycle_start": 21,
+  "billing_cycle_end": 20
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| type | string | Yes | Payment method type |
+| display_name | string | Yes | Short name for dropdowns (must be unique) |
+| full_name | string | Credit cards only | Full name of the card |
+| account_details | string | No | Optional account reference (last 4 digits, etc.) |
+| credit_limit | number | No | Credit limit (credit cards only) |
+| payment_due_day | number | No | Day of month payment is due (1-31) |
+| billing_cycle_start | number | No | Day billing cycle starts (1-31) |
+| billing_cycle_end | number | No | Day billing cycle ends (1-31) |
+
+**Success Response:**
+```json
+HTTP/1.1 201 Created
+Content-Type: application/json
+
+{
+  "paymentMethod": {
+    "id": 8,
+    "type": "credit_card",
+    "display_name": "Amex Gold",
+    "full_name": "American Express Gold Card",
+    "credit_limit": 10000.00,
+    "current_balance": 0,
+    "payment_due_day": 20,
+    "is_active": 1
+  }
+}
+```
+
+**Error Responses:**
+```json
+HTTP/1.1 400 Bad Request
+{
+  "error": "Display name is required"
+}
+```
+
+```json
+HTTP/1.1 400 Bad Request
+{
+  "error": "A payment method with this display name already exists"
+}
+```
+
+```json
+HTTP/1.1 400 Bad Request
+{
+  "error": "Full name is required for credit cards"
+}
+```
+
+---
+
+### 5. Update Payment Method
+
+Update an existing payment method.
+
+**Endpoint:** `PUT /payment-methods/:id`
+
+**URL Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| id | number | Yes | Payment method ID |
+
+**Request Body:**
+```json
+{
+  "display_name": "Amex Gold",
+  "full_name": "American Express Gold Card",
+  "credit_limit": 15000.00,
+  "payment_due_day": 25
+}
+```
+
+**Success Response:**
+```json
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "paymentMethod": {
+    "id": 8,
+    "type": "credit_card",
+    "display_name": "Amex Gold",
+    "full_name": "American Express Gold Card",
+    "credit_limit": 15000.00,
+    "current_balance": 500.00,
+    "payment_due_day": 25,
+    "is_active": 1
+  }
+}
+```
+
+**Error Responses:**
+```json
+HTTP/1.1 404 Not Found
+{
+  "error": "Payment method not found"
+}
+```
+
+---
+
+### 6. Delete Payment Method
+
+Delete a payment method (only if no associated expenses).
+
+**Endpoint:** `DELETE /payment-methods/:id`
+
+**URL Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| id | number | Yes | Payment method ID |
+
+**Success Response:**
+```json
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "success": true,
+  "message": "Payment method deleted successfully"
+}
+```
+
+**Error Responses:**
+```json
+HTTP/1.1 400 Bad Request
+{
+  "error": "Cannot delete payment method with associated expenses. Mark it as inactive instead"
+}
+```
+
+```json
+HTTP/1.1 404 Not Found
+{
+  "error": "Payment method not found"
+}
+```
+
+---
+
+### 7. Set Payment Method Active/Inactive
+
+Toggle the active status of a payment method.
+
+**Endpoint:** `PATCH /payment-methods/:id/active`
+
+**URL Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| id | number | Yes | Payment method ID |
+
+**Request Body:**
+```json
+{
+  "isActive": false
+}
+```
+
+**Success Response:**
+```json
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "paymentMethod": {
+    "id": 8,
+    "display_name": "Amex Gold",
+    "is_active": 0
+  }
+}
+```
+
+**Error Responses:**
+```json
+HTTP/1.1 400 Bad Request
+{
+  "error": "Cannot deactivate the last active payment method"
+}
+```
+
+---
+
+## Credit Card Payment Endpoints
+
+### 1. Record Credit Card Payment
+
+Record a payment made to a credit card.
+
+**Endpoint:** `POST /payment-methods/:id/payments`
+
+**URL Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| id | number | Yes | Credit card payment method ID |
+
+**Request Body:**
+```json
+{
+  "amount": 500.00,
+  "payment_date": "2026-01-15",
+  "notes": "Monthly payment"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| amount | number | Yes | Payment amount (must be positive) |
+| payment_date | string | Yes | Payment date (YYYY-MM-DD) |
+| notes | string | No | Optional notes |
+
+**Success Response:**
+```json
+HTTP/1.1 201 Created
+Content-Type: application/json
+
+{
+  "payment": {
+    "id": 1,
+    "payment_method_id": 4,
+    "amount": 500.00,
+    "payment_date": "2026-01-15",
+    "notes": "Monthly payment",
+    "created_at": "2026-01-15T10:30:00Z"
+  },
+  "newBalance": 750.50
+}
+```
+
+**Error Responses:**
+```json
+HTTP/1.1 400 Bad Request
+{
+  "error": "Payments can only be recorded for credit card payment methods"
+}
+```
+
+```json
+HTTP/1.1 400 Bad Request
+{
+  "error": "Payment amount must be greater than zero"
+}
+```
+
+---
+
+### 2. Get Payment History
+
+Retrieve payment history for a credit card.
+
+**Endpoint:** `GET /payment-methods/:id/payments`
+
+**URL Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| id | number | Yes | Credit card payment method ID |
+
+**Query Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| startDate | string | No | Filter start date (YYYY-MM-DD) |
+| endDate | string | No | Filter end date (YYYY-MM-DD) |
+
+**Success Response:**
+```json
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "payments": [
+    {
+      "id": 2,
+      "payment_method_id": 4,
+      "amount": 500.00,
+      "payment_date": "2026-01-15",
+      "notes": "Monthly payment",
+      "created_at": "2026-01-15T10:30:00Z"
+    },
+    {
+      "id": 1,
+      "payment_method_id": 4,
+      "amount": 300.00,
+      "payment_date": "2025-12-15",
+      "notes": "December payment",
+      "created_at": "2025-12-15T09:00:00Z"
+    }
+  ],
+  "totalPayments": 800.00
+}
+```
+
+---
+
+### 3. Delete Payment
+
+Delete a credit card payment record.
+
+**Endpoint:** `DELETE /payment-methods/:id/payments/:paymentId`
+
+**URL Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| id | number | Yes | Credit card payment method ID |
+| paymentId | number | Yes | Payment record ID |
+
+**Success Response:**
+```json
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "success": true,
+  "message": "Payment deleted successfully",
+  "newBalance": 1250.50
+}
+```
+
+---
+
+## Credit Card Statement Endpoints
+
+### 1. Upload Statement
+
+Upload a credit card statement PDF.
+
+**Endpoint:** `POST /payment-methods/:id/statements`
+
+**Content-Type:** `multipart/form-data`
+
+**URL Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| id | number | Yes | Credit card payment method ID |
+
+**Request Body:**
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| statement | File | Yes | PDF file (max 10MB) |
+| statement_date | string | Yes | Statement date (YYYY-MM-DD) |
+| statement_period_start | string | Yes | Period start date (YYYY-MM-DD) |
+| statement_period_end | string | Yes | Period end date (YYYY-MM-DD) |
+
+**Success Response:**
+```json
+HTTP/1.1 201 Created
+Content-Type: application/json
+
+{
+  "statement": {
+    "id": 1,
+    "payment_method_id": 4,
+    "statement_date": "2026-01-15",
+    "statement_period_start": "2025-12-16",
+    "statement_period_end": "2026-01-15",
+    "filename": "4_1705312200_statement.pdf",
+    "original_filename": "january_statement.pdf",
+    "file_size": 245760,
+    "created_at": "2026-01-15T10:30:00Z"
+  }
+}
+```
+
+---
+
+### 2. Get Statements
+
+Retrieve statement history for a credit card.
+
+**Endpoint:** `GET /payment-methods/:id/statements`
+
+**URL Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| id | number | Yes | Credit card payment method ID |
+
+**Success Response:**
+```json
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "statements": [
+    {
+      "id": 1,
+      "payment_method_id": 4,
+      "statement_date": "2026-01-15",
+      "statement_period_start": "2025-12-16",
+      "statement_period_end": "2026-01-15",
+      "original_filename": "january_statement.pdf",
+      "file_size": 245760,
+      "created_at": "2026-01-15T10:30:00Z"
+    }
+  ]
+}
+```
+
+---
+
+### 3. Download Statement
+
+Download a specific statement PDF.
+
+**Endpoint:** `GET /payment-methods/:id/statements/:statementId`
+
+**URL Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| id | number | Yes | Credit card payment method ID |
+| statementId | number | Yes | Statement ID |
+
+**Success Response:**
+```
+HTTP/1.1 200 OK
+Content-Type: application/pdf
+Content-Disposition: inline; filename="january_statement.pdf"
+
+[PDF file binary data]
+```
+
+---
+
+### 4. Delete Statement
+
+Delete a statement record and file.
+
+**Endpoint:** `DELETE /payment-methods/:id/statements/:statementId`
+
+**URL Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| id | number | Yes | Credit card payment method ID |
+| statementId | number | Yes | Statement ID |
+
+**Success Response:**
+```json
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "success": true,
+  "message": "Statement deleted successfully"
+}
+```
+
+---
+
+## Migration and Backward Compatibility
+
+### Automatic Migration
+
+When the application starts with existing expense data, the migration service automatically:
+
+1. Creates the `payment_methods` table with default payment methods
+2. Adds `payment_method_id` column to `expenses` and `fixed_expenses` tables
+3. Populates `payment_method_id` for all existing records based on the method string
+
+### Migration Mapping
+
+| Old Value | New Display Name | Full Name | Type | ID |
+|-----------|------------------|-----------|------|-----|
+| Cash | Cash | Cash | cash | 1 |
+| Debit | Debit | Debit | debit | 2 |
+| Cheque | Cheque | Cheque | cheque | 3 |
+| CIBC MC | CIBC MC | CIBC Mastercard | credit_card | 4 |
+| PCF MC | PCF MC | PCF Mastercard | credit_card | 5 |
+| WS VISA | WS VISA | WealthSimple VISA | credit_card | 6 |
+| VISA | RBC VISA | RBC VISA | credit_card | 7 |
+
+### Backward Compatibility
+
+The expense API accepts both:
+- `payment_method_id` (preferred) - Direct reference to payment method
+- `method` (string) - Legacy string-based lookup for backward compatibility
+
+**Example with payment_method_id (preferred):**
+```json
+{
+  "date": "2026-01-15",
+  "place": "Grocery Store",
+  "amount": 50.00,
+  "type": "Groceries",
+  "payment_method_id": 4
+}
+```
+
+**Example with method string (backward compatible):**
+```json
+{
+  "date": "2026-01-15",
+  "place": "Grocery Store",
+  "amount": 50.00,
+  "type": "Groceries",
+  "method": "CIBC MC"
+}
+```
+
+---
+
+## Credit Card Balance Tracking
+
+### Automatic Balance Updates
+
+- **Expense Creation:** When an expense is created with a credit card payment method, the card's `current_balance` is automatically increased by the expense amount.
+- **Expense Deletion:** When an expense is deleted, the card's balance is automatically decreased.
+- **Payment Recording:** When a payment is recorded, the balance is decreased by the payment amount.
+
+### Utilization Calculation
+
+For credit cards with a `credit_limit` set:
+- `utilization_percentage = (current_balance / credit_limit) * 100`
+- Warning indicator shown when utilization > 30%
+- Danger indicator shown when utilization > 70%
+
+### Due Date Tracking
+
+For credit cards with `payment_due_day` set:
+- `days_until_due` is calculated based on the current date
+- Reminders appear in the monthly reminders system when payment is due within 7 days
+
+---
+
+## Testing
+
+### Manual Testing
+
+**Create Payment Method:**
+```bash
+curl -X POST http://localhost:2424/api/payment-methods \
+  -H "Content-Type: application/json" \
+  -d '{"type": "credit_card", "display_name": "Test Card", "full_name": "Test Credit Card"}'
+```
+
+**Get All Payment Methods:**
+```bash
+curl -X GET http://localhost:2424/api/payment-methods
+```
+
+**Record Payment:**
+```bash
+curl -X POST http://localhost:2424/api/payment-methods/4/payments \
+  -H "Content-Type: application/json" \
+  -d '{"amount": 500.00, "payment_date": "2026-01-15", "notes": "Test payment"}'
+```
+
+### Automated Testing
+
+See test files:
+- `backend/repositories/paymentMethodRepository.pbt.test.js`
+- `backend/repositories/creditCardPaymentRepository.pbt.test.js`
+- `backend/services/paymentMethodService.validation.pbt.test.js`
+- `backend/services/paymentMethodService.uniqueness.pbt.test.js`
+- `backend/services/paymentMethodService.utilization.pbt.test.js`
+- `backend/services/creditCardPaymentService.pbt.test.js`
+- `backend/database/migrations.paymentMethods.pbt.test.js`
+
+---
+
+## Credit Card Posted Date
+
+### Overview
+
+For credit card expenses, an optional `posted_date` field allows distinguishing between the transaction date (when the purchase was made) and the posted date (when the charge appeared on the credit card statement).
+
+### How It Works
+
+- **Transaction Date (`date`)**: When the purchase was made
+- **Posted Date (`posted_date`)**: When the charge posted to the credit card (optional)
+
+Balance calculations use `COALESCE(posted_date, date)` - meaning the posted date is used if set, otherwise the transaction date is used.
+
+### API Usage
+
+When creating or updating an expense with a credit card payment method, include the optional `posted_date` field:
+
+**Create Expense with Posted Date:**
+```json
+POST /api/expenses
+{
+  "date": "2026-01-25",
+  "place": "Amazon",
+  "amount": 50.00,
+  "type": "Other",
+  "payment_method_id": 4,
+  "posted_date": "2026-01-28"
+}
+```
+
+**Validation Rules:**
+- `posted_date` must be in YYYY-MM-DD format or null
+- `posted_date` must be >= `date` (transaction date)
+- `posted_date` is only meaningful for credit card payment methods
+
+**Response:**
+```json
+{
+  "id": 123,
+  "date": "2026-01-25",
+  "place": "Amazon",
+  "amount": 50.00,
+  "type": "Other",
+  "method": "CIBC MC",
+  "payment_method_id": 4,
+  "posted_date": "2026-01-28"
+}
+```
+
+### Balance Calculation Impact
+
+When calculating credit card balances for a specific date:
+- Expenses with `posted_date` set: counted if `posted_date <= target_date`
+- Expenses without `posted_date`: counted if `date <= target_date`
+
+This allows pre-logging expenses that haven't posted yet without affecting the current balance.
+
+---
+
+## Changelog - Payment Methods
+
+### Version 4.20.0 (January 2026)
+- Added `posted_date` column to expenses table
+- Added posted date validation (must be >= transaction date)
+- Updated balance calculations to use COALESCE(posted_date, date)
+- Added posted date field to ExpenseForm (shown only for credit card expenses)
+
+### Version 4.15.0 (January 2026)
+- Added configurable payment methods feature
+- Added `payment_methods` table with type-specific attributes
+- Added `credit_card_payments` table for payment history
+- Added `credit_card_statements` table for statement storage
+- Added automatic migration from hardcoded payment methods
+- Added credit card balance tracking (auto-updates on expense/payment)
+- Added credit utilization calculation and indicators
+- Added payment due date tracking with reminders
+- Added statement upload and management
+- Deprecated hardcoded `PAYMENT_METHODS` constant
+- Added backward compatibility for string-based payment method submission
+
+---
+
+**Last Updated:** January 30, 2026  
+**API Version:** 1.4  
+**Status:** Active

@@ -796,6 +796,17 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v4.19.0</div>
+                <div className="changelog-date">January 2026</div>
+                <ul className="changelog-items">
+                  <li>Mortgage Tracking: Amortization schedules, equity tracking, payment insights</li>
+                  <li>Mortgage payment history with principal/interest breakdown</li>
+                  <li>Payoff projections and what-if scenarios</li>
+                  <li>Environment banner for staging/development mode</li>
+                  <li>Fixed merchant trend generation month count</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v4.18.2</div>
                 <div className="changelog-date">January 2026</div>
                 <ul className="changelog-items">
@@ -841,13 +852,6 @@ const BackupSettings = () => {
               </div>
               <div className="changelog-entry">
                 <div className="changelog-version">v4.16.4</div>
-                <div className="changelog-date">January 2026</div>
-                <ul className="changelog-items">
-                  <li>Fixed Income by Category to display all 4 categories on one row</li>
-                </ul>
-              </div>
-              <div className="changelog-entry">
-                <div className="changelog-version">v4.16.3</div>
                 <div className="changelog-date">January 2026</div>
                 <ul className="changelog-items">
                   <li>New Daily Spend card (avg variable spending per day)</li>

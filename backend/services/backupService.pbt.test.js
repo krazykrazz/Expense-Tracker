@@ -1432,3 +1432,310 @@ describe('Medical Insurance Tracking - Backup/Restore', () => {
     }
   }, 120000);
 });
+
+
+/**
+ * Property-Based Tests for Payment Methods Backup
+ * Feature: configurable-payment-methods
+ */
+describe('BackupService - Payment Methods Property-Based Tests', () => {
+  const testBackupPath = path.join(__dirname, '../../test-pbt-payment-methods-backups');
+  const testExtractPath = path.join(__dirname, '../../test-pbt-payment-methods-extract');
+  
+  beforeAll(async () => {
+    // Initialize the real database for backup tests
+    await initializeDatabase();
+    
+    // Create test directories
+    if (!fs.existsSync(testBackupPath)) {
+      fs.mkdirSync(testBackupPath, { recursive: true });
+    }
+    if (!fs.existsSync(testExtractPath)) {
+      fs.mkdirSync(testExtractPath, { recursive: true });
+    }
+  });
+
+  afterAll(async () => {
+    // Clean up test directories
+    if (fs.existsSync(testBackupPath)) {
+      try {
+        await fs.promises.rm(testBackupPath, { recursive: true, force: true });
+      } catch (error) {
+        // Ignore cleanup errors
+      }
+    }
+    if (fs.existsSync(testExtractPath)) {
+      try {
+        await fs.promises.rm(testExtractPath, { recursive: true, force: true });
+      } catch (error) {
+        // Ignore cleanup errors
+      }
+    }
+  });
+
+  /**
+   * Feature: configurable-payment-methods, Property 23: Backup Includes Payment Methods
+   * **Validates: Requirements 11.1, 11.2, 11.3, 11.4, 11.5**
+   * 
+   * For any backup created after migration, restoring the backup should result in identical
+   * payment_methods, credit_card_payments, and credit_card_statements tables.
+   */
+  test('Property 23: Backup Includes Payment Methods - backup and restore preserves payment method data', async () => {
+    const paymentMethodRepository = require('../repositories/paymentMethodRepository');
+    const creditCardPaymentRepository = require('../repositories/creditCardPaymentRepository');
+    
+    // Arbitrary for generating payment method data
+    const paymentMethodArbitrary = fc.record({
+      type: fc.constantFrom('cash', 'cheque', 'debit', 'credit_card'),
+      display_name: fc.string({ minLength: 3, maxLength: 20, unit: 'grapheme-ascii' })
+        .filter(s => /^[a-zA-Z0-9 ]+$/.test(s))
+        .map(s => `Test_${s}_${Date.now()}`), // Ensure uniqueness
+      full_name: fc.option(fc.string({ minLength: 5, maxLength: 50, unit: 'grapheme-ascii' })
+        .filter(s => /^[a-zA-Z0-9 ]+$/.test(s)), { nil: undefined }),
+      credit_limit: fc.option(fc.float({ min: 1000, max: 50000, noNaN: true, noDefaultInfinity: true }), { nil: undefined }),
+      current_balance: fc.float({ min: 0, max: 5000, noNaN: true, noDefaultInfinity: true })
+    });
+
+    // Arbitrary for generating credit card payment data
+    // Use integer-based date generation to avoid invalid date issues with fc.date()
+    const paymentArbitrary = fc.record({
+      amount: fc.float({ min: 10, max: 1000, noNaN: true, noDefaultInfinity: true }),
+      payment_date: fc.integer({ min: 2020, max: 2030 }).chain(year =>
+        fc.integer({ min: 1, max: 12 }).chain(month =>
+          fc.integer({ min: 1, max: 28 }).map(day =>
+            `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+          )
+        )
+      ),
+      notes: fc.option(fc.string({ minLength: 5, maxLength: 50, unit: 'grapheme-ascii' })
+        .filter(s => /^[a-zA-Z0-9 ]+$/.test(s)), { nil: undefined })
+    });
+
+    await fc.assert(
+      fc.asyncProperty(paymentMethodArbitrary, paymentArbitrary, async (pmData, paymentData) => {
+        let createdPaymentMethod = null;
+        let createdPayment = null;
+        
+        try {
+          // Step 1: Create a payment method
+          const paymentMethodData = {
+            type: pmData.type,
+            display_name: pmData.display_name,
+            full_name: pmData.type === 'credit_card' ? (pmData.full_name || pmData.display_name) : pmData.full_name,
+            credit_limit: pmData.type === 'credit_card' ? pmData.credit_limit : undefined,
+            current_balance: pmData.type === 'credit_card' ? pmData.current_balance : 0
+          };
+          
+          createdPaymentMethod = await paymentMethodRepository.create(paymentMethodData);
+          expect(createdPaymentMethod).not.toBeNull();
+          expect(createdPaymentMethod.id).toBeDefined();
+
+          // Step 2: If credit card, create a payment record
+          if (pmData.type === 'credit_card') {
+            const paymentRecord = {
+              payment_method_id: createdPaymentMethod.id,
+              amount: paymentData.amount,
+              payment_date: paymentData.payment_date,
+              notes: paymentData.notes
+            };
+            createdPayment = await creditCardPaymentRepository.create(paymentRecord);
+            expect(createdPayment).not.toBeNull();
+          }
+
+          // Step 3: Perform backup
+          const backupResult = await backupService.performBackup(testBackupPath);
+          expect(backupResult.success).toBe(true);
+
+          // Step 4: Delete the created data
+          if (createdPayment) {
+            await creditCardPaymentRepository.delete(createdPayment.id);
+          }
+          await paymentMethodRepository.delete(createdPaymentMethod.id);
+
+          // Verify data is deleted
+          const deletedPM = await paymentMethodRepository.findById(createdPaymentMethod.id);
+          expect(deletedPM).toBeNull();
+
+          // Step 5: Restore from backup
+          const restoreResult = await backupService.restoreBackup(backupResult.path);
+          expect(restoreResult.success).toBe(true);
+
+          // Reinitialize database connection after restore
+          await initializeDatabase();
+
+          // Step 6: Verify payment method is restored with identical values
+          const restoredPM = await paymentMethodRepository.findById(createdPaymentMethod.id);
+          expect(restoredPM).not.toBeNull();
+          expect(restoredPM.type).toBe(createdPaymentMethod.type);
+          expect(restoredPM.display_name).toBe(createdPaymentMethod.display_name);
+          expect(restoredPM.is_active).toBe(createdPaymentMethod.is_active);
+          
+          if (pmData.type === 'credit_card') {
+            if (createdPaymentMethod.credit_limit) {
+              expect(restoredPM.credit_limit).toBeCloseTo(createdPaymentMethod.credit_limit, 2);
+            }
+            expect(restoredPM.current_balance).toBeCloseTo(createdPaymentMethod.current_balance, 2);
+          }
+
+          // Step 7: Verify credit card payment is restored (if applicable)
+          if (createdPayment) {
+            const restoredPayments = await creditCardPaymentRepository.findByPaymentMethodId(createdPaymentMethod.id);
+            expect(restoredPayments.length).toBeGreaterThanOrEqual(1);
+            
+            const restoredPayment = restoredPayments.find(p => p.id === createdPayment.id);
+            expect(restoredPayment).not.toBeNull();
+            if (restoredPayment) {
+              expect(restoredPayment.amount).toBeCloseTo(createdPayment.amount, 2);
+              expect(restoredPayment.payment_date).toBe(createdPayment.payment_date);
+            }
+          }
+
+          // Clean up
+          if (createdPayment) {
+            try {
+              await creditCardPaymentRepository.delete(createdPayment.id);
+            } catch (err) {
+              // Ignore cleanup errors
+            }
+          }
+          try {
+            await paymentMethodRepository.delete(createdPaymentMethod.id);
+          } catch (err) {
+            // Ignore cleanup errors
+          }
+
+          return true;
+        } catch (error) {
+          // Clean up on error
+          if (createdPayment) {
+            try {
+              await creditCardPaymentRepository.delete(createdPayment.id);
+            } catch (err) {
+              // Ignore cleanup errors
+            }
+          }
+          if (createdPaymentMethod) {
+            try {
+              await paymentMethodRepository.delete(createdPaymentMethod.id);
+            } catch (err) {
+              // Ignore cleanup errors
+            }
+          }
+          throw error;
+        }
+      }),
+      pbtOptions()
+    );
+  }, 120000);
+
+  /**
+   * Feature: configurable-payment-methods, Property 23 (continued): Credit Card Statements Backup
+   * **Validates: Requirements 11.3**
+   * 
+   * For any backup with credit card statements, restoring should preserve statement metadata.
+   * Note: This test verifies database records; file backup is tested separately.
+   */
+  test('Property 23b: Backup preserves credit card statement metadata', async () => {
+    const paymentMethodRepository = require('../repositories/paymentMethodRepository');
+    const creditCardStatementRepository = require('../repositories/creditCardStatementRepository');
+    const { getStatementsPath } = require('../config/paths');
+    
+    // Create a test credit card payment method
+    let testPaymentMethod = null;
+    let testStatement = null;
+    const statementsPath = getStatementsPath();
+    let testFilePath = null;
+    
+    try {
+      // Create a credit card payment method
+      testPaymentMethod = await paymentMethodRepository.create({
+        type: 'credit_card',
+        display_name: `Test CC ${Date.now()}`,
+        full_name: 'Test Credit Card for Statement Backup',
+        credit_limit: 5000,
+        current_balance: 0
+      });
+
+      // Create a test statement file
+      const testYear = '2095';
+      const testDir = path.join(statementsPath, String(testPaymentMethod.id), testYear);
+      await fs.promises.mkdir(testDir, { recursive: true });
+      
+      const testFilename = `statement_${testPaymentMethod.id}_${testYear}01_${Date.now()}.pdf`;
+      testFilePath = path.join(testDir, testFilename);
+      await fs.promises.writeFile(testFilePath, '%PDF-1.4 test statement content');
+
+      // Create statement record in database
+      testStatement = await creditCardStatementRepository.create({
+        payment_method_id: testPaymentMethod.id,
+        statement_date: '2095-01-15',
+        statement_period_start: '2094-12-15',
+        statement_period_end: '2095-01-14',
+        filename: testFilename,
+        original_filename: 'january_statement.pdf',
+        file_path: path.join(String(testPaymentMethod.id), testYear, testFilename),
+        file_size: 100,
+        mime_type: 'application/pdf'
+      });
+
+      // Perform backup
+      const backupResult = await backupService.performBackup(testBackupPath);
+      expect(backupResult.success).toBe(true);
+
+      // Delete the statement record and file
+      await creditCardStatementRepository.delete(testStatement.id);
+      await fs.promises.unlink(testFilePath).catch(() => {});
+
+      // Verify deletion
+      const deletedStatement = await creditCardStatementRepository.findById(testStatement.id);
+      expect(deletedStatement).toBeNull();
+
+      // Restore from backup
+      const restoreResult = await backupService.restoreBackup(backupResult.path);
+      expect(restoreResult.success).toBe(true);
+
+      // Reinitialize database connection after restore
+      await initializeDatabase();
+
+      // Verify statement metadata is restored
+      const restoredStatement = await creditCardStatementRepository.findById(testStatement.id);
+      expect(restoredStatement).not.toBeNull();
+      expect(restoredStatement.paymentMethodId).toBe(testPaymentMethod.id);
+      expect(restoredStatement.statementDate).toBe('2095-01-15');
+      expect(restoredStatement.statementPeriodStart).toBe('2094-12-15');
+      expect(restoredStatement.statementPeriodEnd).toBe('2095-01-14');
+      expect(restoredStatement.originalFilename).toBe('january_statement.pdf');
+
+      // Verify statement file is restored
+      expect(fs.existsSync(testFilePath)).toBe(true);
+
+    } finally {
+      // Clean up
+      if (testStatement) {
+        try {
+          await creditCardStatementRepository.delete(testStatement.id);
+        } catch (err) {
+          // Ignore cleanup errors
+        }
+      }
+      if (testPaymentMethod) {
+        try {
+          await paymentMethodRepository.delete(testPaymentMethod.id);
+        } catch (err) {
+          // Ignore cleanup errors
+        }
+      }
+      if (testFilePath) {
+        try {
+          await fs.promises.unlink(testFilePath);
+          // Clean up directories
+          const testDir = path.dirname(testFilePath);
+          await fs.promises.rmdir(testDir).catch(() => {});
+          await fs.promises.rmdir(path.dirname(testDir)).catch(() => {});
+        } catch (err) {
+          // Ignore cleanup errors
+        }
+      }
+    }
+  }, 120000);
+});

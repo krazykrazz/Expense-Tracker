@@ -345,6 +345,16 @@ describe('ExpenseService - People Integration', () => {
   describe('Expense update with people changes', () => {
     test('should update expense and people allocations', async () => {
       // Mock repository responses
+      const mockExistingExpense = {
+        id: 1,
+        date: '2024-01-15',
+        place: 'Old Clinic',
+        amount: 150.00,
+        type: 'Tax - Medical',
+        method: 'VISA',
+        payment_method_id: null
+      };
+
       const mockUpdatedExpense = {
         id: 1,
         date: '2024-01-16',
@@ -358,6 +368,8 @@ describe('ExpenseService - People Integration', () => {
         { id: 1, expenseId: 1, personId: 789, amount: 200.00 }
       ];
 
+      // Mock findById for updateExpense to get old expense data
+      expenseRepository.findById.mockResolvedValue(mockExistingExpense);
       expenseRepository.update.mockResolvedValue(mockUpdatedExpense);
       expensePeopleRepository.updateExpenseAllocations.mockResolvedValue(mockUpdatedAssociations);
       // Note: getPeopleForExpenses returns 'id' (not 'personId') for frontend compatibility
@@ -403,7 +415,8 @@ describe('ExpenseService - People Integration', () => {
     });
 
     test('should handle expense update when expense not found', async () => {
-      expenseRepository.update.mockResolvedValue(null);
+      // Mock findById to return null (expense not found)
+      expenseRepository.findById.mockResolvedValue(null);
 
       const expenseData = {
         date: '2024-01-16',
@@ -428,6 +441,16 @@ describe('ExpenseService - People Integration', () => {
 
     test('should update expense and remove all people allocations', async () => {
       // Mock repository responses
+      const mockExistingExpense = {
+        id: 1,
+        date: '2024-01-15',
+        place: 'Old Clinic',
+        amount: 150.00,
+        type: 'Tax - Medical',
+        method: 'VISA',
+        payment_method_id: null
+      };
+
       const mockUpdatedExpense = {
         id: 1,
         date: '2024-01-16',
@@ -437,6 +460,8 @@ describe('ExpenseService - People Integration', () => {
         method: 'VISA'
       };
 
+      // Mock findById for updateExpense to get old expense data
+      expenseRepository.findById.mockResolvedValue(mockExistingExpense);
       expenseRepository.update.mockResolvedValue(mockUpdatedExpense);
       expensePeopleRepository.updateExpenseAllocations.mockResolvedValue([]);
       expensePeopleRepository.getPeopleForExpenses.mockResolvedValue({

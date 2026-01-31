@@ -14,6 +14,12 @@ global.fetch = vi.fn();
 describe('ExpenseList - Invoice Integration', () => {
   const mockCategories = ['Groceries', 'Tax - Medical', 'Gas', 'Entertainment', 'Other'];
   
+  // Mock payment methods
+  const mockPaymentMethods = [
+    { id: 1, display_name: 'Debit', type: 'debit', is_active: 1 },
+    { id: 2, display_name: 'VISA', type: 'credit_card', is_active: 1 }
+  ];
+  
   const mockExpenses = [
     {
       id: 1,
@@ -51,10 +57,30 @@ describe('ExpenseList - Invoice Integration', () => {
     // Reset all mocks
     vi.clearAllMocks();
     
-    // Mock the categories API call
-    fetch.mockResolvedValue({
-      ok: true,
-      json: async () => ({ categories: mockCategories })
+    // Mock API calls based on URL
+    fetch.mockImplementation((url) => {
+      if (url.includes('/api/categories')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ categories: mockCategories })
+        });
+      }
+      if (url.includes('/api/payment-methods')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ paymentMethods: mockPaymentMethods })
+        });
+      }
+      if (url.includes('/api/people')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ([])
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({})
+      });
     });
   });
 
@@ -91,7 +117,7 @@ describe('ExpenseList - Invoice Integration', () => {
     // Wait for categories and invoice metadata to load
     await waitFor(() => {
       const selects = container.querySelectorAll('.filter-select');
-      expect(selects.length).toBe(4); // Category, Payment Method, Invoice, Insurance
+      expect(selects.length).toBe(5); // Category, Payment Method, Method Type, Invoice, Insurance
     });
 
     // Find the invoice filter
@@ -202,7 +228,7 @@ describe('ExpenseList - Invoice Integration', () => {
     // Wait for categories to load
     await waitFor(() => {
       const selects = container.querySelectorAll('.filter-select');
-      expect(selects.length).toBe(4); // Category, Payment Method, Invoice, Insurance
+      expect(selects.length).toBe(5); // Category, Payment Method, Method Type, Invoice, Insurance
     });
 
     // Apply filters including invoice filter

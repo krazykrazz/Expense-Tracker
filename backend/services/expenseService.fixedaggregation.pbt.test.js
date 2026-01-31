@@ -4,7 +4,7 @@ const expenseService = require('./expenseService');
 const fixedExpenseService = require('./fixedExpenseService');
 const { getDatabase } = require('../database/db');
 const { CATEGORIES } = require('../utils/categories');
-const { PAYMENT_METHODS } = require('../utils/constants');
+const paymentMethodRepository = require('../repositories/paymentMethodRepository');
 
 // **Feature: enhanced-fixed-expenses, Property 7: Category totals include fixed expenses**
 // **Validates: Requirements 7.1, 7.2**
@@ -17,9 +17,13 @@ const { PAYMENT_METHODS } = require('../utils/constants');
 
 describe('ExpenseService - Property-Based Tests for Fixed Expense Aggregation', () => {
   let db;
+  let validPaymentMethods = [];
 
   beforeAll(async () => {
     db = await getDatabase();
+    // Fetch valid payment methods from database
+    const paymentMethods = await paymentMethodRepository.findAll();
+    validPaymentMethods = paymentMethods.map(pm => pm.display_name);
   });
 
   afterEach(async () => {
@@ -130,10 +134,16 @@ describe('ExpenseService - Property-Based Tests for Fixed Expense Aggregation', 
   }, 180000);
 
   test('Property 8: Payment type totals include fixed expenses', async () => {
+    // Skip if no valid payment methods available
+    if (validPaymentMethods.length === 0) {
+      console.warn('No payment methods in database, skipping test');
+      return;
+    }
+    
     await fc.assert(
       fc.asyncProperty(
-        // Generate a random payment method
-        fc.constantFrom(...PAYMENT_METHODS),
+        // Generate a random payment method from database
+        fc.constantFrom(...validPaymentMethods),
         // Generate a random time period (year and month)
         fc.record({
           year: fc.integer({ min: 2050, max: 2060 }), // Use future years to avoid existing data
@@ -276,10 +286,16 @@ describe('ExpenseService - Property-Based Tests for Fixed Expense Aggregation', 
   }, 180000);
 
   test('Property 10: Adding fixed expense updates payment type totals', async () => {
+    // Skip if no valid payment methods available
+    if (validPaymentMethods.length === 0) {
+      console.warn('No payment methods in database, skipping test');
+      return;
+    }
+    
     await fc.assert(
       fc.asyncProperty(
-        // Generate a random payment method
-        fc.constantFrom(...PAYMENT_METHODS),
+        // Generate a random payment method from database
+        fc.constantFrom(...validPaymentMethods),
         // Generate a random time period (year and month)
         fc.record({
           year: fc.integer({ min: 2020, max: 2030 }),

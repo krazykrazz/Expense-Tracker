@@ -1,0 +1,853 @@
+/* CreditCardDetailView Component Styles
+ * Requirements: 3.1, 3.5, 3.8, 3.9, 3.10, 3A.5, 3B.5
+ */
+
+/* Modal Overlay */
+.cc-detail-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.cc-detail-modal-container {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  width: 90%;
+  max-width: 600px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+.cc-detail-modal-container.cc-detail-form-view {
+  max-width: 450px;
+  max-height: auto;
+}
+
+/* Header */
+.cc-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: var(--spacing-4);
+  border-bottom: 1px solid var(--border-default);
+  background-color: var(--bg-subtle);
+}
+
+.cc-detail-title h2 {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+.cc-detail-full-name {
+  display: block;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin-top: var(--spacing-1);
+}
+
+.cc-detail-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: var(--text-tertiary);
+  padding: var(--spacing-1);
+  border-radius: var(--radius-md);
+  transition: var(--transition-fast);
+}
+
+.cc-detail-close:hover {
+  background-color: var(--bg-muted);
+  color: var(--text-primary);
+}
+
+/* Error Display */
+.cc-detail-error {
+  background-color: var(--color-negative-light);
+  color: var(--color-negative-dark);
+  padding: var(--spacing-3) var(--spacing-4);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.cc-detail-error button {
+  background: none;
+  border: none;
+  color: var(--color-negative-dark);
+  cursor: pointer;
+  font-size: var(--text-lg);
+}
+
+/* Loading State */
+.cc-detail-loading {
+  padding: var(--spacing-8);
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+/* Overview Section */
+.cc-detail-overview {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--spacing-3);
+  padding: var(--spacing-4);
+  background-color: var(--bg-subtle);
+}
+
+/* Secondary Section (Utilization & Due Date) */
+.cc-detail-secondary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--spacing-3);
+  padding: 0 var(--spacing-4) var(--spacing-4);
+  background-color: var(--bg-subtle);
+}
+
+.cc-overview-card {
+  background-color: var(--bg-card);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-3);
+  border: 1px solid var(--border-default);
+}
+
+/* Balance Cards Styling */
+.balance-card {
+  position: relative;
+}
+
+.current-balance-card {
+  border-left: 3px solid var(--color-primary);
+}
+
+.statement-balance-card {
+  border-left: 3px solid var(--color-secondary, #6c757d);
+  background-color: var(--bg-subtle);
+}
+
+.projected-balance-card {
+  border-left: 3px solid var(--color-warning);
+  background-color: var(--color-warning-light);
+}
+
+.balance-description {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  margin-top: var(--spacing-1);
+}
+
+.pending-indicator {
+  margin-left: var(--spacing-1);
+  font-size: var(--text-sm);
+  cursor: help;
+}
+
+.overview-label {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: var(--spacing-1);
+}
+
+.overview-value {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+.balance-value {
+  font-size: var(--text-xl);
+}
+
+/* Utilization Indicator */
+.utilization-indicator {
+  margin-top: var(--spacing-2);
+}
+
+.utilization-bar {
+  height: 6px;
+  background-color: var(--bg-muted);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.utilization-fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  transition: width 0.3s ease;
+}
+
+.utilization-indicator.good .utilization-fill {
+  background-color: var(--color-positive);
+}
+
+.utilization-indicator.warning .utilization-fill {
+  background-color: var(--color-warning);
+}
+
+.utilization-indicator.danger .utilization-fill {
+  background-color: var(--color-negative);
+}
+
+.utilization-text {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  margin-top: var(--spacing-1);
+  display: block;
+}
+
+/* Due Date Card */
+.due-date-card.due-soon {
+  border-color: var(--color-warning);
+  background-color: var(--color-warning-light);
+}
+
+.due-value .overdue {
+  color: var(--color-negative);
+}
+
+.due-day-info {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  margin-top: var(--spacing-1);
+}
+
+/* Quick Actions */
+.cc-detail-actions {
+  display: flex;
+  gap: var(--spacing-3);
+  padding: var(--spacing-3) var(--spacing-4);
+  border-bottom: 1px solid var(--border-default);
+}
+
+.cc-action-btn {
+  flex: 1;
+  padding: var(--spacing-2) var(--spacing-3);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: var(--transition-button);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-2);
+}
+
+.cc-action-btn.primary {
+  background-color: var(--color-primary);
+  color: var(--text-inverse);
+  border: none;
+}
+
+.cc-action-btn.primary:hover {
+  background-color: var(--color-primary-hover);
+}
+
+.cc-action-btn.secondary {
+  background-color: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border-default);
+}
+
+.cc-action-btn.secondary:hover {
+  background-color: var(--bg-muted);
+  border-color: var(--border-strong);
+}
+
+/* Tabs */
+.cc-detail-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border-default);
+  background-color: var(--bg-subtle);
+}
+
+.cc-tab {
+  flex: 1;
+  padding: var(--spacing-3) var(--spacing-4);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.cc-tab:hover {
+  color: var(--text-primary);
+  background-color: var(--bg-muted);
+}
+
+.cc-tab.active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+}
+
+/* Tab Content */
+.cc-detail-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--spacing-4);
+}
+
+.cc-tab-content {
+  min-height: 200px;
+}
+
+/* Empty State */
+.cc-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-8);
+  text-align: center;
+}
+
+.empty-icon {
+  font-size: 3rem;
+  margin-bottom: var(--spacing-3);
+  opacity: 0.5;
+}
+
+.cc-empty-state p {
+  color: var(--text-secondary);
+  margin-bottom: var(--spacing-4);
+}
+
+/* Info Section */
+.cc-info-section {
+  margin-bottom: var(--spacing-4);
+}
+
+.cc-info-section h4 {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--text-secondary);
+  margin: 0 0 var(--spacing-3) 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.cc-info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--spacing-3);
+}
+
+.cc-info-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+.info-label {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+.info-value {
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  font-weight: var(--font-medium);
+}
+
+.info-value.status.active {
+  color: var(--color-positive);
+}
+
+.info-value.status.inactive {
+  color: var(--text-tertiary);
+}
+
+/* Billing Cycle Card Styles */
+.billing-cycle-section {
+  margin-bottom: var(--spacing-4);
+}
+
+.billing-cycle-card {
+  background-color: var(--bg-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-3);
+  border: 1px solid var(--border-default);
+}
+
+.billing-cycle-dates {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  margin-bottom: var(--spacing-3);
+  padding-bottom: var(--spacing-2);
+  border-bottom: 1px solid var(--border-default);
+}
+
+.cycle-date-label {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+}
+
+.cycle-date-value {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-primary);
+}
+
+.billing-cycle-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-4);
+}
+
+.cycle-stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+.cycle-stat-value {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+.cycle-stat-label {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+.cycle-stat.payment-stat .cycle-stat-value {
+  color: var(--color-positive);
+}
+
+/* Billing Cycle History Section */
+.billing-cycle-history-section {
+  margin-top: var(--spacing-4);
+}
+
+.billing-history-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: var(--spacing-2) 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.billing-history-toggle h4 {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.billing-history-toggle:hover h4 {
+  color: var(--text-primary);
+}
+
+.toggle-icon {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  transition: transform 0.2s ease;
+}
+
+.toggle-icon.expanded {
+  transform: rotate(0deg);
+}
+
+.billing-cycle-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  margin-top: var(--spacing-2);
+}
+
+.billing-cycle-history-item {
+  background-color: var(--bg-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-3);
+  border: 1px solid var(--border-default);
+}
+
+.cycle-history-dates {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-2);
+}
+
+.cycle-history-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-3);
+}
+
+.cycle-history-stat {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+.cycle-history-stat strong {
+  color: var(--text-primary);
+  font-weight: var(--font-semibold);
+}
+
+.cycle-history-stat.payment strong {
+  color: var(--color-positive);
+}
+
+/* Recent List */
+.cc-recent-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.cc-recent-item {
+  display: flex;
+  justify-content: space-between;
+  padding: var(--spacing-2);
+  background-color: var(--bg-subtle);
+  border-radius: var(--radius-md);
+}
+
+.recent-date {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.recent-amount {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-primary);
+}
+
+.view-all-link {
+  background: none;
+  border: none;
+  color: var(--color-primary);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  padding: var(--spacing-2) 0;
+  text-align: left;
+}
+
+.view-all-link:hover {
+  text-decoration: underline;
+}
+
+/* Payments List */
+.cc-payments-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.cc-payment-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  padding: var(--spacing-3);
+  background-color: var(--bg-subtle);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-default);
+}
+
+.payment-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.payment-date {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-primary);
+}
+
+.payment-notes {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  margin-top: var(--spacing-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.payment-amount {
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  color: var(--color-positive);
+}
+
+.payment-delete-btn {
+  background: none;
+  border: 1px solid var(--border-default);
+  padding: var(--spacing-1) var(--spacing-2);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: var(--text-sm);
+  transition: var(--transition-fast);
+}
+
+.payment-delete-btn:hover {
+  background-color: var(--color-negative-light);
+  border-color: var(--color-negative);
+}
+
+/* Statements List */
+.cc-statements-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.cc-statement-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  padding: var(--spacing-3);
+  background-color: var(--bg-subtle);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-default);
+}
+
+.statement-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.statement-date {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-primary);
+}
+
+.statement-period {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  margin-top: var(--spacing-1);
+}
+
+.statement-filename {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  margin-top: var(--spacing-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.statement-actions {
+  display: flex;
+  gap: var(--spacing-2);
+}
+
+.statement-view-btn,
+.statement-delete-btn {
+  background: none;
+  border: 1px solid var(--border-default);
+  padding: var(--spacing-1) var(--spacing-2);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: var(--text-sm);
+  transition: var(--transition-fast);
+}
+
+.statement-view-btn:hover {
+  background-color: var(--color-primary-light);
+  border-color: var(--color-primary);
+}
+
+.statement-delete-btn:hover {
+  background-color: var(--color-negative-light);
+  border-color: var(--color-negative);
+}
+
+/* Confirm Dialog */
+.cc-confirm-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.4);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: var(--radius-lg);
+}
+
+.cc-confirm-dialog {
+  background: var(--bg-card);
+  padding: var(--spacing-5);
+  border-radius: var(--radius-lg);
+  max-width: 350px;
+  box-shadow: var(--shadow-lg);
+}
+
+.cc-confirm-dialog h3 {
+  margin: 0 0 var(--spacing-3) 0;
+  color: var(--text-primary);
+}
+
+.cc-confirm-dialog p {
+  margin: 0 0 var(--spacing-2) 0;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.confirm-detail {
+  display: block;
+  font-weight: var(--font-medium);
+  color: var(--text-primary);
+  margin-top: var(--spacing-1);
+}
+
+.confirm-warning {
+  color: var(--color-negative) !important;
+  font-size: var(--text-xs) !important;
+}
+
+.confirm-actions {
+  display: flex;
+  gap: var(--spacing-3);
+  margin-top: var(--spacing-4);
+  justify-content: flex-end;
+}
+
+.confirm-delete-btn {
+  background-color: var(--color-negative);
+  color: var(--text-inverse);
+  border: none;
+  padding: var(--spacing-2) var(--spacing-4);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-weight: var(--font-medium);
+}
+
+.confirm-delete-btn:hover {
+  background-color: var(--color-negative-dark);
+}
+
+.confirm-cancel-btn {
+  background-color: var(--bg-subtle);
+  color: var(--text-primary);
+  border: 1px solid var(--border-default);
+  padding: var(--spacing-2) var(--spacing-4);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.confirm-cancel-btn:hover {
+  background-color: var(--bg-muted);
+}
+
+.confirm-delete-btn:disabled,
+.confirm-cancel-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Mobile Responsive */
+@media (max-width: 600px) {
+  .cc-detail-modal-container {
+    width: 95%;
+    max-height: 90vh;
+  }
+
+  .cc-detail-overview {
+    grid-template-columns: 1fr;
+  }
+
+  .cc-detail-secondary {
+    grid-template-columns: 1fr;
+  }
+
+  .cc-detail-actions {
+    flex-direction: column;
+  }
+
+  .cc-info-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .billing-cycle-stats {
+    flex-direction: column;
+    gap: var(--spacing-2);
+  }
+
+  .cycle-history-stats {
+    flex-direction: column;
+    gap: var(--spacing-1);
+  }
+
+  .cc-payment-item,
+  .cc-statement-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .payment-amount {
+    margin-top: var(--spacing-2);
+  }
+
+  .statement-actions {
+    margin-top: var(--spacing-2);
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+
+/* Touch-friendly styles */
+@media (max-width: 768px) and (pointer: coarse) {
+  .cc-tab {
+    min-height: 48px;
+  }
+
+  .cc-action-btn {
+    min-height: 48px;
+  }
+
+  .payment-delete-btn,
+  .statement-view-btn,
+  .statement-delete-btn {
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .cc-tab,
+  .cc-action-btn,
+  .payment-delete-btn,
+  .statement-view-btn,
+  .statement-delete-btn,
+  .utilization-fill {
+    transition: none;
+  }
+}

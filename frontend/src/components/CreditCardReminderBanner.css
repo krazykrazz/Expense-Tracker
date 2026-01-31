@@ -1,0 +1,127 @@
+.credit-card-reminder-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.credit-card-reminder-banner:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.credit-card-reminder-banner:focus {
+  outline: 2px solid #4a90d9;
+  outline-offset: 2px;
+}
+
+/* Due soon - warning style (yellow/orange) */
+.credit-card-reminder-banner.due-soon {
+  background: linear-gradient(135deg, #fff3cd 0%, #ffeeba 100%);
+  border: 1px solid #ffc107;
+  color: #856404;
+}
+
+/* Overdue - urgent style (red) */
+.credit-card-reminder-banner.overdue {
+  background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+  border: 1px solid #dc3545;
+  color: #721c24;
+  animation: pulse-urgent 2s ease-in-out infinite;
+}
+
+@keyframes pulse-urgent {
+  0%, 100% {
+    box-shadow: 0 2px 8px rgba(220, 53, 69, 0.2);
+  }
+  50% {
+    box-shadow: 0 4px 16px rgba(220, 53, 69, 0.4);
+  }
+}
+
+.credit-card-reminder-banner .reminder-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.credit-card-reminder-banner .reminder-icon {
+  font-size: 1.3rem;
+}
+
+.credit-card-reminder-banner .reminder-message {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.credit-card-reminder-banner .reminder-cards-list {
+  font-size: 0.85rem;
+  opacity: 0.85;
+  font-weight: normal;
+}
+
+.credit-card-reminder-banner .reminder-dismiss-btn {
+  background: transparent;
+  border: none;
+  font-size: 1.4rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+  line-height: 1;
+}
+
+.credit-card-reminder-banner.due-soon .reminder-dismiss-btn {
+  color: #856404;
+}
+
+.credit-card-reminder-banner.due-soon .reminder-dismiss-btn:hover {
+  background-color: rgba(133, 100, 4, 0.1);
+}
+
+.credit-card-reminder-banner.overdue .reminder-dismiss-btn {
+  color: #721c24;
+}
+
+.credit-card-reminder-banner.overdue .reminder-dismiss-btn:hover {
+  background-color: rgba(114, 28, 36, 0.1);
+}
+
+/* Reduced motion support for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .credit-card-reminder-banner.overdue {
+    animation: none;
+  }
+  
+  .credit-card-reminder-banner:hover {
+    transform: none;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .credit-card-reminder-banner.due-soon {
+    background: linear-gradient(135deg, #3d3a2e 0%, #4a4530 100%);
+    border-color: #d4a106;
+    color: #ffc107;
+  }
+
+  .credit-card-reminder-banner.overdue {
+    background: linear-gradient(135deg, #3d2a2c 0%, #4a3033 100%);
+    border-color: #c82333;
+    color: #f5c6cb;
+  }
+
+  .credit-card-reminder-banner.due-soon .reminder-dismiss-btn {
+    color: #ffc107;
+  }
+
+  .credit-card-reminder-banner.overdue .reminder-dismiss-btn {
+    color: #f5c6cb;
+  }
+}

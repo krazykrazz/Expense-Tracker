@@ -1,0 +1,8 @@
+{
+  "enabled": false,
+  "schedule": "daily",
+  "time": "02:00",
+  "targetPath": "C:\\Users\\krazy\\Projects\\Expense Tracker\\test-api-backups",
+  "keepLastN": 100,
+  "lastBackup": "2026-01-31T18:37:15.653Z"
+}

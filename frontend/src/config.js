@@ -10,10 +10,6 @@ export const API_ENDPOINTS = {
   PLACE_NAMES_ANALYZE: `${API_BASE_URL}/api/expenses/place-names/analyze`,
   PLACE_NAMES_STANDARDIZE: `${API_BASE_URL}/api/expenses/place-names/standardize`,
   
-  // Recurring (deprecated but kept for compatibility)
-  RECURRING: `${API_BASE_URL}/api/recurring`,
-  RECURRING_BY_ID: (id) => `${API_BASE_URL}/api/recurring/${id}`,
-  
   // Fixed Expenses
   FIXED_EXPENSES: `${API_BASE_URL}/api/fixed-expenses`,
   FIXED_EXPENSES_BY_MONTH: (year, month) => `${API_BASE_URL}/api/fixed-expenses/${year}/${month}`,
@@ -101,6 +97,25 @@ export const API_ENDPOINTS = {
   
   // Tax Deductible
   TAX_DEDUCTIBLE_SUMMARY: (year) => `${API_BASE_URL}/api/expenses/tax-deductible/summary?year=${year}`,
+  
+  // Payment Methods
+  PAYMENT_METHODS: `${API_BASE_URL}/api/payment-methods`,
+  PAYMENT_METHOD_BY_ID: (id) => `${API_BASE_URL}/api/payment-methods/${id}`,
+  PAYMENT_METHOD_DISPLAY_NAMES: `${API_BASE_URL}/api/payment-methods/display-names`,
+  PAYMENT_METHOD_ACTIVE: `${API_BASE_URL}/api/payment-methods/active`,
+  PAYMENT_METHOD_SET_ACTIVE: (id) => `${API_BASE_URL}/api/payment-methods/${id}/active`,
+  
+  // Credit Card Payments
+  PAYMENT_METHOD_PAYMENTS: (id) => `${API_BASE_URL}/api/payment-methods/${id}/payments`,
+  PAYMENT_METHOD_PAYMENT: (id, paymentId) => `${API_BASE_URL}/api/payment-methods/${id}/payments/${paymentId}`,
+  PAYMENT_METHOD_PAYMENTS_TOTAL: (id) => `${API_BASE_URL}/api/payment-methods/${id}/payments/total`,
+  
+  // Credit Card Statements
+  PAYMENT_METHOD_STATEMENTS: (id) => `${API_BASE_URL}/api/payment-methods/${id}/statements`,
+  PAYMENT_METHOD_STATEMENT: (id, statementId) => `${API_BASE_URL}/api/payment-methods/${id}/statements/${statementId}`,
+  
+  // Credit Card Billing Cycles
+  PAYMENT_METHOD_BILLING_CYCLES: (id) => `${API_BASE_URL}/api/payment-methods/${id}/billing-cycles`,
   
   // Invoices
   INVOICES: `${API_BASE_URL}/api/invoices`,

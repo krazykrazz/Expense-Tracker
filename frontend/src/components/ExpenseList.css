@@ -871,6 +871,24 @@
   margin-top: var(--element-gap);
 }
 
+/* Inactive Payment Method Indicator (Requirements 2.8) */
+.inactive-payment-method {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.inactive-indicator {
+  margin-left: var(--spacing-1);
+  font-size: var(--text-xs);
+  cursor: help;
+}
+
+/* Inactive option in filter dropdown */
+.filter-select option.inactive-option {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
   .expense-list-container {

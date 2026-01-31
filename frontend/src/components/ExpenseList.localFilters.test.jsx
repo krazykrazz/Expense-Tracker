@@ -8,6 +8,13 @@ global.fetch = vi.fn();
 describe('ExpenseList - Local Filtering (Monthly View)', () => {
   const mockCategories = ['Groceries', 'Dining Out', 'Gas', 'Entertainment', 'Other'];
   
+  // Mock payment methods that match the expense methods
+  const mockPaymentMethods = [
+    { id: 1, display_name: 'Cash', type: 'cash', is_active: 1 },
+    { id: 2, display_name: 'Debit', type: 'debit', is_active: 1 },
+    { id: 3, display_name: 'VISA', type: 'credit_card', is_active: 1 }
+  ];
+  
   const mockExpenses = [
     {
       id: 1,
@@ -55,10 +62,31 @@ describe('ExpenseList - Local Filtering (Monthly View)', () => {
     // Reset fetch mock before each test
     fetch.mockReset();
     
-    // Mock the categories API call
-    fetch.mockResolvedValue({
-      ok: true,
-      json: async () => ({ categories: mockCategories })
+    // Mock API calls based on URL
+    fetch.mockImplementation((url) => {
+      if (url.includes('/api/categories')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ categories: mockCategories })
+        });
+      }
+      if (url.includes('/api/payment-methods')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ paymentMethods: mockPaymentMethods })
+        });
+      }
+      if (url.includes('/api/people')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ([])
+        });
+      }
+      // Default response for other endpoints
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({})
+      });
     });
   });
 
@@ -80,10 +108,16 @@ describe('ExpenseList - Local Filtering (Monthly View)', () => {
       />
     );
 
-    // Wait for categories to load
+    // Wait for categories and payment methods to load
     await waitFor(() => {
       const selects = container.querySelectorAll('.filter-select');
-      expect(selects.length).toBe(4); // Category, Payment Method, Invoice, Insurance filters
+      expect(selects.length).toBe(5); // Category, Payment Method, Method Type, Invoice, Insurance filters
+    });
+
+    // Wait for payment methods to populate
+    await waitFor(() => {
+      const paymentMethodSelect = container.querySelectorAll('.filter-select')[1];
+      expect(paymentMethodSelect.querySelectorAll('option').length).toBeGreaterThan(1);
     });
 
     // Get the filter dropdowns
@@ -122,7 +156,7 @@ describe('ExpenseList - Local Filtering (Monthly View)', () => {
     // Wait for categories to load
     await waitFor(() => {
       const selects = container.querySelectorAll('.filter-select');
-      expect(selects.length).toBe(4); // Category, Payment Method, Invoice, Insurance filters
+      expect(selects.length).toBe(5); // Category, Payment Method, Method Type, Invoice, Insurance filters
     });
 
     // Initially, all 4 expenses should be visible
@@ -160,10 +194,16 @@ describe('ExpenseList - Local Filtering (Monthly View)', () => {
       />
     );
 
-    // Wait for categories to load
+    // Wait for categories and payment methods to load
     await waitFor(() => {
       const selects = container.querySelectorAll('.filter-select');
-      expect(selects.length).toBe(4); // Category, Payment Method, Invoice, Insurance filters
+      expect(selects.length).toBe(5); // Category, Payment Method, Method Type, Invoice, Insurance filters
+    });
+
+    // Wait for payment methods to populate
+    await waitFor(() => {
+      const paymentMethodSelect = container.querySelectorAll('.filter-select')[1];
+      expect(paymentMethodSelect.querySelectorAll('option').length).toBeGreaterThan(1);
     });
 
     // Initially, all 4 expenses should be visible
@@ -201,10 +241,16 @@ describe('ExpenseList - Local Filtering (Monthly View)', () => {
       />
     );
 
-    // Wait for categories to load
+    // Wait for categories and payment methods to load
     await waitFor(() => {
       const selects = container.querySelectorAll('.filter-select');
-      expect(selects.length).toBe(4); // Category, Payment Method, Invoice, Insurance filters
+      expect(selects.length).toBe(5); // Category, Payment Method, Method Type, Invoice, Insurance filters
+    });
+
+    // Wait for payment methods to populate
+    await waitFor(() => {
+      const paymentMethodSelect = container.querySelectorAll('.filter-select')[1];
+      expect(paymentMethodSelect.querySelectorAll('option').length).toBeGreaterThan(1);
     });
 
     // Apply category filter for "Dining Out"
@@ -242,10 +288,16 @@ describe('ExpenseList - Local Filtering (Monthly View)', () => {
       />
     );
 
-    // Wait for categories to load
+    // Wait for categories and payment methods to load
     await waitFor(() => {
       const selects = container.querySelectorAll('.filter-select');
-      expect(selects.length).toBe(4); // Category, Payment Method, Invoice, Insurance filters
+      expect(selects.length).toBe(5); // Category, Payment Method, Method Type, Invoice, Insurance filters
+    });
+
+    // Wait for payment methods to populate
+    await waitFor(() => {
+      const paymentMethodSelect = container.querySelectorAll('.filter-select')[1];
+      expect(paymentMethodSelect.querySelectorAll('option').length).toBeGreaterThan(1);
     });
 
     // Apply filters
@@ -292,7 +344,7 @@ describe('ExpenseList - Local Filtering (Monthly View)', () => {
     // Wait for categories to load
     await waitFor(() => {
       const selects = container.querySelectorAll('.filter-select');
-      expect(selects.length).toBe(4); // Category, Payment Method, Invoice, Insurance filters
+      expect(selects.length).toBe(5); // Category, Payment Method, Method Type, Invoice, Insurance filters
     });
 
     // Apply category filter
@@ -325,7 +377,7 @@ describe('ExpenseList - Local Filtering (Monthly View)', () => {
     // Wait for categories to load
     await waitFor(() => {
       const selects = container.querySelectorAll('.filter-select');
-      expect(selects.length).toBe(4); // Category, Payment Method, Invoice, Insurance filters
+      expect(selects.length).toBe(5); // Category, Payment Method, Method Type, Invoice, Insurance filters
     });
 
     // Apply filter that excludes the only expense
@@ -355,7 +407,7 @@ describe('ExpenseList - Local Filtering (Monthly View)', () => {
     // Wait for categories to load
     await waitFor(() => {
       const selects = container.querySelectorAll('.filter-select');
-      expect(selects.length).toBe(4); // Category, Payment Method, Invoice, Insurance filters
+      expect(selects.length).toBe(5); // Category, Payment Method, Method Type, Invoice, Insurance filters
     });
 
     // Apply filter

@@ -99,7 +99,10 @@ export const getExpenseWithPeople = async (id) => {
  * - claim_status: string - 'not_claimed', 'in_progress', 'paid', 'denied'
  * - original_cost: number - Original cost before reimbursement
  * 
- * _Requirements: 1.3, 2.3, 5.4_
+ * Credit card fields:
+ * - posted_date: string|null - Date when expense posts to credit card statement (YYYY-MM-DD)
+ * 
+ * _Requirements: 1.3, 2.3, 4.1, 5.4_
  */
 export const createExpense = async (expenseData, peopleAllocations = null, futureMonths = 0) => {
   try {
@@ -109,7 +112,12 @@ export const createExpense = async (expenseData, peopleAllocations = null, futur
       notes: expenseData.notes,
       amount: parseFloat(expenseData.amount),
       type: expenseData.type,
-      method: expenseData.method,
+      // Support both payment_method_id (preferred) and method string (backward compatibility)
+      ...(expenseData.payment_method_id 
+        ? { payment_method_id: expenseData.payment_method_id }
+        : { method: expenseData.method }),
+      // Include posted_date for credit card expenses (optional field)
+      ...(expenseData.posted_date !== undefined && { posted_date: expenseData.posted_date || null }),
       ...buildInsuranceFields(expenseData)
     };
     
@@ -143,7 +151,10 @@ export const createExpense = async (expenseData, peopleAllocations = null, futur
  * - claim_status: string - 'not_claimed', 'in_progress', 'paid', 'denied'
  * - original_cost: number - Original cost before reimbursement
  * 
- * _Requirements: 1.3, 2.3, 5.4_
+ * Credit card fields:
+ * - posted_date: string|null - Date when expense posts to credit card statement (YYYY-MM-DD)
+ * 
+ * _Requirements: 1.3, 2.3, 4.2, 5.4_
  */
 export const updateExpense = async (id, expenseData, peopleAllocations = null, futureMonths = 0) => {
   try {
@@ -153,7 +164,12 @@ export const updateExpense = async (id, expenseData, peopleAllocations = null, f
       notes: expenseData.notes,
       amount: parseFloat(expenseData.amount),
       type: expenseData.type,
-      method: expenseData.method,
+      // Support both payment_method_id (preferred) and method string (backward compatibility)
+      ...(expenseData.payment_method_id 
+        ? { payment_method_id: expenseData.payment_method_id }
+        : { method: expenseData.method }),
+      // Include posted_date for credit card expenses (optional field)
+      ...(expenseData.posted_date !== undefined && { posted_date: expenseData.posted_date || null }),
       ...buildInsuranceFields(expenseData)
     };
     

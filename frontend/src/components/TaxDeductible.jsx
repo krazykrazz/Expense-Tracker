@@ -4,7 +4,7 @@ import { formatAmount, formatLocalDate, getMonthNameShort } from '../utils/forma
 import { getCategories } from '../services/categoriesApi';
 import { getPeople } from '../services/peopleApi';
 import { getExpenseWithPeople, updateExpense, updateInsuranceStatus, getTaxDeductibleSummary } from '../services/expenseApi';
-import { PAYMENT_METHODS } from '../utils/constants';
+import { getPaymentMethods } from '../services/paymentMethodApi';
 import PersonAllocationModal from './PersonAllocationModal';
 import InvoiceIndicator from './InvoiceIndicator';
 import InvoiceList from './InvoiceList';
@@ -37,9 +37,10 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
   // Quick status update state
   const [quickStatusExpense, setQuickStatusExpense] = useState(null);
   
-  // People and categories state
+  // People, categories, and payment methods state
   const [people, setPeople] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [paymentMethods, setPaymentMethods] = useState([]);
   
   // Edit modal state
   const [showEditModal, setShowEditModal] = useState(false);
@@ -71,7 +72,7 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
   }, [year, groupByPerson, refreshTrigger]);
 
   useEffect(() => {
-    // Fetch people list and categories
+    // Fetch people list, categories, and payment methods
     const fetchPeopleData = async () => {
       try {
         const peopleData = await getPeople();
@@ -90,8 +91,20 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
       }
     };
     
+    // Fetch active payment methods for edit form dropdown
+    const fetchPaymentMethodsData = async () => {
+      try {
+        const methods = await getPaymentMethods({ activeOnly: true });
+        setPaymentMethods(methods || []);
+      } catch (err) {
+        console.error('Error fetching payment methods:', err);
+        setPaymentMethods([]);
+      }
+    };
+    
     fetchPeopleData();
     fetchCategoriesData();
+    fetchPaymentMethodsData();
   }, [refreshTrigger]);
 
   // Listen for peopleUpdated event to refresh people list
@@ -1458,8 +1471,8 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
                     onChange={handleEditChange}
                     required
                   >
-                    {PAYMENT_METHODS.map((method) => (
-                      <option key={method} value={method}>{method}</option>
+                    {paymentMethods.map((method) => (
+                      <option key={method.id} value={method.display_name}>{method.display_name}</option>
                     ))}
                   </select>
                 </div>

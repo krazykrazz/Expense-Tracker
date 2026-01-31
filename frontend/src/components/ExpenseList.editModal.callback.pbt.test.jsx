@@ -2,11 +2,17 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, waitFor, fireEvent, act, cleanup } from '@testing-library/react';
 import * as fc from 'fast-check';
 import { CATEGORIES } from '../../../backend/utils/categories';
-import { PAYMENT_METHODS } from '../utils/constants';
+
+// Mock payment methods that will be returned by the API
+const MOCK_PAYMENT_METHODS = [
+  { id: 1, display_name: 'Cash', type: 'cash' },
+  { id: 2, display_name: 'Visa', type: 'credit_card' },
+  { id: 3, display_name: 'Debit', type: 'debit' }
+];
 
 // Shared generators
 const validTypeArb = fc.constantFrom(...CATEGORIES);
-const validMethodArb = fc.constantFrom(...PAYMENT_METHODS);
+const validPaymentMethodIdArb = fc.constantFrom(...MOCK_PAYMENT_METHODS.map(pm => pm.id));
 const validDateArb = fc.tuple(fc.integer({ min: 2020, max: 2030 }), fc.integer({ min: 1, max: 12 }), fc.integer({ min: 1, max: 28 }))
   .map(([y, m, d]) => `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`);
 const validAmountArb = fc.float({ min: Math.fround(0.01), max: Math.fround(10000), noNaN: true }).filter(n => n > 0 && isFinite(n)).map(n => parseFloat(n.toFixed(2)));
@@ -28,6 +34,12 @@ describe('Property 8: Error Handling Preserves Modal State', () => {
       if (url.includes('/places')) return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
       if (url.includes('/people')) return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
       if (url.includes('/invoices')) return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+      if (url.includes('/api/payment-methods/active')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(MOCK_PAYMENT_METHODS) });
+      }
+      if (url.includes('/api/payment-methods/')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ paymentMethod: MOCK_PAYMENT_METHODS[0] }) });
+      }
       if (options?.method === 'PUT' && /\/api\/expenses\/\d+$/.test(url)) {
         return Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve({ error: errorMessage || 'Update failed' }) });
       }
@@ -49,9 +61,9 @@ describe('Property 8: Error Handling Preserves Modal State', () => {
   /** **Feature: expense-form-consolidation, Property 8** **Validates: Requirements 5.4** */
   it('validates error handling preserves modal state', async () => {
     await fc.assert(
-      fc.asyncProperty(validIdArb, validDateArb, validAmountArb, validTypeArb, validMethodArb, validWeekArb, errorMessageArb,
-        async (id, date, amount, type, method, week, errMsg) => {
-          const expense = { id, date, place: 'Test Place', notes: null, amount, type, method, week };
+      fc.asyncProperty(validIdArb, validDateArb, validAmountArb, validTypeArb, validPaymentMethodIdArb, validWeekArb, errorMessageArb,
+        async (id, date, amount, type, payment_method_id, week, errMsg) => {
+          const expense = { id, date, place: 'Test Place', notes: null, amount, type, payment_method_id, method: MOCK_PAYMENT_METHODS.find(pm => pm.id === payment_method_id)?.display_name || 'Cash', week };
           errorMessage = errMsg;
 
           const mockOnExpenseUpdated = vi.fn();
@@ -101,8 +113,14 @@ describe('Property 7: Successful Update Callback Chain', () => {
       if (url.includes('/places')) return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
       if (url.includes('/people')) return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
       if (url.includes('/invoices')) return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+      if (url.includes('/api/payment-methods/active')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(MOCK_PAYMENT_METHODS) });
+      }
+      if (url.includes('/api/payment-methods/')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ paymentMethod: MOCK_PAYMENT_METHODS[0] }) });
+      }
       if (options?.method === 'PUT' && /\/api\/expenses\/\d+$/.test(url)) {
-        return Promise.resolve({ ok: true, json: () => Promise.resolve(currentExpenseData || { id: 1, date: '2020-01-01', place: 'Test', amount: 100, type: 'Clothing', method: 'Cash', week: 1 }) });
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(currentExpenseData || { id: 1, date: '2020-01-01', place: 'Test', amount: 100, type: 'Clothing', payment_method_id: 1, method: 'Cash', week: 1 }) });
       }
       return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
     });
@@ -120,9 +138,9 @@ describe('Property 7: Successful Update Callback Chain', () => {
   /** **Feature: expense-form-consolidation, Property 7** **Validates: Requirements 5.1, 5.2, 5.3, 3.3** */
   it('validates successful update callback chain', async () => {
     await fc.assert(
-      fc.asyncProperty(validIdArb, validDateArb, validAmountArb, validTypeArb, validMethodArb, validWeekArb,
-        async (id, date, amount, type, method, week) => {
-          const expense = { id, date, place: 'Test Place', notes: null, amount, type, method, week };
+      fc.asyncProperty(validIdArb, validDateArb, validAmountArb, validTypeArb, validPaymentMethodIdArb, validWeekArb,
+        async (id, date, amount, type, payment_method_id, week) => {
+          const expense = { id, date, place: 'Test Place', notes: null, amount, type, payment_method_id, method: MOCK_PAYMENT_METHODS.find(pm => pm.id === payment_method_id)?.display_name || 'Cash', week };
           currentExpenseData = expense;
 
           const mockOnExpenseUpdated = vi.fn();

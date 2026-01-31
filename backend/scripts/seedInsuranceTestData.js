@@ -24,7 +24,34 @@ const regularPlaces = [
   'Chipotle', 'Panera Bread', 'Olive Garden', 'Netflix', 'Spotify'
 ];
 
-const paymentMethods = ['Cash', 'Debit', 'Cheque', 'CIBC MC', 'PCF MC', 'WS VISA', 'VISA'];
+const paymentMethods = ['Cash', 'Debit', 'Cheque', 'CIBC MC', 'PCF MC', 'WS VISA', 'RBC VISA'];
+
+/**
+ * Payment methods configuration for seeding
+ * These match the migration mapping in migrations.js
+ * @see backend/database/migrations.js - migratePaymentMethods()
+ */
+const paymentMethodsConfig = [
+  { id: 1, type: 'cash', display_name: 'Cash', full_name: 'Cash' },
+  { id: 2, type: 'debit', display_name: 'Debit', full_name: 'Debit' },
+  { id: 3, type: 'cheque', display_name: 'Cheque', full_name: 'Cheque' },
+  { id: 4, type: 'credit_card', display_name: 'CIBC MC', full_name: 'CIBC Mastercard' },
+  { id: 5, type: 'credit_card', display_name: 'PCF MC', full_name: 'PCF Mastercard' },
+  { id: 6, type: 'credit_card', display_name: 'WS VISA', full_name: 'WealthSimple VISA' },
+  { id: 7, type: 'credit_card', display_name: 'RBC VISA', full_name: 'RBC VISA' }
+];
+
+// Helper function to get random payment method with both name and ID
+function getRandomPaymentMethod() {
+  const pm = paymentMethodsConfig[Math.floor(Math.random() * paymentMethodsConfig.length)];
+  return { id: pm.id, name: pm.display_name };
+}
+
+// Helper function to get payment method ID by display name
+function getPaymentMethodId(displayName) {
+  const pm = paymentMethodsConfig.find(p => p.display_name === displayName);
+  return pm ? pm.id : null;
+}
 
 // Family members for medical expense tracking
 const familyMembers = [
@@ -112,12 +139,13 @@ async function seedInsuranceTestData() {
             
             const personId = getRandomItem(personIds);
             const notes = `Medical visit - ${['checkup', 'treatment', 'prescription', 'lab work', 'specialist'][Math.floor(Math.random() * 5)]}`;
+            const paymentMethod = getRandomPaymentMethod();
             
             db.run(`
-              INSERT INTO expenses (date, place, notes, amount, type, week, method, insurance_eligible, claim_status, original_cost)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              INSERT INTO expenses (date, place, notes, amount, type, week, method, payment_method_id, insurance_eligible, claim_status, original_cost)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `, [date, getRandomItem(medicalProviders), notes, amount, 'Tax - Medical', 
-                getWeekNumber(date), getRandomItem(paymentMethods), insuranceEligible, claimStatus, originalCost],
+                getWeekNumber(date), paymentMethod.name, paymentMethod.id, insuranceEligible, claimStatus, originalCost],
               function(err) {
                 if (!err && this.lastID) {
                   insertedMedical++;
@@ -133,11 +161,12 @@ async function seedInsuranceTestData() {
           for (let i = 0; i < 8; i++) {
             const date = getRandomDate(12);
             const amount = parseFloat((Math.random() * 200 + 25).toFixed(2));
+            const paymentMethod = getRandomPaymentMethod();
             db.run(`
-              INSERT INTO expenses (date, place, notes, amount, type, week, method, insurance_eligible, claim_status, original_cost)
-              VALUES (?, ?, ?, ?, ?, ?, ?, 0, NULL, NULL)
+              INSERT INTO expenses (date, place, notes, amount, type, week, method, payment_method_id, insurance_eligible, claim_status, original_cost)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, NULL)
             `, [date, getRandomItem(charities), 'Charitable donation', amount, 'Tax - Donation', 
-                getWeekNumber(date), getRandomItem(paymentMethods)]);
+                getWeekNumber(date), paymentMethod.name, paymentMethod.id]);
           }
 
           // 4. Create regular expenses
@@ -147,11 +176,12 @@ async function seedInsuranceTestData() {
             const date = getRandomDate(6);
             const category = getRandomItem(regularCategories);
             const amount = parseFloat((Math.random() * 100 + 10).toFixed(2));
+            const paymentMethod = getRandomPaymentMethod();
             db.run(`
-              INSERT INTO expenses (date, place, notes, amount, type, week, method, insurance_eligible, claim_status, original_cost)
-              VALUES (?, ?, ?, ?, ?, ?, ?, 0, NULL, NULL)
+              INSERT INTO expenses (date, place, notes, amount, type, week, method, payment_method_id, insurance_eligible, claim_status, original_cost)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, NULL)
             `, [date, getRandomItem(regularPlaces), `${category} purchase`, amount, category,
-                getWeekNumber(date), getRandomItem(paymentMethods)]);
+                getWeekNumber(date), paymentMethod.name, paymentMethod.id]);
           }
 
           // 5. Add income sources
@@ -169,14 +199,15 @@ async function seedInsuranceTestData() {
           console.log('\n📅 Creating fixed expenses...');
           for (let i = 0; i < 6; i++) {
             const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-            db.run('INSERT OR REPLACE INTO fixed_expenses (year, month, name, amount, category, payment_type) VALUES (?, ?, ?, ?, ?, ?)',
-              [d.getFullYear(), d.getMonth() + 1, 'Rent', 1500.00, 'Housing', 'Auto-Pay']);
-            db.run('INSERT OR REPLACE INTO fixed_expenses (year, month, name, amount, category, payment_type) VALUES (?, ?, ?, ?, ?, ?)',
-              [d.getFullYear(), d.getMonth() + 1, 'Health Insurance', 350.00, 'Insurance', 'Auto-Pay']);
-            db.run('INSERT OR REPLACE INTO fixed_expenses (year, month, name, amount, category, payment_type) VALUES (?, ?, ?, ?, ?, ?)',
-              [d.getFullYear(), d.getMonth() + 1, 'Internet', 80.00, 'Utilities', 'Credit Card']);
-            db.run('INSERT OR REPLACE INTO fixed_expenses (year, month, name, amount, category, payment_type) VALUES (?, ?, ?, ?, ?, ?)',
-              [d.getFullYear(), d.getMonth() + 1, 'Phone', 75.00, 'Utilities', 'Credit Card']);
+            // Fixed expenses with payment_method_id (Debit = 2, CIBC MC = 4)
+            db.run('INSERT OR REPLACE INTO fixed_expenses (year, month, name, amount, category, payment_type, payment_method_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
+              [d.getFullYear(), d.getMonth() + 1, 'Rent', 1500.00, 'Housing', 'Debit', 2]);
+            db.run('INSERT OR REPLACE INTO fixed_expenses (year, month, name, amount, category, payment_type, payment_method_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
+              [d.getFullYear(), d.getMonth() + 1, 'Health Insurance', 350.00, 'Insurance', 'Debit', 2]);
+            db.run('INSERT OR REPLACE INTO fixed_expenses (year, month, name, amount, category, payment_type, payment_method_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
+              [d.getFullYear(), d.getMonth() + 1, 'Internet', 80.00, 'Utilities', 'CIBC MC', 4]);
+            db.run('INSERT OR REPLACE INTO fixed_expenses (year, month, name, amount, category, payment_type, payment_method_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
+              [d.getFullYear(), d.getMonth() + 1, 'Phone', 75.00, 'Utilities', 'CIBC MC', 4]);
           }
 
           // 7. Add budgets

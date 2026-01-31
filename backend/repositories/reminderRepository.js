@@ -2,6 +2,38 @@ const { getDatabase } = require('../database/db');
 
 class ReminderRepository {
   /**
+   * Get all active credit cards with payment due dates
+   * @returns {Promise<Array>} Array of credit cards with due date info
+   */
+  async getCreditCardsWithDueDates() {
+    const db = await getDatabase();
+    
+    return new Promise((resolve, reject) => {
+      const sql = `
+        SELECT 
+          id,
+          display_name,
+          full_name,
+          current_balance,
+          credit_limit,
+          payment_due_day
+        FROM payment_methods
+        WHERE type = 'credit_card'
+          AND is_active = 1
+          AND payment_due_day IS NOT NULL
+        ORDER BY display_name ASC
+      `;
+      
+      db.all(sql, [], (err, rows) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        resolve(rows || []);
+      });
+    });
+  }
+  /**
    * Get all active investments with their value status for a specific month
    * @param {number} year - Year
    * @param {number} month - Month (1-12)

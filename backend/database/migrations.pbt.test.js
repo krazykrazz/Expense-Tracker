@@ -2030,3 +2030,392 @@ describe('Medical Insurance Tracking Migration - Property-Based Tests', () => {
     );
   });
 });
+
+
+// Helper function to create expenses table with pre-posted-date schema (without posted_date column)
+function createPrePostedDateExpensesTable(db) {
+  return new Promise((resolve, reject) => {
+    const categoryList = CATEGORIES.map(c => `'${c}'`).join(', ');
+    
+    db.run(`
+      CREATE TABLE expenses (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        date TEXT NOT NULL,
+        place TEXT,
+        notes TEXT,
+        amount REAL NOT NULL,
+        type TEXT NOT NULL CHECK(type IN (${categoryList})),
+        week INTEGER NOT NULL CHECK(week >= 1 AND week <= 5),
+        method TEXT NOT NULL,
+        payment_method_id INTEGER,
+        insurance_eligible INTEGER DEFAULT 0,
+        claim_status TEXT DEFAULT NULL,
+        original_cost REAL DEFAULT NULL,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+      )
+    `, (err) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve();
+      }
+    });
+  });
+}
+
+// Helper function to insert expense (pre-posted-date schema)
+function insertPrePostedDateExpense(db, expense) {
+  return new Promise((resolve, reject) => {
+    db.run(
+      `INSERT INTO expenses (date, place, notes, amount, type, week, method, payment_method_id, insurance_eligible, claim_status, original_cost) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        expense.date, 
+        expense.place, 
+        expense.notes, 
+        expense.amount, 
+        expense.type, 
+        expense.week, 
+        expense.method,
+        expense.payment_method_id || null,
+        expense.insurance_eligible || 0,
+        expense.claim_status || null,
+        expense.original_cost || null
+      ],
+      function(err) {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(this.lastID);
+        }
+      }
+    );
+  });
+}
+
+// Helper function to calculate balance using transaction date (pre-migration behavior)
+function calculateBalancePreMigration(db, paymentMethodId, referenceDate) {
+  return new Promise((resolve, reject) => {
+    db.get(
+      `SELECT COALESCE(SUM(amount), 0) as total 
+       FROM expenses 
+       WHERE payment_method_id = ? 
+       AND date <= ?`,
+      [paymentMethodId, referenceDate],
+      (err, row) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(row?.total || 0);
+        }
+      }
+    );
+  });
+}
+
+// Helper function to calculate balance using COALESCE(posted_date, date) (post-migration behavior)
+function calculateBalancePostMigration(db, paymentMethodId, referenceDate) {
+  return new Promise((resolve, reject) => {
+    db.get(
+      `SELECT COALESCE(SUM(amount), 0) as total 
+       FROM expenses 
+       WHERE payment_method_id = ? 
+       AND COALESCE(posted_date, date) <= ?`,
+      [paymentMethodId, referenceDate],
+      (err, row) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(row?.total || 0);
+        }
+      }
+    );
+  });
+}
+
+describe('Posted Date Migration - Property-Based Tests', () => {
+  /**
+   * Feature: credit-card-posted-date, Property 5: Migration Data Preservation
+   * Validates: Requirements 3.2, 3.3, 5.2
+   * 
+   * For any existing expense before migration, after the migration runs, 
+   * the expense SHALL have posted_date = NULL and all other fields unchanged.
+   * The balance calculation for these expenses SHALL produce the same result as before migration.
+   */
+  test('Property 5: Migration Data Preservation - posted_date migration preserves existing data', async () => {
+    // Arbitrary for generating valid expense data (pre-posted-date schema)
+    const expenseArbitrary = fc.record({
+      date: fc.integer({ min: 2020, max: 2025 })
+        .chain(year => fc.integer({ min: 1, max: 12 })
+          .chain(month => fc.integer({ min: 1, max: 28 })
+            .map(day => `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`))),
+      place: fc.oneof(fc.constant(null), fc.string({ minLength: 1, maxLength: 50 })),
+      notes: fc.oneof(fc.constant(null), fc.string({ minLength: 1, maxLength: 100 })),
+      amount: fc.float({ min: Math.fround(0.01), max: Math.fround(1000), noNaN: true })
+        .map(n => Math.round(n * 100) / 100),
+      type: fc.constantFrom(...CATEGORIES),
+      week: fc.integer({ min: 1, max: 5 }),
+      method: fc.constantFrom('Cash', 'Debit', 'Cheque', 'CIBC MC', 'PCF MC', 'WS VISA', 'VISA'),
+      payment_method_id: fc.oneof(fc.constant(null), fc.integer({ min: 1, max: 10 })),
+      insurance_eligible: fc.constantFrom(0, 1),
+      claim_status: fc.oneof(fc.constant(null), fc.constantFrom('not_claimed', 'in_progress', 'paid', 'denied')),
+      original_cost: fc.oneof(fc.constant(null), fc.float({ min: Math.fround(0.01), max: Math.fround(1000), noNaN: true }).map(n => Math.round(n * 100) / 100))
+    });
+
+    // Generate array of 1-10 expenses
+    const expensesArrayArbitrary = fc.array(expenseArbitrary, { minLength: 1, maxLength: 10 });
+
+    await fc.assert(
+      fc.asyncProperty(
+        expensesArrayArbitrary,
+        async (expenses) => {
+          const db = await createTestDatabase();
+          
+          try {
+            // Create pre-posted-date schema table (without posted_date column)
+            await createPrePostedDateExpensesTable(db);
+            
+            // Insert all expenses
+            for (const expense of expenses) {
+              await insertPrePostedDateExpense(db, expense);
+            }
+            
+            // Get count and data before migration
+            const countBefore = await countExpenses(db);
+            const expensesBefore = await getAllExpenses(db);
+            
+            // Verify pre-migration schema does NOT have posted_date column
+            const hadPostedDateBefore = await hasColumn(db, 'expenses', 'posted_date');
+            expect(hadPostedDateBefore).toBe(false);
+            
+            // Simulate the posted_date migration (ALTER TABLE to add column)
+            await new Promise((resolve, reject) => {
+              db.serialize(() => {
+                db.run('BEGIN TRANSACTION', (err) => {
+                  if (err) return reject(err);
+                  
+                  // Add posted_date column (nullable, no default)
+                  db.run(
+                    'ALTER TABLE expenses ADD COLUMN posted_date TEXT DEFAULT NULL',
+                    (err) => {
+                      if (err) {
+                        db.run('ROLLBACK');
+                        return reject(err);
+                      }
+                      
+                      // Create index for query performance
+                      db.run(
+                        'CREATE INDEX IF NOT EXISTS idx_expenses_posted_date ON expenses(posted_date)',
+                        (err) => {
+                          if (err) {
+                            db.run('ROLLBACK');
+                            return reject(err);
+                          }
+                          
+                          db.run('COMMIT', (err) => {
+                            if (err) {
+                              db.run('ROLLBACK');
+                              return reject(err);
+                            }
+                            resolve();
+                          });
+                        }
+                      );
+                    }
+                  );
+                });
+              });
+            });
+            
+            // Get count and data after migration
+            const countAfter = await countExpenses(db);
+            const expensesAfter = await getAllExpenses(db);
+            
+            // Verify post-migration schema HAS posted_date column
+            const hasPostedDateAfter = await hasColumn(db, 'expenses', 'posted_date');
+            expect(hasPostedDateAfter).toBe(true);
+            
+            // Verify count is preserved
+            expect(countAfter).toBe(countBefore);
+            expect(countAfter).toBe(expenses.length);
+            
+            // Verify all data is preserved
+            expect(expensesAfter.length).toBe(expensesBefore.length);
+            
+            for (let i = 0; i < expensesBefore.length; i++) {
+              const before = expensesBefore[i];
+              const after = expensesAfter[i];
+              
+              // All original fields must be preserved exactly
+              expect(after.id).toBe(before.id);
+              expect(after.date).toBe(before.date);
+              expect(after.place).toBe(before.place);
+              expect(after.notes).toBe(before.notes);
+              expect(after.amount).toBe(before.amount);
+              expect(after.type).toBe(before.type);
+              expect(after.week).toBe(before.week);
+              expect(after.method).toBe(before.method);
+              expect(after.payment_method_id).toBe(before.payment_method_id);
+              expect(after.insurance_eligible).toBe(before.insurance_eligible);
+              expect(after.claim_status).toBe(before.claim_status);
+              expect(after.original_cost).toBe(before.original_cost);
+              
+              // posted_date should be NULL for migrated records (Requirement 3.3)
+              expect(after.posted_date).toBeNull();
+            }
+            
+            return true;
+          } finally {
+            await closeDatabase(db);
+          }
+        }
+      ),
+      pbtOptions()
+    );
+  });
+
+  /**
+   * Feature: credit-card-posted-date, Property 5 (balance): Balance calculation backward compatibility
+   * Validates: Requirements 5.2, 5.3
+   * 
+   * For any existing expense with NULL posted_date, the balance calculation using 
+   * COALESCE(posted_date, date) SHALL produce the same result as using just date.
+   */
+  test('Property 5 (balance): Balance calculation produces same result for migrated expenses', async () => {
+    // Arbitrary for generating valid expense data with payment_method_id
+    const expenseArbitrary = fc.record({
+      date: fc.integer({ min: 2020, max: 2025 })
+        .chain(year => fc.integer({ min: 1, max: 12 })
+          .chain(month => fc.integer({ min: 1, max: 28 })
+            .map(day => `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`))),
+      place: fc.oneof(fc.constant(null), fc.string({ minLength: 1, maxLength: 50 })),
+      notes: fc.oneof(fc.constant(null), fc.string({ minLength: 1, maxLength: 100 })),
+      amount: fc.float({ min: Math.fround(0.01), max: Math.fround(1000), noNaN: true })
+        .map(n => Math.round(n * 100) / 100),
+      type: fc.constantFrom(...CATEGORIES),
+      week: fc.integer({ min: 1, max: 5 }),
+      method: fc.constantFrom('Cash', 'Debit', 'Cheque', 'CIBC MC', 'PCF MC', 'WS VISA', 'VISA'),
+      payment_method_id: fc.integer({ min: 1, max: 3 }), // Use specific payment method IDs
+      insurance_eligible: fc.constant(0),
+      claim_status: fc.constant(null),
+      original_cost: fc.constant(null)
+    });
+
+    // Generate array of 1-10 expenses
+    const expensesArrayArbitrary = fc.array(expenseArbitrary, { minLength: 1, maxLength: 10 });
+    
+    // Generate a reference date for balance calculation
+    const referenceDateArbitrary = fc.integer({ min: 2020, max: 2025 })
+      .chain(year => fc.integer({ min: 1, max: 12 })
+        .chain(month => fc.integer({ min: 1, max: 28 })
+          .map(day => `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`)));
+
+    await fc.assert(
+      fc.asyncProperty(
+        expensesArrayArbitrary,
+        referenceDateArbitrary,
+        async (expenses, referenceDate) => {
+          const db = await createTestDatabase();
+          
+          try {
+            // Create pre-posted-date schema table
+            await createPrePostedDateExpensesTable(db);
+            
+            // Insert all expenses
+            for (const expense of expenses) {
+              await insertPrePostedDateExpense(db, expense);
+            }
+            
+            // Calculate balance using pre-migration logic (date only)
+            const paymentMethodIds = [...new Set(expenses.map(e => e.payment_method_id))];
+            const balancesBefore = {};
+            for (const pmId of paymentMethodIds) {
+              balancesBefore[pmId] = await calculateBalancePreMigration(db, pmId, referenceDate);
+            }
+            
+            // Run migration to add posted_date column
+            await new Promise((resolve, reject) => {
+              db.run('ALTER TABLE expenses ADD COLUMN posted_date TEXT DEFAULT NULL', (err) => {
+                if (err) reject(err);
+                else resolve();
+              });
+            });
+            
+            // Calculate balance using post-migration logic (COALESCE(posted_date, date))
+            const balancesAfter = {};
+            for (const pmId of paymentMethodIds) {
+              balancesAfter[pmId] = await calculateBalancePostMigration(db, pmId, referenceDate);
+            }
+            
+            // Verify balance calculations produce the same result
+            // Since all posted_date values are NULL, COALESCE(posted_date, date) = date
+            for (const pmId of paymentMethodIds) {
+              expect(balancesAfter[pmId]).toBe(balancesBefore[pmId]);
+            }
+            
+            return true;
+          } finally {
+            await closeDatabase(db);
+          }
+        }
+      ),
+      pbtOptions()
+    );
+  });
+
+  /**
+   * Feature: credit-card-posted-date, Property 5 (index): Migration creates index
+   * Validates: Requirements 3.4
+   * 
+   * After migration, the idx_expenses_posted_date index SHALL exist on the expenses table.
+   */
+  test('Property 5 (index): Migration creates posted_date index', async () => {
+    const db = await createTestDatabase();
+    
+    try {
+      // Create pre-posted-date schema table
+      await createPrePostedDateExpensesTable(db);
+      
+      // Verify index does not exist before migration
+      const indexExistsBefore = await new Promise((resolve, reject) => {
+        db.get(
+          "SELECT name FROM sqlite_master WHERE type='index' AND name='idx_expenses_posted_date'",
+          (err, row) => {
+            if (err) reject(err);
+            else resolve(!!row);
+          }
+        );
+      });
+      expect(indexExistsBefore).toBe(false);
+      
+      // Run migration
+      await new Promise((resolve, reject) => {
+        db.serialize(() => {
+          db.run('ALTER TABLE expenses ADD COLUMN posted_date TEXT DEFAULT NULL', (err) => {
+            if (err) return reject(err);
+            
+            db.run('CREATE INDEX IF NOT EXISTS idx_expenses_posted_date ON expenses(posted_date)', (err) => {
+              if (err) reject(err);
+              else resolve();
+            });
+          });
+        });
+      });
+      
+      // Verify index exists after migration
+      const indexExistsAfter = await new Promise((resolve, reject) => {
+        db.get(
+          "SELECT name FROM sqlite_master WHERE type='index' AND name='idx_expenses_posted_date'",
+          (err, row) => {
+            if (err) reject(err);
+            else resolve(!!row);
+          }
+        );
+      });
+      expect(indexExistsAfter).toBe(true);
+      
+    } finally {
+      await closeDatabase(db);
+    }
+  });
+});

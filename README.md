@@ -15,6 +15,18 @@ A full-stack expense tracking application built with React and Node.js.
 - 📱 **Sticky summary scrolling** - Summary panel scrolls independently from expense list for better usability
 - ➕ **Floating add button** - Quick access to add expenses when viewing long lists (appears with >10 expenses)
 
+### Payment Methods
+- 💳 **Configurable payment methods** - Database-driven payment method management
+- 🏦 Four payment types: Cash, Cheque, Debit, Credit Card
+- ➕ Create, edit, activate/deactivate, and delete payment methods
+- 📊 **Credit card balance tracking** - Automatic balance updates when expenses are added/deleted
+- 📈 **Credit utilization indicators** - Color-coded display (green < 30%, yellow 30-70%, red > 70%)
+- 💵 **Payment recording** - Log credit card payments with automatic balance reduction
+- 📋 **Payment history** - View all recorded payments with dates and notes
+- 📄 **Statement uploads** - Attach PDF statements with billing period dates
+- ⏰ **Due date reminders** - Alerts when payment due within 7 days
+- 📅 **Posted date support** - Optional posted date for credit card expenses (affects balance calculations)
+
 ### Income & Fixed Expenses
 - 💰 Track monthly gross income from multiple sources with categorization
 - 🏷️ Categorize income sources (Salary, Government, Gifts, Other)
@@ -352,6 +364,7 @@ stop-servers.bat
 1. **Add Expenses**: Click the "+ Add Expense" button in the header
    - Enter the place name first - the system will suggest a category based on your history
    - The form remembers your last used payment method
+   - For credit card expenses, optionally enter a "Posted Date" if different from transaction date
 2. **Edit Expenses**: Click the edit button (✏️) next to any expense
 3. **Delete Expenses**: Click the delete button (🗑️) next to any expense
 4. **Global Filtering**: Use the search bar filters to find expenses across all time periods
@@ -363,111 +376,123 @@ stop-servers.bat
    - **Clear Filters**: Click "Clear Filters" to return to monthly view
 5. **Monthly Filtering**: Use the dropdowns in the expense list to filter within the current month
 
+### Payment Methods
+6. **View Payment Methods**: Click the "💳 Payment Methods" button in the navigation
+7. **Add Payment Method**: Click "+ Add Payment Method" and select the type (Cash, Cheque, Debit, or Credit Card)
+8. **Credit Card Features**: For credit card payment methods:
+   - View current balance and credit utilization
+   - Record payments to reduce balance
+   - View payment history
+   - Upload statements with billing period dates
+   - See due date reminders when payment is due within 7 days
+9. **Activate/Deactivate**: Toggle payment methods active/inactive (inactive methods hidden from dropdowns but preserved for historical data)
+10. **Delete**: Remove payment methods with zero associated expenses
+
 ### Income & Fixed Expenses
-6. **Manage Income**: Click the "👁️ View/Edit" button next to Monthly Gross Income to add/edit income sources
-7. **Manage Fixed Expenses**: Click the "👁️ View/Edit" button next to Total Fixed Expenses to manage predictable monthly costs
-8. **Carry Forward**: Use the "📋 Copy from Previous Month" button to copy previous month's income or fixed expenses
+11. **Manage Income**: Click the "👁️ View/Edit" button next to Monthly Gross Income to add/edit income sources
+12. **Manage Fixed Expenses**: Click the "👁️ View/Edit" button next to Total Fixed Expenses to manage predictable monthly costs
+13. **Carry Forward**: Use the "📋 Copy from Previous Month" button to copy previous month's income or fixed expenses
 
 ### Loans & Lines of Credit
-9. **View Loans**: Click the "💳 Loans" button in the summary panel to see all loans
-10. **Add Loan**: Click "+ Add New Loan" and select the loan type:
+14. **View Loans**: Click the "💳 Loans" button in the summary panel to see all loans
+15. **Add Loan**: Click "+ Add New Loan" and select the loan type:
     - **Loan**: For traditional loans (mortgages, car loans, student loans)
     - **Line of Credit**: For revolving credit (credit cards, HELOCs)
-11. **Track Balances**: Click on any loan to view details and add monthly balance/rate entries
-12. **View Charts**: Lines of credit display a dual-axis chart showing balance and interest rate trends
-13. **Mark Paid Off**: Traditional loans auto-mark as paid off when balance reaches zero
+16. **Track Balances**: Click on any loan to view details and add monthly balance/rate entries
+17. **View Charts**: Lines of credit display a dual-axis chart showing balance and interest rate trends
+18. **Mark Paid Off**: Traditional loans auto-mark as paid off when balance reaches zero
 
 ### Investment Tracking
-14. **View Investments**: Click the "📈 Investments" button in the summary panel to see all investments
-15. **Add Investment**: Click "+ Add New Investment" and select the type (TFSA or RRSP)
-16. **Track Values**: Click "View" on any investment to see details and add monthly value entries
-17. **Monitor Performance**: View line graphs showing investment value changes over time
-18. **Value History**: See chronological list of all value entries with change indicators and percentages
-19. **Portfolio Overview**: View total portfolio value across all investments in the summary panel
-20. **Data Reminders**: See reminder banners when investment values need updating for the current month
+19. **View Investments**: Click the "📈 Investments" button in the summary panel to see all investments
+20. **Add Investment**: Click "+ Add New Investment" and select the type (TFSA or RRSP)
+21. **Track Values**: Click "View" on any investment to see details and add monthly value entries
+22. **Monitor Performance**: View line graphs showing investment value changes over time
+23. **Value History**: See chronological list of all value entries with change indicators and percentages
+24. **Portfolio Overview**: View total portfolio value across all investments in the summary panel
+25. **Data Reminders**: See reminder banners when investment values need updating for the current month
 
 ### Net Worth Tracking
-21. **View Net Worth**: See your net worth automatically calculated on both annual and monthly summaries
-22. **Annual Net Worth**: View year-end financial position on the Annual Summary page
-23. **Monthly Net Worth**: Track current month position on the Summary Panel
-24. **Assets & Liabilities**: See breakdown showing total investments (assets) minus total loans (liabilities)
-25. **Color Indicators**: Green for positive net worth, red for negative net worth
+26. **View Net Worth**: See your net worth automatically calculated on both annual and monthly summaries
+27. **Annual Net Worth**: View year-end financial position on the Annual Summary page
+28. **Monthly Net Worth**: Track current month position on the Summary Panel
+29. **Assets & Liabilities**: See breakdown showing total investments (assets) minus total loans (liabilities)
+30. **Color Indicators**: Green for positive net worth, red for negative net worth
 
 ### Budget Tracking & Alerts
-26. **Manage Budgets**: Click the "💵 Manage Budgets" button in the month selector to set budget limits
-27. **Set Budget Limits**: Enter budget amounts for Food, Gas, and Other categories
-28. **Monitor Progress**: View real-time progress bars with color-coded status:
+31. **Manage Budgets**: Click the "💵 Manage Budgets" button in the month selector to set budget limits
+32. **Set Budget Limits**: Enter budget amounts for Food, Gas, and Other categories
+33. **Monitor Progress**: View real-time progress bars with color-coded status:
     - **Green**: Under 80% of budget (safe)
     - **Yellow**: 80-89% of budget (warning)
     - **Orange**: 90-99% of budget (danger)
     - **Red**: 100% or more (over budget)
-29. **Budget Alert Notifications**: Receive prominent banner alerts at the top of the interface when budgets need attention:
+34. **Budget Alert Notifications**: Receive prominent banner alerts at the top of the interface when budgets need attention:
     - **Warning Alerts (80-89%)**: Yellow banners with ⚡ icon when approaching budget limits
     - **Danger Alerts (90-99%)**: Orange banners with ! icon when nearing budget limits
     - **Critical Alerts (≥100%)**: Red banners with ⚠ icon when exceeding budget limits
-30. **Dismiss Alerts**: Click the × button to temporarily hide alert banners during your current session
-31. **Quick Budget Actions**: Use alert banner buttons to:
+35. **Dismiss Alerts**: Click the × button to temporarily hide alert banners during your current session
+36. **Quick Budget Actions**: Use alert banner buttons to:
     - **Manage Budgets**: Open budget management modal directly from the alert
     - **View Details**: Navigate to budget summary section for detailed analysis
-32. **Real-time Alert Updates**: Alerts automatically appear, update, or disappear as you modify expenses
-33. **Copy Budgets**: Use "📋 Copy from Previous Month" to replicate budget limits
-34. **View History**: Click "📊 Budget History" to analyze budget performance over time
-35. **Automatic Carry-Forward**: Budgets automatically copy from previous month when accessing a new month
-36. **Budget Summary**: View overall budget status in the summary panel showing total budgeted vs spent
+37. **Real-time Alert Updates**: Alerts automatically appear, update, or disappear as you modify expenses
+38. **Copy Budgets**: Use "📋 Copy from Previous Month" to replicate budget limits
+39. **View History**: Click "📊 Budget History" to analyze budget performance over time
+40. **Automatic Carry-Forward**: Budgets automatically copy from previous month when accessing a new month
+41. **Budget Summary**: View overall budget status in the summary panel showing total budgeted vs spent
 
 ### Medical Expense People Tracking
-33. **Manage People**: Click "⚙️ Settings" → "People" tab to add family members
-34. **Add Person**: Enter name and optional date of birth for each family member
-35. **Assign to Expense**: When creating a medical expense (Tax - Medical), select one or more people
-36. **Single Person**: Selecting one person automatically assigns the full amount
-37. **Multiple People**: Selecting multiple people opens the allocation modal
-38. **Split Equally**: Use the "Split Equally" button to divide the expense evenly
-39. **Custom Allocation**: Enter specific amounts for each person (must sum to total)
-40. **View by Person**: In Tax Deductible view, toggle "Group by Person" to see expenses organized by family member
-41. **Quick Assign**: Assign people to unassigned medical expenses directly from the Tax Deductible view
-42. **Tax Preparation**: Use person-grouped view to get per-person totals for tax forms
+42. **Manage People**: Click "⚙️ Settings" → "People" tab to add family members
+43. **Add Person**: Enter name and optional date of birth for each family member
+44. **Assign to Expense**: When creating a medical expense (Tax - Medical), select one or more people
+45. **Single Person**: Selecting one person automatically assigns the full amount
+46. **Multiple People**: Selecting multiple people opens the allocation modal
+47. **Split Equally**: Use the "Split Equally" button to divide the expense evenly
+48. **Custom Allocation**: Enter specific amounts for each person (must sum to total)
+49. **View by Person**: In Tax Deductible view, toggle "Group by Person" to see expenses organized by family member
+50. **Quick Assign**: Assign people to unassigned medical expenses directly from the Tax Deductible view
+51. **Tax Preparation**: Use person-grouped view to get per-person totals for tax forms
 
 ### Medical Insurance Tracking
-43. **Mark Insurance Eligible**: When creating/editing a medical expense, check "Eligible for Insurance"
-44. **Enter Original Cost**: Enter the full expense amount before any insurance reimbursement
-45. **Track Out-of-Pocket**: The Amount field represents what you actually paid after reimbursement
-46. **Set Claim Status**: Choose from Not Claimed, In Progress, Paid, or Denied
-47. **Quick Status Update**: Click the status indicator in the expense list to quickly change status
-48. **View Reimbursement**: See calculated reimbursement (Original Cost - Out-of-Pocket) in the form
-49. **Insurance Summary**: View totals by claim status in the Tax Deductible view
-50. **Filter by Status**: Filter expenses by claim status in Tax Deductible view
+52. **Mark Insurance Eligible**: When creating/editing a medical expense, check "Eligible for Insurance"
+53. **Enter Original Cost**: Enter the full expense amount before any insurance reimbursement
+54. **Track Out-of-Pocket**: The Amount field represents what you actually paid after reimbursement
+55. **Set Claim Status**: Choose from Not Claimed, In Progress, Paid, or Denied
+56. **Quick Status Update**: Click the status indicator in the expense list to quickly change status
+57. **View Reimbursement**: See calculated reimbursement (Original Cost - Out-of-Pocket) in the form
+58. **Insurance Summary**: View totals by claim status in the Tax Deductible view
+59. **Filter by Status**: Filter expenses by claim status in Tax Deductible view
 
 ### Medical Expense Invoice Attachments
-43. **Upload Invoice**: When creating or editing a medical expense, scroll to "Invoice Attachment" section
-44. **Choose File**: Click "Choose File" or drag and drop a PDF file (max 10MB)
-45. **Link to Person**: Optionally select a family member to link the invoice to (v4.13.0+)
-46. **Add Multiple Invoices**: Click "Add Invoice" to attach additional invoices to the same expense
-47. **View Invoice**: Click the 📄 icon next to medical expenses to open the PDF viewer
-48. **Invoice Count**: Expenses with multiple invoices show a count badge (e.g., "📄 3")
-49. **PDF Viewer Controls**: Use zoom in/out, download, and print functions
-50. **Delete Specific Invoice**: In the invoice list, click delete on individual invoices
-51. **Change Person Link**: Update which family member an invoice is linked to
-52. **Filter by Invoice**: In Tax Deductible view, filter expenses by invoice attachment status
-53. **Invoice Indicators**: See invoice counts in expense lists and tax reports
-54. **Automatic Cleanup**: Invoices are automatically deleted when expenses are deleted
+60. **Upload Invoice**: When creating or editing a medical expense, scroll to "Invoice Attachment" section
+61. **Choose File**: Click "Choose File" or drag and drop a PDF file (max 10MB)
+62. **Link to Person**: Optionally select a family member to link the invoice to
+63. **Add Multiple Invoices**: Click "Add Invoice" to attach additional invoices to the same expense
+64. **View Invoice**: Click the 📄 icon next to medical expenses to open the PDF viewer
+65. **Invoice Count**: Expenses with multiple invoices show a count badge (e.g., "📄 3")
+66. **PDF Viewer Controls**: Use zoom in/out, download, and print functions
+67. **Delete Specific Invoice**: In the invoice list, click delete on individual invoices
+68. **Change Person Link**: Update which family member an invoice is linked to
+69. **Filter by Invoice**: In Tax Deductible view, filter expenses by invoice attachment status
+70. **Invoice Indicators**: See invoice counts in expense lists and tax reports
+71. **Automatic Cleanup**: Invoices are automatically deleted when expenses are deleted
 
 ### Merchant Analytics
-52. **View Merchant Analytics**: Click the "📈 Analytics" button in the main navigation, then select the "Merchants" tab
-53. **Analyze Top Merchants**: View merchants ranked by total spending, visit frequency, or average spend per visit
-54. **Filter by Time Period**: Use the period dropdown to analyze different time ranges (All Time, This Year, This Month, Last 3 Months)
-55. **Sort Options**: Toggle between sorting by total spend, number of visits, or average spend per visit
-56. **View Merchant Details**: Click on any merchant to see detailed statistics, category breakdowns, and spending trends
-57. **Monthly Trends**: View line charts showing spending patterns over the last 12 months for each merchant
-58. **Category Analysis**: See which expense categories you spend on most at each merchant
-59. **Payment Method Insights**: View which payment methods you use most frequently at each merchant
-60. **Visit Patterns**: See average days between visits and identify your shopping frequency habits
-61. **Include Fixed Expenses**: Toggle the "Include Fixed Expenses" checkbox to combine variable and recurring expenses for comprehensive spending analysis
-62. **Drill-Down to Expenses**: Click "View All Expenses" to see the complete list of expenses at any merchant
+72. **View Merchant Analytics**: Click the "📈 Analytics" button in the main navigation, then select the "Merchants" tab
+73. **Analyze Top Merchants**: View merchants ranked by total spending, visit frequency, or average spend per visit
+74. **Filter by Time Period**: Use the period dropdown to analyze different time ranges (All Time, This Year, This Month, Last 3 Months)
+75. **Sort Options**: Toggle between sorting by total spend, number of visits, or average spend per visit
+76. **View Merchant Details**: Click on any merchant to see detailed statistics, category breakdowns, and spending trends
+77. **Monthly Trends**: View line charts showing spending patterns over the last 12 months for each merchant
+78. **Category Analysis**: See which expense categories you spend on most at each merchant
+79. **Payment Method Insights**: View which payment methods you use most frequently at each merchant
+80. **Visit Patterns**: See average days between visits and identify your shopping frequency habits
+81. **Include Fixed Expenses**: Toggle the "Include Fixed Expenses" checkbox to combine variable and recurring expenses for comprehensive spending analysis
+82. **Drill-Down to Expenses**: Click "View All Expenses" to see the complete list of expenses at any merchant
 
 ### Data Management
-63. **Backup**: Click the "💾 Backup" button to download your database
-64. **Automated Backups**: Configure scheduled backups in Backup Settings
-65. **Data Reminders**: Receive visual reminders when monthly data needs updating (investments and loans)
+83. **Backup**: Click the "💾 Backup" button to download your database
+84. **Automated Backups**: Configure scheduled backups in Backup Settings
+85. **Data Reminders**: Receive visual reminders when monthly data needs updating (investments and loans)
 
 ## Project Structure
 
@@ -578,6 +603,26 @@ expense-tracker/
 - `GET /api/analytics/merchants/:name/trend` - Get monthly spending trend for a merchant (query params: months, includeFixedExpenses)
 - `GET /api/analytics/merchants/:name/expenses` - Get all expenses for a specific merchant (query params: period, includeFixedExpenses)
 
+### Payment Methods
+- `GET /api/payment-methods` - Get all payment methods
+- `GET /api/payment-methods/:id` - Get payment method by ID
+- `POST /api/payment-methods` - Create a new payment method
+- `PUT /api/payment-methods/:id` - Update a payment method
+- `DELETE /api/payment-methods/:id` - Delete a payment method (only if no expenses)
+- `GET /api/payment-methods/display-names` - Get active method names for dropdowns
+- `PATCH /api/payment-methods/:id/active` - Toggle active status
+
+### Credit Card Payments
+- `GET /api/payment-methods/:id/payments` - Get payment history for a credit card
+- `POST /api/payment-methods/:id/payments` - Record a credit card payment
+- `DELETE /api/payment-methods/:id/payments/:paymentId` - Delete a payment record
+
+### Credit Card Statements
+- `GET /api/payment-methods/:id/statements` - Get statements list for a credit card
+- `POST /api/payment-methods/:id/statements` - Upload a statement PDF
+- `GET /api/payment-methods/:id/statements/:statementId` - Download a statement
+- `DELETE /api/payment-methods/:id/statements/:statementId` - Delete a statement
+
 ### Backup
 - `GET /api/backup` - Download database backup
 - `POST /api/backup/restore` - Restore from backup file
@@ -592,7 +637,9 @@ expense-tracker/
 - amount (REAL) - Out-of-pocket cost (or full amount if not insurance eligible)
 - type (TEXT) - Categories include: Clothing, Dining Out, Entertainment, Gas, Gifts, Groceries, Housing, Insurance, Personal Care, Pet Care, Recreation Activities, Subscriptions, Utilities, Vehicle Maintenance, Other, Tax - Medical, Tax - Donation
 - week (INTEGER) - 1-5
-- method (TEXT) - Payment method
+- method (TEXT) - Payment method display name
+- payment_method_id (INTEGER) - Foreign key to payment_methods table
+- posted_date (TEXT) - Optional posted date for credit card expenses
 - insurance_eligible (INTEGER) - 0 or 1 (Tax - Medical only)
 - claim_status (TEXT) - 'not_claimed', 'in_progress', 'paid', 'denied' (Tax - Medical only)
 - original_cost (REAL) - Original cost before insurance reimbursement (Tax - Medical only)
@@ -696,6 +743,42 @@ expense-tracker/
 - mime_type (TEXT) - File MIME type (application/pdf)
 - upload_date (TEXT) - When invoice was uploaded
 - Indexes on expense_id, person_id, and upload_date for performance
+
+### Payment Methods Table
+- id (INTEGER PRIMARY KEY)
+- type (TEXT) - 'cash', 'cheque', 'debit', 'credit_card'
+- display_name (TEXT) - Short name shown in dropdowns
+- full_name (TEXT) - Full descriptive name
+- account_details (TEXT) - Optional account details
+- credit_limit (REAL) - Credit limit (credit cards only)
+- current_balance (REAL) - Current balance (credit cards only)
+- payment_due_day (INTEGER) - Day of month payment is due
+- billing_cycle_start (INTEGER) - Day billing cycle starts
+- billing_cycle_end (INTEGER) - Day billing cycle ends
+- is_active (INTEGER) - 1 = active, 0 = inactive
+- created_at (TEXT)
+- updated_at (TEXT)
+
+### Credit Card Payments Table
+- id (INTEGER PRIMARY KEY)
+- payment_method_id (INTEGER) - Foreign key to payment_methods (CASCADE DELETE)
+- amount (REAL) - Payment amount
+- payment_date (TEXT) - Date of payment
+- notes (TEXT) - Optional notes
+- created_at (TEXT)
+
+### Credit Card Statements Table
+- id (INTEGER PRIMARY KEY)
+- payment_method_id (INTEGER) - Foreign key to payment_methods (CASCADE DELETE)
+- statement_date (TEXT) - Statement date
+- statement_period_start (TEXT) - Period start date
+- statement_period_end (TEXT) - Period end date
+- filename (TEXT) - Stored filename
+- original_filename (TEXT) - Original upload filename
+- file_path (TEXT) - Path to file
+- file_size (INTEGER) - File size in bytes
+- mime_type (TEXT) - MIME type
+- created_at (TEXT)
 
 ## Documentation
 

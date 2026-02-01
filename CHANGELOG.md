@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [5.1.0] - 2026-02-01
+
+### Added
+- **Fixed Interest Rate Loans**: Support for locking in interest rates on traditional loans
+  - New `fixed_interest_rate` field for loans to store locked-in rates
+  - Rate lock indicator (🔒) displayed in loan detail view when rate is fixed
+  - Fixed rate loans automatically use locked rate for balance history entries
+  - Balance history form hides rate field for fixed-rate loans
+  - Backward compatible: existing loans continue to work with variable rates
+
+### Changed
+- Loan update validation now only validates editable fields (name, notes, fixed_interest_rate)
+- Immutable loan fields (loan_type, initial_balance, start_date) cannot be changed after creation
+
+### Fixed
+- Fixed "Initial balance is required" error when updating existing loans with zero interest rate
+- Loan update now uses partial update pattern instead of full replacement
+
+---
+
 ## [5.0.4] - 2026-02-01
 
 ### Changed

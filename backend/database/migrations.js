@@ -3637,6 +3637,91 @@ function runStatement(db, sql, params = []) {
 }
 
 /**
+ * Migration: Add fixed_interest_rate column to loans table
+ * 
+ * This adds support for fixed interest rate loans where the rate doesn't change.
+ * When a loan has a fixed_interest_rate set, balance entries can auto-populate
+ * the rate field, simplifying data entry.
+ * 
+ * Requirements: 1.1, 1.5
+ */
+async function migrateAddFixedInterestRate(db) {
+  const migrationName = 'add_fixed_interest_rate_v1';
+  
+  // Check if already applied
+  const isApplied = await checkMigrationApplied(db, migrationName);
+  if (isApplied) {
+    logger.info(`Migration "${migrationName}" already applied, skipping`);
+    return;
+  }
+
+  logger.info(`Running migration: ${migrationName}`);
+
+  // Create backup
+  await createBackup();
+
+  return new Promise((resolve, reject) => {
+    db.serialize(() => {
+      db.run('BEGIN TRANSACTION', (err) => {
+        if (err) {
+          return reject(err);
+        }
+
+        // Check if fixed_interest_rate column already exists
+        db.all('PRAGMA table_info(loans)', (err, columns) => {
+          if (err) {
+            db.run('ROLLBACK');
+            return reject(err);
+          }
+
+          const hasFixedInterestRate = columns.some(col => col.name === 'fixed_interest_rate');
+
+          if (hasFixedInterestRate) {
+            logger.info('loans table already has fixed_interest_rate column');
+            markMigrationApplied(db, migrationName).then(() => {
+              db.run('COMMIT', (err) => {
+                if (err) {
+                  db.run('ROLLBACK');
+                  return reject(err);
+                }
+                logger.info(`Migration "${migrationName}" completed successfully`);
+                resolve();
+              });
+            }).catch(reject);
+            return;
+          }
+
+          // Add fixed_interest_rate column (nullable, defaults to NULL)
+          db.run(
+            'ALTER TABLE loans ADD COLUMN fixed_interest_rate REAL DEFAULT NULL',
+            (err) => {
+              if (err) {
+                db.run('ROLLBACK');
+                return reject(err);
+              }
+              
+              logger.info('Added fixed_interest_rate column to loans table');
+
+              // Mark migration as applied and commit
+              markMigrationApplied(db, migrationName).then(() => {
+                db.run('COMMIT', (err) => {
+                  if (err) {
+                    db.run('ROLLBACK');
+                    return reject(err);
+                  }
+                  logger.info(`Migration "${migrationName}" completed successfully`);
+                  resolve();
+                });
+              }).catch(reject);
+            }
+          );
+        });
+      });
+    });
+  });
+}
+
+/**
  * Run all pending migrations
  */
 async function runMigrations(db) {
@@ -3664,6 +3749,7 @@ async function runMigrations(db) {
     await migrateFixInvoiceFilePaths(db);
     await migrateConfigurablePaymentMethods(db);
     await migrateAddPostedDate(db);
+    await migrateAddFixedInterestRate(db);
     logger.info('All migrations completed');
   } catch (error) {
     logger.error('Migration failed:', error.message);
@@ -3685,5 +3771,6 @@ module.exports = {
   migrateAddMortgageFields,
   migrateAddMortgagePaymentsTable,
   migrateConfigurablePaymentMethods,
-  migrateAddPostedDate
+  migrateAddPostedDate,
+  migrateAddFixedInterestRate
 };

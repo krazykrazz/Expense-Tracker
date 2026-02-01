@@ -30,6 +30,7 @@ const PaymentMethodsModal = ({ isOpen, onClose, onUpdate }) => {
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingMethod, setEditingMethod] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [deactivateConfirm, setDeactivateConfirm] = useState(null);
   const [selectedCreditCard, setSelectedCreditCard] = useState(null);
 
   // Fetch payment methods when modal opens
@@ -106,6 +107,18 @@ const PaymentMethodsModal = ({ isOpen, onClose, onUpdate }) => {
       return;
     }
 
+    // If deactivating, show confirmation dialog
+    if (method.is_active) {
+      setDeactivateConfirm(method);
+      return;
+    }
+
+    // If activating, proceed directly (no confirmation needed)
+    await performToggleActive(method);
+  };
+
+  // Perform the actual toggle active operation
+  const performToggleActive = async (method) => {
     setLoading(true);
     setError(null);
 
@@ -122,6 +135,18 @@ const PaymentMethodsModal = ({ isOpen, onClose, onUpdate }) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Confirm deactivation
+  const confirmDeactivate = async () => {
+    if (!deactivateConfirm) return;
+    await performToggleActive(deactivateConfirm);
+    setDeactivateConfirm(null);
+  };
+
+  // Cancel deactivation
+  const cancelDeactivate = () => {
+    setDeactivateConfirm(null);
   };
 
   // Handle delete payment method
@@ -167,6 +192,7 @@ const PaymentMethodsModal = ({ isOpen, onClose, onUpdate }) => {
     setShowAddForm(false);
     setEditingMethod(null);
     setDeleteConfirm(null);
+    setDeactivateConfirm(null);
     setSelectedCreditCard(null);
     setError(null);
     setActiveTab('active');
@@ -424,6 +450,33 @@ const PaymentMethodsModal = ({ isOpen, onClose, onUpdate }) => {
                 <button 
                   className="confirm-cancel-btn"
                   onClick={cancelDelete}
+                  disabled={loading}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Deactivate Confirmation Dialog */}
+        {deactivateConfirm && (
+          <div className="payment-methods-confirm-overlay">
+            <div className="payment-methods-confirm-dialog">
+              <h3>Deactivate Payment Method</h3>
+              <p>Are you sure you want to deactivate "{deactivateConfirm.display_name}"?</p>
+              <p className="confirm-info">Deactivated payment methods won't appear in expense form dropdowns, but existing expenses will keep their payment method.</p>
+              <div className="confirm-actions">
+                <button 
+                  className="confirm-deactivate-btn"
+                  onClick={confirmDeactivate}
+                  disabled={loading}
+                >
+                  {loading ? 'Deactivating...' : 'Deactivate'}
+                </button>
+                <button 
+                  className="confirm-cancel-btn"
+                  onClick={cancelDeactivate}
                   disabled={loading}
                 >
                   Cancel

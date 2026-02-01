@@ -29,9 +29,10 @@ async function recalculateBalances() {
   
   for (const card of creditCards) {
     // Sum expenses for this card
+    // Use original_cost when set (for medical expenses with insurance) to reflect full credit card charge
     const expenseTotal = await new Promise((resolve, reject) => {
       db.get(
-        'SELECT COALESCE(SUM(amount), 0) as total FROM expenses WHERE payment_method_id = ?',
+        'SELECT COALESCE(SUM(COALESCE(original_cost, amount)), 0) as total FROM expenses WHERE payment_method_id = ?',
         [card.id],
         (err, row) => err ? reject(err) : resolve(row.total)
       );

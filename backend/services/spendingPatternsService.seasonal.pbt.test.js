@@ -73,9 +73,10 @@ describe('SpendingPatternsService - Seasonal Analysis Property Tests', () => {
 
   /**
    * Generate a date in a specific month
+   * Uses day 1 to avoid future date issues when running early in the month
    */
   const getDateInMonth = (year, month) => {
-    const day = 15; // Middle of month
+    const day = 1; // First of month to avoid future date filtering issues
     return `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
   };
 

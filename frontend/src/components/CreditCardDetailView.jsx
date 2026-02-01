@@ -547,12 +547,12 @@ const CreditCardDetailView = ({
                         <div key={statement.id} className="cc-statement-item">
                           <div className="statement-info">
                             <div className="statement-date">
-                              Statement: {formatDate(statement.statement_date)}
+                              Statement: {formatDate(statement.statementDate)}
                             </div>
                             <div className="statement-period">
-                              Period: {formatDate(statement.statement_period_start)} - {formatDate(statement.statement_period_end)}
+                              Period: {formatDate(statement.statementPeriodStart)} - {formatDate(statement.statementPeriodEnd)}
                             </div>
-                            <div className="statement-filename">{statement.original_filename}</div>
+                            <div className="statement-filename">{statement.originalFilename}</div>
                           </div>
                           <div className="statement-actions">
                             <button 

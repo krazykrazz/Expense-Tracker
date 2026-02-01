@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { uploadStatement } from '../services/creditCardApi';
 import { createLogger } from '../utils/logger';
 import './CreditCardStatementUpload.css';
@@ -145,6 +145,79 @@ const CreditCardStatementUpload = ({
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState(null);
   const [dragOver, setDragOver] = useState(false);
+
+  /**
+   * Calculate billing cycle period based on a given statement date.
+   * The statement date is typically the end of the billing cycle.
+   * @param {string} dateStr - Statement date in YYYY-MM-DD format
+   * @returns {Object} { periodStart, periodEnd }
+   */
+  const calculatePeriodFromStatementDate = useCallback((dateStr) => {
+    if (!billingCycleStart || !billingCycleEnd || !dateStr) {
+      return null;
+    }
+
+    // Parse the statement date
+    const parts = dateStr.split('-');
+    if (parts.length !== 3) return null;
+    
+    const statementYear = parseInt(parts[0]);
+    const statementMonth = parseInt(parts[1]) - 1; // 0-indexed
+    const statementDay = parseInt(parts[2]);
+
+    // Helper to get the last day of a month
+    const getLastDayOfMonthNum = (year, month) => {
+      return new Date(year, month + 1, 0).getDate();
+    };
+
+    // Clamp day to valid range for the month
+    const clampDay = (day, year, month) => {
+      const maxDay = getLastDayOfMonthNum(year, month);
+      return Math.min(day, maxDay);
+    };
+
+    // Helper to create date string
+    const formatDateStr = (year, month, day) => {
+      const date = new Date(year, month, day);
+      return date.toISOString().split('T')[0];
+    };
+
+    // The statement date is typically the billing cycle end date
+    // So we use the statement date's month for the cycle end
+    let cycleEndYear = statementYear;
+    let cycleEndMonth = statementMonth;
+    let cycleStartYear, cycleStartMonth;
+
+    if (billingCycleStart <= billingCycleEnd) {
+      // Normal cycle within same month (e.g., 1-25)
+      cycleStartYear = statementYear;
+      cycleStartMonth = statementMonth;
+    } else {
+      // Cycle spans months (e.g., 26-25)
+      // Start is in the previous month
+      cycleStartYear = statementMonth === 0 ? statementYear - 1 : statementYear;
+      cycleStartMonth = statementMonth === 0 ? 11 : statementMonth - 1;
+    }
+
+    const periodStartDay = clampDay(billingCycleStart, cycleStartYear, cycleStartMonth);
+    const periodEndDay = clampDay(billingCycleEnd, cycleEndYear, cycleEndMonth);
+
+    return {
+      periodStart: formatDateStr(cycleStartYear, cycleStartMonth, periodStartDay),
+      periodEnd: formatDateStr(cycleEndYear, cycleEndMonth, periodEndDay)
+    };
+  }, [billingCycleStart, billingCycleEnd]);
+
+  // Update period dates when statement date changes
+  useEffect(() => {
+    if (statementDate && billingCycleStart && billingCycleEnd) {
+      const calculatedPeriod = calculatePeriodFromStatementDate(statementDate);
+      if (calculatedPeriod) {
+        setPeriodStart(calculatedPeriod.periodStart);
+        setPeriodEnd(calculatedPeriod.periodEnd);
+      }
+    }
+  }, [statementDate, billingCycleStart, billingCycleEnd, calculatePeriodFromStatementDate]);
 
   // Refs
   const fileInputRef = useRef(null);

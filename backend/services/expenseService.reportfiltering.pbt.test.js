@@ -1,6 +1,7 @@
 const fc = require('fast-check');
 const { pbtOptions } = require('../test/pbtArbitraries');
 const expenseService = require('./expenseService');
+const expenseRepository = require('../repositories/expenseRepository');
 const peopleRepository = require('../repositories/peopleRepository');
 const db = require('../database/db');
 

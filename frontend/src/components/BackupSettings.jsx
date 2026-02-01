@@ -805,6 +805,24 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v5.0.3</div>
+                <div className="changelog-date">January 2026</div>
+                <ul className="changelog-items">
+                  <li>Fixed credit card balance calculation for medical expenses with insurance</li>
+                  <li>Balance now uses original cost (full charge) instead of out-of-pocket amount</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
+                <div className="changelog-version">v5.0.2</div>
+                <div className="changelog-date">January 2026</div>
+                <ul className="changelog-items">
+                  <li>Fixed credit card utilization percentage always showing 0.0%</li>
+                  <li>Fixed copy/paste not working in credit card payment form</li>
+                  <li>Fixed statement period auto-calculation from statement date</li>
+                  <li>Fixed statement period display showing blank in statements list</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v5.0.1</div>
                 <div className="changelog-date">January 2026</div>
                 <ul className="changelog-items">
@@ -840,34 +858,6 @@ const BackupSettings = () => {
                 <div className="changelog-date">January 2026</div>
                 <ul className="changelog-items">
                   <li>Fixed invoice PDF viewing blocked by Content Security Policy</li>
-                </ul>
-              </div>
-              <div className="changelog-entry">
-                <div className="changelog-version">v4.18.1</div>
-                <div className="changelog-date">January 2026</div>
-                <ul className="changelog-items">
-                  <li>Fixed "Use App Data" button in Tax Credit Calculator not populating income</li>
-                </ul>
-              </div>
-              <div className="changelog-entry">
-                <div className="changelog-version">v4.18.0</div>
-                <div className="changelog-date">January 2026</div>
-                <ul className="changelog-items">
-                  <li>Tax Deductible Analytics: Year-over-year comparison for medical and donation expenses</li>
-                  <li>Tax credit calculator with federal/provincial estimates</li>
-                  <li>Customizable tax settings (province, rates)</li>
-                  <li>Budget alert dismissal persistence fix</li>
-                </ul>
-              </div>
-              <div className="changelog-entry">
-                <div className="changelog-version">v4.17.0</div>
-                <div className="changelog-date">January 2026</div>
-                <ul className="changelog-items">
-                  <li>Analytics Hub: Unified analytics dashboard with 5 tabs</li>
-                  <li>Spending Patterns: Day-of-week analysis, recurring patterns, amount variance</li>
-                  <li>Predictions: Monthly spending forecasts with confidence intervals</li>
-                  <li>Seasonal Analysis: Identify seasonal spending trends</li>
-                  <li>Anomaly Detection: Unusual spending alerts with dismissal learning</li>
                 </ul>
               </div>
               <div className="changelog-entry">

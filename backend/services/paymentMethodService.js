@@ -1,5 +1,6 @@
 const paymentMethodRepository = require('../repositories/paymentMethodRepository');
 const logger = require('../config/logger');
+const { getTodayString } = require('../utils/dateUtils');
 
 /**
  * Valid payment method types
@@ -325,21 +326,26 @@ class PaymentMethodService {
     const paymentMethods = await paymentMethodRepository.findAll();
     
     // Add expense counts to each payment method
-    // For credit cards, also calculate dynamic balance
+    // For credit cards, also calculate dynamic balance and utilization
     const withCounts = await Promise.all(
       paymentMethods.map(async (pm) => {
         const expenseCount = await this.getExpenseCountForCurrentPeriod(pm);
         const totalExpenseCount = await paymentMethodRepository.countAssociatedExpenses(pm.id);
         
         // For credit cards, use dynamic balance (excludes future pre-logged expenses)
+        // and calculate utilization percentage
         let currentBalance = pm.current_balance;
+        let utilizationPercentage = null;
+        
         if (pm.type === 'credit_card') {
           currentBalance = await this._calculateDynamicBalance(pm.id);
+          utilizationPercentage = this.calculateUtilizationPercentage(currentBalance, pm.credit_limit);
         }
         
         return {
           ...pm,
           current_balance: currentBalance,
+          utilization_percentage: utilizationPercentage,
           expense_count: expenseCount,
           total_expense_count: totalExpenseCount
         };
@@ -722,9 +728,10 @@ class PaymentMethodService {
     const db = await getDatabase();
 
     // Sum ALL expenses regardless of date
+    // Use original_cost when set (for medical expenses with insurance) to reflect full credit card charge
     const expenseTotal = await new Promise((resolve, reject) => {
       db.get(
-        'SELECT COALESCE(SUM(amount), 0) as total FROM expenses WHERE payment_method_id = ?',
+        'SELECT COALESCE(SUM(COALESCE(original_cost, amount)), 0) as total FROM expenses WHERE payment_method_id = ?',
         [paymentMethodId],
         (err, row) => {
           if (err) return reject(err);
@@ -775,14 +782,14 @@ class PaymentMethodService {
     const { getDatabase } = require('../database/db');
     const db = await getDatabase();
 
-    // Get today's date
-    const today = new Date();
-    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    // Use timezone-aware date to avoid UTC vs local date mismatch
+    const todayStr = getTodayString();
 
     // Sum expenses where effective_date <= today
+    // Use original_cost when set (for medical expenses with insurance) to reflect full credit card charge
     const expenseTotal = await new Promise((resolve, reject) => {
       db.get(
-        'SELECT COALESCE(SUM(amount), 0) as total FROM expenses WHERE payment_method_id = ? AND COALESCE(posted_date, date) <= ?',
+        'SELECT COALESCE(SUM(COALESCE(original_cost, amount)), 0) as total FROM expenses WHERE payment_method_id = ? AND COALESCE(posted_date, date) <= ?',
         [paymentMethodId, todayStr],
         (err, row) => {
           if (err) return reject(err);
@@ -849,9 +856,10 @@ class PaymentMethodService {
     const db = await getDatabase();
 
     // Sum expenses where effective_date < current billing cycle start
+    // Use original_cost when set (for medical expenses with insurance) to reflect full credit card charge
     const expenseTotal = await new Promise((resolve, reject) => {
       db.get(
-        'SELECT COALESCE(SUM(amount), 0) as total FROM expenses WHERE payment_method_id = ? AND COALESCE(posted_date, date) < ?',
+        'SELECT COALESCE(SUM(COALESCE(original_cost, amount)), 0) as total FROM expenses WHERE payment_method_id = ? AND COALESCE(posted_date, date) < ?',
         [paymentMethodId, billingCycle.startDate],
         (err, row) => {
           if (err) return reject(err);
@@ -905,9 +913,10 @@ class PaymentMethodService {
     const db = await getDatabase();
 
     // Query transaction count and total for the period using effective_date
+    // Use original_cost when set (for medical expenses with insurance) to reflect full credit card charge
     const transactionData = await new Promise((resolve, reject) => {
       db.get(
-        `SELECT COUNT(*) as transaction_count, COALESCE(SUM(amount), 0) as total_amount
+        `SELECT COUNT(*) as transaction_count, COALESCE(SUM(COALESCE(original_cost, amount)), 0) as total_amount
          FROM expenses 
          WHERE payment_method_id = ? 
          AND COALESCE(posted_date, date) >= ? 
@@ -942,9 +951,8 @@ class PaymentMethodService {
       );
     });
 
-    // Determine if this is the current cycle
-    const today = new Date();
-    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    // Determine if this is the current cycle - use timezone-aware date
+    const todayStr = getTodayString();
     const isCurrent = startDate <= todayStr && todayStr <= endDate;
 
     logger.debug('Retrieved billing cycle details:', {
@@ -1132,15 +1140,15 @@ class PaymentMethodService {
     const { getDatabase } = require('../database/db');
     const db = await getDatabase();
 
-    // Get today's date for filtering
-    const today = new Date();
-    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    // Use timezone-aware date to avoid UTC vs local date mismatch
+    const todayStr = getTodayString();
 
     // Sum all expenses for this card where effective posting date <= today
     // Uses COALESCE(posted_date, date) to determine effective posting date
+    // Use original_cost when set (for medical expenses with insurance) to reflect full credit card charge
     const expenseTotal = await new Promise((resolve, reject) => {
       db.get(
-        'SELECT COALESCE(SUM(amount), 0) as total FROM expenses WHERE payment_method_id = ? AND COALESCE(posted_date, date) <= ?',
+        'SELECT COALESCE(SUM(COALESCE(original_cost, amount)), 0) as total FROM expenses WHERE payment_method_id = ? AND COALESCE(posted_date, date) <= ?',
         [id, todayStr],
         (err, row) => {
           if (err) return reject(err);

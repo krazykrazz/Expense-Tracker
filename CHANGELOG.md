@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [5.0.3] - 2026-01-31
+
+### Fixed
+- Credit card balance calculation now uses `original_cost` for medical expenses with insurance
+  - When a medical expense has insurance tracking, the full original cost (before insurance) is used for credit card balance
+  - This correctly reflects the actual charge to the credit card
+  - Insurance reimbursements can be recorded as credit card payments
+
+---
+
+## [5.0.2] - 2026-01-31
+
+### Fixed
+- Credit card utilization percentage always showing 0.0% in payment methods list
+- Copy/paste not working in credit card payment form (currency symbols and commas now stripped)
+- Statement period not auto-calculating when statement date changes
+- Statement period showing blank in statements list (property name mismatch)
+
+---
+
 ## [5.0.1] - 2026-01-31
 
 ### Added

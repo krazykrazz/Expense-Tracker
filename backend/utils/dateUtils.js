@@ -23,6 +23,28 @@ function calculateWeek(date) {
   return Math.ceil(dayOfMonth / 7);
 }
 
+/**
+ * Get today's date as a YYYY-MM-DD string in the configured timezone
+ * This avoids timezone issues where UTC date differs from local date
+ * @returns {string} Today's date in YYYY-MM-DD format
+ */
+function getTodayString() {
+  const { getTimezone } = require('../config/timezone');
+  const timezone = getTimezone();
+  
+  // Use Intl.DateTimeFormat to get the date in the configured timezone
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  });
+  
+  // en-CA locale returns YYYY-MM-DD format
+  return formatter.format(new Date());
+}
+
 module.exports = {
-  calculateWeek
+  calculateWeek,
+  getTodayString
 };

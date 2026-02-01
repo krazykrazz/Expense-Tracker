@@ -116,10 +116,15 @@ const CreditCardPaymentForm = ({
 
   // Handle amount input change
   const handleAmountChange = (e) => {
-    const value = e.target.value;
-    // Allow empty, numbers, and decimal point
-    if (value === '' || /^\d*\.?\d{0,2}$/.test(value)) {
-      setAmount(value);
+    let value = e.target.value;
+    
+    // Sanitize pasted values: remove currency symbols, commas, spaces
+    // This allows users to paste values like "$1,234.56" or "1,234.56"
+    const sanitized = value.replace(/[$,\s]/g, '');
+    
+    // Allow empty, numbers, and decimal point (up to 2 decimal places)
+    if (sanitized === '' || /^\d*\.?\d{0,2}$/.test(sanitized)) {
+      setAmount(sanitized);
       setError(null);
     }
   };

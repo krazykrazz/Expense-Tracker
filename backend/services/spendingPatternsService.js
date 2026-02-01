@@ -189,9 +189,11 @@ class SpendingPatternsService {
     const grouped = {};
     
     for (const expense of expenses) {
-      const date = new Date(expense.date);
-      const year = date.getFullYear();
-      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+      // Parse date string directly to avoid timezone issues
+      // Date format is YYYY-MM-DD
+      const dateParts = expense.date.split('-');
+      const year = dateParts[0];
+      const month = dateParts[1];
       const key = `${year}-${month}`;
       
       if (!grouped[key]) {

@@ -26,6 +26,8 @@ const LoansModal = ({ isOpen, onClose, year, month, onUpdate, highlightIds = [] 
     start_date: '',
     loan_type: 'loan', // Default to 'loan'
     notes: '',
+    // Fixed interest rate for loan type only
+    fixed_interest_rate: '',
     // Mortgage-specific fields
     amortization_period: '',
     term_length: '',
@@ -39,6 +41,8 @@ const LoansModal = ({ isOpen, onClose, year, month, onUpdate, highlightIds = [] 
     name: '',
     initial_balance: '',
     start_date: '',
+    // Fixed interest rate validation error
+    fixed_interest_rate: '',
     // Mortgage-specific validation errors
     amortization_period: '',
     term_length: '',
@@ -81,6 +85,7 @@ const LoansModal = ({ isOpen, onClose, year, month, onUpdate, highlightIds = [] 
       name: '',
       initial_balance: '',
       start_date: '',
+      fixed_interest_rate: '',
       amortization_period: '',
       term_length: '',
       renewal_date: '',
@@ -97,6 +102,7 @@ const LoansModal = ({ isOpen, onClose, year, month, onUpdate, highlightIds = [] 
       start_date: '',
       loan_type: 'loan',
       notes: '',
+      fixed_interest_rate: '',
       amortization_period: '',
       term_length: '',
       renewal_date: '',
@@ -125,6 +131,16 @@ const LoansModal = ({ isOpen, onClose, year, month, onUpdate, highlightIds = [] 
     // Validate start_date
     if (!formData.start_date || formData.start_date.trim() === '') {
       errors.start_date = 'Start date is required';
+    }
+    
+    // Validate fixed_interest_rate (only for loan type, optional but must be non-negative if provided)
+    if (formData.loan_type === 'loan' && formData.fixed_interest_rate !== '') {
+      const fixedRate = parseFloat(formData.fixed_interest_rate);
+      if (isNaN(fixedRate)) {
+        errors.fixed_interest_rate = 'Fixed interest rate must be a valid number';
+      } else if (fixedRate < 0) {
+        errors.fixed_interest_rate = 'Fixed interest rate must be greater than or equal to zero';
+      }
     }
     
     // Mortgage-specific validation
@@ -199,6 +215,8 @@ const LoansModal = ({ isOpen, onClose, year, month, onUpdate, highlightIds = [] 
       start_date: loan.start_date,
       loan_type: loan.loan_type || 'loan',
       notes: loan.notes || '',
+      // Fixed interest rate (only for loan type)
+      fixed_interest_rate: loan.fixed_interest_rate != null ? loan.fixed_interest_rate.toString() : '',
       // Mortgage-specific fields
       amortization_period: loan.amortization_period ? loan.amortization_period.toString() : '',
       term_length: loan.term_length ? loan.term_length.toString() : '',
@@ -230,6 +248,13 @@ const LoansModal = ({ isOpen, onClose, year, month, onUpdate, highlightIds = [] 
         loan_type: formData.loan_type,
         notes: formData.notes.trim() || null
       };
+      
+      // Add fixed_interest_rate for loan type only
+      if (formData.loan_type === 'loan') {
+        loanData.fixed_interest_rate = formData.fixed_interest_rate !== '' 
+          ? parseFloat(formData.fixed_interest_rate) 
+          : null;
+      }
       
       // Add mortgage-specific fields if loan_type is mortgage
       if (formData.loan_type === 'mortgage') {
@@ -271,6 +296,20 @@ const LoansModal = ({ isOpen, onClose, year, month, onUpdate, highlightIds = [] 
       return;
     }
     
+    // For loan type, validate fixed_interest_rate if provided
+    if (formData.loan_type === 'loan' && formData.fixed_interest_rate !== '') {
+      const fixedRate = parseFloat(formData.fixed_interest_rate);
+      if (isNaN(fixedRate)) {
+        setValidationErrors({ ...validationErrors, fixed_interest_rate: 'Fixed interest rate must be a valid number' });
+        setError('Please fix the validation errors before saving.');
+        return;
+      } else if (fixedRate < 0) {
+        setValidationErrors({ ...validationErrors, fixed_interest_rate: 'Fixed interest rate must be greater than or equal to zero' });
+        setError('Please fix the validation errors before saving.');
+        return;
+      }
+    }
+    
     // For mortgage updates, validate editable mortgage fields
     if (formData.loan_type === 'mortgage') {
       const errors = { ...validationErrors, name: '' };
@@ -307,6 +346,13 @@ const LoansModal = ({ isOpen, onClose, year, month, onUpdate, highlightIds = [] 
         name: formData.name.trim(),
         notes: formData.notes.trim() || null
       };
+      
+      // For loan type, include fixed_interest_rate
+      if (formData.loan_type === 'loan') {
+        updateData.fixed_interest_rate = formData.fixed_interest_rate !== '' 
+          ? parseFloat(formData.fixed_interest_rate) 
+          : null;
+      }
       
       // For mortgages, include editable mortgage fields
       if (formData.loan_type === 'mortgage') {
@@ -529,6 +575,29 @@ const LoansModal = ({ isOpen, onClose, year, month, onUpdate, highlightIds = [] 
                           : 'Choose "Loan" for car loans, personal loans, etc. Choose "Line of Credit" for credit cards, HELOCs, etc.'}
                       </span>
                     </div>
+
+                    {/* Fixed Interest Rate field - only for loan type */}
+                    {formData.loan_type === 'loan' && (
+                      <div className="loans-input-group">
+                        <label>Fixed Interest Rate (%)</label>
+                        <input
+                          type="number"
+                          value={formData.fixed_interest_rate}
+                          onChange={(e) => setFormData({ ...formData, fixed_interest_rate: e.target.value })}
+                          placeholder="e.g., 5.25"
+                          step="0.01"
+                          min="0"
+                          className={validationErrors.fixed_interest_rate ? 'input-error' : ''}
+                          disabled={loading}
+                        />
+                        {validationErrors.fixed_interest_rate && (
+                          <span className="validation-error">{validationErrors.fixed_interest_rate}</span>
+                        )}
+                        <span className="loans-field-hint">
+                          Optional. If set, this rate will be auto-populated when adding balance entries, simplifying data entry for fixed-rate loans.
+                        </span>
+                      </div>
+                    )}
 
                     {/* Mortgage-specific fields */}
                     {formData.loan_type === 'mortgage' && (

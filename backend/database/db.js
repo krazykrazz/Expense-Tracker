@@ -581,6 +581,7 @@ function createTestDatabase() {
             rate_type TEXT CHECK(rate_type IS NULL OR rate_type IN ('fixed', 'variable')),
             payment_frequency TEXT CHECK(payment_frequency IS NULL OR payment_frequency IN ('monthly', 'bi-weekly', 'accelerated_bi-weekly')),
             estimated_property_value REAL,
+            fixed_interest_rate REAL DEFAULT NULL,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             updated_at TEXT DEFAULT CURRENT_TIMESTAMP
           )`,

@@ -294,3 +294,245 @@ describe('LoansModal', () => {
     });
   });
 });
+
+
+describe('Fixed Interest Rate Field', () => {
+  const mockOnClose = vi.fn();
+  const mockOnUpdate = vi.fn();
+  
+  const defaultProps = {
+    isOpen: true,
+    onClose: mockOnClose,
+    year: 2024,
+    month: 12,
+    onUpdate: mockOnUpdate,
+    highlightIds: []
+  };
+
+  const mockLoans = [
+    {
+      id: 1,
+      name: 'Car Loan',
+      initial_balance: 20000,
+      start_date: '2023-01-15',
+      loan_type: 'loan',
+      is_paid_off: false,
+      currentBalance: 15000,
+      currentRate: 5.5,
+      fixed_interest_rate: 5.5,
+      notes: 'Test note'
+    },
+    {
+      id: 2,
+      name: 'Credit Card',
+      initial_balance: 5000,
+      start_date: '2022-06-01',
+      loan_type: 'line_of_credit',
+      is_paid_off: false,
+      currentBalance: 2500,
+      currentRate: 19.99,
+      fixed_interest_rate: null,
+      notes: null
+    }
+  ];
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    loanApi.getAllLoans.mockResolvedValue(mockLoans);
+  });
+
+  describe('Conditional Rendering', () => {
+    it('shows fixed interest rate field when loan_type is "loan"', async () => {
+      render(<LoansModal {...defaultProps} />);
+      
+      await waitFor(() => {
+        fireEvent.click(screen.getByText('+ Add New Loan'));
+      });
+      
+      // Default loan_type is 'loan', so fixed rate field should be visible
+      expect(screen.getByText('Fixed Interest Rate (%)')).toBeInTheDocument();
+    });
+
+    it('hides fixed interest rate field when loan_type is "line_of_credit"', async () => {
+      render(<LoansModal {...defaultProps} />);
+      
+      await waitFor(() => {
+        fireEvent.click(screen.getByText('+ Add New Loan'));
+      });
+      
+      // Change loan type to line_of_credit
+      const loanTypeSelect = screen.getByRole('combobox');
+      fireEvent.change(loanTypeSelect, { target: { value: 'line_of_credit' } });
+      
+      // Fixed rate field should not be visible
+      expect(screen.queryByText('Fixed Interest Rate (%)')).not.toBeInTheDocument();
+    });
+
+    it('hides fixed interest rate field when loan_type is "mortgage"', async () => {
+      render(<LoansModal {...defaultProps} />);
+      
+      await waitFor(() => {
+        fireEvent.click(screen.getByText('+ Add New Loan'));
+      });
+      
+      // Change loan type to mortgage
+      const loanTypeSelect = screen.getByRole('combobox');
+      fireEvent.change(loanTypeSelect, { target: { value: 'mortgage' } });
+      
+      // Fixed rate field should not be visible
+      expect(screen.queryByText('Fixed Interest Rate (%)')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('Validation', () => {
+    it('shows validation error for negative fixed interest rate', async () => {
+      render(<LoansModal {...defaultProps} />);
+      
+      await waitFor(() => {
+        fireEvent.click(screen.getByText('+ Add New Loan'));
+      });
+      
+      // Fill in required fields
+      fireEvent.change(screen.getByPlaceholderText('e.g., Car Loan, Mortgage'), {
+        target: { value: 'Test Loan' }
+      });
+      fireEvent.change(screen.getByPlaceholderText('0.00'), {
+        target: { value: '10000' }
+      });
+      
+      const dateInputs = document.querySelectorAll('input[type="date"]');
+      if (dateInputs.length > 0) {
+        fireEvent.change(dateInputs[0], { target: { value: '2024-01-01' } });
+      }
+      
+      // Enter negative fixed interest rate
+      fireEvent.change(screen.getByPlaceholderText('e.g., 5.25'), {
+        target: { value: '-5' }
+      });
+      
+      fireEvent.click(screen.getByText('Create Loan'));
+      
+      await waitFor(() => {
+        expect(screen.getByText(/Fixed interest rate must be greater than or equal to zero/)).toBeInTheDocument();
+      });
+    });
+
+    it('allows zero as a valid fixed interest rate', async () => {
+      loanApi.createLoan.mockResolvedValue({ id: 3, name: 'Test Loan' });
+      
+      render(<LoansModal {...defaultProps} />);
+      
+      await waitFor(() => {
+        fireEvent.click(screen.getByText('+ Add New Loan'));
+      });
+      
+      // Fill in required fields
+      fireEvent.change(screen.getByPlaceholderText('e.g., Car Loan, Mortgage'), {
+        target: { value: 'Test Loan' }
+      });
+      fireEvent.change(screen.getByPlaceholderText('0.00'), {
+        target: { value: '10000' }
+      });
+      
+      const dateInputs = document.querySelectorAll('input[type="date"]');
+      if (dateInputs.length > 0) {
+        fireEvent.change(dateInputs[0], { target: { value: '2024-01-01' } });
+      }
+      
+      // Enter zero as fixed interest rate
+      fireEvent.change(screen.getByPlaceholderText('e.g., 5.25'), {
+        target: { value: '0' }
+      });
+      
+      fireEvent.click(screen.getByText('Create Loan'));
+      
+      await waitFor(() => {
+        expect(loanApi.createLoan).toHaveBeenCalledWith(
+          expect.objectContaining({
+            fixed_interest_rate: 0
+          })
+        );
+      });
+    });
+
+    it('allows empty fixed interest rate (null)', async () => {
+      loanApi.createLoan.mockResolvedValue({ id: 3, name: 'Test Loan' });
+      
+      render(<LoansModal {...defaultProps} />);
+      
+      await waitFor(() => {
+        fireEvent.click(screen.getByText('+ Add New Loan'));
+      });
+      
+      // Fill in required fields only, leave fixed rate empty
+      fireEvent.change(screen.getByPlaceholderText('e.g., Car Loan, Mortgage'), {
+        target: { value: 'Test Loan' }
+      });
+      fireEvent.change(screen.getByPlaceholderText('0.00'), {
+        target: { value: '10000' }
+      });
+      
+      const dateInputs = document.querySelectorAll('input[type="date"]');
+      if (dateInputs.length > 0) {
+        fireEvent.change(dateInputs[0], { target: { value: '2024-01-01' } });
+      }
+      
+      fireEvent.click(screen.getByText('Create Loan'));
+      
+      await waitFor(() => {
+        expect(loanApi.createLoan).toHaveBeenCalledWith(
+          expect.objectContaining({
+            fixed_interest_rate: null
+          })
+        );
+      });
+    });
+  });
+
+  describe('Edit Mode', () => {
+    it('populates fixed interest rate when editing a loan with fixed rate', async () => {
+      render(<LoansModal {...defaultProps} />);
+      
+      await waitFor(() => {
+        expect(screen.getByText('Car Loan')).toBeInTheDocument();
+      });
+      
+      // Click edit on the first loan (Car Loan with fixed_interest_rate: 5.5)
+      const editButtons = screen.getAllByTitle('Edit');
+      fireEvent.click(editButtons[0]);
+      
+      // Check that the fixed rate field is populated
+      const fixedRateInput = screen.getByPlaceholderText('e.g., 5.25');
+      expect(fixedRateInput.value).toBe('5.5');
+    });
+
+    it('includes fixed_interest_rate in update API call', async () => {
+      loanApi.updateLoan.mockResolvedValue({ id: 1, name: 'Car Loan Updated' });
+      
+      render(<LoansModal {...defaultProps} />);
+      
+      await waitFor(() => {
+        expect(screen.getByText('Car Loan')).toBeInTheDocument();
+      });
+      
+      // Click edit on the first loan
+      const editButtons = screen.getAllByTitle('Edit');
+      fireEvent.click(editButtons[0]);
+      
+      // Change the fixed rate
+      const fixedRateInput = screen.getByPlaceholderText('e.g., 5.25');
+      fireEvent.change(fixedRateInput, { target: { value: '6.0' } });
+      
+      fireEvent.click(screen.getByText('Update Loan'));
+      
+      await waitFor(() => {
+        expect(loanApi.updateLoan).toHaveBeenCalledWith(
+          1,
+          expect.objectContaining({
+            fixed_interest_rate: 6.0
+          })
+        );
+      });
+    });
+  });
+});

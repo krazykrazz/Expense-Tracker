@@ -80,6 +80,10 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
     ? (totalPaidDown / loanData.initial_balance) * 100 
     : 0;
   const currentRate = loanData?.currentRate || 0;
+  
+  // Check if loan has a fixed interest rate
+  const hasFixedRate = loanData?.fixed_interest_rate !== null && loanData?.fixed_interest_rate !== undefined;
+  const fixedRate = loanData?.fixed_interest_rate;
 
 
 
@@ -315,9 +319,12 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
       errors.remaining_balance = balanceError;
     }
     
-    const rateError = validateAmount(balanceFormData.rate);
-    if (rateError) {
-      errors.rate = rateError;
+    // Only validate rate if loan doesn't have a fixed rate
+    if (!hasFixedRate) {
+      const rateError = validateAmount(balanceFormData.rate);
+      if (rateError) {
+        errors.rate = rateError;
+      }
     }
     
     if (balanceFormData.month < 1 || balanceFormData.month > 12) {
@@ -347,13 +354,20 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
         setError(`A balance entry already exists for ${formatMonthYear(balanceFormData.year, balanceFormData.month)}. It will be updated with the new values.`);
       }
       
-      await createOrUpdateBalance({
+      // Build balance data - only include rate if loan doesn't have fixed rate
+      const balanceData = {
         loan_id: loanData.id,
         year: parseInt(balanceFormData.year),
         month: parseInt(balanceFormData.month),
-        remaining_balance: parseFloat(balanceFormData.remaining_balance),
-        rate: parseFloat(balanceFormData.rate)
-      });
+        remaining_balance: parseFloat(balanceFormData.remaining_balance)
+      };
+      
+      // Only include rate if loan doesn't have a fixed rate
+      if (!hasFixedRate) {
+        balanceData.rate = parseFloat(balanceFormData.rate);
+      }
+      
+      await createOrUpdateBalance(balanceData);
       
       // Refresh balance history
       await fetchBalanceHistory();
@@ -512,6 +526,10 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
                     <span className="loan-summary-value">
                       {loanData.loan_type === 'mortgage' ? 'Mortgage' : 
                        loanData.loan_type === 'line_of_credit' ? 'Line of Credit' : 'Loan'}
+                      {/* Fixed Rate Badge - Requirement 3.4 */}
+                      {hasFixedRate && (
+                        <span className="fixed-rate-badge-summary">🔒 Fixed Rate</span>
+                      )}
                     </span>
                   </div>
                   
@@ -935,6 +953,15 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
             {showAddBalanceForm && (
               <div className="loan-add-balance-form">
                 <h4>Add Balance Entry</h4>
+                
+                {/* Fixed Rate Indicator */}
+                {hasFixedRate && (
+                  <div className="fixed-rate-indicator">
+                    <span className="fixed-rate-badge">🔒 Fixed Rate: {fixedRate}%</span>
+                    <span className="fixed-rate-note">Interest rate will be automatically applied</span>
+                  </div>
+                )}
+                
                 <div className="balance-form-grid">
                   <div className="balance-input-group">
                     <label>Year *</label>
@@ -995,22 +1022,25 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
                     )}
                   </div>
                   
-                  <div className="balance-input-group">
-                    <label>Interest Rate (%) *</label>
-                    <input
-                      type="number"
-                      value={balanceFormData.rate}
-                      onChange={(e) => setBalanceFormData({ ...balanceFormData, rate: e.target.value })}
-                      placeholder="0.00"
-                      step="0.01"
-                      min="0"
-                      className={validationErrors.rate ? 'input-error' : ''}
-                      disabled={loading}
-                    />
-                    {validationErrors.rate && (
-                      <span className="validation-error">{validationErrors.rate}</span>
-                    )}
-                  </div>
+                  {/* Only show rate input if loan doesn't have a fixed rate */}
+                  {!hasFixedRate && (
+                    <div className="balance-input-group">
+                      <label>Interest Rate (%) *</label>
+                      <input
+                        type="number"
+                        value={balanceFormData.rate}
+                        onChange={(e) => setBalanceFormData({ ...balanceFormData, rate: e.target.value })}
+                        placeholder="0.00"
+                        step="0.01"
+                        min="0"
+                        className={validationErrors.rate ? 'input-error' : ''}
+                        disabled={loading}
+                      />
+                      {validationErrors.rate && (
+                        <span className="validation-error">{validationErrors.rate}</span>
+                      )}
+                    </div>
+                  )}
                 </div>
                 
                 <div className="balance-form-actions">
@@ -1047,7 +1077,8 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
                       <th>Remaining Balance</th>
                       <th>Interest Rate</th>
                       <th>Balance Change</th>
-                      <th>Rate Change</th>
+                      {/* Conditionally hide Rate Change column for fixed-rate loans - Requirement 3.1 */}
+                      {!hasFixedRate && <th>Rate Change</th>}
                       <th>Actions</th>
                     </tr>
                   </thead>
@@ -1099,7 +1130,7 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
                                   </div>
                                 )}
                               </td>
-                              <td colSpan="2">
+                              <td colSpan={hasFixedRate ? 1 : 2}>
                                 <div className="balance-edit-actions">
                                   <button
                                     className="balance-save-button"
@@ -1133,17 +1164,20 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
                                   <span className="no-change">—</span>
                                 )}
                               </td>
-                              <td>
-                                {entry.rateChange !== null && entry.rateChange !== undefined ? (
-                                  <span className={`rate-change ${entry.rateChange < 0 ? 'decrease' : entry.rateChange > 0 ? 'increase' : 'no-change'}`}>
-                                    {entry.rateChange < 0 ? '↓' : entry.rateChange > 0 ? '↑' : '—'}
-                                    {' '}
-                                    {Math.abs(entry.rateChange).toFixed(2)}%
-                                  </span>
-                                ) : (
-                                  <span className="no-change">—</span>
-                                )}
-                              </td>
+                              {/* Conditionally hide Rate Change cell for fixed-rate loans - Requirement 3.1 */}
+                              {!hasFixedRate && (
+                                <td>
+                                  {entry.rateChange !== null && entry.rateChange !== undefined ? (
+                                    <span className={`rate-change ${entry.rateChange < 0 ? 'decrease' : entry.rateChange > 0 ? 'increase' : 'no-change'}`}>
+                                      {entry.rateChange < 0 ? '↓' : entry.rateChange > 0 ? '↑' : '—'}
+                                      {' '}
+                                      {Math.abs(entry.rateChange).toFixed(2)}%
+                                    </span>
+                                  ) : (
+                                    <span className="no-change">—</span>
+                                  )}
+                                </td>
+                              )}
                             </>
                           )}
                           

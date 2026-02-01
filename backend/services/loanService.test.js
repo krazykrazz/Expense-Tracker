@@ -227,21 +227,54 @@ describe('LoanService', () => {
 
       const updated = await loanService.updateLoan(created.id, {
         name: 'Updated Loan',
-        initial_balance: 12000,
-        start_date: '2024-02-01',
-        loan_type: 'line_of_credit'
+        notes: 'Updated notes'
       });
 
       expect(updated.name).toBe('Updated Loan');
-      expect(updated.initial_balance).toBe(12000);
-      expect(updated.loan_type).toBe('line_of_credit');
+      expect(updated.notes).toBe('Updated notes');
+      // initial_balance and loan_type should remain unchanged (immutable)
+      expect(updated.initial_balance).toBe(10000);
+      expect(updated.loan_type).toBe('loan');
+    });
+
+    test('should update fixed_interest_rate for loan type', async () => {
+      const created = await loanService.createLoan({
+        name: 'Fixed Rate Loan',
+        initial_balance: 10000,
+        start_date: '2024-01-15',
+        loan_type: 'loan'
+      });
+      createdLoanIds.push(created.id);
+
+      const updated = await loanService.updateLoan(created.id, {
+        name: 'Fixed Rate Loan',
+        fixed_interest_rate: 5.25
+      });
+
+      expect(updated.fixed_interest_rate).toBe(5.25);
+    });
+
+    test('should allow zero fixed_interest_rate', async () => {
+      const created = await loanService.createLoan({
+        name: 'Zero Rate Loan',
+        initial_balance: 10000,
+        start_date: '2024-01-15',
+        loan_type: 'loan',
+        fixed_interest_rate: 5.0
+      });
+      createdLoanIds.push(created.id);
+
+      const updated = await loanService.updateLoan(created.id, {
+        name: 'Zero Rate Loan',
+        fixed_interest_rate: 0
+      });
+
+      expect(updated.fixed_interest_rate).toBe(0);
     });
 
     test('should return null for non-existent loan', async () => {
       const updated = await loanService.updateLoan(99999, {
-        name: 'Ghost Loan',
-        initial_balance: 5000,
-        start_date: '2024-01-01'
+        name: 'Ghost Loan'
       });
 
       expect(updated).toBeNull();

@@ -43,6 +43,24 @@ class LoanService {
         throw new Error('Estimated months left must be a whole number');
       }
     }
+
+    // Validate fixed_interest_rate if provided
+    if (loan.fixed_interest_rate !== undefined && loan.fixed_interest_rate !== null) {
+      // Fixed interest rate can only be set for loan_type='loan'
+      const loanType = loan.loan_type || 'loan';
+      if (loanType !== 'loan') {
+        throw new Error('Fixed interest rate can only be set for loans, not for lines of credit or mortgages');
+      }
+      
+      // Validate that the rate is a valid non-negative number
+      if (typeof loan.fixed_interest_rate !== 'number' || isNaN(loan.fixed_interest_rate)) {
+        throw new Error('Fixed interest rate must be a valid number');
+      }
+      
+      if (loan.fixed_interest_rate < 0) {
+        throw new Error('Fixed interest rate must be greater than or equal to zero');
+      }
+    }
   }
 
   /**
@@ -53,14 +71,18 @@ class LoanService {
   async createLoan(data) {
     this.validateLoan(data);
     
+    const loanType = data.loan_type || 'loan';
+    
     const loanData = {
       name: data.name.trim(),
       initial_balance: data.initial_balance,
       start_date: data.start_date,
       notes: data.notes ? data.notes.trim() : null,
-      loan_type: data.loan_type || 'loan', // Default to 'loan' if not specified
+      loan_type: loanType,
       is_paid_off: 0,
-      estimated_months_left: data.estimated_months_left || null
+      estimated_months_left: data.estimated_months_left || null,
+      // Only include fixed_interest_rate for loan_type='loan'
+      fixed_interest_rate: loanType === 'loan' ? (data.fixed_interest_rate ?? null) : null
     };
 
     return await loanRepository.create(loanData);
@@ -68,23 +90,60 @@ class LoanService {
 
   /**
    * Update an existing loan
+   * Only allows updating: name, notes, fixed_interest_rate (for loan type)
+   * Prevents modification of: initial_balance, start_date, loan_type
    * @param {number} id - Loan ID
    * @param {Object} data - Updated loan data
    * @returns {Promise<Object|null>} Updated loan or null if not found
    */
   async updateLoan(id, data) {
-    this.validateLoan(data);
+    // First, verify the loan exists
+    const existingLoan = await loanRepository.findById(id);
     
-    const loanData = {
-      name: data.name.trim(),
-      initial_balance: data.initial_balance,
-      start_date: data.start_date,
-      notes: data.notes ? data.notes.trim() : null,
-      loan_type: data.loan_type || 'loan',
-      estimated_months_left: data.estimated_months_left || null
-    };
-
-    return await loanRepository.update(id, loanData);
+    if (!existingLoan) {
+      return null;
+    }
+    
+    // Validate name if provided
+    if (data.name !== undefined) {
+      validateString(data.name, 'Loan name', { minLength: 1, maxLength: 100 });
+    }
+    
+    // Validate fixed_interest_rate if provided (only for loan type)
+    if (data.fixed_interest_rate !== undefined && data.fixed_interest_rate !== null) {
+      // Fixed interest rate can only be set for loan_type='loan'
+      if (existingLoan.loan_type !== 'loan') {
+        throw new Error('Fixed interest rate can only be set for loans, not for lines of credit or mortgages');
+      }
+      
+      // Validate that the rate is a valid non-negative number
+      if (typeof data.fixed_interest_rate !== 'number' || isNaN(data.fixed_interest_rate)) {
+        throw new Error('Fixed interest rate must be a valid number');
+      }
+      
+      if (data.fixed_interest_rate < 0) {
+        throw new Error('Fixed interest rate must be greater than or equal to zero');
+      }
+    }
+    
+    // Build the update object with only allowed fields
+    const updates = {};
+    
+    if (data.name !== undefined) {
+      updates.name = data.name.trim();
+    }
+    
+    if (data.notes !== undefined) {
+      updates.notes = data.notes ? data.notes.trim() : null;
+    }
+    
+    // Only include fixed_interest_rate for loan type
+    if (existingLoan.loan_type === 'loan' && data.fixed_interest_rate !== undefined) {
+      updates.fixed_interest_rate = data.fixed_interest_rate;
+    }
+    
+    // Use the repository method that only updates specified fields
+    return await loanRepository.updateFields(id, updates);
   }
 
   /**

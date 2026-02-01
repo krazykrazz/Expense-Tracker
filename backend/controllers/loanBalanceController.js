@@ -1,4 +1,5 @@
 const loanBalanceService = require('../services/loanBalanceService');
+const loanRepository = require('../repositories/loanRepository');
 
 /**
  * Get balance history for a loan
@@ -56,20 +57,54 @@ async function getBalanceForMonth(req, res) {
 /**
  * Create or update a balance entry
  * POST /api/loan-balances
- * Body: { loan_id, year, month, remaining_balance, rate }
+ * Body: { loan_id, year, month, remaining_balance, rate? }
+ * 
+ * For loans with fixed_interest_rate set:
+ *   - rate is optional and will be auto-populated from fixed_interest_rate
+ * For loans without fixed_interest_rate (variable rate):
+ *   - rate is required
  */
 async function createOrUpdateBalance(req, res) {
   try {
     const balanceData = req.body;
     
+    // Validate required fields (rate may be optional for fixed-rate loans)
     if (!balanceData.loan_id || !balanceData.year || !balanceData.month || 
-        balanceData.remaining_balance === undefined || balanceData.rate === undefined) {
+        balanceData.remaining_balance === undefined) {
       return res.status(400).json({ 
-        error: 'loan_id, year, month, remaining_balance, and rate are required' 
+        error: 'loan_id, year, month, and remaining_balance are required' 
       });
     }
     
-    const result = await loanBalanceService.createOrUpdateBalance(balanceData);
+    // Fetch the loan to check for fixed_interest_rate
+    const loan = await loanRepository.findById(balanceData.loan_id);
+    
+    if (!loan) {
+      return res.status(404).json({ error: 'Loan not found' });
+    }
+    
+    // Handle rate auto-population for fixed-rate loans
+    let rateToUse = balanceData.rate;
+    
+    if (rateToUse === undefined || rateToUse === null) {
+      // Rate not provided - check if loan has fixed_interest_rate
+      if (loan.fixed_interest_rate !== null && loan.fixed_interest_rate !== undefined) {
+        // Auto-populate from fixed_interest_rate
+        rateToUse = loan.fixed_interest_rate;
+      } else {
+        // Variable rate loan - rate is required
+        return res.status(400).json({ 
+          error: 'Interest rate is required for loans without a fixed interest rate' 
+        });
+      }
+    }
+    
+    // Create the balance entry with the determined rate
+    const result = await loanBalanceService.createOrUpdateBalance({
+      ...balanceData,
+      rate: rateToUse
+    });
+    
     res.status(201).json(result);
   } catch (error) {
     res.status(400).json({ error: error.message });

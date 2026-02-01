@@ -112,8 +112,9 @@ describe('ExpenseService Backward Compatibility Property Tests', () => {
           if (existingExpenses.length > 0) {
             const expenseToEdit = existingExpenses[0];
             
-            // Create a test person
-            const testPerson = await peopleService.createPerson('PBT_Test_Person', '1990-01-01');
+            // Create a test person with unique name to avoid UNIQUE constraint violations
+            const uniqueSuffix = `${Date.now()}_${Math.random().toString(36).substring(7)}`;
+            const testPerson = await peopleService.createPerson(`PBT_Test_Person_${uniqueSuffix}`, '1990-01-01');
             
             // Update the expense to add people association
             const updatedExpense = await expenseService.updateExpenseWithPeople(

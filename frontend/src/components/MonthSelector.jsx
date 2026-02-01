@@ -1,6 +1,6 @@
 import './MonthSelector.css';
 
-const MonthSelector = ({ selectedYear, selectedMonth, onMonthChange, onViewAnnualSummary, onViewTaxDeductible, onManageBudgets, onViewBudgetHistory, onOpenAnalyticsHub }) => {
+const MonthSelector = ({ selectedYear, selectedMonth, onMonthChange, onViewAnnualSummary, onViewTaxDeductible, onManageBudgets, onViewBudgetHistory, onOpenAnalyticsHub, onOpenPaymentMethods }) => {
   // Generate year range from 2020 to 2030
   const years = [];
   for (let year = 2020; year <= 2030; year++) {
@@ -104,6 +104,14 @@ const MonthSelector = ({ selectedYear, selectedMonth, onMonthChange, onViewAnnua
           ))}
         </select>
       </div>
+
+      <button 
+        className="payment-methods-button"
+        onClick={onOpenPaymentMethods}
+        title="Manage payment methods"
+      >
+        💳 Payment Methods
+      </button>
     </div>
   );
 };

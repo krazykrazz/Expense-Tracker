@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [5.0.4] - 2026-02-01
+
+### Changed
+- Moved Payment Methods button from header to main toolbar (right-justified)
+  - Better accessibility alongside other navigation controls
+  - Consistent placement with month navigation and analytics buttons
+
+---
+
 ## [5.0.3] - 2026-01-31
 
 ### Fixed

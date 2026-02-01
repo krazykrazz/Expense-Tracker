@@ -603,14 +603,6 @@ function App() {
         </div>
         <div className="header-buttons">
           <button 
-            className="payment-methods-button" 
-            onClick={() => setShowPaymentMethods(true)}
-            aria-label="Payment Methods"
-            title="Manage payment methods"
-          >
-            💳 Payment Methods
-          </button>
-          <button 
             className="settings-button" 
             onClick={() => setShowBackupSettings(true)}
             aria-label="Settings"
@@ -664,6 +656,7 @@ function App() {
             onManageBudgets={handleManageBudgets}
             onViewBudgetHistory={handleViewBudgetHistory}
             onOpenAnalyticsHub={() => setShowAnalyticsHub(true)}
+            onOpenPaymentMethods={() => setShowPaymentMethods(true)}
           />
         </div>
         
@@ -857,7 +850,7 @@ function App() {
 
       <footer className="App-footer">
         <span className="version">
-          v{versionInfo?.version || '5.0.3'}
+          v{versionInfo?.version || '5.0.4'}
           {versionInfo?.docker && (
             <span className="docker-tag"> (Docker: {versionInfo.docker.tag})</span>
           )}

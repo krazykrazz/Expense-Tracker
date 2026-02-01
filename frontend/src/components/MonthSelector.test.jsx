@@ -8,6 +8,8 @@ describe('MonthSelector', () => {
   const mockOnViewTaxDeductible = vi.fn();
   const mockOnManageBudgets = vi.fn();
   const mockOnViewBudgetHistory = vi.fn();
+  const mockOnOpenAnalyticsHub = vi.fn();
+  const mockOnOpenPaymentMethods = vi.fn();
   
   const defaultProps = {
     selectedYear: 2024,
@@ -16,7 +18,9 @@ describe('MonthSelector', () => {
     onViewAnnualSummary: mockOnViewAnnualSummary,
     onViewTaxDeductible: mockOnViewTaxDeductible,
     onManageBudgets: mockOnManageBudgets,
-    onViewBudgetHistory: mockOnViewBudgetHistory
+    onViewBudgetHistory: mockOnViewBudgetHistory,
+    onOpenAnalyticsHub: mockOnOpenAnalyticsHub,
+    onOpenPaymentMethods: mockOnOpenPaymentMethods
   };
 
   beforeEach(() => {
@@ -74,6 +78,11 @@ describe('MonthSelector', () => {
     it('renders Budget History button', () => {
       render(<MonthSelector {...defaultProps} />);
       expect(screen.getByText('📈 Budget History')).toBeInTheDocument();
+    });
+
+    it('renders Payment Methods button', () => {
+      render(<MonthSelector {...defaultProps} />);
+      expect(screen.getByText('💳 Payment Methods')).toBeInTheDocument();
     });
   });
 
@@ -149,6 +158,14 @@ describe('MonthSelector', () => {
       
       expect(mockOnViewBudgetHistory).toHaveBeenCalled();
     });
+
+    it('calls onOpenPaymentMethods when Payment Methods button is clicked', () => {
+      render(<MonthSelector {...defaultProps} />);
+      
+      fireEvent.click(screen.getByText('💳 Payment Methods'));
+      
+      expect(mockOnOpenPaymentMethods).toHaveBeenCalled();
+    });
   });
 
   describe('Button titles', () => {
@@ -178,6 +195,13 @@ describe('MonthSelector', () => {
       
       const button = screen.getByText('📈 Budget History');
       expect(button).toHaveAttribute('title', 'View budget history');
+    });
+
+    it('has correct title for Payment Methods button', () => {
+      render(<MonthSelector {...defaultProps} />);
+      
+      const button = screen.getByText('💳 Payment Methods');
+      expect(button).toHaveAttribute('title', 'Manage payment methods');
     });
   });
 

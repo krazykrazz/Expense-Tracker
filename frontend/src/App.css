@@ -66,8 +66,7 @@
 }
 
 .settings-button,
-.recurring-button,
-.payment-methods-button {
+.recurring-button {
   background-color: rgba(255, 255, 255, 0.1);
   color: var(--text-inverse);
   border: 1px solid rgba(255, 255, 255, 0.2);
@@ -82,8 +81,7 @@
 }
 
 .settings-button:hover,
-.recurring-button:hover,
-.payment-methods-button:hover {
+.recurring-button:hover {
   background-color: rgba(255, 255, 255, 0.2);
   border-color: rgba(255, 255, 255, 0.3);
   transform: translateY(-1px);
@@ -91,16 +89,14 @@
 }
 
 .settings-button:active,
-.recurring-button:active,
-.payment-methods-button:active {
+.recurring-button:active {
   transform: translateY(0) scale(0.98);
   box-shadow: none;
 }
 
 /* Focus states for accessibility */
 .settings-button:focus-visible,
-.recurring-button:focus-visible,
-.payment-methods-button:focus-visible {
+.recurring-button:focus-visible {
   outline: 2px solid rgba(255, 255, 255, 0.5);
   outline-offset: 2px;
 }
@@ -109,8 +105,7 @@
 @media (prefers-reduced-motion: reduce) {
   .app-logo,
   .settings-button,
-  .recurring-button,
-  .payment-methods-button {
+  .recurring-button {
     transition: none;
   }
   
@@ -119,8 +114,7 @@
   }
   
   .settings-button:hover,
-  .recurring-button:hover,
-  .payment-methods-button:hover {
+  .recurring-button:hover {
     transform: none;
   }
 }
@@ -504,8 +498,7 @@
   .settings-button,
   .recurring-button,
   .import-button,
-  .backup-button,
-  .payment-methods-button {
+  .backup-button {
     font-size: var(--text-xs);
     padding: var(--spacing-2) var(--spacing-3);
     border-radius: var(--radius-sm);
@@ -616,8 +609,7 @@
   .settings-button,
   .recurring-button,
   .import-button,
-  .backup-button,
-  .payment-methods-button {
+  .backup-button {
     font-size: 11px;
     padding: var(--spacing-1) var(--spacing-2);
   }

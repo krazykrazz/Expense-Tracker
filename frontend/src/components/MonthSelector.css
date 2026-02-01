@@ -164,14 +164,52 @@
   background: #4f46e5;
 }
 
+/* Payment Methods button - right-justified in toolbar */
+.month-selector .payment-methods-button {
+  margin-left: auto;
+  padding: var(--spacing-2, 8px) var(--spacing-4, 16px);
+  background: #475569;
+  color: var(--text-inverse, white);
+  border: none;
+  border-radius: var(--radius-md, 8px);
+  font-size: var(--text-base, 14px);
+  font-weight: var(--font-medium, 500);
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: var(--transition-button);
+  white-space: nowrap;
+  box-shadow: var(--shadow-sm);
+}
+
+.month-selector .payment-methods-button:hover {
+  background: #334155;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.month-selector .payment-methods-button:active {
+  transform: translateY(0) scale(0.98);
+  box-shadow: var(--shadow-xs);
+}
+
+.month-selector .payment-methods-button:focus {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
 @media (max-width: 768px) {
   .annual-summary-button,
   .tax-deductible-button,
   .manage-budgets-button,
   .budget-history-button,
   .merchant-analytics-button,
-  .analytics-hub-button {
+  .analytics-hub-button,
+  .month-selector .payment-methods-button {
     width: 100%;
+  }
+  
+  .month-selector .payment-methods-button {
+    margin-left: 0;
   }
 }
 
@@ -185,7 +223,8 @@
   .manage-budgets-button,
   .budget-history-button,
   .merchant-analytics-button,
-  .analytics-hub-button {
+  .analytics-hub-button,
+  .month-selector .payment-methods-button {
     transition: none;
   }
   
@@ -194,7 +233,8 @@
   .manage-budgets-button:hover,
   .budget-history-button:hover,
   .merchant-analytics-button:hover,
-  .analytics-hub-button:hover {
+  .analytics-hub-button:hover,
+  .month-selector .payment-methods-button:hover {
     transform: none;
   }
   
@@ -203,7 +243,8 @@
   .manage-budgets-button:active,
   .budget-history-button:active,
   .merchant-analytics-button:active,
-  .analytics-hub-button:active {
+  .analytics-hub-button:active,
+  .month-selector .payment-methods-button:active {
     transform: none;
   }
 }

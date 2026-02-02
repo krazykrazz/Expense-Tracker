@@ -53,6 +53,13 @@ yarn-error.log*
 # Test coverage
 backend/coverage/
 
+# Test artifacts (PBT test outputs)
+test-backups/
+test-pbt-extract/
+test-pbt-insurance-backup/
+backend/config/database/*.db-shm
+backend/config/database/*.db-wal
+
 # Root config folder (runtime only)
 /config/
 

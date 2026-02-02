@@ -8,6 +8,7 @@ import { createLogger } from '../utils/logger';
 import InvoiceIndicator from './InvoiceIndicator';
 import InsuranceStatusIndicator from './InsuranceStatusIndicator';
 import QuickStatusUpdate from './QuickStatusUpdate';
+import ReimbursementIndicator from './ReimbursementIndicator';
 import ExpenseForm from './ExpenseForm';
 import './ExpenseList.css';
 import { formatAmount, formatLocalDate } from '../utils/formatters';
@@ -716,6 +717,14 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
                           outOfPocket={expense.amount}
                           size="small"
                           onClick={(event) => handleInsuranceIndicatorClick(event, expense.id)}
+                        />
+                      )}
+                      {/* Reimbursement Indicator for non-medical expenses with original_cost set (Requirements 5.1, 5.3) */}
+                      {expense.type !== 'Tax - Medical' && expense.original_cost && expense.original_cost !== expense.amount && (
+                        <ReimbursementIndicator
+                          originalCost={expense.original_cost}
+                          netAmount={expense.amount}
+                          size="small"
                         />
                       )}
                     </div>

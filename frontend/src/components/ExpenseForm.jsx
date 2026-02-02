@@ -151,6 +151,16 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
   const [claimStatus, setClaimStatus] = useState(expense?.claim_status || 'not_claimed');
   const [originalCost, setOriginalCost] = useState(expense?.original_cost?.toString() || '');
   const [insuranceValidationError, setInsuranceValidationError] = useState('');
+
+  // Generic reimbursement state for non-medical expenses (Requirements 1.1, 6.1)
+  // Now uses same pattern as medical expenses: Amount = net, Original Cost = charged amount
+  // Initialize original cost from expense when editing (if not medical)
+  const calculateInitialGenericOriginalCost = () => {
+    if (!expense?.original_cost || expense?.type === 'Tax - Medical') return '';
+    return expense.original_cost.toString();
+  };
+  const [genericOriginalCost, setGenericOriginalCost] = useState(calculateInitialGenericOriginalCost());
+  const [genericReimbursementError, setGenericReimbursementError] = useState('');
   
   // Posted date validation error state (Requirements 4.5)
   const [postedDateError, setPostedDateError] = useState('');
@@ -393,6 +403,21 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
       validateInsuranceAmounts(value, originalCost);
     }
     
+    // Re-validate generic original cost when amount changes (Requirements 1.3)
+    // Amount (net) cannot exceed original cost (charged amount)
+    if (name === 'amount' && genericOriginalCost) {
+      const origCostNum = parseFloat(genericOriginalCost);
+      const amountNum = parseFloat(value);
+      
+      if (!isNaN(origCostNum) && !isNaN(amountNum)) {
+        if (amountNum > origCostNum) {
+          setGenericReimbursementError('Net amount cannot exceed original cost');
+        } else {
+          setGenericReimbursementError('');
+        }
+      }
+    }
+    
     // Re-validate posted_date when transaction date changes (Requirements 4.5)
     if (name === 'date' && postedDate && value && postedDate < value) {
       setPostedDateError('Posted date cannot be before transaction date');
@@ -412,6 +437,12 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
         setClaimStatus('not_claimed');
         setOriginalCost('');
         setInsuranceValidationError('');
+      }
+      // Clear generic original cost when changing to medical expenses (Requirements 1.2)
+      // Medical expenses use their own insurance tracking UI
+      if (value === 'Tax - Medical') {
+        setGenericOriginalCost('');
+        setGenericReimbursementError('');
       }
       // Clear invoices when changing away from tax-deductible expenses
       if (value !== 'Tax - Medical' && value !== 'Tax - Donation') {
@@ -457,6 +488,38 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
     
     // Validate amount <= original_cost (Requirement 3.5)
     validateInsuranceAmounts(formData.amount, value);
+  };
+
+  // Handle generic original cost change for non-medical expenses (Requirements 1.1, 1.3, 6.1)
+  // Matches medical expense pattern: Amount = net, Original Cost = charged amount
+  const handleGenericOriginalCostChange = (e) => {
+    const value = e.target.value;
+    setGenericOriginalCost(value);
+    
+    // Clear error when value changes
+    setGenericReimbursementError('');
+    
+    // Validate amount (net) does not exceed original cost (Requirement 1.3)
+    if (value && formData.amount) {
+      const origCostNum = parseFloat(value);
+      const amountNum = parseFloat(formData.amount);
+      
+      if (!isNaN(origCostNum) && !isNaN(amountNum)) {
+        if (origCostNum < 0) {
+          setGenericReimbursementError('Original cost must be a non-negative number');
+        } else if (amountNum > origCostNum) {
+          setGenericReimbursementError('Net amount cannot exceed original cost');
+        }
+      }
+    }
+  };
+
+  // Calculate generic reimbursement (original_cost - amount)
+  const calculateGenericReimbursement = () => {
+    if (!genericOriginalCost || !formData.amount) return 0;
+    const origCostNum = parseFloat(genericOriginalCost) || 0;
+    const amountNum = parseFloat(formData.amount) || 0;
+    return Math.max(0, origCostNum - amountNum);
   };
 
   // Handle claim status change (Requirements 2.1, 2.2, 2.3)
@@ -524,6 +587,11 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
   const selectedPaymentMethod = paymentMethods.find(pm => pm.id === formData.payment_method_id) 
     || editingInactivePaymentMethod;
   const isCreditCard = selectedPaymentMethod?.type === 'credit_card';
+
+  // Determine when to show generic reimbursement UI (Requirements 1.1, 1.2)
+  // Show for non-medical expenses, OR medical expenses without insurance tracking enabled
+  const showMedicalInsuranceUI = isMedicalExpense && insuranceEligible;
+  const showGenericReimbursementUI = !showMedicalInsuranceUI && !isMedicalExpense;
 
   // Handle invoice upload success (Requirements 1.1, 1.2, 2.1)
   // Updated to support multiple invoices
@@ -704,6 +772,25 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
       return false;
     }
     
+    // Generic original cost validation for non-medical expenses (Requirements 1.3)
+    // Amount (net) cannot exceed original cost (charged amount)
+    if (showGenericReimbursementUI && genericOriginalCost) {
+      const origCostNum = parseFloat(genericOriginalCost);
+      const amountNum = parseFloat(formData.amount) || 0;
+      
+      if (isNaN(origCostNum) || origCostNum < 0) {
+        setMessage({ text: 'Original cost must be a non-negative number', type: 'error' });
+        setGenericReimbursementError('Original cost must be a non-negative number');
+        return false;
+      }
+      
+      if (amountNum > origCostNum) {
+        setMessage({ text: 'Net amount cannot exceed original cost', type: 'error' });
+        setGenericReimbursementError('Net amount cannot exceed original cost');
+        return false;
+      }
+    }
+    
     return true;
   };
 
@@ -727,6 +814,7 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
     try {
       // Prepare form data with insurance fields for medical expenses (Requirements 1.3, 2.3)
       // and posted_date for credit card expenses (Requirements 4.1, 4.2)
+      // and original_cost for non-medical expenses with reimbursement (Requirements 2.1, 2.2)
       const expenseFormData = {
         ...formData,
         // Add posted_date for credit card expenses (null or empty string becomes null)
@@ -736,6 +824,15 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
           insurance_eligible: insuranceEligible,
           claim_status: insuranceEligible ? claimStatus : null,
           original_cost: insuranceEligible && originalCost ? parseFloat(originalCost) : null
+        }),
+        // Add original_cost for non-medical expenses (Requirements 2.1, 2.2)
+        // Now matches medical expense pattern: Amount = net, original_cost = charged amount
+        ...(showGenericReimbursementUI && genericOriginalCost && parseFloat(genericOriginalCost) > 0 && {
+          original_cost: parseFloat(genericOriginalCost)
+        }),
+        // Explicitly clear original_cost when it's removed (Requirements 2.4)
+        ...(showGenericReimbursementUI && !genericOriginalCost && isEditing && expense?.original_cost && {
+          original_cost: null
         })
       };
 
@@ -878,6 +975,10 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
         setClaimStatus('not_claimed');
         setOriginalCost('');
         setInsuranceValidationError('');
+        
+        // Reset generic original cost fields
+        setGenericOriginalCost('');
+        setGenericReimbursementError('');
         
         // Reset posted date fields
         setPostedDate('');
@@ -1121,6 +1222,68 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
             {postedDateError && (
               <div className="posted-date-error">
                 {postedDateError}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Generic Reimbursement Section for Non-Medical Expenses (Requirements 1.1, 1.2, 1.4, 1.5) */}
+        {/* Now matches medical expense pattern: Amount = net (out-of-pocket), Original Cost = charged amount */}
+        {showGenericReimbursementUI && (
+          <div className="form-group reimbursement-section">
+            <label htmlFor="genericOriginalCost">Original Cost $ (optional)</label>
+            <div className="reimbursement-input-wrapper">
+              <input
+                type="number"
+                id="genericOriginalCost"
+                name="genericOriginalCost"
+                value={genericOriginalCost}
+                onChange={handleGenericOriginalCostChange}
+                min="0"
+                step="0.01"
+                placeholder="0.00"
+                disabled={isSubmitting}
+                className={genericReimbursementError ? 'input-error' : ''}
+              />
+              {genericOriginalCost && (
+                <button
+                  type="button"
+                  className="clear-reimbursement-btn"
+                  onClick={() => {
+                    setGenericOriginalCost('');
+                    setGenericReimbursementError('');
+                  }}
+                  disabled={isSubmitting}
+                  title="Clear original cost"
+                  aria-label="Clear original cost"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+            <small className="form-hint">
+              If you were reimbursed, enter the full amount charged here. Amount above is what you paid out-of-pocket.
+            </small>
+            {genericReimbursementError && (
+              <div className="reimbursement-error">
+                {genericReimbursementError}
+              </div>
+            )}
+            {/* Preview showing Charged/Reimbursed/Net breakdown (Requirement 1.4) */}
+            {genericOriginalCost && parseFloat(genericOriginalCost) > 0 && formData.amount && !genericReimbursementError && (
+              <div className="reimbursement-preview">
+                <div className="reimbursement-preview-item">
+                  <span className="preview-label">Charged:</span>
+                  <span className="preview-value">${parseFloat(genericOriginalCost).toFixed(2)}</span>
+                </div>
+                <div className="reimbursement-preview-item">
+                  <span className="preview-label">Reimbursed:</span>
+                  <span className="preview-value reimbursed">${calculateGenericReimbursement().toFixed(2)}</span>
+                </div>
+                <div className="reimbursement-preview-item">
+                  <span className="preview-label">Net (out-of-pocket):</span>
+                  <span className="preview-value net">${parseFloat(formData.amount).toFixed(2)}</span>
+                </div>
               </div>
             )}
           </div>

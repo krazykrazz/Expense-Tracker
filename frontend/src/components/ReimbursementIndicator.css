@@ -1,0 +1,91 @@
+/* ReimbursementIndicator Component Styles */
+/* Styled similar to InsuranceStatusIndicator per Requirements 5.1 */
+
+.reimbursement-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  transition: all var(--transition-fast);
+  vertical-align: middle;
+  background: var(--color-positive-light);
+  color: var(--color-positive-dark);
+  border: 1px solid rgba(34, 197, 94, 0.25);
+  cursor: default;
+}
+
+/* Size Variants */
+.reimbursement-indicator.small {
+  font-size: var(--text-xs);
+  padding: var(--spacing-1);
+}
+
+.reimbursement-indicator.small .reimbursement-icon {
+  font-size: var(--text-sm);
+}
+
+.reimbursement-indicator.medium {
+  font-size: var(--text-sm);
+  padding: var(--spacing-1) var(--spacing-2);
+}
+
+.reimbursement-indicator.medium .reimbursement-icon {
+  font-size: var(--text-lg);
+}
+
+/* Hover Effects for Tooltip */
+.reimbursement-indicator:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+  background: rgba(34, 197, 94, 0.2);
+  border-color: rgba(34, 197, 94, 0.35);
+}
+
+/* Icon Styles */
+.reimbursement-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  .reimbursement-indicator.medium {
+    font-size: var(--text-xs);
+    padding: var(--spacing-1);
+  }
+
+  .reimbursement-indicator.medium .reimbursement-icon {
+    font-size: var(--text-base);
+  }
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+  .reimbursement-indicator {
+    background: #d4edda;
+    border-color: #28a745;
+    color: #155724;
+  }
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  .reimbursement-indicator {
+    transition: none;
+  }
+
+  .reimbursement-indicator:hover {
+    transform: none;
+  }
+}
+
+/* Print Styles */
+@media print {
+  .reimbursement-indicator {
+    background: transparent !important;
+    border: 1px solid #000 !important;
+    color: #000 !important;
+  }
+}

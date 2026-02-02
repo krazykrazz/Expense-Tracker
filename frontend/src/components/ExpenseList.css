@@ -1213,3 +1213,23 @@
   font-size: var(--text-sm);
   font-weight: var(--font-medium);
 }
+
+
+/* Reimbursement Indicator Styles in Expense List (Requirement 5.1) */
+/* Note: Main indicator styles are in ReimbursementIndicator.css */
+/* These styles handle positioning within the expense row context */
+
+.expense-indicators .reimbursement-indicator {
+  /* Ensure consistent alignment with other indicators */
+  flex-shrink: 0;
+}
+
+/* Ensure reimbursement indicator is visible in tax-deductible rows */
+.tax-medical-row .expense-indicators .reimbursement-indicator,
+.tax-donation-row .expense-indicators .reimbursement-indicator {
+  /* Override any row-specific color inheritance */
+  background: var(--color-positive-light);
+  color: var(--color-positive-dark);
+  border-color: rgba(34, 197, 94, 0.25);
+}
+

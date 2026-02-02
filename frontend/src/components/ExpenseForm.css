@@ -1090,3 +1090,159 @@
     transition: none;
   }
 }
+
+
+/* Generic Reimbursement Section Styles (Requirements 1.1, 1.2, 1.4, 1.5) */
+.reimbursement-section {
+  background: var(--bg-subtle);
+  padding: var(--section-gap);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-default);
+  margin-top: var(--spacing-1);
+}
+
+.reimbursement-section > label {
+  display: block;
+  color: var(--color-primary);
+  font-weight: var(--font-semibold);
+  font-size: var(--text-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: var(--element-gap);
+}
+
+.reimbursement-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  position: relative;
+}
+
+.reimbursement-input-wrapper input[type="number"] {
+  flex: 1;
+  padding: var(--spacing-3) var(--spacing-4);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  font-size: var(--body-text);
+  font-family: var(--font-sans);
+  background-color: var(--bg-card);
+  color: var(--text-primary);
+  transition: var(--transition-colors), box-shadow var(--transition-fast);
+}
+
+.reimbursement-input-wrapper input[type="number"]:hover:not(:disabled):not(:focus) {
+  border-color: var(--border-strong);
+}
+
+.reimbursement-input-wrapper input[type="number"]:focus {
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: var(--focus-ring);
+}
+
+.reimbursement-input-wrapper input[type="number"]:disabled {
+  background-color: var(--bg-muted);
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+.reimbursement-input-wrapper input[type="number"].input-error {
+  border-color: var(--color-negative);
+  background-color: var(--color-negative-light);
+}
+
+.reimbursement-input-wrapper input[type="number"].input-error:focus {
+  box-shadow: 0 0 0 2px var(--color-negative-light);
+}
+
+.clear-reimbursement-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: var(--bg-muted);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition: var(--transition-colors);
+  flex-shrink: 0;
+}
+
+.clear-reimbursement-btn:hover:not(:disabled) {
+  background: var(--color-negative-light);
+  border-color: var(--color-negative);
+  color: var(--color-negative-dark);
+}
+
+.clear-reimbursement-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.reimbursement-section .form-hint {
+  display: block;
+  margin-top: var(--spacing-2);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  line-height: var(--leading-normal);
+}
+
+.reimbursement-error {
+  margin-top: var(--spacing-2);
+  padding: var(--spacing-2) var(--spacing-3);
+  background-color: var(--color-negative-light);
+  border: 1px solid var(--color-negative);
+  border-radius: var(--radius-md);
+  color: var(--color-negative-dark);
+  font-size: var(--text-sm);
+}
+
+/* Reimbursement Preview Styles (Requirement 1.4) */
+.reimbursement-preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+  margin-top: var(--element-gap);
+  padding: var(--spacing-3);
+  background-color: var(--color-primary-light);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-md);
+}
+
+.reimbursement-preview-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: var(--text-sm);
+}
+
+.reimbursement-preview-item .preview-label {
+  color: var(--text-secondary);
+  font-weight: var(--font-medium);
+}
+
+.reimbursement-preview-item .preview-value {
+  color: var(--text-primary);
+  font-weight: var(--font-semibold);
+}
+
+.reimbursement-preview-item .preview-value.reimbursed {
+  color: var(--color-positive-dark);
+}
+
+.reimbursement-preview-item .preview-value.net {
+  color: var(--color-primary-active);
+  font-size: var(--text-base);
+}
+
+/* Accessibility: Respect reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .reimbursement-input-wrapper input[type="number"],
+  .clear-reimbursement-btn {
+    transition: none;
+  }
+}

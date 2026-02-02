@@ -805,6 +805,16 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v5.3.0</div>
+                <div className="changelog-date">February 2026</div>
+                <ul className="changelog-items">
+                  <li>Generic Expense Reimbursement: Track reimbursements for any expense type</li>
+                  <li>Reimbursement status workflow: pending → submitted → approved → paid/denied</li>
+                  <li>Visual indicators showing reimbursement status and amounts</li>
+                  <li>Out-of-pocket calculations for reimbursable expenses</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v5.1.0</div>
                 <div className="changelog-date">February 2026</div>
                 <ul className="changelog-items">

@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [5.3.0] - 2026-02-02
+
+### Added
+- **Generic Expense Reimbursement**: Track reimbursements for any expense type (not just medical)
+  - New `reimbursement_eligible` field to mark expenses as reimbursable
+  - Reimbursement status workflow: pending → submitted → approved → paid/denied
+  - `expected_reimbursement` field to track expected reimbursement amount
+  - `reimbursement_source` field to identify who will reimburse (employer, insurance, etc.)
+  - Visual ReimbursementIndicator component showing status and amounts
+  - Out-of-pocket calculation (amount - expected_reimbursement when paid)
+  - Backward compatible: existing expenses unaffected
+
+### Changed
+- ExpenseForm now includes reimbursement fields for all expense types
+- ExpenseList displays reimbursement indicators for eligible expenses
+
+---
+
 ## [5.1.0] - 2026-02-01
 
 ### Added

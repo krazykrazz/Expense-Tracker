@@ -65,3 +65,5 @@ backend/config/database/*.db-wal
 
 # Staging environment data (copy of production for testing)
 /staging-data/
+
+test-pbt-backups/

@@ -444,6 +444,111 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ---
 
+### ⚪ 21. ExpenseForm Simplification
+**Status**: Proposed  
+**Priority**: Medium  
+**Effort**: Medium  
+**Description**: Reduce complexity of the 1600+ line ExpenseForm with collapsible sections and better feature discoverability.
+
+**Key Features**:
+- Collapsible "Advanced Options" section for less common fields (future months, posted date)
+- Contextual help tooltips explaining when to use each field
+- "Quick Add" mode for simple expenses vs "Full Form" for complex ones
+- Progressive disclosure of features based on expense type
+
+**Benefits**:
+- Reduced cognitive load for simple expense entry
+- Better feature discoverability
+- Faster data entry for common cases
+
+**Dependencies**: None
+
+---
+
+### ⚪ 22. Summary Panel Preferences
+**Status**: Proposed  
+**Priority**: Low  
+**Effort**: Low  
+**Description**: Remember user's collapse preferences and add expand/collapse all functionality.
+
+**Key Features**:
+- Remember user's collapse preferences in localStorage
+- Add "Expand All / Collapse All" toggle
+- Show top 3 expense types by default without requiring expansion
+- Persist preferences across sessions
+
+**Benefits**:
+- Fewer clicks to access frequently viewed data
+- Personalized dashboard experience
+- Improved efficiency for power users
+
+**Dependencies**: None
+
+---
+
+### ⚪ 23. Duplicate Expense Feature
+**Status**: Proposed  
+**Priority**: Medium  
+**Effort**: Low  
+**Description**: Quick action to duplicate an existing expense for recurring similar purchases.
+
+**Key Features**:
+- "Duplicate" action button in expense list
+- Pre-fills form with all fields from original expense
+- Updates date to current date by default
+- Allows editing before saving
+
+**Benefits**:
+- Significant time savings for recurring purchases
+- Reduces data entry errors
+- Improves user efficiency
+
+**Dependencies**: None
+
+---
+
+### ⚪ 24. Quick Edit for Amount
+**Status**: Proposed  
+**Priority**: Low  
+**Effort**: Low  
+**Description**: Allow amount-only changes directly in the expense list without opening full edit modal.
+
+**Key Features**:
+- Click on amount to edit inline
+- Quick save with Enter key
+- Cancel with Escape key
+- Visual feedback during edit mode
+
+**Benefits**:
+- Faster corrections for amount typos
+- Reduced modal fatigue
+- Improved efficiency for common edits
+
+**Dependencies**: None
+
+---
+
+### ⚪ 25. Modal Consolidation
+**Status**: Proposed  
+**Priority**: Low  
+**Effort**: High  
+**Description**: Reduce modal fatigue by grouping related features and considering sidebar navigation.
+
+**Key Features**:
+- Group related modals (e.g., "Financial Overview" combining Loans + Investments)
+- Consider sidebar navigation for frequently accessed features
+- Reduce number of separate modal entry points
+- Unified settings/management interface
+
+**Benefits**:
+- Reduced cognitive load
+- Faster access to related features
+- More cohesive user experience
+
+**Dependencies**: Significant UI restructuring
+
+---
+
 ### ⚪ 20. Export Enhancements
 **Status**: Proposed  
 **Priority**: Medium  
@@ -849,6 +954,8 @@ This document tracks potential features and enhancements for the Expense Tracker
 5. Savings Rate Tracker
 6. Debt Payoff Planner
 7. Export Enhancements
+8. ExpenseForm Simplification
+9. Duplicate Expense Feature
 
 ### Low Priority
 1. Tags System
@@ -859,6 +966,9 @@ This document tracks potential features and enhancements for the Expense Tracker
 6. Expense Notes Enhancement
 7. Dark Mode
 8. Keyboard Shortcuts
+9. Summary Panel Preferences
+10. Quick Edit for Amount
+11. Modal Consolidation
 
 ---
 
@@ -881,6 +991,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 ---
 
 **Version History**:
+- v2.4 (2026-02-02): Added UX improvement proposals (#21-25): ExpenseForm Simplification, Summary Panel Preferences, Duplicate Expense Feature, Quick Edit for Amount, Modal Consolidation
 - v2.3 (2026-01-30): Added Configurable Payment Methods (v4.20.0) and Credit Card Posted Date to completed features, updated current version to 4.20.0
 - v2.2 (2026-01-26): Added Adaptive Anomaly Detection (Learning from Dismissals) as proposed feature #2 in Analytics & Insights section
 - v2.1 (2026-01-26): Added Spending Patterns & Predictions / Analytics Hub (v4.17.0) to completed features, consolidated Merchant Analytics into Analytics Hub, updated current version to 4.17.0

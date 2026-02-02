@@ -149,6 +149,27 @@
   box-shadow: var(--focus-ring);
 }
 
+/* Enhanced Clear Filters button styling in global view mode (Requirements: 6.1, 6.2, 6.3) */
+.clear-filters-button.global-view-enhanced {
+  padding: var(--spacing-3, 12px) var(--spacing-5, 20px);
+  font-size: var(--text-base, 14px);
+  background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+  transform: scale(1.02);
+}
+
+.clear-filters-button.global-view-enhanced:hover {
+  background: linear-gradient(135deg, #6d28d9 0%, #5b21b6 100%);
+  box-shadow: 0 6px 16px rgba(124, 58, 237, 0.4);
+  transform: scale(1.05) translateY(-1px);
+}
+
+.clear-filters-button.global-view-enhanced:active {
+  background: linear-gradient(135deg, #5b21b6 0%, #4c1d95 100%);
+  transform: scale(1) translateY(0);
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.3);
+}
+
 /* Ensure focus is visible for keyboard navigation */
 .search-input:focus-visible,
 .filter-dropdown:focus-visible,

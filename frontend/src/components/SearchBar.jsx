@@ -45,7 +45,8 @@ const SearchBar = memo(({
   paymentMethods = [],
   loading = false,
   showOnlySearch = false,
-  showOnlyFilters = false
+  showOnlyFilters = false,
+  isGlobalView = false
 }) => {
   const [searchText, setSearchText] = useState(externalSearchText);
   const [announcement, setAnnouncement] = useState('');
@@ -321,13 +322,13 @@ const SearchBar = memo(({
 
             {hasActiveFilters && (
               <button 
-                className="clear-filters-button" 
+                className={`clear-filters-button ${isGlobalView ? 'global-view-enhanced' : ''}`}
                 onClick={handleClearAll}
                 aria-label="Clear all filters and return to monthly view"
                 title="Clear all filters and return to monthly view"
                 type="button"
               >
-                Clear Filters
+                {isGlobalView ? '🗑️ Clear All' : 'Clear Filters'}
               </button>
             )}
           </>

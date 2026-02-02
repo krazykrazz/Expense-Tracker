@@ -83,6 +83,44 @@ function App() {
    */
   const isGlobalView = searchText.trim().length > 0 || filterMethod || filterYear;
 
+  /**
+   * Global View Trigger Identification
+   * 
+   * Identifies which filters triggered the global view mode.
+   * Returns an array of trigger names for display in the global view banner.
+   * This helps users understand why they're seeing expenses from all time periods.
+   * 
+   * Requirements: 5.4
+   */
+  const globalViewTriggers = useMemo(() => {
+    const triggers = [];
+    if (searchText.trim().length > 0) {
+      triggers.push('Search');
+    }
+    if (filterMethod) {
+      triggers.push('Payment Method');
+    }
+    if (filterYear) {
+      triggers.push('Year');
+    }
+    return triggers;
+  }, [searchText, filterMethod, filterYear]);
+
+  /**
+   * Return to Monthly View Handler
+   * 
+   * Clears all global-triggering filters (searchText, filterMethod, filterYear)
+   * to return the application to monthly view mode.
+   * Note: filterType is NOT cleared as it doesn't trigger global view.
+   * 
+   * Requirements: 5.3
+   */
+  const handleReturnToMonthlyView = useCallback(() => {
+    setSearchText('');
+    setFilterMethod('');
+    setFilterYear('');
+  }, []);
+
   // Fetch version info on mount
   useEffect(() => {
     let isMounted = true;
@@ -613,12 +651,27 @@ function App() {
         </div>
       </header>
       <main className="App-main">
-        {/* View Mode Indicator */}
+        {/* View Mode Indicator - Enhanced with trigger information (Requirements: 5.1, 5.2, 5.4, 5.5) */}
         <div className="view-mode-indicator">
           {isGlobalView ? (
-            <div className="view-mode-badge global">
-              <span className="view-mode-icon">🔍</span>
-              <span>Global View - Filtered Results</span>
+            <div className="view-mode-banner global">
+              <div className="view-mode-content">
+                <div className="view-mode-badge global">
+                  <span className="view-mode-icon">🔍</span>
+                  <span>Global View</span>
+                </div>
+                <div className="view-mode-triggers">
+                  <span className="trigger-label">Triggered by:</span>
+                  <span className="trigger-list">{globalViewTriggers.join(', ')}</span>
+                </div>
+              </div>
+              <button 
+                className="return-to-monthly-button"
+                onClick={handleReturnToMonthlyView}
+                aria-label="Return to monthly view"
+              >
+                📅 Return to Monthly View
+              </button>
             </div>
           ) : (
             <div className="view-mode-badge monthly">
@@ -692,6 +745,7 @@ function App() {
                 paymentMethods={paymentMethods}
                 loading={loading}
                 showOnlySearch={true}
+                isGlobalView={isGlobalView}
               />
               <ExpenseList 
                 expenses={filteredExpenses}
@@ -721,6 +775,7 @@ function App() {
                 paymentMethods={paymentMethods}
                 loading={loading}
                 showOnlyFilters={true}
+                isGlobalView={isGlobalView}
               />
               <SummaryPanel 
                 selectedYear={selectedYear}

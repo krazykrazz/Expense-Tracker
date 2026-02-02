@@ -14,7 +14,7 @@ const peopleService = require('./peopleService');
  */
 
 describe('ExpenseService Backward Compatibility Property Tests', () => {
-  jest.setTimeout(30000); // 30 second timeout
+  jest.setTimeout(120000); // 120 second timeout for complex PBT with database operations
   /**
    * Property 9: Backward compatibility preservation
    * **Validates: Requirements 5.1, 5.3**

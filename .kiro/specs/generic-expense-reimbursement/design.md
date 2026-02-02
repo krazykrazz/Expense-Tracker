@@ -8,7 +8,12 @@ The key insight is that the data model already supports this use case:
 - `original_cost` = the full amount charged to the payment method
 - `amount` = the net out-of-pocket cost after reimbursement
 
-This design focuses on exposing this capability through the UI for all expense types (except medical expenses with insurance tracking enabled, which have their own specialized UI).
+**UX Consistency**: The generic reimbursement UI now matches the medical expense insurance tracking pattern:
+- **Amount field** = net out-of-pocket cost (what you actually paid)
+- **Original Cost field** (optional) = full amount charged before reimbursement
+- **Reimbursement** = calculated as `original_cost - amount`
+
+This ensures a consistent user experience across all expense types.
 
 ## Architecture
 
@@ -20,8 +25,8 @@ This design focuses on exposing this capability through the UI for all expense t
 ├─────────────────────────────────────────────────────────────────────┤
 │  ExpenseForm                                                         │
 │  ┌─────────────────────────────────────────────────────────────┐   │
-│  │ Amount Field: $100.00                                        │   │
-│  │ Reimbursement Field: $25.00 (optional)                       │   │
+│  │ Amount Field: $75.00 (net out-of-pocket)                     │   │
+│  │ Original Cost Field: $100.00 (optional, charged amount)      │   │
 │  │ ─────────────────────────────────────────────────────────── │   │
 │  │ Preview: Charged: $100 | Reimbursed: $25 | Net: $75         │   │
 │  └─────────────────────────────────────────────────────────────┘   │
@@ -41,11 +46,9 @@ This design focuses on exposing this capability through the UI for all expense t
 │  ExpenseService                                                      │
 │  ┌─────────────────────────────────────────────────────────────┐   │
 │  │ createExpense(data):                                         │   │
-│  │   if reimbursement > 0:                                      │   │
-│  │     original_cost = amount                                   │   │
-│  │     amount = amount - reimbursement                          │   │
-│  │   else:                                                      │   │
-│  │     original_cost = NULL                                     │   │
+│  │   // Frontend sends original_cost directly                   │   │
+│  │   // Amount is already the net out-of-pocket cost            │   │
+│  │   // Validate: amount <= original_cost                       │   │
 │  └─────────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────────┘
                               │
@@ -79,32 +82,38 @@ The following existing components are leveraged:
 
 **New State Variables:**
 ```javascript
-// Reimbursement amount (calculated from original_cost - amount when editing)
-const [reimbursementAmount, setReimbursementAmount] = useState('');
+// Original cost for generic reimbursement (matches medical expense pattern)
+// Initialize from expense.original_cost when editing
+const [genericOriginalCost, setGenericOriginalCost] = useState(
+  expense?.original_cost?.toString() || ''
+);
 ```
 
 **New UI Section:**
 ```jsx
-{/* Reimbursement Section - shown for all expense types except medical with insurance */}
-{!showMedicalInsuranceUI && (
-  <div className="reimbursement-section">
-    <label htmlFor="reimbursement">Reimbursement (optional)</label>
+{/* Original Cost Section - shown for all expense types except medical with insurance */}
+{/* Matches medical expense pattern: Amount = net, Original Cost = charged */}
+{showGenericReimbursementUI && (
+  <div className="form-group reimbursement-section">
+    <label htmlFor="genericOriginalCost">Original Cost $ (optional)</label>
     <input
       type="number"
-      id="reimbursement"
-      name="reimbursement"
-      value={reimbursementAmount}
-      onChange={handleReimbursementChange}
+      id="genericOriginalCost"
+      value={genericOriginalCost}
+      onChange={handleGenericOriginalCostChange}
       min="0"
-      max={formData.amount}
       step="0.01"
       placeholder="0.00"
     />
-    {reimbursementAmount && parseFloat(reimbursementAmount) > 0 && (
+    <small className="form-hint">
+      If you were reimbursed, enter the full amount charged here. 
+      Amount above is what you paid out-of-pocket.
+    </small>
+    {genericOriginalCost && parseFloat(genericOriginalCost) > 0 && (
       <div className="reimbursement-preview">
-        <span>Charged: ${formData.amount}</span>
-        <span>Reimbursed: ${reimbursementAmount}</span>
-        <span>Net: ${(parseFloat(formData.amount) - parseFloat(reimbursementAmount)).toFixed(2)}</span>
+        <span>Charged: ${genericOriginalCost}</span>
+        <span>Reimbursed: ${calculateGenericReimbursement().toFixed(2)}</span>
+        <span>Net (out-of-pocket): ${formData.amount}</span>
       </div>
     )}
   </div>
@@ -117,7 +126,7 @@ const [reimbursementAmount, setReimbursementAmount] = useState('');
 // 1. NOT a medical expense, OR
 // 2. IS a medical expense but insurance tracking is NOT enabled
 const showMedicalInsuranceUI = formData.type === 'Tax - Medical' && insuranceEligible;
-const showGenericReimbursementUI = !showMedicalInsuranceUI;
+const showGenericReimbursementUI = !showMedicalInsuranceUI && !isMedicalExpense;
 ```
 
 #### 2. ReimbursementIndicator Component (New)
@@ -176,49 +185,67 @@ Add the ReimbursementIndicator to the expense row:
 
 #### ExpenseService Changes
 
-**New Validation Method:**
+**Validation Method (Updated):**
 ```javascript
 /**
- * Validate reimbursement data for an expense
- * @param {number} reimbursement - Reimbursement amount
- * @param {number} originalAmount - Original expense amount
+ * Validate that net amount does not exceed original cost
+ * @param {number} amount - Net out-of-pocket amount
+ * @param {number} originalCost - Original charged amount
  * @throws {Error} If validation fails
  */
-validateReimbursement(reimbursement, originalAmount) {
-  if (reimbursement === undefined || reimbursement === null || reimbursement === 0) {
-    return; // No reimbursement is valid
+validateOriginalCost(amount, originalCost) {
+  if (originalCost === undefined || originalCost === null) {
+    return; // No original cost is valid
   }
 
-  const reimbursementNum = parseFloat(reimbursement);
-  const originalNum = parseFloat(originalAmount);
+  const amountNum = parseFloat(amount);
+  const origCostNum = parseFloat(originalCost);
 
-  if (isNaN(reimbursementNum) || reimbursementNum < 0) {
-    throw new Error('Reimbursement must be a non-negative number');
+  if (isNaN(origCostNum) || origCostNum < 0) {
+    throw new Error('Original cost must be a non-negative number');
   }
 
-  if (reimbursementNum > originalNum) {
-    throw new Error('Reimbursement cannot exceed the expense amount');
+  if (amountNum > origCostNum) {
+    throw new Error('Net amount cannot exceed original cost');
   }
 }
 ```
 
-**Modified createExpense/updateExpense:**
+**Modified _processReimbursement (Backward Compatible):**
 ```javascript
-// Process reimbursement data
+// New pattern: original_cost is sent directly from frontend
+// Validate that amount (net) does not exceed original_cost (charged)
+if (result.original_cost !== undefined && result.original_cost !== null) {
+  const origCostNum = parseFloat(result.original_cost);
+  const amountNum = parseFloat(result.amount);
+  
+  if (!isNaN(origCostNum) && !isNaN(amountNum) && amountNum > origCostNum) {
+    throw new Error('Net amount cannot exceed original cost');
+  }
+}
+
+// Legacy support: if reimbursement field is provided, convert to new pattern
 if (expenseData.reimbursement && parseFloat(expenseData.reimbursement) > 0) {
-  // Store original amount in original_cost
   expense.original_cost = parseFloat(expenseData.amount);
-  // Calculate net amount
   expense.amount = parseFloat(expenseData.amount) - parseFloat(expenseData.reimbursement);
-} else if (expenseData.original_cost === null) {
-  // Explicitly clearing reimbursement
-  expense.original_cost = null;
 }
 ```
 
 ### API Contract
 
-**Create/Update Expense Request:**
+**Create/Update Expense Request (New Pattern - Consistent with Medical Expenses):**
+```json
+{
+  "date": "2025-01-27",
+  "place": "Costco",
+  "amount": "75.00",
+  "original_cost": "100.00",
+  "type": "Groceries",
+  "payment_method_id": 3
+}
+```
+
+**Legacy API Request (Still Supported for Backward Compatibility):**
 ```json
 {
   "date": "2025-01-27",

@@ -171,6 +171,33 @@ class ExpenseService {
   }
 
   /**
+   * Validate reimbursement data for an expense
+   * @param {number} reimbursement - Reimbursement amount
+   * @param {number} originalAmount - Original expense amount
+   * @throws {Error} If validation fails
+   * _Requirements: 1.3_
+   */
+  validateReimbursement(reimbursement, originalAmount) {
+    // No reimbursement is valid
+    if (reimbursement === undefined || reimbursement === null || reimbursement === '' || reimbursement === 0) {
+      return;
+    }
+
+    const reimbursementNum = parseFloat(reimbursement);
+    const originalNum = parseFloat(originalAmount);
+
+    // Validate reimbursement is a non-negative number
+    if (isNaN(reimbursementNum) || reimbursementNum < 0) {
+      throw new Error('Reimbursement must be a non-negative number');
+    }
+
+    // Validate reimbursement does not exceed expense amount
+    if (!isNaN(originalNum) && reimbursementNum > originalNum) {
+      throw new Error('Reimbursement cannot exceed the expense amount');
+    }
+  }
+
+  /**
    * Validate person allocations for insurance expenses
    * Ensures per-person out-of-pocket amounts don't exceed their original cost allocations
    * @param {Array} personAllocations - Array of {personId, amount, originalAmount} objects
@@ -518,6 +545,55 @@ class ExpenseService {
   }
 
   /**
+   * Process reimbursement data for an expense
+   * Now matches medical expense pattern: Amount = net (out-of-pocket), original_cost = charged amount
+   * Frontend sends original_cost directly, no transformation needed
+   * @param {Object} expenseData - Expense data with optional original_cost field
+   * @returns {Object} Processed expense data (validated)
+   * @private
+   * _Requirements: 2.1, 2.2, 2.3_
+   */
+  _processReimbursement(expenseData) {
+    const result = { ...expenseData };
+    
+    // Skip processing for medical expenses with insurance tracking
+    // (they use their own specialized UI and validation via validateInsuranceData)
+    if (result.type === 'Tax - Medical' && result.insurance_eligible) {
+      return result;
+    }
+    
+    // Handle legacy reimbursement field (for backward compatibility with old API calls)
+    // If reimbursement is provided, convert to new pattern
+    const reimbursement = result.reimbursement;
+    if (reimbursement !== undefined && reimbursement !== null && reimbursement !== '' && parseFloat(reimbursement) > 0) {
+      const reimbursementNum = parseFloat(reimbursement);
+      const originalAmount = parseFloat(result.amount);
+      
+      // Validate reimbursement
+      this.validateReimbursement(reimbursementNum, originalAmount);
+      
+      // Convert to new pattern: original_cost = amount, amount = amount - reimbursement
+      result.original_cost = originalAmount;
+      result.amount = parseFloat((originalAmount - reimbursementNum).toFixed(2));
+      delete result.reimbursement;
+      return result;
+    }
+    
+    // New pattern: original_cost is sent directly from frontend
+    // Use the same validation as medical expenses (shared code path)
+    if (result.original_cost !== undefined && result.original_cost !== null) {
+      // Reuse validateInsuranceData for the amount <= original_cost check
+      // This ensures consistent validation across medical and generic reimbursement
+      this.validateInsuranceData(
+        { original_cost: result.original_cost },
+        result.amount
+      );
+    }
+    
+    return result;
+  }
+
+  /**
    * Create a single expense (internal helper)
    * @param {Object} expenseData - Expense data
    * @returns {Promise<Object>} Created expense
@@ -527,52 +603,57 @@ class ExpenseService {
     // Apply insurance defaults if applicable
     const processedData = this._applyInsuranceDefaults(expenseData);
 
+    // Process reimbursement data (Requirements 2.1, 2.2, 2.3)
+    const reimbursementProcessedData = this._processReimbursement(processedData);
+
     // Validate posted_date if provided (Requirements 4.4, 4.5, 4.6, 4.7)
-    this.validatePostedDate(processedData);
+    this.validatePostedDate(reimbursementProcessedData);
 
     // Validate insurance data if provided
-    if (processedData.insurance_eligible) {
+    if (reimbursementProcessedData.insurance_eligible) {
       this.validateInsuranceData(
         {
-          insurance_eligible: processedData.insurance_eligible,
-          claim_status: processedData.claim_status,
-          original_cost: processedData.original_cost
+          insurance_eligible: reimbursementProcessedData.insurance_eligible,
+          claim_status: reimbursementProcessedData.claim_status,
+          original_cost: reimbursementProcessedData.original_cost
         },
-        processedData.amount
+        reimbursementProcessedData.amount
       );
     }
 
     // Resolve payment method (supports both payment_method_id and method string)
-    const { payment_method_id, method, paymentMethod } = await this._resolvePaymentMethod(processedData);
+    const { payment_method_id, method, paymentMethod } = await this._resolvePaymentMethod(reimbursementProcessedData);
 
     // Calculate week from date
-    const week = calculateWeek(processedData.date);
+    const week = calculateWeek(reimbursementProcessedData.date);
 
     // Prepare expense object with calculated week
     const expense = {
-      date: processedData.date,
-      posted_date: processedData.posted_date || null,
-      place: processedData.place || null,
-      notes: processedData.notes || null,
-      amount: parseFloat(processedData.amount),
-      type: processedData.type,
+      date: reimbursementProcessedData.date,
+      posted_date: reimbursementProcessedData.posted_date || null,
+      place: reimbursementProcessedData.place || null,
+      notes: reimbursementProcessedData.notes || null,
+      amount: parseFloat(reimbursementProcessedData.amount),
+      type: reimbursementProcessedData.type,
       week: week,
       method: method,
       payment_method_id: payment_method_id,
-      recurring_id: processedData.recurring_id !== undefined ? processedData.recurring_id : null,
-      is_generated: processedData.is_generated !== undefined ? processedData.is_generated : 0,
+      recurring_id: reimbursementProcessedData.recurring_id !== undefined ? reimbursementProcessedData.recurring_id : null,
+      is_generated: reimbursementProcessedData.is_generated !== undefined ? reimbursementProcessedData.is_generated : 0,
       // Insurance fields (only meaningful for Tax - Medical)
-      insurance_eligible: processedData.insurance_eligible ? 1 : 0,
-      claim_status: processedData.claim_status || null,
-      original_cost: processedData.original_cost !== undefined ? processedData.original_cost : null
+      insurance_eligible: reimbursementProcessedData.insurance_eligible ? 1 : 0,
+      claim_status: reimbursementProcessedData.claim_status || null,
+      original_cost: reimbursementProcessedData.original_cost !== undefined ? reimbursementProcessedData.original_cost : null
     };
 
     // Create expense in repository
     const createdExpense = await expenseRepository.create(expense);
 
     // Update credit card balance if applicable (Requirement 3.3)
-    // Pass the expense date to skip balance updates for future-dated expenses
-    await this._updateCreditCardBalanceOnCreate(paymentMethod, expense.amount, expense.date);
+    // Use original_cost (charged amount) for credit card balance, not net amount
+    // This ensures the balance reflects what was actually charged to the card
+    const chargedAmount = expense.original_cost !== null ? expense.original_cost : expense.amount;
+    await this._updateCreditCardBalanceOnCreate(paymentMethod, chargedAmount, expense.date);
 
     // Trigger budget recalculation for affected budget
     this._triggerBudgetRecalculation(expense.date, expense.type);
@@ -713,15 +794,18 @@ class ExpenseService {
     // Apply insurance defaults if applicable
     const processedData = this._applyInsuranceDefaults(expenseData);
 
+    // Process reimbursement data (Requirements 2.4, 6.2, 6.3)
+    const reimbursementProcessedData = this._processReimbursement(processedData);
+
     // Validate insurance data if provided
-    if (processedData.insurance_eligible) {
+    if (reimbursementProcessedData.insurance_eligible) {
       this.validateInsuranceData(
         {
-          insurance_eligible: processedData.insurance_eligible,
-          claim_status: processedData.claim_status,
-          original_cost: processedData.original_cost
+          insurance_eligible: reimbursementProcessedData.insurance_eligible,
+          claim_status: reimbursementProcessedData.claim_status,
+          original_cost: reimbursementProcessedData.original_cost
         },
-        processedData.amount
+        reimbursementProcessedData.amount
       );
     }
 
@@ -729,7 +813,7 @@ class ExpenseService {
     const monthsToCreate = futureMonths || 0;
 
     // Resolve payment method (supports both payment_method_id and method string)
-    const { payment_method_id, method, paymentMethod } = await this._resolvePaymentMethod(processedData);
+    const { payment_method_id, method, paymentMethod } = await this._resolvePaymentMethod(reimbursementProcessedData);
 
     // Get old payment method for balance adjustment
     let oldPaymentMethod = null;
@@ -738,23 +822,23 @@ class ExpenseService {
     }
 
     // Calculate week from date
-    const week = calculateWeek(processedData.date);
+    const week = calculateWeek(reimbursementProcessedData.date);
 
     // Prepare expense object with calculated week
     const expense = {
-      date: processedData.date,
-      posted_date: processedData.posted_date || null,
-      place: processedData.place || null,
-      notes: processedData.notes || null,
-      amount: parseFloat(processedData.amount),
-      type: processedData.type,
+      date: reimbursementProcessedData.date,
+      posted_date: reimbursementProcessedData.posted_date || null,
+      place: reimbursementProcessedData.place || null,
+      notes: reimbursementProcessedData.notes || null,
+      amount: parseFloat(reimbursementProcessedData.amount),
+      type: reimbursementProcessedData.type,
       week: week,
       method: method,
       payment_method_id: payment_method_id,
       // Insurance fields (only meaningful for Tax - Medical)
-      insurance_eligible: processedData.insurance_eligible ? 1 : 0,
-      claim_status: processedData.claim_status || null,
-      original_cost: processedData.original_cost !== undefined ? processedData.original_cost : null
+      insurance_eligible: reimbursementProcessedData.insurance_eligible ? 1 : 0,
+      claim_status: reimbursementProcessedData.claim_status || null,
+      original_cost: reimbursementProcessedData.original_cost !== undefined ? reimbursementProcessedData.original_cost : null
     };
 
     // Update expense in repository
@@ -763,8 +847,11 @@ class ExpenseService {
     // Handle credit card balance updates for payment method changes
     // Note: Future-dated expenses (based on effective posting date) don't affect the balance
     // Uses COALESCE(posted_date, date) logic for effective posting date
+    // For reimbursed expenses, use original_cost (charged amount) for balance calculations
+    const oldChargedAmount = oldExpense.original_cost !== null ? oldExpense.original_cost : oldExpense.amount;
+    const newChargedAmount = expense.original_cost !== null ? expense.original_cost : expense.amount;
     const paymentMethodChanged = oldExpense.payment_method_id !== payment_method_id;
-    const amountChanged = oldExpense.amount !== expense.amount;
+    const chargedAmountChanged = oldChargedAmount !== newChargedAmount;
     const oldEffectiveDate = this._getEffectivePostingDate(oldExpense);
     const newEffectiveDate = this._getEffectivePostingDate(expense);
     const effectiveDateChanged = oldEffectiveDate !== newEffectiveDate;
@@ -774,11 +861,11 @@ class ExpenseService {
     if (paymentMethodChanged) {
       // Decrement old payment method balance (only if old expense was not future-dated)
       if (oldPaymentMethod && oldPaymentMethod.type === 'credit_card') {
-        await this._updateCreditCardBalanceOnDelete(oldPaymentMethod, oldExpense.amount, oldEffectiveDate);
+        await this._updateCreditCardBalanceOnDelete(oldPaymentMethod, oldChargedAmount, oldEffectiveDate);
       }
       // Increment new payment method balance (only if new expense is not future-dated)
       if (paymentMethod && paymentMethod.type === 'credit_card') {
-        await this._updateCreditCardBalanceOnCreate(paymentMethod, expense.amount, newEffectiveDate);
+        await this._updateCreditCardBalanceOnCreate(paymentMethod, newChargedAmount, newEffectiveDate);
       }
     } else if (paymentMethod && paymentMethod.type === 'credit_card') {
       // Same payment method - handle amount and effective date changes
@@ -786,24 +873,24 @@ class ExpenseService {
         // Effective date changed from future to past or vice versa
         if (oldIsFuture && !newIsFuture) {
           // Was future, now past - add to balance
-          await paymentMethodRepository.updateBalance(paymentMethod.id, expense.amount);
+          await paymentMethodRepository.updateBalance(paymentMethod.id, newChargedAmount);
           logger.debug('Added expense to credit card balance (moved from future to past):', {
             paymentMethodId: paymentMethod.id,
             displayName: paymentMethod.display_name,
-            amount: expense.amount
+            amount: newChargedAmount
           });
         } else if (!oldIsFuture && newIsFuture) {
           // Was past, now future - remove from balance
-          await paymentMethodRepository.updateBalance(paymentMethod.id, -oldExpense.amount);
+          await paymentMethodRepository.updateBalance(paymentMethod.id, -oldChargedAmount);
           logger.debug('Removed expense from credit card balance (moved from past to future):', {
             paymentMethodId: paymentMethod.id,
             displayName: paymentMethod.display_name,
-            amount: oldExpense.amount
+            amount: oldChargedAmount
           });
         }
-      } else if (amountChanged && !oldIsFuture && !newIsFuture) {
-        // Amount changed and both dates are in the past - adjust the difference
-        const amountDiff = expense.amount - oldExpense.amount;
+      } else if (chargedAmountChanged && !oldIsFuture && !newIsFuture) {
+        // Charged amount changed and both dates are in the past - adjust the difference
+        const amountDiff = newChargedAmount - oldChargedAmount;
         await paymentMethodRepository.updateBalance(paymentMethod.id, amountDiff);
         logger.debug('Updated credit card balance after expense amount change:', {
           paymentMethodId: paymentMethod.id,
@@ -815,6 +902,8 @@ class ExpenseService {
     }
 
     // Trigger budget recalculation for affected budgets
+    // Note: Budget uses net amount (expense.amount), not charged amount
+    const amountChanged = oldExpense.amount !== expense.amount;
     if (oldExpense) {
       // If category, amount, or date changed, recalculate old budget
       const categoryChanged = oldExpense.type !== expense.type;
@@ -842,11 +931,11 @@ class ExpenseService {
     
     try {
       for (let i = 1; i <= monthsToCreate; i++) {
-        const futureDate = this._calculateFutureDate(processedData.date, i);
+        const futureDate = this._calculateFutureDate(reimbursementProcessedData.date, i);
         
         // Create future expense with updated values (not original values)
         const futureExpenseData = {
-          ...processedData,
+          ...reimbursementProcessedData,
           date: futureDate,
           payment_method_id: payment_method_id,
           method: method
@@ -902,9 +991,10 @@ class ExpenseService {
     const deleted = await expenseRepository.delete(id);
 
     // Update credit card balance if applicable (Requirement 3.3)
-    // Pass the expense date to skip balance updates for future-dated expenses
+    // Use original_cost (charged amount) for credit card balance, not net amount
     if (deleted && paymentMethod) {
-      await this._updateCreditCardBalanceOnDelete(paymentMethod, expense.amount, expense.date);
+      const chargedAmount = expense.original_cost !== null ? expense.original_cost : expense.amount;
+      await this._updateCreditCardBalanceOnDelete(paymentMethod, chargedAmount, expense.date);
     }
 
     // Trigger budget recalculation for affected budget

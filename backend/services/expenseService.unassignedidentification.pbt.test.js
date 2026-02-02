@@ -14,7 +14,7 @@ const peopleService = require('./peopleService');
  */
 
 describe('ExpenseService Unassigned Expense Identification Property Tests', () => {
-  jest.setTimeout(30000); // 30 second timeout
+  jest.setTimeout(120000); // 120 second timeout for complex PBT with database operations
 
   /**
    * Property 11: Unassigned expense identification

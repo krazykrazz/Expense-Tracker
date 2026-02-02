@@ -102,7 +102,10 @@ export const getExpenseWithPeople = async (id) => {
  * Credit card fields:
  * - posted_date: string|null - Date when expense posts to credit card statement (YYYY-MM-DD)
  * 
- * _Requirements: 1.3, 2.3, 4.1, 5.4_
+ * Reimbursement fields (for non-medical expenses):
+ * - original_cost: number - Original cost before reimbursement (Amount field = net out-of-pocket)
+ * 
+ * _Requirements: 1.3, 2.1, 2.2, 2.3, 4.1, 5.4_
  */
 export const createExpense = async (expenseData, peopleAllocations = null, futureMonths = 0) => {
   try {
@@ -118,6 +121,13 @@ export const createExpense = async (expenseData, peopleAllocations = null, futur
         : { method: expenseData.method }),
       // Include posted_date for credit card expenses (optional field)
       ...(expenseData.posted_date !== undefined && { posted_date: expenseData.posted_date || null }),
+      // Include original_cost for non-medical expenses with reimbursement (Requirements 2.1, 2.2)
+      // Now uses same pattern as medical expenses: Amount = net, original_cost = charged amount
+      ...(expenseData.type !== 'Tax - Medical' && expenseData.original_cost !== undefined && expenseData.original_cost !== null && parseFloat(expenseData.original_cost) > 0 && { 
+        original_cost: parseFloat(expenseData.original_cost) 
+      }),
+      // Include original_cost when explicitly clearing reimbursement (Requirements 2.4)
+      ...(expenseData.original_cost === null && { original_cost: null }),
       ...buildInsuranceFields(expenseData)
     };
     
@@ -154,7 +164,11 @@ export const createExpense = async (expenseData, peopleAllocations = null, futur
  * Credit card fields:
  * - posted_date: string|null - Date when expense posts to credit card statement (YYYY-MM-DD)
  * 
- * _Requirements: 1.3, 2.3, 4.2, 5.4_
+ * Reimbursement fields (for non-medical expenses):
+ * - original_cost: number - Original cost before reimbursement (Amount field = net out-of-pocket)
+ * - original_cost: null - Set to null to clear reimbursement
+ * 
+ * _Requirements: 1.3, 2.1, 2.2, 2.4, 4.2, 5.4, 6.2, 6.3_
  */
 export const updateExpense = async (id, expenseData, peopleAllocations = null, futureMonths = 0) => {
   try {
@@ -170,6 +184,13 @@ export const updateExpense = async (id, expenseData, peopleAllocations = null, f
         : { method: expenseData.method }),
       // Include posted_date for credit card expenses (optional field)
       ...(expenseData.posted_date !== undefined && { posted_date: expenseData.posted_date || null }),
+      // Include original_cost for non-medical expenses with reimbursement (Requirements 2.1, 2.2)
+      // Now uses same pattern as medical expenses: Amount = net, original_cost = charged amount
+      ...(expenseData.type !== 'Tax - Medical' && expenseData.original_cost !== undefined && expenseData.original_cost !== null && parseFloat(expenseData.original_cost) > 0 && { 
+        original_cost: parseFloat(expenseData.original_cost) 
+      }),
+      // Include original_cost when explicitly clearing reimbursement (Requirements 2.4, 6.3)
+      ...(expenseData.original_cost === null && { original_cost: null }),
       ...buildInsuranceFields(expenseData)
     };
     

@@ -111,18 +111,18 @@ describe('ExpenseList - Local Filtering (Monthly View)', () => {
     // Wait for categories and payment methods to load
     await waitFor(() => {
       const selects = container.querySelectorAll('.filter-select');
-      expect(selects.length).toBe(5); // Category, Payment Method, Method Type, Invoice, Insurance filters
+      expect(selects.length).toBe(4); // Category, Smart Method, Invoice, Insurance filters
     });
 
     // Wait for payment methods to populate
     await waitFor(() => {
-      const paymentMethodSelect = container.querySelectorAll('.filter-select')[1];
+      const paymentMethodSelect = container.querySelector('.smart-method-filter');
       expect(paymentMethodSelect.querySelectorAll('option').length).toBeGreaterThan(1);
     });
 
     // Get the filter dropdowns
     const categorySelect = container.querySelector('.filter-select[title*="current month"]');
-    const paymentMethodSelect = container.querySelectorAll('.filter-select')[1];
+    const paymentMethodSelect = container.querySelector('.smart-method-filter');
 
     // Change category filter
     fireEvent.change(categorySelect, { target: { value: 'Groceries' } });
@@ -130,11 +130,11 @@ describe('ExpenseList - Local Filtering (Monthly View)', () => {
     // Verify the select value changed locally
     expect(categorySelect.value).toBe('Groceries');
 
-    // Change payment method filter
-    fireEvent.change(paymentMethodSelect, { target: { value: 'Debit' } });
+    // Change payment method filter (using smart filter encoding)
+    fireEvent.change(paymentMethodSelect, { target: { value: 'method:Debit' } });
 
     // Verify the select value changed locally
-    expect(paymentMethodSelect.value).toBe('Debit');
+    expect(paymentMethodSelect.value).toBe('method:Debit');
 
     // Verify no parent callbacks were called (filters are local only)
     // This is the key test - local filters should NOT trigger parent state changes
@@ -156,7 +156,7 @@ describe('ExpenseList - Local Filtering (Monthly View)', () => {
     // Wait for categories to load
     await waitFor(() => {
       const selects = container.querySelectorAll('.filter-select');
-      expect(selects.length).toBe(5); // Category, Payment Method, Method Type, Invoice, Insurance filters
+      expect(selects.length).toBe(4); // Category, Smart Method, Invoice, Insurance filters
     });
 
     // Initially, all 4 expenses should be visible
@@ -197,12 +197,12 @@ describe('ExpenseList - Local Filtering (Monthly View)', () => {
     // Wait for categories and payment methods to load
     await waitFor(() => {
       const selects = container.querySelectorAll('.filter-select');
-      expect(selects.length).toBe(5); // Category, Payment Method, Method Type, Invoice, Insurance filters
+      expect(selects.length).toBe(4); // Category, Smart Method, Invoice, Insurance filters
     });
 
     // Wait for payment methods to populate
     await waitFor(() => {
-      const paymentMethodSelect = container.querySelectorAll('.filter-select')[1];
+      const paymentMethodSelect = container.querySelector('.smart-method-filter');
       expect(paymentMethodSelect.querySelectorAll('option').length).toBeGreaterThan(1);
     });
 
@@ -210,9 +210,9 @@ describe('ExpenseList - Local Filtering (Monthly View)', () => {
     let rows = container.querySelectorAll('tbody tr');
     expect(rows.length).toBe(4);
 
-    // Apply payment method filter for "Debit"
-    const paymentMethodSelect = container.querySelectorAll('.filter-select')[1];
-    fireEvent.change(paymentMethodSelect, { target: { value: 'Debit' } });
+    // Apply payment method filter for "Debit" using smart filter encoding
+    const paymentMethodSelect = container.querySelector('.smart-method-filter');
+    fireEvent.change(paymentMethodSelect, { target: { value: 'method:Debit' } });
 
     // Wait for filter to apply
     await waitFor(() => {
@@ -244,12 +244,12 @@ describe('ExpenseList - Local Filtering (Monthly View)', () => {
     // Wait for categories and payment methods to load
     await waitFor(() => {
       const selects = container.querySelectorAll('.filter-select');
-      expect(selects.length).toBe(5); // Category, Payment Method, Method Type, Invoice, Insurance filters
+      expect(selects.length).toBe(4); // Category, Smart Method, Invoice, Insurance filters
     });
 
     // Wait for payment methods to populate
     await waitFor(() => {
-      const paymentMethodSelect = container.querySelectorAll('.filter-select')[1];
+      const paymentMethodSelect = container.querySelector('.smart-method-filter');
       expect(paymentMethodSelect.querySelectorAll('option').length).toBeGreaterThan(1);
     });
 
@@ -257,9 +257,9 @@ describe('ExpenseList - Local Filtering (Monthly View)', () => {
     const categorySelect = container.querySelector('.filter-select[title*="current month"]');
     fireEvent.change(categorySelect, { target: { value: 'Dining Out' } });
 
-    // Apply payment method filter for "VISA"
-    const paymentMethodSelect = container.querySelectorAll('.filter-select')[1];
-    fireEvent.change(paymentMethodSelect, { target: { value: 'VISA' } });
+    // Apply payment method filter for "VISA" using smart filter encoding
+    const paymentMethodSelect = container.querySelector('.smart-method-filter');
+    fireEvent.change(paymentMethodSelect, { target: { value: 'method:VISA' } });
 
     // Wait for filters to apply
     await waitFor(() => {
@@ -291,21 +291,21 @@ describe('ExpenseList - Local Filtering (Monthly View)', () => {
     // Wait for categories and payment methods to load
     await waitFor(() => {
       const selects = container.querySelectorAll('.filter-select');
-      expect(selects.length).toBe(5); // Category, Payment Method, Method Type, Invoice, Insurance filters
+      expect(selects.length).toBe(4); // Category, Smart Method, Invoice, Insurance filters
     });
 
     // Wait for payment methods to populate
     await waitFor(() => {
-      const paymentMethodSelect = container.querySelectorAll('.filter-select')[1];
+      const paymentMethodSelect = container.querySelector('.smart-method-filter');
       expect(paymentMethodSelect.querySelectorAll('option').length).toBeGreaterThan(1);
     });
 
     // Apply filters
     const categorySelect = container.querySelector('.filter-select[title*="current month"]');
-    const paymentMethodSelect = container.querySelectorAll('.filter-select')[1];
+    const paymentMethodSelect = container.querySelector('.smart-method-filter');
     
     fireEvent.change(categorySelect, { target: { value: 'Groceries' } });
-    fireEvent.change(paymentMethodSelect, { target: { value: 'Debit' } });
+    fireEvent.change(paymentMethodSelect, { target: { value: 'method:Debit' } });
 
     // Wait for clear button to appear
     await waitFor(() => {
@@ -344,7 +344,7 @@ describe('ExpenseList - Local Filtering (Monthly View)', () => {
     // Wait for categories to load
     await waitFor(() => {
       const selects = container.querySelectorAll('.filter-select');
-      expect(selects.length).toBe(5); // Category, Payment Method, Method Type, Invoice, Insurance filters
+      expect(selects.length).toBe(4); // Category, Smart Method, Invoice, Insurance filters
     });
 
     // Apply category filter
@@ -377,7 +377,7 @@ describe('ExpenseList - Local Filtering (Monthly View)', () => {
     // Wait for categories to load
     await waitFor(() => {
       const selects = container.querySelectorAll('.filter-select');
-      expect(selects.length).toBe(5); // Category, Payment Method, Method Type, Invoice, Insurance filters
+      expect(selects.length).toBe(4); // Category, Smart Method, Invoice, Insurance filters
     });
 
     // Apply filter that excludes the only expense
@@ -407,7 +407,7 @@ describe('ExpenseList - Local Filtering (Monthly View)', () => {
     // Wait for categories to load
     await waitFor(() => {
       const selects = container.querySelectorAll('.filter-select');
-      expect(selects.length).toBe(5); // Category, Payment Method, Method Type, Invoice, Insurance filters
+      expect(selects.length).toBe(4); // Category, Smart Method, Invoice, Insurance filters
     });
 
     // Apply filter

@@ -699,6 +699,91 @@
   font-size: 16px;
 }
 
+/* Enhanced Global View Banner (Requirements: 5.1, 5.4, 5.5) */
+.view-mode-banner.global {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border: 2px solid #f59e0b;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);
+  animation: globalBannerPulse 2s ease-in-out infinite;
+}
+
+@keyframes globalBannerPulse {
+  0%, 100% {
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);
+  }
+  50% {
+    box-shadow: 0 4px 16px rgba(245, 158, 11, 0.35);
+  }
+}
+
+.view-mode-content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.view-mode-triggers {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #78350f;
+}
+
+.trigger-label {
+  font-weight: 500;
+  opacity: 0.8;
+}
+
+.trigger-list {
+  font-weight: 600;
+  background-color: rgba(255, 255, 255, 0.5);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+/* Return to Monthly View Button (Requirements: 5.2, 5.3) */
+.return-to-monthly-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: white;
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.3);
+}
+
+.return-to-monthly-button:hover {
+  background: linear-gradient(135deg, #047857 0%, #065f46 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.4);
+}
+
+.return-to-monthly-button:active {
+  transform: translateY(0) scale(0.98);
+  box-shadow: 0 2px 6px rgba(5, 150, 105, 0.3);
+}
+
+.return-to-monthly-button:focus-visible {
+  outline: 2px solid #059669;
+  outline-offset: 2px;
+}
+
 /* Dim month selector in global view */
 .month-selector-wrapper.dimmed {
   opacity: 0.5;
@@ -716,4 +801,41 @@
   background-color: rgba(255, 255, 255, 0.3);
   pointer-events: none;
   border-radius: 8px;
+}
+
+/* Responsive styles for global view banner */
+@media (max-width: 768px) {
+  .view-mode-banner.global {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .view-mode-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .return-to-monthly-button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* Accessibility: Respect reduced motion preferences for global view banner */
+@media (prefers-reduced-motion: reduce) {
+  .view-mode-banner.global {
+    animation: none;
+  }
+
+  .return-to-monthly-button {
+    transition: none;
+  }
+
+  .return-to-monthly-button:hover,
+  .return-to-monthly-button:active {
+    transform: none;
+  }
 }

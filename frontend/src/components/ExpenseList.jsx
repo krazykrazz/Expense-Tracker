@@ -10,10 +10,144 @@ import InsuranceStatusIndicator from './InsuranceStatusIndicator';
 import QuickStatusUpdate from './QuickStatusUpdate';
 import ReimbursementIndicator from './ReimbursementIndicator';
 import ExpenseForm from './ExpenseForm';
+import FilterChip from './FilterChip';
 import './ExpenseList.css';
 import { formatAmount, formatLocalDate } from '../utils/formatters';
 
 const logger = createLogger('ExpenseList');
+
+/**
+ * Generates grouped filter options for the smart method filter
+ * Groups payment methods by type (cash, debit, cheque, credit_card)
+ * 
+ * Smart grouping logic:
+ * - For types with multiple methods (e.g., Credit Card with Visa, Mastercard): 
+ *   Shows type header followed by individual methods as indented items
+ * - For types with a single method where the name matches the type (e.g., Cash):
+ *   Shows only the method directly (no redundant header)
+ * - For types with a single method where the name differs from the type:
+ *   Shows type header followed by the method
+ * 
+ * @param {Array} paymentMethods - Array of payment method objects with display_name and type
+ * @returns {Array} Array of filter options with value, label, type ('header' | 'item'), and indent properties
+ * 
+ * Requirements: 1.1
+ */
+export const generateGroupedMethodOptions = (paymentMethods) => {
+  if (!paymentMethods || paymentMethods.length === 0) {
+    return [];
+  }
+
+  // Define the order and display names for method types
+  const typeOrder = ['cash', 'debit', 'cheque', 'credit_card'];
+  const typeLabels = {
+    cash: 'Cash',
+    debit: 'Debit',
+    cheque: 'Cheque',
+    credit_card: 'Credit Card'
+  };
+
+  // Group methods by type
+  const methodsByType = {};
+  const methodsWithoutType = [];
+
+  paymentMethods.forEach(method => {
+    const type = method.type || null;
+    if (type && typeOrder.includes(type)) {
+      if (!methodsByType[type]) {
+        methodsByType[type] = [];
+      }
+      methodsByType[type].push(method);
+    } else {
+      // Handle methods with missing or unknown type
+      methodsWithoutType.push(method);
+    }
+  });
+
+  const options = [];
+
+  // Add grouped options in order
+  typeOrder.forEach(type => {
+    const methods = methodsByType[type];
+    if (methods && methods.length > 0) {
+      // Check if this type has multiple methods or if the single method name differs from type label
+      const hasMultipleMethods = methods.length > 1;
+      const singleMethodMatchesType = methods.length === 1 && 
+        methods[0].display_name.toLowerCase() === typeLabels[type].toLowerCase();
+      
+      if (hasMultipleMethods || !singleMethodMatchesType) {
+        // Show type header when:
+        // 1. Multiple methods of this type exist (e.g., multiple credit cards)
+        // 2. Single method name differs from type label
+        options.push({
+          value: `type:${type}`,
+          label: typeLabels[type],
+          optionType: 'header',
+          indent: false
+        });
+
+        // Add individual methods under this type (indented)
+        methods.forEach(method => {
+          options.push({
+            value: `method:${method.display_name}`,
+            label: method.display_name + (method.is_active === 0 ? ' (inactive)' : ''),
+            optionType: 'item',
+            indent: true,
+            isInactive: method.is_active === 0
+          });
+        });
+      } else {
+        // Single method that matches type label - show directly without header
+        // This avoids redundant "Cash" header followed by "Cash" method
+        const method = methods[0];
+        options.push({
+          value: `method:${method.display_name}`,
+          label: method.display_name + (method.is_active === 0 ? ' (inactive)' : ''),
+          optionType: 'item',
+          indent: false,
+          isInactive: method.is_active === 0
+        });
+      }
+    }
+  });
+
+  // Add methods without type under "Other" if any exist
+  if (methodsWithoutType.length > 0) {
+    options.push({
+      value: 'type:other',
+      label: 'Other',
+      optionType: 'header',
+      indent: false
+    });
+
+    methodsWithoutType.forEach(method => {
+      options.push({
+        value: `method:${method.display_name}`,
+        label: method.display_name + (method.is_active === 0 ? ' (inactive)' : ''),
+        optionType: 'item',
+        indent: true,
+        isInactive: method.is_active === 0
+      });
+    });
+  }
+
+  return options;
+};
+
+/**
+ * Parses a smart method filter value to determine the filter mode and value
+ * 
+ * @param {string} value - The encoded filter value (e.g., 'type:cash' or 'method:Visa')
+ * @returns {Object} Object with mode ('type' | 'method' | 'none') and filterValue
+ * 
+ * Requirements: 1.2, 1.3
+ */
+export const parseSmartMethodFilter = (value) => {
+  if (!value) return { mode: 'none', filterValue: '' };
+  if (value.startsWith('type:')) return { mode: 'type', filterValue: value.slice(5) };
+  if (value.startsWith('method:')) return { mode: 'method', filterValue: value.slice(7) };
+  return { mode: 'none', filterValue: '' };
+};
 
 /**
  * Renders people indicator for medical expenses
@@ -104,8 +238,7 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
   const [paymentMethods, setPaymentMethods] = useState([]);
   // Local filters for monthly view only (don't trigger global view)
   const [localFilterType, setLocalFilterType] = useState('');
-  const [localFilterMethod, setLocalFilterMethod] = useState('');
-  const [localFilterMethodType, setLocalFilterMethodType] = useState(''); // Payment method type filter (cash, debit, cheque, credit_card)
+  const [localFilterMethod, setLocalFilterMethod] = useState(''); // Smart method filter with encoded values (type: or method:)
   const [localFilterInvoice, setLocalFilterInvoice] = useState(''); // New invoice filter
   const [localFilterInsurance, setLocalFilterInsurance] = useState(''); // Insurance status filter (Requirement 7.4)
   // People selection state for medical expenses
@@ -387,16 +520,28 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
       if (localFilterType && expense.type !== localFilterType) {
         return false;
       }
-      // Apply local method filter
-      if (localFilterMethod && expense.method !== localFilterMethod) {
-        return false;
-      }
-      // Apply local payment method type filter (Requirements 7.3)
-      if (localFilterMethodType) {
-        // Find the payment method to get its type
-        const paymentMethod = paymentMethods.find(pm => pm.display_name === expense.method);
-        if (!paymentMethod || paymentMethod.type !== localFilterMethodType) {
-          return false;
+      // Apply smart method filter (Requirements 1.2, 1.3)
+      if (localFilterMethod) {
+        const { mode, filterValue } = parseSmartMethodFilter(localFilterMethod);
+        if (mode === 'method') {
+          // Filter by specific payment method
+          if (expense.method !== filterValue) {
+            return false;
+          }
+        } else if (mode === 'type') {
+          // Filter by payment method type
+          const paymentMethod = paymentMethods.find(pm => pm.display_name === expense.method);
+          if (filterValue === 'other') {
+            // "Other" type means methods without a recognized type
+            const typeOrder = ['cash', 'debit', 'cheque', 'credit_card'];
+            if (paymentMethod && typeOrder.includes(paymentMethod.type)) {
+              return false;
+            }
+          } else {
+            if (!paymentMethod || paymentMethod.type !== filterValue) {
+              return false;
+            }
+          }
         }
       }
       // Apply local invoice filter (only for medical expenses)
@@ -434,7 +579,89 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
       }
       return true;
     });
-  }, [expenses, localFilterType, localFilterMethod, localFilterMethodType, localFilterInvoice, localFilterInsurance, invoiceData, paymentMethods]);
+  }, [expenses, localFilterType, localFilterMethod, localFilterInvoice, localFilterInsurance, invoiceData, paymentMethods]);
+
+  // Generate grouped options for the smart method filter (Requirement 1.1)
+  const groupedMethodOptions = useMemo(() => {
+    return generateGroupedMethodOptions(paymentMethods);
+  }, [paymentMethods]);
+
+  // Calculate total active filter count (Requirements 3.1, 3.2, 3.3)
+  const totalFilterCount = useMemo(() => {
+    let count = 0;
+    if (localFilterType) count++;
+    if (localFilterMethod) count++;
+    if (localFilterInvoice) count++;
+    if (localFilterInsurance) count++;
+    return count;
+  }, [localFilterType, localFilterMethod, localFilterInvoice, localFilterInsurance]);
+
+  // Build active filters array for filter chips (Requirements 4.1, 4.2, 4.3)
+  const activeFilters = useMemo(() => {
+    const filters = [];
+    
+    if (localFilterType) {
+      filters.push({
+        id: 'type',
+        label: 'Type',
+        value: localFilterType,
+        onClear: () => setLocalFilterType('')
+      });
+    }
+    
+    if (localFilterMethod) {
+      const { mode, filterValue } = parseSmartMethodFilter(localFilterMethod);
+      let displayValue = filterValue;
+      if (mode === 'type') {
+        const typeLabels = {
+          cash: 'Cash (all)',
+          debit: 'Debit (all)',
+          cheque: 'Cheque (all)',
+          credit_card: 'Credit Card (all)',
+          other: 'Other (all)'
+        };
+        displayValue = typeLabels[filterValue] || filterValue;
+      }
+      filters.push({
+        id: 'method',
+        label: 'Method',
+        value: displayValue,
+        onClear: () => setLocalFilterMethod('')
+      });
+    }
+    
+    if (localFilterInvoice) {
+      const invoiceLabels = {
+        'with-invoice': 'With Invoice',
+        'without-invoice': 'Without Invoice'
+      };
+      filters.push({
+        id: 'invoice',
+        label: 'Invoice',
+        value: invoiceLabels[localFilterInvoice] || localFilterInvoice,
+        onClear: () => setLocalFilterInvoice('')
+      });
+    }
+    
+    if (localFilterInsurance) {
+      const insuranceLabels = {
+        'eligible': 'Eligible',
+        'not-eligible': 'Not Eligible',
+        'not_claimed': 'Not Claimed',
+        'in_progress': 'In Progress',
+        'paid': 'Paid',
+        'denied': 'Denied'
+      };
+      filters.push({
+        id: 'insurance',
+        label: 'Insurance',
+        value: insuranceLabels[localFilterInsurance] || localFilterInsurance,
+        onClear: () => setLocalFilterInsurance('')
+      });
+    }
+    
+    return filters;
+  }, [localFilterType, localFilterMethod, localFilterInvoice, localFilterInsurance]);
 
   /**
    * Generates informative status messages based on filter state
@@ -466,24 +693,30 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
     };
 
     /**
-     * Get human-readable payment method type text
+     * Get human-readable smart method filter text
      */
-    const getMethodTypeText = (typeValue) => {
-      switch (typeValue) {
-        case 'cash': return 'Cash';
-        case 'debit': return 'Debit';
-        case 'cheque': return 'Cheque';
-        case 'credit_card': return 'Credit Card';
-        default: return typeValue;
+    const getSmartMethodFilterText = (filterValue) => {
+      const { mode, filterValue: value } = parseSmartMethodFilter(filterValue);
+      if (mode === 'type') {
+        const typeLabels = {
+          cash: 'Cash (all)',
+          debit: 'Debit (all)',
+          cheque: 'Cheque (all)',
+          credit_card: 'Credit Card (all)',
+          other: 'Other (all)'
+        };
+        return typeLabels[value] || value;
+      } else if (mode === 'method') {
+        return value;
       }
+      return filterValue;
     };
 
     if (filteredExpenses.length === 0 && expenses.length > 0) {
       // Expenses exist but all filtered out by local filters
       const activeFilters = [];
       if (localFilterType) activeFilters.push(`category: ${localFilterType}`);
-      if (localFilterMethod) activeFilters.push(`payment: ${localFilterMethod}`);
-      if (localFilterMethodType) activeFilters.push(`payment type: ${getMethodTypeText(localFilterMethodType)}`);
+      if (localFilterMethod) activeFilters.push(`payment: ${getSmartMethodFilterText(localFilterMethod)}`);
       if (localFilterInvoice) {
         const invoiceFilterText = localFilterInvoice === 'with-invoice' ? 'with invoices' : 'without invoices';
         activeFilters.push(`${invoiceFilterText}`);
@@ -501,11 +734,10 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
     }
     
     // Show result count when local filters are active
-    if (localFilterType || localFilterMethod || localFilterMethodType || localFilterInvoice || localFilterInsurance) {
+    if (localFilterType || localFilterMethod || localFilterInvoice || localFilterInsurance) {
       const activeFilters = [];
       if (localFilterType) activeFilters.push(localFilterType);
-      if (localFilterMethod) activeFilters.push(localFilterMethod);
-      if (localFilterMethodType) activeFilters.push(getMethodTypeText(localFilterMethodType));
+      if (localFilterMethod) activeFilters.push(getSmartMethodFilterText(localFilterMethod));
       if (localFilterInvoice) {
         const invoiceFilterText = localFilterInvoice === 'with-invoice' ? 'with invoices' : 'without invoices';
         activeFilters.push(invoiceFilterText);
@@ -530,6 +762,12 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
         <h2>Expense List</h2>
         <div className="header-controls">
           <div className="filter-controls">
+            {/* Filter count badge (Requirements 3.1, 3.2, 3.3) */}
+            {totalFilterCount > 0 && (
+              <span className="filter-count-badge" data-testid="filter-count-badge">
+                {totalFilterCount}
+              </span>
+            )}
             <select 
               className="filter-select"
               value={localFilterType} 
@@ -543,36 +781,26 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
                 </option>
               ))}
             </select>
+            {/* Smart Method Filter - consolidated payment method and type filter (Requirements 1.1, 1.4, 1.5) */}
             <select 
-              className="filter-select"
+              className="filter-select smart-method-filter"
               value={localFilterMethod} 
               onChange={(e) => setLocalFilterMethod(e.target.value)}
-              title="Filter by payment method (current month only)"
+              title="Filter by payment method or type (current month only)"
             >
               <option value="">All Methods</option>
-              {paymentMethods.map((method) => (
+              {groupedMethodOptions.map((option, index) => (
                 <option 
-                  key={method.id} 
-                  value={method.display_name}
-                  className={method.is_active === 0 ? 'inactive-option' : ''}
+                  key={`${option.value}-${index}`}
+                  value={option.value}
+                  className={`${option.optionType === 'header' ? 'method-type-header' : 'method-item'} ${option.indent ? 'indented' : ''} ${option.isInactive ? 'inactive-option' : ''}`}
+                  style={option.indent ? { paddingLeft: '20px' } : {}}
                 >
-                  {method.display_name}{method.is_active === 0 ? ' (inactive)' : ''}
+                  {option.indent ? `  ${option.label}` : option.label}
                 </option>
               ))}
             </select>
-            {/* Payment Method Type Filter (Requirement 7.3) */}
-            <select 
-              className="filter-select method-type-filter"
-              value={localFilterMethodType} 
-              onChange={(e) => setLocalFilterMethodType(e.target.value)}
-              title="Filter by payment method type (current month only)"
-            >
-              <option value="">All Types</option>
-              <option value="cash">Cash</option>
-              <option value="debit">Debit</option>
-              <option value="cheque">Cheque</option>
-              <option value="credit_card">Credit Card</option>
-            </select>
+            {/* Invoice Filter */}
             <select 
               className="filter-select invoice-filter"
               value={localFilterInvoice} 
@@ -583,7 +811,7 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
               <option value="with-invoice">With Invoice</option>
               <option value="without-invoice">Without Invoice</option>
             </select>
-            {/* Insurance Status Filter (Requirement 7.4) */}
+            {/* Insurance Status Filter */}
             <select 
               className="filter-select insurance-filter"
               value={localFilterInsurance} 
@@ -598,13 +826,12 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
               <option value="paid">Paid</option>
               <option value="denied">Denied</option>
             </select>
-            {(localFilterType || localFilterMethod || localFilterMethodType || localFilterInvoice || localFilterInsurance) && (
+            {(localFilterType || localFilterMethod || localFilterInvoice || localFilterInsurance) && (
               <button 
                 className="clear-filters-btn"
                 onClick={() => {
                   setLocalFilterType('');
                   setLocalFilterMethod('');
-                  setLocalFilterMethodType('');
                   setLocalFilterInvoice('');
                   setLocalFilterInsurance('');
                 }}
@@ -623,6 +850,20 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
           </button>
         </div>
       </div>
+
+      {/* Active Filter Chips Row (Requirements 4.1, 4.2, 4.3, 4.5) */}
+      {activeFilters.length > 0 && (
+        <div className="filter-chips-row" data-testid="filter-chips-row">
+          {activeFilters.map((filter) => (
+            <FilterChip
+              key={filter.id}
+              label={filter.label}
+              value={filter.value}
+              onRemove={filter.onClear}
+            />
+          ))}
+        </div>
+      )}
 
       {noExpensesMessage && (
         <div className="no-expenses-message">

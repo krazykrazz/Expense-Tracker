@@ -1,0 +1,61 @@
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  padding: var(--spacing-1) var(--spacing-2);
+  background-color: var(--color-primary-light);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-full);
+  font-size: var(--text-sm);
+  color: var(--color-primary-hover);
+  max-width: 200px;
+  transition: var(--transition-colors);
+}
+
+.filter-chip:hover {
+  background-color: #cce7f7;
+}
+
+.filter-chip-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: var(--font-medium);
+}
+
+.filter-chip-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-full);
+  background-color: transparent;
+  color: var(--color-primary-hover);
+  font-size: 14px;
+  font-weight: var(--font-bold);
+  line-height: 1;
+  cursor: pointer;
+  transition: var(--transition-colors);
+  flex-shrink: 0;
+}
+
+.filter-chip-remove:hover {
+  background-color: var(--color-primary);
+  color: var(--text-inverse);
+}
+
+.filter-chip-remove:focus {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* Filter chips container for responsive wrapping */
+.filter-chips-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
+  margin-top: var(--spacing-2);
+}

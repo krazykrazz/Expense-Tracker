@@ -117,7 +117,7 @@ describe('ExpenseList - Invoice Integration', () => {
     // Wait for categories and invoice metadata to load
     await waitFor(() => {
       const selects = container.querySelectorAll('.filter-select');
-      expect(selects.length).toBe(5); // Category, Payment Method, Method Type, Invoice, Insurance
+      expect(selects.length).toBe(4); // Category, Smart Method, Invoice, Insurance (Invoice and Insurance are inside AdvancedFilters)
     });
 
     // Find the invoice filter
@@ -228,7 +228,7 @@ describe('ExpenseList - Invoice Integration', () => {
     // Wait for categories to load
     await waitFor(() => {
       const selects = container.querySelectorAll('.filter-select');
-      expect(selects.length).toBe(5); // Category, Payment Method, Method Type, Invoice, Insurance
+      expect(selects.length).toBe(4); // Category, Smart Method, Invoice, Insurance (Invoice and Insurance are inside AdvancedFilters)
     });
 
     // Apply filters including invoice filter

@@ -1,5 +1,5 @@
-import { useState, useCallback, useEffect } from 'react';
-import { createBillingCycle, getCurrentCycleStatus } from '../services/creditCardApi';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { createBillingCycle, updateBillingCycle, getCurrentCycleStatus, getBillingCyclePdfUrl } from '../services/creditCardApi';
 import { createLogger } from '../utils/logger';
 import './BillingCycleHistoryForm.css';
 
@@ -13,6 +13,7 @@ const logger = createLogger('BillingCycleHistoryForm');
  * - Pre-populated cycle dates from most recent completed cycle
  * - Validation for non-negative actual_statement_balance
  * - Optional minimum_payment, due_date, notes fields
+ * - Optional PDF statement upload
  * - Display calculated balance for reference
  * - Show discrepancy after successful submission
  * - Handle duplicate entry error
@@ -25,17 +26,31 @@ const BillingCycleHistoryForm = ({
   cycleStartDate: propCycleStartDate = null,
   cycleEndDate: propCycleEndDate = null,
   calculatedBalance: propCalculatedBalance = null,
+  editingCycle = null,
   onSubmit = () => {},
   onCancel = () => {}
 }) => {
-  // Form state
-  const [actualBalance, setActualBalance] = useState('');
-  const [minimumPayment, setMinimumPayment] = useState('');
-  const [dueDate, setDueDate] = useState('');
-  const [notes, setNotes] = useState('');
+  // Determine if we're in edit mode
+  const isEditMode = !!editingCycle;
+  
+  // Form state - initialize from editingCycle if in edit mode
+  const [actualBalance, setActualBalance] = useState(
+    editingCycle?.actual_statement_balance?.toString() || ''
+  );
+  const [minimumPayment, setMinimumPayment] = useState(
+    editingCycle?.minimum_payment?.toString() || ''
+  );
+  const [dueDate, setDueDate] = useState(editingCycle?.due_date || '');
+  const [notes, setNotes] = useState(editingCycle?.notes || '');
+  const [pdfFile, setPdfFile] = useState(null);
+  const [pdfFileName, setPdfFileName] = useState('');
+  const [existingPdfPath, setExistingPdfPath] = useState(editingCycle?.statement_pdf_path || null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [successResult, setSuccessResult] = useState(null);
+  
+  // File input ref
+  const fileInputRef = useRef(null);
   
   // Cycle info state (fetched or from props)
   const [cycleStartDate, setCycleStartDate] = useState(propCycleStartDate || '');
@@ -158,10 +173,18 @@ const BillingCycleHistoryForm = ({
       if (notes.trim()) {
         data.notes = notes.trim();
       }
+      if (pdfFile) {
+        data.statement = pdfFile;
+      }
 
-      const result = await createBillingCycle(paymentMethodId, data);
-      
-      logger.info('Billing cycle created successfully:', result);
+      let result;
+      if (isEditMode) {
+        result = await updateBillingCycle(paymentMethodId, editingCycle.id, data);
+        logger.info('Billing cycle updated successfully:', result);
+      } else {
+        result = await createBillingCycle(paymentMethodId, data);
+        logger.info('Billing cycle created successfully:', result);
+      }
       
       // Show success with discrepancy info
       setSuccessResult(result.billingCycle);
@@ -169,13 +192,13 @@ const BillingCycleHistoryForm = ({
       // Notify parent component
       onSubmit(result);
     } catch (err) {
-      logger.error('Failed to create billing cycle:', err);
+      logger.error(`Failed to ${isEditMode ? 'update' : 'create'} billing cycle:`, err);
       
       // Check for duplicate entry error
       if (err.message && err.message.toLowerCase().includes('duplicate')) {
         setError('A billing cycle record already exists for this period. Please edit the existing record instead.');
       } else {
-        setError(err.message || 'Failed to save billing cycle. Please try again.');
+        setError(err.message || `Failed to ${isEditMode ? 'update' : 'save'} billing cycle. Please try again.`);
       }
     } finally {
       setSubmitting(false);
@@ -205,6 +228,40 @@ const BillingCycleHistoryForm = ({
   // Handle notes change
   const handleNotesChange = (e) => {
     setNotes(e.target.value);
+  };
+
+  // Handle file selection
+  const handleFileSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file type
+      if (file.type !== 'application/pdf') {
+        setError('Only PDF files are allowed');
+        return;
+      }
+      // Validate file size (10MB max)
+      if (file.size > 10 * 1024 * 1024) {
+        setError('File size must be less than 10MB');
+        return;
+      }
+      setPdfFile(file);
+      setPdfFileName(file.name);
+      setError(null);
+    }
+  };
+
+  // Handle file removal
+  const handleRemoveFile = () => {
+    setPdfFile(null);
+    setPdfFileName('');
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  // Trigger file input click
+  const handleBrowseClick = () => {
+    fileInputRef.current?.click();
   };
 
   // Clear error
@@ -298,7 +355,7 @@ const BillingCycleHistoryForm = ({
   return (
     <div className="billing-cycle-form-container">
       <div className="billing-cycle-form-header">
-        <h3>Enter Statement Balance</h3>
+        <h3>{isEditMode ? 'Edit Statement Balance' : 'Enter Statement Balance'}</h3>
         <span className="billing-cycle-card-name">{paymentMethodName}</span>
       </div>
 
@@ -411,6 +468,74 @@ const BillingCycleHistoryForm = ({
           />
         </div>
 
+        {/* PDF Statement Upload Field */}
+        <div className="billing-cycle-field">
+          <label className="billing-cycle-label">
+            Statement PDF <span className="optional">(optional)</span>
+          </label>
+          <input
+            type="file"
+            ref={fileInputRef}
+            accept=".pdf,application/pdf"
+            onChange={handleFileSelect}
+            style={{ display: 'none' }}
+            disabled={submitting}
+          />
+          {/* Show existing PDF if in edit mode and no new file selected */}
+          {existingPdfPath && !pdfFileName && (
+            <div className="billing-cycle-file-existing">
+              <span className="file-icon existing">📄</span>
+              <span className="file-name">Statement PDF attached</span>
+              <a
+                href={getBillingCyclePdfUrl(paymentMethodId, editingCycle?.id)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="file-view-btn"
+                title="View PDF"
+              >
+                View
+              </a>
+              <button
+                type="button"
+                className="file-replace-btn"
+                onClick={handleBrowseClick}
+                disabled={submitting}
+                title="Replace PDF"
+              >
+                Replace
+              </button>
+            </div>
+          )}
+          {/* Show newly selected file */}
+          {pdfFileName ? (
+            <div className="billing-cycle-file-selected">
+              <span className="file-icon">📄</span>
+              <span className="file-name">{pdfFileName}</span>
+              <button
+                type="button"
+                className="file-remove-btn"
+                onClick={handleRemoveFile}
+                disabled={submitting}
+                title="Remove file"
+              >
+                ✕
+              </button>
+            </div>
+          ) : !existingPdfPath && (
+            <button
+              type="button"
+              className="billing-cycle-upload-btn"
+              onClick={handleBrowseClick}
+              disabled={submitting}
+            >
+              📎 Attach PDF Statement
+            </button>
+          )}
+          <span className="billing-cycle-hint">
+            Attach your credit card statement PDF for record keeping
+          </span>
+        </div>
+
         {/* Error Display */}
         {error && (
           <div className="billing-cycle-error" role="alert">
@@ -433,7 +558,7 @@ const BillingCycleHistoryForm = ({
             className="billing-cycle-submit-btn"
             disabled={submitting || actualBalance === ''}
           >
-            {submitting ? 'Saving...' : 'Save Statement Balance'}
+            {submitting ? 'Saving...' : isEditMode ? 'Update Statement Balance' : 'Save Statement Balance'}
           </button>
           <button
             type="button"

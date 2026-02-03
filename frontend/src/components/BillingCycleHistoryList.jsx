@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { getBillingCyclePdfUrl } from '../services/creditCardApi';
 import './BillingCycleHistoryList.css';
 
 /**
@@ -8,6 +9,7 @@ import './BillingCycleHistoryList.css';
  * Features:
  * - Display cycle dates, actual balance, calculated balance, discrepancy
  * - Discrepancy indicator (orange for higher, blue for lower, green for match)
+ * - PDF indicator with view button
  * - Edit and delete actions with confirmation
  * - Empty state handling
  * 
@@ -15,8 +17,10 @@ import './BillingCycleHistoryList.css';
  */
 const BillingCycleHistoryList = ({
   cycles = [],
+  paymentMethodId = null,
   onEdit = () => {},
   onDelete = () => {},
+  onViewPdf = () => {},
   formatCurrency = (value) => new Intl.NumberFormat('en-CA', {
     style: 'currency',
     currency: 'CAD'
@@ -120,22 +124,43 @@ const BillingCycleHistoryList = ({
               <span className="cycle-dates">
                 {formatDate(cycle.cycle_start_date)} - {formatDate(cycle.cycle_end_date)}
               </span>
+              {cycle.statement_pdf_path && (
+                <button
+                  className="cycle-pdf-btn"
+                  onClick={() => onViewPdf(cycle)}
+                  title="View statement PDF"
+                  aria-label={`View PDF for ${formatDate(cycle.cycle_end_date)}`}
+                >
+                  📄
+                </button>
+              )}
             </div>
 
             {/* Balance Info */}
             <div className="cycle-balances">
-              <div className="balance-row actual">
-                <span className="balance-label">Actual:</span>
-                <span className="balance-value">{formatCurrency(cycle.actual_statement_balance)}</span>
-              </div>
-              <div className="balance-row calculated">
-                <span className="balance-label">Calculated:</span>
-                <span className="balance-value">{formatCurrency(cycle.calculated_statement_balance)}</span>
-              </div>
+              {/* Show actual balance only if it's been entered (non-zero) */}
+              {cycle.actual_statement_balance > 0 ? (
+                <>
+                  <div className="balance-row actual">
+                    <span className="balance-label">Actual:</span>
+                    <span className="balance-value">{formatCurrency(cycle.actual_statement_balance)}</span>
+                  </div>
+                  <div className="balance-row calculated">
+                    <span className="balance-label">Calculated:</span>
+                    <span className="balance-value">{formatCurrency(cycle.calculated_statement_balance)}</span>
+                  </div>
+                </>
+              ) : (
+                /* When no actual balance, show calculated as the primary balance */
+                <div className="balance-row primary">
+                  <span className="balance-label">Balance:</span>
+                  <span className="balance-value">{formatCurrency(cycle.calculated_statement_balance)}</span>
+                </div>
+              )}
             </div>
 
-            {/* Discrepancy Indicator */}
-            {cycle.discrepancy && (
+            {/* Discrepancy Indicator - only show when actual balance is entered */}
+            {cycle.discrepancy && cycle.actual_statement_balance > 0 && (
               <div className={`cycle-discrepancy ${getDiscrepancyClass(cycle.discrepancy)}`}>
                 <span className="discrepancy-icon">{getDiscrepancyIcon(cycle.discrepancy)}</span>
                 <span className="discrepancy-amount">

@@ -121,6 +121,11 @@
   color: var(--text-secondary);
 }
 
+.balance-row.primary .balance-value {
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+}
+
 /* Discrepancy Indicator */
 .cycle-discrepancy {
   display: flex;
@@ -376,4 +381,42 @@
 .confirm-cancel-btn:focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
+}
+
+
+/* PDF Button - Green styling to match invoice indicators */
+.cycle-pdf-btn {
+  background: var(--color-positive-light);
+  border: 1px solid rgba(34, 197, 94, 0.25);
+  cursor: pointer;
+  padding: var(--spacing-1) var(--spacing-2);
+  font-size: var(--text-sm);
+  border-radius: var(--radius-full);
+  transition: var(--transition-fast);
+  color: var(--color-positive-dark);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+}
+
+.cycle-pdf-btn:hover {
+  background: rgba(34, 197, 94, 0.2);
+  border-color: rgba(34, 197, 94, 0.35);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.cycle-pdf-btn:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.cycle-pdf-btn:focus-visible {
+  outline: 2px solid var(--color-positive);
+  outline-offset: 2px;
+}
+
+.cycle-period {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
 }

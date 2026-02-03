@@ -3934,6 +3934,259 @@ async function migrateAddBillingCyclesTable(db) {
 }
 
 /**
+ * Migration: Add statement_pdf_path column to credit_card_billing_cycles table
+ * Allows attaching PDF statements to billing cycle records
+ */
+async function migrateAddStatementPdfToBillingCycles(db) {
+  const migrationName = 'add_statement_pdf_to_billing_cycles_v1';
+  
+  // Check if already applied
+  const isApplied = await checkMigrationApplied(db, migrationName);
+  if (isApplied) {
+    logger.info(`Migration "${migrationName}" already applied, skipping`);
+    return;
+  }
+
+  logger.info(`Running migration: ${migrationName}`);
+
+  // Create backup
+  await createBackup();
+
+  return new Promise((resolve, reject) => {
+    db.serialize(() => {
+      db.run('BEGIN TRANSACTION', (err) => {
+        if (err) {
+          return reject(err);
+        }
+
+        // Add statement_pdf_path column to credit_card_billing_cycles table
+        db.run(`
+          ALTER TABLE credit_card_billing_cycles 
+          ADD COLUMN statement_pdf_path TEXT
+        `, (err) => {
+          if (err) {
+            // Column might already exist
+            if (err.message && err.message.includes('duplicate column name')) {
+              logger.info('Column statement_pdf_path already exists, skipping');
+            } else {
+              db.run('ROLLBACK');
+              return reject(err);
+            }
+          }
+
+          logger.info('Added statement_pdf_path column to credit_card_billing_cycles table');
+
+          // Mark migration as applied and commit
+          markMigrationApplied(db, migrationName).then(() => {
+            db.run('COMMIT', (err) => {
+              if (err) {
+                db.run('ROLLBACK');
+                return reject(err);
+              }
+              logger.info(`Migration "${migrationName}" completed successfully`);
+              resolve();
+            });
+          }).catch((err) => {
+            db.run('ROLLBACK');
+            reject(err);
+          });
+        });
+      });
+    });
+  });
+}
+
+/**
+ * Migration: Migrate PDF statements from credit_card_statements to billing_cycle_history
+ * This consolidates the old PDF statement uploads into the new billing cycle history system
+ * 
+ * For each PDF statement:
+ * 1. Creates a billing_cycle_history record with the statement's period dates
+ * 2. Copies the PDF file path to statement_pdf_path
+ * 3. Sets actual_statement_balance to 0 (user can update later)
+ * 4. Deletes the old credit_card_statements record
+ */
+async function migratePdfStatementsToBillingCycles(db) {
+  const migrationName = 'migrate_pdf_statements_to_billing_cycles_v1';
+  
+  // Check if already applied
+  const isApplied = await checkMigrationApplied(db, migrationName);
+  if (isApplied) {
+    logger.info(`Migration "${migrationName}" already applied, skipping`);
+    return;
+  }
+
+  logger.info(`Running migration: ${migrationName}`);
+
+  // Create backup
+  await createBackup();
+
+  return new Promise((resolve, reject) => {
+    // First, get all existing PDF statements
+    db.all(`
+      SELECT 
+        ccs.id,
+        ccs.payment_method_id,
+        ccs.statement_date,
+        ccs.statement_period_start,
+        ccs.statement_period_end,
+        ccs.file_path,
+        ccs.original_filename,
+        pm.billing_cycle_day
+      FROM credit_card_statements ccs
+      JOIN payment_methods pm ON pm.id = ccs.payment_method_id
+      ORDER BY ccs.statement_period_end ASC
+    `, [], (err, statements) => {
+      if (err) {
+        logger.error('Failed to fetch PDF statements for migration:', err);
+        return reject(err);
+      }
+
+      if (!statements || statements.length === 0) {
+        logger.info('No PDF statements to migrate');
+        // Mark migration as applied even if no statements
+        markMigrationApplied(db, migrationName).then(() => {
+          logger.info(`Migration "${migrationName}" completed (no statements to migrate)`);
+          resolve();
+        }).catch(reject);
+        return;
+      }
+
+      logger.info(`Found ${statements.length} PDF statements to migrate`);
+
+      db.serialize(() => {
+        db.run('BEGIN TRANSACTION', (err) => {
+          if (err) {
+            return reject(err);
+          }
+
+          let migratedCount = 0;
+          let skippedCount = 0;
+          let errorOccurred = false;
+
+          // Process each statement
+          const processStatement = (index) => {
+            if (errorOccurred || index >= statements.length) {
+              // All done, commit or rollback
+              if (errorOccurred) {
+                db.run('ROLLBACK');
+                return;
+              }
+
+              // Delete migrated statements from old table
+              db.run('DELETE FROM credit_card_statements WHERE id IN (SELECT id FROM credit_card_statements)', (err) => {
+                if (err) {
+                  logger.warn('Failed to delete old statements (non-critical):', err.message);
+                }
+
+                // Mark migration as applied and commit
+                markMigrationApplied(db, migrationName).then(() => {
+                  db.run('COMMIT', (err) => {
+                    if (err) {
+                      db.run('ROLLBACK');
+                      return reject(err);
+                    }
+                    logger.info(`Migration "${migrationName}" completed: ${migratedCount} migrated, ${skippedCount} skipped`);
+                    resolve();
+                  });
+                }).catch((err) => {
+                  db.run('ROLLBACK');
+                  reject(err);
+                });
+              });
+              return;
+            }
+
+            const stmt = statements[index];
+            
+            // Check if a billing cycle record already exists for this period
+            db.get(`
+              SELECT id FROM credit_card_billing_cycles 
+              WHERE payment_method_id = ? AND cycle_end_date = ?
+            `, [stmt.payment_method_id, stmt.statement_period_end], (err, existing) => {
+              if (err) {
+                logger.error('Failed to check existing billing cycle:', err);
+                errorOccurred = true;
+                db.run('ROLLBACK');
+                return reject(err);
+              }
+
+              if (existing) {
+                // Update existing record with PDF path if it doesn't have one
+                db.run(`
+                  UPDATE credit_card_billing_cycles 
+                  SET statement_pdf_path = COALESCE(statement_pdf_path, ?)
+                  WHERE id = ? AND statement_pdf_path IS NULL
+                `, [stmt.file_path, existing.id], (err) => {
+                  if (err) {
+                    logger.warn('Failed to update existing billing cycle with PDF:', err.message);
+                  } else {
+                    logger.debug(`Updated existing billing cycle ${existing.id} with PDF path`);
+                  }
+                  skippedCount++;
+                  processStatement(index + 1);
+                });
+              } else {
+                // Create new billing cycle record
+                // First calculate the statement balance from expenses in the billing period
+                db.get(`
+                  SELECT COALESCE(SUM(COALESCE(original_cost, amount)), 0) as total
+                  FROM expenses
+                  WHERE payment_method_id = ?
+                    AND COALESCE(posted_date, date) >= ?
+                    AND COALESCE(posted_date, date) <= ?
+                `, [stmt.payment_method_id, stmt.statement_period_start, stmt.statement_period_end], (err, row) => {
+                  if (err) {
+                    logger.error('Failed to calculate statement balance:', err);
+                    errorOccurred = true;
+                    db.run('ROLLBACK');
+                    return reject(err);
+                  }
+
+                  const calculatedBalance = Math.round((row?.total || 0) * 100) / 100;
+
+                  db.run(`
+                    INSERT INTO credit_card_billing_cycles (
+                      payment_method_id,
+                      cycle_start_date,
+                      cycle_end_date,
+                      actual_statement_balance,
+                      calculated_statement_balance,
+                      statement_pdf_path,
+                      notes
+                    ) VALUES (?, ?, ?, 0, ?, ?, NULL)
+                  `, [
+                    stmt.payment_method_id,
+                    stmt.statement_period_start,
+                    stmt.statement_period_end,
+                    calculatedBalance,
+                    stmt.file_path
+                  ], function(err) {
+                    if (err) {
+                      logger.error('Failed to create billing cycle from PDF statement:', err);
+                      errorOccurred = true;
+                      db.run('ROLLBACK');
+                      return reject(err);
+                    }
+                    
+                    logger.debug(`Created billing cycle ${this.lastID} from PDF statement ${stmt.id} with calculated balance ${calculatedBalance}`);
+                    migratedCount++;
+                    processStatement(index + 1);
+                  });
+                });
+              }
+            });
+          };
+
+          // Start processing
+          processStatement(0);
+        });
+      });
+    });
+  });
+}
+
+/**
  * Run all pending migrations
  */
 async function runMigrations(db) {
@@ -3964,6 +4217,8 @@ async function runMigrations(db) {
     await migrateAddFixedInterestRate(db);
     await migrateAddBillingCycleDayColumn(db);
     await migrateAddBillingCyclesTable(db);
+    await migrateAddStatementPdfToBillingCycles(db);
+    await migratePdfStatementsToBillingCycles(db);
     logger.info('All migrations completed');
   } catch (error) {
     logger.error('Migration failed:', error.message);
@@ -3988,5 +4243,7 @@ module.exports = {
   migrateAddPostedDate,
   migrateAddFixedInterestRate,
   migrateAddBillingCycleDayColumn,
-  migrateAddBillingCyclesTable
+  migrateAddBillingCyclesTable,
+  migrateAddStatementPdfToBillingCycles,
+  migratePdfStatementsToBillingCycles
 };

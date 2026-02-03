@@ -771,6 +771,7 @@ function createTestDatabase() {
             minimum_payment REAL CHECK(minimum_payment IS NULL OR minimum_payment >= 0),
             due_date TEXT,
             notes TEXT,
+            statement_pdf_path TEXT,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (payment_method_id) REFERENCES payment_methods(id) ON DELETE CASCADE,

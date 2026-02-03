@@ -187,14 +187,14 @@ This implementation plan covers the Credit Card Billing Cycle History feature, w
     - Test section visibility based on billing_cycle_day
     - **Validates: Requirements 5.1, 7.1, 7.2, 7.3**
 
-- [-] 11. Update Reminder Banner
-  - [-] 11.1 Update CreditCardReminderBanner for billing cycle reminders
+- [x] 11. Update Reminder Banner
+  - [x] 11.1 Update CreditCardReminderBanner for billing cycle reminders
     - Update `frontend/src/components/CreditCardReminderBanner.jsx` if needed
     - Ensure banner uses actual_statement_balance when available
     - Add billing cycle entry reminder display
     - _Requirements: 4.1, 7.4_
 
-- [ ] 12. Final Checkpoint - Feature Complete
+- [x] 12. Final Checkpoint - Feature Complete
   - Ensure all tests pass (backend and frontend)
   - Verify full flow: create, read, update, delete billing cycles
   - Verify reminder integration works correctly

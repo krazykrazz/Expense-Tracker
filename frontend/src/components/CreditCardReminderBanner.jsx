@@ -132,6 +132,16 @@ const CreditCardReminderBanner = ({
               <span className="reminder-payment-amount" data-testid="required-payment-amount">
                 {formatCurrency(card.required_payment)}
               </span>
+              {/* Balance source indicator - Requirements: 7.3 */}
+              {card.has_actual_balance && (
+                <span 
+                  className="reminder-balance-source actual"
+                  data-testid="balance-source-indicator"
+                  title="From your entered statement balance"
+                >
+                  ✓ Statement
+                </span>
+              )}
               {/* Urgency indicator - Requirements: 8.4 */}
               {urgency.label && (
                 <span 

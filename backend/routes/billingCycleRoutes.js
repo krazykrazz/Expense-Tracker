@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const billingCycleController = require('../controllers/billingCycleController');
+const { upload, handleMulterError, validateUploadRequest } = require('../middleware/uploadMiddleware');
 
 /**
  * Billing Cycle History Routes
@@ -19,8 +20,17 @@ router.get('/:id/billing-cycles/current', billingCycleController.getCurrentCycle
 // Must be before /:cycleId routes to avoid conflict
 router.get('/:id/billing-cycles/history', billingCycleController.getBillingCycleHistory);
 
-// POST /api/payment-methods/:id/billing-cycles - Create a billing cycle record
-router.post('/:id/billing-cycles', billingCycleController.createBillingCycle);
+// POST /api/payment-methods/:id/billing-cycles - Create a billing cycle record (with optional PDF)
+router.post(
+  '/:id/billing-cycles',
+  validateUploadRequest,
+  upload.single('statement'),
+  handleMulterError,
+  billingCycleController.createBillingCycle
+);
+
+// GET /api/payment-methods/:id/billing-cycles/:cycleId/pdf - Get billing cycle PDF
+router.get('/:id/billing-cycles/:cycleId/pdf', billingCycleController.getBillingCyclePdf);
 
 // PUT /api/payment-methods/:id/billing-cycles/:cycleId - Update a billing cycle record
 router.put('/:id/billing-cycles/:cycleId', billingCycleController.updateBillingCycle);

@@ -389,20 +389,48 @@ export const getBillingCycles = async (paymentMethodId, count = 6) => {
  * @param {number} [data.minimum_payment] - Optional minimum payment amount
  * @param {string} [data.due_date] - Optional due date (YYYY-MM-DD)
  * @param {string} [data.notes] - Optional notes
+ * @param {File} [data.statement] - Optional PDF file
  * @returns {Promise<Object>} Created billing cycle record with discrepancy info
  */
 export const createBillingCycle = async (paymentMethodId, data) => {
   try {
-    const response = await fetchWithRetry(
-      API_ENDPOINTS.PAYMENT_METHOD_BILLING_CYCLE_CREATE(paymentMethodId),
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(data)
+    let response;
+    
+    // If there's a PDF file, use FormData
+    if (data.statement) {
+      const formData = new FormData();
+      formData.append('actual_statement_balance', data.actual_statement_balance.toString());
+      if (data.minimum_payment !== undefined && data.minimum_payment !== null) {
+        formData.append('minimum_payment', data.minimum_payment.toString());
       }
-    );
+      if (data.due_date) {
+        formData.append('due_date', data.due_date);
+      }
+      if (data.notes) {
+        formData.append('notes', data.notes);
+      }
+      formData.append('statement', data.statement);
+      
+      response = await fetchWithRetry(
+        API_ENDPOINTS.PAYMENT_METHOD_BILLING_CYCLE_CREATE(paymentMethodId),
+        {
+          method: 'POST',
+          body: formData
+        }
+      );
+    } else {
+      // No file, use JSON
+      response = await fetchWithRetry(
+        API_ENDPOINTS.PAYMENT_METHOD_BILLING_CYCLE_CREATE(paymentMethodId),
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(data)
+        }
+      );
+    }
     
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -509,6 +537,16 @@ export const deleteBillingCycle = async (paymentMethodId, cycleId) => {
     logger.error('Failed to delete billing cycle:', error);
     throw new Error(`Unable to delete billing cycle: ${error.message}`);
   }
+};
+
+/**
+ * Get URL for billing cycle statement PDF
+ * @param {number} paymentMethodId - Payment method ID
+ * @param {number} cycleId - Billing cycle record ID
+ * @returns {string} URL to the PDF file
+ */
+export const getBillingCyclePdfUrl = (paymentMethodId, cycleId) => {
+  return API_ENDPOINTS.PAYMENT_METHOD_BILLING_CYCLE_PDF(paymentMethodId, cycleId);
 };
 
 /**

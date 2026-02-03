@@ -120,6 +120,7 @@ export const API_ENDPOINTS = {
   PAYMENT_METHOD_BILLING_CYCLE_UPDATE: (id, cycleId) => `${API_BASE_URL}/api/payment-methods/${id}/billing-cycles/${cycleId}`,
   PAYMENT_METHOD_BILLING_CYCLE_DELETE: (id, cycleId) => `${API_BASE_URL}/api/payment-methods/${id}/billing-cycles/${cycleId}`,
   PAYMENT_METHOD_BILLING_CYCLE_CURRENT: (id) => `${API_BASE_URL}/api/payment-methods/${id}/billing-cycles/current`,
+  PAYMENT_METHOD_BILLING_CYCLE_PDF: (id, cycleId) => `${API_BASE_URL}/api/payment-methods/${id}/billing-cycles/${cycleId}/pdf`,
   // Legacy billing cycles endpoint (for backward compatibility)
   PAYMENT_METHOD_BILLING_CYCLES: (id) => `${API_BASE_URL}/api/payment-methods/${id}/billing-cycles`,
   

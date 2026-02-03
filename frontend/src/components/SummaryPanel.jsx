@@ -7,6 +7,7 @@ import InvestmentsModal from './InvestmentsModal';
 import TrendIndicator from './TrendIndicator';
 import DataReminderBanner from './DataReminderBanner';
 import CreditCardReminderBanner from './CreditCardReminderBanner';
+import BillingCycleReminderBanner from './BillingCycleReminderBanner';
 import PaymentMethodsModal from './PaymentMethodsModal';
 import './SummaryPanel.css';
 
@@ -38,13 +39,19 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
       hasActiveCreditCards: false,
       overdueCards: [],
       dueSoonCards: []
+    },
+    billingCycleReminders: {
+      needsEntryCount: 0,
+      hasCardsWithBillingCycle: false,
+      cardsNeedingEntry: []
     }
   });
   const [dismissedReminders, setDismissedReminders] = useState({
     investments: false,
     loans: false,
     creditCardOverdue: false,
-    creditCardDueSoon: false
+    creditCardDueSoon: false,
+    billingCycleEntry: false
   });
   
   // Payment Methods Modal state
@@ -134,6 +141,11 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
           hasActiveCreditCards: false,
           overdueCards: [],
           dueSoonCards: []
+        },
+        billingCycleReminders: data.billingCycleReminders || {
+          needsEntryCount: 0,
+          hasCardsWithBillingCycle: false,
+          cardsNeedingEntry: []
         }
       });
     } catch (err) {
@@ -177,7 +189,7 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
 
   // Reset dismissed reminders only when month/year changes (not on every refresh)
   useEffect(() => {
-    setDismissedReminders({ investments: false, loans: false, creditCardOverdue: false, creditCardDueSoon: false });
+    setDismissedReminders({ investments: false, loans: false, creditCardOverdue: false, creditCardDueSoon: false, billingCycleEntry: false });
   }, [selectedYear, selectedMonth]);
 
   // Modal handlers - simplified using shared fetch function
@@ -230,6 +242,10 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
 
   const handleDismissCreditCardDueSoonReminder = () => {
     setDismissedReminders(prev => ({ ...prev, creditCardDueSoon: true }));
+  };
+
+  const handleDismissBillingCycleEntryReminder = () => {
+    setDismissedReminders(prev => ({ ...prev, billingCycleEntry: true }));
   };
 
   const handleInvestmentReminderClick = () => {
@@ -320,6 +336,16 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
           cards={reminderStatus.creditCardReminders.dueSoonCards}
           isOverdue={false}
           onDismiss={handleDismissCreditCardDueSoonReminder}
+          onClick={handleCreditCardReminderClick}
+        />
+      )}
+
+      {/* Billing Cycle Entry Reminders - Requirements: 4.1, 4.2, 4.4 */}
+      {reminderStatus.billingCycleReminders?.needsEntryCount > 0 && 
+       !dismissedReminders.billingCycleEntry && (
+        <BillingCycleReminderBanner
+          cards={reminderStatus.billingCycleReminders.cardsNeedingEntry}
+          onDismiss={handleDismissBillingCycleEntryReminder}
           onClick={handleCreditCardReminderClick}
         />
       )}

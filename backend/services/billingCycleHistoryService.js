@@ -79,6 +79,7 @@ class BillingCycleHistoryService {
    * @param {number} [data.minimum_payment] - Optional minimum payment amount
    * @param {string} [data.due_date] - Optional due date (YYYY-MM-DD)
    * @param {string} [data.notes] - Optional notes
+   * @param {string} [data.statement_pdf_path] - Optional PDF file path
    * @param {Date} [referenceDate] - Reference date for cycle calculation (defaults to today)
    * @returns {Promise<Object>} Created record with discrepancy
    * _Requirements: 2.1, 2.5_
@@ -135,7 +136,8 @@ class BillingCycleHistoryService {
       calculated_statement_balance: calculatedBalance,
       minimum_payment: data.minimum_payment,
       due_date: data.due_date,
-      notes: data.notes
+      notes: data.notes,
+      statement_pdf_path: data.statement_pdf_path
     });
     
     // Calculate and add discrepancy
@@ -150,7 +152,8 @@ class BillingCycleHistoryService {
       cycleEndDate: cycleDates.endDate,
       actualBalance: data.actual_statement_balance,
       calculatedBalance,
-      discrepancy: discrepancy.amount
+      discrepancy: discrepancy.amount,
+      hasPdf: !!data.statement_pdf_path
     });
     
     return {

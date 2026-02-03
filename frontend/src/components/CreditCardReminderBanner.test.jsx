@@ -497,6 +497,42 @@ describe('CreditCardReminderBanner', () => {
       expect(paymentAmount).toHaveTextContent('$0.00');
     });
 
+    test('should display balance source indicator when has_actual_balance is true', () => {
+      const cardWithActualBalance = { 
+        ...mockSingleCard, 
+        has_actual_balance: true 
+      };
+      
+      render(
+        <CreditCardReminderBanner 
+          cards={[cardWithActualBalance]} 
+          isOverdue={false}
+          {...mockCallbacks} 
+        />
+      );
+      
+      const sourceIndicator = screen.getByTestId('balance-source-indicator');
+      expect(sourceIndicator).toBeInTheDocument();
+      expect(sourceIndicator).toHaveTextContent('Statement');
+    });
+
+    test('should not display balance source indicator when has_actual_balance is false', () => {
+      const cardWithoutActualBalance = { 
+        ...mockSingleCard, 
+        has_actual_balance: false 
+      };
+      
+      render(
+        <CreditCardReminderBanner 
+          cards={[cardWithoutActualBalance]} 
+          isOverdue={false}
+          {...mockCallbacks} 
+        />
+      );
+      
+      expect(screen.queryByTestId('balance-source-indicator')).not.toBeInTheDocument();
+    });
+
     test('should handle card with negative days_until_due', () => {
       const overdueCard = { ...mockSingleCard, days_until_due: -1 };
       

@@ -19,6 +19,7 @@ class BillingCycleRepository {
    * @param {number} [data.minimum_payment] - Optional minimum payment amount
    * @param {string} [data.due_date] - Optional due date (YYYY-MM-DD)
    * @param {string} [data.notes] - Optional notes
+   * @param {string} [data.statement_pdf_path] - Optional PDF file path
    * @returns {Promise<Object>} Created record with ID
    * _Requirements: 1.1_
    */
@@ -30,8 +31,8 @@ class BillingCycleRepository {
         INSERT INTO credit_card_billing_cycles (
           payment_method_id, cycle_start_date, cycle_end_date,
           actual_statement_balance, calculated_statement_balance,
-          minimum_payment, due_date, notes
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          minimum_payment, due_date, notes, statement_pdf_path
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
       
       const params = [
@@ -42,7 +43,8 @@ class BillingCycleRepository {
         data.calculated_statement_balance,
         data.minimum_payment || null,
         data.due_date || null,
-        data.notes || null
+        data.notes || null,
+        data.statement_pdf_path || null
       ];
       
       db.run(sql, params, function(err) {
@@ -55,7 +57,8 @@ class BillingCycleRepository {
         logger.debug('Created billing cycle:', { 
           id: this.lastID, 
           paymentMethodId: data.payment_method_id,
-          cycleEndDate: data.cycle_end_date
+          cycleEndDate: data.cycle_end_date,
+          hasPdf: !!data.statement_pdf_path
         });
         
         resolve({
@@ -67,7 +70,8 @@ class BillingCycleRepository {
           calculated_statement_balance: data.calculated_statement_balance,
           minimum_payment: data.minimum_payment || null,
           due_date: data.due_date || null,
-          notes: data.notes || null
+          notes: data.notes || null,
+          statement_pdf_path: data.statement_pdf_path || null
         });
       });
     });
@@ -190,6 +194,7 @@ class BillingCycleRepository {
    * @param {number} [data.minimum_payment] - Updated minimum payment
    * @param {string} [data.due_date] - Updated due date
    * @param {string} [data.notes] - Updated notes
+   * @param {string} [data.statement_pdf_path] - Updated PDF path
    * @returns {Promise<Object|null>} Updated record or null if not found
    * _Requirements: 2.4_
    */
@@ -216,6 +221,7 @@ class BillingCycleRepository {
               minimum_payment = ?,
               due_date = ?,
               notes = ?,
+              statement_pdf_path = ?,
               updated_at = CURRENT_TIMESTAMP
           WHERE id = ?
         `;
@@ -227,6 +233,7 @@ class BillingCycleRepository {
           data.minimum_payment !== undefined ? data.minimum_payment : existing.minimum_payment,
           data.due_date !== undefined ? data.due_date : existing.due_date,
           data.notes !== undefined ? data.notes : existing.notes,
+          data.statement_pdf_path !== undefined ? data.statement_pdf_path : existing.statement_pdf_path,
           id
         ];
         

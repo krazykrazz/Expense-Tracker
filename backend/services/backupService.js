@@ -216,6 +216,39 @@ class BackupService {
   }
 
   /**
+   * Count PDF statement files in the statements directory
+   * @returns {Promise<number>} Number of PDF files
+   * @private
+   */
+  async _countStatementFiles() {
+    try {
+      const statementsPath = getStatementsPath();
+      if (!fs.existsSync(statementsPath)) {
+        return 0;
+      }
+      
+      let count = 0;
+      const countFilesRecursively = (dirPath) => {
+        const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+        for (const entry of entries) {
+          const fullPath = path.join(dirPath, entry.name);
+          if (entry.isDirectory()) {
+            countFilesRecursively(fullPath);
+          } else if (entry.isFile() && entry.name.toLowerCase().endsWith('.pdf')) {
+            count++;
+          }
+        }
+      };
+      
+      countFilesRecursively(statementsPath);
+      return count;
+    } catch (error) {
+      logger.warn('Error counting statement files:', error.message);
+      return 0;
+    }
+  }
+
+  /**
    * Clean up old backups, keeping only the last N
    */
   cleanupOldBackups(backupPath) {
@@ -545,17 +578,8 @@ class BackupService {
           });
         });
         
-        // Get credit card statement count
-        statementCount = await new Promise((resolve, reject) => {
-          db.get('SELECT COUNT(*) as count FROM credit_card_statements', [], (err, row) => {
-            if (err) {
-              logger.debug('credit_card_statements table may not exist:', err.message);
-              resolve(0);
-            } else {
-              resolve(row ? row.count : 0);
-            }
-          });
-        });
+        // Get credit card statement count (PDF files in statements directory)
+        statementCount = await this._countStatementFiles();
         
         // Get payment method count
         paymentMethodCount = await new Promise((resolve, reject) => {

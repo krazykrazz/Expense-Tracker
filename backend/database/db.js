@@ -727,6 +727,7 @@ function createTestDatabase() {
             payment_due_day INTEGER CHECK(payment_due_day IS NULL OR (payment_due_day >= 1 AND payment_due_day <= 31)),
             billing_cycle_start INTEGER CHECK(billing_cycle_start IS NULL OR (billing_cycle_start >= 1 AND billing_cycle_start <= 31)),
             billing_cycle_end INTEGER CHECK(billing_cycle_end IS NULL OR (billing_cycle_end >= 1 AND billing_cycle_end <= 31)),
+            billing_cycle_day INTEGER CHECK(billing_cycle_day IS NULL OR (billing_cycle_day >= 1 AND billing_cycle_day <= 31)),
             is_active INTEGER DEFAULT 1,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             updated_at TEXT DEFAULT CURRENT_TIMESTAMP
@@ -757,6 +758,24 @@ function createTestDatabase() {
             mime_type TEXT NOT NULL DEFAULT 'application/pdf',
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (payment_method_id) REFERENCES payment_methods(id) ON DELETE CASCADE
+          )`,
+          
+          // credit_card_billing_cycles table (for storing actual statement balances per billing cycle)
+          `CREATE TABLE IF NOT EXISTS credit_card_billing_cycles (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            payment_method_id INTEGER NOT NULL,
+            cycle_start_date TEXT NOT NULL,
+            cycle_end_date TEXT NOT NULL,
+            actual_statement_balance REAL NOT NULL CHECK(actual_statement_balance >= 0),
+            calculated_statement_balance REAL NOT NULL CHECK(calculated_statement_balance >= 0),
+            minimum_payment REAL CHECK(minimum_payment IS NULL OR minimum_payment >= 0),
+            due_date TEXT,
+            notes TEXT,
+            statement_pdf_path TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (payment_method_id) REFERENCES payment_methods(id) ON DELETE CASCADE,
+            UNIQUE(payment_method_id, cycle_end_date)
           )`
         ];
         
@@ -824,7 +843,10 @@ function createTestIndexes(db, resolve, reject) {
     'CREATE INDEX IF NOT EXISTS idx_cc_payments_method_id ON credit_card_payments(payment_method_id)',
     'CREATE INDEX IF NOT EXISTS idx_cc_payments_date ON credit_card_payments(payment_date)',
     'CREATE INDEX IF NOT EXISTS idx_cc_statements_method_id ON credit_card_statements(payment_method_id)',
-    'CREATE INDEX IF NOT EXISTS idx_cc_statements_date ON credit_card_statements(statement_date)'
+    'CREATE INDEX IF NOT EXISTS idx_cc_statements_date ON credit_card_statements(statement_date)',
+    'CREATE INDEX IF NOT EXISTS idx_billing_cycles_payment_method ON credit_card_billing_cycles(payment_method_id)',
+    'CREATE INDEX IF NOT EXISTS idx_billing_cycles_cycle_end ON credit_card_billing_cycles(cycle_end_date)',
+    'CREATE INDEX IF NOT EXISTS idx_billing_cycles_pm_cycle_end ON credit_card_billing_cycles(payment_method_id, cycle_end_date)'
   ];
   
   let completed = 0;

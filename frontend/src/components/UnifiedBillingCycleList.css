@@ -1,0 +1,495 @@
+/* UnifiedBillingCycleList Component Styles
+ * Requirements: 4.3, 5.1, 5.2, 5.3, 5.4, 5.5, 6.1, 6.2, 6.3, 6.4, 6.5
+ */
+
+.unified-billing-cycle-list-container {
+  background-color: var(--bg-card);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-default);
+}
+
+/* Loading State */
+.unified-billing-cycle-list-loading {
+  padding: var(--spacing-6);
+  text-align: center;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+/* Error State */
+.unified-billing-cycle-list-error {
+  padding: var(--spacing-4);
+  text-align: center;
+  color: var(--color-negative);
+  background-color: var(--color-negative-light);
+  border-radius: var(--radius-md);
+  margin: var(--spacing-2);
+}
+
+/* Empty State */
+.unified-billing-cycle-list-empty {
+  padding: var(--spacing-8) var(--spacing-4);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+
+.unified-billing-cycle-list-empty .empty-icon {
+  font-size: 3rem;
+  opacity: 0.5;
+}
+
+.unified-billing-cycle-list-empty .empty-title {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.unified-billing-cycle-list-empty .empty-description {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin: 0;
+  max-width: 300px;
+}
+
+/* List */
+.unified-billing-cycle-list {
+  display: flex;
+  flex-direction: column;
+}
+
+/* List Item */
+.unified-billing-cycle-item {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1fr 1fr auto;
+  grid-template-rows: auto auto;
+  gap: var(--spacing-2) var(--spacing-3);
+  align-items: center;
+  padding: var(--spacing-3) var(--spacing-4);
+  border-bottom: 1px solid var(--border-default);
+  transition: var(--transition-fast);
+}
+
+.unified-billing-cycle-item:last-child {
+  border-bottom: none;
+}
+
+.unified-billing-cycle-item:hover {
+  background-color: var(--bg-subtle);
+}
+
+/* Cycle Period */
+.unified-cycle-period {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+
+.unified-cycle-dates {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-primary);
+}
+
+/* PDF Button */
+.unified-cycle-pdf-btn {
+  background: var(--color-positive-light);
+  border: 1px solid rgba(34, 197, 94, 0.25);
+  cursor: pointer;
+  padding: var(--spacing-1) var(--spacing-2);
+  font-size: var(--text-sm);
+  border-radius: var(--radius-full);
+  transition: var(--transition-fast);
+  color: var(--color-positive-dark);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+}
+
+.unified-cycle-pdf-btn:hover {
+  background: rgba(34, 197, 94, 0.2);
+  border-color: rgba(34, 197, 94, 0.35);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.unified-cycle-pdf-btn:focus-visible {
+  outline: 2px solid var(--color-positive);
+  outline-offset: 2px;
+}
+
+/* Balance Info */
+.unified-cycle-balance {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+.unified-balance-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+
+.unified-balance-value {
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+.unified-balance-type {
+  font-size: var(--text-xs);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  font-weight: var(--font-medium);
+}
+
+.unified-balance-type.actual {
+  background-color: rgba(34, 197, 94, 0.15);
+  color: var(--color-positive);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.unified-balance-type.calculated {
+  background-color: rgba(156, 163, 175, 0.15);
+  color: var(--text-secondary);
+  border: 1px solid rgba(156, 163, 175, 0.3);
+}
+
+/* Transaction Count */
+.unified-cycle-transactions {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.unified-transaction-count {
+  white-space: nowrap;
+}
+
+/* Trend Indicator */
+.unified-cycle-trend {
+  display: flex;
+  justify-content: center;
+}
+
+.unified-trend-indicator {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  padding: var(--spacing-1) var(--spacing-2);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  min-width: 90px;
+  justify-content: center;
+}
+
+.unified-trend-indicator.trend-higher {
+  background-color: rgba(245, 158, 11, 0.15);
+  color: var(--color-warning);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.unified-trend-indicator.trend-lower {
+  background-color: rgba(59, 130, 246, 0.15);
+  color: var(--color-info);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.unified-trend-indicator.trend-same {
+  background-color: rgba(34, 197, 94, 0.15);
+  color: var(--color-positive);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.unified-trend-indicator.no-trend {
+  background-color: transparent;
+  color: var(--text-tertiary);
+  border: 1px solid var(--border-default);
+}
+
+.unified-trend-icon {
+  font-size: var(--text-base);
+}
+
+.unified-trend-amount {
+  white-space: nowrap;
+}
+
+/* Optional Details */
+.unified-cycle-details {
+  display: flex;
+  gap: var(--spacing-3);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  grid-column: 1 / 4;
+  grid-row: 2;
+}
+
+.unified-detail-item {
+  display: flex;
+  gap: var(--spacing-1);
+}
+
+/* Notes */
+.unified-cycle-notes {
+  grid-column: 1 / 5;
+  grid-row: 2;
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+
+/* Actions */
+.unified-cycle-actions {
+  display: flex;
+  gap: var(--spacing-1);
+  justify-content: flex-end;
+  align-self: start;
+}
+
+.unified-cycle-action-btn {
+  background: none;
+  border: none;
+  padding: var(--spacing-1);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-base);
+  opacity: 0.6;
+  transition: var(--transition-fast);
+}
+
+.unified-cycle-action-btn:hover {
+  opacity: 1;
+  background-color: var(--bg-muted);
+}
+
+.unified-cycle-action-btn.delete:hover {
+  background-color: var(--color-negative-light);
+}
+
+.unified-cycle-action-btn.enter-statement {
+  background-color: var(--color-primary-light);
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary);
+  padding: var(--spacing-1) var(--spacing-2);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  opacity: 1;
+  white-space: nowrap;
+}
+
+.unified-cycle-action-btn.enter-statement:hover {
+  background-color: var(--color-primary);
+  color: var(--text-inverse);
+}
+
+.unified-cycle-action-btn.auto-generated {
+  background-color: rgba(59, 130, 246, 0.1);
+  color: var(--color-info);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  padding: var(--spacing-1) var(--spacing-2);
+  font-size: var(--text-sm);
+  opacity: 1;
+}
+
+.unified-cycle-action-btn.auto-generated:hover {
+  background-color: rgba(59, 130, 246, 0.2);
+  border-color: rgba(59, 130, 246, 0.5);
+}
+
+/* Confirmation Dialog */
+.unified-billing-cycle-confirm-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.unified-billing-cycle-confirm-dialog {
+  background-color: var(--bg-card);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-4);
+  max-width: 400px;
+  width: 90%;
+  box-shadow: var(--shadow-lg);
+}
+
+.unified-billing-cycle-confirm-dialog h3 {
+  margin: 0 0 var(--spacing-3) 0;
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+.unified-billing-cycle-confirm-dialog p {
+  margin: 0 0 var(--spacing-2) 0;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.unified-billing-cycle-confirm-dialog .confirm-detail {
+  font-weight: var(--font-medium);
+  color: var(--text-primary);
+}
+
+.unified-billing-cycle-confirm-dialog .confirm-warning {
+  color: var(--color-negative);
+  font-size: var(--text-xs);
+}
+
+.unified-billing-cycle-confirm-dialog .confirm-actions {
+  display: flex;
+  gap: var(--spacing-3);
+  margin-top: var(--spacing-4);
+}
+
+.unified-billing-cycle-confirm-dialog .confirm-delete-btn {
+  flex: 1;
+  padding: var(--spacing-2) var(--spacing-4);
+  background-color: var(--color-negative);
+  color: var(--text-inverse);
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  transition: var(--transition-button);
+}
+
+.unified-billing-cycle-confirm-dialog .confirm-delete-btn:hover {
+  background-color: var(--color-negative-dark);
+}
+
+.unified-billing-cycle-confirm-dialog .confirm-cancel-btn {
+  flex: 1;
+  padding: var(--spacing-2) var(--spacing-4);
+  background-color: var(--bg-card);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  transition: var(--transition-button);
+}
+
+.unified-billing-cycle-confirm-dialog .confirm-cancel-btn:hover {
+  background-color: var(--bg-muted);
+  border-color: var(--border-strong);
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .unified-billing-cycle-item {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-2);
+    padding: var(--spacing-3);
+  }
+
+  .unified-cycle-period {
+    grid-column: 1 / -1;
+  }
+
+  .unified-cycle-balance {
+    grid-column: 1;
+  }
+
+  .unified-cycle-transactions {
+    grid-column: 2;
+    text-align: right;
+  }
+
+  .unified-cycle-trend {
+    grid-column: 1;
+    justify-content: flex-start;
+  }
+
+  .unified-cycle-actions {
+    grid-column: 2;
+    justify-content: flex-end;
+  }
+
+  .unified-trend-indicator {
+    min-width: auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .unified-billing-cycle-item {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-2);
+  }
+
+  .unified-cycle-period,
+  .unified-cycle-balance,
+  .unified-cycle-transactions,
+  .unified-cycle-trend,
+  .unified-cycle-actions {
+    grid-column: 1;
+  }
+
+  .unified-cycle-actions {
+    justify-content: flex-start;
+    padding-top: var(--spacing-2);
+    border-top: 1px dashed var(--border-default);
+  }
+
+  .unified-balance-row {
+    flex-wrap: wrap;
+  }
+}
+
+/* Touch-friendly styles */
+@media (max-width: 768px) and (pointer: coarse) {
+  .unified-cycle-action-btn {
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .unified-cycle-action-btn.enter-statement {
+    min-height: 44px;
+    padding: var(--spacing-2) var(--spacing-3);
+  }
+
+  .unified-billing-cycle-confirm-dialog .confirm-delete-btn,
+  .unified-billing-cycle-confirm-dialog .confirm-cancel-btn {
+    min-height: 48px;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .unified-billing-cycle-item,
+  .unified-cycle-action-btn,
+  .unified-cycle-pdf-btn,
+  .unified-billing-cycle-confirm-dialog .confirm-delete-btn,
+  .unified-billing-cycle-confirm-dialog .confirm-cancel-btn {
+    transition: none;
+  }
+}
+
+/* Focus visible support */
+.unified-cycle-action-btn:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  opacity: 1;
+}
+
+.unified-billing-cycle-confirm-dialog .confirm-delete-btn:focus-visible,
+.unified-billing-cycle-confirm-dialog .confirm-cancel-btn:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}

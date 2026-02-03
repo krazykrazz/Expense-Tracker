@@ -108,6 +108,8 @@ describe('PaymentMethodService - Inactive Payment Methods Property Tests', () =>
             
             if (type === 'credit_card') {
               data.full_name = `Test Credit Card ${i}`;
+              data.billing_cycle_day = 15;
+              data.payment_due_day = 25;
             }
             
             const created = await paymentMethodService.createPaymentMethod(data);
@@ -164,6 +166,8 @@ describe('PaymentMethodService - Inactive Payment Methods Property Tests', () =>
           
           if (type === 'credit_card') {
             data.full_name = 'Inactive Credit Card';
+            data.billing_cycle_day = 15;
+            data.payment_due_day = 25;
           }
           
           const created = await paymentMethodService.createPaymentMethod(data);
@@ -207,6 +211,8 @@ describe('PaymentMethodService - Inactive Payment Methods Property Tests', () =>
           
           if (type === 'credit_card') {
             data.full_name = 'Card To Deactivate';
+            data.billing_cycle_day = 15;
+            data.payment_due_day = 25;
           }
           
           const created = await paymentMethodService.createPaymentMethod(data);
@@ -264,6 +270,8 @@ describe('PaymentMethodService - Inactive Payment Methods Property Tests', () =>
           
           if (type === 'credit_card') {
             data.full_name = 'Card To Reactivate';
+            data.billing_cycle_day = 15;
+            data.payment_due_day = 25;
           }
           
           const created = await paymentMethodService.createPaymentMethod(data);
@@ -321,6 +329,8 @@ describe('PaymentMethodService - Inactive Payment Methods Property Tests', () =>
             
             if (type === 'credit_card') {
               data.full_name = `Count Test Card ${i}`;
+              data.billing_cycle_day = 15;
+              data.payment_due_day = 25;
             }
             
             const created = await paymentMethodService.createPaymentMethod(data);

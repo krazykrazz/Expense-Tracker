@@ -23,6 +23,7 @@ const merchantAnalyticsRoutes = require('./routes/merchantAnalyticsRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
 const invoiceRoutes = require('./routes/invoiceRoutes');
 const paymentMethodRoutes = require('./routes/paymentMethodRoutes');
+const billingCycleRoutes = require('./routes/billingCycleRoutes');
 const backupService = require('./services/backupService');
 const logger = require('./config/logger');
 const { configureTimezone, getTimezone } = require('./config/timezone');
@@ -163,6 +164,9 @@ app.use('/api/invoices', invoiceRoutes);
 // Payment Method API routes - apply upload rate limiting for statement uploads
 app.post('/api/payment-methods/:id/statements', uploadLimiter);
 app.use('/api/payment-methods', paymentMethodRoutes);
+
+// Billing Cycle History API routes (nested under payment-methods)
+app.use('/api/payment-methods', billingCycleRoutes);
 
 // Serve static files from the React app (after build)
 // In container (production/staging): /app/frontend/dist, in development: ../frontend/dist

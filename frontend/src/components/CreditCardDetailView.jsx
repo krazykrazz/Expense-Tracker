@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getPaymentMethod } from '../services/paymentMethodApi';
-import { getPayments, getStatements, deletePayment, deleteStatement, getStatementUrl, getBillingCycles } from '../services/creditCardApi';
+import { getPayments, deletePayment, getStatementBalance, deleteBillingCycle, getCurrentCycleStatus, getBillingCyclePdfUrl, getUnifiedBillingCycles } from '../services/creditCardApi';
 import { createLogger } from '../utils/logger';
 import CreditCardPaymentForm from './CreditCardPaymentForm';
-import CreditCardStatementUpload from './CreditCardStatementUpload';
+import BillingCycleHistoryForm from './BillingCycleHistoryForm';
+import UnifiedBillingCycleList from './UnifiedBillingCycleList';
 import './CreditCardDetailView.css';
 
 const logger = createLogger('CreditCardDetailView');
@@ -19,7 +20,7 @@ const UTILIZATION_DANGER_THRESHOLD = 70;
  * - Balance, limit, and utilization
  * - Days until payment due
  * - Payment history list
- * - Statement upload and list
+ * - Billing cycle history with statement balances
  * 
  * Requirements: 3.1, 3.5, 3.8, 3.9, 3.10, 3A.5, 3B.5
  */
@@ -32,15 +33,18 @@ const CreditCardDetailView = ({
   // State
   const [paymentMethod, setPaymentMethod] = useState(null);
   const [payments, setPayments] = useState([]);
-  const [statements, setStatements] = useState([]);
-  const [billingCycles, setBillingCycles] = useState([]);
-  const [billingCyclesExpanded, setBillingCyclesExpanded] = useState(false);
+  const [unifiedBillingCycles, setUnifiedBillingCycles] = useState([]);
+  const [unifiedBillingCyclesLoading, setUnifiedBillingCyclesLoading] = useState(false);
+  const [statementBalanceInfo, setStatementBalanceInfo] = useState(null);
+  const [currentCycleStatus, setCurrentCycleStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
   const [showPaymentForm, setShowPaymentForm] = useState(false);
-  const [showStatementUpload, setShowStatementUpload] = useState(false);
+  const [showBillingCycleForm, setShowBillingCycleForm] = useState(false);
+  const [editingBillingCycle, setEditingBillingCycle] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [pdfViewerCycle, setPdfViewerCycle] = useState(null);
 
   // Format currency
   const formatCurrency = (amount) => {
@@ -87,27 +91,45 @@ const CreditCardDetailView = ({
     setError(null);
 
     try {
-      const [methodData, paymentsData, statementsData] = await Promise.all([
+      const [methodData, paymentsData] = await Promise.all([
         getPaymentMethod(paymentMethodId),
-        getPayments(paymentMethodId),
-        getStatements(paymentMethodId)
+        getPayments(paymentMethodId)
       ]);
 
       setPaymentMethod(methodData);
       setPayments(paymentsData || []);
-      setStatements(statementsData || []);
       
-      // Fetch billing cycles if billing cycle is configured
-      if (methodData && methodData.billing_cycle_start && methodData.billing_cycle_end) {
+      // Fetch statement balance info and unified billing cycles if billing_cycle_day is configured
+      if (methodData && methodData.billing_cycle_day) {
         try {
-          const cyclesData = await getBillingCycles(paymentMethodId, 6);
-          setBillingCycles(cyclesData || []);
-        } catch (cycleErr) {
-          logger.warn('Failed to fetch billing cycles:', cycleErr);
-          setBillingCycles([]);
+          const [statementData, cycleStatusData] = await Promise.all([
+            getStatementBalance(paymentMethodId),
+            getCurrentCycleStatus(paymentMethodId)
+          ]);
+          setStatementBalanceInfo(statementData);
+          setCurrentCycleStatus(cycleStatusData);
+          
+          // Fetch unified billing cycles (with auto-generation)
+          setUnifiedBillingCyclesLoading(true);
+          try {
+            const unifiedData = await getUnifiedBillingCycles(paymentMethodId, { limit: 12, includeAutoGenerate: true });
+            setUnifiedBillingCycles(unifiedData.billingCycles || []);
+          } catch (unifiedErr) {
+            logger.warn('Failed to fetch unified billing cycles:', unifiedErr);
+            setUnifiedBillingCycles([]);
+          } finally {
+            setUnifiedBillingCyclesLoading(false);
+          }
+        } catch (statementErr) {
+          logger.warn('Failed to fetch statement balance or cycle status:', statementErr);
+          setStatementBalanceInfo(null);
+          setCurrentCycleStatus(null);
+          setUnifiedBillingCycles([]);
         }
       } else {
-        setBillingCycles([]);
+        setStatementBalanceInfo(null);
+        setCurrentCycleStatus(null);
+        setUnifiedBillingCycles([]);
       }
     } catch (err) {
       logger.error('Failed to fetch credit card data:', err);
@@ -131,20 +153,44 @@ const CreditCardDetailView = ({
     onUpdate();
   };
 
-  // Handle statement uploaded
-  const handleStatementUploaded = async (result) => {
-    setShowStatementUpload(false);
+  // Handle billing cycle form submitted
+  const handleBillingCycleSubmitted = async (result) => {
+    setShowBillingCycleForm(false);
+    setEditingBillingCycle(null);
     await fetchData();
+    onUpdate();
+  };
+
+  // Handle edit billing cycle
+  const handleEditBillingCycle = (cycle) => {
+    setEditingBillingCycle(cycle);
+    setShowBillingCycleForm(true);
+  };
+
+  // Handle enter statement for auto-generated cycle
+  const handleEnterStatement = (cycle) => {
+    // Pass the full cycle object including id so the form can update the existing record
+    // The form will detect this is an auto-generated cycle (no actual_statement_balance)
+    // and will update it with the user-provided actual balance
+    setEditingBillingCycle({
+      id: cycle.id,
+      cycle_start_date: cycle.cycle_start_date,
+      cycle_end_date: cycle.cycle_end_date,
+      calculated_statement_balance: cycle.calculated_statement_balance,
+      // Don't pass actual_statement_balance so the form knows this is a new entry
+      actual_statement_balance: null
+    });
+    setShowBillingCycleForm(true);
+  };
+
+  // Handle delete billing cycle
+  const handleDeleteBillingCycle = async (cycle) => {
+    setDeleteConfirm({ type: 'billingCycle', item: cycle });
   };
 
   // Handle delete payment
   const handleDeletePayment = async (payment) => {
     setDeleteConfirm({ type: 'payment', item: payment });
-  };
-
-  // Handle delete statement
-  const handleDeleteStatement = async (statement) => {
-    setDeleteConfirm({ type: 'statement', item: statement });
   };
 
   // Confirm delete
@@ -154,8 +200,8 @@ const CreditCardDetailView = ({
     try {
       if (deleteConfirm.type === 'payment') {
         await deletePayment(paymentMethodId, deleteConfirm.item.id);
-      } else {
-        await deleteStatement(paymentMethodId, deleteConfirm.item.id);
+      } else if (deleteConfirm.type === 'billingCycle') {
+        await deleteBillingCycle(paymentMethodId, deleteConfirm.item.id);
       }
       setDeleteConfirm(null);
       await fetchData();
@@ -166,16 +212,21 @@ const CreditCardDetailView = ({
     }
   };
 
-  // Handle view statement
-  const handleViewStatement = (statement) => {
-    const url = getStatementUrl(paymentMethodId, statement.id);
-    window.open(url, '_blank');
+  // Handle view billing cycle PDF
+  const handleViewBillingCyclePdf = (cycle) => {
+    setPdfViewerCycle(cycle);
+  };
+
+  // Handle close PDF viewer
+  const handleClosePdfViewer = () => {
+    setPdfViewerCycle(null);
   };
 
   // Handle close
   const handleClose = () => {
     setShowPaymentForm(false);
-    setShowStatementUpload(false);
+    setShowBillingCycleForm(false);
+    setEditingBillingCycle(null);
     setDeleteConfirm(null);
     setError(null);
     onClose();
@@ -200,19 +251,23 @@ const CreditCardDetailView = ({
     );
   }
 
-  // Show statement upload
-  if (showStatementUpload && paymentMethod) {
+  // Show billing cycle form
+  if (showBillingCycleForm && paymentMethod) {
     return (
       <div className="cc-detail-modal-overlay" onClick={handleClose}>
         <div className="cc-detail-modal-container cc-detail-form-view" onClick={(e) => e.stopPropagation()}>
-          <CreditCardStatementUpload
+          <BillingCycleHistoryForm
             paymentMethodId={paymentMethodId}
             paymentMethodName={paymentMethod.display_name}
-            billingCycleStart={paymentMethod.billing_cycle_start}
-            billingCycleEnd={paymentMethod.billing_cycle_end}
-            paymentDueDay={paymentMethod.payment_due_day}
-            onStatementUploaded={handleStatementUploaded}
-            onCancel={() => setShowStatementUpload(false)}
+            cycleStartDate={editingBillingCycle?.cycle_start_date || currentCycleStatus?.cycleStartDate}
+            cycleEndDate={editingBillingCycle?.cycle_end_date || currentCycleStatus?.cycleEndDate}
+            calculatedBalance={editingBillingCycle?.calculated_statement_balance ?? currentCycleStatus?.calculatedBalance}
+            editingCycle={editingBillingCycle}
+            onSubmit={handleBillingCycleSubmitted}
+            onCancel={() => {
+              setShowBillingCycleForm(false);
+              setEditingBillingCycle(null);
+            }}
           />
         </div>
       </div>
@@ -259,12 +314,44 @@ const CreditCardDetailView = ({
 
               {/* Statement Balance Card - Only show if billing cycle configured */}
               {paymentMethod.statement_balance !== null && paymentMethod.statement_balance !== undefined && (
-                <div className="cc-overview-card balance-card statement-balance-card">
-                  <div className="overview-label">Statement Balance</div>
-                  <div className="overview-value balance-value">
-                    {formatCurrency(paymentMethod.statement_balance)}
+                <div className={`cc-overview-card balance-card statement-balance-card ${
+                  statementBalanceInfo?.isPaid ? 'statement-paid' : ''
+                } ${currentCycleStatus?.hasActualBalance ? 'has-actual-balance' : ''}`}>
+                  <div className="overview-label">
+                    Statement Balance
+                    {statementBalanceInfo?.isPaid && (
+                      <span className="paid-badge">✓ Paid</span>
+                    )}
+                    {currentCycleStatus?.hasActualBalance && !statementBalanceInfo?.isPaid && (
+                      <span className="actual-badge" title="User-provided actual balance">Actual</span>
+                    )}
+                    {!currentCycleStatus?.hasActualBalance && !statementBalanceInfo?.isPaid && (
+                      <span className="calculated-badge" title="Calculated from tracked expenses">Calculated</span>
+                    )}
                   </div>
-                  <div className="balance-description">From previous cycles</div>
+                  <div className="overview-value balance-value">
+                    {statementBalanceInfo?.isPaid 
+                      ? formatCurrency(0) 
+                      : currentCycleStatus?.hasActualBalance
+                        ? formatCurrency(currentCycleStatus.actualBalance)
+                        : formatCurrency(statementBalanceInfo?.statementBalance ?? paymentMethod.statement_balance)
+                    }
+                  </div>
+                  <div className="balance-description">
+                    {statementBalanceInfo?.isPaid 
+                      ? 'Statement paid in full'
+                      : currentCycleStatus?.hasActualBalance
+                        ? 'From your statement'
+                        : paymentMethod.payment_due_day 
+                          ? `Due by day ${paymentMethod.payment_due_day}`
+                          : 'From previous cycles'
+                    }
+                  </div>
+                  {statementBalanceInfo?.cycleStartDate && statementBalanceInfo?.cycleEndDate && (
+                    <div className="statement-cycle-dates">
+                      Statement period: {formatDate(statementBalanceInfo.cycleStartDate)} - {formatDate(statementBalanceInfo.cycleEndDate)}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -304,12 +391,16 @@ const CreditCardDetailView = ({
                 </div>
               )}
 
-              {/* Due Date Card */}
+              {/* Due Date Card - Only show urgency if statement is NOT paid */}
               {paymentMethod.days_until_due !== null && paymentMethod.days_until_due !== undefined && (
-                <div className={`cc-overview-card due-date-card ${paymentMethod.days_until_due <= 7 ? 'due-soon' : ''}`}>
+                <div className={`cc-overview-card due-date-card ${
+                  !statementBalanceInfo?.isPaid && paymentMethod.days_until_due <= 7 ? 'due-soon' : ''
+                }`}>
                   <div className="overview-label">Payment Due</div>
                   <div className="overview-value due-value">
-                    {paymentMethod.days_until_due <= 0 ? (
+                    {statementBalanceInfo?.isPaid ? (
+                      <span className="paid-status">✓ Paid</span>
+                    ) : paymentMethod.days_until_due <= 0 ? (
                       <span className="overdue">Overdue!</span>
                     ) : paymentMethod.days_until_due === 1 ? (
                       'Tomorrow'
@@ -332,12 +423,6 @@ const CreditCardDetailView = ({
               >
                 💳 Log Payment
               </button>
-              <button 
-                className="cc-action-btn secondary"
-                onClick={() => setShowStatementUpload(true)}
-              >
-                📄 Upload Statement
-              </button>
             </div>
 
             {/* Historical Balance Adjustment Banner */}
@@ -356,10 +441,10 @@ const CreditCardDetailView = ({
                 Payments ({payments.length})
               </button>
               <button 
-                className={`cc-tab ${activeTab === 'statements' ? 'active' : ''}`}
-                onClick={() => setActiveTab('statements')}
+                className={`cc-tab ${activeTab === 'billing-cycles' ? 'active' : ''}`}
+                onClick={() => setActiveTab('billing-cycles')}
               >
-                Statements ({statements.length})
+                Billing Cycles ({paymentMethod.billing_cycle_day ? unifiedBillingCycles.length : 0})
               </button>
             </div>
 
@@ -448,45 +533,6 @@ const CreditCardDetailView = ({
                       </div>
                     </div>
                   )}
-
-                  {/* Billing Cycle History Section */}
-                  {billingCycles.length > 1 && (
-                    <div className="cc-info-section billing-cycle-history-section">
-                      <button 
-                        className="billing-history-toggle"
-                        onClick={() => setBillingCyclesExpanded(!billingCyclesExpanded)}
-                      >
-                        <h4>Billing Cycle History</h4>
-                        <span className={`toggle-icon ${billingCyclesExpanded ? 'expanded' : ''}`}>
-                          {billingCyclesExpanded ? '▼' : '▶'}
-                        </span>
-                      </button>
-                      {billingCyclesExpanded && (
-                        <div className="billing-cycle-history-list">
-                          {billingCycles.filter(cycle => !cycle.is_current).map((cycle, index) => (
-                            <div key={`${cycle.start_date}-${index}`} className="billing-cycle-history-item">
-                              <div className="cycle-history-dates">
-                                {formatDate(cycle.start_date)} - {formatDate(cycle.end_date)}
-                              </div>
-                              <div className="cycle-history-stats">
-                                <span className="cycle-history-stat">
-                                  <strong>{cycle.transaction_count}</strong> transactions
-                                </span>
-                                <span className="cycle-history-stat">
-                                  <strong>{formatCurrency(cycle.total_amount)}</strong> spent
-                                </span>
-                                {cycle.payment_count > 0 && (
-                                  <span className="cycle-history-stat payment">
-                                    <strong>{formatCurrency(cycle.payment_total)}</strong> paid
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
                 </div>
               )}
 
@@ -528,50 +574,31 @@ const CreditCardDetailView = ({
                 </div>
               )}
 
-              {activeTab === 'statements' && (
-                <div className="cc-tab-content statements-content">
-                  {statements.length === 0 ? (
-                    <div className="cc-empty-state">
-                      <span className="empty-icon">📄</span>
-                      <p>No statements uploaded yet</p>
-                      <button 
-                        className="cc-action-btn primary"
-                        onClick={() => setShowStatementUpload(true)}
-                      >
-                        Upload First Statement
-                      </button>
+              {activeTab === 'billing-cycles' && (
+                <div className="cc-tab-content billing-cycles-content">
+                  {/* Unified Billing Cycles Section */}
+                  {paymentMethod.billing_cycle_day ? (
+                    <div className="billing-cycles-section">
+                      <div className="billing-cycles-section-header">
+                        <h4>Billing Cycles</h4>
+                      </div>
+                      <UnifiedBillingCycleList
+                        cycles={unifiedBillingCycles}
+                        paymentMethodId={paymentMethodId}
+                        onEnterStatement={handleEnterStatement}
+                        onEdit={handleEditBillingCycle}
+                        onDelete={handleDeleteBillingCycle}
+                        onViewPdf={handleViewBillingCyclePdf}
+                        formatCurrency={formatCurrency}
+                        formatDate={formatDate}
+                        loading={unifiedBillingCyclesLoading}
+                      />
                     </div>
                   ) : (
-                    <div className="cc-statements-list">
-                      {statements.map(statement => (
-                        <div key={statement.id} className="cc-statement-item">
-                          <div className="statement-info">
-                            <div className="statement-date">
-                              Statement: {formatDate(statement.statementDate)}
-                            </div>
-                            <div className="statement-period">
-                              Period: {formatDate(statement.statementPeriodStart)} - {formatDate(statement.statementPeriodEnd)}
-                            </div>
-                            <div className="statement-filename">{statement.originalFilename}</div>
-                          </div>
-                          <div className="statement-actions">
-                            <button 
-                              className="statement-view-btn"
-                              onClick={() => handleViewStatement(statement)}
-                              title="View statement"
-                            >
-                              👁️
-                            </button>
-                            <button 
-                              className="statement-delete-btn"
-                              onClick={() => handleDeleteStatement(statement)}
-                              title="Delete statement"
-                            >
-                              🗑️
-                            </button>
-                          </div>
-                        </div>
-                      ))}
+                    <div className="cc-empty-state">
+                      <span className="empty-icon">📊</span>
+                      <p>Configure a billing cycle day to track billing cycles</p>
+                      <p className="empty-hint">Edit this card's settings to set the billing cycle day</p>
                     </div>
                   )}
                 </div>
@@ -586,12 +613,19 @@ const CreditCardDetailView = ({
         {deleteConfirm && (
           <div className="cc-confirm-overlay">
             <div className="cc-confirm-dialog">
-              <h3>Delete {deleteConfirm.type === 'payment' ? 'Payment' : 'Statement'}</h3>
+              <h3>Delete {deleteConfirm.type === 'payment' ? 'Payment' : 'Billing Cycle'}</h3>
               <p>
-                Are you sure you want to delete this {deleteConfirm.type}?
+                Are you sure you want to delete this {deleteConfirm.type === 'billingCycle' ? 'billing cycle record' : 'payment'}?
                 {deleteConfirm.type === 'payment' && (
                   <span className="confirm-detail">
                     {formatCurrency(deleteConfirm.item.amount)} on {formatDate(deleteConfirm.item.payment_date)}
+                  </span>
+                )}
+                {deleteConfirm.type === 'billingCycle' && (
+                  <span className="confirm-detail">
+                    {formatDate(deleteConfirm.item.cycle_start_date)} - {formatDate(deleteConfirm.item.cycle_end_date)}
+                    <br />
+                    Actual Balance: {formatCurrency(deleteConfirm.item.actual_statement_balance)}
                   </span>
                 )}
               </p>
@@ -602,6 +636,40 @@ const CreditCardDetailView = ({
                 </button>
                 <button className="confirm-cancel-btn" onClick={() => setDeleteConfirm(null)}>
                   Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* PDF Viewer Modal */}
+        {pdfViewerCycle && (
+          <div className="cc-pdf-viewer-overlay" onClick={handleClosePdfViewer}>
+            <div className="cc-pdf-viewer-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="cc-pdf-viewer-header">
+                <h3>Statement PDF</h3>
+                <span className="cc-pdf-viewer-period">
+                  {formatDate(pdfViewerCycle.cycle_start_date)} - {formatDate(pdfViewerCycle.cycle_end_date)}
+                </span>
+                <button className="cc-pdf-viewer-close" onClick={handleClosePdfViewer}>✕</button>
+              </div>
+              <div className="cc-pdf-viewer-content">
+                <iframe
+                  src={getBillingCyclePdfUrl(paymentMethodId, pdfViewerCycle.id)}
+                  title="Statement PDF"
+                  className="cc-pdf-iframe"
+                />
+              </div>
+              <div className="cc-pdf-viewer-actions">
+                <a
+                  href={getBillingCyclePdfUrl(paymentMethodId, pdfViewerCycle.id)}
+                  download
+                  className="cc-pdf-download-btn"
+                >
+                  📥 Download
+                </a>
+                <button className="cc-pdf-close-btn" onClick={handleClosePdfViewer}>
+                  Close
                 </button>
               </div>
             </div>

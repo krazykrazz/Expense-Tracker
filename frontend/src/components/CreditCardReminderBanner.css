@@ -1,6 +1,6 @@
 .credit-card-reminder-banner {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   padding: 12px 16px;
   border-radius: 8px;
@@ -45,13 +45,22 @@
 
 .credit-card-reminder-banner .reminder-content {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
-  flex-wrap: wrap;
+  flex: 1;
 }
 
 .credit-card-reminder-banner .reminder-icon {
   font-size: 1.3rem;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.credit-card-reminder-banner .reminder-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
 }
 
 .credit-card-reminder-banner .reminder-message {
@@ -65,6 +74,113 @@
   font-weight: normal;
 }
 
+/* Payment info section */
+.credit-card-reminder-banner .reminder-payment-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.credit-card-reminder-banner .reminder-payment-label {
+  font-size: 0.85rem;
+  opacity: 0.9;
+}
+
+.credit-card-reminder-banner .reminder-payment-amount {
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.credit-card-reminder-banner .reminder-due-date {
+  font-size: 0.8rem;
+  opacity: 0.8;
+}
+
+/* Urgency badges */
+.credit-card-reminder-banner .reminder-urgency-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.credit-card-reminder-banner .reminder-urgency-badge.small {
+  padding: 1px 4px;
+  font-size: 0.7rem;
+}
+
+.credit-card-reminder-banner .reminder-urgency-badge.overdue {
+  background-color: rgba(220, 53, 69, 0.2);
+  color: #721c24;
+}
+
+.credit-card-reminder-banner .reminder-urgency-badge.due-today {
+  background-color: rgba(255, 193, 7, 0.3);
+  color: #856404;
+}
+
+.credit-card-reminder-banner .reminder-urgency-badge.due-soon {
+  background-color: rgba(255, 193, 7, 0.2);
+  color: #856404;
+}
+
+.credit-card-reminder-banner .reminder-urgency-badge.upcoming {
+  background-color: rgba(23, 162, 184, 0.2);
+  color: #0c5460;
+}
+
+.credit-card-reminder-banner .reminder-urgency-badge.paid {
+  background-color: rgba(40, 167, 69, 0.2);
+  color: #155724;
+}
+
+/* Balance source indicator */
+.credit-card-reminder-banner .reminder-balance-source {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 0.7rem;
+  font-weight: 500;
+}
+
+.credit-card-reminder-banner .reminder-balance-source.actual {
+  background-color: rgba(40, 167, 69, 0.15);
+  color: #155724;
+}
+
+/* Cards breakdown for multiple cards */
+.credit-card-reminder-banner .reminder-cards-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.credit-card-reminder-banner .reminder-card-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+}
+
+.credit-card-reminder-banner .reminder-card-name {
+  flex: 1;
+}
+
+.credit-card-reminder-banner .reminder-card-amount {
+  font-weight: 600;
+}
+
 .credit-card-reminder-banner .reminder-dismiss-btn {
   background: transparent;
   border: none;
@@ -74,6 +190,7 @@
   border-radius: 4px;
   transition: background-color 0.2s ease;
   line-height: 1;
+  flex-shrink: 0;
 }
 
 .credit-card-reminder-banner.due-soon .reminder-dismiss-btn {
@@ -123,5 +240,39 @@
 
   .credit-card-reminder-banner.overdue .reminder-dismiss-btn {
     color: #f5c6cb;
+  }
+
+  .credit-card-reminder-banner .reminder-cards-breakdown {
+    border-top-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .credit-card-reminder-banner .reminder-urgency-badge.overdue {
+    background-color: rgba(220, 53, 69, 0.3);
+    color: #f5c6cb;
+  }
+
+  .credit-card-reminder-banner .reminder-urgency-badge.due-today {
+    background-color: rgba(255, 193, 7, 0.3);
+    color: #ffc107;
+  }
+
+  .credit-card-reminder-banner .reminder-urgency-badge.due-soon {
+    background-color: rgba(255, 193, 7, 0.2);
+    color: #ffc107;
+  }
+
+  .credit-card-reminder-banner .reminder-urgency-badge.upcoming {
+    background-color: rgba(23, 162, 184, 0.3);
+    color: #17a2b8;
+  }
+
+  .credit-card-reminder-banner .reminder-urgency-badge.paid {
+    background-color: rgba(40, 167, 69, 0.3);
+    color: #28a745;
+  }
+
+  .credit-card-reminder-banner .reminder-balance-source.actual {
+    background-color: rgba(40, 167, 69, 0.25);
+    color: #28a745;
   }
 }

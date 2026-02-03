@@ -14,6 +14,11 @@ A full-stack expense tracking application built with React and Node.js.
 - 💳 Payment method memory (remembers last used)
 - 📱 **Sticky summary scrolling** - Summary panel scrolls independently from expense list for better usability
 - ➕ **Floating add button** - Quick access to add expenses when viewing long lists (appears with >10 expenses)
+- 🎯 **Smart method filter** - Combined payment type and method selection in a single grouped dropdown
+- 🏷️ **Filter chips** - Visual display of active filters with one-click removal
+- 📂 **Advanced filters** - Collapsible section for Invoice and Insurance status filters
+- 🔢 **Filter count badge** - Shows total number of active filters at a glance
+- 🔙 **Enhanced global view** - Shows which filters triggered global view with "Return to Monthly View" button
 
 ### Payment Methods
 - 💳 **Configurable payment methods** - Database-driven payment method management

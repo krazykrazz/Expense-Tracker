@@ -58,6 +58,9 @@ router.post('/:id/recalculate-balance', paymentMethodController.recalculateBalan
 // GET /api/payment-methods/:id/billing-cycles - Get billing cycle history
 router.get('/:id/billing-cycles', paymentMethodController.getBillingCycles);
 
+// GET /api/payment-methods/:id/statement-balance - Get calculated statement balance
+router.get('/:id/statement-balance', paymentMethodController.getStatementBalance);
+
 // ==========================================
 // Credit Card Payment Routes
 // ==========================================

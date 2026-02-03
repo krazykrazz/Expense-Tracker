@@ -1,8 +1,8 @@
 # Configurable Payment Methods
 
-**Version**: 4.20.0  
+**Version**: 5.3.1  
 **Status**: Implemented  
-**Spec**: `.kiro/specs/configurable-payment-methods/`
+**Spec**: `.kiro/specs/configurable-payment-methods/`, `.kiro/specs/credit-card-statement-balance/`
 
 ## Overview
 
@@ -40,11 +40,13 @@ Access via the "💳 Payment Methods" button in the main navigation:
 For credit card type payment methods:
 
 - **Balance Tracking**: Automatic balance updates when expenses are added/deleted
+- **Statement Balance Calculation**: Automatic calculation of statement balance based on billing cycle dates
+- **Smart Payment Alerts**: Payment reminders show required payment amount and suppress when statement is paid
 - **Utilization Indicator**: Color-coded display (green < 30%, yellow 30-70%, red > 70%)
 - **Payment Recording**: Log payments to reduce balance
 - **Payment History**: View all recorded payments with dates and notes
 - **Statement Uploads**: Attach PDF statements with period dates
-- **Due Date Reminders**: Alerts when payment due within 7 days
+- **Due Date Reminders**: Alerts when payment due within 7 days (suppressed when statement paid)
 
 ### Credit Card Posted Date
 
@@ -54,6 +56,27 @@ For credit card expenses, an optional "Posted Date" field allows distinguishing 
 - **Posted Date**: When the charge appeared on the credit card
 
 This affects balance calculations - expenses are counted toward the balance based on their posted date (or transaction date if no posted date is set).
+
+### Statement Balance Calculation (v4.21.0)
+
+The system automatically calculates statement balance based on billing cycles:
+
+- **Billing Cycle Day**: The day of the month when your statement closes (e.g., 15th)
+- **Statement Balance**: Sum of expenses posted during the previous billing cycle minus payments made
+- **Smart Alert Suppression**: Payment reminders are suppressed when statement balance is zero or negative
+
+**How it works:**
+1. Configure `billing_cycle_day` when creating/editing a credit card (required for new cards)
+2. The system calculates the previous billing cycle period automatically
+3. Statement balance = expenses in previous cycle - payments since statement date
+4. If statement balance ≤ 0, payment reminders are suppressed
+5. If statement balance > 0 and due within 7 days, reminder shows required payment amount
+
+**Example:**
+- Billing cycle day: 15
+- Today: February 2
+- Previous cycle: December 16 - January 15
+- Statement balance: Sum of expenses posted Dec 16 - Jan 15, minus payments made since Jan 15
 
 ## Database Schema
 
@@ -69,8 +92,9 @@ This affects balance calculations - expenses are counted toward the balance base
 | credit_limit | REAL | Credit limit (credit cards only) |
 | current_balance | REAL | Current balance (credit cards only) |
 | payment_due_day | INTEGER | Day of month payment is due |
-| billing_cycle_start | INTEGER | Day billing cycle starts |
-| billing_cycle_end | INTEGER | Day billing cycle ends |
+| billing_cycle_day | INTEGER | Day of month statement closes (1-31) |
+| billing_cycle_start | INTEGER | Day billing cycle starts (deprecated) |
+| billing_cycle_end | INTEGER | Day billing cycle ends (deprecated) |
 | is_active | INTEGER | 1 = active, 0 = inactive |
 
 ### credit_card_payments Table

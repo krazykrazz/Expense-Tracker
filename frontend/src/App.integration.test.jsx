@@ -259,8 +259,9 @@ describe('App Integration Tests - Global Expense Filtering', () => {
     }, { timeout: 1000 });
 
     // Step 4: Clear all filters - wait for the button to appear
-    // The button text is "Clear Filters" and it appears when filters are active
-    const clearButton = await screen.findByText('Clear Filters');
+    // The button has aria-label "Clear all filters and return to monthly view"
+    // Text varies based on global view state: "🗑️ Clear All" in global view, "Clear Filters" otherwise
+    const clearButton = await screen.findByRole('button', { name: /clear all filters/i });
     const callCountBeforeClear = mockFetch.mock.calls.length;
     await user.click(clearButton);
 

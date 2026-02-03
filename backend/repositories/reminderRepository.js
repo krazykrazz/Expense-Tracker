@@ -3,7 +3,9 @@ const { getDatabase } = require('../database/db');
 class ReminderRepository {
   /**
    * Get all active credit cards with payment due dates
+   * Includes billing_cycle_day for statement balance calculation
    * @returns {Promise<Array>} Array of credit cards with due date info
+   * _Requirements: 5.1_
    */
   async getCreditCardsWithDueDates() {
     const db = await getDatabase();
@@ -16,7 +18,10 @@ class ReminderRepository {
           full_name,
           current_balance,
           credit_limit,
-          payment_due_day
+          payment_due_day,
+          billing_cycle_day,
+          billing_cycle_start,
+          billing_cycle_end
         FROM payment_methods
         WHERE type = 'credit_card'
           AND is_active = 1

@@ -115,7 +115,20 @@ export const API_ENDPOINTS = {
   PAYMENT_METHOD_STATEMENT: (id, statementId) => `${API_BASE_URL}/api/payment-methods/${id}/statements/${statementId}`,
   
   // Credit Card Billing Cycles
+  PAYMENT_METHOD_BILLING_CYCLE_CREATE: (id) => `${API_BASE_URL}/api/payment-methods/${id}/billing-cycles`,
+  PAYMENT_METHOD_BILLING_CYCLE_HISTORY: (id) => `${API_BASE_URL}/api/payment-methods/${id}/billing-cycles/history`,
+  PAYMENT_METHOD_BILLING_CYCLE_UPDATE: (id, cycleId) => `${API_BASE_URL}/api/payment-methods/${id}/billing-cycles/${cycleId}`,
+  PAYMENT_METHOD_BILLING_CYCLE_DELETE: (id, cycleId) => `${API_BASE_URL}/api/payment-methods/${id}/billing-cycles/${cycleId}`,
+  PAYMENT_METHOD_BILLING_CYCLE_CURRENT: (id) => `${API_BASE_URL}/api/payment-methods/${id}/billing-cycles/current`,
+  PAYMENT_METHOD_BILLING_CYCLE_PDF: (id, cycleId) => `${API_BASE_URL}/api/payment-methods/${id}/billing-cycles/${cycleId}/pdf`,
+  // Legacy billing cycles endpoint (for backward compatibility)
   PAYMENT_METHOD_BILLING_CYCLES: (id) => `${API_BASE_URL}/api/payment-methods/${id}/billing-cycles`,
+  
+  // Unified Billing Cycles (with auto-generation, transaction counts, and trends)
+  PAYMENT_METHOD_BILLING_CYCLES_UNIFIED: (id) => `${API_BASE_URL}/api/payment-methods/${id}/billing-cycles/unified`,
+  
+  // Credit Card Statement Balance
+  PAYMENT_METHOD_STATEMENT_BALANCE: (id) => `${API_BASE_URL}/api/payment-methods/${id}/statement-balance`,
   
   // Invoices
   INVOICES: `${API_BASE_URL}/api/invoices`,

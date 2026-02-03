@@ -142,19 +142,22 @@ describe('PaymentMethodService - Type-Specific Validation Property Tests', () =>
    * Feature: configurable-payment-methods, Property 1: Type-Specific Validation Rules
    * **Validates: Requirements 1.5**
    * 
-   * Credit_Card payment methods require display_name and full_name with optional billing cycle fields
+   * Credit_Card payment methods require display_name, full_name, billing_cycle_day, and payment_due_day
    */
   test('Property 1.5: Credit_Card payment methods require display_name and full_name', async () => {
+    // Use non-nullable billing day for this test since billing_cycle_day is required
+    const requiredBillingDay = fc.integer({ min: 1, max: 31 });
+    
     await fc.assert(
       fc.asyncProperty(
         validDisplayName,
         validFullName,
         validCreditLimit,
         validBalance,
-        validBillingDay,
-        validBillingDay,
-        validBillingDay,
-        async (displayName, fullName, creditLimit, balance, paymentDueDay, billingStart, billingEnd) => {
+        requiredBillingDay, // payment_due_day - required
+        requiredBillingDay, // billing_cycle_day - required
+        validBillingDay,    // billing_cycle_end - optional
+        async (displayName, fullName, creditLimit, balance, paymentDueDay, billingCycleDay, billingEnd) => {
           const data = {
             type: 'credit_card',
             display_name: displayName,
@@ -162,13 +165,13 @@ describe('PaymentMethodService - Type-Specific Validation Property Tests', () =>
             credit_limit: creditLimit,
             current_balance: balance,
             payment_due_day: paymentDueDay,
-            billing_cycle_start: billingStart,
+            billing_cycle_day: billingCycleDay, // Now required for credit cards
             billing_cycle_end: billingEnd
           };
 
           const result = paymentMethodService.validatePaymentMethod(data);
           
-          // Credit card with valid display_name and full_name should pass validation
+          // Credit card with valid display_name, full_name, billing_cycle_day, and payment_due_day should pass validation
           expect(result.isValid).toBe(true);
           expect(result.errors).toHaveLength(0);
           

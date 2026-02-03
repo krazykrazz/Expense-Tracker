@@ -469,6 +469,57 @@ async function getBillingCycles(req, res) {
   }
 }
 
+/**
+ * Get calculated statement balance for a credit card
+ * GET /api/payment-methods/:id/statement-balance
+ * Returns statement balance info based on billing_cycle_day
+ */
+async function getStatementBalance(req, res) {
+  try {
+    const id = parseInt(req.params.id);
+
+    if (isNaN(id)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid payment method ID'
+      });
+    }
+
+    // Check if payment method exists and is a credit card
+    const paymentMethod = await paymentMethodService.getPaymentMethodById(id);
+    
+    if (!paymentMethod) {
+      return res.status(404).json({
+        success: false,
+        error: 'Payment method not found'
+      });
+    }
+
+    if (paymentMethod.type !== 'credit_card') {
+      return res.status(400).json({
+        success: false,
+        error: 'Statement balance is only available for credit cards'
+      });
+    }
+
+    // Get statement balance from StatementBalanceService
+    const statementBalanceService = require('../services/statementBalanceService');
+    const statementBalance = await statementBalanceService.calculateStatementBalance(id);
+
+    res.status(200).json({
+      success: true,
+      statementBalance
+    });
+
+  } catch (error) {
+    logger.error('Get statement balance API error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error while retrieving statement balance'
+    });
+  }
+}
+
 module.exports = {
   getAll,
   getById,
@@ -479,5 +530,6 @@ module.exports = {
   getDisplayNames,
   getActive,
   recalculateBalance,
-  getBillingCycles
+  getBillingCycles,
+  getStatementBalance
 };

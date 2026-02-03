@@ -25,6 +25,7 @@ const PaymentMethodForm = ({ isOpen, method, onSave, onCancel }) => {
     credit_limit: '',
     current_balance: '',
     payment_due_day: '',
+    billing_cycle_day: '',
     billing_cycle_start: '',
     billing_cycle_end: ''
   });
@@ -45,6 +46,7 @@ const PaymentMethodForm = ({ isOpen, method, onSave, onCancel }) => {
         credit_limit: method.credit_limit ? method.credit_limit.toString() : '',
         current_balance: method.current_balance ? method.current_balance.toString() : '',
         payment_due_day: method.payment_due_day ? method.payment_due_day.toString() : '',
+        billing_cycle_day: method.billing_cycle_day ? method.billing_cycle_day.toString() : '',
         billing_cycle_start: method.billing_cycle_start ? method.billing_cycle_start.toString() : '',
         billing_cycle_end: method.billing_cycle_end ? method.billing_cycle_end.toString() : ''
       });
@@ -58,6 +60,7 @@ const PaymentMethodForm = ({ isOpen, method, onSave, onCancel }) => {
         credit_limit: '',
         current_balance: '',
         payment_due_day: '',
+        billing_cycle_day: '',
         billing_cycle_start: '',
         billing_cycle_end: ''
       });
@@ -140,11 +143,23 @@ const PaymentMethodForm = ({ isOpen, method, onSave, onCancel }) => {
         }
       }
       
-      // Payment due day validation (optional but must be 1-31 if provided)
-      if (formData.payment_due_day) {
+      // Payment due day is required for credit cards
+      if (!formData.payment_due_day) {
+        errors.payment_due_day = 'Payment due day is required for credit cards';
+      } else {
         const day = parseInt(formData.payment_due_day, 10);
         if (isNaN(day) || day < 1 || day > 31) {
           errors.payment_due_day = 'Payment due day must be between 1 and 31';
+        }
+      }
+      
+      // Billing cycle day is required for credit cards
+      if (!formData.billing_cycle_day) {
+        errors.billing_cycle_day = 'Statement closing day is required for credit cards';
+      } else {
+        const day = parseInt(formData.billing_cycle_day, 10);
+        if (isNaN(day) || day < 1 || day > 31) {
+          errors.billing_cycle_day = 'Statement closing day must be between 1 and 31';
         }
       }
       
@@ -210,6 +225,9 @@ const PaymentMethodForm = ({ isOpen, method, onSave, onCancel }) => {
         }
         if (formData.payment_due_day) {
           payload.payment_due_day = parseInt(formData.payment_due_day, 10);
+        }
+        if (formData.billing_cycle_day) {
+          payload.billing_cycle_day = parseInt(formData.billing_cycle_day, 10);
         }
         if (formData.billing_cycle_start) {
           payload.billing_cycle_start = parseInt(formData.billing_cycle_start, 10);
@@ -372,7 +390,7 @@ const PaymentMethodForm = ({ isOpen, method, onSave, onCancel }) => {
               </div>
 
               <div className="form-group">
-                <label htmlFor="payment_due_day">Payment Due Day</label>
+                <label htmlFor="payment_due_day">Payment Due Day *</label>
                 <input
                   type="number"
                   id="payment_due_day"
@@ -381,6 +399,7 @@ const PaymentMethodForm = ({ isOpen, method, onSave, onCancel }) => {
                   placeholder="1-31"
                   min="1"
                   max="31"
+                  required
                   disabled={loading}
                   className={validationErrors.payment_due_day ? 'input-error' : ''}
                 />
@@ -388,6 +407,26 @@ const PaymentMethodForm = ({ isOpen, method, onSave, onCancel }) => {
                   <span className="validation-error">{validationErrors.payment_due_day}</span>
                 )}
                 <span className="form-hint">Day of month when payment is due</span>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="billing_cycle_day">Statement Closing Day *</label>
+                <input
+                  type="number"
+                  id="billing_cycle_day"
+                  value={formData.billing_cycle_day}
+                  onChange={(e) => handleChange('billing_cycle_day', e.target.value)}
+                  placeholder="1-31"
+                  min="1"
+                  max="31"
+                  required
+                  disabled={loading}
+                  className={validationErrors.billing_cycle_day ? 'input-error' : ''}
+                />
+                {validationErrors.billing_cycle_day && (
+                  <span className="validation-error">{validationErrors.billing_cycle_day}</span>
+                )}
+                <span className="form-hint">The day your statement closes each month (found on your statement)</span>
               </div>
 
               <div className="form-row">

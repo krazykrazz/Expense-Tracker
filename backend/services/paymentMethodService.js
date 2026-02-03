@@ -15,10 +15,14 @@ class PaymentMethodService {
   /**
    * Validate payment method data based on type
    * @param {Object} data - Payment method data to validate
+   * @param {Object} options - Validation options
+   * @param {boolean} options.isUpdate - Whether this is an update operation
+   * @param {Object} options.existing - Existing payment method data (for updates)
    * @returns {Object} Validation result { isValid, errors }
    */
-  validatePaymentMethod(data) {
+  validatePaymentMethod(data, options = {}) {
     const errors = [];
+    const { isUpdate = false, existing = null } = options;
 
     // Trim whitespace from string inputs
     const displayName = data.display_name ? data.display_name.trim() : '';
@@ -62,21 +66,50 @@ class PaymentMethodService {
         }
       }
 
-      // Validate payment_due_day if provided
-      if (data.payment_due_day !== undefined && data.payment_due_day !== null) {
-        if (!Number.isInteger(data.payment_due_day) || data.payment_due_day < 1 || data.payment_due_day > 31) {
+      // Validate billing_cycle_day - REQUIRED for new credit cards
+      // Requirements 1.1, 1.3, 1.5, 1.6
+      if (data.billing_cycle_day === undefined || data.billing_cycle_day === null) {
+        if (!isUpdate) {
+          // Required for new credit cards
+          errors.push('Billing cycle day is required for credit cards');
+        } else if (existing && existing.billing_cycle_day !== null) {
+          // Cannot set to null on update if it was previously set
+          errors.push('Billing cycle day cannot be removed once set');
+        }
+      } else {
+        // Validate range (1-31)
+        const billingCycleDay = Number(data.billing_cycle_day);
+        if (!Number.isInteger(billingCycleDay) || billingCycleDay < 1 || billingCycleDay > 31) {
+          errors.push('Billing cycle day must be between 1 and 31');
+        }
+      }
+
+      // Validate payment_due_day - REQUIRED for new credit cards
+      // Requirements 1.2, 1.4, 1.5, 1.6
+      if (data.payment_due_day === undefined || data.payment_due_day === null) {
+        if (!isUpdate) {
+          // Required for new credit cards
+          errors.push('Payment due day is required for credit cards');
+        } else if (existing && existing.payment_due_day !== null) {
+          // Cannot set to null on update if it was previously set
+          errors.push('Payment due day cannot be removed once set');
+        }
+      } else {
+        // Validate range (1-31)
+        const paymentDueDay = Number(data.payment_due_day);
+        if (!Number.isInteger(paymentDueDay) || paymentDueDay < 1 || paymentDueDay > 31) {
           errors.push('Payment due day must be between 1 and 31');
         }
       }
 
-      // Validate billing_cycle_start if provided
+      // Validate billing_cycle_start if provided (deprecated but still supported)
       if (data.billing_cycle_start !== undefined && data.billing_cycle_start !== null) {
         if (!Number.isInteger(data.billing_cycle_start) || data.billing_cycle_start < 1 || data.billing_cycle_start > 31) {
           errors.push('Billing cycle start day must be between 1 and 31');
         }
       }
 
-      // Validate billing_cycle_end if provided
+      // Validate billing_cycle_end if provided (deprecated but still supported)
       if (data.billing_cycle_end !== undefined && data.billing_cycle_end !== null) {
         if (!Number.isInteger(data.billing_cycle_end) || data.billing_cycle_end < 1 || data.billing_cycle_end > 31) {
           errors.push('Billing cycle end day must be between 1 and 31');
@@ -123,8 +156,8 @@ class PaymentMethodService {
    * @returns {Promise<Object>} Created payment method
    */
   async createPaymentMethod(data) {
-    // Validate input
-    const validation = this.validatePaymentMethod(data);
+    // Validate input (isUpdate = false for creation)
+    const validation = this.validatePaymentMethod(data, { isUpdate: false });
     if (!validation.isValid) {
       throw new Error(validation.errors.join('; '));
     }
@@ -144,6 +177,7 @@ class PaymentMethodService {
       credit_limit: data.credit_limit || null,
       current_balance: data.current_balance || 0,
       payment_due_day: data.payment_due_day || null,
+      billing_cycle_day: data.billing_cycle_day || null,
       billing_cycle_start: data.billing_cycle_start || null,
       billing_cycle_end: data.billing_cycle_end || null,
       is_active: data.is_active !== undefined ? data.is_active : 1
@@ -177,8 +211,8 @@ class PaymentMethodService {
       return null;
     }
 
-    // Validate input
-    const validation = this.validatePaymentMethod(data);
+    // Validate input (isUpdate = true, pass existing for null prevention check)
+    const validation = this.validatePaymentMethod(data, { isUpdate: true, existing });
     if (!validation.isValid) {
       throw new Error(validation.errors.join('; '));
     }
@@ -197,7 +231,8 @@ class PaymentMethodService {
       account_details: data.account_details ? data.account_details.trim() : null,
       credit_limit: data.credit_limit || null,
       current_balance: data.current_balance !== undefined ? data.current_balance : existing.current_balance,
-      payment_due_day: data.payment_due_day || null,
+      payment_due_day: data.payment_due_day !== undefined ? data.payment_due_day : existing.payment_due_day,
+      billing_cycle_day: data.billing_cycle_day !== undefined ? data.billing_cycle_day : existing.billing_cycle_day,
       billing_cycle_start: data.billing_cycle_start || null,
       billing_cycle_end: data.billing_cycle_end || null,
       is_active: data.is_active !== undefined ? data.is_active : existing.is_active
@@ -826,10 +861,14 @@ class PaymentMethodService {
 
   /**
    * Calculate statement balance for a credit card
-   * Sum of expenses from past billing cycles minus payments before current cycle
+   * 
+   * CONSOLIDATED: This method now delegates to statementBalanceService when
+   * billing_cycle_day is configured (modern approach). Falls back to legacy
+   * billing_cycle_start/end calculation for backward compatibility.
+   * 
    * @param {number} paymentMethodId - Credit card ID
    * @returns {Promise<number|null>} Statement balance or null if no billing cycle
-   * _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5_
+   * _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 9.3 (backward compatibility)_
    */
   async calculateStatementBalance(paymentMethodId) {
     const paymentMethod = await paymentMethodRepository.findById(paymentMethodId);
@@ -838,7 +877,19 @@ class PaymentMethodService {
       throw new Error('Balance calculations only available for credit cards');
     }
 
-    // Return null if no billing cycle configured
+    // MODERN APPROACH: Use statementBalanceService when billing_cycle_day is configured
+    // This is the preferred method and single source of truth for statement balance calculation
+    if (paymentMethod.billing_cycle_day) {
+      const statementBalanceService = require('./statementBalanceService');
+      const result = await statementBalanceService.calculateStatementBalance(paymentMethodId);
+      
+      // statementBalanceService returns an object with statementBalance property
+      // Return just the number for backward compatibility with this method's signature
+      return result ? result.statementBalance : null;
+    }
+
+    // LEGACY FALLBACK: Use billing_cycle_start/end for cards without billing_cycle_day
+    // This maintains backward compatibility for older card configurations
     if (!paymentMethod.billing_cycle_start || !paymentMethod.billing_cycle_end) {
       return null;
     }
@@ -883,7 +934,7 @@ class PaymentMethodService {
     // Calculate balance (expenses - payments), minimum 0
     const balance = Math.max(0, Math.round((expenseTotal - paymentTotal) * 100) / 100);
 
-    logger.debug('Calculated statement balance:', {
+    logger.debug('Calculated statement balance (legacy):', {
       paymentMethodId,
       cycleStartDate: billingCycle.startDate,
       expenseTotal,

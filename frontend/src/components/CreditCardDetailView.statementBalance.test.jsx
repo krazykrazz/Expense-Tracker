@@ -9,7 +9,12 @@ vi.mock('../config', () => ({
     PAYMENT_METHOD_STATEMENTS: (id) => `/api/payment-methods/${id}/statements`,
     PAYMENT_METHOD_BILLING_CYCLES: (id) => `/api/payment-methods/${id}/billing-cycles`,
     PAYMENT_METHOD_STATEMENT_BALANCE: (id) => `/api/payment-methods/${id}/statement-balance`,
-    PAYMENT_METHOD_STATEMENT: (id, statementId) => `/api/payment-methods/${id}/statements/${statementId}`
+    PAYMENT_METHOD_STATEMENT: (id, statementId) => `/api/payment-methods/${id}/statements/${statementId}`,
+    PAYMENT_METHOD_BILLING_CYCLE_CREATE: (id) => `/api/payment-methods/${id}/billing-cycles`,
+    PAYMENT_METHOD_BILLING_CYCLE_HISTORY: (id) => `/api/payment-methods/${id}/billing-cycles/history`,
+    PAYMENT_METHOD_BILLING_CYCLE_UPDATE: (id, cycleId) => `/api/payment-methods/${id}/billing-cycles/${cycleId}`,
+    PAYMENT_METHOD_BILLING_CYCLE_DELETE: (id, cycleId) => `/api/payment-methods/${id}/billing-cycles/${cycleId}`,
+    PAYMENT_METHOD_BILLING_CYCLE_CURRENT: (id) => `/api/payment-methods/${id}/billing-cycles/current`
   },
   default: 'http://localhost:2424'
 }));
@@ -24,6 +29,8 @@ vi.mock('../services/creditCardApi', () => ({
   getStatements: vi.fn(),
   getBillingCycles: vi.fn(),
   getStatementBalance: vi.fn(),
+  getBillingCycleHistory: vi.fn(),
+  getCurrentCycleStatus: vi.fn(),
   deletePayment: vi.fn(),
   deleteStatement: vi.fn(),
   getStatementUrl: vi.fn()
@@ -74,6 +81,16 @@ describe('CreditCardDetailView - Statement Balance Display', () => {
     creditCardApi.getStatements.mockResolvedValue([]);
     creditCardApi.getBillingCycles.mockResolvedValue([]);
     creditCardApi.getStatementBalance.mockResolvedValue(mockStatementBalanceInfo);
+    creditCardApi.getBillingCycleHistory.mockResolvedValue({ billingCycles: [] });
+    creditCardApi.getCurrentCycleStatus.mockResolvedValue({
+      hasActualBalance: false,
+      cycleStartDate: '2026-01-26',
+      cycleEndDate: '2026-02-25',
+      actualBalance: null,
+      calculatedBalance: 300,
+      daysUntilCycleEnd: 10,
+      needsEntry: true
+    });
   });
 
   afterEach(() => {
@@ -114,6 +131,15 @@ describe('CreditCardDetailView - Statement Balance Display', () => {
    */
   it('should show "Statement Paid" indicator when statement balance is zero', async () => {
     creditCardApi.getStatementBalance.mockResolvedValue(mockStatementBalancePaid);
+    creditCardApi.getCurrentCycleStatus.mockResolvedValue({
+      hasActualBalance: false,
+      cycleStartDate: '2026-01-26',
+      cycleEndDate: '2026-02-25',
+      actualBalance: null,
+      calculatedBalance: 0,
+      daysUntilCycleEnd: 10,
+      needsEntry: false
+    });
 
     render(
       <CreditCardDetailView
@@ -197,6 +223,15 @@ describe('CreditCardDetailView - Statement Balance Display', () => {
    */
   it('should apply paid styling to statement balance card when paid', async () => {
     creditCardApi.getStatementBalance.mockResolvedValue(mockStatementBalancePaid);
+    creditCardApi.getCurrentCycleStatus.mockResolvedValue({
+      hasActualBalance: false,
+      cycleStartDate: '2026-01-26',
+      cycleEndDate: '2026-02-25',
+      actualBalance: null,
+      calculatedBalance: 0,
+      daysUntilCycleEnd: 10,
+      needsEntry: false
+    });
 
     const { container } = render(
       <CreditCardDetailView
@@ -263,6 +298,15 @@ describe('CreditCardDetailView - Statement Balance Display', () => {
    */
   it('should display $0.00 for statement balance when paid', async () => {
     creditCardApi.getStatementBalance.mockResolvedValue(mockStatementBalancePaid);
+    creditCardApi.getCurrentCycleStatus.mockResolvedValue({
+      hasActualBalance: false,
+      cycleStartDate: '2026-01-26',
+      cycleEndDate: '2026-02-25',
+      actualBalance: null,
+      calculatedBalance: 0,
+      daysUntilCycleEnd: 10,
+      needsEntry: false
+    });
 
     render(
       <CreditCardDetailView

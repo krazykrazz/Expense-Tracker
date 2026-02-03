@@ -139,8 +139,8 @@ This implementation plan covers the Credit Card Billing Cycle History feature, w
     - Add `getCurrentCycleStatus(paymentMethodId)`
     - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5_
 
-- [ ] 9. Frontend Components
-  - [ ] 9.1 Create BillingCycleHistoryForm component
+- [x] 9. Frontend Components
+  - [x] 9.1 Create BillingCycleHistoryForm component
     - Create `frontend/src/components/BillingCycleHistoryForm.jsx`
     - Create `frontend/src/components/BillingCycleHistoryForm.css`
     - Pre-populate cycle dates from most recent completed cycle
@@ -151,12 +151,12 @@ This implementation plan covers the Credit Card Billing Cycle History feature, w
     - Handle duplicate entry error
     - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5_
   
-  - [ ] 9.2 Write property tests for BillingCycleHistoryForm
+  - [x] 9.2 Write property tests for BillingCycleHistoryForm
     - Create `frontend/src/components/BillingCycleHistoryForm.pbt.test.jsx`
     - **Property 11: Form Validation Non-Negative Balance**
     - **Validates: Requirements 6.2**
   
-  - [ ] 9.3 Create BillingCycleHistoryList component
+  - [x] 9.3 Create BillingCycleHistoryList component
     - Create `frontend/src/components/BillingCycleHistoryList.jsx`
     - Create `frontend/src/components/BillingCycleHistoryList.css`
     - Display cycle dates, actual balance, calculated balance, discrepancy
@@ -165,14 +165,14 @@ This implementation plan covers the Credit Card Billing Cycle History feature, w
     - Handle empty state
     - _Requirements: 5.2, 5.3, 5.4_
   
-  - [ ] 9.4 Write unit tests for BillingCycleHistoryList
+  - [x] 9.4 Write unit tests for BillingCycleHistoryList
     - Create `frontend/src/components/BillingCycleHistoryList.test.jsx`
     - Test discrepancy indicator styling
     - Test empty state rendering
     - **Validates: Requirements 5.2, 5.3, 5.4**
 
-- [ ] 10. Integrate with CreditCardDetailView
-  - [ ] 10.1 Add billing cycle history section to CreditCardDetailView
+- [x] 10. Integrate with CreditCardDetailView
+  - [x] 10.1 Add billing cycle history section to CreditCardDetailView
     - Update `frontend/src/components/CreditCardDetailView.jsx`
     - Add billing cycle history section (only when billing_cycle_day configured)
     - Integrate BillingCycleHistoryForm for entry
@@ -181,14 +181,14 @@ This implementation plan covers the Credit Card Billing Cycle History feature, w
     - Add indicator for user-provided vs calculated balance
     - _Requirements: 5.1, 7.1, 7.2, 7.3_
   
-  - [ ] 10.2 Write tests for CreditCardDetailView billing cycle integration
+  - [x] 10.2 Write tests for CreditCardDetailView billing cycle integration
     - Create `frontend/src/components/CreditCardDetailView.billingCycle.test.jsx`
     - **Property 9: Statement Balance Display Priority**
     - Test section visibility based on billing_cycle_day
     - **Validates: Requirements 5.1, 7.1, 7.2, 7.3**
 
-- [ ] 11. Update Reminder Banner
-  - [ ] 11.1 Update CreditCardReminderBanner for billing cycle reminders
+- [-] 11. Update Reminder Banner
+  - [-] 11.1 Update CreditCardReminderBanner for billing cycle reminders
     - Update `frontend/src/components/CreditCardReminderBanner.jsx` if needed
     - Ensure banner uses actual_statement_balance when available
     - Add billing cycle entry reminder display

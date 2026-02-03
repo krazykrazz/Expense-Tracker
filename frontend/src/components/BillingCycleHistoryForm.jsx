@@ -30,10 +30,12 @@ const BillingCycleHistoryForm = ({
   onSubmit = () => {},
   onCancel = () => {}
 }) => {
-  // Determine if we're in edit mode
-  const isEditMode = !!editingCycle;
+  // Determine if we're in edit mode (has an id to update)
+  // Note: When entering statement for auto-generated cycle, editingCycle has id but no actual_statement_balance
+  const isEditMode = !!editingCycle?.id;
   
   // Form state - initialize from editingCycle if in edit mode
+  // For auto-generated cycles, actual_statement_balance will be null, so form starts empty
   const [actualBalance, setActualBalance] = useState(
     editingCycle?.actual_statement_balance?.toString() || ''
   );

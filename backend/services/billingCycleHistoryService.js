@@ -486,15 +486,54 @@ class BillingCycleHistoryService {
         // Calculate statement balance for this period
         // We need to use a reference date that would produce this cycle
         // The cycle end date + 1 day should give us the correct cycle
-        const cycleRefDate = new Date(period.endDate);
-        cycleRefDate.setDate(cycleRefDate.getDate() + 1);
+        // Parse the date string directly to avoid timezone issues
+        const [year, month, day] = period.endDate.split('-').map(Number);
+        // Create a date string for the day after cycle end
+        // This ensures calculatePreviousCycleDates returns the correct cycle
+        const nextDay = day + 1;
+        const daysInMonth = new Date(year, month, 0).getDate();
+        let refYear = year;
+        let refMonth = month;
+        let refDay = nextDay;
+        
+        if (nextDay > daysInMonth) {
+          refDay = 1;
+          refMonth = month + 1;
+          if (refMonth > 12) {
+            refMonth = 1;
+            refYear = year + 1;
+          }
+        }
+        
+        // Format as YYYY-MM-DD string to pass to calculateStatementBalance
+        const cycleRefDateStr = `${refYear}-${String(refMonth).padStart(2, '0')}-${String(refDay).padStart(2, '0')}`;
 
-        const statementInfo = await statementBalanceService.calculateStatementBalance(
-          paymentMethodId,
-          cycleRefDate
-        );
+        // For auto-generated historical cycles, calculate expenses directly
+        // without subtracting payments (payments are for paying off the statement,
+        // not reducing the historical calculated balance)
+        const { getDatabase } = require('../database/db');
+        const db = await getDatabase();
+        
+        const totalExpenses = await new Promise((resolve, reject) => {
+          const sql = `
+            SELECT COALESCE(SUM(COALESCE(original_cost, amount)), 0) as total
+            FROM expenses
+            WHERE payment_method_id = ?
+              AND COALESCE(posted_date, date) >= ?
+              AND COALESCE(posted_date, date) <= ?
+          `;
+          
+          db.get(sql, [paymentMethodId, period.startDate, period.endDate], (err, row) => {
+            if (err) {
+              logger.error('Failed to get expenses for auto-generation:', err);
+              reject(err);
+              return;
+            }
+            resolve(row?.total || 0);
+          });
+        });
 
-        const calculatedBalance = statementInfo ? statementInfo.statementBalance : 0;
+        const calculatedBalance = Math.round(totalExpenses * 100) / 100;
 
         // Create the billing cycle record with actual_statement_balance = 0
         const billingCycle = await billingCycleRepository.create({

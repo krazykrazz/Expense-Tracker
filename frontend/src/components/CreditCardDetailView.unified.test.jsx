@@ -377,32 +377,6 @@ describe('CreditCardDetailView - Unified Billing Cycles', () => {
       });
     });
 
-    it('should show "Add Entry" button in Billing Cycles tab', async () => {
-      render(
-        <CreditCardDetailView
-          paymentMethodId={1}
-          isOpen={true}
-          onClose={() => {}}
-          onUpdate={() => {}}
-        />
-      );
-
-      await waitFor(() => {
-        expect(screen.getByText('Test Card')).toBeInTheDocument();
-      });
-
-      // Click on Billing Cycles tab
-      const billingCyclesTab = screen.getByRole('button', { name: /Billing Cycles/i });
-      await act(async () => {
-        fireEvent.click(billingCyclesTab);
-      });
-
-      // Should show Add Entry button
-      await waitFor(() => {
-        expect(screen.getByRole('button', { name: /Add Entry/i })).toBeInTheDocument();
-      });
-    });
-
     it('should call getUnifiedBillingCycles API when component loads', async () => {
       render(
         <CreditCardDetailView

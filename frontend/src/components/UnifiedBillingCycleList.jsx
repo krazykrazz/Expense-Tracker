@@ -206,14 +206,24 @@ const UnifiedBillingCycleList = ({
                   </button>
                 </>
               ) : (
-                <button
-                  className="unified-cycle-action-btn enter-statement"
-                  onClick={() => onEnterStatement(cycle)}
-                  title="Enter statement balance"
-                  aria-label={`Enter statement for ${formatDate(cycle.cycle_end_date)}`}
-                >
-                  📝 Enter Statement
-                </button>
+                <>
+                  <button
+                    className="unified-cycle-action-btn enter-statement"
+                    onClick={() => onEnterStatement(cycle)}
+                    title="Enter statement balance"
+                    aria-label={`Enter statement for ${formatDate(cycle.cycle_end_date)}`}
+                  >
+                    📝 Enter Statement
+                  </button>
+                  <button
+                    className="unified-cycle-action-btn delete auto-generated"
+                    onClick={() => handleDeleteClick(cycle)}
+                    title="Delete auto-generated cycle (will regenerate)"
+                    aria-label={`Delete auto-generated cycle for ${formatDate(cycle.cycle_end_date)}`}
+                  >
+                    🔄
+                  </button>
+                </>
               )}
             </div>
           </div>
@@ -224,18 +234,35 @@ const UnifiedBillingCycleList = ({
       {deleteConfirm && (
         <div className="unified-billing-cycle-confirm-overlay">
           <div className="unified-billing-cycle-confirm-dialog">
-            <h3>Delete Billing Cycle</h3>
+            <h3>{deleteConfirm.actual_statement_balance > 0 ? 'Delete Billing Cycle' : 'Refresh Billing Cycle'}</h3>
             <p>
-              Are you sure you want to delete the billing cycle record for{' '}
-              <strong>{formatDate(deleteConfirm.cycle_end_date)}</strong>?
+              {deleteConfirm.actual_statement_balance > 0 ? (
+                <>
+                  Are you sure you want to delete the billing cycle record for{' '}
+                  <strong>{formatDate(deleteConfirm.cycle_end_date)}</strong>?
+                </>
+              ) : (
+                <>
+                  Delete and regenerate the auto-generated cycle for{' '}
+                  <strong>{formatDate(deleteConfirm.cycle_end_date)}</strong>?
+                </>
+              )}
             </p>
             <p className="confirm-detail">
-              Actual Balance: {formatCurrency(deleteConfirm.actual_statement_balance)}
+              {deleteConfirm.actual_statement_balance > 0 ? (
+                <>Actual Balance: {formatCurrency(deleteConfirm.actual_statement_balance)}</>
+              ) : (
+                <>Calculated Balance: {formatCurrency(deleteConfirm.calculated_statement_balance)}</>
+              )}
             </p>
-            <p className="confirm-warning">This action cannot be undone.</p>
+            <p className="confirm-warning">
+              {deleteConfirm.actual_statement_balance > 0 
+                ? 'This action cannot be undone.'
+                : 'The cycle will be regenerated with updated calculations.'}
+            </p>
             <div className="confirm-actions">
               <button className="confirm-delete-btn" onClick={confirmDelete}>
-                Delete
+                {deleteConfirm.actual_statement_balance > 0 ? 'Delete' : 'Refresh'}
               </button>
               <button className="confirm-cancel-btn" onClick={cancelDelete}>
                 Cancel

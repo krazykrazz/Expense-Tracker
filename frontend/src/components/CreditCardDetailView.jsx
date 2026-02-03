@@ -169,11 +169,16 @@ const CreditCardDetailView = ({
 
   // Handle enter statement for auto-generated cycle
   const handleEnterStatement = (cycle) => {
-    // Pre-populate the form with the cycle's dates
+    // Pass the full cycle object including id so the form can update the existing record
+    // The form will detect this is an auto-generated cycle (no actual_statement_balance)
+    // and will update it with the user-provided actual balance
     setEditingBillingCycle({
+      id: cycle.id,
       cycle_start_date: cycle.cycle_start_date,
       cycle_end_date: cycle.cycle_end_date,
-      calculated_statement_balance: cycle.calculated_statement_balance
+      calculated_statement_balance: cycle.calculated_statement_balance,
+      // Don't pass actual_statement_balance so the form knows this is a new entry
+      actual_statement_balance: null
     });
     setShowBillingCycleForm(true);
   };
@@ -386,12 +391,16 @@ const CreditCardDetailView = ({
                 </div>
               )}
 
-              {/* Due Date Card */}
+              {/* Due Date Card - Only show urgency if statement is NOT paid */}
               {paymentMethod.days_until_due !== null && paymentMethod.days_until_due !== undefined && (
-                <div className={`cc-overview-card due-date-card ${paymentMethod.days_until_due <= 7 ? 'due-soon' : ''}`}>
+                <div className={`cc-overview-card due-date-card ${
+                  !statementBalanceInfo?.isPaid && paymentMethod.days_until_due <= 7 ? 'due-soon' : ''
+                }`}>
                   <div className="overview-label">Payment Due</div>
                   <div className="overview-value due-value">
-                    {paymentMethod.days_until_due <= 0 ? (
+                    {statementBalanceInfo?.isPaid ? (
+                      <span className="paid-status">✓ Paid</span>
+                    ) : paymentMethod.days_until_due <= 0 ? (
                       <span className="overdue">Overdue!</span>
                     ) : paymentMethod.days_until_due === 1 ? (
                       'Tomorrow'
@@ -414,14 +423,6 @@ const CreditCardDetailView = ({
               >
                 💳 Log Payment
               </button>
-              {paymentMethod.billing_cycle_day && (
-                <button 
-                  className="cc-action-btn secondary"
-                  onClick={() => setShowBillingCycleForm(true)}
-                >
-                  📊 Enter Statement
-                </button>
-              )}
             </div>
 
             {/* Historical Balance Adjustment Banner */}
@@ -580,12 +581,6 @@ const CreditCardDetailView = ({
                     <div className="billing-cycles-section">
                       <div className="billing-cycles-section-header">
                         <h4>Billing Cycles</h4>
-                        <button 
-                          className="cc-action-btn primary small"
-                          onClick={() => setShowBillingCycleForm(true)}
-                        >
-                          + Add Entry
-                        </button>
                       </div>
                       <UnifiedBillingCycleList
                         cycles={unifiedBillingCycles}

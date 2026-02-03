@@ -20,7 +20,7 @@
   background: var(--bg-card);
   border-radius: var(--radius-lg);
   width: 90%;
-  max-width: 600px;
+  max-width: 800px;
   max-height: 85vh;
   display: flex;
   flex-direction: column;
@@ -245,6 +245,10 @@
 
 .due-value .overdue {
   color: var(--color-negative);
+}
+
+.due-value .paid-status {
+  color: var(--color-positive);
 }
 
 .due-day-info {
@@ -999,9 +1003,6 @@
 }
 
 .billing-cycles-section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
   margin-bottom: var(--spacing-3);
 }
 
@@ -1040,16 +1041,6 @@
   .statements-section-header .cc-action-btn {
     width: 100%;
   }
-
-  .billing-cycles-section-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--spacing-2);
-  }
-
-  .billing-cycles-section-header .cc-action-btn {
-    width: 100%;
-  }
 }
 
 
@@ -1071,12 +1062,16 @@
 .cc-pdf-viewer-modal {
   background-color: var(--bg-card);
   border-radius: var(--radius-lg);
-  width: 100%;
-  max-width: 900px;
-  max-height: 90vh;
+  width: 95%;
+  max-width: 1200px;
+  height: 90vh;
   display: flex;
   flex-direction: column;
   box-shadow: var(--shadow-xl);
+  resize: both;
+  overflow: auto;
+  min-width: 400px;
+  min-height: 400px;
 }
 
 .cc-pdf-viewer-header {

@@ -9,7 +9,7 @@
  */
 
 const fc = require('fast-check');
-const { pbtOptions } = require('../test/pbtArbitraries');
+const { pbtOptions, calculatePreviousCycleDates } = require('../test/pbtArbitraries');
 const sqlite3 = require('sqlite3').verbose();
 
 // Helper function to create an in-memory test database
@@ -212,64 +212,9 @@ function calculateDaysUntilDue(paymentDueDay, referenceDate) {
   return diffDays;
 }
 
-// Helper function to calculate previous cycle dates
-function calculatePreviousCycleDates(billingCycleDay, referenceDate) {
-  const refDate = new Date(referenceDate);
-  const refYear = refDate.getFullYear();
-  const refMonth = refDate.getMonth();
-  const refDay = refDate.getDate();
-
-  let cycleEndYear, cycleEndMonth;
-  
-  if (refDay > billingCycleDay) {
-    cycleEndYear = refYear;
-    cycleEndMonth = refMonth;
-  } else {
-    cycleEndYear = refYear;
-    cycleEndMonth = refMonth - 1;
-    if (cycleEndMonth < 0) {
-      cycleEndMonth = 11;
-      cycleEndYear--;
-    }
-  }
-
-  let cycleStartYear = cycleEndYear;
-  let cycleStartMonth = cycleEndMonth - 1;
-  if (cycleStartMonth < 0) {
-    cycleStartMonth = 11;
-    cycleStartYear--;
-  }
-
-  const daysInEndMonth = new Date(cycleEndYear, cycleEndMonth + 1, 0).getDate();
-  const actualEndDay = Math.min(billingCycleDay, daysInEndMonth);
-
-  const daysInStartMonth = new Date(cycleStartYear, cycleStartMonth + 1, 0).getDate();
-  const actualStartDay = Math.min(billingCycleDay + 1, daysInStartMonth + 1);
-  
-  let startDay, startMonth, startYear;
-  if (actualStartDay > daysInStartMonth) {
-    startDay = 1;
-    startMonth = cycleStartMonth + 1;
-    startYear = cycleStartYear;
-    if (startMonth > 11) {
-      startMonth = 0;
-      startYear++;
-    }
-  } else {
-    startDay = actualStartDay;
-    startMonth = cycleStartMonth;
-    startYear = cycleStartYear;
-  }
-
-  const formatDate = (year, month, day) => {
-    return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-  };
-
-  return {
-    startDate: formatDate(startYear, startMonth, startDay),
-    endDate: formatDate(cycleEndYear, cycleEndMonth, actualEndDay)
-  };
-}
+// NOTE: calculatePreviousCycleDates is now imported from pbtArbitraries
+// which delegates to statementBalanceService.calculatePreviousCycleDates
+// This ensures consistent cycle date calculations across all tests.
 
 // Helper function to get statement balance from database
 async function getStatementBalance(db, paymentMethodId, cycleDates) {

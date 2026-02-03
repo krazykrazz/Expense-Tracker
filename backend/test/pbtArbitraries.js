@@ -291,5 +291,20 @@ module.exports = {
   // PBT options
   pbtOptions,
   asyncPbtOptions,
-  dbPbtOptions
+  dbPbtOptions,
+  
+  // Billing cycle helpers
+  /**
+   * Calculate previous billing cycle dates using statementBalanceService
+   * This is the single source of truth for cycle date calculations.
+   * Use this in tests instead of duplicating the calculation logic.
+   * 
+   * @param {number} billingCycleDay - Day of month when statement closes (1-31)
+   * @param {Date|string} referenceDate - Reference date
+   * @returns {Object} { startDate, endDate } in YYYY-MM-DD format
+   */
+  calculatePreviousCycleDates: (billingCycleDay, referenceDate) => {
+    const statementBalanceService = require('../services/statementBalanceService');
+    return statementBalanceService.calculatePreviousCycleDates(billingCycleDay, referenceDate);
+  }
 };

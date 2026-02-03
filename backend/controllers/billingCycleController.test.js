@@ -58,7 +58,7 @@ describe('BillingCycleController - Unit Tests', () => {
 
       expect(billingCycleHistoryService.createBillingCycle).toHaveBeenCalledWith(
         4,
-        { actual_statement_balance: 1234.56, minimum_payment: 25.00, due_date: '2025-03-01', notes: 'Test note' }
+        { actual_statement_balance: 1234.56, minimum_payment: 25.00, due_date: '2025-03-01', notes: 'Test note', statement_pdf_path: null }
       );
       expect(res.status).toHaveBeenCalledWith(201);
       expect(res.json).toHaveBeenCalledWith({ success: true, billingCycle: mockBillingCycle });
@@ -243,7 +243,7 @@ describe('BillingCycleController - Unit Tests', () => {
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith({
         success: true,
-        cycles: mockCycles,
+        billingCycles: mockCycles,
         count: 2
       });
     });
@@ -472,6 +472,10 @@ describe('BillingCycleController - Unit Tests', () => {
   describe('DELETE /api/payment-methods/:id/billing-cycles/:cycleId - deleteBillingCycle', () => {
     test('should delete billing cycle successfully', async () => {
       req.params = { id: '4', cycleId: '1' };
+      // Mock getBillingCycleHistory to return the cycle (for PDF check)
+      billingCycleHistoryService.getBillingCycleHistory.mockResolvedValue([
+        { id: 1, payment_method_id: 4, statement_pdf_path: null }
+      ]);
       billingCycleHistoryService.deleteBillingCycle.mockResolvedValue(true);
 
       await billingCycleController.deleteBillingCycle(req, res);
@@ -511,6 +515,9 @@ describe('BillingCycleController - Unit Tests', () => {
     test('should return 404 when billing cycle not found', async () => {
       req.params = { id: '4', cycleId: '999' };
 
+      // Mock getBillingCycleHistory to return empty (cycle not found)
+      billingCycleHistoryService.getBillingCycleHistory.mockResolvedValue([]);
+      
       const error = new Error('Billing cycle record not found');
       error.code = 'NOT_FOUND';
       billingCycleHistoryService.deleteBillingCycle.mockRejectedValue(error);
@@ -527,6 +534,9 @@ describe('BillingCycleController - Unit Tests', () => {
     test('should return 400 when billing cycle does not belong to payment method', async () => {
       req.params = { id: '4', cycleId: '1' };
 
+      // Mock getBillingCycleHistory to return empty (cycle belongs to different payment method)
+      billingCycleHistoryService.getBillingCycleHistory.mockResolvedValue([]);
+      
       const error = new Error('Billing cycle record does not belong to this payment method');
       error.code = 'VALIDATION_ERROR';
       billingCycleHistoryService.deleteBillingCycle.mockRejectedValue(error);

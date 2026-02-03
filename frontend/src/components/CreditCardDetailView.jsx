@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getPaymentMethod } from '../services/paymentMethodApi';
-import { getPayments, deletePayment, getBillingCycles, getStatementBalance, getBillingCycleHistory, deleteBillingCycle, getCurrentCycleStatus, getBillingCyclePdfUrl } from '../services/creditCardApi';
+import { getPayments, deletePayment, getStatementBalance, deleteBillingCycle, getCurrentCycleStatus, getBillingCyclePdfUrl, getUnifiedBillingCycles } from '../services/creditCardApi';
 import { createLogger } from '../utils/logger';
 import CreditCardPaymentForm from './CreditCardPaymentForm';
 import BillingCycleHistoryForm from './BillingCycleHistoryForm';
-import BillingCycleHistoryList from './BillingCycleHistoryList';
+import UnifiedBillingCycleList from './UnifiedBillingCycleList';
 import './CreditCardDetailView.css';
 
 const logger = createLogger('CreditCardDetailView');
@@ -33,10 +33,9 @@ const CreditCardDetailView = ({
   // State
   const [paymentMethod, setPaymentMethod] = useState(null);
   const [payments, setPayments] = useState([]);
-  const [billingCycles, setBillingCycles] = useState([]);
-  const [billingCyclesExpanded, setBillingCyclesExpanded] = useState(false);
+  const [unifiedBillingCycles, setUnifiedBillingCycles] = useState([]);
+  const [unifiedBillingCyclesLoading, setUnifiedBillingCyclesLoading] = useState(false);
   const [statementBalanceInfo, setStatementBalanceInfo] = useState(null);
-  const [billingCycleHistory, setBillingCycleHistory] = useState([]);
   const [currentCycleStatus, setCurrentCycleStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -100,40 +99,37 @@ const CreditCardDetailView = ({
       setPaymentMethod(methodData);
       setPayments(paymentsData || []);
       
-      // Fetch billing cycles if billing cycle is configured
-      if (methodData && methodData.billing_cycle_start && methodData.billing_cycle_end) {
-        try {
-          const cyclesData = await getBillingCycles(paymentMethodId, 6);
-          setBillingCycles(cyclesData || []);
-        } catch (cycleErr) {
-          logger.warn('Failed to fetch billing cycles:', cycleErr);
-          setBillingCycles([]);
-        }
-      } else {
-        setBillingCycles([]);
-      }
-      
-      // Fetch statement balance info and billing cycle history if billing_cycle_day is configured
+      // Fetch statement balance info and unified billing cycles if billing_cycle_day is configured
       if (methodData && methodData.billing_cycle_day) {
         try {
-          const [statementData, historyData, cycleStatusData] = await Promise.all([
+          const [statementData, cycleStatusData] = await Promise.all([
             getStatementBalance(paymentMethodId),
-            getBillingCycleHistory(paymentMethodId, { limit: 12 }),
             getCurrentCycleStatus(paymentMethodId)
           ]);
           setStatementBalanceInfo(statementData);
-          setBillingCycleHistory(historyData.billingCycles || []);
           setCurrentCycleStatus(cycleStatusData);
+          
+          // Fetch unified billing cycles (with auto-generation)
+          setUnifiedBillingCyclesLoading(true);
+          try {
+            const unifiedData = await getUnifiedBillingCycles(paymentMethodId, { limit: 12, includeAutoGenerate: true });
+            setUnifiedBillingCycles(unifiedData.billingCycles || []);
+          } catch (unifiedErr) {
+            logger.warn('Failed to fetch unified billing cycles:', unifiedErr);
+            setUnifiedBillingCycles([]);
+          } finally {
+            setUnifiedBillingCyclesLoading(false);
+          }
         } catch (statementErr) {
-          logger.warn('Failed to fetch statement balance or billing cycle history:', statementErr);
+          logger.warn('Failed to fetch statement balance or cycle status:', statementErr);
           setStatementBalanceInfo(null);
-          setBillingCycleHistory([]);
           setCurrentCycleStatus(null);
+          setUnifiedBillingCycles([]);
         }
       } else {
         setStatementBalanceInfo(null);
-        setBillingCycleHistory([]);
         setCurrentCycleStatus(null);
+        setUnifiedBillingCycles([]);
       }
     } catch (err) {
       logger.error('Failed to fetch credit card data:', err);
@@ -168,6 +164,17 @@ const CreditCardDetailView = ({
   // Handle edit billing cycle
   const handleEditBillingCycle = (cycle) => {
     setEditingBillingCycle(cycle);
+    setShowBillingCycleForm(true);
+  };
+
+  // Handle enter statement for auto-generated cycle
+  const handleEnterStatement = (cycle) => {
+    // Pre-populate the form with the cycle's dates
+    setEditingBillingCycle({
+      cycle_start_date: cycle.cycle_start_date,
+      cycle_end_date: cycle.cycle_end_date,
+      calculated_statement_balance: cycle.calculated_statement_balance
+    });
     setShowBillingCycleForm(true);
   };
 
@@ -433,10 +440,10 @@ const CreditCardDetailView = ({
                 Payments ({payments.length})
               </button>
               <button 
-                className={`cc-tab ${activeTab === 'statements' ? 'active' : ''}`}
-                onClick={() => setActiveTab('statements')}
+                className={`cc-tab ${activeTab === 'billing-cycles' ? 'active' : ''}`}
+                onClick={() => setActiveTab('billing-cycles')}
               >
-                Statements ({paymentMethod.billing_cycle_day ? billingCycleHistory.length : 0})
+                Billing Cycles ({paymentMethod.billing_cycle_day ? unifiedBillingCycles.length : 0})
               </button>
             </div>
 
@@ -525,45 +532,6 @@ const CreditCardDetailView = ({
                       </div>
                     </div>
                   )}
-
-                  {/* Billing Cycle History Section */}
-                  {billingCycles.length > 1 && (
-                    <div className="cc-info-section billing-cycle-history-section">
-                      <button 
-                        className="billing-history-toggle"
-                        onClick={() => setBillingCyclesExpanded(!billingCyclesExpanded)}
-                      >
-                        <h4>Billing Cycle History</h4>
-                        <span className={`toggle-icon ${billingCyclesExpanded ? 'expanded' : ''}`}>
-                          {billingCyclesExpanded ? '▼' : '▶'}
-                        </span>
-                      </button>
-                      {billingCyclesExpanded && (
-                        <div className="billing-cycle-history-list">
-                          {billingCycles.filter(cycle => !cycle.is_current).map((cycle, index) => (
-                            <div key={`${cycle.start_date}-${index}`} className="billing-cycle-history-item">
-                              <div className="cycle-history-dates">
-                                {formatDate(cycle.start_date)} - {formatDate(cycle.end_date)}
-                              </div>
-                              <div className="cycle-history-stats">
-                                <span className="cycle-history-stat">
-                                  <strong>{cycle.transaction_count}</strong> transactions
-                                </span>
-                                <span className="cycle-history-stat">
-                                  <strong>{formatCurrency(cycle.total_amount)}</strong> spent
-                                </span>
-                                {cycle.payment_count > 0 && (
-                                  <span className="cycle-history-stat payment">
-                                    <strong>{formatCurrency(cycle.payment_total)}</strong> paid
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
                 </div>
               )}
 
@@ -605,13 +573,13 @@ const CreditCardDetailView = ({
                 </div>
               )}
 
-              {activeTab === 'statements' && (
-                <div className="cc-tab-content statements-content">
-                  {/* Statement Balance History Section */}
+              {activeTab === 'billing-cycles' && (
+                <div className="cc-tab-content billing-cycles-content">
+                  {/* Unified Billing Cycles Section */}
                   {paymentMethod.billing_cycle_day ? (
-                    <div className="statements-section billing-history-section">
-                      <div className="statements-section-header">
-                        <h4>Statement Balances</h4>
+                    <div className="billing-cycles-section">
+                      <div className="billing-cycles-section-header">
+                        <h4>Billing Cycles</h4>
                         <button 
                           className="cc-action-btn primary small"
                           onClick={() => setShowBillingCycleForm(true)}
@@ -619,20 +587,22 @@ const CreditCardDetailView = ({
                           + Add Entry
                         </button>
                       </div>
-                      <BillingCycleHistoryList
-                        cycles={billingCycleHistory}
+                      <UnifiedBillingCycleList
+                        cycles={unifiedBillingCycles}
                         paymentMethodId={paymentMethodId}
+                        onEnterStatement={handleEnterStatement}
                         onEdit={handleEditBillingCycle}
                         onDelete={handleDeleteBillingCycle}
                         onViewPdf={handleViewBillingCyclePdf}
                         formatCurrency={formatCurrency}
                         formatDate={formatDate}
+                        loading={unifiedBillingCyclesLoading}
                       />
                     </div>
                   ) : (
                     <div className="cc-empty-state">
                       <span className="empty-icon">📊</span>
-                      <p>Configure a billing cycle day to track statement balances</p>
+                      <p>Configure a billing cycle day to track billing cycles</p>
                       <p className="empty-hint">Edit this card's settings to set the billing cycle day</p>
                     </div>
                   )}

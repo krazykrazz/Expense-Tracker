@@ -12,6 +12,10 @@ const { upload, handleMulterError, validateUploadRequest } = require('../middlew
  * _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5_
  */
 
+// GET /api/payment-methods/:id/billing-cycles/unified - Get unified billing cycles with auto-generation
+// Must be before /:cycleId routes to avoid conflict
+router.get('/:id/billing-cycles/unified', billingCycleController.getUnifiedBillingCycles);
+
 // GET /api/payment-methods/:id/billing-cycles/current - Get current billing cycle status
 // Must be before /:cycleId routes to avoid conflict
 router.get('/:id/billing-cycles/current', billingCycleController.getCurrentCycleStatus);

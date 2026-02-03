@@ -6,8 +6,8 @@ This implementation plan covers the Unified Billing Cycles feature, which consol
 
 ## Tasks
 
-- [ ] 1. Code Cleanup and Consolidation
-  - [ ] 1.1 Audit and consolidate statement balance calculation utilities
+- [x] 1. Code Cleanup and Consolidation
+  - [x] 1.1 Audit and consolidate statement balance calculation utilities
     - Review `statementBalanceService.calculateStatementBalance` (uses billing_cycle_day)
     - Review `paymentMethodService.calculateStatementBalance` (uses billing_cycle_start/end - legacy)
     - Consolidate to use `statementBalanceService` as the single source of truth
@@ -15,13 +15,13 @@ This implementation plan covers the Unified Billing Cycles feature, which consol
     - Ensure all callers use the consolidated approach
     - _Requirements: 9.3 (backward compatibility)_
   
-  - [ ] 1.2 Consolidate cycle date calculation helpers
+  - [x] 1.2 Consolidate cycle date calculation helpers
     - Identify duplicate `calculatePreviousCycleDates` implementations in test files
     - Create shared test utility if needed, or ensure tests use `statementBalanceService.calculatePreviousCycleDates`
     - _Requirements: 2.2_
 
-- [ ] 2. Backend Service Enhancements
-  - [ ] 2.1 Add auto-generation methods to BillingCycleHistoryService
+- [x] 2. Backend Service Enhancements
+  - [x] 2.1 Add auto-generation methods to BillingCycleHistoryService
     - Add `getMissingCyclePeriods(paymentMethodId, billingCycleDay, referenceDate, monthsBack)` method
     - Add `autoGenerateBillingCycles(paymentMethodId, billingCycleDay, referenceDate)` method
     - Auto-generate cycles with actual_statement_balance = 0
@@ -30,7 +30,7 @@ This implementation plan covers the Unified Billing Cycles feature, which consol
     - Skip periods that already have records (idempotence)
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6_
   
-  - [ ]* 2.2 Write property tests for auto-generation
+  - [x] 2.2 Write property tests for auto-generation
     - Create `backend/services/billingCycleHistoryService.autoGeneration.pbt.test.js`
     - **Property 1: Auto-Generation Date Calculation**
     - **Property 2: Auto-Generated Cycles Have Zero Actual Balance**
@@ -40,14 +40,14 @@ This implementation plan covers the Unified Billing Cycles feature, which consol
     - **Property 11: No Auto-Generation Without Billing Cycle Day**
     - **Validates: Requirements 2.2, 2.3, 2.5, 2.6, 7.2, 9.1, 9.2**
 
-  - [ ] 2.3 Add effective balance and trend calculation methods
+  - [x] 2.3 Add effective balance and trend calculation methods
     - Add `calculateEffectiveBalance(cycle)` method returning { effectiveBalance, balanceType }
     - Add `calculateTrendIndicator(currentEffectiveBalance, previousEffectiveBalance)` method
     - Implement $1 tolerance for "same" trend type
     - Return null trend indicator when no previous cycle exists
     - _Requirements: 4.1, 4.2, 5.1, 5.2, 5.3, 5.4, 5.5, 5.6_
 
-  - [ ]* 2.4 Write property tests for effective balance and trend
+  - [x] 2.4 Write property tests for effective balance and trend
     - Create `backend/services/billingCycleHistoryService.effective.pbt.test.js`
     - **Property 6: Effective Balance Calculation**
     - **Validates: Requirements 4.1, 4.2**
@@ -55,17 +55,17 @@ This implementation plan covers the Unified Billing Cycles feature, which consol
     - **Property 7: Trend Indicator Calculation**
     - **Validates: Requirements 5.2, 5.3, 5.4, 5.6**
 
-  - [ ] 2.5 Add transaction count method
+  - [x] 2.5 Add transaction count method
     - Add `getTransactionCount(paymentMethodId, cycleStartDate, cycleEndDate)` method
     - Count expenses where COALESCE(posted_date, date) falls within cycle period
     - _Requirements: 3.1, 3.2_
 
-  - [ ]* 2.6 Write property test for transaction count
+  - [x] 2.6 Write property test for transaction count
     - Create `backend/repositories/billingCycleRepository.transactionCount.pbt.test.js`
     - **Property 5: Transaction Count Accuracy**
     - **Validates: Requirements 3.2**
 
-  - [ ] 2.7 Add unified billing cycles method
+  - [x] 2.7 Add unified billing cycles method
     - Add `getUnifiedBillingCycles(paymentMethodId, options)` method
     - Accept options: limit (default 12), includeAutoGenerate (default true), referenceDate
     - Call autoGenerateBillingCycles if includeAutoGenerate is true
@@ -73,23 +73,23 @@ This implementation plan covers the Unified Billing Cycles feature, which consol
     - Sort by cycle_end_date descending
     - _Requirements: 6.1, 8.2, 8.3_
 
-- [ ] 3. Checkpoint - Backend Service Complete
+- [x] 3. Checkpoint - Backend Service Complete
   - Ensure all service tests pass
   - Ask the user if questions arise
 
-- [ ] 3. Backend Controller and Routes
-  - [ ] 3.1 Add unified endpoint to BillingCycleController
+- [x] 4. Backend Controller and Routes
+  - [x] 4.1 Add unified endpoint to BillingCycleController
     - Add `getUnifiedBillingCycles(req, res)` method
     - Parse query parameters: limit, include_auto_generate
     - Validate payment method ID
     - Return enriched billing cycles with autoGeneratedCount and totalCount
     - _Requirements: 8.1, 8.3, 8.4_
 
-  - [ ] 3.2 Add unified route
+  - [x] 4.2 Add unified route
     - Add GET `/api/payment-methods/:id/billing-cycles/unified` route in `backend/routes/billingCycleRoutes.js`
     - _Requirements: 8.1_
 
-  - [ ]* 3.3 Write controller tests for unified endpoint
+  - [x] 4.3 Write controller tests for unified endpoint
     - Create `backend/controllers/billingCycleController.unified.test.js`
     - Test endpoint with valid parameters
     - Test query parameter validation
@@ -97,23 +97,23 @@ This implementation plan covers the Unified Billing Cycles feature, which consol
     - **Property 8: Billing Cycles Sorted Descending**
     - **Validates: Requirements 6.1, 8.1, 8.3, 8.4**
 
-- [ ] 4. Checkpoint - Backend API Complete
+- [x] 5. Checkpoint - Backend API Complete
   - Ensure all backend tests pass
   - Test unified endpoint manually
   - Ask the user if questions arise
 
-- [ ] 5. Frontend API Integration
-  - [ ] 5.1 Add unified endpoint to frontend config
+- [x] 6. Frontend API Integration
+  - [x] 6.1 Add unified endpoint to frontend config
     - Add `PAYMENT_METHOD_BILLING_CYCLES_UNIFIED` to `frontend/src/config.js`
     - _Requirements: 8.1_
 
-  - [ ] 5.2 Add unified API function
+  - [x] 6.2 Add unified API function
     - Add `getUnifiedBillingCycles(paymentMethodId, options)` to `frontend/src/services/creditCardApi.js`
     - Accept options: limit, includeAutoGenerate
     - _Requirements: 8.1_
 
-- [ ] 6. Frontend Component Updates
-  - [ ] 6.1 Create UnifiedBillingCycleList component
+- [x] 7. Frontend Component Updates
+  - [x] 7.1 Create UnifiedBillingCycleList component
     - Create `frontend/src/components/UnifiedBillingCycleList.jsx`
     - Create `frontend/src/components/UnifiedBillingCycleList.css`
     - Display cycle dates, effective balance, balance type indicator, transaction count, trend indicator
@@ -122,7 +122,7 @@ This implementation plan covers the Unified Billing Cycles feature, which consol
     - Handle empty state and loading state
     - _Requirements: 4.3, 5.1, 5.2, 5.3, 5.4, 5.5, 6.1, 6.2, 6.3, 6.4, 6.5_
 
-  - [ ]* 6.2 Write tests for UnifiedBillingCycleList
+  - [x] 7.2 Write tests for UnifiedBillingCycleList
     - Create `frontend/src/components/UnifiedBillingCycleList.test.jsx`
     - Test trend indicator rendering (icons, colors, amounts)
     - Test balance type indicator display
@@ -131,7 +131,7 @@ This implementation plan covers the Unified Billing Cycles feature, which consol
     - **Property 9: Action Buttons Based on Actual Balance**
     - **Validates: Requirements 6.3, 6.4**
 
-  - [ ] 6.3 Update CreditCardDetailView for unified billing cycles
+  - [x] 7.3 Update CreditCardDetailView for unified billing cycles
     - Rename "Statements" tab to "Billing Cycles" in `frontend/src/components/CreditCardDetailView.jsx`
     - Remove "Billing Cycle History" collapsible section from Overview tab
     - Keep "Current Billing Cycle" card in Overview tab unchanged
@@ -140,7 +140,7 @@ This implementation plan covers the Unified Billing Cycles feature, which consol
     - Handle "Enter Statement" action to open form with pre-populated dates
     - _Requirements: 1.1, 1.2, 1.3, 1.4, 6.5, 7.1, 7.3, 10.1, 10.2, 10.3_
 
-  - [ ]* 6.4 Write tests for CreditCardDetailView updates
+  - [x] 7.4 Write tests for CreditCardDetailView updates
     - Create `frontend/src/components/CreditCardDetailView.unified.test.jsx`
     - Test tab label is "Billing Cycles" not "Statements"
     - Test Overview tab does not contain "Billing Cycle History" section
@@ -148,7 +148,7 @@ This implementation plan covers the Unified Billing Cycles feature, which consol
     - Test empty state when billing_cycle_day not configured
     - **Validates: Requirements 1.1, 1.3, 1.4, 7.1, 7.3, 10.1, 10.3**
 
-- [ ] 7. Checkpoint - Feature Complete
+- [x] 8. Checkpoint - Feature Complete
   - Ensure all tests pass (backend and frontend)
   - Verify full flow: view unified billing cycles with auto-generation
   - Verify trend indicators display correctly
@@ -156,8 +156,8 @@ This implementation plan covers the Unified Billing Cycles feature, which consol
   - Verify existing CRUD operations still work (backward compatibility)
   - Ask the user if questions arise
 
-- [ ] 8. Final Integration Testing
-  - [ ] 8.1 Test backward compatibility
+- [x] 9. Final Integration Testing
+  - [x] 9.1 Test backward compatibility
     - Verify existing billing cycle records are preserved
     - Verify existing CRUD endpoints still work
     - Verify reminder system still uses actual_statement_balance when available
@@ -165,7 +165,7 @@ This implementation plan covers the Unified Billing Cycles feature, which consol
 
 ## Notes
 
-- Tasks marked with `*` are optional and can be skipped for faster MVP
+- All tasks are required for comprehensive coverage
 - Each task references specific requirements for traceability
 - Checkpoints ensure incremental validation
 - Property tests validate universal correctness properties

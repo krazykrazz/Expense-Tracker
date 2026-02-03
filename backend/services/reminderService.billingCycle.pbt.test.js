@@ -8,7 +8,7 @@
  */
 
 const fc = require('fast-check');
-const { pbtOptions, dbPbtOptions } = require('../test/pbtArbitraries');
+const { pbtOptions, dbPbtOptions, calculatePreviousCycleDates } = require('../test/pbtArbitraries');
 const sqlite3 = require('sqlite3').verbose();
 
 // Helper function to create an in-memory test database
@@ -156,60 +156,9 @@ function getBillingCycleRecord(db, paymentMethodId, cycleEndDate) {
   });
 }
 
-// Helper function to calculate previous cycle dates (simplified version for testing)
-function calculatePreviousCycleDates(billingCycleDay, referenceDate) {
-  const ref = new Date(referenceDate);
-  const refYear = ref.getUTCFullYear();
-  const refMonth = ref.getUTCMonth();
-  const refDay = ref.getUTCDate();
-  
-  let cycleEndYear, cycleEndMonth;
-  
-  if (refDay > billingCycleDay) {
-    cycleEndYear = refYear;
-    cycleEndMonth = refMonth;
-  } else {
-    cycleEndYear = refYear;
-    cycleEndMonth = refMonth - 1;
-    if (cycleEndMonth < 0) {
-      cycleEndMonth = 11;
-      cycleEndYear--;
-    }
-  }
-  
-  let cycleStartYear = cycleEndYear;
-  let cycleStartMonth = cycleEndMonth - 1;
-  if (cycleStartMonth < 0) {
-    cycleStartMonth = 11;
-    cycleStartYear--;
-  }
-  
-  const daysInEndMonth = new Date(cycleEndYear, cycleEndMonth + 1, 0).getDate();
-  const actualEndDay = Math.min(billingCycleDay, daysInEndMonth);
-  
-  const daysInStartMonth = new Date(cycleStartYear, cycleStartMonth + 1, 0).getDate();
-  let startDay = billingCycleDay + 1;
-  let startMonth = cycleStartMonth;
-  let startYear = cycleStartYear;
-  
-  if (startDay > daysInStartMonth) {
-    startDay = 1;
-    startMonth = cycleStartMonth + 1;
-    if (startMonth > 11) {
-      startMonth = 0;
-      startYear++;
-    }
-  }
-  
-  const formatDate = (year, month, day) => {
-    return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-  };
-  
-  return {
-    startDate: formatDate(startYear, startMonth, startDay),
-    endDate: formatDate(cycleEndYear, cycleEndMonth, actualEndDay)
-  };
-}
+// NOTE: calculatePreviousCycleDates is now imported from pbtArbitraries
+// which delegates to statementBalanceService.calculatePreviousCycleDates
+// This ensures consistent cycle date calculations across all tests.
 
 describe('ReminderService Billing Cycle Integration - Property-Based Tests', () => {
   /**

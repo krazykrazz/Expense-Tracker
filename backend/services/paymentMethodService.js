@@ -861,10 +861,14 @@ class PaymentMethodService {
 
   /**
    * Calculate statement balance for a credit card
-   * Sum of expenses from past billing cycles minus payments before current cycle
+   * 
+   * CONSOLIDATED: This method now delegates to statementBalanceService when
+   * billing_cycle_day is configured (modern approach). Falls back to legacy
+   * billing_cycle_start/end calculation for backward compatibility.
+   * 
    * @param {number} paymentMethodId - Credit card ID
    * @returns {Promise<number|null>} Statement balance or null if no billing cycle
-   * _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5_
+   * _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 9.3 (backward compatibility)_
    */
   async calculateStatementBalance(paymentMethodId) {
     const paymentMethod = await paymentMethodRepository.findById(paymentMethodId);
@@ -873,7 +877,19 @@ class PaymentMethodService {
       throw new Error('Balance calculations only available for credit cards');
     }
 
-    // Return null if no billing cycle configured
+    // MODERN APPROACH: Use statementBalanceService when billing_cycle_day is configured
+    // This is the preferred method and single source of truth for statement balance calculation
+    if (paymentMethod.billing_cycle_day) {
+      const statementBalanceService = require('./statementBalanceService');
+      const result = await statementBalanceService.calculateStatementBalance(paymentMethodId);
+      
+      // statementBalanceService returns an object with statementBalance property
+      // Return just the number for backward compatibility with this method's signature
+      return result ? result.statementBalance : null;
+    }
+
+    // LEGACY FALLBACK: Use billing_cycle_start/end for cards without billing_cycle_day
+    // This maintains backward compatibility for older card configurations
     if (!paymentMethod.billing_cycle_start || !paymentMethod.billing_cycle_end) {
       return null;
     }
@@ -918,7 +934,7 @@ class PaymentMethodService {
     // Calculate balance (expenses - payments), minimum 0
     const balance = Math.max(0, Math.round((expenseTotal - paymentTotal) * 100) / 100);
 
-    logger.debug('Calculated statement balance:', {
+    logger.debug('Calculated statement balance (legacy):', {
       paymentMethodId,
       cycleStartDate: billingCycle.startDate,
       expenseTotal,

@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [5.4.0] - 2026-02-02
+
+### Added
+- **Expense List UX Improvements**: Enhanced filter experience with smarter controls
+  - Smart method filter combining payment type and specific method in a single grouped dropdown
+  - Filter chips showing active filters with one-click removal (×)
+  - Advanced filters section with collapsible Invoice and Insurance status filters
+  - Filter count badge showing total number of active filters
+  - Enhanced global view banner showing which filters triggered global view
+  - "Return to Monthly View" button to clear global-triggering filters
+  - Comprehensive property-based testing for all filter behaviors
+
+### Changed
+- Method and Method Type dropdowns replaced with single smart method filter
+- Filter controls reorganized with advanced filters in collapsible section
+
+---
+
+## [5.3.1] - 2026-02-02
+
+### Added
+- **Credit Card Statement Balance**: Automatic statement balance calculation with smart alerts
+  - Statement balance calculation based on billing cycle dates and expenses
+  - Billing cycle day field for credit cards (1-31) specifying when statement closes
+  - Smart payment alerts showing required payment amount (statement balance)
+  - Alert suppression when statement balance is zero or negative
+  - Statement period display in credit card detail view
+  - "Statement Paid" indicator when statement is paid in full
+  - Backward compatibility for cards without billing_cycle_day configured
+
+### Database
+- Added `billing_cycle_day` column to payment_methods table
+
+---
+
 ## [5.3.0] - 2026-02-02
 
 ### Added

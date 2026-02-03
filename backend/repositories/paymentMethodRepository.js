@@ -20,8 +20,8 @@ class PaymentMethodRepository {
         INSERT INTO payment_methods (
           type, display_name, full_name, account_details,
           credit_limit, current_balance, payment_due_day,
-          billing_cycle_start, billing_cycle_end, is_active
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          billing_cycle_day, billing_cycle_start, billing_cycle_end, is_active
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
       
       const params = [
@@ -32,6 +32,7 @@ class PaymentMethodRepository {
         paymentMethod.credit_limit || null,
         paymentMethod.current_balance || 0,
         paymentMethod.payment_due_day || null,
+        paymentMethod.billing_cycle_day || null,
         paymentMethod.billing_cycle_start || null,
         paymentMethod.billing_cycle_end || null,
         paymentMethod.is_active !== undefined ? paymentMethod.is_active : 1
@@ -55,6 +56,7 @@ class PaymentMethodRepository {
           credit_limit: paymentMethod.credit_limit || null,
           current_balance: paymentMethod.current_balance || 0,
           payment_due_day: paymentMethod.payment_due_day || null,
+          billing_cycle_day: paymentMethod.billing_cycle_day || null,
           billing_cycle_start: paymentMethod.billing_cycle_start || null,
           billing_cycle_end: paymentMethod.billing_cycle_end || null,
           is_active: paymentMethod.is_active !== undefined ? paymentMethod.is_active : 1
@@ -164,7 +166,7 @@ class PaymentMethodRepository {
         UPDATE payment_methods 
         SET type = ?, display_name = ?, full_name = ?, account_details = ?,
             credit_limit = ?, current_balance = ?, payment_due_day = ?,
-            billing_cycle_start = ?, billing_cycle_end = ?, is_active = ?,
+            billing_cycle_day = ?, billing_cycle_start = ?, billing_cycle_end = ?, is_active = ?,
             updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
       `;
@@ -177,6 +179,7 @@ class PaymentMethodRepository {
         data.credit_limit || null,
         data.current_balance !== undefined ? data.current_balance : 0,
         data.payment_due_day || null,
+        data.billing_cycle_day || null,
         data.billing_cycle_start || null,
         data.billing_cycle_end || null,
         data.is_active !== undefined ? data.is_active : 1,
@@ -206,6 +209,7 @@ class PaymentMethodRepository {
           credit_limit: data.credit_limit || null,
           current_balance: data.current_balance !== undefined ? data.current_balance : 0,
           payment_due_day: data.payment_due_day || null,
+          billing_cycle_day: data.billing_cycle_day || null,
           billing_cycle_start: data.billing_cycle_start || null,
           billing_cycle_end: data.billing_cycle_end || null,
           is_active: data.is_active !== undefined ? data.is_active : 1

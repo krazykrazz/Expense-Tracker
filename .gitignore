@@ -67,3 +67,10 @@ backend/config/database/*.db-wal
 /staging-data/
 
 test-pbt-backups/
+
+# Backend config database backups (runtime only)
+backend/config/database/backups/
+
+# Test data artifacts (backup files, archives)
+test-data/*.tar.gz
+test-data/*.zip

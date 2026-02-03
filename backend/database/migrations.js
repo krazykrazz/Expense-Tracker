@@ -3722,6 +3722,218 @@ async function migrateAddFixedInterestRate(db) {
 }
 
 /**
+ * Migration: Add billing_cycle_day column to payment_methods table
+ * This simplifies billing cycle configuration by using a single day value
+ * instead of separate start/end values
+ */
+async function migrateAddBillingCycleDayColumn(db) {
+  const migrationName = 'add_billing_cycle_day_v1';
+  
+  // Check if already applied
+  const isApplied = await checkMigrationApplied(db, migrationName);
+  if (isApplied) {
+    logger.info(`Migration "${migrationName}" already applied, skipping`);
+    return;
+  }
+
+  logger.info(`Running migration: ${migrationName}`);
+
+  // Create backup
+  await createBackup();
+
+  return new Promise((resolve, reject) => {
+    db.serialize(() => {
+      db.run('BEGIN TRANSACTION', (err) => {
+        if (err) {
+          return reject(err);
+        }
+
+        // Check if billing_cycle_day column already exists
+        db.all('PRAGMA table_info(payment_methods)', (err, columns) => {
+          if (err) {
+            db.run('ROLLBACK');
+            return reject(err);
+          }
+
+          const hasBillingCycleDay = columns.some(col => col.name === 'billing_cycle_day');
+
+          if (hasBillingCycleDay) {
+            logger.info('payment_methods table already has billing_cycle_day column');
+            markMigrationApplied(db, migrationName).then(() => {
+              db.run('COMMIT', (err) => {
+                if (err) {
+                  db.run('ROLLBACK');
+                  return reject(err);
+                }
+                logger.info(`Migration "${migrationName}" completed successfully`);
+                resolve();
+              });
+            }).catch(reject);
+            return;
+          }
+
+          // Add billing_cycle_day column (nullable, with CHECK constraint 1-31)
+          db.run(
+            'ALTER TABLE payment_methods ADD COLUMN billing_cycle_day INTEGER CHECK(billing_cycle_day IS NULL OR (billing_cycle_day >= 1 AND billing_cycle_day <= 31))',
+            (err) => {
+              if (err) {
+                db.run('ROLLBACK');
+                return reject(err);
+              }
+              
+              logger.info('Added billing_cycle_day column to payment_methods table');
+
+              // Migrate existing data: copy billing_cycle_end to billing_cycle_day for credit cards
+              // billing_cycle_end represents when the statement closes, which is what billing_cycle_day represents
+              db.run(
+                `UPDATE payment_methods 
+                 SET billing_cycle_day = billing_cycle_end 
+                 WHERE type = 'credit_card' 
+                   AND billing_cycle_end IS NOT NULL 
+                   AND billing_cycle_day IS NULL`,
+                function(err) {
+                  if (err) {
+                    db.run('ROLLBACK');
+                    return reject(err);
+                  }
+                  
+                  if (this.changes > 0) {
+                    logger.info(`Migrated billing_cycle_end to billing_cycle_day for ${this.changes} credit cards`);
+                  }
+
+                  // Mark migration as applied and commit
+                  markMigrationApplied(db, migrationName).then(() => {
+                    db.run('COMMIT', (err) => {
+                      if (err) {
+                        db.run('ROLLBACK');
+                        return reject(err);
+                      }
+                      logger.info(`Migration "${migrationName}" completed successfully`);
+                      resolve();
+                    });
+                  }).catch(reject);
+                }
+              );
+            }
+          );
+        });
+      });
+    });
+  });
+}
+
+/**
+ * Migration: Add credit_card_billing_cycles table
+ * Stores actual statement balances per billing cycle for reconciliation
+ */
+async function migrateAddBillingCyclesTable(db) {
+  const migrationName = 'add_billing_cycles_table_v1';
+  
+  // Check if already applied
+  const isApplied = await checkMigrationApplied(db, migrationName);
+  if (isApplied) {
+    logger.info(`Migration "${migrationName}" already applied, skipping`);
+    return;
+  }
+
+  logger.info(`Running migration: ${migrationName}`);
+
+  // Create backup
+  await createBackup();
+
+  return new Promise((resolve, reject) => {
+    db.serialize(() => {
+      db.run('BEGIN TRANSACTION', (err) => {
+        if (err) {
+          return reject(err);
+        }
+
+        // Create credit_card_billing_cycles table
+        db.run(`
+          CREATE TABLE IF NOT EXISTS credit_card_billing_cycles (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            payment_method_id INTEGER NOT NULL,
+            cycle_start_date TEXT NOT NULL,
+            cycle_end_date TEXT NOT NULL,
+            actual_statement_balance REAL NOT NULL CHECK(actual_statement_balance >= 0),
+            calculated_statement_balance REAL NOT NULL CHECK(calculated_statement_balance >= 0),
+            minimum_payment REAL CHECK(minimum_payment IS NULL OR minimum_payment >= 0),
+            due_date TEXT,
+            notes TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (payment_method_id) REFERENCES payment_methods(id) ON DELETE CASCADE,
+            UNIQUE(payment_method_id, cycle_end_date)
+          )
+        `, (err) => {
+          if (err) {
+            db.run('ROLLBACK');
+            return reject(err);
+          }
+
+          logger.info('Created credit_card_billing_cycles table');
+
+          // Create indexes for efficient querying
+          db.run('CREATE INDEX IF NOT EXISTS idx_billing_cycles_payment_method ON credit_card_billing_cycles(payment_method_id)', (err) => {
+            if (err) {
+              db.run('ROLLBACK');
+              return reject(err);
+            }
+
+            db.run('CREATE INDEX IF NOT EXISTS idx_billing_cycles_cycle_end ON credit_card_billing_cycles(cycle_end_date)', (err) => {
+              if (err) {
+                db.run('ROLLBACK');
+                return reject(err);
+              }
+
+              db.run('CREATE INDEX IF NOT EXISTS idx_billing_cycles_pm_cycle_end ON credit_card_billing_cycles(payment_method_id, cycle_end_date)', (err) => {
+                if (err) {
+                  db.run('ROLLBACK');
+                  return reject(err);
+                }
+
+                logger.info('Created indexes for credit_card_billing_cycles table');
+
+                // Create trigger for updated_at
+                db.run(`
+                  CREATE TRIGGER IF NOT EXISTS update_billing_cycles_timestamp 
+                  AFTER UPDATE ON credit_card_billing_cycles
+                  BEGIN
+                    UPDATE credit_card_billing_cycles SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+                  END
+                `, (err) => {
+                  if (err) {
+                    db.run('ROLLBACK');
+                    return reject(err);
+                  }
+
+                  logger.info('Created updated_at trigger for credit_card_billing_cycles table');
+
+                  // Mark migration as applied and commit
+                  markMigrationApplied(db, migrationName).then(() => {
+                    db.run('COMMIT', (err) => {
+                      if (err) {
+                        db.run('ROLLBACK');
+                        return reject(err);
+                      }
+                      logger.info(`Migration "${migrationName}" completed successfully`);
+                      resolve();
+                    });
+                  }).catch((err) => {
+                    db.run('ROLLBACK');
+                    reject(err);
+                  });
+                });
+              });
+            });
+          });
+        });
+      });
+    });
+  });
+}
+
+/**
  * Run all pending migrations
  */
 async function runMigrations(db) {
@@ -3750,6 +3962,8 @@ async function runMigrations(db) {
     await migrateConfigurablePaymentMethods(db);
     await migrateAddPostedDate(db);
     await migrateAddFixedInterestRate(db);
+    await migrateAddBillingCycleDayColumn(db);
+    await migrateAddBillingCyclesTable(db);
     logger.info('All migrations completed');
   } catch (error) {
     logger.error('Migration failed:', error.message);
@@ -3772,5 +3986,7 @@ module.exports = {
   migrateAddMortgagePaymentsTable,
   migrateConfigurablePaymentMethods,
   migrateAddPostedDate,
-  migrateAddFixedInterestRate
+  migrateAddFixedInterestRate,
+  migrateAddBillingCycleDayColumn,
+  migrateAddBillingCyclesTable
 };

@@ -1686,7 +1686,120 @@ This allows pre-logging expenses that haven't posted yet without affecting the c
 
 ---
 
+## Credit Card Statement Balance (v4.21.0)
+
+### Overview
+
+The statement balance feature automatically calculates what amount is due from the previous billing cycle, enabling smart payment alert suppression when statements are paid in full.
+
+### Key Concepts
+
+- **Statement Balance**: The calculated amount due from the previous billing cycle (expenses in cycle minus payments made)
+- **Billing Cycle Day**: The day of the month when the statement closes (1-31)
+- **Current Balance**: The total outstanding balance including current cycle charges
+
+### How Statement Balance is Calculated
+
+1. **Determine Previous Billing Cycle**: Based on `billing_cycle_day` and current date
+   - Example: If billing_cycle_day = 15 and today is Feb 2, previous cycle is Dec 16 - Jan 15
+2. **Sum Expenses**: All expenses where `COALESCE(posted_date, date)` falls within the cycle
+3. **Subtract Payments**: Payments made since the statement date
+4. **Floor at Zero**: Negative balances (overpayments) are reported as zero
+
+### Credit Card Reminder Response (Enhanced)
+
+The reminder endpoint now includes statement balance information:
+
+**Endpoint:** `GET /api/reminders`
+
+**Enhanced Response Fields for Credit Cards:**
+```json
+{
+  "creditCards": {
+    "overdueCount": 0,
+    "dueSoonCount": 1,
+    "overdueCards": [],
+    "dueSoonCards": [
+      {
+        "id": 4,
+        "display_name": "CIBC MC",
+        "current_balance": 1500.00,
+        "statement_balance": 850.00,
+        "required_payment": 850.00,
+        "credit_limit": 5000.00,
+        "payment_due_day": 20,
+        "billing_cycle_day": 15,
+        "days_until_due": 5,
+        "is_statement_paid": false,
+        "cycle_start_date": "2025-12-16",
+        "cycle_end_date": "2026-01-15",
+        "is_due_soon": true,
+        "is_overdue": false
+      }
+    ],
+    "allCreditCards": [...]
+  }
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| statement_balance | number | Calculated statement balance (expenses - payments) |
+| required_payment | number | Amount user needs to pay (same as statement_balance) |
+| is_statement_paid | boolean | True if statement_balance <= 0 |
+| cycle_start_date | string | Start date of the statement period (YYYY-MM-DD) |
+| cycle_end_date | string | End date of the statement period (YYYY-MM-DD) |
+
+### Alert Logic
+
+- **Show Reminder**: When `statement_balance > 0` AND `days_until_due` is between 0 and 7
+- **Suppress Reminder**: When `statement_balance <= 0` (statement paid in full)
+- **Backward Compatibility**: Cards without `billing_cycle_day` use `current_balance` for alerts
+
+### Required Fields for New Credit Cards
+
+When creating a credit card, the following fields are now required:
+- `billing_cycle_day` (1-31): Day the statement closes
+- `payment_due_day` (1-31): Day payment is due
+
+**Validation Errors:**
+```json
+HTTP/1.1 400 Bad Request
+{
+  "error": "Billing cycle day is required for credit cards"
+}
+```
+
+```json
+HTTP/1.1 400 Bad Request
+{
+  "error": "Billing cycle day must be between 1 and 31"
+}
+```
+
+### Database Schema Update
+
+The `payment_methods` table now includes:
+
+| Column | Type | Description |
+|--------|------|-------------|
+| billing_cycle_day | INTEGER | Day of month statement closes (1-31), CHECK constraint |
+
+Migration automatically copies `billing_cycle_end` to `billing_cycle_day` for existing credit cards.
+
+---
+
 ## Changelog - Payment Methods
+
+### Version 4.21.0 (February 2026)
+- Added `billing_cycle_day` column to payment_methods table
+- Added StatementBalanceService for automatic statement balance calculation
+- Added statement balance fields to reminder API response
+- Added smart payment alert suppression when statement is paid
+- Added required field validation for billing_cycle_day and payment_due_day
+- Added "Statement Paid" indicator in credit card detail view
+- Added billing cycle date display in credit card detail view
+- Migration automatically copies billing_cycle_end to billing_cycle_day
 
 ### Version 4.20.0 (January 2026)
 - Added `posted_date` column to expenses table
@@ -1709,6 +1822,6 @@ This allows pre-logging expenses that haven't posted yet without affecting the c
 
 ---
 
-**Last Updated:** January 30, 2026  
-**API Version:** 1.4  
+**Last Updated:** February 2, 2026  
+**API Version:** 1.5  
 **Status:** Active

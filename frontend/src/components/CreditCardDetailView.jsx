@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getPaymentMethod } from '../services/paymentMethodApi';
-import { getPayments, getStatements, deletePayment, deleteStatement, getStatementUrl, getBillingCycles } from '../services/creditCardApi';
+import { getPayments, getStatements, deletePayment, deleteStatement, getStatementUrl, getBillingCycles, getStatementBalance } from '../services/creditCardApi';
 import { createLogger } from '../utils/logger';
 import CreditCardPaymentForm from './CreditCardPaymentForm';
 import CreditCardStatementUpload from './CreditCardStatementUpload';
@@ -35,6 +35,7 @@ const CreditCardDetailView = ({
   const [statements, setStatements] = useState([]);
   const [billingCycles, setBillingCycles] = useState([]);
   const [billingCyclesExpanded, setBillingCyclesExpanded] = useState(false);
+  const [statementBalanceInfo, setStatementBalanceInfo] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
@@ -108,6 +109,19 @@ const CreditCardDetailView = ({
         }
       } else {
         setBillingCycles([]);
+      }
+      
+      // Fetch statement balance info if billing_cycle_day is configured
+      if (methodData && methodData.billing_cycle_day) {
+        try {
+          const statementData = await getStatementBalance(paymentMethodId);
+          setStatementBalanceInfo(statementData);
+        } catch (statementErr) {
+          logger.warn('Failed to fetch statement balance:', statementErr);
+          setStatementBalanceInfo(null);
+        }
+      } else {
+        setStatementBalanceInfo(null);
       }
     } catch (err) {
       logger.error('Failed to fetch credit card data:', err);
@@ -259,12 +273,34 @@ const CreditCardDetailView = ({
 
               {/* Statement Balance Card - Only show if billing cycle configured */}
               {paymentMethod.statement_balance !== null && paymentMethod.statement_balance !== undefined && (
-                <div className="cc-overview-card balance-card statement-balance-card">
-                  <div className="overview-label">Statement Balance</div>
-                  <div className="overview-value balance-value">
-                    {formatCurrency(paymentMethod.statement_balance)}
+                <div className={`cc-overview-card balance-card statement-balance-card ${
+                  statementBalanceInfo?.isPaid ? 'statement-paid' : ''
+                }`}>
+                  <div className="overview-label">
+                    Statement Balance
+                    {statementBalanceInfo?.isPaid && (
+                      <span className="paid-badge">✓ Paid</span>
+                    )}
                   </div>
-                  <div className="balance-description">From previous cycles</div>
+                  <div className="overview-value balance-value">
+                    {statementBalanceInfo?.isPaid 
+                      ? formatCurrency(0) 
+                      : formatCurrency(statementBalanceInfo?.statementBalance ?? paymentMethod.statement_balance)
+                    }
+                  </div>
+                  <div className="balance-description">
+                    {statementBalanceInfo?.isPaid 
+                      ? 'Statement paid in full'
+                      : paymentMethod.payment_due_day 
+                        ? `Due by day ${paymentMethod.payment_due_day}`
+                        : 'From previous cycles'
+                    }
+                  </div>
+                  {statementBalanceInfo?.cycleStartDate && statementBalanceInfo?.cycleEndDate && (
+                    <div className="statement-cycle-dates">
+                      Statement period: {formatDate(statementBalanceInfo.cycleStartDate)} - {formatDate(statementBalanceInfo.cycleEndDate)}
+                    </div>
+                  )}
                 </div>
               )}
 

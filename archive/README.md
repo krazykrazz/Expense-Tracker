@@ -1,7 +1,7 @@
 # Project Archive
 
 **Created:** 2025-11-24  
-**Last Updated:** 2026-01-30
+**Last Updated:** 2026-02-02
 
 This archive contains historical documentation and scripts that have served their purpose but are retained for reference.
 
@@ -60,13 +60,13 @@ Spec update summaries and cleanup documentation:
 - Cleanup analyses
 - Historical spec changes
 
-### specs/ (Updated - Jan 30, 2026)
+### specs/ (Updated - Feb 2, 2026)
 Completed feature specifications that have been fully implemented:
-- 34 archived spec directories for completed features
+- 36 archived spec directories for completed features
 - Includes deprecated features (recurring-expenses)
 - Infrastructure specs (code-optimization, containerization-optimization)
-- All major feature implementations from v3.0.0 through v4.20.0
-- **Latest:** Added configurable-payment-methods, credit-card-posted-date (v4.20.0)
+- All major feature implementations from v3.0.0 through v5.4.0
+- **Latest:** Added expense-list-ux-improvements (v5.4.0), credit-card-statement-balance (v5.3.1)
 
 ### test-scripts/ (Nov 24, 2025)
 One-time test scripts used during feature development:
@@ -235,6 +235,23 @@ Copy-Item archive/[subfolder]/[filename] ./
     - credit-card-posted-date (v4.20.0 - optional posted date for credit card balance calculations)
   - **Result:** .kiro/specs/ now contains only 1 active spec (mortgage-payment-date-tracking)
   - **Total archived specs:** 34 complete feature specifications
+
+- **2026-02-02:** Post v5.4.0 spec cleanup (2 items)
+  - **Archived 2 completed specs** from .kiro/specs/ to archive/specs/:
+    - expense-list-ux-improvements (v5.4.0 - smart method filter, filter chips, advanced filters)
+    - credit-card-statement-balance (v5.3.1 - billing cycle statement balance calculation with payment alert suppression)
+  - **Result:** .kiro/specs/ now contains 2 active specs (mortgage-payment-date-tracking, windows-desktop-app)
+  - **Total archived specs:** 36 complete feature specifications
+
+- **2026-02-02:** Test artifact cleanup (4 items)
+  - **Removed from git tracking** (accidentally committed artifacts):
+    - `backend/config/database/backups/expense-tracker-fix-2025-11-24T19-20-51-853Z.db` (old one-time fix backup)
+    - `test-data/expense-tracker-backup-2026-01-29_00-18-35.tar.gz` (test backup archive)
+  - **Updated .gitignore** to prevent future similar issues:
+    - Added `backend/config/database/backups/` to ignore runtime backup files
+    - Added `test-data/*.tar.gz` and `test-data/*.zip` to ignore test archives
+  - **Deleted local files** after removing from git tracking
+  - **Result:** No database or backup files tracked in repository
 
 ## Next Review
 

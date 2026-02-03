@@ -1,7 +1,7 @@
 # Expense Tracker - Feature Roadmap
 
-**Last Updated**: January 30, 2026  
-**Current Version**: 4.20.0
+**Last Updated**: February 2, 2026  
+**Current Version**: 5.4.0
 
 This document tracks potential features and enhancements for the Expense Tracker application. Features are categorized by priority and implementation status.
 
@@ -573,6 +573,46 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ## 🟢 Completed Features
 
+### 🟢 Expense List UX Improvements (v5.4.0)
+**Completed**: February 2026  
+**Spec**: `.kiro/specs/expense-list-ux-improvements/`  
+**Description**: Frontend-only enhancements to the ExpenseList filter experience with smarter filtering, collapsible advanced filters, visual filter indicators, and improved global view navigation.
+
+**Features Delivered**:
+- **Smart Method Filter**: Combined Method and Method Type dropdowns into single grouped dropdown with type headers
+- **Advanced Filters Section**: Collapsible section for Invoice and Insurance filters with active count badge
+- **Filter Count Badge**: Visual indicator showing total number of active filters
+- **Filter Chips**: Pill-shaped chips showing active filters with one-click removal (×)
+- **Enhanced Global View Banner**: Shows which filters triggered global view with "Return to Monthly View" button
+- **Enhanced Clear Filters Button**: Improved styling and visibility in global view mode
+- **Property-Based Testing**: Comprehensive PBT coverage for all filter behaviors
+
+**Benefits**:
+- Cleaner filter UI with fewer controls
+- Better visibility of active filter state
+- Easier filter management with chip removal
+- Improved navigation between global and monthly views
+
+---
+
+### 🟢 Credit Card Statement Balance (v5.3.1)
+**Completed**: February 2026  
+**Spec**: `.kiro/specs/credit-card-statement-balance/`  
+**Description**: Automatic statement balance calculation based on billing cycles with smart payment alert suppression when statements are paid in full.
+
+**Features Delivered**:
+- **Statement Balance Calculation**: Automatic calculation based on billing cycle dates and expenses
+- **Billing Cycle Day Field**: New required field for credit cards specifying when statement closes (1-31)
+- **Smart Payment Alerts**: Reminders show required payment amount (statement balance)
+- **Alert Suppression**: Payment reminders suppressed when statement balance is zero or negative
+- **Statement Period Display**: Shows billing cycle dates in credit card detail view
+- **"Statement Paid" Indicator**: Visual indicator when statement is paid in full
+- **Backward Compatibility**: Cards without billing_cycle_day configured use current_balance for alerts
+- **Database Migration**: Automatic migration adds billing_cycle_day column
+- **Comprehensive Testing**: 47 backend tests, 46 frontend tests with property-based testing
+
+---
+
 ### 🟢 Configurable Payment Methods (v4.20.0)
 **Completed**: January 30, 2026  
 **Spec**: `.kiro/specs/configurable-payment-methods/`  
@@ -615,7 +655,8 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ### 🟢 Spending Patterns & Predictions / Analytics Hub (v4.17.0)
 **Completed**: January 26, 2026  
-**Spec**: `.kiro/specs/spending-patterns-predictions/`  
+**Spec**: `archive/specs/spending-patterns-predictions/`  
+**Documentation**: `docs/features/ANALYTICS_HUB.md`  
 **Description**: Comprehensive analytics hub providing spending pattern analysis, predictions, seasonal trends, anomaly detection, and merchant analytics in a unified interface.
 
 **Features Delivered**:
@@ -991,6 +1032,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 ---
 
 **Version History**:
+- v2.5 (2026-02-02): Added Expense List UX Improvements (v5.4.0) and Credit Card Statement Balance (v5.3.1) to completed features, updated current version to 5.4.0
 - v2.4 (2026-02-02): Added UX improvement proposals (#21-25): ExpenseForm Simplification, Summary Panel Preferences, Duplicate Expense Feature, Quick Edit for Amount, Modal Consolidation
 - v2.3 (2026-01-30): Added Configurable Payment Methods (v4.20.0) and Credit Card Posted Date to completed features, updated current version to 4.20.0
 - v2.2 (2026-01-26): Added Adaptive Anomaly Detection (Learning from Dismissals) as proposed feature #2 in Analytics & Insights section

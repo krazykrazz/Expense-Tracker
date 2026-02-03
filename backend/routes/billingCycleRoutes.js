@@ -1,0 +1,31 @@
+const express = require('express');
+const router = express.Router();
+const billingCycleController = require('../controllers/billingCycleController');
+
+/**
+ * Billing Cycle History Routes
+ * 
+ * These routes are nested under /api/payment-methods/:id/billing-cycles
+ * They provide CRUD operations for credit card billing cycle history records.
+ * 
+ * _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5_
+ */
+
+// GET /api/payment-methods/:id/billing-cycles/current - Get current billing cycle status
+// Must be before /:cycleId routes to avoid conflict
+router.get('/:id/billing-cycles/current', billingCycleController.getCurrentCycleStatus);
+
+// GET /api/payment-methods/:id/billing-cycles/history - Get billing cycle history
+// Must be before /:cycleId routes to avoid conflict
+router.get('/:id/billing-cycles/history', billingCycleController.getBillingCycleHistory);
+
+// POST /api/payment-methods/:id/billing-cycles - Create a billing cycle record
+router.post('/:id/billing-cycles', billingCycleController.createBillingCycle);
+
+// PUT /api/payment-methods/:id/billing-cycles/:cycleId - Update a billing cycle record
+router.put('/:id/billing-cycles/:cycleId', billingCycleController.updateBillingCycle);
+
+// DELETE /api/payment-methods/:id/billing-cycles/:cycleId - Delete a billing cycle record
+router.delete('/:id/billing-cycles/:cycleId', billingCycleController.deleteBillingCycle);
+
+module.exports = router;

@@ -346,7 +346,7 @@ export const deleteStatement = async (paymentMethodId, statementId) => {
 // ==========================================
 
 /**
- * Get billing cycle history for a credit card
+ * Get billing cycle history for a credit card (legacy endpoint)
  * @param {number} paymentMethodId - Payment method ID
  * @param {number} count - Number of cycles to retrieve (default 6, max 24)
  * @returns {Promise<Array>} Array of billing cycle details sorted by date descending
@@ -374,5 +374,205 @@ export const getBillingCycles = async (paymentMethodId, count = 6) => {
   } catch (error) {
     logger.error('Failed to fetch billing cycles:', error);
     throw new Error(`Unable to load billing cycles: ${error.message}`);
+  }
+};
+
+// ==========================================
+// Credit Card Billing Cycle History Functions
+// ==========================================
+
+/**
+ * Create a billing cycle record with actual statement balance
+ * @param {number} paymentMethodId - Payment method ID (must be credit_card type with billing_cycle_day)
+ * @param {Object} data - Billing cycle data
+ * @param {number} data.actual_statement_balance - Actual statement balance from credit card statement
+ * @param {number} [data.minimum_payment] - Optional minimum payment amount
+ * @param {string} [data.due_date] - Optional due date (YYYY-MM-DD)
+ * @param {string} [data.notes] - Optional notes
+ * @returns {Promise<Object>} Created billing cycle record with discrepancy info
+ */
+export const createBillingCycle = async (paymentMethodId, data) => {
+  try {
+    const response = await fetchWithRetry(
+      API_ENDPOINTS.PAYMENT_METHOD_BILLING_CYCLE_CREATE(paymentMethodId),
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+      }
+    );
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `Failed to create billing cycle (${response.status})`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    logger.error('Failed to create billing cycle:', error);
+    throw new Error(`Unable to create billing cycle: ${error.message}`);
+  }
+};
+
+/**
+ * Get billing cycle history with discrepancy calculations
+ * @param {number} paymentMethodId - Payment method ID
+ * @param {Object} [options] - Query options
+ * @param {number} [options.limit] - Maximum number of records to return
+ * @param {string} [options.startDate] - Start date filter (YYYY-MM-DD)
+ * @param {string} [options.endDate] - End date filter (YYYY-MM-DD)
+ * @returns {Promise<Object>} Billing cycle history with records sorted by cycle_end_date DESC
+ */
+export const getBillingCycleHistory = async (paymentMethodId, options = {}) => {
+  try {
+    const params = new URLSearchParams();
+    if (options.limit) params.append('limit', options.limit.toString());
+    if (options.startDate) params.append('startDate', options.startDate);
+    if (options.endDate) params.append('endDate', options.endDate);
+    
+    const url = params.toString()
+      ? `${API_ENDPOINTS.PAYMENT_METHOD_BILLING_CYCLE_HISTORY(paymentMethodId)}?${params.toString()}`
+      : API_ENDPOINTS.PAYMENT_METHOD_BILLING_CYCLE_HISTORY(paymentMethodId);
+    
+    const response = await fetchWithRetry(url);
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `Failed to fetch billing cycle history (${response.status})`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    logger.error('Failed to fetch billing cycle history:', error);
+    throw new Error(`Unable to load billing cycle history: ${error.message}`);
+  }
+};
+
+/**
+ * Update a billing cycle record
+ * @param {number} paymentMethodId - Payment method ID
+ * @param {number} cycleId - Billing cycle record ID
+ * @param {Object} data - Updated data
+ * @param {number} [data.actual_statement_balance] - Updated actual statement balance
+ * @param {number} [data.minimum_payment] - Updated minimum payment
+ * @param {string} [data.due_date] - Updated due date (YYYY-MM-DD)
+ * @param {string} [data.notes] - Updated notes
+ * @returns {Promise<Object>} Updated billing cycle record with discrepancy info
+ */
+export const updateBillingCycle = async (paymentMethodId, cycleId, data) => {
+  try {
+    const response = await fetchWithRetry(
+      API_ENDPOINTS.PAYMENT_METHOD_BILLING_CYCLE_UPDATE(paymentMethodId, cycleId),
+      {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+      }
+    );
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `Failed to update billing cycle (${response.status})`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    logger.error('Failed to update billing cycle:', error);
+    throw new Error(`Unable to update billing cycle: ${error.message}`);
+  }
+};
+
+/**
+ * Delete a billing cycle record
+ * @param {number} paymentMethodId - Payment method ID
+ * @param {number} cycleId - Billing cycle record ID
+ * @returns {Promise<Object>} Success response
+ */
+export const deleteBillingCycle = async (paymentMethodId, cycleId) => {
+  try {
+    const response = await fetchWithRetry(
+      API_ENDPOINTS.PAYMENT_METHOD_BILLING_CYCLE_DELETE(paymentMethodId, cycleId),
+      { method: 'DELETE' }
+    );
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `Failed to delete billing cycle (${response.status})`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    logger.error('Failed to delete billing cycle:', error);
+    throw new Error(`Unable to delete billing cycle: ${error.message}`);
+  }
+};
+
+/**
+ * Get current billing cycle status for a credit card
+ * Returns whether actual balance has been entered for the current period
+ * @param {number} paymentMethodId - Payment method ID
+ * @returns {Promise<Object>} Current cycle status
+ * {
+ *   hasActualBalance: boolean,
+ *   cycleStartDate: string (YYYY-MM-DD),
+ *   cycleEndDate: string (YYYY-MM-DD),
+ *   actualBalance: number|null,
+ *   calculatedBalance: number,
+ *   daysUntilCycleEnd: number,
+ *   needsEntry: boolean
+ * }
+ */
+export const getCurrentCycleStatus = async (paymentMethodId) => {
+  try {
+    const response = await fetchWithRetry(
+      API_ENDPOINTS.PAYMENT_METHOD_BILLING_CYCLE_CURRENT(paymentMethodId)
+    );
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `Failed to fetch current cycle status (${response.status})`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    logger.error('Failed to fetch current cycle status:', error);
+    throw new Error(`Unable to load current cycle status: ${error.message}`);
+  }
+};
+
+/**
+ * Get statement balance info for a credit card
+ * Returns the calculated statement balance based on billing_cycle_day
+ * @param {number} paymentMethodId - Payment method ID
+ * @returns {Promise<Object|null>} Statement balance info or null if not configured
+ * {
+ *   statementBalance: number,
+ *   cycleStartDate: string (YYYY-MM-DD),
+ *   cycleEndDate: string (YYYY-MM-DD),
+ *   totalExpenses: number,
+ *   totalPayments: number,
+ *   isPaid: boolean
+ * }
+ */
+export const getStatementBalance = async (paymentMethodId) => {
+  try {
+    const response = await fetchWithRetry(
+      API_ENDPOINTS.PAYMENT_METHOD_STATEMENT_BALANCE(paymentMethodId)
+    );
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `Failed to fetch statement balance (${response.status})`);
+    }
+    
+    const data = await response.json();
+    return data.statementBalance || null;
+  } catch (error) {
+    logger.error('Failed to fetch statement balance:', error);
+    throw new Error(`Unable to load statement balance: ${error.message}`);
   }
 };

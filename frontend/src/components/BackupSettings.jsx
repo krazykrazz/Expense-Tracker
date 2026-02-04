@@ -805,6 +805,24 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v5.4.1</div>
+                <div className="changelog-date">February 2026</div>
+                <ul className="changelog-items">
+                  <li>Fixed zero statement balance not saving properly for unused credit cards</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
+                <div className="changelog-version">v5.4.0</div>
+                <div className="changelog-date">February 2026</div>
+                <ul className="changelog-items">
+                  <li>Unified Billing Cycles: Consolidated billing cycle management in single tab</li>
+                  <li>Auto-generation of billing cycles based on historical expenses</li>
+                  <li>Transaction counts and trend indicators per billing cycle</li>
+                  <li>Smart method filter combining payment type and method selection</li>
+                  <li>Filter chips with one-click removal for active filters</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v5.3.0</div>
                 <div className="changelog-date">February 2026</div>
                 <ul className="changelog-items">

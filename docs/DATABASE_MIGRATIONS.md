@@ -24,6 +24,7 @@ Migrations are defined in `backend/database/migrations.js`:
 - `migrateAddIncomeCategoryColumn` - Adds category field to income_sources table
 - `migrateMultiInvoiceSupport` - Enables multiple invoices per expense with person linking (v4.13.0)
 - `migrateAddBillingCycleDay` - Adds billing_cycle_day column for statement balance calculation (v4.21.0)
+- `migrateBillingCycleHistory` - Creates billing_cycle_history table for tracking billing cycles (v5.4.0)
 
 ## Container Startup
 

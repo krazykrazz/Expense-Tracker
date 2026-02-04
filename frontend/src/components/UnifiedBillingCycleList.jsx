@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { getBillingCyclePdfUrl } from '../services/creditCardApi';
 import './UnifiedBillingCycleList.css';
 
 /**
@@ -16,7 +15,6 @@ import './UnifiedBillingCycleList.css';
  */
 const UnifiedBillingCycleList = ({
   cycles = [],
-  paymentMethodId = null,
   onEnterStatement = () => {},
   onEdit = () => {},
   onDelete = () => {},
@@ -184,47 +182,28 @@ const UnifiedBillingCycleList = ({
               </div>
             )}
 
-            {/* Actions - Conditional based on actual_statement_balance */}
+            {/* Actions - Consistent pencil/trash for all cycles */}
             <div className="unified-cycle-actions">
-              {cycle.actual_statement_balance > 0 ? (
-                <>
-                  <button
-                    className="unified-cycle-action-btn edit"
-                    onClick={() => onEdit(cycle)}
-                    title="Edit billing cycle"
-                    aria-label={`Edit billing cycle for ${formatDate(cycle.cycle_end_date)}`}
-                  >
-                    ✏️
-                  </button>
-                  <button
-                    className="unified-cycle-action-btn delete"
-                    onClick={() => handleDeleteClick(cycle)}
-                    title="Delete billing cycle"
-                    aria-label={`Delete billing cycle for ${formatDate(cycle.cycle_end_date)}`}
-                  >
-                    🗑️
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    className="unified-cycle-action-btn enter-statement"
-                    onClick={() => onEnterStatement(cycle)}
-                    title="Enter statement balance"
-                    aria-label={`Enter statement for ${formatDate(cycle.cycle_end_date)}`}
-                  >
-                    📝 Enter Statement
-                  </button>
-                  <button
-                    className="unified-cycle-action-btn delete auto-generated"
-                    onClick={() => handleDeleteClick(cycle)}
-                    title="Delete auto-generated cycle (will regenerate)"
-                    aria-label={`Delete auto-generated cycle for ${formatDate(cycle.cycle_end_date)}`}
-                  >
-                    🔄
-                  </button>
-                </>
-              )}
+              <button
+                className="unified-cycle-action-btn edit"
+                onClick={() => cycle.balance_type === 'actual' ? onEdit(cycle) : onEnterStatement(cycle)}
+                title={cycle.balance_type === 'actual' ? "Edit billing cycle" : "Enter statement balance"}
+                aria-label={cycle.balance_type === 'actual' 
+                  ? `Edit billing cycle for ${formatDate(cycle.cycle_end_date)}`
+                  : `Enter statement for ${formatDate(cycle.cycle_end_date)}`}
+              >
+                ✏️
+              </button>
+              <button
+                className="unified-cycle-action-btn delete"
+                onClick={() => handleDeleteClick(cycle)}
+                title={cycle.balance_type === 'actual' ? "Delete billing cycle" : "Delete auto-generated cycle (will regenerate)"}
+                aria-label={cycle.balance_type === 'actual'
+                  ? `Delete billing cycle for ${formatDate(cycle.cycle_end_date)}`
+                  : `Delete auto-generated cycle for ${formatDate(cycle.cycle_end_date)}`}
+              >
+                🗑️
+              </button>
             </div>
           </div>
         ))}
@@ -234,35 +213,26 @@ const UnifiedBillingCycleList = ({
       {deleteConfirm && (
         <div className="unified-billing-cycle-confirm-overlay">
           <div className="unified-billing-cycle-confirm-dialog">
-            <h3>{deleteConfirm.actual_statement_balance > 0 ? 'Delete Billing Cycle' : 'Refresh Billing Cycle'}</h3>
+            <h3>Delete Billing Cycle</h3>
             <p>
-              {deleteConfirm.actual_statement_balance > 0 ? (
-                <>
-                  Are you sure you want to delete the billing cycle record for{' '}
-                  <strong>{formatDate(deleteConfirm.cycle_end_date)}</strong>?
-                </>
-              ) : (
-                <>
-                  Delete and regenerate the auto-generated cycle for{' '}
-                  <strong>{formatDate(deleteConfirm.cycle_end_date)}</strong>?
-                </>
-              )}
+              Are you sure you want to delete the billing cycle for{' '}
+              <strong>{formatDate(deleteConfirm.cycle_end_date)}</strong>?
             </p>
             <p className="confirm-detail">
-              {deleteConfirm.actual_statement_balance > 0 ? (
+              {deleteConfirm.balance_type === 'actual' ? (
                 <>Actual Balance: {formatCurrency(deleteConfirm.actual_statement_balance)}</>
               ) : (
                 <>Calculated Balance: {formatCurrency(deleteConfirm.calculated_statement_balance)}</>
               )}
             </p>
             <p className="confirm-warning">
-              {deleteConfirm.actual_statement_balance > 0 
+              {deleteConfirm.balance_type === 'actual' 
                 ? 'This action cannot be undone.'
-                : 'The cycle will be regenerated with updated calculations.'}
+                : 'Auto-generated cycles will be regenerated automatically.'}
             </p>
             <div className="confirm-actions">
               <button className="confirm-delete-btn" onClick={confirmDelete}>
-                {deleteConfirm.actual_statement_balance > 0 ? 'Delete' : 'Refresh'}
+                Delete
               </button>
               <button className="confirm-cancel-btn" onClick={cancelDelete}>
                 Cancel

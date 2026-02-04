@@ -15,6 +15,7 @@ export const API_ENDPOINTS = {
   FIXED_EXPENSES_BY_MONTH: (year, month) => `${API_BASE_URL}/api/fixed-expenses/${year}/${month}`,
   FIXED_EXPENSES_BY_ID: (id) => `${API_BASE_URL}/api/fixed-expenses/${id}`,
   FIXED_EXPENSES_CARRY_FORWARD: `${API_BASE_URL}/api/fixed-expenses/carry-forward`,
+  FIXED_EXPENSES_BY_LOAN: (loanId) => `${API_BASE_URL}/api/fixed-expenses/by-loan/${loanId}`,
   
   // Income
   INCOME: `${API_BASE_URL}/api/income`,

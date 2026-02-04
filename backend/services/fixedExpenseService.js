@@ -416,6 +416,15 @@ class FixedExpenseService {
       count: items.length
     };
   }
+
+  /**
+   * Get fixed expenses linked to a specific loan
+   * @param {number} loanId - Loan ID
+   * @returns {Promise<Array>} Array of fixed expense objects
+   */
+  async getFixedExpensesByLoanId(loanId) {
+    return await fixedExpenseRepository.getFixedExpensesByLoanId(loanId);
+  }
 }
 
 module.exports = new FixedExpenseService();

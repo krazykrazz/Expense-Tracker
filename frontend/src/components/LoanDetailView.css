@@ -1182,3 +1182,80 @@ button:disabled {
     transform: none;
   }
 }
+
+/* Linked Fixed Expenses Section */
+.loan-linked-expenses-section {
+  background-color: var(--bg-subtle);
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-5);
+  margin-bottom: var(--spacing-5);
+  transition: box-shadow 0.2s ease;
+}
+
+.loan-linked-expenses-section:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.loan-linked-expenses-section h3 {
+  margin: 0 0 var(--spacing-4) 0;
+  font-size: var(--heading-2);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+.linked-expenses-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+  margin-bottom: var(--spacing-4);
+}
+
+.linked-expense-item {
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-3);
+  transition: all 0.2s ease;
+}
+
+.linked-expense-item:hover {
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.linked-expense-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-2);
+}
+
+.linked-expense-name {
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+.linked-expense-amount {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--color-primary);
+  font-feature-settings: var(--font-feature-tabular);
+}
+
+.linked-expense-due {
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+
+.linked-expenses-note {
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+  font-style: italic;
+  padding: var(--spacing-3);
+  background-color: var(--bg-primary);
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--color-info);
+}

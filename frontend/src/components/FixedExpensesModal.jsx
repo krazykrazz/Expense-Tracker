@@ -147,13 +147,16 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
   }, [isOpen, year, month]);
 
   // Fetch active payment methods from API (Requirements 5.1)
+  // Filter out credit cards - fixed expenses should only use Cash, Debit, Cheque
   const fetchPaymentMethods = async () => {
     setPaymentMethodsLoading(true);
     try {
       const methods = await getActivePaymentMethods();
-      setPaymentMethods(methods || []);
+      // Filter out credit card payment methods for fixed expenses
+      const nonCreditCardMethods = (methods || []).filter(m => m.type !== 'credit_card');
+      setPaymentMethods(nonCreditCardMethods);
       
-      // Build a map for quick lookup
+      // Build a map for quick lookup (include all methods for inactive detection)
       const methodsMap = {};
       (methods || []).forEach(m => {
         methodsMap[m.id] = m;
@@ -628,8 +631,8 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
                             >
                               <option value="">Select Payment Type</option>
                               {/* Group payment methods by type */}
-                              {Object.entries(groupPaymentMethodsByType(paymentMethods)).map(([type, methods]) => (
-                                methods.length > 0 && (
+                              {Object.entries(groupPaymentMethodsByType(paymentMethods)).map(([type, methods]) => 
+                                methods.length > 0 ? (
                                   <optgroup key={type} label={getTypeLabel(type)}>
                                     {methods.map(method => (
                                       <option key={method.id} value={method.display_name}>
@@ -637,8 +640,8 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
                                       </option>
                                     ))}
                                   </optgroup>
-                                )
-                              ))}
+                                ) : null
+                              )}
                               {/* Show inactive payment method if editing expense with one */}
                               {editPaymentType && !paymentMethods.some(m => m.display_name === editPaymentType) && (
                                 <optgroup label="Inactive">
@@ -693,8 +696,8 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
                             >
                               <option value="">No Linked Loan</option>
                               {/* Group loans by type (Requirements 2.1, 2.2) */}
-                              {Object.entries(groupLoansByType(loans)).map(([type, loanList]) => (
-                                loanList.length > 0 && (
+                              {Object.entries(groupLoansByType(loans)).map(([type, loanList]) => 
+                                loanList.length > 0 ? (
                                   <optgroup key={type} label={getLoanTypeLabel(type)}>
                                     {loanList.map(loan => (
                                       <option key={loan.id} value={loan.id}>
@@ -702,8 +705,8 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
                                       </option>
                                     ))}
                                   </optgroup>
-                                )
-                              ))}
+                                ) : null
+                              )}
                               {/* Show paid-off loan if editing expense linked to one (Requirements 2.6) */}
                               {editLinkedLoan && loansMap[editLinkedLoan] && loansMap[editLinkedLoan].is_paid_off && (
                                 <optgroup label="Paid Off">
@@ -760,10 +763,11 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
                             {expense.linked_loan_id ? (
                               <>
                                 <span className="loan-icon">🏦</span>
+                                {' '}
                                 {loansMap[expense.linked_loan_id]?.name || 'Unknown Loan'}
-                                {loansMap[expense.linked_loan_id]?.is_paid_off && (
+                                {loansMap[expense.linked_loan_id]?.is_paid_off ? (
                                   <span title="This loan has been paid off"> (Paid Off)</span>
-                                )}
+                                ) : null}
                               </>
                             ) : '-'}
                           </span>
@@ -842,8 +846,8 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
                       >
                         <option value="">Select Payment Type</option>
                         {/* Group payment methods by type (Requirements 5.1) */}
-                        {Object.entries(groupPaymentMethodsByType(paymentMethods)).map(([type, methods]) => (
-                          methods.length > 0 && (
+                        {Object.entries(groupPaymentMethodsByType(paymentMethods)).map(([type, methods]) => 
+                          methods.length > 0 ? (
                             <optgroup key={type} label={getTypeLabel(type)}>
                               {methods.map(method => (
                                 <option key={method.id} value={method.display_name}>
@@ -851,8 +855,8 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
                                 </option>
                               ))}
                             </optgroup>
-                          )
-                        ))}
+                          ) : null
+                        )}
                       </select>
                       {validationErrors.addPaymentType && (
                         <span className="validation-error">{validationErrors.addPaymentType}</span>
@@ -899,8 +903,8 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
                       >
                         <option value="">No Linked Loan</option>
                         {/* Group loans by type (Requirements 2.1, 2.2) */}
-                        {Object.entries(groupLoansByType(loans)).map(([type, loanList]) => (
-                          loanList.length > 0 && (
+                        {Object.entries(groupLoansByType(loans)).map(([type, loanList]) => 
+                          loanList.length > 0 ? (
                             <optgroup key={type} label={getLoanTypeLabel(type)}>
                               {loanList.map(loan => (
                                 <option key={loan.id} value={loan.id}>
@@ -908,8 +912,8 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
                                 </option>
                               ))}
                             </optgroup>
-                          )
-                        ))}
+                          ) : null
+                        )}
                       </select>
                     </div>
                     <button

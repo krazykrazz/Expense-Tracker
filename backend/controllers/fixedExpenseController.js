@@ -154,10 +154,32 @@ async function carryForwardFixedExpenses(req, res) {
   }
 }
 
+/**
+ * Get fixed expenses linked to a specific loan
+ * GET /api/fixed-expenses/by-loan/:loanId
+ * 
+ * Returns the most recent fixed expense entries linked to the specified loan.
+ */
+async function getFixedExpensesByLoan(req, res) {
+  try {
+    const loanId = parseInt(req.params.loanId);
+    
+    if (isNaN(loanId)) {
+      return res.status(400).json({ error: 'Invalid loan ID' });
+    }
+    
+    const fixedExpenses = await fixedExpenseService.getFixedExpensesByLoanId(loanId);
+    res.status(200).json(fixedExpenses);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+}
+
 module.exports = {
   getMonthlyFixedExpenses,
   createFixedExpense,
   updateFixedExpense,
   deleteFixedExpense,
-  carryForwardFixedExpenses
+  carryForwardFixedExpenses,
+  getFixedExpensesByLoan
 };

@@ -213,7 +213,8 @@ describe('PaymentMethodsModal', () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByText('Cash')).toBeInTheDocument();
+        // Use getAllByText since there are group titles and method names with same text
+        expect(screen.getAllByText('Cash').length).toBeGreaterThan(0);
         expect(screen.getByText('Debit')).toBeInTheDocument();
         expect(screen.getByText('Credit Cards')).toBeInTheDocument();
       });
@@ -278,8 +279,8 @@ describe('PaymentMethodsModal', () => {
       );
 
       await waitFor(() => {
-        // Active methods should be visible
-        expect(screen.getByText('Cash')).toBeInTheDocument();
+        // Active methods should be visible - use getAllByText since there are group titles too
+        expect(screen.getAllByText('Cash').length).toBeGreaterThan(0);
         expect(screen.getByText('Debit Card')).toBeInTheDocument();
         expect(screen.getByText('Visa')).toBeInTheDocument();
       });
@@ -322,8 +323,8 @@ describe('PaymentMethodsModal', () => {
       fireEvent.click(screen.getByText(/Inactive \(1\)/));
 
       await waitFor(() => {
-        // The inactive cheque should be visible
-        expect(screen.getByText('Cheque')).toBeInTheDocument();
+        // The inactive cheque should be visible - use getAllByText since there's group title too
+        expect(screen.getAllByText('Cheque').length).toBeGreaterThan(0);
       });
     });
   });
@@ -633,7 +634,8 @@ describe('PaymentMethodsModal', () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByText('Cash')).toBeInTheDocument();
+        // Use getAllByText since there's both group title and method name
+        expect(screen.getAllByText('Cash').length).toBeGreaterThan(0);
       });
 
       fireEvent.click(screen.getByText('Deactivate'));

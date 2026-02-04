@@ -1,7 +1,7 @@
 # Expense Tracker - Feature Roadmap
 
-**Last Updated**: February 2, 2026  
-**Current Version**: 5.4.0
+**Last Updated**: February 4, 2026  
+**Current Version**: 5.5.0
 
 This document tracks potential features and enhancements for the Expense Tracker application. Features are categorized by priority and implementation status.
 
@@ -573,6 +573,59 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ## 🟢 Completed Features
 
+### 🟢 Fixed Expense Loan Linkage (v5.5.0)
+**Completed**: February 2026  
+**Spec**: `.kiro/specs/fixed-expense-loan-linkage/` (archived)  
+**Description**: Enhanced fixed expenses with loan payment tracking, due date reminders, and automatic payment logging for linked loan payments.
+
+**Features Delivered**:
+- **Loan Linkage**: Link fixed expenses to specific loans for payment tracking
+- **Payment Due Dates**: Set payment due day (1-31) for fixed expenses
+- **Loan Payment Reminders**: Visual reminder banners when loan payments are due soon or overdue
+- **Auto-Log Prompts**: Automatic suggestions to log loan payments based on linked fixed expenses
+- **Active Loan Filtering**: Dropdown shows only active (not paid off) loans for linking
+- **Reminder Suppression**: Reminders automatically suppressed when payment already logged for the month
+- **Backward Compatibility**: Existing fixed expenses work without due dates or loan links
+- **Carry-Forward Support**: Due dates and loan links preserved when carrying forward to next month
+- **Database Migration**: Automatic migration adds payment_due_day and linked_loan_id columns
+- **Comprehensive Testing**: 13 property-based tests with 100+ iterations each, full integration coverage
+
+**Benefits**:
+- Never miss loan payment due dates with proactive reminders
+- Streamlined payment logging with one-click auto-log from reminders
+- Better financial planning with loan payment visibility in fixed expenses
+- Reduced manual tracking effort for recurring loan payments
+
+---
+
+### 🟢 Loan Payment Tracking (v5.5.0)
+**Completed**: February 2026  
+**Spec**: `.kiro/specs/loan-payment-tracking/` (archived)  
+**Description**: Converted loan and mortgage tracking from balance-based to payment-based system with payment history, balance calculations, and migration utilities.
+
+**Features Delivered**:
+- **Payment-Based Tracking**: Log individual payments for loans and mortgages instead of manual balance entries
+- **Payment History**: View all payments in reverse chronological order with running balance calculations
+- **Calculated Balance**: Automatic balance calculation from initial balance minus total payments
+- **Payment Suggestions**: Smart payment amount suggestions (mortgage monthly payment or average of previous payments)
+- **Payment Visualization**: Balance reduction chart showing payment impact over time
+- **Migration Utility**: One-click migration from old balance entries to payment-based system
+- **Line of Credit Support**: Lines of credit continue using balance-based tracking (unchanged)
+- **Loan Type Differentiation**: UI automatically shows appropriate tracking method based on loan type
+- **Payment Validation**: Prevents future-dated payments and negative amounts
+- **Balance History**: Running balance display alongside each payment entry
+- **Database Schema**: New loan_payments table with proper indexing and foreign keys
+- **Comprehensive Testing**: 14 property-based tests, full integration coverage, API endpoint tests
+
+**Benefits**:
+- More intuitive payment logging workflow (record what you actually pay)
+- Automatic balance calculations eliminate manual math
+- Better payment history visibility for financial planning
+- Clearer distinction between loans/mortgages (payment-based) and lines of credit (balance-based)
+- Seamless migration from old system preserves all historical data
+
+---
+
 ### 🟢 Expense List UX Improvements (v5.4.0)
 **Completed**: February 2026  
 **Spec**: `.kiro/specs/expense-list-ux-improvements/`  
@@ -1032,6 +1085,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 ---
 
 **Version History**:
+- v2.6 (2026-02-04): Added Fixed Expense Loan Linkage (v5.5.0) and Loan Payment Tracking (v5.5.0) to completed features, updated current version to 5.5.0
 - v2.5 (2026-02-02): Added Expense List UX Improvements (v5.4.0) and Credit Card Statement Balance (v5.3.1) to completed features, updated current version to 5.4.0
 - v2.4 (2026-02-02): Added UX improvement proposals (#21-25): ExpenseForm Simplification, Summary Panel Preferences, Duplicate Expense Feature, Quick Edit for Amount, Modal Consolidation
 - v2.3 (2026-01-30): Added Configurable Payment Methods (v4.20.0) and Credit Card Posted Date to completed features, updated current version to 4.20.0

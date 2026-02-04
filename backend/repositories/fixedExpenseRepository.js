@@ -393,6 +393,35 @@ class FixedExpenseRepository {
       });
     });
   }
+
+  /**
+   * Get fixed expenses linked to a specific loan
+   * Returns the most recent fixed expense entries for the loan
+   * @param {number} loanId - Loan ID
+   * @returns {Promise<Array>} Array of fixed expense objects linked to the loan
+   */
+  async getFixedExpensesByLoanId(loanId) {
+    const db = await getDatabase();
+    return new Promise((resolve, reject) => {
+      const sql = `
+        SELECT 
+          fe.id, fe.year, fe.month, fe.name, fe.amount, fe.category, 
+          fe.payment_type, fe.payment_due_day, fe.linked_loan_id,
+          fe.created_at, fe.updated_at
+        FROM fixed_expenses fe
+        WHERE fe.linked_loan_id = ?
+        ORDER BY fe.year DESC, fe.month DESC
+        LIMIT 12
+      `;
+      db.all(sql, [loanId], (err, rows) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(rows || []);
+        }
+      });
+    });
+  }
 }
 
 module.exports = new FixedExpenseRepository();

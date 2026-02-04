@@ -3,6 +3,7 @@ import './LoanDetailView.css';
 import { updateLoan, markPaidOff } from '../services/loanApi';
 import { getBalanceHistory, createOrUpdateBalance, deleteBalance } from '../services/loanBalanceApi';
 import { getPayments, deletePayment, getCalculatedBalance } from '../services/loanPaymentApi';
+import { getFixedExpensesByLoan } from '../services/fixedExpenseApi';
 import { validateName, validateAmount } from '../utils/validation';
 import { formatCurrency, formatDate, formatMonthYear } from '../utils/formatters';
 import { createLogger } from '../utils/logger';
@@ -58,6 +59,10 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
   // Migration utility state (for loans and mortgages with existing balance entries)
   const [showMigrationUtility, setShowMigrationUtility] = useState(false);
 
+  // Linked fixed expenses state
+  const [linkedFixedExpenses, setLinkedFixedExpenses] = useState([]);
+  const [loadingFixedExpenses, setLoadingFixedExpenses] = useState(false);
+
   // Determine if this loan uses payment-based tracking
   // Requirement 5.1: loans and mortgages use payment tracking
   // Requirement 5.2: lines of credit use balance tracking
@@ -81,6 +86,9 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
         // Also fetch balance history for historical reference
         fetchBalanceHistory();
       }
+      
+      // Fetch linked fixed expenses
+      fetchLinkedFixedExpenses();
     }
   }, [isOpen, loan]);
 
@@ -125,6 +133,34 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
       logger.error('Error fetching payment data:', err);
     } finally {
       setLoadingPayments(false);
+    }
+  };
+
+  // Fetch linked fixed expenses
+  const fetchLinkedFixedExpenses = async () => {
+    if (!loan || !loan.id) return;
+    
+    setLoadingFixedExpenses(true);
+
+    try {
+      const fixedExpenses = await getFixedExpensesByLoan(loan.id);
+      // Get unique expense names (most recent entry for each name)
+      const uniqueExpenses = [];
+      const seenNames = new Set();
+      
+      for (const expense of fixedExpenses) {
+        if (!seenNames.has(expense.name)) {
+          seenNames.add(expense.name);
+          uniqueExpenses.push(expense);
+        }
+      }
+      
+      setLinkedFixedExpenses(uniqueExpenses);
+    } catch (err) {
+      logger.error('Error fetching linked fixed expenses:', err);
+      setLinkedFixedExpenses([]);
+    } finally {
+      setLoadingFixedExpenses(false);
     }
   };
 
@@ -951,6 +987,31 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
               </>
             )}
           </div>
+
+          {/* Linked Fixed Expenses Section */}
+          {linkedFixedExpenses.length > 0 && (
+            <div className="loan-linked-expenses-section">
+              <h3>Linked Fixed Expenses</h3>
+              <div className="linked-expenses-list">
+                {linkedFixedExpenses.map((expense) => (
+                  <div key={expense.id} className="linked-expense-item">
+                    <div className="linked-expense-info">
+                      <span className="linked-expense-name">{expense.name}</span>
+                      <span className="linked-expense-amount">{formatCurrency(expense.amount)}</span>
+                    </div>
+                    {expense.payment_due_day ? (
+                      <div className="linked-expense-due">
+                        Due: Day {expense.payment_due_day} of month
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+              <div className="linked-expenses-note">
+                These fixed expenses are automatically linked to this loan. Manage them in the Fixed Expenses modal.
+              </div>
+            </div>
+          )}
 
           {/* Mortgage-Specific Sections - Requirements 8.1, 8.2, 8.3, 8.4, 8.5 */}
           {loanData.loan_type === 'mortgage' && (

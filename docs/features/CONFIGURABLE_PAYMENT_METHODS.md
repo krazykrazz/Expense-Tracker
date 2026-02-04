@@ -1,8 +1,8 @@
 # Configurable Payment Methods
 
-**Version**: 5.3.1  
+**Version**: 5.4.1  
 **Status**: Implemented  
-**Spec**: `.kiro/specs/configurable-payment-methods/`, `.kiro/specs/credit-card-statement-balance/`
+**Spec**: `.kiro/specs/configurable-payment-methods/`, `.kiro/specs/credit-card-statement-balance/`, `.kiro/specs/unified-billing-cycles/`
 
 ## Overview
 
@@ -41,6 +41,9 @@ For credit card type payment methods:
 
 - **Balance Tracking**: Automatic balance updates when expenses are added/deleted
 - **Statement Balance Calculation**: Automatic calculation of statement balance based on billing cycle dates
+- **Billing Cycle History**: Full historical view of all billing cycles with actual vs calculated balances (v5.4.0)
+- **Trend Indicators**: Visual comparison to previous billing cycle (higher/lower/same)
+- **Transaction Counting**: Number of expenses per billing cycle
 - **Smart Payment Alerts**: Payment reminders show required payment amount and suppress when statement is paid
 - **Utilization Indicator**: Color-coded display (green < 30%, yellow 30-70%, red > 70%)
 - **Payment Recording**: Log payments to reduce balance
@@ -216,5 +219,6 @@ The migration automatically:
 
 ## Related Documentation
 
+- [Credit Card Billing Cycles](./CREDIT_CARD_BILLING_CYCLES.md) - Billing cycle history feature
 - [API Documentation](../API_DOCUMENTATION.md) - Full API reference
 - [Database Migrations](../DATABASE_MIGRATIONS.md) - Migration details

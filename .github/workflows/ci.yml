@@ -13,8 +13,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  backend-tests:
-    name: Backend Tests
+  backend-unit-tests:
+    name: Backend Unit Tests
     runs-on: ubuntu-latest
     # Skip CI for Dependabot PRs - tests run when merged to main
     if: github.actor != 'dependabot[bot]'
@@ -36,8 +36,34 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run tests
-        run: npm run test:ci
+      - name: Run unit tests
+        run: npm run test:unit:ci
+
+  backend-pbt-tests:
+    name: Backend PBT Tests
+    runs-on: ubuntu-latest
+    # Skip CI for Dependabot PRs - tests run when merged to main
+    if: github.actor != 'dependabot[bot]'
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run PBT tests
+        run: npm run test:pbt:ci
 
   frontend-tests:
     name: Frontend Tests

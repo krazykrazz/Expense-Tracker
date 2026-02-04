@@ -42,7 +42,7 @@ class BillingCycleHistoryService {
 
   /**
    * Calculate effective balance for a billing cycle
-   * Returns actual_statement_balance if > 0, otherwise calculated_statement_balance
+   * Returns actual_statement_balance if provided (including 0), otherwise calculated_statement_balance
    * @param {Object} cycle - Billing cycle record
    * @returns {Object} { effectiveBalance, balanceType }
    * _Requirements: 4.1, 4.2_
@@ -52,12 +52,27 @@ class BillingCycleHistoryService {
       return { effectiveBalance: 0, balanceType: 'calculated' };
     }
 
-    const actualBalance = cycle.actual_statement_balance || 0;
     const calculatedBalance = cycle.calculated_statement_balance || 0;
 
-    if (actualBalance > 0) {
+    // Check if actual_statement_balance was explicitly set (including 0)
+    // Auto-generated cycles have actual_statement_balance = 0 but should show as 'calculated'
+    // User-entered cycles with actual_statement_balance = 0 should show as 'actual'
+    // We distinguish by checking if the cycle has been "entered" (has minimum_payment, due_date, or notes)
+    // OR if actual_statement_balance differs from 0 (user explicitly set a non-zero value)
+    const hasMinimumPayment = cycle.minimum_payment !== null && cycle.minimum_payment !== undefined;
+    const hasDueDate = cycle.due_date !== null && cycle.due_date !== undefined;
+    const hasNotes = cycle.notes !== null && cycle.notes !== undefined;
+    
+    const hasActualBalance = cycle.actual_statement_balance !== null && 
+                             cycle.actual_statement_balance !== undefined &&
+                             (cycle.actual_statement_balance !== 0 || 
+                              hasMinimumPayment || 
+                              hasDueDate || 
+                              hasNotes);
+
+    if (hasActualBalance) {
       return {
-        effectiveBalance: actualBalance,
+        effectiveBalance: cycle.actual_statement_balance,
         balanceType: 'actual'
       };
     }

@@ -1686,6 +1686,280 @@ This allows pre-logging expenses that haven't posted yet without affecting the c
 
 ---
 
+## Billing Cycle History Endpoints (v5.4.0)
+
+### Overview
+
+The billing cycle history feature provides comprehensive tracking of credit card billing cycles with automatic cycle generation, statement balance entry, trend analysis, and transaction counting.
+
+### 1. Get Unified Billing Cycles
+
+Retrieve all billing cycles (actual and auto-generated) for a credit card.
+
+**Endpoint:** `GET /api/billing-cycles/:paymentMethodId/unified`
+
+**URL Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| paymentMethodId | number | Yes | Credit card payment method ID |
+
+**Success Response:**
+```json
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "cycles": [
+    {
+      "id": 1,
+      "payment_method_id": 4,
+      "cycle_start_date": "2026-01-16",
+      "cycle_end_date": "2026-02-15",
+      "actual_statement_balance": 1234.56,
+      "calculated_statement_balance": 1189.23,
+      "effective_balance": 1234.56,
+      "balance_type": "actual",
+      "transaction_count": 23,
+      "trend_indicator": {
+        "type": "higher",
+        "icon": "↑",
+        "amount": 145.33,
+        "cssClass": "trend-higher"
+      },
+      "minimum_payment": 25.00,
+      "due_date": "2026-03-01",
+      "notes": "Statement received via email",
+      "statement_pdf_path": "/statements/2026-02.pdf"
+    },
+    {
+      "id": null,
+      "payment_method_id": 4,
+      "cycle_start_date": "2025-12-16",
+      "cycle_end_date": "2026-01-15",
+      "actual_statement_balance": null,
+      "calculated_statement_balance": 1089.23,
+      "effective_balance": 1089.23,
+      "balance_type": "calculated",
+      "transaction_count": 18,
+      "trend_indicator": {
+        "type": "lower",
+        "icon": "↓",
+        "amount": 210.77,
+        "cssClass": "trend-lower"
+      },
+      "minimum_payment": null,
+      "due_date": null,
+      "notes": null,
+      "statement_pdf_path": null
+    }
+  ]
+}
+```
+
+**Response Fields:**
+| Field | Type | Description |
+|-------|------|-------------|
+| id | number/null | Database ID (null for auto-generated cycles) |
+| effective_balance | number | Balance to display (actual if entered, otherwise calculated) |
+| balance_type | string | "actual" or "calculated" |
+| transaction_count | number | Number of expenses in the cycle |
+| trend_indicator | object/null | Comparison to previous cycle |
+
+**Trend Indicator Types:**
+| Type | Icon | CSS Class | Meaning |
+|------|------|-----------|---------|
+| higher | ↑ | trend-higher | Higher than previous cycle |
+| lower | ↓ | trend-lower | Lower than previous cycle |
+| same | ✓ | trend-same | Same as previous cycle (within $0.01) |
+
+---
+
+### 2. Create/Update Billing Cycle
+
+Create or update a billing cycle record (upsert by payment_method_id + cycle_end_date).
+
+**Endpoint:** `POST /api/billing-cycles`
+
+**Request Body:**
+```json
+{
+  "payment_method_id": 4,
+  "cycle_start_date": "2026-01-16",
+  "cycle_end_date": "2026-02-15",
+  "actual_statement_balance": 1234.56,
+  "minimum_payment": 25.00,
+  "due_date": "2026-03-01",
+  "notes": "Statement received via email"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| payment_method_id | number | Yes | Credit card payment method ID |
+| cycle_start_date | string | Yes | Cycle start date (YYYY-MM-DD) |
+| cycle_end_date | string | Yes | Cycle end date (YYYY-MM-DD) |
+| actual_statement_balance | number | No | User-entered statement balance |
+| minimum_payment | number | No | Minimum payment due |
+| due_date | string | No | Payment due date (YYYY-MM-DD) |
+| notes | string | No | User notes |
+
+**Success Response:**
+```json
+HTTP/1.1 201 Created
+Content-Type: application/json
+
+{
+  "billingCycle": {
+    "id": 1,
+    "payment_method_id": 4,
+    "cycle_start_date": "2026-01-16",
+    "cycle_end_date": "2026-02-15",
+    "actual_statement_balance": 1234.56,
+    "calculated_statement_balance": 1189.23,
+    "minimum_payment": 25.00,
+    "due_date": "2026-03-01",
+    "notes": "Statement received via email"
+  }
+}
+```
+
+---
+
+### 3. Update Billing Cycle
+
+Update an existing billing cycle record.
+
+**Endpoint:** `PUT /api/billing-cycles/:id`
+
+**URL Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| id | number | Yes | Billing cycle ID |
+
+**Request Body:** Same as POST endpoint
+
+**Success Response:**
+```json
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "billingCycle": {
+    "id": 1,
+    "payment_method_id": 4,
+    "cycle_start_date": "2026-01-16",
+    "cycle_end_date": "2026-02-15",
+    "actual_statement_balance": 1234.56,
+    "minimum_payment": 25.00,
+    "due_date": "2026-03-01",
+    "notes": "Updated notes"
+  }
+}
+```
+
+---
+
+### 4. Delete Billing Cycle
+
+Delete a billing cycle record.
+
+**Endpoint:** `DELETE /api/billing-cycles/:id`
+
+**URL Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| id | number | Yes | Billing cycle ID |
+
+**Success Response:**
+```json
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "success": true,
+  "message": "Billing cycle deleted successfully"
+}
+```
+
+---
+
+### 5. Upload Billing Cycle Statement PDF
+
+Upload a PDF statement for a billing cycle.
+
+**Endpoint:** `POST /api/billing-cycles/:id/statement`
+
+**Content-Type:** `multipart/form-data`
+
+**URL Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| id | number | Yes | Billing cycle ID |
+
+**Request Body:**
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| statement | File | Yes | PDF file (max 10MB) |
+
+**Success Response:**
+```json
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "success": true,
+  "statement_pdf_path": "/statements/4_2026-02-15_statement.pdf"
+}
+```
+
+---
+
+### 6. Get Billing Cycle Statement PDF
+
+Download the statement PDF for a billing cycle.
+
+**Endpoint:** `GET /api/billing-cycles/:id/statement`
+
+**URL Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| id | number | Yes | Billing cycle ID |
+
+**Success Response:**
+```
+HTTP/1.1 200 OK
+Content-Type: application/pdf
+Content-Disposition: inline; filename="statement.pdf"
+
+[PDF file binary data]
+```
+
+---
+
+### 7. Delete Billing Cycle Statement PDF
+
+Delete the statement PDF for a billing cycle.
+
+**Endpoint:** `DELETE /api/billing-cycles/:id/statement`
+
+**URL Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| id | number | Yes | Billing cycle ID |
+
+**Success Response:**
+```json
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "success": true,
+  "message": "Statement deleted successfully"
+}
+```
+
+---
+
 ## Credit Card Statement Balance (v4.21.0)
 
 ### Overview
@@ -1791,6 +2065,23 @@ Migration automatically copies `billing_cycle_end` to `billing_cycle_day` for ex
 
 ## Changelog - Payment Methods
 
+### Version 5.4.0 (February 2026)
+- Added billing cycle history feature with unified cycle list
+- Added automatic billing cycle generation based on transaction history
+- Added trend indicators comparing cycles to previous periods
+- Added transaction counting per billing cycle
+- Added `billing_cycle_history` table for storing cycle records
+- Added unified billing cycles endpoint (`GET /api/billing-cycles/:id/unified`)
+- Added billing cycle CRUD endpoints (POST, PUT, DELETE)
+- Added billing cycle statement PDF upload/download endpoints
+- Added effective balance logic (actual vs calculated)
+- Added balance type indicator ("Actual" vs "Calculated")
+
+### Version 5.4.1 (February 2026)
+- Fixed zero statement balance not being recognized as valid
+- Fixed UI consistency for action buttons (pencil/trash for all cycles)
+- Cleaned up unused refresh button code
+
 ### Version 4.21.0 (February 2026)
 - Added `billing_cycle_day` column to payment_methods table
 - Added StatementBalanceService for automatic statement balance calculation
@@ -1822,6 +2113,6 @@ Migration automatically copies `billing_cycle_end` to `billing_cycle_day` for ex
 
 ---
 
-**Last Updated:** February 2, 2026  
-**API Version:** 1.5  
+**Last Updated:** February 3, 2026  
+**API Version:** 1.6  
 **Status:** Active

@@ -30,7 +30,8 @@
 
 .cc-detail-modal-container.cc-detail-form-view {
   max-width: 450px;
-  max-height: auto;
+  max-height: 90vh;
+  overflow-y: auto;
 }
 
 /* Header */

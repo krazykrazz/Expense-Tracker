@@ -7,9 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [5.4.0] - 2026-02-02
+## [5.4.1] - 2026-02-03
+
+### Fixed
+- **Zero Statement Balance**: Fixed issue where saving a zero statement balance for unused credit cards was not recognized as a valid actual balance
+  - Backend `calculateEffectiveBalance()` now properly distinguishes between auto-generated cycles (actual=0) and user-entered zero balances
+  - Frontend now uses `balance_type` instead of checking `actual_statement_balance > 0` for action button display
+  - Cycles with user-entered zero balance now show Edit/Delete buttons instead of "Enter Statement"
+
+---
+
+## [5.4.0] - 2026-02-03
 
 ### Added
+- **Unified Billing Cycles**: Consolidated credit card billing cycle management
+  - Merged "Billing Cycle History" and "Statements" into single "Billing Cycles" tab
+  - Auto-generation of billing cycle entries based on historical expenses
+  - Transaction count display per billing cycle
+  - Effective balance calculation (actual if entered, otherwise calculated)
+  - Trend indicators comparing cycle-to-cycle spending (↑ higher, ↓ lower, ✓ same)
+  - "Enter Statement" action for auto-generated cycles
+  - New unified API endpoint: GET /api/payment-methods/:id/billing-cycles/unified
 - **Expense List UX Improvements**: Enhanced filter experience with smarter controls
   - Smart method filter combining payment type and specific method in a single grouped dropdown
   - Filter chips showing active filters with one-click removal (×)
@@ -17,11 +35,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Filter count badge showing total number of active filters
   - Enhanced global view banner showing which filters triggered global view
   - "Return to Monthly View" button to clear global-triggering filters
-  - Comprehensive property-based testing for all filter behaviors
 
 ### Changed
 - Method and Method Type dropdowns replaced with single smart method filter
 - Filter controls reorganized with advanced filters in collapsible section
+- Statements tab renamed to "Billing Cycles" in credit card detail view
+- Billing Cycle History section removed from Overview tab (consolidated into Billing Cycles tab)
 
 ---
 

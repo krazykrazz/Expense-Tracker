@@ -1,6 +1,6 @@
 {
   "name": "expense-tracker",
-  "version": "5.3.0",
+  "version": "5.4.1",
   "description": "Full-stack Expense Tracker Application",
   "main": "server.js",
   "scripts": {
@@ -12,8 +12,10 @@
     "test": "cross-env NODE_ENV=test jest --runInBand",
     "test:fast": "cross-env NODE_ENV=test FAST_CHECK_NUM_RUNS=10 jest --runInBand",
     "test:unit": "cross-env NODE_ENV=test jest --runInBand --testPathIgnorePatterns=pbt",
-    "test:pbt": "cross-env NODE_ENV=test jest --runInBand --testNamePattern=pbt",
-    "test:ci": "cross-env NODE_ENV=test CI=true FAST_CHECK_NUM_RUNS=25 jest --runInBand --bail"
+    "test:unit:ci": "cross-env NODE_ENV=test CI=true jest --runInBand --bail --testPathIgnorePatterns=pbt",
+    "test:pbt": "cross-env NODE_ENV=test jest --runInBand --testPathPatterns=pbt",
+    "test:pbt:ci": "cross-env NODE_ENV=test CI=true FAST_CHECK_NUM_RUNS=15 jest --runInBand --bail --testPathPatterns=pbt",
+    "test:ci": "cross-env NODE_ENV=test CI=true FAST_CHECK_NUM_RUNS=15 jest --runInBand --bail"
   },
   "jest": {
     "testTimeout": 30000,

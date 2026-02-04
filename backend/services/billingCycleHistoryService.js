@@ -59,12 +59,16 @@ class BillingCycleHistoryService {
     // User-entered cycles with actual_statement_balance = 0 should show as 'actual'
     // We distinguish by checking if the cycle has been "entered" (has minimum_payment, due_date, or notes)
     // OR if actual_statement_balance differs from 0 (user explicitly set a non-zero value)
+    const hasMinimumPayment = cycle.minimum_payment !== null && cycle.minimum_payment !== undefined;
+    const hasDueDate = cycle.due_date !== null && cycle.due_date !== undefined;
+    const hasNotes = cycle.notes !== null && cycle.notes !== undefined;
+    
     const hasActualBalance = cycle.actual_statement_balance !== null && 
                              cycle.actual_statement_balance !== undefined &&
                              (cycle.actual_statement_balance !== 0 || 
-                              cycle.minimum_payment !== null || 
-                              cycle.due_date !== null || 
-                              cycle.notes !== null);
+                              hasMinimumPayment || 
+                              hasDueDate || 
+                              hasNotes);
 
     if (hasActualBalance) {
       return {

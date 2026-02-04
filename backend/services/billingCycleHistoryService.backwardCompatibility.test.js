@@ -340,16 +340,36 @@ describe('Unified Billing Cycles - Backward Compatibility Tests', () => {
       expect(result.balanceType).toBe('actual');
     });
 
-    test('Effective balance uses calculated_statement_balance when actual is 0', () => {
+    test('Effective balance uses calculated_statement_balance when actual is 0 (auto-generated cycle)', () => {
+      // Auto-generated cycles have actual_statement_balance = 0 and no user-entered fields
       const cycle = {
         actual_statement_balance: 0,
-        calculated_statement_balance: 1200.00
+        calculated_statement_balance: 1200.00,
+        minimum_payment: null,
+        due_date: null,
+        notes: null
       };
       
       const result = billingCycleHistoryService.calculateEffectiveBalance(cycle);
       
       expect(result.effectiveBalance).toBe(1200.00);
       expect(result.balanceType).toBe('calculated');
+    });
+
+    test('Effective balance uses actual_statement_balance of 0 when user-entered (has due_date)', () => {
+      // User-entered cycle with 0 balance (unused card) - has due_date set
+      const cycle = {
+        actual_statement_balance: 0,
+        calculated_statement_balance: 1200.00,
+        minimum_payment: null,
+        due_date: '2025-02-15',
+        notes: null
+      };
+      
+      const result = billingCycleHistoryService.calculateEffectiveBalance(cycle);
+      
+      expect(result.effectiveBalance).toBe(0);
+      expect(result.balanceType).toBe('actual');
     });
 
     test('User-entered balance takes priority in trend calculations', () => {

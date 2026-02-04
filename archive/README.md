@@ -1,7 +1,7 @@
 # Project Archive
 
 **Created:** 2025-11-24  
-**Last Updated:** 2026-02-02
+**Last Updated:** 2026-02-03
 
 This archive contains historical documentation and scripts that have served their purpose but are retained for reference.
 
@@ -60,13 +60,13 @@ Spec update summaries and cleanup documentation:
 - Cleanup analyses
 - Historical spec changes
 
-### specs/ (Updated - Feb 2, 2026)
+### specs/ (Updated - Feb 3, 2026)
 Completed feature specifications that have been fully implemented:
-- 36 archived spec directories for completed features
+- 38 archived spec directories for completed features
 - Includes deprecated features (recurring-expenses)
 - Infrastructure specs (code-optimization, containerization-optimization)
-- All major feature implementations from v3.0.0 through v5.4.0
-- **Latest:** Added expense-list-ux-improvements (v5.4.0), credit-card-statement-balance (v5.3.1)
+- All major feature implementations from v3.0.0 through v5.4.1
+- **Latest:** Added credit-card-billing-cycle-history (v5.4.0), unified-billing-cycles (v5.4.0)
 
 ### test-scripts/ (Nov 24, 2025)
 One-time test scripts used during feature development:
@@ -252,6 +252,15 @@ Copy-Item archive/[subfolder]/[filename] ./
     - Added `test-data/*.tar.gz` and `test-data/*.zip` to ignore test archives
   - **Deleted local files** after removing from git tracking
   - **Result:** No database or backup files tracked in repository
+
+- **2026-02-03:** Post v5.4.1 billing cycle spec cleanup (3 items)
+  - **Archived 2 completed specs** from .kiro/specs/ to archive/specs/:
+    - credit-card-billing-cycle-history (v5.4.0 - billing cycle history with actual statement balance tracking)
+    - unified-billing-cycles (v5.4.0 - consolidated billing cycles tab with auto-generation and trend indicators)
+  - **Deleted feature branch** (both local and remote):
+    - feature/credit-card-statement-balance (merged to main, work complete)
+  - **Result:** .kiro/specs/ now contains 2 specs (mortgage-payment-date-tracking, windows-desktop-app - both for future)
+  - **Total archived specs:** 38 complete feature specifications
 
 ## Next Review
 

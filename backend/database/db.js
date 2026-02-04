@@ -612,6 +612,18 @@ function createTestDatabase() {
             FOREIGN KEY (loan_id) REFERENCES loans(id) ON DELETE CASCADE
           )`,
           
+          // loan_payments table (for payment-based tracking of loans and mortgages)
+          `CREATE TABLE IF NOT EXISTS loan_payments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            loan_id INTEGER NOT NULL,
+            amount REAL NOT NULL CHECK(amount > 0),
+            payment_date TEXT NOT NULL,
+            notes TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (loan_id) REFERENCES loans(id) ON DELETE CASCADE
+          )`,
+          
           // budgets table
           `CREATE TABLE IF NOT EXISTS budgets (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -772,6 +784,7 @@ function createTestDatabase() {
             due_date TEXT,
             notes TEXT,
             statement_pdf_path TEXT,
+            is_user_entered INTEGER DEFAULT 0,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (payment_method_id) REFERENCES payment_methods(id) ON DELETE CASCADE,
@@ -825,6 +838,8 @@ function createTestIndexes(db, resolve, reject) {
     'CREATE INDEX IF NOT EXISTS idx_loan_balances_year_month ON loan_balances(year, month)',
     'CREATE INDEX IF NOT EXISTS idx_mortgage_payments_loan_id ON mortgage_payments(loan_id)',
     'CREATE INDEX IF NOT EXISTS idx_mortgage_payments_loan_effective_date ON mortgage_payments(loan_id, effective_date)',
+    'CREATE INDEX IF NOT EXISTS idx_loan_payments_loan_id ON loan_payments(loan_id)',
+    'CREATE INDEX IF NOT EXISTS idx_loan_payments_payment_date ON loan_payments(payment_date)',
     'CREATE INDEX IF NOT EXISTS idx_budgets_period ON budgets(year, month)',
     'CREATE INDEX IF NOT EXISTS idx_budgets_category ON budgets(category)',
     'CREATE INDEX IF NOT EXISTS idx_investments_type ON investments(type)',

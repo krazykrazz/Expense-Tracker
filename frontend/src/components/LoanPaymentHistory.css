@@ -1,0 +1,305 @@
+/* LoanPaymentHistory Component Styles
+ * Requirements: 1.2, 6.2
+ */
+
+.loan-payment-history-container {
+  background-color: var(--bg-card);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-4);
+  border: 1px solid var(--border-default);
+}
+
+/* Header */
+.loan-payment-history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: var(--spacing-3);
+  margin-bottom: var(--spacing-4);
+  padding-bottom: var(--spacing-3);
+  border-bottom: 1px solid var(--border-default);
+}
+
+.loan-payment-history-header h3 {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+/* Summary */
+.loan-payment-history-summary {
+  display: flex;
+  gap: var(--spacing-4);
+  flex-wrap: wrap;
+}
+
+.loan-payment-history-summary .summary-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+
+.loan-payment-history-summary .summary-label {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.loan-payment-history-summary .summary-value {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  font-feature-settings: var(--font-feature-tabular);
+}
+
+.loan-payment-history-summary .summary-value.positive {
+  color: var(--color-positive-dark);
+}
+
+/* Loading State */
+.loan-payment-history-loading {
+  padding: var(--spacing-6);
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+/* Empty State */
+.loan-payment-history-empty {
+  padding: var(--spacing-6);
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.loan-payment-history-empty p {
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+.loan-payment-history-empty .empty-hint {
+  margin-top: var(--spacing-2);
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+/* Table Container */
+.loan-payment-history-table-container {
+  overflow-x: auto;
+  margin: 0 calc(-1 * var(--spacing-4));
+  padding: 0 var(--spacing-4);
+}
+
+/* Table */
+.loan-payment-history-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.loan-payment-history-table th,
+.loan-payment-history-table td {
+  padding: var(--spacing-3) var(--spacing-2);
+  text-align: left;
+  border-bottom: 1px solid var(--border-muted);
+}
+
+.loan-payment-history-table th {
+  font-weight: var(--font-medium);
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background-color: var(--bg-subtle);
+  position: sticky;
+  top: 0;
+}
+
+.loan-payment-history-table tbody tr:hover {
+  background-color: var(--bg-subtle);
+}
+
+.loan-payment-history-table tbody tr.deleting {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* Column Widths */
+.loan-payment-history-table .amount-col,
+.loan-payment-history-table .balance-col {
+  text-align: right;
+  width: 120px;
+}
+
+.loan-payment-history-table .notes-col {
+  min-width: 150px;
+}
+
+.loan-payment-history-table .actions-col {
+  width: 80px;
+  text-align: center;
+}
+
+/* Cell Styles */
+.loan-payment-history-table .date-cell {
+  white-space: nowrap;
+  color: var(--text-primary);
+}
+
+.loan-payment-history-table .amount-cell {
+  text-align: right;
+}
+
+.loan-payment-history-table .payment-amount {
+  font-weight: var(--font-medium);
+  color: var(--color-positive-dark);
+  font-feature-settings: var(--font-feature-tabular);
+}
+
+.loan-payment-history-table .balance-cell {
+  text-align: right;
+}
+
+.loan-payment-history-table .running-balance {
+  font-weight: var(--font-medium);
+  color: var(--text-primary);
+  font-feature-settings: var(--font-feature-tabular);
+}
+
+.loan-payment-history-table .notes-cell {
+  max-width: 200px;
+}
+
+.loan-payment-history-table .payment-notes {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+}
+
+.loan-payment-history-table .no-notes {
+  color: var(--text-muted);
+}
+
+.loan-payment-history-table .actions-cell {
+  text-align: center;
+}
+
+/* Action Buttons */
+.payment-actions {
+  display: flex;
+  justify-content: center;
+  gap: var(--spacing-1);
+}
+
+.payment-edit-btn,
+.payment-delete-btn {
+  background: none;
+  border: none;
+  padding: var(--spacing-1);
+  cursor: pointer;
+  font-size: var(--text-base);
+  line-height: 1;
+  border-radius: var(--radius-sm);
+  transition: var(--transition-fast);
+  opacity: 0.7;
+}
+
+.payment-edit-btn:hover:not(:disabled),
+.payment-delete-btn:hover:not(:disabled) {
+  opacity: 1;
+  background-color: var(--bg-muted);
+}
+
+.payment-edit-btn:disabled,
+.payment-delete-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.payment-delete-btn:hover:not(:disabled) {
+  background-color: var(--color-negative-light);
+}
+
+/* Footer */
+.loan-payment-history-footer {
+  margin-top: var(--spacing-3);
+  padding-top: var(--spacing-3);
+  border-top: 1px solid var(--border-muted);
+  text-align: right;
+}
+
+.loan-payment-history-footer .payment-count {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+/* Mobile Responsive */
+@media (max-width: 600px) {
+  .loan-payment-history-container {
+    padding: var(--spacing-3);
+  }
+
+  .loan-payment-history-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .loan-payment-history-summary {
+    flex-direction: column;
+    gap: var(--spacing-2);
+  }
+
+  .loan-payment-history-table th,
+  .loan-payment-history-table td {
+    padding: var(--spacing-2) var(--spacing-1);
+  }
+
+  .loan-payment-history-table .notes-col {
+    display: none;
+  }
+
+  .loan-payment-history-table .notes-cell {
+    display: none;
+  }
+
+  .loan-payment-history-table .amount-col,
+  .loan-payment-history-table .balance-col {
+    width: auto;
+  }
+}
+
+/* Touch-friendly styles */
+@media (max-width: 768px) and (pointer: coarse) {
+  .payment-edit-btn,
+  .payment-delete-btn {
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .loan-payment-history-table th,
+  .loan-payment-history-table td {
+    padding: var(--spacing-3);
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .payment-edit-btn,
+  .payment-delete-btn {
+    transition: none;
+  }
+}
+
+/* Focus visible support */
+.payment-edit-btn:focus-visible,
+.payment-delete-btn:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  opacity: 1;
+}

@@ -798,7 +798,7 @@ const LoansModal = ({ isOpen, onClose, year, month, onUpdate, highlightIds = [] 
                           </div>
                           <div className="loan-item-details">
                             <span className="loan-item-rate">
-                              Rate: {loan.currentRate ? `${loan.currentRate}%` : 'N/A'}
+                              Rate: {loan.currentRate != null && loan.currentRate > 0 ? `${loan.currentRate}%` : 'N/A'}
                             </span>
                             <span className="loan-item-balance">
                               Balance: {formatCurrency(loan.currentBalance)}

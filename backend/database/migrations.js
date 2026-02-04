@@ -4187,6 +4187,178 @@ async function migratePdfStatementsToBillingCycles(db) {
 }
 
 /**
+ * Migration: Add is_user_entered column to credit_card_billing_cycles table
+ * Distinguishes between auto-generated cycles and user-entered cycles
+ * This allows actual_statement_balance = 0 to be recognized as user-entered
+ */
+async function migrateAddIsUserEnteredToBillingCycles(db) {
+  const migrationName = 'add_is_user_entered_to_billing_cycles_v1';
+  
+  const isApplied = await checkMigrationApplied(db, migrationName);
+  if (isApplied) {
+    logger.debug(`Migration "${migrationName}" already applied, skipping`);
+    return;
+  }
+
+  logger.info(`Running migration: ${migrationName}`);
+
+  await createBackup();
+
+  return new Promise((resolve, reject) => {
+    db.serialize(() => {
+      db.run('BEGIN TRANSACTION', (err) => {
+        if (err) {
+          return reject(err);
+        }
+
+        // Check if credit_card_billing_cycles table exists
+        db.get(
+          "SELECT name FROM sqlite_master WHERE type='table' AND name='credit_card_billing_cycles'",
+          (err, row) => {
+            if (err) {
+              db.run('ROLLBACK');
+              return reject(err);
+            }
+
+            if (!row) {
+              // Table doesn't exist, skip migration
+              logger.info('credit_card_billing_cycles table does not exist, skipping migration');
+              markMigrationApplied(db, migrationName).then(() => {
+                db.run('COMMIT', (err) => {
+                  if (err) {
+                    db.run('ROLLBACK');
+                    return reject(err);
+                  }
+                  resolve();
+                });
+              }).catch(reject);
+              return;
+            }
+
+            // Add is_user_entered column with default 0 (auto-generated)
+            db.run(`
+              ALTER TABLE credit_card_billing_cycles 
+              ADD COLUMN is_user_entered INTEGER DEFAULT 0
+            `, (err) => {
+              if (err) {
+                // Column might already exist
+                if (err.message.includes('duplicate column')) {
+                  logger.info('is_user_entered column already exists');
+                } else {
+                  db.run('ROLLBACK');
+                  return reject(err);
+                }
+              }
+
+              logger.info('Added is_user_entered column to credit_card_billing_cycles table');
+
+              // Mark migration as applied and commit
+              markMigrationApplied(db, migrationName).then(() => {
+                db.run('COMMIT', (err) => {
+                  if (err) {
+                    db.run('ROLLBACK');
+                    return reject(err);
+                  }
+                  logger.info(`Migration "${migrationName}" completed successfully`);
+                  resolve();
+                });
+              }).catch(reject);
+            });
+          }
+        );
+      });
+    });
+  });
+}
+
+/**
+ * Migration: Add loan_payments table for payment-based tracking
+ * This table stores individual payment records for loans and mortgages
+ * The system calculates current balance as: initial_balance - sum(payments)
+ */
+async function migrateAddLoanPaymentsTable(db) {
+  const migrationName = 'add_loan_payments_v1';
+  
+  const isApplied = await checkMigrationApplied(db, migrationName);
+  if (isApplied) {
+    logger.debug(`Migration "${migrationName}" already applied, skipping`);
+    return;
+  }
+
+  logger.info(`Running migration: ${migrationName}`);
+
+  await createBackup();
+
+  return new Promise((resolve, reject) => {
+    db.serialize(() => {
+      db.run('BEGIN TRANSACTION', (err) => {
+        if (err) {
+          return reject(err);
+        }
+
+        // Create loan_payments table
+        db.run(`
+          CREATE TABLE IF NOT EXISTS loan_payments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            loan_id INTEGER NOT NULL,
+            amount REAL NOT NULL CHECK(amount > 0),
+            payment_date TEXT NOT NULL,
+            notes TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (loan_id) REFERENCES loans(id) ON DELETE CASCADE
+          )
+        `, (err) => {
+          if (err) {
+            db.run('ROLLBACK');
+            return reject(err);
+          }
+
+          logger.info('Created loan_payments table');
+
+          // Create index for loan_id lookups
+          db.run(`
+            CREATE INDEX IF NOT EXISTS idx_loan_payments_loan_id 
+            ON loan_payments(loan_id)
+          `, (err) => {
+            if (err) {
+              db.run('ROLLBACK');
+              return reject(err);
+            }
+
+            // Create index for payment_date lookups
+            db.run(`
+              CREATE INDEX IF NOT EXISTS idx_loan_payments_payment_date 
+              ON loan_payments(payment_date)
+            `, (err) => {
+              if (err) {
+                db.run('ROLLBACK');
+                return reject(err);
+              }
+
+              // Mark migration as applied and commit
+              markMigrationApplied(db, migrationName).then(() => {
+                db.run('COMMIT', (err) => {
+                  if (err) {
+                    db.run('ROLLBACK');
+                    return reject(err);
+                  }
+                  logger.info(`Migration "${migrationName}" completed successfully`);
+                  resolve();
+                });
+              }).catch((err) => {
+                db.run('ROLLBACK');
+                reject(err);
+              });
+            });
+          });
+        });
+      });
+    });
+  });
+}
+
+/**
  * Run all pending migrations
  */
 async function runMigrations(db) {
@@ -4219,6 +4391,8 @@ async function runMigrations(db) {
     await migrateAddBillingCyclesTable(db);
     await migrateAddStatementPdfToBillingCycles(db);
     await migratePdfStatementsToBillingCycles(db);
+    await migrateAddIsUserEnteredToBillingCycles(db);
+    await migrateAddLoanPaymentsTable(db);
     logger.info('All migrations completed');
   } catch (error) {
     logger.error('Migration failed:', error.message);
@@ -4245,5 +4419,7 @@ module.exports = {
   migrateAddBillingCycleDayColumn,
   migrateAddBillingCyclesTable,
   migrateAddStatementPdfToBillingCycles,
-  migratePdfStatementsToBillingCycles
+  migratePdfStatementsToBillingCycles,
+  migrateAddIsUserEnteredToBillingCycles,
+  migrateAddLoanPaymentsTable
 };

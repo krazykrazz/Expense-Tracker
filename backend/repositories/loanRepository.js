@@ -394,7 +394,7 @@ class LoanRepository {
           l.created_at,
           l.updated_at,
           COALESCE(lb.remaining_balance, l.initial_balance) as currentBalance,
-          COALESCE(lb.rate, 0) as currentRate
+          COALESCE(lb.rate, l.fixed_interest_rate, 0) as currentRate
         FROM loans l
         LEFT JOIN (
           SELECT 
@@ -452,7 +452,7 @@ class LoanRepository {
           l.created_at,
           l.updated_at,
           COALESCE(lb.remaining_balance, l.initial_balance) as currentBalance,
-          COALESCE(lb.rate, 0) as currentRate
+          COALESCE(lb.rate, l.fixed_interest_rate, 0) as currentRate
         FROM loans l
         LEFT JOIN (
           SELECT 

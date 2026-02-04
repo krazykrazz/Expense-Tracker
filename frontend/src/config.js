@@ -45,6 +45,15 @@ export const API_ENDPOINTS = {
   LOAN_SCENARIO: (id) => `${API_BASE_URL}/api/loans/${id}/insights/scenario`,
   LOAN_RATE: (id) => `${API_BASE_URL}/api/loans/${id}/rate`,
   
+  // Loan Payment Tracking (for loans and mortgages)
+  LOAN_PAYMENT_ENTRIES: (loanId) => `${API_BASE_URL}/api/loans/${loanId}/loan-payments`,
+  LOAN_PAYMENT_ENTRY: (loanId, paymentId) => `${API_BASE_URL}/api/loans/${loanId}/loan-payments/${paymentId}`,
+  LOAN_CALCULATED_BALANCE: (loanId) => `${API_BASE_URL}/api/loans/${loanId}/calculated-balance`,
+  LOAN_PAYMENT_BALANCE_HISTORY: (loanId) => `${API_BASE_URL}/api/loans/${loanId}/payment-balance-history`,
+  LOAN_PAYMENT_SUGGESTION: (loanId) => `${API_BASE_URL}/api/loans/${loanId}/payment-suggestion`,
+  LOAN_MIGRATE_BALANCES: (loanId) => `${API_BASE_URL}/api/loans/${loanId}/migrate-balances`,
+  LOAN_MIGRATE_BALANCES_PREVIEW: (loanId) => `${API_BASE_URL}/api/loans/${loanId}/migrate-balances/preview`,
+  
   // Investments
   INVESTMENTS: `${API_BASE_URL}/api/investments`,
   INVESTMENT_VALUES: `${API_BASE_URL}/api/investment-values`,

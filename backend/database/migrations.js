@@ -4359,6 +4359,146 @@ async function migrateAddLoanPaymentsTable(db) {
 }
 
 /**
+ * Migration: Add payment_due_day and linked_loan_id columns to fixed_expenses table
+ * 
+ * This enables linking fixed expenses to loan payments with due dates.
+ * - payment_due_day: Day of month (1-31) when payment is due
+ * - linked_loan_id: Foreign key to loans table for loan payment tracking
+ * 
+ * Requirements: 6.1, 6.2, 6.3
+ */
+async function migrateAddFixedExpenseLoanLinkage(db) {
+  const migrationName = 'add_fixed_expense_loan_linkage_v1';
+  
+  // Check if already applied
+  const isApplied = await checkMigrationApplied(db, migrationName);
+  if (isApplied) {
+    logger.info(`Migration "${migrationName}" already applied, skipping`);
+    return;
+  }
+
+  logger.info(`Running migration: ${migrationName}`);
+
+  // Create backup
+  await createBackup();
+
+  return new Promise((resolve, reject) => {
+    db.serialize(() => {
+      db.run('BEGIN TRANSACTION', (err) => {
+        if (err) {
+          return reject(err);
+        }
+
+        // Check if columns already exist
+        db.all('PRAGMA table_info(fixed_expenses)', (err, columns) => {
+          if (err) {
+            db.run('ROLLBACK');
+            return reject(err);
+          }
+
+          const hasPaymentDueDay = columns.some(col => col.name === 'payment_due_day');
+          const hasLinkedLoanId = columns.some(col => col.name === 'linked_loan_id');
+
+          if (hasPaymentDueDay && hasLinkedLoanId) {
+            logger.info('fixed_expenses table already has payment_due_day and linked_loan_id columns');
+            markMigrationApplied(db, migrationName).then(() => {
+              db.run('COMMIT', (err) => {
+                if (err) {
+                  db.run('ROLLBACK');
+                  return reject(err);
+                }
+                logger.info(`Migration "${migrationName}" completed successfully`);
+                resolve();
+              });
+            }).catch(reject);
+            return;
+          }
+
+          // Add payment_due_day column (nullable, CHECK 1-31)
+          const addPaymentDueDay = hasPaymentDueDay 
+            ? Promise.resolve()
+            : new Promise((res, rej) => {
+                db.run(
+                  'ALTER TABLE fixed_expenses ADD COLUMN payment_due_day INTEGER CHECK(payment_due_day IS NULL OR (payment_due_day >= 1 AND payment_due_day <= 31))',
+                  (err) => {
+                    if (err) {
+                      rej(err);
+                    } else {
+                      logger.info('Added payment_due_day column to fixed_expenses table');
+                      res();
+                    }
+                  }
+                );
+              });
+
+          addPaymentDueDay.then(() => {
+            // Add linked_loan_id column (nullable, FK to loans ON DELETE SET NULL)
+            const addLinkedLoanId = hasLinkedLoanId
+              ? Promise.resolve()
+              : new Promise((res, rej) => {
+                  db.run(
+                    'ALTER TABLE fixed_expenses ADD COLUMN linked_loan_id INTEGER REFERENCES loans(id) ON DELETE SET NULL',
+                    (err) => {
+                      if (err) {
+                        rej(err);
+                      } else {
+                        logger.info('Added linked_loan_id column to fixed_expenses table');
+                        res();
+                      }
+                    }
+                  );
+                });
+
+            return addLinkedLoanId;
+          }).then(() => {
+            // Create index for linked_loan_id lookups (only for non-null values)
+            db.run(
+              'CREATE INDEX IF NOT EXISTS idx_fixed_expenses_linked_loan ON fixed_expenses(linked_loan_id) WHERE linked_loan_id IS NOT NULL',
+              (err) => {
+                if (err) {
+                  db.run('ROLLBACK');
+                  return reject(err);
+                }
+
+                logger.info('Created index idx_fixed_expenses_linked_loan');
+
+                // Create index for payment_due_day lookups (only for non-null values)
+                db.run(
+                  'CREATE INDEX IF NOT EXISTS idx_fixed_expenses_due_day ON fixed_expenses(payment_due_day) WHERE payment_due_day IS NOT NULL',
+                  (err) => {
+                    if (err) {
+                      db.run('ROLLBACK');
+                      return reject(err);
+                    }
+
+                    logger.info('Created index idx_fixed_expenses_due_day');
+
+                    // Mark migration as applied and commit
+                    markMigrationApplied(db, migrationName).then(() => {
+                      db.run('COMMIT', (err) => {
+                        if (err) {
+                          db.run('ROLLBACK');
+                          return reject(err);
+                        }
+                        logger.info(`Migration "${migrationName}" completed successfully`);
+                        resolve();
+                      });
+                    }).catch(reject);
+                  }
+                );
+              }
+            );
+          }).catch((err) => {
+            db.run('ROLLBACK');
+            reject(err);
+          });
+        });
+      });
+    });
+  });
+}
+
+/**
  * Run all pending migrations
  */
 async function runMigrations(db) {
@@ -4393,6 +4533,7 @@ async function runMigrations(db) {
     await migratePdfStatementsToBillingCycles(db);
     await migrateAddIsUserEnteredToBillingCycles(db);
     await migrateAddLoanPaymentsTable(db);
+    await migrateAddFixedExpenseLoanLinkage(db);
     logger.info('All migrations completed');
   } catch (error) {
     logger.error('Migration failed:', error.message);
@@ -4421,5 +4562,6 @@ module.exports = {
   migrateAddStatementPdfToBillingCycles,
   migratePdfStatementsToBillingCycles,
   migrateAddIsUserEnteredToBillingCycles,
-  migrateAddLoanPaymentsTable
+  migrateAddLoanPaymentsTable,
+  migrateAddFixedExpenseLoanLinkage
 };

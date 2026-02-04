@@ -3,6 +3,9 @@ const fixedExpenseService = require('../services/fixedExpenseService');
 /**
  * Get all fixed expense items for a specific month
  * GET /api/fixed-expenses/:year/:month
+ * 
+ * Returns fixed expenses with loan details when linked.
+ * _Requirements: 1.4, 2.3, 6.4_
  */
 async function getMonthlyFixedExpenses(req, res) {
   try {
@@ -23,7 +26,8 @@ async function getMonthlyFixedExpenses(req, res) {
       return res.status(400).json({ error: 'Month must be between 1 and 12' });
     }
     
-    const result = await fixedExpenseService.getMonthlyFixedExpenses(yearNum, monthNum);
+    // Use getMonthlyFixedExpensesWithLoans to include loan details
+    const result = await fixedExpenseService.getMonthlyFixedExpensesWithLoans(yearNum, monthNum);
     res.status(200).json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -33,7 +37,10 @@ async function getMonthlyFixedExpenses(req, res) {
 /**
  * Create a new fixed expense item
  * POST /api/fixed-expenses
- * Body: { year, month, name, amount }
+ * Body: { year, month, name, amount, category, payment_type, payment_due_day?, linked_loan_id? }
+ * 
+ * Supports optional payment_due_day (1-31) and linked_loan_id for loan linkage.
+ * _Requirements: 1.4, 2.3, 6.4_
  */
 async function createFixedExpense(req, res) {
   try {
@@ -53,7 +60,10 @@ async function createFixedExpense(req, res) {
 /**
  * Update a fixed expense item by ID
  * PUT /api/fixed-expenses/:id
- * Body: { name, amount }
+ * Body: { name, amount, category, payment_type, payment_due_day?, linked_loan_id? }
+ * 
+ * Supports optional payment_due_day (1-31) and linked_loan_id for loan linkage.
+ * _Requirements: 1.4, 2.3, 6.4_
  */
 async function updateFixedExpense(req, res) {
   try {

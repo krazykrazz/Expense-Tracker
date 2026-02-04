@@ -8,6 +8,7 @@ import {
   carryForwardFixedExpenses
 } from '../services/fixedExpenseApi';
 import { getActivePaymentMethods, getPaymentMethod } from '../services/paymentMethodApi';
+import { getAllLoans } from '../services/loanApi';
 import { validateName, validateAmount } from '../utils/validation';
 import { getMonthNameLong } from '../utils/formatters';
 import { CATEGORIES } from '../utils/constants';
@@ -52,6 +53,42 @@ const getTypeLabel = (type) => {
   return labels[type] || type;
 };
 
+/**
+ * Group loans by type for dropdown display
+ * @param {Array} loans - Array of loans
+ * @returns {Object} Loans grouped by type
+ */
+const groupLoansByType = (loans) => {
+  const groups = {
+    mortgage: [],
+    loan: [],
+    line_of_credit: []
+  };
+  
+  loans.forEach(loan => {
+    const type = loan.loan_type || 'loan';
+    if (groups[type]) {
+      groups[type].push(loan);
+    }
+  });
+  
+  return groups;
+};
+
+/**
+ * Get display label for loan type
+ * @param {string} type - Loan type
+ * @returns {string} Display label
+ */
+const getLoanTypeLabel = (type) => {
+  const labels = {
+    mortgage: 'Mortgages',
+    loan: 'Loans',
+    line_of_credit: 'Lines of Credit'
+  };
+  return labels[type] || type;
+};
+
 const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
   const [fixedExpenses, setFixedExpenses] = useState([]);
   const [totalFixed, setTotalFixed] = useState(0);
@@ -60,11 +97,15 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
   const [newExpenseAmount, setNewExpenseAmount] = useState('');
   const [newExpenseCategory, setNewExpenseCategory] = useState('');
   const [newExpensePaymentType, setNewExpensePaymentType] = useState('');
+  const [newExpenseDueDay, setNewExpenseDueDay] = useState('');
+  const [newExpenseLinkedLoan, setNewExpenseLinkedLoan] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState('');
   const [editAmount, setEditAmount] = useState('');
   const [editCategory, setEditCategory] = useState('');
   const [editPaymentType, setEditPaymentType] = useState('');
+  const [editDueDay, setEditDueDay] = useState('');
+  const [editLinkedLoan, setEditLinkedLoan] = useState('');
   const [loading, setLoading] = useState(false);
   const [isCarryingForward, setIsCarryingForward] = useState(false);
   const [error, setError] = useState(null);
@@ -77,15 +118,23 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
   // Track inactive payment methods used by fixed expenses (for warning display)
   const [inactivePaymentMethods, setInactivePaymentMethods] = useState({});
   
+  // Loans state - for loan linkage (Requirements 2.1, 2.2)
+  const [loans, setLoans] = useState([]);
+  const [loansLoading, setLoansLoading] = useState(true);
+  // Map of loan_id to loan for quick lookup
+  const [loansMap, setLoansMap] = useState({});
+  
   const [validationErrors, setValidationErrors] = useState({
     addName: '',
     addAmount: '',
     addCategory: '',
     addPaymentType: '',
+    addDueDay: '',
     editName: '',
     editAmount: '',
     editCategory: '',
-    editPaymentType: ''
+    editPaymentType: '',
+    editDueDay: ''
   });
 
   // Fetch fixed expenses when modal opens or year/month changes
@@ -93,6 +142,7 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
     if (isOpen) {
       fetchFixedExpenses();
       fetchPaymentMethods();
+      fetchLoans();
     }
   }, [isOpen, year, month]);
 
@@ -114,6 +164,29 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
       setPaymentMethods([]);
     } finally {
       setPaymentMethodsLoading(false);
+    }
+  };
+
+  // Fetch loans from API for loan linkage (Requirements 2.1, 2.2)
+  const fetchLoans = async () => {
+    setLoansLoading(true);
+    try {
+      const allLoans = await getAllLoans();
+      // Filter to only active loans (is_paid_off = 0) for the dropdown (Requirements 2.2)
+      const activeLoans = (allLoans || []).filter(loan => !loan.is_paid_off);
+      setLoans(activeLoans);
+      
+      // Build a map for quick lookup (include all loans for display purposes)
+      const loanMap = {};
+      (allLoans || []).forEach(loan => {
+        loanMap[loan.id] = loan;
+      });
+      setLoansMap(loanMap);
+    } catch (err) {
+      logger.error('Error fetching loans:', err);
+      setLoans([]);
+    } finally {
+      setLoansLoading(false);
     }
   };
 
@@ -173,11 +246,29 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
       addAmount: '',
       addCategory: '',
       addPaymentType: '',
+      addDueDay: '',
       editName: '',
       editAmount: '',
       editCategory: '',
-      editPaymentType: ''
+      editPaymentType: '',
+      editDueDay: ''
     });
+  };
+
+  /**
+   * Validate payment due day (1-31 or empty)
+   * @param {string|number} value - The due day value
+   * @returns {string} Error message or empty string if valid
+   */
+  const validateDueDay = (value) => {
+    if (value === '' || value === null || value === undefined) {
+      return ''; // Optional field, empty is valid
+    }
+    const day = parseInt(value, 10);
+    if (isNaN(day) || day < 1 || day > 31) {
+      return 'Due day must be between 1 and 31';
+    }
+    return '';
   };
 
   const handleAddExpense = async () => {
@@ -188,9 +279,11 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
     // Validate inputs
     const nameError = validateName(newExpenseName);
     const amountError = validateAmount(newExpenseAmount);
+    const dueDayError = validateDueDay(newExpenseDueDay);
     
     newErrors.addName = nameError;
     newErrors.addAmount = amountError;
+    newErrors.addDueDay = dueDayError;
     
     // Validate category
     if (!newExpenseCategory || newExpenseCategory.trim() === '') {
@@ -209,12 +302,14 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
     setValidationErrors(newErrors);
     
     // If there are validation errors, don't proceed
-    if (nameError || amountError || newErrors.addCategory || newErrors.addPaymentType) {
+    if (nameError || amountError || newErrors.addCategory || newErrors.addPaymentType || dueDayError) {
       setError('Please fix the validation errors before submitting.');
       return;
     }
 
     const amount = parseFloat(newExpenseAmount);
+    const paymentDueDay = newExpenseDueDay ? parseInt(newExpenseDueDay, 10) : null;
+    const linkedLoanId = newExpenseLinkedLoan ? parseInt(newExpenseLinkedLoan, 10) : null;
 
     setLoading(true);
 
@@ -225,7 +320,9 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
         name: newExpenseName.trim(),
         amount,
         category: newExpenseCategory,
-        payment_type: newExpensePaymentType
+        payment_type: newExpensePaymentType,
+        payment_due_day: paymentDueDay,
+        linked_loan_id: linkedLoanId
       });
       
       // Update local state
@@ -238,6 +335,8 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
       setNewExpenseAmount('');
       setNewExpenseCategory('');
       setNewExpensePaymentType('');
+      setNewExpenseDueDay('');
+      setNewExpenseLinkedLoan('');
       setIsAdding(false);
       clearValidationErrors();
     } catch (err) {
@@ -255,6 +354,8 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
     setEditAmount(expense.amount.toString());
     setEditCategory(expense.category || '');
     setEditPaymentType(expense.payment_type || '');
+    setEditDueDay(expense.payment_due_day ? expense.payment_due_day.toString() : '');
+    setEditLinkedLoan(expense.linked_loan_id ? expense.linked_loan_id.toString() : '');
   };
 
   const handleSaveEdit = async () => {
@@ -265,9 +366,11 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
     // Validate inputs
     const nameError = validateName(editName);
     const amountError = validateAmount(editAmount);
+    const dueDayError = validateDueDay(editDueDay);
     
     newErrors.editName = nameError;
     newErrors.editAmount = amountError;
+    newErrors.editDueDay = dueDayError;
     
     // Validate category
     if (!editCategory || editCategory.trim() === '') {
@@ -286,12 +389,14 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
     setValidationErrors(newErrors);
     
     // If there are validation errors, don't proceed
-    if (nameError || amountError || newErrors.editCategory || newErrors.editPaymentType) {
+    if (nameError || amountError || newErrors.editCategory || newErrors.editPaymentType || dueDayError) {
       setError('Please fix the validation errors before saving.');
       return;
     }
 
     const amount = parseFloat(editAmount);
+    const paymentDueDay = editDueDay ? parseInt(editDueDay, 10) : null;
+    const linkedLoanId = editLinkedLoan ? parseInt(editLinkedLoan, 10) : null;
 
     setLoading(true);
 
@@ -300,7 +405,9 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
         name: editName.trim(),
         amount,
         category: editCategory,
-        payment_type: editPaymentType
+        payment_type: editPaymentType,
+        payment_due_day: paymentDueDay,
+        linked_loan_id: linkedLoanId
       });
       
       // Update local state
@@ -316,6 +423,8 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
       setEditAmount('');
       setEditCategory('');
       setEditPaymentType('');
+      setEditDueDay('');
+      setEditLinkedLoan('');
       clearValidationErrors();
     } catch (err) {
       const errorMessage = err.message || 'Network error. Unable to update fixed expense. Please check your connection and try again.';
@@ -332,6 +441,8 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
     setEditAmount('');
     setEditCategory('');
     setEditPaymentType('');
+    setEditDueDay('');
+    setEditLinkedLoan('');
     clearValidationErrors();
   };
 
@@ -396,11 +507,15 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
     setNewExpenseAmount('');
     setNewExpenseCategory('');
     setNewExpensePaymentType('');
+    setNewExpenseDueDay('');
+    setNewExpenseLinkedLoan('');
     setEditingId(null);
     setEditName('');
     setEditAmount('');
     setEditCategory('');
     setEditPaymentType('');
+    setEditDueDay('');
+    setEditLinkedLoan('');
     setError(null);
     clearValidationErrors();
     
@@ -467,6 +582,8 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
                       <span>Category</span>
                       <span>Payment Type</span>
                       <span style={{ textAlign: 'right' }}>Amount</span>
+                      <span>Due Day</span>
+                      <span>Linked Loan</span>
                       <span>Actions</span>
                     </div>
                     {fixedExpenses.map((expense) => (
@@ -550,6 +667,53 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
                               <span className="validation-error">{validationErrors.editAmount}</span>
                             )}
                           </div>
+                          <div className="fixed-expense-input-group">
+                            <input
+                              type="number"
+                              value={editDueDay}
+                              onChange={(e) => setEditDueDay(e.target.value)}
+                              placeholder="Due Day"
+                              min="1"
+                              max="31"
+                              className={`fixed-expense-edit-due-day ${validationErrors.editDueDay ? 'input-error' : ''}`}
+                              disabled={loading}
+                              title="Day of month when payment is due (1-31)"
+                            />
+                            {validationErrors.editDueDay && (
+                              <span className="validation-error">{validationErrors.editDueDay}</span>
+                            )}
+                          </div>
+                          <div className="fixed-expense-input-group">
+                            <select
+                              value={editLinkedLoan}
+                              onChange={(e) => setEditLinkedLoan(e.target.value)}
+                              className="fixed-expense-edit-loan"
+                              disabled={loading || loansLoading}
+                              title="Link to a loan for payment tracking (optional)"
+                            >
+                              <option value="">No Linked Loan</option>
+                              {/* Group loans by type (Requirements 2.1, 2.2) */}
+                              {Object.entries(groupLoansByType(loans)).map(([type, loanList]) => (
+                                loanList.length > 0 && (
+                                  <optgroup key={type} label={getLoanTypeLabel(type)}>
+                                    {loanList.map(loan => (
+                                      <option key={loan.id} value={loan.id}>
+                                        {loan.name}
+                                      </option>
+                                    ))}
+                                  </optgroup>
+                                )
+                              ))}
+                              {/* Show paid-off loan if editing expense linked to one (Requirements 2.6) */}
+                              {editLinkedLoan && loansMap[editLinkedLoan] && loansMap[editLinkedLoan].is_paid_off && (
+                                <optgroup label="Paid Off">
+                                  <option value={editLinkedLoan}>
+                                    {loansMap[editLinkedLoan].name} (paid off)
+                                  </option>
+                                </optgroup>
+                              )}
+                            </select>
+                          </div>
                           <button
                             className="fixed-expense-save-button"
                             onClick={handleSaveEdit}
@@ -585,6 +749,23 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
                           </span>
                           <span className="fixed-expense-amount">
                             ${parseFloat(expense.amount).toFixed(2)}
+                          </span>
+                          <span className={`fixed-expense-due-day ${!expense.payment_due_day ? 'no-due-day' : ''}`}>
+                            {expense.payment_due_day ? `Day ${expense.payment_due_day}` : '-'}
+                          </span>
+                          <span className={`fixed-expense-linked-loan ${
+                            !expense.linked_loan_id ? 'no-loan' : 
+                            (loansMap[expense.linked_loan_id]?.is_paid_off ? 'loan-paid-off' : '')
+                          }`}>
+                            {expense.linked_loan_id ? (
+                              <>
+                                <span className="loan-icon">🏦</span>
+                                {loansMap[expense.linked_loan_id]?.name || 'Unknown Loan'}
+                                {loansMap[expense.linked_loan_id]?.is_paid_off && (
+                                  <span title="This loan has been paid off"> (Paid Off)</span>
+                                )}
+                              </>
+                            ) : '-'}
                           </span>
                           <div className="fixed-expense-actions">
                             <button
@@ -692,6 +873,45 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
                         <span className="validation-error">{validationErrors.addAmount}</span>
                       )}
                     </div>
+                    <div className="fixed-expense-input-group">
+                      <input
+                        type="number"
+                        value={newExpenseDueDay}
+                        onChange={(e) => setNewExpenseDueDay(e.target.value)}
+                        placeholder="Due Day"
+                        min="1"
+                        max="31"
+                        className={`fixed-expense-add-due-day ${validationErrors.addDueDay ? 'input-error' : ''}`}
+                        disabled={loading}
+                        title="Day of month when payment is due (1-31, optional)"
+                      />
+                      {validationErrors.addDueDay && (
+                        <span className="validation-error">{validationErrors.addDueDay}</span>
+                      )}
+                    </div>
+                    <div className="fixed-expense-input-group">
+                      <select
+                        value={newExpenseLinkedLoan}
+                        onChange={(e) => setNewExpenseLinkedLoan(e.target.value)}
+                        className="fixed-expense-add-loan"
+                        disabled={loading || loansLoading}
+                        title="Link to a loan for payment tracking (optional)"
+                      >
+                        <option value="">No Linked Loan</option>
+                        {/* Group loans by type (Requirements 2.1, 2.2) */}
+                        {Object.entries(groupLoansByType(loans)).map(([type, loanList]) => (
+                          loanList.length > 0 && (
+                            <optgroup key={type} label={getLoanTypeLabel(type)}>
+                              {loanList.map(loan => (
+                                <option key={loan.id} value={loan.id}>
+                                  {loan.name}
+                                </option>
+                              ))}
+                            </optgroup>
+                          )
+                        ))}
+                      </select>
+                    </div>
                     <button
                       className="fixed-expenses-add-button"
                       onClick={handleAddExpense}
@@ -707,6 +927,8 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
                         setNewExpenseAmount('');
                         setNewExpenseCategory('');
                         setNewExpensePaymentType('');
+                        setNewExpenseDueDay('');
+                        setNewExpenseLinkedLoan('');
                         clearValidationErrors();
                       }}
                       disabled={loading}

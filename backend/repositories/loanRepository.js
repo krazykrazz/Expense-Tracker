@@ -199,7 +199,7 @@ class LoanRepository {
         WHERE id = ?
       `;
       
-      db.run(sql, params, async function(err) {
+      db.run(sql, params, function(err) {
         if (err) {
           reject(err);
           return;
@@ -210,19 +210,14 @@ class LoanRepository {
           return;
         }
         
-        // Fetch and return the updated loan
-        try {
-          const db = await getDatabase();
-          db.get('SELECT * FROM loans WHERE id = ?', [id], (err, row) => {
-            if (err) {
-              reject(err);
-              return;
-            }
-            resolve(row);
-          });
-        } catch (fetchErr) {
-          reject(fetchErr);
-        }
+        // Fetch and return the updated loan using existing db reference
+        db.get('SELECT * FROM loans WHERE id = ?', [id], (err, row) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+          resolve(row);
+        });
       });
     });
   }
@@ -264,7 +259,7 @@ class LoanRepository {
         WHERE id = ?
       `;
       
-      db.run(sql, params, async function(err) {
+      db.run(sql, params, function(err) {
         if (err) {
           reject(err);
           return;
@@ -275,19 +270,14 @@ class LoanRepository {
           return;
         }
         
-        // Fetch and return the updated loan
-        try {
-          const db = await getDatabase();
-          db.get('SELECT * FROM loans WHERE id = ?', [id], (err, row) => {
-            if (err) {
-              reject(err);
-              return;
-            }
-            resolve(row);
-          });
-        } catch (fetchErr) {
-          reject(fetchErr);
-        }
+        // Fetch and return the updated loan using existing db reference
+        db.get('SELECT * FROM loans WHERE id = ?', [id], (err, row) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+          resolve(row);
+        });
       });
     });
   }

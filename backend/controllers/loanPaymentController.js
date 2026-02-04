@@ -12,6 +12,7 @@ const loanPaymentService = require('../services/loanPaymentService');
 const balanceCalculationService = require('../services/balanceCalculationService');
 const paymentSuggestionService = require('../services/paymentSuggestionService');
 const migrationService = require('../services/migrationService');
+const autoPaymentLoggerService = require('../services/autoPaymentLoggerService');
 
 /**
  * Create a new payment entry for a loan
@@ -343,6 +344,74 @@ async function migrateBalances(req, res) {
   }
 }
 
+/**
+ * Auto-log a loan payment from a linked fixed expense
+ * POST /api/loans/:loanId/loan-payments/auto-log
+ * Body: { fixed_expense_id, year, month }
+ * 
+ * Creates a loan payment entry using the linked fixed expense's amount and due date.
+ * _Requirements: 4.4_
+ */
+async function autoLogPayment(req, res) {
+  try {
+    const loanId = parseInt(req.params.loanId);
+    
+    if (isNaN(loanId)) {
+      return res.status(400).json({ error: 'Invalid loan ID' });
+    }
+    
+    const { fixed_expense_id, year, month } = req.body;
+    
+    if (!fixed_expense_id) {
+      return res.status(400).json({ error: 'Fixed expense ID is required' });
+    }
+    
+    if (!year || !month) {
+      return res.status(400).json({ error: 'Year and month are required' });
+    }
+    
+    const fixedExpenseId = parseInt(fixed_expense_id);
+    const yearNum = parseInt(year);
+    const monthNum = parseInt(month);
+    
+    if (isNaN(fixedExpenseId)) {
+      return res.status(400).json({ error: 'Invalid fixed expense ID' });
+    }
+    
+    if (isNaN(yearNum) || isNaN(monthNum)) {
+      return res.status(400).json({ error: 'Year and month must be valid numbers' });
+    }
+    
+    if (monthNum < 1 || monthNum > 12) {
+      return res.status(400).json({ error: 'Month must be between 1 and 12' });
+    }
+    
+    const payment = await autoPaymentLoggerService.autoLogFromSuggestion(
+      fixedExpenseId,
+      yearNum,
+      monthNum
+    );
+    
+    // Verify the payment was created for the correct loan
+    if (payment.loan_id !== loanId) {
+      return res.status(400).json({ 
+        error: 'Fixed expense is not linked to this loan' 
+      });
+    }
+    
+    res.status(201).json(payment);
+  } catch (error) {
+    if (error.message === 'Fixed expense not found or not linked to a loan') {
+      return res.status(404).json({ error: error.message });
+    }
+    if (error.message === 'Cannot auto-log payment for a paid-off loan' ||
+        error.message === 'A payment already exists for this loan this month') {
+      return res.status(400).json({ error: error.message });
+    }
+    res.status(500).json({ error: error.message });
+  }
+}
+
 module.exports = {
   createPayment,
   getPayments,
@@ -353,5 +422,6 @@ module.exports = {
   getBalanceHistory,
   getPaymentSuggestion,
   previewMigration,
-  migrateBalances
+  migrateBalances,
+  autoLogPayment
 };

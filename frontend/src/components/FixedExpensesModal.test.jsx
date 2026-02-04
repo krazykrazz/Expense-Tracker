@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import FixedExpensesModal from './FixedExpensesModal';
 import * as fixedExpenseApi from '../services/fixedExpenseApi';
 import * as paymentMethodApi from '../services/paymentMethodApi';
+import * as loanApi from '../services/loanApi';
 
 // Mock the fixed expense API
 vi.mock('../services/fixedExpenseApi', () => ({
@@ -19,6 +20,11 @@ vi.mock('../services/paymentMethodApi', () => ({
   getPaymentMethod: vi.fn()
 }));
 
+// Mock the loan API
+vi.mock('../services/loanApi', () => ({
+  getAllLoans: vi.fn()
+}));
+
 // Mock payment methods data
 const mockPaymentMethods = [
   { id: 1, type: 'cash', display_name: 'Cash', is_active: true },
@@ -26,6 +32,14 @@ const mockPaymentMethods = [
   { id: 3, type: 'cheque', display_name: 'Cheque', is_active: true },
   { id: 4, type: 'credit_card', display_name: 'CIBC MC', full_name: 'CIBC Mastercard', is_active: true },
   { id: 5, type: 'credit_card', display_name: 'RBC VISA', full_name: 'RBC VISA', is_active: true }
+];
+
+// Mock loans data
+const mockLoans = [
+  { id: 1, name: 'Car Loan', loan_type: 'loan', is_paid_off: false },
+  { id: 2, name: 'Home Mortgage', loan_type: 'mortgage', is_paid_off: false },
+  { id: 3, name: 'Line of Credit', loan_type: 'line_of_credit', is_paid_off: false },
+  { id: 4, name: 'Old Loan', loan_type: 'loan', is_paid_off: true }
 ];
 
 describe('FixedExpensesModal', () => {
@@ -53,6 +67,7 @@ describe('FixedExpensesModal', () => {
     fixedExpenseApi.getMonthlyFixedExpenses.mockResolvedValue(mockFixedExpenses);
     paymentMethodApi.getActivePaymentMethods.mockResolvedValue(mockPaymentMethods);
     paymentMethodApi.getPaymentMethod.mockResolvedValue(null);
+    loanApi.getAllLoans.mockResolvedValue(mockLoans);
   });
 
   describe('Rendering', () => {

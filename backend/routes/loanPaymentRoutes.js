@@ -6,6 +6,7 @@
  * 
  * Routes:
  * - POST   /api/loans/:loanId/loan-payments          - Create a payment entry
+ * - POST   /api/loans/:loanId/loan-payments/auto-log - Auto-log payment from fixed expense
  * - GET    /api/loans/:loanId/loan-payments          - Get all payments for a loan
  * - GET    /api/loans/:loanId/loan-payments/:id      - Get a specific payment
  * - PUT    /api/loans/:loanId/loan-payments/:id      - Update a payment entry
@@ -16,7 +17,7 @@
  * - GET    /api/loans/:loanId/migrate-balances/preview - Preview migration
  * - POST   /api/loans/:loanId/migrate-balances       - Migrate balance entries to payments
  * 
- * Requirements: 1.1, 1.2, 1.3, 1.4, 2.1, 3.1, 4.1
+ * Requirements: 1.1, 1.2, 1.3, 1.4, 2.1, 3.1, 4.1, 4.4
  */
 
 const express = require('express');
@@ -26,6 +27,10 @@ const loanPaymentController = require('../controllers/loanPaymentController');
 // Payment CRUD routes
 // POST /api/loans/:loanId/loan-payments - Create a payment entry
 router.post('/:loanId/loan-payments', loanPaymentController.createPayment);
+
+// POST /api/loans/:loanId/loan-payments/auto-log - Auto-log payment from fixed expense
+// _Requirements: 4.4_
+router.post('/:loanId/loan-payments/auto-log', loanPaymentController.autoLogPayment);
 
 // GET /api/loans/:loanId/loan-payments - Get all payments for a loan
 router.get('/:loanId/loan-payments', loanPaymentController.getPayments);

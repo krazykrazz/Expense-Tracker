@@ -44,7 +44,50 @@ function getTodayString() {
   return formatter.format(new Date());
 }
 
+/**
+ * Calculate days until next payment due date
+ * Handles month boundaries and months with fewer days
+ * @param {number} paymentDueDay - Day of month payment is due (1-31)
+ * @param {Date} referenceDate - Reference date (defaults to today)
+ * @returns {number|null} Days until due or null if no due day set
+ */
+function calculateDaysUntilDue(paymentDueDay, referenceDate = new Date()) {
+  if (!paymentDueDay || paymentDueDay < 1 || paymentDueDay > 31) {
+    return null;
+  }
+
+  const today = new Date(referenceDate);
+  today.setHours(0, 0, 0, 0);
+  
+  const currentDay = today.getDate();
+  const currentMonth = today.getMonth();
+  const currentYear = today.getFullYear();
+  
+  let dueDate;
+  
+  if (currentDay <= paymentDueDay) {
+    // Due date is this month
+    dueDate = new Date(currentYear, currentMonth, paymentDueDay);
+  } else {
+    // Due date is next month
+    dueDate = new Date(currentYear, currentMonth + 1, paymentDueDay);
+  }
+  
+  // Handle months with fewer days
+  // If the due day doesn't exist in the target month, use the last day
+  const lastDayOfMonth = new Date(dueDate.getFullYear(), dueDate.getMonth() + 1, 0).getDate();
+  if (paymentDueDay > lastDayOfMonth) {
+    dueDate.setDate(lastDayOfMonth);
+  }
+  
+  const diffTime = dueDate.getTime() - today.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  
+  return diffDays;
+}
+
 module.exports = {
   calculateWeek,
-  getTodayString
+  getTodayString,
+  calculateDaysUntilDue
 };

@@ -27,12 +27,15 @@ A full-stack personal expense tracking application for managing household financ
 - Income by Category visualization showing Salary, Government, Gifts, and Other income sources
 - Monthly Net Balance line graph showing surplus/deficit trends throughout the year
 - Configurable monthly gross income from multiple sources with category tracking (Salary, Government, Gifts, Other)
-- Fixed monthly expenses management with full category and payment type tracking (Housing, Utilities, Subscriptions, Insurance, etc.) and carry-forward capability
+- Fixed monthly expenses management with full category and payment type tracking (Housing, Utilities, Subscriptions, Insurance, etc.), carry-forward capability, and optional loan linkage with due date reminders
 - Budget tracking with proactive alert notifications - prominent banner alerts when approaching or exceeding budget limits
 - Smart alert thresholds: Warning (80-89%), Danger (90-99%), Critical (≥100%) with dismissible session-based alerts
 - Real-time budget alert updates with quick access to budget management from alert banners
 - Loans and lines of credit tracking with monthly balance history
 - Loan type differentiation (traditional loans vs lines of credit)
+- Loan payment tracking with payment-based balance calculation for loans and mortgages
+- Fixed expense loan linkage with optional due dates and loan associations
+- Loan payment reminders with auto-log payment suggestions
 - Visual dual-axis charts showing balance and interest rate trends
 - Total debt overview showing aggregate debt across all active loans over time
 - Mortgage tracking with dedicated loan type and enhanced analytics

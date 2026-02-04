@@ -47,11 +47,23 @@ A full-stack expense tracking application built with React and Node.js.
 - 📊 Support for two loan types:
   - **Loans**: Traditional loans (mortgages, car loans) with paydown progress tracking
   - **Lines of Credit**: Revolving credit (credit cards, HELOCs) with balance/rate visualization
+- 💰 **Payment-based tracking**: Record individual loan payments with automatic balance calculation
+- 📈 **Payment history**: View all payments with running balance after each payment
+- 💡 **Payment suggestions**: Get suggested payment amounts based on loan type and history
+- 🔄 **Balance migration**: Convert existing balance entries to payment entries
 - 📉 Visual dual-axis charts showing balance and interest rate trends over time
 - 🎯 Automatic paid-off detection for traditional loans
 - 📅 Start date filtering (loans only appear in months after they start)
 - 🔗 Cascade delete (removing a loan deletes all balance entries)
 - 💡 Smart reminders to update loan balances for the current month
+
+### Fixed Expense Loan Linkage
+- 🔗 Link fixed expenses to loans for integrated payment tracking
+- 📅 Set payment due day (1-31) for reminder generation
+- ⏰ **Loan payment reminders**: Get notified when linked loan payments are due
+- ⚡ **Auto-log payments**: One-click payment logging from reminder banners
+- 🏷️ Visual indicators showing linked loans on fixed expenses
+- 🔄 Carry-forward preserves loan linkage when copying to new months
 
 ### Investment Tracking
 - 📈 Track investment portfolios (TFSA and RRSP accounts)
@@ -406,6 +418,16 @@ stop-servers.bat
 16. **Track Balances**: Click on any loan to view details and add monthly balance/rate entries
 17. **View Charts**: Lines of credit display a dual-axis chart showing balance and interest rate trends
 18. **Mark Paid Off**: Traditional loans auto-mark as paid off when balance reaches zero
+19. **Record Payments**: For loans and mortgages, click "Add Payment" to record individual payments
+20. **View Payment History**: See all payments with running balance after each payment
+21. **Use Payment Suggestions**: Click "Use Suggested Amount" for smart payment amount suggestions
+22. **Migrate Balance Entries**: Convert existing balance entries to payment format using the migration tool
+
+### Fixed Expense Loan Linkage
+23. **Link to Loan**: When editing a fixed expense, select a loan from the "Linked Loan" dropdown
+24. **Set Due Day**: Enter the payment due day (1-31) for reminder generation
+25. **View Reminders**: Loan payment reminders appear in the reminder banner when due dates approach
+26. **Auto-Log Payments**: Click "Log Payment" on reminder banners to automatically create loan payment entries
 
 ### Investment Tracking
 19. **View Investments**: Click the "📈 Investments" button in the summary panel to see all investments
@@ -559,6 +581,16 @@ expense-tracker/
 - `PUT /api/loan-balances/:id` - Update a balance entry
 - `DELETE /api/loan-balances/:id` - Delete a balance entry
 
+### Loan Payments
+- `GET /api/loans/:loanId/payments` - Get all payments for a loan
+- `POST /api/loans/:loanId/payments` - Create a payment entry
+- `PUT /api/loans/:loanId/payments/:id` - Update a payment entry
+- `DELETE /api/loans/:loanId/payments/:id` - Delete a payment entry
+- `GET /api/loans/:loanId/calculated-balance` - Get calculated balance from payments
+- `GET /api/loans/:loanId/payment-suggestion` - Get suggested payment amount
+- `POST /api/loans/:loanId/migrate-balances` - Convert balance entries to payments
+- `POST /api/loans/:loanId/loan-payments/auto-log` - Auto-log payment from fixed expense
+
 ### Budgets
 - `GET /api/budgets?year=YYYY&month=MM` - Get budgets for a month (with auto-carry-forward)
 - `POST /api/budgets` - Create a new budget
@@ -668,6 +700,8 @@ expense-tracker/
 - amount (REAL)
 - category (TEXT) - Expense category (Housing, Utilities, Subscriptions, Insurance, etc.)
 - payment_type (TEXT) - Payment method (Credit Card, Debit Card, Cash, Cheque, E-Transfer)
+- payment_due_day (INTEGER) - Optional day of month payment is due (1-31)
+- linked_loan_id (INTEGER) - Optional foreign key to loans table (SET NULL on delete)
 - created_at (TEXT)
 - updated_at (TEXT)
 
@@ -692,6 +726,16 @@ expense-tracker/
 - created_at (TEXT)
 - updated_at (TEXT)
 - UNIQUE constraint on (loan_id, year, month)
+
+### Loan Payments Table
+- id (INTEGER PRIMARY KEY)
+- loan_id (INTEGER) - Foreign key to loans table (CASCADE DELETE)
+- amount (REAL) - Payment amount (must be positive)
+- payment_date (TEXT) - Date of payment (YYYY-MM-DD)
+- notes (TEXT) - Optional notes
+- created_at (TEXT)
+- updated_at (TEXT)
+- Indexes on loan_id and payment_date for performance
 
 ### Budgets Table
 - id (INTEGER PRIMARY KEY)
@@ -795,6 +839,8 @@ For more detailed information, see:
 - **[Quick Build Guide](./QUICK_BUILD_GUIDE.md)** - Fast reference for Docker builds
 - **[Documentation Index](./docs/README.md)** - Comprehensive documentation
   - [Feature Documentation](./docs/features/) - Detailed feature guides
+    - [Loan Payment Tracking](./docs/features/LOAN_PAYMENT_TRACKING.md) - Payment-based loan tracking
+    - [Mortgage Tracking](./docs/features/MORTGAGE_TRACKING.md) - Mortgage analytics and insights
   - [Deployment Guides](./docs/deployments/) - Deployment and migration notes
   - [User Guides](./docs/guides/) - Setup and usage guides
 

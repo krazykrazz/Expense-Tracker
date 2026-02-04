@@ -1,6 +1,6 @@
 const paymentMethodRepository = require('../repositories/paymentMethodRepository');
 const logger = require('../config/logger');
-const { getTodayString } = require('../utils/dateUtils');
+const { getTodayString, calculateDaysUntilDue } = require('../utils/dateUtils');
 
 /**
  * Valid payment method types
@@ -355,34 +355,44 @@ class PaymentMethodService {
    * For other types: uses current month
    * Also includes total_expense_count for delete validation
    * Credit card balances are calculated dynamically (excludes future pre-logged expenses)
+   * 
+   * OPTIMIZED: Uses single query to fetch base data, reducing N+1 queries
    * @returns {Promise<Array>} Array of payment methods with expense counts
    */
   async getAllWithExpenseCounts() {
-    const paymentMethods = await paymentMethodRepository.findAll();
+    // Use timezone-aware date for balance calculation
+    const todayStr = getTodayString();
     
-    // Add expense counts to each payment method
-    // For credit cards, also calculate dynamic balance and utilization
+    // Single optimized query fetches payment methods with expense counts and balance data
+    const paymentMethods = await paymentMethodRepository.findAllWithExpenseCounts(todayStr);
+    
+    // Process results - only need to calculate period-specific expense counts
+    // and utilization (which uses pre-fetched balance data)
     const withCounts = await Promise.all(
       paymentMethods.map(async (pm) => {
+        // Get expense count for current period (billing cycle or current month)
         const expenseCount = await this.getExpenseCountForCurrentPeriod(pm);
-        const totalExpenseCount = await paymentMethodRepository.countAssociatedExpenses(pm.id);
         
-        // For credit cards, use dynamic balance (excludes future pre-logged expenses)
-        // and calculate utilization percentage
+        // For credit cards, calculate dynamic balance from pre-fetched totals
+        // and compute utilization percentage
         let currentBalance = pm.current_balance;
         let utilizationPercentage = null;
         
         if (pm.type === 'credit_card') {
-          currentBalance = await this._calculateDynamicBalance(pm.id);
+          // Calculate balance from pre-fetched expense and payment totals
+          currentBalance = Math.max(0, Math.round((pm.expense_total_to_date - pm.payment_total_to_date) * 100) / 100);
           utilizationPercentage = this.calculateUtilizationPercentage(currentBalance, pm.credit_limit);
         }
         
+        // Remove internal fields from output
+        const { expense_total_to_date, payment_total_to_date, ...cleanPm } = pm;
+        
         return {
-          ...pm,
+          ...cleanPm,
           current_balance: currentBalance,
           utilization_percentage: utilizationPercentage,
           expense_count: expenseCount,
-          total_expense_count: totalExpenseCount
+          total_expense_count: pm.total_expense_count
         };
       })
     );
@@ -491,43 +501,13 @@ class PaymentMethodService {
 
   /**
    * Calculate days until next payment due date
+   * Delegates to shared utility function in dateUtils
    * @param {number} paymentDueDay - Day of month payment is due (1-31)
    * @param {Date} referenceDate - Reference date (defaults to today)
    * @returns {number|null} Days until due or null if no due day set
    */
   calculateDaysUntilDue(paymentDueDay, referenceDate = new Date()) {
-    if (!paymentDueDay || paymentDueDay < 1 || paymentDueDay > 31) {
-      return null;
-    }
-
-    const today = new Date(referenceDate);
-    today.setHours(0, 0, 0, 0);
-    
-    const currentDay = today.getDate();
-    const currentMonth = today.getMonth();
-    const currentYear = today.getFullYear();
-    
-    let dueDate;
-    
-    if (currentDay <= paymentDueDay) {
-      // Due date is this month
-      dueDate = new Date(currentYear, currentMonth, paymentDueDay);
-    } else {
-      // Due date is next month
-      dueDate = new Date(currentYear, currentMonth + 1, paymentDueDay);
-    }
-    
-    // Handle months with fewer days
-    // If the due day doesn't exist in the target month, use the last day
-    const lastDayOfMonth = new Date(dueDate.getFullYear(), dueDate.getMonth() + 1, 0).getDate();
-    if (paymentDueDay > lastDayOfMonth) {
-      dueDate.setDate(lastDayOfMonth);
-    }
-    
-    const diffTime = dueDate.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    return diffDays;
+    return calculateDaysUntilDue(paymentDueDay, referenceDate);
   }
 
   /**

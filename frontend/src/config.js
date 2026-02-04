@@ -48,6 +48,7 @@ export const API_ENDPOINTS = {
   // Loan Payment Tracking (for loans and mortgages)
   LOAN_PAYMENT_ENTRIES: (loanId) => `${API_BASE_URL}/api/loans/${loanId}/loan-payments`,
   LOAN_PAYMENT_ENTRY: (loanId, paymentId) => `${API_BASE_URL}/api/loans/${loanId}/loan-payments/${paymentId}`,
+  LOAN_PAYMENT_AUTO_LOG: (loanId) => `${API_BASE_URL}/api/loans/${loanId}/loan-payments/auto-log`,
   LOAN_CALCULATED_BALANCE: (loanId) => `${API_BASE_URL}/api/loans/${loanId}/calculated-balance`,
   LOAN_PAYMENT_BALANCE_HISTORY: (loanId) => `${API_BASE_URL}/api/loans/${loanId}/payment-balance-history`,
   LOAN_PAYMENT_SUGGESTION: (loanId) => `${API_BASE_URL}/api/loans/${loanId}/payment-suggestion`,
@@ -74,6 +75,7 @@ export const API_ENDPOINTS = {
   
   // Reminders
   REMINDER_STATUS: (year, month) => `${API_BASE_URL}/api/reminders/status/${year}/${month}`,
+  AUTO_LOG_SUGGESTIONS: (year, month) => `${API_BASE_URL}/api/reminders/auto-log-suggestions/${year}/${month}`,
   
   // Backup
   BACKUP_CONFIG: `${API_BASE_URL}/api/backup/config`,

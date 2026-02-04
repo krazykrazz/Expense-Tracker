@@ -561,6 +561,8 @@ function createTestDatabase() {
             category TEXT DEFAULT 'Other',
             payment_type TEXT DEFAULT 'Fixed',
             payment_method_id INTEGER REFERENCES payment_methods(id),
+            payment_due_day INTEGER CHECK(payment_due_day IS NULL OR (payment_due_day >= 1 AND payment_due_day <= 31)),
+            linked_loan_id INTEGER REFERENCES loans(id) ON DELETE SET NULL,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             updated_at TEXT DEFAULT CURRENT_TIMESTAMP
           )`,
@@ -852,6 +854,8 @@ function createTestIndexes(db, resolve, reject) {
     'CREATE INDEX IF NOT EXISTS idx_dismissed_anomalies_expense_id ON dismissed_anomalies(expense_id)',
     'CREATE INDEX IF NOT EXISTS idx_expenses_payment_method_id ON expenses(payment_method_id)',
     'CREATE INDEX IF NOT EXISTS idx_fixed_expenses_payment_method_id ON fixed_expenses(payment_method_id)',
+    'CREATE INDEX IF NOT EXISTS idx_fixed_expenses_linked_loan ON fixed_expenses(linked_loan_id)',
+    'CREATE INDEX IF NOT EXISTS idx_fixed_expenses_due_day ON fixed_expenses(payment_due_day)',
     'CREATE INDEX IF NOT EXISTS idx_payment_methods_type ON payment_methods(type)',
     'CREATE INDEX IF NOT EXISTS idx_payment_methods_display_name ON payment_methods(display_name)',
     'CREATE INDEX IF NOT EXISTS idx_payment_methods_is_active ON payment_methods(is_active)',

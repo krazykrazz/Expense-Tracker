@@ -1,6 +1,9 @@
 const reminderRepository = require('../repositories/reminderRepository');
 const statementBalanceService = require('./statementBalanceService');
 const billingCycleRepository = require('../repositories/billingCycleRepository');
+const fixedExpenseRepository = require('../repositories/fixedExpenseRepository');
+const loanPaymentRepository = require('../repositories/loanPaymentRepository');
+const { calculateDaysUntilDue } = require('../utils/dateUtils');
 const logger = require('../config/logger');
 
 /**
@@ -11,43 +14,13 @@ const REMINDER_DAYS_THRESHOLD = 7;
 class ReminderService {
   /**
    * Calculate days until next payment due date
+   * Delegates to shared utility function in dateUtils
    * @param {number} paymentDueDay - Day of month payment is due (1-31)
    * @param {Date} referenceDate - Reference date (defaults to today)
    * @returns {number|null} Days until due or null if no due day set
    */
   calculateDaysUntilDue(paymentDueDay, referenceDate = new Date()) {
-    if (!paymentDueDay || paymentDueDay < 1 || paymentDueDay > 31) {
-      return null;
-    }
-
-    const today = new Date(referenceDate);
-    today.setHours(0, 0, 0, 0);
-    
-    const currentDay = today.getDate();
-    const currentMonth = today.getMonth();
-    const currentYear = today.getFullYear();
-    
-    let dueDate;
-    
-    if (currentDay <= paymentDueDay) {
-      // Due date is this month
-      dueDate = new Date(currentYear, currentMonth, paymentDueDay);
-    } else {
-      // Due date is next month
-      dueDate = new Date(currentYear, currentMonth + 1, paymentDueDay);
-    }
-    
-    // Handle months with fewer days
-    // If the due day doesn't exist in the target month, use the last day
-    const lastDayOfMonth = new Date(dueDate.getFullYear(), dueDate.getMonth() + 1, 0).getDate();
-    if (paymentDueDay > lastDayOfMonth) {
-      dueDate.setDate(lastDayOfMonth);
-    }
-    
-    const diffTime = dueDate.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    return diffDays;
+    return calculateDaysUntilDue(paymentDueDay, referenceDate);
   }
 
   /**
@@ -246,6 +219,100 @@ class ReminderService {
   }
 
   /**
+   * Get loan payment reminders
+   * Returns linked fixed expenses with due dates that are due soon or overdue
+   * Suppresses reminders when a loan payment already exists for the current month
+   * @param {Date} referenceDate - Reference date (defaults to today)
+   * @returns {Promise<Object>} Loan payment reminder status
+   * _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
+   */
+  async getLoanPaymentReminders(referenceDate = new Date()) {
+    try {
+      const today = new Date(referenceDate);
+      today.setHours(0, 0, 0, 0);
+      
+      const currentYear = today.getFullYear();
+      const currentMonth = today.getMonth() + 1; // 1-12
+      
+      // Get linked fixed expenses with due dates for the current month
+      const linkedExpenses = await fixedExpenseRepository.getLinkedFixedExpensesForMonth(
+        currentYear,
+        currentMonth
+      );
+      
+      if (linkedExpenses.length === 0) {
+        return {
+          overdueCount: 0,
+          dueSoonCount: 0,
+          hasLinkedExpenses: false,
+          overduePayments: [],
+          dueSoonPayments: []
+        };
+      }
+      
+      // Get loan IDs to check for existing payments
+      const loanIds = [...new Set(linkedExpenses.map(e => e.loan_id))];
+      
+      // Check which loans have payments this month
+      // _Requirements: 3.4_
+      const paymentStatusMap = await loanPaymentRepository.getPaymentStatusForMonth(
+        loanIds,
+        currentYear,
+        currentMonth
+      );
+      
+      // Calculate days until due and build reminder objects
+      // _Requirements: 3.1, 3.2, 3.3, 3.5_
+      const reminders = linkedExpenses.map(expense => {
+        const daysUntilDue = this.calculateDaysUntilDue(expense.payment_due_day, referenceDate);
+        const hasPaymentThisMonth = paymentStatusMap.get(expense.loan_id) || false;
+        
+        // Determine overdue/due soon status
+        // _Requirements: 3.1, 3.2_
+        const isOverdue = daysUntilDue !== null && daysUntilDue < 0;
+        const isDueSoon = daysUntilDue !== null && daysUntilDue >= 0 && daysUntilDue <= REMINDER_DAYS_THRESHOLD;
+        
+        return {
+          fixedExpenseId: expense.fixed_expense_id,
+          fixedExpenseName: expense.fixed_expense_name,
+          amount: expense.amount,
+          paymentDueDay: expense.payment_due_day,
+          daysUntilDue: daysUntilDue,
+          loanId: expense.loan_id,
+          loanName: expense.loan_name,
+          loanType: expense.loan_type,
+          isLoanPaidOff: expense.is_paid_off === 1,
+          isOverdue: isOverdue,
+          isDueSoon: isDueSoon,
+          hasPaymentThisMonth: hasPaymentThisMonth
+        };
+      });
+      
+      // Filter to only reminders that need attention (overdue or due soon)
+      // and don't have a payment this month
+      // _Requirements: 3.4_
+      const overduePayments = reminders.filter(r => 
+        r.isOverdue && !r.hasPaymentThisMonth && !r.isLoanPaidOff
+      );
+      const dueSoonPayments = reminders.filter(r => 
+        r.isDueSoon && !r.hasPaymentThisMonth && !r.isLoanPaidOff
+      );
+      
+      return {
+        overdueCount: overduePayments.length,
+        dueSoonCount: dueSoonPayments.length,
+        hasLinkedExpenses: linkedExpenses.length > 0,
+        overduePayments,
+        dueSoonPayments,
+        allReminders: reminders
+      };
+    } catch (error) {
+      logger.error('Error getting loan payment reminders:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Get reminder status for a specific month
    * @param {number} year - Year
    * @param {number} month - Month (1-12)
@@ -271,6 +338,10 @@ class ReminderService {
       // Get billing cycle entry reminders
       // _Requirements: 4.1, 4.2, 4.4_
       const billingCycleReminders = await this.getBillingCycleReminders(referenceDate);
+      
+      // Get loan payment reminders
+      // _Requirements: 5.1, 5.4_
+      const loanPaymentReminders = await this.getLoanPaymentReminders(referenceDate);
 
       // Count missing data
       const missingInvestments = investments.filter(inv => !inv.hasValue).length;
@@ -311,6 +382,15 @@ class ReminderService {
           needsEntryCount: billingCycleReminders.needsEntryCount,
           hasCardsWithBillingCycle: billingCycleReminders.hasCardsWithBillingCycle,
           cardsNeedingEntry: billingCycleReminders.cardsNeedingEntry
+        },
+        // Loan payment reminders
+        // _Requirements: 5.1, 5.4_
+        loanPaymentReminders: {
+          overdueCount: loanPaymentReminders.overdueCount,
+          dueSoonCount: loanPaymentReminders.dueSoonCount,
+          hasLinkedExpenses: loanPaymentReminders.hasLinkedExpenses,
+          overduePayments: loanPaymentReminders.overduePayments,
+          dueSoonPayments: loanPaymentReminders.dueSoonPayments
         }
       };
     } catch (error) {

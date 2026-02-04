@@ -1,11 +1,13 @@
 const fixedExpenseService = require('./fixedExpenseService');
 const fixedExpenseRepository = require('../repositories/fixedExpenseRepository');
 const paymentMethodRepository = require('../repositories/paymentMethodRepository');
+const loanRepository = require('../repositories/loanRepository');
 const { validateYearMonth } = require('../utils/validators');
 
 // Mock dependencies
 jest.mock('../repositories/fixedExpenseRepository');
 jest.mock('../repositories/paymentMethodRepository');
+jest.mock('../repositories/loanRepository');
 jest.mock('../utils/validators');
 
 // Default mock payment methods for validation
@@ -23,6 +25,8 @@ describe('fixedExpenseService', () => {
     validateYearMonth.mockImplementation(() => {});
     // Default payment methods mock
     paymentMethodRepository.findAll.mockResolvedValue(mockPaymentMethods);
+    // Default loan repository mock - return null for non-existent loans
+    loanRepository.findById.mockResolvedValue(null);
   });
 
   describe('getMonthlyFixedExpenses', () => {
@@ -76,7 +80,7 @@ describe('fixedExpenseService', () => {
         category: 'Housing',
         payment_type: 'Debit'
       };
-      const mockCreatedExpense = { id: 1, ...expenseData };
+      const mockCreatedExpense = { id: 1, ...expenseData, payment_due_day: null, linked_loan_id: null };
       fixedExpenseRepository.createFixedExpense.mockResolvedValue(mockCreatedExpense);
 
       const result = await fixedExpenseService.createFixedExpense(expenseData);
@@ -88,8 +92,97 @@ describe('fixedExpenseService', () => {
         name: 'Rent',
         amount: 1200,
         category: 'Housing',
-        payment_type: 'Debit'
+        payment_type: 'Debit',
+        payment_due_day: null,
+        linked_loan_id: null
       });
+    });
+
+    it('should create a fixed expense with payment_due_day', async () => {
+      const expenseData = {
+        year: 2024,
+        month: 11,
+        name: 'Mortgage',
+        amount: 2000,
+        category: 'Housing',
+        payment_type: 'Debit',
+        payment_due_day: 15
+      };
+      const mockCreatedExpense = { id: 1, ...expenseData, linked_loan_id: null };
+      fixedExpenseRepository.createFixedExpense.mockResolvedValue(mockCreatedExpense);
+
+      const result = await fixedExpenseService.createFixedExpense(expenseData);
+
+      expect(result).toEqual(mockCreatedExpense);
+      expect(fixedExpenseRepository.createFixedExpense).toHaveBeenCalledWith({
+        year: 2024,
+        month: 11,
+        name: 'Mortgage',
+        amount: 2000,
+        category: 'Housing',
+        payment_type: 'Debit',
+        payment_due_day: 15,
+        linked_loan_id: null
+      });
+    });
+
+    it('should create a fixed expense with linked_loan_id', async () => {
+      const mockLoan = { id: 1, name: 'Home Mortgage', is_paid_off: 0 };
+      loanRepository.findById.mockResolvedValue(mockLoan);
+      
+      const expenseData = {
+        year: 2024,
+        month: 11,
+        name: 'Mortgage',
+        amount: 2000,
+        category: 'Housing',
+        payment_type: 'Debit',
+        linked_loan_id: 1
+      };
+      const mockCreatedExpense = { id: 1, ...expenseData, payment_due_day: null };
+      fixedExpenseRepository.createFixedExpense.mockResolvedValue(mockCreatedExpense);
+
+      const result = await fixedExpenseService.createFixedExpense(expenseData);
+
+      expect(result).toEqual(mockCreatedExpense);
+      expect(loanRepository.findById).toHaveBeenCalledWith(1);
+    });
+
+    it('should return warning when linked loan is paid off', async () => {
+      const mockLoan = { id: 1, name: 'Home Mortgage', is_paid_off: 1 };
+      loanRepository.findById.mockResolvedValue(mockLoan);
+      
+      const expenseData = {
+        year: 2024,
+        month: 11,
+        name: 'Mortgage',
+        amount: 2000,
+        category: 'Housing',
+        payment_type: 'Debit',
+        linked_loan_id: 1
+      };
+      const mockCreatedExpense = { id: 1, ...expenseData, payment_due_day: null };
+      fixedExpenseRepository.createFixedExpense.mockResolvedValue(mockCreatedExpense);
+
+      const result = await fixedExpenseService.createFixedExpense(expenseData);
+
+      expect(result.warning).toBe('Linked loan is marked as paid off');
+    });
+
+    it('should throw error when linked_loan_id is invalid', async () => {
+      loanRepository.findById.mockResolvedValue(null);
+      
+      const expenseData = {
+        year: 2024,
+        month: 11,
+        name: 'Mortgage',
+        amount: 2000,
+        category: 'Housing',
+        payment_type: 'Debit',
+        linked_loan_id: 999
+      };
+
+      await expect(fixedExpenseService.createFixedExpense(expenseData)).rejects.toThrow('Invalid loan ID');
     });
 
     it('should throw error when name is missing', async () => {
@@ -163,7 +256,7 @@ describe('fixedExpenseService', () => {
         category: 'Housing',
         payment_type: 'Debit'
       };
-      fixedExpenseRepository.createFixedExpense.mockResolvedValue({ id: 1, ...expenseData, name: 'Rent' });
+      fixedExpenseRepository.createFixedExpense.mockResolvedValue({ id: 1, ...expenseData, name: 'Rent', payment_due_day: null, linked_loan_id: null });
 
       await fixedExpenseService.createFixedExpense(expenseData);
 
@@ -173,7 +266,9 @@ describe('fixedExpenseService', () => {
         name: 'Rent',
         amount: 1200,
         category: 'Housing',
-        payment_type: 'Debit'
+        payment_type: 'Debit',
+        payment_due_day: null,
+        linked_loan_id: null
       });
     });
   });
@@ -186,7 +281,7 @@ describe('fixedExpenseService', () => {
         category: 'Housing',
         payment_type: 'Debit'
       };
-      const mockUpdatedExpense = { id: 1, year: 2024, month: 11, ...updateData };
+      const mockUpdatedExpense = { id: 1, year: 2024, month: 11, ...updateData, payment_due_day: null, linked_loan_id: null };
       fixedExpenseRepository.updateFixedExpense.mockResolvedValue(mockUpdatedExpense);
 
       const result = await fixedExpenseService.updateFixedExpense(1, updateData);
@@ -196,8 +291,87 @@ describe('fixedExpenseService', () => {
         name: 'Updated Rent',
         amount: 1300,
         category: 'Housing',
-        payment_type: 'Debit'
+        payment_type: 'Debit',
+        payment_due_day: null,
+        linked_loan_id: null
       });
+    });
+
+    it('should update fixed expense with payment_due_day', async () => {
+      const updateData = {
+        name: 'Mortgage',
+        amount: 2000,
+        category: 'Housing',
+        payment_type: 'Debit',
+        payment_due_day: 15
+      };
+      const mockUpdatedExpense = { id: 1, year: 2024, month: 11, ...updateData, linked_loan_id: null };
+      fixedExpenseRepository.updateFixedExpense.mockResolvedValue(mockUpdatedExpense);
+
+      const result = await fixedExpenseService.updateFixedExpense(1, updateData);
+
+      expect(result).toEqual(mockUpdatedExpense);
+      expect(fixedExpenseRepository.updateFixedExpense).toHaveBeenCalledWith(1, {
+        name: 'Mortgage',
+        amount: 2000,
+        category: 'Housing',
+        payment_type: 'Debit',
+        payment_due_day: 15,
+        linked_loan_id: null
+      });
+    });
+
+    it('should update fixed expense with linked_loan_id', async () => {
+      const mockLoan = { id: 1, name: 'Home Mortgage', is_paid_off: 0 };
+      loanRepository.findById.mockResolvedValue(mockLoan);
+      
+      const updateData = {
+        name: 'Mortgage',
+        amount: 2000,
+        category: 'Housing',
+        payment_type: 'Debit',
+        linked_loan_id: 1
+      };
+      const mockUpdatedExpense = { id: 1, year: 2024, month: 11, ...updateData, payment_due_day: null };
+      fixedExpenseRepository.updateFixedExpense.mockResolvedValue(mockUpdatedExpense);
+
+      const result = await fixedExpenseService.updateFixedExpense(1, updateData);
+
+      expect(result).toEqual(mockUpdatedExpense);
+      expect(loanRepository.findById).toHaveBeenCalledWith(1);
+    });
+
+    it('should return warning when updating with paid off loan', async () => {
+      const mockLoan = { id: 1, name: 'Home Mortgage', is_paid_off: 1 };
+      loanRepository.findById.mockResolvedValue(mockLoan);
+      
+      const updateData = {
+        name: 'Mortgage',
+        amount: 2000,
+        category: 'Housing',
+        payment_type: 'Debit',
+        linked_loan_id: 1
+      };
+      const mockUpdatedExpense = { id: 1, year: 2024, month: 11, ...updateData, payment_due_day: null };
+      fixedExpenseRepository.updateFixedExpense.mockResolvedValue(mockUpdatedExpense);
+
+      const result = await fixedExpenseService.updateFixedExpense(1, updateData);
+
+      expect(result.warning).toBe('Linked loan is marked as paid off');
+    });
+
+    it('should throw error when updating with invalid loan ID', async () => {
+      loanRepository.findById.mockResolvedValue(null);
+      
+      const updateData = {
+        name: 'Mortgage',
+        amount: 2000,
+        category: 'Housing',
+        payment_type: 'Debit',
+        linked_loan_id: 999
+      };
+
+      await expect(fixedExpenseService.updateFixedExpense(1, updateData)).rejects.toThrow('Invalid loan ID');
     });
 
     it('should throw error when id is missing', async () => {
@@ -323,6 +497,120 @@ describe('fixedExpenseService', () => {
 
       await expect(fixedExpenseService.createFixedExpense(invalidData))
         .rejects.toThrow('Amount must be a non-negative number');
+    });
+
+    it('should throw error for payment_due_day less than 1', async () => {
+      const invalidData = {
+        year: 2024,
+        month: 11,
+        name: 'Rent',
+        amount: 1200,
+        category: 'Housing',
+        payment_type: 'Debit',
+        payment_due_day: 0
+      };
+
+      await expect(fixedExpenseService.createFixedExpense(invalidData))
+        .rejects.toThrow('Payment due day must be between 1 and 31');
+    });
+
+    it('should throw error for payment_due_day greater than 31', async () => {
+      const invalidData = {
+        year: 2024,
+        month: 11,
+        name: 'Rent',
+        amount: 1200,
+        category: 'Housing',
+        payment_type: 'Debit',
+        payment_due_day: 32
+      };
+
+      await expect(fixedExpenseService.createFixedExpense(invalidData))
+        .rejects.toThrow('Payment due day must be between 1 and 31');
+    });
+
+    it('should throw error for negative payment_due_day', async () => {
+      const invalidData = {
+        year: 2024,
+        month: 11,
+        name: 'Rent',
+        amount: 1200,
+        category: 'Housing',
+        payment_type: 'Debit',
+        payment_due_day: -5
+      };
+
+      await expect(fixedExpenseService.createFixedExpense(invalidData))
+        .rejects.toThrow('Payment due day must be between 1 and 31');
+    });
+
+    it('should accept null payment_due_day', async () => {
+      const validData = {
+        year: 2024,
+        month: 11,
+        name: 'Rent',
+        amount: 1200,
+        category: 'Housing',
+        payment_type: 'Debit',
+        payment_due_day: null
+      };
+      fixedExpenseRepository.createFixedExpense.mockResolvedValue({ id: 1, ...validData, linked_loan_id: null });
+
+      const result = await fixedExpenseService.createFixedExpense(validData);
+
+      expect(result.payment_due_day).toBeNull();
+    });
+
+    it('should accept undefined payment_due_day', async () => {
+      const validData = {
+        year: 2024,
+        month: 11,
+        name: 'Rent',
+        amount: 1200,
+        category: 'Housing',
+        payment_type: 'Debit'
+      };
+      fixedExpenseRepository.createFixedExpense.mockResolvedValue({ id: 1, ...validData, payment_due_day: null, linked_loan_id: null });
+
+      const result = await fixedExpenseService.createFixedExpense(validData);
+
+      expect(result.payment_due_day).toBeNull();
+    });
+
+    it('should accept empty string payment_due_day as null', async () => {
+      const validData = {
+        year: 2024,
+        month: 11,
+        name: 'Rent',
+        amount: 1200,
+        category: 'Housing',
+        payment_type: 'Debit',
+        payment_due_day: ''
+      };
+      fixedExpenseRepository.createFixedExpense.mockResolvedValue({ id: 1, ...validData, payment_due_day: null, linked_loan_id: null });
+
+      await fixedExpenseService.createFixedExpense(validData);
+
+      expect(fixedExpenseRepository.createFixedExpense).toHaveBeenCalledWith(
+        expect.objectContaining({ payment_due_day: null })
+      );
+    });
+
+    it('should accept valid payment_due_day values 1-31', async () => {
+      const validData = {
+        year: 2024,
+        month: 11,
+        name: 'Rent',
+        amount: 1200,
+        category: 'Housing',
+        payment_type: 'Debit',
+        payment_due_day: 15
+      };
+      fixedExpenseRepository.createFixedExpense.mockResolvedValue({ id: 1, ...validData, linked_loan_id: null });
+
+      const result = await fixedExpenseService.createFixedExpense(validData);
+
+      expect(result.payment_due_day).toBe(15);
     });
   });
 });

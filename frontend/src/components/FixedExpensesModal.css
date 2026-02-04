@@ -175,7 +175,7 @@
 
 .fixed-expenses-list-header {
   display: grid;
-  grid-template-columns: 2fr 1.2fr 1.2fr 1fr auto;
+  grid-template-columns: 2fr 1fr 1fr 0.7fr 0.5fr 1fr auto;
   gap: var(--element-gap-lg, 12px);
   padding: var(--element-gap-lg, 12px);
   background-color: var(--bg-muted, #f1f5f9);
@@ -224,7 +224,7 @@
 
 .fixed-expense-display {
   display: grid;
-  grid-template-columns: 2fr 1.2fr 1.2fr 1fr auto;
+  grid-template-columns: 2fr 1fr 1fr 0.7fr 0.5fr 1fr auto;
   gap: 12px;
   align-items: center;
 }
@@ -283,6 +283,52 @@
   white-space: nowrap;
 }
 
+.fixed-expense-due-day {
+  color: #666;
+  font-size: 0.9em;
+  padding: 4px 8px;
+  background-color: #e8f5e9;
+  border-radius: 4px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.fixed-expense-due-day.no-due-day {
+  background-color: transparent;
+  color: #999;
+}
+
+.fixed-expense-linked-loan {
+  color: #666;
+  font-size: 0.9em;
+  padding: 4px 8px;
+  background-color: #e3f2fd;
+  border-radius: 4px;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.fixed-expense-linked-loan.no-loan {
+  background-color: transparent;
+  color: #999;
+}
+
+.fixed-expense-linked-loan.loan-paid-off {
+  background-color: #fff8e1;
+  border: 1px dashed #ff9800;
+}
+
+.fixed-expense-linked-loan .loan-icon {
+  font-size: 0.85em;
+  flex-shrink: 0;
+}
+
 .fixed-expense-actions {
   display: flex;
   gap: 5px;
@@ -316,7 +362,7 @@
 /* Edit Mode */
 .fixed-expense-edit {
   display: grid;
-  grid-template-columns: 2fr 1.2fr 1.2fr 1fr auto auto;
+  grid-template-columns: 2fr 1fr 1fr 0.7fr 0.5fr 1fr auto auto;
   gap: 10px;
   align-items: flex-start;
 }
@@ -330,7 +376,9 @@
 .fixed-expense-edit-name,
 .fixed-expense-edit-category,
 .fixed-expense-edit-payment,
-.fixed-expense-edit-amount {
+.fixed-expense-edit-amount,
+.fixed-expense-edit-due-day,
+.fixed-expense-edit-loan {
   padding: 8px;
   border: 1px solid #ccc;
   border-radius: 4px;
@@ -341,7 +389,9 @@
 .fixed-expense-edit-name:focus,
 .fixed-expense-edit-category:focus,
 .fixed-expense-edit-payment:focus,
-.fixed-expense-edit-amount:focus {
+.fixed-expense-edit-amount:focus,
+.fixed-expense-edit-due-day:focus,
+.fixed-expense-edit-loan:focus {
   outline: none;
   border-color: #2196f3;
   box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.1);
@@ -426,7 +476,7 @@
 /* Add Form */
 .fixed-expenses-add-form {
   display: grid;
-  grid-template-columns: 2fr 1.2fr 1.2fr 1fr auto auto;
+  grid-template-columns: 2fr 1fr 1fr 0.7fr 0.5fr 1fr auto auto;
   gap: 10px;
   align-items: flex-start;
   margin-top: 15px;
@@ -435,7 +485,9 @@
 .fixed-expense-add-name,
 .fixed-expense-add-category,
 .fixed-expense-add-payment,
-.fixed-expense-add-amount {
+.fixed-expense-add-amount,
+.fixed-expense-add-due-day,
+.fixed-expense-add-loan {
   padding: 10px;
   border: 1px solid #ccc;
   border-radius: 4px;
@@ -446,7 +498,9 @@
 .fixed-expense-add-name:focus,
 .fixed-expense-add-category:focus,
 .fixed-expense-add-payment:focus,
-.fixed-expense-add-amount:focus {
+.fixed-expense-add-amount:focus,
+.fixed-expense-add-due-day:focus,
+.fixed-expense-add-loan:focus {
   outline: none;
   border-color: #2196f3;
   box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.1);
@@ -454,8 +508,10 @@
 
 select.fixed-expense-add-category,
 select.fixed-expense-add-payment,
+select.fixed-expense-add-loan,
 select.fixed-expense-edit-category,
-select.fixed-expense-edit-payment {
+select.fixed-expense-edit-payment,
+select.fixed-expense-edit-loan {
   background-color: white;
   cursor: pointer;
   appearance: none;
@@ -468,8 +524,10 @@ select.fixed-expense-edit-payment {
 
 select.fixed-expense-add-category:hover,
 select.fixed-expense-add-payment:hover,
+select.fixed-expense-add-loan:hover,
 select.fixed-expense-edit-category:hover,
-select.fixed-expense-edit-payment:hover {
+select.fixed-expense-edit-payment:hover,
+select.fixed-expense-edit-loan:hover {
   border-color: #999;
 }
 
@@ -534,13 +592,13 @@ select.fixed-expense-edit-payment:hover {
 /* Responsive Design */
 @media (max-width: 1024px) {
   .fixed-expense-display {
-    grid-template-columns: 1.5fr 1fr 1fr 0.8fr auto;
+    grid-template-columns: 1.5fr 1fr 1fr 0.6fr 0.4fr 0.8fr auto;
     gap: 8px;
   }
 
   .fixed-expense-edit,
   .fixed-expenses-add-form {
-    grid-template-columns: 1.5fr 1fr 1fr 0.8fr auto auto;
+    grid-template-columns: 1.5fr 1fr 1fr 0.6fr 0.4fr 0.8fr auto auto;
     gap: 8px;
   }
 }

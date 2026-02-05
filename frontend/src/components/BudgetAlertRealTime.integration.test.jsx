@@ -43,8 +43,7 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
 
   it('should update alerts in real-time when expenses change', async () => {
     // Requirements: 5.1, 5.2, 5.3, 5.4
-    const mockOnManageBudgets = vi.fn();
-    const mockOnViewExpenses = vi.fn();
+    const mockOnClick = vi.fn();
 
     const budgetLimit = 500;
     let currentSpent = 450; // Start at 90% (danger alert)
@@ -60,21 +59,21 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
         year={2025}
         month={11}
         refreshTrigger={0}
-        onManageBudgets={mockOnManageBudgets}
-        onViewExpenses={mockOnViewExpenses}
+        onClick={mockOnClick}
       />
     );
 
     // Step 1: Verify initial danger alert is displayed
     await waitFor(() => {
       expect(screen.getByText(/Groceries budget is 90\.0% used/)).toBeInTheDocument();
-      expect(screen.getByText('!')).toBeInTheDocument(); // Danger icon
     });
 
-    // Verify danger alert styling
-    const dangerAlert = screen.getByRole('alert');
-    expect(dangerAlert).toHaveClass('budget-alert-danger');
-    expect(screen.getByText(/Only \$50\.00 left!/)).toBeInTheDocument();
+    // Verify danger alert styling via testid
+    const dangerAlert = screen.getByTestId('budget-reminder-banner');
+    expect(dangerAlert).toHaveClass('danger');
+    expect(screen.getByText(/\$50\.00 remaining/)).toBeInTheDocument();
+    // Verify severity indicator is present
+    expect(screen.getByTestId('severity-indicator')).toBeInTheDocument();
 
     // Step 2: Edit expense to reduce amount below threshold (70% spent)
     // Requirement 5.3: When I delete an expense that improves the budget situation
@@ -85,8 +84,7 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
         year={2025}
         month={11}
         refreshTrigger={1}
-        onManageBudgets={mockOnManageBudgets}
-        onViewExpenses={mockOnViewExpenses}
+        onClick={mockOnClick}
       />
     );
 
@@ -104,20 +102,18 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
         year={2025}
         month={11}
         refreshTrigger={2}
-        onManageBudgets={mockOnManageBudgets}
-        onViewExpenses={mockOnViewExpenses}
+        onClick={mockOnClick}
       />
     );
 
     // Step 5: Verify alert reappears with correct severity (warning)
     await waitFor(() => {
       expect(screen.getByText(/Groceries budget is 85\.0% used/)).toBeInTheDocument();
-      expect(screen.getByText('⚡')).toBeInTheDocument(); // Warning icon
     });
 
     // Verify warning alert styling
-    const warningAlert = screen.getByRole('alert');
-    expect(warningAlert).toHaveClass('budget-alert-warning');
+    const warningAlert = screen.getByTestId('budget-reminder-banner');
+    expect(warningAlert).toHaveClass('warning');
     expect(screen.getByText(/\$75\.00 remaining/)).toBeInTheDocument();
 
     // Step 6: Further increase to danger level (95% spent)
@@ -129,21 +125,19 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
         year={2025}
         month={11}
         refreshTrigger={3}
-        onManageBudgets={mockOnManageBudgets}
-        onViewExpenses={mockOnViewExpenses}
+        onClick={mockOnClick}
       />
     );
 
     // Step 7: Verify alert updates to danger severity
     await waitFor(() => {
       expect(screen.getByText(/Groceries budget is 95\.0% used/)).toBeInTheDocument();
-      expect(screen.getByText('!')).toBeInTheDocument(); // Danger icon
     });
 
     // Verify danger alert styling
-    const updatedDangerAlert = screen.getByRole('alert');
-    expect(updatedDangerAlert).toHaveClass('budget-alert-danger');
-    expect(screen.getByText(/Only \$25\.00 left!/)).toBeInTheDocument();
+    const updatedDangerAlert = screen.getByTestId('budget-reminder-banner');
+    expect(updatedDangerAlert).toHaveClass('danger');
+    expect(screen.getByText(/\$25\.00 remaining/)).toBeInTheDocument();
 
     // Step 8: Push to critical level (110% spent)
     currentSpent = 550; // 110% of $500 (critical level)
@@ -153,8 +147,7 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
         year={2025}
         month={11}
         refreshTrigger={4}
-        onManageBudgets={mockOnManageBudgets}
-        onViewExpenses={mockOnViewExpenses}
+        onClick={mockOnClick}
       />
     );
 
@@ -162,19 +155,17 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
     // Requirement 5.4: When budget progress moves from one threshold to another
     await waitFor(() => {
       expect(screen.getByText(/Groceries budget exceeded!/)).toBeInTheDocument();
-      expect(screen.getByText('⚠')).toBeInTheDocument(); // Critical icon
     });
 
     // Verify critical alert styling
-    const criticalAlert = screen.getByRole('alert');
-    expect(criticalAlert).toHaveClass('budget-alert-critical');
+    const criticalAlert = screen.getByTestId('budget-reminder-banner');
+    expect(criticalAlert).toHaveClass('critical');
     expect(screen.getByText(/\$50\.00 over budget/)).toBeInTheDocument();
   });
 
   it('should handle rapid expense changes with debouncing', async () => {
     // Requirements: 5.1, 5.2, 7.2 (debouncing for performance)
-    const mockOnManageBudgets = vi.fn();
-    const mockOnViewExpenses = vi.fn();
+    const mockOnClick = vi.fn();
 
     const budgetLimit = 1000;
     let currentSpent = 700; // Start at 70% (no alert)
@@ -188,8 +179,7 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
         year={2025}
         month={11}
         refreshTrigger={0}
-        onManageBudgets={mockOnManageBudgets}
-        onViewExpenses={mockOnViewExpenses}
+        onClick={mockOnClick}
       />
     );
 
@@ -205,8 +195,7 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
         year={2025}
         month={11}
         refreshTrigger={1}
-        onManageBudgets={mockOnManageBudgets}
-        onViewExpenses={mockOnViewExpenses}
+        onClick={mockOnClick}
       />
     );
 
@@ -216,8 +205,7 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
         year={2025}
         month={11}
         refreshTrigger={2}
-        onManageBudgets={mockOnManageBudgets}
-        onViewExpenses={mockOnViewExpenses}
+        onClick={mockOnClick}
       />
     );
 
@@ -227,8 +215,7 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
         year={2025}
         month={11}
         refreshTrigger={3}
-        onManageBudgets={mockOnManageBudgets}
-        onViewExpenses={mockOnViewExpenses}
+        onClick={mockOnClick}
       />
     );
 
@@ -236,14 +223,14 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
     // The debouncing should handle rapid updates gracefully
     await waitFor(() => {
       expect(screen.getByText(/Gas budget exceeded!/)).toBeInTheDocument();
-      expect(screen.getByText('⚠')).toBeInTheDocument();
+      const banner = screen.getByTestId('budget-reminder-banner');
+      expect(banner).toHaveClass('critical');
     }, { timeout: 1000 }); // Allow time for debouncing
   });
 
   it('should maintain alert state consistency during real-time updates', async () => {
     // Requirements: 5.1, 5.2, 5.3, 5.4
-    const mockOnManageBudgets = vi.fn();
-    const mockOnViewExpenses = vi.fn();
+    const mockOnClick = vi.fn();
 
     const budgetLimit = 300;
     let currentSpent = 240; // Start at 80% (warning)
@@ -257,8 +244,7 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
         year={2025}
         month={11}
         refreshTrigger={0}
-        onManageBudgets={mockOnManageBudgets}
-        onViewExpenses={mockOnViewExpenses}
+        onClick={mockOnClick}
       />
     );
 
@@ -267,15 +253,13 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
       expect(screen.getByText(/Entertainment budget is 80\.0% used/)).toBeInTheDocument();
     });
 
-    // Test action buttons work during real-time updates
-    fireEvent.click(screen.getByText('Manage Budget'));
-    expect(mockOnManageBudgets).toHaveBeenCalledWith('Entertainment');
-
-    fireEvent.click(screen.getByText('View Expenses'));
-    expect(mockOnViewExpenses).toHaveBeenCalledWith('Entertainment');
+    // Test click handler works during real-time updates
+    const banner = screen.getByTestId('budget-reminder-banner');
+    fireEvent.click(banner);
+    expect(mockOnClick).toHaveBeenCalledWith('Entertainment');
 
     // Dismiss the alert
-    const dismissButton = screen.getByLabelText(/Dismiss.*budget alert/);
+    const dismissButton = screen.getByLabelText(/Dismiss reminder/);
     fireEvent.click(dismissButton);
 
     await waitFor(() => {
@@ -290,8 +274,7 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
         year={2025}
         month={11}
         refreshTrigger={1}
-        onManageBudgets={mockOnManageBudgets}
-        onViewExpenses={mockOnViewExpenses}
+        onClick={mockOnClick}
       />
     );
 
@@ -310,8 +293,7 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
         year={2025}
         month={12}
         refreshTrigger={2}
-        onManageBudgets={mockOnManageBudgets}
-        onViewExpenses={mockOnViewExpenses}
+        onClick={mockOnClick}
       />
     );
 
@@ -324,8 +306,7 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
         year={2025}
         month={11}
         refreshTrigger={3}
-        onManageBudgets={mockOnManageBudgets}
-        onViewExpenses={mockOnViewExpenses}
+        onClick={mockOnClick}
       />
     );
 
@@ -335,18 +316,19 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
     // Alert should reappear because dismissal state was cleared
     await waitFor(() => {
       expect(screen.getByText(/Entertainment budget is 95\.0% used/)).toBeInTheDocument();
-      expect(screen.getByText('!')).toBeInTheDocument(); // Danger icon
+      const banner = screen.getByTestId('budget-reminder-banner');
+      expect(banner).toHaveClass('danger');
     });
 
-    // Verify action buttons still work after dismissal override
-    fireEvent.click(screen.getByText('Manage Budget'));
-    expect(mockOnManageBudgets).toHaveBeenCalledWith('Entertainment');
+    // Verify click handler still works after dismissal override
+    const newBanner = screen.getByTestId('budget-reminder-banner');
+    fireEvent.click(newBanner);
+    expect(mockOnClick).toHaveBeenCalledWith('Entertainment');
   });
 
   it('should handle edge cases in real-time updates', async () => {
     // Requirements: 5.1, 5.2, 5.3, 5.4
-    const mockOnManageBudgets = vi.fn();
-    const mockOnViewExpenses = vi.fn();
+    const mockOnClick = vi.fn();
 
     const budgetLimit = 100;
     let currentSpent = 79.99; // Just below 80% threshold
@@ -360,8 +342,7 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
         year={2025}
         month={11}
         refreshTrigger={0}
-        onManageBudgets={mockOnManageBudgets}
-        onViewExpenses={mockOnViewExpenses}
+        onClick={mockOnClick}
       />
     );
 
@@ -378,8 +359,7 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
         year={2025}
         month={11}
         refreshTrigger={1}
-        onManageBudgets={mockOnManageBudgets}
-        onViewExpenses={mockOnViewExpenses}
+        onClick={mockOnClick}
       />
     );
 
@@ -396,8 +376,7 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
         year={2025}
         month={11}
         refreshTrigger={2}
-        onManageBudgets={mockOnManageBudgets}
-        onViewExpenses={mockOnViewExpenses}
+        onClick={mockOnClick}
       />
     );
 
@@ -414,8 +393,7 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
         year={2025}
         month={11}
         refreshTrigger={3}
-        onManageBudgets={mockOnManageBudgets}
-        onViewExpenses={mockOnViewExpenses}
+        onClick={mockOnClick}
       />
     );
 
@@ -431,15 +409,15 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
         year={2025}
         month={11}
         refreshTrigger={4}
-        onManageBudgets={mockOnManageBudgets}
-        onViewExpenses={mockOnViewExpenses}
+        onClick={mockOnClick}
       />
     );
 
     // Should upgrade to danger
     await waitFor(() => {
       expect(screen.getByText(/Other budget is 90\.0% used/)).toBeInTheDocument();
-      expect(screen.getByText('!')).toBeInTheDocument();
+      const banner = screen.getByTestId('budget-reminder-banner');
+      expect(banner).toHaveClass('danger');
     });
 
     currentSpent = 100.00; // Exactly 100%
@@ -449,15 +427,15 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
         year={2025}
         month={11}
         refreshTrigger={5}
-        onManageBudgets={mockOnManageBudgets}
-        onViewExpenses={mockOnViewExpenses}
+        onClick={mockOnClick}
       />
     );
 
     // Should upgrade to critical
     await waitFor(() => {
       expect(screen.getByText(/Other budget exceeded!/)).toBeInTheDocument();
-      expect(screen.getByText('⚠')).toBeInTheDocument();
+      const banner = screen.getByTestId('budget-reminder-banner');
+      expect(banner).toHaveClass('critical');
     });
   });
 });

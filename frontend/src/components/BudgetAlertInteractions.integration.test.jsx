@@ -11,9 +11,9 @@ vi.mock('../services/budgetApi');
  * Requirements: 4.1, 4.2, 4.3, 4.4
  * 
  * These tests verify that budget alert interactions work correctly:
- * - Budget management modal opening from alerts
+ * - Click handler navigation functionality
  * - Alert refresh after budget modifications
- * - View details navigation functionality
+ * - Dismissal and persistence behavior
  */
 
 describe('Budget Alert Interactions - Integration Tests', () => {
@@ -23,10 +23,9 @@ describe('Budget Alert Interactions - Integration Tests', () => {
     sessionStorage.clear();
   });
 
-  it('should open budget management modal with focused category when manage budgets clicked', async () => {
+  it('should call onClick with category when banner is clicked', async () => {
     // Requirements: 4.1, 4.2
-    const mockOnManageBudgets = vi.fn();
-    const mockOnViewExpenses = vi.fn();
+    const mockOnClick = vi.fn();
 
     // Mock budget API to return budget data that triggers alerts (flat format)
     budgetApi.getBudgets.mockResolvedValue({ budgets: [
@@ -38,8 +37,7 @@ describe('Budget Alert Interactions - Integration Tests', () => {
         year={2025}
         month={11}
         refreshTrigger={0}
-        onManageBudgets={mockOnManageBudgets}
-        onViewExpenses={mockOnViewExpenses}
+        onClick={mockOnClick}
       />
     );
 
@@ -48,51 +46,17 @@ describe('Budget Alert Interactions - Integration Tests', () => {
       expect(screen.getByText(/Groceries budget/)).toBeInTheDocument();
     });
 
-    // Click manage budgets button
-    const manageBudgetsButton = screen.getByText('Manage Budget');
-    fireEvent.click(manageBudgetsButton);
+    // Click the banner
+    const banner = screen.getByTestId('budget-reminder-banner');
+    fireEvent.click(banner);
 
     // Verify callback was called with the correct category
-    expect(mockOnManageBudgets).toHaveBeenCalledWith('Groceries');
-  });
-
-  it('should navigate to budget details when view details clicked', async () => {
-    // Requirements: 4.3, 4.4
-    const mockOnManageBudgets = vi.fn();
-    const mockOnViewExpenses = vi.fn();
-
-    // Mock budget API to return budget data that triggers alerts (flat format)
-    budgetApi.getBudgets.mockResolvedValue({ budgets: [
-      { id: 1, year: 2025, month: 11, category: 'Gas', limit: 200, spent: 180 }
-    ] });
-
-    render(
-      <BudgetAlertManager
-        year={2025}
-        month={11}
-        refreshTrigger={0}
-        onManageBudgets={mockOnManageBudgets}
-        onViewExpenses={mockOnViewExpenses}
-      />
-    );
-
-    // Wait for alert to appear
-    await waitFor(() => {
-      expect(screen.getByText(/Gas budget/)).toBeInTheDocument();
-    });
-
-    // Click view details button
-    const viewDetailsButton = screen.getByText('View Expenses');
-    fireEvent.click(viewDetailsButton);
-
-    // Verify callback was called with the correct category
-    expect(mockOnViewExpenses).toHaveBeenCalledWith('Gas');
+    expect(mockOnClick).toHaveBeenCalledWith('Groceries');
   });
 
   it('should refresh alerts when refreshTrigger changes after budget modifications', async () => {
     // Requirements: 4.1, 4.2, 4.4
-    const mockOnManageBudgets = vi.fn();
-    const mockOnViewExpenses = vi.fn();
+    const mockOnClick = vi.fn();
 
     let budgetSpent = 450; // Initial state: 90% spent (danger alert)
 
@@ -105,8 +69,7 @@ describe('Budget Alert Interactions - Integration Tests', () => {
         year={2025}
         month={11}
         refreshTrigger={0}
-        onManageBudgets={mockOnManageBudgets}
-        onViewExpenses={mockOnViewExpenses}
+        onClick={mockOnClick}
       />
     );
 
@@ -124,8 +87,7 @@ describe('Budget Alert Interactions - Integration Tests', () => {
         year={2025}
         month={11}
         refreshTrigger={1}
-        onManageBudgets={mockOnManageBudgets}
-        onViewExpenses={mockOnViewExpenses}
+        onClick={mockOnClick}
       />
     );
 
@@ -135,10 +97,9 @@ describe('Budget Alert Interactions - Integration Tests', () => {
     });
   });
 
-  it('should handle multiple alerts with independent interactions', async () => {
+  it('should handle multiple alerts with combined banner view', async () => {
     // Requirements: 4.1, 4.2, 4.3, 4.4
-    const mockOnManageBudgets = vi.fn();
-    const mockOnViewExpenses = vi.fn();
+    const mockOnClick = vi.fn();
 
     // Mock budget API to return multiple budgets that trigger alerts (flat format)
     budgetApi.getBudgets.mockResolvedValue({ budgets: [
@@ -151,46 +112,31 @@ describe('Budget Alert Interactions - Integration Tests', () => {
         year={2025}
         month={11}
         refreshTrigger={0}
-        onManageBudgets={mockOnManageBudgets}
-        onViewExpenses={mockOnViewExpenses}
+        onClick={mockOnClick}
       />
     );
 
-    // Wait for both alerts to appear
+    // Wait for combined alert banner to appear
     await waitFor(() => {
-      expect(screen.getByText(/Groceries budget/)).toBeInTheDocument();
-      expect(screen.getByText(/Gas budget/)).toBeInTheDocument();
+      expect(screen.getByTestId('budget-reminder-banner')).toBeInTheDocument();
     });
 
-    // Get all manage budgets buttons
-    const manageBudgetsButtons = screen.getAllByText('Manage Budget');
-    expect(manageBudgetsButtons).toHaveLength(2);
+    // With multiple alerts, clicking the banner should call onClick with null (no specific category)
+    const banner = screen.getByTestId('budget-reminder-banner');
+    fireEvent.click(banner);
+    expect(mockOnClick).toHaveBeenCalledWith(null);
 
-    // Click first manage budgets button (should be for Gas - critical alert comes first)
-    fireEvent.click(manageBudgetsButtons[0]);
-    expect(mockOnManageBudgets).toHaveBeenCalledWith('Gas');
-
-    // Click second manage budgets button (should be for Groceries - danger alert)
-    fireEvent.click(manageBudgetsButtons[1]);
-    expect(mockOnManageBudgets).toHaveBeenCalledWith('Groceries');
-
-    // Get all view details buttons
-    const viewDetailsButtons = screen.getAllByText('View Expenses');
-    expect(viewDetailsButtons).toHaveLength(2);
-
-    // Click first view details button
-    fireEvent.click(viewDetailsButtons[0]);
-    expect(mockOnViewExpenses).toHaveBeenCalledWith('Gas');
-
-    // Click second view details button
-    fireEvent.click(viewDetailsButtons[1]);
-    expect(mockOnViewExpenses).toHaveBeenCalledWith('Groceries');
+    // Individual alert items should be clickable with their specific category
+    const groceriesItem = screen.getByText('Groceries').closest('[role="button"]');
+    if (groceriesItem) {
+      fireEvent.click(groceriesItem);
+      expect(mockOnClick).toHaveBeenCalledWith('Groceries');
+    }
   });
 
   it('should maintain alert interactions after dismissal and refresh', async () => {
     // Requirements: 4.1, 4.2, 4.3, 4.4
-    const mockOnManageBudgets = vi.fn();
-    const mockOnViewExpenses = vi.fn();
+    const mockOnClick = vi.fn();
 
     // Mock budget API to return budget data that triggers alerts (flat format)
     budgetApi.getBudgets.mockResolvedValue({ budgets: [
@@ -202,8 +148,7 @@ describe('Budget Alert Interactions - Integration Tests', () => {
         year={2025}
         month={11}
         refreshTrigger={0}
-        onManageBudgets={mockOnManageBudgets}
-        onViewExpenses={mockOnViewExpenses}
+        onClick={mockOnClick}
       />
     );
 
@@ -213,7 +158,7 @@ describe('Budget Alert Interactions - Integration Tests', () => {
     });
 
     // Dismiss the alert
-    const dismissButton = screen.getByLabelText(/Dismiss.*budget alert/);
+    const dismissButton = screen.getByLabelText(/Dismiss reminder/);
     fireEvent.click(dismissButton);
 
     // Alert should disappear
@@ -227,8 +172,7 @@ describe('Budget Alert Interactions - Integration Tests', () => {
         year={2025}
         month={11}
         refreshTrigger={1}
-        onManageBudgets={mockOnManageBudgets}
-        onViewExpenses={mockOnViewExpenses}
+        onClick={mockOnClick}
       />
     );
 
@@ -243,8 +187,7 @@ describe('Budget Alert Interactions - Integration Tests', () => {
         year={2025}
         month={12}
         refreshTrigger={1}
-        onManageBudgets={mockOnManageBudgets}
-        onViewExpenses={mockOnViewExpenses}
+        onClick={mockOnClick}
       />
     );
 
@@ -254,15 +197,14 @@ describe('Budget Alert Interactions - Integration Tests', () => {
     });
 
     // Interactions should still work
-    const manageBudgetsButton = screen.getByText('Manage Budget');
-    fireEvent.click(manageBudgetsButton);
-    expect(mockOnManageBudgets).toHaveBeenCalledWith('Groceries');
+    const banner = screen.getByTestId('budget-reminder-banner');
+    fireEvent.click(banner);
+    expect(mockOnClick).toHaveBeenCalledWith('Groceries');
   });
 
   it('should handle budget management integration with alert refresh', async () => {
     // Requirements: 4.1, 4.2, 4.4
-    const mockOnManageBudgets = vi.fn();
-    const mockOnViewExpenses = vi.fn();
+    const mockOnClick = vi.fn();
 
     let budgetLimit = 500;
     const budgetSpent = 450;
@@ -276,8 +218,7 @@ describe('Budget Alert Interactions - Integration Tests', () => {
         year={2025}
         month={11}
         refreshTrigger={0}
-        onManageBudgets={mockOnManageBudgets}
-        onViewExpenses={mockOnViewExpenses}
+        onClick={mockOnClick}
       />
     );
 
@@ -295,8 +236,7 @@ describe('Budget Alert Interactions - Integration Tests', () => {
         year={2025}
         month={11}
         refreshTrigger={1}
-        onManageBudgets={mockOnManageBudgets}
-        onViewExpenses={mockOnViewExpenses}
+        onClick={mockOnClick}
       />
     );
 

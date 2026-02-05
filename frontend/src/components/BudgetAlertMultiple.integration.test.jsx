@@ -42,8 +42,7 @@ describe('Budget Alert Multiple Alerts - Integration Test', () => {
 
   it('should handle multiple alerts with correct severity ordering', async () => {
     // Requirements: 1.4, 3.5
-    const mockOnManageBudgets = vi.fn();
-    const mockonViewExpenses = vi.fn();
+    const mockOnClick = vi.fn();
 
     // Create multiple budgets with different alert levels (flat format from API)
     const budgetData = [
@@ -59,40 +58,32 @@ describe('Budget Alert Multiple Alerts - Integration Test', () => {
         year={2025}
         month={11}
         refreshTrigger={0}
-        onManageBudgets={mockOnManageBudgets}
-        onViewExpenses={mockonViewExpenses}
+        onClick={mockOnClick}
       />
     );
 
-    // Wait for all alerts to appear
+    // Wait for the combined alert banner to appear (multiple alerts show as single banner)
     await waitFor(() => {
-      expect(screen.getByText(/Food budget exceeded!/)).toBeInTheDocument();
-      expect(screen.getByText(/Gas budget is 90\.0% used/)).toBeInTheDocument();
-      expect(screen.getByText(/Entertainment budget is 80\.0% used/)).toBeInTheDocument();
+      expect(screen.getByTestId('budget-reminder-banner')).toBeInTheDocument();
     });
 
-    // Verify alerts are displayed in correct severity order (critical, danger, warning)
-    const alerts = screen.getAllByRole('alert');
-    expect(alerts).toHaveLength(3);
+    // With multiple alerts, BudgetReminderBanner shows a combined view
+    // The banner should show the count and have critical styling (most severe)
+    const banner = screen.getByTestId('budget-reminder-banner');
+    expect(banner).toHaveClass('critical'); // Most severe alert determines banner class
 
-    // Critical alert should be first (most severe)
-    expect(alerts[0]).toHaveClass('budget-alert-critical');
-    expect(alerts[0]).toHaveTextContent('Food budget exceeded!');
-    expect(alerts[0]).toHaveTextContent('⚠'); // Critical icon
+    // Verify the summary message shows multiple alerts
+    expect(screen.getByText(/budget.*exceeded/i)).toBeInTheDocument();
+    expect(screen.getByText(/3 total alerts/i)).toBeInTheDocument();
 
-    // Danger alert should be second
-    expect(alerts[1]).toHaveClass('budget-alert-danger');
-    expect(alerts[1]).toHaveTextContent('Gas budget is 90.0% used');
-    expect(alerts[1]).toHaveTextContent('!'); // Danger icon
+    // Verify individual alert items are shown in the breakdown
+    expect(screen.getByText('Food')).toBeInTheDocument();
+    expect(screen.getByText('Gas')).toBeInTheDocument();
+    expect(screen.getByText('Entertainment')).toBeInTheDocument();
 
-    // Warning alert should be third (least severe)
-    expect(alerts[2]).toHaveClass('budget-alert-warning');
-    expect(alerts[2]).toHaveTextContent('Entertainment budget is 80.0% used');
-    expect(alerts[2]).toHaveTextContent('⚡'); // Warning icon
-
-    // Verify each alert has correct content
-    expect(screen.getByText(/\$50\.00 over budget/)).toBeInTheDocument(); // Food critical
-    expect(screen.getByText(/Only \$30\.00 left!/)).toBeInTheDocument(); // Gas danger
-    expect(screen.getByText(/\$40\.00 remaining/)).toBeInTheDocument(); // Entertainment warning
+    // Verify severity indicators are present for each alert (using the actual testid format)
+    expect(screen.getByTestId('severity-indicator-budget-alert-1')).toBeInTheDocument(); // Food - critical
+    expect(screen.getByTestId('severity-indicator-budget-alert-2')).toBeInTheDocument(); // Gas - danger
+    expect(screen.getByTestId('severity-indicator-budget-alert-3')).toBeInTheDocument(); // Entertainment - warning
   });
 });

@@ -33,9 +33,9 @@ const BudgetReminderBanner = ({
   const getSeverityIndicator = (alert) => {
     switch (alert.severity) {
       case 'critical':
-        return { icon: '🚨', label: 'Exceeded', className: 'critical' };
+        return { icon: '⚠', label: 'Exceeded', className: 'critical' };
       case 'danger':
-        return { icon: '⚠️', label: 'Near Limit', className: 'danger' };
+        return { icon: '!', label: 'Near Limit', className: 'danger' };
       case 'warning':
         return { icon: '⚡', label: 'Approaching', className: 'warning' };
       default:
@@ -68,7 +68,7 @@ const BudgetReminderBanner = ({
       if (alert.severity === 'critical') {
         return `${alert.category} budget exceeded!`;
       }
-      return `${alert.category} budget at ${alert.progress.toFixed(0)}%`;
+      return `${alert.category} budget is ${alert.progress.toFixed(1)}% used`;
     } else {
       const hasCritical = alerts.some(a => a.severity === 'critical');
       if (hasCritical) {

@@ -74,18 +74,46 @@ function createTestDatabase() {
               return;
             }
 
-            // Create indexes
-            db.run(`CREATE INDEX idx_loan_payments_loan_id ON loan_payments(loan_id)`, (err) => {
+            // Create loan_balances table (for backward compatibility)
+            db.run(`
+              CREATE TABLE loan_balances (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                loan_id INTEGER NOT NULL,
+                year INTEGER NOT NULL,
+                month INTEGER NOT NULL,
+                remaining_balance REAL NOT NULL CHECK(remaining_balance >= 0),
+                interest_rate REAL CHECK(interest_rate >= 0),
+                notes TEXT,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (loan_id) REFERENCES loans(id) ON DELETE CASCADE,
+                UNIQUE(loan_id, year, month)
+              )
+            `, (err) => {
               if (err) {
                 reject(err);
                 return;
               }
-              db.run(`CREATE INDEX idx_loan_payments_payment_date ON loan_payments(payment_date)`, (err) => {
+
+              // Create indexes
+              db.run(`CREATE INDEX idx_loan_payments_loan_id ON loan_payments(loan_id)`, (err) => {
                 if (err) {
                   reject(err);
                   return;
                 }
-                resolve(db);
+                db.run(`CREATE INDEX idx_loan_payments_payment_date ON loan_payments(payment_date)`, (err) => {
+                  if (err) {
+                    reject(err);
+                    return;
+                  }
+                  db.run(`CREATE INDEX idx_loan_balances_loan_id ON loan_balances(loan_id)`, (err) => {
+                    if (err) {
+                      reject(err);
+                      return;
+                    }
+                    resolve(db);
+                  });
+                });
               });
             });
           });

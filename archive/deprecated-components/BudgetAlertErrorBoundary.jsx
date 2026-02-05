@@ -1,3 +1,13 @@
+/**
+ * DEPRECATED: This component is no longer used after BudgetAlertBanner was replaced
+ * 
+ * This file is kept for rollback purposes only.
+ * The new BudgetReminderBanner uses simpler error handling patterns.
+ * 
+ * Migration date: February 2026
+ * Reason: BudgetAlertBanner replaced by BudgetReminderBanner
+ */
+
 import { Component } from 'react';
 import { createLogger } from '../utils/logger';
 

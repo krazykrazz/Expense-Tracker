@@ -227,7 +227,16 @@ const PeopleIndicator = ({ expense }) => {
   );
 };
 
-const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddExpense, people: propPeople, currentMonthExpenseCount = 0 }) => {
+const ExpenseList = memo(({ 
+  expenses, 
+  onExpenseDeleted, 
+  onExpenseUpdated, 
+  onAddExpense, 
+  people: propPeople, 
+  currentMonthExpenseCount = 0,
+  initialInsuranceFilter = '',
+  onInsuranceFilterChange
+}) => {
   const [deletingId, setDeletingId] = useState(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [expenseToDelete, setExpenseToDelete] = useState(null);
@@ -240,7 +249,7 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
   const [localFilterType, setLocalFilterType] = useState('');
   const [localFilterMethod, setLocalFilterMethod] = useState(''); // Smart method filter with encoded values (type: or method:)
   const [localFilterInvoice, setLocalFilterInvoice] = useState(''); // New invoice filter
-  const [localFilterInsurance, setLocalFilterInsurance] = useState(''); // Insurance status filter (Requirement 7.4)
+  const [localFilterInsurance, setLocalFilterInsurance] = useState(initialInsuranceFilter); // Insurance status filter (Requirement 7.4)
   // People selection state for medical expenses
   const [localPeople, setLocalPeople] = useState([]);
   const people = propPeople || localPeople;
@@ -250,6 +259,21 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
   // Insurance quick status update state (Requirements 5.1, 5.2, 5.3, 5.4)
   const [quickStatusExpenseId, setQuickStatusExpenseId] = useState(null);
   const [quickStatusPosition, setQuickStatusPosition] = useState({ top: 0, left: 0 });
+
+  // Sync insurance filter from parent prop
+  useEffect(() => {
+    if (initialInsuranceFilter !== localFilterInsurance) {
+      setLocalFilterInsurance(initialInsuranceFilter);
+    }
+  }, [initialInsuranceFilter]);
+
+  // Notify parent when insurance filter changes (for clearing from parent)
+  const handleInsuranceFilterChange = useCallback((value) => {
+    setLocalFilterInsurance(value);
+    if (onInsuranceFilterChange) {
+      onInsuranceFilterChange(value);
+    }
+  }, [onInsuranceFilterChange]);
 
   // Fetch categories and people on mount
   useEffect(() => {
@@ -656,12 +680,12 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
         id: 'insurance',
         label: 'Insurance',
         value: insuranceLabels[localFilterInsurance] || localFilterInsurance,
-        onClear: () => setLocalFilterInsurance('')
+        onClear: () => handleInsuranceFilterChange('')
       });
     }
     
     return filters;
-  }, [localFilterType, localFilterMethod, localFilterInvoice, localFilterInsurance]);
+  }, [localFilterType, localFilterMethod, localFilterInvoice, localFilterInsurance, handleInsuranceFilterChange]);
 
   /**
    * Generates informative status messages based on filter state
@@ -815,7 +839,7 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
             <select 
               className="filter-select insurance-filter"
               value={localFilterInsurance} 
-              onChange={(e) => setLocalFilterInsurance(e.target.value)}
+              onChange={(e) => handleInsuranceFilterChange(e.target.value)}
               title="Filter medical expenses by insurance claim status"
             >
               <option value="">All Insurance</option>
@@ -833,7 +857,7 @@ const ExpenseList = memo(({ expenses, onExpenseDeleted, onExpenseUpdated, onAddE
                   setLocalFilterType('');
                   setLocalFilterMethod('');
                   setLocalFilterInvoice('');
-                  setLocalFilterInsurance('');
+                  handleInsuranceFilterChange('');
                 }}
                 title="Clear filters"
               >

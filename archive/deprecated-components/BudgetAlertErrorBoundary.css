@@ -1,3 +1,11 @@
+/**
+ * DEPRECATED: This stylesheet is no longer used after BudgetAlertBanner was replaced
+ * 
+ * This file is kept for rollback purposes only.
+ * Migration date: February 2026
+ * Reason: BudgetAlertBanner replaced by BudgetReminderBanner
+ */
+
 /* Budget Alert Error Boundary Styles */
 /* Requirements: 7.1 - Fallback UI for alert calculation errors */
 

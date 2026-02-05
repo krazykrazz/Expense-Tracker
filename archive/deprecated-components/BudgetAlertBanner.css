@@ -1,3 +1,11 @@
+/**
+ * DEPRECATED: This stylesheet has been replaced by BudgetReminderBanner.css
+ * 
+ * This file is kept for rollback purposes only.
+ * Migration date: February 2026
+ * Replaced by: frontend/src/components/BudgetReminderBanner.css
+ */
+
 /* Budget Alert Banner Styles */
 /* Requirements: 2.1, 6.1, 6.4 - Modern card and badge styling */
 

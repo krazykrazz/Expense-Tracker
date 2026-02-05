@@ -130,6 +130,24 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
     };
   }, [year, groupByPerson]);
 
+  // Listen for setTaxDeductibleInsuranceFilter event (e.g., from InsuranceClaimReminderBanner)
+  // _Requirements: 3.1, 3.2_
+  useEffect(() => {
+    const handleSetInsuranceFilter = (event) => {
+      if (event.detail?.insuranceFilter) {
+        setClaimStatusFilter(event.detail.insuranceFilter);
+        // Expand medical section to show filtered results
+        setMedicalExpanded(true);
+      }
+    };
+
+    window.addEventListener('setTaxDeductibleInsuranceFilter', handleSetInsuranceFilter);
+    
+    return () => {
+      window.removeEventListener('setTaxDeductibleInsuranceFilter', handleSetInsuranceFilter);
+    };
+  }, []);
+
   // Fetch previous year data for YoY comparison
   useEffect(() => {
     const fetchPreviousYearData = async () => {

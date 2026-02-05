@@ -13,7 +13,6 @@ import BudgetHistoryView from './components/BudgetHistoryView';
 import PeopleManagementModal from './components/PeopleManagementModal';
 import AnalyticsHubModal from './components/AnalyticsHubModal';
 import PaymentMethodsModal from './components/PaymentMethodsModal';
-import BudgetAlertManager from './components/BudgetAlertManager';
 import FloatingAddButton from './components/FloatingAddButton';
 import EnvironmentBanner from './components/EnvironmentBanner';
 import { API_ENDPOINTS } from './config';
@@ -47,6 +46,7 @@ function App() {
   const [filterType, setFilterType] = useState('');
   const [filterMethod, setFilterMethod] = useState('');
   const [filterYear, setFilterYear] = useState(''); // Year filter for global search
+  const [filterInsurance, setFilterInsurance] = useState(''); // Insurance status filter for expense list
   const [versionInfo, setVersionInfo] = useState(null);
   
   // Budget alert refresh trigger for real-time updates
@@ -80,8 +80,11 @@ function App() {
    * This allows users to filter the current month's expenses by category
    * (e.g., from budget alerts) without switching to global view.
    * To search globally by category, combine with searchText or filterYear.
+   * 
+   * filterInsurance triggers global view because insurance claim reminders
+   * show pending claims from previous months that need attention.
    */
-  const isGlobalView = searchText.trim().length > 0 || filterMethod || filterYear;
+  const isGlobalView = searchText.trim().length > 0 || filterMethod || filterYear || filterInsurance;
 
   /**
    * Global View Trigger Identification
@@ -103,8 +106,11 @@ function App() {
     if (filterYear) {
       triggers.push('Year');
     }
+    if (filterInsurance) {
+      triggers.push('Insurance Status');
+    }
     return triggers;
-  }, [searchText, filterMethod, filterYear]);
+  }, [searchText, filterMethod, filterYear, filterInsurance]);
 
   /**
    * Return to Monthly View Handler
@@ -119,6 +125,7 @@ function App() {
     setSearchText('');
     setFilterMethod('');
     setFilterYear('');
+    setFilterInsurance('');
   }, []);
 
   // Fetch version info on mount
@@ -293,6 +300,76 @@ function App() {
     
     return () => {
       window.removeEventListener('openPaymentMethods', handleOpenPaymentMethods);
+    };
+  }, []);
+
+  // Listen for navigateToTaxDeductible event (e.g., from InsuranceClaimReminderBanner)
+  // _Requirements: 3.1, 3.2_
+  useEffect(() => {
+    const handleNavigateToTaxDeductible = (event) => {
+      // Open Tax Deductible view
+      setShowTaxDeductible(true);
+      
+      // If insurance filter is specified, dispatch event to set the filter
+      if (event.detail?.insuranceFilter) {
+        // Dispatch event after a short delay to ensure TaxDeductible is mounted
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('setTaxDeductibleInsuranceFilter', {
+            detail: { insuranceFilter: event.detail.insuranceFilter }
+          }));
+        }, 100);
+      }
+    };
+
+    window.addEventListener('navigateToTaxDeductible', handleNavigateToTaxDeductible);
+    
+    return () => {
+      window.removeEventListener('navigateToTaxDeductible', handleNavigateToTaxDeductible);
+    };
+  }, []);
+
+  // Listen for navigateToExpenseList event (e.g., from BudgetReminderBanner)
+  // _Requirements: 6.4_
+  useEffect(() => {
+    const handleNavigateToExpenseList = (event) => {
+      // Close any open modals/views
+      setShowTaxDeductible(false);
+      setShowAnnualSummary(false);
+      setShowBackupSettings(false);
+      setShowBudgetHistory(false);
+      
+      // Set the category filter if specified
+      if (event.detail?.categoryFilter) {
+        setFilterType(event.detail.categoryFilter);
+      }
+    };
+
+    window.addEventListener('navigateToExpenseList', handleNavigateToExpenseList);
+    
+    return () => {
+      window.removeEventListener('navigateToExpenseList', handleNavigateToExpenseList);
+    };
+  }, []);
+
+  // Listen for filterByInsuranceStatus event (e.g., from InsuranceClaimReminderBanner)
+  useEffect(() => {
+    const handleFilterByInsuranceStatus = (event) => {
+      // Close any open modals/views
+      setShowTaxDeductible(false);
+      setShowAnnualSummary(false);
+      setShowBackupSettings(false);
+      setShowBudgetHistory(false);
+      
+      // Set the insurance filter if specified
+      if (event.detail?.insuranceFilter) {
+        setFilterInsurance(event.detail.insuranceFilter);
+      }
+    };
+
+    window.addEventListener('filterByInsuranceStatus', handleFilterByInsuranceStatus);
+    
+    return () => {
+      window.removeEventListener('filterByInsuranceStatus', handleFilterByInsuranceStatus);
     };
   }, []);
 
@@ -534,6 +611,7 @@ function App() {
     setFilterType('');
     setFilterMethod('');
     setFilterYear('');
+    setFilterInsurance('');
   }, []);
 
   const handleManageBudgets = (category = null) => {
@@ -681,23 +759,6 @@ function App() {
           )}
         </div>
 
-        {/* Budget Alert Notifications */}
-        <BudgetAlertManager
-          year={selectedYear}
-          month={selectedMonth}
-          refreshTrigger={budgetAlertRefreshTrigger}
-          onManageBudgets={handleManageBudgets}
-          onViewExpenses={(category) => {
-            // Clear other filters to stay in monthly view, then set category filter
-            // This ensures we show only the current month's expenses for this category
-            // (the month that generated the budget alert)
-            setSearchText('');
-            setFilterMethod('');
-            setFilterYear('');
-            setFilterType(category);
-          }}
-        />
-
         {/* Month Selector - dimmed when in global view */}
         <div className={`month-selector-wrapper ${isGlobalView ? 'dimmed' : ''}`}>
           <MonthSelector 
@@ -753,6 +814,8 @@ function App() {
                 onExpenseUpdated={handleExpenseUpdated}
                 onAddExpense={() => setShowExpenseForm(true)}
                 currentMonthExpenseCount={currentMonthExpenseCount}
+                initialInsuranceFilter={filterInsurance}
+                onInsuranceFilterChange={setFilterInsurance}
               />
             </div>
             <div 

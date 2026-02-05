@@ -119,6 +119,50 @@ class ReminderRepository {
       });
     });
   }
+
+  /**
+   * Get medical expenses with in-progress insurance claims
+   * Queries expenses where type = 'Tax - Medical', insurance_eligible = 1, claim_status = 'in_progress'
+   * Includes days_pending calculation and associated person names
+   * @param {Date} referenceDate - Reference date for days_pending calculation (defaults to today)
+   * @returns {Promise<Array>} Array of expenses with pending claims
+   * _Requirements: 1.1, 1.2_
+   */
+  async getMedicalExpensesWithPendingClaims(referenceDate = new Date()) {
+    const db = await getDatabase();
+    
+    // Format reference date as YYYY-MM-DD for SQLite
+    const refDateStr = referenceDate.toISOString().split('T')[0];
+    
+    return new Promise((resolve, reject) => {
+      const sql = `
+        SELECT 
+          e.id,
+          e.date,
+          e.place,
+          e.amount,
+          e.original_cost,
+          CAST(julianday(?) - julianday(e.date) AS INTEGER) as days_pending,
+          GROUP_CONCAT(p.name, ', ') as person_names
+        FROM expenses e
+        LEFT JOIN expense_people ep ON e.id = ep.expense_id
+        LEFT JOIN people p ON ep.person_id = p.id
+        WHERE e.type = 'Tax - Medical'
+          AND e.insurance_eligible = 1
+          AND e.claim_status = 'in_progress'
+        GROUP BY e.id
+        ORDER BY days_pending DESC
+      `;
+      
+      db.all(sql, [refDateStr], (err, rows) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        resolve(rows || []);
+      });
+    });
+  }
 }
 
 module.exports = new ReminderRepository();

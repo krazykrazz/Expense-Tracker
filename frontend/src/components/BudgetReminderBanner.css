@@ -1,0 +1,323 @@
+.budget-reminder-banner {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.budget-reminder-banner:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.budget-reminder-banner:focus {
+  outline: 2px solid #f59e0b;
+  outline-offset: 2px;
+}
+
+/* Warning style (80-89%) - Yellow/Amber */
+.budget-reminder-banner.warning {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border: 1px solid #f59e0b;
+  color: #92400e;
+}
+
+/* Danger style (90-99%) - Orange */
+.budget-reminder-banner.danger {
+  background: linear-gradient(135deg, #fed7aa 0%, #fdba74 100%);
+  border: 1px solid #ea580c;
+  color: #9a3412;
+}
+
+/* Critical style (100%+) - Red/Orange */
+.budget-reminder-banner.critical {
+  background: linear-gradient(135deg, #fecaca 0%, #fca5a5 100%);
+  border: 1px solid #dc2626;
+  color: #991b1b;
+  animation: pulse-budget 2s ease-in-out infinite;
+}
+
+@keyframes pulse-budget {
+  0%, 100% {
+    box-shadow: 0 2px 8px rgba(220, 38, 38, 0.2);
+  }
+  50% {
+    box-shadow: 0 4px 16px rgba(220, 38, 38, 0.4);
+  }
+}
+
+.budget-reminder-banner .reminder-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  flex: 1;
+}
+
+.budget-reminder-banner .reminder-icon {
+  font-size: 1.3rem;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.budget-reminder-banner .reminder-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.budget-reminder-banner .reminder-message {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+/* Budget info section */
+.budget-reminder-banner .reminder-budget-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.budget-reminder-banner .reminder-budget-label {
+  font-size: 0.85rem;
+  opacity: 0.9;
+}
+
+.budget-reminder-banner .reminder-budget-amount {
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.budget-reminder-banner .reminder-budget-separator {
+  font-size: 0.85rem;
+  opacity: 0.7;
+}
+
+.budget-reminder-banner .reminder-budget-limit {
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+
+.budget-reminder-banner .reminder-remaining {
+  font-size: 0.8rem;
+  opacity: 0.85;
+  font-style: italic;
+}
+
+.budget-reminder-banner .reminder-alert-count {
+  font-size: 0.85rem;
+  opacity: 0.9;
+}
+
+/* Progress badge */
+.budget-reminder-banner .progress-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.budget-reminder-banner .progress-badge.warning {
+  background-color: rgba(245, 158, 11, 0.2);
+  color: #92400e;
+}
+
+.budget-reminder-banner .progress-badge.danger {
+  background-color: rgba(234, 88, 12, 0.2);
+  color: #9a3412;
+}
+
+.budget-reminder-banner .progress-badge.critical {
+  background-color: rgba(220, 38, 38, 0.2);
+  color: #991b1b;
+}
+
+/* Severity badges */
+.budget-reminder-banner .reminder-severity-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.budget-reminder-banner .reminder-severity-badge.small {
+  padding: 1px 4px;
+  font-size: 0.7rem;
+}
+
+.budget-reminder-banner .reminder-severity-badge.warning {
+  background-color: rgba(245, 158, 11, 0.2);
+  color: #92400e;
+}
+
+.budget-reminder-banner .reminder-severity-badge.danger {
+  background-color: rgba(234, 88, 12, 0.2);
+  color: #9a3412;
+}
+
+.budget-reminder-banner .reminder-severity-badge.critical {
+  background-color: rgba(220, 38, 38, 0.2);
+  color: #991b1b;
+}
+
+/* Alerts breakdown for multiple alerts */
+.budget-reminder-banner .reminder-alerts-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.budget-reminder-banner .reminder-alert-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.budget-reminder-banner .reminder-alert-item:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.budget-reminder-banner .reminder-alert-category {
+  flex: 1;
+  font-weight: 500;
+}
+
+.budget-reminder-banner .reminder-alert-progress {
+  font-weight: 600;
+  min-width: 40px;
+  text-align: right;
+}
+
+.budget-reminder-banner .reminder-alert-amounts {
+  font-size: 0.8rem;
+  opacity: 0.85;
+  min-width: 120px;
+  text-align: right;
+}
+
+.budget-reminder-banner .reminder-dismiss-btn {
+  background: transparent;
+  border: none;
+  font-size: 1.4rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.budget-reminder-banner.warning .reminder-dismiss-btn {
+  color: #92400e;
+}
+
+.budget-reminder-banner.warning .reminder-dismiss-btn:hover {
+  background-color: rgba(146, 64, 14, 0.1);
+}
+
+.budget-reminder-banner.danger .reminder-dismiss-btn {
+  color: #9a3412;
+}
+
+.budget-reminder-banner.danger .reminder-dismiss-btn:hover {
+  background-color: rgba(154, 52, 18, 0.1);
+}
+
+.budget-reminder-banner.critical .reminder-dismiss-btn {
+  color: #991b1b;
+}
+
+.budget-reminder-banner.critical .reminder-dismiss-btn:hover {
+  background-color: rgba(153, 27, 27, 0.1);
+}
+
+/* Reduced motion support for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .budget-reminder-banner.critical {
+    animation: none;
+  }
+  
+  .budget-reminder-banner:hover {
+    transform: none;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .budget-reminder-banner.warning {
+    background: linear-gradient(135deg, #3d3a2e 0%, #4a4530 100%);
+    border-color: #f59e0b;
+    color: #fde68a;
+  }
+
+  .budget-reminder-banner.danger {
+    background: linear-gradient(135deg, #3d2f24 0%, #4a3828 100%);
+    border-color: #ea580c;
+    color: #fdba74;
+  }
+
+  .budget-reminder-banner.critical {
+    background: linear-gradient(135deg, #3d2a2c 0%, #4a3033 100%);
+    border-color: #dc2626;
+    color: #fca5a5;
+  }
+
+  .budget-reminder-banner.warning .reminder-dismiss-btn {
+    color: #fde68a;
+  }
+
+  .budget-reminder-banner.danger .reminder-dismiss-btn {
+    color: #fdba74;
+  }
+
+  .budget-reminder-banner.critical .reminder-dismiss-btn {
+    color: #fca5a5;
+  }
+
+  .budget-reminder-banner .reminder-alerts-breakdown {
+    border-top-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .budget-reminder-banner .reminder-alert-item:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+
+  .budget-reminder-banner .progress-badge.warning,
+  .budget-reminder-banner .reminder-severity-badge.warning {
+    background-color: rgba(245, 158, 11, 0.3);
+    color: #fde68a;
+  }
+
+  .budget-reminder-banner .progress-badge.danger,
+  .budget-reminder-banner .reminder-severity-badge.danger {
+    background-color: rgba(234, 88, 12, 0.3);
+    color: #fdba74;
+  }
+
+  .budget-reminder-banner .progress-badge.critical,
+  .budget-reminder-banner .reminder-severity-badge.critical {
+    background-color: rgba(220, 38, 38, 0.3);
+    color: #fca5a5;
+  }
+}

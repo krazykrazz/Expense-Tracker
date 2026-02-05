@@ -1,3 +1,14 @@
+/**
+ * DEPRECATED: This component has been replaced by BudgetReminderBanner
+ * 
+ * This file is kept for rollback purposes only.
+ * The new BudgetReminderBanner follows the unified reminder banner pattern
+ * used by CreditCardReminderBanner, LoanPaymentReminderBanner, etc.
+ * 
+ * Migration date: February 2026
+ * Replaced by: frontend/src/components/BudgetReminderBanner.jsx
+ */
+
 import { memo } from 'react';
 import './BudgetAlertBanner.css';
 

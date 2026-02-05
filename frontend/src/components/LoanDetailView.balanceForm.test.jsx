@@ -4,6 +4,7 @@ import LoanDetailView from './LoanDetailView';
 import * as loanApi from '../services/loanApi';
 import * as loanBalanceApi from '../services/loanBalanceApi';
 import * as loanPaymentApi from '../services/loanPaymentApi';
+import * as fixedExpenseApi from '../services/fixedExpenseApi';
 
 // Mock the APIs
 vi.mock('../services/loanApi', () => ({
@@ -21,6 +22,10 @@ vi.mock('../services/loanPaymentApi', () => ({
   getPayments: vi.fn(),
   deletePayment: vi.fn(),
   getCalculatedBalance: vi.fn()
+}));
+
+vi.mock('../services/fixedExpenseApi', () => ({
+  getFixedExpensesByLoan: vi.fn()
 }));
 
 describe('LoanDetailView Balance Entry Form - Fixed Interest Rate', () => {
@@ -73,6 +78,9 @@ describe('LoanDetailView Balance Entry Form - Fixed Interest Rate', () => {
     vi.clearAllMocks();
     loanBalanceApi.getBalanceHistory.mockResolvedValue(mockBalanceHistory);
     loanBalanceApi.createOrUpdateBalance.mockResolvedValue({ id: 2 });
+    loanPaymentApi.getPayments.mockResolvedValue([]);
+    loanPaymentApi.getCalculatedBalance.mockResolvedValue({ currentBalance: 15000 });
+    fixedExpenseApi.getFixedExpensesByLoan.mockResolvedValue([]);
   });
 
   // Helper to find input by label text within the form

@@ -4,6 +4,7 @@ import LoanDetailView from './LoanDetailView';
 import * as loanApi from '../services/loanApi';
 import * as loanBalanceApi from '../services/loanBalanceApi';
 import * as loanPaymentApi from '../services/loanPaymentApi';
+import * as fixedExpenseApi from '../services/fixedExpenseApi';
 
 // Mock the APIs
 vi.mock('../services/loanApi', () => ({
@@ -21,6 +22,10 @@ vi.mock('../services/loanPaymentApi', () => ({
   getPayments: vi.fn(),
   deletePayment: vi.fn(),
   getCalculatedBalance: vi.fn()
+}));
+
+vi.mock('../services/fixedExpenseApi', () => ({
+  getFixedExpensesByLoan: vi.fn()
 }));
 
 describe('LoanDetailView Balance History Display - Fixed Interest Rate', () => {
@@ -82,6 +87,9 @@ describe('LoanDetailView Balance History Display - Fixed Interest Rate', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     loanBalanceApi.getBalanceHistory.mockResolvedValue(mockBalanceHistory);
+    loanPaymentApi.getPayments.mockResolvedValue([]);
+    loanPaymentApi.getCalculatedBalance.mockResolvedValue({ currentBalance: 15000 });
+    fixedExpenseApi.getFixedExpensesByLoan.mockResolvedValue([]);
   });
 
   describe('Conditional Rate Change Column Visibility - Requirements 3.1, 3.2, 3.3', () => {

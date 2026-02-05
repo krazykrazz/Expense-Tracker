@@ -18,6 +18,7 @@ import LoanDetailView from './LoanDetailView';
 import * as loanApi from '../services/loanApi';
 import * as loanBalanceApi from '../services/loanBalanceApi';
 import * as loanPaymentApi from '../services/loanPaymentApi';
+import * as fixedExpenseApi from '../services/fixedExpenseApi';
 
 // Mock the APIs
 vi.mock('../services/loanApi', () => ({
@@ -37,6 +38,10 @@ vi.mock('../services/loanPaymentApi', () => ({
   getCalculatedBalance: vi.fn()
 }));
 
+vi.mock('../services/fixedExpenseApi', () => ({
+  getFixedExpensesByLoan: vi.fn()
+}));
+
 describe('Property 13: Loan Type Determines Tracking Method', () => {
   const mockOnClose = vi.fn();
   const mockOnUpdate = vi.fn();
@@ -54,6 +59,7 @@ describe('Property 13: Loan Type Determines Tracking Method', () => {
       paymentCount: 0,
       lastPaymentDate: null
     });
+    fixedExpenseApi.getFixedExpensesByLoan.mockResolvedValue([]);
   });
 
   // Helper to generate valid date strings

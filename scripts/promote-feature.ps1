@@ -36,6 +36,46 @@ function Get-GitHubCompareUrl {
     return $null
 }
 
+# Function to clean up test database files that shouldn't be tracked
+function Remove-TestDatabaseFiles {
+    $testDbPatterns = @(
+        "backend/config/database/*.db-shm",
+        "backend/config/database/*.db-wal"
+    )
+    
+    $filesRemoved = $false
+    
+    foreach ($pattern in $testDbPatterns) {
+        # Check if any matching files are tracked by git
+        $trackedFiles = git ls-files $pattern 2>$null
+        if ($trackedFiles) {
+            Write-Host "🧹 Removing tracked test database files from git..." -ForegroundColor Yellow
+            foreach ($file in $trackedFiles -split "`n") {
+                if ($file) {
+                    git rm --cached $file 2>$null
+                    Write-Host "   Removed from tracking: $file" -ForegroundColor Gray
+                    $filesRemoved = $true
+                }
+            }
+        }
+        
+        # Also check for untracked/modified files matching the pattern
+        $localFiles = Get-ChildItem -Path $pattern -ErrorAction SilentlyContinue
+        foreach ($file in $localFiles) {
+            # Reset any changes to these files
+            git checkout -- $file.FullName 2>$null
+        }
+    }
+    
+    if ($filesRemoved) {
+        # Commit the removal
+        git commit -m "chore: remove test database WAL files from tracking" 2>$null
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "✅ Test database files removed from git tracking" -ForegroundColor Green
+        }
+    }
+}
+
 if ($DirectMerge) {
     Write-Host "🚀 Promoting feature branch: $BranchName to main (Direct Merge)" -ForegroundColor Green
 } else {
@@ -63,6 +103,9 @@ if ($LASTEXITCODE -ne 0) {
     Write-Host "❌ Failed to checkout feature branch" -ForegroundColor Red
     exit 1
 }
+
+# Clean up test database files that shouldn't be tracked
+Remove-TestDatabaseFiles
 
 # Check for uncommitted changes
 $status = git status --porcelain

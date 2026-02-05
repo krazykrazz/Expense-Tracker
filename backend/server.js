@@ -11,6 +11,7 @@ const incomeRoutes = require('./routes/incomeRoutes');
 const fixedExpenseRoutes = require('./routes/fixedExpenseRoutes');
 const loanRoutes = require('./routes/loanRoutes');
 const loanBalanceRoutes = require('./routes/loanBalanceRoutes');
+const loanPaymentRoutes = require('./routes/loanPaymentRoutes');
 const budgetRoutes = require('./routes/budgetRoutes');
 const healthRoutes = require('./routes/healthRoutes');
 const placeNameRoutes = require('./routes/placeNameRoutes');
@@ -129,6 +130,9 @@ app.use('/api/loans', loanRoutes);
 
 // Loan balance API routes
 app.use('/api/loan-balances', loanBalanceRoutes);
+
+// Loan payment API routes (payment-based tracking for loans and mortgages)
+app.use('/api/loans', loanPaymentRoutes);
 
 // Budget API routes
 app.use('/api/budgets', budgetRoutes);

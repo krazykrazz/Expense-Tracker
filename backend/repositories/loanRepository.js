@@ -199,7 +199,7 @@ class LoanRepository {
         WHERE id = ?
       `;
       
-      db.run(sql, params, async function(err) {
+      db.run(sql, params, function(err) {
         if (err) {
           reject(err);
           return;
@@ -210,19 +210,14 @@ class LoanRepository {
           return;
         }
         
-        // Fetch and return the updated loan
-        try {
-          const db = await getDatabase();
-          db.get('SELECT * FROM loans WHERE id = ?', [id], (err, row) => {
-            if (err) {
-              reject(err);
-              return;
-            }
-            resolve(row);
-          });
-        } catch (fetchErr) {
-          reject(fetchErr);
-        }
+        // Fetch and return the updated loan using existing db reference
+        db.get('SELECT * FROM loans WHERE id = ?', [id], (err, row) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+          resolve(row);
+        });
       });
     });
   }
@@ -264,7 +259,7 @@ class LoanRepository {
         WHERE id = ?
       `;
       
-      db.run(sql, params, async function(err) {
+      db.run(sql, params, function(err) {
         if (err) {
           reject(err);
           return;
@@ -275,19 +270,14 @@ class LoanRepository {
           return;
         }
         
-        // Fetch and return the updated loan
-        try {
-          const db = await getDatabase();
-          db.get('SELECT * FROM loans WHERE id = ?', [id], (err, row) => {
-            if (err) {
-              reject(err);
-              return;
-            }
-            resolve(row);
-          });
-        } catch (fetchErr) {
-          reject(fetchErr);
-        }
+        // Fetch and return the updated loan using existing db reference
+        db.get('SELECT * FROM loans WHERE id = ?', [id], (err, row) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+          resolve(row);
+        });
       });
     });
   }
@@ -394,7 +384,7 @@ class LoanRepository {
           l.created_at,
           l.updated_at,
           COALESCE(lb.remaining_balance, l.initial_balance) as currentBalance,
-          COALESCE(lb.rate, 0) as currentRate
+          COALESCE(lb.rate, l.fixed_interest_rate, 0) as currentRate
         FROM loans l
         LEFT JOIN (
           SELECT 
@@ -452,7 +442,7 @@ class LoanRepository {
           l.created_at,
           l.updated_at,
           COALESCE(lb.remaining_balance, l.initial_balance) as currentBalance,
-          COALESCE(lb.rate, 0) as currentRate
+          COALESCE(lb.rate, l.fixed_interest_rate, 0) as currentRate
         FROM loans l
         LEFT JOIN (
           SELECT 

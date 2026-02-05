@@ -8,6 +8,8 @@ import TrendIndicator from './TrendIndicator';
 import DataReminderBanner from './DataReminderBanner';
 import CreditCardReminderBanner from './CreditCardReminderBanner';
 import BillingCycleReminderBanner from './BillingCycleReminderBanner';
+import LoanPaymentReminderBanner from './LoanPaymentReminderBanner';
+import AutoLogPrompt from './AutoLogPrompt';
 import PaymentMethodsModal from './PaymentMethodsModal';
 import './SummaryPanel.css';
 
@@ -44,6 +46,13 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
       needsEntryCount: 0,
       hasCardsWithBillingCycle: false,
       cardsNeedingEntry: []
+    },
+    loanPaymentReminders: {
+      overdueCount: 0,
+      dueSoonCount: 0,
+      hasLinkedExpenses: false,
+      overduePayments: [],
+      dueSoonPayments: []
     }
   });
   const [dismissedReminders, setDismissedReminders] = useState({
@@ -51,11 +60,19 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
     loans: false,
     creditCardOverdue: false,
     creditCardDueSoon: false,
-    billingCycleEntry: false
+    billingCycleEntry: false,
+    loanPaymentOverdue: false,
+    loanPaymentDueSoon: false
   });
   
   // Payment Methods Modal state
   const [showPaymentMethodsModal, setShowPaymentMethodsModal] = useState(false);
+  
+  // Auto-log prompt state
+  // _Requirements: 4.1, 4.4, 4.5_
+  const [autoLogSuggestions, setAutoLogSuggestions] = useState([]);
+  const [autoLogLoading, setAutoLogLoading] = useState(false);
+  const [dismissedAutoLog, setDismissedAutoLog] = useState(false);
   
   // Collapsible panel states
   const [weeklyOpen, setWeeklyOpen] = useState(false);
@@ -146,11 +163,40 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
           needsEntryCount: 0,
           hasCardsWithBillingCycle: false,
           cardsNeedingEntry: []
+        },
+        loanPaymentReminders: data.loanPaymentReminders || {
+          overdueCount: 0,
+          dueSoonCount: 0,
+          hasLinkedExpenses: false,
+          overduePayments: [],
+          dueSoonPayments: []
         }
       });
     } catch (err) {
       // Fail silently - don't block summary panel loading
       console.error('Error fetching reminder status:', err);
+    }
+  }, [selectedYear, selectedMonth]);
+
+  /**
+   * Fetch auto-log suggestions from API
+   * _Requirements: 4.1, 4.4, 4.5_
+   */
+  const fetchAutoLogSuggestions = useCallback(async () => {
+    try {
+      const response = await fetch(API_ENDPOINTS.AUTO_LOG_SUGGESTIONS(selectedYear, selectedMonth));
+      
+      if (!response.ok) {
+        // Fail silently - don't block summary panel loading
+        console.error('Failed to fetch auto-log suggestions');
+        return;
+      }
+
+      const data = await response.json();
+      setAutoLogSuggestions(data || []);
+    } catch (err) {
+      // Fail silently - don't block summary panel loading
+      console.error('Error fetching auto-log suggestions:', err);
     }
   }, [selectedYear, selectedMonth]);
 
@@ -185,11 +231,13 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
   useEffect(() => {
     fetchSummaryData();
     fetchReminderStatus();
-  }, [fetchSummaryData, fetchReminderStatus, refreshTrigger]);
+    fetchAutoLogSuggestions();
+  }, [fetchSummaryData, fetchReminderStatus, fetchAutoLogSuggestions, refreshTrigger]);
 
   // Reset dismissed reminders only when month/year changes (not on every refresh)
   useEffect(() => {
-    setDismissedReminders({ investments: false, loans: false, creditCardOverdue: false, creditCardDueSoon: false, billingCycleEntry: false });
+    setDismissedReminders({ investments: false, loans: false, creditCardOverdue: false, creditCardDueSoon: false, billingCycleEntry: false, loanPaymentOverdue: false, loanPaymentDueSoon: false });
+    setDismissedAutoLog(false);
   }, [selectedYear, selectedMonth]);
 
   // Modal handlers - simplified using shared fetch function
@@ -248,6 +296,14 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
     setDismissedReminders(prev => ({ ...prev, billingCycleEntry: true }));
   };
 
+  const handleDismissLoanPaymentOverdueReminder = () => {
+    setDismissedReminders(prev => ({ ...prev, loanPaymentOverdue: true }));
+  };
+
+  const handleDismissLoanPaymentDueSoonReminder = () => {
+    setDismissedReminders(prev => ({ ...prev, loanPaymentDueSoon: true }));
+  };
+
   const handleInvestmentReminderClick = () => {
     setShowInvestmentsModal(true);
   };
@@ -260,9 +316,78 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
     setShowPaymentMethodsModal(true);
   };
 
+  const handleLoanPaymentReminderClick = (loanId) => {
+    // Open loans modal - if a specific loanId is provided, it could be used to highlight that loan
+    setShowLoansModal(true);
+  };
+
   const handleClosePaymentMethodsModal = async () => {
     setShowPaymentMethodsModal(false);
     await fetchReminderStatus();
+  };
+
+  /**
+   * Handle auto-log payment confirmation
+   * _Requirements: 4.4_
+   */
+  const handleAutoLogPayment = async (suggestion) => {
+    setAutoLogLoading(true);
+    try {
+      const response = await fetch(
+        API_ENDPOINTS.LOAN_PAYMENT_AUTO_LOG(suggestion.loanId),
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            fixed_expense_id: suggestion.fixedExpenseId,
+            year: selectedYear,
+            month: selectedMonth
+          })
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to auto-log payment');
+      }
+
+      // Remove the logged suggestion from the list
+      setAutoLogSuggestions(prev => 
+        prev.filter(s => s.fixedExpenseId !== suggestion.fixedExpenseId)
+      );
+
+      // Refresh reminder status to update loan payment reminders
+      await fetchReminderStatus();
+      
+      // Refresh summary data to update loan balances
+      await fetchSummaryData();
+    } catch (err) {
+      console.error('Error auto-logging payment:', err);
+      // Could show an error toast here
+    } finally {
+      setAutoLogLoading(false);
+    }
+  };
+
+  /**
+   * Handle skip auto-log suggestion
+   * _Requirements: 4.5_
+   */
+  const handleSkipAutoLog = (suggestion) => {
+    // Remove the skipped suggestion from the list
+    setAutoLogSuggestions(prev => 
+      prev.filter(s => s.fixedExpenseId !== suggestion.fixedExpenseId)
+    );
+  };
+
+  /**
+   * Handle dismiss all auto-log suggestions
+   */
+  const handleDismissAllAutoLog = () => {
+    setDismissedAutoLog(true);
+    setAutoLogSuggestions([]);
   };
 
   // Get IDs of investments/loans that need updates
@@ -347,6 +472,28 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
           cards={reminderStatus.billingCycleReminders.cardsNeedingEntry}
           onDismiss={handleDismissBillingCycleEntryReminder}
           onClick={handleCreditCardReminderClick}
+        />
+      )}
+
+      {/* Loan Payment Overdue Reminders - Requirements: 5.1, 5.3, 5.4 */}
+      {reminderStatus.loanPaymentReminders?.overdueCount > 0 && 
+       !dismissedReminders.loanPaymentOverdue && (
+        <LoanPaymentReminderBanner
+          payments={reminderStatus.loanPaymentReminders.overduePayments}
+          isOverdue={true}
+          onDismiss={handleDismissLoanPaymentOverdueReminder}
+          onClick={handleLoanPaymentReminderClick}
+        />
+      )}
+
+      {/* Loan Payment Due Soon Reminders - Requirements: 5.1, 5.3, 5.5 */}
+      {reminderStatus.loanPaymentReminders?.dueSoonCount > 0 && 
+       !dismissedReminders.loanPaymentDueSoon && (
+        <LoanPaymentReminderBanner
+          payments={reminderStatus.loanPaymentReminders.dueSoonPayments}
+          isOverdue={false}
+          onDismiss={handleDismissLoanPaymentDueSoonReminder}
+          onClick={handleLoanPaymentReminderClick}
         />
       )}
 
@@ -620,6 +767,17 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
         <PaymentMethodsModal
           isOpen={showPaymentMethodsModal}
           onClose={handleClosePaymentMethodsModal}
+        />
+      )}
+
+      {/* Auto-Log Prompt - Requirements: 4.4, 4.5 */}
+      {autoLogSuggestions.length > 0 && !dismissedAutoLog && (
+        <AutoLogPrompt
+          suggestions={autoLogSuggestions}
+          onLogPayment={handleAutoLogPayment}
+          onSkip={handleSkipAutoLog}
+          onDismissAll={handleDismissAllAutoLog}
+          loading={autoLogLoading}
         />
       )}
     </div>

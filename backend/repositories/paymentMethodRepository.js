@@ -401,6 +401,61 @@ class PaymentMethodRepository {
       });
     });
   }
+
+  /**
+   * Get all payment methods with expense counts in a single optimized query
+   * Reduces N+1 query problem by fetching all data in one query
+   * @param {string} todayStr - Today's date in YYYY-MM-DD format for balance calculation
+   * @returns {Promise<Array>} Array of payment methods with total_expense_count and dynamic balance data
+   */
+  async findAllWithExpenseCounts(todayStr) {
+    const db = await getDatabase();
+    
+    return new Promise((resolve, reject) => {
+      // Single query that fetches:
+      // 1. All payment method fields
+      // 2. Total expense count (all-time)
+      // 3. For credit cards: expense total and payment total for dynamic balance
+      const sql = `
+        SELECT 
+          pm.*,
+          COALESCE(exp_counts.total_count, 0) as total_expense_count,
+          COALESCE(exp_totals.expense_total, 0) as expense_total_to_date,
+          COALESCE(pmt_totals.payment_total, 0) as payment_total_to_date
+        FROM payment_methods pm
+        LEFT JOIN (
+          SELECT payment_method_id, COUNT(*) as total_count
+          FROM expenses
+          GROUP BY payment_method_id
+        ) exp_counts ON pm.id = exp_counts.payment_method_id
+        LEFT JOIN (
+          SELECT payment_method_id, 
+                 SUM(COALESCE(original_cost, amount)) as expense_total
+          FROM expenses
+          WHERE COALESCE(posted_date, date) <= ?
+          GROUP BY payment_method_id
+        ) exp_totals ON pm.id = exp_totals.payment_method_id
+        LEFT JOIN (
+          SELECT payment_method_id, SUM(amount) as payment_total
+          FROM credit_card_payments
+          WHERE payment_date <= ?
+          GROUP BY payment_method_id
+        ) pmt_totals ON pm.id = pmt_totals.payment_method_id
+        ORDER BY pm.type, pm.display_name
+      `;
+      
+      db.all(sql, [todayStr, todayStr], (err, rows) => {
+        if (err) {
+          logger.error('Failed to find payment methods with expense counts:', err);
+          reject(err);
+          return;
+        }
+        
+        logger.debug('Found payment methods with expense counts:', { count: rows ? rows.length : 0 });
+        resolve(rows || []);
+      });
+    });
+  }
 }
 
 module.exports = new PaymentMethodRepository();

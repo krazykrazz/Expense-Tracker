@@ -11,7 +11,8 @@ class FixedExpenseRepository {
     const db = await getDatabase();
     return new Promise((resolve, reject) => {
       const sql = `
-        SELECT id, year, month, name, amount, category, payment_type, created_at, updated_at
+        SELECT id, year, month, name, amount, category, payment_type, 
+               payment_due_day, linked_loan_id, created_at, updated_at
         FROM fixed_expenses
         WHERE year = ? AND month = ?
         ORDER BY name ASC
@@ -52,15 +53,15 @@ class FixedExpenseRepository {
 
   /**
    * Create a new fixed expense item
-   * @param {Object} fixedExpense - { year, month, name, amount, category, payment_type }
+   * @param {Object} fixedExpense - { year, month, name, amount, category, payment_type, payment_due_day, linked_loan_id }
    * @returns {Promise<Object>} Created fixed expense with ID
    */
   async createFixedExpense(fixedExpense) {
     const db = await getDatabase();
     return new Promise((resolve, reject) => {
       const sql = `
-        INSERT INTO fixed_expenses (year, month, name, amount, category, payment_type)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO fixed_expenses (year, month, name, amount, category, payment_type, payment_due_day, linked_loan_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `;
       const params = [
         fixedExpense.year,
@@ -68,7 +69,9 @@ class FixedExpenseRepository {
         fixedExpense.name,
         fixedExpense.amount,
         fixedExpense.category,
-        fixedExpense.payment_type
+        fixedExpense.payment_type,
+        fixedExpense.payment_due_day !== undefined ? fixedExpense.payment_due_day : null,
+        fixedExpense.linked_loan_id !== undefined ? fixedExpense.linked_loan_id : null
       ];
       
       db.run(sql, params, function(err) {
@@ -79,6 +82,8 @@ class FixedExpenseRepository {
           resolve({
             id: this.lastID,
             ...fixedExpense,
+            payment_due_day: fixedExpense.payment_due_day !== undefined ? fixedExpense.payment_due_day : null,
+            linked_loan_id: fixedExpense.linked_loan_id !== undefined ? fixedExpense.linked_loan_id : null,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           });
@@ -90,7 +95,7 @@ class FixedExpenseRepository {
   /**
    * Update a fixed expense item by ID
    * @param {number} id - Fixed expense ID
-   * @param {Object} updates - { name, amount, category, payment_type }
+   * @param {Object} updates - { name, amount, category, payment_type, payment_due_day, linked_loan_id }
    * @returns {Promise<Object|null>} Updated fixed expense or null
    */
   async updateFixedExpense(id, updates) {
@@ -98,10 +103,19 @@ class FixedExpenseRepository {
     return new Promise((resolve, reject) => {
       const sql = `
         UPDATE fixed_expenses
-        SET name = ?, amount = ?, category = ?, payment_type = ?, updated_at = CURRENT_TIMESTAMP
+        SET name = ?, amount = ?, category = ?, payment_type = ?, 
+            payment_due_day = ?, linked_loan_id = ?, updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
       `;
-      const params = [updates.name, updates.amount, updates.category, updates.payment_type, id];
+      const params = [
+        updates.name, 
+        updates.amount, 
+        updates.category, 
+        updates.payment_type,
+        updates.payment_due_day !== undefined ? updates.payment_due_day : null,
+        updates.linked_loan_id !== undefined ? updates.linked_loan_id : null,
+        id
+      ];
       
       db.run(sql, params, function(err) {
         if (err) {
@@ -152,7 +166,8 @@ class FixedExpenseRepository {
     const db = await getDatabase();
     return new Promise((resolve, reject) => {
       const sql = `
-        SELECT id, year, month, name, amount, category, payment_type, created_at, updated_at
+        SELECT id, year, month, name, amount, category, payment_type, 
+               payment_due_day, linked_loan_id, created_at, updated_at
         FROM fixed_expenses
         WHERE year = ? AND month = ? AND category = ?
         ORDER BY name ASC
@@ -178,7 +193,8 @@ class FixedExpenseRepository {
     const db = await getDatabase();
     return new Promise((resolve, reject) => {
       const sql = `
-        SELECT id, year, month, name, amount, category, payment_type, created_at, updated_at
+        SELECT id, year, month, name, amount, category, payment_type, 
+               payment_due_day, linked_loan_id, created_at, updated_at
         FROM fixed_expenses
         WHERE year = ? AND month = ? AND payment_type = ?
         ORDER BY name ASC
@@ -279,12 +295,132 @@ class FixedExpenseRepository {
         name: expense.name,
         amount: expense.amount,
         category: expense.category,
-        payment_type: expense.payment_type
+        payment_type: expense.payment_type,
+        payment_due_day: expense.payment_due_day,
+        linked_loan_id: expense.linked_loan_id
       });
       createdExpenses.push(newExpense);
     }
     
     return createdExpenses;
+  }
+
+  /**
+   * Get fixed expenses with joined loan details for a specific month
+   * @param {number} year - Year
+   * @param {number} month - Month (1-12)
+   * @returns {Promise<Array>} Array of fixed expense objects with loan details
+   */
+  async getFixedExpensesWithLoans(year, month) {
+    const db = await getDatabase();
+    return new Promise((resolve, reject) => {
+      const sql = `
+        SELECT 
+          fe.id, fe.year, fe.month, fe.name, fe.amount, fe.category, fe.payment_type,
+          fe.payment_due_day, fe.linked_loan_id, fe.created_at, fe.updated_at,
+          l.name as loan_name, l.loan_type, l.is_paid_off
+        FROM fixed_expenses fe
+        LEFT JOIN loans l ON fe.linked_loan_id = l.id
+        WHERE fe.year = ? AND fe.month = ?
+        ORDER BY fe.name ASC
+      `;
+      db.all(sql, [year, month], (err, rows) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(rows || []);
+        }
+      });
+    });
+  }
+
+  /**
+   * Get linked fixed expenses with due dates for reminder calculations
+   * Returns only fixed expenses that have both a linked_loan_id and payment_due_day
+   * @returns {Promise<Array>} Array of linked fixed expense objects with loan details
+   */
+  async getLinkedFixedExpensesWithDueDates() {
+    const db = await getDatabase();
+    return new Promise((resolve, reject) => {
+      const sql = `
+        SELECT 
+          fe.id as fixed_expense_id, fe.name as fixed_expense_name, fe.amount,
+          fe.payment_due_day, fe.linked_loan_id, fe.year, fe.month,
+          l.id as loan_id, l.name as loan_name, l.loan_type, l.is_paid_off
+        FROM fixed_expenses fe
+        INNER JOIN loans l ON fe.linked_loan_id = l.id
+        WHERE fe.linked_loan_id IS NOT NULL 
+          AND fe.payment_due_day IS NOT NULL
+        ORDER BY fe.payment_due_day ASC
+      `;
+      db.all(sql, [], (err, rows) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(rows || []);
+        }
+      });
+    });
+  }
+
+  /**
+   * Get linked fixed expenses with due dates for a specific month
+   * @param {number} year - Year
+   * @param {number} month - Month (1-12)
+   * @returns {Promise<Array>} Array of linked fixed expense objects with loan details
+   */
+  async getLinkedFixedExpensesForMonth(year, month) {
+    const db = await getDatabase();
+    return new Promise((resolve, reject) => {
+      const sql = `
+        SELECT 
+          fe.id as fixed_expense_id, fe.name as fixed_expense_name, fe.amount,
+          fe.payment_due_day, fe.linked_loan_id, fe.year, fe.month,
+          l.id as loan_id, l.name as loan_name, l.loan_type, l.is_paid_off
+        FROM fixed_expenses fe
+        INNER JOIN loans l ON fe.linked_loan_id = l.id
+        WHERE fe.linked_loan_id IS NOT NULL 
+          AND fe.payment_due_day IS NOT NULL
+          AND fe.year = ? AND fe.month = ?
+        ORDER BY fe.payment_due_day ASC
+      `;
+      db.all(sql, [year, month], (err, rows) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(rows || []);
+        }
+      });
+    });
+  }
+
+  /**
+   * Get fixed expenses linked to a specific loan
+   * Returns the most recent fixed expense entries for the loan
+   * @param {number} loanId - Loan ID
+   * @returns {Promise<Array>} Array of fixed expense objects linked to the loan
+   */
+  async getFixedExpensesByLoanId(loanId) {
+    const db = await getDatabase();
+    return new Promise((resolve, reject) => {
+      const sql = `
+        SELECT 
+          fe.id, fe.year, fe.month, fe.name, fe.amount, fe.category, 
+          fe.payment_type, fe.payment_due_day, fe.linked_loan_id,
+          fe.created_at, fe.updated_at
+        FROM fixed_expenses fe
+        WHERE fe.linked_loan_id = ?
+        ORDER BY fe.year DESC, fe.month DESC
+        LIMIT 12
+      `;
+      db.all(sql, [loanId], (err, rows) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(rows || []);
+        }
+      });
+    });
   }
 }
 

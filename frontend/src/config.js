@@ -15,6 +15,7 @@ export const API_ENDPOINTS = {
   FIXED_EXPENSES_BY_MONTH: (year, month) => `${API_BASE_URL}/api/fixed-expenses/${year}/${month}`,
   FIXED_EXPENSES_BY_ID: (id) => `${API_BASE_URL}/api/fixed-expenses/${id}`,
   FIXED_EXPENSES_CARRY_FORWARD: `${API_BASE_URL}/api/fixed-expenses/carry-forward`,
+  FIXED_EXPENSES_BY_LOAN: (loanId) => `${API_BASE_URL}/api/fixed-expenses/by-loan/${loanId}`,
   
   // Income
   INCOME: `${API_BASE_URL}/api/income`,
@@ -45,6 +46,16 @@ export const API_ENDPOINTS = {
   LOAN_SCENARIO: (id) => `${API_BASE_URL}/api/loans/${id}/insights/scenario`,
   LOAN_RATE: (id) => `${API_BASE_URL}/api/loans/${id}/rate`,
   
+  // Loan Payment Tracking (for loans and mortgages)
+  LOAN_PAYMENT_ENTRIES: (loanId) => `${API_BASE_URL}/api/loans/${loanId}/loan-payments`,
+  LOAN_PAYMENT_ENTRY: (loanId, paymentId) => `${API_BASE_URL}/api/loans/${loanId}/loan-payments/${paymentId}`,
+  LOAN_PAYMENT_AUTO_LOG: (loanId) => `${API_BASE_URL}/api/loans/${loanId}/loan-payments/auto-log`,
+  LOAN_CALCULATED_BALANCE: (loanId) => `${API_BASE_URL}/api/loans/${loanId}/calculated-balance`,
+  LOAN_PAYMENT_BALANCE_HISTORY: (loanId) => `${API_BASE_URL}/api/loans/${loanId}/payment-balance-history`,
+  LOAN_PAYMENT_SUGGESTION: (loanId) => `${API_BASE_URL}/api/loans/${loanId}/payment-suggestion`,
+  LOAN_MIGRATE_BALANCES: (loanId) => `${API_BASE_URL}/api/loans/${loanId}/migrate-balances`,
+  LOAN_MIGRATE_BALANCES_PREVIEW: (loanId) => `${API_BASE_URL}/api/loans/${loanId}/migrate-balances/preview`,
+  
   // Investments
   INVESTMENTS: `${API_BASE_URL}/api/investments`,
   INVESTMENT_VALUES: `${API_BASE_URL}/api/investment-values`,
@@ -65,6 +76,7 @@ export const API_ENDPOINTS = {
   
   // Reminders
   REMINDER_STATUS: (year, month) => `${API_BASE_URL}/api/reminders/status/${year}/${month}`,
+  AUTO_LOG_SUGGESTIONS: (year, month) => `${API_BASE_URL}/api/reminders/auto-log-suggestions/${year}/${month}`,
   
   // Backup
   BACKUP_CONFIG: `${API_BASE_URL}/api/backup/config`,

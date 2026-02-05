@@ -3,6 +3,8 @@ import { render, screen, waitFor } from '@testing-library/react';
 import LoanDetailView from './LoanDetailView';
 import * as loanApi from '../services/loanApi';
 import * as loanBalanceApi from '../services/loanBalanceApi';
+import * as loanPaymentApi from '../services/loanPaymentApi';
+import * as fixedExpenseApi from '../services/fixedExpenseApi';
 
 // Mock the APIs
 vi.mock('../services/loanApi', () => ({
@@ -16,17 +18,28 @@ vi.mock('../services/loanBalanceApi', () => ({
   deleteBalance: vi.fn()
 }));
 
+vi.mock('../services/loanPaymentApi', () => ({
+  getPayments: vi.fn(),
+  deletePayment: vi.fn(),
+  getCalculatedBalance: vi.fn()
+}));
+
+vi.mock('../services/fixedExpenseApi', () => ({
+  getFixedExpensesByLoan: vi.fn()
+}));
+
 describe('LoanDetailView Balance History Display - Fixed Interest Rate', () => {
   const mockOnClose = vi.fn();
   const mockOnUpdate = vi.fn();
 
-  // Loan with fixed interest rate
+  // Loan with fixed interest rate - use line_of_credit to test balance history
+  // (Balance history is only shown for lines of credit after payment tracking was added)
   const fixedRateLoan = {
     id: 1,
     name: 'Car Loan',
     initial_balance: 20000,
     start_date: '2023-01-15',
-    loan_type: 'loan',
+    loan_type: 'line_of_credit',
     is_paid_off: false,
     currentBalance: 15000,
     currentRate: 5.5,
@@ -34,13 +47,13 @@ describe('LoanDetailView Balance History Display - Fixed Interest Rate', () => {
     notes: 'Test note'
   };
 
-  // Loan without fixed interest rate (variable rate)
+  // Loan without fixed interest rate (variable rate) - use line_of_credit
   const variableRateLoan = {
     id: 2,
     name: 'Personal Loan',
     initial_balance: 10000,
     start_date: '2023-06-01',
-    loan_type: 'loan',
+    loan_type: 'line_of_credit',
     is_paid_off: false,
     currentBalance: 8000,
     currentRate: 6.0,
@@ -74,6 +87,9 @@ describe('LoanDetailView Balance History Display - Fixed Interest Rate', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     loanBalanceApi.getBalanceHistory.mockResolvedValue(mockBalanceHistory);
+    loanPaymentApi.getPayments.mockResolvedValue([]);
+    loanPaymentApi.getCalculatedBalance.mockResolvedValue({ currentBalance: 15000 });
+    fixedExpenseApi.getFixedExpensesByLoan.mockResolvedValue([]);
   });
 
   describe('Conditional Rate Change Column Visibility - Requirements 3.1, 3.2, 3.3', () => {

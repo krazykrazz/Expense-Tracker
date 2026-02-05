@@ -20,6 +20,7 @@ class BillingCycleRepository {
    * @param {string} [data.due_date] - Optional due date (YYYY-MM-DD)
    * @param {string} [data.notes] - Optional notes
    * @param {string} [data.statement_pdf_path] - Optional PDF file path
+   * @param {number} [data.is_user_entered] - 1 if user-entered, 0 if auto-generated (default 0)
    * @returns {Promise<Object>} Created record with ID
    * _Requirements: 1.1_
    */
@@ -31,8 +32,8 @@ class BillingCycleRepository {
         INSERT INTO credit_card_billing_cycles (
           payment_method_id, cycle_start_date, cycle_end_date,
           actual_statement_balance, calculated_statement_balance,
-          minimum_payment, due_date, notes, statement_pdf_path
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+          minimum_payment, due_date, notes, statement_pdf_path, is_user_entered
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
       
       const params = [
@@ -44,7 +45,8 @@ class BillingCycleRepository {
         data.minimum_payment || null,
         data.due_date || null,
         data.notes || null,
-        data.statement_pdf_path || null
+        data.statement_pdf_path || null,
+        data.is_user_entered || 0
       ];
       
       db.run(sql, params, function(err) {
@@ -58,7 +60,8 @@ class BillingCycleRepository {
           id: this.lastID, 
           paymentMethodId: data.payment_method_id,
           cycleEndDate: data.cycle_end_date,
-          hasPdf: !!data.statement_pdf_path
+          hasPdf: !!data.statement_pdf_path,
+          isUserEntered: data.is_user_entered || 0
         });
         
         resolve({
@@ -71,7 +74,8 @@ class BillingCycleRepository {
           minimum_payment: data.minimum_payment || null,
           due_date: data.due_date || null,
           notes: data.notes || null,
-          statement_pdf_path: data.statement_pdf_path || null
+          statement_pdf_path: data.statement_pdf_path || null,
+          is_user_entered: data.is_user_entered || 0
         });
       });
     });
@@ -195,6 +199,7 @@ class BillingCycleRepository {
    * @param {string} [data.due_date] - Updated due date
    * @param {string} [data.notes] - Updated notes
    * @param {string} [data.statement_pdf_path] - Updated PDF path
+   * @param {number} [data.is_user_entered] - Set to 1 to mark as user-entered
    * @returns {Promise<Object|null>} Updated record or null if not found
    * _Requirements: 2.4_
    */
@@ -222,6 +227,7 @@ class BillingCycleRepository {
               due_date = ?,
               notes = ?,
               statement_pdf_path = ?,
+              is_user_entered = ?,
               updated_at = CURRENT_TIMESTAMP
           WHERE id = ?
         `;
@@ -234,6 +240,7 @@ class BillingCycleRepository {
           data.due_date !== undefined ? data.due_date : existing.due_date,
           data.notes !== undefined ? data.notes : existing.notes,
           data.statement_pdf_path !== undefined ? data.statement_pdf_path : existing.statement_pdf_path,
+          data.is_user_entered !== undefined ? data.is_user_entered : (existing.is_user_entered || 0),
           id
         ];
         

@@ -1,5 +1,6 @@
 const fixedExpenseRepository = require('../repositories/fixedExpenseRepository');
 const paymentMethodRepository = require('../repositories/paymentMethodRepository');
+const loanRepository = require('../repositories/loanRepository');
 const { validateYearMonth } = require('../utils/validators');
 const { CATEGORIES } = require('../utils/categories');
 
@@ -71,9 +72,79 @@ class FixedExpenseService {
       }
     }
 
+    // Payment due day validation (optional field)
+    const paymentDueDayError = this.validatePaymentDueDay(fixedExpense.payment_due_day);
+    if (paymentDueDayError) {
+      errors.push(paymentDueDayError);
+    }
+
     if (errors.length > 0) {
       throw new Error(errors.join('; '));
     }
+  }
+
+  /**
+   * Validate payment_due_day field
+   * @param {number|null|undefined} paymentDueDay - Payment due day value
+   * @returns {string|null} Error message or null if valid
+   */
+  validatePaymentDueDay(paymentDueDay) {
+    // Null or undefined is valid (optional field)
+    if (paymentDueDay === null || paymentDueDay === undefined) {
+      return null;
+    }
+
+    // Empty string should be treated as null (valid)
+    if (paymentDueDay === '') {
+      return null;
+    }
+
+    const day = parseInt(paymentDueDay);
+    
+    // Must be a valid number
+    if (isNaN(day)) {
+      return 'Payment due day must be a valid number';
+    }
+
+    // Must be between 1 and 31
+    if (day < 1 || day > 31) {
+      return 'Payment due day must be between 1 and 31';
+    }
+
+    return null;
+  }
+
+  /**
+   * Validate linked_loan_id field
+   * @param {number|null|undefined} linkedLoanId - Linked loan ID value
+   * @returns {Promise<{error: string|null, loan: Object|null}>} Validation result with error message and loan object
+   */
+  async validateLinkedLoanId(linkedLoanId) {
+    // Null or undefined is valid (optional field)
+    if (linkedLoanId === null || linkedLoanId === undefined) {
+      return { error: null, loan: null };
+    }
+
+    // Empty string should be treated as null (valid)
+    if (linkedLoanId === '') {
+      return { error: null, loan: null };
+    }
+
+    const loanId = parseInt(linkedLoanId);
+    
+    // Must be a valid number
+    if (isNaN(loanId)) {
+      return { error: 'Invalid loan ID', loan: null };
+    }
+
+    // Check if loan exists
+    const loan = await loanRepository.findById(loanId);
+    if (!loan) {
+      return { error: 'Invalid loan ID', loan: null };
+    }
+
+    // Return the loan for potential warning about paid-off status
+    return { error: null, loan };
   }
 
   /**
@@ -117,9 +188,42 @@ class FixedExpenseService {
   }
 
   /**
+   * Get all fixed expenses for a month with loan details
+   * Returns fixed expenses with joined loan information for linked expenses
+   * @param {number} year - Year
+   * @param {number} month - Month (1-12)
+   * @returns {Promise<Object>} { items: Array, total: number }
+   * _Requirements: 1.4, 2.3, 6.4_
+   */
+  async getMonthlyFixedExpensesWithLoans(year, month) {
+    // Validate year and month
+    validateYearMonth(year, month);
+
+    const yearNum = parseInt(year);
+    const monthNum = parseInt(month);
+
+    if (isNaN(yearNum) || isNaN(monthNum)) {
+      throw new Error('Year and month must be valid numbers');
+    }
+
+    if (monthNum < 1 || monthNum > 12) {
+      throw new Error('Month must be between 1 and 12');
+    }
+
+    // Fetch fixed expenses with loan details and total from repository
+    const items = await fixedExpenseRepository.getFixedExpensesWithLoans(yearNum, monthNum);
+    const total = await fixedExpenseRepository.getTotalFixedExpenses(yearNum, monthNum);
+
+    return {
+      items,
+      total
+    };
+  }
+
+  /**
    * Create a new fixed expense item
-   * @param {Object} data - { year, month, name, amount, category, payment_type }
-   * @returns {Promise<Object>} Created fixed expense
+   * @param {Object} data - { year, month, name, amount, category, payment_type, payment_due_day, linked_loan_id }
+   * @returns {Promise<Object>} Created fixed expense with optional warning
    */
   async createFixedExpense(data) {
     // Validate required fields
@@ -130,8 +234,14 @@ class FixedExpenseService {
     // Get valid payment types from database
     const validPaymentTypes = await this.getValidPaymentTypes();
 
-    // Validate the fixed expense data
+    // Validate the fixed expense data (includes payment_due_day validation)
     this.validateFixedExpense(data, validPaymentTypes);
+
+    // Validate linked_loan_id if provided
+    const { error: loanError, loan } = await this.validateLinkedLoanId(data.linked_loan_id);
+    if (loanError) {
+      throw new Error(loanError);
+    }
 
     // Prepare fixed expense object
     const fixedExpense = {
@@ -140,18 +250,56 @@ class FixedExpenseService {
       name: data.name.trim(),
       amount: parseFloat(data.amount),
       category: data.category.trim(),
-      payment_type: data.payment_type.trim()
+      payment_type: data.payment_type.trim(),
+      payment_due_day: this.normalizePaymentDueDay(data.payment_due_day),
+      linked_loan_id: this.normalizeLinkedLoanId(data.linked_loan_id)
     };
 
     // Create fixed expense in repository
-    return await fixedExpenseRepository.createFixedExpense(fixedExpense);
+    const created = await fixedExpenseRepository.createFixedExpense(fixedExpense);
+
+    // Add warning if linked loan is paid off
+    if (loan && loan.is_paid_off) {
+      return {
+        ...created,
+        warning: 'Linked loan is marked as paid off'
+      };
+    }
+
+    return created;
+  }
+
+  /**
+   * Normalize payment_due_day value for storage
+   * @param {any} value - Input value
+   * @returns {number|null} Normalized value
+   */
+  normalizePaymentDueDay(value) {
+    if (value === null || value === undefined || value === '') {
+      return null;
+    }
+    const parsed = parseInt(value);
+    return isNaN(parsed) ? null : parsed;
+  }
+
+  /**
+   * Normalize linked_loan_id value for storage
+   * @param {any} value - Input value
+   * @returns {number|null} Normalized value
+   */
+  normalizeLinkedLoanId(value) {
+    if (value === null || value === undefined || value === '') {
+      return null;
+    }
+    const parsed = parseInt(value);
+    return isNaN(parsed) ? null : parsed;
   }
 
   /**
    * Update a fixed expense item
    * @param {number} id - Fixed expense ID
-   * @param {Object} data - { name, amount, category, payment_type }
-   * @returns {Promise<Object|null>} Updated fixed expense or null if not found
+   * @param {Object} data - { name, amount, category, payment_type, payment_due_day, linked_loan_id }
+   * @returns {Promise<Object|null>} Updated fixed expense with optional warning, or null if not found
    */
   async updateFixedExpense(id, data) {
     // Validate ID
@@ -162,19 +310,41 @@ class FixedExpenseService {
     // Get valid payment types from database
     const validPaymentTypes = await this.getValidPaymentTypes();
 
-    // Validate the fixed expense data
+    // Validate the fixed expense data (includes payment_due_day validation)
     this.validateFixedExpense(data, validPaymentTypes);
+
+    // Validate linked_loan_id if provided
+    const { error: loanError, loan } = await this.validateLinkedLoanId(data.linked_loan_id);
+    if (loanError) {
+      throw new Error(loanError);
+    }
 
     // Prepare updates object
     const updates = {
       name: data.name.trim(),
       amount: parseFloat(data.amount),
       category: data.category.trim(),
-      payment_type: data.payment_type.trim()
+      payment_type: data.payment_type.trim(),
+      payment_due_day: this.normalizePaymentDueDay(data.payment_due_day),
+      linked_loan_id: this.normalizeLinkedLoanId(data.linked_loan_id)
     };
 
     // Update fixed expense in repository
-    return await fixedExpenseRepository.updateFixedExpense(id, updates);
+    const updated = await fixedExpenseRepository.updateFixedExpense(id, updates);
+
+    if (!updated) {
+      return null;
+    }
+
+    // Add warning if linked loan is paid off
+    if (loan && loan.is_paid_off) {
+      return {
+        ...updated,
+        warning: 'Linked loan is marked as paid off'
+      };
+    }
+
+    return updated;
   }
 
   /**
@@ -245,6 +415,15 @@ class FixedExpenseService {
       items,
       count: items.length
     };
+  }
+
+  /**
+   * Get fixed expenses linked to a specific loan
+   * @param {number} loanId - Loan ID
+   * @returns {Promise<Array>} Array of fixed expense objects
+   */
+  async getFixedExpensesByLoanId(loanId) {
+    return await fixedExpenseRepository.getFixedExpensesByLoanId(loanId);
   }
 }
 

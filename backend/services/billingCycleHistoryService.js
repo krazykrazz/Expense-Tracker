@@ -42,7 +42,7 @@ class BillingCycleHistoryService {
 
   /**
    * Calculate effective balance for a billing cycle
-   * Returns actual_statement_balance if provided (including 0), otherwise calculated_statement_balance
+   * Returns actual_statement_balance if user-entered (including 0), otherwise calculated_statement_balance
    * @param {Object} cycle - Billing cycle record
    * @returns {Object} { effectiveBalance, balanceType }
    * _Requirements: 4.1, 4.2_
@@ -54,23 +54,23 @@ class BillingCycleHistoryService {
 
     const calculatedBalance = cycle.calculated_statement_balance || 0;
 
-    // Check if actual_statement_balance was explicitly set (including 0)
-    // Auto-generated cycles have actual_statement_balance = 0 but should show as 'calculated'
-    // User-entered cycles with actual_statement_balance = 0 should show as 'actual'
-    // We distinguish by checking if the cycle has been "entered" (has minimum_payment, due_date, or notes)
-    // OR if actual_statement_balance differs from 0 (user explicitly set a non-zero value)
-    const hasMinimumPayment = cycle.minimum_payment !== null && cycle.minimum_payment !== undefined;
-    const hasDueDate = cycle.due_date !== null && cycle.due_date !== undefined;
-    const hasNotes = cycle.notes !== null && cycle.notes !== undefined;
-    
-    const hasActualBalance = cycle.actual_statement_balance !== null && 
-                             cycle.actual_statement_balance !== undefined &&
-                             (cycle.actual_statement_balance !== 0 || 
-                              hasMinimumPayment || 
-                              hasDueDate || 
-                              hasNotes);
+    // Use is_user_entered flag to determine if actual balance should be used
+    // is_user_entered = 1 means user explicitly entered/updated this cycle
+    // is_user_entered = 0 (or null/undefined) means auto-generated
+    const isUserEntered = cycle.is_user_entered === 1;
 
-    if (hasActualBalance) {
+    if (isUserEntered) {
+      return {
+        effectiveBalance: cycle.actual_statement_balance,
+        balanceType: 'actual'
+      };
+    }
+
+    // For non-user-entered cycles, also check if actual_statement_balance differs from 0
+    // This handles legacy data before is_user_entered was added
+    if (cycle.actual_statement_balance !== null && 
+        cycle.actual_statement_balance !== undefined &&
+        cycle.actual_statement_balance !== 0) {
       return {
         effectiveBalance: cycle.actual_statement_balance,
         balanceType: 'actual'
@@ -257,7 +257,8 @@ class BillingCycleHistoryService {
       minimum_payment: data.minimum_payment,
       due_date: data.due_date,
       notes: data.notes,
-      statement_pdf_path: data.statement_pdf_path
+      statement_pdf_path: data.statement_pdf_path,
+      is_user_entered: 1  // User-created cycles are marked as user-entered
     });
     
     // Calculate and add discrepancy
@@ -352,11 +353,13 @@ class BillingCycleHistoryService {
     }
     
     // Update the record (repository preserves calculated_statement_balance)
+    // Mark as user-entered since user is explicitly updating
     const updated = await billingCycleRepository.update(cycleId, {
       actual_statement_balance: data.actual_statement_balance,
       minimum_payment: data.minimum_payment,
       due_date: data.due_date,
-      notes: data.notes
+      notes: data.notes,
+      is_user_entered: 1  // Mark as user-entered when user updates
     });
     
     if (!updated) {
@@ -498,31 +501,6 @@ class BillingCycleHistoryService {
 
     for (const period of missingPeriods) {
       try {
-        // Calculate statement balance for this period
-        // We need to use a reference date that would produce this cycle
-        // The cycle end date + 1 day should give us the correct cycle
-        // Parse the date string directly to avoid timezone issues
-        const [year, month, day] = period.endDate.split('-').map(Number);
-        // Create a date string for the day after cycle end
-        // This ensures calculatePreviousCycleDates returns the correct cycle
-        const nextDay = day + 1;
-        const daysInMonth = new Date(year, month, 0).getDate();
-        let refYear = year;
-        let refMonth = month;
-        let refDay = nextDay;
-        
-        if (nextDay > daysInMonth) {
-          refDay = 1;
-          refMonth = month + 1;
-          if (refMonth > 12) {
-            refMonth = 1;
-            refYear = year + 1;
-          }
-        }
-        
-        // Format as YYYY-MM-DD string to pass to calculateStatementBalance
-        const cycleRefDateStr = `${refYear}-${String(refMonth).padStart(2, '0')}-${String(refDay).padStart(2, '0')}`;
-
         // For auto-generated historical cycles, calculate expenses directly
         // without subtracting payments (payments are for paying off the statement,
         // not reducing the historical calculated balance)

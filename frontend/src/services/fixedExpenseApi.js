@@ -78,3 +78,17 @@ export const carryForwardFixedExpenses = async (year, month) => {
     throw error;
   }
 };
+
+/**
+ * Get fixed expenses linked to a specific loan
+ * @param {number} loanId - Loan ID
+ * @returns {Promise<Array>} Array of fixed expense objects
+ */
+export const getFixedExpensesByLoan = async (loanId) => {
+  try {
+    return await apiGet(API_ENDPOINTS.FIXED_EXPENSES_BY_LOAN(loanId), 'fetch fixed expenses by loan');
+  } catch (error) {
+    logApiError('fetching fixed expenses by loan', error);
+    throw error;
+  }
+};

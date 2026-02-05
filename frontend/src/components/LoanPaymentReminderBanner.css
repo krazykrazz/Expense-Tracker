@@ -1,0 +1,263 @@
+.loan-payment-reminder-banner {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.loan-payment-reminder-banner:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.loan-payment-reminder-banner:focus {
+  outline: 2px solid #4a90d9;
+  outline-offset: 2px;
+}
+
+/* Due soon - info style (blue/teal) - distinct from credit card yellow */
+.loan-payment-reminder-banner.due-soon {
+  background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+  border: 1px solid #17a2b8;
+  color: #0c5460;
+}
+
+/* Overdue - urgent style (purple/magenta) - distinct from credit card red */
+.loan-payment-reminder-banner.overdue {
+  background: linear-gradient(135deg, #e2d5f0 0%, #d4c4e8 100%);
+  border: 1px solid #6f42c1;
+  color: #4a2c7a;
+  animation: pulse-loan-urgent 2s ease-in-out infinite;
+}
+
+@keyframes pulse-loan-urgent {
+  0%, 100% {
+    box-shadow: 0 2px 8px rgba(111, 66, 193, 0.2);
+  }
+  50% {
+    box-shadow: 0 4px 16px rgba(111, 66, 193, 0.4);
+  }
+}
+
+.loan-payment-reminder-banner .reminder-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  flex: 1;
+}
+
+.loan-payment-reminder-banner .reminder-icon {
+  font-size: 1.3rem;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.loan-payment-reminder-banner .reminder-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.loan-payment-reminder-banner .reminder-message {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+/* Payment info section */
+.loan-payment-reminder-banner .reminder-payment-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.loan-payment-reminder-banner .reminder-payment-label {
+  font-size: 0.85rem;
+  opacity: 0.9;
+}
+
+.loan-payment-reminder-banner .reminder-payment-amount {
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.loan-payment-reminder-banner .reminder-due-date {
+  font-size: 0.8rem;
+  opacity: 0.8;
+}
+
+/* Loan type badge */
+.loan-payment-reminder-banner .loan-type-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.loan-payment-reminder-banner.due-soon .loan-type-badge {
+  background-color: rgba(23, 162, 184, 0.2);
+  color: #0c5460;
+}
+
+.loan-payment-reminder-banner.overdue .loan-type-badge {
+  background-color: rgba(111, 66, 193, 0.2);
+  color: #4a2c7a;
+}
+
+/* Urgency badges */
+.loan-payment-reminder-banner .reminder-urgency-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.loan-payment-reminder-banner .reminder-urgency-badge.small {
+  padding: 1px 4px;
+  font-size: 0.7rem;
+}
+
+.loan-payment-reminder-banner .reminder-urgency-badge.overdue {
+  background-color: rgba(111, 66, 193, 0.2);
+  color: #4a2c7a;
+}
+
+.loan-payment-reminder-banner .reminder-urgency-badge.due-today {
+  background-color: rgba(23, 162, 184, 0.3);
+  color: #0c5460;
+}
+
+.loan-payment-reminder-banner .reminder-urgency-badge.due-soon {
+  background-color: rgba(23, 162, 184, 0.2);
+  color: #0c5460;
+}
+
+/* Loans breakdown for multiple loans */
+.loan-payment-reminder-banner .reminder-loans-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.loan-payment-reminder-banner .reminder-loan-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+}
+
+.loan-payment-reminder-banner .reminder-loan-name {
+  flex: 1;
+}
+
+.loan-payment-reminder-banner .reminder-loan-amount {
+  font-weight: 600;
+}
+
+.loan-payment-reminder-banner .reminder-dismiss-btn {
+  background: transparent;
+  border: none;
+  font-size: 1.4rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.loan-payment-reminder-banner.due-soon .reminder-dismiss-btn {
+  color: #0c5460;
+}
+
+.loan-payment-reminder-banner.due-soon .reminder-dismiss-btn:hover {
+  background-color: rgba(12, 84, 96, 0.1);
+}
+
+.loan-payment-reminder-banner.overdue .reminder-dismiss-btn {
+  color: #4a2c7a;
+}
+
+.loan-payment-reminder-banner.overdue .reminder-dismiss-btn:hover {
+  background-color: rgba(74, 44, 122, 0.1);
+}
+
+/* Reduced motion support for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .loan-payment-reminder-banner.overdue {
+    animation: none;
+  }
+  
+  .loan-payment-reminder-banner:hover {
+    transform: none;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .loan-payment-reminder-banner.due-soon {
+    background: linear-gradient(135deg, #1a3a40 0%, #1e4a52 100%);
+    border-color: #17a2b8;
+    color: #bee5eb;
+  }
+
+  .loan-payment-reminder-banner.overdue {
+    background: linear-gradient(135deg, #2d2240 0%, #3a2d52 100%);
+    border-color: #8b5cf6;
+    color: #d4c4e8;
+  }
+
+  .loan-payment-reminder-banner.due-soon .reminder-dismiss-btn {
+    color: #bee5eb;
+  }
+
+  .loan-payment-reminder-banner.overdue .reminder-dismiss-btn {
+    color: #d4c4e8;
+  }
+
+  .loan-payment-reminder-banner .reminder-loans-breakdown {
+    border-top-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .loan-payment-reminder-banner .reminder-urgency-badge.overdue {
+    background-color: rgba(139, 92, 246, 0.3);
+    color: #d4c4e8;
+  }
+
+  .loan-payment-reminder-banner .reminder-urgency-badge.due-today {
+    background-color: rgba(23, 162, 184, 0.3);
+    color: #bee5eb;
+  }
+
+  .loan-payment-reminder-banner .reminder-urgency-badge.due-soon {
+    background-color: rgba(23, 162, 184, 0.2);
+    color: #bee5eb;
+  }
+
+  .loan-payment-reminder-banner.due-soon .loan-type-badge {
+    background-color: rgba(23, 162, 184, 0.3);
+    color: #bee5eb;
+  }
+
+  .loan-payment-reminder-banner.overdue .loan-type-badge {
+    background-color: rgba(139, 92, 246, 0.3);
+    color: #d4c4e8;
+  }
+}

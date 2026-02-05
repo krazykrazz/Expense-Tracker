@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import './LoansModal.css';
 import { getAllLoans, createLoan, updateLoan, deleteLoan } from '../services/loanApi';
+import { getFixedExpensesByLoan } from '../services/fixedExpenseApi';
 import { validateName, validateAmount } from '../utils/validation';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import { createLogger } from '../utils/logger';
@@ -18,6 +19,7 @@ const LoansModal = ({ isOpen, onClose, year, month, onUpdate, highlightIds = [] 
   const [editingLoanId, setEditingLoanId] = useState(null);
   const [selectedLoanId, setSelectedLoanId] = useState(null);
   const [showTotalDebt, setShowTotalDebt] = useState(false);
+  const [loanFixedExpenseCounts, setLoanFixedExpenseCounts] = useState({});
   
   // Form state
   const [formData, setFormData] = useState({
@@ -66,6 +68,9 @@ const LoansModal = ({ isOpen, onClose, year, month, onUpdate, highlightIds = [] 
     try {
       const data = await getAllLoans();
       setLoans(data || []);
+      
+      // Fetch fixed expense counts for each loan
+      await fetchFixedExpenseCounts(data || []);
     } catch (err) {
       const errorMessage = err.message || 'Network error. Unable to load loans. Please check your connection and try again.';
       setError(errorMessage);
@@ -73,6 +78,26 @@ const LoansModal = ({ isOpen, onClose, year, month, onUpdate, highlightIds = [] 
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchFixedExpenseCounts = async (loansList) => {
+    const counts = {};
+    
+    // Fetch fixed expenses for each loan in parallel
+    const promises = loansList.map(async (loan) => {
+      try {
+        const fixedExpenses = await getFixedExpensesByLoan(loan.id);
+        // Get unique expense names (most recent entry for each name)
+        const uniqueNames = new Set(fixedExpenses.map(fe => fe.name));
+        counts[loan.id] = uniqueNames.size;
+      } catch (err) {
+        logger.error(`Error fetching fixed expenses for loan ${loan.id}:`, err);
+        counts[loan.id] = 0;
+      }
+    });
+    
+    await Promise.all(promises);
+    setLoanFixedExpenseCounts(counts);
   };
 
   // Filter loans by active/paid off status
@@ -778,6 +803,7 @@ const LoansModal = ({ isOpen, onClose, year, month, onUpdate, highlightIds = [] 
                 ) : (
                   displayedLoans.map((loan) => {
                     const needsUpdate = highlightIds.includes(loan.id);
+                    const fixedExpenseCount = loanFixedExpenseCounts[loan.id] || 0;
                     return (
                     <div key={loan.id} className={`loan-item ${needsUpdate ? 'needs-update' : ''}`}>
                       <div className="loan-item-main">
@@ -790,6 +816,11 @@ const LoansModal = ({ isOpen, onClose, year, month, onUpdate, highlightIds = [] 
                             {loan.loan_type === 'mortgage' && (
                               <span className="loan-type-badge mortgage">Mortgage</span>
                             )}
+                            {fixedExpenseCount > 0 && (
+                              <span className="loan-fixed-expense-badge" title={`${fixedExpenseCount} linked fixed expense${fixedExpenseCount !== 1 ? 's' : ''}`}>
+                                📋 {fixedExpenseCount}
+                              </span>
+                            )}
                             {needsUpdate && (
                               <span className="needs-update-badge" title="Missing balance for current month">
                                 ⚠️ Update Needed
@@ -798,7 +829,7 @@ const LoansModal = ({ isOpen, onClose, year, month, onUpdate, highlightIds = [] 
                           </div>
                           <div className="loan-item-details">
                             <span className="loan-item-rate">
-                              Rate: {loan.currentRate ? `${loan.currentRate}%` : 'N/A'}
+                              Rate: {loan.currentRate != null && loan.currentRate > 0 ? `${loan.currentRate}%` : 'N/A'}
                             </span>
                             <span className="loan-item-balance">
                               Balance: {formatCurrency(loan.currentBalance)}

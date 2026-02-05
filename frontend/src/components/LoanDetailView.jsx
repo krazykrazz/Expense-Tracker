@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import './LoanDetailView.css';
 import { updateLoan, markPaidOff } from '../services/loanApi';
 import { getBalanceHistory, createOrUpdateBalance, deleteBalance } from '../services/loanBalanceApi';
+import { getPayments, deletePayment, getCalculatedBalance } from '../services/loanPaymentApi';
+import { getFixedExpensesByLoan } from '../services/fixedExpenseApi';
 import { validateName, validateAmount } from '../utils/validation';
 import { formatCurrency, formatDate, formatMonthYear } from '../utils/formatters';
 import { createLogger } from '../utils/logger';
@@ -9,6 +11,10 @@ import MortgageDetailSection from './MortgageDetailSection';
 import MortgageInsightsPanel from './MortgageInsightsPanel';
 import EquityChart from './EquityChart';
 import AmortizationChart from './AmortizationChart';
+import LoanPaymentForm from './LoanPaymentForm';
+import LoanPaymentHistory from './LoanPaymentHistory';
+import PaymentBalanceChart from './PaymentBalanceChart';
+import MigrationUtility from './MigrationUtility';
 
 const logger = createLogger('LoanDetailView');
 
@@ -43,6 +49,25 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
   const balanceHistoryRef = useRef(null);
   const newEntryRef = useRef(null);
 
+  // Payment tracking state (for loans and mortgages)
+  const [payments, setPayments] = useState([]);
+  const [calculatedBalanceData, setCalculatedBalanceData] = useState(null);
+  const [showPaymentForm, setShowPaymentForm] = useState(false);
+  const [editingPayment, setEditingPayment] = useState(null);
+  const [loadingPayments, setLoadingPayments] = useState(false);
+
+  // Migration utility state (for loans and mortgages with existing balance entries)
+  const [showMigrationUtility, setShowMigrationUtility] = useState(false);
+
+  // Linked fixed expenses state
+  const [linkedFixedExpenses, setLinkedFixedExpenses] = useState([]);
+  const [loadingFixedExpenses, setLoadingFixedExpenses] = useState(false);
+
+  // Determine if this loan uses payment-based tracking
+  // Requirement 5.1: loans and mortgages use payment tracking
+  // Requirement 5.2: lines of credit use balance tracking
+  const usesPaymentTracking = loanData?.loan_type === 'loan' || loanData?.loan_type === 'mortgage';
+
   // Fetch balance history when modal opens or loan changes
   useEffect(() => {
     if (isOpen && loan) {
@@ -51,7 +76,19 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
         name: loan.name,
         notes: loan.notes || ''
       });
-      fetchBalanceHistory();
+      
+      // Fetch appropriate data based on loan type
+      if (loan.loan_type === 'line_of_credit') {
+        fetchBalanceHistory();
+      } else {
+        // For loans and mortgages, fetch payment data
+        fetchPaymentData();
+        // Also fetch balance history for historical reference
+        fetchBalanceHistory();
+      }
+      
+      // Fetch linked fixed expenses
+      fetchLinkedFixedExpenses();
     }
   }, [isOpen, loan]);
 
@@ -73,9 +110,74 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
     }
   };
 
+  // Fetch payment data for loans and mortgages
+  // Requirements: 1.2, 2.1
+  const fetchPaymentData = async () => {
+    if (!loan || !loan.id) return;
+    
+    setLoadingPayments(true);
+    setError(null);
+
+    try {
+      // Fetch payments and calculated balance in parallel
+      const [paymentsData, balanceData] = await Promise.all([
+        getPayments(loan.id),
+        getCalculatedBalance(loan.id)
+      ]);
+      
+      setPayments(paymentsData || []);
+      setCalculatedBalanceData(balanceData);
+    } catch (err) {
+      const errorMessage = err.message || 'Failed to load payment data';
+      setError(errorMessage);
+      logger.error('Error fetching payment data:', err);
+    } finally {
+      setLoadingPayments(false);
+    }
+  };
+
+  // Fetch linked fixed expenses
+  const fetchLinkedFixedExpenses = async () => {
+    if (!loan || !loan.id) return;
+    
+    setLoadingFixedExpenses(true);
+
+    try {
+      const fixedExpenses = await getFixedExpensesByLoan(loan.id);
+      // Get unique expense names (most recent entry for each name)
+      const uniqueExpenses = [];
+      const seenNames = new Set();
+      
+      for (const expense of fixedExpenses) {
+        if (!seenNames.has(expense.name)) {
+          seenNames.add(expense.name);
+          uniqueExpenses.push(expense);
+        }
+      }
+      
+      setLinkedFixedExpenses(uniqueExpenses);
+    } catch (err) {
+      logger.error('Error fetching linked fixed expenses:', err);
+      setLinkedFixedExpenses([]);
+    } finally {
+      setLoadingFixedExpenses(false);
+    }
+  };
+
   // Calculate derived values
-  const currentBalance = loanData?.currentBalance || loanData?.initial_balance || 0;
-  const totalPaidDown = (loanData?.initial_balance || 0) - currentBalance;
+  // For payment-tracked loans, use calculated balance from payments
+  // For lines of credit, use balance history
+  const currentBalance = usesPaymentTracking && calculatedBalanceData
+    ? calculatedBalanceData.currentBalance
+    : (loanData?.currentBalance || loanData?.initial_balance || 0);
+  
+  const totalPayments = calculatedBalanceData?.totalPayments || 0;
+  const paymentCount = calculatedBalanceData?.paymentCount || 0;
+  
+  const totalPaidDown = usesPaymentTracking
+    ? totalPayments
+    : (loanData?.initial_balance || 0) - currentBalance;
+  
   const paydownPercentage = loanData?.initial_balance > 0 
     ? (totalPaidDown / loanData.initial_balance) * 100 
     : 0;
@@ -401,11 +503,100 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
     clearMessages();
   };
 
+  // Payment tracking handlers (for loans and mortgages)
+  // Requirement 6.1: Show "Log Payment" button
+  const handleShowPaymentForm = () => {
+    setShowPaymentForm(true);
+    setEditingPayment(null);
+    clearMessages();
+  };
+
+  // Handle payment recorded (create or update)
+  const handlePaymentRecorded = async () => {
+    setShowPaymentForm(false);
+    setEditingPayment(null);
+    showSuccess(editingPayment ? 'Payment updated successfully' : 'Payment recorded successfully');
+    
+    // Refresh payment data
+    await fetchPaymentData();
+    
+    // Notify parent to refresh
+    if (onUpdate) {
+      onUpdate();
+    }
+  };
+
+  // Handle payment edit
+  const handleEditPayment = (payment) => {
+    setEditingPayment(payment);
+    setShowPaymentForm(true);
+    clearMessages();
+  };
+
+  // Handle payment delete
+  // Requirement 1.4: Delete payment and recalculate balance
+  const handleDeletePayment = async (paymentId) => {
+    clearMessages();
+    setLoadingPayments(true);
+
+    try {
+      await deletePayment(loanData.id, paymentId);
+      showSuccess('Payment deleted successfully');
+      
+      // Refresh payment data
+      await fetchPaymentData();
+      
+      // Notify parent to refresh
+      if (onUpdate) {
+        onUpdate();
+      }
+    } catch (err) {
+      const errorMessage = err.message || 'Failed to delete payment';
+      setError(errorMessage);
+      logger.error('Error deleting payment:', err);
+    } finally {
+      setLoadingPayments(false);
+    }
+  };
+
+  // Cancel payment form
+  const handleCancelPaymentForm = () => {
+    setShowPaymentForm(false);
+    setEditingPayment(null);
+    clearMessages();
+  };
+
+  // Migration utility handlers
+  // Requirement 4.1, 4.5: Migration UI for converting balance entries to payments
+  const handleShowMigrationUtility = () => {
+    setShowMigrationUtility(true);
+    clearMessages();
+  };
+
+  const handleMigrationComplete = async (result) => {
+    showSuccess(`Migration complete: ${result.summary.totalConverted} payment(s) created`);
+    
+    // Refresh payment data to show newly created payments
+    await fetchPaymentData();
+    
+    // Notify parent to refresh
+    if (onUpdate) {
+      onUpdate();
+    }
+  };
+
+  const handleCloseMigrationUtility = () => {
+    setShowMigrationUtility(false);
+  };
+
   const handleClose = () => {
     // Reset all state
     setIsEditingLoan(false);
     setEditingBalanceId(null);
     setShowAddBalanceForm(false);
+    setShowPaymentForm(false);
+    setEditingPayment(null);
+    setShowMigrationUtility(false);
     setValidationErrors({});
     clearMessages();
     
@@ -502,9 +693,16 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
                   {/* Only show "Total Paid Down" for traditional loans */}
                   {loanData.loan_type !== 'line_of_credit' && (
                     <div className="loan-summary-item">
-                      <span className="loan-summary-label">Total Paid Down:</span>
+                      <span className="loan-summary-label">
+                        {usesPaymentTracking ? 'Total Payments:' : 'Total Paid Down:'}
+                      </span>
                       <span className="loan-summary-value loan-paid-down">
                         {formatCurrency(totalPaidDown)}
+                        {usesPaymentTracking && paymentCount > 0 && (
+                          <span className="payment-count-badge">
+                            ({paymentCount} payment{paymentCount !== 1 ? 's' : ''})
+                          </span>
+                        )}
                       </span>
                     </div>
                   )}
@@ -790,6 +988,31 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
             )}
           </div>
 
+          {/* Linked Fixed Expenses Section */}
+          {linkedFixedExpenses.length > 0 && (
+            <div className="loan-linked-expenses-section">
+              <h3>Linked Fixed Expenses</h3>
+              <div className="linked-expenses-list">
+                {linkedFixedExpenses.map((expense) => (
+                  <div key={expense.id} className="linked-expense-item">
+                    <div className="linked-expense-info">
+                      <span className="linked-expense-name">{expense.name}</span>
+                      <span className="linked-expense-amount">{formatCurrency(expense.amount)}</span>
+                    </div>
+                    {expense.payment_due_day ? (
+                      <div className="linked-expense-due">
+                        Due: Day {expense.payment_due_day} of month
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+              <div className="linked-expenses-note">
+                These fixed expenses are automatically linked to this loan. Manage them in the Fixed Expenses modal.
+              </div>
+            </div>
+          )}
+
           {/* Mortgage-Specific Sections - Requirements 8.1, 8.2, 8.3, 8.4, 8.5 */}
           {loanData.loan_type === 'mortgage' && (
             <>
@@ -936,7 +1159,143 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
             </>
           )}
 
-          {/* Balance History Section */}
+          {/* Payment Tracking Section - For loans and mortgages only */}
+          {/* Requirements: 5.1, 5.2, 5.3, 6.1, 6.4, 6.5 */}
+          {usesPaymentTracking && (
+            <div className="loan-payment-tracking-section">
+              <div className="loan-payment-tracking-header">
+                <h3>Payment Tracking</h3>
+                {!showPaymentForm && (
+                  <button
+                    className="loan-log-payment-button"
+                    onClick={handleShowPaymentForm}
+                    disabled={loading || loadingPayments}
+                  >
+                    + Log Payment
+                  </button>
+                )}
+              </div>
+
+              {/* Payment Summary - Requirement 6.4 */}
+              <div className="loan-payment-summary">
+                <div className="payment-summary-item">
+                  <span className="payment-summary-label">Total Payments:</span>
+                  <span className="payment-summary-value positive">
+                    {formatCurrency(totalPayments)}
+                  </span>
+                </div>
+                <div className="payment-summary-item">
+                  <span className="payment-summary-label">Current Balance:</span>
+                  <span className="payment-summary-value">
+                    {formatCurrency(currentBalance)}
+                  </span>
+                </div>
+                {/* Show calculated balance when there's a discrepancy (historical loan) */}
+                {calculatedBalanceData?.hasDiscrepancy && (
+                  <div className="payment-summary-item payment-summary-discrepancy">
+                    <span className="payment-summary-label">Calculated from Payments:</span>
+                    <span className="payment-summary-value muted">
+                      {formatCurrency(calculatedBalanceData.calculatedBalance)}
+                    </span>
+                    <span className="payment-summary-note">
+                      (Difference due to payments before tracking started)
+                    </span>
+                  </div>
+                )}
+                {calculatedBalanceData?.lastPaymentDate && (
+                  <div className="payment-summary-item">
+                    <span className="payment-summary-label">Last Payment:</span>
+                    <span className="payment-summary-value">
+                      {formatDate(calculatedBalanceData.lastPaymentDate)}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Payment Form - Requirement 6.3 */}
+              {showPaymentForm && (
+                <LoanPaymentForm
+                  loanId={loanData.id}
+                  loanName={loanData.name}
+                  loanType={loanData.loan_type}
+                  currentBalance={currentBalance}
+                  editingPayment={editingPayment}
+                  onPaymentRecorded={handlePaymentRecorded}
+                  onCancel={handleCancelPaymentForm}
+                  disabled={loading || loadingPayments}
+                />
+              )}
+
+              {/* Payment History - Requirement 6.2 */}
+              {/* For historical loans with discrepancy, use actualBalance + totalPayments as starting point */}
+              <LoanPaymentHistory
+                payments={payments}
+                initialBalance={
+                  calculatedBalanceData?.hasDiscrepancy && calculatedBalanceData?.actualBalance != null
+                    ? calculatedBalanceData.actualBalance + totalPayments
+                    : loanData.initial_balance
+                }
+                loading={loadingPayments}
+                onEdit={handleEditPayment}
+                onDelete={handleDeletePayment}
+                disabled={loading || loadingPayments}
+              />
+
+              {/* Payment Balance Chart - Requirements 7.1, 7.2, 7.3 */}
+              {/* Show chart when there are payments to visualize */}
+              {/* For historical loans with discrepancy, use actualBalance + totalPayments as starting point */}
+              {payments.length > 0 && (
+                <PaymentBalanceChart
+                  payments={payments}
+                  initialBalance={
+                    calculatedBalanceData?.hasDiscrepancy && calculatedBalanceData?.actualBalance != null
+                      ? calculatedBalanceData.actualBalance + totalPayments
+                      : loanData.initial_balance
+                  }
+                  loanName={loanData.name}
+                />
+              )}
+
+              {/* Migration Utility - Requirements 4.1, 4.5 */}
+              {/* Show migration option when there are balance entries that could be converted */}
+              {/* Only show if no payments exist yet (migration hasn't been done) */}
+              {balanceHistory.length >= 2 && payments.length === 0 && !showMigrationUtility && (
+                <div className="loan-migration-prompt">
+                  <div className="migration-prompt-content">
+                    <span className="migration-prompt-icon">📊</span>
+                    <div className="migration-prompt-text">
+                      <span className="migration-prompt-title">Have existing balance entries?</span>
+                      <span className="migration-prompt-description">
+                        {balanceHistory.length} balance entries available for migration
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    className="loan-migrate-button"
+                    onClick={handleShowMigrationUtility}
+                    disabled={loading || loadingPayments}
+                  >
+                    Migrate Balances
+                  </button>
+                </div>
+              )}
+
+              {/* Migration Utility Component */}
+              {showMigrationUtility && (
+                <MigrationUtility
+                  loanId={loanData.id}
+                  loanName={loanData.name}
+                  onMigrationComplete={handleMigrationComplete}
+                  onClose={handleCloseMigrationUtility}
+                  disabled={loading || loadingPayments}
+                />
+              )}
+            </div>
+          )}
+
+          {/* Balance History Section - For lines of credit only */}
+          {/* Requirement 5.2, 5.3: Lines of credit continue using balance-based tracking */}
+          {loanData.loan_type === 'line_of_credit' && (
           <div className="loan-balance-history-section" ref={balanceHistoryRef}>
             <div className="loan-balance-history-header">
               <h3>Balance History</h3>
@@ -1211,6 +1570,7 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
               </div>
             )}
           </div>
+          )}
         </div>
       </div>
     </div>

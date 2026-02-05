@@ -2113,6 +2113,365 @@ Migration automatically copies `billing_cycle_end` to `billing_cycle_day` for ex
 
 ---
 
-**Last Updated:** February 3, 2026  
-**API Version:** 1.6  
+# Loan Payment Tracking API (v4.19.0)
+
+## Overview
+
+Payment-based tracking system for loans and mortgages. Records individual payments and calculates balance dynamically. Lines of credit continue to use balance-based tracking.
+
+## Loan Payment Endpoints
+
+### 1. Create Payment
+
+Record a new loan payment.
+
+**Endpoint:** `POST /api/loans/:loanId/payments`
+
+**URL Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| loanId | number | Yes | Loan ID (must be loan or mortgage type) |
+
+**Request Body:**
+```json
+{
+  "amount": 500.00,
+  "payment_date": "2026-01-15",
+  "notes": "Monthly payment"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| amount | number | Yes | Payment amount (must be positive) |
+| payment_date | string | Yes | Payment date (YYYY-MM-DD, not future) |
+| notes | string | No | Optional notes |
+
+**Success Response:**
+```json
+HTTP/1.1 201 Created
+{
+  "id": 1,
+  "loan_id": 1,
+  "amount": 500.00,
+  "payment_date": "2026-01-15",
+  "notes": "Monthly payment",
+  "created_at": "2026-01-15T10:30:00Z"
+}
+```
+
+**Error Responses:**
+```json
+HTTP/1.1 400 Bad Request
+{ "error": "Payment amount must be a positive number" }
+```
+
+```json
+HTTP/1.1 400 Bad Request
+{ "error": "Payment tracking is only available for loans and mortgages" }
+```
+
+---
+
+### 2. Get All Payments
+
+Retrieve all payments for a loan.
+
+**Endpoint:** `GET /api/loans/:loanId/payments`
+
+**Success Response:**
+```json
+HTTP/1.1 200 OK
+{
+  "payments": [
+    {
+      "id": 2,
+      "loan_id": 1,
+      "amount": 500.00,
+      "payment_date": "2026-01-15",
+      "notes": "January payment",
+      "running_balance": 9500.00
+    },
+    {
+      "id": 1,
+      "loan_id": 1,
+      "amount": 500.00,
+      "payment_date": "2025-12-15",
+      "notes": "December payment",
+      "running_balance": 10000.00
+    }
+  ],
+  "totalPayments": 1000.00,
+  "paymentCount": 2
+}
+```
+
+---
+
+### 3. Update Payment
+
+Update an existing payment entry.
+
+**Endpoint:** `PUT /api/loans/:loanId/payments/:id`
+
+**Request Body:**
+```json
+{
+  "amount": 550.00,
+  "payment_date": "2026-01-15",
+  "notes": "Updated payment"
+}
+```
+
+**Success Response:**
+```json
+HTTP/1.1 200 OK
+{
+  "id": 1,
+  "loan_id": 1,
+  "amount": 550.00,
+  "payment_date": "2026-01-15",
+  "notes": "Updated payment"
+}
+```
+
+---
+
+### 4. Delete Payment
+
+Delete a payment entry.
+
+**Endpoint:** `DELETE /api/loans/:loanId/payments/:id`
+
+**Success Response:**
+```json
+HTTP/1.1 200 OK
+{
+  "success": true,
+  "message": "Payment deleted successfully"
+}
+```
+
+---
+
+### 5. Get Calculated Balance
+
+Get the dynamically calculated balance for a loan.
+
+**Endpoint:** `GET /api/loans/:loanId/calculated-balance`
+
+**Success Response:**
+```json
+HTTP/1.1 200 OK
+{
+  "loanId": 1,
+  "initialBalance": 10000.00,
+  "totalPayments": 2500.00,
+  "currentBalance": 7500.00,
+  "paymentCount": 5,
+  "lastPaymentDate": "2026-01-15"
+}
+```
+
+---
+
+### 6. Get Payment Suggestion
+
+Get a suggested payment amount based on loan type and history.
+
+**Endpoint:** `GET /api/loans/:loanId/payment-suggestion`
+
+**Success Response (Mortgage):**
+```json
+HTTP/1.1 200 OK
+{
+  "suggestedAmount": 1500.00,
+  "source": "monthly_payment",
+  "confidence": "high",
+  "message": "Based on your monthly payment setting"
+}
+```
+
+**Success Response (Loan with history):**
+```json
+HTTP/1.1 200 OK
+{
+  "suggestedAmount": 500.00,
+  "source": "average_history",
+  "confidence": "medium",
+  "message": "Based on average of 5 previous payments"
+}
+```
+
+**Success Response (No history):**
+```json
+HTTP/1.1 200 OK
+{
+  "suggestedAmount": null,
+  "source": "none",
+  "confidence": "low",
+  "message": "No payment history available"
+}
+```
+
+---
+
+### 7. Migrate Balance Entries
+
+Convert existing balance entries to payment entries.
+
+**Endpoint:** `POST /api/loans/:loanId/migrate-balances`
+
+**Success Response:**
+```json
+HTTP/1.1 200 OK
+{
+  "loanId": 1,
+  "converted": [
+    { "balanceEntryId": 1, "paymentAmount": 500.00, "paymentDate": "2025-12-01" },
+    { "balanceEntryId": 2, "paymentAmount": 500.00, "paymentDate": "2026-01-01" }
+  ],
+  "skipped": [
+    { "balanceEntryId": 3, "reason": "Balance increased (line of credit usage)" }
+  ],
+  "summary": {
+    "totalConverted": 2,
+    "totalSkipped": 1,
+    "totalPaymentAmount": 1000.00
+  }
+}
+```
+
+---
+
+### 8. Auto-Log Payment
+
+Create a loan payment from a linked fixed expense.
+
+**Endpoint:** `POST /api/loans/:loanId/loan-payments/auto-log`
+
+**Request Body:**
+```json
+{
+  "fixedExpenseId": 5,
+  "paymentDate": "2026-01-15"
+}
+```
+
+**Success Response:**
+```json
+HTTP/1.1 201 Created
+{
+  "payment": {
+    "id": 10,
+    "loan_id": 1,
+    "amount": 350.00,
+    "payment_date": "2026-01-15",
+    "notes": "Auto-logged from fixed expense: Car Payment"
+  }
+}
+```
+
+---
+
+## Fixed Expense Loan Linkage
+
+### Extended Fixed Expense Fields
+
+When creating or updating fixed expenses, two new optional fields are available:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| payment_due_day | number | No | Day of month payment is due (1-31) |
+| linked_loan_id | number | No | ID of loan to link (active loans only) |
+
+**Example Request:**
+```json
+POST /api/fixed-expenses
+{
+  "name": "Car Payment",
+  "amount": 350.00,
+  "category": "Other",
+  "payment_type": "Debit",
+  "year": 2026,
+  "month": 1,
+  "payment_due_day": 15,
+  "linked_loan_id": 2
+}
+```
+
+---
+
+## Loan Payment Reminders
+
+### Extended Reminder Status
+
+The reminder status endpoint now includes loan payment reminders.
+
+**Endpoint:** `GET /api/reminders/status/:year/:month`
+
+**Enhanced Response:**
+```json
+HTTP/1.1 200 OK
+{
+  "investments": { ... },
+  "loans": { ... },
+  "creditCards": { ... },
+  "loanPaymentReminders": {
+    "overdueCount": 1,
+    "dueSoonCount": 2,
+    "overduePayments": [
+      {
+        "fixedExpenseId": 3,
+        "fixedExpenseName": "Student Loan",
+        "amount": 200.00,
+        "paymentDueDay": 5,
+        "daysUntilDue": -10,
+        "loanId": 3,
+        "loanName": "Student Loan",
+        "loanType": "loan",
+        "isOverdue": true,
+        "isDueSoon": false,
+        "hasPaymentThisMonth": false
+      }
+    ],
+    "dueSoonPayments": [
+      {
+        "fixedExpenseId": 5,
+        "fixedExpenseName": "Car Payment",
+        "amount": 350.00,
+        "paymentDueDay": 15,
+        "daysUntilDue": 3,
+        "loanId": 2,
+        "loanName": "Car Loan",
+        "loanType": "loan",
+        "isOverdue": false,
+        "isDueSoon": true,
+        "hasPaymentThisMonth": false
+      }
+    ]
+  }
+}
+```
+
+---
+
+## Changelog - Loan Payment Tracking
+
+### Version 4.19.0 (February 2026)
+- Added `loan_payments` table for payment-based tracking
+- Added loan payment CRUD endpoints
+- Added calculated balance endpoint
+- Added payment suggestion endpoint
+- Added balance-to-payment migration endpoint
+- Added `payment_due_day` and `linked_loan_id` columns to fixed_expenses
+- Added loan payment reminders to reminder status API
+- Added auto-log payment endpoint
+- Added LoanPaymentReminderBanner component
+- Added AutoLogPrompt component
+
+---
+
+**Last Updated:** February 4, 2026  
+**API Version:** 1.7  
 **Status:** Active

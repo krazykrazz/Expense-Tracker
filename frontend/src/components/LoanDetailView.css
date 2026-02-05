@@ -949,3 +949,313 @@ button:disabled {
     transform: none;
   }
 }
+
+
+/* Payment Tracking Section - Requirements 5.1, 5.2, 6.1, 6.4, 6.5 */
+.loan-payment-tracking-section {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-6);
+  margin-bottom: var(--spacing-6);
+  box-shadow: var(--shadow-sm);
+}
+
+.loan-payment-tracking-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-5);
+}
+
+.loan-payment-tracking-header h3 {
+  margin: 0;
+  font-size: var(--heading-2);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+/* Log Payment Button - Requirement 6.1 */
+.loan-log-payment-button {
+  background-color: var(--color-positive);
+  color: var(--text-inverse);
+  border: none;
+  padding: var(--spacing-3) var(--spacing-5);
+  border-radius: var(--radius-md);
+  font-size: var(--text-base);
+  font-weight: var(--font-medium);
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: var(--transition-button);
+}
+
+.loan-log-payment-button:hover:not(:disabled) {
+  background-color: var(--color-positive-dark);
+  transform: translateY(-1px);
+}
+
+.loan-log-payment-button:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
+}
+
+.loan-log-payment-button:disabled {
+  background-color: var(--text-tertiary);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Payment Summary - Requirement 6.4 */
+.loan-payment-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-6);
+  padding: var(--spacing-4);
+  background-color: var(--bg-subtle);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-5);
+}
+
+.payment-summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+.payment-summary-label {
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+  font-weight: var(--font-medium);
+}
+
+.payment-summary-value {
+  font-size: var(--text-xl);
+  color: var(--text-primary);
+  font-weight: var(--font-semibold);
+  font-feature-settings: var(--font-feature-tabular);
+}
+
+.payment-summary-value.positive {
+  color: var(--color-positive);
+}
+
+.payment-summary-value.muted {
+  color: var(--text-tertiary);
+  font-size: var(--text-lg);
+}
+
+/* Discrepancy Note for Historical Loans */
+.payment-summary-discrepancy {
+  background-color: var(--bg-secondary);
+  padding: var(--spacing-2) var(--spacing-3);
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--color-warning);
+}
+
+.payment-summary-note {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  font-style: italic;
+  margin-top: var(--spacing-1);
+}
+
+/* Payment Count Badge */
+.payment-count-badge {
+  font-size: var(--text-sm);
+  font-weight: var(--font-normal);
+  color: var(--text-tertiary);
+  margin-left: var(--spacing-2);
+}
+
+/* Responsive Design for Payment Tracking */
+@media (max-width: 768px) {
+  .loan-payment-tracking-section {
+    padding: var(--spacing-4);
+  }
+
+  .loan-payment-tracking-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-3);
+  }
+
+  .loan-log-payment-button {
+    width: 100%;
+  }
+
+  .loan-payment-summary {
+    flex-direction: column;
+    gap: var(--spacing-3);
+  }
+}
+
+/* Migration Prompt - Requirements 4.1, 4.5 */
+.loan-migration-prompt {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-4);
+  background-color: var(--bg-subtle);
+  border: 1px dashed var(--border-default);
+  border-radius: var(--radius-md);
+  margin-top: var(--spacing-4);
+}
+
+.migration-prompt-content {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+}
+
+.migration-prompt-icon {
+  font-size: var(--text-2xl);
+}
+
+.migration-prompt-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+.migration-prompt-title {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-primary);
+}
+
+.migration-prompt-description {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+.loan-migrate-button {
+  background-color: var(--bg-card);
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary);
+  padding: var(--spacing-2) var(--spacing-4);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: var(--transition-button);
+  white-space: nowrap;
+}
+
+.loan-migrate-button:hover:not(:disabled) {
+  background-color: var(--color-primary);
+  color: var(--text-inverse);
+}
+
+.loan-migrate-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Responsive Design for Migration Prompt */
+@media (max-width: 600px) {
+  .loan-migration-prompt {
+    flex-direction: column;
+    gap: var(--spacing-3);
+    text-align: center;
+  }
+
+  .migration-prompt-content {
+    flex-direction: column;
+  }
+
+  .migration-prompt-text {
+    align-items: center;
+  }
+
+  .loan-migrate-button {
+    width: 100%;
+  }
+}
+
+/* Reduced motion support for payment tracking */
+@media (prefers-reduced-motion: reduce) {
+  .loan-log-payment-button {
+    transition: none;
+  }
+
+  .loan-log-payment-button:hover:not(:disabled) {
+    transform: none;
+  }
+}
+
+/* Linked Fixed Expenses Section */
+.loan-linked-expenses-section {
+  background-color: var(--bg-subtle);
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-5);
+  margin-bottom: var(--spacing-5);
+  transition: box-shadow 0.2s ease;
+}
+
+.loan-linked-expenses-section:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.loan-linked-expenses-section h3 {
+  margin: 0 0 var(--spacing-4) 0;
+  font-size: var(--heading-2);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+.linked-expenses-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+  margin-bottom: var(--spacing-4);
+}
+
+.linked-expense-item {
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-3);
+  transition: all 0.2s ease;
+}
+
+.linked-expense-item:hover {
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.linked-expense-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-2);
+}
+
+.linked-expense-name {
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+.linked-expense-amount {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--color-primary);
+  font-feature-settings: var(--font-feature-tabular);
+}
+
+.linked-expense-due {
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+
+.linked-expenses-note {
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+  font-style: italic;
+  padding: var(--spacing-3);
+  background-color: var(--bg-primary);
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--color-info);
+}

@@ -10,12 +10,14 @@ Documentation for completed features and implementations:
 - `CATEGORY_SUGGESTION.md` - Smart expense entry with category suggestions
 - `ESTIMATED_MONTHS_LEFT_FEATURE.md` - Estimated months left feature details
 - `LOAN_TYPE_IMPLEMENTATION_COMPLETE.md` - Loan type differentiation
+- `LOAN_PAYMENT_TRACKING.md` - Payment-based loan tracking with auto-log and reminders
 - `TOTAL_DEBT_FEATURE.md` - Total debt tracking feature
 - `BACKUP_VERIFICATION_SUMMARY.md` - Backup system verification
 - `FUTURE_BALANCE_BUG_FIX.md` - Future balance calculation fix
 - `LINE_OF_CREDIT_ZERO_BALANCE_FIX.md` - Line of credit zero balance handling
 - `LOAN_TYPE_FEATURE_SUMMARY.md` - Loan type feature summary
 - `LOANS_INTEGRATION_TEST_RESULTS.md` - Loans integration testing
+- `MORTGAGE_TRACKING.md` - Mortgage analytics with amortization and equity tracking
 - `ENHANCED_FIXED_EXPENSES.md` - Enhanced fixed expenses with category and payment type tracking
 - `GLOBAL_EXPENSE_FILTERING.md` - Global filtering by category and payment method across all time periods
 - `INCOME_SOURCE_CATEGORIES.md` - Income source categorization for better financial analysis
@@ -80,6 +82,8 @@ Feature specifications are located in `.kiro/specs/`:
 - `budget-alert-notifications/` - Proactive budget alert notifications
 - `sticky-summary-scrolling/` - Enhanced UI with sticky summary scrolling
 - `merchant-analytics/` - Merchant spending analytics and insights
+- `loan-payment-tracking/` - Payment-based loan tracking with balance calculation
+- `fixed-expense-loan-linkage/` - Link fixed expenses to loans with due date reminders
 
 ## Steering Rules
 

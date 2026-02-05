@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [5.5.0] - 2026-02-04
+
+### Added
+- **Activity Log Feature Specification**: Comprehensive event tracking framework for the application
+  - Centralized event storage with dedicated database table (id, event_type, entity_type, entity_id, user_action, metadata, timestamp)
+  - Expense event tracking (create, update, delete) with amount and category metadata
+  - Fixed expense event tracking (create, update, delete) with name and amount metadata
+  - Loan event tracking (create, update, delete) with loan name and type metadata
+  - Investment event tracking (create, update, delete) with name and account type metadata
+  - Insurance status change tracking for medical expenses (status transitions, amounts)
+  - Budget event tracking (create, update, delete) with category and limit metadata
+  - Payment method event tracking (create, update, deactivate) with method name and type
+  - Loan payment event tracking (create, update, delete) with loan name and payment amount
+  - Backup/restore operation tracking with filename metadata
+  - Recent Activity view in Settings → Misc tab showing last 50 events
+  - Configurable display limits (25, 50, 100, 200 events) with localStorage persistence
+  - Retention policy support (default 90 days / 1000 events)
+  - Fire-and-forget logging pattern for non-blocking event capture
+  - 17 correctness properties with property-based testing
+
+---
+
 ## [5.4.1] - 2026-02-03
 
 ### Fixed

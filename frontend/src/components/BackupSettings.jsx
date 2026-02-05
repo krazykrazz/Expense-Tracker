@@ -805,6 +805,18 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v5.5.0</div>
+                <div className="changelog-date">February 2026</div>
+                <ul className="changelog-items">
+                  <li>Activity Log feature specification - centralized event tracking framework</li>
+                  <li>Tracks expense, fixed expense, loan, investment, and budget modifications</li>
+                  <li>Insurance status change tracking for medical expenses</li>
+                  <li>Payment method and loan payment event logging</li>
+                  <li>Backup/restore operation tracking</li>
+                  <li>Recent Activity view in Settings → Misc tab</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v5.4.2</div>
                 <div className="changelog-date">February 2026</div>
                 <ul className="changelog-items">

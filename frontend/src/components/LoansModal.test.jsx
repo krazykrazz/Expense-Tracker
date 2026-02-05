@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import LoansModal from './LoansModal';
 import * as loanApi from '../services/loanApi';
+import * as fixedExpenseApi from '../services/fixedExpenseApi';
 
 // Mock the loan API
 vi.mock('../services/loanApi', () => ({
@@ -9,6 +10,11 @@ vi.mock('../services/loanApi', () => ({
   createLoan: vi.fn(),
   updateLoan: vi.fn(),
   deleteLoan: vi.fn()
+}));
+
+// Mock the fixed expense API
+vi.mock('../services/fixedExpenseApi', () => ({
+  getFixedExpensesByLoan: vi.fn()
 }));
 
 describe('LoansModal', () => {
@@ -63,6 +69,8 @@ describe('LoansModal', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     loanApi.getAllLoans.mockResolvedValue(mockLoans);
+    // Mock fixed expense API to return empty array by default
+    fixedExpenseApi.getFixedExpensesByLoan.mockResolvedValue([]);
   });
 
   describe('Rendering', () => {
@@ -148,7 +156,8 @@ describe('LoansModal', () => {
       
       fireEvent.click(screen.getByText('+ Add New Loan'));
       
-      expect(screen.getByText('Add New Loan')).toBeInTheDocument();
+      // The form heading is "Add New Loan" (without the +)
+      expect(screen.getByRole('heading', { name: 'Add New Loan' })).toBeInTheDocument();
       expect(screen.getByPlaceholderText('e.g., Car Loan, Mortgage')).toBeInTheDocument();
     });
 
@@ -339,6 +348,8 @@ describe('Fixed Interest Rate Field', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     loanApi.getAllLoans.mockResolvedValue(mockLoans);
+    // Mock fixed expense API to return empty array by default
+    fixedExpenseApi.getFixedExpensesByLoan.mockResolvedValue([]);
   });
 
   describe('Conditional Rendering', () => {

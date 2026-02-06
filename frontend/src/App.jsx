@@ -610,7 +610,7 @@ function AppContent({ paymentMethods, showPaymentMethods, setShowPaymentMethods,
 
       <footer className="App-footer">
         <span className="version">
-          v{versionInfo?.version || '5.6.1'}
+          v{versionInfo?.version || '5.6.2'}
           {versionInfo?.docker && (
             <span className="docker-tag"> (Docker: {versionInfo.docker.tag})</span>
           )}

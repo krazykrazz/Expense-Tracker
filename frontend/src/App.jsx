@@ -17,7 +17,6 @@ import FloatingAddButton from './components/FloatingAddButton';
 import EnvironmentBanner from './components/EnvironmentBanner';
 import { API_ENDPOINTS } from './config';
 import { CATEGORIES } from './utils/constants';
-import { getPeople } from './services/peopleApi';
 import { getPaymentMethods } from './services/paymentMethodApi';
 import { getMonthlyIncomeSources } from './services/incomeApi';
 import { getBudgets } from './services/budgetApi';
@@ -25,6 +24,7 @@ import { calculateAlerts } from './utils/budgetAlerts';
 import { FilterProvider, useFilterContext } from './contexts/FilterContext';
 import { ExpenseProvider, useExpenseContext } from './contexts/ExpenseContext';
 import { ModalProvider, useModalContext } from './contexts/ModalContext';
+import { SharedDataProvider, useSharedDataContext } from './contexts/SharedDataContext';
 import logo from './assets/tracker.png.png';
 
 function App() {
@@ -56,30 +56,11 @@ function App() {
     };
   }, [paymentMethodsRefreshTrigger]);
 
-  // Listen for openPaymentMethods event - needs to be at App level
-  // since PaymentMethodsModal refresh trigger is here
-  const [showPaymentMethods, setShowPaymentMethods] = useState(false);
-
-  useEffect(() => {
-    const handleOpenPaymentMethods = () => {
-      setShowPaymentMethods(true);
-    };
-
-    window.addEventListener('openPaymentMethods', handleOpenPaymentMethods);
-    
-    return () => {
-      window.removeEventListener('openPaymentMethods', handleOpenPaymentMethods);
-    };
-  }, []);
-
   return (
     <FilterProvider paymentMethods={paymentMethods}>
       <ExpenseProvider>
         <ModalProvider>
-          <AppContent
-            paymentMethods={paymentMethods}
-            showPaymentMethods={showPaymentMethods}
-            setShowPaymentMethods={setShowPaymentMethods}
+          <SharedDataBridge
             onPaymentMethodsUpdate={() => {
               setPaymentMethodsRefreshTrigger(prev => prev + 1);
             }}
@@ -90,7 +71,27 @@ function App() {
   );
 }
 
-function AppContent({ paymentMethods, showPaymentMethods, setShowPaymentMethods, onPaymentMethodsUpdate }) {
+/**
+ * SharedDataBridge - Bridge component that reads selectedYear/selectedMonth
+ * from FilterContext and passes them as props to SharedDataProvider.
+ * 
+ * This is needed because SharedDataProvider needs year/month for budget fetching,
+ * but those values come from FilterContext which is above SharedDataProvider
+ * in the component tree.
+ */
+function SharedDataBridge({ onPaymentMethodsUpdate }) {
+  const { selectedYear, selectedMonth } = useFilterContext();
+
+  return (
+    <SharedDataProvider selectedYear={selectedYear} selectedMonth={selectedMonth}>
+      <AppContent
+        onPaymentMethodsUpdate={onPaymentMethodsUpdate}
+      />
+    </SharedDataProvider>
+  );
+}
+
+function AppContent({ onPaymentMethodsUpdate }) {
   // Consume filter state from context (Requirements 4.2, 4.3, 4.4)
   const {
     searchText,
@@ -157,15 +158,20 @@ function AppContent({ paymentMethods, showPaymentMethods, setShowPaymentMethods,
     closeAllOverlays,
   } = useModalContext();
 
+  // Consume shared data from context (Phase 4 - SharedDataContext)
+  const {
+    paymentMethods,
+    people,
+    showPaymentMethods,
+    openPaymentMethods: contextOpenPaymentMethods,
+    closePaymentMethods,
+  } = useSharedDataContext();
+
   const [versionInfo, setVersionInfo] = useState(null);
   
   // Budget alerts state for Analytics Hub integration (Requirement 7.4)
   const [budgetAlerts, setBudgetAlerts] = useState([]);
   const [monthlyIncome, setMonthlyIncome] = useState(null);
-  
-  // People state management for medical expense tracking
-  const [people, setPeople] = useState([]);
-  const [peopleRefreshTrigger, setPeopleRefreshTrigger] = useState(0);
 
   // Fetch version info on mount
   useEffect(() => {
@@ -191,30 +197,6 @@ function AppContent({ paymentMethods, showPaymentMethods, setShowPaymentMethods,
       isMounted = false;
     };
   }, []);
-
-  // Fetch people data on mount and when peopleRefreshTrigger changes
-  useEffect(() => {
-    let isMounted = true;
-
-    const fetchPeopleData = async () => {
-      try {
-        const peopleData = await getPeople();
-        if (isMounted) {
-          setPeople(peopleData || []);
-        }
-      } catch (err) {
-        if (isMounted) {
-          console.error('Error fetching people:', err);
-        }
-      }
-    };
-
-    fetchPeopleData();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [peopleRefreshTrigger]);
 
   // Fetch monthly income and budget alerts for Analytics Hub integration (Requirement 7.4)
   useEffect(() => {
@@ -253,20 +235,6 @@ function AppContent({ paymentMethods, showPaymentMethods, setShowPaymentMethods,
       isMounted = false;
     };
   }, [selectedYear, selectedMonth, budgetAlertRefreshTrigger]);
-
-  // Listen for peopleUpdated event
-  useEffect(() => {
-    const handlePeopleUpdated = () => {
-      setPeopleRefreshTrigger(prev => prev + 1);
-      triggerRefresh();
-    };
-
-    window.addEventListener('peopleUpdated', handlePeopleUpdated);
-    
-    return () => {
-      window.removeEventListener('peopleUpdated', handlePeopleUpdated);
-    };
-  }, [triggerRefresh]);
 
   // Listen for navigateToExpenseList event (e.g., from BudgetReminderBanner)
   useEffect(() => {
@@ -321,7 +289,6 @@ function AppContent({ paymentMethods, showPaymentMethods, setShowPaymentMethods,
   }, [closeBudgetManagement, triggerRefresh]);
 
   const handlePeopleUpdated = useCallback(() => {
-    setPeopleRefreshTrigger(prev => prev + 1);
     triggerRefresh();
     window.dispatchEvent(new CustomEvent('peopleUpdated'));
   }, [triggerRefresh]);
@@ -392,7 +359,7 @@ function AppContent({ paymentMethods, showPaymentMethods, setShowPaymentMethods,
             onManageBudgets={openBudgetManagement}
             onViewBudgetHistory={openBudgetHistory}
             onOpenAnalyticsHub={openAnalyticsHub}
-            onOpenPaymentMethods={() => setShowPaymentMethods(true)}
+            onOpenPaymentMethods={contextOpenPaymentMethods}
           />
         </div>
         
@@ -574,7 +541,7 @@ function AppContent({ paymentMethods, showPaymentMethods, setShowPaymentMethods,
       {showPaymentMethods && (
         <PaymentMethodsModal
           isOpen={showPaymentMethods}
-          onClose={() => setShowPaymentMethods(false)}
+          onClose={closePaymentMethods}
           onUpdate={() => {
             triggerRefresh();
             onPaymentMethodsUpdate();

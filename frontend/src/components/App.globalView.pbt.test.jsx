@@ -22,23 +22,26 @@ describe('Return to Monthly View Property-Based Tests', () => {
   );
   const filterMethodArb = fc.constantFrom('', 'Visa', 'Mastercard', 'Cash', 'Debit');
   const filterYearArb = fc.constantFrom('', '2024', '2025', '2026');
+  const filterInsuranceArb = fc.constantFrom('', 'in_progress', 'paid', 'denied', 'not_claimed');
 
   /**
    * Simulates global filter state with clear functions
    * Mirrors the state management in App.jsx
    */
-  const createGlobalFilterState = (initialSearchText, initialFilterMethod, initialFilterYear) => {
+  const createGlobalFilterState = (initialSearchText, initialFilterMethod, initialFilterYear, initialFilterInsurance = '') => {
     let searchText = initialSearchText;
     let filterMethod = initialFilterMethod;
     let filterYear = initialFilterYear;
+    let filterInsurance = initialFilterInsurance;
 
     return {
-      getState: () => ({ searchText, filterMethod, filterYear }),
-      isGlobalView: () => searchText.trim().length > 0 || filterMethod !== '' || filterYear !== '',
+      getState: () => ({ searchText, filterMethod, filterYear, filterInsurance }),
+      isGlobalView: () => searchText.trim().length > 0 || filterMethod !== '' || filterYear !== '' || filterInsurance !== '',
       returnToMonthlyView: () => {
         searchText = '';
         filterMethod = '';
         filterYear = '';
+        filterInsurance = '';
       }
     };
   };
@@ -46,8 +49,8 @@ describe('Return to Monthly View Property-Based Tests', () => {
   /**
    * **Feature: expense-list-ux-improvements, Property 9: Return to Monthly View Action**
    * 
-   * For any global view state with active global filters (searchText, filterMethod, filterYear),
-   * clicking "Return to Monthly View" SHALL clear all three global filter values,
+   * For any global view state with active global filters (searchText, filterMethod, filterYear, filterInsurance),
+   * clicking "Return to Monthly View" SHALL clear all four global filter values,
    * resulting in isGlobalView becoming false.
    * 
    * **Validates: Requirements 5.3**
@@ -58,8 +61,9 @@ describe('Return to Monthly View Property-Based Tests', () => {
         searchTextArb,
         filterMethodArb,
         filterYearArb,
-        (searchText, filterMethod, filterYear) => {
-          const state = createGlobalFilterState(searchText, filterMethod, filterYear);
+        filterInsuranceArb,
+        (searchText, filterMethod, filterYear, filterInsurance) => {
+          const state = createGlobalFilterState(searchText, filterMethod, filterYear, filterInsurance);
           
           // Execute return to monthly view action
           state.returnToMonthlyView();
@@ -69,6 +73,7 @@ describe('Return to Monthly View Property-Based Tests', () => {
           expect(afterState.searchText).toBe('');
           expect(afterState.filterMethod).toBe('');
           expect(afterState.filterYear).toBe('');
+          expect(afterState.filterInsurance).toBe('');
           
           return true;
         }
@@ -86,8 +91,9 @@ describe('Return to Monthly View Property-Based Tests', () => {
         searchTextArb,
         filterMethodArb,
         filterYearArb,
-        (searchText, filterMethod, filterYear) => {
-          const state = createGlobalFilterState(searchText, filterMethod, filterYear);
+        filterInsuranceArb,
+        (searchText, filterMethod, filterYear, filterInsurance) => {
+          const state = createGlobalFilterState(searchText, filterMethod, filterYear, filterInsurance);
           
           // Execute return to monthly view action
           state.returnToMonthlyView();
@@ -111,8 +117,9 @@ describe('Return to Monthly View Property-Based Tests', () => {
         searchTextArb,
         filterMethodArb,
         filterYearArb,
-        (searchText, filterMethod, filterYear) => {
-          const state = createGlobalFilterState(searchText, filterMethod, filterYear);
+        filterInsuranceArb,
+        (searchText, filterMethod, filterYear, filterInsurance) => {
+          const state = createGlobalFilterState(searchText, filterMethod, filterYear, filterInsurance);
           
           // Execute return to monthly view action twice
           state.returnToMonthlyView();
@@ -125,6 +132,7 @@ describe('Return to Monthly View Property-Based Tests', () => {
           expect(afterSecond.searchText).toBe(afterFirst.searchText);
           expect(afterSecond.filterMethod).toBe(afterFirst.filterMethod);
           expect(afterSecond.filterYear).toBe(afterFirst.filterYear);
+          expect(afterSecond.filterInsurance).toBe(afterFirst.filterInsurance);
           expect(state.isGlobalView()).toBe(false);
           
           return true;
@@ -143,13 +151,15 @@ describe('Return to Monthly View Property-Based Tests', () => {
         searchTextArb,
         filterMethodArb,
         filterYearArb,
-        (searchText, filterMethod, filterYear) => {
-          const state = createGlobalFilterState(searchText, filterMethod, filterYear);
+        filterInsuranceArb,
+        (searchText, filterMethod, filterYear, filterInsurance) => {
+          const state = createGlobalFilterState(searchText, filterMethod, filterYear, filterInsurance);
           
           const hasActiveGlobalFilter = 
             searchText.trim().length > 0 || 
             filterMethod !== '' || 
-            filterYear !== '';
+            filterYear !== '' ||
+            filterInsurance !== '';
           
           expect(state.isGlobalView()).toBe(hasActiveGlobalFilter);
           
@@ -174,12 +184,13 @@ describe('Global View Trigger Identification Property-Based Tests', () => {
   );
   const filterMethodArb = fc.constantFrom('', 'Visa', 'Mastercard', 'Cash', 'Debit');
   const filterYearArb = fc.constantFrom('', '2024', '2025', '2026');
+  const filterInsuranceArb = fc.constantFrom('', 'in_progress', 'paid', 'denied', 'not_claimed');
 
   /**
    * Helper function to identify global view triggers
    * Mirrors the logic in App.jsx (globalViewTriggers useMemo)
    */
-  const identifyGlobalViewTriggers = (searchText, filterMethod, filterYear) => {
+  const identifyGlobalViewTriggers = (searchText, filterMethod, filterYear, filterInsurance = '') => {
     const triggers = [];
     if (searchText.trim().length > 0) {
       triggers.push('Search');
@@ -190,6 +201,9 @@ describe('Global View Trigger Identification Property-Based Tests', () => {
     if (filterYear) {
       triggers.push('Year');
     }
+    if (filterInsurance) {
+      triggers.push('Insurance Status');
+    }
     return triggers;
   };
 
@@ -198,7 +212,7 @@ describe('Global View Trigger Identification Property-Based Tests', () => {
    * 
    * For any global view state, the displayed trigger list SHALL contain exactly
    * the names of the non-empty global filters (searchText → "Search",
-   * filterMethod → "Payment Method", filterYear → "Year").
+   * filterMethod → "Payment Method", filterYear → "Year", filterInsurance → "Insurance Status").
    * 
    * **Validates: Requirements 5.4**
    */
@@ -208,8 +222,9 @@ describe('Global View Trigger Identification Property-Based Tests', () => {
         searchTextArb,
         filterMethodArb,
         filterYearArb,
-        (searchText, filterMethod, filterYear) => {
-          const triggers = identifyGlobalViewTriggers(searchText, filterMethod, filterYear);
+        filterInsuranceArb,
+        (searchText, filterMethod, filterYear, filterInsurance) => {
+          const triggers = identifyGlobalViewTriggers(searchText, filterMethod, filterYear, filterInsurance);
           
           // Check that each expected trigger is present
           if (searchText.trim().length > 0) {
@@ -230,6 +245,12 @@ describe('Global View Trigger Identification Property-Based Tests', () => {
             expect(triggers).not.toContain('Year');
           }
           
+          if (filterInsurance) {
+            expect(triggers).toContain('Insurance Status');
+          } else {
+            expect(triggers).not.toContain('Insurance Status');
+          }
+          
           return true;
         }
       ),
@@ -246,14 +267,16 @@ describe('Global View Trigger Identification Property-Based Tests', () => {
         searchTextArb,
         filterMethodArb,
         filterYearArb,
-        (searchText, filterMethod, filterYear) => {
-          const triggers = identifyGlobalViewTriggers(searchText, filterMethod, filterYear);
+        filterInsuranceArb,
+        (searchText, filterMethod, filterYear, filterInsurance) => {
+          const triggers = identifyGlobalViewTriggers(searchText, filterMethod, filterYear, filterInsurance);
           
           // Count expected triggers
           let expectedCount = 0;
           if (searchText.trim().length > 0) expectedCount++;
           if (filterMethod) expectedCount++;
           if (filterYear) expectedCount++;
+          if (filterInsurance) expectedCount++;
           
           expect(triggers.length).toBe(expectedCount);
           
@@ -268,15 +291,16 @@ describe('Global View Trigger Identification Property-Based Tests', () => {
    * Property 10: Triggers are always from the valid set
    */
   it('Property 10: All triggers are from the valid set', async () => {
-    const validTriggers = ['Search', 'Payment Method', 'Year'];
+    const validTriggers = ['Search', 'Payment Method', 'Year', 'Insurance Status'];
 
     await fc.assert(
       fc.property(
         searchTextArb,
         filterMethodArb,
         filterYearArb,
-        (searchText, filterMethod, filterYear) => {
-          const triggers = identifyGlobalViewTriggers(searchText, filterMethod, filterYear);
+        filterInsuranceArb,
+        (searchText, filterMethod, filterYear, filterInsurance) => {
+          const triggers = identifyGlobalViewTriggers(searchText, filterMethod, filterYear, filterInsurance);
           
           // All triggers should be from the valid set
           triggers.forEach(trigger => {
@@ -299,8 +323,9 @@ describe('Global View Trigger Identification Property-Based Tests', () => {
         searchTextArb,
         filterMethodArb,
         filterYearArb,
-        (searchText, filterMethod, filterYear) => {
-          const triggers = identifyGlobalViewTriggers(searchText, filterMethod, filterYear);
+        filterInsuranceArb,
+        (searchText, filterMethod, filterYear, filterInsurance) => {
+          const triggers = identifyGlobalViewTriggers(searchText, filterMethod, filterYear, filterInsurance);
           
           // Check for uniqueness
           const uniqueTriggers = new Set(triggers);
@@ -317,26 +342,28 @@ describe('Global View Trigger Identification Property-Based Tests', () => {
    * Property 10: Empty state produces empty trigger list
    */
   it('Property 10: Empty filters produce empty trigger list', async () => {
-    const triggers = identifyGlobalViewTriggers('', '', '');
+    const triggers = identifyGlobalViewTriggers('', '', '', '');
     expect(triggers).toEqual([]);
   });
 
   /**
    * Property 10: All filters active produces all triggers
    */
-  it('Property 10: All filters active produces all three triggers', async () => {
+  it('Property 10: All filters active produces all four triggers', async () => {
     await fc.assert(
       fc.property(
         fc.string({ minLength: 1, maxLength: 50 }).filter(s => s.trim().length > 0),
         fc.constantFrom('Visa', 'Mastercard', 'Cash', 'Debit'),
         fc.constantFrom('2024', '2025', '2026'),
-        (searchText, filterMethod, filterYear) => {
-          const triggers = identifyGlobalViewTriggers(searchText, filterMethod, filterYear);
+        fc.constantFrom('in_progress', 'paid', 'denied', 'not_claimed'),
+        (searchText, filterMethod, filterYear, filterInsurance) => {
+          const triggers = identifyGlobalViewTriggers(searchText, filterMethod, filterYear, filterInsurance);
           
-          expect(triggers.length).toBe(3);
+          expect(triggers.length).toBe(4);
           expect(triggers).toContain('Search');
           expect(triggers).toContain('Payment Method');
           expect(triggers).toContain('Year');
+          expect(triggers).toContain('Insurance Status');
           
           return true;
         }

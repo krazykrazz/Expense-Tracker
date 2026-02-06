@@ -1,0 +1,186 @@
+/**
+ * NotificationsSection Styles
+ * Wrapper component for all reminder banners with collapsible functionality
+ * _Requirements: 7.1_
+ */
+
+.notifications-section {
+  background: var(--bg-card, #ffffff);
+  border-radius: var(--radius-lg, 12px);
+  margin-bottom: var(--section-gap, 16px);
+  box-shadow: var(--shadow-sm, 0 1px 3px rgba(0, 0, 0, 0.1));
+  border: 1px solid var(--border-muted, #e5e7eb);
+  overflow: hidden;
+  transition: box-shadow 0.2s ease;
+}
+
+.notifications-section:hover {
+  box-shadow: var(--shadow-md, 0 4px 6px rgba(0, 0, 0, 0.1));
+}
+
+/* Header with icon, title, badge, and toggle */
+.notifications-header {
+  display: flex;
+  align-items: center;
+  gap: var(--element-gap, 8px);
+  padding: var(--spacing-3, 12px) var(--spacing-4, 16px);
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-bottom: 1px solid var(--border-muted, #e5e7eb);
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.2s ease;
+}
+
+.notifications-header:hover {
+  background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
+}
+
+.notifications-header:focus {
+  outline: 2px solid var(--color-primary, #4a90d9);
+  outline-offset: -2px;
+}
+
+.notifications-header:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.notifications-header:focus-visible {
+  outline: 2px solid var(--color-primary, #4a90d9);
+  outline-offset: -2px;
+}
+
+/* Bell icon */
+.notifications-icon {
+  font-size: 1.25rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+/* Title */
+.notifications-title {
+  font-size: var(--text-base, 1rem);
+  font-weight: var(--font-semibold, 600);
+  color: var(--text-primary, #1f2937);
+  flex: 1;
+}
+
+/* Count badge */
+.notifications-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 8px;
+  background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+  color: #ffffff;
+  font-size: var(--text-xs, 0.75rem);
+  font-weight: var(--font-bold, 700);
+  border-radius: 12px;
+  box-shadow: 0 2px 4px rgba(220, 53, 69, 0.3);
+}
+
+/* Toggle arrow */
+.notifications-toggle {
+  font-size: var(--text-sm, 0.875rem);
+  color: var(--text-tertiary, #6b7280);
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.notifications-toggle.expanded {
+  transform: rotate(0deg);
+}
+
+.notifications-toggle.collapsed {
+  transform: rotate(0deg);
+}
+
+/* Content area */
+.notifications-content {
+  padding: var(--spacing-3, 12px);
+  background: var(--bg-subtle, #f9fafb);
+  animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Ensure child banners have proper spacing */
+.notifications-content > *:last-child {
+  margin-bottom: 0;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .notifications-section {
+    background: var(--bg-card-dark, #1f2937);
+    border-color: var(--border-dark, #374151);
+  }
+
+  .notifications-header {
+    background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
+    border-bottom-color: var(--border-dark, #374151);
+  }
+
+  .notifications-header:hover {
+    background: linear-gradient(135deg, #4b5563 0%, #374151 100%);
+  }
+
+  .notifications-title {
+    color: var(--text-primary-dark, #f9fafb);
+  }
+
+  .notifications-toggle {
+    color: var(--text-tertiary-dark, #9ca3af);
+  }
+
+  .notifications-content {
+    background: var(--bg-subtle-dark, #111827);
+  }
+}
+
+/* Reduced motion support for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .notifications-section,
+  .notifications-header,
+  .notifications-toggle,
+  .notifications-content {
+    transition: none;
+    animation: none;
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .notifications-header {
+    padding: var(--spacing-2, 8px) var(--spacing-3, 12px);
+  }
+
+  .notifications-icon {
+    font-size: 1.1rem;
+  }
+
+  .notifications-title {
+    font-size: var(--text-sm, 0.875rem);
+  }
+
+  .notifications-badge {
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    font-size: 0.7rem;
+  }
+
+  .notifications-content {
+    padding: var(--spacing-2, 8px);
+  }
+}

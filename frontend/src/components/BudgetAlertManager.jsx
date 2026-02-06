@@ -1,39 +1,33 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { getBudgets } from '../services/budgetApi';
 import { calculateAlerts } from '../utils/budgetAlerts';
-import BudgetAlertBanner from './BudgetAlertBanner';
-import BudgetAlertErrorBoundary from './BudgetAlertErrorBoundary';
+import BudgetReminderBanner from './BudgetReminderBanner';
 import { createLogger } from '../utils/logger';
-import './BudgetAlertErrorBoundary.css';
 
 const logger = createLogger('BudgetAlertManager');
 
 // Performance constants
 const DEBOUNCE_DELAY = 300; // 300ms debounce for rapid updates (Requirement 7.2)
-const MAX_VISIBLE_ALERTS = 5; // Maximum alerts to display (Requirement 7.5)
 
 /**
  * BudgetAlertManager Component
  * Manages all budget alerts, dismissal state, and real-time updates
+ * Uses BudgetReminderBanner for consistent reminder banner pattern
  * 
- * Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 3.2, 7.1, 7.4, 8.1, 8.2
- * Performance: Debouncing, caching, and alert limits (Requirements 7.1, 7.2, 7.5)
+ * Requirements: 6.1, 6.2, 6.4
+ * Performance: Debouncing and caching (Requirements 7.1, 7.2)
  */
 const BudgetAlertManager = ({ 
   year, 
   month, 
   refreshTrigger, 
-  onManageBudgets,
-  onViewExpenses 
+  onClick,  // Single onClick handler for category navigation - Requirements: 6.4
+  onVisibilityChange  // Callback to notify parent of actual visibility state
 }) => {
   const [alerts, setAlerts] = useState([]);
-  const [dismissedAlerts, setDismissedAlerts] = useState(new Set());
+  const [dismissed, setDismissed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  
-  // Track alert severity levels for dismissal override logic
-  // Requirements: 3.4 - Handle dismissal override when budget conditions worsen
-  const alertSeverityRef = useRef(new Map());
   
   // Track previous year/month to detect actual changes vs initial mount
   const prevYearMonthRef = useRef({ year: null, month: null });
@@ -106,83 +100,50 @@ const BudgetAlertManager = ({
 
   /**
    * Load dismissal state from sessionStorage with graceful degradation
-   * Requirements: 3.2, 3.3, 7.3 - Session-based dismissal storage with fallback
+   * Requirements: 6.2 - Session-based dismissal storage with fallback
    */
   const loadDismissalState = useCallback(() => {
     try {
       const storageKey = `budget-alerts-dismissed-${year}-${month}`;
       const stored = sessionStorage.getItem(storageKey);
-      if (stored) {
-        const dismissedIds = JSON.parse(stored);
-        if (Array.isArray(dismissedIds)) {
-          return new Set(dismissedIds);
-        } else {
-          logger.warn('Invalid dismissal state format, using empty set');
-        }
+      if (stored === 'true') {
+        return true;
       }
     } catch (error) {
       logger.warn('Failed to load dismissal state from sessionStorage:', error);
     }
-    return new Set();
+    return false;
   }, [year, month]);
 
   /**
    * Save dismissal state to sessionStorage with graceful degradation
-   * Requirements: 3.2, 3.3, 7.3 - Session-based dismissal storage with fallback
+   * Requirements: 6.2 - Session-based dismissal storage with fallback
    */
-  const saveDismissalState = useCallback((dismissedSet) => {
+  const saveDismissalState = useCallback((isDismissed) => {
     try {
       const storageKey = `budget-alerts-dismissed-${year}-${month}`;
-      const dismissedArray = Array.from(dismissedSet);
-      sessionStorage.setItem(storageKey, JSON.stringify(dismissedArray));
+      if (isDismissed) {
+        sessionStorage.setItem(storageKey, 'true');
+      } else {
+        sessionStorage.removeItem(storageKey);
+      }
     } catch (error) {
-      logger.warn('Failed to save dismissal state to sessionStorage, continuing with memory-only storage:', error);
-      // Graceful degradation: dismissal still works in memory, just won't persist across page refreshes
+      logger.warn('Failed to save dismissal state to sessionStorage:', error);
     }
   }, [year, month]);
 
   /**
-   * Clear dismissal state when navigating away from budget pages
-   * Requirements: 3.4 - Clear dismissals when navigating away from budget pages
+   * Clear dismissal state when navigating to a different month
    */
   const clearDismissalState = useCallback(() => {
     try {
       const storageKey = `budget-alerts-dismissed-${year}-${month}`;
       sessionStorage.removeItem(storageKey);
     } catch (error) {
-      logger.warn('Failed to clear dismissal state from sessionStorage, continuing with memory-only clear:', error);
+      logger.warn('Failed to clear dismissal state from sessionStorage:', error);
     }
-    setDismissedAlerts(new Set());
-    alertSeverityRef.current.clear();
+    setDismissed(false);
   }, [year, month]);
-
-  /**
-   * Check if alert should override dismissal due to worsened conditions
-   * Requirements: 3.4 - Dismissal override when budget conditions worsen
-   */
-  const shouldOverrideDismissal = useCallback((alert) => {
-    const previousSeverity = alertSeverityRef.current.get(alert.category);
-    if (!previousSeverity) {
-      return false; // No previous severity recorded
-    }
-
-    const severityLevels = { warning: 1, danger: 2, critical: 3 };
-    const currentLevel = severityLevels[alert.severity] || 0;
-    const previousLevel = severityLevels[previousSeverity] || 0;
-
-    // Override dismissal if severity has worsened
-    return currentLevel > previousLevel;
-  }, []);
-
-  /**
-   * Update alert severity tracking
-   * Requirements: 3.4 - Track severity changes for dismissal override
-   */
-  const updateAlertSeverityTracking = useCallback((newAlerts) => {
-    newAlerts.forEach(alert => {
-      alertSeverityRef.current.set(alert.category, alert.severity);
-    });
-  }, []);
 
   /**
    * Cache key for budget data to avoid unnecessary recalculations
@@ -216,12 +177,10 @@ const BudgetAlertManager = ({
       try {
         const transformedBudgets = transformBudgetData(budgetCacheRef.current.data);
         const cachedAlerts = calculateAlerts(transformedBudgets);
-        updateAlertSeverityTracking(cachedAlerts);
         setAlerts(cachedAlerts);
         return;
       } catch (err) {
         logger.warn('Error processing cached budget data, fetching fresh data:', err);
-        // Clear invalid cache and continue to fetch fresh data
         budgetCacheRef.current = { key: null, data: null };
       }
     }
@@ -234,11 +193,9 @@ const BudgetAlertManager = ({
       const budgets = response?.budgets || [];
       
       // Transform flat budget data to nested structure expected by calculateAlerts
-      // Requirements: 7.1, 8.1 - Handle budget data transformation gracefully
       const transformedBudgets = transformBudgetData(budgets);
       
       if (transformedBudgets.length === 0 && budgets.length > 0) {
-        // All budget data was invalid
         logger.warn('All budget data was invalid, no alerts will be displayed');
         setError('Budget data format is invalid');
         setAlerts([]);
@@ -246,7 +203,6 @@ const BudgetAlertManager = ({
       }
       
       if (transformedBudgets.length < budgets.length) {
-        // Some budget data was invalid but we have valid entries
         const invalidCount = budgets.length - transformedBudgets.length;
         logger.warn(`${invalidCount} invalid budget entries were skipped`);
       }
@@ -258,10 +214,6 @@ const BudgetAlertManager = ({
       };
       
       const newAlerts = calculateAlerts(transformedBudgets);
-      
-      // Update severity tracking for dismissal override logic
-      updateAlertSeverityTracking(newAlerts);
-      
       setAlerts(newAlerts);
     } catch (err) {
       const errorMessage = err.message || 'Failed to load budget alerts';
@@ -271,20 +223,20 @@ const BudgetAlertManager = ({
     } finally {
       setLoading(false);
     }
-  }, [getCacheKey, updateAlertSeverityTracking, transformBudgetData]);
+  }, [getCacheKey, transformBudgetData]);
 
   /**
    * Load dismissal state from sessionStorage on mount
-   * Requirements: 3.2, 3.3 - Session persistence
+   * Requirements: 6.2 - Session persistence
    */
   useEffect(() => {
-    const loadedDismissals = loadDismissalState();
-    setDismissedAlerts(loadedDismissals);
+    const loadedDismissed = loadDismissalState();
+    setDismissed(loadedDismissed);
   }, [loadDismissalState]);
 
   /**
    * Refresh alerts when dependencies change (with debouncing)
-   * Requirements: 5.1, 5.2, 5.3, 5.4, 8.2, 7.2 - Real-time updates with performance optimization
+   * Requirements: 7.2 - Real-time updates with performance optimization
    */
   useEffect(() => {
     debouncedCalculateAlerts(year, month, refreshTrigger);
@@ -299,7 +251,6 @@ const BudgetAlertManager = ({
 
   /**
    * Clear dismissal state when year or month changes (not on initial mount)
-   * Requirements: 3.2, 3.3
    */
   useEffect(() => {
     const prevYear = prevYearMonthRef.current.year;
@@ -317,193 +268,45 @@ const BudgetAlertManager = ({
   }, [year, month, clearDismissalState]);
 
   /**
-   * Dismiss an alert (session-based storage with independent handling)
-   * Requirements: 3.2, 3.3, 3.4, 3.5, 7.3
+   * Dismiss all alerts (session-based storage)
+   * Requirements: 6.2
    */
-  const dismissAlert = useCallback((alertId) => {
-    setDismissedAlerts(prev => {
-      const newDismissed = new Set([...prev, alertId]);
-      saveDismissalState(newDismissed);
-      return newDismissed;
-    });
+  const handleDismiss = useCallback(() => {
+    setDismissed(true);
+    saveDismissalState(true);
   }, [saveDismissalState]);
 
   /**
-   * Refresh alerts manually
-   * Requirements: 8.2
+   * Handle click on banner - navigate to category
+   * Requirements: 6.4 - Single click navigation
    */
-  const refreshAlerts = useCallback(() => {
-    // Clear cache to force refresh
-    budgetCacheRef.current = { key: null, data: null };
-    debouncedCalculateAlerts(year, month, refreshTrigger);
-  }, [debouncedCalculateAlerts, year, month, refreshTrigger]);
-
-  /**
-   * Handle manage budgets action with category context
-   * Requirements: 4.1, 4.2 - Pass affected category context to budget modal
-   */
-  const handleManageBudgets = useCallback((category) => {
-    if (onManageBudgets) {
-      onManageBudgets(category);
+  const handleClick = useCallback((category) => {
+    if (onClick) {
+      onClick(category);
     }
-  }, [onManageBudgets]);
+  }, [onClick]);
 
-  /**
-   * Handle view expenses action - filters expense list by category
-   */
-  const handleViewExpenses = useCallback((category) => {
-    if (onViewExpenses) {
-      onViewExpenses(category);
-    }
-  }, [onViewExpenses]);
+  // Determine actual visibility
+  const isVisible = !loading && !dismissed && !error && alerts.length > 0;
 
-  // Filter out dismissed alerts with dismissal override logic
-  // Requirements: 3.4, 3.5 - Handle multiple alert dismissal independently with override
-  const visibleAlerts = alerts.filter(alert => {
-    const isDismissed = dismissedAlerts.has(alert.id);
-    
-    // If not dismissed, always show
-    if (!isDismissed) {
-      return true;
-    }
-    
-    // If dismissed, check if we should override due to worsened conditions
-    return shouldOverrideDismissal(alert);
-  });
-
-  // Apply alert display limit (Requirements: 7.5 - Maximum 5 alerts with "and X more" indicator)
-  const { displayedAlerts, remainingCount } = useMemo(() => {
-    if (visibleAlerts.length <= MAX_VISIBLE_ALERTS) {
-      return { displayedAlerts: visibleAlerts, remainingCount: 0 };
-    }
-    
-    return {
-      displayedAlerts: visibleAlerts.slice(0, MAX_VISIBLE_ALERTS),
-      remainingCount: visibleAlerts.length - MAX_VISIBLE_ALERTS
-    };
-  }, [visibleAlerts]);
-
-  /**
-   * Expose clearDismissalState for external use
-   * Requirements: 3.4 - Clear dismissals when navigating away from budget pages
-   */
+  // Notify parent of visibility changes
   useEffect(() => {
-    // Attach clear function to window for external access
-    window.budgetAlertManager = {
-      clearDismissalState
-    };
-    
-    return () => {
-      // Cleanup on unmount
-      if (window.budgetAlertManager) {
-        delete window.budgetAlertManager;
-      }
-    };
-  }, [clearDismissalState]);
-
-  // Show error state if there's an error (prioritize error over loading/empty states)
-  // For API errors (network issues, timeouts), return null to gracefully degrade
-  if (error) {
-    // Check if it's a network/API error that should fail silently
-    if (error.includes('Network') || error.includes('timeout') || error.includes('Failed to load') || error.includes('API Error')) {
-      return null;
+    if (onVisibilityChange) {
+      onVisibilityChange(isVisible);
     }
-    
-    // For "Network error" specifically, show error UI (this is for testing)
-    if (error === 'Network error') {
-      return (
-        <div className="budget-alert-error-fallback">
-          <div className="budget-alert-error-content">
-            <span className="budget-alert-error-icon" aria-hidden="true">⚠</span>
-            <div className="budget-alert-error-message">
-              <strong>Budget alerts unavailable</strong>
-              <p>{error}</p>
-            </div>
-            <button
-              type="button"
-              className="budget-alert-error-retry"
-              onClick={() => {
-                setError(null);
-                budgetCacheRef.current = { key: null, data: null };
-                debouncedCalculateAlerts(year, month, refreshTrigger);
-              }}
-              aria-label="Retry loading budget alerts"
-            >
-              Retry
-            </button>
-          </div>
-        </div>
-      );
-    }
-    
-    // For other errors, show error UI
-    return (
-      <div className="budget-alert-error-fallback">
-        <div className="budget-alert-error-content">
-          <span className="budget-alert-error-icon" aria-hidden="true">⚠</span>
-          <div className="budget-alert-error-message">
-            <strong>Budget alerts unavailable</strong>
-            <p>{error}</p>
-          </div>
-          <button
-            type="button"
-            className="budget-alert-error-retry"
-            onClick={() => {
-              setError(null);
-              budgetCacheRef.current = { key: null, data: null };
-              debouncedCalculateAlerts(year, month, refreshTrigger);
-            }}
-            aria-label="Retry loading budget alerts"
-          >
-            Retry
-          </button>
-        </div>
-      </div>
-    );
-  }
+  }, [isVisible, onVisibilityChange]);
 
-  // Don't render anything if loading or no visible alerts
-  if (loading || displayedAlerts.length === 0) {
+  // Don't render anything if not visible
+  if (!isVisible) {
     return null;
   }
 
   return (
-    <BudgetAlertErrorBoundary 
-      onRetry={() => {
-        budgetCacheRef.current = { key: null, data: null };
-        debouncedCalculateAlerts(year, month, refreshTrigger);
-      }}
-    >
-      <div className="budget-alert-manager">
-        {displayedAlerts.map(alert => (
-          <BudgetAlertBanner
-            key={alert.id}
-            alert={alert}
-            onDismiss={dismissAlert}
-            onManageBudgets={handleManageBudgets}
-            onViewExpenses={handleViewExpenses}
-          />
-        ))}
-        
-        {remainingCount > 0 && (
-          <div className="budget-alert-more-indicator">
-            <div className="budget-alert-more-content">
-              <span className="budget-alert-more-text">
-                and {remainingCount} more budget alert{remainingCount !== 1 ? 's' : ''}
-              </span>
-              <button
-                type="button"
-                className="budget-alert-more-btn"
-                onClick={() => handleManageBudgets(null)}
-                aria-label="Manage all budgets"
-              >
-                Manage All
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-    </BudgetAlertErrorBoundary>
+    <BudgetReminderBanner
+      alerts={alerts}
+      onDismiss={handleDismiss}
+      onClick={handleClick}
+    />
   );
 };
 

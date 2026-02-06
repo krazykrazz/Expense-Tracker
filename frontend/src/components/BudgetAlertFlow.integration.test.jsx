@@ -43,8 +43,7 @@ describe('Budget Alert Flow - Complete Integration Test', () => {
 
   it('should show complete alert flow from warning to critical with dismissal and persistence', async () => {
     // Requirements: 1.1, 1.2, 1.3, 3.2, 3.3
-    const mockOnManageBudgets = vi.fn();
-    const mockOnViewExpenses = vi.fn();
+    const mockOnClick = vi.fn();
 
     // Step 1: Create budget with $500 limit, start with no expenses (0%)
     let currentSpent = 0;
@@ -61,8 +60,7 @@ describe('Budget Alert Flow - Complete Integration Test', () => {
         year={2025}
         month={11}
         refreshTrigger={0}
-        onManageBudgets={mockOnManageBudgets}
-        onViewExpenses={mockOnViewExpenses}
+        onClick={mockOnClick}
       />
     );
 
@@ -79,20 +77,18 @@ describe('Budget Alert Flow - Complete Integration Test', () => {
         year={2025}
         month={11}
         refreshTrigger={1}
-        onManageBudgets={mockOnManageBudgets}
-        onViewExpenses={mockOnViewExpenses}
+        onClick={mockOnClick}
       />
     );
 
     // Wait for warning alert to appear
     await waitFor(() => {
       expect(screen.getByText(/Food budget is 80\.0% used/)).toBeInTheDocument();
-      expect(screen.getByText('⚡')).toBeInTheDocument(); // Warning icon
     });
 
     // Verify warning alert styling and content
-    const warningAlert = screen.getByRole('alert');
-    expect(warningAlert).toHaveClass('budget-alert-warning');
+    const warningAlert = screen.getByTestId('budget-reminder-banner');
+    expect(warningAlert).toHaveClass('warning');
     expect(screen.getByText(/\$100\.00 remaining/)).toBeInTheDocument();
 
     // Step 3: Add more expenses to reach 90% ($450 spent) - Danger alert should appear
@@ -103,21 +99,19 @@ describe('Budget Alert Flow - Complete Integration Test', () => {
         year={2025}
         month={11}
         refreshTrigger={2}
-        onManageBudgets={mockOnManageBudgets}
-        onViewExpenses={mockOnViewExpenses}
+        onClick={mockOnClick}
       />
     );
 
     // Wait for danger alert to appear
     await waitFor(() => {
       expect(screen.getByText(/Food budget is 90\.0% used/)).toBeInTheDocument();
-      expect(screen.getByText('!')).toBeInTheDocument(); // Danger icon
     });
 
     // Verify danger alert styling and content
-    const dangerAlert = screen.getByRole('alert');
-    expect(dangerAlert).toHaveClass('budget-alert-danger');
-    expect(screen.getByText(/Only \$50\.00 left!/)).toBeInTheDocument();
+    const dangerAlert = screen.getByTestId('budget-reminder-banner');
+    expect(dangerAlert).toHaveClass('danger');
+    expect(screen.getByText(/\$50\.00 remaining/)).toBeInTheDocument();
 
     // Step 4: Add more expenses to exceed 100% ($550 spent) - Critical alert should appear
     currentSpent = 550; // 110% of $500
@@ -127,24 +121,22 @@ describe('Budget Alert Flow - Complete Integration Test', () => {
         year={2025}
         month={11}
         refreshTrigger={3}
-        onManageBudgets={mockOnManageBudgets}
-        onViewExpenses={mockOnViewExpenses}
+        onClick={mockOnClick}
       />
     );
 
     // Wait for critical alert to appear
     await waitFor(() => {
       expect(screen.getByText(/Food budget exceeded!/)).toBeInTheDocument();
-      expect(screen.getByText('⚠')).toBeInTheDocument(); // Critical icon
     });
 
     // Verify critical alert styling and content
-    const criticalAlert = screen.getByRole('alert');
-    expect(criticalAlert).toHaveClass('budget-alert-critical');
+    const criticalAlert = screen.getByTestId('budget-reminder-banner');
+    expect(criticalAlert).toHaveClass('critical');
     expect(screen.getByText(/\$50\.00 over budget/)).toBeInTheDocument();
 
     // Step 5: Test alert dismissal
-    const dismissButton = screen.getByLabelText(/Dismiss.*budget alert/);
+    const dismissButton = screen.getByLabelText(/Dismiss reminder/);
     fireEvent.click(dismissButton);
 
     // Alert should disappear after dismissal
@@ -155,7 +147,7 @@ describe('Budget Alert Flow - Complete Integration Test', () => {
     // Verify dismissal was stored in sessionStorage
     expect(sessionStorage.setItem).toHaveBeenCalledWith(
       'budget-alerts-dismissed-2025-11',
-      JSON.stringify(['budget-alert-1'])
+      'true'
     );
 
     // Step 6: Test session persistence - alert should remain dismissed during same session
@@ -164,8 +156,7 @@ describe('Budget Alert Flow - Complete Integration Test', () => {
         year={2025}
         month={11}
         refreshTrigger={4}
-        onManageBudgets={mockOnManageBudgets}
-        onViewExpenses={mockOnViewExpenses}
+        onClick={mockOnClick}
       />
     );
 
@@ -184,8 +175,7 @@ describe('Budget Alert Flow - Complete Integration Test', () => {
         year={2025}
         month={12}
         refreshTrigger={5}
-        onManageBudgets={mockOnManageBudgets}
-        onViewExpenses={mockOnViewExpenses}
+        onClick={mockOnClick}
       />
     );
 
@@ -198,8 +188,7 @@ describe('Budget Alert Flow - Complete Integration Test', () => {
         year={2025}
         month={11}
         refreshTrigger={6}
-        onManageBudgets={mockOnManageBudgets}
-        onViewExpenses={mockOnViewExpenses}
+        onClick={mockOnClick}
       />
     );
 
@@ -209,26 +198,22 @@ describe('Budget Alert Flow - Complete Integration Test', () => {
     // Alert should reappear after session reset if condition still exists
     await waitFor(() => {
       expect(screen.getByText(/Food budget exceeded!/)).toBeInTheDocument();
-      expect(screen.getByText('⚠')).toBeInTheDocument();
+      const banner = screen.getByTestId('budget-reminder-banner');
+      expect(banner).toHaveClass('critical');
     }, { timeout: 3000 });
 
-    // Verify all action buttons are present and functional
-    expect(screen.getByText('Manage Budget')).toBeInTheDocument();
-    expect(screen.getByText('View Expenses')).toBeInTheDocument();
-    expect(screen.getByLabelText(/Dismiss.*budget alert/)).toBeInTheDocument();
+    // Verify dismiss button is present and functional
+    expect(screen.getByLabelText(/Dismiss reminder/)).toBeInTheDocument();
 
-    // Test action button functionality
-    fireEvent.click(screen.getByText('Manage Budget'));
-    expect(mockOnManageBudgets).toHaveBeenCalledWith('Food');
-
-    fireEvent.click(screen.getByText('View Expenses'));
-    expect(mockOnViewExpenses).toHaveBeenCalledWith('Food');
+    // Test click handler functionality (navigates to category)
+    const banner = screen.getByTestId('budget-reminder-banner');
+    fireEvent.click(banner);
+    expect(mockOnClick).toHaveBeenCalledWith('Food');
   });
 
   it('should handle alert progression with different spending patterns', async () => {
     // Requirements: 1.1, 1.2, 1.3
-    const mockOnManageBudgets = vi.fn();
-    const mockOnViewExpenses = vi.fn();
+    const mockOnClick = vi.fn();
 
     const budgetLimit = 1000;
     let currentSpent = 750; // Start at 75% (no alert)
@@ -242,8 +227,7 @@ describe('Budget Alert Flow - Complete Integration Test', () => {
         year={2025}
         month={12}
         refreshTrigger={0}
-        onManageBudgets={mockOnManageBudgets}
-        onViewExpenses={mockOnViewExpenses}
+        onClick={mockOnClick}
       />
     );
 
@@ -260,15 +244,15 @@ describe('Budget Alert Flow - Complete Integration Test', () => {
         year={2025}
         month={12}
         refreshTrigger={1}
-        onManageBudgets={mockOnManageBudgets}
-        onViewExpenses={mockOnViewExpenses}
+        onClick={mockOnClick}
       />
     );
 
     // Should show critical alert directly
     await waitFor(() => {
       expect(screen.getByText(/Gas budget exceeded!/)).toBeInTheDocument();
-      expect(screen.getByText('⚠')).toBeInTheDocument();
+      const banner = screen.getByTestId('budget-reminder-banner');
+      expect(banner).toHaveClass('critical');
     });
 
     // Reduce spending back to warning level (85% spent)
@@ -279,15 +263,15 @@ describe('Budget Alert Flow - Complete Integration Test', () => {
         year={2025}
         month={12}
         refreshTrigger={2}
-        onManageBudgets={mockOnManageBudgets}
-        onViewExpenses={mockOnViewExpenses}
+        onClick={mockOnClick}
       />
     );
 
     // Should show warning alert
     await waitFor(() => {
       expect(screen.getByText(/Gas budget is 85\.0% used/)).toBeInTheDocument();
-      expect(screen.getByText('⚡')).toBeInTheDocument();
+      const banner = screen.getByTestId('budget-reminder-banner');
+      expect(banner).toHaveClass('warning');
     });
 
     // Reduce spending below threshold (70% spent)
@@ -298,8 +282,7 @@ describe('Budget Alert Flow - Complete Integration Test', () => {
         year={2025}
         month={12}
         refreshTrigger={3}
-        onManageBudgets={mockOnManageBudgets}
-        onViewExpenses={mockOnViewExpenses}
+        onClick={mockOnClick}
       />
     );
 
@@ -314,12 +297,10 @@ describe('Budget Alert Flow - Complete Integration Test', () => {
     // Note: The dismissal override logic tracks severity changes. When an alert is dismissed
     // at one severity level and conditions worsen to a higher severity, the alert should reappear.
     // This is implemented by comparing the severity at dismissal time with the current severity.
-    const mockOnManageBudgets = vi.fn();
-    const mockOnViewExpenses = vi.fn();
+    const mockOnClick = vi.fn();
 
     const budgetLimit = 500;
     let currentSpent = 450; // Start at 90% (danger)
-    let currentSeverity = 'danger';
 
     budgetApi.getBudgets.mockImplementation(async () => ({ budgets: [{
       id: 3, year: 2025, month: 11, category: 'Entertainment', limit: budgetLimit, spent: currentSpent
@@ -330,8 +311,7 @@ describe('Budget Alert Flow - Complete Integration Test', () => {
         year={2025}
         month={11}
         refreshTrigger={0}
-        onManageBudgets={mockOnManageBudgets}
-        onViewExpenses={mockOnViewExpenses}
+        onClick={mockOnClick}
       />
     );
 
@@ -341,7 +321,7 @@ describe('Budget Alert Flow - Complete Integration Test', () => {
     });
 
     // Dismiss the danger alert
-    const dismissButton = screen.getByLabelText(/Dismiss.*budget alert/);
+    const dismissButton = screen.getByLabelText(/Dismiss reminder/);
     fireEvent.click(dismissButton);
 
     // Alert should disappear
@@ -352,7 +332,6 @@ describe('Budget Alert Flow - Complete Integration Test', () => {
     // Worsen the condition to critical (110% spent)
     // Change month to clear dismissal state (simulating the override behavior)
     currentSpent = 550;
-    currentSeverity = 'critical';
     
     // First change month to clear dismissal state
     rerender(
@@ -360,8 +339,7 @@ describe('Budget Alert Flow - Complete Integration Test', () => {
         year={2025}
         month={12}
         refreshTrigger={1}
-        onManageBudgets={mockOnManageBudgets}
-        onViewExpenses={mockOnViewExpenses}
+        onClick={mockOnClick}
       />
     );
 
@@ -374,8 +352,7 @@ describe('Budget Alert Flow - Complete Integration Test', () => {
         year={2025}
         month={11}
         refreshTrigger={2}
-        onManageBudgets={mockOnManageBudgets}
-        onViewExpenses={mockOnViewExpenses}
+        onClick={mockOnClick}
       />
     );
 
@@ -385,7 +362,8 @@ describe('Budget Alert Flow - Complete Integration Test', () => {
     // Alert should reappear because dismissal state was cleared when month changed
     await waitFor(() => {
       expect(screen.getByText(/Entertainment budget exceeded!/)).toBeInTheDocument();
-      expect(screen.getByText('⚠')).toBeInTheDocument();
+      const banner = screen.getByTestId('budget-reminder-banner');
+      expect(banner).toHaveClass('critical');
     });
   });
 });

@@ -11,6 +11,13 @@ const logger = require('../config/logger');
  */
 const REMINDER_DAYS_THRESHOLD = 7;
 
+/**
+ * Threshold for current month insurance claim reminders (days)
+ * When viewing current month: current month expenses only show if older than this threshold
+ * Previous month expenses always show (they're overdue)
+ */
+const CURRENT_MONTH_INSURANCE_CLAIM_THRESHOLD = 7;
+
 class ReminderService {
   /**
    * Calculate days until next payment due date
@@ -313,6 +320,89 @@ class ReminderService {
   }
 
   /**
+   * Get insurance claim reminders
+   * Returns medical expenses with claim_status = 'in_progress' that should be shown
+   * 
+   * Threshold logic (when viewing current month):
+   * - Previous month expenses: Show ALL pending claims (they're overdue)
+   * - Current month expenses: Show only if older than 7 days
+   * 
+   * When viewing past months: Show ALL pending claims (no threshold)
+   * 
+   * @param {number} year - Selected year
+   * @param {number} month - Selected month (1-12)
+   * @param {Date} referenceDate - Reference date for calculations (default: today)
+   * @returns {Promise<Object>} Insurance claim reminder status
+   * _Requirements: 1.3, 1.4, 4.1, 4.2, 4.3_
+   */
+  async getInsuranceClaimReminders(year, month, referenceDate = new Date()) {
+    try {
+      // Determine the current month for comparison
+      const today = new Date(referenceDate);
+      const currentYear = today.getFullYear();
+      const currentMonth = today.getMonth() + 1; // 1-12
+      
+      const isViewingCurrentMonth = year === currentYear && month === currentMonth;
+      
+      // Get all medical expenses with in-progress claims
+      const pendingExpenses = await reminderRepository.getMedicalExpensesWithPendingClaims(referenceDate);
+      
+      // Filter claims based on the correct logic
+      // _Requirements: 1.3, 4.2, 4.3_
+      const claimsToShow = pendingExpenses.filter(expense => {
+        // If viewing a past month, show ALL pending claims
+        if (!isViewingCurrentMonth) {
+          return true;
+        }
+        
+        // When viewing current month, apply per-expense logic:
+        // Parse the expense date to determine which month it belongs to
+        const expenseDate = new Date(expense.date);
+        const expenseYear = expenseDate.getFullYear();
+        const expenseMonth = expenseDate.getMonth() + 1; // 1-12
+        
+        const isExpenseFromCurrentMonth = expenseYear === currentYear && expenseMonth === currentMonth;
+        
+        if (isExpenseFromCurrentMonth) {
+          // Current month expenses: only show if older than 7 days
+          return expense.days_pending > CURRENT_MONTH_INSURANCE_CLAIM_THRESHOLD;
+        } else {
+          // Previous month expenses: always show (they're overdue)
+          return true;
+        }
+      });
+      
+      // Transform to structured response
+      // _Requirements: 1.4_
+      const pendingClaims = claimsToShow.map(expense => ({
+        expenseId: expense.id,
+        place: expense.place,
+        amount: expense.amount,
+        originalCost: expense.original_cost,
+        date: expense.date,
+        daysPending: expense.days_pending,
+        personNames: expense.person_names ? expense.person_names.split(', ') : null
+      }));
+      
+      return {
+        pendingCount: pendingClaims.length,
+        hasPendingClaims: pendingClaims.length > 0,
+        pendingClaims,
+        isViewingCurrentMonth
+      };
+    } catch (error) {
+      logger.error('Error getting insurance claim reminders:', error);
+      // Return safe defaults on error
+      return {
+        pendingCount: 0,
+        hasPendingClaims: false,
+        pendingClaims: [],
+        error: error.message
+      };
+    }
+  }
+
+  /**
    * Get reminder status for a specific month
    * @param {number} year - Year
    * @param {number} month - Month (1-12)
@@ -342,6 +432,14 @@ class ReminderService {
       // Get loan payment reminders
       // _Requirements: 5.1, 5.4_
       const loanPaymentReminders = await this.getLoanPaymentReminders(referenceDate);
+
+      // Get insurance claim reminders
+      // _Requirements: 5.2, 5.3_
+      const insuranceClaimReminders = await this.getInsuranceClaimReminders(
+        year,
+        month,
+        referenceDate
+      );
 
       // Count missing data
       const missingInvestments = investments.filter(inv => !inv.hasValue).length;
@@ -391,6 +489,13 @@ class ReminderService {
           hasLinkedExpenses: loanPaymentReminders.hasLinkedExpenses,
           overduePayments: loanPaymentReminders.overduePayments,
           dueSoonPayments: loanPaymentReminders.dueSoonPayments
+        },
+        // Insurance claim reminders
+        // _Requirements: 5.2, 5.3_
+        insuranceClaimReminders: {
+          pendingCount: insuranceClaimReminders.pendingCount,
+          hasPendingClaims: insuranceClaimReminders.hasPendingClaims,
+          pendingClaims: insuranceClaimReminders.pendingClaims
         }
       };
     } catch (error) {

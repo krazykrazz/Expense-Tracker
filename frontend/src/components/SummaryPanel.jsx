@@ -9,6 +9,9 @@ import DataReminderBanner from './DataReminderBanner';
 import CreditCardReminderBanner from './CreditCardReminderBanner';
 import BillingCycleReminderBanner from './BillingCycleReminderBanner';
 import LoanPaymentReminderBanner from './LoanPaymentReminderBanner';
+import InsuranceClaimReminderBanner from './InsuranceClaimReminderBanner';
+import BudgetAlertManager from './BudgetAlertManager';
+import NotificationsSection from './NotificationsSection';
 import AutoLogPrompt from './AutoLogPrompt';
 import PaymentMethodsModal from './PaymentMethodsModal';
 import './SummaryPanel.css';
@@ -26,6 +29,20 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
   const [totalOutstandingDebt, setTotalOutstandingDebt] = useState(0);
   const [investments, setInvestments] = useState([]);
   const [totalInvestmentValue, setTotalInvestmentValue] = useState(0);
+  
+  /**
+   * Check if the selected month is in the future
+   * Reminders and auto-log prompts should only show for current or past months
+   */
+  const isCurrentOrPastMonth = useCallback(() => {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1; // JavaScript months are 0-indexed
+    
+    if (selectedYear < currentYear) return true;
+    if (selectedYear > currentYear) return false;
+    return selectedMonth <= currentMonth;
+  }, [selectedYear, selectedMonth]);
   
   // Reminder states
   const [reminderStatus, setReminderStatus] = useState({
@@ -53,6 +70,11 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
       hasLinkedExpenses: false,
       overduePayments: [],
       dueSoonPayments: []
+    },
+    insuranceClaimReminders: {
+      pendingCount: 0,
+      hasPendingClaims: false,
+      pendingClaims: []
     }
   });
   const [dismissedReminders, setDismissedReminders] = useState({
@@ -62,8 +84,13 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
     creditCardDueSoon: false,
     billingCycleEntry: false,
     loanPaymentOverdue: false,
-    loanPaymentDueSoon: false
+    loanPaymentDueSoon: false,
+    insuranceClaims: false
   });
+  
+  // Budget alerts are now managed by BudgetAlertManager component
+  // _Requirements: 6.1, 6.2, 6.4_
+  const [budgetAlertsVisible, setBudgetAlertsVisible] = useState(false);
   
   // Payment Methods Modal state
   const [showPaymentMethodsModal, setShowPaymentMethodsModal] = useState(false);
@@ -134,7 +161,48 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
   /**
    * Fetch reminder status from API
    */
+  /**
+   * Fetch reminder status from API
+   * Only fetch for current or past months - future months don't need reminders
+   */
   const fetchReminderStatus = useCallback(async () => {
+    // Skip fetching reminders for future months
+    if (!isCurrentOrPastMonth()) {
+      setReminderStatus({
+        missingInvestments: 0,
+        missingLoans: 0,
+        hasActiveInvestments: false,
+        hasActiveLoans: false,
+        investments: [],
+        loans: [],
+        creditCardReminders: {
+          overdueCount: 0,
+          dueSoonCount: 0,
+          hasActiveCreditCards: false,
+          overdueCards: [],
+          dueSoonCards: []
+        },
+        billingCycleReminders: {
+          needsEntryCount: 0,
+          hasCardsWithBillingCycle: false,
+          cardsNeedingEntry: []
+        },
+        loanPaymentReminders: {
+          overdueCount: 0,
+          dueSoonCount: 0,
+          hasLinkedExpenses: false,
+          overduePayments: [],
+          dueSoonPayments: []
+        },
+        insuranceClaimReminders: {
+          pendingCount: 0,
+          hasPendingClaims: false,
+          pendingClaims: []
+        }
+      });
+      return;
+    }
+    
     try {
       const response = await fetch(API_ENDPOINTS.REMINDER_STATUS(selectedYear, selectedMonth));
       
@@ -170,19 +238,31 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
           hasLinkedExpenses: false,
           overduePayments: [],
           dueSoonPayments: []
+        },
+        insuranceClaimReminders: data.insuranceClaimReminders || {
+          pendingCount: 0,
+          hasPendingClaims: false,
+          pendingClaims: []
         }
       });
     } catch (err) {
       // Fail silently - don't block summary panel loading
       console.error('Error fetching reminder status:', err);
     }
-  }, [selectedYear, selectedMonth]);
+  }, [selectedYear, selectedMonth, isCurrentOrPastMonth]);
 
   /**
    * Fetch auto-log suggestions from API
+   * Only fetch for current or past months - future months don't need auto-log prompts
    * _Requirements: 4.1, 4.4, 4.5_
    */
   const fetchAutoLogSuggestions = useCallback(async () => {
+    // Skip fetching auto-log suggestions for future months
+    if (!isCurrentOrPastMonth()) {
+      setAutoLogSuggestions([]);
+      return;
+    }
+    
     try {
       const response = await fetch(API_ENDPOINTS.AUTO_LOG_SUGGESTIONS(selectedYear, selectedMonth));
       
@@ -198,7 +278,7 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
       // Fail silently - don't block summary panel loading
       console.error('Error fetching auto-log suggestions:', err);
     }
-  }, [selectedYear, selectedMonth]);
+  }, [selectedYear, selectedMonth, isCurrentOrPastMonth]);
 
   /**
    * Fetch summary data from API
@@ -228,6 +308,7 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
   }, [selectedYear, selectedMonth, processSummaryData]);
 
   // Fetch summary when dependencies change
+  // Budget alerts are now managed by BudgetAlertManager component
   useEffect(() => {
     fetchSummaryData();
     fetchReminderStatus();
@@ -235,9 +316,20 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
   }, [fetchSummaryData, fetchReminderStatus, fetchAutoLogSuggestions, refreshTrigger]);
 
   // Reset dismissed reminders only when month/year changes (not on every refresh)
+  // Budget alerts dismissal is managed by BudgetAlertManager
   useEffect(() => {
-    setDismissedReminders({ investments: false, loans: false, creditCardOverdue: false, creditCardDueSoon: false, billingCycleEntry: false, loanPaymentOverdue: false, loanPaymentDueSoon: false });
+    setDismissedReminders({ 
+      investments: false, 
+      loans: false, 
+      creditCardOverdue: false, 
+      creditCardDueSoon: false, 
+      billingCycleEntry: false, 
+      loanPaymentOverdue: false, 
+      loanPaymentDueSoon: false,
+      insuranceClaims: false
+    });
     setDismissedAutoLog(false);
+    // Don't reset budgetAlertsVisible here - let BudgetAlertManager control it via callback
   }, [selectedYear, selectedMonth]);
 
   // Modal handlers - simplified using shared fetch function
@@ -304,6 +396,10 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
     setDismissedReminders(prev => ({ ...prev, loanPaymentDueSoon: true }));
   };
 
+  const handleDismissInsuranceClaimReminder = () => {
+    setDismissedReminders(prev => ({ ...prev, insuranceClaims: true }));
+  };
+
   const handleInvestmentReminderClick = () => {
     setShowInvestmentsModal(true);
   };
@@ -319,6 +415,30 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
   const handleLoanPaymentReminderClick = (loanId) => {
     // Open loans modal - if a specific loanId is provided, it could be used to highlight that loan
     setShowLoansModal(true);
+  };
+
+  /**
+   * Handle insurance claim reminder click
+   * Filter expense list to show pending insurance claims
+   * _Requirements: 3.1, 3.2_
+   */
+  const handleInsuranceClaimReminderClick = () => {
+    // Dispatch custom event to filter expense list by insurance status
+    window.dispatchEvent(new CustomEvent('filterByInsuranceStatus', {
+      detail: { insuranceFilter: 'in_progress' }
+    }));
+  };
+
+  /**
+   * Handle budget alert reminder click
+   * Navigate to expense list filtered by category
+   * _Requirements: 6.4_
+   */
+  const handleBudgetAlertReminderClick = (category) => {
+    // Dispatch custom event to navigate to expense list with category filter
+    window.dispatchEvent(new CustomEvent('navigateToExpenseList', {
+      detail: { categoryFilter: category }
+    }));
   };
 
   const handleClosePaymentMethodsModal = async () => {
@@ -416,6 +536,55 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
     return monthNames[monthNumber - 1] || '';
   };
 
+  // Calculate total notification count for NotificationsSection
+  // _Requirements: 7.2, 7.5_
+  // Note: Budget alerts count is managed by BudgetAlertManager and always counted as 1 if visible
+  const calculateNotificationCount = () => {
+    let count = 0;
+    
+    // Credit card overdue
+    if (reminderStatus.creditCardReminders?.overdueCount > 0 && !dismissedReminders.creditCardOverdue) {
+      count++;
+    }
+    // Credit card due soon
+    if (reminderStatus.creditCardReminders?.dueSoonCount > 0 && !dismissedReminders.creditCardDueSoon) {
+      count++;
+    }
+    // Billing cycle entry
+    if (reminderStatus.billingCycleReminders?.needsEntryCount > 0 && !dismissedReminders.billingCycleEntry) {
+      count++;
+    }
+    // Loan payment overdue
+    if (reminderStatus.loanPaymentReminders?.overdueCount > 0 && !dismissedReminders.loanPaymentOverdue) {
+      count++;
+    }
+    // Loan payment due soon
+    if (reminderStatus.loanPaymentReminders?.dueSoonCount > 0 && !dismissedReminders.loanPaymentDueSoon) {
+      count++;
+    }
+    // Insurance claims
+    if (reminderStatus.insuranceClaimReminders?.hasPendingClaims && !dismissedReminders.insuranceClaims) {
+      count++;
+    }
+    // Budget alerts - BudgetAlertManager handles its own visibility
+    // We count it as 1 notification when visible (the component handles internal alert count)
+    if (budgetAlertsVisible) {
+      count++;
+    }
+    // Investment data reminders
+    if (reminderStatus.hasActiveInvestments && reminderStatus.missingInvestments > 0 && !dismissedReminders.investments) {
+      count++;
+    }
+    // Loan data reminders
+    if (reminderStatus.hasActiveLoans && reminderStatus.missingLoans > 0 && !dismissedReminders.loans) {
+      count++;
+    }
+    
+    return count;
+  };
+
+  const notificationCount = calculateNotificationCount();
+
   if (loading) {
     return (
       <div className="summary-panel">
@@ -440,86 +609,114 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
 
   return (
     <div className="summary-panel">
+      {/* Notifications Section - Contains all reminder banners */}
+      {/* _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_ */}
+      <NotificationsSection notificationCount={notificationCount}>
+        {/* Credit Card Overdue Reminders - Most urgent, show first */}
+        {reminderStatus.creditCardReminders?.overdueCount > 0 && 
+         !dismissedReminders.creditCardOverdue && (
+          <CreditCardReminderBanner
+            cards={reminderStatus.creditCardReminders.overdueCards}
+            isOverdue={true}
+            onDismiss={handleDismissCreditCardOverdueReminder}
+            onClick={handleCreditCardReminderClick}
+          />
+        )}
+
+        {/* Credit Card Due Soon Reminders */}
+        {reminderStatus.creditCardReminders?.dueSoonCount > 0 && 
+         !dismissedReminders.creditCardDueSoon && (
+          <CreditCardReminderBanner
+            cards={reminderStatus.creditCardReminders.dueSoonCards}
+            isOverdue={false}
+            onDismiss={handleDismissCreditCardDueSoonReminder}
+            onClick={handleCreditCardReminderClick}
+          />
+        )}
+
+        {/* Billing Cycle Entry Reminders - Requirements: 4.1, 4.2, 4.4 */}
+        {reminderStatus.billingCycleReminders?.needsEntryCount > 0 && 
+         !dismissedReminders.billingCycleEntry && (
+          <BillingCycleReminderBanner
+            cards={reminderStatus.billingCycleReminders.cardsNeedingEntry}
+            onDismiss={handleDismissBillingCycleEntryReminder}
+            onClick={handleCreditCardReminderClick}
+          />
+        )}
+
+        {/* Loan Payment Overdue Reminders - Requirements: 5.1, 5.3, 5.4 */}
+        {reminderStatus.loanPaymentReminders?.overdueCount > 0 && 
+         !dismissedReminders.loanPaymentOverdue && (
+          <LoanPaymentReminderBanner
+            payments={reminderStatus.loanPaymentReminders.overduePayments}
+            isOverdue={true}
+            onDismiss={handleDismissLoanPaymentOverdueReminder}
+            onClick={handleLoanPaymentReminderClick}
+          />
+        )}
+
+        {/* Loan Payment Due Soon Reminders - Requirements: 5.1, 5.3, 5.5 */}
+        {reminderStatus.loanPaymentReminders?.dueSoonCount > 0 && 
+         !dismissedReminders.loanPaymentDueSoon && (
+          <LoanPaymentReminderBanner
+            payments={reminderStatus.loanPaymentReminders.dueSoonPayments}
+            isOverdue={false}
+            onDismiss={handleDismissLoanPaymentDueSoonReminder}
+            onClick={handleLoanPaymentReminderClick}
+          />
+        )}
+
+        {/* Insurance Claim Reminders - Requirements: 2.1, 2.2, 2.3, 2.4, 2.5 */}
+        {reminderStatus.insuranceClaimReminders?.hasPendingClaims && 
+         !dismissedReminders.insuranceClaims && (
+          <InsuranceClaimReminderBanner
+            claims={reminderStatus.insuranceClaimReminders.pendingClaims}
+            onDismiss={handleDismissInsuranceClaimReminder}
+            onClick={handleInsuranceClaimReminderClick}
+          />
+        )}
+
+        {/* Budget Alert Reminders - Requirements: 6.1, 6.2, 6.4 */}
+        {/* BudgetAlertManager handles its own data fetching, caching, and dismissal */}
+        {/* It notifies parent of actual visibility via onVisibilityChange callback */}
+        <BudgetAlertManager
+          year={selectedYear}
+          month={selectedMonth}
+          refreshTrigger={refreshTrigger}
+          onClick={handleBudgetAlertReminderClick}
+          onVisibilityChange={setBudgetAlertsVisible}
+        />
+
+        {/* Investment Data Reminders */}
+        {reminderStatus.hasActiveInvestments && 
+         reminderStatus.missingInvestments > 0 && 
+         !dismissedReminders.investments && (
+          <DataReminderBanner
+            type="investment"
+            count={reminderStatus.missingInvestments}
+            monthName={getMonthName(selectedMonth)}
+            onDismiss={handleDismissInvestmentReminder}
+            onClick={handleInvestmentReminderClick}
+          />
+        )}
+
+        {/* Loan Data Reminders */}
+        {reminderStatus.hasActiveLoans && 
+         reminderStatus.missingLoans > 0 && 
+         !dismissedReminders.loans && (
+          <DataReminderBanner
+            type="loan"
+            count={reminderStatus.missingLoans}
+            monthName={getMonthName(selectedMonth)}
+            onDismiss={handleDismissLoanReminder}
+            onClick={handleLoanReminderClick}
+          />
+        )}
+      </NotificationsSection>
+
+      {/* Monthly Summary Header - Now below NotificationsSection */}
+      {/* _Requirements: 7.1_ */}
       <h2>Monthly Summary</h2>
-
-      {/* Reminder Banners */}
-      {/* Credit Card Overdue Reminders - Most urgent, show first */}
-      {reminderStatus.creditCardReminders?.overdueCount > 0 && 
-       !dismissedReminders.creditCardOverdue && (
-        <CreditCardReminderBanner
-          cards={reminderStatus.creditCardReminders.overdueCards}
-          isOverdue={true}
-          onDismiss={handleDismissCreditCardOverdueReminder}
-          onClick={handleCreditCardReminderClick}
-        />
-      )}
-
-      {/* Credit Card Due Soon Reminders */}
-      {reminderStatus.creditCardReminders?.dueSoonCount > 0 && 
-       !dismissedReminders.creditCardDueSoon && (
-        <CreditCardReminderBanner
-          cards={reminderStatus.creditCardReminders.dueSoonCards}
-          isOverdue={false}
-          onDismiss={handleDismissCreditCardDueSoonReminder}
-          onClick={handleCreditCardReminderClick}
-        />
-      )}
-
-      {/* Billing Cycle Entry Reminders - Requirements: 4.1, 4.2, 4.4 */}
-      {reminderStatus.billingCycleReminders?.needsEntryCount > 0 && 
-       !dismissedReminders.billingCycleEntry && (
-        <BillingCycleReminderBanner
-          cards={reminderStatus.billingCycleReminders.cardsNeedingEntry}
-          onDismiss={handleDismissBillingCycleEntryReminder}
-          onClick={handleCreditCardReminderClick}
-        />
-      )}
-
-      {/* Loan Payment Overdue Reminders - Requirements: 5.1, 5.3, 5.4 */}
-      {reminderStatus.loanPaymentReminders?.overdueCount > 0 && 
-       !dismissedReminders.loanPaymentOverdue && (
-        <LoanPaymentReminderBanner
-          payments={reminderStatus.loanPaymentReminders.overduePayments}
-          isOverdue={true}
-          onDismiss={handleDismissLoanPaymentOverdueReminder}
-          onClick={handleLoanPaymentReminderClick}
-        />
-      )}
-
-      {/* Loan Payment Due Soon Reminders - Requirements: 5.1, 5.3, 5.5 */}
-      {reminderStatus.loanPaymentReminders?.dueSoonCount > 0 && 
-       !dismissedReminders.loanPaymentDueSoon && (
-        <LoanPaymentReminderBanner
-          payments={reminderStatus.loanPaymentReminders.dueSoonPayments}
-          isOverdue={false}
-          onDismiss={handleDismissLoanPaymentDueSoonReminder}
-          onClick={handleLoanPaymentReminderClick}
-        />
-      )}
-
-      {reminderStatus.hasActiveInvestments && 
-       reminderStatus.missingInvestments > 0 && 
-       !dismissedReminders.investments && (
-        <DataReminderBanner
-          type="investment"
-          count={reminderStatus.missingInvestments}
-          monthName={getMonthName(selectedMonth)}
-          onDismiss={handleDismissInvestmentReminder}
-          onClick={handleInvestmentReminderClick}
-        />
-      )}
-
-      {reminderStatus.hasActiveLoans && 
-       reminderStatus.missingLoans > 0 && 
-       !dismissedReminders.loans && (
-        <DataReminderBanner
-          type="loan"
-          count={reminderStatus.missingLoans}
-          monthName={getMonthName(selectedMonth)}
-          onDismiss={handleDismissLoanReminder}
-          onClick={handleLoanReminderClick}
-        />
-      )}
 
       {/* Summary Cards Grid - Order: Income, Fixed, Variable, Balance */}
       <div className="summary-grid">

@@ -1,26 +1,36 @@
 /**
  * Unit Tests for BudgetAlertManager Component
  * Tests alert calculation, state management, and integration
- * Requirements: 3.2, 3.3, 3.4, 3.5, 7.1, 7.3, 7.4
+ * Requirements: 6.1, 6.2, 6.4
  */
 
 import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import BudgetAlertManager from './BudgetAlertManager';
 import * as budgetApi from '../services/budgetApi';
-import { ALERT_SEVERITY } from '../utils/budgetAlerts';
 
 // Mock the budget API
 vi.mock('../services/budgetApi');
 
-// Mock the BudgetAlertBanner component
-vi.mock('./BudgetAlertBanner', () => ({
-  default: ({ alert, onDismiss, onManageBudgets, onViewExpenses }) => (
-    <div data-testid={`alert-${alert.id}`} className="mock-alert-banner">
-      <span>{alert.message}</span>
-      <button onClick={() => onDismiss && onDismiss(alert.id)}>Dismiss</button>
-      <button onClick={() => onManageBudgets && onManageBudgets(alert.category)}>Manage</button>
-      <button onClick={() => onViewExpenses && onViewExpenses(alert.category)}>View</button>
+// Mock the BudgetReminderBanner component
+vi.mock('./BudgetReminderBanner', () => ({
+  default: ({ alerts, onDismiss, onClick }) => (
+    <div data-testid="budget-reminder-banner" className="mock-reminder-banner">
+      <span data-testid="alert-count">{alerts.length} alerts</span>
+      {alerts.map(alert => (
+        <div key={alert.id} data-testid={`alert-${alert.id}`}>
+          <span>{alert.category}: {alert.progress.toFixed(0)}%</span>
+          <button 
+            data-testid={`click-${alert.id}`}
+            onClick={() => onClick && onClick(alert.category)}
+          >
+            View
+          </button>
+        </div>
+      ))}
+      <button data-testid="dismiss-btn" onClick={() => onDismiss && onDismiss()}>
+        Dismiss
+      </button>
     </div>
   )
 }));
@@ -34,10 +44,7 @@ describe('BudgetAlertManager', () => {
     { id: 4, year: 2025, month: 12, category: 'Dining Out', limit: 300, spent: 150.00 }
   ];
 
-  const mockCallbacks = {
-    onManageBudgets: vi.fn(),
-    onViewExpenses: vi.fn()
-  };
+  const mockOnClick = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -52,7 +59,7 @@ describe('BudgetAlertManager', () => {
         <BudgetAlertManager 
           year={2025} 
           month={12} 
-          {...mockCallbacks} 
+          onClick={mockOnClick}
         />
       );
 
@@ -60,12 +67,9 @@ describe('BudgetAlertManager', () => {
         expect(budgetApi.getBudgets).toHaveBeenCalledWith(2025, 12);
       });
 
-      // Should display 3 alerts (warning, danger, critical) but not safe
+      // Should display the banner with alerts
       await waitFor(() => {
-        expect(screen.getByTestId('alert-budget-alert-1')).toBeInTheDocument(); // Groceries
-        expect(screen.getByTestId('alert-budget-alert-2')).toBeInTheDocument(); // Gas
-        expect(screen.getByTestId('alert-budget-alert-3')).toBeInTheDocument(); // Entertainment
-        expect(screen.queryByTestId('alert-budget-alert-4')).not.toBeInTheDocument(); // Dining Out (safe)
+        expect(screen.getByTestId('budget-reminder-banner')).toBeInTheDocument();
       });
     });
 
@@ -74,7 +78,7 @@ describe('BudgetAlertManager', () => {
         <BudgetAlertManager 
           year={2025} 
           month={12} 
-          {...mockCallbacks} 
+          onClick={mockOnClick}
         />
       );
 
@@ -87,7 +91,7 @@ describe('BudgetAlertManager', () => {
         <BudgetAlertManager 
           year={2025} 
           month={11} 
-          {...mockCallbacks} 
+          onClick={mockOnClick}
         />
       );
 
@@ -104,7 +108,7 @@ describe('BudgetAlertManager', () => {
           year={2025} 
           month={12} 
           refreshTrigger={0}
-          {...mockCallbacks} 
+          onClick={mockOnClick}
         />
       );
 
@@ -118,7 +122,7 @@ describe('BudgetAlertManager', () => {
           year={2025} 
           month={12} 
           refreshTrigger={1}
-          {...mockCallbacks} 
+          onClick={mockOnClick}
         />
       );
 
@@ -134,7 +138,7 @@ describe('BudgetAlertManager', () => {
         <BudgetAlertManager 
           year={2025} 
           month={12} 
-          {...mockCallbacks} 
+          onClick={mockOnClick}
         />
       );
 
@@ -157,7 +161,7 @@ describe('BudgetAlertManager', () => {
         <BudgetAlertManager 
           year={2025} 
           month={12} 
-          {...mockCallbacks} 
+          onClick={mockOnClick}
         />
       );
 
@@ -171,78 +175,30 @@ describe('BudgetAlertManager', () => {
   });
 
   describe('Dismissal Functionality', () => {
-    test('should dismiss alert when dismiss button clicked', async () => {
+    test('should dismiss all alerts when dismiss button clicked', async () => {
       render(
         <BudgetAlertManager 
           year={2025} 
           month={12} 
-          {...mockCallbacks} 
+          onClick={mockOnClick}
         />
       );
 
       await waitFor(() => {
-        expect(screen.getByTestId('alert-budget-alert-1')).toBeInTheDocument();
+        expect(screen.getByTestId('budget-reminder-banner')).toBeInTheDocument();
       });
 
-      // Click dismiss button on the Groceries alert (budget-alert-1)
-      const groceriesAlert = screen.getByTestId('alert-budget-alert-1');
-      const dismissButton = groceriesAlert.querySelector('button');
+      // Click dismiss button
+      const dismissButton = screen.getByTestId('dismiss-btn');
       
       await act(async () => {
         fireEvent.click(dismissButton);
       });
 
-      // Alert should be removed from DOM
+      // Banner should be removed from DOM
       await waitFor(() => {
-        expect(screen.queryByTestId('alert-budget-alert-1')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('budget-reminder-banner')).not.toBeInTheDocument();
       });
-
-      // Other alerts should still be visible
-      expect(screen.getByTestId('alert-budget-alert-2')).toBeInTheDocument();
-      expect(screen.getByTestId('alert-budget-alert-3')).toBeInTheDocument();
-    });
-
-    test('should dismiss multiple alerts independently', async () => {
-      render(
-        <BudgetAlertManager 
-          year={2025} 
-          month={12} 
-          {...mockCallbacks} 
-        />
-      );
-
-      await waitFor(() => {
-        expect(screen.getByTestId('alert-budget-alert-1')).toBeInTheDocument();
-        expect(screen.getByTestId('alert-budget-alert-2')).toBeInTheDocument();
-        expect(screen.getByTestId('alert-budget-alert-3')).toBeInTheDocument();
-      });
-
-      // Dismiss first alert (Groceries)
-      const groceriesAlert = screen.getByTestId('alert-budget-alert-1');
-      const dismissButton1 = groceriesAlert.querySelector('button');
-      
-      await act(async () => {
-        fireEvent.click(dismissButton1);
-      });
-
-      await waitFor(() => {
-        expect(screen.queryByTestId('alert-budget-alert-1')).not.toBeInTheDocument();
-      });
-
-      // Dismiss third alert (Entertainment)
-      const entertainmentAlert = screen.getByTestId('alert-budget-alert-3');
-      const dismissButton3 = entertainmentAlert.querySelector('button');
-      
-      await act(async () => {
-        fireEvent.click(dismissButton3);
-      });
-
-      await waitFor(() => {
-        expect(screen.queryByTestId('alert-budget-alert-3')).not.toBeInTheDocument();
-      });
-
-      // Second alert (Gas) should still be visible
-      expect(screen.getByTestId('alert-budget-alert-2')).toBeInTheDocument();
     });
 
     test('should persist dismissal state during refresh', async () => {
@@ -251,24 +207,23 @@ describe('BudgetAlertManager', () => {
           year={2025} 
           month={12} 
           refreshTrigger={0}
-          {...mockCallbacks} 
+          onClick={mockOnClick}
         />
       );
 
       await waitFor(() => {
-        expect(screen.getByTestId('alert-budget-alert-1')).toBeInTheDocument();
+        expect(screen.getByTestId('budget-reminder-banner')).toBeInTheDocument();
       });
 
-      // Dismiss first alert (Groceries)
-      const groceriesAlert = screen.getByTestId('alert-budget-alert-1');
-      const dismissButton = groceriesAlert.querySelector('button');
+      // Click dismiss button
+      const dismissButton = screen.getByTestId('dismiss-btn');
       
       await act(async () => {
         fireEvent.click(dismissButton);
       });
 
       await waitFor(() => {
-        expect(screen.queryByTestId('alert-budget-alert-1')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('budget-reminder-banner')).not.toBeInTheDocument();
       });
 
       // Trigger refresh
@@ -277,7 +232,7 @@ describe('BudgetAlertManager', () => {
           year={2025} 
           month={12} 
           refreshTrigger={1}
-          {...mockCallbacks} 
+          onClick={mockOnClick}
         />
       );
 
@@ -285,9 +240,8 @@ describe('BudgetAlertManager', () => {
         expect(budgetApi.getBudgets).toHaveBeenCalledTimes(2);
       });
 
-      // Dismissed alert should still be hidden after refresh
-      expect(screen.queryByTestId('alert-budget-alert-1')).not.toBeInTheDocument();
-      expect(screen.getByTestId('alert-budget-alert-2')).toBeInTheDocument();
+      // Banner should still be hidden after refresh
+      expect(screen.queryByTestId('budget-reminder-banner')).not.toBeInTheDocument();
     });
 
     test('should clear dismissal state when month changes', async () => {
@@ -295,24 +249,23 @@ describe('BudgetAlertManager', () => {
         <BudgetAlertManager 
           year={2025} 
           month={12} 
-          {...mockCallbacks} 
+          onClick={mockOnClick}
         />
       );
 
       await waitFor(() => {
-        expect(screen.getByTestId('alert-budget-alert-1')).toBeInTheDocument();
+        expect(screen.getByTestId('budget-reminder-banner')).toBeInTheDocument();
       });
 
-      // Dismiss first alert (Groceries)
-      const groceriesAlert = screen.getByTestId('alert-budget-alert-1');
-      const dismissButton = groceriesAlert.querySelector('button');
+      // Click dismiss button
+      const dismissButton = screen.getByTestId('dismiss-btn');
       
       await act(async () => {
         fireEvent.click(dismissButton);
       });
 
       await waitFor(() => {
-        expect(screen.queryByTestId('alert-budget-alert-1')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('budget-reminder-banner')).not.toBeInTheDocument();
       });
 
       // Change month (new dismissal state)
@@ -320,7 +273,7 @@ describe('BudgetAlertManager', () => {
         <BudgetAlertManager 
           year={2025} 
           month={11} 
-          {...mockCallbacks} 
+          onClick={mockOnClick}
         />
       );
 
@@ -328,10 +281,52 @@ describe('BudgetAlertManager', () => {
         expect(budgetApi.getBudgets).toHaveBeenCalledWith(2025, 11);
       });
 
-      // Alert should reappear for new month
+      // Banner should reappear for new month
       await waitFor(() => {
-        expect(screen.getByTestId('alert-budget-alert-1')).toBeInTheDocument();
+        expect(screen.getByTestId('budget-reminder-banner')).toBeInTheDocument();
       });
+    });
+  });
+
+  describe('Click Handler Integration', () => {
+    test('should call onClick with correct category when alert clicked', async () => {
+      render(
+        <BudgetAlertManager 
+          year={2025} 
+          month={12} 
+          onClick={mockOnClick}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('budget-reminder-banner')).toBeInTheDocument();
+      });
+
+      // Click on an alert
+      const viewButton = screen.getByTestId('click-budget-alert-1');
+      fireEvent.click(viewButton);
+
+      // onClick should be called with the category
+      expect(mockOnClick).toHaveBeenCalled();
+    });
+
+    test('should handle missing onClick callback gracefully', async () => {
+      render(
+        <BudgetAlertManager 
+          year={2025} 
+          month={12} 
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('budget-reminder-banner')).toBeInTheDocument();
+      });
+
+      // Should not throw when clicking without callback
+      const viewButton = screen.getByTestId('click-budget-alert-1');
+      expect(() => {
+        fireEvent.click(viewButton);
+      }).not.toThrow();
     });
   });
 
@@ -344,7 +339,7 @@ describe('BudgetAlertManager', () => {
         <BudgetAlertManager 
           year={2025} 
           month={12} 
-          {...mockCallbacks} 
+          onClick={mockOnClick}
         />
       );
 
@@ -367,7 +362,7 @@ describe('BudgetAlertManager', () => {
         <BudgetAlertManager 
           year={2025} 
           month={12} 
-          {...mockCallbacks} 
+          onClick={mockOnClick}
         />
       );
 
@@ -393,7 +388,7 @@ describe('BudgetAlertManager', () => {
         <BudgetAlertManager 
           year={2025} 
           month={12} 
-          {...mockCallbacks} 
+          onClick={mockOnClick}
         />
       );
 
@@ -403,74 +398,8 @@ describe('BudgetAlertManager', () => {
 
       // Should handle gracefully and show valid alerts only
       await waitFor(() => {
-        const alerts = screen.queryAllByTestId(/alert-budget-alert-/);
-        expect(alerts.length).toBeGreaterThanOrEqual(0);
+        expect(screen.getByTestId('budget-reminder-banner')).toBeInTheDocument();
       });
-    });
-  });
-
-  describe('Callback Integration', () => {
-    test('should call onManageBudgets with correct category', async () => {
-      render(
-        <BudgetAlertManager 
-          year={2025} 
-          month={12} 
-          {...mockCallbacks} 
-        />
-      );
-
-      await waitFor(() => {
-        expect(screen.getByTestId('alert-budget-alert-1')).toBeInTheDocument();
-      });
-
-      // Alerts are sorted by severity: critical (Entertainment), danger (Gas), warning (Groceries)
-      // So first button is Entertainment, not Groceries
-      const manageButtons = screen.getAllByText('Manage');
-      manageButtons[0].click();
-
-      expect(mockCallbacks.onManageBudgets).toHaveBeenCalledWith('Entertainment');
-    });
-
-    test('should call onViewExpenses with correct category', async () => {
-      render(
-        <BudgetAlertManager 
-          year={2025} 
-          month={12} 
-          {...mockCallbacks} 
-        />
-      );
-
-      await waitFor(() => {
-        expect(screen.getByTestId('alert-budget-alert-2')).toBeInTheDocument();
-      });
-
-      // Click view button on second alert (Gas)
-      const viewButtons = screen.getAllByText('View');
-      viewButtons[1].click();
-
-      expect(mockCallbacks.onViewExpenses).toHaveBeenCalledWith('Gas');
-    });
-
-    test('should handle missing callbacks gracefully', async () => {
-      render(
-        <BudgetAlertManager 
-          year={2025} 
-          month={12} 
-        />
-      );
-
-      await waitFor(() => {
-        expect(screen.getByTestId('alert-budget-alert-1')).toBeInTheDocument();
-      });
-
-      // Should not throw when clicking buttons without callbacks
-      const manageButtons = screen.getAllByText('Manage');
-      const viewButtons = screen.getAllByText('View');
-
-      expect(() => {
-        manageButtons[0].click();
-        viewButtons[0].click();
-      }).not.toThrow();
     });
   });
 
@@ -487,7 +416,7 @@ describe('BudgetAlertManager', () => {
         <BudgetAlertManager 
           year={2025} 
           month={12} 
-          {...mockCallbacks} 
+          onClick={mockOnClick}
         />
       );
 
@@ -497,188 +426,42 @@ describe('BudgetAlertManager', () => {
       // Resolve the promise with wrapped format
       resolvePromise({ budgets: mockBudgets });
 
-      // Should render alerts after loading
+      // Should render banner after loading
       await waitFor(() => {
-        expect(screen.getByTestId('alert-budget-alert-1')).toBeInTheDocument();
+        expect(screen.getByTestId('budget-reminder-banner')).toBeInTheDocument();
       });
     });
 
-    test('should render nothing when all alerts are dismissed', async () => {
+    test('should render nothing when dismissed', async () => {
       const { container } = render(
         <BudgetAlertManager 
           year={2025} 
           month={12} 
-          {...mockCallbacks} 
+          onClick={mockOnClick}
         />
       );
 
       await waitFor(() => {
-        expect(screen.getByTestId('alert-budget-alert-1')).toBeInTheDocument();
+        expect(screen.getByTestId('budget-reminder-banner')).toBeInTheDocument();
       });
 
-      // Dismiss all alerts
-      const alert1 = screen.getByTestId('alert-budget-alert-1');
-      const alert2 = screen.getByTestId('alert-budget-alert-2');
-      const alert3 = screen.getByTestId('alert-budget-alert-3');
+      // Dismiss the banner
+      const dismissButton = screen.getByTestId('dismiss-btn');
       
       await act(async () => {
-        fireEvent.click(alert1.querySelector('button'));
-        fireEvent.click(alert2.querySelector('button'));
-        fireEvent.click(alert3.querySelector('button'));
+        fireEvent.click(dismissButton);
       });
 
       await waitFor(() => {
-        expect(screen.queryByTestId('alert-budget-alert-1')).not.toBeInTheDocument();
-        expect(screen.queryByTestId('alert-budget-alert-2')).not.toBeInTheDocument();
-        expect(screen.queryByTestId('alert-budget-alert-3')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('budget-reminder-banner')).not.toBeInTheDocument();
       });
 
-      // Container should be empty (component returns null when no visible alerts)
+      // Container should be empty
       expect(container.firstChild).toBeNull();
     });
   });
 
-  describe('Error Handling and Performance', () => {
-    test('should handle API errors gracefully by returning null', async () => {
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      budgetApi.getBudgets.mockRejectedValue(new Error('Network error'));
-
-      const { container } = render(
-        <BudgetAlertManager 
-          year={2025} 
-          month={12} 
-          {...mockCallbacks} 
-        />
-      );
-
-      await waitFor(() => {
-        expect(budgetApi.getBudgets).toHaveBeenCalled();
-      });
-
-      // The component gracefully degrades by returning null for network errors
-      // This is intentional to avoid showing error UI for transient network issues
-      await waitFor(() => {
-        expect(container.firstChild).toBeNull();
-      });
-
-      consoleErrorSpy.mockRestore();
-    });
-
-    test('should display error UI for data format errors', async () => {
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      
-      // Return all invalid data to trigger "Budget data format is invalid" error
-      budgetApi.getBudgets.mockResolvedValue({ budgets: [
-        null,
-        undefined,
-        { budget: null }
-      ] });
-
-      render(
-        <BudgetAlertManager 
-          year={2025} 
-          month={12} 
-          {...mockCallbacks} 
-        />
-      );
-
-      await waitFor(() => {
-        expect(budgetApi.getBudgets).toHaveBeenCalled();
-      });
-
-      // Should display error fallback UI for data format errors
-      await waitFor(() => {
-        expect(screen.getByText('Budget alerts unavailable')).toBeInTheDocument();
-        expect(screen.getByText('Budget data format is invalid')).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: 'Retry loading budget alerts' })).toBeInTheDocument();
-      });
-
-      consoleErrorSpy.mockRestore();
-    });
-
-    test('should retry loading when retry button is clicked', async () => {
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-      
-      // First call returns invalid data to trigger error UI
-      budgetApi.getBudgets.mockResolvedValueOnce({ budgets: [null, undefined, { budget: null }] });
-      // Second call succeeds
-      budgetApi.getBudgets.mockResolvedValueOnce({ budgets: mockBudgets });
-
-      render(
-        <BudgetAlertManager 
-          year={2025} 
-          month={12} 
-          {...mockCallbacks} 
-        />
-      );
-
-      // Wait for error state
-      await waitFor(() => {
-        expect(screen.getByText('Budget alerts unavailable')).toBeInTheDocument();
-      });
-
-      // Click retry button
-      const retryButton = screen.getByRole('button', { name: 'Retry loading budget alerts' });
-      
-      await act(async () => {
-        fireEvent.click(retryButton);
-      });
-
-      // Wait for debounce (300ms) plus some buffer
-      await new Promise(resolve => setTimeout(resolve, 400));
-
-      // Should load alerts successfully
-      await waitFor(() => {
-        expect(screen.getByTestId('alert-budget-alert-1')).toBeInTheDocument();
-        expect(screen.queryByText('Budget alerts unavailable')).not.toBeInTheDocument();
-      });
-
-      expect(budgetApi.getBudgets).toHaveBeenCalledTimes(2);
-      consoleErrorSpy.mockRestore();
-      consoleWarnSpy.mockRestore();
-    });
-
-    test('should handle invalid budget data gracefully', async () => {
-      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-      
-      const invalidBudgets = [
-        null, // Invalid
-        undefined, // Invalid
-        { id: 1 }, // Missing required fields (category, limit)
-        { id: 2, category: 'Gas', limit: 'invalid' }, // Invalid limit type
-        { id: 3, category: 'Food', limit: 500, spent: 'invalid' }, // Invalid spent type
-        { id: 4, year: 2025, month: 12, category: 'Valid', limit: 200, spent: 180 } // Valid - 90% is danger level
-      ];
-
-      // Clear the mock and set new data
-      budgetApi.getBudgets.mockClear();
-      budgetApi.getBudgets.mockResolvedValue({ budgets: invalidBudgets });
-
-      const { rerender } = render(
-        <BudgetAlertManager 
-          year={2025} 
-          month={12} 
-          refreshTrigger={Date.now()} // Force cache invalidation
-          {...mockCallbacks} 
-        />
-      );
-
-      await waitFor(() => {
-        expect(budgetApi.getBudgets).toHaveBeenCalled();
-      });
-
-      // Should handle gracefully - the component filters out invalid data
-      // The exact number of alerts depends on how the component handles validation
-      await waitFor(() => {
-        const alerts = screen.queryAllByTestId(/alert-budget-alert-/);
-        // At least one valid alert should be shown (the Valid category at 90%)
-        expect(alerts.length).toBeGreaterThanOrEqual(1);
-      });
-
-      consoleWarnSpy.mockRestore();
-    });
-
+  describe('SessionStorage Handling', () => {
     test('should handle sessionStorage unavailable gracefully', async () => {
       const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       
@@ -697,176 +480,30 @@ describe('BudgetAlertManager', () => {
         <BudgetAlertManager 
           year={2025} 
           month={12} 
-          {...mockCallbacks} 
+          onClick={mockOnClick}
         />
       );
 
       await waitFor(() => {
-        expect(screen.getByTestId('alert-budget-alert-1')).toBeInTheDocument();
+        expect(screen.getByTestId('budget-reminder-banner')).toBeInTheDocument();
       });
 
       // Dismissal should still work (memory-only)
-      const groceriesAlert = screen.getByTestId('alert-budget-alert-1');
-      const dismissButton = groceriesAlert.querySelector('button');
+      const dismissButton = screen.getByTestId('dismiss-btn');
       
       await act(async () => {
         fireEvent.click(dismissButton);
       });
 
       await waitFor(() => {
-        expect(screen.queryByTestId('alert-budget-alert-1')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('budget-reminder-banner')).not.toBeInTheDocument();
       });
-
-      // Should have warned about storage issues (logger formats with timestamp)
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
-        expect.stringMatching(/Failed to load dismissal state from sessionStorage/),
-        expect.anything()
-      );
 
       // Restore sessionStorage
       Object.defineProperty(window, 'sessionStorage', {
         value: originalSessionStorage,
         writable: true
       });
-      
-      consoleWarnSpy.mockRestore();
-    });
-
-    test('should handle corrupted sessionStorage data', async () => {
-      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-      
-      // Mock sessionStorage to return invalid JSON
-      const originalSessionStorage = window.sessionStorage;
-      Object.defineProperty(window, 'sessionStorage', {
-        value: {
-          getItem: vi.fn(() => 'invalid json{'),
-          setItem: vi.fn(),
-          removeItem: vi.fn()
-        },
-        writable: true
-      });
-
-      render(
-        <BudgetAlertManager 
-          year={2025} 
-          month={12} 
-          {...mockCallbacks} 
-        />
-      );
-
-      await waitFor(() => {
-        expect(screen.getByTestId('alert-budget-alert-1')).toBeInTheDocument();
-      });
-
-      // Should handle gracefully and warn about corrupted data (logger formats with timestamp)
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
-        expect.stringMatching(/Failed to load dismissal state from sessionStorage/),
-        expect.anything()
-      );
-
-      // Restore sessionStorage
-      Object.defineProperty(window, 'sessionStorage', {
-        value: originalSessionStorage,
-        writable: true
-      });
-      
-      consoleWarnSpy.mockRestore();
-    });
-
-    test('should handle non-array dismissal data in sessionStorage', async () => {
-      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-      
-      // Mock sessionStorage to return non-array data
-      const originalSessionStorage = window.sessionStorage;
-      Object.defineProperty(window, 'sessionStorage', {
-        value: {
-          getItem: vi.fn(() => JSON.stringify({ invalid: 'data' })),
-          setItem: vi.fn(),
-          removeItem: vi.fn()
-        },
-        writable: true
-      });
-
-      render(
-        <BudgetAlertManager 
-          year={2025} 
-          month={12} 
-          {...mockCallbacks} 
-        />
-      );
-
-      await waitFor(() => {
-        expect(screen.getByTestId('alert-budget-alert-1')).toBeInTheDocument();
-      });
-
-      // Should handle gracefully and warn about invalid format (logger formats with timestamp)
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
-        expect.stringMatching(/Invalid dismissal state format, using empty set/)
-      );
-
-      // Restore sessionStorage
-      Object.defineProperty(window, 'sessionStorage', {
-        value: originalSessionStorage,
-        writable: true
-      });
-      
-      consoleWarnSpy.mockRestore();
-    });
-
-    test('should display "and X more" indicator when alerts exceed limit', async () => {
-      // Create more than 5 alerts (flat format from API)
-      const manyBudgets = Array.from({ length: 7 }, (_, i) => ({
-        id: i + 1, year: 2025, month: 12, category: `Category${i + 1}`, limit: 100, spent: 85
-      }));
-
-      budgetApi.getBudgets.mockResolvedValue({ budgets: manyBudgets });
-
-      render(
-        <BudgetAlertManager 
-          year={2025} 
-          month={12} 
-          {...mockCallbacks} 
-        />
-      );
-
-      await waitFor(() => {
-        expect(budgetApi.getBudgets).toHaveBeenCalled();
-      });
-
-      // Should display exactly 5 alerts
-      await waitFor(() => {
-        const alerts = screen.queryAllByTestId(/alert-budget-alert-/);
-        expect(alerts).toHaveLength(5);
-      });
-
-      // Should display "and 2 more" indicator
-      await waitFor(() => {
-        expect(screen.getByText(/and\s+2\s+more budget alert/)).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: 'Manage all budgets' })).toBeInTheDocument();
-      });
-    });
-
-    test('should handle cache corruption gracefully', async () => {
-      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-      
-      render(
-        <BudgetAlertManager 
-          year={2025} 
-          month={12} 
-          refreshTrigger={0}
-          {...mockCallbacks} 
-        />
-      );
-
-      // Wait for initial load
-      await waitFor(() => {
-        expect(screen.getByTestId('alert-budget-alert-1')).toBeInTheDocument();
-      });
-
-      // This test verifies the component handles errors gracefully
-      // The actual implementation should clear cache and fetch fresh data on errors
-      // We verify the component rendered successfully without throwing
-      expect(screen.getByTestId('alert-budget-alert-1')).toBeInTheDocument();
       
       consoleWarnSpy.mockRestore();
     });

@@ -1,28 +1,47 @@
 # Git Commit Control
 
-## ⚠️ MANDATORY: Feature Branch Check for Spec Implementation ⚠️
+## ⚠️ MANDATORY: Feature Branch for Spec Implementation ⚠️
 
 **THIS IS THE FIRST THING TO DO when implementing spec tasks:**
 
 1. Run `git branch --show-current`
-2. If on `main`, STOP and ask user about creating a feature branch
-3. Do NOT write any code until the branch question is resolved
+2. **If on `main`**: Automatically create a feature branch named `feature/<spec-name>` and switch to it. No need to ask - just do it and inform the user.
+3. **If already on a feature branch**: Ask the user whether to:
+   - Continue on the current branch (if the specs are related), OR
+   - Create a new feature branch for the new spec
+4. Inform the user what branch you're working on.
 
-See `.kiro/steering/spec-task-execution.md` for the full rule (triggered automatically when reading tasks.md files).
+This ensures all spec work is isolated and can be cleanly merged with `--no-ff`.
 
 ---
 
-## User-Controlled Commits
+## Commit Control
 
-**IMPORTANT**: The user controls when git commits are made. The agent should NOT automatically commit changes.
+The agent can auto-commit in specific scenarios, but otherwise defers to the user.
 
-## Rules
+## Auto-Commit Allowed Scenarios
 
-1. **DO NOT** run `git add` or `git commit` automatically after making changes
-2. **DO NOT** commit as part of the deployment/build process unless explicitly asked
-3. **DO** make all code changes, version updates, and file modifications as requested
-4. **DO** inform the user when changes are ready to be committed
-5. **DO** suggest a commit message when appropriate, but let the user decide when to commit
+The agent MAY automatically commit (using `git add -A && git commit -m "message"`) in these cases:
+
+1. **After completing all spec tasks** - When all tasks in a spec's `tasks.md` are marked complete
+2. **Version bumps during deployment** - When pushing to production, commit version changes automatically
+3. **When explicitly requested** - User says "commit", "commit this", "go ahead and commit", etc.
+
+## Auto-Commit Rules
+
+When auto-committing:
+- Use descriptive commit messages (e.g., "feat: implement insurance-claim-reminders spec" or "v4.12.8: bug fixes")
+- For spec completions, reference the spec name in the commit message
+- For deployments, include the version number
+- Inform the user what was committed
+
+## Default Behavior (No Auto-Commit)
+
+For all other scenarios, the agent should:
+1. **DO** make all code changes, version updates, and file modifications as requested
+2. **DO** inform the user when changes are ready to be committed
+3. **DO** suggest a commit message when appropriate
+4. **DO NOT** commit without falling into one of the allowed scenarios above
 
 ## When User Asks to Deploy/Push to Production
 
@@ -31,8 +50,8 @@ See `.kiro/steering/spec-task-execution.md` for the full rule (triggered automat
 3. Update CHANGELOG.md and in-app changelog
 4. Build the frontend
 5. Build and push the Docker image
-6. **STOP** - Do not commit automatically
-7. Inform the user: "Changes are ready. When you're ready to commit, you can use: `git add -A && git commit -m 'your message'`"
+6. **Auto-commit** the version bump with message like `v4.12.8: <brief description>`
+7. Inform the user what was committed and deployed
 
 ## Suggested Commit Strategy
 
@@ -163,10 +182,8 @@ Agent actions:
 3. Update BackupSettings.jsx changelog
 4. Build frontend
 5. Build and push Docker image
+6. Auto-commit: git add -A && git commit -m "v4.12.7: Description of changes"
 
 Agent response:
-"Deployed v4.12.7 to Docker registry. Changes are staged but not committed.
-
-When ready, commit with:
-git add -A && git commit -m 'v4.12.7: Description of changes'"
+"Deployed v4.12.7 to Docker registry and committed the version bump."
 ```

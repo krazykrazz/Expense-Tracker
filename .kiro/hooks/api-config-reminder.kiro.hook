@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "name": "API Config Sync Reminder",
+  "description": "When backend route files are edited, reminds to also add the endpoint constant to frontend/src/config.js in API_ENDPOINTS.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "backend/routes/*.js"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A backend route file was edited. Check if any new API endpoints were added. If so, verify that the corresponding endpoint constant exists in frontend/src/config.js under API_ENDPOINTS. If it's missing, add it. Also check that a matching frontend API service function exists in frontend/src/services/."
+  }
+}

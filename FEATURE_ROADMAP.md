@@ -1034,11 +1034,98 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ---
 
+## 🏗️ Architectural Refactoring
+
+### 🟡 26. Frontend State Management - Phase 1: Filter Context
+**Status**: In Progress  
+**Priority**: High  
+**Effort**: Medium  
+**Spec**: `.kiro/specs/frontend-state-management/`  
+**Description**: Extract filter and view mode state from App.jsx into a dedicated React Context to reduce component complexity.
+
+**Key Features**:
+- FilterContext providing filter state (searchText, filterType, filterMethod, filterYear, filterInsurance)
+- View state management (selectedYear, selectedMonth, isGlobalView)
+- Centralized filter handlers and validation
+- Custom useFilterContext hook for clean API
+
+**Benefits**:
+- Reduces App.jsx from ~1000 lines
+- Eliminates prop drilling for filter state
+- Improves testability of filter logic
+- Foundation for future state extractions
+
+**Dependencies**: None
+
+---
+
+### ⚪ 27. Frontend State Management - Phase 2: Expense Context
+**Status**: Proposed  
+**Priority**: High  
+**Effort**: Medium  
+**Description**: Extract expense data state and handlers from App.jsx into a dedicated context.
+
+**Key Features**:
+- ExpenseContext providing expenses array and loading/error states
+- Expense CRUD handlers (add, update, delete)
+- Expense fetching logic with view mode awareness
+- Filtered expenses computation
+
+**Benefits**:
+- Further reduces App.jsx complexity
+- Centralizes expense data management
+- Enables expense state access from any component
+
+**Dependencies**: Phase 1 (Filter Context) should be completed first
+
+---
+
+### ⚪ 28. Frontend State Management - Phase 3: Modal Context
+**Status**: Proposed  
+**Priority**: Medium  
+**Effort**: Low  
+**Description**: Extract modal visibility state from App.jsx into a dedicated context.
+
+**Key Features**:
+- ModalContext managing all modal open/close states
+- Centralized modal handlers
+- Modal state persistence (if needed)
+
+**Benefits**:
+- Removes 10+ useState hooks from App.jsx
+- Simplifies modal management
+- Enables modal control from any component
+
+**Dependencies**: Can be done independently or after Phase 1/2
+
+---
+
+### ⚪ 29. Frontend State Management - Phase 4: Shared Data Context
+**Status**: Proposed  
+**Priority**: Medium  
+**Effort**: Medium  
+**Description**: Extract shared data fetching (people, payment methods, budgets) into a dedicated context.
+
+**Key Features**:
+- SharedDataContext providing people, paymentMethods, budgets
+- Centralized data fetching with refresh triggers
+- Data refresh handlers for cross-component updates
+
+**Benefits**:
+- Removes data fetching logic from App.jsx
+- Single source of truth for shared data
+- Reduces duplicate API calls
+
+**Dependencies**: Can be done independently
+
+---
+
 ## Priority Matrix
 
 ### High Priority (Implement Next)
-1. Expense Templates
-2. Financial Goals Dashboard
+1. Frontend State Management - Phase 1: Filter Context (in progress)
+2. Expense Templates
+3. Financial Goals Dashboard
 
 ### Medium Priority
 1. Adaptive Anomaly Detection (Learning from Dismissals)

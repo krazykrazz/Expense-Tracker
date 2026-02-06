@@ -1,6 +1,6 @@
 # Expense Tracker - Feature Roadmap
 
-**Last Updated**: February 4, 2026  
+**Last Updated**: February 6, 2026  
 **Current Version**: 5.5.0
 
 This document tracks potential features and enhancements for the Expense Tracker application. Features are categorized by priority and implementation status.
@@ -1059,24 +1059,31 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ---
 
-### ⚪ 27. Frontend State Management - Phase 2: Expense Context
-**Status**: Proposed  
+### 🟢 27. Frontend State Management - Phase 2: Expense Context
+**Status**: Completed  
 **Priority**: High  
 **Effort**: Medium  
-**Description**: Extract expense data state and handlers from App.jsx into a dedicated context.
+**Spec**: `.kiro/specs/expense-context/`  
+**Description**: Extract expense data state and handlers from App.jsx into a dedicated ExpenseContext, building on the FilterContext pattern from Phase 1.
 
-**Key Features**:
-- ExpenseContext providing expenses array and loading/error states
-- Expense CRUD handlers (add, update, delete)
-- Expense fetching logic with view mode awareness
-- Filtered expenses computation
+**Features Delivered**:
+- **ExpenseContext**: Dedicated context providing expenses array, loading/error states, and CRUD handlers
+- **View-Mode-Aware Fetching**: Automatic expense fetching based on monthly vs global view mode with filter awareness
+- **CRUD Handlers**: Centralized handleExpenseAdded (date-sorted insertion with view filtering), handleExpenseDeleted, handleExpenseUpdated
+- **Client-Side Filtering**: Memoized filteredExpenses with AND logic across searchText, filterType, and filterMethod
+- **Event-Driven Refresh**: Listens for expensesUpdated window events to keep data synchronized
+- **Current Month Count**: Tracks current month expense count for floating add button
+- **Budget Alert Integration**: Exposes budgetAlertRefreshTrigger for budget alert re-fetches
+- **Custom Hook**: useExpenseContext with descriptive error when used outside provider
+- **Comprehensive Testing**: 8 property-based tests (100+ iterations each), unit tests, and integration tests
 
 **Benefits**:
-- Further reduces App.jsx complexity
-- Centralizes expense data management
-- Enables expense state access from any component
+- Removed ~8 useState hooks and ~3 useEffect hooks from AppContent
+- Centralized expense data management in a single testable module
+- Eliminated duplicated fetch logic
+- Maintained 100% backward compatibility
 
-**Dependencies**: Phase 1 (Filter Context) should be completed first
+**Dependencies**: Phase 1 (Filter Context) — completed
 
 ---
 
@@ -1123,7 +1130,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 ## Priority Matrix
 
 ### High Priority (Implement Next)
-1. Frontend State Management - Phase 1: Filter Context (in progress)
+1. Frontend State Management - Phase 3: Modal Context
 2. Expense Templates
 3. Financial Goals Dashboard
 
@@ -1172,6 +1179,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 ---
 
 **Version History**:
+- v2.7 (2026-02-06): Marked Frontend State Management Phase 2 (Expense Context) as completed, updated priority matrix
 - v2.6 (2026-02-04): Added Fixed Expense Loan Linkage (v5.5.0) and Loan Payment Tracking (v5.5.0) to completed features, updated current version to 5.5.0
 - v2.5 (2026-02-02): Added Expense List UX Improvements (v5.4.0) and Credit Card Statement Balance (v5.3.1) to completed features, updated current version to 5.4.0
 - v2.4 (2026-02-02): Added UX improvement proposals (#21-25): ExpenseForm Simplification, Summary Panel Preferences, Duplicate Expense Feature, Quick Edit for Amount, Modal Consolidation

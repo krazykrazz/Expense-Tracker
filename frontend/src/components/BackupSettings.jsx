@@ -805,6 +805,16 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v5.6.0</div>
+                <div className="changelog-date">February 2026</div>
+                <ul className="changelog-items">
+                  <li>Insurance claim reminders - alerts for pending claims over 30 days</li>
+                  <li>Unified Notifications section - consolidated reminder banners</li>
+                  <li>Notification count badge showing total active alerts</li>
+                  <li>Improved notification organization in Summary Panel</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v5.5.0</div>
                 <div className="changelog-date">February 2026</div>
                 <ul className="changelog-items">

@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [5.6.0] - 2026-02-05
+
+### Added
+- **Insurance Claim Reminders**: Automatic alerts for pending medical expense insurance claims
+  - Reminder banner for claims pending over 30 days (configurable threshold)
+  - Shows expense details: date, place, amount, and days pending
+  - Quick action buttons to view expense or dismiss reminder
+  - Session-based dismissal to avoid repeated alerts
+  - Integration with existing reminder service architecture
+- **Unified Notifications Section**: Consolidated notification management in SummaryPanel
+  - Dedicated collapsible Notifications section grouping all reminder banners
+  - Count badge showing total active notifications
+  - Includes: Credit card reminders, loan payment reminders, billing cycle reminders, insurance claim reminders, budget alerts, and data reminders
+  - Improved UX with organized notification display
+- **Budget Reminder Banner**: Refactored budget alerts into dedicated component
+  - Cleaner separation of concerns from BudgetAlertManager
+  - Consistent styling with other reminder banners
+  - Property-based tests for threshold calculations
+
+### Changed
+- Moved deprecated BudgetAlertBanner and BudgetAlertErrorBoundary components to archive
+- Reorganized notification display from scattered banners to unified section
+- Improved SummaryPanel layout with better notification organization
+
+---
+
 ## [5.5.0] - 2026-02-04
 
 ### Added

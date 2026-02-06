@@ -819,6 +819,14 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v5.6.3</div>
+                <div className="changelog-date">February 6, 2026</div>
+                <ul className="changelog-items">
+                  <li>Extracted shared data (payment methods, people, budgets) into dedicated SharedDataContext</li>
+                  <li>Completed 4-phase state management refactoring (Filter, Expense, Modal, SharedData contexts)</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v5.6.2</div>
                 <div className="changelog-date">February 6, 2026</div>
                 <ul className="changelog-items">

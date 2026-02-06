@@ -1,3 +1,7 @@
+---
+inclusion: manual
+---
+
 # Docker Compose Configuration
 
 ## Custom Compose File Location

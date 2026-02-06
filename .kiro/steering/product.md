@@ -1,70 +1,41 @@
 # Product Overview
 
-A full-stack personal expense tracking application for managing household finances. Users can add, edit, and delete expenses with categorization across 15 expense types including Clothing, Dining Out, Entertainment, Gas, Gifts, Groceries, Housing, Insurance, Personal Care, Pet Care, Recreation Activities, Subscriptions, Utilities, Vehicle Maintenance, Other, and tax-deductible categories (Tax - Medical, Tax - Donation). The app provides monthly and annual summaries with year-over-year comparisons, tracks gross income vs expenses, manages fixed monthly expenses, tracks loans and lines of credit with balance history, and monitors investment portfolio performance. Features include configurable payment methods with database-driven management (Cash, Cheque, Debit, Credit Card types), credit card balance tracking with utilization indicators and payment history, credit card billing cycle history with automatic cycle generation and trend indicators, credit card statement balance calculation with smart payment alert suppression, credit card posted date support for accurate balance calculations, global expense filtering by category, payment method, and year with smart method filter and filter chips, automated database backups with restore functionality, tax-deductible expense reporting with medical expense people tracking for family member associations and multi-invoice PDF attachments with optional person linking for comprehensive record keeping, budget tracking with proactive alert notifications, place name standardization, smart expense entry with category suggestions, investment tracking with value history and performance charts, visual analytics for loans and investments, mortgage tracking with amortization schedules, equity tracking, payment insights, and variable rate support, merchant analytics for spending insights by location, monthly data reminders to prompt users to update investment values and loan balances, insurance claim reminders to alert users when medical expense claims have been pending for extended periods, dedicated notifications section grouping all reminder banners with collapsible UI and count badge, and enhanced UI with sticky summary scrolling, floating action buttons, and advanced filter controls for improved usability.
+A full-stack personal expense tracking application for managing household finances. Built with React + Express + SQLite, deployed via Docker. Supports multi-device access over local network.
 
 ## Key Features
 
-- Expense management with global search and filtering by category, payment method, and year across all time periods
-- Smart method filter combining payment type and specific method selection in a single grouped dropdown
-- Filter chips showing active filters with one-click removal for easy filter management
+- Expense management with global search and filtering by category, payment method, and year
+- Smart method filter combining payment type and specific method in a single grouped dropdown
+- Filter chips with one-click removal and filter count badge
 - Advanced filters section with collapsible Invoice and Insurance status filters
-- Filter count badge showing total number of active filters at a glance
-- Enhanced global view indicator showing filter triggers with "Return to Monthly View" button
 - Smart expense entry with intelligent category suggestions based on place history
 - Configurable payment methods with database-driven management (Cash, Cheque, Debit, Credit Card types)
 - Credit card balance tracking with utilization indicators, payment history, and statement uploads
 - Credit card billing cycle history with automatic cycle generation, trend indicators, and transaction counting
-- Credit card statement balance calculation based on billing cycles with automatic expense aggregation
-- Smart payment alert suppression when statement balance is paid in full
-- Credit card posted date support for distinguishing transaction date vs posting date in balance calculations
+- Credit card statement balance calculation with smart payment alert suppression
+- Credit card posted date support for accurate balance calculations
 - Payment method memory (remembers last used payment method)
-- Enhanced UI with sticky summary scrolling and floating add button for improved usability with long expense lists
+- Enhanced UI with sticky summary scrolling and floating add button
 - Monthly and annual financial summaries with weekly breakdowns
-- Enhanced Annual Summary with year-over-year (YoY) comparison showing income, expenses, savings rate, and net worth changes
-- YTD (Year-to-Date) comparison for current year to avoid misleading comparisons with incomplete data
-- Annual Summary cards: Savings Rate, Transaction Count, Top Category, Daily Spend, Tax Deductible totals
-- Collapsible sections for By Category and By Payment Method breakdowns
-- Income by Category visualization showing Salary, Government, Gifts, and Other income sources
-- Monthly Net Balance line graph showing surplus/deficit trends throughout the year
-- Configurable monthly gross income from multiple sources with category tracking (Salary, Government, Gifts, Other)
-- Fixed monthly expenses management with full category and payment type tracking (Housing, Utilities, Subscriptions, Insurance, etc.), carry-forward capability, and optional loan linkage with due date reminders
-- Budget tracking with proactive alert notifications - prominent banner alerts when approaching or exceeding budget limits
-- Smart alert thresholds: Warning (80-89%), Danger (90-99%), Critical (≥100%) with dismissible session-based alerts
-- Real-time budget alert updates with quick access to budget management from alert banners
-- Loans and lines of credit tracking with monthly balance history
-- Loan type differentiation (traditional loans vs lines of credit)
-- Loan payment tracking with payment-based balance calculation for loans and mortgages
-- Fixed expense loan linkage with optional due dates and loan associations
+- Annual Summary with year-over-year comparison, savings rate, transaction count, top category, daily spend, tax deductible totals
+- YTD comparison for current year to avoid misleading comparisons with incomplete data
+- Income by Category visualization and Monthly Net Balance line graph
+- Configurable monthly gross income from multiple sources with category tracking
+- Fixed monthly expenses with category/payment type tracking, carry-forward, and optional loan linkage with due date reminders
+- Budget tracking with proactive alert notifications (Warning 80-89%, Danger 90-99%, Critical ≥100%)
+- Loans and lines of credit tracking with monthly balance history and payment-based balance calculation
 - Loan payment reminders with auto-log payment suggestions
 - Visual dual-axis charts showing balance and interest rate trends
-- Total debt overview showing aggregate debt across all active loans over time
-- Mortgage tracking with dedicated loan type and enhanced analytics
-- Amortization schedule visualization with principal vs interest breakdown
-- Equity tracking showing property value minus remaining balance over time
-- Mortgage insights panel with current status, payoff projections, what-if scenarios, and payment history
-- Variable rate mortgage support with quick rate update capability
-- Investment portfolio tracking (TFSA and RRSP accounts)
-- Monthly investment value tracking with historical performance
-- Investment value change indicators and color coding
-- Line graphs showing investment performance over time
-- Total portfolio value calculation and display
-- Net worth tracking showing assets minus liabilities on annual and monthly summaries
-- Tax-deductible expense tracking (medical and donations)
-- Medical expense people tracking to associate expenses with family members
-- Medical expense insurance tracking with claim status (Not Claimed, In Progress, Paid, Denied), original cost vs out-of-pocket tracking, and reimbursement calculations
-- Tax-deductible expense invoice attachments for PDF record keeping and tax documentation (medical and donation expenses)
-- Multiple invoices per expense with optional person linking for family member receipts (medical expenses)
+- Total debt overview showing aggregate debt across all active loans
+- Mortgage tracking with amortization schedules, equity tracking, payment insights, variable rate support
+- Investment portfolio tracking (TFSA, RRSP) with value history and performance charts
+- Net worth tracking showing assets minus liabilities
+- Tax-deductible expense tracking (medical and donations) with insurance claim status tracking
+- Medical expense people tracking with family member associations
+- Multi-invoice PDF attachments with optional person linking
 - Person-grouped tax reports with per-person subtotals by provider
-- Multi-person expense allocation with split equally option
-- Invoice upload, viewing, and management with built-in PDF viewer
-- Invoice indicators in expense lists and tax reports with filtering options
-- Merchant analytics with spending insights by location, visit frequency, and trend analysis
-- Top merchants ranking with flexible sorting and time period filtering
-- Detailed merchant statistics including category breakdowns and payment method analysis
-- Fixed expenses integration option to include recurring costs (rent, utilities, subscriptions) in merchant analytics
-- Monthly spending trend charts with month-over-month change tracking
-- Insurance claim reminders alerting users when medical expense claims have been pending over 30 days
-- Dedicated Notifications section grouping all reminder banners (credit card, loan, billing cycle, insurance claims, budget alerts, data reminders)
-- Collapsible notifications with count badge showing total active notifications
-- Automated and manual database backups
-- Local network access for multi-device usage
+- Merchant analytics with spending insights, visit frequency, trend analysis, and fixed expenses integration
+- Insurance claim reminders for pending claims over 30 days
+- Dedicated Notifications section grouping all reminder banners with collapsible UI and count badge
+- Automated and manual database backups with restore functionality
+- Analytics hub with spending predictions, anomaly detection, and seasonal analysis

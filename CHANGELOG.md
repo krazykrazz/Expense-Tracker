@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [5.6.3] - 2026-02-06
+
+### Changed
+- Extracted shared data management (payment methods, people, budgets) from App.jsx into dedicated SharedDataContext
+- Completed 4-phase state management refactoring: FilterContext, ExpenseContext, ModalContext, SharedDataContext
+- Added comprehensive unit and property-based tests for SharedDataContext
+
 ## [5.6.2] - 2026-02-06
 
 ### Changed

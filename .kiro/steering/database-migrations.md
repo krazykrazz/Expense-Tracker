@@ -1,4 +1,29 @@
+---
+inclusion: manual
+---
+
 # Database Migration Best Practices
+
+## Schema Change Checklist
+
+When modifying database schema, ALWAYS update both production and test schemas:
+
+1. Add migration in `backend/database/migrations.js`
+2. Update `initializeDatabase()` in `backend/database/db.js`
+3. **CRITICAL**: Also update `initializeTestDatabase()` in `backend/database/db.js`
+4. Ensure test schema matches production schema exactly
+
+### Common Mistakes
+- ❌ Adding column to production schema but not test schema
+- ❌ Forgetting migration script for existing deployments
+
+## Test Environment Isolation
+
+- Tests use in-memory SQLite by default when `NODE_ENV === 'test'`
+- Some tests (like backup tests) need real files and set `SKIP_TEST_DB = 'true'`
+- The `getDatabase()` function checks both conditions
+- Set `process.env.SKIP_TEST_DB = 'true'` in beforeAll for tests needing real files
+- Clean up test files in afterAll
 
 ## Foreign Key Cascade Prevention
 
@@ -6,9 +31,7 @@ When recreating tables that have foreign key references from other tables (with 
 
 ### The Problem
 
-SQLite's foreign key constraints with `ON DELETE CASCADE` will automatically delete rows in child tables when the parent table is dropped. This happens even within a transaction.
-
-Example: The `loan_balances` table has a foreign key to `loans` with `ON DELETE CASCADE`. If you drop the `loans` table to recreate it, all `loan_balances` data is deleted.
+SQLite's `ON DELETE CASCADE` will automatically delete rows in child tables when the parent table is dropped. This happens even within a transaction.
 
 ### The Solution
 
@@ -38,8 +61,11 @@ Current tables with CASCADE DELETE foreign keys:
 - `expense_people` → `people` (person_id)
 - `expense_invoices` → `expenses` (expense_id)
 - `investment_values` → `investments` (investment_id)
-
-When recreating any of these parent tables, use the foreign key disable pattern.
+- `credit_card_payments` → `payment_methods` (payment_method_id)
+- `credit_card_statements` → `payment_methods` (payment_method_id)
+- `credit_card_billing_cycles` → `payment_methods` (payment_method_id)
+- `mortgage_payments` → `loans` (loan_id)
+- `loan_payments` → `loans` (loan_id)
 
 ### Template for Safe Table Recreation
 

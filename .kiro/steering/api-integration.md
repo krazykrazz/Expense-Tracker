@@ -29,28 +29,4 @@ Before considering an API feature complete:
 
 ## Database Schema Changes
 
-When modifying database schema:
-
-### Production Database
-1. Add migration in `backend/database/migrations.js`
-2. Update `initializeDatabase()` in `backend/database/db.js`
-
-### Test Database
-3. **CRITICAL**: Also update `initializeTestDatabase()` in `backend/database/db.js`
-4. Ensure test schema matches production schema exactly
-
-### Common Mistakes
-- ❌ Adding column to production schema but not test schema
-- ❌ Forgetting migration script for existing deployments
-
-## Test Environment Isolation
-
-### Database Isolation
-- Tests use in-memory SQLite by default when `NODE_ENV === 'test'`
-- Some tests (like backup tests) need real files and set `SKIP_TEST_DB = 'true'`
-- The `getDatabase()` function checks both conditions
-
-### When Writing Tests That Need Real Files
-- Set `process.env.SKIP_TEST_DB = 'true'` in beforeAll
-- Clean up test files in afterAll
-- Be aware that data created in test DB won't exist in production DB path
+See `database-migrations.md` for full migration guidance, schema sync rules, and test database requirements.

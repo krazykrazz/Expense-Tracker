@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "name": "Migration Schema Sync Check",
+  "description": "When database migration files are edited, reminds to also update initializeTestDatabase() in db.js to keep test and production schemas in sync.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "backend/database/migrations.js"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "The database migrations file was edited. Check if any new columns, tables, or schema changes were added. If so, verify that initializeTestDatabase() in backend/database/db.js has the matching schema changes. The test database schema must exactly match the production schema. If they're out of sync, update initializeTestDatabase() to match."
+  }
+}

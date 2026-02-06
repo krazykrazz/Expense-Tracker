@@ -1,26 +1,16 @@
 # Pre-Deployment Checklist
 
-Before pushing major changes to production, perform these checks.
+Before pushing major changes to production, run through this checklist. See `versioning.md` for version bump rules and `git-commits.md` for the deployment workflow.
 
-## Related Steering Files
+## Checklist
 
-- **Versioning**: See `versioning.md` for version bump rules and locations
-- **Git/Commits**: See `git-commits.md` for commit and deployment workflow
-
-## Pre-Deployment Checks
-
-### 1. Specification Review
-- Check `.kiro/specs/` for incomplete or draft specifications
-- Verify `tasks.md` files have completed tasks
-
-### 2. Code Quality
-- Check for TODO/FIXME comments in changed files
-- Verify error handling is consistent
-- Ensure logging uses the logger module (see `logging-best-practices.md`)
-
-### 3. Testing
-- Ensure new features have appropriate tests
-- Verify existing tests pass
+- [ ] Check `.kiro/specs/` for incomplete or draft specifications
+- [ ] Verify `tasks.md` files have completed tasks
+- [ ] Check for TODO/FIXME comments in changed files
+- [ ] Verify error handling is consistent
+- [ ] Ensure logging uses the logger module (see `logging-best-practices.md`)
+- [ ] Ensure new features have appropriate tests
+- [ ] Verify existing tests pass
 
 ## Docker Image Build and Push
 
@@ -36,7 +26,6 @@ When pushing to production, automatically:
 - Working on a feature branch (not main)
 
 ### Multi-Platform Builds
-For major releases or multi-architecture deployments:
 ```powershell
 .\build-and-push.ps1 -Tag latest -MultiPlatform
 ```

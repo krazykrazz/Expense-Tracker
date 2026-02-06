@@ -805,6 +805,14 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v5.6.1</div>
+                <div className="changelog-date">February 6, 2026</div>
+                <ul className="changelog-items">
+                  <li>Internal refactoring: extracted filter state management into dedicated FilterContext</li>
+                  <li>Reduced App.jsx complexity for improved maintainability</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v5.6.0</div>
                 <div className="changelog-date">February 2026</div>
                 <ul className="changelog-items">

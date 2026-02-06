@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import './App.css';
 import ExpenseForm from './components/ExpenseForm';
 import MonthSelector from './components/MonthSelector';
@@ -23,6 +23,7 @@ import { getMonthlyIncomeSources } from './services/incomeApi';
 import { getBudgets } from './services/budgetApi';
 import { calculateAlerts } from './utils/budgetAlerts';
 import { FilterProvider, useFilterContext } from './contexts/FilterContext';
+import { ExpenseProvider, useExpenseContext } from './contexts/ExpenseContext';
 import logo from './assets/tracker.png.png';
 
 function App() {
@@ -72,14 +73,16 @@ function App() {
 
   return (
     <FilterProvider paymentMethods={paymentMethods}>
-      <AppContent
-        paymentMethods={paymentMethods}
-        showPaymentMethods={showPaymentMethods}
-        setShowPaymentMethods={setShowPaymentMethods}
-        onPaymentMethodsUpdate={() => {
-          setPaymentMethodsRefreshTrigger(prev => prev + 1);
-        }}
-      />
+      <ExpenseProvider>
+        <AppContent
+          paymentMethods={paymentMethods}
+          showPaymentMethods={showPaymentMethods}
+          setShowPaymentMethods={setShowPaymentMethods}
+          onPaymentMethodsUpdate={() => {
+            setPaymentMethodsRefreshTrigger(prev => prev + 1);
+          }}
+        />
+      </ExpenseProvider>
     </FilterProvider>
   );
 }
@@ -106,11 +109,21 @@ function AppContent({ paymentMethods, showPaymentMethods, setShowPaymentMethods,
     handleReturnToMonthlyView,
   } = useFilterContext();
 
-  const [expenses, setExpenses] = useState([]);
-  const [currentMonthExpenseCount, setCurrentMonthExpenseCount] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  // Consume expense state from context (Phase 2 - ExpenseContext)
+  const {
+    filteredExpenses,
+    loading,
+    error,
+    refreshTrigger,
+    budgetAlertRefreshTrigger,
+    currentMonthExpenseCount,
+    handleExpenseAdded: contextHandleExpenseAdded,
+    handleExpenseDeleted,
+    handleExpenseUpdated,
+    triggerRefresh,
+    clearError,
+  } = useExpenseContext();
+
   const [showExpenseForm, setShowExpenseForm] = useState(false);
   const [showBackupSettings, setShowBackupSettings] = useState(false);
   const [showAnnualSummary, setShowAnnualSummary] = useState(false);
@@ -121,9 +134,6 @@ function AppContent({ paymentMethods, showPaymentMethods, setShowPaymentMethods,
   const [showPeopleManagement, setShowPeopleManagement] = useState(false);
   const [showAnalyticsHub, setShowAnalyticsHub] = useState(false);
   const [versionInfo, setVersionInfo] = useState(null);
-  
-  // Budget alert refresh trigger for real-time updates
-  const [budgetAlertRefreshTrigger, setBudgetAlertRefreshTrigger] = useState(0);
   
   // Budget alerts state for Analytics Hub integration (Requirement 7.4)
   const [budgetAlerts, setBudgetAlerts] = useState([]);
@@ -220,42 +230,11 @@ function AppContent({ paymentMethods, showPaymentMethods, setShowPaymentMethods,
     };
   }, [selectedYear, selectedMonth, budgetAlertRefreshTrigger]);
 
-  // Fetch current month expense count for floating button visibility
-  useEffect(() => {
-    let isMounted = true;
-
-    const fetchCurrentMonthExpenseCount = async () => {
-      try {
-        const currentDate = new Date();
-        const currentYear = currentDate.getFullYear();
-        const currentMonth = currentDate.getMonth() + 1;
-        
-        const url = `${API_ENDPOINTS.EXPENSES}?year=${currentYear}&month=${currentMonth}`;
-        const response = await fetch(url);
-        
-        if (response.ok && isMounted) {
-          const data = await response.json();
-          setCurrentMonthExpenseCount(data.length);
-        }
-      } catch (err) {
-        if (isMounted) {
-          console.error('Error fetching current month expense count:', err);
-        }
-      }
-    };
-
-    fetchCurrentMonthExpenseCount();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [refreshTrigger]);
-
   // Listen for peopleUpdated event
   useEffect(() => {
     const handlePeopleUpdated = () => {
       setPeopleRefreshTrigger(prev => prev + 1);
-      setRefreshTrigger(prev => prev + 1);
+      triggerRefresh();
     };
 
     window.addEventListener('peopleUpdated', handlePeopleUpdated);
@@ -263,7 +242,7 @@ function AppContent({ paymentMethods, showPaymentMethods, setShowPaymentMethods,
     return () => {
       window.removeEventListener('peopleUpdated', handlePeopleUpdated);
     };
-  }, []);
+  }, [triggerRefresh]);
 
   // Listen for navigateToTaxDeductible event
   useEffect(() => {
@@ -328,141 +307,11 @@ function AppContent({ paymentMethods, showPaymentMethods, setShowPaymentMethods,
     };
   }, [setFilterInsurance]);
 
-  /**
-   * Expense Fetching Effect
-   * 
-   * Fetches expenses from the API based on the current view mode:
-   * - Global View: Fetches ALL expenses (or year-filtered) when any filter is active
-   * - Monthly View: Fetches only expenses for the selected year/month
-   */
-  useEffect(() => {
-    const fetchExpenses = async () => {
-      setLoading(true);
-      setError(null);
-      
-      try {
-        let url;
-        if (isGlobalView) {
-          if (filterYear) {
-            url = `${API_ENDPOINTS.EXPENSES}?year=${filterYear}`;
-          } else {
-            url = `${API_ENDPOINTS.EXPENSES}`;
-          }
-        } else {
-          url = `${API_ENDPOINTS.EXPENSES}?year=${selectedYear}&month=${selectedMonth}`;
-        }
-        
-        const response = await fetch(url);
-        
-        if (!response.ok) {
-          const errorText = await response.text();
-          let errorMessage = 'Unable to load expenses. Please try again.';
-          
-          try {
-            const errorData = JSON.parse(errorText);
-            errorMessage = errorData.error || errorMessage;
-          } catch {
-            // If response is not JSON, use default message
-          }
-          
-          throw new Error(errorMessage);
-        }
-        
-        const data = await response.json();
-        setExpenses(data);
-      } catch (err) {
-        let userMessage = err.message;
-        
-        if (err.message.includes('fetch')) {
-          userMessage = 'Unable to connect to the server. Please check your connection and try again.';
-        } else if (err.message.includes('NetworkError') || err.message.includes('Failed to fetch')) {
-          userMessage = 'Network error. Please check your connection and try again.';
-        }
-        
-        setError(userMessage);
-        console.error('Error fetching expenses:', err);
-        
-        if (expenses.length === 0) {
-          setExpenses([]);
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchExpenses();
-  }, [selectedYear, selectedMonth, isGlobalView, filterYear]);
-
-  // Listen for expensesUpdated event
-  useEffect(() => {
-    const handleExpensesUpdated = () => {
-      setRefreshTrigger(prev => prev + 1);
-      setBudgetAlertRefreshTrigger(prev => prev + 1);
-      
-      const fetchExpenses = async () => {
-        try {
-          let url;
-          if (isGlobalView) {
-            if (filterYear) {
-              url = `${API_ENDPOINTS.EXPENSES}?year=${filterYear}`;
-            } else {
-              url = `${API_ENDPOINTS.EXPENSES}`;
-            }
-          } else {
-            url = `${API_ENDPOINTS.EXPENSES}?year=${selectedYear}&month=${selectedMonth}`;
-          }
-          
-          const response = await fetch(url);
-          if (response.ok) {
-            const data = await response.json();
-            setExpenses(data);
-          }
-        } catch (err) {
-          console.error('Error refreshing expenses:', err);
-        }
-      };
-      
-      fetchExpenses();
-    };
-
-    window.addEventListener('expensesUpdated', handleExpensesUpdated);
-    
-    return () => {
-      window.removeEventListener('expensesUpdated', handleExpensesUpdated);
-    };
-  }, [selectedYear, selectedMonth, isGlobalView]);
-
-  const handleExpenseAdded = (newExpense) => {
-    const dateParts = newExpense.date.split('-');
-    const expenseYear = parseInt(dateParts[0], 10);
-    const expenseMonth = parseInt(dateParts[1], 10);
-    
-    if (isGlobalView || (expenseYear === selectedYear && expenseMonth === selectedMonth)) {
-      setExpenses(prev => {
-        const newList = [...prev, newExpense];
-        newList.sort((a, b) => new Date(a.date) - new Date(b.date));
-        return newList;
-      });
-    }
-    
-    setRefreshTrigger(prev => prev + 1);
-    setBudgetAlertRefreshTrigger(prev => prev + 1);
+  // Wrap context handleExpenseAdded to also close expense form modal (UI concern)
+  const handleExpenseAdded = useCallback((newExpense) => {
+    contextHandleExpenseAdded(newExpense);
     setShowExpenseForm(false);
-  };
-
-  const handleExpenseDeleted = (deletedId) => {
-    setExpenses(prev => prev.filter(expense => expense.id !== deletedId));
-    setRefreshTrigger(prev => prev + 1);
-    setBudgetAlertRefreshTrigger(prev => prev + 1);
-  };
-
-  const handleExpenseUpdated = (updatedExpense) => {
-    setExpenses(prev => prev.map(expense => 
-      expense.id === updatedExpense.id ? updatedExpense : expense
-    ));
-    setRefreshTrigger(prev => prev + 1);
-    setBudgetAlertRefreshTrigger(prev => prev + 1);
-  };
+  }, [contextHandleExpenseAdded]);
 
   const handleManageBudgets = (category = null) => {
     setBudgetManagementFocusCategory(category);
@@ -472,13 +321,11 @@ function AppContent({ paymentMethods, showPaymentMethods, setShowPaymentMethods,
   const handleCloseBudgetManagement = () => {
     setShowBudgetManagement(false);
     setBudgetManagementFocusCategory(null);
-    setRefreshTrigger(prev => prev + 1);
-    setBudgetAlertRefreshTrigger(prev => prev + 1);
+    triggerRefresh();
   };
 
   const handleBudgetUpdated = () => {
-    setRefreshTrigger(prev => prev + 1);
-    setBudgetAlertRefreshTrigger(prev => prev + 1);
+    triggerRefresh();
   };
 
   const handleViewBudgetHistory = () => {
@@ -491,9 +338,9 @@ function AppContent({ paymentMethods, showPaymentMethods, setShowPaymentMethods,
 
   const handlePeopleUpdated = useCallback(() => {
     setPeopleRefreshTrigger(prev => prev + 1);
-    setRefreshTrigger(prev => prev + 1);
+    triggerRefresh();
     window.dispatchEvent(new CustomEvent('peopleUpdated'));
-  }, []);
+  }, [triggerRefresh]);
 
   const handleClosePeopleManagement = () => {
     setShowPeopleManagement(false);
@@ -503,35 +350,6 @@ function AppContent({ paymentMethods, showPaymentMethods, setShowPaymentMethods,
     handleSearchChange(merchantName);
     setShowAnalyticsHub(false);
   };
-
-  /**
-   * Client-Side Expense Filtering (Memoized)
-   * 
-   * Applies all active filters to the fetched expenses using AND logic.
-   */
-  const filteredExpenses = useMemo(() => {
-    return expenses.filter(expense => {
-      if (searchText) {
-        const searchLower = searchText.toLowerCase();
-        const placeMatch = expense.place && expense.place.toLowerCase().includes(searchLower);
-        const notesMatch = expense.notes && expense.notes.toLowerCase().includes(searchLower);
-        
-        if (!placeMatch && !notesMatch) {
-          return false;
-        }
-      }
-      
-      if (filterType && expense.type !== filterType) {
-        return false;
-      }
-      
-      if (filterMethod && expense.method !== filterMethod) {
-        return false;
-      }
-      
-      return true;
-    });
-  }, [expenses, searchText, filterType, filterMethod]);
 
   return (
     <div className="App">
@@ -605,8 +423,8 @@ function AppContent({ paymentMethods, showPaymentMethods, setShowPaymentMethods,
             <button 
               className="retry-button"
               onClick={() => {
-                setError(null);
-                setRefreshTrigger(prev => prev + 1);
+                clearError();
+                triggerRefresh();
               }}
             >
               Retry
@@ -778,7 +596,7 @@ function AppContent({ paymentMethods, showPaymentMethods, setShowPaymentMethods,
           isOpen={showPaymentMethods}
           onClose={() => setShowPaymentMethods(false)}
           onUpdate={() => {
-            setRefreshTrigger(prev => prev + 1);
+            triggerRefresh();
             onPaymentMethodsUpdate();
           }}
         />

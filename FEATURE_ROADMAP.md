@@ -1036,11 +1036,11 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ## 🏗️ Architectural Refactoring
 
-### 🟡 26. Frontend State Management - Phase 1: Filter Context
-**Status**: In Progress  
+### 🟢 26. Frontend State Management - Phase 1: Filter Context
+**Status**: Completed  
 **Priority**: High  
 **Effort**: Medium  
-**Spec**: `.kiro/specs/frontend-state-management/`  
+**Spec**: `archive/specs/frontend-state-management/` (archived)  
 **Description**: Extract filter and view mode state from App.jsx into a dedicated React Context to reduce component complexity.
 
 **Key Features**:

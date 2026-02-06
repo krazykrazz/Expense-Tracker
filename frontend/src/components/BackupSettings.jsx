@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { API_ENDPOINTS } from '../config';
 import './BackupSettings.css';
 import { formatDateTime } from '../utils/formatters';
@@ -25,6 +25,18 @@ const BackupSettings = () => {
   const [versionInfo, setVersionInfo] = useState(null);
   const [dbStats, setDbStats] = useState(null);
   const [showPlaceNameStandardization, setShowPlaceNameStandardization] = useState(false);
+  
+  // Track timeouts for cleanup on unmount
+  const messageTimerRef = useRef(null);
+  
+  // Cleanup timers on unmount
+  useEffect(() => {
+    return () => {
+      if (messageTimerRef.current) {
+        clearTimeout(messageTimerRef.current);
+      }
+    };
+  }, []);
   
   // People management state
   const [people, setPeople] = useState([]);
@@ -142,7 +154,8 @@ const BackupSettings = () => {
       setNextBackup(data.nextBackup);
       setMessage({ text: 'Backup settings saved successfully!', type: 'success' });
       
-      setTimeout(() => setMessage({ text: '', type: '' }), 3000);
+      if (messageTimerRef.current) clearTimeout(messageTimerRef.current);
+      messageTimerRef.current = setTimeout(() => setMessage({ text: '', type: '' }), 3000);
     } catch (error) {
       setMessage({ text: error.message, type: 'error' });
     }
@@ -166,7 +179,8 @@ const BackupSettings = () => {
       fetchBackupList();
       fetchConfig();
       
-      setTimeout(() => setMessage({ text: '', type: '' }), 5000);
+      if (messageTimerRef.current) clearTimeout(messageTimerRef.current);
+      messageTimerRef.current = setTimeout(() => setMessage({ text: '', type: '' }), 5000);
     } catch (error) {
       setMessage({ text: error.message, type: 'error' });
     }

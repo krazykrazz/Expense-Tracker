@@ -24,6 +24,7 @@ import { getBudgets } from './services/budgetApi';
 import { calculateAlerts } from './utils/budgetAlerts';
 import { FilterProvider, useFilterContext } from './contexts/FilterContext';
 import { ExpenseProvider, useExpenseContext } from './contexts/ExpenseContext';
+import { ModalProvider, useModalContext } from './contexts/ModalContext';
 import logo from './assets/tracker.png.png';
 
 function App() {
@@ -74,14 +75,16 @@ function App() {
   return (
     <FilterProvider paymentMethods={paymentMethods}>
       <ExpenseProvider>
-        <AppContent
-          paymentMethods={paymentMethods}
-          showPaymentMethods={showPaymentMethods}
-          setShowPaymentMethods={setShowPaymentMethods}
-          onPaymentMethodsUpdate={() => {
-            setPaymentMethodsRefreshTrigger(prev => prev + 1);
-          }}
-        />
+        <ModalProvider>
+          <AppContent
+            paymentMethods={paymentMethods}
+            showPaymentMethods={showPaymentMethods}
+            setShowPaymentMethods={setShowPaymentMethods}
+            onPaymentMethodsUpdate={() => {
+              setPaymentMethodsRefreshTrigger(prev => prev + 1);
+            }}
+          />
+        </ModalProvider>
       </ExpenseProvider>
     </FilterProvider>
   );
@@ -124,15 +127,36 @@ function AppContent({ paymentMethods, showPaymentMethods, setShowPaymentMethods,
     clearError,
   } = useExpenseContext();
 
-  const [showExpenseForm, setShowExpenseForm] = useState(false);
-  const [showBackupSettings, setShowBackupSettings] = useState(false);
-  const [showAnnualSummary, setShowAnnualSummary] = useState(false);
-  const [showTaxDeductible, setShowTaxDeductible] = useState(false);
-  const [showBudgetManagement, setShowBudgetManagement] = useState(false);
-  const [budgetManagementFocusCategory, setBudgetManagementFocusCategory] = useState(null);
-  const [showBudgetHistory, setShowBudgetHistory] = useState(false);
-  const [showPeopleManagement, setShowPeopleManagement] = useState(false);
-  const [showAnalyticsHub, setShowAnalyticsHub] = useState(false);
+  // Consume modal state from context (Phase 3 - ModalContext)
+  const {
+    showExpenseForm,
+    showBackupSettings,
+    showAnnualSummary,
+    showTaxDeductible,
+    showBudgetManagement,
+    budgetManagementFocusCategory,
+    showBudgetHistory,
+    showPeopleManagement,
+    showAnalyticsHub,
+    openExpenseForm,
+    closeExpenseForm,
+    openBackupSettings,
+    closeBackupSettings,
+    openAnnualSummary,
+    closeAnnualSummary,
+    openTaxDeductible,
+    closeTaxDeductible,
+    openBudgetManagement,
+    closeBudgetManagement,
+    openBudgetHistory,
+    closeBudgetHistory,
+    openPeopleManagement,
+    closePeopleManagement,
+    openAnalyticsHub,
+    closeAnalyticsHub,
+    closeAllOverlays,
+  } = useModalContext();
+
   const [versionInfo, setVersionInfo] = useState(null);
   
   // Budget alerts state for Analytics Hub integration (Requirement 7.4)
@@ -244,34 +268,10 @@ function AppContent({ paymentMethods, showPaymentMethods, setShowPaymentMethods,
     };
   }, [triggerRefresh]);
 
-  // Listen for navigateToTaxDeductible event
-  useEffect(() => {
-    const handleNavigateToTaxDeductible = (event) => {
-      setShowTaxDeductible(true);
-      
-      if (event.detail?.insuranceFilter) {
-        setTimeout(() => {
-          window.dispatchEvent(new CustomEvent('setTaxDeductibleInsuranceFilter', {
-            detail: { insuranceFilter: event.detail.insuranceFilter }
-          }));
-        }, 100);
-      }
-    };
-
-    window.addEventListener('navigateToTaxDeductible', handleNavigateToTaxDeductible);
-    
-    return () => {
-      window.removeEventListener('navigateToTaxDeductible', handleNavigateToTaxDeductible);
-    };
-  }, []);
-
   // Listen for navigateToExpenseList event (e.g., from BudgetReminderBanner)
   useEffect(() => {
     const handleNavigateToExpenseList = (event) => {
-      setShowTaxDeductible(false);
-      setShowAnnualSummary(false);
-      setShowBackupSettings(false);
-      setShowBudgetHistory(false);
+      closeAllOverlays();
       
       // Use context handler for filter state update
       if (event.detail?.categoryFilter) {
@@ -284,15 +284,12 @@ function AppContent({ paymentMethods, showPaymentMethods, setShowPaymentMethods,
     return () => {
       window.removeEventListener('navigateToExpenseList', handleNavigateToExpenseList);
     };
-  }, [handleFilterTypeChange]);
+  }, [handleFilterTypeChange, closeAllOverlays]);
 
   // Listen for filterByInsuranceStatus event
   useEffect(() => {
     const handleFilterByInsuranceStatus = (event) => {
-      setShowTaxDeductible(false);
-      setShowAnnualSummary(false);
-      setShowBackupSettings(false);
-      setShowBudgetHistory(false);
+      closeAllOverlays();
       
       // Use context setter for filter state update
       if (event.detail?.insuranceFilter) {
@@ -305,36 +302,23 @@ function AppContent({ paymentMethods, showPaymentMethods, setShowPaymentMethods,
     return () => {
       window.removeEventListener('filterByInsuranceStatus', handleFilterByInsuranceStatus);
     };
-  }, [setFilterInsurance]);
+  }, [setFilterInsurance, closeAllOverlays]);
 
   // Wrap context handleExpenseAdded to also close expense form modal (UI concern)
   const handleExpenseAdded = useCallback((newExpense) => {
     contextHandleExpenseAdded(newExpense);
-    setShowExpenseForm(false);
-  }, [contextHandleExpenseAdded]);
-
-  const handleManageBudgets = (category = null) => {
-    setBudgetManagementFocusCategory(category);
-    setShowBudgetManagement(true);
-  };
-
-  const handleCloseBudgetManagement = () => {
-    setShowBudgetManagement(false);
-    setBudgetManagementFocusCategory(null);
-    triggerRefresh();
-  };
+    closeExpenseForm();
+  }, [contextHandleExpenseAdded, closeExpenseForm]);
 
   const handleBudgetUpdated = () => {
     triggerRefresh();
   };
 
-  const handleViewBudgetHistory = () => {
-    setShowBudgetHistory(true);
-  };
-
-  const handleCloseBudgetHistory = () => {
-    setShowBudgetHistory(false);
-  };
+  // Wrapper for closeBudgetManagement that also triggers refresh
+  const handleCloseBudgetManagement = useCallback(() => {
+    closeBudgetManagement();
+    triggerRefresh();
+  }, [closeBudgetManagement, triggerRefresh]);
 
   const handlePeopleUpdated = useCallback(() => {
     setPeopleRefreshTrigger(prev => prev + 1);
@@ -342,14 +326,10 @@ function AppContent({ paymentMethods, showPaymentMethods, setShowPaymentMethods,
     window.dispatchEvent(new CustomEvent('peopleUpdated'));
   }, [triggerRefresh]);
 
-  const handleClosePeopleManagement = () => {
-    setShowPeopleManagement(false);
-  };
-
-  const handleViewExpensesFromAnalytics = (merchantName) => {
+  const handleViewExpensesFromAnalytics = useCallback((merchantName) => {
     handleSearchChange(merchantName);
-    setShowAnalyticsHub(false);
-  };
+    closeAnalyticsHub();
+  }, [handleSearchChange, closeAnalyticsHub]);
 
   return (
     <div className="App">
@@ -362,7 +342,7 @@ function AppContent({ paymentMethods, showPaymentMethods, setShowPaymentMethods,
         <div className="header-buttons">
           <button 
             className="settings-button" 
-            onClick={() => setShowBackupSettings(true)}
+            onClick={openBackupSettings}
             aria-label="Settings"
             title="Backup, import, and restore settings"
           >
@@ -407,11 +387,11 @@ function AppContent({ paymentMethods, showPaymentMethods, setShowPaymentMethods,
             selectedYear={selectedYear}
             selectedMonth={selectedMonth}
             onMonthChange={handleMonthChange}
-            onViewAnnualSummary={() => setShowAnnualSummary(true)}
-            onViewTaxDeductible={() => setShowTaxDeductible(true)}
-            onManageBudgets={handleManageBudgets}
-            onViewBudgetHistory={handleViewBudgetHistory}
-            onOpenAnalyticsHub={() => setShowAnalyticsHub(true)}
+            onViewAnnualSummary={openAnnualSummary}
+            onViewTaxDeductible={openTaxDeductible}
+            onManageBudgets={openBudgetManagement}
+            onViewBudgetHistory={openBudgetHistory}
+            onOpenAnalyticsHub={openAnalyticsHub}
             onOpenPaymentMethods={() => setShowPaymentMethods(true)}
           />
         </div>
@@ -454,7 +434,7 @@ function AppContent({ paymentMethods, showPaymentMethods, setShowPaymentMethods,
                 expenses={filteredExpenses}
                 onExpenseDeleted={handleExpenseDeleted}
                 onExpenseUpdated={handleExpenseUpdated}
-                onAddExpense={() => setShowExpenseForm(true)}
+                onAddExpense={openExpenseForm}
                 currentMonthExpenseCount={currentMonthExpenseCount}
                 initialInsuranceFilter={filterInsurance}
                 onInsuranceFilterChange={setFilterInsurance}
@@ -493,11 +473,11 @@ function AppContent({ paymentMethods, showPaymentMethods, setShowPaymentMethods,
       </main>
 
       {showExpenseForm && (
-        <div className="modal-overlay" onClick={() => setShowExpenseForm(false)}>
+        <div className="modal-overlay" onClick={closeExpenseForm}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <button 
               className="modal-close-button" 
-              onClick={() => setShowExpenseForm(false)}
+              onClick={closeExpenseForm}
               aria-label="Close"
             >
               ×
@@ -508,11 +488,11 @@ function AppContent({ paymentMethods, showPaymentMethods, setShowPaymentMethods,
       )}
 
       {showBackupSettings && (
-        <div className="modal-overlay" onClick={() => setShowBackupSettings(false)}>
+        <div className="modal-overlay" onClick={closeBackupSettings}>
           <div className="modal-content modal-content-large" onClick={(e) => e.stopPropagation()}>
             <button 
               className="modal-close-button" 
-              onClick={() => setShowBackupSettings(false)}
+              onClick={closeBackupSettings}
               aria-label="Close"
             >
               ×
@@ -523,11 +503,11 @@ function AppContent({ paymentMethods, showPaymentMethods, setShowPaymentMethods,
       )}
 
       {showAnnualSummary && (
-        <div className="modal-overlay" onClick={() => setShowAnnualSummary(false)}>
+        <div className="modal-overlay" onClick={closeAnnualSummary}>
           <div className="modal-content modal-content-large" onClick={(e) => e.stopPropagation()}>
             <button 
               className="modal-close-button" 
-              onClick={() => setShowAnnualSummary(false)}
+              onClick={closeAnnualSummary}
               aria-label="Close"
             >
               ×
@@ -538,11 +518,11 @@ function AppContent({ paymentMethods, showPaymentMethods, setShowPaymentMethods,
       )}
 
       {showTaxDeductible && (
-        <div className="modal-overlay" onClick={() => setShowTaxDeductible(false)}>
+        <div className="modal-overlay" onClick={closeTaxDeductible}>
           <div className="modal-content modal-content-large" onClick={(e) => e.stopPropagation()}>
             <button 
               className="modal-close-button" 
-              onClick={() => setShowTaxDeductible(false)}
+              onClick={closeTaxDeductible}
               aria-label="Close"
             >
               ×
@@ -567,14 +547,14 @@ function AppContent({ paymentMethods, showPaymentMethods, setShowPaymentMethods,
         <BudgetHistoryView
           year={selectedYear}
           month={selectedMonth}
-          onClose={handleCloseBudgetHistory}
+          onClose={closeBudgetHistory}
         />
       )}
 
       {showPeopleManagement && (
         <PeopleManagementModal
           isOpen={showPeopleManagement}
-          onClose={handleClosePeopleManagement}
+          onClose={closePeopleManagement}
           onPeopleUpdated={handlePeopleUpdated}
         />
       )}
@@ -582,7 +562,7 @@ function AppContent({ paymentMethods, showPaymentMethods, setShowPaymentMethods,
       {showAnalyticsHub && (
         <AnalyticsHubModal
           isOpen={showAnalyticsHub}
-          onClose={() => setShowAnalyticsHub(false)}
+          onClose={closeAnalyticsHub}
           currentYear={selectedYear}
           currentMonth={selectedMonth}
           monthlyIncome={monthlyIncome}
@@ -604,7 +584,7 @@ function AppContent({ paymentMethods, showPaymentMethods, setShowPaymentMethods,
 
       {/* Floating Add Button */}
       <FloatingAddButton
-        onAddExpense={() => setShowExpenseForm(true)}
+        onAddExpense={openExpenseForm}
         expenseCount={currentMonthExpenseCount}
       />
 

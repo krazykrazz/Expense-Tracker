@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import './InvestmentDetailView.css';
 import { getValueHistory, createOrUpdateValue, deleteValue } from '../services/investmentValueApi';
 import { updateInvestment } from '../services/investmentApi';
@@ -71,9 +71,23 @@ const InvestmentDetailView = ({ investment, isOpen, onClose, onUpdate }) => {
     setSuccessMessage(null);
   };
 
+  const successTimerRef = useRef(null);
+  
+  // Cleanup success timer on unmount
+  useEffect(() => {
+    return () => {
+      if (successTimerRef.current) {
+        clearTimeout(successTimerRef.current);
+      }
+    };
+  }, []);
+
   const showSuccess = (message) => {
     setSuccessMessage(message);
-    setTimeout(() => setSuccessMessage(null), 3000);
+    if (successTimerRef.current) {
+      clearTimeout(successTimerRef.current);
+    }
+    successTimerRef.current = setTimeout(() => setSuccessMessage(null), 3000);
   };
 
   const handleEditValue = (valueEntry) => {

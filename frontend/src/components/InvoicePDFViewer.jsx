@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { API_ENDPOINTS } from '../config';
 import { createLogger } from '../utils/logger';
@@ -35,6 +35,7 @@ const InvoicePDFViewer = ({
   const [error, setError] = useState(null);
   const [zoom, setZoom] = useState(1.0);
   const [pdfUrl, setPdfUrl] = useState(null);
+  const pdfUrlRef = useRef(null);
 
   // Zoom constants
   const MIN_ZOOM = 0.5;
@@ -49,8 +50,9 @@ const InvoicePDFViewer = ({
       loadPDF();
     } else {
       // Clean up when modal closes
-      if (pdfUrl) {
-        URL.revokeObjectURL(pdfUrl);
+      if (pdfUrlRef.current) {
+        URL.revokeObjectURL(pdfUrlRef.current);
+        pdfUrlRef.current = null;
         setPdfUrl(null);
       }
       setError(null);
@@ -59,8 +61,9 @@ const InvoicePDFViewer = ({
 
     // Cleanup on unmount
     return () => {
-      if (pdfUrl) {
-        URL.revokeObjectURL(pdfUrl);
+      if (pdfUrlRef.current) {
+        URL.revokeObjectURL(pdfUrlRef.current);
+        pdfUrlRef.current = null;
       }
     };
   }, [isOpen, expenseId, invoiceId]);
@@ -111,7 +114,12 @@ const InvoicePDFViewer = ({
         throw new Error('Received empty file from server');
       }
       
+      // Revoke previous URL if any
+      if (pdfUrlRef.current) {
+        URL.revokeObjectURL(pdfUrlRef.current);
+      }
       const blobUrl = URL.createObjectURL(blob);
+      pdfUrlRef.current = blobUrl;
       setPdfUrl(blobUrl);
 
     } catch (loadError) {

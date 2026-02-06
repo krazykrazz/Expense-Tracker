@@ -22,16 +22,94 @@ import { getPaymentMethods } from './services/paymentMethodApi';
 import { getMonthlyIncomeSources } from './services/incomeApi';
 import { getBudgets } from './services/budgetApi';
 import { calculateAlerts } from './utils/budgetAlerts';
+import { FilterProvider, useFilterContext } from './contexts/FilterContext';
 import logo from './assets/tracker.png.png';
 
 function App() {
+  // Payment methods state - needed as prop for FilterProvider
+  const [paymentMethods, setPaymentMethods] = useState([]);
+  const [paymentMethodsRefreshTrigger, setPaymentMethodsRefreshTrigger] = useState(0);
+
+  // Fetch payment methods for global filtering (includes inactive for historical data)
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchPaymentMethodsData = async () => {
+      try {
+        const methods = await getPaymentMethods();
+        if (isMounted) {
+          setPaymentMethods(methods.map(m => m.display_name) || []);
+        }
+      } catch (err) {
+        if (isMounted) {
+          console.error('Error fetching payment methods:', err);
+        }
+      }
+    };
+
+    fetchPaymentMethodsData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [paymentMethodsRefreshTrigger]);
+
+  // Listen for openPaymentMethods event - needs to be at App level
+  // since PaymentMethodsModal refresh trigger is here
+  const [showPaymentMethods, setShowPaymentMethods] = useState(false);
+
+  useEffect(() => {
+    const handleOpenPaymentMethods = () => {
+      setShowPaymentMethods(true);
+    };
+
+    window.addEventListener('openPaymentMethods', handleOpenPaymentMethods);
+    
+    return () => {
+      window.removeEventListener('openPaymentMethods', handleOpenPaymentMethods);
+    };
+  }, []);
+
+  return (
+    <FilterProvider paymentMethods={paymentMethods}>
+      <AppContent
+        paymentMethods={paymentMethods}
+        showPaymentMethods={showPaymentMethods}
+        setShowPaymentMethods={setShowPaymentMethods}
+        onPaymentMethodsUpdate={() => {
+          setPaymentMethodsRefreshTrigger(prev => prev + 1);
+        }}
+      />
+    </FilterProvider>
+  );
+}
+
+function AppContent({ paymentMethods, showPaymentMethods, setShowPaymentMethods, onPaymentMethodsUpdate }) {
+  // Consume filter state from context (Requirements 4.2, 4.3, 4.4)
+  const {
+    searchText,
+    filterType,
+    filterMethod,
+    filterYear,
+    filterInsurance,
+    selectedYear,
+    selectedMonth,
+    isGlobalView,
+    globalViewTriggers,
+    setFilterInsurance,
+    handleSearchChange,
+    handleFilterTypeChange,
+    handleFilterMethodChange,
+    handleFilterYearChange,
+    handleMonthChange,
+    handleClearFilters,
+    handleReturnToMonthlyView,
+  } = useFilterContext();
+
   const [expenses, setExpenses] = useState([]);
   const [currentMonthExpenseCount, setCurrentMonthExpenseCount] = useState(0);
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [searchText, setSearchText] = useState('');
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [showExpenseForm, setShowExpenseForm] = useState(false);
   const [showBackupSettings, setShowBackupSettings] = useState(false);
@@ -42,11 +120,6 @@ function App() {
   const [showBudgetHistory, setShowBudgetHistory] = useState(false);
   const [showPeopleManagement, setShowPeopleManagement] = useState(false);
   const [showAnalyticsHub, setShowAnalyticsHub] = useState(false);
-  const [showPaymentMethods, setShowPaymentMethods] = useState(false);
-  const [filterType, setFilterType] = useState('');
-  const [filterMethod, setFilterMethod] = useState('');
-  const [filterYear, setFilterYear] = useState(''); // Year filter for global search
-  const [filterInsurance, setFilterInsurance] = useState(''); // Insurance status filter for expense list
   const [versionInfo, setVersionInfo] = useState(null);
   
   // Budget alert refresh trigger for real-time updates
@@ -59,74 +132,6 @@ function App() {
   // People state management for medical expense tracking
   const [people, setPeople] = useState([]);
   const [peopleRefreshTrigger, setPeopleRefreshTrigger] = useState(0);
-  
-  // Payment methods state for global filtering
-  const [paymentMethods, setPaymentMethods] = useState([]);
-  const [paymentMethodsRefreshTrigger, setPaymentMethodsRefreshTrigger] = useState(0);
-
-  /**
-   * Global View Mode Determination
-   * 
-   * The application operates in two modes:
-   * - Monthly View: Shows expenses for the selected month only (default)
-   * - Global View: Shows expenses from all time periods (when certain filters are active)
-   * 
-   * Global view is triggered when ANY of the following filters are active:
-   * - searchText: User has entered text to search place/notes
-   * - filterMethod: User has selected a payment method filter
-   * - filterYear: User has selected a year filter
-   * 
-   * Note: filterType (category filter) alone does NOT trigger global view.
-   * This allows users to filter the current month's expenses by category
-   * (e.g., from budget alerts) without switching to global view.
-   * To search globally by category, combine with searchText or filterYear.
-   * 
-   * filterInsurance triggers global view because insurance claim reminders
-   * show pending claims from previous months that need attention.
-   */
-  const isGlobalView = searchText.trim().length > 0 || filterMethod || filterYear || filterInsurance;
-
-  /**
-   * Global View Trigger Identification
-   * 
-   * Identifies which filters triggered the global view mode.
-   * Returns an array of trigger names for display in the global view banner.
-   * This helps users understand why they're seeing expenses from all time periods.
-   * 
-   * Requirements: 5.4
-   */
-  const globalViewTriggers = useMemo(() => {
-    const triggers = [];
-    if (searchText.trim().length > 0) {
-      triggers.push('Search');
-    }
-    if (filterMethod) {
-      triggers.push('Payment Method');
-    }
-    if (filterYear) {
-      triggers.push('Year');
-    }
-    if (filterInsurance) {
-      triggers.push('Insurance Status');
-    }
-    return triggers;
-  }, [searchText, filterMethod, filterYear, filterInsurance]);
-
-  /**
-   * Return to Monthly View Handler
-   * 
-   * Clears all global-triggering filters (searchText, filterMethod, filterYear)
-   * to return the application to monthly view mode.
-   * Note: filterType is NOT cleared as it doesn't trigger global view.
-   * 
-   * Requirements: 5.3
-   */
-  const handleReturnToMonthlyView = useCallback(() => {
-    setSearchText('');
-    setFilterMethod('');
-    setFilterYear('');
-    setFilterInsurance('');
-  }, []);
 
   // Fetch version info on mount
   useEffect(() => {
@@ -177,32 +182,6 @@ function App() {
     };
   }, [peopleRefreshTrigger]);
 
-  // Fetch payment methods for global filtering (includes inactive for historical data)
-  useEffect(() => {
-    let isMounted = true;
-
-    const fetchPaymentMethodsData = async () => {
-      try {
-        // Fetch all payment methods (including inactive) for filtering
-        const methods = await getPaymentMethods();
-        if (isMounted) {
-          // Extract display names for the SearchBar component
-          setPaymentMethods(methods.map(m => m.display_name) || []);
-        }
-      } catch (err) {
-        if (isMounted) {
-          console.error('Error fetching payment methods:', err);
-        }
-      }
-    };
-
-    fetchPaymentMethodsData();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [paymentMethodsRefreshTrigger]);
-
   // Fetch monthly income and budget alerts for Analytics Hub integration (Requirement 7.4)
   useEffect(() => {
     let isMounted = true;
@@ -220,7 +199,6 @@ function App() {
         const budgets = budgetResponse?.budgets || [];
         if (isMounted && budgets.length > 0) {
           const alerts = calculateAlerts(budgets);
-          // Transform alerts to the format expected by PredictionsView
           const formattedAlerts = alerts.map(alert => ({
             category: alert.category,
             percentUsed: Math.round(alert.progress),
@@ -271,15 +249,12 @@ function App() {
     return () => {
       isMounted = false;
     };
-  }, [refreshTrigger]); // Update when expenses are added/deleted
+  }, [refreshTrigger]);
 
-  // Listen for peopleUpdated event (e.g., from PeopleManagementModal or BackupSettings)
+  // Listen for peopleUpdated event
   useEffect(() => {
     const handlePeopleUpdated = () => {
-      // Trigger a refresh of people data
       setPeopleRefreshTrigger(prev => prev + 1);
-      
-      // Also trigger expense refresh to update people indicators
       setRefreshTrigger(prev => prev + 1);
     };
 
@@ -290,29 +265,12 @@ function App() {
     };
   }, []);
 
-  // Listen for openPaymentMethods event (e.g., from ExpenseForm when no payment methods exist)
-  useEffect(() => {
-    const handleOpenPaymentMethods = () => {
-      setShowPaymentMethods(true);
-    };
-
-    window.addEventListener('openPaymentMethods', handleOpenPaymentMethods);
-    
-    return () => {
-      window.removeEventListener('openPaymentMethods', handleOpenPaymentMethods);
-    };
-  }, []);
-
-  // Listen for navigateToTaxDeductible event (e.g., from InsuranceClaimReminderBanner)
-  // _Requirements: 3.1, 3.2_
+  // Listen for navigateToTaxDeductible event
   useEffect(() => {
     const handleNavigateToTaxDeductible = (event) => {
-      // Open Tax Deductible view
       setShowTaxDeductible(true);
       
-      // If insurance filter is specified, dispatch event to set the filter
       if (event.detail?.insuranceFilter) {
-        // Dispatch event after a short delay to ensure TaxDeductible is mounted
         setTimeout(() => {
           window.dispatchEvent(new CustomEvent('setTaxDeductibleInsuranceFilter', {
             detail: { insuranceFilter: event.detail.insuranceFilter }
@@ -329,18 +287,16 @@ function App() {
   }, []);
 
   // Listen for navigateToExpenseList event (e.g., from BudgetReminderBanner)
-  // _Requirements: 6.4_
   useEffect(() => {
     const handleNavigateToExpenseList = (event) => {
-      // Close any open modals/views
       setShowTaxDeductible(false);
       setShowAnnualSummary(false);
       setShowBackupSettings(false);
       setShowBudgetHistory(false);
       
-      // Set the category filter if specified
+      // Use context handler for filter state update
       if (event.detail?.categoryFilter) {
-        setFilterType(event.detail.categoryFilter);
+        handleFilterTypeChange(event.detail.categoryFilter);
       }
     };
 
@@ -349,18 +305,17 @@ function App() {
     return () => {
       window.removeEventListener('navigateToExpenseList', handleNavigateToExpenseList);
     };
-  }, []);
+  }, [handleFilterTypeChange]);
 
-  // Listen for filterByInsuranceStatus event (e.g., from InsuranceClaimReminderBanner)
+  // Listen for filterByInsuranceStatus event
   useEffect(() => {
     const handleFilterByInsuranceStatus = (event) => {
-      // Close any open modals/views
       setShowTaxDeductible(false);
       setShowAnnualSummary(false);
       setShowBackupSettings(false);
       setShowBudgetHistory(false);
       
-      // Set the insurance filter if specified
+      // Use context setter for filter state update
       if (event.detail?.insuranceFilter) {
         setFilterInsurance(event.detail.insuranceFilter);
       }
@@ -371,7 +326,7 @@ function App() {
     return () => {
       window.removeEventListener('filterByInsuranceStatus', handleFilterByInsuranceStatus);
     };
-  }, []);
+  }, [setFilterInsurance]);
 
   /**
    * Expense Fetching Effect
@@ -379,13 +334,6 @@ function App() {
    * Fetches expenses from the API based on the current view mode:
    * - Global View: Fetches ALL expenses (or year-filtered) when any filter is active
    * - Monthly View: Fetches only expenses for the selected year/month
-   * 
-   * Dependencies:
-   * - selectedYear, selectedMonth: Triggers refetch when user changes month
-   * - isGlobalView: Triggers refetch when switching between global/monthly modes
-   * - filterYear: Triggers refetch when year filter changes
-   * 
-   * The API endpoint changes based on view mode to optimize data transfer.
    */
   useEffect(() => {
     const fetchExpenses = async () => {
@@ -395,14 +343,12 @@ function App() {
       try {
         let url;
         if (isGlobalView) {
-          // Global view - fetch all expenses or year-filtered expenses
           if (filterYear) {
             url = `${API_ENDPOINTS.EXPENSES}?year=${filterYear}`;
           } else {
             url = `${API_ENDPOINTS.EXPENSES}`;
           }
         } else {
-          // Monthly view - fetch month-specific expenses
           url = `${API_ENDPOINTS.EXPENSES}?year=${selectedYear}&month=${selectedMonth}`;
         }
         
@@ -425,7 +371,6 @@ function App() {
         const data = await response.json();
         setExpenses(data);
       } catch (err) {
-        // Provide user-friendly error messages
         let userMessage = err.message;
         
         if (err.message.includes('fetch')) {
@@ -437,8 +382,6 @@ function App() {
         setError(userMessage);
         console.error('Error fetching expenses:', err);
         
-        // Keep existing expenses on error to avoid blank screen
-        // Only clear if this is the first load
         if (expenses.length === 0) {
           setExpenses([]);
         }
@@ -450,14 +393,12 @@ function App() {
     fetchExpenses();
   }, [selectedYear, selectedMonth, isGlobalView, filterYear]);
 
-  // Listen for expensesUpdated event (e.g., from place name standardization)
+  // Listen for expensesUpdated event
   useEffect(() => {
     const handleExpensesUpdated = () => {
-      // Trigger a refresh by updating the refresh trigger
       setRefreshTrigger(prev => prev + 1);
       setBudgetAlertRefreshTrigger(prev => prev + 1);
       
-      // Re-fetch expenses to reflect changes
       const fetchExpenses = async () => {
         try {
           let url;
@@ -492,127 +433,36 @@ function App() {
   }, [selectedYear, selectedMonth, isGlobalView]);
 
   const handleExpenseAdded = (newExpense) => {
-    // Add new expense to the list
-    // Parse date as local date to avoid timezone issues
     const dateParts = newExpense.date.split('-');
     const expenseYear = parseInt(dateParts[0], 10);
     const expenseMonth = parseInt(dateParts[1], 10);
     
-    // In global view, always add the expense
-    // In monthly view, only add if it belongs to the selected month
     if (isGlobalView || (expenseYear === selectedYear && expenseMonth === selectedMonth)) {
       setExpenses(prev => {
-        // Insert in chronological order
         const newList = [...prev, newExpense];
         newList.sort((a, b) => new Date(a.date) - new Date(b.date));
         return newList;
       });
     }
     
-    // Trigger summary refresh and budget alert refresh
     setRefreshTrigger(prev => prev + 1);
     setBudgetAlertRefreshTrigger(prev => prev + 1);
     setShowExpenseForm(false);
   };
 
   const handleExpenseDeleted = (deletedId) => {
-    // Remove deleted expense from the list
     setExpenses(prev => prev.filter(expense => expense.id !== deletedId));
-    
-    // Trigger summary refresh and budget alert refresh
     setRefreshTrigger(prev => prev + 1);
     setBudgetAlertRefreshTrigger(prev => prev + 1);
   };
 
   const handleExpenseUpdated = (updatedExpense) => {
-    // Update the expense in the list
     setExpenses(prev => prev.map(expense => 
       expense.id === updatedExpense.id ? updatedExpense : expense
     ));
-    
-    // Trigger summary refresh and budget alert refresh
     setRefreshTrigger(prev => prev + 1);
     setBudgetAlertRefreshTrigger(prev => prev + 1);
   };
-
-  const handleMonthChange = (year, month) => {
-    setSelectedYear(year);
-    setSelectedMonth(month);
-  };
-
-  const handleSearchChange = useCallback((text) => {
-    setSearchText(text);
-  }, []);
-
-  /**
-   * Filter Type Change Handler
-   * 
-   * Updates the category filter state with validation.
-   * Validates the selected category against the approved CATEGORIES list
-   * to prevent invalid selections (e.g., from URL manipulation or bugs).
-   * 
-   * @param {string} type - The selected category or empty string for "All"
-   */
-  const handleFilterTypeChange = useCallback((type) => {
-    // Validate category against approved list
-    if (type && !CATEGORIES.includes(type)) {
-      console.warn(`Invalid category selected: ${type}. Resetting to empty.`);
-      setFilterType('');
-      return;
-    }
-    setFilterType(type);
-  }, []);
-
-  /**
-   * Filter Method Change Handler
-   * 
-   * Updates the payment method filter state.
-   * Payment methods are now fetched from the API, so validation is done
-   * against the fetched list rather than a hardcoded constant.
-   * 
-   * @param {string} method - The selected payment method or empty string for "All"
-   */
-  const handleFilterMethodChange = useCallback((method) => {
-    // Validate payment method against API-fetched list
-    if (method && paymentMethods.length > 0 && !paymentMethods.includes(method)) {
-      console.warn(`Invalid payment method selected: ${method}. Resetting to empty.`);
-      setFilterMethod('');
-      return;
-    }
-    setFilterMethod(method);
-  }, [paymentMethods]);
-
-  /**
-   * Filter Year Change Handler
-   * 
-   * Updates the year filter state for global search scoping.
-   * Allows users to filter expenses by a specific year when in global view.
-   * 
-   * @param {string} year - The selected year or empty string for "All Years"
-   */
-  const handleFilterYearChange = useCallback((year) => {
-    setFilterYear(year);
-  }, []);
-
-  /**
-   * Clear All Filters Handler
-   * 
-   * Resets all filter states to their default empty values:
-   * - searchText: cleared
-   * - filterType: cleared (shows all categories)
-   * - filterMethod: cleared (shows all payment methods)
-   * - filterYear: cleared (no year filter)
-   * 
-   * This returns the application to monthly view mode, showing only
-   * expenses for the currently selected month.
-   */
-  const handleClearFilters = useCallback(() => {
-    setSearchText('');
-    setFilterType('');
-    setFilterMethod('');
-    setFilterYear('');
-    setFilterInsurance('');
-  }, []);
 
   const handleManageBudgets = (category = null) => {
     setBudgetManagementFocusCategory(category);
@@ -622,13 +472,11 @@ function App() {
   const handleCloseBudgetManagement = () => {
     setShowBudgetManagement(false);
     setBudgetManagementFocusCategory(null);
-    // Trigger refresh to update budget displays and alerts
     setRefreshTrigger(prev => prev + 1);
     setBudgetAlertRefreshTrigger(prev => prev + 1);
   };
 
   const handleBudgetUpdated = () => {
-    // Trigger refresh to update budget displays and alerts
     setRefreshTrigger(prev => prev + 1);
     setBudgetAlertRefreshTrigger(prev => prev + 1);
   };
@@ -642,13 +490,8 @@ function App() {
   };
 
   const handlePeopleUpdated = useCallback(() => {
-    // Refresh people data
     setPeopleRefreshTrigger(prev => prev + 1);
-    
-    // Trigger expense refresh to update people indicators in expense list
     setRefreshTrigger(prev => prev + 1);
-    
-    // Dispatch global event for other components (TaxDeductible, etc.)
     window.dispatchEvent(new CustomEvent('peopleUpdated'));
   }, []);
 
@@ -657,9 +500,7 @@ function App() {
   };
 
   const handleViewExpensesFromAnalytics = (merchantName) => {
-    // Set search text to the merchant name to filter expenses
-    setSearchText(merchantName);
-    // Close the analytics hub modal
+    handleSearchChange(merchantName);
     setShowAnalyticsHub(false);
   };
 
@@ -667,44 +508,27 @@ function App() {
    * Client-Side Expense Filtering (Memoized)
    * 
    * Applies all active filters to the fetched expenses using AND logic.
-   * All filters must match for an expense to be included in the results.
-   * 
-   * Filter Logic:
-   * 1. Text Search: Matches against place OR notes fields (case-insensitive)
-   * 2. Category Filter: Exact match on expense.type
-   * 3. Payment Method Filter: Exact match on expense.method
-   * 
-   * Performance Optimization:
-   * - useMemo prevents unnecessary re-filtering when unrelated state changes
-   * - Only re-computes when expenses array or filter values change
-   * 
-   * @returns {Array} Filtered array of expense objects
    */
   const filteredExpenses = useMemo(() => {
     return expenses.filter(expense => {
-      // Text search filter - matches place OR notes (case-insensitive)
       if (searchText) {
         const searchLower = searchText.toLowerCase();
         const placeMatch = expense.place && expense.place.toLowerCase().includes(searchLower);
         const notesMatch = expense.notes && expense.notes.toLowerCase().includes(searchLower);
         
-        // Expense must match at least one field
         if (!placeMatch && !notesMatch) {
           return false;
         }
       }
       
-      // Category filter - exact match required
       if (filterType && expense.type !== filterType) {
         return false;
       }
       
-      // Payment method filter - exact match required
       if (filterMethod && expense.method !== filterMethod) {
         return false;
       }
       
-      // All active filters passed
       return true;
     });
   }, [expenses, searchText, filterType, filterMethod]);
@@ -729,7 +553,7 @@ function App() {
         </div>
       </header>
       <main className="App-main">
-        {/* View Mode Indicator - Enhanced with trigger information (Requirements: 5.1, 5.2, 5.4, 5.5) */}
+        {/* View Mode Indicator */}
         <div className="view-mode-indicator">
           {isGlobalView ? (
             <div className="view-mode-banner global">
@@ -955,12 +779,12 @@ function App() {
           onClose={() => setShowPaymentMethods(false)}
           onUpdate={() => {
             setRefreshTrigger(prev => prev + 1);
-            setPaymentMethodsRefreshTrigger(prev => prev + 1);
+            onPaymentMethodsUpdate();
           }}
         />
       )}
 
-      {/* Floating Add Button - Rendered outside content-layout to avoid stacking context issues */}
+      {/* Floating Add Button */}
       <FloatingAddButton
         onAddExpense={() => setShowExpenseForm(true)}
         expenseCount={currentMonthExpenseCount}

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [5.6.2] - 2026-02-06
+
+### Changed
+- Extracted expense state management (expenses, loading, CRUD operations) from App.jsx into dedicated ExpenseContext
+- Further reduced App.jsx complexity as part of ongoing state management refactoring
+- Added comprehensive unit, property-based, and integration tests for ExpenseContext
+
 ## [5.6.1] - 2026-02-06
 
 ### Changed

@@ -1,4 +1,4 @@
-param(
+﻿param(
     [Parameter(Mandatory=$true)]
     [string]$FeatureName,
     [switch]$SkipTests,
@@ -277,8 +277,7 @@ if ($DirectMerge) {
         git push origin --delete $BranchName
         Write-Host "✅ Feature branch deleted" -ForegroundColor Green
     }
-}
-else {
+} else {
     # ============================================
     # PR WORKFLOW (New default behavior)
     # ============================================

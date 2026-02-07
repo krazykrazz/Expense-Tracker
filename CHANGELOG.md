@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [5.7.0] - 2026-02-07
+
+### Changed
+- Refactored monolithic expenseService.js (2,391 lines) into 6 focused sub-services with slim facade
+  - expenseValidationService, expenseInsuranceService, expensePeopleService
+  - expenseTaxService, expenseAggregationService, expenseCategoryService
+- Grouped donations by place in tax deductible view with per-place totals and counts
+- Build-and-push script now auto-deploys containers via compose file after push
+
 ## [5.6.3] - 2026-02-06
 
 ### Changed

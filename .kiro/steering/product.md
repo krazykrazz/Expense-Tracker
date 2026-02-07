@@ -34,6 +34,7 @@ A full-stack personal expense tracking application for managing household financ
 - Medical expense people tracking with family member associations
 - Multi-invoice PDF attachments with optional person linking
 - Person-grouped tax reports with per-person subtotals by provider
+- Donation expenses grouped by place with per-place totals and counts
 - Merchant analytics with spending insights, visit frequency, trend analysis, and fixed expenses integration
 - Insurance claim reminders for pending claims over 30 days
 - Dedicated Notifications section grouping all reminder banners with collapsible UI and count badge

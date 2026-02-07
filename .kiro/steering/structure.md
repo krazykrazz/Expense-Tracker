@@ -8,6 +8,7 @@ The backend follows a layered architecture with clear separation of concerns:
 
 - **Controllers**: Handle HTTP requests/responses, input validation, error handling
 - **Services**: Business logic, data validation, orchestration between repositories
+  - Large services may be split into focused sub-services (e.g., expenseService delegates to expenseValidationService, expenseInsuranceService, expensePeopleService, expenseTaxService, expenseAggregationService, expenseCategoryService)
 - **Repositories**: Data access layer, direct database operations
 - **Database**: SQLite initialization and schema management
 

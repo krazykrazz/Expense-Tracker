@@ -32,13 +32,13 @@ docker run -d -p 5000:5000 --restart=always --name registry registry:2
 
 ```batch
 # Default build
-build-and-push.bat
+scripts\windows\build-and-push.bat
 
 # Development build
-build-and-push.bat --dev
+scripts\windows\build-and-push.bat --dev
 
 # Multi-platform build
-build-and-push.bat --multi-platform
+scripts\windows\build-and-push.bat --multi-platform
 ```
 
 ### Manual Docker Commands

@@ -16,19 +16,19 @@ All database backups include:
 Use the automated script:
 
 ```bash
-restore-backup.bat "path\to\your\backup.db"
+scripts\windows\restore-backup.bat "path\to\your\backup.db"
 ```
 
 **Examples:**
 ```bash
 # From backend/database folder
-restore-backup.bat "backend\database\expenses.db"
+scripts\windows\restore-backup.bat "backend\database\expenses.db"
 
 # From backend/backups folder
-restore-backup.bat "backend\backups\expense-tracker-backup-2025-11-19.db"
+scripts\windows\restore-backup.bat "backend\backups\expense-tracker-backup-2025-11-19.db"
 
 # From any location
-restore-backup.bat "C:\Users\YourName\Downloads\expenses.db"
+scripts\windows\restore-backup.bat "C:\Users\YourName\Downloads\expenses.db"
 ```
 
 The script will:
@@ -111,7 +111,7 @@ docker-compose restart
 ```bash
 # Make sure no other processes are using the database
 # Stop any local Node.js servers
-stop-servers.bat
+scripts\windows\stop-servers.bat
 
 # Then try again
 docker-compose down
@@ -125,7 +125,7 @@ docker-compose up -d
 copy "config\database\expenses.db" "config\backups\pre-restore-backup.db"
 
 # Then restore your backup
-restore-backup.bat "path\to\backup.db"
+scripts\windows\restore-backup.bat "path\to\backup.db"
 ```
 
 ---
@@ -151,10 +151,10 @@ If you're migrating from the old non-Docker setup:
 
 ```bash
 # 1. Stop old servers
-stop-servers.bat
+scripts\windows\stop-servers.bat
 
 # 2. Use the restore script with your current database
-restore-backup.bat "backend\database\expenses.db"
+scripts\windows\restore-backup.bat "backend\database\expenses.db"
 
 # 3. Done! Access at http://localhost:2424
 ```

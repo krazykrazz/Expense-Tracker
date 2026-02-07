@@ -1,4 +1,7 @@
 @echo off
+REM Navigate to project root (two levels up from scripts/windows/)
+cd /d "%~dp0..\.."
+
 echo Adding all changes...
 git add .
 

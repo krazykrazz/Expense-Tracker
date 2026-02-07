@@ -1,10 +1,12 @@
 # Silent Mode - Quick Reference
 
+All batch and VBS scripts are located in `scripts/windows/`.
+
 ## Starting the App (No Windows)
 
 ### Development Mode (with auto-reload)
 ```
-Double-click: start-silent.vbs
+Double-click: scripts/windows/start-silent.vbs
 ```
 - Runs in background
 - Auto-reloads on file changes
@@ -12,7 +14,7 @@ Double-click: start-silent.vbs
 
 ### Production Mode
 ```
-Double-click: start-silent-prod.vbs
+Double-click: scripts/windows/start-silent-prod.vbs
 ```
 - Runs in background
 - Single server
@@ -21,15 +23,15 @@ Double-click: start-silent-prod.vbs
 ## Stopping the App
 
 ```
-Double-click: stop-servers-silent.vbs
+Double-click: scripts/windows/stop-servers-silent.vbs
 ```
-Or run: `stop-servers.bat`
+Or run: `scripts\windows\stop-servers.bat`
 
 ## Windows Auto-Startup (Silent)
 
 1. Press `Win + R`
 2. Type: `shell:startup`
-3. Create shortcut to `start-silent.vbs`
+3. Create shortcut to `scripts/windows/start-silent.vbs`
 4. Done! App starts silently on boot
 
 ## Checking if App is Running
@@ -50,6 +52,8 @@ Or check Task Manager for `node.exe` processes.
 
 ## Files Overview
 
+All files in `scripts/windows/`:
+
 | File | Purpose |
 |------|---------|
 | `start-silent.vbs` | Start dev mode (silent) |
@@ -63,12 +67,12 @@ Or check Task Manager for `node.exe` processes.
 
 **App not starting?**
 - Check if ports 2424 or 5173 are already in use
-- Run `stop-servers.bat` first to clean up
+- Run `scripts\windows\stop-servers.bat` first to clean up
 
 **No notification popup?**
 - The app is still starting, just without notification
 - Wait 5 seconds and check http://localhost:5173
 
 **Want to see logs?**
-- Use `start-dev.bat` instead to see terminal output
+- Use `scripts\windows\start-dev.bat` instead to see terminal output
 - Useful for debugging

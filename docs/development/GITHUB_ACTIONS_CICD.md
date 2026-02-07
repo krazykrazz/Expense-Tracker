@@ -367,4 +367,4 @@ Individual test timeouts:
 
 - [Feature Branch Workflow](./FEATURE_BRANCH_WORKFLOW.md) - Branch strategy and promotion process
 - [Pre-deployment Checklist](../../.kiro/steering/pre-deployment.md) - Steps before deploying
-- [Docker Documentation](../../DOCKER.md) - Docker setup and usage
+- [Docker Documentation](../guides/DOCKER.md) - Docker setup and usage

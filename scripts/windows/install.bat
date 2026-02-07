@@ -1,4 +1,7 @@
 @echo off
+REM Navigate to project root (two levels up from scripts/windows/)
+cd /d "%~dp0..\.."
+
 echo ========================================
 echo Expense Tracker - Installation
 echo ========================================
@@ -25,8 +28,8 @@ echo Installation Successful!
 echo ========================================
 echo.
 echo Next steps:
-echo 1. Run 'start-dev.bat' for development mode (with auto-reload)
-echo 2. Run 'start-prod.bat' for production mode
-echo 3. See STARTUP_GUIDE.md for auto-startup configuration
+echo 1. Run 'scripts\windows\start-dev.bat' for development mode (with auto-reload)
+echo 2. Run 'scripts\windows\start-prod.bat' for production mode
+echo 3. See docs\guides\STARTUP_GUIDE.md for auto-startup configuration
 echo.
 pause

@@ -1,4 +1,7 @@
 @echo off
+REM Navigate to project root (two levels up from scripts/windows/)
+cd /d "%~dp0..\.."
+
 REM Build and Push Script for Local Docker Registry (Windows Batch Wrapper)
 REM This script calls the PowerShell script with appropriate parameters
 
@@ -49,12 +52,12 @@ REM Check if PowerShell is available
 where pwsh >nul 2>nul
 if %ERRORLEVEL% equ 0 (
     echo Using PowerShell Core...
-    pwsh -ExecutionPolicy Bypass -File build-and-push.ps1 -Tag %TAG% -Registry %REGISTRY% %MULTI_PLATFORM%
+    pwsh -ExecutionPolicy Bypass -File "%~dp0build-and-push.ps1" -Tag %TAG% -Registry %REGISTRY% %MULTI_PLATFORM%
 ) else (
     where powershell >nul 2>nul
     if %ERRORLEVEL% equ 0 (
         echo Using Windows PowerShell...
-        powershell -ExecutionPolicy Bypass -File build-and-push.ps1 -Tag %TAG% -Registry %REGISTRY% %MULTI_PLATFORM%
+        powershell -ExecutionPolicy Bypass -File "%~dp0build-and-push.ps1" -Tag %TAG% -Registry %REGISTRY% %MULTI_PLATFORM%
     ) else (
         echo ERROR: PowerShell is not available
         exit /b 1

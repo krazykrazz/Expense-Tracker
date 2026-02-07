@@ -63,6 +63,11 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
   const [linkedFixedExpenses, setLinkedFixedExpenses] = useState([]);
   const [loadingFixedExpenses, setLoadingFixedExpenses] = useState(false);
 
+  // Derive paymentDueDay from linked fixed expenses (Requirements 1.1, 1.2)
+  const paymentDueDay = linkedFixedExpenses.length > 0 
+    ? linkedFixedExpenses[0].payment_due_day 
+    : null;
+
   // Determine if this loan uses payment-based tracking
   // Requirement 5.1: loans and mortgages use payment tracking
   // Requirement 5.2: lines of credit use balance tracking
@@ -144,16 +149,29 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
 
     try {
       const fixedExpenses = await getFixedExpensesByLoan(loan.id);
-      // Get unique expense names (most recent entry for each name)
-      const uniqueExpenses = [];
-      const seenNames = new Set();
+      // Get unique expense names, preferring current month's entry over future months
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth() + 1; // 1-12
+      
+      const expensesByName = new Map();
       
       for (const expense of fixedExpenses) {
-        if (!seenNames.has(expense.name)) {
-          seenNames.add(expense.name);
-          uniqueExpenses.push(expense);
+        const existing = expensesByName.get(expense.name);
+        if (!existing) {
+          expensesByName.set(expense.name, expense);
+        } else {
+          // Prefer current month's entry over any other
+          const isCurrentMonth = expense.year === currentYear && expense.month === currentMonth;
+          const existingIsCurrentMonth = existing.year === currentYear && existing.month === currentMonth;
+          
+          if (isCurrentMonth && !existingIsCurrentMonth) {
+            expensesByName.set(expense.name, expense);
+          }
         }
       }
+      
+      const uniqueExpenses = Array.from(expensesByName.values());
       
       setLinkedFixedExpenses(uniqueExpenses);
     } catch (err) {
@@ -1023,6 +1041,7 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
               <MortgageInsightsPanel 
                 mortgageId={loanData.id}
                 mortgageData={loanData}
+                paymentDueDay={paymentDueDay}
               />
 
               {/* Equity Chart - Requirements 4.2, 4.3, 8.3 */}

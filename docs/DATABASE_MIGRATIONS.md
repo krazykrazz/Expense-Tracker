@@ -20,11 +20,30 @@ Migrations are defined in `backend/database/migrations.js`:
 - `migrateRemoveRecurringExpenses` - Removes recurring expenses feature
 - `migrateFixCategoryConstraints` - Ensures all tables have correct category constraints
 - `migrateAddPersonalCareCategory` - Adds "Personal Care" category
-- `migrateEnhanceFixedExpenses` - Adds category and payment_type fields to fixed_expenses table
+- `migrateAddCategoryAndPaymentTypeToFixedExpenses` - Adds category and payment_type fields to fixed_expenses table
 - `migrateAddIncomeCategoryColumn` - Adds category field to income_sources table
+- `migrateAddInvestmentTables` - Creates investments and investment_values tables (v4.4.0)
+- `migrateAddPeopleTables` - Creates people and expense_people tables for medical expense tracking (v4.6.0)
+- `migrateAddPerformanceIndexes` - Adds performance indexes for frequently queried columns
+- `migrateAddExpenseInvoicesTable` - Creates expense_invoices table for invoice attachments (v4.12.0)
 - `migrateMultiInvoiceSupport` - Enables multiple invoices per expense with person linking (v4.13.0)
-- `migrateAddBillingCycleDay` - Adds billing_cycle_day column for statement balance calculation (v4.21.0)
-- `migrateBillingCycleHistory` - Creates billing_cycle_history table for tracking billing cycles (v5.4.0)
+- `migrateLinkInvoicesToSinglePerson` - Auto-links unlinked invoices to single assigned person (v4.14.6)
+- `migrateAddInsuranceFieldsToExpenses` - Adds insurance_eligible, claim_status, original_cost to expenses (v4.15.0)
+- `migrateAddOriginalAmountToExpensePeople` - Adds original_amount to expense_people for insurance tracking (v4.15.0)
+- `migrateAddMortgageFields` - Adds mortgage-specific fields to loans table (v4.18.0)
+- `migrateAddDismissedAnomaliesTable` - Creates dismissed_anomalies table for analytics (v4.17.6)
+- `migrateAddMortgagePaymentsTable` - Creates mortgage_payments table for payment tracking (v4.19.0)
+- `migrateFixInvoiceFilePaths` - Fixes invoice file paths from older backup formats
+- `migrateConfigurablePaymentMethods` - Creates payment_methods, credit_card_payments, credit_card_statements tables (v5.0.0)
+- `migrateAddPostedDate` - Adds posted_date column to expenses table (v5.0.0)
+- `migrateAddFixedInterestRate` - Adds fixed_interest_rate column to loans table (v5.1.0)
+- `migrateAddBillingCycleDayColumn` - Adds billing_cycle_day to payment_methods (v5.3.1)
+- `migrateAddBillingCyclesTable` - Creates credit_card_billing_cycles table (v5.4.0)
+- `migrateAddStatementPdfToBillingCycles` - Adds PDF statement fields to billing cycles (v5.4.0)
+- `migratePdfStatementsToBillingCycles` - Migrates existing PDF statements to billing cycles (v5.4.0)
+- `migrateAddIsUserEnteredToBillingCycles` - Adds is_user_entered flag to billing cycles (v5.4.1)
+- `migrateAddLoanPaymentsTable` - Creates loan_payments table for payment-based tracking (v5.5.0)
+- `migrateAddFixedExpenseLoanLinkage` - Adds payment_due_day and linked_loan_id to fixed_expenses (v5.5.0)
 
 ## Container Startup
 
@@ -70,10 +89,14 @@ When recreating tables that have foreign key references from other tables (with 
 
 **Tables with CASCADE DELETE foreign keys:**
 - `loan_balances` → `loans` (loan_id)
+- `loan_payments` → `loans` (loan_id)
+- `mortgage_payments` → `loans` (loan_id)
 - `expense_people` → `expenses` (expense_id)
 - `expense_people` → `people` (person_id)
 - `expense_invoices` → `expenses` (expense_id)
 - `investment_values` → `investments` (investment_id)
+- `credit_card_payments` → `payment_methods` (payment_method_id)
+- `credit_card_billing_cycles` → `payment_methods` (payment_method_id)
 
 Use the helper functions:
 ```javascript

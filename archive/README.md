@@ -1,7 +1,7 @@
 # Project Archive
 
 **Created:** 2025-11-24  
-**Last Updated:** 2026-02-03
+**Last Updated:** 2026-02-07
 
 This archive contains historical documentation and scripts that have served their purpose but are retained for reference.
 
@@ -60,13 +60,14 @@ Spec update summaries and cleanup documentation:
 - Cleanup analyses
 - Historical spec changes
 
-### specs/ (Updated - Feb 3, 2026)
+### specs/ (Updated - Feb 7, 2026)
 Completed feature specifications that have been fully implemented:
-- 38 archived spec directories for completed features
+- 56 archived spec directories for completed features
 - Includes deprecated features (recurring-expenses)
 - Infrastructure specs (code-optimization, containerization-optimization)
-- All major feature implementations from v3.0.0 through v5.4.1
-- **Latest:** Added credit-card-billing-cycle-history (v5.4.0), unified-billing-cycles (v5.4.0)
+- Architectural refactoring specs (expense-service-refactor, frontend-state-management, expense-context, modal-context, shared-data-context)
+- All major feature implementations from v3.0.0 through v5.7.0
+- **Latest:** Added expense-service-refactor (v5.7.0), shared-data-context (v5.6.3), and 16 other specs
 
 ### test-scripts/ (Nov 24, 2025)
 One-time test scripts used during feature development:
@@ -262,9 +263,29 @@ Copy-Item archive/[subfolder]/[filename] ./
   - **Result:** .kiro/specs/ now contains 2 specs (mortgage-payment-date-tracking, windows-desktop-app - both for future)
   - **Total archived specs:** 38 complete feature specifications
 
+- **2026-02-06:** Post v5.6.3 state management & refactor cleanup (18+ items)
+  - **Archived 6 completed specs** from .kiro/specs/ to archive/specs/:
+    - expense-context (v5.6.2 - expense state management context)
+    - expense-service-refactor (v5.7.0 - monolithic service split into 6 sub-services)
+    - frontend-state-management (v5.6.1 - filter context extraction)
+    - modal-context (v5.6.1 - modal visibility state context)
+    - shared-data-context (v5.6.3 - shared data fetching context)
+    - Plus additional specs: credit-card-balance-types, expense-form-consolidation-v2, fixed-expense-loan-linkage, fixed-interest-rate-loans, generic-expense-reimbursement, github-actions-cicd, insurance-claim-reminders, loan-payment-tracking, pr-workflow, spending-patterns-predictions, tax-deductible-analytics
+  - **Deleted feature branch**: feature/expense-service-refactor
+  - **Result:** .kiro/specs/ now contains 3 specs (activity-log, mortgage-payment-date-tracking, windows-desktop-app)
+  - **Total archived specs:** 56 complete feature specifications
+
+- **2026-02-07:** Documentation review and cleanup
+  - Updated FEATURE_ROADMAP.md: Added expense service refactor (v5.7.0), marked SharedDataContext as completed, updated priority matrix
+  - Updated README.md: Fixed broken links to moved files (DOCKER.md, QUICK_BUILD_GUIDE.md, stop-servers.bat), updated project structure
+  - Updated docs/README.md: Rewrote to reflect current directory contents and active specs
+  - Updated .kiro/steering/structure.md: Added expense service sub-services to architecture description
+  - Updated .kiro/steering/product.md: Added donation grouping by place feature
+  - Updated archive/README.md: Added cleanup history entries for Feb 2026
+
 ## Next Review
 
-**Scheduled:** 2026-07-28 (6 months from last cleanup)
+**Scheduled:** 2026-08-07 (6 months from last cleanup)
 
 **Actions to consider:**
 - Delete files older than 12 months if not referenced

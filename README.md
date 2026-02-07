@@ -42,11 +42,12 @@ A full-stack expense tracking application built with React and Node.js.
 - 🔄 Carry forward income sources and fixed expenses from previous month (preserves categories)
 - 📈 Calculate net balance including all income and expenses
 
-### Loans & Lines of Credit
-- 💳 Track loans and lines of credit with monthly balance history
-- 📊 Support for two loan types:
-  - **Loans**: Traditional loans (mortgages, car loans) with paydown progress tracking
-  - **Lines of Credit**: Revolving credit (credit cards, HELOCs) with balance/rate visualization
+### Loans, Lines of Credit & Mortgages
+- 💳 Track loans, lines of credit, and mortgages with monthly balance history
+- 📊 Support for three loan types:
+  - **Loans**: Traditional loans (car loans, student loans) with paydown progress tracking
+  - **Lines of Credit**: Revolving credit (HELOCs) with balance/rate visualization
+  - **Mortgages**: Dedicated mortgage tracking with amortization, equity, and payment insights
 - 💰 **Payment-based tracking**: Record individual loan payments with automatic balance calculation
 - 📈 **Payment history**: View all payments with running balance after each payment
 - 💡 **Payment suggestions**: Get suggested payment amounts based on loan type and history
@@ -329,9 +330,9 @@ docker logs expense-tracker
 #### Building and Publishing Images
 
 For information on building and publishing Docker images to your local registry, see:
-- **[Docker Deployment Guide](./DOCKER.md)** - Comprehensive Docker documentation
-- **[Build and Push Documentation](./BUILD_AND_PUSH.md)** - Build and registry guide
-- **[Quick Build Guide](./QUICK_BUILD_GUIDE.md)** - Fast reference for common build commands
+- **[Docker Deployment Guide](./docs/guides/DOCKER.md)** - Comprehensive Docker documentation
+- **[Build and Push Documentation](./docs/guides/QUICK_BUILD_GUIDE.md)** - Build and registry guide
+- **[Quick Build Guide](./docs/guides/QUICK_BUILD_GUIDE.md)** - Fast reference for common build commands
 
 ### Development Mode
 
@@ -362,18 +363,15 @@ Both servers are configured to accept connections from your local network. Find 
 ```bash
 # Stop the Docker container
 docker-compose down
-
-# Or use the convenience script
-stop-docker.bat
 ```
 
 **For Development Mode:**
 ```bash
 # Use Ctrl+C in each terminal, or run:
-stop-servers.bat
+scripts\windows\stop-servers.bat
 ```
 
-**Important:** The `stop-servers.bat` script only stops local Node.js processes. It will NOT stop Docker containers. Use `docker-compose down` or `stop-docker.bat` to stop Docker containers.
+**Important:** The `stop-servers.bat` script only stops local Node.js processes. It will NOT stop Docker containers. Use `docker-compose down` to stop Docker containers.
 
 ## Usage
 
@@ -526,21 +524,29 @@ stop-servers.bat
 ```
 expense-tracker/
 ├── backend/
+│   ├── config/           # Logger, paths configuration
 │   ├── controllers/      # Request handlers
 │   ├── database/         # Database setup and SQLite file
+│   ├── middleware/       # Express middleware (error handler, upload)
 │   ├── repositories/     # Data access layer
 │   ├── routes/          # API routes
-│   ├── services/        # Business logic
-│   ├── utils/           # Helper functions
+│   ├── scripts/         # Utility and maintenance scripts
+│   ├── services/        # Business logic (modular sub-services)
+│   ├── utils/           # Helper functions (date, file storage, etc.)
 │   └── server.js        # Express server
 ├── frontend/
 │   ├── src/
-│   │   ├── components/  # React components
+│   │   ├── components/  # React components (paired with .css)
+│   │   ├── contexts/    # React Context providers (Filter, Expense, Modal, SharedData)
+│   │   ├── services/    # API call functions
+│   │   ├── utils/       # Frontend utilities
+│   │   ├── styles/      # Shared CSS variables
 │   │   ├── App.jsx      # Main app component
 │   │   └── config.js    # API configuration
 │   └── index.html
-├── utils/               # Utility scripts (CSV validation, XLS conversion)
-└── README.md
+├── scripts/             # PowerShell scripts and Windows batch files
+├── docs/                # Project documentation
+└── archive/             # Archived specs, reports, and scripts
 ```
 
 ## API Endpoints
@@ -640,6 +646,16 @@ expense-tracker/
 - `GET /api/analytics/merchants/:name/trend` - Get monthly spending trend for a merchant (query params: months, includeFixedExpenses)
 - `GET /api/analytics/merchants/:name/expenses` - Get all expenses for a specific merchant (query params: period, includeFixedExpenses)
 
+### Analytics (Spending Patterns, Predictions, Anomalies)
+- `GET /api/analytics/spending-patterns` - Get spending pattern analysis (query params: year, month)
+- `GET /api/analytics/predictions` - Get month-end spending predictions (query params: year, month)
+- `GET /api/analytics/seasonal` - Get seasonal spending analysis (query params: year)
+- `GET /api/analytics/anomalies` - Get spending anomaly alerts (query params: year, month)
+- `POST /api/analytics/anomalies/:id/dismiss` - Dismiss an anomaly alert
+
+### Billing Cycles
+- `GET /api/payment-methods/:id/billing-cycles/unified` - Get unified billing cycles with auto-generation and trend indicators
+
 ### Payment Methods
 - `GET /api/payment-methods` - Get all payment methods
 - `GET /api/payment-methods/:id` - Get payment method by ID
@@ -680,6 +696,10 @@ expense-tracker/
 - insurance_eligible (INTEGER) - 0 or 1 (Tax - Medical only)
 - claim_status (TEXT) - 'not_claimed', 'in_progress', 'paid', 'denied' (Tax - Medical only)
 - original_cost (REAL) - Original cost before insurance reimbursement (Tax - Medical only)
+- reimbursement_eligible (INTEGER) - 0 or 1 (any expense type)
+- reimbursement_status (TEXT) - 'pending', 'submitted', 'approved', 'paid', 'denied'
+- expected_reimbursement (REAL) - Expected reimbursement amount
+- reimbursement_source (TEXT) - Who will reimburse (employer, insurance, etc.)
 - created_at (TEXT)
 
 ### Income Sources Table
@@ -711,8 +731,16 @@ expense-tracker/
 - initial_balance (REAL) - Original loan amount
 - start_date (TEXT) - When loan started
 - notes (TEXT) - Additional notes
-- loan_type (TEXT) - 'loan' or 'line_of_credit'
+- loan_type (TEXT) - 'loan', 'line_of_credit', or 'mortgage'
 - is_paid_off (INTEGER) - 0 or 1
+- fixed_interest_rate (REAL) - Optional locked-in interest rate
+- amortization_period (INTEGER) - Mortgage amortization in months
+- term_length (INTEGER) - Mortgage term in months
+- renewal_date (TEXT) - Mortgage renewal date
+- rate_type (TEXT) - 'fixed' or 'variable' (mortgages)
+- payment_frequency (TEXT) - Payment frequency (mortgages)
+- estimated_property_value (REAL) - Property value for equity tracking (mortgages)
+- estimated_months_left (INTEGER) - Estimated months to payoff
 - created_at (TEXT)
 - updated_at (TEXT)
 
@@ -802,6 +830,7 @@ expense-tracker/
 - credit_limit (REAL) - Credit limit (credit cards only)
 - current_balance (REAL) - Current balance (credit cards only)
 - payment_due_day (INTEGER) - Day of month payment is due
+- billing_cycle_day (INTEGER) - Day billing cycle/statement closes (1-31, credit cards only)
 - billing_cycle_start (INTEGER) - Day billing cycle starts
 - billing_cycle_end (INTEGER) - Day billing cycle ends
 - is_active (INTEGER) - 1 = active, 0 = inactive
@@ -829,20 +858,70 @@ expense-tracker/
 - mime_type (TEXT) - MIME type
 - created_at (TEXT)
 
+### Credit Card Billing Cycles Table
+- id (INTEGER PRIMARY KEY)
+- payment_method_id (INTEGER) - Foreign key to payment_methods (CASCADE DELETE)
+- cycle_start_date (TEXT) - Billing cycle start date
+- cycle_end_date (TEXT) - Billing cycle end date
+- actual_statement_balance (REAL) - User-entered statement balance
+- is_user_entered (INTEGER) - 0 = auto-generated, 1 = user-entered
+- statement_filename (TEXT) - Optional attached PDF statement
+- statement_original_filename (TEXT) - Original PDF filename
+- statement_file_path (TEXT) - Path to PDF file
+- statement_file_size (INTEGER) - PDF file size
+- statement_mime_type (TEXT) - PDF MIME type
+- created_at (TEXT)
+- updated_at (TEXT)
+- UNIQUE constraint on (payment_method_id, cycle_start_date, cycle_end_date)
+
+### Mortgage Payments Table
+- id (INTEGER PRIMARY KEY)
+- loan_id (INTEGER) - Foreign key to loans table (CASCADE DELETE)
+- payment_amount (REAL) - Monthly payment amount
+- effective_date (TEXT) - When this payment amount takes effect
+- notes (TEXT) - Optional notes
+- created_at (TEXT)
+- updated_at (TEXT)
+
+### Place Names Table
+- id (INTEGER PRIMARY KEY)
+- original_name (TEXT) - Original place name as entered
+- standardized_name (TEXT) - Standardized/canonical name
+- created_at (TEXT)
+
+### Reminders Table
+- id (INTEGER PRIMARY KEY)
+- year (INTEGER)
+- month (INTEGER)
+- reminder_type (TEXT) - Type of reminder
+- is_dismissed (INTEGER) - 0 or 1
+- created_at (TEXT)
+- updated_at (TEXT)
+
+### Dismissed Anomalies Table
+- id (INTEGER PRIMARY KEY)
+- anomaly_key (TEXT) - Unique key identifying the anomaly
+- dismissed_at (TEXT) - When the anomaly was dismissed
+- UNIQUE constraint on anomaly_key
+
+### Schema Migrations Table
+- id (INTEGER PRIMARY KEY)
+- migration_name (TEXT UNIQUE) - Name of the migration
+- applied_at (TEXT) - When the migration was applied
+
 ## Documentation
 
 For more detailed information, see:
 
-- **[DOCKER.md](./DOCKER.md)** - Complete Docker deployment guide with troubleshooting
+- **[Docker Deployment Guide](./docs/guides/DOCKER.md)** - Complete Docker deployment guide with troubleshooting
 - **[CHANGELOG.md](./CHANGELOG.md)** - Version history and release notes
-- **[Build and Push Documentation](./BUILD_AND_PUSH.md)** - Comprehensive Docker build and registry guide
-- **[Quick Build Guide](./QUICK_BUILD_GUIDE.md)** - Fast reference for Docker builds
+- **[Quick Build Guide](./docs/guides/QUICK_BUILD_GUIDE.md)** - Fast reference for Docker builds
 - **[Documentation Index](./docs/README.md)** - Comprehensive documentation
   - [Feature Documentation](./docs/features/) - Detailed feature guides
     - [Loan Payment Tracking](./docs/features/LOAN_PAYMENT_TRACKING.md) - Payment-based loan tracking
     - [Mortgage Tracking](./docs/features/MORTGAGE_TRACKING.md) - Mortgage analytics and insights
   - [Deployment Guides](./docs/deployments/) - Deployment and migration notes
-  - [User Guides](./docs/guides/) - Setup and usage guides
+  - [User Guides](./docs/guides/) - Setup, Docker, restore, and troubleshooting guides
 
 ## License
 

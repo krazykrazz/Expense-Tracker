@@ -2,6 +2,9 @@
 echo Starting Expense Tracker (Production Mode)...
 echo.
 
+REM Navigate to project root (two levels up from scripts/windows/)
+cd /d "%~dp0..\.."
+
 REM Build frontend first
 echo [1/2] Building Frontend...
 cd frontend

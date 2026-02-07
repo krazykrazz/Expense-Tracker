@@ -12,16 +12,13 @@ The staging environment allows you to test new Docker images with a copy of prod
 ## Quick Start
 
 ```powershell
-# 1. Build new image
+# 1. Build and deploy staging image
+.\build-and-push.ps1 -Tag staging
+
+# 2. Test at http://localhost:2627
+
+# 3. If good, deploy to production
 .\build-and-push.ps1 -Tag latest
-
-# 2. Set up staging with production data copy
-.\scripts\setup-staging.ps1 -Start
-
-# 3. Test at http://localhost:2627
-
-# 4. If good, deploy to production
-docker-compose up -d expense-tracker
 ```
 
 ## Architecture
@@ -37,53 +34,39 @@ Production (port 2424)          Staging (port 2627)
 
 Both containers use the same Docker image but different data directories.
 
-## Setup Options
+## Staging Data Setup
 
-### Option 1: Copy Current Production Data
-
-```powershell
-.\scripts\setup-staging.ps1 -Start
-```
-
-This copies the current `config/database/expenses.db` to `staging-data/database/`.
-
-### Option 2: Restore from Backup
+Before starting the staging container, copy production data to the staging directory:
 
 ```powershell
-.\scripts\setup-staging.ps1 -BackupFile "G:\My Drive\Documents\Financial\Expense Tracker Backups\backup-2026-01-28.zip" -Start
-```
-
-This extracts a backup zip and uses that data for staging.
-
-### Option 3: Manual Setup
-
-```powershell
-# Create staging directory
+# Create staging directory structure
 mkdir staging-data\database
 mkdir staging-data\invoices
 
 # Copy production database
 copy config\database\expenses.db staging-data\database\
 
-# Start staging
-docker-compose --profile staging up -d expense-tracker-staging
+# Optionally copy invoices
+copy config\invoices\* staging-data\invoices\
+```
+
+To restore from a backup instead:
+
+```powershell
+# Extract a backup archive to staging-data/
+tar -xzf "path\to\backup.tar.gz" -C staging-data\
 ```
 
 ## Testing Workflow
 
 ### Pre-Deployment Testing
 
-1. **Build the new image:**
+1. **Build the staging image:**
    ```powershell
-   .\build-and-push.ps1 -Tag latest
+   .\build-and-push.ps1 -Tag staging
    ```
 
-2. **Set up staging:**
-   ```powershell
-   .\scripts\setup-staging.ps1 -Start
-   ```
-
-3. **Check migration logs:**
+2. **Check migration logs:**
    ```powershell
    docker logs expense-tracker-staging
    ```
@@ -92,18 +75,18 @@ docker-compose --profile staging up -d expense-tracker-staging
    - No error messages
    - All tables created/updated correctly
 
-4. **Test the application:**
+3. **Test the application:**
    - Open http://localhost:2627
    - Verify all data is present
    - Test the new features
    - Check existing functionality still works
 
-5. **If successful, deploy to production:**
+4. **If successful, deploy to production:**
    ```powershell
-   docker-compose up -d expense-tracker
+   .\build-and-push.ps1 -Tag latest
    ```
 
-6. **Clean up staging:**
+5. **Clean up staging:**
    ```powershell
    docker-compose --profile staging down
    ```
@@ -126,6 +109,7 @@ When testing migrations, verify:
 
 | Action | Command |
 |--------|---------|
+| Build staging image | `.\build-and-push.ps1 -Tag staging` |
 | Start staging | `docker-compose --profile staging up -d expense-tracker-staging` |
 | Stop staging | `docker-compose --profile staging down` |
 | View logs | `docker logs -f expense-tracker-staging` |
@@ -152,7 +136,7 @@ netstat -ano | findstr 2627
 
 The staging data is a copy - any changes in staging don't affect production. You can:
 1. Delete `staging-data/database/expenses.db`
-2. Re-run `.\scripts\setup-staging.ps1` to get a fresh copy
+2. Re-copy from `config/database/` to get a fresh copy
 
 ## Best Practices
 

@@ -6,7 +6,7 @@
 1. Ensure Docker is installed and running
 2. Run `docker-compose up -d` or use `build-and-push.ps1`
 3. Access the app at http://localhost:2424
-4. To stop: `docker-compose down` or `stop-docker.bat`
+4. To stop: `docker-compose down`
 
 **Benefits:**
 - ✅ Single container deployment
@@ -17,28 +17,28 @@
 ## Development Mode
 
 ### Option 1: Silent Mode (No Windows)
-1. Double-click `start-silent.vbs` in the project root
+1. Double-click `start-silent.vbs` in `scripts/windows/`
 2. Servers start in background (no terminal windows)
 3. Brief notification popup appears
 4. Access the app at http://localhost:5173
 5. **Auto-reload enabled**: Changes to code will automatically refresh
-6. To stop: Double-click `stop-servers-silent.vbs`
+6. To stop: Double-click `scripts/windows/stop-servers-silent.vbs`
 
 ### Option 2: Visible Terminals (Recommended for Development)
-1. Double-click `start-dev.bat` in the project root
+1. Double-click `start-dev.bat` in `scripts/windows/`
 2. Two terminal windows will open (Backend and Frontend)
 3. Access the app at http://localhost:5173
 4. **Auto-reload enabled**: Changes to code will automatically refresh
 5. To stop: Close both terminal windows
 
 ### Option 3: Production Mode (Silent)
-1. Double-click `start-silent-prod.vbs` in the project root
+1. Double-click `start-silent-prod.vbs` in `scripts/windows/`
 2. Server starts in background
 3. Access the app at http://localhost:2424
-4. To stop: Double-click `stop-servers-silent.vbs`
+4. To stop: Double-click `scripts/windows/stop-servers-silent.vbs`
 
 ### Option 4: Production Mode (Visible)
-1. Double-click `start-prod.bat` in the project root
+1. Double-click `start-prod.bat` in `scripts/windows/`
 2. Frontend will be built and served by backend
 3. Access the app at http://localhost:2424
 4. To stop: Close the terminal window
@@ -72,11 +72,11 @@ cd ../frontend && npm install
 ## Stopping the Application
 
 ### Docker:
-- Run `docker-compose down` or `stop-docker.bat`
+- Run `docker-compose down`
 
 ### Silent Mode (No Windows):
-- **Easy way**: Double-click `stop-servers-silent.vbs`
-- **Manual way**: Run `stop-servers.bat`
+- **Easy way**: Double-click `scripts/windows/stop-servers-silent.vbs`
+- **Manual way**: Run `scripts\windows\stop-servers.bat`
 - **Command line**: 
   ```cmd
   taskkill /F /IM node.exe
@@ -139,6 +139,6 @@ To access from other devices on your network:
    - Stable and resource-efficient
 
 2. **Development** (if you're making changes):
-   - Use `start-dev.bat`
+   - Use `scripts\windows\start-dev.bat`
    - Keep terminal windows open
    - Enjoy auto-reload on every save

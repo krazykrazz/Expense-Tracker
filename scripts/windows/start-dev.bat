@@ -2,6 +2,9 @@
 echo Starting Expense Tracker Development Environment...
 echo.
 
+REM Navigate to project root (two levels up from scripts/windows/)
+cd /d "%~dp0..\.."
+
 REM Start backend server with auto-reload
 echo [1/2] Starting Backend Server with Auto-Reload (Port 2424)...
 start "Expense Tracker - Backend" cmd /k "cd backend && npm run dev"

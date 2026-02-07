@@ -6,89 +6,83 @@ This directory contains all project documentation organized by category.
 
 ### features/
 Documentation for completed features and implementations:
-- `AUTOMATIC_ESTIMATED_MONTHS_COMPLETE.md` - Automatic loan payoff estimation
-- `CATEGORY_SUGGESTION.md` - Smart expense entry with category suggestions
-- `ESTIMATED_MONTHS_LEFT_FEATURE.md` - Estimated months left feature details
-- `LOAN_TYPE_IMPLEMENTATION_COMPLETE.md` - Loan type differentiation
-- `LOAN_PAYMENT_TRACKING.md` - Payment-based loan tracking with auto-log and reminders
-- `TOTAL_DEBT_FEATURE.md` - Total debt tracking feature
-- `BACKUP_VERIFICATION_SUMMARY.md` - Backup system verification
-- `FUTURE_BALANCE_BUG_FIX.md` - Future balance calculation fix
-- `LINE_OF_CREDIT_ZERO_BALANCE_FIX.md` - Line of credit zero balance handling
-- `LOAN_TYPE_FEATURE_SUMMARY.md` - Loan type feature summary
-- `LOANS_INTEGRATION_TEST_RESULTS.md` - Loans integration testing
-- `MORTGAGE_TRACKING.md` - Mortgage analytics with amortization and equity tracking
-- `ENHANCED_FIXED_EXPENSES.md` - Enhanced fixed expenses with category and payment type tracking
-- `GLOBAL_EXPENSE_FILTERING.md` - Global filtering by category and payment method across all time periods
-- `INCOME_SOURCE_CATEGORIES.md` - Income source categorization for better financial analysis
-- `INVESTMENT_TRACKING.md` - Investment portfolio tracking with TFSA and RRSP accounts
-- `MONTHLY_DATA_REMINDERS.md` - Visual reminders to update investment values and loan balances
-- `MEDICAL_EXPENSE_PEOPLE_TRACKING.md` - Associate medical expenses with family members for tax reporting
-- `TAX_DEDUCTIBLE_INVOICES.md` - Attach PDF invoices to tax-deductible expenses (medical and donations) for record keeping
+- `ANALYTICS_HUB.md` - Spending patterns, predictions, anomaly detection, and merchant analytics
 - `BUDGET_ALERT_NOTIFICATIONS.md` - Proactive budget alert notifications
-- `STICKY_SUMMARY_SCROLLING.md` - Enhanced UI with sticky summary scrolling
+- `BUDGET_SUGGESTIONS.md` - Budget suggestion algorithms
+- `CATEGORY_SUGGESTION.md` - Smart expense entry with category suggestions
+- `CONFIGURABLE_PAYMENT_METHODS.md` - Database-driven payment method management
+- `CREDIT_CARD_BILLING_CYCLES.md` - Billing cycle history with statement balances
+- `ENHANCED_ANNUAL_SUMMARY.md` - Year-over-year comparison, savings rate, and summary cards
+- `ENHANCED_FIXED_EXPENSES.md` - Fixed expenses with category and payment type tracking
+- `ESTIMATED_MONTHS_LEFT_FEATURE.md` - Estimated months left for loan payoff
+- `EXPENSE_LIST_UX_IMPROVEMENTS.md` - Smart method filter, filter chips, advanced filters
+- `FIXED_INTEREST_RATE_LOANS.md` - Fixed interest rate support for loans
+- `GENERIC_EXPENSE_REIMBURSEMENT.md` - Reimbursement tracking for any expense type
+- `GLOBAL_EXPENSE_FILTERING.md` - Global filtering by category and payment method
+- `INCOME_SOURCE_CATEGORIES.md` - Income source categorization
+- `INSURANCE_CLAIM_REMINDERS.md` - Automatic alerts for pending insurance claims
+- `INVESTMENT_TRACKING.md` - Investment portfolio tracking (TFSA, RRSP)
+- `LOAN_PAYMENT_TRACKING.md` - Payment-based loan tracking with auto-log and reminders
+- `MEDICAL_EXPENSE_PEOPLE_TRACKING.md` - Associate medical expenses with family members
+- `MEDICAL_INSURANCE_TRACKING.md` - Insurance eligibility and claim status tracking
 - `MERCHANT_ANALYTICS.md` - Merchant spending analytics and insights
-- `INVOICE_DOCUMENTATION_SUMMARY.md` - Complete index of invoice feature documentation
+- `MONTHLY_DATA_REMINDERS.md` - Visual reminders to update investment values and loan balances
+- `MORTGAGE_TRACKING.md` - Mortgage analytics with amortization and equity tracking
+- `STICKY_SUMMARY_SCROLLING.md` - Enhanced UI with sticky summary scrolling
+- `TAX_DEDUCTIBLE_ANALYTICS.md` - Year-over-year tax deductible comparison and tax credit calculator
+- `TAX_DEDUCTIBLE_INVOICES.md` - PDF invoice attachments for tax-deductible expenses
+- `TOTAL_DEBT_FEATURE.md` - Total debt tracking across all active loans
 
 ### deployments/
-Deployment history and migration guides:
-- `DEPLOYMENT_v3.2.0.md` - Version 3.2.0 deployment notes
-- `DEPLOYMENT_v3.3.1.md` - Version 3.3.1 deployment notes
-- `DATABASE_MIGRATION_COMPLETE.md` - Database migration documentation
-- `CHANGELOG_v3.2.0.md` - Version 3.2.0 changelog
+- `DEPLOYMENT.md` - General deployment guide
 
-### optimizations/
-Code optimization reports and analysis:
-- `CODE_OPTIMIZATION_OPPORTUNITIES.md` - Identified optimization opportunities
-- `OPTIMIZATION_REPORT.md` - Optimization analysis report
-- `OPTIMIZATION_SUMMARY.md` - Summary of optimizations
-- `OPTIMIZATION_TASKS.md` - Optimization task list
-- `OPTIMIZATIONS_COMPLETED.md` - Completed optimizations
-- `OPTIMIZATION_COMPLETE_SUMMARY.md` - Final optimization summary
-- `QUICK_WINS.md` - Quick optimization wins
-- `SPEC_REVIEW_SUMMARY.md` - Spec review findings
+### development/
+Developer guides and CI/CD documentation:
+- `CI_TEST_RELIABILITY.md` - CI testing best practices and reliability improvements
+- `FEATURE_BRANCH_WORKFLOW.md` - Feature branch workflow and PR-based promotion
+- `GITHUB_ACTIONS_CICD.md` - GitHub Actions workflow documentation
+- `STAGING_ENVIRONMENT.md` - Staging environment setup and usage
 
 ### guides/
 User and developer guides:
-- `STARTUP_GUIDE.md` - How to start the application
+- `BUDGET_MANAGEMENT_GUIDE.md` - Budget management procedures
 - `DATABASE_MIGRATION_GUIDE.md` - Database migration procedures
+- `DOCKER.md` - Complete Docker deployment guide
+- `MAINTENANCE_GUIDE_INVOICES.md` - Invoice system maintenance
+- `QUICK_BUILD_GUIDE.md` - Fast reference for Docker builds
+- `README_SILENT_MODE.md` - Silent mode startup documentation
+- `RESTORE_BACKUP_GUIDE.md` - Backup restore procedures
+- `STARTUP_GUIDE.md` - How to start the application
+- `TROUBLESHOOTING_INVOICES.md` - Invoice troubleshooting guide
+- `VALIDATION_UTILITIES_GUIDE.md` - Validation utility documentation
 
 ## Main Documentation
 
 See the root `README.md` for:
-- Project overview
+- Project overview and features
 - Installation instructions
-- Technology stack
-- Common commands
+- API endpoints reference
+- Database schema
 - Development workflow
 
-## Specs
+## Active Specs
 
-Feature specifications are located in `.kiro/specs/`:
-- `expense-tracker/` - Main expense tracker spec
-- `tax-deductible-view/` - Tax deductible view spec
-- `configurable-monthly-gross/` - Income management spec
-- `configurable-fixed-expenses/` - Fixed expenses spec
-- `recurring-expenses/` - ⚠️ DEPRECATED (removed in v4.0.0) - Historical reference only
-- `monthly-loans-balance/` - Loans and balances spec
-- `containerization-optimization/` - Docker optimization spec
-- `smart-expense-entry/` - Smart expense entry with category suggestions
-- `global-expense-filtering/` - Global expense filtering by category and payment method
-- `income-source-categories/` - Income source categorization feature
-- `investment-tracking/` - Investment portfolio tracking with TFSA and RRSP accounts
-- `monthly-data-reminders/` - Visual reminders to update investment values and loan balances
-- `medical-expense-people-tracking/` - Associate medical expenses with family members
-- `medical-expense-invoices/` - Attach PDF invoices to medical expenses
-- `budget-alert-notifications/` - Proactive budget alert notifications
-- `sticky-summary-scrolling/` - Enhanced UI with sticky summary scrolling
-- `merchant-analytics/` - Merchant spending analytics and insights
-- `loan-payment-tracking/` - Payment-based loan tracking with balance calculation
-- `fixed-expense-loan-linkage/` - Link fixed expenses to loans with due date reminders
+Feature specifications in `.kiro/specs/`:
+- `activity-log/` - Event tracking framework (planned)
+- `mortgage-payment-date-tracking/` - Mortgage payment date tracking (planned)
+- `windows-desktop-app/` - Windows desktop app wrapper (planned)
 
 ## Steering Rules
 
-Project guidelines are in `.kiro/steering/`:
+Project guidelines in `.kiro/steering/`:
 - `product.md` - Product overview and features
 - `structure.md` - Project structure and architecture
 - `tech.md` - Technology stack and commands
 - `versioning.md` - Version management rules
+- `testing.md` - Testing conventions (Jest 30, Vitest)
+- `api-integration.md` - API integration checklist
+- `git-commits.md` - Git commit and branching rules
+- `logging-best-practices.md` - Logging conventions
+- `pre-deployment.md` - Pre-deployment checklist
+- `docker-compose.md` - Docker Compose configuration
+- `database-migrations.md` - Database migration guidance

@@ -13,12 +13,14 @@
 import { useState } from 'react';
 import './CurrentStatusInsights.css';
 import { formatCurrency, getTodayLocalDate, formatMonthString } from '../utils/formatters';
+import { calculateNextPaymentDate, formatNextPaymentDate, classifyPaymentUrgency } from '../utils/nextPaymentCalculator';
 
 const CurrentStatusInsights = ({ 
   insights, 
   onEditPayment,
   onEditRate,
-  loading = false 
+  loading = false,
+  paymentDueDay = null
 }) => {
   const [isEditingPayment, setIsEditingPayment] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState('');
@@ -31,6 +33,18 @@ const CurrentStatusInsights = ({
   const [rateValue, setRateValue] = useState('');
   const [rateValidationError, setRateValidationError] = useState(null);
   const [savingRate, setSavingRate] = useState(false);
+
+  // Calculate next payment info from paymentDueDay
+  const nextPaymentInfo = paymentDueDay 
+    ? calculateNextPaymentDate(paymentDueDay) 
+    : null;
+  
+  const urgency = nextPaymentInfo 
+    ? classifyPaymentUrgency(nextPaymentInfo.daysUntil)
+    : null;
+  
+  const isPaymentToday = urgency?.isPaymentToday ?? false;
+  const isPaymentSoon = urgency?.isPaymentSoon ?? false;
 
   // Handle missing data - Requirement 2.4
   if (!insights || !insights.currentStatus) {
@@ -345,6 +359,28 @@ const CurrentStatusInsights = ({
                   <span className="extra-label">below minimum</span>
                 </div>
               )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Next Payment Date Display - Requirements 3.1, 3.2, 3.3, 3.4 */}
+      <div className="insights-section">
+        <div className="insights-next-payment">
+          <span className="next-payment-label">Next Payment</span>
+          {nextPaymentInfo ? (
+            <div className="next-payment-info">
+              <span className={`next-payment-date ${isPaymentToday ? 'today' : isPaymentSoon ? 'soon' : ''}`}>
+                {isPaymentToday ? 'Payment due today' : formatNextPaymentDate(nextPaymentInfo.nextDate)}
+              </span>
+              {isPaymentSoon && !isPaymentToday && (
+                <span className="payment-soon-badge">Due soon</span>
+              )}
+            </div>
+          ) : (
+            <div className="next-payment-not-set">
+              <span>Payment day not set</span>
+              <span className="next-payment-hint">Configure in fixed expenses</span>
             </div>
           )}
         </div>

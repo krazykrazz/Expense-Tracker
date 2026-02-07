@@ -25,7 +25,7 @@ Frontend-only implementation that displays the next mortgage payment date in Cur
     - **Property 2: Payment urgency indicator**
     - **Validates: Requirements 3.2, 3.3**
 
-- [ ] 2. Wire payment due day through component tree
+- [x] 2. Wire payment due day through component tree
   - [x] 2.1 Update LoanDetailView to extract and pass paymentDueDay
     - Extract `payment_due_day` from `linkedFixedExpenses[0]` (already fetched)
     - Pass `paymentDueDay` prop to `MortgageInsightsPanel`
@@ -36,8 +36,8 @@ Frontend-only implementation that displays the next mortgage payment date in Cur
     - Forward `paymentDueDay` prop to `CurrentStatusInsights`
     - _Requirements: 1.3_
 
-- [ ] 3. Add next payment display to CurrentStatusInsights
-  - [~] 3.1 Add paymentDueDay prop and next payment section to CurrentStatusInsights
+- [x] 3. Add next payment display to CurrentStatusInsights
+  - [x] 3.1 Add paymentDueDay prop and next payment section to CurrentStatusInsights
     - Accept `paymentDueDay` prop
     - Import and use `calculateNextPaymentDate` and `formatNextPaymentDate`
     - Render next payment date when paymentDueDay is set
@@ -47,7 +47,7 @@ Frontend-only implementation that displays the next mortgage payment date in Cur
     - Place section between Current Payment and Current Balance sections
     - _Requirements: 3.1, 3.2, 3.3, 3.4_
 
-  - [~] 3.2 Add CSS styles for next payment display
+  - [x] 3.2 Add CSS styles for next payment display
     - Style `.insights-next-payment`, `.next-payment-label`, `.next-payment-date`
     - Style `.next-payment-date.soon` with warning color
     - Style `.next-payment-date.today` with emphasis color
@@ -55,7 +55,7 @@ Frontend-only implementation that displays the next mortgage payment date in Cur
     - Style `.next-payment-not-set` and `.next-payment-hint` with muted styling
     - _Requirements: 3.1, 3.2, 3.3, 3.4_
 
-  - [~] 3.3 Write unit tests for CurrentStatusInsights payment date display
+  - [x] 3.3 Write unit tests for CurrentStatusInsights payment date display
     - Create `frontend/src/components/CurrentStatusInsights.paymentDate.test.jsx`
     - Test rendering with paymentDueDay set (shows formatted date)
     - Test "Due soon" badge when within 7 days
@@ -63,7 +63,7 @@ Frontend-only implementation that displays the next mortgage payment date in Cur
     - Test "Payment day not set" fallback when paymentDueDay is null
     - _Requirements: 3.1, 3.2, 3.3, 3.4_
 
-- [ ] 4. Final checkpoint
+- [x] 4. Final checkpoint
   - Ensure all tests pass, ask the user if questions arise.
 
 ## Notes

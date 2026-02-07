@@ -819,6 +819,14 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v5.8.0</div>
+                <div className="changelog-date">February 7, 2026</div>
+                <ul className="changelog-items">
+                  <li>Mortgage payment date tracking in Current Status Insights panel</li>
+                  <li>Next payment date calculation with urgency indicators (due soon, due today, overdue)</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v5.7.0</div>
                 <div className="changelog-date">February 7, 2026</div>
                 <ul className="changelog-items">

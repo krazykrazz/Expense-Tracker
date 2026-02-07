@@ -3,6 +3,9 @@ node_modules/
 backend/node_modules/
 frontend/node_modules/
 
+# Test artifacts
+test-pbt-retention/
+
 # Database
 backend/database/*.db
 backend/data/*.db

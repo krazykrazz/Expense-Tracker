@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [5.8.0] - 2026-02-07
+
+### Added
+- Mortgage payment date tracking in Current Status Insights panel
+- Next payment date calculation based on linked fixed expense due day
+- Payment urgency indicators (due soon, due today, overdue)
+- Property-based tests for payment date calculation and urgency classification
+
 ## [5.7.0] - 2026-02-07
 
 ### Changed

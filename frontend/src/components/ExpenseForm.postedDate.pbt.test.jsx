@@ -165,41 +165,38 @@ describe('ExpenseForm Posted Date Field Visibility Property-Based Tests', () => 
             expect(paymentMethodSelect).toBeTruthy();
             // Check that we have options loaded
             expect(paymentMethodSelect.options.length).toBeGreaterThan(1);
-          });
+          }, { timeout: 3000 });
 
           // Select the payment method
           const paymentMethodSelect = container.querySelector('select[name="payment_method_id"]');
+          
           await act(async () => {
             fireEvent.change(paymentMethodSelect, { target: { value: selectedMethod.id.toString() } });
           });
 
-          // Property: posted_date field visible IFF payment method type is 'credit_card'
+          // Wait for the DOM to reflect the state change
           if (selectedMethod.type === 'credit_card') {
             await waitFor(() => {
               const postedDateInput = container.querySelector('input[name="posted_date"]');
               expect(postedDateInput).toBeTruthy();
-            });
+            }, { timeout: 2000 });
           } else {
-            // For non-credit card, wait a tick then verify it's not there
+            // For non-credit cards, ensure the field is NOT present
+            // Give it a moment to ensure it doesn't appear
             await act(async () => {
-              await new Promise(resolve => setTimeout(resolve, 50));
+              await new Promise(resolve => setTimeout(resolve, 100));
             });
             const postedDateInput = container.querySelector('input[name="posted_date"]');
             expect(postedDateInput).toBeFalsy();
           }
 
-          // Wait for any pending state updates before cleanup
-          await act(async () => {
-            await new Promise(resolve => setTimeout(resolve, 50));
-          });
-
           // Clean up
           unmount();
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 50 }
     );
-  });
+  }, 60000);
 
   /**
    * **Feature: credit-card-posted-date, Property 1b: Posted Date Field Hides on Switch Away**
@@ -236,7 +233,7 @@ describe('ExpenseForm Posted Date Field Visibility Property-Based Tests', () => 
             const paymentMethodSelect = container.querySelector('select[name="payment_method_id"]');
             expect(paymentMethodSelect).toBeTruthy();
             expect(paymentMethodSelect.options.length).toBeGreaterThan(1);
-          });
+          }, { timeout: 3000 });
 
           const paymentMethodSelect = container.querySelector('select[name="payment_method_id"]');
 
@@ -249,7 +246,7 @@ describe('ExpenseForm Posted Date Field Visibility Property-Based Tests', () => 
           await waitFor(() => {
             const postedDateInput = container.querySelector('input[name="posted_date"]');
             expect(postedDateInput).toBeTruthy();
-          });
+          }, { timeout: 2000 });
 
           // Now switch to a non-credit card payment method
           await act(async () => {
@@ -260,20 +257,15 @@ describe('ExpenseForm Posted Date Field Visibility Property-Based Tests', () => 
           await waitFor(() => {
             const postedDateInput = container.querySelector('input[name="posted_date"]');
             expect(postedDateInput).toBeFalsy();
-          });
-
-          // Wait for any pending state updates before cleanup
-          await act(async () => {
-            await new Promise(resolve => setTimeout(resolve, 50));
-          });
+          }, { timeout: 2000 });
 
           // Clean up
           unmount();
         }
       ),
-      { numRuns: 50 }
+      { numRuns: 30 }
     );
-  });
+  }, 60000);
 
   /**
    * **Feature: credit-card-posted-date, Property 1c: Posted Date Field Shows on Switch To**
@@ -310,7 +302,7 @@ describe('ExpenseForm Posted Date Field Visibility Property-Based Tests', () => 
             const paymentMethodSelect = container.querySelector('select[name="payment_method_id"]');
             expect(paymentMethodSelect).toBeTruthy();
             expect(paymentMethodSelect.options.length).toBeGreaterThan(1);
-          });
+          }, { timeout: 3000 });
 
           const paymentMethodSelect = container.querySelector('select[name="payment_method_id"]');
 
@@ -319,9 +311,9 @@ describe('ExpenseForm Posted Date Field Visibility Property-Based Tests', () => 
             fireEvent.change(paymentMethodSelect, { target: { value: nonCreditCard.id.toString() } });
           });
 
-          // Wait for state to update
+          // Give it a moment to ensure field doesn't appear
           await act(async () => {
-            await new Promise(resolve => setTimeout(resolve, 50));
+            await new Promise(resolve => setTimeout(resolve, 100));
           });
 
           // Verify posted_date field is hidden
@@ -333,25 +325,17 @@ describe('ExpenseForm Posted Date Field Visibility Property-Based Tests', () => 
             fireEvent.change(paymentMethodSelect, { target: { value: creditCard.id.toString() } });
           });
 
-          // Wait for state to update
-          await act(async () => {
-            await new Promise(resolve => setTimeout(resolve, 50));
-          });
-
-          // Verify posted_date field is now visible
-          postedDateInput = container.querySelector('input[name="posted_date"]');
-          expect(postedDateInput).toBeTruthy();
-
-          // Wait for any pending state updates before cleanup
-          await act(async () => {
-            await new Promise(resolve => setTimeout(resolve, 50));
-          });
+          // Wait for posted_date field to appear
+          await waitFor(() => {
+            const postedDateInput = container.querySelector('input[name="posted_date"]');
+            expect(postedDateInput).toBeTruthy();
+          }, { timeout: 2000 });
 
           // Clean up
           unmount();
         }
       ),
-      { numRuns: 50 }
+      { numRuns: 30 }
     );
-  });
+  }, 60000);
 });

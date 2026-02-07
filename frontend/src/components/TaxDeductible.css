@@ -535,6 +535,56 @@
   gap: var(--spacing-2, 8px);
 }
 
+/* Donation Place Group Styling */
+.donation-place-group {
+  margin-bottom: var(--spacing-4, 16px);
+  padding: var(--spacing-3, 12px);
+  background: var(--bg-subtle, #fafafa);
+  border: 1px solid #fbbf24;
+  border-radius: var(--radius-md, 8px);
+}
+
+.donation-place-group:last-child {
+  margin-bottom: 0;
+}
+
+.donation-place-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-3, 12px);
+  padding-bottom: var(--spacing-2, 8px);
+  border-bottom: 1px solid var(--border-default, #e5e7eb);
+  gap: var(--spacing-3, 12px);
+}
+
+.donation-place-name {
+  font-size: var(--text-base, 14px);
+  font-weight: var(--font-semibold, 600);
+  color: var(--text-secondary, #374151);
+  font-family: var(--font-sans);
+  flex: 1;
+}
+
+.donation-place-count {
+  font-size: var(--text-sm, 13px);
+  color: var(--text-tertiary, #6b7280);
+  font-family: var(--font-sans);
+}
+
+.donation-place-total {
+  font-size: var(--text-base, 14px);
+  font-weight: var(--font-bold, 700);
+  color: var(--color-positive-dark, #16a34a);
+  font-family: var(--font-mono);
+}
+
+.donation-place-expenses {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2, 8px);
+}
+
 /* Unassigned Section Styling */
 .unassigned-section {
   margin-top: var(--spacing-6, 24px);

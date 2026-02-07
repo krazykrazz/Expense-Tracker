@@ -14,7 +14,13 @@ G:\My Drive\Media Related\docker\media-applications.yml
 
 ## Container Management Commands
 
-When the user asks to manage containers (start, stop, restart, pull, etc.), use this compose file:
+The `build-and-push.ps1` script automatically deploys after building. It maps tags to services:
+- `staging` / `dev` → `expense-tracker-test`
+- `latest` → `expense-tracker`
+
+Use `-SkipDeploy` to build without restarting containers.
+
+For manual container management, use this compose file:
 
 ```powershell
 # Pull latest image

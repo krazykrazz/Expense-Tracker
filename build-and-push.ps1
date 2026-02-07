@@ -14,7 +14,13 @@ param(
     [switch]$SkipAuth,
     
     [Parameter(Mandatory=$false)]
-    [switch]$MultiPlatform
+    [switch]$MultiPlatform,
+    
+    [Parameter(Mandatory=$false)]
+    [switch]$SkipDeploy,
+    
+    [Parameter(Mandatory=$false)]
+    [string]$ComposeFile = "G:\My Drive\Media Related\docker\media-applications.yml"
 )
 
 # Color output functions
@@ -182,6 +188,57 @@ if ($MultiPlatform) {
     Write-Success "Image pushed successfully"
 }
 
+# Deploy to containers via compose file
+if (-not $SkipDeploy) {
+    # Map tags to compose service names
+    $serviceMap = @{
+        'staging' = 'expense-tracker-test'
+        'latest'  = 'expense-tracker'
+        'dev'     = 'expense-tracker-test'
+    }
+    
+    $serviceName = $serviceMap[$Tag]
+    
+    if ($serviceName) {
+        Write-Info "Deploying to container: $serviceName"
+        
+        # Check compose file exists
+        if (Test-Path $ComposeFile) {
+            Write-Info "Pulling latest image for $serviceName..."
+            docker-compose -f $ComposeFile pull $serviceName
+            
+            if ($LASTEXITCODE -ne 0) {
+                Write-Warning "Pull failed, but image was just pushed locally. Continuing with restart..."
+            }
+            
+            Write-Info "Restarting $serviceName..."
+            docker-compose -f $ComposeFile up -d $serviceName
+            
+            if ($LASTEXITCODE -ne 0) {
+                Write-Error "Failed to restart $serviceName"
+                Write-Warning "Image was built and pushed successfully, but container deploy failed."
+                Write-Info "Manual deploy: docker-compose -f `"$ComposeFile`" up -d $serviceName"
+            } else {
+                # Brief wait then check health
+                Start-Sleep -Seconds 3
+                $containerStatus = docker ps --filter "name=$serviceName" --format "{{.Status}}" 2>$null
+                if ($containerStatus) {
+                    Write-Success "Container $serviceName is running: $containerStatus"
+                } else {
+                    Write-Warning "Container may still be starting. Check with: docker ps --filter name=$serviceName"
+                }
+            }
+        } else {
+            Write-Warning "Compose file not found: $ComposeFile"
+            Write-Info "Skipping deploy. Pull and restart manually."
+        }
+    } else {
+        Write-Warning "No service mapping for tag '$Tag'. Skipping deploy."
+    }
+} else {
+    Write-Info "Skipping deploy (--SkipDeploy flag set)"
+}
+
 # Summary
 Write-Success "========================================="
 Write-Success "Build and push completed successfully!"
@@ -189,10 +246,6 @@ Write-Success "========================================="
 Write-Info "Image: $fullImageTag"
 Write-Info "Tag: $Tag"
 Write-Info "Version: $version"
-Write-Info ""
-Write-Info "To pull this image:"
-Write-Info "  docker pull $fullImageTag"
-Write-Info ""
-Write-Info "To run with docker-compose:"
-Write-Info "  docker-compose pull"
-Write-Info "  docker-compose up -d"
+if (-not $SkipDeploy -and $serviceName) {
+    Write-Info "Deployed to: $serviceName"
+}

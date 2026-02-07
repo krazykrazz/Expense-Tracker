@@ -383,6 +383,23 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
     return expenses;
   }, [invoiceFilter]);
 
+  // Group donations by place for the grouped view
+  const donationsGroupedByPlace = useMemo(() => {
+    if (!taxDeductible?.expenses?.donations) return [];
+    const filtered = filterExpensesByInvoice(taxDeductible.expenses.donations);
+    const grouped = {};
+    filtered.forEach(donation => {
+      const place = donation.place || 'Unknown';
+      if (!grouped[place]) {
+        grouped[place] = { place, expenses: [], total: 0 };
+      }
+      grouped[place].expenses.push(donation);
+      grouped[place].total += donation.amount;
+    });
+    // Sort by total descending
+    return Object.values(grouped).sort((a, b) => b.total - a.total);
+  }, [taxDeductible?.expenses?.donations, filterExpensesByInvoice]);
+
   // Filter expenses based on claim status (for medical expenses only)
   const filterExpensesByClaimStatus = useCallback((expenses) => {
     if (claimStatusFilter === 'all') return expenses;
@@ -1387,29 +1404,39 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
                 </div>
                 {donationsExpanded && (
                   <div className="tax-expense-list">
-                    {filterExpensesByInvoice(taxDeductible.expenses.donations).map((expense) => (
-                      <div key={expense.id} className="tax-expense-item">
-                        <div className="tax-expense-date">
-                          {formatDate(expense.date)}
+                    {donationsGroupedByPlace.map((group) => (
+                      <div key={group.place} className="donation-place-group">
+                        <div className="donation-place-header">
+                          <span className="donation-place-name">{group.place}</span>
+                          <span className="donation-place-count">{group.expenses.length} {group.expenses.length === 1 ? 'donation' : 'donations'}</span>
+                          <span className="donation-place-total">${formatAmount(group.total)}</span>
                         </div>
-                        <div className="tax-expense-details">
-                          <div className="tax-expense-place">{expense.place}</div>
-                          {expense.notes && (
-                            <div className="tax-expense-notes">{expense.notes}</div>
-                          )}
-                        </div>
-                        <div className="tax-expense-amount">${formatAmount(expense.amount)}</div>
-                        <div className="tax-expense-invoice">
-                          <InvoiceIndicator
-                            hasInvoice={expense.hasInvoice}
-                            invoiceInfo={expense.invoice}
-                            invoiceCount={expense.invoiceCount || 0}
-                            invoices={expense.invoices || []}
-                            expenseId={expense.id}
-                            size="small"
-                            alwaysShow={true}
-                            onClick={expense.hasInvoice ? () => handleViewInvoices(expense) : undefined}
-                          />
+                        <div className="donation-place-expenses">
+                          {group.expenses.map((expense) => (
+                            <div key={expense.id} className="tax-expense-item">
+                              <div className="tax-expense-date">
+                                {formatDate(expense.date)}
+                              </div>
+                              <div className="tax-expense-details">
+                                {expense.notes && (
+                                  <div className="tax-expense-notes">{expense.notes}</div>
+                                )}
+                              </div>
+                              <div className="tax-expense-amount">${formatAmount(expense.amount)}</div>
+                              <div className="tax-expense-invoice">
+                                <InvoiceIndicator
+                                  hasInvoice={expense.hasInvoice}
+                                  invoiceInfo={expense.invoice}
+                                  invoiceCount={expense.invoiceCount || 0}
+                                  invoices={expense.invoices || []}
+                                  expenseId={expense.id}
+                                  size="small"
+                                  alwaysShow={true}
+                                  onClick={expense.hasInvoice ? () => handleViewInvoices(expense) : undefined}
+                                />
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     ))}

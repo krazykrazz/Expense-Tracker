@@ -3,19 +3,18 @@ import './TaxDeductible.css';
 import { formatAmount, formatLocalDate, getMonthNameShort } from '../utils/formatters';
 import { getCategories } from '../services/categoriesApi';
 import { getPeople } from '../services/peopleApi';
-import { getExpenseWithPeople, updateExpense, updateInsuranceStatus, getTaxDeductibleSummary } from '../services/expenseApi';
-import { getPaymentMethods } from '../services/paymentMethodApi';
+import { getExpenseWithPeople, updateExpense } from '../services/expenseApi';
+import usePaymentMethods from '../hooks/usePaymentMethods';
+import useInsuranceStatus from '../hooks/useInsuranceStatus';
+import useInvoiceManagement from '../hooks/useInvoiceManagement';
+import useTaxCalculator from '../hooks/useTaxCalculator';
+import useYoYComparison from '../hooks/useYoYComparison';
 import PersonAllocationModal from './PersonAllocationModal';
 import InvoiceIndicator from './InvoiceIndicator';
 import InvoiceList from './InvoiceList';
 import InsuranceStatusIndicator from './InsuranceStatusIndicator';
 import QuickStatusUpdate from './QuickStatusUpdate';
-import { getInvoicesForExpense } from '../services/invoiceApi';
-import { calculatePercentageChange, getChangeIndicator } from '../utils/yoyComparison';
-import { getNetIncomeForYear, saveNetIncomeForYear, getSelectedProvince, saveSelectedProvince } from '../utils/taxSettingsStorage';
-import { calculateAllTaxCredits } from '../utils/taxCreditCalculator';
 import { TAX_RATES } from '../utils/taxRatesConfig';
-import { getAnnualIncomeByCategory } from '../services/incomeApi';
 
 const TaxDeductible = ({ year, refreshTrigger }) => {
   const [taxDeductible, setTaxDeductible] = useState(null);
@@ -34,13 +33,20 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
   // Insurance claim status filter state
   const [claimStatusFilter, setClaimStatusFilter] = useState('all'); // 'all', 'not_claimed', 'in_progress', 'paid', 'denied'
   
-  // Quick status update state
-  const [quickStatusExpense, setQuickStatusExpense] = useState(null);
-  
-  // People, categories, and payment methods state
+  // People and categories state
   const [people, setPeople] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [paymentMethods, setPaymentMethods] = useState([]);
+  
+  // Payment methods via custom hook (activeOnly for display/edit form)
+  const { paymentMethods } = usePaymentMethods({ activeOnly: true });
+
+  // Insurance status management via custom hook
+  const {
+    updateStatus: hookUpdateInsuranceStatus,
+    quickStatusExpense,
+    openQuickStatus,
+    closeQuickStatus,
+  } = useInsuranceStatus();
   
   // Edit modal state
   const [showEditModal, setShowEditModal] = useState(false);
@@ -51,28 +57,47 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
   const [selectedPeople, setSelectedPeople] = useState([]);
   const [showPersonAllocation, setShowPersonAllocation] = useState(false);
   
-  // Invoice modal state
-  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
-  const [invoiceModalExpense, setInvoiceModalExpense] = useState(null);
-  const [invoiceModalInvoices, setInvoiceModalInvoices] = useState([]);
+  // Invoice management via custom hook (Requirements 3.4, 3.8)
+  const {
+    showInvoiceModal,
+    invoiceModalExpense,
+    invoiceModalInvoices,
+    openInvoiceModal,
+    closeInvoiceModal,
+    handleInvoiceDeleted: hookHandleInvoiceDeleted,
+  } = useInvoiceManagement();
 
-  // YoY comparison state
-  const [previousYearData, setPreviousYearData] = useState(null);
-  const [yoyLoading, setYoyLoading] = useState(false);
-  const [yoyError, setYoyError] = useState(null);
+  // YoY comparison via custom hook - Requirements 6.1, 6.2, 6.3, 6.4, 6.5, 7.2
+  const {
+    previousYearData,
+    yoyLoading,
+    yoyError,
+    calculateChange,
+    getIndicator,
+  } = useYoYComparison({ year, refreshTrigger });
 
-  // Tax Credit Calculator state - Requirements 3.1, 3.2, 3.3, 6.1, 6.2
-  const [netIncome, setNetIncome] = useState(null);
-  const [netIncomeInput, setNetIncomeInput] = useState('');
-  const [selectedProvince, setSelectedProvince] = useState('ON');
-  const [loadingAppIncome, setLoadingAppIncome] = useState(false);
+  // Tax Credit Calculator via custom hook - Requirements 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7, 7.2
+  const {
+    netIncome,
+    netIncomeInput,
+    selectedProvince,
+    loadingAppIncome,
+    taxCredits,
+    handleNetIncomeChange,
+    handleProvinceChange,
+    handleUseAppIncome,
+  } = useTaxCalculator({
+    year,
+    medicalTotal: taxDeductible?.medicalTotal || 0,
+    donationTotal: taxDeductible?.donationTotal || 0,
+  });
 
   useEffect(() => {
     fetchTaxDeductibleData();
   }, [year, groupByPerson, refreshTrigger]);
 
   useEffect(() => {
-    // Fetch people list, categories, and payment methods
+    // Fetch people list and categories
     const fetchPeopleData = async () => {
       try {
         const peopleData = await getPeople();
@@ -91,20 +116,8 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
       }
     };
     
-    // Fetch active payment methods for edit form dropdown
-    const fetchPaymentMethodsData = async () => {
-      try {
-        const methods = await getPaymentMethods({ activeOnly: true });
-        setPaymentMethods(methods || []);
-      } catch (err) {
-        console.error('Error fetching payment methods:', err);
-        setPaymentMethods([]);
-      }
-    };
-    
     fetchPeopleData();
     fetchCategoriesData();
-    fetchPaymentMethodsData();
   }, [refreshTrigger]);
 
   // Listen for peopleUpdated event to refresh people list
@@ -147,38 +160,6 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
       window.removeEventListener('setTaxDeductibleInsuranceFilter', handleSetInsuranceFilter);
     };
   }, []);
-
-  // Fetch previous year data for YoY comparison
-  useEffect(() => {
-    const fetchPreviousYearData = async () => {
-      setYoyLoading(true);
-      setYoyError(null);
-      
-      try {
-        const previousYear = year - 1;
-        const data = await getTaxDeductibleSummary(previousYear);
-        setPreviousYearData(data);
-      } catch (err) {
-        console.error('Error fetching previous year data:', err);
-        setYoyError('Unable to load previous year data');
-        setPreviousYearData(null);
-      } finally {
-        setYoyLoading(false);
-      }
-    };
-    
-    fetchPreviousYearData();
-  }, [year, refreshTrigger]);
-
-  // Load saved tax settings when year changes - Requirements 3.3, 3.6, 6.2
-  useEffect(() => {
-    const savedNetIncome = getNetIncomeForYear(year);
-    setNetIncome(savedNetIncome);
-    setNetIncomeInput(savedNetIncome !== null ? savedNetIncome.toString() : '');
-    
-    const savedProvince = getSelectedProvince();
-    setSelectedProvince(savedProvince);
-  }, [year]);
 
   const fetchTaxDeductibleData = async () => {
     setLoading(true);
@@ -342,36 +323,23 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
     setSelectedPeople([]);
   };
 
-  // Invoice modal handlers
+  // Invoice modal handlers - delegated to useInvoiceManagement hook
   const handleViewInvoices = useCallback(async (expense) => {
-    setInvoiceModalExpense(expense);
-    // Use invoices from expense if available, otherwise fetch them
-    if (expense.invoices && expense.invoices.length > 0) {
-      setInvoiceModalInvoices(expense.invoices);
-    } else {
-      try {
-        const invoices = await getInvoicesForExpense(expense.id);
-        setInvoiceModalInvoices(invoices);
-      } catch (error) {
-        console.error('Failed to fetch invoices:', error);
-        setInvoiceModalInvoices([]);
-      }
-    }
-    setShowInvoiceModal(true);
-  }, []);
+    await openInvoiceModal(expense);
+  }, [openInvoiceModal]);
 
   const handleCloseInvoiceModal = useCallback(() => {
-    setShowInvoiceModal(false);
-    setInvoiceModalExpense(null);
-    setInvoiceModalInvoices([]);
-  }, []);
+    closeInvoiceModal();
+  }, [closeInvoiceModal]);
 
   const handleInvoiceDeleted = useCallback((invoiceId) => {
-    // Update the invoices list in the modal
-    setInvoiceModalInvoices(prev => prev.filter(inv => inv.id !== invoiceId));
+    // Delegate to hook for modal state update
+    if (invoiceModalExpense) {
+      hookHandleInvoiceDeleted(invoiceModalExpense.id, invoiceId);
+    }
     // Refresh the tax data to update counts
     fetchTaxDeductibleData();
-  }, []);
+  }, [invoiceModalExpense, hookHandleInvoiceDeleted]);
 
   const formatDate = formatLocalDate;
 
@@ -423,69 +391,26 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
 
   // Handle quick status update
   const handleQuickStatusClick = useCallback((expense, event) => {
-    event.stopPropagation();
-    setQuickStatusExpense(expense);
-  }, []);
+    openQuickStatus(expense, event);
+  }, [openQuickStatus]);
 
   // Handle status change from QuickStatusUpdate
   const handleStatusChange = useCallback(async (expenseId, newStatus) => {
     try {
-      await updateInsuranceStatus(expenseId, newStatus);
+      await hookUpdateInsuranceStatus(expenseId, newStatus);
       // Refresh the data
       await fetchTaxDeductibleData();
-      // Dispatch event to notify other components
-      window.dispatchEvent(new CustomEvent('expensesUpdated'));
     } catch (error) {
       console.error('Error updating insurance status:', error);
     } finally {
-      setQuickStatusExpense(null);
+      closeQuickStatus();
     }
-  }, []);
+  }, [hookUpdateInsuranceStatus, closeQuickStatus]);
 
   // Close quick status update
   const handleCloseQuickStatus = useCallback(() => {
-    setQuickStatusExpense(null);
-  }, []);
-
-  // Tax Credit Calculator handlers - Requirements 3.1, 3.2, 3.3, 3.4, 3.5, 6.1, 6.2
-  const handleNetIncomeChange = useCallback((e) => {
-    const value = e.target.value;
-    setNetIncomeInput(value);
-    
-    // Parse and save if valid
-    const numValue = parseFloat(value);
-    if (!isNaN(numValue) && numValue >= 0) {
-      setNetIncome(numValue);
-      saveNetIncomeForYear(year, numValue);
-    } else if (value === '') {
-      setNetIncome(null);
-    }
-  }, [year]);
-
-  const handleProvinceChange = useCallback((e) => {
-    const provinceCode = e.target.value;
-    setSelectedProvince(provinceCode);
-    saveSelectedProvince(provinceCode);
-  }, []);
-
-  // Fetch annual income from app data - Requirement 3.5
-  const handleUseAppIncome = useCallback(async () => {
-    setLoadingAppIncome(true);
-    try {
-      const incomeData = await getAnnualIncomeByCategory(year);
-      const totalIncome = incomeData.total || 0;
-      
-      if (totalIncome > 0) {
-        setNetIncome(totalIncome);
-        setNetIncomeInput(totalIncome.toString());
-        saveNetIncomeForYear(year, totalIncome);
-      }
-    } catch (error) {
-      console.error('Error fetching app income data:', error);
-    } finally {
-      setLoadingAppIncome(false);
-    }
-  }, [year]);
+    closeQuickStatus();
+  }, [closeQuickStatus]);
 
   // Calculate invoice coverage statistics
   const invoiceStats = useMemo(() => {
@@ -552,25 +477,12 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
       currentYear,
       previousYear,
       changes: {
-        medical: calculatePercentageChange(currentYear.medicalTotal, previousYear?.medicalTotal || 0),
-        donations: calculatePercentageChange(currentYear.donationTotal, previousYear?.donationTotal || 0),
-        total: calculatePercentageChange(currentYear.totalDeductible, previousYear?.totalDeductible || 0)
+        medical: calculateChange(currentYear.medicalTotal, previousYear?.medicalTotal || 0),
+        donations: calculateChange(currentYear.donationTotal, previousYear?.donationTotal || 0),
+        total: calculateChange(currentYear.totalDeductible, previousYear?.totalDeductible || 0)
       }
     };
-  }, [taxDeductible, previousYearData, year]);
-
-  // Calculate tax credits - Requirements 4.1, 4.2, 4.6, 5.1, 5.2, 5.4, 6.3, 6.4, 6.6
-  const taxCredits = useMemo(() => {
-    if (!taxDeductible || netIncome === null) return null;
-    
-    return calculateAllTaxCredits({
-      medicalTotal: taxDeductible.medicalTotal || 0,
-      donationTotal: taxDeductible.donationTotal || 0,
-      netIncome: netIncome,
-      year: year,
-      provinceCode: selectedProvince
-    });
-  }, [taxDeductible, netIncome, year, selectedProvince]);
+  }, [taxDeductible, previousYearData, year, calculateChange]);
 
   if (loading) {
     return (
@@ -635,7 +547,7 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
                       </div>
                     </div>
                     <div className={`yoy-change yoy-change-${yoyComparison.changes.medical.direction}`}>
-                      <span className="yoy-indicator">{getChangeIndicator(yoyComparison.changes.medical.direction)}</span>
+                      <span className="yoy-indicator">{getIndicator(yoyComparison.changes.medical.direction)}</span>
                       <span className="yoy-percentage">{yoyComparison.changes.medical.formatted}</span>
                     </div>
                   </div>
@@ -659,7 +571,7 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
                       </div>
                     </div>
                     <div className={`yoy-change yoy-change-${yoyComparison.changes.donations.direction}`}>
-                      <span className="yoy-indicator">{getChangeIndicator(yoyComparison.changes.donations.direction)}</span>
+                      <span className="yoy-indicator">{getIndicator(yoyComparison.changes.donations.direction)}</span>
                       <span className="yoy-percentage">{yoyComparison.changes.donations.formatted}</span>
                     </div>
                   </div>
@@ -683,7 +595,7 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
                       </div>
                     </div>
                     <div className={`yoy-change yoy-change-${yoyComparison.changes.total.direction}`}>
-                      <span className="yoy-indicator">{getChangeIndicator(yoyComparison.changes.total.direction)}</span>
+                      <span className="yoy-indicator">{getIndicator(yoyComparison.changes.total.direction)}</span>
                       <span className="yoy-percentage">{yoyComparison.changes.total.formatted}</span>
                     </div>
                   </div>

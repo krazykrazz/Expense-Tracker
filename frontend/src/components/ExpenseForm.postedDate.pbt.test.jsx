@@ -29,6 +29,39 @@ const MOCK_PAYMENT_METHODS = [
   { id: 7, display_name: 'Savings Debit', type: 'debit', is_active: true }
 ];
 
+// Mock the paymentMethodApi module used by usePaymentMethods hook
+vi.mock('../services/paymentMethodApi', () => ({
+  getActivePaymentMethods: vi.fn(() => Promise.resolve([
+    { id: 1, display_name: 'Cash', type: 'cash', is_active: true },
+    { id: 2, display_name: 'Debit Card', type: 'debit', is_active: true },
+    { id: 3, display_name: 'Personal Cheque', type: 'cheque', is_active: true },
+    { id: 4, display_name: 'Visa Credit Card', type: 'credit_card', is_active: true },
+    { id: 5, display_name: 'Mastercard', type: 'credit_card', is_active: true },
+    { id: 6, display_name: 'Amex', type: 'credit_card', is_active: true },
+    { id: 7, display_name: 'Savings Debit', type: 'debit', is_active: true }
+  ])),
+  getPaymentMethod: vi.fn(() => Promise.resolve(null)),
+  getPaymentMethods: vi.fn(() => Promise.resolve([
+    { id: 1, display_name: 'Cash', type: 'cash', is_active: true },
+    { id: 2, display_name: 'Debit Card', type: 'debit', is_active: true },
+    { id: 3, display_name: 'Personal Cheque', type: 'cheque', is_active: true },
+    { id: 4, display_name: 'Visa Credit Card', type: 'credit_card', is_active: true },
+    { id: 5, display_name: 'Mastercard', type: 'credit_card', is_active: true },
+    { id: 6, display_name: 'Amex', type: 'credit_card', is_active: true },
+    { id: 7, display_name: 'Savings Debit', type: 'debit', is_active: true }
+  ])),
+}));
+
+// Mock the logger to suppress output in tests
+vi.mock('../utils/logger', () => ({
+  createLogger: () => ({
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  }),
+}));
+
 // Helper to create a comprehensive mock implementation
 const createMockFetch = (paymentMethods = MOCK_PAYMENT_METHODS) => {
   return (url) => {
@@ -140,22 +173,19 @@ describe('ExpenseForm Posted Date Field Visibility Property-Based Tests', () => 
             fireEvent.change(paymentMethodSelect, { target: { value: selectedMethod.id.toString() } });
           });
 
-          // Wait for state to update
-          await act(async () => {
-            await new Promise(resolve => setTimeout(resolve, 50));
-          });
-
-          // Check for posted_date field visibility
-          const postedDateInput = container.querySelector('input[name="posted_date"]');
-          const postedDateSection = container.querySelector('.posted-date-section');
-
           // Property: posted_date field visible IFF payment method type is 'credit_card'
           if (selectedMethod.type === 'credit_card') {
-            expect(postedDateInput).toBeTruthy();
-            expect(postedDateSection).toBeTruthy();
+            await waitFor(() => {
+              const postedDateInput = container.querySelector('input[name="posted_date"]');
+              expect(postedDateInput).toBeTruthy();
+            });
           } else {
+            // For non-credit card, wait a tick then verify it's not there
+            await act(async () => {
+              await new Promise(resolve => setTimeout(resolve, 50));
+            });
+            const postedDateInput = container.querySelector('input[name="posted_date"]');
             expect(postedDateInput).toBeFalsy();
-            expect(postedDateSection).toBeFalsy();
           }
 
           // Wait for any pending state updates before cleanup
@@ -215,28 +245,22 @@ describe('ExpenseForm Posted Date Field Visibility Property-Based Tests', () => 
             fireEvent.change(paymentMethodSelect, { target: { value: creditCard.id.toString() } });
           });
 
-          // Wait for state to update
-          await act(async () => {
-            await new Promise(resolve => setTimeout(resolve, 50));
+          // Wait for posted_date field to appear
+          await waitFor(() => {
+            const postedDateInput = container.querySelector('input[name="posted_date"]');
+            expect(postedDateInput).toBeTruthy();
           });
-
-          // Verify posted_date field is visible
-          let postedDateInput = container.querySelector('input[name="posted_date"]');
-          expect(postedDateInput).toBeTruthy();
 
           // Now switch to a non-credit card payment method
           await act(async () => {
             fireEvent.change(paymentMethodSelect, { target: { value: nonCreditCard.id.toString() } });
           });
 
-          // Wait for state to update
-          await act(async () => {
-            await new Promise(resolve => setTimeout(resolve, 50));
+          // Wait for posted_date field to disappear
+          await waitFor(() => {
+            const postedDateInput = container.querySelector('input[name="posted_date"]');
+            expect(postedDateInput).toBeFalsy();
           });
-
-          // Verify posted_date field is now hidden
-          postedDateInput = container.querySelector('input[name="posted_date"]');
-          expect(postedDateInput).toBeFalsy();
 
           // Wait for any pending state updates before cleanup
           await act(async () => {

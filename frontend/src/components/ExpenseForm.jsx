@@ -4,26 +4,17 @@ import { getTodayLocalDate } from '../utils/formatters';
 import { fetchCategorySuggestion } from '../services/categorySuggestionApi';
 import { getCategories } from '../services/categoriesApi';
 import { getPeople } from '../services/peopleApi';
-import { getActivePaymentMethods, getPaymentMethod } from '../services/paymentMethodApi';
 import { createExpense, updateExpense, getExpenseWithPeople, getPlaces } from '../services/expenseApi';
-import { getInvoicesForExpense, updateInvoicePersonLink } from '../services/invoiceApi';
+import { updateInvoicePersonLink } from '../services/invoiceApi';
 import { createLogger } from '../utils/logger';
+import useExpenseFormValidation from '../hooks/useExpenseFormValidation';
+import usePaymentMethods from '../hooks/usePaymentMethods';
+import useInvoiceManagement from '../hooks/useInvoiceManagement';
 import PersonAllocationModal from './PersonAllocationModal';
 import InvoiceUpload from './InvoiceUpload';
 import './ExpenseForm.css';
 
 const logger = createLogger('ExpenseForm');
-
-// localStorage key for payment method persistence (Requirements 5.1, 5.3)
-// Now stores payment_method_id instead of method string
-const LAST_PAYMENT_METHOD_KEY = 'expense-tracker-last-payment-method-id';
-
-// Legacy localStorage key for migration
-const LEGACY_PAYMENT_METHOD_KEY = 'expense-tracker-last-payment-method';
-
-// Default payment method ID when no saved value exists (Requirements 5.2)
-// ID 1 corresponds to "Cash" in the migrated payment_methods table
-const DEFAULT_PAYMENT_METHOD_ID = 1;
 
 // Future months dropdown options (Requirements 1.1, 1.2, 2.1, 2.2)
 const FUTURE_MONTHS_OPTIONS = [
@@ -73,56 +64,11 @@ const calculateFutureDatePreview = (sourceDate, futureMonths) => {
   return `through ${monthNames[futureDate.getMonth()]} ${futureDate.getFullYear()}`;
 };
 
-/**
- * Get the last used payment method ID from localStorage
- * Includes migration logic for existing localStorage values (map string to ID)
- * @param {Array} paymentMethods - Available payment methods for validation/migration
- * @returns {number|null} The last used payment method ID or null
- */
-const getLastPaymentMethodId = (paymentMethods = []) => {
-  try {
-    // First try the new ID-based key
-    const savedId = localStorage.getItem(LAST_PAYMENT_METHOD_KEY);
-    if (savedId) {
-      const id = parseInt(savedId, 10);
-      // Validate that the ID exists in available payment methods
-      if (paymentMethods.some(pm => pm.id === id)) {
-        return id;
-      }
-    }
-    
-    // Migration: Check for legacy string-based value
-    const legacyMethod = localStorage.getItem(LEGACY_PAYMENT_METHOD_KEY);
-    if (legacyMethod && paymentMethods.length > 0) {
-      // Find the payment method by display_name
-      const matchingMethod = paymentMethods.find(pm => pm.display_name === legacyMethod);
-      if (matchingMethod) {
-        // Migrate to new format
-        localStorage.setItem(LAST_PAYMENT_METHOD_KEY, matchingMethod.id.toString());
-        localStorage.removeItem(LEGACY_PAYMENT_METHOD_KEY);
-        return matchingMethod.id;
-      }
-    }
-  } catch (error) {
-    logger.error('Failed to read payment method from localStorage:', error);
-  }
-  return null;
-};
-
-/**
- * Save the payment method ID to localStorage
- * @param {number} paymentMethodId - The payment method ID to save
- */
-const saveLastPaymentMethodId = (paymentMethodId) => {
-  try {
-    localStorage.setItem(LAST_PAYMENT_METHOD_KEY, paymentMethodId.toString());
-  } catch (error) {
-    logger.error('Failed to save payment method to localStorage:', error);
-  }
-};
-
 const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => {
   const isEditing = !!expense;
+  
+  // Use extracted validation hook (Requirements 4.9, 7.1)
+  const { validate } = useExpenseFormValidation();
   
   const [formData, setFormData] = useState({
     date: expense?.date || getTodayLocalDate(),
@@ -138,13 +84,19 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
   // Initialize from expense prop when editing
   const [postedDate, setPostedDate] = useState(expense?.posted_date || '');
 
-  // Payment methods state - fetched from API
-  const [paymentMethods, setPaymentMethods] = useState([]);
-  const [paymentMethodsLoading, setPaymentMethodsLoading] = useState(true);
-  const [paymentMethodsError, setPaymentMethodsError] = useState(null);
-  
-  // Track if the expense being edited has an inactive payment method
-  const [editingInactivePaymentMethod, setEditingInactivePaymentMethod] = useState(null);
+  // Use extracted payment methods hook (Requirements 1.7, 7.1)
+  const {
+    paymentMethods,
+    loading: paymentMethodsLoading,
+    error: paymentMethodsError,
+    inactivePaymentMethod: editingInactivePaymentMethod,
+    getLastUsedId,
+    saveLastUsed,
+    defaultPaymentMethodId,
+  } = usePaymentMethods({ expensePaymentMethodId: expense?.payment_method_id || null });
+
+  // Invoice management hook for fetching invoices (Requirements 3.6, 7.1)
+  const { fetchInvoices: hookFetchInvoices } = useInvoiceManagement();
 
   // Insurance tracking state for medical expenses (Requirements 1.1, 1.4, 2.1, 3.1, 3.2, 3.3, 3.4, 3.6)
   const [insuranceEligible, setInsuranceEligible] = useState(expense?.insurance_eligible === 1 || false);
@@ -205,7 +157,7 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
     return timeoutId;
   };
 
-  // Fetch categories, places, people, payment methods, and invoice data on component mount
+  // Fetch categories, places, people, and invoice data on component mount
   useEffect(() => {
     let isMounted = true;
 
@@ -252,60 +204,11 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
       }
     };
 
-    const fetchPaymentMethodsData = async () => {
-      try {
-        setPaymentMethodsLoading(true);
-        setPaymentMethodsError(null);
-        
-        const methods = await getActivePaymentMethods();
-        if (isMounted && methods) {
-          setPaymentMethods(methods);
-          
-          // If editing and the expense has a payment method that's not in active list,
-          // fetch it separately to show in dropdown (disabled)
-          if (isEditing && expense?.payment_method_id) {
-            const isActive = methods.some(m => m.id === expense.payment_method_id);
-            if (!isActive) {
-              try {
-                const inactiveMethod = await getPaymentMethod(expense.payment_method_id);
-                if (isMounted && inactiveMethod) {
-                  setEditingInactivePaymentMethod(inactiveMethod);
-                }
-              } catch (err) {
-                logger.error('Failed to fetch inactive payment method:', err);
-              }
-            }
-          }
-          
-          // Set initial payment method if not editing
-          if (!isEditing && !formData.payment_method_id) {
-            const lastUsedId = getLastPaymentMethodId(methods);
-            if (lastUsedId) {
-              setFormData(prev => ({ ...prev, payment_method_id: lastUsedId }));
-            } else if (methods.length > 0) {
-              // Default to first available method (usually Cash with ID 1)
-              const defaultMethod = methods.find(m => m.id === DEFAULT_PAYMENT_METHOD_ID) || methods[0];
-              setFormData(prev => ({ ...prev, payment_method_id: defaultMethod.id }));
-            }
-          }
-        }
-      } catch (error) {
-        if (isMounted) {
-          logger.error('Failed to fetch payment methods:', error);
-          setPaymentMethodsError('Failed to load payment methods');
-        }
-      } finally {
-        if (isMounted) {
-          setPaymentMethodsLoading(false);
-        }
-      }
-    };
-
     const fetchInvoiceData = async () => {
       // Fetch all invoices if editing a tax-deductible expense (medical or donation)
       if (isEditing && expense?.id && (expense?.type === 'Tax - Medical' || expense?.type === 'Tax - Donation')) {
         try {
-          const invoicesData = await getInvoicesForExpense(expense.id);
+          const invoicesData = await hookFetchInvoices(expense.id);
           if (isMounted && invoicesData) {
             setInvoices(invoicesData);
           }
@@ -340,7 +243,6 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
     fetchCategoriesData();
     fetchPlacesData();
     fetchPeopleData();
-    fetchPaymentMethodsData();
     fetchInvoiceData();
     fetchExpensePeople();
 
@@ -356,6 +258,22 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
       timeoutIdsRef.current = [];
     };
   }, [isEditing, expense?.id, expense?.type, expense?.payment_method_id]);
+
+  // Set initial payment method when hook data loads (not editing mode)
+  useEffect(() => {
+    if (paymentMethodsLoading || isEditing || formData.payment_method_id) return;
+    
+    if (paymentMethods.length > 0) {
+      const lastUsedId = getLastUsedId(paymentMethods);
+      if (lastUsedId) {
+        setFormData(prev => ({ ...prev, payment_method_id: lastUsedId }));
+      } else {
+        // Default to first available method (usually Cash with ID 1)
+        const defaultMethod = paymentMethods.find(m => m.id === defaultPaymentMethodId) || paymentMethods[0];
+        setFormData(prev => ({ ...prev, payment_method_id: defaultMethod.id }));
+      }
+    }
+  }, [paymentMethods, paymentMethodsLoading, isEditing, getLastUsedId, defaultPaymentMethodId]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -724,73 +642,31 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
   };
 
   const validateForm = () => {
-    if (!formData.date) {
-      setMessage({ text: 'Date is required', type: 'error' });
-      return false;
-    }
-    if (!formData.amount || parseFloat(formData.amount) <= 0) {
-      setMessage({ text: 'Amount must be a positive number', type: 'error' });
-      return false;
-    }
-    if (!formData.type) {
-      setMessage({ text: 'Type is required', type: 'error' });
-      return false;
-    }
-    if (!formData.payment_method_id) {
-      setMessage({ text: 'Payment method is required', type: 'error' });
-      return false;
-    }
-    if (formData.place && formData.place.length > 200) {
-      setMessage({ text: 'Place must be 200 characters or less', type: 'error' });
-      return false;
-    }
-    if (formData.notes && formData.notes.length > 200) {
-      setMessage({ text: 'Notes must be 200 characters or less', type: 'error' });
-      return false;
-    }
-    
-    // Insurance validation for medical expenses (Requirement 3.5)
-    if (isMedicalExpense && insuranceEligible) {
-      const amountNum = parseFloat(formData.amount) || 0;
-      const origCostNum = parseFloat(originalCost) || 0;
-      
-      if (origCostNum <= 0) {
-        setMessage({ text: 'Original cost is required for insurance-eligible expenses', type: 'error' });
-        return false;
+    const result = validate(formData, {
+      isMedicalExpense,
+      insuranceEligible,
+      originalCost,
+      isCreditCard,
+      postedDate,
+      showGenericReimbursementUI,
+      genericOriginalCost,
+    });
+
+    if (!result.valid && result.errors.length > 0) {
+      const firstError = result.errors[0];
+      setMessage({ text: firstError.message, type: 'error' });
+
+      // Preserve side-effect error state for specific fields
+      if (firstError.field === 'postedDate') {
+        setPostedDateError(firstError.message);
       }
-      
-      if (amountNum > origCostNum) {
-        setMessage({ text: 'Out-of-pocket amount cannot exceed original cost', type: 'error' });
-        return false;
+      if (firstError.field === 'genericOriginalCost') {
+        setGenericReimbursementError(firstError.message);
       }
-    }
-    
-    // Posted date validation for credit card expenses (Requirements 4.5)
-    if (isCreditCard && postedDate && formData.date && postedDate < formData.date) {
-      setMessage({ text: 'Posted date cannot be before transaction date', type: 'error' });
-      setPostedDateError('Posted date cannot be before transaction date');
+
       return false;
     }
-    
-    // Generic original cost validation for non-medical expenses (Requirements 1.3)
-    // Amount (net) cannot exceed original cost (charged amount)
-    if (showGenericReimbursementUI && genericOriginalCost) {
-      const origCostNum = parseFloat(genericOriginalCost);
-      const amountNum = parseFloat(formData.amount) || 0;
-      
-      if (isNaN(origCostNum) || origCostNum < 0) {
-        setMessage({ text: 'Original cost must be a non-negative number', type: 'error' });
-        setGenericReimbursementError('Original cost must be a non-negative number');
-        return false;
-      }
-      
-      if (amountNum > origCostNum) {
-        setMessage({ text: 'Net amount cannot exceed original cost', type: 'error' });
-        setGenericReimbursementError('Net amount cannot exceed original cost');
-        return false;
-      }
-    }
-    
+
     return true;
   };
 
@@ -933,7 +809,7 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
       
       // Save payment method for next expense entry (Requirements 5.3)
       if (!isEditing && formData.payment_method_id) {
-        saveLastPaymentMethodId(formData.payment_method_id);
+        saveLastUsed(formData.payment_method_id);
       }
       
       // Build success message including future expenses info (Requirements 4.1, 4.2)

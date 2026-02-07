@@ -1171,33 +1171,119 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ---
 
+## 🧹 Code Quality & Optimization
+
+### ⚪ 31. Frontend Custom Hooks Extraction
+**Status**: Proposed  
+**Priority**: High  
+**Effort**: Medium  
+**Description**: Extract shared logic from oversized components (ExpenseForm 1663 lines, TaxDeductible 1677 lines, ExpenseList 1111 lines) into reusable custom hooks.
+
+**Key Hooks**:
+- `useInsuranceStatus` — Insurance claim logic shared across ExpenseForm, ExpenseList, TaxDeductible
+- `useInvoiceManagement` — Invoice fetching, caching, modal state used in all three components
+- `usePaymentMethods` — Payment method fetching, inactive method handling, last-used memory
+- `useFormValidation` — Expense form validation logic from ExpenseForm
+- `useTaxCalculator` — Tax credit calculator state and logic from TaxDeductible
+- `useYoYComparison` — YoY data fetching and comparison from TaxDeductible
+
+**Benefits**:
+- Reduces all three oversized components significantly
+- Eliminates duplicate insurance/invoice/payment method patterns
+- Makes logic independently testable
+- Follows React best practices for state management
+
+**Dependencies**: None
+
+---
+
+### ⚪ 32. Backend updateExpense Credit Card Balance Refactor
+**Status**: Proposed  
+**Priority**: Medium  
+**Effort**: Low  
+**Description**: Extract the complex credit card balance update logic (~50 lines, 5+ conditional branches) from `expenseService.updateExpense()` into a dedicated method.
+
+**Current Issue**: Deeply nested conditionals handling future/past date transitions, amount changes, and payment method changes are hard to follow.
+
+**Proposed Fix**: Extract into `_handleCreditCardBalanceUpdate(oldExpense, newExpense, paymentMethod, oldPaymentMethod)`.
+
+**Benefits**:
+- Clearer separation of concerns within updateExpense
+- Easier to test credit card balance logic in isolation
+- Reduces updateExpense from ~150 to ~100 lines
+
+**Dependencies**: None
+
+---
+
+### ⚪ 33. Legacy Payment Method String Deprecation
+**Status**: Proposed  
+**Priority**: Low  
+**Effort**: Very Low  
+**Description**: Add deprecation warning logging when `_resolvePaymentMethod` falls back to string-based method lookup instead of `payment_method_id`.
+
+**Current Issue**: The string-based path silently falls back to `null` payment_method_id if no match is found, which could cause subtle bugs.
+
+**Proposed Fix**: Add `logger.warn()` when the string path is used, to track if anything still hits it. Eventually remove the fallback.
+
+**Benefits**:
+- Visibility into legacy code paths still in use
+- Path toward removing backward compatibility code
+- Prevents silent data quality issues
+
+**Dependencies**: None
+
+---
+
+### ⚪ 34. Window Event Communication Cleanup
+**Status**: Proposed  
+**Priority**: Low  
+**Effort**: Medium  
+**Description**: Several components use `window.addEventListener` for cross-component communication (e.g., `peopleUpdated`, `setTaxDeductibleInsuranceFilter`, `expensesUpdated`). These work but are fragile and hard to trace.
+
+**Proposed Fix**: Route these through React Context or a simple event bus with typed events.
+
+**Benefits**:
+- Better traceability of cross-component communication
+- Type safety for event payloads
+- Easier debugging
+
+**Dependencies**: Custom hooks extraction (#31) should be done first
+
+---
+
 ## Priority Matrix
 
 ### High Priority (Implement Next)
-1. Expense Templates
-2. Financial Goals Dashboard
-3. ExpenseForm Simplification
+1. Frontend Custom Hooks Extraction (#31)
+2. Expense Templates
+3. Financial Goals Dashboard
+4. ExpenseForm Simplification
 
 ### Medium Priority
-1. Adaptive Anomaly Detection (Learning from Dismissals)
-2. Advanced Expense Search
-3. Custom Reports
-4. Category Insights
-5. Savings Rate Tracker
-6. Debt Payoff Planner
-7. Export Enhancements
-8. Duplicate Expense Feature
+1. Backend updateExpense Credit Card Balance Refactor (#32)
+2. Adaptive Anomaly Detection (Learning from Dismissals)
+3. Advanced Expense Search
+4. Custom Reports
+5. Category Insights
+6. Savings Rate Tracker
+7. Debt Payoff Planner
+8. Export Enhancements
+9. Duplicate Expense Feature
 
 ### Low Priority
-1. Tags System
-2. Receipt Attachments
-3. Multi-Currency Support
-4. Expense Reminders
-5. Duplicate Detection
-6. Expense Notes Enhancement
-7. Dark Mode
-8. Keyboard Shortcuts
-9. Summary Panel Preferences
+1. Legacy Payment Method String Deprecation (#33)
+2. Window Event Communication Cleanup (#34)
+3. Tags System
+4. Receipt Attachments
+5. Multi-Currency Support
+6. Expense Reminders
+7. Duplicate Detection
+8. Expense Notes Enhancement
+9. Dark Mode
+10. Keyboard Shortcuts
+11. Summary Panel Preferences
+12. Modal Consolidation
 10. Quick Edit for Amount
 11. Modal Consolidation
 
@@ -1222,6 +1308,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 ---
 
 **Version History**:
+- v3.0 (2026-02-07): Added Code Quality & Optimization section with 4 items from codebase review (#31-34), updated priority matrix
 - v2.9 (2026-02-07): Added Backend Expense Service Refactor (v5.7.0) to completed features, marked Frontend State Management Phase 4 (SharedDataContext) as completed (v5.6.3), updated priority matrix, updated current version to 5.7.0
 - v2.8 (2026-02-06): Marked Frontend State Management Phase 3 (Modal Context) as completed (v5.6.1), updated Phase 4 status to Planned, updated priority matrix
 - v2.7 (2026-02-06): Marked Frontend State Management Phase 2 (Expense Context) as completed, updated priority matrix

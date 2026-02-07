@@ -39,7 +39,7 @@ const SECTION_KEYS = {
   PAYMENT_HISTORY: 'paymentHistory'
 };
 
-const MortgageInsightsPanel = ({ mortgageId, mortgageData }) => {
+const MortgageInsightsPanel = ({ mortgageId, mortgageData, paymentDueDay }) => {
   // Data states
   const [insights, setInsights] = useState(null);
   const [payments, setPayments] = useState([]);
@@ -270,6 +270,7 @@ const MortgageInsightsPanel = ({ mortgageId, mortgageData }) => {
                 onEditPayment={handleEditPayment}
                 onEditRate={handleEditRate}
                 loading={isLoading}
+                paymentDueDay={paymentDueDay}
               />
             </div>
           )}

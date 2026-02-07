@@ -14,7 +14,7 @@ class ExpenseValidationService {
       if (isNaN(amount) || amount <= 0) errors.push('Amount must be a positive number');
       if (!/^\d+(\.\d{1,2})?$/.test(expense.amount.toString())) errors.push('Amount must have at most 2 decimal places');
     }
-    if (expense.type && !CATEGORIES.includes(expense.type)) errors.push('Type must be one of: ' + CATEGORIES.join(', '));
+    if (expense.type && !CATEGORIES.includes(expense.type)) errors.push(`Type must be one of: ${CATEGORIES.join(', ')}`);
     if (expense.place && expense.place.length > 200) errors.push('Place must not exceed 200 characters');
     if (expense.notes && expense.notes.length > 200) errors.push('Notes must not exceed 200 characters');
     if (errors.length > 0) throw new Error(errors.join('; '));
@@ -36,7 +36,7 @@ class ExpenseValidationService {
     if (!insuranceData) return;
     if (insuranceData.claim_status !== undefined && insuranceData.claim_status !== null) {
       if (!VALID_CLAIM_STATUSES.includes(insuranceData.claim_status))
-        errors.push('Claim status must be one of: ' + VALID_CLAIM_STATUSES.join(', '));
+        errors.push(`Claim status must be one of: ${VALID_CLAIM_STATUSES.join(', ')}`);
     }
     if (insuranceData.original_cost !== undefined && insuranceData.original_cost !== null) {
       const oc = parseFloat(insuranceData.original_cost);
@@ -66,7 +66,7 @@ class ExpenseValidationService {
         const amt = parseFloat(alloc.amount);
         const origAmt = parseFloat(alloc.originalAmount);
         if (!isNaN(amt) && !isNaN(origAmt) && amt > origAmt)
-          errors.push('Person allocation amount (' + amt.toFixed(2) + ') cannot exceed their original cost allocation (' + origAmt.toFixed(2) + ')');
+          errors.push(`Person allocation amount (${amt.toFixed(2)}) cannot exceed their original cost allocation (${origAmt.toFixed(2)})`);
       }
     }
     if (errors.length > 0) throw new Error(errors.join('; '));
@@ -85,7 +85,7 @@ class ExpenseValidationService {
     const pids = allocations.map(a => a.personId);
     if (pids.length !== [...new Set(pids)].length) throw new Error('Cannot allocate to the same person multiple times');
     const total = allocations.reduce((s, a) => s + parseFloat(a.amount), 0);
-    if (Math.abs(total - totalAmount) > 0.005) throw new Error('Total allocated amount (' + total.toFixed(2) + ') must equal expense amount (' + totalAmount.toFixed(2) + ')');
+    if (Math.abs(total - totalAmount) > 0.005) throw new Error(`Total allocated amount (${total.toFixed(2)}) must equal expense amount (${totalAmount.toFixed(2)})`);
   }
 }
 

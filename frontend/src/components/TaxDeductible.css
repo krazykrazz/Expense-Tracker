@@ -1138,7 +1138,7 @@
 
 .tax-expense-original-cost .cost-label {
   font-size: var(--text-xs, 11px);
-  color: var(--text-tertiary, #6b7280);
+  color: var(--text-secondary, #374151);
   font-weight: var(--font-medium, 500);
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -1150,19 +1150,28 @@
   color: var(--text-secondary, #374151);
 }
 
-/* Amount column with label for insurance expenses */
+/* Amount column with label for insurance expenses - matches ORIG/REIMB layout */
+.tax-expense-item.insurance-eligible .tax-expense-amount {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  min-width: 80px;
+  font-family: var(--font-mono);
+  font-size: inherit;
+  font-weight: inherit;
+}
+
 .tax-expense-amount .amount-label {
   font-size: var(--text-xs, 11px);
-  color: var(--text-tertiary, #6b7280);
+  color: var(--color-positive-dark, #16a34a);
   font-weight: var(--font-medium, 500);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  display: block;
 }
 
 .tax-expense-amount .amount-value {
-  font-size: var(--text-lg, 16px);
-  font-weight: var(--font-bold, 700);
+  font-size: var(--text-sm, 13px);
+  font-weight: var(--font-semibold, 600);
   color: var(--color-positive-dark, #16a34a);
 }
 

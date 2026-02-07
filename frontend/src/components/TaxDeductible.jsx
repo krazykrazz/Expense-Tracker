@@ -1159,16 +1159,23 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
                                       onClick={expense.insuranceEligible ? (e) => handleQuickStatusClick(expense, e) : undefined}
                                     />
                                   </div>
-                                  {/* Original Cost per Person - Requirement 4.5 */}
-                                  {expense.insuranceEligible && expense.originalAmount && (
+                                  {/* Original Cost - Requirement 4.5 */}
+                                  {expense.insuranceEligible && expense.originalCost && (
                                     <div className="tax-expense-original-cost">
                                       <span className="cost-label">Orig:</span>
-                                      <span className="cost-value">${formatAmount(expense.originalAmount)}</span>
+                                      <span className="cost-value">${formatAmount(expense.originalCost)}</span>
+                                    </div>
+                                  )}
+                                  {/* Reimbursement - Requirement 4.5 */}
+                                  {expense.insuranceEligible && expense.originalCost && expense.originalCost > expense.allocatedAmount && (
+                                    <div className="tax-expense-reimbursement">
+                                      <span className="reimbursement-label">Reimb:</span>
+                                      <span className="reimbursement-value">${formatAmount(expense.originalCost - expense.allocatedAmount)}</span>
                                     </div>
                                   )}
                                   {/* Out-of-Pocket Amount per Person */}
                                   <div className="tax-expense-amount">
-                                    {expense.insuranceEligible && expense.originalAmount ? (
+                                    {expense.insuranceEligible && expense.originalCost ? (
                                       <>
                                         <span className="amount-label">OOP:</span>
                                         <span className="amount-value">${formatAmount(expense.allocatedAmount)}</span>
@@ -1177,13 +1184,6 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
                                       <>${formatAmount(expense.allocatedAmount)}</>
                                     )}
                                   </div>
-                                  {/* Reimbursement per Person - Requirement 4.5 */}
-                                  {expense.insuranceEligible && expense.originalAmount && expense.originalAmount > expense.allocatedAmount && (
-                                    <div className="tax-expense-reimbursement">
-                                      <span className="reimbursement-label">Reimb:</span>
-                                      <span className="reimbursement-value">${formatAmount(expense.originalAmount - expense.allocatedAmount)}</span>
-                                    </div>
-                                  )}
                                   <div className="tax-expense-invoice">
                                     <InvoiceIndicator
                                       hasInvoice={expense.hasInvoice}
@@ -1257,6 +1257,13 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
                                     <div className="tax-expense-original-cost">
                                       <span className="cost-label">Orig:</span>
                                       <span className="cost-value">${formatAmount(expense.originalCost)}</span>
+                                    </div>
+                                  )}
+                                  {/* Reimbursement - shown when original cost > out-of-pocket */}
+                                  {expense.insuranceEligible && expense.originalCost && expense.originalCost > expense.amount && (
+                                    <div className="tax-expense-reimbursement">
+                                      <span className="reimbursement-label">Reimb:</span>
+                                      <span className="reimbursement-value">${formatAmount(expense.originalCost - expense.amount)}</span>
                                     </div>
                                   )}
                                   {/* Out-of-Pocket Amount */}
@@ -1353,6 +1360,13 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
                           <div className="tax-expense-original-cost">
                             <span className="cost-label">Orig:</span>
                             <span className="cost-value">${formatAmount(expense.originalCost)}</span>
+                          </div>
+                        )}
+                        {/* Reimbursement - shown when original cost > out-of-pocket */}
+                        {expense.insuranceEligible && expense.originalCost && expense.originalCost > expense.amount && (
+                          <div className="tax-expense-reimbursement">
+                            <span className="reimbursement-label">Reimb:</span>
+                            <span className="reimbursement-value">${formatAmount(expense.originalCost - expense.amount)}</span>
                           </div>
                         )}
                         {/* Out-of-Pocket Amount */}

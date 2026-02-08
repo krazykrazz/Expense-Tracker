@@ -101,22 +101,25 @@ global.fetch = vi.fn((url) => {
 describe('ExpenseForm - Invoice Integration', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    sessionStorage.clear();
   });
 
   it('should not show invoice section for non-medical expenses', async () => {
-    render(<ExpenseForm />);
+    const { container } = render(<ExpenseForm />);
     
     // Wait for component to load
     await waitFor(() => {
       expect(screen.getByDisplayValue('Other')).toBeInTheDocument();
     });
 
-    // Invoice section should not be visible
-    expect(screen.queryByText('Invoice Attachment')).not.toBeInTheDocument();
+    // Invoice Attachments section should not be visible for non-tax-deductible
+    const invoiceHeader = Array.from(container.querySelectorAll('.collapsible-header'))
+      .find(header => header.textContent.includes('Invoice Attachments'));
+    expect(invoiceHeader).toBeUndefined();
   });
 
   it('should show invoice section for medical expenses', async () => {
-    render(<ExpenseForm />);
+    const { container } = render(<ExpenseForm />);
     
     // Wait for component to load
     await waitFor(() => {
@@ -127,13 +130,26 @@ describe('ExpenseForm - Invoice Integration', () => {
     const typeSelect = screen.getByDisplayValue('Other');
     fireEvent.change(typeSelect, { target: { value: 'Tax - Medical' } });
 
-    // Invoice section should now be visible
-    expect(screen.getByText('Invoice Attachment')).toBeInTheDocument();
-    expect(screen.getByText(/Select PDF invoice/)).toBeInTheDocument();
+    // Invoice Attachments CollapsibleSection should appear
+    await waitFor(() => {
+      const invoiceHeader = Array.from(container.querySelectorAll('.collapsible-header'))
+        .find(header => header.textContent.includes('Invoice Attachments'));
+      expect(invoiceHeader).toBeTruthy();
+    });
+
+    // Expand the Invoice Attachments section
+    const invoiceHeader = Array.from(container.querySelectorAll('.collapsible-header'))
+      .find(header => header.textContent.includes('Invoice Attachments'));
+    fireEvent.click(invoiceHeader);
+
+    // Invoice content should now be visible
+    await waitFor(() => {
+      expect(screen.getByText(/Select PDF invoice/)).toBeInTheDocument();
+    });
   });
 
   it('should handle file selection for new medical expenses', async () => {
-    render(<ExpenseForm />);
+    const { container } = render(<ExpenseForm />);
     
     // Wait for component to load and change to medical expense
     await waitFor(() => {
@@ -143,9 +159,20 @@ describe('ExpenseForm - Invoice Integration', () => {
     const typeSelect = screen.getByDisplayValue('Other');
     fireEvent.change(typeSelect, { target: { value: 'Tax - Medical' } });
 
-    // Find the file input
-    const fileInput = screen.getByLabelText(/Select PDF invoice/);
-    expect(fileInput).toBeInTheDocument();
+    // Wait for Invoice Attachments section to appear, then expand it
+    let invoiceHeader;
+    await waitFor(() => {
+      invoiceHeader = Array.from(container.querySelectorAll('.collapsible-header'))
+        .find(header => header.textContent.includes('Invoice Attachments'));
+      expect(invoiceHeader).toBeTruthy();
+    });
+    fireEvent.click(invoiceHeader);
+
+    // Find the file input after section expands
+    await waitFor(() => {
+      expect(container.querySelector('input[type="file"]')).toBeInTheDocument();
+    });
+    const fileInput = container.querySelector('input[type="file"]');
 
     // Create a mock PDF file
     const file = new File(['pdf content'], 'test.pdf', { type: 'application/pdf' });
@@ -160,7 +187,7 @@ describe('ExpenseForm - Invoice Integration', () => {
   });
 
   it('should validate file type and size for new expenses', async () => {
-    render(<ExpenseForm />);
+    const { container } = render(<ExpenseForm />);
     
     // Wait for component to load and change to medical expense
     await waitFor(() => {
@@ -170,7 +197,18 @@ describe('ExpenseForm - Invoice Integration', () => {
     const typeSelect = screen.getByDisplayValue('Other');
     fireEvent.change(typeSelect, { target: { value: 'Tax - Medical' } });
 
-    const fileInput = screen.getByLabelText(/Select PDF invoice/);
+    // Expand Invoice Attachments section
+    await waitFor(() => {
+      const invoiceHeader = Array.from(container.querySelectorAll('.collapsible-header'))
+        .find(header => header.textContent.includes('Invoice Attachments'));
+      expect(invoiceHeader).toBeTruthy();
+      fireEvent.click(invoiceHeader);
+    });
+
+    await waitFor(() => {
+      expect(container.querySelector('input[type="file"]')).toBeInTheDocument();
+    });
+    const fileInput = container.querySelector('input[type="file"]');
 
     // Test invalid file type
     const invalidFile = new File(['content'], 'test.txt', { type: 'text/plain' });
@@ -203,21 +241,30 @@ describe('ExpenseForm - Invoice Integration', () => {
       invoice: { id: 1, filename: 'existing.pdf' }
     };
 
-    render(<ExpenseForm expense={mockExpense} />);
+    const { container } = render(<ExpenseForm expense={mockExpense} />);
     
     // Wait for component to load
     await waitFor(() => {
       expect(screen.getByDisplayValue('Test Clinic')).toBeInTheDocument();
     });
 
+    // Expand Invoice Attachments section if collapsed
+    const invoiceHeader = Array.from(container.querySelectorAll('.collapsible-header'))
+      .find(header => header.textContent.includes('Invoice Attachments'));
+    if (invoiceHeader && invoiceHeader.getAttribute('aria-expanded') === 'false') {
+      fireEvent.click(invoiceHeader);
+    }
+
     // Should show InvoiceUpload component for editing
-    expect(screen.getByTestId('invoice-upload')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByTestId('invoice-upload')).toBeInTheDocument();
+    });
     expect(screen.getByText('ExpenseId: 123')).toBeInTheDocument();
     expect(screen.getByText('HasInvoice: true')).toBeInTheDocument();
   });
 
   it('should clear invoice when changing away from medical expenses', async () => {
-    render(<ExpenseForm />);
+    const { container } = render(<ExpenseForm />);
     
     // Wait for component to load and change to medical expense
     await waitFor(() => {
@@ -227,8 +274,20 @@ describe('ExpenseForm - Invoice Integration', () => {
     const typeSelect = screen.getByDisplayValue('Other');
     fireEvent.change(typeSelect, { target: { value: 'Tax - Medical' } });
 
+    // Wait for Invoice Attachments section to appear, then expand it
+    let invoiceHeader;
+    await waitFor(() => {
+      invoiceHeader = Array.from(container.querySelectorAll('.collapsible-header'))
+        .find(header => header.textContent.includes('Invoice Attachments'));
+      expect(invoiceHeader).toBeTruthy();
+    });
+    fireEvent.click(invoiceHeader);
+
     // Select a file
-    const fileInput = screen.getByLabelText(/Select PDF invoice/);
+    await waitFor(() => {
+      expect(container.querySelector('input[type="file"]')).toBeInTheDocument();
+    });
+    const fileInput = container.querySelector('input[type="file"]');
     const file = new File(['pdf content'], 'test.pdf', { type: 'application/pdf' });
     fireEvent.change(fileInput, { target: { files: [file] } });
 
@@ -240,11 +299,29 @@ describe('ExpenseForm - Invoice Integration', () => {
     fireEvent.change(typeSelect, { target: { value: 'Groceries' } });
 
     // Invoice section should be hidden
-    expect(screen.queryByText('Invoice Attachment')).not.toBeInTheDocument();
+    const invoiceHeaderAfter = Array.from(container.querySelectorAll('.collapsible-header'))
+      .find(header => header.textContent.includes('Invoice Attachments'));
+    expect(invoiceHeaderAfter).toBeUndefined();
     
     // Change back to medical - file should be cleared
     fireEvent.change(typeSelect, { target: { value: 'Tax - Medical' } });
-    expect(screen.getByText(/Select PDF invoice/)).toBeInTheDocument();
+
+    // Section state persists in the hook, so it may already be expanded from earlier toggle.
+    // Wait for the section to appear, then expand if needed.
+    let invoiceHeader2;
+    await waitFor(() => {
+      invoiceHeader2 = Array.from(container.querySelectorAll('.collapsible-header'))
+        .find(header => header.textContent.includes('Invoice Attachments'));
+      expect(invoiceHeader2).toBeTruthy();
+    });
+    // Only click to expand if currently collapsed
+    if (invoiceHeader2.getAttribute('aria-expanded') === 'false') {
+      fireEvent.click(invoiceHeader2);
+    }
+
+    await waitFor(() => {
+      expect(screen.getByText(/Select PDF invoice/)).toBeInTheDocument();
+    });
   });
 
   it('should handle invoice upload callbacks', async () => {
@@ -257,9 +334,21 @@ describe('ExpenseForm - Invoice Integration', () => {
       payment_method_id: 1
     };
 
-    render(<ExpenseForm expense={mockExpense} />);
+    const { container } = render(<ExpenseForm expense={mockExpense} />);
     
     // Wait for component to load
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Test Clinic')).toBeInTheDocument();
+    });
+
+    // Expand Invoice Attachments section (collapsed by default when no invoices)
+    const invoiceHeader = Array.from(container.querySelectorAll('.collapsible-header'))
+      .find(header => header.textContent.includes('Invoice Attachments'));
+    if (invoiceHeader && invoiceHeader.getAttribute('aria-expanded') === 'false') {
+      fireEvent.click(invoiceHeader);
+    }
+
+    // Should show InvoiceUpload component for editing
     await waitFor(() => {
       expect(screen.getByTestId('invoice-upload')).toBeInTheDocument();
     });

@@ -300,7 +300,16 @@ describe('Property 11: People Data Loading and Display', () => {
           }, { timeout: 5000 });
           
           // Requirement 7.2: ExpenseForm SHALL display people selection for medical expenses
-          expect(editModal.querySelector('select[name="people"]')).toBeTruthy();
+          // People Assignment section may need to be expanded
+          const peopleHeader = Array.from(editModal.querySelectorAll('.collapsible-header'))
+            .find(h => h.textContent.includes('People Assignment'));
+          if (peopleHeader && peopleHeader.getAttribute('aria-expanded') === 'false') {
+            fireEvent.click(peopleHeader);
+          }
+
+          await waitFor(() => {
+            expect(editModal.querySelector('select[name="people"]')).toBeTruthy();
+          }, { timeout: 3000 });
           
           // Verify people dropdown has options
           const peopleSelect = editModal.querySelector('select[name="people"]');

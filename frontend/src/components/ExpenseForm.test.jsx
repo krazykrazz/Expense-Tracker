@@ -412,11 +412,14 @@ describe('ExpenseForm - People Selection Enhancement', () => {
     // Change back to medical - selection should be cleared
     fireEvent.change(typeSelect, { target: { value: 'Tax - Medical' } });
 
-    // Expand People Assignment section again
+    // Expand People Assignment section again (check aria-expanded first to avoid toggling closed)
     await waitFor(() => {
       expect(screen.getByText('People Assignment')).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByText('People Assignment').closest('[role="button"]'));
+    const peopleHeader = screen.getByText('People Assignment').closest('[role="button"]');
+    if (peopleHeader.getAttribute('aria-expanded') === 'false') {
+      fireEvent.click(peopleHeader);
+    }
 
     await waitFor(() => {
       expect(screen.getByLabelText(/assign to people/i)).toBeInTheDocument();
@@ -530,15 +533,22 @@ describe('ExpenseForm - Future Months Feature', () => {
    * Requirements: 1.1, 1.2
    */
   it('should render future months checkbox', async () => {
-    render(<ExpenseForm onExpenseAdded={() => {}} />);
+    const { container } = render(<ExpenseForm onExpenseAdded={() => {}} />);
 
     // Wait for component to load
     await waitFor(() => {
       expect(screen.getByLabelText(/type/i)).toBeInTheDocument();
     });
 
+    // Expand Advanced Options section to reveal future months
+    const advancedOptionsHeader = Array.from(container.querySelectorAll('.collapsible-header'))
+      .find(header => header.textContent.includes('Advanced Options'));
+    fireEvent.click(advancedOptionsHeader);
+
     // Find the future months checkbox by its label text
-    expect(screen.getByText(/add to future months/i)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText(/add to future months/i)).toBeInTheDocument();
+    });
   });
 
   /**
@@ -546,14 +556,22 @@ describe('ExpenseForm - Future Months Feature', () => {
    * Requirements: 1.7
    */
   it('should have future months checkbox unchecked by default', async () => {
-    render(<ExpenseForm onExpenseAdded={() => {}} />);
+    const { container } = render(<ExpenseForm onExpenseAdded={() => {}} />);
 
     // Wait for component to load
     await waitFor(() => {
       expect(screen.getByLabelText(/type/i)).toBeInTheDocument();
     });
 
+    // Expand Advanced Options section
+    const advancedOptionsHeader = Array.from(container.querySelectorAll('.collapsible-header'))
+      .find(header => header.textContent.includes('Advanced Options'));
+    fireEvent.click(advancedOptionsHeader);
+
     // Find the checkbox in the future-months-section
+    await waitFor(() => {
+      expect(document.querySelector('.future-months-section')).toBeInTheDocument();
+    });
     const futureMonthsSection = document.querySelector('.future-months-section');
     const checkbox = futureMonthsSection.querySelector('input[type="checkbox"]');
     expect(checkbox.checked).toBe(false);
@@ -564,7 +582,7 @@ describe('ExpenseForm - Future Months Feature', () => {
    * Requirements: 1.1, 1.2
    */
   it('should show date range preview when future months checkbox is checked', async () => {
-    render(<ExpenseForm onExpenseAdded={() => {}} />);
+    const { container } = render(<ExpenseForm onExpenseAdded={() => {}} />);
 
     // Wait for component to load
     await waitFor(() => {
@@ -574,7 +592,15 @@ describe('ExpenseForm - Future Months Feature', () => {
     // Initially, no preview should be shown
     expect(screen.queryByText(/will create/i)).not.toBeInTheDocument();
 
+    // Expand Advanced Options section
+    const advancedOptionsHeader = Array.from(container.querySelectorAll('.collapsible-header'))
+      .find(header => header.textContent.includes('Advanced Options'));
+    fireEvent.click(advancedOptionsHeader);
+
     // Check the future months checkbox
+    await waitFor(() => {
+      expect(document.querySelector('.future-months-section')).toBeInTheDocument();
+    });
     const futureMonthsSection = document.querySelector('.future-months-section');
     const checkbox = futureMonthsSection.querySelector('input[type="checkbox"]');
     fireEvent.click(checkbox);
@@ -601,7 +627,7 @@ describe('ExpenseForm - Future Months Feature', () => {
       ]
     });
 
-    render(<ExpenseForm onExpenseAdded={mockOnExpenseAdded} />);
+    const { container } = render(<ExpenseForm onExpenseAdded={mockOnExpenseAdded} />);
 
     // Wait for component to load and payment methods to be available
     await waitFor(() => {
@@ -617,6 +643,14 @@ describe('ExpenseForm - Future Months Feature', () => {
     fireEvent.change(screen.getByLabelText(/payment method/i), { target: { value: '2' } });
 
     // Check the future months checkbox and select 2 months
+    // Expand Advanced Options section first
+    const advancedOptionsHeader = Array.from(container.querySelectorAll('.collapsible-header'))
+      .find(header => header.textContent.includes('Advanced Options'));
+    fireEvent.click(advancedOptionsHeader);
+
+    await waitFor(() => {
+      expect(document.querySelector('.future-months-section')).toBeInTheDocument();
+    });
     const futureMonthsSection = document.querySelector('.future-months-section');
     const checkbox = futureMonthsSection.querySelector('input[type="checkbox"]');
     fireEvent.click(checkbox);
@@ -638,7 +672,19 @@ describe('ExpenseForm - Future Months Feature', () => {
 
     // Future months checkbox should be unchecked after reset
     await waitFor(() => {
-      expect(checkbox.checked).toBe(false);
+      // After reset, Advanced Options collapses - expand it to check
+      const header = Array.from(container.querySelectorAll('.collapsible-header'))
+        .find(h => h.textContent.includes('Advanced Options'));
+      if (header.getAttribute('aria-expanded') === 'false') {
+        fireEvent.click(header);
+      }
+    });
+
+    await waitFor(() => {
+      const section = document.querySelector('.future-months-section');
+      expect(section).toBeInTheDocument();
+      const cb = section.querySelector('input[type="checkbox"]');
+      expect(cb.checked).toBe(false);
     });
   });
 
@@ -654,7 +700,7 @@ describe('ExpenseForm - Future Months Feature', () => {
       futureExpenses: []
     });
 
-    render(<ExpenseForm onExpenseAdded={mockOnExpenseAdded} />);
+    const { container } = render(<ExpenseForm onExpenseAdded={mockOnExpenseAdded} />);
 
     // Wait for component to load and payment methods to be available
     await waitFor(() => {
@@ -669,7 +715,15 @@ describe('ExpenseForm - Future Months Feature', () => {
     // Use payment method ID (2 = Credit Card)
     fireEvent.change(screen.getByLabelText(/payment method/i), { target: { value: '2' } });
 
+    // Expand Advanced Options section first
+    const advancedOptionsHeader = Array.from(container.querySelectorAll('.collapsible-header'))
+      .find(header => header.textContent.includes('Advanced Options'));
+    fireEvent.click(advancedOptionsHeader);
+
     // Check the future months checkbox and select 3 months
+    await waitFor(() => {
+      expect(document.querySelector('.future-months-section')).toBeInTheDocument();
+    });
     const futureMonthsSection = document.querySelector('.future-months-section');
     const checkbox = futureMonthsSection.querySelector('input[type="checkbox"]');
     fireEvent.click(checkbox);
@@ -712,7 +766,7 @@ describe('ExpenseForm - Future Months Feature', () => {
       ]
     });
 
-    render(<ExpenseForm onExpenseAdded={mockOnExpenseAdded} />);
+    const { container } = render(<ExpenseForm onExpenseAdded={mockOnExpenseAdded} />);
 
     // Wait for component to load and payment methods to be available
     await waitFor(() => {
@@ -728,13 +782,21 @@ describe('ExpenseForm - Future Months Feature', () => {
     fireEvent.change(screen.getByLabelText(/payment method/i), { target: { value: '2' } });
 
     // Check the future months checkbox and select 3 months
-    const futureMonthsSection = document.querySelector('.future-months-section');
-    const checkbox = futureMonthsSection.querySelector('input[type="checkbox"]');
-    fireEvent.click(checkbox);
+    // Expand Advanced Options section first
+    const advancedOptionsHeader2 = Array.from(container.querySelectorAll('.collapsible-header'))
+      .find(header => header.textContent.includes('Advanced Options'));
+    fireEvent.click(advancedOptionsHeader2);
+
+    await waitFor(() => {
+      expect(document.querySelector('.future-months-section')).toBeInTheDocument();
+    });
+    const futureMonthsSection2 = document.querySelector('.future-months-section');
+    const checkbox2 = futureMonthsSection2.querySelector('input[type="checkbox"]');
+    fireEvent.click(checkbox2);
 
     // Wait for dropdown to appear and select 3 months
     await waitFor(() => {
-      const dropdown = futureMonthsSection.querySelector('select');
+      const dropdown = futureMonthsSection2.querySelector('select');
       expect(dropdown).toBeInTheDocument();
       fireEvent.change(dropdown, { target: { value: '3' } });
     });
@@ -753,7 +815,7 @@ describe('ExpenseForm - Future Months Feature', () => {
    * Requirements: 1.7
    */
   it('should not show preview when future months checkbox is unchecked', async () => {
-    render(<ExpenseForm onExpenseAdded={() => {}} />);
+    const { container } = render(<ExpenseForm onExpenseAdded={() => {}} />);
 
     // Wait for component to load
     await waitFor(() => {
@@ -763,7 +825,15 @@ describe('ExpenseForm - Future Months Feature', () => {
     // Verify no preview is shown with default unchecked state
     expect(screen.queryByText(/will create/i)).not.toBeInTheDocument();
 
+    // Expand Advanced Options section
+    const advancedOptionsHeader = Array.from(container.querySelectorAll('.collapsible-header'))
+      .find(header => header.textContent.includes('Advanced Options'));
+    fireEvent.click(advancedOptionsHeader);
+
     // Check the future months checkbox
+    await waitFor(() => {
+      expect(document.querySelector('.future-months-section')).toBeInTheDocument();
+    });
     const futureMonthsSection = document.querySelector('.future-months-section');
     const checkbox = futureMonthsSection.querySelector('input[type="checkbox"]');
     fireEvent.click(checkbox);
@@ -954,19 +1024,22 @@ describe('ExpenseForm - Advanced Options Section', () => {
   it('should display badge with posted date when set for credit card', async () => {
     const { container } = render(<ExpenseForm onExpenseAdded={vi.fn()} />);
 
+    // Wait for payment methods to load
     await waitFor(() => {
-      expect(screen.getByLabelText(/Type/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/Payment Method/i)).toBeInTheDocument();
     });
 
     // Select credit card payment method
     const methodSelect = screen.getByLabelText(/Payment Method/i);
     fireEvent.change(methodSelect, { target: { value: '3' } }); // VISA
 
-    // Expand Advanced Options
+    // Expand Advanced Options (check aria-expanded to avoid toggling closed)
     const advancedOptionsHeader = Array.from(container.querySelectorAll('.collapsible-header'))
       .find(header => header.textContent.includes('Advanced Options'));
     
-    fireEvent.click(advancedOptionsHeader);
+    if (advancedOptionsHeader.getAttribute('aria-expanded') === 'false') {
+      fireEvent.click(advancedOptionsHeader);
+    }
 
     // Wait for posted date field to be visible
     await waitFor(() => {
@@ -992,19 +1065,22 @@ describe('ExpenseForm - Advanced Options Section', () => {
   it('should display badge with both future months and posted date when both are set', async () => {
     const { container } = render(<ExpenseForm onExpenseAdded={vi.fn()} />);
 
+    // Wait for payment methods to load
     await waitFor(() => {
-      expect(screen.getByLabelText(/Type/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/Payment Method/i)).toBeInTheDocument();
     });
 
     // Select credit card payment method
     const methodSelect = screen.getByLabelText(/Payment Method/i);
     fireEvent.change(methodSelect, { target: { value: '3' } }); // VISA
 
-    // Expand Advanced Options
+    // Expand Advanced Options (check aria-expanded to avoid toggling closed)
     const advancedOptionsHeader = Array.from(container.querySelectorAll('.collapsible-header'))
       .find(header => header.textContent.includes('Advanced Options'));
     
-    fireEvent.click(advancedOptionsHeader);
+    if (advancedOptionsHeader.getAttribute('aria-expanded') === 'false') {
+      fireEvent.click(advancedOptionsHeader);
+    }
 
     // Wait for content to be visible
     await waitFor(() => {
@@ -1049,19 +1125,22 @@ describe('ExpenseForm - Advanced Options Section', () => {
   it('should display help tooltip for posted date field', async () => {
     const { container } = render(<ExpenseForm onExpenseAdded={vi.fn()} />);
 
+    // Wait for payment methods to load
     await waitFor(() => {
-      expect(screen.getByLabelText(/Type/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/Payment Method/i)).toBeInTheDocument();
     });
 
     // Select credit card payment method
     const methodSelect = screen.getByLabelText(/Payment Method/i);
     fireEvent.change(methodSelect, { target: { value: '3' } }); // VISA
 
-    // Expand Advanced Options
+    // Expand Advanced Options (check aria-expanded to avoid toggling closed)
     const advancedOptionsHeader = Array.from(container.querySelectorAll('.collapsible-header'))
       .find(header => header.textContent.includes('Advanced Options'));
     
-    fireEvent.click(advancedOptionsHeader);
+    if (advancedOptionsHeader.getAttribute('aria-expanded') === 'false') {
+      fireEvent.click(advancedOptionsHeader);
+    }
 
     // Wait for posted date field to be visible
     await waitFor(() => {
@@ -1777,35 +1856,30 @@ describe('ExpenseForm - People Assignment Section', () => {
       expect(screen.getByText('People Assignment')).toBeInTheDocument();
     });
 
+    // Find the People Assignment header specifically (not just first header)
+    const peopleHeader = screen.getByText('People Assignment').closest('[role="button"]');
+
     // Initially, no badge should be displayed (no people selected)
-    const peopleHeader = container.querySelector('.collapsible-header');
     let badge = peopleHeader?.querySelector('.collapsible-badge');
     expect(badge?.textContent || '').toBe('');
 
-    // Expand the section
-    const headerButton = screen.getByText('People Assignment').closest('[role="button"]');
-    fireEvent.click(headerButton);
+    // Expand the section (check aria-expanded to avoid toggling closed)
+    if (peopleHeader.getAttribute('aria-expanded') === 'false') {
+      fireEvent.click(peopleHeader);
+    }
 
     // Wait for people select to be visible
     await waitFor(() => {
       expect(screen.getByLabelText(/assign to people/i)).toBeInTheDocument();
     });
 
-    // Select 2 people
+    // Select 2 people using proper multi-select pattern
     const peopleSelect = screen.getByLabelText(/assign to people/i);
-    fireEvent.change(peopleSelect, { 
-      target: { 
-        selectedOptions: [
-          { value: '1', text: 'Person A' },
-          { value: '2', text: 'Person B' }
-        ]
-      } 
-    });
-
-    // Simulate the multi-select change
     const options = peopleSelect.querySelectorAll('option');
-    options[0].selected = true;
-    options[1].selected = true;
+    // Skip first option (disabled placeholder)
+    const selectableOptions = Array.from(options).filter(o => !o.disabled);
+    selectableOptions[0].selected = true;
+    selectableOptions[1].selected = true;
     fireEvent.change(peopleSelect);
 
     // Badge should now show "2 people"
@@ -1878,7 +1952,7 @@ describe('ExpenseForm - People Assignment Section', () => {
       ]
     };
 
-    render(<ExpenseForm onExpenseAdded={() => {}} people={mockPeople} expense={mockExpense} />);
+    const { container } = render(<ExpenseForm onExpenseAdded={() => {}} people={mockPeople} expense={mockExpense} />);
 
     // Wait for form to load in edit mode
     await waitFor(() => {
@@ -1890,12 +1964,20 @@ describe('ExpenseForm - People Assignment Section', () => {
       expect(screen.getByText('People Assignment')).toBeInTheDocument();
     });
 
-    // Allocation breakdown should be displayed
+    // Ensure section is expanded (check aria-expanded)
+    const peopleHeader = screen.getByText('People Assignment').closest('[role="button"]');
+    if (peopleHeader.getAttribute('aria-expanded') === 'false') {
+      fireEvent.click(peopleHeader);
+    }
+
+    // Allocation breakdown should be displayed - scope to allocation items to avoid matching select options
     await waitFor(() => {
-      expect(screen.getByText('Person A')).toBeInTheDocument();
-      expect(screen.getByText('$60.00')).toBeInTheDocument();
-      expect(screen.getByText('Person B')).toBeInTheDocument();
-      expect(screen.getByText('$40.00')).toBeInTheDocument();
+      const allocationItems = container.querySelectorAll('.allocation-item');
+      expect(allocationItems.length).toBe(2);
+      expect(allocationItems[0].querySelector('.person-name').textContent).toBe('Person A');
+      expect(allocationItems[0].querySelector('.person-amount').textContent).toContain('$60.00');
+      expect(allocationItems[1].querySelector('.person-name').textContent).toBe('Person B');
+      expect(allocationItems[1].querySelector('.person-amount').textContent).toContain('$40.00');
     });
   });
 
@@ -1921,17 +2003,19 @@ describe('ExpenseForm - People Assignment Section', () => {
     });
 
     const headerButton = screen.getByText('People Assignment').closest('[role="button"]');
-    fireEvent.click(headerButton);
+    if (headerButton.getAttribute('aria-expanded') === 'false') {
+      fireEvent.click(headerButton);
+    }
 
     // Wait for people select
     await waitFor(() => {
       expect(screen.getByLabelText(/assign to people/i)).toBeInTheDocument();
     });
 
-    // Select single person
+    // Select single person (skip disabled placeholder option)
     const peopleSelect = screen.getByLabelText(/assign to people/i);
-    const options = peopleSelect.querySelectorAll('option');
-    options[0].selected = true;
+    const selectableOptions = Array.from(peopleSelect.querySelectorAll('option')).filter(o => !o.disabled);
+    selectableOptions[0].selected = true;
     fireEvent.change(peopleSelect);
 
     // Should show simple "Selected: Person A" text
@@ -3004,9 +3088,9 @@ describe('ExpenseForm - Data Preservation During Collapse', () => {
   it('should preserve posted date data when Advanced Options section is collapsed', async () => {
     const { container } = render(<ExpenseForm onExpenseAdded={vi.fn()} />);
 
-    // Wait for form to load
+    // Wait for form to load and payment methods to be available
     await waitFor(() => {
-      expect(screen.getByLabelText(/Date/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/Payment Method/i)).toBeInTheDocument();
     });
 
     // Fill in core fields
@@ -3018,18 +3102,21 @@ describe('ExpenseForm - Data Preservation During Collapse', () => {
     const paymentMethodSelect = screen.getByLabelText(/Payment Method/i);
     fireEvent.change(paymentMethodSelect, { target: { value: '3' } }); // VISA
 
-    // Find and expand Advanced Options section
-    const advancedHeader = container.querySelector('.collapsible-header');
+    // Find and expand Advanced Options section by text content
+    const advancedHeader = Array.from(container.querySelectorAll('.collapsible-header'))
+      .find(h => h.textContent.includes('Advanced Options'));
     expect(advancedHeader).toBeInTheDocument();
-    fireEvent.click(advancedHeader);
+    if (advancedHeader.getAttribute('aria-expanded') === 'false') {
+      fireEvent.click(advancedHeader);
+    }
 
     // Wait for posted date field to appear
     await waitFor(() => {
-      expect(screen.getByLabelText(/Posted Date/i)).toBeInTheDocument();
+      expect(container.querySelector('#posted_date')).toBeInTheDocument();
     });
 
     // Enter posted date
-    const postedDateInput = screen.getByLabelText(/Posted Date/i);
+    const postedDateInput = container.querySelector('#posted_date');
     fireEvent.change(postedDateInput, { target: { value: '2024-06-20' } });
     expect(postedDateInput.value).toBe('2024-06-20');
 
@@ -3038,7 +3125,7 @@ describe('ExpenseForm - Data Preservation During Collapse', () => {
 
     // Verify section is collapsed (posted date field not in DOM)
     await waitFor(() => {
-      expect(screen.queryByLabelText(/Posted Date/i)).not.toBeInTheDocument();
+      expect(container.querySelector('#posted_date')).not.toBeInTheDocument();
     });
 
     // Re-expand the section
@@ -3046,7 +3133,7 @@ describe('ExpenseForm - Data Preservation During Collapse', () => {
 
     // Verify data is preserved
     await waitFor(() => {
-      const postedDateAfterExpand = screen.getByLabelText(/Posted Date/i);
+      const postedDateAfterExpand = container.querySelector('#posted_date');
       expect(postedDateAfterExpand).toBeInTheDocument();
       expect(postedDateAfterExpand.value).toBe('2024-06-20');
     });
@@ -3077,24 +3164,28 @@ describe('ExpenseForm - Data Preservation During Collapse', () => {
     );
     
     expect(reimbursementHeader).toBeInTheDocument();
-    fireEvent.click(reimbursementHeader);
+    if (reimbursementHeader.getAttribute('aria-expanded') === 'false') {
+      fireEvent.click(reimbursementHeader);
+    }
 
     // Wait for original cost field to appear
     await waitFor(() => {
-      expect(screen.getByLabelText(/Original Cost/i)).toBeInTheDocument();
+      expect(container.querySelector('#genericOriginalCost')).toBeInTheDocument();
     });
 
     // Enter original cost
-    const originalCostInput = screen.getByLabelText(/Original Cost/i);
+    const originalCostInput = container.querySelector('#genericOriginalCost');
     fireEvent.change(originalCostInput, { target: { value: '100' } });
     expect(originalCostInput.value).toBe('100');
 
-    // Verify reimbursement breakdown is displayed
+    // Verify reimbursement breakdown is displayed (scope to preview container to avoid badge match)
     await waitFor(() => {
-      expect(screen.getByText(/Charged:/i)).toBeInTheDocument();
-      expect(screen.getByText(/\$100\.00/)).toBeInTheDocument();
-      expect(screen.getByText(/Reimbursed:/i)).toBeInTheDocument();
-      expect(screen.getByText(/\$25\.00/)).toBeInTheDocument();
+      const preview = container.querySelector('.reimbursement-preview');
+      expect(preview).toBeInTheDocument();
+      expect(preview.textContent).toContain('Charged:');
+      expect(preview.textContent).toContain('$100.00');
+      expect(preview.textContent).toContain('Reimbursed:');
+      expect(preview.textContent).toContain('$25.00');
     });
 
     // Collapse the section
@@ -3102,23 +3193,25 @@ describe('ExpenseForm - Data Preservation During Collapse', () => {
 
     // Verify section is collapsed
     await waitFor(() => {
-      expect(screen.queryByLabelText(/Original Cost/i)).not.toBeInTheDocument();
+      expect(container.querySelector('#genericOriginalCost')).not.toBeInTheDocument();
     });
 
     // Re-expand the section
     fireEvent.click(reimbursementHeader);
 
-    // Verify data and breakdown are preserved
+    // Verify data and breakdown are preserved (scope to preview container)
     await waitFor(() => {
-      const originalCostAfterExpand = screen.getByLabelText(/Original Cost/i);
+      const originalCostAfterExpand = container.querySelector('#genericOriginalCost');
       expect(originalCostAfterExpand).toBeInTheDocument();
       expect(originalCostAfterExpand.value).toBe('100');
       
       // Verify breakdown is still displayed correctly
-      expect(screen.getByText(/Charged:/i)).toBeInTheDocument();
-      expect(screen.getByText(/\$100\.00/)).toBeInTheDocument();
-      expect(screen.getByText(/Reimbursed:/i)).toBeInTheDocument();
-      expect(screen.getByText(/\$25\.00/)).toBeInTheDocument();
+      const preview = container.querySelector('.reimbursement-preview');
+      expect(preview).toBeInTheDocument();
+      expect(preview.textContent).toContain('Charged:');
+      expect(preview.textContent).toContain('$100.00');
+      expect(preview.textContent).toContain('Reimbursed:');
+      expect(preview.textContent).toContain('$25.00');
     });
   });
 
@@ -3152,14 +3245,17 @@ describe('ExpenseForm - Data Preservation During Collapse', () => {
     fireEvent.change(paymentMethodSelect, { target: { value: '3' } }); // VISA
 
     // Expand Advanced Options and enter posted date
-    const advancedHeader = container.querySelector('.collapsible-header');
-    fireEvent.click(advancedHeader);
+    const advancedHeader = Array.from(container.querySelectorAll('.collapsible-header'))
+      .find(h => h.textContent.includes('Advanced Options'));
+    if (advancedHeader.getAttribute('aria-expanded') === 'false') {
+      fireEvent.click(advancedHeader);
+    }
 
     await waitFor(() => {
-      expect(screen.getByLabelText(/Posted Date/i)).toBeInTheDocument();
+      expect(container.querySelector('#posted_date')).toBeInTheDocument();
     });
 
-    const postedDateInput = screen.getByLabelText(/Posted Date/i);
+    const postedDateInput = container.querySelector('#posted_date');
     fireEvent.change(postedDateInput, { target: { value: '2024-06-20' } });
 
     // Collapse the Advanced Options section
@@ -3167,7 +3263,7 @@ describe('ExpenseForm - Data Preservation During Collapse', () => {
 
     // Verify section is collapsed
     await waitFor(() => {
-      expect(screen.queryByLabelText(/Posted Date/i)).not.toBeInTheDocument();
+      expect(container.querySelector('#posted_date')).not.toBeInTheDocument();
     });
 
     // Submit the form
@@ -3285,28 +3381,31 @@ describe('ExpenseForm - Data Preservation During Collapse', () => {
     const paymentMethodSelect = screen.getByLabelText(/Payment Method/i);
     fireEvent.change(paymentMethodSelect, { target: { value: '3' } });
 
-    // Expand and fill Advanced Options
-    const headers = container.querySelectorAll('.collapsible-header');
-    const advancedHeader = headers[0];
-    fireEvent.click(advancedHeader);
+    // Expand and fill Advanced Options (find by text, not index)
+    const advancedHeader = Array.from(container.querySelectorAll('.collapsible-header'))
+      .find(h => h.textContent.includes('Advanced Options'));
+    if (advancedHeader.getAttribute('aria-expanded') === 'false') {
+      fireEvent.click(advancedHeader);
+    }
 
     await waitFor(() => {
-      expect(screen.getByLabelText(/Posted Date/i)).toBeInTheDocument();
+      expect(container.querySelector('#posted_date')).toBeInTheDocument();
     });
 
-    fireEvent.change(screen.getByLabelText(/Posted Date/i), { target: { value: '2024-06-20' } });
+    fireEvent.change(container.querySelector('#posted_date'), { target: { value: '2024-06-20' } });
 
     // Expand and fill Reimbursement section
-    const reimbursementHeader = Array.from(headers).find(h => 
-      h.textContent.includes('Reimbursement')
-    );
-    fireEvent.click(reimbursementHeader);
+    const reimbursementHeader = Array.from(container.querySelectorAll('.collapsible-header'))
+      .find(h => h.textContent.includes('Reimbursement'));
+    if (reimbursementHeader.getAttribute('aria-expanded') === 'false') {
+      fireEvent.click(reimbursementHeader);
+    }
 
     await waitFor(() => {
-      expect(screen.getByLabelText(/Original Cost/i)).toBeInTheDocument();
+      expect(container.querySelector('#genericOriginalCost')).toBeInTheDocument();
     });
 
-    fireEvent.change(screen.getByLabelText(/Original Cost/i), { target: { value: '75' } });
+    fireEvent.change(container.querySelector('#genericOriginalCost'), { target: { value: '75' } });
 
     // Collapse both sections
     fireEvent.click(advancedHeader);
@@ -3314,8 +3413,8 @@ describe('ExpenseForm - Data Preservation During Collapse', () => {
 
     // Verify both are collapsed
     await waitFor(() => {
-      expect(screen.queryByLabelText(/Posted Date/i)).not.toBeInTheDocument();
-      expect(screen.queryByLabelText(/Original Cost/i)).not.toBeInTheDocument();
+      expect(container.querySelector('#posted_date')).not.toBeInTheDocument();
+      expect(container.querySelector('#genericOriginalCost')).not.toBeInTheDocument();
     });
 
     // Re-expand Advanced Options
@@ -3323,7 +3422,7 @@ describe('ExpenseForm - Data Preservation During Collapse', () => {
 
     // Verify Advanced Options data is preserved
     await waitFor(() => {
-      const postedDate = screen.getByLabelText(/Posted Date/i);
+      const postedDate = container.querySelector('#posted_date');
       expect(postedDate.value).toBe('2024-06-20');
     });
 
@@ -3332,7 +3431,7 @@ describe('ExpenseForm - Data Preservation During Collapse', () => {
 
     // Verify Reimbursement data is preserved
     await waitFor(() => {
-      const originalCost = screen.getByLabelText(/Original Cost/i);
+      const originalCost = container.querySelector('#genericOriginalCost');
       expect(originalCost.value).toBe('75');
     });
   });
@@ -3343,6 +3442,54 @@ describe('ExpenseForm - Data Preservation During Collapse', () => {
  * Requirements: 11.3
  */
 describe('ExpenseForm - State Reset After Submission', () => {
+  const mockCategories = [
+    'Other', 'Groceries', 'Gas', 'Dining Out', 'Tax - Medical', 'Tax - Donation'
+  ];
+
+  const mockPaymentMethods = [
+    { id: 1, display_name: 'Cash', type: 'cash', is_active: 1 },
+    { id: 2, display_name: 'Debit', type: 'debit', is_active: 1 },
+    { id: 3, display_name: 'VISA', type: 'credit_card', is_active: 1 }
+  ];
+
+  const defaultFetchHandler = (url) => {
+    if (url.includes('/api/categories') || url.includes('/categories')) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({
+          categories: mockCategories,
+          budgetableCategories: [],
+          taxDeductibleCategories: []
+        })
+      });
+    }
+    if (url.includes('/places')) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+    }
+    if (url.includes('/people')) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+    }
+    if (url.includes('/suggest-category')) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ category: null }) });
+    }
+    return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    sessionStorage.clear();
+
+    categoriesApi.getCategories.mockResolvedValue(mockCategories);
+    expenseApi.getPlaces.mockResolvedValue([]);
+    peopleApi.getPeople.mockResolvedValue([]);
+    categorySuggestionApi.fetchCategorySuggestion.mockResolvedValue({ category: null });
+    paymentMethodApi.getActivePaymentMethods.mockResolvedValue(mockPaymentMethods);
+    paymentMethodApi.getPaymentMethod.mockResolvedValue(null);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
   /**
    * Test expansion states reset after successful submission
    * Requirements: 11.3
@@ -3363,7 +3510,7 @@ describe('ExpenseForm - State Reset After Submission', () => {
           })
         });
       }
-      return mockFetch(url);
+      return defaultFetchHandler(url);
     });
 
     const mockOnExpenseAdded = vi.fn();
@@ -3378,9 +3525,9 @@ describe('ExpenseForm - State Reset After Submission', () => {
       expect(paymentMethodSelect.value).not.toBe('');
     }, { timeout: 3000 });
 
-    // Get section headers using the correct class name
-    const headers = container.querySelectorAll('.collapsible-header');
-    const advancedHeader = headers[0];
+    // Find section headers by text content (not by index)
+    const advancedHeader = Array.from(container.querySelectorAll('.collapsible-header'))
+      .find(h => h.textContent.includes('Advanced Options'));
     
     // Expand Advanced Options section
     fireEvent.click(advancedHeader);
@@ -3389,17 +3536,16 @@ describe('ExpenseForm - State Reset After Submission', () => {
     });
 
     // Expand Reimbursement section
-    const reimbursementHeader = Array.from(headers).find(h => 
-      h.textContent.includes('Reimbursement')
-    );
+    const reimbursementHeader = Array.from(container.querySelectorAll('.collapsible-header'))
+      .find(h => h.textContent.includes('Reimbursement'));
     
     fireEvent.click(reimbursementHeader);
     await waitFor(() => {
       expect(reimbursementHeader.getAttribute('aria-expanded')).toBe('true');
     });
 
-    // Fill in required fields
-    fireEvent.change(screen.getByLabelText(/Date/i), { target: { value: '2024-06-15' } });
+    // Fill in required fields (use container selectors to avoid label ambiguity)
+    fireEvent.change(container.querySelector('#date'), { target: { value: '2024-06-15' } });
     fireEvent.change(screen.getByLabelText(/Place/i), { target: { value: 'Test Store' } });
     fireEvent.change(screen.getByLabelText(/Amount/i), { target: { value: '50' } });
     fireEvent.change(screen.getByLabelText(/Type/i), { target: { value: 'Groceries' } });
@@ -3425,9 +3571,6 @@ describe('ExpenseForm - State Reset After Submission', () => {
    * Requirements: 11.3
    */
   it('should update sessionStorage with collapsed states after successful submission', async () => {
-    // Clear sessionStorage before test
-    sessionStorage.clear();
-
     // Mock successful expense creation
     global.fetch.mockImplementation((url, options) => {
       if (url.includes('/api/expenses') && options?.method === 'POST') {
@@ -3443,7 +3586,7 @@ describe('ExpenseForm - State Reset After Submission', () => {
           })
         });
       }
-      return mockFetch(url);
+      return defaultFetchHandler(url);
     });
 
     const mockOnExpenseAdded = vi.fn();
@@ -3458,9 +3601,9 @@ describe('ExpenseForm - State Reset After Submission', () => {
       expect(paymentMethodSelect.value).not.toBe('');
     }, { timeout: 3000 });
 
-    // Get section headers using the correct class name
-    const headers = container.querySelectorAll('.collapsible-header');
-    const advancedHeader = headers[0];
+    // Find Advanced Options header by text content (not by index)
+    const advancedHeader = Array.from(container.querySelectorAll('.collapsible-header'))
+      .find(h => h.textContent.includes('Advanced Options'));
     
     // Expand Advanced Options section
     fireEvent.click(advancedHeader);
@@ -3472,8 +3615,8 @@ describe('ExpenseForm - State Reset After Submission', () => {
     let storedStates = JSON.parse(sessionStorage.getItem('expenseForm_expansion_create') || '{}');
     expect(storedStates.advancedOptions).toBe(true);
 
-    // Fill in required fields
-    fireEvent.change(screen.getByLabelText(/Date/i), { target: { value: '2024-06-15' } });
+    // Fill in required fields (use container selector for date to avoid label ambiguity)
+    fireEvent.change(container.querySelector('#date'), { target: { value: '2024-06-15' } });
     fireEvent.change(screen.getByLabelText(/Place/i), { target: { value: 'Test Store' } });
     fireEvent.change(screen.getByLabelText(/Amount/i), { target: { value: '50' } });
     fireEvent.change(screen.getByLabelText(/Type/i), { target: { value: 'Groceries' } });
@@ -3513,7 +3656,7 @@ describe('ExpenseForm - State Reset After Submission', () => {
           })
         });
       }
-      return mockFetch(url);
+      return defaultFetchHandler(url);
     });
 
     const mockOnExpenseAdded = vi.fn();

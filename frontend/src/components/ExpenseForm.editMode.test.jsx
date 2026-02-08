@@ -194,12 +194,23 @@ describe('ExpenseForm - Edit Mode with Backend Data Formats', () => {
       people: backendPeopleFormat
     });
 
-    render(
+    const { container } = render(
       <ExpenseForm 
         expense={existingExpense} 
         onExpenseAdded={() => {}} 
       />
     );
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/type/i)).toBeInTheDocument();
+    });
+
+    // Expand Invoice Attachments section to reveal InvoiceUpload
+    const invoiceHeader = Array.from(container.querySelectorAll('.collapsible-header'))
+      .find(header => header.textContent.includes('Invoice Attachments'));
+    if (invoiceHeader && invoiceHeader.getAttribute('aria-expanded') === 'false') {
+      fireEvent.click(invoiceHeader);
+    }
 
     await waitFor(() => {
       expect(screen.getByTestId('invoice-upload')).toBeInTheDocument();

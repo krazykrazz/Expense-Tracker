@@ -156,3 +156,23 @@
     transform: translateY(0);
   }
 }
+
+/* Reduced motion accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .collapsible-section,
+  .collapsible-header,
+  .collapsible-icon,
+  .collapsible-title,
+  .collapsible-badge,
+  .collapsible-help-icon {
+    transition: none;
+  }
+
+  .collapsible-error-indicator {
+    animation: none;
+  }
+
+  .collapsible-content {
+    animation: none;
+  }
+}

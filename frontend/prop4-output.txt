@@ -1,0 +1,449 @@
+ DEPRECATED  `test.poolOptions` was removed in Vitest 4. All previous `poolOptions` are now top-level options. Please, refer to the migration guide: https://vitest.dev/guide/migration#pool-rework
+
+[1m[46m RUN [49m[22m [36mv4.0.18 [39m[90mC:/Users/krazy/Projects/Expense Tracker/frontend[39m
+
+ [31mΓ¥»[39m src/components/ExpenseForm.pbt.test.jsx [2m([22m[2m7 tests[22m[2m | [22m[31m1 failed[39m[2m | [22m[33m6 skipped[39m[2m)[22m[33m 14087[2mms[22m[39m
+     [2m[90mΓåô[39m[22m Property 1: should include all valid categories in the dropdown
+     [2m[90mΓåô[39m[22m Property 5: should persist payment method to localStorage and pre-select on next form open
+     [2m[90mΓåô[39m[22m Property 4: should enable submit button when all required fields have valid values
+     [2m[90mΓåô[39m[22m Property 1: should render with all advanced sections collapsed in create mode
+     [2m[90mΓåô[39m[22m Property 2: should expand sections with data and collapse empty sections in edit mode
+[31m     [31m├ù[31m Property 4: should preserve data when sections are collapsed and re-expanded[39m[33m 14085[2mms[22m[39m
+     [2m[90mΓåô[39m[22m Property 21: should reset section expansion states after successful submission
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ» Failed Tests 1 ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+
+ FAIL  src/components/ExpenseForm.pbt.test.jsx > ExpenseForm Property-Based Tests > Property 4: should preserve data when sections are collapsed and re-expanded
+Error: Property failed after 3 tests
+{ seed: -2074861985, path: "2:0:0:0:0:0:0:0:0:0:0:0:0", endOnFailure: true }
+Counterexample: [{"futureMonths":1,"postedDate":"2024-01-01","genericOriginalCost":10,"amount":1,"insuranceEligible":false,"claimStatus":"not_claimed","insuranceOriginalCost":10,"selectedPeople":[{"id":1,"name":"   "}],"sectionToTest":"insurance"}]
+Shrunk 12 time(s)
+
+Hint: Enable verbose mode in order to have the list of all failing values encountered during the run
+ Γ¥» buildError ../../Expense%20Tracker/frontend/node_modules/fast-check/lib/check/runner/utils/RunDetailsFormatter.js:156:19
+ Γ¥» asyncThrowIfFailed ../../Expense%20Tracker/frontend/node_modules/fast-check/lib/check/runner/utils/RunDetailsFormatter.js:170:11
+
+Caused by: Error: expect(received).toBeInTheDocument()
+
+received value must be an HTMLElement or an SVGElement.
+Received has type:  Null
+Received has value: null
+
+Ignored nodes: comments, script, style
+<html>
+  <head />
+  <body>
+    <div>
+      <div
+        class="expense-form-container"
+      >
+        <h2>
+          Add New Expense
+        </h2>
+        <form
+          class="expense-form"
+        >
+          <div
+            class="form-row"
+          >
+            <div
+              class="form-group"
+            >
+              <label
+                for="date"
+              >
+                Date *
+              </label>
+              <input
+                id="date"
+                name="date"
+                required=""
+                type="date"
+                value="2024-06-15"
+              />
+            </div>
+            <div
+              class="form-group autocomplete-wrapper"
+            >
+              <label
+                for="place"
+              >
+                Place
+              </label>
+              <input
+                autocomplete="off"
+                id="place"
+                maxlength="200"
+                name="place"
+                placeholder="Where was this expense?"
+                type="text"
+                value="Test Place"
+              />
+            </div>
+          </div>
+          <div
+            class="form-row"
+          >
+            <div
+              class="form-group"
+            >
+              <label
+                for="type"
+              >
+                Type *
+              </label>
+              <select
+                class=""
+                id="type"
+                name="type"
+                required=""
+              >
+                <option
+                  value="Clothing"
+                >
+                  Clothing
+                </option>
+                <option
+                  value="Dining Out"
+                >
+                  Dining Out
+                </option>
+                <option
+                  value="Entertainment"
+                >
+                  Entertainment
+                </option>
+                <option
+                  value="Gas"
+                >
+                  Gas
+                </option>
+                <option
+                  value="Gifts"
+                >
+                  Gifts
+                </option>
+                <option
+                  value="Groceries"
+                >
+                  Groceries
+                </option>
+                <option
+                  value="Housing"
+                >
+                  Housing
+                </option>
+                <option
+                  value="Insurance"
+                >
+                  Insurance
+                </option>
+                <option
+                  value="Personal Care"
+                >
+                  Personal Care
+                </option>
+                <option
+                  value="Pet Care"
+                >
+                  Pet Care
+                </option>
+                <option
+                  value="Recreation Activities"
+                >
+                  Recreation Activities
+                </option>
+                <option
+                  value="Subscriptions"
+                >
+                  Subscriptions
+                </option>
+                <option
+                  value="Utilities"
+                >
+                  Utilities
+                </option>
+                <option
+                  value="Vehicle Maintenance"
+                >
+                  Vehicle Maintenance
+                </option>
+                <option
+                  value="Other"
+                >
+                  Other
+                </option>
+                <option
+                  value="Tax - Donation"
+                >
+                  Tax - Donation
+                </option>
+                <option
+                  value="Tax - Medical"
+                >
+                  Tax - Medical
+                </option>
+              </select>
+            </div>
+            <div
+              class="form-group"
+            >
+              <label
+                for="amount"
+              >
+                Amount *
+              </label>
+              <input
+                id="amount"
+                min="0.01"
+                name="amount"
+                placeholder="0.00"
+                required=""
+                step="0.01"
+                type="number"
+                value="1"
+              />
+            </div>
+          </div>
+          <div
+            class="form-group"
+          >
+            <label
+              for="payment_method_id"
+            >
+              Payment Method *
+            </label>
+            <select
+              id="payment_method_id"
+              name="payment_method_id"
+              required=""
+            >
+              <option
+                value=""
+              >
+                Select payment method...
+              </option>
+              <optgroup
+                label="Cash"
+              >
+                <option
+                  value="1"
+                >
+                  Cash
+                </option>
+              </optgroup>
+              <optgroup
+                label="Debit"
+              >
+                <option
+                  value="2"
+                >
+                  Debit
+                </option>
+              </optgroup>
+              <optgroup
+                label="Cheque"
+              >
+                <option
+                  value="5"
+                >
+                  Cheque
+                </option>
+              </optgroup>
+              <optgroup
+                label="Credit Card"
+              >
+                <option
+                  value="3"
+                >
+                  VISA
+                </option>
+                <option
+                  value="4"
+                >
+                  Mastercard
+                </option>
+              </optgroup>
+            </select>
+          </div>
+          <div
+            class="collapsible-section "
+          >
+            <div
+              aria-controls="collapsible-content-people-assignment"
+              aria-expanded="false"
+              class="collapsible-header"
+              id="collapsible-header-people-assignment"
+              role="button"
+              tabindex="0"
+            >
+              <div
+                class="collapsible-header-left"
+              >
+                <span
+                  class="collapsible-icon collapsed"
+                >
+                  Γû╢
+                </span>
+                <span
+                  class="collapsible-title"
+                >
+                  People Assignment
+                </span>
+              </div>
+            </div>
+          </div>
+          <div
+            class="collapsible-section "
+          >
+            <div
+              aria-controls="collapsible-content-insurance-tracking"
+              aria-expanded="true"
+              class="collapsible-header"
+              id="collapsible-header-insurance-tracking"
+              role="button"
+              tabindex="0"
+            >
+              <div
+                class="collapsible-header-left"
+              >
+                <span
+                  class="collapsible-icon expanded"
+                >
+                  Γû╝
+                </span>
+                <span
+                  class="collapsible-title"
+                >
+                  Insurance Tracking
+                </span>
+              </div>
+            </div>
+            <div
+              aria-labelledby="collapsible-header-insurance-tracking"
+              class="collapsible-content"
+              id="collapsible-content-insurance-tracking"
+              role="region"
+            >
+              <div
+                class="insurance-eligibility-row"
+              >
+                <label
+                  class="insurance-checkbox"
+                >
+                  <input
+                    type="checkbox"
+                  />
+                  <span>
+                    Eligible for Insurance Reimbursement
+                  </span>
+                  <span
+                    class="help-tooltip-wrapper"
+                  >
+                    <span
+                      aria-label="Help information"
+                      class="help-tooltip-icon"
+                      role="button"
+                      tabindex="0"
+                    >
+                      Γôÿ
+                    </span>
+                  </span>
+                </label>
+              </div>
+            </div>
+          </div>
+          <div
+            class="collapsible-section "
+          >
+            <div
+              aria-controls="collapsible-content-invoice-attachments"
+              aria-expanded="false"
+              class="collapsible-header"
+              id="collapsible-header-invoice-attachments"
+              role="button"
+              tabindex="0"
+            >
+              <div
+                class="collapsible-header-left"
+              >
+                <span
+                  class="collapsible-icon collapsed"
+                >
+                  Γû╢
+                </span>
+                <span
+                  class="collapsible-title"
+                >
+                  Invoice Attachments
+                </span>
+              </div>
+            </div>
+          </div>
+          <div
+            class="collapsible-section "
+          >
+            <div
+              aria-controls="collapsible-content-advanced-options"
+              aria-expanded="false"
+              class="collapsible-header"
+              id="collapsible-header-advanced-options"
+              role="button"
+              tabindex="0"
+            >
+              <div
+                class="collapsible-header-left"
+              >
+                <span
+                  class="collapsible-icon collapsed"
+                >
+                  Γû╢
+                </span>
+                <span
+                  class="collapsible-title"
+                >
+                  Advanced Options
+                </span>
+              </div>
+            </div>
+          </div>
+          <div
+            class="form-group"
+          >
+            <label
+              for="notes"
+            >
+              Notes
+            </label>
+            <textarea
+              id="notes"
+              maxlength="200"
+              name="notes"
+              placeholder="Additional notes..."
+              rows="3"
+            />
+          </div>
+          <button
+            class="submit-button"
+            type="submit"
+          >
+            Add Expense
+          </button>
+        </form>
+      </div>
+    </div>
+  </body>
+</html>
+ Γ¥» src/components/ExpenseForm.pbt.test.jsx:906:71
+ Γ¥» runWithExpensiveErrorDiagnosticsDisabled node_modules/@testing-library/dom/dist/config.js:47:12
+ Γ¥» checkCallback node_modules/@testing-library/dom/dist/wait-for.js:124:77
+ Γ¥» Timeout.checkRealTimersCallback node_modules/@testing-library/dom/dist/wait-for.js:118:16
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[1/1]ΓÄ»
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[33m6 skipped[39m[90m (7)[39m
+[2m   Start at [22m 13:54:50
+[2m   Duration [22m 15.82s[2m (transform 318ms, setup 154ms, import 531ms, tests 14.09s, environment 859ms)[22m
+

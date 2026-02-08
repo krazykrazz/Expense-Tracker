@@ -183,3 +183,17 @@
     padding: 8px 12px;
   }
 }
+
+/* Reduced motion accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .help-tooltip-icon {
+    transition: none;
+  }
+
+  .help-tooltip-top,
+  .help-tooltip-bottom,
+  .help-tooltip-left,
+  .help-tooltip-right {
+    animation: none;
+  }
+}

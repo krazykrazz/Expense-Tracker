@@ -84,9 +84,11 @@ afterAll(async () => {
     return;
   }
   
-  // Close the per-worker database connection and clean up the file
-  const { closeTestDatabase } = require('./database/db');
-  closeTestDatabase();
+  // Use the top-level import — re-requiring here can return a mocked module
+  // when tests call jest.resetModules() + jest.mock('../database/db', ...)
+  if (typeof closeTestDatabase === 'function') {
+    closeTestDatabase();
+  }
   testDbInitialized = false;
 });
 

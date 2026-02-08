@@ -1,23 +1,25 @@
+/**
+ * ExpenseList Edit Modal Callback Property Tests — Parameterized
+ *
+ * Converted from PBT to parameterized tests. Properties 7 and 8 were rendering
+ * full ExpenseList, opening modal, and submitting form 10× each with random data.
+ * The input space (expense fields) is small and fully enumerable with representative cases.
+ *
+ * Original properties preserved:
+ *   P7 (expense-form-consolidation): Successful update callback chain — Validates: Req 5.1-5.3, 3.3
+ *   P8 (expense-form-consolidation): Error handling preserves modal state — Validates: Req 5.4
+ */
+
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, waitFor, fireEvent, act, cleanup } from '@testing-library/react';
-import * as fc from 'fast-check';
 import { CATEGORIES } from '../../../backend/utils/categories';
+import { testEach } from '../test-utils';
 
-// Mock payment methods that will be returned by the API
 const MOCK_PAYMENT_METHODS = [
   { id: 1, display_name: 'Cash', type: 'cash' },
   { id: 2, display_name: 'Visa', type: 'credit_card' },
   { id: 3, display_name: 'Debit', type: 'debit' }
 ];
-
-// Shared generators
-const validTypeArb = fc.constantFrom(...CATEGORIES);
-const validPaymentMethodIdArb = fc.constantFrom(...MOCK_PAYMENT_METHODS.map(pm => pm.id));
-const validDateArb = fc.tuple(fc.integer({ min: 2020, max: 2030 }), fc.integer({ min: 1, max: 12 }), fc.integer({ min: 1, max: 28 }))
-  .map(([y, m, d]) => `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`);
-const validAmountArb = fc.float({ min: Math.fround(0.01), max: Math.fround(10000), noNaN: true }).filter(n => n > 0 && isFinite(n)).map(n => parseFloat(n.toFixed(2)));
-const validIdArb = fc.integer({ min: 1, max: 10000 });
-const validWeekArb = fc.integer({ min: 1, max: 5 });
 
 // Property 8 runs FIRST to avoid test isolation issues
 describe('Property 8: Error Handling Preserves Modal State', () => {
@@ -45,56 +47,52 @@ describe('Property 8: Error Handling Preserves Modal State', () => {
       }
       return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
     });
-    // Dynamic import to get fresh module
     const module = await import('./ExpenseList');
     ExpenseList = module.default;
   });
 
-  afterEach(() => { 
-    errorMessage = ''; 
-    cleanup(); 
+  afterEach(() => {
+    errorMessage = '';
+    cleanup();
     vi.clearAllMocks();
   });
 
-  const errorMessageArb = fc.string({ minLength: 5, maxLength: 50 }).filter(s => /^[a-zA-Z][a-zA-Z0-9\s]*$/.test(s) && s.trim().length >= 5);
-
   /** **Feature: expense-form-consolidation, Property 8** **Validates: Requirements 5.4** */
-  it('validates error handling preserves modal state', async () => {
-    await fc.assert(
-      fc.asyncProperty(validIdArb, validDateArb, validAmountArb, validTypeArb, validPaymentMethodIdArb, validWeekArb, errorMessageArb,
-        async (id, date, amount, type, payment_method_id, week, errMsg) => {
-          const expense = { id, date, place: 'Test Place', notes: null, amount, type, payment_method_id, method: MOCK_PAYMENT_METHODS.find(pm => pm.id === payment_method_id)?.display_name || 'Cash', week };
-          errorMessage = errMsg;
+  const errorCases = [
+    { id: 1, date: '2024-01-15', amount: 50.00, type: 'Groceries', payment_method_id: 1, week: 3, errMsg: 'Server error occurred', desc: 'groceries, cash, server error' },
+    { id: 42, date: '2023-06-20', amount: 200.00, type: 'Tax - Medical', payment_method_id: 2, week: 1, errMsg: 'Database connection lost', desc: 'medical, credit card, db error' },
+    { id: 500, date: '2025-12-28', amount: 9999.99, type: 'Entertainment', payment_method_id: 3, week: 5, errMsg: 'Validation failed', desc: 'entertainment, debit, validation error' },
+  ];
 
-          const mockOnExpenseUpdated = vi.fn();
-          const { container, unmount } = render(
-            <ExpenseList expenses={[expense]} onExpenseDeleted={vi.fn()} onExpenseUpdated={mockOnExpenseUpdated} onAddExpense={vi.fn()} people={[]} />
-          );
+  testEach(errorCases).it('preserves modal state on error for $desc', async ({ id, date, amount, type, payment_method_id, week, errMsg }) => {
+    const expense = { id, date, place: 'Test Place', notes: null, amount, type, payment_method_id, method: MOCK_PAYMENT_METHODS.find(pm => pm.id === payment_method_id)?.display_name || 'Cash', week };
+    errorMessage = errMsg;
 
-          await waitFor(() => expect(global.fetch).toHaveBeenCalled());
-          
-          // Use container-based query
-          const editButton = container.querySelector('button[title*="Edit"]') || container.querySelector('button.edit-button');
-          expect(editButton).toBeTruthy();
-          fireEvent.click(editButton);
-          
-          await waitFor(() => expect(container.querySelector('.modal-overlay')).toBeTruthy());
-          
-          const editModal = container.querySelector('.edit-modal');
-          const originalDate = editModal.querySelector('input[name="date"]').value;
-          
-          const form = editModal.querySelector('form');
-          await act(async () => { fireEvent.submit(form); });
-          
-          await waitFor(() => expect(editModal.querySelector('.message.error')).toBeTruthy(), { timeout: 10000 });
-          
-          expect(container.querySelector('.modal-overlay')).toBeTruthy();
-          expect(mockOnExpenseUpdated).not.toHaveBeenCalled();
-          expect(editModal.querySelector('input[name="date"]').value).toBe(originalDate);
-          unmount();
-        }
-      ), { numRuns: 10 }
+    const mockOnExpenseUpdated = vi.fn();
+    const { container, unmount } = render(
+      <ExpenseList expenses={[expense]} onExpenseDeleted={vi.fn()} onExpenseUpdated={mockOnExpenseUpdated} onAddExpense={vi.fn()} people={[]} />
     );
+
+    await waitFor(() => expect(global.fetch).toHaveBeenCalled());
+
+    const editButton = container.querySelector('button[title*="Edit"]') || container.querySelector('button.edit-button');
+    expect(editButton).toBeTruthy();
+    fireEvent.click(editButton);
+
+    await waitFor(() => expect(container.querySelector('.modal-overlay')).toBeTruthy());
+
+    const editModal = container.querySelector('.edit-modal');
+    const originalDate = editModal.querySelector('input[name="date"]').value;
+
+    const form = editModal.querySelector('form');
+    await act(async () => { fireEvent.submit(form); });
+
+    await waitFor(() => expect(editModal.querySelector('.message.error')).toBeTruthy(), { timeout: 10000 });
+
+    expect(container.querySelector('.modal-overlay')).toBeTruthy();
+    expect(mockOnExpenseUpdated).not.toHaveBeenCalled();
+    expect(editModal.querySelector('input[name="date"]').value).toBe(originalDate);
+    unmount();
   });
 });
 
@@ -124,48 +122,48 @@ describe('Property 7: Successful Update Callback Chain', () => {
       }
       return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
     });
-    // Dynamic import to get fresh module
     const module = await import('./ExpenseList');
     ExpenseList = module.default;
   });
 
-  afterEach(() => { 
-    currentExpenseData = null; 
-    cleanup(); 
+  afterEach(() => {
+    currentExpenseData = null;
+    cleanup();
     vi.clearAllMocks();
   });
 
   /** **Feature: expense-form-consolidation, Property 7** **Validates: Requirements 5.1, 5.2, 5.3, 3.3** */
-  it('validates successful update callback chain', async () => {
-    await fc.assert(
-      fc.asyncProperty(validIdArb, validDateArb, validAmountArb, validTypeArb, validPaymentMethodIdArb, validWeekArb,
-        async (id, date, amount, type, payment_method_id, week) => {
-          const expense = { id, date, place: 'Test Place', notes: null, amount, type, payment_method_id, method: MOCK_PAYMENT_METHODS.find(pm => pm.id === payment_method_id)?.display_name || 'Cash', week };
-          currentExpenseData = expense;
+  const successCases = [
+    { id: 1, date: '2024-01-15', amount: 50.00, type: 'Groceries', payment_method_id: 1, week: 3, desc: 'groceries, cash' },
+    { id: 42, date: '2023-06-20', amount: 200.00, type: 'Tax - Medical', payment_method_id: 2, week: 1, desc: 'medical, credit card' },
+    { id: 500, date: '2025-12-28', amount: 9999.99, type: 'Entertainment', payment_method_id: 3, week: 5, desc: 'entertainment, debit, large amount' },
+    { id: 7, date: '2020-02-29', amount: 0.01, type: 'Other', payment_method_id: 1, week: 4, desc: 'other, cash, min amount, leap day' },
+  ];
 
-          const mockOnExpenseUpdated = vi.fn();
-          const { container, unmount } = render(
-            <ExpenseList expenses={[expense]} onExpenseDeleted={vi.fn()} onExpenseUpdated={mockOnExpenseUpdated} onAddExpense={vi.fn()} people={[]} />
-          );
+  testEach(successCases).it('calls onExpenseUpdated and closes modal for $desc', async ({ id, date, amount, type, payment_method_id, week }) => {
+    const expense = { id, date, place: 'Test Place', notes: null, amount, type, payment_method_id, method: MOCK_PAYMENT_METHODS.find(pm => pm.id === payment_method_id)?.display_name || 'Cash', week };
+    currentExpenseData = expense;
 
-          await waitFor(() => expect(global.fetch).toHaveBeenCalled());
-          
-          const editButton = container.querySelector('button[title*="Edit"]') || container.querySelector('button.edit-button');
-          expect(editButton).toBeTruthy();
-          fireEvent.click(editButton);
-          
-          await waitFor(() => expect(container.querySelector('.modal-overlay')).toBeTruthy());
-          
-          const form = container.querySelector('.edit-modal form');
-          await act(async () => { fireEvent.submit(form); });
-          
-          await waitFor(() => expect(mockOnExpenseUpdated).toHaveBeenCalled(), { timeout: 10000 });
-          expect(mockOnExpenseUpdated).toHaveBeenCalledTimes(1);
-          expect(mockOnExpenseUpdated.mock.calls[0][0].id).toBe(id);
-          await waitFor(() => expect(container.querySelector('.modal-overlay')).toBeFalsy());
-          unmount();
-        }
-      ), { numRuns: 10 }
+    const mockOnExpenseUpdated = vi.fn();
+    const { container, unmount } = render(
+      <ExpenseList expenses={[expense]} onExpenseDeleted={vi.fn()} onExpenseUpdated={mockOnExpenseUpdated} onAddExpense={vi.fn()} people={[]} />
     );
+
+    await waitFor(() => expect(global.fetch).toHaveBeenCalled());
+
+    const editButton = container.querySelector('button[title*="Edit"]') || container.querySelector('button.edit-button');
+    expect(editButton).toBeTruthy();
+    fireEvent.click(editButton);
+
+    await waitFor(() => expect(container.querySelector('.modal-overlay')).toBeTruthy());
+
+    const form = container.querySelector('.edit-modal form');
+    await act(async () => { fireEvent.submit(form); });
+
+    await waitFor(() => expect(mockOnExpenseUpdated).toHaveBeenCalled(), { timeout: 10000 });
+    expect(mockOnExpenseUpdated).toHaveBeenCalledTimes(1);
+    expect(mockOnExpenseUpdated.mock.calls[0][0].id).toBe(id);
+    await waitFor(() => expect(container.querySelector('.modal-overlay')).toBeFalsy());
+    unmount();
   });
 });

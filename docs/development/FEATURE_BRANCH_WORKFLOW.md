@@ -1,6 +1,6 @@
 # Feature Branch Promotion Model
 
-**Last Updated**: January 27, 2026  
+**Last Updated**: February 8, 2026  
 **Status**: Active
 
 This document outlines the feature branch promotion workflow for the Expense Tracker application, ensuring clean development practices and stable main branch deployments.
@@ -157,17 +157,9 @@ Suggested PR title: Your Feature
 
 ### When to Use Direct Merge
 
-The `-DirectMerge` flag bypasses PR creation and merges directly to main:
+> **⚠️ Branch protection is active on `main`.** The `-DirectMerge` flag will be rejected by GitHub because direct pushes to `main` are blocked. All merges must go through a PR with passing status checks (`Backend Unit Tests`, `Backend PBT Tests`, `Frontend Tests`).
 
-```powershell
-.\scripts\promote-feature.ps1 -FeatureName your-feature -DirectMerge
-```
-
-Use direct merge when:
-- **CI already verified** - You ran CI on the feature branch
-- **Emergency hotfix** - Critical fix needed immediately
-- **Documentation-only** - Changes that don't affect code behavior
-- **Local-only development** - Not using GitHub for this project
+The `-DirectMerge` flag is retained in the script for local-only development scenarios where GitHub branch protection does not apply, but it cannot be used for the production repository.
 
 **Note**: Direct merge still runs local tests and uses `--no-ff` for clean history.
 
@@ -314,8 +306,8 @@ git pull origin main
 | New feature development | Feature branch + `promote-feature.ps1` |
 | Quick bug fix on main | `create-pr-from-main.ps1` |
 | Version bump on main | `create-pr-from-main.ps1` |
-| Documentation update | Either (or direct push if no CI needed) |
-| Emergency hotfix | `create-pr-from-main.ps1` or direct push |
+| Documentation update | `create-pr-from-main.ps1` |
+| Emergency hotfix | `create-pr-from-main.ps1` |
 
 ## Automated Scripts
 
@@ -345,7 +337,7 @@ The `scripts/promote-feature.ps1` script handles feature promotion with PR suppo
 #   -FeatureName    (required) Name of the feature (without 'feature/' prefix)
 #   -SkipTests      Skip running local tests before promotion
 #   -Force          Proceed even with incomplete tasks or uncommitted changes
-#   -DirectMerge    Bypass PR and merge directly to main
+#   -DirectMerge    Bypass PR (blocked by branch protection on main)
 ```
 
 **Default behavior (PR workflow)**:
@@ -448,11 +440,17 @@ When you push to a feature branch or create a pull request, GitHub Actions autom
 
 The CI workflow (`.github/workflows/ci.yml`) runs:
 
-**Backend Tests** (Jest):
+**Backend Unit Tests** (Jest):
 - Runs in `backend/` directory
 - Uses Node.js 20
-- Executes `npm test` with `--runInBand` flag
-- Tests run sequentially to avoid database conflicts
+- Parallel Jest workers with per-worker SQLite database isolation
+- Executes `npm run test:unit:ci`
+
+**Backend PBT Tests** (Jest, sharded):
+- 145 PBT test files split across 3 parallel shards
+- Each shard runs parallel Jest workers
+- Reduced iterations (`FAST_CHECK_NUM_RUNS=15`) for CI speed
+- Summary job aggregates results for branch protection
 
 **Frontend Tests** (Vitest):
 - Runs in `frontend/` directory
@@ -460,7 +458,7 @@ The CI workflow (`.github/workflows/ci.yml`) runs:
 - Excludes performance tests (`App.performance.test.jsx`)
 - Tests run in parallel for speed
 
-Both jobs run simultaneously for faster feedback (~3-5 minutes total).
+All jobs run simultaneously for fast feedback.
 
 ### Docker Build Workflow
 
@@ -516,7 +514,19 @@ See [GITHUB_ACTIONS_CICD.md](./GITHUB_ACTIONS_CICD.md) for detailed CI/CD docume
 
 ## Branch Protection Rules
 
-### Recommended Git Settings
+Branch protection is **active** on the `main` branch with the following rules:
+
+- **Require pull requests** — Direct pushes to `main` are blocked
+- **Required status checks**: `Backend Unit Tests`, `Backend PBT Tests`, `Frontend Tests`
+- **Require branches to be up to date** before merging
+
+### Impact on Workflow
+
+- The `-DirectMerge` flag on `promote-feature.ps1` will be rejected by GitHub
+- All changes to `main` must go through a PR with passing CI
+- Emergency hotfixes still go through PRs — use `create-pr-from-main.ps1` for fast turnaround
+
+### Local Git Settings (Optional)
 
 ```bash
 # Prevent accidental pushes to main
@@ -525,15 +535,6 @@ git config branch.main.pushRemote no_push
 # Set up main branch to require explicit merge
 git config branch.main.merge refs/heads/main
 ```
-
-### GitHub/GitLab Protection (if using remote)
-
-If using GitHub or GitLab, consider these protection rules for main:
-
-- Require pull request reviews
-- Require status checks to pass
-- Require branches to be up to date before merging
-- Restrict pushes to main branch
 
 ## Feature Branch Lifecycle
 

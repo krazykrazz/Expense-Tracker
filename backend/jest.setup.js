@@ -84,9 +84,9 @@ afterAll(async () => {
     return;
   }
   
-  // Don't close the database here - it's shared across test files
-  // and Jest runs files in parallel. The database will be cleaned up
-  // when the process exits.
+  // Close the per-worker database connection and clean up the file
+  const { closeTestDatabase } = require('./database/db');
+  closeTestDatabase();
   testDbInitialized = false;
 });
 

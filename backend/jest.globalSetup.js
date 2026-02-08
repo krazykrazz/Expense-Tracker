@@ -2,15 +2,31 @@
  * Jest Global Setup
  * 
  * This file runs ONCE before all test suites.
- * It creates a backup of the production database before tests run.
+ * It creates a backup of the production database before tests run
+ * and cleans up any stale per-worker test database files.
  */
 
 const fs = require('fs');
 const path = require('path');
 
 module.exports = async () => {
-  const dbPath = path.join(__dirname, 'config', 'database', 'expenses.db');
+  const dbDir = path.join(__dirname, 'config', 'database');
+  const dbPath = path.join(dbDir, 'expenses.db');
   const backupDir = path.join(__dirname, 'config', 'backups');
+  
+  // Clean up any stale per-worker test database files from previous runs
+  if (fs.existsSync(dbDir)) {
+    const files = fs.readdirSync(dbDir);
+    for (const file of files) {
+      if (file.startsWith('test-expenses-worker-')) {
+        try {
+          fs.unlinkSync(path.join(dbDir, file));
+        } catch (err) {
+          // Ignore - file might be locked
+        }
+      }
+    }
+  }
   
   // Only backup if production database exists
   if (fs.existsSync(dbPath)) {

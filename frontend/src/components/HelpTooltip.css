@@ -48,7 +48,10 @@
   word-wrap: break-word;
   pointer-events: none;
   max-width: 300px;
+  min-width: 200px;
   font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
 }
 
 .help-tooltip-content::before {

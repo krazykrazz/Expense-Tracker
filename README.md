@@ -19,6 +19,9 @@ A full-stack expense tracking application built with React and Node.js.
 - 📂 **Advanced filters** - Collapsible section for Invoice and Insurance status filters
 - 🔢 **Filter count badge** - Shows total number of active filters at a glance
 - 🔙 **Enhanced global view** - Shows which filters triggered global view with "Return to Monthly View" button
+- 📋 **Collapsible form sections** - Advanced options, reimbursement, insurance, people, and invoices organized into collapsible sections
+- 💡 **Contextual help tooltips** - Hover tooltips explaining when and why to use each field
+- 🎯 **Progressive disclosure** - Core fields shown by default, advanced sections revealed on demand
 
 ### Payment Methods
 - 💳 **Configurable payment methods** - Database-driven payment method management
@@ -538,8 +541,10 @@ expense-tracker/
 │   ├── src/
 │   │   ├── components/  # React components (paired with .css)
 │   │   ├── contexts/    # React Context providers (Filter, Expense, Modal, SharedData)
+│   │   ├── hooks/       # Custom React hooks (form state, validation, payment methods)
 │   │   ├── services/    # API call functions
 │   │   ├── utils/       # Frontend utilities
+│   │   ├── test-utils/  # Shared test utilities (arbitraries, wrappers, assertions, mocks)
 │   │   ├── styles/      # Shared CSS variables
 │   │   ├── App.jsx      # Main app component
 │   │   └── config.js    # API configuration

@@ -9,6 +9,7 @@ A full-stack personal expense tracking application for managing household financ
 - Filter chips with one-click removal and filter count badge
 - Advanced filters section with collapsible Invoice and Insurance status filters
 - Smart expense entry with intelligent category suggestions based on place history
+- Expense form progressive disclosure with collapsible sections, contextual help tooltips, and conditional field display
 - Configurable payment methods with database-driven management (Cash, Cheque, Debit, Credit Card types)
 - Credit card balance tracking with utilization indicators, payment history, and statement uploads
 - Credit card billing cycle history with automatic cycle generation, trend indicators, and transaction counting

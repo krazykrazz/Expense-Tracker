@@ -1,4 +1,4 @@
-# Create PR from Main Branch
+﻿# Create PR from Main Branch
 # This script creates a PR from changes made directly on main branch
 # It creates a temporary hotfix branch and opens a PR for CI verification
 

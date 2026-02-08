@@ -251,6 +251,9 @@ const ExpenseList = memo(({
   const [localFilterMethod, setLocalFilterMethod] = useState(''); // Smart method filter with encoded values (type: or method:)
   const [localFilterInvoice, setLocalFilterInvoice] = useState(''); // New invoice filter
   const [localFilterInsurance, setLocalFilterInsurance] = useState(initialInsuranceFilter); // Insurance status filter (Requirement 7.4)
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50); // Default to 50 expenses per page
   // People selection state for medical expenses
   const [localPeople, setLocalPeople] = useState([]);
   const people = propPeople || localPeople;
@@ -287,11 +290,13 @@ const ExpenseList = memo(({
     }
   }, [initialInsuranceFilter]);
 
-  // Notify parent when insurance filter changes (for clearing from parent)
+  // Notify parent only when clearing insurance filter (to exit global view if banner triggered it)
   const handleInsuranceFilterChange = useCallback((value) => {
     setLocalFilterInsurance(value);
-    if (onInsuranceFilterChange) {
-      onInsuranceFilterChange(value);
+    // Only propagate to parent when clearing, not when setting a value from the dropdown
+    // Setting a value from the dropdown should be a local/monthly filter only
+    if (!value && onInsuranceFilterChange) {
+      onInsuranceFilterChange('');
     }
   }, [onInsuranceFilterChange]);
 
@@ -454,6 +459,11 @@ const ExpenseList = memo(({
 
   const formatDate = formatLocalDate;
 
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [localFilterType, localFilterMethod, localFilterInvoice, localFilterInsurance]);
+
   // Filter expenses based on local filters (for current month only)
   const filteredExpenses = useMemo(() => {
     return expenses.filter(expense => {
@@ -521,6 +531,25 @@ const ExpenseList = memo(({
       return true;
     });
   }, [expenses, localFilterType, localFilterMethod, localFilterInvoice, localFilterInsurance, invoiceData, paymentMethods]);
+
+  // Calculate pagination values
+  const totalPages = Math.ceil(filteredExpenses.length / pageSize);
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const paginatedExpenses = filteredExpenses.slice(startIndex, endIndex);
+
+  // Handle page change
+  const handlePageChange = useCallback((newPage) => {
+    setCurrentPage(newPage);
+    // Scroll to top of expense list
+    document.querySelector('.expense-list-container')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
+
+  // Handle page size change
+  const handlePageSizeChange = useCallback((newSize) => {
+    setPageSize(newSize);
+    setCurrentPage(1); // Reset to first page when changing page size
+  }, []);
 
   // Generate grouped options for the smart method filter (Requirement 1.1)
   const groupedMethodOptions = useMemo(() => {
@@ -834,7 +863,7 @@ const ExpenseList = memo(({
             </tr>
           </thead>
           <tbody>
-            {filteredExpenses.map((expense) => (
+            {paginatedExpenses.map((expense) => (
               <tr 
                 key={expense.id}
                 className={
@@ -954,6 +983,98 @@ const ExpenseList = memo(({
           </tbody>
         </table>
       </div>
+      )}
+
+      {/* Pagination Controls */}
+      {filteredExpenses.length > 0 && (
+        <div className="pagination-container">
+          <div className="pagination-info">
+            Showing {startIndex + 1}-{Math.min(endIndex, filteredExpenses.length)} of {filteredExpenses.length} expenses
+          </div>
+          
+          <div className="pagination-controls">
+            <button
+              className="pagination-button"
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+              aria-label="Previous page"
+            >
+              ← Previous
+            </button>
+            
+            <div className="pagination-pages">
+              {currentPage > 2 && (
+                <>
+                  <button
+                    className="pagination-page"
+                    onClick={() => handlePageChange(1)}
+                  >
+                    1
+                  </button>
+                  {currentPage > 3 && <span className="pagination-ellipsis">...</span>}
+                </>
+              )}
+              
+              {currentPage > 1 && (
+                <button
+                  className="pagination-page"
+                  onClick={() => handlePageChange(currentPage - 1)}
+                >
+                  {currentPage - 1}
+                </button>
+              )}
+              
+              <button className="pagination-page active">
+                {currentPage}
+              </button>
+              
+              {currentPage < totalPages && (
+                <button
+                  className="pagination-page"
+                  onClick={() => handlePageChange(currentPage + 1)}
+                >
+                  {currentPage + 1}
+                </button>
+              )}
+              
+              {currentPage < totalPages - 1 && (
+                <>
+                  {currentPage < totalPages - 2 && <span className="pagination-ellipsis">...</span>}
+                  <button
+                    className="pagination-page"
+                    onClick={() => handlePageChange(totalPages)}
+                  >
+                    {totalPages}
+                  </button>
+                </>
+              )}
+            </div>
+            
+            <button
+              className="pagination-button"
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              aria-label="Next page"
+            >
+              Next →
+            </button>
+          </div>
+          
+          <div className="pagination-size-selector">
+            <label htmlFor="page-size">Per page:</label>
+            <select
+              id="page-size"
+              className="page-size-select"
+              value={pageSize}
+              onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+            >
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={filteredExpenses.length}>All</option>
+            </select>
+          </div>
+        </div>
       )}
 
       {showConfirmDialog && (

@@ -1,7 +1,7 @@
 # Expense Tracker - Feature Roadmap
 
-**Last Updated**: February 7, 2026  
-**Current Version**: 5.7.0
+**Last Updated**: February 8, 2026  
+**Current Version**: 5.8.0
 
 This document tracks potential features and enhancements for the Expense Tracker application. Features are categorized by priority and implementation status.
 
@@ -444,22 +444,31 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ---
 
-### ⚪ 21. ExpenseForm Simplification
-**Status**: Proposed  
+### 🟢 21. ExpenseForm Simplification
+**Status**: Completed (v5.8.0)  
 **Priority**: Medium  
 **Effort**: Medium  
-**Description**: Reduce complexity of the 1600+ line ExpenseForm with collapsible sections and better feature discoverability.
+**Completed**: February 2026  
+**Spec**: `.kiro/specs/expense-form-simplification/`  
+**Description**: Reorganized the ExpenseForm using progressive disclosure, collapsible sections, and contextual help to reduce complexity while maintaining all existing functionality.
 
-**Key Features**:
-- Collapsible "Advanced Options" section for less common fields (future months, posted date)
-- Contextual help tooltips explaining when to use each field
-- "Quick Add" mode for simple expenses vs "Full Form" for complex ones
-- Progressive disclosure of features based on expense type
+**Features Delivered**:
+- **Collapsible Sections**: Advanced Options, Reimbursement, Insurance Tracking, People Assignment, and Invoice Attachments organized into collapsible sections with expand/collapse icons
+- **Contextual Help Tooltips**: Hover tooltips on field labels explaining purpose of Posted Date, Future Months, Original Cost, and other advanced fields
+- **Progressive Disclosure**: Core fields (Date, Place, Amount, Type, Payment Method, Notes) shown by default; advanced sections revealed on demand
+- **Conditional Field Display**: Posted Date shown only for credit card payments; Insurance section shown only for Tax - Medical; Invoice section shown for tax-deductible types
+- **Data Badges**: Section headers show badges indicating data presence (e.g., reimbursement amount, invoice count, claim status)
+- **Session-Persisted Expansion State**: Section expansion preferences stored in sessionStorage, restored on reload, reset on submit
+- **Keyboard Navigation**: Tab navigation through visible fields, Enter to toggle sections, Escape to dismiss tooltips, proper aria attributes
+- **Custom Hooks Extraction**: useFormSectionState, usePaymentMethods, useExpenseFormValidation, useInvoiceManagement extracted for reusability
+- **CollapsibleSection Component**: Reusable component with consistent styling, animation, and accessibility
+- **HelpTooltip Component**: Reusable tooltip component with hover/focus activation
 
 **Benefits**:
 - Reduced cognitive load for simple expense entry
-- Better feature discoverability
+- Better feature discoverability through contextual help
 - Faster data entry for common cases
+- Cleaner codebase with extracted custom hooks
 
 **Dependencies**: None
 
@@ -572,6 +581,23 @@ This document tracks potential features and enhancements for the Expense Tracker
 ---
 
 ## 🟢 Completed Features
+
+### 🟢 ExpenseForm Simplification (v5.8.0)
+**Completed**: February 2026  
+**Spec**: `.kiro/specs/expense-form-simplification/`  
+**Description**: Reorganized the ExpenseForm using progressive disclosure, collapsible sections, and contextual help to reduce complexity while maintaining all existing functionality.
+
+**Features Delivered**:
+- **Collapsible Sections**: Advanced Options, Reimbursement, Insurance Tracking, People Assignment, and Invoice Attachments
+- **Contextual Help Tooltips**: Hover tooltips explaining purpose of advanced fields
+- **Progressive Disclosure**: Core fields shown by default, advanced sections on demand
+- **Conditional Field Display**: Context-sensitive field visibility based on payment method and expense type
+- **Data Badges**: Section headers show badges indicating data presence
+- **Session-Persisted Expansion State**: Preferences stored in sessionStorage
+- **Keyboard Navigation**: Full keyboard support with proper aria attributes
+- **Custom Hooks**: useFormSectionState, usePaymentMethods, useExpenseFormValidation, useInvoiceManagement
+
+---
 
 ### 🟢 Fixed Expense Loan Linkage (v5.5.0)
 **Completed**: February 2026  
@@ -1258,7 +1284,6 @@ This document tracks potential features and enhancements for the Expense Tracker
 1. Frontend Custom Hooks Extraction (#31)
 2. Expense Templates
 3. Financial Goals Dashboard
-4. ExpenseForm Simplification
 
 ### Medium Priority
 1. Backend updateExpense Credit Card Balance Refactor (#32)
@@ -1308,6 +1333,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 ---
 
 **Version History**:
+- v3.1 (2026-02-08): Marked ExpenseForm Simplification as completed (v5.8.0), updated current version to 5.8.0, removed from priority matrix
 - v3.0 (2026-02-07): Added Code Quality & Optimization section with 4 items from codebase review (#31-34), updated priority matrix
 - v2.9 (2026-02-07): Added Backend Expense Service Refactor (v5.7.0) to completed features, marked Frontend State Management Phase 4 (SharedDataContext) as completed (v5.6.3), updated priority matrix, updated current version to 5.7.0
 - v2.8 (2026-02-06): Marked Frontend State Management Phase 3 (Modal Context) as completed (v5.6.1), updated Phase 4 status to Planned, updated priority matrix

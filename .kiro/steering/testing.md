@@ -94,3 +94,37 @@ command: npm test
 - **@testing-library/jest-dom**: DOM assertion matchers
 - **jsdom**: Browser environment simulation
 - **fast-check**: Property-based testing
+
+## Test Utilities
+
+### Frontend (`frontend/src/test-utils/`)
+Shared modules for reducing test boilerplate. Import from the unified index:
+```javascript
+import { safeDate, createModalWrapper, waitForState, testEach } from '../test-utils';
+```
+
+- `arbitraries.js` — fast-check generators: `safeDate`, `expenseRecord`, `paymentMethod`, `modalOperationSequence`, etc.
+- `wrappers.jsx` — provider factories: `createFilterWrapper`, `createModalWrapper`, `wrapperBuilder()`, etc.
+- `assertions.js` — async helpers: `waitForState`, `assertSequenceResult`, `assertAllModalsClosed`, etc.
+- `mocks.js` — API mock factories: `createExpenseApiMock`, `createCallTracker`, etc.
+- `parameterized.js` — `testEach` for parameterized test cases
+
+See `docs/development/FRONTEND_TESTING_GUIDELINES.md` for full API reference and migration guide.
+
+### Backend (`backend/test/`)
+- `pbtArbitraries.js` — shared PBT arbitraries for backend services
+
+## Parameterized Tests
+Use `testEach` from `test-utils/parameterized.js` when a test covers a finite, enumerable set of inputs:
+```javascript
+import { testEach } from '../test-utils';
+
+testEach([
+  { input: 'click', expected: true, description: 'click trigger' },
+  { input: 'Enter', expected: true, description: 'Enter key' },
+]).test('calls handler via $description', ({ input, expected }) => {
+  // test logic
+});
+```
+
+Prefer parameterized tests over PBT when the input space is small and fully enumerable.

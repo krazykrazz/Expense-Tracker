@@ -1,0 +1,185 @@
+.help-tooltip-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+}
+
+.help-tooltip-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  font-size: 15px;
+  color: var(--text-secondary, #64748b);
+  cursor: help;
+  transition: color 0.2s ease, transform 0.2s ease, background-color 0.2s ease;
+  outline: none;
+  border-radius: 50%;
+  background-color: transparent;
+}
+
+.help-tooltip-icon:hover {
+  color: var(--primary-color, #3b82f6);
+  transform: scale(1.15);
+  background-color: rgba(59, 130, 246, 0.08);
+}
+
+.help-tooltip-icon:focus {
+  color: var(--primary-color, #3b82f6);
+  outline: 2px solid var(--primary-color, #3b82f6);
+  outline-offset: 2px;
+  border-radius: 50%;
+  background-color: rgba(59, 130, 246, 0.08);
+}
+
+.help-tooltip-content {
+  position: absolute;
+  z-index: 1000;
+  padding: 10px 14px;
+  background-color: #2d3748;
+  color: #ffffff;
+  font-size: 13px;
+  line-height: 1.5;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2), 0 2px 4px rgba(0, 0, 0, 0.1);
+  white-space: normal;
+  word-wrap: break-word;
+  pointer-events: none;
+  max-width: 300px;
+  min-width: 200px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.help-tooltip-content::before {
+  content: '';
+  position: absolute;
+  width: 0;
+  height: 0;
+  border-style: solid;
+}
+
+/* Top position */
+.help-tooltip-top {
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  animation: tooltipFadeInTop 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.help-tooltip-top::before {
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 7px 7px 0 7px;
+  border-color: #2d3748 transparent transparent transparent;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.1));
+}
+
+/* Bottom position */
+.help-tooltip-bottom {
+  top: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  animation: tooltipFadeInBottom 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.help-tooltip-bottom::before {
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 0 7px 7px 7px;
+  border-color: transparent transparent #2d3748 transparent;
+  filter: drop-shadow(0 -2px 2px rgba(0, 0, 0, 0.1));
+}
+
+/* Left position */
+.help-tooltip-left {
+  right: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%);
+  animation: tooltipFadeInLeft 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.help-tooltip-left::before {
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  border-width: 7px 0 7px 7px;
+  border-color: transparent transparent transparent #2d3748;
+  filter: drop-shadow(2px 0 2px rgba(0, 0, 0, 0.1));
+}
+
+/* Right position */
+.help-tooltip-right {
+  left: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%);
+  animation: tooltipFadeInRight 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.help-tooltip-right::before {
+  right: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  border-width: 7px 7px 7px 0;
+  border-color: transparent #2d3748 transparent transparent;
+  filter: drop-shadow(-2px 0 2px rgba(0, 0, 0, 0.1));
+}
+
+/* Animations for each position */
+@keyframes tooltipFadeInTop {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+@keyframes tooltipFadeInBottom {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+@keyframes tooltipFadeInLeft {
+  from {
+    opacity: 0;
+    transform: translateY(-50%) translateX(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+  }
+}
+
+@keyframes tooltipFadeInRight {
+  from {
+    opacity: 0;
+    transform: translateY(-50%) translateX(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .help-tooltip-content {
+    max-width: 250px;
+    font-size: 12px;
+    padding: 8px 12px;
+  }
+}

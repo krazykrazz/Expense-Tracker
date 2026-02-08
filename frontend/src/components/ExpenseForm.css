@@ -1246,3 +1246,159 @@
     transition: none;
   }
 }
+
+/* Collapsible Sections Layout Enhancements (Requirements 9.1, 9.2, 9.4, 9.5) */
+
+/* Core fields section - always visible */
+.expense-form .core-fields-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--element-gap-lg);
+  margin-bottom: var(--spacing-5);
+}
+
+/* Section spacing and separation */
+.expense-form .collapsible-section {
+  margin-bottom: var(--spacing-5);
+}
+
+.expense-form .collapsible-section:last-of-type {
+  margin-bottom: var(--spacing-4);
+}
+
+/* Visual hierarchy for section headers vs field labels */
+.expense-form .collapsible-section .collapsible-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary, #1e293b);
+  letter-spacing: -0.01em;
+}
+
+.expense-form .form-group label {
+  font-size: var(--caption-text-lg);
+  font-weight: var(--font-medium);
+  color: var(--text-secondary);
+}
+
+/* Maintain two-column layout for Date/Place and Type/Amount rows */
+.expense-form .core-fields-section .form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--element-gap-lg);
+}
+
+/* Consistent alignment within collapsible sections */
+.expense-form .collapsible-content .form-group {
+  margin-bottom: var(--element-gap);
+}
+
+.expense-form .collapsible-content .form-group:last-child {
+  margin-bottom: 0;
+}
+
+/* Section content padding and spacing */
+.expense-form .collapsible-content {
+  padding: var(--spacing-4) var(--spacing-4) var(--spacing-3);
+}
+
+/* Ensure consistent spacing between form elements */
+.expense-form .form-group + .form-group {
+  margin-top: var(--element-gap-lg);
+}
+
+/* Section-specific styling adjustments */
+.expense-form .advanced-options-section,
+.expense-form .reimbursement-section,
+.expense-form .insurance-section,
+.expense-form .people-section,
+.expense-form .invoice-section {
+  background: transparent;
+  padding: 0;
+  border: none;
+  margin-top: 0;
+}
+
+/* Override nested section styles when inside collapsible sections */
+.expense-form .collapsible-content .future-months-section,
+.expense-form .collapsible-content .posted-date-section,
+.expense-form .collapsible-content .reimbursement-section,
+.expense-form .collapsible-content .insurance-section,
+.expense-form .collapsible-content .invoice-section {
+  background: transparent;
+  padding: 0;
+  border: none;
+  margin-top: 0;
+}
+
+/* Adjust field spacing within collapsible sections */
+.expense-form .collapsible-content .form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--element-gap-lg);
+  margin-bottom: var(--element-gap);
+}
+
+.expense-form .collapsible-content .form-row:last-child {
+  margin-bottom: 0;
+}
+
+/* Visual separation between sections */
+.expense-form .section-divider {
+  height: 1px;
+  background: var(--border-color, #e2e8f0);
+  margin: var(--spacing-5) 0;
+  opacity: 0.5;
+}
+
+/* Submit button spacing */
+.expense-form .submit-button {
+  margin-top: var(--spacing-5);
+}
+
+/* Help tooltip positioning within form labels */
+.expense-form .form-group label {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1);
+}
+
+/* Responsive adjustments for collapsible sections */
+@media (max-width: 768px) {
+  .expense-form .core-fields-section .form-row,
+  .expense-form .collapsible-content .form-row {
+    grid-template-columns: 1fr;
+    gap: var(--element-gap);
+  }
+
+  .expense-form .collapsible-section {
+    margin-bottom: var(--spacing-4);
+  }
+
+  .expense-form .collapsible-content {
+    padding: var(--spacing-3);
+  }
+}
+
+/* Focus management for collapsible sections */
+.expense-form .collapsible-section:focus-within {
+  outline: 2px solid var(--primary-color, #3b82f6);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Smooth transitions for section expansion */
+.expense-form .collapsible-section {
+  transition: margin-bottom 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Enhanced visual feedback for interactive sections */
+.expense-form .collapsible-section:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* Accessibility: Respect reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .expense-form .collapsible-section {
+    transition: none;
+  }
+}

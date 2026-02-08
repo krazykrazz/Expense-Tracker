@@ -38,6 +38,8 @@ jobs:
 
       - name: Run unit tests
         run: npm run test:unit:ci
+        env:
+          CI: true
 
   backend-pbt-tests:
     name: Backend PBT Tests

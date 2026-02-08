@@ -137,7 +137,7 @@ describe('App.jsx FilterContext Integration', () => {
       expect(screen.getByRole('heading', { name: /expense tracker/i })).toBeInTheDocument();
     });
 
-    // Trigger global view
+    // Trigger global view with payment method filter
     const paymentFilter = screen.getByLabelText(/filter by payment method/i);
     await user.selectOptions(paymentFilter, 'Debit');
 
@@ -161,10 +161,10 @@ describe('App.jsx FilterContext Integration', () => {
   });
 
   /**
-   * Test: Category filter alone does NOT trigger global view (context logic)
+   * Test: Category filter DOES trigger global view (context logic)
    * Validates: Requirements 5.4
    */
-  it('should not trigger global view when only category filter is active', async () => {
+  it('should trigger global view when category filter is active', async () => {
     const user = userEvent.setup();
     render(<App />);
 
@@ -176,9 +176,34 @@ describe('App.jsx FilterContext Integration', () => {
     const categoryFilter = screen.getByLabelText(/filter by expense category/i);
     await user.selectOptions(categoryFilter, 'Groceries');
 
-    // Should remain in monthly view (category alone doesn't trigger global)
+    // Should trigger global view (category is a global filter)
     await waitFor(() => {
-      expect(screen.queryByText(/global view/i)).not.toBeInTheDocument();
+      expect(screen.getByText(/global view/i)).toBeInTheDocument();
+      expect(screen.getByText('Category')).toBeInTheDocument();
+    });
+  });
+
+  /**
+   * Test: Insurance filter triggers global view (for notification click-through)
+   * Validates: Requirements 5.4
+   */
+  it('should trigger global view when insurance filter is active', async () => {
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: /expense tracker/i })).toBeInTheDocument();
+    });
+
+    // Simulate insurance notification click-through event
+    const event = new CustomEvent('filterByInsuranceStatus', {
+      detail: { insuranceFilter: 'Not Claimed' }
+    });
+    window.dispatchEvent(event);
+
+    // Should trigger global view (insurance filter is a global filter)
+    await waitFor(() => {
+      expect(screen.getByText(/global view/i)).toBeInTheDocument();
+      expect(screen.getByText('Insurance Status')).toBeInTheDocument();
     });
   });
 });

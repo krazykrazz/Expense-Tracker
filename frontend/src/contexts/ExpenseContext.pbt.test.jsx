@@ -1,8 +1,9 @@
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
 import { renderHook, act, cleanup, waitFor } from '@testing-library/react';
 import * as fc from 'fast-check';
-import { FilterProvider, useFilterContext } from './FilterContext';
-import { ExpenseProvider, useExpenseContext } from './ExpenseContext';
+import { useFilterContext } from './FilterContext';
+import { useExpenseContext } from './ExpenseContext';
+import { wrapperBuilder } from '../test-utils/wrappers.jsx';
 
 // Hook that returns both filter and expense context values
 function useBothContexts() {
@@ -13,6 +14,7 @@ function useBothContexts() {
 
 describe('ExpenseContext Property-Based Tests', () => {
   let originalFetch;
+  const wrapper = wrapperBuilder().withFilter().withExpense().build();
 
   beforeEach(() => {
     originalFetch = globalThis.fetch;
@@ -64,11 +66,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             globalThis.fetch = mockFn;
 
             const { result } = renderHook(() => useBothContexts(), {
-              wrapper: ({ children }) => (
-                <FilterProvider>
-                  <ExpenseProvider>{children}</ExpenseProvider>
-                </FilterProvider>
-              ),
+              wrapper,
             });
 
             // Wait for initial fetch to complete
@@ -124,11 +122,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             globalThis.fetch = mockFn;
 
             const { result } = renderHook(() => useBothContexts(), {
-              wrapper: ({ children }) => (
-                <FilterProvider>
-                  <ExpenseProvider>{children}</ExpenseProvider>
-                </FilterProvider>
-              ),
+              wrapper,
             });
 
             // Wait for initial fetch
@@ -188,11 +182,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             globalThis.fetch = mockFn;
 
             const { result } = renderHook(() => useBothContexts(), {
-              wrapper: ({ children }) => (
-                <FilterProvider>
-                  <ExpenseProvider>{children}</ExpenseProvider>
-                </FilterProvider>
-              ),
+              wrapper,
             });
 
             // Wait for initial fetch
@@ -255,11 +245,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             globalThis.fetch = mockFn;
 
             const { result } = renderHook(() => useBothContexts(), {
-              wrapper: ({ children }) => (
-                <FilterProvider>
-                  <ExpenseProvider>{children}</ExpenseProvider>
-                </FilterProvider>
-              ),
+              wrapper,
             });
 
             // Wait for initial monthly fetch
@@ -387,11 +373,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             globalThis.fetch = initialFetch.mockFn;
 
             const { result } = renderHook(() => useBothContexts(), {
-              wrapper: ({ children }) => (
-                <FilterProvider>
-                  <ExpenseProvider>{children}</ExpenseProvider>
-                </FilterProvider>
-              ),
+              wrapper,
             });
 
             // Wait for initial fetch to complete
@@ -454,11 +436,7 @@ describe('ExpenseContext Property-Based Tests', () => {
               globalThis.fetch = initialFetch.mockFn;
 
               const { result } = renderHook(() => useBothContexts(), {
-                wrapper: ({ children }) => (
-                  <FilterProvider>
-                    <ExpenseProvider>{children}</ExpenseProvider>
-                  </FilterProvider>
-                ),
+                wrapper,
               });
 
               // Wait for initial fetch to complete
@@ -523,11 +501,7 @@ describe('ExpenseContext Property-Based Tests', () => {
               globalThis.fetch = initialFetch.mockFn;
 
               const { result } = renderHook(() => useBothContexts(), {
-                wrapper: ({ children }) => (
-                  <FilterProvider>
-                    <ExpenseProvider>{children}</ExpenseProvider>
-                  </FilterProvider>
-                ),
+                wrapper,
               });
 
               // Wait for initial fetch to complete
@@ -584,6 +558,8 @@ describe('ExpenseContext Property-Based Tests', () => {
           fc.integer({ min: 2000, max: 2100 }),
           fc.integer({ min: 1, max: 12 }),
           async (year1, month1, year2, month2) => {
+            // Ensure the two year/month pairs differ so the second change triggers a re-fetch
+            fc.pre(year1 !== year2 || month1 !== month2);
             cleanup();
 
             // Start with a quick-resolving fetch for the initial mount
@@ -591,11 +567,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             globalThis.fetch = initialFetch.mockFn;
 
             const { result } = renderHook(() => useBothContexts(), {
-              wrapper: ({ children }) => (
-                <FilterProvider>
-                  <ExpenseProvider>{children}</ExpenseProvider>
-                </FilterProvider>
-              ),
+              wrapper,
             });
 
             // Wait for initial fetch to complete
@@ -727,11 +699,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             }));
 
             const { result } = renderHook(() => useBothContexts(), {
-              wrapper: ({ children }) => (
-                <FilterProvider>
-                  <ExpenseProvider>{children}</ExpenseProvider>
-                </FilterProvider>
-              ),
+              wrapper,
             });
 
             // Wait for initial fetch to complete
@@ -823,11 +791,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             }));
 
             const { result } = renderHook(() => useBothContexts(), {
-              wrapper: ({ children }) => (
-                <FilterProvider>
-                  <ExpenseProvider>{children}</ExpenseProvider>
-                </FilterProvider>
-              ),
+              wrapper,
             });
 
             // Wait for initial fetch to complete
@@ -927,11 +891,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             }));
 
             const { result } = renderHook(() => useBothContexts(), {
-              wrapper: ({ children }) => (
-                <FilterProvider>
-                  <ExpenseProvider>{children}</ExpenseProvider>
-                </FilterProvider>
-              ),
+              wrapper,
             });
 
             // Wait for initial fetch to complete
@@ -1028,11 +988,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             }));
 
             const { result } = renderHook(() => useBothContexts(), {
-              wrapper: ({ children }) => (
-                <FilterProvider>
-                  <ExpenseProvider>{children}</ExpenseProvider>
-                </FilterProvider>
-              ),
+              wrapper,
             });
 
             // Wait for initial fetch to complete
@@ -1121,11 +1077,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             }));
 
             const { result } = renderHook(() => useBothContexts(), {
-              wrapper: ({ children }) => (
-                <FilterProvider>
-                  <ExpenseProvider>{children}</ExpenseProvider>
-                </FilterProvider>
-              ),
+              wrapper,
             });
 
             // Wait for initial fetch to complete
@@ -1215,11 +1167,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             }));
 
             const { result } = renderHook(() => useBothContexts(), {
-              wrapper: ({ children }) => (
-                <FilterProvider>
-                  <ExpenseProvider>{children}</ExpenseProvider>
-                </FilterProvider>
-              ),
+              wrapper,
             });
 
             // Wait for initial fetch to complete
@@ -1291,11 +1239,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             }));
 
             const { result } = renderHook(() => useBothContexts(), {
-              wrapper: ({ children }) => (
-                <FilterProvider>
-                  <ExpenseProvider>{children}</ExpenseProvider>
-                </FilterProvider>
-              ),
+              wrapper,
             });
 
             // Wait for initial fetch to complete
@@ -1410,11 +1354,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             }));
 
             const { result } = renderHook(() => useBothContexts(), {
-              wrapper: ({ children }) => (
-                <FilterProvider>
-                  <ExpenseProvider>{children}</ExpenseProvider>
-                </FilterProvider>
-              ),
+              wrapper,
             });
 
             // Wait for initial fetch to complete
@@ -1468,11 +1408,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             }));
 
             const { result } = renderHook(() => useBothContexts(), {
-              wrapper: ({ children }) => (
-                <FilterProvider>
-                  <ExpenseProvider>{children}</ExpenseProvider>
-                </FilterProvider>
-              ),
+              wrapper,
             });
 
             // Wait for initial fetch to complete
@@ -1535,11 +1471,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             }));
 
             const { result } = renderHook(() => useBothContexts(), {
-              wrapper: ({ children }) => (
-                <FilterProvider>
-                  <ExpenseProvider>{children}</ExpenseProvider>
-                </FilterProvider>
-              ),
+              wrapper,
             });
 
             // Wait for initial fetch to complete
@@ -1650,11 +1582,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             }));
 
             const { result } = renderHook(() => useBothContexts(), {
-              wrapper: ({ children }) => (
-                <FilterProvider>
-                  <ExpenseProvider>{children}</ExpenseProvider>
-                </FilterProvider>
-              ),
+              wrapper,
             });
 
             // Wait for initial fetch to complete
@@ -1735,11 +1663,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             }));
 
             const { result } = renderHook(() => useBothContexts(), {
-              wrapper: ({ children }) => (
-                <FilterProvider>
-                  <ExpenseProvider>{children}</ExpenseProvider>
-                </FilterProvider>
-              ),
+              wrapper,
             });
 
             // Wait for initial fetch to complete
@@ -1815,11 +1739,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             }));
 
             const { result } = renderHook(() => useBothContexts(), {
-              wrapper: ({ children }) => (
-                <FilterProvider>
-                  <ExpenseProvider>{children}</ExpenseProvider>
-                </FilterProvider>
-              ),
+              wrapper,
             });
 
             // Wait for initial fetch to complete
@@ -1915,11 +1835,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             }));
 
             const { result } = renderHook(() => useBothContexts(), {
-              wrapper: ({ children }) => (
-                <FilterProvider>
-                  <ExpenseProvider>{children}</ExpenseProvider>
-                </FilterProvider>
-              ),
+              wrapper,
             });
 
             // Wait for initial fetch to complete
@@ -1975,11 +1891,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             }));
 
             const { result } = renderHook(() => useBothContexts(), {
-              wrapper: ({ children }) => (
-                <FilterProvider>
-                  <ExpenseProvider>{children}</ExpenseProvider>
-                </FilterProvider>
-              ),
+              wrapper,
             });
 
             // Wait for initial fetch to complete
@@ -2028,11 +1940,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             }));
 
             const { result } = renderHook(() => useBothContexts(), {
-              wrapper: ({ children }) => (
-                <FilterProvider>
-                  <ExpenseProvider>{children}</ExpenseProvider>
-                </FilterProvider>
-              ),
+              wrapper,
             });
 
             // Wait for initial fetch to complete
@@ -2097,11 +2005,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             }));
 
             const { result } = renderHook(() => useBothContexts(), {
-              wrapper: ({ children }) => (
-                <FilterProvider>
-                  <ExpenseProvider>{children}</ExpenseProvider>
-                </FilterProvider>
-              ),
+              wrapper,
             });
 
             // Wait for initial fetch to complete
@@ -2179,6 +2083,7 @@ describe('ExpenseContext Property-Based Tests', () => {
     // Valid categories and methods for generators
     const VALID_TYPES = ['Groceries', 'Dining Out', 'Entertainment', 'Gas', 'Utilities', 'Clothing', 'Housing'];
     const VALID_METHODS = ['Cash', 'Debit', 'CIBC MC', 'PCF MC'];
+    const filterWrapper = wrapperBuilder().withFilter({ paymentMethods: VALID_METHODS }).withExpense().build();
 
     // Arbitrary: generate an expense with controlled place, notes, type, method
     const expenseArb = (id) =>
@@ -2238,11 +2143,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             }));
 
             const { result } = renderHook(() => useBothContexts(), {
-              wrapper: ({ children }) => (
-                <FilterProvider paymentMethods={VALID_METHODS}>
-                  <ExpenseProvider>{children}</ExpenseProvider>
-                </FilterProvider>
-              ),
+              wrapper: filterWrapper,
             });
 
             // Wait for initial fetch to complete
@@ -2285,11 +2186,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             }));
 
             const { result } = renderHook(() => useBothContexts(), {
-              wrapper: ({ children }) => (
-                <FilterProvider paymentMethods={VALID_METHODS}>
-                  <ExpenseProvider>{children}</ExpenseProvider>
-                </FilterProvider>
-              ),
+              wrapper: filterWrapper,
             });
 
             // Wait for initial fetch to complete
@@ -2341,11 +2238,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             }));
 
             const { result } = renderHook(() => useBothContexts(), {
-              wrapper: ({ children }) => (
-                <FilterProvider paymentMethods={VALID_METHODS}>
-                  <ExpenseProvider>{children}</ExpenseProvider>
-                </FilterProvider>
-              ),
+              wrapper: filterWrapper,
             });
 
             // Wait for initial fetch to complete
@@ -2397,11 +2290,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             }));
 
             const { result } = renderHook(() => useBothContexts(), {
-              wrapper: ({ children }) => (
-                <FilterProvider paymentMethods={VALID_METHODS}>
-                  <ExpenseProvider>{children}</ExpenseProvider>
-                </FilterProvider>
-              ),
+              wrapper: filterWrapper,
             });
 
             // Wait for initial fetch to complete
@@ -2461,11 +2350,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             }));
 
             const { result } = renderHook(() => useBothContexts(), {
-              wrapper: ({ children }) => (
-                <FilterProvider paymentMethods={VALID_METHODS}>
-                  <ExpenseProvider>{children}</ExpenseProvider>
-                </FilterProvider>
-              ),
+              wrapper: filterWrapper,
             });
 
             // Wait for initial fetch to complete
@@ -2546,11 +2431,7 @@ describe('ExpenseContext Property-Based Tests', () => {
             }));
 
             const { result } = renderHook(() => useBothContexts(), {
-              wrapper: ({ children }) => (
-                <FilterProvider paymentMethods={VALID_METHODS}>
-                  <ExpenseProvider>{children}</ExpenseProvider>
-                </FilterProvider>
-              ),
+              wrapper: filterWrapper,
             });
 
             // Wait for initial fetch to complete

@@ -31,8 +31,10 @@ expense-tracker/
 │   ├── src/
 │   │   ├── components/    # React components (paired with .css)
 │   │   ├── contexts/      # React Context providers
+│   │   ├── hooks/         # Custom React hooks (form state, validation, payment methods)
 │   │   ├── services/      # API call functions
 │   │   ├── utils/         # Frontend utilities
+│   │   ├── test-utils/    # Shared test utilities (arbitraries, wrappers, assertions, mocks)
 │   │   ├── styles/        # Shared CSS variables
 │   │   ├── App.jsx        # Main application component
 │   │   └── config.js      # API endpoint configuration

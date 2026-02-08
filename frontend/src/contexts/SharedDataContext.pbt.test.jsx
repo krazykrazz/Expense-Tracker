@@ -2,6 +2,9 @@ import { describe, it, expect, afterEach, vi } from 'vitest';
 import { renderHook, act, cleanup } from '@testing-library/react';
 import * as fc from 'fast-check';
 import { SharedDataProvider, useSharedDataContext } from './SharedDataContext';
+import { modalOperationSequence } from '../test-utils/arbitraries';
+import { createSharedDataWrapper } from '../test-utils/wrappers.jsx';
+import { assertSequenceResult } from '../test-utils/assertions';
 
 // Mock API services
 vi.mock('../services/paymentMethodApi', () => ({
@@ -19,24 +22,15 @@ import { getPaymentMethods } from '../services/paymentMethodApi';
 import { getPeople } from '../services/peopleApi';
 import { getBudgets } from '../services/budgetApi';
 
-const wrapper = ({ children }) => (
-  <SharedDataProvider selectedYear={2026} selectedMonth={2}>
-    {children}
-  </SharedDataProvider>
-);
+const wrapper = createSharedDataWrapper({ selectedYear: 2026, selectedMonth: 2 });
 
 describe('SharedDataContext Property-Based Tests', () => {
   afterEach(() => {
     cleanup();
   });
 
-  // Arbitrary for a single modal operation: 'open' or 'close'
-  const operationArb = fc.constantFrom('open', 'close');
-
-  // Arbitrary for sequences of open/close operations
-  const operationSequenceArb = fc.array(operationArb, { minLength: 1, maxLength: 20 });
-
-  // Arbitrary for a positive integer representing consecutive calls
+  // Reuse utility arbitraries for modal operation sequences
+  const operationSequenceArb = modalOperationSequence();
   const consecutiveCountArb = fc.integer({ min: 2, max: 10 });
 
   /**
@@ -76,9 +70,7 @@ describe('SharedDataContext Property-Based Tests', () => {
             }
 
             // Final state should match the last operation
-            const lastOp = operations[operations.length - 1];
-            const expectedState = lastOp === 'open';
-            expect(result.current.showPaymentMethods).toBe(expectedState);
+            assertSequenceResult(operations, result.current.showPaymentMethods);
 
             cleanup();
           }
@@ -156,7 +148,7 @@ describe('SharedDataContext Property-Based Tests', () => {
     it('2d: consecutive duplicate operations produce the same result as deduplicated sequence', () => {
       // Generate sequences where each operation may repeat 1-5 times
       const repeatedSequenceArb = fc.array(
-        fc.tuple(operationArb, fc.integer({ min: 1, max: 5 })),
+        fc.tuple(fc.constantFrom('open', 'close'), fc.integer({ min: 1, max: 5 })),
         { minLength: 1, maxLength: 10 }
       );
 
@@ -612,12 +604,7 @@ describe('Property 3: Budget Fetching Responds to Year/Month Changes', () => {
           cleanup();
           vi.clearAllMocks();
 
-          // Props never change, so the wrapper always passes the same year/month
-          const staticWrapper = ({ children }) => (
-            <SharedDataProvider selectedYear={year} selectedMonth={month}>
-              {children}
-            </SharedDataProvider>
-          );
+          const staticWrapper = createSharedDataWrapper({ selectedYear: year, selectedMonth: month });
 
           const { result, rerender } = renderHook(() => useSharedDataContext(), {
             wrapper: staticWrapper,

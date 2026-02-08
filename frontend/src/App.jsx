@@ -259,7 +259,7 @@ function AppContent({ onPaymentMethodsUpdate }) {
     const handleFilterByInsuranceStatus = (event) => {
       closeAllOverlays();
       
-      // Use context setter for filter state update
+      // Trigger global view with ONLY insurance filter to show ALL pending claims across all time
       if (event.detail?.insuranceFilter) {
         setFilterInsurance(event.detail.insuranceFilter);
       }

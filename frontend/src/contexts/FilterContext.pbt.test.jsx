@@ -1,8 +1,9 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { renderHook, act, cleanup } from '@testing-library/react';
 import * as fc from 'fast-check';
-import { FilterProvider, useFilterContext } from './FilterContext';
+import { useFilterContext } from './FilterContext';
 import { CATEGORIES } from '../utils/constants';
+import { createFilterWrapper } from '../test-utils/wrappers.jsx';
 
 describe('FilterContext Property-Based Tests', () => {
   afterEach(() => {
@@ -25,9 +26,7 @@ describe('FilterContext Property-Based Tests', () => {
         fc.array(fc.string(), { minLength: 0, maxLength: 5 }),
         (paymentMethods) => {
           const { result } = renderHook(() => useFilterContext(), {
-            wrapper: ({ children }) => (
-              <FilterProvider paymentMethods={paymentMethods}>{children}</FilterProvider>
-            ),
+            wrapper: createFilterWrapper({ paymentMethods }),
           });
 
           const ctx = result.current;
@@ -99,9 +98,7 @@ describe('FilterContext Property-Based Tests', () => {
         fc.array(fc.string(), { minLength: 0, maxLength: 5 }),
         (paymentMethods) => {
           const { result } = renderHook(() => useFilterContext(), {
-            wrapper: ({ children }) => (
-              <FilterProvider paymentMethods={paymentMethods}>{children}</FilterProvider>
-            ),
+            wrapper: createFilterWrapper({ paymentMethods }),
           });
 
           const ctx = result.current;
@@ -132,8 +129,8 @@ describe('FilterContext Property-Based Tests', () => {
    * **Feature: frontend-state-management, Property 3: isGlobalView computation**
    *
    * For any combination of filter values, isGlobalView SHALL be true if and only if
-   * at least one of searchText (non-empty after trim), filterMethod, filterYear,
-   * or filterInsurance is non-empty. filterType alone SHALL NOT trigger global view.
+   * at least one of searchText (non-empty after trim), filterType, filterMethod, 
+   * filterYear, or filterInsurance is non-empty.
    *
    * **Validates: Requirements 2.2, 2.3**
    */
@@ -149,26 +146,32 @@ describe('FilterContext Property-Based Tests', () => {
         }),
         (filters) => {
           const { result } = renderHook(() => useFilterContext(), {
-            wrapper: ({ children }) => (
-              <FilterProvider>{children}</FilterProvider>
-            ),
+            wrapper: createFilterWrapper(),
           });
 
           // Apply all filter values
           act(() => {
             result.current.handleSearchChange(filters.searchText);
+            result.current.handleFilterTypeChange(filters.filterType);
             result.current.handleFilterMethodChange(filters.filterMethod);
             result.current.handleFilterYearChange(filters.filterYear);
             result.current.setFilterInsurance(filters.filterInsurance);
           });
 
+          // After applying filters, check what the actual values are
+          // (validation may have reset invalid values to empty)
+          const actualFilterType = result.current.filterType;
+          const actualFilterMethod = result.current.filterMethod;
+
           const hasGlobalTrigger =
             filters.searchText.trim().length > 0 ||
-            filters.filterMethod !== '' ||
+            actualFilterType !== '' ||
+            actualFilterMethod !== '' ||
             filters.filterYear !== '' ||
             filters.filterInsurance !== '';
 
           // Req 2.2: isGlobalView true when any global-triggering filter is active
+          // Note: filterInsurance NOW triggers global view (for insurance notification click-through)
           expect(result.current.isGlobalView).toBe(hasGlobalTrigger);
 
           cleanup();
@@ -179,30 +182,28 @@ describe('FilterContext Property-Based Tests', () => {
   });
 
   /**
-   * Property 3b: filterType alone does NOT trigger global view (Req 2.3)
+   * Property 3b: filterType DOES trigger global view (Req 2.3)
    */
-  it('Property 3b: filterType alone does not trigger global view', () => {
+  it('Property 3b: filterType triggers global view', () => {
     fc.assert(
       fc.property(
-        nonEmptyStringArb,
+        fc.constantFrom(...CATEGORIES),
         (filterType) => {
           const { result } = renderHook(() => useFilterContext(), {
-            wrapper: ({ children }) => (
-              <FilterProvider>{children}</FilterProvider>
-            ),
+            wrapper: createFilterWrapper(),
           });
 
-          // Set only filterType, leave all global-triggering filters empty
+          // Set only filterType, leave all other global-triggering filters empty
           act(() => {
+            result.current.handleFilterTypeChange(filterType);
             result.current.handleSearchChange('');
             result.current.handleFilterMethodChange('');
             result.current.handleFilterYearChange('');
-            result.current.setFilterInsurance('');
           });
 
-          // Req 2.3: filterType alone SHALL NOT trigger global view
-          expect(result.current.isGlobalView).toBe(false);
-          expect(result.current.globalViewTriggers).toEqual([]);
+          // Req 2.3: filterType SHALL trigger global view
+          expect(result.current.isGlobalView).toBe(true);
+          expect(result.current.globalViewTriggers).toEqual(['Category']);
 
           cleanup();
         }
@@ -224,28 +225,29 @@ describe('FilterContext Property-Based Tests', () => {
       fc.property(
         fc.record({
           searchText: fc.oneof(nonEmptyStringArb, emptyOrWhitespaceArb),
+          filterType: fc.oneof(fc.constant(''), nonEmptyStringArb),
           filterMethod: fc.oneof(fc.constant(''), nonEmptyStringArb),
           filterYear: fc.oneof(fc.constant(''), nonEmptyStringArb),
           filterInsurance: fc.oneof(fc.constant(''), nonEmptyStringArb),
         }),
         (filters) => {
           const { result } = renderHook(() => useFilterContext(), {
-            wrapper: ({ children }) => (
-              <FilterProvider>{children}</FilterProvider>
-            ),
+            wrapper: createFilterWrapper(),
           });
 
           act(() => {
             result.current.handleSearchChange(filters.searchText);
+            result.current.handleFilterTypeChange(filters.filterType);
             result.current.handleFilterMethodChange(filters.filterMethod);
             result.current.handleFilterYearChange(filters.filterYear);
             result.current.setFilterInsurance(filters.filterInsurance);
           });
 
-          // Build expected triggers array
+          // Build expected triggers array based on actual values after validation
           const expected = [];
           if (filters.searchText.trim().length > 0) expected.push('Search');
-          if (filters.filterMethod) expected.push('Payment Method');
+          if (result.current.filterType) expected.push('Category');
+          if (result.current.filterMethod) expected.push('Payment Method');
           if (filters.filterYear) expected.push('Year');
           if (filters.filterInsurance) expected.push('Insurance Status');
 
@@ -279,9 +281,7 @@ describe('FilterContext Property-Based Tests', () => {
           fc.constantFrom(...CATEGORIES),
           (validCategory) => {
             const { result } = renderHook(() => useFilterContext(), {
-              wrapper: ({ children }) => (
-                <FilterProvider>{children}</FilterProvider>
-              ),
+              wrapper: createFilterWrapper(),
             });
 
             act(() => {
@@ -303,9 +303,7 @@ describe('FilterContext Property-Based Tests', () => {
           invalidCategoryArb,
           (invalidCategory) => {
             const { result } = renderHook(() => useFilterContext(), {
-              wrapper: ({ children }) => (
-                <FilterProvider>{children}</FilterProvider>
-              ),
+              wrapper: createFilterWrapper(),
             });
 
             act(() => {
@@ -324,9 +322,7 @@ describe('FilterContext Property-Based Tests', () => {
 
     it('5c: empty string category is accepted (clears filter)', () => {
       const { result } = renderHook(() => useFilterContext(), {
-        wrapper: ({ children }) => (
-          <FilterProvider>{children}</FilterProvider>
-        ),
+        wrapper: createFilterWrapper(),
       });
 
       act(() => {
@@ -351,9 +347,7 @@ describe('FilterContext Property-Based Tests', () => {
             const validMethod = paymentMethods[0];
 
             const { result } = renderHook(() => useFilterContext(), {
-              wrapper: ({ children }) => (
-                <FilterProvider paymentMethods={paymentMethods}>{children}</FilterProvider>
-              ),
+              wrapper: createFilterWrapper({ paymentMethods }),
             });
 
             act(() => {
@@ -379,9 +373,7 @@ describe('FilterContext Property-Based Tests', () => {
             fc.pre(!paymentMethods.includes(candidate));
 
             const { result } = renderHook(() => useFilterContext(), {
-              wrapper: ({ children }) => (
-                <FilterProvider paymentMethods={paymentMethods}>{children}</FilterProvider>
-              ),
+              wrapper: createFilterWrapper({ paymentMethods }),
             });
 
             act(() => {
@@ -404,9 +396,7 @@ describe('FilterContext Property-Based Tests', () => {
           fc.string({ minLength: 1 }).filter(s => s.trim().length > 0),
           (anyMethod) => {
             const { result } = renderHook(() => useFilterContext(), {
-              wrapper: ({ children }) => (
-                <FilterProvider paymentMethods={[]}>{children}</FilterProvider>
-              ),
+              wrapper: createFilterWrapper({ paymentMethods: [] }),
             });
 
             act(() => {
@@ -455,9 +445,7 @@ describe('FilterContext Utility Handler Property Tests', () => {
         }),
         (filters) => {
           const { result } = renderHook(() => useFilterContext(), {
-            wrapper: ({ children }) => (
-              <FilterProvider paymentMethods={[]}>{children}</FilterProvider>
-            ),
+            wrapper: createFilterWrapper({ paymentMethods: [] }),
           });
 
           // Set all filters to non-empty values
@@ -493,14 +481,14 @@ describe('FilterContext Utility Handler Property Tests', () => {
   });
 
   /**
-   * **Feature: frontend-state-management, Property 7: handleReturnToMonthlyView preserves filterType**
+   * **Feature: frontend-state-management, Property 7: handleReturnToMonthlyView clears global filters**
    *
-   * For any state where filterType has a value, calling handleReturnToMonthlyView SHALL clear
-   * searchText, filterMethod, filterYear, and filterInsurance while preserving the filterType value.
+   * For any state where global filters have values, calling handleReturnToMonthlyView SHALL clear
+   * all global-triggering filters: searchText, filterType, filterMethod, filterYear, and filterInsurance.
    *
    * **Validates: Requirements 2.8**
    */
-  it('Property 7: handleReturnToMonthlyView preserves filterType', () => {
+  it('Property 7: handleReturnToMonthlyView clears global filters', () => {
     fc.assert(
       fc.property(
         fc.record({
@@ -512,9 +500,7 @@ describe('FilterContext Utility Handler Property Tests', () => {
         }),
         (filters) => {
           const { result } = renderHook(() => useFilterContext(), {
-            wrapper: ({ children }) => (
-              <FilterProvider paymentMethods={[]}>{children}</FilterProvider>
-            ),
+            wrapper: createFilterWrapper({ paymentMethods: [] }),
           });
 
           // Set all filters to non-empty values
@@ -533,14 +519,14 @@ describe('FilterContext Utility Handler Property Tests', () => {
 
           // Global-triggering filters must be cleared
           expect(result.current.searchText).toBe('');
+          expect(result.current.filterType).toBe('');
           expect(result.current.filterMethod).toBe('');
           expect(result.current.filterYear).toBe('');
+
+          // filterInsurance IS also cleared by handleReturnToMonthlyView
           expect(result.current.filterInsurance).toBe('');
 
-          // filterType must be preserved
-          expect(result.current.filterType).toBe(filters.filterType);
-
-          // isGlobalView should be false (all global triggers cleared)
+          // isGlobalView should be FALSE since all filters are cleared
           expect(result.current.isGlobalView).toBe(false);
           expect(result.current.globalViewTriggers).toEqual([]);
 
@@ -575,9 +561,7 @@ describe('FilterContext Handler State Update Property Tests', () => {
         fc.string(),
         (text) => {
           const { result } = renderHook(() => useFilterContext(), {
-            wrapper: ({ children }) => (
-              <FilterProvider>{children}</FilterProvider>
-            ),
+            wrapper: createFilterWrapper(),
           });
 
           act(() => {
@@ -599,9 +583,7 @@ describe('FilterContext Handler State Update Property Tests', () => {
         fc.oneof(fc.constant(''), fc.integer({ min: 2000, max: 2100 }).map(String)),
         (year) => {
           const { result } = renderHook(() => useFilterContext(), {
-            wrapper: ({ children }) => (
-              <FilterProvider>{children}</FilterProvider>
-            ),
+            wrapper: createFilterWrapper(),
           });
 
           act(() => {
@@ -624,9 +606,7 @@ describe('FilterContext Handler State Update Property Tests', () => {
         fc.integer({ min: 1, max: 12 }),
         (year, month) => {
           const { result } = renderHook(() => useFilterContext(), {
-            wrapper: ({ children }) => (
-              <FilterProvider>{children}</FilterProvider>
-            ),
+            wrapper: createFilterWrapper(),
           });
 
           act(() => {
@@ -649,9 +629,7 @@ describe('FilterContext Handler State Update Property Tests', () => {
         fc.oneof(fc.constant(''), fc.constantFrom('Not Claimed', 'In Progress', 'Paid', 'Denied')),
         (value) => {
           const { result } = renderHook(() => useFilterContext(), {
-            wrapper: ({ children }) => (
-              <FilterProvider>{children}</FilterProvider>
-            ),
+            wrapper: createFilterWrapper(),
           });
 
           act(() => {

@@ -155,8 +155,10 @@ describe('Property 9: Invoice Data Loading and Display', () => {
           }, { timeout: 5000 });
           
           // Requirement 6.2: ExpenseForm SHALL display invoice section for tax-deductible expenses
-          expect(editModal.querySelector('.invoice-section')).toBeTruthy();
-          expect(editModal.querySelector('.invoice-upload-wrapper')).toBeTruthy();
+          // Invoice section is now wrapped in CollapsibleSection
+          const invoiceSection = Array.from(editModal.querySelectorAll('.collapsible-header'))
+            .find(h => h.textContent.includes('Invoice Attachments'));
+          expect(invoiceSection).toBeTruthy();
           
           unmount();
         }

@@ -290,11 +290,13 @@ const ExpenseList = memo(({
     }
   }, [initialInsuranceFilter]);
 
-  // Notify parent when insurance filter changes (for clearing from parent)
+  // Notify parent only when clearing insurance filter (to exit global view if banner triggered it)
   const handleInsuranceFilterChange = useCallback((value) => {
     setLocalFilterInsurance(value);
-    if (onInsuranceFilterChange) {
-      onInsuranceFilterChange(value);
+    // Only propagate to parent when clearing, not when setting a value from the dropdown
+    // Setting a value from the dropdown should be a local/monthly filter only
+    if (!value && onInsuranceFilterChange) {
+      onInsuranceFilterChange('');
     }
   }, [onInsuranceFilterChange]);
 

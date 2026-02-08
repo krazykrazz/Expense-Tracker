@@ -420,4 +420,100 @@ describe('CollapsibleSection', () => {
       expect(section).toHaveClass('collapsible-section');
     });
   });
+
+  // Parameterized tests replacing PBT Property 6 (toggle interaction consistency)
+  describe('Toggle interaction consistency (replaces PBT Property 6)', () => {
+    test.each([
+      { method: 'click', initialExpanded: false, desc: 'click from collapsed' },
+      { method: 'click', initialExpanded: true, desc: 'click from expanded' },
+      { method: 'Enter', initialExpanded: false, desc: 'Enter from collapsed' },
+      { method: 'Enter', initialExpanded: true, desc: 'Enter from expanded' },
+      { method: 'Space', initialExpanded: false, desc: 'Space from collapsed' },
+      { method: 'Space', initialExpanded: true, desc: 'Space from expanded' },
+    ])('toggles via $desc', async ({ method, initialExpanded }) => {
+      const onToggle = vi.fn();
+      const user = userEvent.setup();
+
+      const { rerender, container } = render(
+        <CollapsibleSection title="Section" isExpanded={initialExpanded} onToggle={onToggle}>
+          <div data-testid="content">Content</div>
+        </CollapsibleSection>
+      );
+
+      const header = container.querySelector('.collapsible-header');
+
+      if (method === 'click') {
+        await user.click(header);
+      } else {
+        header.focus();
+        await user.keyboard(method === 'Enter' ? '{Enter}' : ' ');
+      }
+
+      expect(onToggle).toHaveBeenCalledTimes(1);
+
+      rerender(
+        <CollapsibleSection title="Section" isExpanded={!initialExpanded} onToggle={onToggle}>
+          <div data-testid="content">Content</div>
+        </CollapsibleSection>
+      );
+
+      expect(header).toHaveAttribute('aria-expanded', String(!initialExpanded));
+      if (!initialExpanded) {
+        expect(container.querySelector('[data-testid="content"]')).toBeInTheDocument();
+      } else {
+        expect(container.querySelector('[data-testid="content"]')).not.toBeInTheDocument();
+      }
+    });
+
+    test.each([2, 3, 5])('multiple toggles (%i times) maintain consistency', async (toggleCount) => {
+      const onToggle = vi.fn();
+      const user = userEvent.setup();
+      let isExpanded = false;
+
+      const { rerender, container } = render(
+        <CollapsibleSection title="Section" isExpanded={isExpanded} onToggle={onToggle}>
+          <div data-testid="content">Content</div>
+        </CollapsibleSection>
+      );
+
+      const header = container.querySelector('.collapsible-header');
+
+      for (let i = 0; i < toggleCount; i++) {
+        await user.click(header);
+        isExpanded = !isExpanded;
+        rerender(
+          <CollapsibleSection title="Section" isExpanded={isExpanded} onToggle={onToggle}>
+            <div data-testid="content">Content</div>
+          </CollapsibleSection>
+        );
+        expect(header).toHaveAttribute('aria-expanded', String(isExpanded));
+      }
+
+      expect(onToggle).toHaveBeenCalledTimes(toggleCount);
+    });
+
+    test('toggle works with all optional props present', async () => {
+      const onToggle = vi.fn();
+      const user = userEvent.setup();
+
+      const { container } = render(
+        <CollapsibleSection
+          title="Full Props"
+          isExpanded={false}
+          onToggle={onToggle}
+          badge="3"
+          hasError={true}
+          helpText="Help info"
+          className="custom"
+        >
+          <div>Content</div>
+        </CollapsibleSection>
+      );
+
+      const header = container.querySelector('.collapsible-header');
+      await user.click(header);
+      expect(onToggle).toHaveBeenCalledTimes(1);
+    });
+  });
 });
+

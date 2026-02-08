@@ -93,6 +93,7 @@ export function FilterProvider({ children, paymentMethods = [] }) {
     setFilterType('');
     setFilterMethod('');
     setFilterYear('');
+    setFilterInsurance('');
   }, []);
 
   const value = useMemo(() => ({

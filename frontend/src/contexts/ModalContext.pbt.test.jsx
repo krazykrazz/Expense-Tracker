@@ -1,12 +1,15 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { renderHook, act, cleanup } from '@testing-library/react';
 import * as fc from 'fast-check';
-import { ModalProvider, useModalContext } from './ModalContext';
+import { useModalContext } from './ModalContext';
+import { createModalWrapper } from '../test-utils/wrappers.jsx';
 
 describe('ModalContext Property-Based Tests', () => {
   afterEach(() => {
     cleanup();
   });
+
+  const wrapper = createModalWrapper();
 
   // The 7 simple modals (all except budgetManagement which has special focus category handling)
   const SIMPLE_MODALS = [
@@ -45,9 +48,7 @@ describe('ModalContext Property-Based Tests', () => {
         fc.property(
           simpleModalArb,
           (modalName) => {
-            const { result } = renderHook(() => useModalContext(), {
-              wrapper: ({ children }) => <ModalProvider>{children}</ModalProvider>,
-            });
+            const { result } = renderHook(() => useModalContext(), { wrapper });
 
             const stateKey = `show${modalName}`;
             const openHandler = `open${modalName}`;
@@ -78,9 +79,7 @@ describe('ModalContext Property-Based Tests', () => {
         fc.property(
           simpleModalArb,
           (modalName) => {
-            const { result } = renderHook(() => useModalContext(), {
-              wrapper: ({ children }) => <ModalProvider>{children}</ModalProvider>,
-            });
+            const { result } = renderHook(() => useModalContext(), { wrapper });
 
             const stateKey = `show${modalName}`;
             const openHandler = `open${modalName}`;
@@ -116,9 +115,7 @@ describe('ModalContext Property-Based Tests', () => {
         fc.property(
           modalSequenceArb,
           (modalSequence) => {
-            const { result } = renderHook(() => useModalContext(), {
-              wrapper: ({ children }) => <ModalProvider>{children}</ModalProvider>,
-            });
+            const { result } = renderHook(() => useModalContext(), { wrapper });
 
             // For each modal in the sequence, perform open/close round-trip
             for (const modalName of modalSequence) {
@@ -154,9 +151,7 @@ describe('ModalContext Property-Based Tests', () => {
         fc.property(
           simpleModalArb,
           (modalToOpen) => {
-            const { result } = renderHook(() => useModalContext(), {
-              wrapper: ({ children }) => <ModalProvider>{children}</ModalProvider>,
-            });
+            const { result } = renderHook(() => useModalContext(), { wrapper });
 
             const openHandler = `open${modalToOpen}`;
 
@@ -193,6 +188,8 @@ describe('ModalContext Budget Management Property Tests', () => {
     cleanup();
   });
 
+  const wrapper = createModalWrapper();
+
   // Arbitrary for category strings (including null)
   const categoryArb = fc.oneof(
     fc.constant(null),
@@ -222,9 +219,7 @@ describe('ModalContext Budget Management Property Tests', () => {
         fc.property(
           categoryArb,
           (category) => {
-            const { result } = renderHook(() => useModalContext(), {
-              wrapper: ({ children }) => <ModalProvider>{children}</ModalProvider>,
-            });
+            const { result } = renderHook(() => useModalContext(), { wrapper });
 
             // Initial state
             expect(result.current.showBudgetManagement).toBe(false);
@@ -255,9 +250,7 @@ describe('ModalContext Budget Management Property Tests', () => {
         fc.property(
           categoryArb,
           (category) => {
-            const { result } = renderHook(() => useModalContext(), {
-              wrapper: ({ children }) => <ModalProvider>{children}</ModalProvider>,
-            });
+            const { result } = renderHook(() => useModalContext(), { wrapper });
 
             // Open with a category
             act(() => {
@@ -291,9 +284,7 @@ describe('ModalContext Budget Management Property Tests', () => {
         fc.property(
           categorySequenceArb,
           (categories) => {
-            const { result } = renderHook(() => useModalContext(), {
-              wrapper: ({ children }) => <ModalProvider>{children}</ModalProvider>,
-            });
+            const { result } = renderHook(() => useModalContext(), { wrapper });
 
             for (const category of categories) {
               // Open with this category
@@ -329,9 +320,7 @@ describe('ModalContext Budget Management Property Tests', () => {
         fc.property(
           fc.constant(undefined), // Just run once with no argument
           () => {
-            const { result } = renderHook(() => useModalContext(), {
-              wrapper: ({ children }) => <ModalProvider>{children}</ModalProvider>,
-            });
+            const { result } = renderHook(() => useModalContext(), { wrapper });
 
             // Call openBudgetManagement without argument
             act(() => {
@@ -355,6 +344,8 @@ describe('ModalContext closeAllOverlays Property Tests', () => {
   afterEach(() => {
     cleanup();
   });
+
+  const wrapper = createModalWrapper();
 
   // Overlay modals (closed by closeAllOverlays)
   const OVERLAY_MODALS = ['TaxDeductible', 'AnnualSummary', 'BackupSettings', 'BudgetHistory'];
@@ -394,9 +385,7 @@ describe('ModalContext closeAllOverlays Property Tests', () => {
         fc.property(
           modalStatesArb,
           (initialStates) => {
-            const { result } = renderHook(() => useModalContext(), {
-              wrapper: ({ children }) => <ModalProvider>{children}</ModalProvider>,
-            });
+            const { result } = renderHook(() => useModalContext(), { wrapper });
 
             // Set initial states for all modals
             act(() => {
@@ -439,9 +428,7 @@ describe('ModalContext closeAllOverlays Property Tests', () => {
         fc.property(
           modalStatesArb,
           (initialStates) => {
-            const { result } = renderHook(() => useModalContext(), {
-              wrapper: ({ children }) => <ModalProvider>{children}</ModalProvider>,
-            });
+            const { result } = renderHook(() => useModalContext(), { wrapper });
 
             // Set initial states for all modals
             act(() => {
@@ -485,9 +472,7 @@ describe('ModalContext closeAllOverlays Property Tests', () => {
           modalStatesArb,
           fc.integer({ min: 1, max: 5 }),
           (initialStates, callCount) => {
-            const { result } = renderHook(() => useModalContext(), {
-              wrapper: ({ children }) => <ModalProvider>{children}</ModalProvider>,
-            });
+            const { result } = renderHook(() => useModalContext(), { wrapper });
 
             // Set initial states
             act(() => {

@@ -1,8 +1,9 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { renderHook, act, cleanup } from '@testing-library/react';
 import * as fc from 'fast-check';
-import { FilterProvider, useFilterContext } from './FilterContext';
+import { useFilterContext } from './FilterContext';
 import { CATEGORIES } from '../utils/constants';
+import { createFilterWrapper } from '../test-utils/wrappers.jsx';
 
 describe('FilterContext Property-Based Tests', () => {
   afterEach(() => {
@@ -25,9 +26,7 @@ describe('FilterContext Property-Based Tests', () => {
         fc.array(fc.string(), { minLength: 0, maxLength: 5 }),
         (paymentMethods) => {
           const { result } = renderHook(() => useFilterContext(), {
-            wrapper: ({ children }) => (
-              <FilterProvider paymentMethods={paymentMethods}>{children}</FilterProvider>
-            ),
+            wrapper: createFilterWrapper({ paymentMethods }),
           });
 
           const ctx = result.current;
@@ -99,9 +98,7 @@ describe('FilterContext Property-Based Tests', () => {
         fc.array(fc.string(), { minLength: 0, maxLength: 5 }),
         (paymentMethods) => {
           const { result } = renderHook(() => useFilterContext(), {
-            wrapper: ({ children }) => (
-              <FilterProvider paymentMethods={paymentMethods}>{children}</FilterProvider>
-            ),
+            wrapper: createFilterWrapper({ paymentMethods }),
           });
 
           const ctx = result.current;
@@ -149,9 +146,7 @@ describe('FilterContext Property-Based Tests', () => {
         }),
         (filters) => {
           const { result } = renderHook(() => useFilterContext(), {
-            wrapper: ({ children }) => (
-              <FilterProvider>{children}</FilterProvider>
-            ),
+            wrapper: createFilterWrapper(),
           });
 
           // Apply all filter values
@@ -195,9 +190,7 @@ describe('FilterContext Property-Based Tests', () => {
         fc.constantFrom(...CATEGORIES),
         (filterType) => {
           const { result } = renderHook(() => useFilterContext(), {
-            wrapper: ({ children }) => (
-              <FilterProvider>{children}</FilterProvider>
-            ),
+            wrapper: createFilterWrapper(),
           });
 
           // Set only filterType, leave all other global-triggering filters empty
@@ -239,9 +232,7 @@ describe('FilterContext Property-Based Tests', () => {
         }),
         (filters) => {
           const { result } = renderHook(() => useFilterContext(), {
-            wrapper: ({ children }) => (
-              <FilterProvider>{children}</FilterProvider>
-            ),
+            wrapper: createFilterWrapper(),
           });
 
           act(() => {
@@ -290,9 +281,7 @@ describe('FilterContext Property-Based Tests', () => {
           fc.constantFrom(...CATEGORIES),
           (validCategory) => {
             const { result } = renderHook(() => useFilterContext(), {
-              wrapper: ({ children }) => (
-                <FilterProvider>{children}</FilterProvider>
-              ),
+              wrapper: createFilterWrapper(),
             });
 
             act(() => {
@@ -314,9 +303,7 @@ describe('FilterContext Property-Based Tests', () => {
           invalidCategoryArb,
           (invalidCategory) => {
             const { result } = renderHook(() => useFilterContext(), {
-              wrapper: ({ children }) => (
-                <FilterProvider>{children}</FilterProvider>
-              ),
+              wrapper: createFilterWrapper(),
             });
 
             act(() => {
@@ -335,9 +322,7 @@ describe('FilterContext Property-Based Tests', () => {
 
     it('5c: empty string category is accepted (clears filter)', () => {
       const { result } = renderHook(() => useFilterContext(), {
-        wrapper: ({ children }) => (
-          <FilterProvider>{children}</FilterProvider>
-        ),
+        wrapper: createFilterWrapper(),
       });
 
       act(() => {
@@ -362,9 +347,7 @@ describe('FilterContext Property-Based Tests', () => {
             const validMethod = paymentMethods[0];
 
             const { result } = renderHook(() => useFilterContext(), {
-              wrapper: ({ children }) => (
-                <FilterProvider paymentMethods={paymentMethods}>{children}</FilterProvider>
-              ),
+              wrapper: createFilterWrapper({ paymentMethods }),
             });
 
             act(() => {
@@ -390,9 +373,7 @@ describe('FilterContext Property-Based Tests', () => {
             fc.pre(!paymentMethods.includes(candidate));
 
             const { result } = renderHook(() => useFilterContext(), {
-              wrapper: ({ children }) => (
-                <FilterProvider paymentMethods={paymentMethods}>{children}</FilterProvider>
-              ),
+              wrapper: createFilterWrapper({ paymentMethods }),
             });
 
             act(() => {
@@ -415,9 +396,7 @@ describe('FilterContext Property-Based Tests', () => {
           fc.string({ minLength: 1 }).filter(s => s.trim().length > 0),
           (anyMethod) => {
             const { result } = renderHook(() => useFilterContext(), {
-              wrapper: ({ children }) => (
-                <FilterProvider paymentMethods={[]}>{children}</FilterProvider>
-              ),
+              wrapper: createFilterWrapper({ paymentMethods: [] }),
             });
 
             act(() => {
@@ -466,9 +445,7 @@ describe('FilterContext Utility Handler Property Tests', () => {
         }),
         (filters) => {
           const { result } = renderHook(() => useFilterContext(), {
-            wrapper: ({ children }) => (
-              <FilterProvider paymentMethods={[]}>{children}</FilterProvider>
-            ),
+            wrapper: createFilterWrapper({ paymentMethods: [] }),
           });
 
           // Set all filters to non-empty values
@@ -507,8 +484,7 @@ describe('FilterContext Utility Handler Property Tests', () => {
    * **Feature: frontend-state-management, Property 7: handleReturnToMonthlyView clears global filters**
    *
    * For any state where global filters have values, calling handleReturnToMonthlyView SHALL clear
-   * searchText, filterType, filterMethod, and filterYear. filterInsurance is NOT cleared because
-   * it is also a global-triggering filter (for insurance notification click-through).
+   * all global-triggering filters: searchText, filterType, filterMethod, filterYear, and filterInsurance.
    *
    * **Validates: Requirements 2.8**
    */
@@ -524,9 +500,7 @@ describe('FilterContext Utility Handler Property Tests', () => {
         }),
         (filters) => {
           const { result } = renderHook(() => useFilterContext(), {
-            wrapper: ({ children }) => (
-              <FilterProvider paymentMethods={[]}>{children}</FilterProvider>
-            ),
+            wrapper: createFilterWrapper({ paymentMethods: [] }),
           });
 
           // Set all filters to non-empty values
@@ -549,14 +523,12 @@ describe('FilterContext Utility Handler Property Tests', () => {
           expect(result.current.filterMethod).toBe('');
           expect(result.current.filterYear).toBe('');
 
-          // filterInsurance is NOT cleared by handleReturnToMonthlyView
-          // (it's not included in the function's clearing logic)
-          expect(result.current.filterInsurance).toBe(filters.filterInsurance);
+          // filterInsurance IS also cleared by handleReturnToMonthlyView
+          expect(result.current.filterInsurance).toBe('');
 
-          // isGlobalView should still be TRUE if filterInsurance is set
-          // (because filterInsurance now triggers global view)
-          expect(result.current.isGlobalView).toBe(true);
-          expect(result.current.globalViewTriggers).toEqual(['Insurance Status']);
+          // isGlobalView should be FALSE since all filters are cleared
+          expect(result.current.isGlobalView).toBe(false);
+          expect(result.current.globalViewTriggers).toEqual([]);
 
           cleanup();
         }
@@ -589,9 +561,7 @@ describe('FilterContext Handler State Update Property Tests', () => {
         fc.string(),
         (text) => {
           const { result } = renderHook(() => useFilterContext(), {
-            wrapper: ({ children }) => (
-              <FilterProvider>{children}</FilterProvider>
-            ),
+            wrapper: createFilterWrapper(),
           });
 
           act(() => {
@@ -613,9 +583,7 @@ describe('FilterContext Handler State Update Property Tests', () => {
         fc.oneof(fc.constant(''), fc.integer({ min: 2000, max: 2100 }).map(String)),
         (year) => {
           const { result } = renderHook(() => useFilterContext(), {
-            wrapper: ({ children }) => (
-              <FilterProvider>{children}</FilterProvider>
-            ),
+            wrapper: createFilterWrapper(),
           });
 
           act(() => {
@@ -638,9 +606,7 @@ describe('FilterContext Handler State Update Property Tests', () => {
         fc.integer({ min: 1, max: 12 }),
         (year, month) => {
           const { result } = renderHook(() => useFilterContext(), {
-            wrapper: ({ children }) => (
-              <FilterProvider>{children}</FilterProvider>
-            ),
+            wrapper: createFilterWrapper(),
           });
 
           act(() => {
@@ -663,9 +629,7 @@ describe('FilterContext Handler State Update Property Tests', () => {
         fc.oneof(fc.constant(''), fc.constantFrom('Not Claimed', 'In Progress', 'Paid', 'Denied')),
         (value) => {
           const { result } = renderHook(() => useFilterContext(), {
-            wrapper: ({ children }) => (
-              <FilterProvider>{children}</FilterProvider>
-            ),
+            wrapper: createFilterWrapper(),
           });
 
           act(() => {

@@ -33,6 +33,7 @@ expense-tracker/
 │   │   ├── contexts/      # React Context providers
 │   │   ├── services/      # API call functions
 │   │   ├── utils/         # Frontend utilities
+│   │   ├── test-utils/    # Shared test utilities (arbitraries, wrappers, assertions, mocks)
 │   │   ├── styles/        # Shared CSS variables
 │   │   ├── App.jsx        # Main application component
 │   │   └── config.js      # API endpoint configuration

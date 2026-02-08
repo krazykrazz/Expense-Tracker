@@ -385,7 +385,7 @@ This plan refactors the ExpenseForm component to reduce complexity through progr
     - Test browser back/forward navigation
     - Test sessionStorage persistence across page reloads
 
-- [-] 18. Final checkpoint - Ensure all tests pass
+- [x] 18. Final checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 ## Notes

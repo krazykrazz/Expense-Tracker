@@ -60,10 +60,12 @@ app.use(helmet({
 }));
 
 // Rate limiting configuration
-// General API rate limit: 200 requests per minute per IP
+// General API rate limit: 500 requests per minute per IP
+// Note: The app fires ~13 parallel requests on page load/month change,
+// so rapid navigation needs headroom. This is a local network app.
 const generalLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
-  max: 200,
+  max: 500,
   message: { error: 'Too many requests, please try again later' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -202,7 +204,7 @@ initializeDatabase()
       logger.info('');
       logger.info('Security features enabled:');
       logger.info('  - Helmet security headers');
-      logger.info('  - Rate limiting (200 req/min general, 10 uploads/15min, 5 backups/hr)');
+      logger.info('  - Rate limiting (500 req/min general, 10 uploads/15min, 5 backups/hr)');
       logger.info('');
       logger.info(`Server is running on port ${PORT}`);
       logger.info(`API available at http://localhost:${PORT}/api`);

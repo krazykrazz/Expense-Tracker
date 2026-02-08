@@ -1305,173 +1305,6 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
           )}
         </div>
 
-        {/* Advanced Options Section (Requirements 2.1, 2.2, 3.2, 3.3) */}
-        <CollapsibleSection
-          title="Advanced Options"
-          isExpanded={sectionStates.advancedOptions}
-          onToggle={() => toggleSection('advancedOptions')}
-          badge={calculateAdvancedOptionsBadge(futureMonths, isCreditCard ? postedDate : '')}
-          hasError={sectionHasError('advancedOptions')}
-        >
-          {/* Posted Date Field for Credit Card Expenses (Requirements 4.1, 4.2) */}
-          {isCreditCard && (
-            <div className="form-group posted-date-section">
-              <label htmlFor="posted_date">
-                Posted Date (optional)
-                <HelpTooltip content={HELP_TEXT.postedDate} position="right" />
-              </label>
-              <div className="posted-date-input-wrapper">
-                <input
-                  type="date"
-                  id="posted_date"
-                  name="posted_date"
-                  value={postedDate}
-                  onChange={handlePostedDateChange}
-                  disabled={isSubmitting}
-                  className={postedDateError ? 'input-error' : ''}
-                />
-                {postedDate && (
-                  <button
-                    type="button"
-                    className="clear-posted-date-btn"
-                    onClick={() => {
-                      setPostedDate('');
-                      setPostedDateError('');
-                    }}
-                    disabled={isSubmitting}
-                    title="Clear posted date"
-                    aria-label="Clear posted date"
-                  >
-                    ✕
-                  </button>
-                )}
-              </div>
-              <small className="form-hint">
-                Leave empty to use transaction date, or set when this posts to your statement
-              </small>
-              {postedDateError && (
-                <div className="posted-date-error">
-                  {postedDateError}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Future Months checkbox + dropdown (Requirements 1.1, 1.2, 1.7, 2.1, 2.2) */}
-          <div className="form-group future-months-section">
-            <div className="future-months-row">
-              <label className="checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={futureMonths > 0}
-                  onChange={(e) => setFutureMonths(e.target.checked ? 1 : 0)}
-                />
-                <span>Add to Future Months</span>
-                <HelpTooltip content={HELP_TEXT.futureMonths} position="right" />
-              </label>
-              {futureMonths > 0 && (
-                <div className="future-months-count">
-                  <select
-                    id="futureMonths"
-                    name="futureMonths"
-                    value={futureMonths}
-                    onChange={(e) => setFutureMonths(parseInt(e.target.value, 10))}
-                    className="future-months-select"
-                  >
-                    {FUTURE_MONTHS_OPTIONS.map(option => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                  <span className="months-label">month{futureMonths > 1 ? 's' : ''}</span>
-                </div>
-              )}
-            </div>
-            {futureMonths > 0 && formData.date && (
-              <div className="future-months-preview">
-                <span className="preview-icon">📅</span>
-                <span className="preview-text">
-                  Will create {futureMonths} additional expense{futureMonths > 1 ? 's' : ''} {calculateFutureDatePreview(formData.date, futureMonths)}
-                </span>
-              </div>
-            )}
-          </div>
-        </CollapsibleSection>
-
-        {/* Reimbursement Section for Non-Medical Expenses (Requirements 5.1, 5.2, 5.3, 3.4) */}
-        {/* Now matches medical expense pattern: Amount = net (out-of-pocket), Original Cost = charged amount */}
-        {showGenericReimbursementUI && (
-          <CollapsibleSection
-            title="Reimbursement"
-            isExpanded={sectionStates.reimbursement}
-            onToggle={() => toggleSection('reimbursement')}
-            badge={calculateReimbursementBadge(genericOriginalCost, formData.amount)}
-            hasError={sectionHasError('reimbursement')}
-          >
-            <div className="form-group reimbursement-section">
-              <label htmlFor="genericOriginalCost">
-                Original Cost $ (optional)
-                <HelpTooltip content={HELP_TEXT.originalCost} position="right" />
-              </label>
-              <div className="reimbursement-input-wrapper">
-                <input
-                  type="number"
-                  id="genericOriginalCost"
-                  name="genericOriginalCost"
-                  value={genericOriginalCost}
-                  onChange={handleGenericOriginalCostChange}
-                  min="0"
-                  step="0.01"
-                  placeholder="0.00"
-                  disabled={isSubmitting}
-                  className={genericReimbursementError ? 'input-error' : ''}
-                />
-                {genericOriginalCost && (
-                  <button
-                    type="button"
-                    className="clear-reimbursement-btn"
-                    onClick={() => {
-                      setGenericOriginalCost('');
-                      setGenericReimbursementError('');
-                    }}
-                    disabled={isSubmitting}
-                    title="Clear original cost"
-                    aria-label="Clear original cost"
-                  >
-                    ✕
-                  </button>
-                )}
-              </div>
-              <small className="form-hint">
-                If you were reimbursed, enter the full amount charged here. Amount above is what you paid out-of-pocket.
-              </small>
-              {genericReimbursementError && (
-                <div className="reimbursement-error">
-                  {genericReimbursementError}
-                </div>
-              )}
-              {/* Preview showing Charged/Reimbursed/Net breakdown (Requirements 5.3, 5.4) */}
-              {genericOriginalCost && parseFloat(genericOriginalCost) > 0 && formData.amount && !genericReimbursementError && (
-                <div className="reimbursement-preview">
-                  <div className="reimbursement-preview-item">
-                    <span className="preview-label">Charged:</span>
-                    <span className="preview-value">${parseFloat(genericOriginalCost).toFixed(2)}</span>
-                  </div>
-                  <div className="reimbursement-preview-item">
-                    <span className="preview-label">Reimbursed:</span>
-                    <span className="preview-value reimbursed">${calculateGenericReimbursement().toFixed(2)}</span>
-                  </div>
-                  <div className="reimbursement-preview-item">
-                    <span className="preview-label">Net (out-of-pocket):</span>
-                    <span className="preview-value net">${parseFloat(formData.amount).toFixed(2)}</span>
-                  </div>
-                </div>
-              )}
-            </div>
-          </CollapsibleSection>
-        )}
-
         {/* People Assignment Section for Medical Expenses (Requirements 7.1, 7.2, 7.4) */}
         {isMedicalExpense && (
           <CollapsibleSection
@@ -1795,6 +1628,173 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
             </div>
           </CollapsibleSection>
         )}
+
+        {/* Reimbursement Section for Non-Medical Expenses - 2nd last (Requirements 5.1, 5.2, 5.3, 3.4) */}
+        {/* Now matches medical expense pattern: Amount = net (out-of-pocket), Original Cost = charged amount */}
+        {showGenericReimbursementUI && (
+          <CollapsibleSection
+            title="Reimbursement"
+            isExpanded={sectionStates.reimbursement}
+            onToggle={() => toggleSection('reimbursement')}
+            badge={calculateReimbursementBadge(genericOriginalCost, formData.amount)}
+            hasError={sectionHasError('reimbursement')}
+          >
+            <div className="form-group reimbursement-section">
+              <label htmlFor="genericOriginalCost">
+                Original Cost $ (optional)
+                <HelpTooltip content={HELP_TEXT.originalCost} position="right" />
+              </label>
+              <div className="reimbursement-input-wrapper">
+                <input
+                  type="number"
+                  id="genericOriginalCost"
+                  name="genericOriginalCost"
+                  value={genericOriginalCost}
+                  onChange={handleGenericOriginalCostChange}
+                  min="0"
+                  step="0.01"
+                  placeholder="0.00"
+                  disabled={isSubmitting}
+                  className={genericReimbursementError ? 'input-error' : ''}
+                />
+                {genericOriginalCost && (
+                  <button
+                    type="button"
+                    className="clear-reimbursement-btn"
+                    onClick={() => {
+                      setGenericOriginalCost('');
+                      setGenericReimbursementError('');
+                    }}
+                    disabled={isSubmitting}
+                    title="Clear original cost"
+                    aria-label="Clear original cost"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+              <small className="form-hint">
+                If you were reimbursed, enter the full amount charged here. Amount above is what you paid out-of-pocket.
+              </small>
+              {genericReimbursementError && (
+                <div className="reimbursement-error">
+                  {genericReimbursementError}
+                </div>
+              )}
+              {/* Preview showing Charged/Reimbursed/Net breakdown (Requirements 5.3, 5.4) */}
+              {genericOriginalCost && parseFloat(genericOriginalCost) > 0 && formData.amount && !genericReimbursementError && (
+                <div className="reimbursement-preview">
+                  <div className="reimbursement-preview-item">
+                    <span className="preview-label">Charged:</span>
+                    <span className="preview-value">${parseFloat(genericOriginalCost).toFixed(2)}</span>
+                  </div>
+                  <div className="reimbursement-preview-item">
+                    <span className="preview-label">Reimbursed:</span>
+                    <span className="preview-value reimbursed">${calculateGenericReimbursement().toFixed(2)}</span>
+                  </div>
+                  <div className="reimbursement-preview-item">
+                    <span className="preview-label">Net (out-of-pocket):</span>
+                    <span className="preview-value net">${parseFloat(formData.amount).toFixed(2)}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </CollapsibleSection>
+        )}
+
+        {/* Advanced Options Section - always at bottom (Requirements 2.1, 2.2, 3.2, 3.3) */}
+        <CollapsibleSection
+          title="Advanced Options"
+          isExpanded={sectionStates.advancedOptions}
+          onToggle={() => toggleSection('advancedOptions')}
+          badge={calculateAdvancedOptionsBadge(futureMonths, isCreditCard ? postedDate : '')}
+          hasError={sectionHasError('advancedOptions')}
+        >
+          {/* Posted Date Field for Credit Card Expenses (Requirements 4.1, 4.2) */}
+          {isCreditCard && (
+            <div className="form-group posted-date-section">
+              <label htmlFor="posted_date">
+                Posted Date (optional)
+                <HelpTooltip content={HELP_TEXT.postedDate} position="right" />
+              </label>
+              <div className="posted-date-input-wrapper">
+                <input
+                  type="date"
+                  id="posted_date"
+                  name="posted_date"
+                  value={postedDate}
+                  onChange={handlePostedDateChange}
+                  disabled={isSubmitting}
+                  className={postedDateError ? 'input-error' : ''}
+                />
+                {postedDate && (
+                  <button
+                    type="button"
+                    className="clear-posted-date-btn"
+                    onClick={() => {
+                      setPostedDate('');
+                      setPostedDateError('');
+                    }}
+                    disabled={isSubmitting}
+                    title="Clear posted date"
+                    aria-label="Clear posted date"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+              <small className="form-hint">
+                Leave empty to use transaction date, or set when this posts to your statement
+              </small>
+              {postedDateError && (
+                <div className="posted-date-error">
+                  {postedDateError}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Future Months checkbox + dropdown (Requirements 1.1, 1.2, 1.7, 2.1, 2.2) */}
+          <div className="form-group future-months-section">
+            <div className="future-months-row">
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={futureMonths > 0}
+                  onChange={(e) => setFutureMonths(e.target.checked ? 1 : 0)}
+                />
+                <span>Add to Future Months</span>
+                <HelpTooltip content={HELP_TEXT.futureMonths} position="right" />
+              </label>
+              {futureMonths > 0 && (
+                <div className="future-months-count">
+                  <select
+                    id="futureMonths"
+                    name="futureMonths"
+                    value={futureMonths}
+                    onChange={(e) => setFutureMonths(parseInt(e.target.value, 10))}
+                    className="future-months-select"
+                  >
+                    {FUTURE_MONTHS_OPTIONS.map(option => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="months-label">month{futureMonths > 1 ? 's' : ''}</span>
+                </div>
+              )}
+            </div>
+            {futureMonths > 0 && formData.date && (
+              <div className="future-months-preview">
+                <span className="preview-icon">📅</span>
+                <span className="preview-text">
+                  Will create {futureMonths} additional expense{futureMonths > 1 ? 's' : ''} {calculateFutureDatePreview(formData.date, futureMonths)}
+                </span>
+              </div>
+            )}
+          </div>
+        </CollapsibleSection>
 
         {/* Row 4: Notes (Requirements 3.2) */}
         <div className="form-group">

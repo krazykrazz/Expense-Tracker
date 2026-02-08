@@ -326,4 +326,56 @@ describe('HelpTooltip', () => {
       expect(icon).toHaveAttribute('tabIndex', '0');
     });
   });
+
+  // Parameterized tests replacing PBT Property 8 (tooltip interactions)
+  describe('Tooltip interaction consistency (replaces PBT Property 8)', () => {
+    test.each([
+      { position: 'top', maxWidth: 200 },
+      { position: 'bottom', maxWidth: 300 },
+      { position: 'left', maxWidth: 150 },
+      { position: 'right', maxWidth: 500 },
+    ])('hover shows tooltip with position=$position and maxWidth=$maxWidth', async ({ position, maxWidth }) => {
+      const user = userEvent.setup();
+      const { container } = render(
+        <HelpTooltip content="Test content" position={position} maxWidth={maxWidth} />
+      );
+
+      const icon = container.querySelector('.help-tooltip-icon');
+      await user.hover(icon);
+
+      await waitFor(() => {
+        const tooltip = screen.getByRole('tooltip');
+        expect(tooltip).toHaveClass(`help-tooltip-${position}`);
+        expect(tooltip.style.maxWidth).toBe(`${maxWidth}px`);
+        expect(tooltip).toHaveTextContent('Test content');
+      });
+
+      await user.unhover(icon);
+
+      await waitFor(() => {
+        expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+      });
+    });
+
+    test.each([1, 2, 3])('multiple hover/unhover cycles (%i) work consistently', async (cycles) => {
+      const user = userEvent.setup();
+      const { container } = render(
+        <HelpTooltip content="Cycle test" />
+      );
+
+      const icon = container.querySelector('.help-tooltip-icon');
+
+      for (let i = 0; i < cycles; i++) {
+        await user.hover(icon);
+        await waitFor(() => {
+          expect(screen.getByRole('tooltip')).toBeInTheDocument();
+        });
+
+        await user.unhover(icon);
+        await waitFor(() => {
+          expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+        });
+      }
+    });
+  });
 });

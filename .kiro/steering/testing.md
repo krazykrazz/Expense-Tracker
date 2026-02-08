@@ -35,7 +35,7 @@ npm test -- --testNamePattern="pattern"  # for test names, not file paths
 ### Common Backend Test Commands
 
 ```bash
-# Run all backend tests
+# Run all backend tests (sequential - for local dev)
 npm test
 
 # Run fast tests (reduced PBT iterations)
@@ -53,6 +53,9 @@ npm test -- --testPathPatterns="serviceName"
 # Run tests with verbose output
 npm test -- --testPathPatterns="serviceName" --verbose
 ```
+
+Note: Local test commands use `--runInBand` (sequential) for simplicity.
+CI commands (`test:unit:ci`, `test:pbt:ci`) run in parallel with per-worker database isolation.
 
 ### Working Directory
 

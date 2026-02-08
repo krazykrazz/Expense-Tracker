@@ -1,6 +1,6 @@
 # GitHub Actions CI/CD
 
-**Last Updated**: January 27, 2026  
+**Last Updated**: February 8, 2026  
 **Status**: Active
 
 This document provides detailed documentation for the GitHub Actions CI/CD workflows used in the Expense Tracker application.
@@ -14,7 +14,14 @@ The project uses two GitHub Actions workflows:
 
 ### PR-Based CI Integration
 
-**CI runs automatically on all Pull Requests to main.** This is the primary way to verify code before it reaches the main branch.
+**CI runs automatically on all Pull Requests to main.** This is the primary way to verify code before it reaches the main branch. Branch protection on `main` enforces that all three status checks must pass before merging.
+
+**Required Status Checks:**
+- `Backend Unit Tests` — Jest unit tests from `backend/`
+- `Backend PBT Tests` — Jest property-based tests from `backend/`
+- `Frontend Tests` — Vitest tests from `frontend/`
+
+> **Note**: A legacy `Backend Tests` check may appear in GitHub's status check list — this is from before the CI was split into unit/PBT jobs and is not used by the current workflow.
 
 When you create a PR (using `promote-feature.ps1` or `create-pr-from-main.ps1`):
 1. GitHub Actions triggers the CI workflow
@@ -37,12 +44,12 @@ When you create a PR (using `promote-feature.ps1` or `create-pr-from-main.ps1`):
 
 ### Jobs
 
-The CI workflow runs two parallel jobs:
+The CI workflow runs two parallel job groups:
 
-#### Backend Tests
+#### Backend Unit Tests
 
 ```yaml
-backend-tests:
+backend-unit-tests:
   runs-on: ubuntu-latest
   working-directory: backend
 ```
@@ -50,7 +57,23 @@ backend-tests:
 - **Runtime**: Ubuntu latest
 - **Node.js**: Version 20
 - **Package Manager**: npm with caching
-- **Test Command**: `npm test` (Jest with --runInBand)
+- **Test Command**: `npm run test:unit:ci` (Jest, parallel workers with per-worker database isolation)
+
+#### Backend PBT Tests (Sharded)
+
+```yaml
+backend-pbt-shards:
+  runs-on: ubuntu-latest
+  strategy:
+    matrix:
+      shard: ['1/3', '2/3', '3/3']
+```
+
+- **Runtime**: Ubuntu latest × 3 shards
+- **Node.js**: Version 20
+- **Package Manager**: npm with caching
+- **Test Command**: `jest --bail --testPathPatterns=pbt --shard=N/3` (parallel workers per shard)
+- **Summary Job**: `Backend PBT Tests` aggregates shard results for branch protection
 
 #### Frontend Tests
 
@@ -80,10 +103,12 @@ npx vitest run App.performance.test.jsx
 
 ### Parallel Execution
 
-Both test jobs run simultaneously (no `needs` dependency), providing:
-- Faster feedback (~3-5 minutes total)
-- Independent failure reporting
-- Efficient use of CI resources
+All jobs run simultaneously for fast feedback:
+- **Backend Unit Tests**: ~60 unit test files, parallel Jest workers with per-worker SQLite databases
+- **Backend PBT Tests**: 145 PBT files split across 3 shards, each shard runs parallel Jest workers
+- **Frontend Tests**: Vitest parallel execution
+
+Per-worker database isolation (`test-expenses-worker-{JEST_WORKER_ID}.db`) allows Jest to run test files in parallel instead of sequentially, significantly reducing CI time.
 
 ## Checking CI Status on PRs
 
@@ -114,11 +139,13 @@ When you create a PR, CI status is displayed directly on the PR page.
 
 ### Understanding Check Results
 
-Each PR shows two checks:
-- **Backend Tests** - Jest tests from `backend/`
-- **Frontend Tests** - Vitest tests from `frontend/`
+Each PR shows these checks:
+- **Backend Unit Tests** — Jest unit tests from `backend/`
+- **Backend PBT Shard 1/3, 2/3, 3/3** — PBT test shards (run in parallel)
+- **Backend PBT Tests** — Summary check that passes when all shards pass
+- **Frontend Tests** — Vitest tests from `frontend/`
 
-Both must pass (green checkmark) before merging.
+The branch protection requires `Backend Unit Tests`, `Backend PBT Tests`, and `Frontend Tests` to pass before merging. Branch protection rules enforce this — GitHub will block the merge button until all required checks pass.
 
 ## Merging PRs After CI Passes
 
@@ -249,7 +276,7 @@ When you open a PR:
 1. CI workflow runs automatically
 2. Status appears in the PR's "Checks" section
 3. Click "Details" to view logs
-4. Merge is blocked if checks fail (if branch protection enabled)
+4. Merge is blocked if checks fail (branch protection is active)
 
 ## Troubleshooting
 

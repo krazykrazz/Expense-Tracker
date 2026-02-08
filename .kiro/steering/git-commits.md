@@ -15,6 +15,19 @@ This ensures all spec work is isolated and can be cleanly merged with `--no-ff`.
 
 ---
 
+## ⚠️ Branch Protection Active on `main`
+
+Branch protection rules are enabled on the `main` branch in GitHub. This means:
+
+- **Direct pushes to `main` are blocked** — all changes must go through a Pull Request
+- **Required status checks must pass before merging**: `Backend Unit Tests`, `Backend PBT Tests`, `Frontend Tests`
+- **Branches must be up to date** with `main` before merging
+- The `-DirectMerge` flag on `promote-feature.ps1` will **not work** — GitHub will reject the push
+
+All merges to `main` must go through the PR workflow with passing CI.
+
+---
+
 ## Commit Control
 
 The agent can auto-commit in specific scenarios, but otherwise defers to the user.
@@ -143,26 +156,17 @@ When making quick changes directly on main (bug fixes, version bumps, etc.), use
 |----------|---------------|
 | Promoting a feature branch | `promote-feature.ps1 -FeatureName <name>` |
 | Quick fix made on main | `create-pr-from-main.ps1 -Title "<description>"` |
-| Emergency hotfix (skip CI) | `promote-feature.ps1 -FeatureName <name> -DirectMerge` |
-| CI already verified on branch | `promote-feature.ps1 -FeatureName <name> -DirectMerge` |
 
-### Direct Merge (Bypass PR)
+### Direct Merge (Blocked by Branch Protection)
 
-Use the `-DirectMerge` flag only when:
-- Making an emergency hotfix that needs immediate deployment
-- CI was already run and verified on the feature branch
-- The change is documentation-only and doesn't affect code
-
-```powershell
-.\scripts\promote-feature.ps1 -FeatureName your-feature -DirectMerge
-```
+The `-DirectMerge` flag on `promote-feature.ps1` is **no longer usable** for merging to `main`. Branch protection rules reject direct pushes. All merges must go through a PR with passing CI status checks.
 
 ### Agent Guidance
 
 When assisting with feature promotion:
-1. **Default to PR workflow** - Use `promote-feature.ps1` without `-DirectMerge`
-2. **For quick fixes on main** - Use `create-pr-from-main.ps1`
-3. **Only suggest `-DirectMerge`** when the user explicitly needs to bypass CI
+1. **Always use PR workflow** — Use `promote-feature.ps1` without `-DirectMerge`
+2. **For quick fixes on main** — Use `create-pr-from-main.ps1`
+3. **Never suggest `-DirectMerge`** — Branch protection will block it
 
 When assisting with changes directly on main:
 1. After making changes, suggest using `create-pr-from-main.ps1`

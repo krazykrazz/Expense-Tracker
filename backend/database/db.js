@@ -459,14 +459,23 @@ function getDatabase() {
 }
 
 /**
+ * Get the test database path for the current worker.
+ * Each Jest worker gets its own isolated database file to enable parallel execution.
+ * Falls back to a default path when JEST_WORKER_ID is not set.
+ */
+function getTestDbPath() {
+  const workerId = process.env.JEST_WORKER_ID || '1';
+  return path.join(__dirname, '..', 'config', 'database', `test-expenses-worker-${workerId}.db`);
+}
+
+/**
  * Create an in-memory SQLite database for testing
  * This creates all the same tables as the production database
- * but uses a temporary file so it's isolated and can be shared across connections
+ * but uses a per-worker temporary file so tests can run in parallel
  */
 function createTestDatabase() {
   return new Promise((resolve, reject) => {
-    // Use a temporary file instead of :memory: to allow sharing across connections
-    const testDbPath = path.join(__dirname, '..', 'config', 'database', 'test-expenses.db');
+    const testDbPath = getTestDbPath();
     
     // Only remove existing test database if we don't have an active connection
     // This prevents corruption when the singleton is still in use
@@ -932,11 +941,11 @@ let testDbPromise = null;
 
 /**
  * Get or create the test database instance
- * Uses a singleton pattern so all tests share the same in-memory database
+ * Uses a singleton pattern per worker so all tests in the same worker share the same database
  * Returns a Promise that resolves to the database instance
  */
 async function getTestDatabase() {
-  const testDbPath = path.join(__dirname, '..', 'config', 'database', 'test-expenses.db');
+  const testDbPath = getTestDbPath();
   
   // If we have an instance but the file was deleted, recreate it
   if (testDbInstance && !fs.existsSync(testDbPath)) {
@@ -1028,7 +1037,7 @@ async function resetTestDatabase() {
 
 /**
  * Close the test database connection and clear the singleton
- * This allows a fresh database to be created for the next test file
+ * Also removes the per-worker database file to avoid stale files
  */
 function closeTestDatabase() {
   if (testDbInstance) {
@@ -1039,6 +1048,23 @@ function closeTestDatabase() {
     }
     testDbInstance = null;
     testDbPromise = null;
+  }
+  
+  // Clean up the per-worker database file
+  const testDbPath = getTestDbPath();
+  try {
+    if (fs.existsSync(testDbPath)) {
+      fs.unlinkSync(testDbPath);
+    }
+    // Also clean up WAL and SHM files
+    if (fs.existsSync(testDbPath + '-wal')) {
+      fs.unlinkSync(testDbPath + '-wal');
+    }
+    if (fs.existsSync(testDbPath + '-shm')) {
+      fs.unlinkSync(testDbPath + '-shm');
+    }
+  } catch (err) {
+    // Ignore cleanup errors
   }
 }
 
@@ -1063,6 +1089,7 @@ module.exports = {
   getDatabase,
   createTestDatabase,
   getTestDatabase,
+  getTestDbPath,
   resetTestDatabase,
   closeTestDatabase,
   recreateTestDatabase,

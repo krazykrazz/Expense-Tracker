@@ -85,8 +85,10 @@ afterAll(async () => {
   }
   
   // Close the per-worker database connection and clean up the file
-  const { closeTestDatabase } = require('./database/db');
-  closeTestDatabase();
+  // Use the top-level import to avoid issues when jest.resetModules() replaces the module cache
+  if (typeof closeTestDatabase === 'function') {
+    closeTestDatabase();
+  }
   testDbInitialized = false;
 });
 

@@ -177,6 +177,15 @@ describe('ExpenseForm - People Selection Enhancement', () => {
     // Change to medical expense type
     fireEvent.change(typeSelect, { target: { value: 'Tax - Medical' } });
 
+    // People Assignment collapsible section should appear
+    await waitFor(() => {
+      expect(screen.getByText('People Assignment')).toBeInTheDocument();
+    });
+
+    // Expand the People Assignment section to reveal the dropdown
+    const headerButton = screen.getByText('People Assignment').closest('[role="button"]');
+    fireEvent.click(headerButton);
+
     // People dropdown should now be visible
     await waitFor(() => {
       expect(screen.getByLabelText(/assign to people/i)).toBeInTheDocument();
@@ -210,6 +219,12 @@ describe('ExpenseForm - People Selection Enhancement', () => {
     fireEvent.change(screen.getByLabelText(/type/i), { target: { value: 'Tax - Medical' } });
     // Use payment method ID (1 = Cash)
     fireEvent.change(screen.getByLabelText(/payment method/i), { target: { value: '1' } });
+
+    // Expand People Assignment section
+    await waitFor(() => {
+      expect(screen.getByText('People Assignment')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByText('People Assignment').closest('[role="button"]'));
 
     // Wait for people dropdown to appear
     await waitFor(() => {
@@ -258,6 +273,12 @@ describe('ExpenseForm - People Selection Enhancement', () => {
     // Use payment method ID (1 = Cash)
     fireEvent.change(screen.getByLabelText(/payment method/i), { target: { value: '1' } });
 
+    // Expand People Assignment section
+    await waitFor(() => {
+      expect(screen.getByText('People Assignment')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByText('People Assignment').closest('[role="button"]'));
+
     // Wait for people dropdown to appear
     await waitFor(() => {
       expect(screen.getByLabelText(/assign to people/i)).toBeInTheDocument();
@@ -302,6 +323,12 @@ describe('ExpenseForm - People Selection Enhancement', () => {
     fireEvent.change(screen.getByLabelText(/type/i), { target: { value: 'Tax - Medical' } });
     // Use payment method ID (1 = Cash)
     fireEvent.change(screen.getByLabelText(/payment method/i), { target: { value: '1' } });
+
+    // Expand People Assignment section
+    await waitFor(() => {
+      expect(screen.getByText('People Assignment')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByText('People Assignment').closest('[role="button"]'));
 
     // Wait for people dropdown and select multiple people
     await waitFor(() => {
@@ -357,6 +384,12 @@ describe('ExpenseForm - People Selection Enhancement', () => {
     // Change to medical expense type
     fireEvent.change(typeSelect, { target: { value: 'Tax - Medical' } });
 
+    // Expand People Assignment section
+    await waitFor(() => {
+      expect(screen.getByText('People Assignment')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByText('People Assignment').closest('[role="button"]'));
+
     // Wait for people dropdown and select someone
     await waitFor(() => {
       expect(screen.getByLabelText(/assign to people/i)).toBeInTheDocument();
@@ -378,6 +411,12 @@ describe('ExpenseForm - People Selection Enhancement', () => {
 
     // Change back to medical - selection should be cleared
     fireEvent.change(typeSelect, { target: { value: 'Tax - Medical' } });
+
+    // Expand People Assignment section again
+    await waitFor(() => {
+      expect(screen.getByText('People Assignment')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByText('People Assignment').closest('[role="button"]'));
 
     await waitFor(() => {
       expect(screen.getByLabelText(/assign to people/i)).toBeInTheDocument();

@@ -7,6 +7,13 @@ import * as expenseApi from '../services/expenseApi';
 // Mock the APIs
 vi.mock('../services/peopleApi');
 vi.mock('../services/expenseApi');
+vi.mock('../services/paymentMethodApi', () => ({
+  getActivePaymentMethods: vi.fn().mockResolvedValue([
+    { id: 1, display_name: 'Cash', type: 'cash', is_active: 1 },
+    { id: 2, display_name: 'Debit', type: 'debit', is_active: 1 },
+  ]),
+  getPaymentMethod: vi.fn().mockResolvedValue(null),
+}));
 
 // Mock fetch for the tax deductible endpoint
 const mockFetch = vi.fn();

@@ -16,6 +16,35 @@ const MOCK_PAYMENT_METHODS = [
   { id: 5, display_name: 'Cheque', type: 'cheque', is_active: 1 }
 ];
 
+// Mock the paymentMethodApi module used by usePaymentMethods hook
+vi.mock('../services/paymentMethodApi', () => ({
+  getActivePaymentMethods: vi.fn(() => Promise.resolve([
+    { id: 1, display_name: 'Cash', type: 'cash', is_active: 1 },
+    { id: 2, display_name: 'Debit', type: 'debit', is_active: 1 },
+    { id: 3, display_name: 'VISA', type: 'credit_card', is_active: 1 },
+    { id: 4, display_name: 'Mastercard', type: 'credit_card', is_active: 1 },
+    { id: 5, display_name: 'Cheque', type: 'cheque', is_active: 1 }
+  ])),
+  getPaymentMethod: vi.fn(() => Promise.resolve(null)),
+  getPaymentMethods: vi.fn(() => Promise.resolve([
+    { id: 1, display_name: 'Cash', type: 'cash', is_active: 1 },
+    { id: 2, display_name: 'Debit', type: 'debit', is_active: 1 },
+    { id: 3, display_name: 'VISA', type: 'credit_card', is_active: 1 },
+    { id: 4, display_name: 'Mastercard', type: 'credit_card', is_active: 1 },
+    { id: 5, display_name: 'Cheque', type: 'cheque', is_active: 1 }
+  ])),
+}));
+
+// Mock the logger to suppress output in tests
+vi.mock('../utils/logger', () => ({
+  createLogger: () => ({
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  }),
+}));
+
 // Helper to create a comprehensive mock implementation
 const createMockFetch = (additionalHandlers = {}) => {
   return (url) => {
@@ -232,9 +261,11 @@ describe('ExpenseForm Property-Based Tests', () => {
             expect(options.length).toBeGreaterThan(1);
           });
 
-          // Verify the payment method is pre-selected from localStorage
-          const newMethodSelect = newContainer.querySelector('select[name="payment_method_id"]');
-          expect(newMethodSelect.value).toBe(methodId);
+          // Wait for the payment method to be pre-selected from localStorage
+          await waitFor(() => {
+            const newMethodSelect = newContainer.querySelector('select[name="payment_method_id"]');
+            expect(newMethodSelect.value).toBe(methodId);
+          });
 
           // Wait for any pending state updates before cleanup
           await act(async () => {

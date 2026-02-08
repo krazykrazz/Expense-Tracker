@@ -2,8 +2,7 @@ import { useState, useEffect, memo, useMemo, useCallback } from 'react';
 import { getCategories } from '../services/categoriesApi';
 import { getPeople } from '../services/peopleApi';
 import { getPaymentMethods } from '../services/paymentMethodApi';
-import { updateInsuranceStatus, deleteExpense as deleteExpenseApi } from '../services/expenseApi';
-import { getInvoicesForExpense, updateInvoicePersonLink } from '../services/invoiceApi';
+import { deleteExpense as deleteExpenseApi } from '../services/expenseApi';
 import { createLogger } from '../utils/logger';
 import InvoiceIndicator from './InvoiceIndicator';
 import InsuranceStatusIndicator from './InsuranceStatusIndicator';
@@ -13,6 +12,8 @@ import ExpenseForm from './ExpenseForm';
 import FilterChip from './FilterChip';
 import './ExpenseList.css';
 import { formatAmount, formatLocalDate } from '../utils/formatters';
+import useInsuranceStatus from '../hooks/useInsuranceStatus';
+import useInvoiceManagement from '../hooks/useInvoiceManagement';
 
 const logger = createLogger('ExpenseList');
 
@@ -253,11 +254,30 @@ const ExpenseList = memo(({
   // People selection state for medical expenses
   const [localPeople, setLocalPeople] = useState([]);
   const people = propPeople || localPeople;
-  // Invoice data cache - now stores arrays of invoices per expense
-  const [invoiceData, setInvoiceData] = useState(new Map());
-  const [loadingInvoices, setLoadingInvoices] = useState(new Set());
-  // Insurance quick status update state (Requirements 5.1, 5.2, 5.3, 5.4)
-  const [quickStatusExpenseId, setQuickStatusExpenseId] = useState(null);
+  // Invoice management via custom hook (Requirements 3.1, 3.2, 3.3, 3.7)
+  const {
+    invoiceCache: invoiceData,
+    loadingInvoices,
+    handleInvoiceUpdated,
+    handleInvoiceDeleted,
+    handlePersonLinkUpdated,
+  } = useInvoiceManagement({ expenses });
+  // Insurance quick status update via hook (Requirements 5.1, 5.2, 5.3, 5.4)
+  const {
+    updateStatus: hookUpdateInsuranceStatus,
+    quickStatusExpense: quickStatusExpenseObj,
+    openQuickStatus,
+    closeQuickStatus,
+  } = useInsuranceStatus({
+    onStatusChanged: (result) => {
+      if (onExpenseUpdated && result) {
+        onExpenseUpdated(result);
+      }
+    },
+  });
+  // Derive quickStatusExpenseId for QuickStatusUpdate component compatibility
+  const quickStatusExpenseId = quickStatusExpenseObj?.id ?? null;
+  // Position state for QuickStatusUpdate dropdown (UI-only, not shared)
   const [quickStatusPosition, setQuickStatusPosition] = useState({ top: 0, left: 0 });
 
   // Sync insurance filter from parent prop
@@ -335,107 +355,6 @@ const ExpenseList = memo(({
     };
   }, [propPeople]);
 
-  // Handle invoice data updates - now supports multiple invoices
-  const handleInvoiceUpdated = useCallback((expenseId, newInvoice) => {
-    setInvoiceData(prev => {
-      const newMap = new Map(prev);
-      const existingInvoices = newMap.get(expenseId) || [];
-      // Add new invoice to the array
-      newMap.set(expenseId, [...existingInvoices, newInvoice]);
-      return newMap;
-    });
-  }, []);
-
-  const handleInvoiceDeleted = useCallback((expenseId, invoiceId) => {
-    setInvoiceData(prev => {
-      const newMap = new Map(prev);
-      const existingInvoices = newMap.get(expenseId) || [];
-      // Remove the specific invoice from the array
-      if (invoiceId) {
-        newMap.set(expenseId, existingInvoices.filter(inv => inv.id !== invoiceId));
-      } else {
-        // If no invoiceId provided, clear all invoices (backward compatibility)
-        newMap.set(expenseId, []);
-      }
-      return newMap;
-    });
-  }, []);
-
-  // Handle person link updated for an invoice
-  const handlePersonLinkUpdated = useCallback(async (expenseId, invoiceId, personId) => {
-    try {
-      const result = await updateInvoicePersonLink(invoiceId, personId);
-      if (result.success) {
-        // Update the invoice in local state
-        setInvoiceData(prev => {
-          const newMap = new Map(prev);
-          const existingInvoices = newMap.get(expenseId) || [];
-          newMap.set(expenseId, existingInvoices.map(inv => 
-            inv.id === invoiceId 
-              ? { ...inv, personId, personName: result.invoice?.personName || null }
-              : inv
-          ));
-          return newMap;
-        });
-      }
-    } catch (error) {
-      logger.error('Failed to update invoice person link:', error);
-    }
-  }, []);
-
-  // Load invoice data for tax-deductible expenses (medical and donations) - now fetches all invoices per expense
-  useEffect(() => {
-    const loadInvoiceData = async () => {
-      const taxDeductibleExpenses = expenses.filter(expense => 
-        expense.type === 'Tax - Medical' || expense.type === 'Tax - Donation'
-      );
-      const expensesToLoad = taxDeductibleExpenses.filter(expense => 
-        !invoiceData.has(expense.id) && !loadingInvoices.has(expense.id)
-      );
-
-      if (expensesToLoad.length === 0) return;
-
-      // Mark expenses as loading
-      setLoadingInvoices(prev => {
-        const newSet = new Set(prev);
-        expensesToLoad.forEach(expense => newSet.add(expense.id));
-        return newSet;
-      });
-
-      // Load all invoices for each expense
-      const invoicePromises = expensesToLoad.map(async (expense) => {
-        try {
-          const invoices = await getInvoicesForExpense(expense.id);
-          return { expenseId: expense.id, invoices: invoices || [] };
-        } catch (error) {
-          logger.error(`Failed to load invoices for expense ${expense.id}:`, error);
-          return { expenseId: expense.id, invoices: [] };
-        }
-      });
-
-      try {
-        const results = await Promise.all(invoicePromises);
-        
-        setInvoiceData(prev => {
-          const newMap = new Map(prev);
-          results.forEach(({ expenseId, invoices }) => {
-            newMap.set(expenseId, invoices);
-          });
-          return newMap;
-        });
-      } finally {
-        // Remove from loading set
-        setLoadingInvoices(prev => {
-          const newSet = new Set(prev);
-          expensesToLoad.forEach(expense => newSet.delete(expense.id));
-          return newSet;
-        });
-      }
-    };
-
-    loadInvoiceData();
-  }, [expenses, invoiceData, loadingInvoices]);
-
   // Simplified edit click handler - ExpenseForm handles all state internally
   const handleEditClick = useCallback((expense) => {
     setExpenseToEdit(expense);
@@ -504,8 +423,12 @@ const ExpenseList = memo(({
       top: rect.bottom + 4,
       left: rect.left
     });
-    setQuickStatusExpenseId(expenseId);
-  }, []);
+    // Store the expense object (with id) via the hook
+    const expense = expenses.find(e => e.id === expenseId);
+    if (expense) {
+      openQuickStatus(expense);
+    }
+  }, [expenses, openQuickStatus]);
 
   /**
    * Handle insurance status change from QuickStatusUpdate
@@ -514,26 +437,20 @@ const ExpenseList = memo(({
    */
   const handleInsuranceStatusChange = useCallback(async (expenseId, newStatus) => {
     try {
-      const result = await updateInsuranceStatus(expenseId, newStatus);
-      
-      // Notify parent component to update the expense
-      if (onExpenseUpdated && result) {
-        onExpenseUpdated(result);
-      }
-      
+      const result = await hookUpdateInsuranceStatus(expenseId, newStatus);
       return result;
     } catch (error) {
       logger.error('Failed to update insurance status:', error);
       throw error;
     }
-  }, [onExpenseUpdated]);
+  }, [hookUpdateInsuranceStatus]);
 
   /**
    * Close the QuickStatusUpdate dropdown
    */
   const handleCloseQuickStatus = useCallback(() => {
-    setQuickStatusExpenseId(null);
-  }, []);
+    closeQuickStatus();
+  }, [closeQuickStatus]);
 
   const formatDate = formatLocalDate;
 

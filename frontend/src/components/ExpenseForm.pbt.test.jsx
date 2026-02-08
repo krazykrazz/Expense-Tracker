@@ -45,6 +45,9 @@ vi.mock('../utils/logger', () => ({
   }),
 }));
 
+// Mock scrollIntoView for jsdom (not supported natively)
+Element.prototype.scrollIntoView = vi.fn();
+
 // Helper to create a comprehensive mock implementation
 const createMockFetch = (additionalHandlers = {}) => {
   return (url) => {
@@ -388,4 +391,17 @@ describe('ExpenseForm Property-Based Tests', () => {
       { numRuns: 100 }
     );
   });
+
+  /**
+   * **Feature: expense-form-simplification, Property 7: Auto-expansion on validation errors**
+   * 
+   * NOTE: This property was converted from PBT to unit tests per frontend-test-simplification spec.
+   * The complex conditional rendering dependencies make PBT inappropriate for this scenario.
+   * See ExpenseForm.test.jsx for the unit test implementation.
+   * 
+   * Property 7: Auto-expansion on validation errors
+   * For any validation error in a collapsed section, the section should automatically 
+   * expand and display an error indicator on the section header.
+   * **Validates: Requirements 2.4**
+   */
 });

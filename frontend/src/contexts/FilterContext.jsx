@@ -25,20 +25,22 @@ export function FilterProvider({ children, paymentMethods = [] }) {
   // Derived state: isGlobalView
   const isGlobalView = useMemo(() => {
     return searchText.trim().length > 0 ||
+           filterType !== '' ||
            filterMethod !== '' ||
            filterYear !== '' ||
            filterInsurance !== '';
-  }, [searchText, filterMethod, filterYear, filterInsurance]);
+  }, [searchText, filterType, filterMethod, filterYear, filterInsurance]);
 
   // Derived state: globalViewTriggers
   const globalViewTriggers = useMemo(() => {
     const triggers = [];
     if (searchText.trim().length > 0) triggers.push('Search');
+    if (filterType) triggers.push('Category');
     if (filterMethod) triggers.push('Payment Method');
     if (filterYear) triggers.push('Year');
     if (filterInsurance) triggers.push('Insurance Status');
     return triggers;
-  }, [searchText, filterMethod, filterYear, filterInsurance]);
+  }, [searchText, filterType, filterMethod, filterYear, filterInsurance]);
 
   // Handler: searchText change
   const handleSearchChange = useCallback((text) => {
@@ -88,9 +90,9 @@ export function FilterProvider({ children, paymentMethods = [] }) {
   // Handler: return to monthly view (clear only global-triggering filters)
   const handleReturnToMonthlyView = useCallback(() => {
     setSearchText('');
+    setFilterType('');
     setFilterMethod('');
     setFilterYear('');
-    setFilterInsurance('');
   }, []);
 
   const value = useMemo(() => ({

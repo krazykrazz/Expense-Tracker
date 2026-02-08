@@ -10,11 +10,26 @@ import { createLogger } from '../utils/logger';
 import useExpenseFormValidation from '../hooks/useExpenseFormValidation';
 import usePaymentMethods from '../hooks/usePaymentMethods';
 import useInvoiceManagement from '../hooks/useInvoiceManagement';
+import { useFormSectionState } from '../hooks/useFormSectionState';
 import PersonAllocationModal from './PersonAllocationModal';
 import InvoiceUpload from './InvoiceUpload';
+import CollapsibleSection from './CollapsibleSection';
+import HelpTooltip from './HelpTooltip';
 import './ExpenseForm.css';
 
 const logger = createLogger('ExpenseForm');
+
+// Help text for tooltips (Requirements 3.2, 3.3, 3.4)
+const HELP_TEXT = {
+  postedDate: "For credit card expenses, set when the transaction posts to your statement. Leave empty to use the transaction date for balance calculations.",
+  futureMonths: "Automatically create this expense for multiple future months. Useful for recurring expenses like subscriptions or monthly bills.",
+  originalCost: "If you were reimbursed for this expense, enter the full amount charged here. The Amount field above should be your out-of-pocket cost.",
+  insuranceEligible: "Check this if you plan to submit or have submitted this expense to insurance for reimbursement.",
+  insuranceOriginalCost: "The full cost before insurance coverage. Your out-of-pocket amount is set in the Amount field above.",
+  claimStatus: "Track the status of your insurance claim: Not Claimed (not yet submitted), In Progress (submitted and pending), Paid (reimbursed), or Denied (rejected).",
+  peopleAssignment: "Assign this medical expense to one or more family members. For multiple people, you can allocate specific amounts to each person.",
+  invoiceAttachment: "Upload PDF invoices or receipts for tax-deductible expenses. For medical expenses, you can link invoices to specific family members."
+};
 
 // Future months dropdown options (Requirements 1.1, 1.2, 2.1, 2.2)
 const FUTURE_MONTHS_OPTIONS = [
@@ -64,6 +79,89 @@ const calculateFutureDatePreview = (sourceDate, futureMonths) => {
   return `through ${monthNames[futureDate.getMonth()]} ${futureDate.getFullYear()}`;
 };
 
+/**
+ * Calculate badge text for Advanced Options section (Requirements 2.2)
+ * @param {number} futureMonths - Number of future months
+ * @param {string} postedDate - Posted date value
+ * @returns {string} Badge text or empty string
+ */
+const calculateAdvancedOptionsBadge = (futureMonths, postedDate) => {
+  const parts = [];
+  
+  if (futureMonths > 0) {
+    parts.push(`Future: ${futureMonths} month${futureMonths > 1 ? 's' : ''}`);
+  }
+  
+  if (postedDate) {
+    const date = new Date(postedDate + 'T00:00:00');
+    const formatted = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    parts.push(`Posted: ${formatted}`);
+  }
+  
+  return parts.join(' • ');
+};
+
+/**
+ * Calculate badge text for Reimbursement section (Requirements 5.2)
+ * @param {string} genericOriginalCost - Original cost value
+ * @param {string} amount - Net amount value
+ * @returns {string} Badge text or empty string
+ */
+const calculateReimbursementBadge = (genericOriginalCost, amount) => {
+  if (!genericOriginalCost || !amount) return '';
+  
+  const origCostNum = parseFloat(genericOriginalCost);
+  const amountNum = parseFloat(amount);
+  
+  if (isNaN(origCostNum) || isNaN(amountNum) || origCostNum <= amountNum) return '';
+  
+  const reimbursed = origCostNum - amountNum;
+  return `Reimbursed: $${reimbursed.toFixed(2)}`;
+};
+/**
+ * Calculate badge text for Insurance Tracking section (Requirements 6.2)
+ * @param {boolean} insuranceEligible - Whether insurance is enabled
+ * @param {string} claimStatus - Current claim status
+ * @returns {string} Badge text or empty string
+ */
+const calculateInsuranceBadge = (insuranceEligible, claimStatus) => {
+  if (!insuranceEligible) return '';
+
+  const statusLabels = {
+    'not_claimed': 'Not Claimed',
+    'in_progress': 'In Progress',
+    'paid': 'Paid',
+    'denied': 'Denied'
+  };
+
+  return `Claim: ${statusLabels[claimStatus] || 'Not Claimed'}`;
+};
+
+/**
+ * Calculate badge text for People Assignment section (Requirements 7.2)
+ * @param {Array} selectedPeople - Array of selected people
+ * @returns {string} Badge text or empty string
+ */
+const calculatePeopleBadge = (selectedPeople) => {
+  if (!selectedPeople || selectedPeople.length === 0) return '';
+  
+  const count = selectedPeople.length;
+  return `${count} ${count === 1 ? 'person' : 'people'}`;
+};
+
+/**
+ * Calculate badge text for Invoice Attachments section (Requirements 8.2)
+ * @param {Array} invoices - Array of existing invoices
+ * @param {Array} invoiceFiles - Array of invoice files to upload
+ * @returns {string} Badge text or empty string
+ */
+const calculateInvoiceBadge = (invoices, invoiceFiles) => {
+  const totalCount = (invoices?.length || 0) + (invoiceFiles?.length || 0);
+  if (totalCount === 0) return '';
+  
+  return `${totalCount} invoice${totalCount === 1 ? '' : 's'}`;
+};
+
 const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => {
   const isEditing = !!expense;
   
@@ -97,6 +195,39 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
 
   // Invoice management hook for fetching invoices (Requirements 3.6, 7.1)
   const { fetchInvoices: hookFetchInvoices } = useInvoiceManagement();
+
+  // Section expansion state management (Requirements 1.3, 11.2, 11.5)
+  // Calculate initial expansion states based on mode and existing data
+  const calculateInitialSectionStates = () => {
+    if (isEditing) {
+      // Edit mode: expand sections with data
+      return {
+        advancedOptions: (expense?.future_months > 0) || !!expense?.posted_date,
+        reimbursement: !!expense?.original_cost && expense?.type !== 'Tax - Medical',
+        insurance: expense?.insurance_eligible === 1,
+        people: expense?.people?.length > 0,
+        invoices: expense?.invoices?.length > 0
+      };
+    } else {
+      // Create mode: all sections collapsed
+      return {
+        advancedOptions: false,
+        reimbursement: false,
+        insurance: false,
+        people: false,
+        invoices: false
+      };
+    }
+  };
+
+  const {
+    sectionStates,
+    toggleSection,
+    resetStates: resetSectionStates
+  } = useFormSectionState(
+    isEditing ? 'edit' : 'create',
+    calculateInitialSectionStates()
+  );
 
   // Insurance tracking state for medical expenses (Requirements 1.1, 1.4, 2.1, 3.1, 3.2, 3.3, 3.4, 3.6)
   const [insuranceEligible, setInsuranceEligible] = useState(expense?.insurance_eligible === 1 || false);
@@ -664,10 +795,119 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
         setGenericReimbursementError(firstError.message);
       }
 
+      // Auto-expand sections containing errors (Requirements 2.4, 12.3)
+      autoExpandSectionsWithErrors(result.errors);
+
       return false;
     }
 
     return true;
+  };
+
+  /**
+   * Auto-expand sections containing validation errors and focus first error field
+   * Requirements 2.4, 12.3
+   * @param {Array} errors - Array of error objects with field property
+   */
+  const autoExpandSectionsWithErrors = (errors) => {
+    if (!errors || errors.length === 0) return;
+
+    // Map error fields to their containing sections
+    const fieldToSection = {
+      'postedDate': 'advancedOptions',
+      'genericOriginalCost': 'reimbursement',
+      'originalCost': 'insurance',
+      'claimStatus': 'insurance',
+      'people': 'people',
+      'invoice': 'invoices'
+    };
+
+    // Collect sections that need to be expanded
+    const sectionsToExpand = new Set();
+    errors.forEach(error => {
+      const section = fieldToSection[error.field];
+      if (section && !sectionStates[section]) {
+        sectionsToExpand.add(section);
+      }
+    });
+
+    // Expand sections containing errors
+    if (sectionsToExpand.size > 0) {
+      sectionsToExpand.forEach(section => {
+        toggleSection(section);
+      });
+
+      // Focus first field with error after a short delay to allow section expansion
+      setTrackedTimeout(() => {
+        const firstError = errors[0];
+        const fieldId = getFieldIdFromErrorField(firstError.field);
+        if (fieldId) {
+          const element = document.getElementById(fieldId);
+          if (element) {
+            element.focus();
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }
+      }, 100);
+    }
+  };
+
+  /**
+   * Map error field names to DOM element IDs
+   * @param {string} field - Error field name
+   * @returns {string|null} - DOM element ID or null
+   */
+  const getFieldIdFromErrorField = (field) => {
+    const fieldIdMap = {
+      'date': 'date',
+      'amount': 'amount',
+      'type': 'type',
+      'payment_method_id': 'payment_method_id',
+      'place': 'place',
+      'notes': 'notes',
+      'postedDate': 'posted_date',
+      'genericOriginalCost': 'genericOriginalCost',
+      'originalCost': 'originalCost',
+      'claimStatus': 'claimStatus',
+      'people': 'people',
+      'invoice': 'invoice-file'
+    };
+    return fieldIdMap[field] || null;
+  };
+
+  /**
+   * Check if a section has validation errors
+   * Requirements 2.4, 12.3
+   * @param {string} sectionName - Name of the section
+   * @returns {boolean} - True if section has errors
+   */
+  const sectionHasError = (sectionName) => {
+    const sectionErrorFields = {
+      'advancedOptions': ['postedDate'],
+      'reimbursement': ['genericOriginalCost'],
+      'insurance': ['originalCost', 'claimStatus'],
+      'people': ['people'],
+      'invoices': ['invoice']
+    };
+
+    const errorFields = sectionErrorFields[sectionName] || [];
+    
+    // Check for posted date error
+    if (errorFields.includes('postedDate') && postedDateError) {
+      return true;
+    }
+    
+    // Check for generic reimbursement error
+    if (errorFields.includes('genericOriginalCost') && genericReimbursementError) {
+      return true;
+    }
+    
+    // Check for insurance validation error
+    if (errorFields.includes('originalCost') && insuranceValidationError) {
+      return true;
+    }
+    
+    return false;
   };
 
   const handleSubmit = async (e) => {
@@ -862,6 +1102,9 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
         
         // Reset future months to 0 (Requirements 1.7)
         setFutureMonths(0);
+        
+        // Reset section expansion states to defaults (Requirements 11.3)
+        resetSectionStates();
       }
 
       // Notify parent component
@@ -1062,174 +1305,253 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
           )}
         </div>
 
-        {/* Posted Date Field for Credit Card Expenses (Requirements 1.1, 6.1, 6.2, 6.4, 6.5) */}
-        {isCreditCard && (
-          <div className="form-group posted-date-section">
-            <label htmlFor="posted_date">Posted Date (optional)</label>
-            <div className="posted-date-input-wrapper">
-              <input
-                type="date"
-                id="posted_date"
-                name="posted_date"
-                value={postedDate}
-                onChange={handlePostedDateChange}
-                disabled={isSubmitting}
-                className={postedDateError ? 'input-error' : ''}
-              />
-              {postedDate && (
-                <button
-                  type="button"
-                  className="clear-posted-date-btn"
-                  onClick={() => {
-                    setPostedDate('');
-                    setPostedDateError('');
-                  }}
+        {/* Advanced Options Section (Requirements 2.1, 2.2, 3.2, 3.3) */}
+        <CollapsibleSection
+          title="Advanced Options"
+          isExpanded={sectionStates.advancedOptions}
+          onToggle={() => toggleSection('advancedOptions')}
+          badge={calculateAdvancedOptionsBadge(futureMonths, isCreditCard ? postedDate : '')}
+          hasError={sectionHasError('advancedOptions')}
+        >
+          {/* Posted Date Field for Credit Card Expenses (Requirements 4.1, 4.2) */}
+          {isCreditCard && (
+            <div className="form-group posted-date-section">
+              <label htmlFor="posted_date">
+                Posted Date (optional)
+                <HelpTooltip content={HELP_TEXT.postedDate} position="right" />
+              </label>
+              <div className="posted-date-input-wrapper">
+                <input
+                  type="date"
+                  id="posted_date"
+                  name="posted_date"
+                  value={postedDate}
+                  onChange={handlePostedDateChange}
                   disabled={isSubmitting}
-                  title="Clear posted date"
-                  aria-label="Clear posted date"
-                >
-                  ✕
-                </button>
-              )}
-            </div>
-            <small className="form-hint">
-              Leave empty to use transaction date, or set when this posts to your statement
-            </small>
-            {postedDateError && (
-              <div className="posted-date-error">
-                {postedDateError}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Generic Reimbursement Section for Non-Medical Expenses (Requirements 1.1, 1.2, 1.4, 1.5) */}
-        {/* Now matches medical expense pattern: Amount = net (out-of-pocket), Original Cost = charged amount */}
-        {showGenericReimbursementUI && (
-          <div className="form-group reimbursement-section">
-            <label htmlFor="genericOriginalCost">Original Cost $ (optional)</label>
-            <div className="reimbursement-input-wrapper">
-              <input
-                type="number"
-                id="genericOriginalCost"
-                name="genericOriginalCost"
-                value={genericOriginalCost}
-                onChange={handleGenericOriginalCostChange}
-                min="0"
-                step="0.01"
-                placeholder="0.00"
-                disabled={isSubmitting}
-                className={genericReimbursementError ? 'input-error' : ''}
-              />
-              {genericOriginalCost && (
-                <button
-                  type="button"
-                  className="clear-reimbursement-btn"
-                  onClick={() => {
-                    setGenericOriginalCost('');
-                    setGenericReimbursementError('');
-                  }}
-                  disabled={isSubmitting}
-                  title="Clear original cost"
-                  aria-label="Clear original cost"
-                >
-                  ✕
-                </button>
-              )}
-            </div>
-            <small className="form-hint">
-              If you were reimbursed, enter the full amount charged here. Amount above is what you paid out-of-pocket.
-            </small>
-            {genericReimbursementError && (
-              <div className="reimbursement-error">
-                {genericReimbursementError}
-              </div>
-            )}
-            {/* Preview showing Charged/Reimbursed/Net breakdown (Requirement 1.4) */}
-            {genericOriginalCost && parseFloat(genericOriginalCost) > 0 && formData.amount && !genericReimbursementError && (
-              <div className="reimbursement-preview">
-                <div className="reimbursement-preview-item">
-                  <span className="preview-label">Charged:</span>
-                  <span className="preview-value">${parseFloat(genericOriginalCost).toFixed(2)}</span>
-                </div>
-                <div className="reimbursement-preview-item">
-                  <span className="preview-label">Reimbursed:</span>
-                  <span className="preview-value reimbursed">${calculateGenericReimbursement().toFixed(2)}</span>
-                </div>
-                <div className="reimbursement-preview-item">
-                  <span className="preview-label">Net (out-of-pocket):</span>
-                  <span className="preview-value net">${parseFloat(formData.amount).toFixed(2)}</span>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* People Selection for Medical Expenses (Requirements 2.1, 2.2, 2.3) */}
-        {isMedicalExpense && (
-          <div className="form-group">
-            <label htmlFor="people">Assign to People</label>
-            <select
-              id="people"
-              name="people"
-              multiple
-              value={selectedPeople.map(p => p.id.toString())}
-              onChange={handlePeopleChange}
-              className="people-select"
-              size={Math.min(people.length + 1, 4)}
-            >
-              <option value="" disabled>Select family members...</option>
-              {people.map(person => (
-                <option key={person.id} value={person.id}>
-                  {person.name}
-                </option>
-              ))}
-            </select>
-            {selectedPeople.length > 0 && (
-              <div className="selected-people-info">
-                {selectedPeople.length === 1 ? (
-                  <span>Selected: {selectedPeople[0].name}</span>
-                ) : (
-                  <>
-                    <div className="allocation-header-row">
-                      <span>Allocations ({selectedPeople.length} people)</span>
-                      <button
-                        type="button"
-                        className="edit-allocation-button"
-                        onClick={() => setShowPersonAllocation(true)}
-                      >
-                        ✏️ Edit
-                      </button>
-                    </div>
-                    {selectedPeople.some(p => p.amount) ? (
-                      <div className="current-allocations">
-                        {selectedPeople.map(p => (
-                          <div key={p.id} className="allocation-item">
-                            <span className="person-name">{p.name}</span>
-                            <span className="person-amount">
-                              ${(p.amount || 0).toFixed(2)}
-                              {insuranceEligible && p.originalAmount && (
-                                <span className="original-amount"> (orig: ${p.originalAmount.toFixed(2)})</span>
-                              )}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <span className="allocation-note">Click Edit to set amounts</span>
-                    )}
-                  </>
+                  className={postedDateError ? 'input-error' : ''}
+                />
+                {postedDate && (
+                  <button
+                    type="button"
+                    className="clear-posted-date-btn"
+                    onClick={() => {
+                      setPostedDate('');
+                      setPostedDateError('');
+                    }}
+                    disabled={isSubmitting}
+                    title="Clear posted date"
+                    aria-label="Clear posted date"
+                  >
+                    ✕
+                  </button>
                 )}
               </div>
+              <small className="form-hint">
+                Leave empty to use transaction date, or set when this posts to your statement
+              </small>
+              {postedDateError && (
+                <div className="posted-date-error">
+                  {postedDateError}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Future Months checkbox + dropdown (Requirements 1.1, 1.2, 1.7, 2.1, 2.2) */}
+          <div className="form-group future-months-section">
+            <div className="future-months-row">
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={futureMonths > 0}
+                  onChange={(e) => setFutureMonths(e.target.checked ? 1 : 0)}
+                />
+                <span>Add to Future Months</span>
+                <HelpTooltip content={HELP_TEXT.futureMonths} position="right" />
+              </label>
+              {futureMonths > 0 && (
+                <div className="future-months-count">
+                  <select
+                    id="futureMonths"
+                    name="futureMonths"
+                    value={futureMonths}
+                    onChange={(e) => setFutureMonths(parseInt(e.target.value, 10))}
+                    className="future-months-select"
+                  >
+                    {FUTURE_MONTHS_OPTIONS.map(option => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="months-label">month{futureMonths > 1 ? 's' : ''}</span>
+                </div>
+              )}
+            </div>
+            {futureMonths > 0 && formData.date && (
+              <div className="future-months-preview">
+                <span className="preview-icon">📅</span>
+                <span className="preview-text">
+                  Will create {futureMonths} additional expense{futureMonths > 1 ? 's' : ''} {calculateFutureDatePreview(formData.date, futureMonths)}
+                </span>
+              </div>
             )}
           </div>
+        </CollapsibleSection>
+
+        {/* Reimbursement Section for Non-Medical Expenses (Requirements 5.1, 5.2, 5.3, 3.4) */}
+        {/* Now matches medical expense pattern: Amount = net (out-of-pocket), Original Cost = charged amount */}
+        {showGenericReimbursementUI && (
+          <CollapsibleSection
+            title="Reimbursement"
+            isExpanded={sectionStates.reimbursement}
+            onToggle={() => toggleSection('reimbursement')}
+            badge={calculateReimbursementBadge(genericOriginalCost, formData.amount)}
+            hasError={sectionHasError('reimbursement')}
+          >
+            <div className="form-group reimbursement-section">
+              <label htmlFor="genericOriginalCost">
+                Original Cost $ (optional)
+                <HelpTooltip content={HELP_TEXT.originalCost} position="right" />
+              </label>
+              <div className="reimbursement-input-wrapper">
+                <input
+                  type="number"
+                  id="genericOriginalCost"
+                  name="genericOriginalCost"
+                  value={genericOriginalCost}
+                  onChange={handleGenericOriginalCostChange}
+                  min="0"
+                  step="0.01"
+                  placeholder="0.00"
+                  disabled={isSubmitting}
+                  className={genericReimbursementError ? 'input-error' : ''}
+                />
+                {genericOriginalCost && (
+                  <button
+                    type="button"
+                    className="clear-reimbursement-btn"
+                    onClick={() => {
+                      setGenericOriginalCost('');
+                      setGenericReimbursementError('');
+                    }}
+                    disabled={isSubmitting}
+                    title="Clear original cost"
+                    aria-label="Clear original cost"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+              <small className="form-hint">
+                If you were reimbursed, enter the full amount charged here. Amount above is what you paid out-of-pocket.
+              </small>
+              {genericReimbursementError && (
+                <div className="reimbursement-error">
+                  {genericReimbursementError}
+                </div>
+              )}
+              {/* Preview showing Charged/Reimbursed/Net breakdown (Requirements 5.3, 5.4) */}
+              {genericOriginalCost && parseFloat(genericOriginalCost) > 0 && formData.amount && !genericReimbursementError && (
+                <div className="reimbursement-preview">
+                  <div className="reimbursement-preview-item">
+                    <span className="preview-label">Charged:</span>
+                    <span className="preview-value">${parseFloat(genericOriginalCost).toFixed(2)}</span>
+                  </div>
+                  <div className="reimbursement-preview-item">
+                    <span className="preview-label">Reimbursed:</span>
+                    <span className="preview-value reimbursed">${calculateGenericReimbursement().toFixed(2)}</span>
+                  </div>
+                  <div className="reimbursement-preview-item">
+                    <span className="preview-label">Net (out-of-pocket):</span>
+                    <span className="preview-value net">${parseFloat(formData.amount).toFixed(2)}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </CollapsibleSection>
         )}
 
-        {/* Insurance Section for Medical Expenses (Requirements 1.1, 1.4, 2.1, 3.1, 3.2, 3.3, 3.4, 3.6) */}
+        {/* People Assignment Section for Medical Expenses (Requirements 7.1, 7.2, 7.4) */}
         {isMedicalExpense && (
-          <div className="form-group insurance-section">
-            <label className="insurance-section-title">Insurance Tracking</label>
-            
+          <CollapsibleSection
+            title="People Assignment"
+            isExpanded={sectionStates.people}
+            onToggle={() => toggleSection('people')}
+            badge={calculatePeopleBadge(selectedPeople)}
+            hasError={sectionHasError('people')}
+          >
+            <div className="form-group">
+              <label htmlFor="people">
+                Assign to People
+                <HelpTooltip content={HELP_TEXT.peopleAssignment} position="right" />
+              </label>
+              <select
+                id="people"
+                name="people"
+                multiple
+                value={selectedPeople.map(p => p.id.toString())}
+                onChange={handlePeopleChange}
+                className="people-select"
+                size={Math.min(people.length + 1, 4)}
+              >
+                <option value="" disabled>Select family members...</option>
+                {people.map(person => (
+                  <option key={person.id} value={person.id}>
+                    {person.name}
+                  </option>
+                ))}
+              </select>
+              {selectedPeople.length > 0 && (
+                <div className="selected-people-info">
+                  {selectedPeople.length === 1 ? (
+                    <span>Selected: {selectedPeople[0].name}</span>
+                  ) : (
+                    <>
+                      <div className="allocation-header-row">
+                        <span>Allocations ({selectedPeople.length} people)</span>
+                        <button
+                          type="button"
+                          className="edit-allocation-button"
+                          onClick={() => setShowPersonAllocation(true)}
+                        >
+                          ✏️ Edit
+                        </button>
+                      </div>
+                      {selectedPeople.some(p => p.amount) ? (
+                        <div className="current-allocations">
+                          {selectedPeople.map(p => (
+                            <div key={p.id} className="allocation-item">
+                              <span className="person-name">{p.name}</span>
+                              <span className="person-amount">
+                                ${(p.amount || 0).toFixed(2)}
+                                {insuranceEligible && p.originalAmount && (
+                                  <span className="original-amount"> (orig: ${p.originalAmount.toFixed(2)})</span>
+                                )}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="allocation-note">Click Edit to set amounts</span>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          </CollapsibleSection>
+        )}
+
+        {/* Insurance Tracking Section for Medical Expenses (Requirements 6.1, 6.2, 6.5, 4.3) */}
+        {isMedicalExpense && (
+          <CollapsibleSection
+            title="Insurance Tracking"
+            isExpanded={sectionStates.insurance}
+            onToggle={() => toggleSection('insurance')}
+            badge={calculateInsuranceBadge(insuranceEligible, claimStatus)}
+            hasError={sectionHasError('insurance')}
+          >
             {/* Insurance Eligibility Checkbox (Requirement 1.1) */}
             <div className="insurance-eligibility-row">
               <label className="insurance-checkbox">
@@ -1240,16 +1562,20 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
                   disabled={isSubmitting}
                 />
                 <span>Eligible for Insurance Reimbursement</span>
+                <HelpTooltip content={HELP_TEXT.insuranceEligible} position="right" />
               </label>
             </div>
             
-            {/* Insurance Details (shown when eligible) */}
+            {/* Insurance Details (shown when eligible) (Requirements 6.3, 6.4) */}
             {insuranceEligible && (
               <div className="insurance-details">
                 {/* Original Cost Field (Requirement 3.1) */}
                 <div className="insurance-field-row">
                   <div className="insurance-field">
-                    <label htmlFor="originalCost">Original Cost</label>
+                    <label htmlFor="originalCost">
+                      Original Cost
+                      <HelpTooltip content={HELP_TEXT.insuranceOriginalCost} position="right" />
+                    </label>
                     <div className="amount-input-wrapper">
                       <span className="currency-symbol">$</span>
                       <input
@@ -1278,7 +1604,10 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
                 {/* Claim Status Dropdown (Requirement 2.1, 2.2) */}
                 <div className="insurance-field-row">
                   <div className="insurance-field">
-                    <label htmlFor="claimStatus">Claim Status</label>
+                    <label htmlFor="claimStatus">
+                      Claim Status
+                      <HelpTooltip content={HELP_TEXT.claimStatus} position="right" />
+                    </label>
                     <select
                       id="claimStatus"
                       value={claimStatus}
@@ -1310,7 +1639,7 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
                   </div>
                 )}
                 
-                {/* Status Info Note */}
+                {/* Status Info Notes (Requirement 6.5) */}
                 {claimStatus === 'paid' && (
                   <div className="insurance-status-note insurance-status-paid">
                     <small>✅ Claim paid. Enter your actual out-of-pocket cost after reimbursement.</small>
@@ -1333,127 +1662,138 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
                 )}
               </div>
             )}
-          </div>
+          </CollapsibleSection>
         )}
 
-        {/* Invoice Upload for Tax-Deductible Expenses (Medical and Donations) */}
+        {/* Invoice Attachments Section for Tax-Deductible Expenses (Requirements 8.1, 8.2, 8.3, 8.4) */}
         {isTaxDeductible && (
-          <div className="form-group invoice-section">
-            <label htmlFor="invoice">Invoice Attachment</label>
-            <div className="invoice-upload-wrapper">
-              {isEditing ? (
-                // For editing existing expenses, use full InvoiceUpload component with multi-invoice support
-                <InvoiceUpload
-                  expenseId={expense?.id}
-                  existingInvoices={invoices}
-                  people={isMedicalExpense ? (expensePeople.length > 0 ? expensePeople : selectedPeople) : []}
-                  onInvoiceUploaded={handleInvoiceUploaded}
-                  onInvoiceDeleted={handleInvoiceDeleted}
-                  onPersonLinkUpdated={handlePersonLinkUpdated}
-                  disabled={isSubmitting}
-                />
-              ) : (
-                // For new expenses, show file selection only (supports multiple files)
-                <div className="invoice-new-expense">
-                  <div className="invoice-file-input">
-                    <input
-                      type="file"
-                      id="invoice-file"
-                      accept=".pdf,application/pdf"
-                      multiple
-                      onChange={(e) => {
-                        const files = Array.from(e.target.files || []);
-                        if (files.length === 0) return;
-                        
-                        const MAX_SIZE = 10 * 1024 * 1024; // 10MB
-                        const validFiles = [];
-                        const errors = [];
-                        
-                        for (const file of files) {
-                          if (file.size > MAX_SIZE) {
-                            errors.push(`${file.name}: exceeds 10MB limit`);
-                            continue;
+          <CollapsibleSection
+            title="Invoice Attachments"
+            isExpanded={sectionStates.invoices}
+            onToggle={() => toggleSection('invoices')}
+            badge={calculateInvoiceBadge(invoices, invoiceFiles)}
+            hasError={sectionHasError('invoices')}
+          >
+            <div className="form-group invoice-section">
+              <label htmlFor="invoice">
+                Invoice Attachment
+                <HelpTooltip content={HELP_TEXT.invoiceAttachment} position="right" />
+              </label>
+              <div className="invoice-upload-wrapper">
+                {isEditing ? (
+                  // For editing existing expenses, use full InvoiceUpload component with multi-invoice support
+                  <InvoiceUpload
+                    expenseId={expense?.id}
+                    existingInvoices={invoices}
+                    people={isMedicalExpense ? (expensePeople.length > 0 ? expensePeople : selectedPeople) : []}
+                    onInvoiceUploaded={handleInvoiceUploaded}
+                    onInvoiceDeleted={handleInvoiceDeleted}
+                    onPersonLinkUpdated={handlePersonLinkUpdated}
+                    disabled={isSubmitting}
+                  />
+                ) : (
+                  // For new expenses, show file selection only (supports multiple files)
+                  <div className="invoice-new-expense">
+                    <div className="invoice-file-input">
+                      <input
+                        type="file"
+                        id="invoice-file"
+                        accept=".pdf,application/pdf"
+                        multiple
+                        onChange={(e) => {
+                          const files = Array.from(e.target.files || []);
+                          if (files.length === 0) return;
+                          
+                          const MAX_SIZE = 10 * 1024 * 1024; // 10MB
+                          const validFiles = [];
+                          const errors = [];
+                          
+                          for (const file of files) {
+                            if (file.size > MAX_SIZE) {
+                              errors.push(`${file.name}: exceeds 10MB limit`);
+                              continue;
+                            }
+                            if (file.type !== 'application/pdf') {
+                              errors.push(`${file.name}: not a PDF file`);
+                              continue;
+                            }
+                            validFiles.push(file);
                           }
-                          if (file.type !== 'application/pdf') {
-                            errors.push(`${file.name}: not a PDF file`);
-                            continue;
+                          
+                          if (errors.length > 0) {
+                            setMessage({ 
+                              text: errors.join('; '), 
+                              type: 'error' 
+                            });
+                          } else {
+                            setMessage({ text: '', type: '' });
                           }
-                          validFiles.push(file);
-                        }
-                        
-                        if (errors.length > 0) {
-                          setMessage({ 
-                            text: errors.join('; '), 
-                            type: 'error' 
-                          });
-                        } else {
-                          setMessage({ text: '', type: '' });
-                        }
-                        
-                        // Add to existing files with default personId null
-                        setInvoiceFiles(prev => [...prev, ...validFiles.map(f => ({ file: f, personId: null }))]);
-                        e.target.value = ''; // Reset input to allow selecting same files again
-                      }}
-                      disabled={isSubmitting}
-                    />
-                    <label htmlFor="invoice-file" className="file-input-label">
-                      {invoiceFiles.length > 0 ? (
-                        <span className="file-selected">
-                          📄 {invoiceFiles.length} file{invoiceFiles.length > 1 ? 's' : ''} selected - Click to add more
-                        </span>
-                      ) : (
-                        <span className="file-placeholder">
-                          📄 Select PDF invoice(s) (optional)
-                        </span>
-                      )}
-                    </label>
-                  </div>
-                  {invoiceFiles.length > 0 && (
-                    <div className="invoice-files-list">
-                      {invoiceFiles.map((item, index) => (
-                        <div key={index} className="invoice-file-item">
-                          <span className="file-name">📄 {item.file.name} ({(item.file.size / 1024 / 1024).toFixed(1)}MB)</span>
-                          {isMedicalExpense && selectedPeople.length > 0 && (
-                            <select
-                              className="invoice-person-select-inline"
-                              value={item.personId || ''}
-                              onChange={(e) => {
-                                const personId = e.target.value === '' ? null : parseInt(e.target.value);
-                                setInvoiceFiles(prev => prev.map((f, i) => 
-                                  i === index ? { ...f, personId } : f
-                                ));
+                          
+                          // Add to existing files with default personId null
+                          setInvoiceFiles(prev => [...prev, ...validFiles.map(f => ({ file: f, personId: null }))]);
+                          e.target.value = ''; // Reset input to allow selecting same files again
+                        }}
+                        disabled={isSubmitting}
+                      />
+                      <label htmlFor="invoice-file" className="file-input-label">
+                        {invoiceFiles.length > 0 ? (
+                          <span className="file-selected">
+                            📄 {invoiceFiles.length} file{invoiceFiles.length > 1 ? 's' : ''} selected - Click to add more
+                          </span>
+                        ) : (
+                          <span className="file-placeholder">
+                            📄 Select PDF invoice(s) (optional)
+                          </span>
+                        )}
+                      </label>
+                    </div>
+                    {invoiceFiles.length > 0 && (
+                      <div className="invoice-files-list">
+                        {invoiceFiles.map((item, index) => (
+                          <div key={index} className="invoice-file-item">
+                            <span className="file-name">📄 {item.file.name} ({(item.file.size / 1024 / 1024).toFixed(1)}MB)</span>
+                            {isMedicalExpense && selectedPeople.length > 0 && (
+                              <select
+                                className="invoice-person-select-inline"
+                                value={item.personId || ''}
+                                onChange={(e) => {
+                                  const personId = e.target.value === '' ? null : parseInt(e.target.value);
+                                  setInvoiceFiles(prev => prev.map((f, i) => 
+                                    i === index ? { ...f, personId } : f
+                                  ));
+                                }}
+                                disabled={isSubmitting}
+                              >
+                                <option value="">No person</option>
+                                {selectedPeople.map((person) => (
+                                  <option key={person.id} value={person.id}>
+                                    {person.name}
+                                  </option>
+                                ))}
+                              </select>
+                            )}
+                            <button
+                              type="button"
+                              className="remove-file-btn"
+                              onClick={() => {
+                                setInvoiceFiles(prev => prev.filter((_, i) => i !== index));
                               }}
                               disabled={isSubmitting}
                             >
-                              <option value="">No person</option>
-                              {selectedPeople.map((person) => (
-                                <option key={person.id} value={person.id}>
-                                  {person.name}
-                                </option>
-                              ))}
-                            </select>
-                          )}
-                          <button
-                            type="button"
-                            className="remove-file-btn"
-                            onClick={() => {
-                              setInvoiceFiles(prev => prev.filter((_, i) => i !== index));
-                            }}
-                            disabled={isSubmitting}
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      ))}
+                              ✕
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div className="invoice-note">
+                      <small>PDF files only • Max 10MB each • Select multiple files or add more after creating</small>
                     </div>
-                  )}
-                  <div className="invoice-note">
-                    <small>PDF files only • Max 10MB each • Select multiple files or add more after creating</small>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
-          </div>
+          </CollapsibleSection>
         )}
 
         {/* Row 4: Notes (Requirements 3.2) */}
@@ -1468,46 +1808,6 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
             rows="3"
             placeholder="Additional notes..."
           />
-        </div>
-
-        {/* Add to Future Months checkbox + dropdown (Requirements 1.1, 1.2, 1.7, 2.1, 2.2) */}
-        <div className="form-group future-months-section">
-          <div className="future-months-row">
-            <label className="checkbox-label">
-              <input
-                type="checkbox"
-                checked={futureMonths > 0}
-                onChange={(e) => setFutureMonths(e.target.checked ? 1 : 0)}
-              />
-              <span>Add to Future Months</span>
-            </label>
-            {futureMonths > 0 && (
-              <div className="future-months-count">
-                <select
-                  id="futureMonths"
-                  name="futureMonths"
-                  value={futureMonths}
-                  onChange={(e) => setFutureMonths(parseInt(e.target.value, 10))}
-                  className="future-months-select"
-                >
-                  {FUTURE_MONTHS_OPTIONS.map(option => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-                <span className="months-label">month{futureMonths > 1 ? 's' : ''}</span>
-              </div>
-            )}
-          </div>
-          {futureMonths > 0 && formData.date && (
-            <div className="future-months-preview">
-              <span className="preview-icon">📅</span>
-              <span className="preview-text">
-                Will create {futureMonths} additional expense{futureMonths > 1 ? 's' : ''} {calculateFutureDatePreview(formData.date, futureMonths)}
-              </span>
-            </div>
-          )}
         </div>
 
         {message.text && (

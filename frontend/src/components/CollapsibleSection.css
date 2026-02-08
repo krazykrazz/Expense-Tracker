@@ -1,0 +1,100 @@
+.collapsible-section {
+  margin-bottom: 1rem;
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 4px;
+  background: var(--bg-card, #ffffff);
+}
+
+.collapsible-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.2s ease;
+  border-radius: 4px 4px 0 0;
+}
+
+.collapsible-header:hover {
+  background-color: var(--bg-card-hover, #f8f9fa);
+}
+
+.collapsible-header:focus {
+  outline: 2px solid var(--primary-color, #3b82f6);
+  outline-offset: -2px;
+}
+
+.collapsible-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.collapsible-icon {
+  font-size: 0.75rem;
+  color: var(--text-secondary, #64748b);
+  transition: transform 0.2s ease;
+  display: inline-block;
+  width: 12px;
+}
+
+.collapsible-icon.expanded {
+  transform: rotate(0deg);
+}
+
+.collapsible-icon.collapsed {
+  transform: rotate(0deg);
+}
+
+.collapsible-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--text-primary, #1e293b);
+}
+
+.collapsible-badge {
+  display: inline-block;
+  padding: 0.125rem 0.5rem;
+  background-color: var(--bg-muted, #f1f5f9);
+  color: var(--text-secondary, #64748b);
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.collapsible-error-indicator {
+  color: var(--error-color, #ef4444);
+  font-size: 1rem;
+  margin-left: 0.25rem;
+}
+
+.collapsible-help-icon {
+  color: var(--text-secondary, #64748b);
+  font-size: 0.875rem;
+  cursor: help;
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.collapsible-help-icon:hover {
+  opacity: 1;
+}
+
+.collapsible-content {
+  padding: 1rem;
+  border-top: 1px solid var(--border-color, #e2e8f0);
+  animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

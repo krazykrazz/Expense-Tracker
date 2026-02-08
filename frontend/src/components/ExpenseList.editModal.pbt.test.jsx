@@ -28,6 +28,7 @@ const validPeopleArb = fc.array(fc.record({ id: fc.integer({ min: 1, max: 100 })
 describe('ExpenseList Edit Modal Property-Based Tests', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    sessionStorage.clear();
     global.fetch = vi.fn().mockImplementation((url) => {
       if (url.includes('/api/categories') || url.includes('/categories')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve({ categories: CATEGORIES, budgetableCategories: [], taxDeductibleCategories: [] }) });
@@ -124,8 +125,13 @@ describe('ExpenseList Edit Modal Property-Based Tests', () => {
           fireEvent.click(editButtons[0]);
           await waitFor(() => expect(container.querySelector('.modal-overlay')).toBeTruthy());
           const editModal = container.querySelector('.edit-modal');
-          expect(editModal.querySelector('.insurance-section')).toBeTruthy();
-          expect(editModal.querySelector('.insurance-section input[type="checkbox"]')).toBeTruthy();
+          // Insurance section is now in a CollapsibleSection
+          const insuranceHeader = Array.from(editModal.querySelectorAll('.collapsible-header'))
+            .find(h => h.textContent.includes('Insurance Tracking'));
+          expect(insuranceHeader).toBeTruthy();
+          // Check for insurance checkbox inside the collapsible content
+          const insuranceCheckbox = editModal.querySelector('.insurance-eligibility-row input[type="checkbox"]');
+          expect(insuranceCheckbox).toBeTruthy();
           expect(editModal.querySelector('select[name="people"]')).toBeTruthy();
           unmount();
         }
@@ -170,8 +176,13 @@ describe('ExpenseList Edit Modal Property-Based Tests', () => {
           fireEvent.click(editButtons[0]);
           await waitFor(() => expect(container.querySelector('.modal-overlay')).toBeTruthy());
           const editModal = container.querySelector('.edit-modal');
-          expect(editModal.querySelector('.future-months-section')).toBeTruthy();
-          expect(editModal.querySelector('.future-months-section input[type="checkbox"]')).toBeTruthy();
+          // Future months is now in Advanced Options CollapsibleSection
+          const advancedOptionsHeader = Array.from(editModal.querySelectorAll('.collapsible-header'))
+            .find(h => h.textContent.includes('Advanced Options'));
+          expect(advancedOptionsHeader).toBeTruthy();
+          // Check for future months checkbox inside the collapsible content
+          const futureMonthsCheckbox = editModal.querySelector('.future-months-section input[type="checkbox"]');
+          expect(futureMonthsCheckbox).toBeTruthy();
           const typeSelect = editModal.querySelector('select[name="type"]');
           await waitFor(() => expect(typeSelect.querySelectorAll('option').length).toBe(CATEGORIES.length));
           const typeOptions = Array.from(typeSelect.querySelectorAll('option')).map(opt => opt.value);

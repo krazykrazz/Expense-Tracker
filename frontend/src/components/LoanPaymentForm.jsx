@@ -115,6 +115,7 @@ const LoanPaymentForm = ({
 
     // Validate date is not in the future
     const selectedDate = new Date(paymentDate);
+    selectedDate.setHours(0, 0, 0, 0);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     if (selectedDate > today) {

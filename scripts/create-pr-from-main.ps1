@@ -1,4 +1,4 @@
-# Create PR from Main Branch
+﻿# Create PR from Main Branch
 # This script creates a PR from changes made directly on main branch
 # It creates a temporary hotfix branch and opens a PR for CI verification
 
@@ -30,26 +30,26 @@ function Get-GitHubCompareUrl {
     return $null
 }
 
-Write-Host "🔧 Creating PR from main branch changes" -ForegroundColor Green
+Write-Host "[*] Creating PR from main branch changes" -ForegroundColor Green
 Write-Host ""
 
 # Check if we're in a git repository
 if (-not (Test-Path ".git")) {
-    Write-Host "❌ Not in a git repository" -ForegroundColor Red
+    Write-Host "[X] Not in a git repository" -ForegroundColor Red
     exit 1
 }
 
 # Verify we're on main branch
 $currentBranch = git branch --show-current
 if ($currentBranch -ne "main") {
-    Write-Host "❌ This script must be run from the main branch" -ForegroundColor Red
+    Write-Host "[X] This script must be run from the main branch" -ForegroundColor Red
     Write-Host "Current branch: $currentBranch" -ForegroundColor Yellow
     Write-Host ""
     Write-Host "Switch to main first: git checkout main" -ForegroundColor White
     exit 1
 }
 
-Write-Host "✅ On main branch" -ForegroundColor Green
+Write-Host "[OK] On main branch" -ForegroundColor Green
 
 
 # Check for uncommitted changes
@@ -75,7 +75,7 @@ if ($status) {
 # Handle uncommitted changes
 if ($hasUncommittedChanges) {
     Write-Host ""
-    Write-Host "📝 Uncommitted changes detected:" -ForegroundColor Yellow
+    Write-Host "[!] Uncommitted changes detected:" -ForegroundColor Yellow
     git status --short
     Write-Host ""
     
@@ -83,31 +83,31 @@ if ($hasUncommittedChanges) {
         Write-Host "You have staged changes ready to commit." -ForegroundColor Cyan
         $commitNow = Read-Host "Commit staged changes now? (y/n)"
         if ($commitNow -eq 'y' -or $commitNow -eq 'yes') {
-            Write-Host "💾 Committing staged changes..." -ForegroundColor Yellow
+            Write-Host "[..] Committing staged changes..." -ForegroundColor Yellow
             git commit -m $Title
             if ($LASTEXITCODE -ne 0) {
-                Write-Host "❌ Failed to commit changes" -ForegroundColor Red
+                Write-Host "[X] Failed to commit changes" -ForegroundColor Red
                 exit 1
             }
-            Write-Host "✅ Changes committed" -ForegroundColor Green
+            Write-Host "[OK] Changes committed" -ForegroundColor Green
         } else {
-            Write-Host "❌ Please commit or stash your changes first" -ForegroundColor Red
+            Write-Host "[X] Please commit or stash your changes first" -ForegroundColor Red
             exit 1
         }
     } elseif ($hasUnstagedChanges) {
         Write-Host "You have unstaged changes." -ForegroundColor Cyan
         $stageAll = Read-Host "Stage and commit all changes? (y/n)"
         if ($stageAll -eq 'y' -or $stageAll -eq 'yes') {
-            Write-Host "💾 Staging and committing all changes..." -ForegroundColor Yellow
+            Write-Host "[..] Staging and committing all changes..." -ForegroundColor Yellow
             git add -A
             git commit -m $Title
             if ($LASTEXITCODE -ne 0) {
-                Write-Host "❌ Failed to commit changes" -ForegroundColor Red
+                Write-Host "[X] Failed to commit changes" -ForegroundColor Red
                 exit 1
             }
-            Write-Host "✅ Changes committed" -ForegroundColor Green
+            Write-Host "[OK] Changes committed" -ForegroundColor Green
         } else {
-            Write-Host "❌ Please commit or stash your changes first" -ForegroundColor Red
+            Write-Host "[X] Please commit or stash your changes first" -ForegroundColor Red
             exit 1
         }
     }
@@ -115,16 +115,16 @@ if ($hasUncommittedChanges) {
 
 # Check if there are commits on main that aren't on origin/main
 Write-Host ""
-Write-Host "🔍 Checking for local commits..." -ForegroundColor Yellow
+Write-Host "[..] Checking for local commits..." -ForegroundColor Yellow
 git fetch origin main 2>$null
 $localCommits = git log origin/main..HEAD --oneline 2>$null
 if (-not $localCommits) {
-    Write-Host "❌ No local commits found to create a PR from" -ForegroundColor Red
+    Write-Host "[X] No local commits found to create a PR from" -ForegroundColor Red
     Write-Host "Make some changes and commit them first, or use this script after committing." -ForegroundColor Yellow
     exit 1
 }
 
-Write-Host "✅ Found local commits:" -ForegroundColor Green
+Write-Host "[OK] Found local commits:" -ForegroundColor Green
 $localCommits | ForEach-Object { Write-Host "   $_" -ForegroundColor Gray }
 
 
@@ -133,35 +133,35 @@ $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
 $branchName = "hotfix/$timestamp"
 
 Write-Host ""
-Write-Host "🌿 Creating temporary branch: $branchName" -ForegroundColor Yellow
+Write-Host "[..] Creating temporary branch: $branchName" -ForegroundColor Yellow
 
 # Create the temporary branch from current HEAD
 git checkout -b $branchName
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "❌ Failed to create temporary branch" -ForegroundColor Red
+    Write-Host "[X] Failed to create temporary branch" -ForegroundColor Red
     exit 1
 }
-Write-Host "✅ Branch created" -ForegroundColor Green
+Write-Host "[OK] Branch created" -ForegroundColor Green
 
 # Push the temporary branch to origin
-Write-Host "📤 Pushing branch to origin..." -ForegroundColor Yellow
+Write-Host "[..] Pushing branch to origin..." -ForegroundColor Yellow
 git push -u origin $branchName
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "❌ Failed to push branch to origin" -ForegroundColor Red
+    Write-Host "[X] Failed to push branch to origin" -ForegroundColor Red
     Write-Host "Cleaning up local branch..." -ForegroundColor Yellow
     git checkout main
     git branch -D $branchName
     exit 1
 }
-Write-Host "✅ Branch pushed to origin" -ForegroundColor Green
+Write-Host "[OK] Branch pushed to origin" -ForegroundColor Green
 
 # Reset main to origin/main (remove the local commits from main)
 Write-Host ""
-Write-Host "🔄 Resetting main to origin/main..." -ForegroundColor Yellow
+Write-Host "[..] Resetting main to origin/main..." -ForegroundColor Yellow
 git checkout main
 git reset --hard origin/main
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "⚠️  Warning: Failed to reset main branch" -ForegroundColor Yellow
+    Write-Host "[!] Warning: Failed to reset main branch" -ForegroundColor Yellow
     Write-Host "You may need to manually reset main after the PR is merged" -ForegroundColor Yellow
 }
 
@@ -179,13 +179,13 @@ $ghAvailable = Get-Command gh -ErrorAction SilentlyContinue
 if ($ghAvailable) {
     # Create PR via GitHub CLI
     Write-Host ""
-    Write-Host "🔗 Creating Pull Request via GitHub CLI..." -ForegroundColor Yellow
+    Write-Host "[..] Creating Pull Request via GitHub CLI..." -ForegroundColor Yellow
     
     $prUrl = gh pr create --base main --head $branchName --title $Title --body $prBody 2>&1
     
     if ($LASTEXITCODE -eq 0) {
         Write-Host ""
-        Write-Host "🎉 Pull Request created successfully!" -ForegroundColor Green
+        Write-Host "[OK] Pull Request created successfully!" -ForegroundColor Green
         Write-Host ""
         Write-Host "PR URL: $prUrl" -ForegroundColor Cyan
         Write-Host ""
@@ -200,7 +200,7 @@ if ($ghAvailable) {
         Write-Host "   git pull origin main" -ForegroundColor Gray
         Write-Host ""
     } else {
-        Write-Host "❌ Failed to create PR: $prUrl" -ForegroundColor Red
+        Write-Host "[X] Failed to create PR: $prUrl" -ForegroundColor Red
         Write-Host ""
         Write-Host "You can create the PR manually via the GitHub web UI" -ForegroundColor Yellow
         $compareUrl = Get-GitHubCompareUrl -BranchName $branchName
@@ -211,7 +211,7 @@ if ($ghAvailable) {
 } else {
     # GitHub CLI not available - provide web UI instructions
     Write-Host ""
-    Write-Host "⚠️  GitHub CLI (gh) not found" -ForegroundColor Yellow
+    Write-Host "[!] GitHub CLI (gh) not found" -ForegroundColor Yellow
     Write-Host "To install: https://cli.github.com/" -ForegroundColor Gray
     Write-Host ""
     Write-Host "Create your PR manually via the GitHub web UI:" -ForegroundColor Cyan
@@ -240,5 +240,5 @@ if ($ghAvailable) {
 }
 
 Write-Host ""
-Write-Host "📍 You are now on the main branch" -ForegroundColor Cyan
+Write-Host "[*] You are now on the main branch" -ForegroundColor Cyan
 Write-Host "The hotfix branch '$branchName' is ready for PR review" -ForegroundColor Gray

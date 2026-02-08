@@ -155,8 +155,10 @@ describe('ExpenseList Edit Modal Property-Based Tests', () => {
           fireEvent.click(editButtons[0]);
           await waitFor(() => expect(container.querySelector('.modal-overlay')).toBeTruthy());
           const editModal = container.querySelector('.edit-modal');
-          expect(editModal.querySelector('.invoice-section')).toBeTruthy();
-          expect(editModal.querySelector('.invoice-section .invoice-upload-wrapper')).toBeTruthy();
+          // Invoice section is now wrapped in CollapsibleSection
+          const invoiceSection = Array.from(editModal.querySelectorAll('.collapsible-header'))
+            .find(h => h.textContent.includes('Invoice Attachments'));
+          expect(invoiceSection).toBeTruthy();
           unmount();
         }
       ), { numRuns: 100 }

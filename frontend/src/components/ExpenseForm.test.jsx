@@ -2470,3 +2470,1047 @@ describe('ExpenseForm - Error Handling and Auto-Expansion', () => {
     });
   });
 });
+
+
+/**
+ * ExpenseForm - Initial State Logic Tests
+ * Tests for Requirements 1.1, 1.2
+ * 
+ * Validates:
+ * - Create mode has all sections collapsed
+ * - Edit mode expands sections with data
+ * - SessionStorage overrides default states
+ */
+describe('ExpenseForm - Initial State Logic', () => {
+  const mockCategories = [
+    'Other', 'Groceries', 'Gas', 'Dining Out', 'Tax - Medical', 'Tax - Donation'
+  ];
+
+  const mockPaymentMethods = [
+    { id: 1, display_name: 'Cash', type: 'cash', is_active: 1 },
+    { id: 2, display_name: 'Debit', type: 'debit', is_active: 1 },
+    { id: 3, display_name: 'VISA', type: 'credit_card', is_active: 1 }
+  ];
+
+  const mockPeople = [
+    { id: 1, name: 'John Doe', dateOfBirth: '1990-01-01' },
+    { id: 2, name: 'Jane Smith', dateOfBirth: '1985-05-15' }
+  ];
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    sessionStorage.clear();
+
+    // Mock API responses
+    categoriesApi.getCategories.mockResolvedValue(mockCategories);
+    paymentMethodApi.getActivePaymentMethods.mockResolvedValue(mockPaymentMethods);
+    paymentMethodApi.getPaymentMethod.mockResolvedValue(null);
+    expenseApi.getPlaces.mockResolvedValue([]);
+    peopleApi.getPeople.mockResolvedValue(mockPeople);
+    categorySuggestionApi.fetchCategorySuggestion.mockResolvedValue({ category: null, confidence: 0 });
+  });
+
+  afterEach(() => {
+    sessionStorage.clear();
+  });
+
+  /**
+   * Test: Create mode has all sections collapsed
+   * Requirement 1.1
+   */
+  it('should render all sections collapsed in create mode', async () => {
+    const { container } = render(
+      <ExpenseForm onExpenseAdded={vi.fn()} people={mockPeople} />
+    );
+
+    // Wait for form to load
+    await waitFor(() => {
+      expect(screen.getByLabelText(/type/i)).toBeInTheDocument();
+    });
+
+    // Find all collapsible section headers
+    const sectionHeaders = container.querySelectorAll('.collapsible-header');
+    
+    // All sections should be collapsed (aria-expanded="false")
+    sectionHeaders.forEach(header => {
+      const ariaExpanded = header.getAttribute('aria-expanded');
+      expect(ariaExpanded).toBe('false');
+    });
+
+    // Verify core fields are visible
+    expect(screen.getByLabelText(/date/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/place/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/type/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/amount/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/payment method/i)).toBeInTheDocument();
+  });
+
+  /**
+   * Test: Edit mode expands sections with data - Advanced Options
+   * Requirement 1.2
+   */
+  it('should expand Advanced Options section when editing expense with future months', async () => {
+    const expenseWithFutureMonths = {
+      id: 1,
+      date: '2025-01-15',
+      place: 'Test Store',
+      amount: 100,
+      type: 'Groceries',
+      payment_method_id: 1,
+      future_months: 3,
+      posted_date: null
+    };
+
+    const { container } = render(
+      <ExpenseForm 
+        onExpenseAdded={vi.fn()} 
+        people={mockPeople}
+        expense={expenseWithFutureMonths}
+      />
+    );
+
+    // Wait for form to load and Advanced Options section to appear
+    await waitFor(() => {
+      expect(screen.getByText('Advanced Options')).toBeInTheDocument();
+    });
+
+    // Find Advanced Options section header
+    const advancedOptionsHeader = Array.from(
+      container.querySelectorAll('.collapsible-header')
+    ).find(header => 
+      header.querySelector('.collapsible-title')?.textContent.includes('Advanced Options')
+    );
+
+    expect(advancedOptionsHeader).toBeTruthy();
+    expect(advancedOptionsHeader.getAttribute('aria-expanded')).toBe('true');
+  });
+
+  /**
+   * Test: Edit mode expands sections with data - Posted Date
+   * Requirement 1.2
+   */
+  it('should expand Advanced Options section when editing expense with posted date', async () => {
+    const expenseWithPostedDate = {
+      id: 1,
+      date: '2025-01-15',
+      place: 'Test Store',
+      amount: 100,
+      type: 'Groceries',
+      payment_method_id: 3, // Credit card
+      future_months: 0,
+      posted_date: '2025-01-20'
+    };
+
+    const { container } = render(
+      <ExpenseForm 
+        onExpenseAdded={vi.fn()} 
+        people={mockPeople}
+        expense={expenseWithPostedDate}
+      />
+    );
+
+    // Wait for form to load and Advanced Options section to appear
+    await waitFor(() => {
+      expect(screen.getByText('Advanced Options')).toBeInTheDocument();
+    });
+
+    // Find Advanced Options section header
+    const advancedOptionsHeader = Array.from(
+      container.querySelectorAll('.collapsible-header')
+    ).find(header => 
+      header.querySelector('.collapsible-title')?.textContent.includes('Advanced Options')
+    );
+
+    expect(advancedOptionsHeader).toBeTruthy();
+    expect(advancedOptionsHeader.getAttribute('aria-expanded')).toBe('true');
+  });
+
+  /**
+   * Test: Edit mode expands sections with data - Reimbursement
+   * Requirement 1.2
+   */
+  it('should expand Reimbursement section when editing non-medical expense with original cost', async () => {
+    const expenseWithReimbursement = {
+      id: 1,
+      date: '2025-01-15',
+      place: 'Test Store',
+      amount: 50,
+      type: 'Groceries',
+      payment_method_id: 1,
+      original_cost: 100
+    };
+
+    const { container } = render(
+      <ExpenseForm 
+        onExpenseAdded={vi.fn()} 
+        people={mockPeople}
+        expense={expenseWithReimbursement}
+      />
+    );
+
+    // Wait for form to load and Reimbursement section to appear
+    await waitFor(() => {
+      expect(screen.getByText('Reimbursement')).toBeInTheDocument();
+    });
+
+    // Find Reimbursement section header
+    const reimbursementHeader = Array.from(
+      container.querySelectorAll('.collapsible-header')
+    ).find(header => 
+      header.querySelector('.collapsible-title')?.textContent.includes('Reimbursement')
+    );
+
+    expect(reimbursementHeader).toBeTruthy();
+    expect(reimbursementHeader.getAttribute('aria-expanded')).toBe('true');
+  });
+
+  /**
+   * Test: Edit mode expands sections with data - Insurance
+   * Requirement 1.2
+   */
+  it('should expand Insurance section when editing medical expense with insurance enabled', async () => {
+    const expenseWithInsurance = {
+      id: 1,
+      date: '2025-01-15',
+      place: 'Medical Clinic',
+      amount: 200,
+      type: 'Tax - Medical',
+      payment_method_id: 1,
+      insurance_eligible: 1,
+      claim_status: 'in_progress',
+      original_cost: 300
+    };
+
+    const { container } = render(
+      <ExpenseForm 
+        onExpenseAdded={vi.fn()} 
+        people={mockPeople}
+        expense={expenseWithInsurance}
+      />
+    );
+
+    // Wait for form to load and Insurance section to appear
+    await waitFor(() => {
+      expect(screen.getByText('Insurance Tracking')).toBeInTheDocument();
+    });
+
+    // Find Insurance Tracking section header
+    const insuranceHeader = Array.from(
+      container.querySelectorAll('.collapsible-header')
+    ).find(header => 
+      header.querySelector('.collapsible-title')?.textContent.includes('Insurance Tracking')
+    );
+
+    expect(insuranceHeader).toBeTruthy();
+    expect(insuranceHeader.getAttribute('aria-expanded')).toBe('true');
+  });
+
+  /**
+   * Test: Edit mode expands sections with data - People
+   * Requirement 1.2
+   */
+  it('should expand People section when editing medical expense with people assigned', async () => {
+    const expenseWithPeople = {
+      id: 1,
+      date: '2025-01-15',
+      place: 'Medical Clinic',
+      amount: 200,
+      type: 'Tax - Medical',
+      payment_method_id: 1,
+      people: [
+        { id: 1, name: 'John Doe', allocation_amount: 100 },
+        { id: 2, name: 'Jane Smith', allocation_amount: 100 }
+      ]
+    };
+
+    const { container } = render(
+      <ExpenseForm 
+        onExpenseAdded={vi.fn()} 
+        people={mockPeople}
+        expense={expenseWithPeople}
+      />
+    );
+
+    // Wait for form to load and People section to appear
+    await waitFor(() => {
+      expect(screen.getByText('People Assignment')).toBeInTheDocument();
+    });
+
+    // Find People Assignment section header
+    const peopleHeader = Array.from(
+      container.querySelectorAll('.collapsible-header')
+    ).find(header => 
+      header.querySelector('.collapsible-title')?.textContent.includes('People Assignment')
+    );
+
+    expect(peopleHeader).toBeTruthy();
+    expect(peopleHeader.getAttribute('aria-expanded')).toBe('true');
+  });
+
+  /**
+   * Test: Edit mode expands sections with data - Invoices
+   * Requirement 1.2
+   */
+  it('should expand Invoice section when editing tax-deductible expense with invoices', async () => {
+    const expenseWithInvoices = {
+      id: 1,
+      date: '2025-01-15',
+      place: 'Medical Clinic',
+      amount: 200,
+      type: 'Tax - Medical',
+      payment_method_id: 1,
+      invoices: [
+        { id: 1, filename: 'invoice1.pdf', person_id: 1 },
+        { id: 2, filename: 'invoice2.pdf', person_id: 2 }
+      ]
+    };
+
+    // Mock invoice fetch
+    global.fetch = vi.fn((url) => {
+      if (url.includes('/invoices')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(expenseWithInvoices.invoices)
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve([])
+      });
+    });
+
+    const { container } = render(
+      <ExpenseForm 
+        onExpenseAdded={vi.fn()} 
+        people={mockPeople}
+        expense={expenseWithInvoices}
+      />
+    );
+
+    // Wait for form to load and Invoice section to appear
+    await waitFor(() => {
+      expect(screen.getByText('Invoice Attachments')).toBeInTheDocument();
+    });
+
+    // Find Invoice Attachments section header
+    const invoiceHeader = Array.from(
+      container.querySelectorAll('.collapsible-header')
+    ).find(header => 
+      header.querySelector('.collapsible-title')?.textContent.includes('Invoice Attachments')
+    );
+
+    expect(invoiceHeader).toBeTruthy();
+    expect(invoiceHeader.getAttribute('aria-expanded')).toBe('true');
+  });
+
+  /**
+   * Test: SessionStorage overrides default states
+   * Requirement 1.2
+   */
+  it('should use sessionStorage state when available, overriding default expansion logic', async () => {
+    // Set sessionStorage to have Advanced Options expanded in create mode
+    // (normally it would be collapsed in create mode)
+    const customState = {
+      advancedOptions: true,
+      reimbursement: false,
+      insurance: false,
+      people: false,
+      invoices: false
+    };
+    sessionStorage.setItem('expenseForm_expansion_create', JSON.stringify(customState));
+
+    const { container } = render(
+      <ExpenseForm onExpenseAdded={vi.fn()} people={mockPeople} />
+    );
+
+    // Wait for form to load and Advanced Options section to appear
+    await waitFor(() => {
+      expect(screen.getByText('Advanced Options')).toBeInTheDocument();
+    });
+
+    // Find Advanced Options section header
+    const advancedOptionsHeader = Array.from(
+      container.querySelectorAll('.collapsible-header')
+    ).find(header => 
+      header.querySelector('.collapsible-title')?.textContent.includes('Advanced Options')
+    );
+
+    // Should be expanded due to sessionStorage override
+    expect(advancedOptionsHeader).toBeTruthy();
+    expect(advancedOptionsHeader.getAttribute('aria-expanded')).toBe('true');
+  });
+
+  /**
+   * Test: Edit mode collapses sections without data
+   * Requirement 1.2
+   */
+  it('should collapse sections without data in edit mode', async () => {
+    const expenseWithoutAdvancedData = {
+      id: 1,
+      date: '2025-01-15',
+      place: 'Test Store',
+      amount: 100,
+      type: 'Groceries',
+      payment_method_id: 1,
+      future_months: 0,
+      posted_date: null,
+      original_cost: null
+    };
+
+    const { container } = render(
+      <ExpenseForm 
+        onExpenseAdded={vi.fn()} 
+        people={mockPeople}
+        expense={expenseWithoutAdvancedData}
+      />
+    );
+
+    // Wait for form to load and sections to appear
+    await waitFor(() => {
+      expect(screen.getByText('Advanced Options')).toBeInTheDocument();
+      expect(screen.getByText('Reimbursement')).toBeInTheDocument();
+    });
+
+    // Find Advanced Options section header
+    const advancedOptionsHeader = Array.from(
+      container.querySelectorAll('.collapsible-header')
+    ).find(header => 
+      header.querySelector('.collapsible-title')?.textContent.includes('Advanced Options')
+    );
+
+    // Should be collapsed because no advanced data
+    expect(advancedOptionsHeader).toBeTruthy();
+    expect(advancedOptionsHeader.getAttribute('aria-expanded')).toBe('false');
+
+    // Find Reimbursement section header
+    const reimbursementHeader = Array.from(
+      container.querySelectorAll('.collapsible-header')
+    ).find(header => 
+      header.querySelector('.collapsible-title')?.textContent.includes('Reimbursement')
+    );
+
+    // Should be collapsed because no reimbursement data
+    expect(reimbursementHeader).toBeTruthy();
+    expect(reimbursementHeader.getAttribute('aria-expanded')).toBe('false');
+  });
+});
+
+
+
+describe('ExpenseForm - Data Preservation During Collapse', () => {
+  const mockCategories = [
+    'Other', 'Groceries', 'Gas', 'Dining Out', 'Tax - Medical', 'Tax - Donation'
+  ];
+
+  const mockPaymentMethods = [
+    { id: 1, display_name: 'Cash', type: 'cash', is_active: 1 },
+    { id: 2, display_name: 'Debit', type: 'debit', is_active: 1 },
+    { id: 3, display_name: 'VISA', type: 'credit_card', is_active: 1 }
+  ];
+
+  const mockPeople = [
+    { id: 1, name: 'John Doe', dateOfBirth: '1990-01-01' },
+    { id: 2, name: 'Jane Smith', dateOfBirth: '1985-05-15' }
+  ];
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    sessionStorage.clear();
+    
+    // Mock API responses
+    global.fetch.mockImplementation((url) => {
+      if (url.includes('/api/categories')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            categories: mockCategories,
+            budgetableCategories: [],
+            taxDeductibleCategories: []
+          })
+        });
+      }
+      if (url.includes('/places')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([])
+        });
+      }
+      if (url.includes('/api/people')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(mockPeople)
+        });
+      }
+      if (url.includes('/suggest-category')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ category: null })
+        });
+      }
+      return Promise.reject(new Error('Unknown URL'));
+    });
+
+    categoriesApi.getCategories.mockResolvedValue(mockCategories);
+    expenseApi.getPlaces.mockResolvedValue([]);
+    peopleApi.getPeople.mockResolvedValue(mockPeople);
+    categorySuggestionApi.fetchCategorySuggestion.mockResolvedValue({ category: null });
+    paymentMethodApi.getActivePaymentMethods.mockResolvedValue(mockPaymentMethods);
+    paymentMethodApi.getPaymentMethod.mockResolvedValue(null);
+  });
+
+  /**
+   * Test: Data persists after collapsing section
+   * Requirements: 1.4
+   */
+  it('should preserve posted date data when Advanced Options section is collapsed', async () => {
+    const { container } = render(<ExpenseForm onExpenseAdded={vi.fn()} />);
+
+    // Wait for form to load
+    await waitFor(() => {
+      expect(screen.getByLabelText(/Date/i)).toBeInTheDocument();
+    });
+
+    // Fill in core fields
+    fireEvent.change(screen.getByLabelText(/Date/i), { target: { value: '2024-06-15' } });
+    fireEvent.change(screen.getByLabelText(/Place/i), { target: { value: 'Test Place' } });
+    fireEvent.change(screen.getByLabelText(/Amount/i), { target: { value: '100' } });
+    
+    // Select credit card payment method to enable posted date field
+    const paymentMethodSelect = screen.getByLabelText(/Payment Method/i);
+    fireEvent.change(paymentMethodSelect, { target: { value: '3' } }); // VISA
+
+    // Find and expand Advanced Options section
+    const advancedHeader = container.querySelector('.collapsible-header');
+    expect(advancedHeader).toBeInTheDocument();
+    fireEvent.click(advancedHeader);
+
+    // Wait for posted date field to appear
+    await waitFor(() => {
+      expect(screen.getByLabelText(/Posted Date/i)).toBeInTheDocument();
+    });
+
+    // Enter posted date
+    const postedDateInput = screen.getByLabelText(/Posted Date/i);
+    fireEvent.change(postedDateInput, { target: { value: '2024-06-20' } });
+    expect(postedDateInput.value).toBe('2024-06-20');
+
+    // Collapse the section
+    fireEvent.click(advancedHeader);
+
+    // Verify section is collapsed (posted date field not in DOM)
+    await waitFor(() => {
+      expect(screen.queryByLabelText(/Posted Date/i)).not.toBeInTheDocument();
+    });
+
+    // Re-expand the section
+    fireEvent.click(advancedHeader);
+
+    // Verify data is preserved
+    await waitFor(() => {
+      const postedDateAfterExpand = screen.getByLabelText(/Posted Date/i);
+      expect(postedDateAfterExpand).toBeInTheDocument();
+      expect(postedDateAfterExpand.value).toBe('2024-06-20');
+    });
+  });
+
+  /**
+   * Test: Data displays correctly after re-expanding
+   * Requirements: 1.4
+   */
+  it('should preserve generic original cost when Reimbursement section is collapsed and re-expanded', async () => {
+    const { container } = render(<ExpenseForm onExpenseAdded={vi.fn()} />);
+
+    // Wait for form to load
+    await waitFor(() => {
+      expect(screen.getByLabelText(/Date/i)).toBeInTheDocument();
+    });
+
+    // Fill in core fields
+    fireEvent.change(screen.getByLabelText(/Date/i), { target: { value: '2024-06-15' } });
+    fireEvent.change(screen.getByLabelText(/Place/i), { target: { value: 'Test Place' } });
+    fireEvent.change(screen.getByLabelText(/Type/i), { target: { value: 'Other' } });
+    fireEvent.change(screen.getByLabelText(/Amount/i), { target: { value: '75' } });
+
+    // Find and expand Reimbursement section
+    const headers = container.querySelectorAll('.collapsible-header');
+    const reimbursementHeader = Array.from(headers).find(h => 
+      h.textContent.includes('Reimbursement')
+    );
+    
+    expect(reimbursementHeader).toBeInTheDocument();
+    fireEvent.click(reimbursementHeader);
+
+    // Wait for original cost field to appear
+    await waitFor(() => {
+      expect(screen.getByLabelText(/Original Cost/i)).toBeInTheDocument();
+    });
+
+    // Enter original cost
+    const originalCostInput = screen.getByLabelText(/Original Cost/i);
+    fireEvent.change(originalCostInput, { target: { value: '100' } });
+    expect(originalCostInput.value).toBe('100');
+
+    // Verify reimbursement breakdown is displayed
+    await waitFor(() => {
+      expect(screen.getByText(/Charged:/i)).toBeInTheDocument();
+      expect(screen.getByText(/\$100\.00/)).toBeInTheDocument();
+      expect(screen.getByText(/Reimbursed:/i)).toBeInTheDocument();
+      expect(screen.getByText(/\$25\.00/)).toBeInTheDocument();
+    });
+
+    // Collapse the section
+    fireEvent.click(reimbursementHeader);
+
+    // Verify section is collapsed
+    await waitFor(() => {
+      expect(screen.queryByLabelText(/Original Cost/i)).not.toBeInTheDocument();
+    });
+
+    // Re-expand the section
+    fireEvent.click(reimbursementHeader);
+
+    // Verify data and breakdown are preserved
+    await waitFor(() => {
+      const originalCostAfterExpand = screen.getByLabelText(/Original Cost/i);
+      expect(originalCostAfterExpand).toBeInTheDocument();
+      expect(originalCostAfterExpand.value).toBe('100');
+      
+      // Verify breakdown is still displayed correctly
+      expect(screen.getByText(/Charged:/i)).toBeInTheDocument();
+      expect(screen.getByText(/\$100\.00/)).toBeInTheDocument();
+      expect(screen.getByText(/Reimbursed:/i)).toBeInTheDocument();
+      expect(screen.getByText(/\$25\.00/)).toBeInTheDocument();
+    });
+  });
+
+  /**
+   * Test: Form submission includes collapsed section data
+   * Requirements: 1.4
+   */
+  it('should include data from collapsed sections in form submission', async () => {
+    expenseApi.createExpense.mockResolvedValue({ 
+      id: 1, 
+      type: 'Other',
+      posted_date: '2024-06-20'
+    });
+
+    const onExpenseAdded = vi.fn();
+    const { container } = render(<ExpenseForm onExpenseAdded={onExpenseAdded} />);
+
+    // Wait for form to load
+    await waitFor(() => {
+      expect(screen.getByLabelText(/Date/i)).toBeInTheDocument();
+    });
+
+    // Fill in core fields
+    fireEvent.change(screen.getByLabelText(/Date/i), { target: { value: '2024-06-15' } });
+    fireEvent.change(screen.getByLabelText(/Place/i), { target: { value: 'Test Store' } });
+    fireEvent.change(screen.getByLabelText(/Type/i), { target: { value: 'Other' } });
+    fireEvent.change(screen.getByLabelText(/Amount/i), { target: { value: '50' } });
+    
+    // Select credit card to enable posted date
+    const paymentMethodSelect = screen.getByLabelText(/Payment Method/i);
+    fireEvent.change(paymentMethodSelect, { target: { value: '3' } }); // VISA
+
+    // Expand Advanced Options and enter posted date
+    const advancedHeader = container.querySelector('.collapsible-header');
+    fireEvent.click(advancedHeader);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/Posted Date/i)).toBeInTheDocument();
+    });
+
+    const postedDateInput = screen.getByLabelText(/Posted Date/i);
+    fireEvent.change(postedDateInput, { target: { value: '2024-06-20' } });
+
+    // Collapse the Advanced Options section
+    fireEvent.click(advancedHeader);
+
+    // Verify section is collapsed
+    await waitFor(() => {
+      expect(screen.queryByLabelText(/Posted Date/i)).not.toBeInTheDocument();
+    });
+
+    // Submit the form
+    const submitButton = screen.getByRole('button', { name: /Add Expense/i });
+    fireEvent.click(submitButton);
+
+    // Verify the API was called with the posted_date from the collapsed section
+    await waitFor(() => {
+      expect(expenseApi.createExpense).toHaveBeenCalledWith(
+        expect.objectContaining({
+          date: '2024-06-15',
+          place: 'Test Store',
+          type: 'Other',
+          amount: '50',
+          payment_method_id: 3,
+          posted_date: '2024-06-20' // Data from collapsed section
+        }),
+        null, // people allocations
+        0 // future months
+      );
+    });
+  });
+
+  /**
+   * Test: Insurance data persists when section is collapsed
+   * Requirements: 1.4
+   */
+  it('should preserve insurance data when Insurance section is collapsed', async () => {
+    const { container } = render(<ExpenseForm onExpenseAdded={vi.fn()} people={mockPeople} />);
+
+    // Wait for form to load
+    await waitFor(() => {
+      expect(screen.getByLabelText(/Date/i)).toBeInTheDocument();
+    });
+
+    // Fill in core fields and select medical type
+    fireEvent.change(screen.getByLabelText(/Date/i), { target: { value: '2024-06-15' } });
+    fireEvent.change(screen.getByLabelText(/Place/i), { target: { value: 'Hospital' } });
+    fireEvent.change(screen.getByLabelText(/Type/i), { target: { value: 'Tax - Medical' } });
+    fireEvent.change(screen.getByLabelText(/Amount/i), { target: { value: '200' } });
+
+    // Find and expand Insurance section
+    const headers = container.querySelectorAll('.collapsible-header');
+    const insuranceHeader = Array.from(headers).find(h => 
+      h.textContent.includes('Insurance Tracking')
+    );
+    
+    expect(insuranceHeader).toBeInTheDocument();
+    fireEvent.click(insuranceHeader);
+
+    // Wait for insurance checkbox to appear
+    await waitFor(() => {
+      expect(screen.getByLabelText(/Eligible for Insurance Reimbursement/i)).toBeInTheDocument();
+    });
+
+    // Enable insurance and fill in details
+    const insuranceCheckbox = screen.getByLabelText(/Eligible for Insurance Reimbursement/i);
+    fireEvent.click(insuranceCheckbox);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/Original Cost/i)).toBeInTheDocument();
+    });
+
+    const originalCostInput = screen.getByLabelText(/Original Cost/i);
+    const claimStatusSelect = screen.getByLabelText(/Claim Status/i);
+    
+    fireEvent.change(originalCostInput, { target: { value: '300' } });
+    fireEvent.change(claimStatusSelect, { target: { value: 'in_progress' } });
+
+    expect(originalCostInput.value).toBe('300');
+    expect(claimStatusSelect.value).toBe('in_progress');
+
+    // Collapse the section
+    fireEvent.click(insuranceHeader);
+
+    // Verify section is collapsed
+    await waitFor(() => {
+      expect(screen.queryByLabelText(/Original Cost/i)).not.toBeInTheDocument();
+    });
+
+    // Re-expand the section
+    fireEvent.click(insuranceHeader);
+
+    // Verify all insurance data is preserved
+    await waitFor(() => {
+      const insuranceCheckboxAfter = screen.getByLabelText(/Eligible for Insurance Reimbursement/i);
+      const originalCostAfter = screen.getByLabelText(/Original Cost/i);
+      const claimStatusAfter = screen.getByLabelText(/Claim Status/i);
+      
+      expect(insuranceCheckboxAfter).toBeChecked();
+      expect(originalCostAfter.value).toBe('300');
+      expect(claimStatusAfter.value).toBe('in_progress');
+    });
+  });
+
+  /**
+   * Test: Multiple sections preserve data independently
+   * Requirements: 1.4
+   */
+  it('should preserve data in multiple collapsed sections independently', async () => {
+    const { container } = render(<ExpenseForm onExpenseAdded={vi.fn()} />);
+
+    // Wait for form to load
+    await waitFor(() => {
+      expect(screen.getByLabelText(/Date/i)).toBeInTheDocument();
+    });
+
+    // Fill in core fields
+    fireEvent.change(screen.getByLabelText(/Date/i), { target: { value: '2024-06-15' } });
+    fireEvent.change(screen.getByLabelText(/Place/i), { target: { value: 'Test Place' } });
+    fireEvent.change(screen.getByLabelText(/Type/i), { target: { value: 'Other' } });
+    fireEvent.change(screen.getByLabelText(/Amount/i), { target: { value: '50' } });
+    
+    // Select credit card
+    const paymentMethodSelect = screen.getByLabelText(/Payment Method/i);
+    fireEvent.change(paymentMethodSelect, { target: { value: '3' } });
+
+    // Expand and fill Advanced Options
+    const headers = container.querySelectorAll('.collapsible-header');
+    const advancedHeader = headers[0];
+    fireEvent.click(advancedHeader);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/Posted Date/i)).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText(/Posted Date/i), { target: { value: '2024-06-20' } });
+
+    // Expand and fill Reimbursement section
+    const reimbursementHeader = Array.from(headers).find(h => 
+      h.textContent.includes('Reimbursement')
+    );
+    fireEvent.click(reimbursementHeader);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/Original Cost/i)).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText(/Original Cost/i), { target: { value: '75' } });
+
+    // Collapse both sections
+    fireEvent.click(advancedHeader);
+    fireEvent.click(reimbursementHeader);
+
+    // Verify both are collapsed
+    await waitFor(() => {
+      expect(screen.queryByLabelText(/Posted Date/i)).not.toBeInTheDocument();
+      expect(screen.queryByLabelText(/Original Cost/i)).not.toBeInTheDocument();
+    });
+
+    // Re-expand Advanced Options
+    fireEvent.click(advancedHeader);
+
+    // Verify Advanced Options data is preserved
+    await waitFor(() => {
+      const postedDate = screen.getByLabelText(/Posted Date/i);
+      expect(postedDate.value).toBe('2024-06-20');
+    });
+
+    // Re-expand Reimbursement
+    fireEvent.click(reimbursementHeader);
+
+    // Verify Reimbursement data is preserved
+    await waitFor(() => {
+      const originalCost = screen.getByLabelText(/Original Cost/i);
+      expect(originalCost.value).toBe('75');
+    });
+  });
+});
+
+/**
+ * State Reset After Submission Tests
+ * Requirements: 11.3
+ */
+describe('ExpenseForm - State Reset After Submission', () => {
+  /**
+   * Test expansion states reset after successful submission
+   * Requirements: 11.3
+   */
+  it('should reset expansion states to collapsed after successful submission', async () => {
+    // Mock successful expense creation
+    global.fetch.mockImplementation((url, options) => {
+      if (url.includes('/api/expenses') && options?.method === 'POST') {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            id: 1,
+            date: '2024-06-15',
+            place: 'Test Store',
+            amount: 50,
+            type: 'Groceries',
+            payment_method_id: 1
+          })
+        });
+      }
+      return mockFetch(url);
+    });
+
+    const mockOnExpenseAdded = vi.fn();
+    const { container } = render(
+      <ExpenseForm onExpenseAdded={mockOnExpenseAdded} people={[]} />
+    );
+
+    // Wait for form to load and payment methods to be available
+    await waitFor(() => {
+      const paymentMethodSelect = container.querySelector('#payment_method_id');
+      expect(paymentMethodSelect).toBeInTheDocument();
+      expect(paymentMethodSelect.value).not.toBe('');
+    }, { timeout: 3000 });
+
+    // Get section headers using the correct class name
+    const headers = container.querySelectorAll('.collapsible-header');
+    const advancedHeader = headers[0];
+    
+    // Expand Advanced Options section
+    fireEvent.click(advancedHeader);
+    await waitFor(() => {
+      expect(advancedHeader.getAttribute('aria-expanded')).toBe('true');
+    });
+
+    // Expand Reimbursement section
+    const reimbursementHeader = Array.from(headers).find(h => 
+      h.textContent.includes('Reimbursement')
+    );
+    
+    fireEvent.click(reimbursementHeader);
+    await waitFor(() => {
+      expect(reimbursementHeader.getAttribute('aria-expanded')).toBe('true');
+    });
+
+    // Fill in required fields
+    fireEvent.change(screen.getByLabelText(/Date/i), { target: { value: '2024-06-15' } });
+    fireEvent.change(screen.getByLabelText(/Place/i), { target: { value: 'Test Store' } });
+    fireEvent.change(screen.getByLabelText(/Amount/i), { target: { value: '50' } });
+    fireEvent.change(screen.getByLabelText(/Type/i), { target: { value: 'Groceries' } });
+
+    // Submit form
+    const form = container.querySelector('form');
+    fireEvent.submit(form);
+
+    // Wait for submission to complete
+    await waitFor(() => {
+      expect(mockOnExpenseAdded).toHaveBeenCalled();
+    }, { timeout: 3000 });
+
+    // Verify all sections are collapsed after submission
+    await waitFor(() => {
+      expect(advancedHeader.getAttribute('aria-expanded')).toBe('false');
+      expect(reimbursementHeader.getAttribute('aria-expanded')).toBe('false');
+    });
+  });
+
+  /**
+   * Test sessionStorage updated with reset states
+   * Requirements: 11.3
+   */
+  it('should update sessionStorage with collapsed states after successful submission', async () => {
+    // Clear sessionStorage before test
+    sessionStorage.clear();
+
+    // Mock successful expense creation
+    global.fetch.mockImplementation((url, options) => {
+      if (url.includes('/api/expenses') && options?.method === 'POST') {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            id: 1,
+            date: '2024-06-15',
+            place: 'Test Store',
+            amount: 50,
+            type: 'Groceries',
+            payment_method_id: 1
+          })
+        });
+      }
+      return mockFetch(url);
+    });
+
+    const mockOnExpenseAdded = vi.fn();
+    const { container } = render(
+      <ExpenseForm onExpenseAdded={mockOnExpenseAdded} people={[]} />
+    );
+
+    // Wait for form to load and payment methods to be available
+    await waitFor(() => {
+      const paymentMethodSelect = container.querySelector('#payment_method_id');
+      expect(paymentMethodSelect).toBeInTheDocument();
+      expect(paymentMethodSelect.value).not.toBe('');
+    }, { timeout: 3000 });
+
+    // Get section headers using the correct class name
+    const headers = container.querySelectorAll('.collapsible-header');
+    const advancedHeader = headers[0];
+    
+    // Expand Advanced Options section
+    fireEvent.click(advancedHeader);
+    await waitFor(() => {
+      expect(advancedHeader.getAttribute('aria-expanded')).toBe('true');
+    });
+
+    // Verify sessionStorage has expanded state
+    let storedStates = JSON.parse(sessionStorage.getItem('expenseForm_expansion_create') || '{}');
+    expect(storedStates.advancedOptions).toBe(true);
+
+    // Fill in required fields
+    fireEvent.change(screen.getByLabelText(/Date/i), { target: { value: '2024-06-15' } });
+    fireEvent.change(screen.getByLabelText(/Place/i), { target: { value: 'Test Store' } });
+    fireEvent.change(screen.getByLabelText(/Amount/i), { target: { value: '50' } });
+    fireEvent.change(screen.getByLabelText(/Type/i), { target: { value: 'Groceries' } });
+
+    // Submit form
+    const form = container.querySelector('form');
+    fireEvent.submit(form);
+
+    // Wait for submission to complete
+    await waitFor(() => {
+      expect(mockOnExpenseAdded).toHaveBeenCalled();
+    }, { timeout: 3000 });
+
+    // Verify sessionStorage has been updated with collapsed states
+    storedStates = JSON.parse(sessionStorage.getItem('expenseForm_expansion_create') || '{}');
+    expect(storedStates.advancedOptions).toBe(false);
+    expect(storedStates.reimbursement).toBe(false);
+  });
+
+  /**
+   * Test payment method preserved after submission
+   * Requirements: 11.3
+   */
+  it('should preserve last used payment method after successful submission', async () => {
+    // Mock successful expense creation
+    global.fetch.mockImplementation((url, options) => {
+      if (url.includes('/api/expenses') && options?.method === 'POST') {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            id: 1,
+            date: '2024-06-15',
+            place: 'Test Store',
+            amount: 50,
+            type: 'Groceries',
+            payment_method_id: 3
+          })
+        });
+      }
+      return mockFetch(url);
+    });
+
+    const mockOnExpenseAdded = vi.fn();
+    const { container } = render(
+      <ExpenseForm onExpenseAdded={mockOnExpenseAdded} people={[]} />
+    );
+
+    // Wait for form to load and payment methods to be available
+    await waitFor(() => {
+      const paymentMethodSelect = container.querySelector('#payment_method_id');
+      expect(paymentMethodSelect).toBeInTheDocument();
+      expect(paymentMethodSelect.value).not.toBe('');
+    }, { timeout: 3000 });
+
+    // Select a specific payment method (VISA - ID 3)
+    const paymentMethodSelect = container.querySelector('#payment_method_id');
+    fireEvent.change(paymentMethodSelect, { target: { value: '3' } });
+
+    // Fill in required fields
+    fireEvent.change(screen.getByLabelText(/Date/i), { target: { value: '2024-06-15' } });
+    fireEvent.change(screen.getByLabelText(/Place/i), { target: { value: 'Test Store' } });
+    fireEvent.change(screen.getByLabelText(/Amount/i), { target: { value: '50' } });
+    fireEvent.change(screen.getByLabelText(/Type/i), { target: { value: 'Groceries' } });
+
+    // Submit form
+    const form = container.querySelector('form');
+    fireEvent.submit(form);
+
+    // Wait for submission to complete
+    await waitFor(() => {
+      expect(mockOnExpenseAdded).toHaveBeenCalled();
+    }, { timeout: 3000 });
+
+    // Verify payment method is still selected (preserved)
+    await waitFor(() => {
+      expect(paymentMethodSelect.value).toBe('3');
+    });
+  });
+});

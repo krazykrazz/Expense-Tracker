@@ -1,16 +1,26 @@
 import { useState, useEffect, useRef } from 'react';
 import { API_ENDPOINTS } from '../config';
 import { getTodayLocalDate } from '../utils/formatters';
-import { fetchCategorySuggestion } from '../services/categorySuggestionApi';
 import { getCategories } from '../services/categoriesApi';
 import { getPeople } from '../services/peopleApi';
-import { createExpense, updateExpense, getExpenseWithPeople, getPlaces } from '../services/expenseApi';
+import { createExpense, updateExpense, getExpenseWithPeople } from '../services/expenseApi';
 import { updateInvoicePersonLink } from '../services/invoiceApi';
 import { createLogger } from '../utils/logger';
 import useExpenseFormValidation from '../hooks/useExpenseFormValidation';
 import usePaymentMethods from '../hooks/usePaymentMethods';
 import useInvoiceManagement from '../hooks/useInvoiceManagement';
 import { useFormSectionState } from '../hooks/useFormSectionState';
+import usePlaceAutocomplete from '../hooks/usePlaceAutocomplete';
+import useCategorySuggestion from '../hooks/useCategorySuggestion';
+import useFormSubmission from '../hooks/useFormSubmission';
+import {
+  calculateFutureDatePreview,
+  calculateAdvancedOptionsBadge,
+  calculateReimbursementBadge,
+  calculateInsuranceBadge,
+  calculatePeopleBadge,
+  calculateInvoiceBadge
+} from '../hooks/useBadgeCalculations';
 import PersonAllocationModal from './PersonAllocationModal';
 import InvoiceUpload from './InvoiceUpload';
 import CollapsibleSection from './CollapsibleSection';
@@ -47,121 +57,6 @@ const FUTURE_MONTHS_OPTIONS = [
   { value: 12, label: "12" }
 ];
 
-/**
- * Calculate the future date range preview text
- * @param {string} sourceDate - The source date in YYYY-MM-DD format
- * @param {number} futureMonths - Number of future months
- * @returns {string} Preview text showing the date range
- */
-const calculateFutureDatePreview = (sourceDate, futureMonths) => {
-  if (!sourceDate || futureMonths <= 0) return '';
-  
-  const date = new Date(sourceDate + 'T00:00:00');
-  const sourceDay = date.getDate();
-  
-  // Calculate the last future month date
-  const futureDate = new Date(date);
-  futureDate.setMonth(futureDate.getMonth() + futureMonths);
-  
-  // Handle month-end edge cases
-  const targetMonth = futureDate.getMonth();
-  const daysInTargetMonth = new Date(futureDate.getFullYear(), targetMonth + 1, 0).getDate();
-  
-  if (sourceDay > daysInTargetMonth) {
-    futureDate.setDate(daysInTargetMonth);
-  } else {
-    futureDate.setDate(sourceDay);
-  }
-  
-  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'];
-  
-  return `through ${monthNames[futureDate.getMonth()]} ${futureDate.getFullYear()}`;
-};
-
-/**
- * Calculate badge text for Advanced Options section (Requirements 2.2)
- * @param {number} futureMonths - Number of future months
- * @param {string} postedDate - Posted date value
- * @returns {string} Badge text or empty string
- */
-const calculateAdvancedOptionsBadge = (futureMonths, postedDate) => {
-  const parts = [];
-  
-  if (futureMonths > 0) {
-    parts.push(`Future: ${futureMonths} month${futureMonths > 1 ? 's' : ''}`);
-  }
-  
-  if (postedDate) {
-    const date = new Date(postedDate + 'T00:00:00');
-    const formatted = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    parts.push(`Posted: ${formatted}`);
-  }
-  
-  return parts.join(' • ');
-};
-
-/**
- * Calculate badge text for Reimbursement section (Requirements 5.2)
- * @param {string} genericOriginalCost - Original cost value
- * @param {string} amount - Net amount value
- * @returns {string} Badge text or empty string
- */
-const calculateReimbursementBadge = (genericOriginalCost, amount) => {
-  if (!genericOriginalCost || !amount) return '';
-  
-  const origCostNum = parseFloat(genericOriginalCost);
-  const amountNum = parseFloat(amount);
-  
-  if (isNaN(origCostNum) || isNaN(amountNum) || origCostNum <= amountNum) return '';
-  
-  const reimbursed = origCostNum - amountNum;
-  return `Reimbursed: $${reimbursed.toFixed(2)}`;
-};
-/**
- * Calculate badge text for Insurance Tracking section (Requirements 6.2)
- * @param {boolean} insuranceEligible - Whether insurance is enabled
- * @param {string} claimStatus - Current claim status
- * @returns {string} Badge text or empty string
- */
-const calculateInsuranceBadge = (insuranceEligible, claimStatus) => {
-  if (!insuranceEligible) return '';
-
-  const statusLabels = {
-    'not_claimed': 'Not Claimed',
-    'in_progress': 'In Progress',
-    'paid': 'Paid',
-    'denied': 'Denied'
-  };
-
-  return `Claim: ${statusLabels[claimStatus] || 'Not Claimed'}`;
-};
-
-/**
- * Calculate badge text for People Assignment section (Requirements 7.2)
- * @param {Array} selectedPeople - Array of selected people
- * @returns {string} Badge text or empty string
- */
-const calculatePeopleBadge = (selectedPeople) => {
-  if (!selectedPeople || selectedPeople.length === 0) return '';
-  
-  const count = selectedPeople.length;
-  return `${count} ${count === 1 ? 'person' : 'people'}`;
-};
-
-/**
- * Calculate badge text for Invoice Attachments section (Requirements 8.2)
- * @param {Array} invoices - Array of existing invoices
- * @param {Array} invoiceFiles - Array of invoice files to upload
- * @returns {string} Badge text or empty string
- */
-const calculateInvoiceBadge = (invoices, invoiceFiles) => {
-  const totalCount = (invoices?.length || 0) + (invoiceFiles?.length || 0);
-  if (totalCount === 0) return '';
-  
-  return `${totalCount} invoice${totalCount === 1 ? '' : 's'}`;
-};
-
 const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => {
   const isEditing = !!expense;
   
@@ -195,6 +90,16 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
 
   // Invoice management hook for fetching invoices (Requirements 3.6, 7.1)
   const { fetchInvoices: hookFetchInvoices } = useInvoiceManagement();
+
+  // Place autocomplete hook (Requirements 3.4, 3.5)
+  const {
+    places,
+    filteredPlaces,
+    showSuggestions,
+    setShowSuggestions,
+    filterPlaces,
+    fetchPlaces
+  } = usePlaceAutocomplete();
 
   // Section expansion state management (Requirements 1.3, 11.2, 11.5)
   // Calculate initial expansion states based on mode and existing data
@@ -250,11 +155,7 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
 
   const [message, setMessage] = useState({ text: '', type: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [places, setPlaces] = useState([]);
-  const [filteredPlaces, setFilteredPlaces] = useState([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
   const [typeOptions, setTypeOptions] = useState(['Other']); // Default fallback
-  const [isCategorySuggested, setIsCategorySuggested] = useState(false); // Track if category was auto-suggested
   
   // People selection state for medical expenses
   // Use prop people if provided, otherwise fetch locally
@@ -288,7 +189,65 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
     return timeoutId;
   };
 
-  // Fetch categories, places, people, and invoice data on component mount
+  // Category suggestion hook (Requirements 3.3, 3.5)
+  // Must be called after refs are initialized
+  const {
+    isCategorySuggested,
+    setIsCategorySuggested,
+    fetchAndApply: fetchAndApplyCategorySuggestion,
+    handlePlaceSelect: hookHandlePlaceSelect,
+    handlePlaceBlur: hookHandlePlaceBlur
+  } = useCategorySuggestion({
+    setFormData,
+    amountInputRef,
+    isSubmittingRef,
+    justSelectedFromDropdownRef,
+    setTrackedTimeout
+  });
+
+  // Form submission hook (Requirements 3.2, 3.6)
+  const { submitForm } = useFormSubmission({
+    formData,
+    setFormData,
+    isEditing,
+    expense,
+    isMedicalExpense: formData.type === 'Tax - Medical',
+    isCreditCard: (() => {
+      const selectedMethod = paymentMethods.find(pm => pm.id === formData.payment_method_id);
+      return selectedMethod?.type === 'credit_card';
+    })(),
+    isTaxDeductible: formData.type === 'Tax - Medical' || formData.type === 'Tax - Donation',
+    selectedPeople,
+    insuranceEligible,
+    claimStatus,
+    originalCost,
+    genericOriginalCost,
+    showGenericReimbursementUI: formData.type !== 'Tax - Medical' && formData.type !== 'Tax - Donation',
+    postedDate,
+    futureMonths,
+    invoiceFiles,
+    setInvoices,
+    setInvoiceFiles,
+    setSelectedPeople,
+    setExpensePeople,
+    setInsuranceEligible,
+    setClaimStatus,
+    setOriginalCost,
+    setInsuranceValidationError,
+    setGenericOriginalCost,
+    setGenericReimbursementError,
+    setPostedDate,
+    setPostedDateError,
+    setFutureMonths,
+    resetSectionStates,
+    createExpense,
+    updateExpense,
+    saveLastUsed,
+    getTodayLocalDate,
+    calculateFutureDatePreview
+  });
+
+  // Fetch categories, people, and invoice data on component mount
   useEffect(() => {
     let isMounted = true;
 
@@ -303,19 +262,6 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
           logger.error('Failed to fetch categories:', error);
         }
         // Keep default fallback value
-      }
-    };
-
-    const fetchPlacesData = async () => {
-      try {
-        const data = await getPlaces();
-        if (isMounted && data) {
-          setPlaces(data);
-        }
-      } catch (error) {
-        if (isMounted) {
-          logger.error('Failed to fetch places:', error);
-        }
       }
     };
 
@@ -372,7 +318,6 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
     };
 
     fetchCategoriesData();
-    fetchPlacesData();
     fetchPeopleData();
     fetchInvoiceData();
     fetchExpensePeople();
@@ -433,18 +378,12 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
 
     // Handle place autocomplete
     if (name === 'place') {
+      // Reset suggestion indicator when place is cleared
       if (value.trim() === '') {
-        setFilteredPlaces([]);
-        setShowSuggestions(false);
-        // Reset suggestion indicator when place is cleared
         setIsCategorySuggested(false);
-      } else {
-        const filtered = places.filter(place =>
-          place.toLowerCase().includes(value.toLowerCase())
-        );
-        setFilteredPlaces(filtered);
-        setShowSuggestions(filtered.length > 0);
       }
+      // Use hook's filterPlaces method
+      filterPlaces(value);
     }
 
     // Validate insurance amounts when amount changes (Requirement 3.5)
@@ -691,85 +630,21 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
   };
 
   // Fetch category suggestion for a place and auto-select if available (Requirements 1.3, 1.4, 2.1, 2.3)
-  const fetchAndApplyCategorySuggestion = async (place) => {
-    if (!place || !place.trim()) {
-      return;
-    }
+  // Now handled by useCategorySuggestion hook
 
-    const suggestion = await fetchCategorySuggestion(place);
-    
-    if (suggestion && suggestion.category) {
-      setFormData(prev => ({
-        ...prev,
-        type: suggestion.category
-      }));
-      setIsCategorySuggested(true); // Show visual indicator for auto-suggested category
-    } else {
-      // No suggestion found - default to "Other" (Requirements 2.2)
-      setFormData(prev => ({
-        ...prev,
-        type: 'Other'
-      }));
-      setIsCategorySuggested(false);
-    }
-  };
-
+  // Handle place selection from dropdown (Requirements 1.3, 2.1, 3.1)
+  // Wrapper to pass additional dependencies to hook function
   const handlePlaceSelect = async (place) => {
-    // Mark that we're selecting from dropdown to prevent blur handler from running
-    justSelectedFromDropdownRef.current = true;
-    
-    setShowSuggestions(false);
-    setFilteredPlaces([]);
-
-    // Fetch category suggestion first, then update both place and category together
-    const suggestion = await fetchCategorySuggestion(place);
-    
-    if (suggestion && suggestion.category) {
-      // Update place and category in a single state update to avoid flashing
-      setFormData(prev => ({
-        ...prev,
-        place: place,
-        type: suggestion.category
-      }));
-      setIsCategorySuggested(true);
-    } else {
-      // No suggestion found - set place and default to "Other"
-      setFormData(prev => ({
-        ...prev,
-        place: place,
-        type: 'Other'
-      }));
-      setIsCategorySuggested(false);
-    }
-
-    // Move focus to Amount field after place selection (Requirements 3.1)
-    if (amountInputRef.current) {
-      amountInputRef.current.focus();
-    }
-    
-    // Reset the flag after a delay (longer than blur handler delay)
-    setTrackedTimeout(() => {
-      justSelectedFromDropdownRef.current = false;
-    }, 300);
+    await hookHandlePlaceSelect(place, setShowSuggestions, (places) => {
+      // The hook expects setFilteredPlaces but we don't expose it from usePlaceAutocomplete
+      // Instead, we can just hide suggestions which is the main goal
+    });
   };
 
   // Handle place field blur - fetch suggestion if place was typed manually (Requirements 1.3)
+  // Wrapper to pass additional dependencies to hook function
   const handlePlaceBlur = async () => {
-    // Delay to allow click on suggestion dropdown
-    setTrackedTimeout(async () => {
-      setShowSuggestions(false);
-      
-      // Don't fetch suggestion if:
-      // - Form is being submitted
-      // - Just selected from dropdown (to prevent overwriting the selection)
-      // - Place is empty
-      // - Category has already been suggested
-      if (isSubmittingRef.current || justSelectedFromDropdownRef.current || !formData.place || !formData.place.trim() || isCategorySuggested) {
-        return;
-      }
-      
-      await fetchAndApplyCategorySuggestion(formData.place);
-    }, 200);
+    await hookHandlePlaceBlur(formData.place, setShowSuggestions);
   };
 
   const validateForm = () => {
@@ -928,201 +803,20 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
     isSubmittingRef.current = true; // Mark that we're submitting to prevent blur handler
 
     try {
-      // Prepare form data with insurance fields for medical expenses (Requirements 1.3, 2.3)
-      // and posted_date for credit card expenses (Requirements 4.1, 4.2)
-      // and original_cost for non-medical expenses with reimbursement (Requirements 2.1, 2.2)
-      const expenseFormData = {
-        ...formData,
-        // Add posted_date for credit card expenses (null or empty string becomes null)
-        posted_date: isCreditCard && postedDate ? postedDate : null,
-        // Add insurance fields for medical expenses
-        ...(isMedicalExpense && {
-          insurance_eligible: insuranceEligible,
-          claim_status: insuranceEligible ? claimStatus : null,
-          original_cost: insuranceEligible && originalCost ? parseFloat(originalCost) : null
-        }),
-        // Add original_cost for non-medical expenses (Requirements 2.1, 2.2)
-        // Now matches medical expense pattern: Amount = net, original_cost = charged amount
-        ...(showGenericReimbursementUI && genericOriginalCost && parseFloat(genericOriginalCost) > 0 && {
-          original_cost: parseFloat(genericOriginalCost)
-        }),
-        // Explicitly clear original_cost when it's removed (Requirements 2.4)
-        ...(showGenericReimbursementUI && !genericOriginalCost && isEditing && expense?.original_cost && {
-          original_cost: null
-        })
-      };
-
-      // Prepare people allocations for medical expenses
-      let peopleAllocations = null;
-      if (isMedicalExpense && selectedPeople.length > 0) {
-        if (selectedPeople.length === 1) {
-          // Single person - assign full amount (and original_amount for insurance)
-          peopleAllocations = [{
-            personId: selectedPeople[0].id,
-            amount: parseFloat(formData.amount),
-            originalAmount: insuranceEligible && originalCost ? parseFloat(originalCost) : null
-          }];
-        } else {
-          // Multiple people - use allocated amounts (with original_amount for insurance)
-          peopleAllocations = selectedPeople.map(person => ({
-            personId: person.id,
-            amount: person.amount,
-            originalAmount: person.originalAmount || null
-          }));
-        }
-      }
-
-      let newExpense;
-      let futureExpensesResult = [];
-      
-      if (isEditing) {
-        // Update existing expense with optional future months
-        const result = await updateExpense(expense.id, expenseFormData, peopleAllocations, futureMonths);
-        // Handle response format - may include futureExpenses array
-        if (result.expense) {
-          newExpense = result.expense;
-          futureExpensesResult = result.futureExpenses || [];
-        } else {
-          newExpense = result;
-        }
-      } else {
-        // Create new expense with optional future months
-        const result = await createExpense(expenseFormData, peopleAllocations, futureMonths);
-        // Handle response format - may include futureExpenses array
-        if (result.expense) {
-          newExpense = result.expense;
-          futureExpensesResult = result.futureExpenses || [];
-        } else {
-          newExpense = result;
-        }
-      }
-
-      // Handle invoice upload for new expenses or when invoice files are selected (medical or donation)
-      if (isTaxDeductible && invoiceFiles.length > 0 && newExpense.id) {
-        const uploadedInvoices = [];
-        
-        for (const item of invoiceFiles) {
-          try {
-            const formData = new FormData();
-            formData.append('invoice', item.file);
-            formData.append('expenseId', newExpense.id.toString());
-            
-            // Add personId if assigned
-            if (item.personId) {
-              formData.append('personId', item.personId.toString());
-            }
-
-            const response = await fetch(API_ENDPOINTS.INVOICE_UPLOAD, {
-              method: 'POST',
-              body: formData
-            });
-
-            if (!response.ok) {
-              const errorData = await response.json().catch(() => ({}));
-              throw new Error(errorData.error || 'Invoice upload failed');
-            }
-
-            const invoiceResult = await response.json();
-            if (invoiceResult.success && invoiceResult.invoice) {
-              uploadedInvoices.push(invoiceResult.invoice);
-            }
-          } catch (invoiceError) {
-            logger.error('Invoice upload failed:', invoiceError);
-            // Continue with other files even if one fails
-          }
-        }
-        
-        if (uploadedInvoices.length > 0) {
-          setInvoices(uploadedInvoices);
-          newExpense.invoices = uploadedInvoices;
-          newExpense.hasInvoice = true;
-          newExpense.invoiceCount = uploadedInvoices.length;
-        }
-        
-        if (uploadedInvoices.length < invoiceFiles.length) {
-          setMessage({ 
-            text: `Expense ${isEditing ? 'updated' : 'added'} successfully, but ${invoiceFiles.length - uploadedInvoices.length} invoice(s) failed to upload`, 
-            type: 'warning' 
-          });
-        }
-      }
-      
-      // Save payment method for next expense entry (Requirements 5.3)
-      if (!isEditing && formData.payment_method_id) {
-        saveLastUsed(formData.payment_method_id);
-      }
-      
-      // Build success message including future expenses info (Requirements 4.1, 4.2)
-      let successText = `Expense ${isEditing ? 'updated' : 'added'} successfully!`;
-      if (futureExpensesResult.length > 0) {
-        const datePreview = calculateFutureDatePreview(formData.date, futureExpensesResult.length);
-        successText = `Expense ${isEditing ? 'updated' : 'added'} and added to ${futureExpensesResult.length} future month${futureExpensesResult.length > 1 ? 's' : ''} ${datePreview}`;
-      }
+      // Use the form submission hook to handle all submission logic
+      const result = await submitForm(onExpenseAdded, invoices, setIsCategorySuggested);
       
       setMessage({ 
-        text: successText, 
-        type: 'success' 
+        text: result.message, 
+        type: result.type 
       });
       
-      if (!isEditing) {
-        // Clear form and reset suggestion indicator, but keep the last used payment method (Requirements 5.1)
-        const lastPaymentMethodId = formData.payment_method_id;
-        
-        // Reset suggestion indicator first to prevent any pending blur handlers from triggering
-        setIsCategorySuggested(false);
-        
-        setFormData({
-          date: getTodayLocalDate(),
-          place: '',
-          notes: '',
-          amount: '',
-          type: 'Other',
-          payment_method_id: lastPaymentMethodId // Pre-select last used payment method for next entry
-        });
-
-        // Clear people selection and invoice state
-        setSelectedPeople([]);
-        setInvoices([]);
-        setInvoiceFiles([]);
-        setExpensePeople([]);
-        
-        // Reset insurance fields
-        setInsuranceEligible(false);
-        setClaimStatus('not_claimed');
-        setOriginalCost('');
-        setInsuranceValidationError('');
-        
-        // Reset generic original cost fields
-        setGenericOriginalCost('');
-        setGenericReimbursementError('');
-        
-        // Reset posted date fields
-        setPostedDate('');
-        setPostedDateError('');
-        
-        // Reset future months to 0 (Requirements 1.7)
-        setFutureMonths(0);
-        
-        // Reset section expansion states to defaults (Requirements 11.3)
-        resetSectionStates();
-      }
-
-      // Notify parent component
-      // When editing, include the current invoice state so the expense list updates correctly
-      if (onExpenseAdded) {
-        const expenseToReturn = { ...newExpense };
-        // Include invoice info from current state (for edits where invoices were uploaded via InvoiceUpload)
-        if (isEditing && invoices.length > 0) {
-          expenseToReturn.hasInvoice = true;
-          expenseToReturn.invoiceCount = invoices.length;
-        }
-        onExpenseAdded(expenseToReturn);
-      }
-
       // Clear success message after 3 seconds
-      setTrackedTimeout(() => {
-        setMessage({ text: '', type: '' });
-      }, 3000);
+      if (result.success) {
+        setTrackedTimeout(() => {
+          setMessage({ text: '', type: '' });
+        }, 3000);
+      }
 
     } catch (error) {
       setMessage({ text: error.message, type: 'error' });

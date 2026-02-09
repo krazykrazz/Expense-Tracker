@@ -1,5 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import {
+  createExpenseApiMock,
+  createPaymentMethodApiMock,
+  createPeopleApiMock,
+  createCategorySuggestionApiMock,
+  createCategoriesApiMock,
+  createInvoiceApiMock
+} from '../test-utils';
 
 // Mock ALL dependencies
 vi.mock('../config', () => ({

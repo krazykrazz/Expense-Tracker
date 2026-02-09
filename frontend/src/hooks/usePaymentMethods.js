@@ -73,10 +73,9 @@ const saveLastPaymentMethodId = (paymentMethodId) => {
  *
  * @param {Object} [options]
  * @param {number|null} [options.expensePaymentMethodId=null] - Payment method ID of expense being edited (for inactive method handling)
- * @param {boolean} [options.activeOnly=true] - Whether to fetch only active methods
  * @returns {Object}
  */
-function usePaymentMethods({ expensePaymentMethodId = null, activeOnly = true } = {}) {
+function usePaymentMethods({ expensePaymentMethodId = null } = {}) {
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);

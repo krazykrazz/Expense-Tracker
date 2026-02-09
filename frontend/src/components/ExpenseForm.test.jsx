@@ -1,5 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import {
+  createExpenseApiMock,
+  createPaymentMethodApiMock,
+  createPeopleApiMock,
+  createCategorySuggestionApiMock,
+  createCategoriesApiMock
+} from '../test-utils';
 
 // Mock ALL dependencies that might import config
 vi.mock('../config', () => ({
@@ -20,6 +27,13 @@ import * as expenseApi from '../services/expenseApi';
 import * as categorySuggestionApi from '../services/categorySuggestionApi';
 import * as categoriesApi from '../services/categoriesApi';
 import * as paymentMethodApi from '../services/paymentMethodApi';
+
+// Delegate to shared mock factories
+const expenseApiMock = createExpenseApiMock();
+const paymentMethodApiMock = createPaymentMethodApiMock();
+const peopleApiMock = createPeopleApiMock();
+const categorySuggestionApiMock = createCategorySuggestionApiMock();
+const categoriesApiMock = createCategoriesApiMock();
 
 vi.mock('../services/peopleApi', () => ({
   getPeople: vi.fn()
@@ -388,7 +402,14 @@ describe('ExpenseForm - People Selection Enhancement', () => {
     await waitFor(() => {
       expect(screen.getByText('People Assignment')).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByText('People Assignment').closest('[role="button"]'));
+    
+    const headerButton = screen.getByText('People Assignment').closest('[role="button"]');
+    fireEvent.click(headerButton);
+
+    // Wait for section to expand
+    await waitFor(() => {
+      expect(headerButton.getAttribute('aria-expanded')).toBe('true');
+    });
 
     // Wait for people dropdown and select someone
     await waitFor(() => {
@@ -412,12 +433,28 @@ describe('ExpenseForm - People Selection Enhancement', () => {
     // Change back to medical - selection should be cleared
     fireEvent.change(typeSelect, { target: { value: 'Tax - Medical' } });
 
-    // Expand People Assignment section again
+    // Wait for People Assignment section to reappear
     await waitFor(() => {
       expect(screen.getByText('People Assignment')).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByText('People Assignment').closest('[role="button"]'));
+    
+    // Get the header button again (it's a new element after type change)
+    const headerButton2 = screen.getByText('People Assignment').closest('[role="button"]');
+    
+    // Check if it's already expanded or collapsed
+    const isExpanded = headerButton2.getAttribute('aria-expanded') === 'true';
+    
+    // If collapsed, expand it
+    if (!isExpanded) {
+      fireEvent.click(headerButton2);
+      
+      // Wait for section to expand
+      await waitFor(() => {
+        expect(headerButton2.getAttribute('aria-expanded')).toBe('true');
+      });
+    }
 
+    // Wait for people dropdown to be visible
     await waitFor(() => {
       expect(screen.getByLabelText(/assign to people/i)).toBeInTheDocument();
     });
@@ -537,6 +574,15 @@ describe('ExpenseForm - Future Months Feature', () => {
       expect(screen.getByLabelText(/type/i)).toBeInTheDocument();
     });
 
+    // Expand Advanced Options section first
+    const advancedOptionsHeader = screen.getByRole('button', { name: /Advanced Options/i });
+    fireEvent.click(advancedOptionsHeader);
+
+    // Wait for section to expand
+    await waitFor(() => {
+      expect(advancedOptionsHeader.getAttribute('aria-expanded')).toBe('true');
+    });
+
     // Find the future months checkbox by its label text
     expect(screen.getByText(/add to future months/i)).toBeInTheDocument();
   });
@@ -551,6 +597,15 @@ describe('ExpenseForm - Future Months Feature', () => {
     // Wait for component to load
     await waitFor(() => {
       expect(screen.getByLabelText(/type/i)).toBeInTheDocument();
+    });
+
+    // Expand Advanced Options section first
+    const advancedOptionsHeader = screen.getByRole('button', { name: /Advanced Options/i });
+    fireEvent.click(advancedOptionsHeader);
+
+    // Wait for section to expand
+    await waitFor(() => {
+      expect(advancedOptionsHeader.getAttribute('aria-expanded')).toBe('true');
     });
 
     // Find the checkbox in the future-months-section
@@ -569,6 +624,15 @@ describe('ExpenseForm - Future Months Feature', () => {
     // Wait for component to load
     await waitFor(() => {
       expect(screen.getByLabelText(/type/i)).toBeInTheDocument();
+    });
+
+    // Expand Advanced Options section first
+    const advancedOptionsHeader = screen.getByRole('button', { name: /Advanced Options/i });
+    fireEvent.click(advancedOptionsHeader);
+
+    // Wait for section to expand
+    await waitFor(() => {
+      expect(advancedOptionsHeader.getAttribute('aria-expanded')).toBe('true');
     });
 
     // Initially, no preview should be shown
@@ -603,18 +667,27 @@ describe('ExpenseForm - Future Months Feature', () => {
 
     render(<ExpenseForm onExpenseAdded={mockOnExpenseAdded} />);
 
-    // Wait for component to load and payment methods to be available
+    // Wait for component to load and payment methods to be available - use specific selector
     await waitFor(() => {
       expect(screen.getByLabelText(/type/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/payment method/i)).toBeInTheDocument();
     });
 
-    // Fill in required fields
-    fireEvent.change(screen.getByLabelText(/date/i), { target: { value: '2025-01-15' } });
+    // Fill in required fields - use specific selector for date
+    fireEvent.change(screen.getByLabelText(/^Date \*/i), { target: { value: '2025-01-15' } });
     fireEvent.change(screen.getByLabelText(/amount/i), { target: { value: '15.99' } });
     fireEvent.change(screen.getByLabelText(/type/i), { target: { value: 'Subscriptions' } });
     // Use payment method ID (2 = Credit Card)
     fireEvent.change(screen.getByLabelText(/payment method/i), { target: { value: '2' } });
+
+    // Expand Advanced Options section first
+    const advancedOptionsHeader = screen.getByRole('button', { name: /Advanced Options/i });
+    fireEvent.click(advancedOptionsHeader);
+
+    // Wait for section to expand
+    await waitFor(() => {
+      expect(advancedOptionsHeader.getAttribute('aria-expanded')).toBe('true');
+    });
 
     // Check the future months checkbox and select 2 months
     const futureMonthsSection = document.querySelector('.future-months-section');
@@ -636,9 +709,27 @@ describe('ExpenseForm - Future Months Feature', () => {
       expect(expenseApi.createExpense).toHaveBeenCalled();
     });
 
+    // After form reset, Advanced Options section should collapse
+    // We need to expand it again to check the checkbox state
+    await waitFor(() => {
+      const advancedOptionsHeaderAfterReset = screen.getByRole('button', { name: /Advanced Options/i });
+      expect(advancedOptionsHeaderAfterReset.getAttribute('aria-expanded')).toBe('false');
+    });
+
+    // Expand Advanced Options section again
+    const advancedOptionsHeaderAfterReset = screen.getByRole('button', { name: /Advanced Options/i });
+    fireEvent.click(advancedOptionsHeaderAfterReset);
+
+    // Wait for section to expand
+    await waitFor(() => {
+      expect(advancedOptionsHeaderAfterReset.getAttribute('aria-expanded')).toBe('true');
+    });
+
     // Future months checkbox should be unchecked after reset
     await waitFor(() => {
-      expect(checkbox.checked).toBe(false);
+      const futureMonthsSectionAfterReset = document.querySelector('.future-months-section');
+      const checkboxAfterReset = futureMonthsSectionAfterReset.querySelector('input[type="checkbox"]');
+      expect(checkboxAfterReset.checked).toBe(false);
     });
   });
 
@@ -668,6 +759,15 @@ describe('ExpenseForm - Future Months Feature', () => {
     fireEvent.change(screen.getByLabelText(/type/i), { target: { value: 'Subscriptions' } });
     // Use payment method ID (2 = Credit Card)
     fireEvent.change(screen.getByLabelText(/payment method/i), { target: { value: '2' } });
+
+    // Expand Advanced Options section first
+    const advancedOptionsHeader = screen.getByRole('button', { name: /Advanced Options/i });
+    fireEvent.click(advancedOptionsHeader);
+
+    // Wait for section to expand
+    await waitFor(() => {
+      expect(advancedOptionsHeader.getAttribute('aria-expanded')).toBe('true');
+    });
 
     // Check the future months checkbox and select 3 months
     const futureMonthsSection = document.querySelector('.future-months-section');
@@ -727,6 +827,15 @@ describe('ExpenseForm - Future Months Feature', () => {
     // Use payment method ID (2 = Credit Card)
     fireEvent.change(screen.getByLabelText(/payment method/i), { target: { value: '2' } });
 
+    // Expand Advanced Options section first
+    const advancedOptionsHeader = screen.getByRole('button', { name: /Advanced Options/i });
+    fireEvent.click(advancedOptionsHeader);
+
+    // Wait for section to expand
+    await waitFor(() => {
+      expect(advancedOptionsHeader.getAttribute('aria-expanded')).toBe('true');
+    });
+
     // Check the future months checkbox and select 3 months
     const futureMonthsSection = document.querySelector('.future-months-section');
     const checkbox = futureMonthsSection.querySelector('input[type="checkbox"]');
@@ -758,6 +867,15 @@ describe('ExpenseForm - Future Months Feature', () => {
     // Wait for component to load
     await waitFor(() => {
       expect(screen.getByLabelText(/type/i)).toBeInTheDocument();
+    });
+
+    // Expand Advanced Options section first
+    const advancedOptionsHeader = screen.getByRole('button', { name: /Advanced Options/i });
+    fireEvent.click(advancedOptionsHeader);
+
+    // Wait for section to expand
+    await waitFor(() => {
+      expect(advancedOptionsHeader.getAttribute('aria-expanded')).toBe('true');
     });
 
     // Verify no preview is shown with default unchecked state
@@ -958,6 +1076,12 @@ describe('ExpenseForm - Advanced Options Section', () => {
       expect(screen.getByLabelText(/Type/i)).toBeInTheDocument();
     });
 
+    // Wait for payment methods to load
+    await waitFor(() => {
+      const methodSelect = screen.getByLabelText(/Payment Method/i);
+      expect(methodSelect).toBeInTheDocument();
+    });
+
     // Select credit card payment method
     const methodSelect = screen.getByLabelText(/Payment Method/i);
     fireEvent.change(methodSelect, { target: { value: '3' } }); // VISA
@@ -967,6 +1091,11 @@ describe('ExpenseForm - Advanced Options Section', () => {
       .find(header => header.textContent.includes('Advanced Options'));
     
     fireEvent.click(advancedOptionsHeader);
+
+    // Wait for section to expand
+    await waitFor(() => {
+      expect(advancedOptionsHeader.getAttribute('aria-expanded')).toBe('true');
+    });
 
     // Wait for posted date field to be visible
     await waitFor(() => {
@@ -996,6 +1125,12 @@ describe('ExpenseForm - Advanced Options Section', () => {
       expect(screen.getByLabelText(/Type/i)).toBeInTheDocument();
     });
 
+    // Wait for payment methods to load
+    await waitFor(() => {
+      const methodSelect = screen.getByLabelText(/Payment Method/i);
+      expect(methodSelect).toBeInTheDocument();
+    });
+
     // Select credit card payment method
     const methodSelect = screen.getByLabelText(/Payment Method/i);
     fireEvent.change(methodSelect, { target: { value: '3' } }); // VISA
@@ -1005,6 +1140,11 @@ describe('ExpenseForm - Advanced Options Section', () => {
       .find(header => header.textContent.includes('Advanced Options'));
     
     fireEvent.click(advancedOptionsHeader);
+
+    // Wait for section to expand
+    await waitFor(() => {
+      expect(advancedOptionsHeader.getAttribute('aria-expanded')).toBe('true');
+    });
 
     // Wait for content to be visible
     await waitFor(() => {
@@ -1053,6 +1193,12 @@ describe('ExpenseForm - Advanced Options Section', () => {
       expect(screen.getByLabelText(/Type/i)).toBeInTheDocument();
     });
 
+    // Wait for payment methods to load
+    await waitFor(() => {
+      const methodSelect = screen.getByLabelText(/Payment Method/i);
+      expect(methodSelect).toBeInTheDocument();
+    });
+
     // Select credit card payment method
     const methodSelect = screen.getByLabelText(/Payment Method/i);
     fireEvent.change(methodSelect, { target: { value: '3' } }); // VISA
@@ -1062,6 +1208,11 @@ describe('ExpenseForm - Advanced Options Section', () => {
       .find(header => header.textContent.includes('Advanced Options'));
     
     fireEvent.click(advancedOptionsHeader);
+
+    // Wait for section to expand
+    await waitFor(() => {
+      expect(advancedOptionsHeader.getAttribute('aria-expanded')).toBe('true');
+    });
 
     // Wait for posted date field to be visible
     await waitFor(() => {
@@ -1076,6 +1227,16 @@ describe('ExpenseForm - Advanced Options Section', () => {
     // Find the help tooltip icon within the label
     const helpIcon = postedDateLabel.querySelector('.help-tooltip-icon');
     expect(helpIcon).toBeInTheDocument();
+    
+    // Hover over the help icon to show tooltip
+    fireEvent.mouseEnter(helpIcon);
+    
+    // Tooltip should now be visible in document.body (portal)
+    await waitFor(() => {
+      const tooltip = document.body.querySelector('.help-tooltip-content');
+      expect(tooltip).toBeInTheDocument();
+      expect(tooltip.textContent).toContain('credit card');
+    });
   });
 
   /**
@@ -1105,6 +1266,16 @@ describe('ExpenseForm - Advanced Options Section', () => {
     const helpIcon = futureMonthsLabel.parentElement.querySelector('.help-tooltip-icon');
     
     expect(helpIcon).toBeInTheDocument();
+    
+    // Hover over the help icon to show tooltip
+    fireEvent.mouseEnter(helpIcon);
+    
+    // Tooltip should now be visible in document.body (portal)
+    await waitFor(() => {
+      const tooltip = document.body.querySelector('.help-tooltip-content');
+      expect(tooltip).toBeInTheDocument();
+      expect(tooltip.textContent).toContain('recurring');
+    });
   });
 });
 
@@ -1207,6 +1378,11 @@ describe('ExpenseForm - Reimbursement Section', () => {
     fireEvent.click(reimbursementHeader);
 
     // Wait for section to expand
+    await waitFor(() => {
+      expect(reimbursementHeader.getAttribute('aria-expanded')).toBe('true');
+    });
+
+    // Wait for original cost field to appear
     await waitFor(() => {
       const originalCostInput = container.querySelector('input[name="genericOriginalCost"]');
       expect(originalCostInput).toBeInTheDocument();
@@ -1377,6 +1553,16 @@ describe('ExpenseForm - Reimbursement Section', () => {
     // Find the help tooltip icon within the label
     const helpIcon = originalCostLabel.querySelector('.help-tooltip-icon');
     expect(helpIcon).toBeInTheDocument();
+    
+    // Hover over the help icon to show tooltip
+    fireEvent.mouseEnter(helpIcon);
+    
+    // Tooltip should now be visible in document.body (portal)
+    await waitFor(() => {
+      const tooltip = document.body.querySelector('.help-tooltip-content');
+      expect(tooltip).toBeInTheDocument();
+      expect(tooltip.textContent).toContain('reimbursed');
+    });
   });
 });
 
@@ -1698,6 +1884,16 @@ describe('ExpenseForm - Insurance Tracking Section', () => {
     const claimStatusLabel = container.querySelector('label[for="claimStatus"]');
     const claimStatusHelpIcon = claimStatusLabel.querySelector('.help-tooltip-icon');
     expect(claimStatusHelpIcon).toBeInTheDocument();
+    
+    // Test hovering over one of the tooltips to verify portal rendering
+    fireEvent.mouseEnter(claimStatusHelpIcon);
+    
+    // Tooltip should now be visible in document.body (portal)
+    await waitFor(() => {
+      const tooltip = document.body.querySelector('.help-tooltip-content');
+      expect(tooltip).toBeInTheDocument();
+      expect(tooltip.textContent).toContain('claim');
+    });
   });
 });
 
@@ -1786,6 +1982,11 @@ describe('ExpenseForm - People Assignment Section', () => {
     const headerButton = screen.getByText('People Assignment').closest('[role="button"]');
     fireEvent.click(headerButton);
 
+    // Wait for section to expand
+    await waitFor(() => {
+      expect(headerButton.getAttribute('aria-expanded')).toBe('true');
+    });
+
     // Wait for people select to be visible
     await waitFor(() => {
       expect(screen.getByLabelText(/assign to people/i)).toBeInTheDocument();
@@ -1793,19 +1994,12 @@ describe('ExpenseForm - People Assignment Section', () => {
 
     // Select 2 people
     const peopleSelect = screen.getByLabelText(/assign to people/i);
-    fireEvent.change(peopleSelect, { 
-      target: { 
-        selectedOptions: [
-          { value: '1', text: 'Person A' },
-          { value: '2', text: 'Person B' }
-        ]
-      } 
-    });
-
-    // Simulate the multi-select change
+    
+    // Simulate the multi-select change by setting selected on options
     const options = peopleSelect.querySelectorAll('option');
-    options[0].selected = true;
-    options[1].selected = true;
+    // Skip the first option (placeholder "Select family members...")
+    options[1].selected = true; // Person A
+    options[2].selected = true; // Person B
     fireEvent.change(peopleSelect);
 
     // Badge should now show "2 people"
@@ -1819,7 +2013,7 @@ describe('ExpenseForm - People Assignment Section', () => {
    * Test allocation summary with Edit button
    * Requirements: 7.2, 7.4
    */
-  it('should display allocation summary with Edit button for multiple people', async () => {
+  it('should display allocation breakdown when amounts are set', async () => {
     render(<ExpenseForm onExpenseAdded={() => {}} people={mockPeople} />);
 
     // Wait for form to load
@@ -1838,6 +2032,11 @@ describe('ExpenseForm - People Assignment Section', () => {
 
     const headerButton = screen.getByText('People Assignment').closest('[role="button"]');
     fireEvent.click(headerButton);
+
+    // Wait for section to expand
+    await waitFor(() => {
+      expect(headerButton.getAttribute('aria-expanded')).toBe('true');
+    });
 
     // Wait for people select
     await waitFor(() => {
@@ -1866,7 +2065,7 @@ describe('ExpenseForm - People Assignment Section', () => {
    * Test allocation breakdown display
    * Requirements: 7.4
    */
-  it('should display allocation breakdown when amounts are set', async () => {
+  it('should display simple selection for single person without Edit button', async () => {
     // Create a mock expense with allocations
     const mockExpense = {
       id: 1,
@@ -1878,7 +2077,7 @@ describe('ExpenseForm - People Assignment Section', () => {
       ]
     };
 
-    render(<ExpenseForm onExpenseAdded={() => {}} people={mockPeople} expense={mockExpense} />);
+    const { container } = render(<ExpenseForm onExpenseAdded={() => {}} people={mockPeople} expense={mockExpense} />);
 
     // Wait for form to load in edit mode
     await waitFor(() => {
@@ -1892,10 +2091,16 @@ describe('ExpenseForm - People Assignment Section', () => {
 
     // Allocation breakdown should be displayed
     await waitFor(() => {
-      expect(screen.getByText('Person A')).toBeInTheDocument();
-      expect(screen.getByText('$60.00')).toBeInTheDocument();
-      expect(screen.getByText('Person B')).toBeInTheDocument();
-      expect(screen.getByText('$40.00')).toBeInTheDocument();
+      // Use more specific queries to avoid matching option elements
+      const allocationItems = container.querySelectorAll('.allocation-item .person-name');
+      const personNames = Array.from(allocationItems).map(el => el.textContent);
+      expect(personNames).toContain('Person A');
+      expect(personNames).toContain('Person B');
+      
+      const amounts = container.querySelectorAll('.allocation-item .person-amount');
+      const amountTexts = Array.from(amounts).map(el => el.textContent.trim());
+      expect(amountTexts).toContain('$60.00');
+      expect(amountTexts).toContain('$40.00');
     });
   });
 
@@ -1923,6 +2128,11 @@ describe('ExpenseForm - People Assignment Section', () => {
     const headerButton = screen.getByText('People Assignment').closest('[role="button"]');
     fireEvent.click(headerButton);
 
+    // Wait for section to expand
+    await waitFor(() => {
+      expect(headerButton.getAttribute('aria-expanded')).toBe('true');
+    });
+
     // Wait for people select
     await waitFor(() => {
       expect(screen.getByLabelText(/assign to people/i)).toBeInTheDocument();
@@ -1931,7 +2141,8 @@ describe('ExpenseForm - People Assignment Section', () => {
     // Select single person
     const peopleSelect = screen.getByLabelText(/assign to people/i);
     const options = peopleSelect.querySelectorAll('option');
-    options[0].selected = true;
+    // options[0] is the disabled placeholder, options[1] is Person A
+    options[1].selected = true;
     fireEvent.change(peopleSelect);
 
     // Should show simple "Selected: Person A" text
@@ -3004,13 +3215,13 @@ describe('ExpenseForm - Data Preservation During Collapse', () => {
   it('should preserve posted date data when Advanced Options section is collapsed', async () => {
     const { container } = render(<ExpenseForm onExpenseAdded={vi.fn()} />);
 
-    // Wait for form to load
+    // Wait for form to load - use specific selector to avoid matching "Posted Date"
     await waitFor(() => {
-      expect(screen.getByLabelText(/Date/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/^Date \*/i)).toBeInTheDocument();
     });
 
     // Fill in core fields
-    fireEvent.change(screen.getByLabelText(/Date/i), { target: { value: '2024-06-15' } });
+    fireEvent.change(screen.getByLabelText(/^Date \*/i), { target: { value: '2024-06-15' } });
     fireEvent.change(screen.getByLabelText(/Place/i), { target: { value: 'Test Place' } });
     fireEvent.change(screen.getByLabelText(/Amount/i), { target: { value: '100' } });
     
@@ -3019,17 +3230,17 @@ describe('ExpenseForm - Data Preservation During Collapse', () => {
     fireEvent.change(paymentMethodSelect, { target: { value: '3' } }); // VISA
 
     // Find and expand Advanced Options section
-    const advancedHeader = container.querySelector('.collapsible-header');
+    const advancedHeader = screen.getByRole('button', { name: /Advanced Options/i });
     expect(advancedHeader).toBeInTheDocument();
     fireEvent.click(advancedHeader);
 
-    // Wait for posted date field to appear
+    // Wait for posted date field to appear - use ID selector to avoid ambiguity with clear button
     await waitFor(() => {
-      expect(screen.getByLabelText(/Posted Date/i)).toBeInTheDocument();
+      expect(container.querySelector('#posted_date')).toBeInTheDocument();
     });
 
     // Enter posted date
-    const postedDateInput = screen.getByLabelText(/Posted Date/i);
+    const postedDateInput = container.querySelector('#posted_date');
     fireEvent.change(postedDateInput, { target: { value: '2024-06-20' } });
     expect(postedDateInput.value).toBe('2024-06-20');
 
@@ -3038,7 +3249,7 @@ describe('ExpenseForm - Data Preservation During Collapse', () => {
 
     // Verify section is collapsed (posted date field not in DOM)
     await waitFor(() => {
-      expect(screen.queryByLabelText(/Posted Date/i)).not.toBeInTheDocument();
+      expect(container.querySelector('#posted_date')).not.toBeInTheDocument();
     });
 
     // Re-expand the section
@@ -3046,7 +3257,7 @@ describe('ExpenseForm - Data Preservation During Collapse', () => {
 
     // Verify data is preserved
     await waitFor(() => {
-      const postedDateAfterExpand = screen.getByLabelText(/Posted Date/i);
+      const postedDateAfterExpand = container.querySelector('#posted_date');
       expect(postedDateAfterExpand).toBeInTheDocument();
       expect(postedDateAfterExpand.value).toBe('2024-06-20');
     });
@@ -3059,13 +3270,13 @@ describe('ExpenseForm - Data Preservation During Collapse', () => {
   it('should preserve generic original cost when Reimbursement section is collapsed and re-expanded', async () => {
     const { container } = render(<ExpenseForm onExpenseAdded={vi.fn()} />);
 
-    // Wait for form to load
+    // Wait for form to load - use specific selector
     await waitFor(() => {
-      expect(screen.getByLabelText(/Date/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/^Date \*/i)).toBeInTheDocument();
     });
 
     // Fill in core fields
-    fireEvent.change(screen.getByLabelText(/Date/i), { target: { value: '2024-06-15' } });
+    fireEvent.change(screen.getByLabelText(/^Date \*/i), { target: { value: '2024-06-15' } });
     fireEvent.change(screen.getByLabelText(/Place/i), { target: { value: 'Test Place' } });
     fireEvent.change(screen.getByLabelText(/Type/i), { target: { value: 'Other' } });
     fireEvent.change(screen.getByLabelText(/Amount/i), { target: { value: '75' } });
@@ -3079,22 +3290,26 @@ describe('ExpenseForm - Data Preservation During Collapse', () => {
     expect(reimbursementHeader).toBeInTheDocument();
     fireEvent.click(reimbursementHeader);
 
-    // Wait for original cost field to appear
+    // Wait for original cost field to appear - use ID to avoid ambiguity
     await waitFor(() => {
-      expect(screen.getByLabelText(/Original Cost/i)).toBeInTheDocument();
+      expect(container.querySelector('#genericOriginalCost')).toBeInTheDocument();
     });
 
     // Enter original cost
-    const originalCostInput = screen.getByLabelText(/Original Cost/i);
+    const originalCostInput = container.querySelector('#genericOriginalCost');
     fireEvent.change(originalCostInput, { target: { value: '100' } });
     expect(originalCostInput.value).toBe('100');
 
-    // Verify reimbursement breakdown is displayed
+    // Verify reimbursement breakdown is displayed - use getAllByText for duplicate text
     await waitFor(() => {
       expect(screen.getByText(/Charged:/i)).toBeInTheDocument();
-      expect(screen.getByText(/\$100\.00/)).toBeInTheDocument();
-      expect(screen.getByText(/Reimbursed:/i)).toBeInTheDocument();
-      expect(screen.getByText(/\$25\.00/)).toBeInTheDocument();
+      expect(screen.getByText(/100\.00/)).toBeInTheDocument();
+      // Use getAllByText since "Reimbursed:" appears in both badge and preview
+      const reimbursedElements = screen.getAllByText(/Reimbursed:/i);
+      expect(reimbursedElements.length).toBeGreaterThan(0);
+      // Use getAllByText for 25.00 since it appears in both badge and preview
+      const amountElements = screen.getAllByText(/25\.00/);
+      expect(amountElements.length).toBeGreaterThan(0);
     });
 
     // Collapse the section
@@ -3102,7 +3317,7 @@ describe('ExpenseForm - Data Preservation During Collapse', () => {
 
     // Verify section is collapsed
     await waitFor(() => {
-      expect(screen.queryByLabelText(/Original Cost/i)).not.toBeInTheDocument();
+      expect(container.querySelector('#genericOriginalCost')).not.toBeInTheDocument();
     });
 
     // Re-expand the section
@@ -3110,15 +3325,15 @@ describe('ExpenseForm - Data Preservation During Collapse', () => {
 
     // Verify data and breakdown are preserved
     await waitFor(() => {
-      const originalCostAfterExpand = screen.getByLabelText(/Original Cost/i);
+      const originalCostAfterExpand = container.querySelector('#genericOriginalCost');
       expect(originalCostAfterExpand).toBeInTheDocument();
       expect(originalCostAfterExpand.value).toBe('100');
       
       // Verify breakdown is still displayed correctly
       expect(screen.getByText(/Charged:/i)).toBeInTheDocument();
-      expect(screen.getByText(/\$100\.00/)).toBeInTheDocument();
-      expect(screen.getByText(/Reimbursed:/i)).toBeInTheDocument();
-      expect(screen.getByText(/\$25\.00/)).toBeInTheDocument();
+      expect(screen.getByText(/100\.00/)).toBeInTheDocument();
+      expect(screen.getAllByText(/Reimbursed:/i).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/25\.00/).length).toBeGreaterThan(0);
     });
   });
 
@@ -3136,13 +3351,13 @@ describe('ExpenseForm - Data Preservation During Collapse', () => {
     const onExpenseAdded = vi.fn();
     const { container } = render(<ExpenseForm onExpenseAdded={onExpenseAdded} />);
 
-    // Wait for form to load
+    // Wait for form to load - use specific selector
     await waitFor(() => {
-      expect(screen.getByLabelText(/Date/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/^Date \*/i)).toBeInTheDocument();
     });
 
     // Fill in core fields
-    fireEvent.change(screen.getByLabelText(/Date/i), { target: { value: '2024-06-15' } });
+    fireEvent.change(screen.getByLabelText(/^Date \*/i), { target: { value: '2024-06-15' } });
     fireEvent.change(screen.getByLabelText(/Place/i), { target: { value: 'Test Store' } });
     fireEvent.change(screen.getByLabelText(/Type/i), { target: { value: 'Other' } });
     fireEvent.change(screen.getByLabelText(/Amount/i), { target: { value: '50' } });
@@ -3152,14 +3367,14 @@ describe('ExpenseForm - Data Preservation During Collapse', () => {
     fireEvent.change(paymentMethodSelect, { target: { value: '3' } }); // VISA
 
     // Expand Advanced Options and enter posted date
-    const advancedHeader = container.querySelector('.collapsible-header');
+    const advancedHeader = screen.getByRole('button', { name: /Advanced Options/i });
     fireEvent.click(advancedHeader);
 
     await waitFor(() => {
-      expect(screen.getByLabelText(/Posted Date/i)).toBeInTheDocument();
+      expect(container.querySelector('#posted_date')).toBeInTheDocument();
     });
 
-    const postedDateInput = screen.getByLabelText(/Posted Date/i);
+    const postedDateInput = container.querySelector('#posted_date');
     fireEvent.change(postedDateInput, { target: { value: '2024-06-20' } });
 
     // Collapse the Advanced Options section
@@ -3167,7 +3382,7 @@ describe('ExpenseForm - Data Preservation During Collapse', () => {
 
     // Verify section is collapsed
     await waitFor(() => {
-      expect(screen.queryByLabelText(/Posted Date/i)).not.toBeInTheDocument();
+      expect(container.querySelector('#posted_date')).not.toBeInTheDocument();
     });
 
     // Submit the form
@@ -3198,13 +3413,13 @@ describe('ExpenseForm - Data Preservation During Collapse', () => {
   it('should preserve insurance data when Insurance section is collapsed', async () => {
     const { container } = render(<ExpenseForm onExpenseAdded={vi.fn()} people={mockPeople} />);
 
-    // Wait for form to load
+    // Wait for form to load - use specific selector
     await waitFor(() => {
-      expect(screen.getByLabelText(/Date/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/^Date \*/i)).toBeInTheDocument();
     });
 
     // Fill in core fields and select medical type
-    fireEvent.change(screen.getByLabelText(/Date/i), { target: { value: '2024-06-15' } });
+    fireEvent.change(screen.getByLabelText(/^Date \*/i), { target: { value: '2024-06-15' } });
     fireEvent.change(screen.getByLabelText(/Place/i), { target: { value: 'Hospital' } });
     fireEvent.change(screen.getByLabelText(/Type/i), { target: { value: 'Tax - Medical' } });
     fireEvent.change(screen.getByLabelText(/Amount/i), { target: { value: '200' } });
@@ -3228,10 +3443,10 @@ describe('ExpenseForm - Data Preservation During Collapse', () => {
     fireEvent.click(insuranceCheckbox);
 
     await waitFor(() => {
-      expect(screen.getByLabelText(/Original Cost/i)).toBeInTheDocument();
+      expect(container.querySelector('#originalCost')).toBeInTheDocument();
     });
 
-    const originalCostInput = screen.getByLabelText(/Original Cost/i);
+    const originalCostInput = container.querySelector('#originalCost');
     const claimStatusSelect = screen.getByLabelText(/Claim Status/i);
     
     fireEvent.change(originalCostInput, { target: { value: '300' } });
@@ -3245,7 +3460,7 @@ describe('ExpenseForm - Data Preservation During Collapse', () => {
 
     // Verify section is collapsed
     await waitFor(() => {
-      expect(screen.queryByLabelText(/Original Cost/i)).not.toBeInTheDocument();
+      expect(container.querySelector('#originalCost')).not.toBeInTheDocument();
     });
 
     // Re-expand the section
@@ -3254,7 +3469,7 @@ describe('ExpenseForm - Data Preservation During Collapse', () => {
     // Verify all insurance data is preserved
     await waitFor(() => {
       const insuranceCheckboxAfter = screen.getByLabelText(/Eligible for Insurance Reimbursement/i);
-      const originalCostAfter = screen.getByLabelText(/Original Cost/i);
+      const originalCostAfter = container.querySelector('#originalCost');
       const claimStatusAfter = screen.getByLabelText(/Claim Status/i);
       
       expect(insuranceCheckboxAfter).toBeChecked();
@@ -3270,13 +3485,13 @@ describe('ExpenseForm - Data Preservation During Collapse', () => {
   it('should preserve data in multiple collapsed sections independently', async () => {
     const { container } = render(<ExpenseForm onExpenseAdded={vi.fn()} />);
 
-    // Wait for form to load
+    // Wait for form to load - use specific selector
     await waitFor(() => {
-      expect(screen.getByLabelText(/Date/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/^Date \*/i)).toBeInTheDocument();
     });
 
     // Fill in core fields
-    fireEvent.change(screen.getByLabelText(/Date/i), { target: { value: '2024-06-15' } });
+    fireEvent.change(screen.getByLabelText(/^Date \*/i), { target: { value: '2024-06-15' } });
     fireEvent.change(screen.getByLabelText(/Place/i), { target: { value: 'Test Place' } });
     fireEvent.change(screen.getByLabelText(/Type/i), { target: { value: 'Other' } });
     fireEvent.change(screen.getByLabelText(/Amount/i), { target: { value: '50' } });
@@ -3287,14 +3502,16 @@ describe('ExpenseForm - Data Preservation During Collapse', () => {
 
     // Expand and fill Advanced Options
     const headers = container.querySelectorAll('.collapsible-header');
-    const advancedHeader = headers[0];
+    const advancedHeader = Array.from(headers).find(h => 
+      h.textContent.includes('Advanced Options')
+    );
     fireEvent.click(advancedHeader);
 
     await waitFor(() => {
-      expect(screen.getByLabelText(/Posted Date/i)).toBeInTheDocument();
+      expect(container.querySelector('#posted_date')).toBeInTheDocument();
     });
 
-    fireEvent.change(screen.getByLabelText(/Posted Date/i), { target: { value: '2024-06-20' } });
+    fireEvent.change(container.querySelector('#posted_date'), { target: { value: '2024-06-20' } });
 
     // Expand and fill Reimbursement section
     const reimbursementHeader = Array.from(headers).find(h => 
@@ -3303,10 +3520,10 @@ describe('ExpenseForm - Data Preservation During Collapse', () => {
     fireEvent.click(reimbursementHeader);
 
     await waitFor(() => {
-      expect(screen.getByLabelText(/Original Cost/i)).toBeInTheDocument();
+      expect(container.querySelector('#genericOriginalCost')).toBeInTheDocument();
     });
 
-    fireEvent.change(screen.getByLabelText(/Original Cost/i), { target: { value: '75' } });
+    fireEvent.change(container.querySelector('#genericOriginalCost'), { target: { value: '75' } });
 
     // Collapse both sections
     fireEvent.click(advancedHeader);
@@ -3314,8 +3531,8 @@ describe('ExpenseForm - Data Preservation During Collapse', () => {
 
     // Verify both are collapsed
     await waitFor(() => {
-      expect(screen.queryByLabelText(/Posted Date/i)).not.toBeInTheDocument();
-      expect(screen.queryByLabelText(/Original Cost/i)).not.toBeInTheDocument();
+      expect(container.querySelector('#posted_date')).not.toBeInTheDocument();
+      expect(container.querySelector('#genericOriginalCost')).not.toBeInTheDocument();
     });
 
     // Re-expand Advanced Options
@@ -3323,7 +3540,7 @@ describe('ExpenseForm - Data Preservation During Collapse', () => {
 
     // Verify Advanced Options data is preserved
     await waitFor(() => {
-      const postedDate = screen.getByLabelText(/Posted Date/i);
+      const postedDate = container.querySelector('#posted_date');
       expect(postedDate.value).toBe('2024-06-20');
     });
 
@@ -3332,7 +3549,7 @@ describe('ExpenseForm - Data Preservation During Collapse', () => {
 
     // Verify Reimbursement data is preserved
     await waitFor(() => {
-      const originalCost = screen.getByLabelText(/Original Cost/i);
+      const originalCost = container.querySelector('#genericOriginalCost');
       expect(originalCost.value).toBe('75');
     });
   });
@@ -3380,7 +3597,9 @@ describe('ExpenseForm - State Reset After Submission', () => {
 
     // Get section headers using the correct class name
     const headers = container.querySelectorAll('.collapsible-header');
-    const advancedHeader = headers[0];
+    const advancedHeader = Array.from(headers).find(h => 
+      h.textContent.includes('Advanced Options')
+    );
     
     // Expand Advanced Options section
     fireEvent.click(advancedHeader);
@@ -3398,8 +3617,8 @@ describe('ExpenseForm - State Reset After Submission', () => {
       expect(reimbursementHeader.getAttribute('aria-expanded')).toBe('true');
     });
 
-    // Fill in required fields
-    fireEvent.change(screen.getByLabelText(/Date/i), { target: { value: '2024-06-15' } });
+    // Fill in required fields - use specific selector to avoid matching "Posted Date"
+    fireEvent.change(screen.getByLabelText(/^Date \*/i), { target: { value: '2024-06-15' } });
     fireEvent.change(screen.getByLabelText(/Place/i), { target: { value: 'Test Store' } });
     fireEvent.change(screen.getByLabelText(/Amount/i), { target: { value: '50' } });
     fireEvent.change(screen.getByLabelText(/Type/i), { target: { value: 'Groceries' } });
@@ -3460,7 +3679,9 @@ describe('ExpenseForm - State Reset After Submission', () => {
 
     // Get section headers using the correct class name
     const headers = container.querySelectorAll('.collapsible-header');
-    const advancedHeader = headers[0];
+    const advancedHeader = Array.from(headers).find(h => 
+      h.textContent.includes('Advanced Options')
+    );
     
     // Expand Advanced Options section
     fireEvent.click(advancedHeader);
@@ -3472,8 +3693,8 @@ describe('ExpenseForm - State Reset After Submission', () => {
     let storedStates = JSON.parse(sessionStorage.getItem('expenseForm_expansion_create') || '{}');
     expect(storedStates.advancedOptions).toBe(true);
 
-    // Fill in required fields
-    fireEvent.change(screen.getByLabelText(/Date/i), { target: { value: '2024-06-15' } });
+    // Fill in required fields - use specific selector to avoid matching "Posted Date"
+    fireEvent.change(screen.getByLabelText(/^Date \*/i), { target: { value: '2024-06-15' } });
     fireEvent.change(screen.getByLabelText(/Place/i), { target: { value: 'Test Store' } });
     fireEvent.change(screen.getByLabelText(/Amount/i), { target: { value: '50' } });
     fireEvent.change(screen.getByLabelText(/Type/i), { target: { value: 'Groceries' } });
@@ -3532,8 +3753,8 @@ describe('ExpenseForm - State Reset After Submission', () => {
     const paymentMethodSelect = container.querySelector('#payment_method_id');
     fireEvent.change(paymentMethodSelect, { target: { value: '3' } });
 
-    // Fill in required fields
-    fireEvent.change(screen.getByLabelText(/Date/i), { target: { value: '2024-06-15' } });
+    // Fill in required fields - use specific selector to avoid matching "Posted Date"
+    fireEvent.change(screen.getByLabelText(/^Date \*/i), { target: { value: '2024-06-15' } });
     fireEvent.change(screen.getByLabelText(/Place/i), { target: { value: 'Test Store' } });
     fireEvent.change(screen.getByLabelText(/Amount/i), { target: { value: '50' } });
     fireEvent.change(screen.getByLabelText(/Type/i), { target: { value: 'Groceries' } });

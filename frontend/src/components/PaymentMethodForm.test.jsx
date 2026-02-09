@@ -194,8 +194,9 @@ describe('PaymentMethodForm - Billing Cycle Day Field', () => {
       expect(screen.getByLabelText(/statement closing day/i)).toBeInTheDocument();
     });
 
-    // Check for hint text
-    expect(screen.getByText(/the day your statement closes each month/i)).toBeInTheDocument();
+    // Check for HelpTooltip presence (hint text is now in tooltip)
+    const tooltips = screen.getAllByRole('button', { name: /help information/i });
+    expect(tooltips.length).toBeGreaterThan(0);
   });
 
   /**

@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { createBillingCycle, updateBillingCycle, getCurrentCycleStatus, getBillingCyclePdfUrl } from '../services/creditCardApi';
 import { createLogger } from '../utils/logger';
+import HelpTooltip from './HelpTooltip';
 import './BillingCycleHistoryForm.css';
 
 const logger = createLogger('BillingCycleHistoryForm');
@@ -388,6 +389,7 @@ const BillingCycleHistoryForm = ({
         <div className="billing-cycle-field">
           <label htmlFor="actual-balance" className="billing-cycle-label">
             Actual Statement Balance <span className="required">*</span>
+            <HelpTooltip content="Enter the balance from your credit card statement" position="right" />
           </label>
           <div className="billing-cycle-amount-input">
             <span className="currency-symbol">$</span>
@@ -401,12 +403,8 @@ const BillingCycleHistoryForm = ({
               disabled={submitting}
               autoFocus
               aria-required="true"
-              aria-describedby="actual-balance-hint"
             />
           </div>
-          <span id="actual-balance-hint" className="billing-cycle-hint">
-            Enter the balance from your credit card statement
-          </span>
         </div>
 
         {/* Discrepancy Preview */}
@@ -474,6 +472,7 @@ const BillingCycleHistoryForm = ({
         <div className="billing-cycle-field">
           <label className="billing-cycle-label">
             Statement PDF <span className="optional">(optional)</span>
+            <HelpTooltip content="Attach your credit card statement PDF for record keeping" position="right" />
           </label>
           <input
             type="file"
@@ -533,9 +532,6 @@ const BillingCycleHistoryForm = ({
               📎 Attach PDF Statement
             </button>
           )}
-          <span className="billing-cycle-hint">
-            Attach your credit card statement PDF for record keeping
-          </span>
         </div>
 
         {/* Error Display */}

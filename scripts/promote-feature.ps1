@@ -155,17 +155,17 @@ if (-not $SkipTests) {
     # Check if we have npm
     $npmExists = Get-Command npm -ErrorAction SilentlyContinue
     if ($npmExists) {
-        # Run frontend tests
-        Write-Host "Running frontend tests..." -ForegroundColor Cyan
+        # Run frontend tests (parallel for speed)
+        Write-Host "Running frontend tests (parallel)..." -ForegroundColor Cyan
         Set-Location frontend
-        npm test -- --run --reporter=verbose 2>$null
+        npm run test:parallel 2>$null
         $frontendTestResult = $LASTEXITCODE
         Set-Location ..
         
-        # Run backend tests
-        Write-Host "Running backend tests..." -ForegroundColor Cyan
+        # Run backend tests (parallel for speed)
+        Write-Host "Running backend tests (parallel)..." -ForegroundColor Cyan
         Set-Location backend
-        npm test 2>$null
+        npm run test:parallel 2>$null
         $backendTestResult = $LASTEXITCODE
         Set-Location ..
         

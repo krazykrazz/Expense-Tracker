@@ -15,11 +15,14 @@ export default defineConfig({
     hookTimeout: isCI ? 30000 : 20000,
     // Retry flaky tests in CI
     retry: isCI ? 2 : 0,
-    // Reduce parallelism in CI to avoid resource contention
+    // Parallel execution configuration
     pool: 'forks',
     poolOptions: {
       forks: {
-        singleFork: isCI
+        // Single fork in CI for stability, parallel in local dev
+        singleFork: isCI,
+        // Use 50% of CPU cores for parallel execution (local dev only)
+        maxForks: isCI ? 1 : undefined
       }
     },
     // Better error reporting

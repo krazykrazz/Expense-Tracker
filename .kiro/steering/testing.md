@@ -38,14 +38,26 @@ npm test -- --testNamePattern="pattern"  # for test names, not file paths
 # Run all backend tests (sequential - for local dev)
 npm test
 
-# Run fast tests (reduced PBT iterations)
+# Run all backend tests (parallel - FASTER, recommended for promote script)
+npm run test:parallel
+
+# Run fast tests (reduced PBT iterations, sequential)
 npm run test:fast
 
-# Run only unit tests (no PBT)
+# Run fast tests (reduced PBT iterations, parallel - FASTEST)
+npm run test:fast:parallel
+
+# Run only unit tests (no PBT, sequential)
 npm run test:unit
 
-# Run only PBT tests
+# Run only unit tests (no PBT, parallel)
+npm run test:unit:parallel
+
+# Run only PBT tests (sequential)
 npm run test:pbt
+
+# Run only PBT tests (parallel)
+npm run test:pbt:parallel
 
 # Run specific test file
 npm test -- --testPathPatterns="serviceName"
@@ -53,6 +65,13 @@ npm test -- --testPathPatterns="serviceName"
 # Run tests with verbose output
 npm test -- --testPathPatterns="serviceName" --verbose
 ```
+
+**Parallel vs Sequential:**
+- **Sequential (`--runInBand`)**: Tests run one at a time. Slower but easier to debug.
+- **Parallel (`--maxWorkers=50%`)**: Tests run in parallel using 50% of CPU cores. Much faster (3-5x speedup).
+- Each Jest worker gets its own isolated database file (`test-expenses-worker-N.db`).
+- Use parallel tests in the promote script for faster feedback.
+- Use sequential tests when debugging specific test failures.
 
 Note: Local test commands use `--runInBand` (sequential) for simplicity.
 CI commands (`test:unit:ci`, `test:pbt:ci`) run in parallel with per-worker database isolation.
@@ -73,15 +92,31 @@ The frontend uses Vitest with @testing-library/react and fast-check for property
 ### Common Frontend Test Commands
 
 ```bash
-# Run all frontend tests (single run)
+# Run all frontend tests (single run, default parallelism)
 npm test
 
-# Run specific test file by name (DO NOT use npm test with pattern - it causes duplicate --run flag)
-npx vitest --run ExpenseForm
+# Run all frontend tests (explicit parallel with 50% CPU cores - FASTER)
+npm run test:parallel
 
-# Run tests matching a pattern
-npx vitest --run --reporter=verbose "pattern"
+# Run tests in watch mode
+npm run test:watch
+
+# Run only changed tests
+npm run test:changed
+
+# Run fast tests (reduced PBT iterations)
+npm run test:fast
+
+# Run fast tests (reduced PBT iterations, parallel - FASTEST)
+npm run test:fast:parallel
 ```
+
+**Parallel Execution:**
+- **Default (`npm test`)**: Vitest automatically uses parallel execution in local dev (sequential in CI)
+- **Explicit parallel (`test:parallel`)**: Forces parallel execution with 50% of CPU cores
+- Vitest uses worker pools (forks) to isolate tests
+- Each worker gets its own jsdom environment
+- Much faster than sequential execution (2-4x speedup)
 
 ### CRITICAL: Frontend Test Command Rules
 
@@ -114,6 +149,38 @@ command: npm test
 - **@testing-library/jest-dom**: DOM assertion matchers
 - **jsdom**: Browser environment simulation
 - **fast-check**: Property-based testing
+
+## Parallel Testing Strategy
+
+Both backend and frontend support parallel test execution for faster feedback:
+
+### When to Use Parallel Tests
+
+| Scenario | Backend Command | Frontend Command | Expected Speedup |
+|----------|----------------|------------------|------------------|
+| **Promote script** | `npm run test:parallel` | `npm run test:parallel` | 3-5x faster |
+| **Quick feedback** | `npm run test:fast:parallel` | `npm run test:fast:parallel` | 5-8x faster |
+| **Development** | `npm test` | `npm test` | Default (varies) |
+| **Debugging** | `npm test` | `npm test` | Sequential (easier) |
+
+### How Parallel Execution Works
+
+**Backend (Jest):**
+- Each worker gets isolated database: `test-expenses-worker-N.db`
+- Workers run in separate processes
+- `--maxWorkers=50%` uses half of CPU cores
+
+**Frontend (Vitest):**
+- Each worker gets isolated jsdom environment
+- Workers run in forked processes
+- Automatic parallelism in local dev, sequential in CI
+
+### Performance Tips
+
+1. **Use parallel tests in promote script** - Already configured for maximum speed
+2. **Use fast+parallel for development** - Reduced PBT iterations + parallel execution
+3. **Use sequential for debugging** - Easier to trace issues when tests run one at a time
+4. **CI uses optimized settings** - Sequential with retries for stability
 
 ### ExpenseForm Test Organization
 

@@ -2,6 +2,8 @@
 
 A full-stack expense tracking application built with React and Node.js.
 
+> **Disclaimer**: This project represents an attempt to create a personal project using AI-assisted development to explore the possibilities and limits using these techniques.
+
 ## Features
 
 ### Expense Management

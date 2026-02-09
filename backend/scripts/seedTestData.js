@@ -30,14 +30,13 @@ const paymentMethodsConfig = [
   { id: 1, type: 'cash', display_name: 'Cash', full_name: 'Cash' },
   { id: 2, type: 'debit', display_name: 'Debit', full_name: 'Debit' },
   { id: 3, type: 'cheque', display_name: 'Cheque', full_name: 'Cheque' },
-  { id: 4, type: 'credit_card', display_name: 'CIBC MC', full_name: 'CIBC Mastercard' },
-  { id: 5, type: 'credit_card', display_name: 'PCF MC', full_name: 'PCF Mastercard' },
-  { id: 6, type: 'credit_card', display_name: 'WS VISA', full_name: 'WealthSimple VISA' },
-  { id: 7, type: 'credit_card', display_name: 'RBC VISA', full_name: 'RBC VISA' }
+  { id: 4, type: 'credit_card', display_name: 'Credit Card 1', full_name: 'Credit Card 1' },
+  { id: 5, type: 'credit_card', display_name: 'Credit Card 2', full_name: 'Credit Card 2' },
+  { id: 6, type: 'credit_card', display_name: 'Credit Card 3', full_name: 'Credit Card 3' },
+  { id: 7, type: 'credit_card', display_name: 'Credit Card 4', full_name: 'Credit Card 4' }
 ];
 
 // Legacy payment method names for backward compatibility
-// Note: 'VISA' was renamed to 'RBC VISA' during migration
 const paymentMethodNames = paymentMethodsConfig.map(pm => pm.display_name);
 
 const notes = [
@@ -321,10 +320,10 @@ async function seedTestData() {
                       // Fixed expenses with payment method IDs
                       const fixedExpenses = [
                         { name: 'Rent', amount: 1200.00, category: 'Housing', payment_type: 'Debit', payment_method_id: 2 },
-                        { name: 'Internet', amount: 75.00, category: 'Utilities', payment_type: 'CIBC MC', payment_method_id: 4 },
-                        { name: 'Phone', amount: 85.00, category: 'Utilities', payment_type: 'CIBC MC', payment_method_id: 4 },
-                        { name: 'Netflix', amount: 15.99, category: 'Subscriptions', payment_type: 'CIBC MC', payment_method_id: 4 },
-                        { name: 'Spotify', amount: 9.99, category: 'Subscriptions', payment_type: 'CIBC MC', payment_method_id: 4 }
+                        { name: 'Internet', amount: 75.00, category: 'Utilities', payment_type: 'Credit Card 1', payment_method_id: 4 },
+                        { name: 'Phone', amount: 85.00, category: 'Utilities', payment_type: 'Credit Card 1', payment_method_id: 4 },
+                        { name: 'Netflix', amount: 15.99, category: 'Subscriptions', payment_type: 'Credit Card 1', payment_method_id: 4 },
+                        { name: 'Spotify', amount: 9.99, category: 'Subscriptions', payment_type: 'Credit Card 1', payment_method_id: 4 }
                       ];
 
                       fixedExpenses.forEach(fe => {

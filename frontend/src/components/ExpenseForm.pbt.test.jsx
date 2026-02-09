@@ -734,6 +734,14 @@ describe('ExpenseForm Property-Based Tests', () => {
             expect(container.querySelector('#date')).toBeInTheDocument();
           });
 
+          // Wait for payment methods to load
+          await waitFor(() => {
+            const methodSelect = container.querySelector('#payment_method_id');
+            expect(methodSelect).toBeInTheDocument();
+            // Ensure payment methods have loaded (more than just the placeholder option)
+            expect(methodSelect.options.length).toBeGreaterThan(1);
+          });
+
           // Set up the form based on which section we're testing
           const dateInput = container.querySelector('#date');
           const placeInput = container.querySelector('#place');
@@ -799,12 +807,24 @@ describe('ExpenseForm Property-Based Tests', () => {
               fireEvent.click(advancedHeader);
             });
 
+            // Wait for section to expand
+            await waitFor(() => {
+              expect(advancedHeader.getAttribute('aria-expanded')).toBe('true');
+            });
+
+            // Wait for the component to re-render with the credit card check
+            // The posted date field should appear because payment method is still VISA
+            await waitFor(() => {
+              const paymentMethod = container.querySelector('#payment_method_id');
+              expect(paymentMethod.value).toBe('3'); // Still VISA
+            });
+
             // Verify data is preserved after re-expansion
             await waitFor(() => {
               const postedDateAfterExpand = container.querySelector('#posted_date');
               expect(postedDateAfterExpand).toBeInTheDocument();
               expect(postedDateAfterExpand.value).toBe(testData.postedDate);
-            });
+            }, { timeout: 5000 });
 
           } else if (testData.sectionToTest === 'reimbursement') {
             // Test Reimbursement section (non-medical)

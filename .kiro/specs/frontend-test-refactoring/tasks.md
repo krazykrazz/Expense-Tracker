@@ -8,7 +8,7 @@ The implementation is structured to deliver value incrementally - each task prod
 
 ## Tasks
 
-- [ ] 1. Create test utility infrastructure
+- [x] 1. Create test utility infrastructure
   - [x] 1.1 Create MockCollapsibleSection component
     - Create `frontend/src/test-utils/componentMocks.jsx`
     - Implement MockCollapsibleSection with same interface as real component
@@ -38,7 +38,7 @@ The implementation is structured to deliver value incrementally - each task prod
     - Test assertValidationError with present and absent errors
     - _Requirements: 8.2, 8.3_
 
-- [ ] 2. Update testing guidelines documentation
+- [x] 2. Update testing guidelines documentation
   - [x] 2.1 Add "When to Use Each Test Type" section
     - Create decision flowchart (text-based or Mermaid diagram)
     - Document unit test use cases with examples
@@ -140,53 +140,53 @@ The implementation is structured to deliver value incrementally - each task prod
     - Measure execution time improvement
     - _Requirements: 7.3_
 
-- [ ] 5. Refactor ExpenseForm.core.test.jsx
-  - [ ] 5.1 Replace fireEvent with user-event throughout
+- [x] 5. Refactor ExpenseForm.core.test.jsx
+  - [x] 5.1 Replace fireEvent with user-event throughout
     - Update form field interactions to use userEvent.type
     - Update button clicks to use userEvent.click
     - Update select interactions to use userEvent.selectOptions
     - _Requirements: 1.3_
   
-  - [ ] 5.2 Update DOM queries to use accessible queries
+  - [x] 5.2 Update DOM queries to use accessible queries
     - Replace getByTestId with getByRole where possible
     - Replace querySelector with getByLabelText where possible
     - Ensure all queries use accessible selectors
     - _Requirements: 1.4_
   
-  - [ ] 5.3 Update form submission tests
+  - [x] 5.3 Update form submission tests
     - Use assertSubmittedData helper for verification
     - Test that correct data is sent to API
     - Test that form resets after successful submission
     - _Requirements: 5.4_
   
-  - [ ] 5.4 Update validation tests
+  - [x] 5.4 Update validation tests
     - Use assertValidationError helper for verification
     - Test all required field validations
     - Test amount validation (positive numbers)
     - _Requirements: 5.5_
   
-  - [ ] 5.5 Run ExpenseForm.core.test.jsx to verify all tests pass
+  - [x] 5.5 Run ExpenseForm.core.test.jsx to verify all tests pass
     - Ensure all tests pass reliably
     - Measure execution time (should be < 10 seconds)
     - _Requirements: 7.2_
 
-- [ ] 6. Refactor ExpenseForm.dataPreservation.test.jsx
-  - [ ] 6.1 Add MockCollapsibleSection mock
+- [x] 6. Refactor ExpenseForm.dataPreservation.test.jsx
+  - [x] 6.1 Add MockCollapsibleSection mock
     - Import and mock CollapsibleSection
     - Remove section expansion logic from tests
     - _Requirements: 1.2, 5.1_
   
-  - [ ] 6.2 Update data preservation tests to focus on user behavior
+  - [x] 6.2 Update data preservation tests to focus on user behavior
     - Test that field values persist when category changes
     - Test that field values persist when payment method changes
     - Verify through field values, not internal state
     - _Requirements: 1.5, 5.6_
   
-  - [ ] 6.3 Replace fireEvent with user-event
+  - [x] 6.3 Replace fireEvent with user-event
     - Update all user interactions to use user-event
     - _Requirements: 1.3_
   
-  - [ ] 6.4 Run ExpenseForm.dataPreservation.test.jsx to verify all tests pass
+  - [x] 6.4 Run ExpenseForm.dataPreservation.test.jsx to verify all tests pass
     - Ensure all tests pass reliably
     - Ensure no tests are skipped
     - _Requirements: 2.1_
@@ -225,14 +225,14 @@ The implementation is structured to deliver value incrementally - each task prod
     - Include commit message guidelines
     - _Requirements: 10.2, 10.3, 10.4_
 
-- [-] 9. Final validation and documentation
-  - [ ] 9.1 Run full frontend test suite
+- [x] 9. Final validation and documentation
+  - [x] 9.1 Run full frontend test suite
     - Verify all tests pass
     - Verify no tests are skipped (except intentional)
     - Measure total execution time
     - _Requirements: 2.1, 7.1_
   
-  - [ ] 9.2 Update FRONTEND_TESTING_GUIDELINES.md table of contents
+  - [x] 9.2 Update FRONTEND_TESTING_GUIDELINES.md table of contents
     - Add links to all new sections
     - Ensure navigation is clear
     - _Requirements: 9.7_
@@ -243,7 +243,7 @@ The implementation is structured to deliver value incrementally - each task prod
     - Show before/after for each pattern
     - _Requirements: 8.4_
   
-  - [ ] 9.4 Document success metrics baseline
+  - [x] 9.4 Document success metrics baseline
     - Record initial test execution times
     - Record initial test flakiness rate
     - Record initial skipped test count

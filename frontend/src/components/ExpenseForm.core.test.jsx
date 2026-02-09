@@ -26,7 +26,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import {
   setupExpenseFormMocks,
   fillBasicFields,
@@ -179,6 +180,7 @@ describe('ExpenseForm - Core Functionality', () => {
    * Requirements: 1.4
    */
   it('should validate required fields before submission', async () => {
+    const user = userEvent.setup();
     const mockOnExpenseAdded = vi.fn();
     render(<ExpenseForm onExpenseAdded={mockOnExpenseAdded} />);
 
@@ -188,7 +190,7 @@ describe('ExpenseForm - Core Functionality', () => {
 
     // Try to submit without filling any fields
     const submitButton = screen.getByRole('button', { name: /add expense/i });
-    fireEvent.click(submitButton);
+    await user.click(submitButton);
 
     // Form should not submit (API should not be called)
     await waitFor(() => {
@@ -202,6 +204,7 @@ describe('ExpenseForm - Core Functionality', () => {
    * Requirements: 1.4
    */
   it('should validate amount is a positive number', async () => {
+    const user = userEvent.setup();
     render(<ExpenseForm onExpenseAdded={vi.fn()} />);
 
     await waitFor(() => {
@@ -211,16 +214,24 @@ describe('ExpenseForm - Core Functionality', () => {
     const amountInput = screen.getByLabelText(/Amount/i);
     
     // Try negative amount
-    fireEvent.change(amountInput, { target: { value: '-50' } });
+    await user.clear(amountInput);
+    await user.type(amountInput, '-50');
     expect(amountInput.value).toBe('-50');
 
     // Fill other required fields
-    fireEvent.change(screen.getByLabelText(/^Date \*/i), { target: { value: '2025-01-15' } });
-    fireEvent.change(screen.getByLabelText(/Type/i), { target: { value: 'Other' } });
-    fireEvent.change(screen.getByLabelText(/Payment Method/i), { target: { value: '1' } });
+    const dateInput = screen.getByLabelText(/^Date \*/i);
+    await user.clear(dateInput);
+    await user.type(dateInput, '2025-01-15');
+    
+    const typeSelect = screen.getByLabelText(/Type/i);
+    await user.selectOptions(typeSelect, 'Other');
+    
+    const paymentMethodSelect = screen.getByLabelText(/Payment Method/i);
+    await user.selectOptions(paymentMethodSelect, '1');
 
     // Submit form
-    fireEvent.submit(screen.getByRole('button', { name: /add expense/i }));
+    const submitButton = screen.getByRole('button', { name: /add expense/i });
+    await user.click(submitButton);
 
     // Should not submit with negative amount
     await waitFor(() => {
@@ -257,7 +268,7 @@ describe('ExpenseForm - Core Functionality', () => {
       expect(expenseApi.createExpense).toHaveBeenCalledWith(
         expect.objectContaining({
           date: '2025-01-15',
-          amount: '100.00',
+          amount: '100',
           type: 'Other',
           payment_method_id: 1
         }),
@@ -275,6 +286,7 @@ describe('ExpenseForm - Core Functionality', () => {
    * Requirements: 1.3
    */
   it('should submit form with place field when provided', async () => {
+    const user = userEvent.setup();
     const mockOnExpenseAdded = vi.fn();
     expenseApi.createExpense.mockResolvedValue({ id: 1 });
 
@@ -283,9 +295,8 @@ describe('ExpenseForm - Core Functionality', () => {
     await fillBasicFields();
 
     // Add place
-    fireEvent.change(screen.getByLabelText(/Place/i), { 
-      target: { value: 'Test Store' } 
-    });
+    const placeInput = screen.getByLabelText(/Place/i);
+    await user.type(placeInput, 'Test Store');
 
     await submitForm();
 
@@ -307,6 +318,7 @@ describe('ExpenseForm - Core Functionality', () => {
    * Requirements: 1.4
    */
   it('should reset form fields after successful submission', async () => {
+    const user = userEvent.setup();
     const mockOnExpenseAdded = vi.fn();
     expenseApi.createExpense.mockResolvedValue({ id: 1 });
 
@@ -315,9 +327,8 @@ describe('ExpenseForm - Core Functionality', () => {
     await fillBasicFields();
 
     // Add place for verification
-    fireEvent.change(screen.getByLabelText(/Place/i), { 
-      target: { value: 'Test Store' } 
-    });
+    const placeInput = screen.getByLabelText(/Place/i);
+    await user.type(placeInput, 'Test Store');
 
     await submitForm();
 
@@ -393,6 +404,7 @@ describe('ExpenseForm - Core Functionality', () => {
    * Requirements: 1.4
    */
   it('should preserve payment method after submission', async () => {
+    const user = userEvent.setup();
     const mockOnExpenseAdded = vi.fn();
     expenseApi.createExpense.mockResolvedValue({ id: 1 });
 
@@ -401,9 +413,8 @@ describe('ExpenseForm - Core Functionality', () => {
     await fillBasicFields();
 
     // Change to Credit Card (ID 2)
-    fireEvent.change(screen.getByLabelText(/Payment Method/i), { 
-      target: { value: '2' } 
-    });
+    const paymentMethodSelect = screen.getByLabelText(/Payment Method/i);
+    await user.selectOptions(paymentMethodSelect, '2');
 
     await submitForm();
 

@@ -33,6 +33,7 @@
  */
 
 import { fireEvent, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import * as peopleApi from '../services/peopleApi.js';
 import * as expenseApi from '../services/expenseApi.js';
 import * as categorySuggestionApi from '../services/categorySuggestionApi.js';
@@ -186,7 +187,7 @@ export const expandSection = async (container, sectionName) => {
  *
  * Fields filled:
  * - Date: 2025-01-15
- * - Amount: 100.00
+ * - Amount: 100
  * - Type: Other
  * - Payment Method: 1 (Cash)
  *
@@ -205,23 +206,26 @@ export const expandSection = async (container, sectionName) => {
  * fireEvent.change(screen.getByLabelText(/type/i), { target: { value: 'Tax - Medical' } });
  */
 export const fillBasicFields = async () => {
+  const user = userEvent.setup();
+  
   // Wait for form to be ready
   await waitFor(() => {
     expect(screen.getByLabelText(/^Date \*/i)).toBeInTheDocument();
   });
 
-  fireEvent.change(screen.getByLabelText(/^Date \*/i), { 
-    target: { value: '2025-01-15' } 
-  });
-  fireEvent.change(screen.getByLabelText(/Amount/i), { 
-    target: { value: '100.00' } 
-  });
-  fireEvent.change(screen.getByLabelText(/Type/i), { 
-    target: { value: 'Other' } 
-  });
-  fireEvent.change(screen.getByLabelText(/Payment Method/i), { 
-    target: { value: '1' } 
-  });
+  const dateInput = screen.getByLabelText(/^Date \*/i);
+  await user.clear(dateInput);
+  await user.type(dateInput, '2025-01-15');
+  
+  const amountInput = screen.getByLabelText(/Amount/i);
+  await user.clear(amountInput);
+  await user.type(amountInput, '100');
+  
+  const typeSelect = screen.getByLabelText(/Type/i);
+  await user.selectOptions(typeSelect, 'Other');
+  
+  const paymentMethodSelect = screen.getByLabelText(/Payment Method/i);
+  await user.selectOptions(paymentMethodSelect, '1');
 };
 
 /**
@@ -244,23 +248,26 @@ export const fillBasicFields = async () => {
  * });
  */
 export const fillBasicFieldsWithValues = async ({ date, amount, type, paymentMethod }) => {
+  const user = userEvent.setup();
+  
   // Wait for form to be ready
   await waitFor(() => {
     expect(screen.getByLabelText(/^Date \*/i)).toBeInTheDocument();
   });
 
-  fireEvent.change(screen.getByLabelText(/^Date \*/i), { 
-    target: { value: date } 
-  });
-  fireEvent.change(screen.getByLabelText(/Amount/i), { 
-    target: { value: amount } 
-  });
-  fireEvent.change(screen.getByLabelText(/Type/i), { 
-    target: { value: type } 
-  });
-  fireEvent.change(screen.getByLabelText(/Payment Method/i), { 
-    target: { value: paymentMethod } 
-  });
+  const dateInput = screen.getByLabelText(/^Date \*/i);
+  await user.clear(dateInput);
+  await user.type(dateInput, date);
+  
+  const amountInput = screen.getByLabelText(/Amount/i);
+  await user.clear(amountInput);
+  await user.type(amountInput, amount);
+  
+  const typeSelect = screen.getByLabelText(/Type/i);
+  await user.selectOptions(typeSelect, type);
+  
+  const paymentMethodSelect = screen.getByLabelText(/Payment Method/i);
+  await user.selectOptions(paymentMethodSelect, paymentMethod);
 };
 
 /**
@@ -345,12 +352,14 @@ export const waitForAllocationModal = async () => {
  * });
  */
 export const submitForm = async () => {
+  const user = userEvent.setup();
+  
   await waitFor(() => {
     expect(screen.getByRole('button', { name: /add expense/i })).toBeInTheDocument();
   });
   
   const submitButton = screen.getByRole('button', { name: /add expense/i });
-  fireEvent.click(submitButton);
+  await user.click(submitButton);
 };
 
 // ── Enhanced Test Helpers (Task 1.3) ──

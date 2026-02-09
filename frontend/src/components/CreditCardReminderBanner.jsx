@@ -200,15 +200,35 @@ const CreditCardReminderBanner = ({
               const urgency = getUrgencyIndicator(card);
               return (
                 <div key={card.id} className="reminder-card-item">
-                  <span className="reminder-card-name">{card.display_name}</span>
-                  <span className="reminder-card-amount">{formatCurrency(card.required_payment)}</span>
-                  {/* Urgency indicator per card - Requirements: 8.4 */}
-                  {urgency.label && (
-                    <span 
-                      className={`reminder-urgency-badge small ${urgency.className}`}
-                      data-testid={`urgency-indicator-${card.id}`}
-                    >
-                      {urgency.icon}
+                  <div className="reminder-card-main-info">
+                    <span className="reminder-card-name">{card.display_name}</span>
+                    <span className="reminder-card-amount">{formatCurrency(card.required_payment)}</span>
+                  </div>
+                  <div className="reminder-card-badges">
+                    {/* Statement badge - Requirements: 1.1, 1.2, 1.3 */}
+                    {card.has_actual_balance && (
+                      <span 
+                        className="reminder-balance-source actual"
+                        data-testid={`balance-source-indicator-${card.id}`}
+                        title="From your entered statement balance"
+                      >
+                        ✓ Statement
+                      </span>
+                    )}
+                    {/* Urgency indicator per card - Requirements: 8.4, 4.1 */}
+                    {urgency.label && (
+                      <span 
+                        className={`reminder-urgency-badge small ${urgency.className}`}
+                        data-testid={`urgency-indicator-${card.id}`}
+                      >
+                        {urgency.icon}
+                      </span>
+                    )}
+                  </div>
+                  {/* Due date - Requirements: 2.1, 2.2, 2.3 */}
+                  {card.payment_due_day && (
+                    <span className="reminder-card-due-date" data-testid={`payment-due-date-${card.id}`}>
+                      Due: day {card.payment_due_day}
                     </span>
                   )}
                 </div>

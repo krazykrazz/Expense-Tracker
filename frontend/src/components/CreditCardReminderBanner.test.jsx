@@ -577,4 +577,306 @@ describe('CreditCardReminderBanner', () => {
       expect(paymentAmount).toHaveTextContent('$99,999.99');
     });
   });
+
+  describe('Badge Consistency - Requirements: 1.1, 1.2, 1.3, 2.1, 2.2, 2.3, 3.1, 3.2, 4.1, 4.2, 4.3, 4.4, 4.5', () => {
+    describe('Single Card View', () => {
+      test('should display Statement badge for single card with has_actual_balance true', () => {
+        const cardWithStatement = {
+          ...mockSingleCard,
+          has_actual_balance: true
+        };
+        
+        render(
+          <CreditCardReminderBanner 
+            cards={[cardWithStatement]} 
+            isOverdue={false}
+            {...mockCallbacks} 
+          />
+        );
+        
+        const statementBadge = screen.getByTestId('balance-source-indicator');
+        expect(statementBadge).toBeInTheDocument();
+        expect(statementBadge).toHaveTextContent('✓ Statement');
+        expect(statementBadge).toHaveClass('reminder-balance-source', 'actual');
+        expect(statementBadge).toHaveAttribute('title', 'From your entered statement balance');
+      });
+
+      test('should not display Statement badge for single card with has_actual_balance false', () => {
+        const cardWithoutStatement = {
+          ...mockSingleCard,
+          has_actual_balance: false
+        };
+        
+        render(
+          <CreditCardReminderBanner 
+            cards={[cardWithoutStatement]} 
+            isOverdue={false}
+            {...mockCallbacks} 
+          />
+        );
+        
+        expect(screen.queryByTestId('balance-source-indicator')).not.toBeInTheDocument();
+      });
+
+      test('should display due date for single card with payment_due_day', () => {
+        const cardWithDueDate = {
+          ...mockSingleCard,
+          payment_due_day: 15
+        };
+        
+        render(
+          <CreditCardReminderBanner 
+            cards={[cardWithDueDate]} 
+            isOverdue={false}
+            {...mockCallbacks} 
+          />
+        );
+        
+        const dueDate = screen.getByTestId('payment-due-date');
+        expect(dueDate).toBeInTheDocument();
+        expect(dueDate).toHaveTextContent('Due on day 15 of each month');
+      });
+
+      test('should not display due date for single card without payment_due_day', () => {
+        const cardWithoutDueDate = {
+          ...mockSingleCard,
+          payment_due_day: null
+        };
+        
+        render(
+          <CreditCardReminderBanner 
+            cards={[cardWithoutDueDate]} 
+            isOverdue={false}
+            {...mockCallbacks} 
+          />
+        );
+        
+        expect(screen.queryByTestId('payment-due-date')).not.toBeInTheDocument();
+      });
+    });
+
+    describe('Multiple Cards View', () => {
+      test('should display Statement badges for multiple cards with mixed has_actual_balance', () => {
+        const multipleCards = [
+          { ...mockSingleCard, id: 1, display_name: 'Visa', has_actual_balance: true, required_payment: 500 },
+          { ...mockSingleCard, id: 2, display_name: 'Mastercard', has_actual_balance: false, required_payment: 300 },
+          { ...mockSingleCard, id: 3, display_name: 'Amex', has_actual_balance: true, required_payment: 200 }
+        ];
+        
+        render(
+          <CreditCardReminderBanner 
+            cards={multipleCards} 
+            isOverdue={false}
+            {...mockCallbacks} 
+          />
+        );
+        
+        // Visa should have Statement badge
+        const visaStatementBadge = screen.getByTestId('balance-source-indicator-1');
+        expect(visaStatementBadge).toBeInTheDocument();
+        expect(visaStatementBadge).toHaveTextContent('✓ Statement');
+        expect(visaStatementBadge).toHaveClass('reminder-balance-source', 'actual');
+        expect(visaStatementBadge).toHaveAttribute('title', 'From your entered statement balance');
+        
+        // Mastercard should NOT have Statement badge
+        expect(screen.queryByTestId('balance-source-indicator-2')).not.toBeInTheDocument();
+        
+        // Amex should have Statement badge
+        const amexStatementBadge = screen.getByTestId('balance-source-indicator-3');
+        expect(amexStatementBadge).toBeInTheDocument();
+        expect(amexStatementBadge).toHaveTextContent('✓ Statement');
+      });
+
+      test('should display due dates for multiple cards with payment_due_day', () => {
+        const multipleCards = [
+          { ...mockSingleCard, id: 1, display_name: 'Visa', payment_due_day: 15, required_payment: 500 },
+          { ...mockSingleCard, id: 2, display_name: 'Mastercard', payment_due_day: 20, required_payment: 300 }
+        ];
+        
+        render(
+          <CreditCardReminderBanner 
+            cards={multipleCards} 
+            isOverdue={false}
+            {...mockCallbacks} 
+          />
+        );
+        
+        const visaDueDate = screen.getByTestId('payment-due-date-1');
+        expect(visaDueDate).toBeInTheDocument();
+        expect(visaDueDate).toHaveTextContent('Due: day 15');
+        
+        const mastercardDueDate = screen.getByTestId('payment-due-date-2');
+        expect(mastercardDueDate).toBeInTheDocument();
+        expect(mastercardDueDate).toHaveTextContent('Due: day 20');
+      });
+
+      test('should not display due dates for cards without payment_due_day', () => {
+        const multipleCards = [
+          { ...mockSingleCard, id: 1, display_name: 'Visa', payment_due_day: 15, required_payment: 500 },
+          { ...mockSingleCard, id: 2, display_name: 'Mastercard', payment_due_day: null, required_payment: 300 }
+        ];
+        
+        render(
+          <CreditCardReminderBanner 
+            cards={multipleCards} 
+            isOverdue={false}
+            {...mockCallbacks} 
+          />
+        );
+        
+        // Visa should have due date
+        expect(screen.getByTestId('payment-due-date-1')).toBeInTheDocument();
+        
+        // Mastercard should NOT have due date
+        expect(screen.queryByTestId('payment-due-date-2')).not.toBeInTheDocument();
+      });
+
+      test('should display Statement badge before Urgency indicator (badge ordering)', () => {
+        const multipleCards = [
+          {
+            ...mockSingleCard,
+            id: 1,
+            display_name: 'Visa',
+            has_actual_balance: true,
+            is_due_soon: true,
+            days_until_due: 2,
+            required_payment: 500
+          },
+          {
+            ...mockSingleCard,
+            id: 2,
+            display_name: 'Mastercard',
+            has_actual_balance: false,
+            is_overdue: true,
+            required_payment: 300
+          }
+        ];
+        
+        render(
+          <CreditCardReminderBanner 
+            cards={multipleCards} 
+            isOverdue={false}
+            {...mockCallbacks} 
+          />
+        );
+        
+        const badgesContainer = screen.getByTestId('balance-source-indicator-1').parentElement;
+        const badges = Array.from(badgesContainer.children);
+        
+        // First badge should be Statement badge
+        expect(badges[0]).toHaveClass('reminder-balance-source', 'actual');
+        expect(badges[0]).toHaveTextContent('✓ Statement');
+        
+        // Second badge should be Urgency indicator
+        expect(badges[1]).toHaveClass('reminder-urgency-badge');
+      });
+
+      test('should maintain urgency indicators for all cards in multiple view', () => {
+        const multipleCards = [
+          { ...mockSingleCard, id: 1, display_name: 'Visa', is_overdue: true, required_payment: 500 },
+          { ...mockSingleCard, id: 2, display_name: 'Mastercard', is_due_soon: true, days_until_due: 2, required_payment: 300 }
+        ];
+        
+        render(
+          <CreditCardReminderBanner 
+            cards={multipleCards} 
+            isOverdue={true}
+            {...mockCallbacks} 
+          />
+        );
+        
+        // Both cards should have urgency indicators
+        expect(screen.getByTestId('urgency-indicator-1')).toBeInTheDocument();
+        expect(screen.getByTestId('urgency-indicator-2')).toBeInTheDocument();
+      });
+
+      test('should display card names and amounts in multiple view', () => {
+        const multipleCards = [
+          { ...mockSingleCard, id: 1, display_name: 'Visa', required_payment: 500 },
+          { ...mockSingleCard, id: 2, display_name: 'Mastercard', required_payment: 300 }
+        ];
+        
+        render(
+          <CreditCardReminderBanner 
+            cards={multipleCards} 
+            isOverdue={false}
+            {...mockCallbacks} 
+          />
+        );
+        
+        expect(screen.getByText('Visa')).toBeInTheDocument();
+        expect(screen.getByText('Mastercard')).toBeInTheDocument();
+        expect(screen.getByText('$500.00')).toBeInTheDocument();
+        expect(screen.getByText('$300.00')).toBeInTheDocument();
+      });
+    });
+
+    describe('Backward Compatibility', () => {
+      test('should preserve onClick handler functionality', () => {
+        const multipleCards = [
+          { ...mockSingleCard, id: 1, display_name: 'Visa', has_actual_balance: true, required_payment: 500 },
+          { ...mockSingleCard, id: 2, display_name: 'Mastercard', required_payment: 300 }
+        ];
+        
+        render(
+          <CreditCardReminderBanner 
+            cards={multipleCards} 
+            isOverdue={false}
+            {...mockCallbacks} 
+          />
+        );
+        
+        const banner = screen.getByTestId('credit-card-reminder-banner');
+        fireEvent.click(banner);
+        
+        expect(mockCallbacks.onClick).toHaveBeenCalledTimes(1);
+      });
+
+      test('should preserve onDismiss handler functionality', () => {
+        const multipleCards = [
+          { ...mockSingleCard, id: 1, display_name: 'Visa', has_actual_balance: true, required_payment: 500 },
+          { ...mockSingleCard, id: 2, display_name: 'Mastercard', required_payment: 300 }
+        ];
+        
+        render(
+          <CreditCardReminderBanner 
+            cards={multipleCards} 
+            isOverdue={false}
+            {...mockCallbacks} 
+          />
+        );
+        
+        const dismissButton = screen.getByRole('button', { name: /dismiss reminder/i });
+        fireEvent.click(dismissButton);
+        
+        expect(mockCallbacks.onDismiss).toHaveBeenCalledTimes(1);
+        expect(mockCallbacks.onClick).not.toHaveBeenCalled();
+      });
+
+      test('should preserve keyboard navigation', () => {
+        const multipleCards = [
+          { ...mockSingleCard, id: 1, display_name: 'Visa', has_actual_balance: true, required_payment: 500 },
+          { ...mockSingleCard, id: 2, display_name: 'Mastercard', required_payment: 300 }
+        ];
+        
+        render(
+          <CreditCardReminderBanner 
+            cards={multipleCards} 
+            isOverdue={false}
+            {...mockCallbacks} 
+          />
+        );
+        
+        const banner = screen.getByTestId('credit-card-reminder-banner');
+        
+        // Test Enter key
+        fireEvent.keyDown(banner, { key: 'Enter' });
+        expect(mockCallbacks.onClick).toHaveBeenCalledTimes(1);
+        
+        // Test Space key
+        fireEvent.keyDown(banner, { key: ' ' });
+        expect(mockCallbacks.onClick).toHaveBeenCalledTimes(2);
+      });
+    });
+  });
 });

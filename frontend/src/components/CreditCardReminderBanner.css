@@ -168,9 +168,15 @@
 
 .credit-card-reminder-banner .reminder-card-item {
   display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.85rem;
+}
+
+.credit-card-reminder-banner .reminder-card-main-info {
+  display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 0.85rem;
 }
 
 .credit-card-reminder-banner .reminder-card-name {
@@ -179,6 +185,18 @@
 
 .credit-card-reminder-banner .reminder-card-amount {
   font-weight: 600;
+}
+
+.credit-card-reminder-banner .reminder-card-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.credit-card-reminder-banner .reminder-card-due-date {
+  font-size: 0.75rem;
+  opacity: 0.8;
 }
 
 .credit-card-reminder-banner .reminder-dismiss-btn {

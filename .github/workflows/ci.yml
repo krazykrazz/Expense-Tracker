@@ -187,38 +187,24 @@ jobs:
               --clobber
           else
             echo "Creating new release v${{ steps.meta.outputs.version }}..."
-            cat > release_notes.md <<'NOTES_EOF'
-## 🚀 Recommended: Use Pre-Built Container Image
-
-This release is available as a pre-built, tested Docker image. Using the container image is the recommended deployment method - no build required!
-
-### Quick Start (Recommended)
-
-Download and start:
-```bash
-wget https://github.com/REPO_PLACEHOLDER/releases/download/VERSION_PLACEHOLDER/docker-compose-VERSION_PLACEHOLDER.yml
-docker-compose -f docker-compose-VERSION_PLACEHOLDER.yml up -d
-```
-
-### Available Container Images
-
-- `ghcr.io/OWNER_PLACEHOLDER/expense-tracker:VERSION_PLACEHOLDER` - This release (recommended)
-- `ghcr.io/OWNER_PLACEHOLDER/expense-tracker:SHA_PLACEHOLDER` - Commit SHA (immutable)
-- `ghcr.io/OWNER_PLACEHOLDER/expense-tracker:latest` - Latest main branch
-
-### 📦 Assets
-
-- docker-compose-VERSION_PLACEHOLDER.yml - Ready-to-use Docker Compose configuration
-- Source code archives - For reference only; use container image for deployment
-
-### 📝 What's Changed
-
-See [CHANGELOG.md](https://github.com/REPO_PLACEHOLDER/blob/main/CHANGELOG.md) for detailed changes.
-NOTES_EOF
-            sed -i "s|REPO_PLACEHOLDER|${{ github.repository }}|g" release_notes.md
-            sed -i "s|VERSION_PLACEHOLDER|v${{ steps.meta.outputs.version }}|g" release_notes.md
-            sed -i "s|OWNER_PLACEHOLDER|${{ github.repository_owner }}|g" release_notes.md
-            sed -i "s|SHA_PLACEHOLDER|${{ steps.meta.outputs.sha_short }}|g" release_notes.md
+            echo "## Pre-Built Container Image Available" > release_notes.md
+            echo "" >> release_notes.md
+            echo "This release is available as a pre-built Docker image at GitHub Container Registry." >> release_notes.md
+            echo "" >> release_notes.md
+            echo "### Quick Start" >> release_notes.md
+            echo "" >> release_notes.md
+            echo "Download the docker-compose file:" >> release_notes.md
+            echo "https://github.com/${{ github.repository }}/releases/download/v${{ steps.meta.outputs.version }}/docker-compose-v${{ steps.meta.outputs.version }}.yml" >> release_notes.md
+            echo "" >> release_notes.md
+            echo "Then run: docker-compose -f docker-compose-v${{ steps.meta.outputs.version }}.yml up -d" >> release_notes.md
+            echo "" >> release_notes.md
+            echo "### Container Images" >> release_notes.md
+            echo "" >> release_notes.md
+            echo "- ghcr.io/${{ github.repository_owner }}/expense-tracker:v${{ steps.meta.outputs.version }} (this release)" >> release_notes.md
+            echo "- ghcr.io/${{ github.repository_owner }}/expense-tracker:${{ steps.meta.outputs.sha_short }} (commit SHA)" >> release_notes.md
+            echo "- ghcr.io/${{ github.repository_owner }}/expense-tracker:latest (latest main)" >> release_notes.md
+            echo "" >> release_notes.md
+            echo "See CHANGELOG.md for detailed changes." >> release_notes.md
             
             gh release create "v${{ steps.meta.outputs.version }}" \
               docker-compose-v${{ steps.meta.outputs.version }}.yml \

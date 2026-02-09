@@ -65,6 +65,27 @@ Use the deployment script to handle everything automatically:
 13. Deploys to production
 14. Pushes to origin
 
+### Hotfix Workflow
+
+For urgent production fixes, use the `create-pr-from-main.ps1` script:
+
+```powershell
+# 1. Make changes on main (or create hotfix branch)
+.\scripts\create-pr-from-main.ps1 -Title "Fix: Critical bug description"
+
+# 2. After PR is merged, pull main
+git checkout main
+git pull origin main
+
+# 3. Deploy with version bump (use -SkipStaging for urgent fixes)
+.\scripts\deploy-to-production.ps1 -BumpType PATCH -Description "Critical bug fix" -SkipStaging
+```
+
+**Important:** Hotfix branches follow the same rules as feature branches:
+- ❌ No version bumps on hotfix branches
+- ✅ Version bumps only on main after merge
+- ✅ Use `-SkipStaging` flag for urgent production fixes
+
 ### Manual Deployment
 
 If you prefer manual control, follow the documented workflow in `DEPLOYMENT_WORKFLOW.md`.
@@ -77,17 +98,21 @@ If you prefer manual control, follow the documented workflow in `DEPLOYMENT_WORK
 
 **What it does:**
 - Runs before every commit
-- Checks if you're on a feature branch
+- Checks if you're on a feature or hotfix branch
 - Scans staged files for version changes
-- Blocks commit if version bump detected on feature branch
+- Blocks commit if version bump detected on non-main branch
+
+**Applies to branches:**
+- `feature/*` - Feature branches
+- `hotfix/*` - Hotfix branches
 
 **Example output:**
 ```
-❌ ERROR: Version bump detected on feature branch!
+❌ ERROR: Version bump detected on feature/hotfix branch!
 
-Version bumps must only happen on 'main' branch after feature merge.
+Version bumps must only happen on 'main' branch after merge.
 
-Current branch: feature/my-feature
+Current branch: hotfix/20260208-143022
 Modified file: frontend/package.json
 
 To fix:
@@ -111,11 +136,14 @@ git commit --no-verify -m "message"
 - Fails the PR if version bump detected
 - Provides clear error message with instructions
 
+**Applies to:**
+- All PRs to main (feature branches, hotfix branches, etc.)
+
 **Example output:**
 ```
 ❌ ERROR: Version bump detected in Pull Request!
 
-Version bumps must NOT be included in feature branch PRs.
+Version bumps must NOT be included in feature/hotfix branch PRs.
 They should only happen on 'main' AFTER the PR is merged.
 
 Correct workflow:

@@ -1,11 +1,11 @@
 #!/bin/bash
-# Pre-commit hook to prevent version bumps on feature branches
+# Pre-commit hook to prevent version bumps on feature and hotfix branches
 
 # Get current branch
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
 
-# Check if we're on a feature branch
-if [[ $BRANCH == feature/* ]]; then
+# Check if we're on a feature or hotfix branch
+if [[ $BRANCH == feature/* ]] || [[ $BRANCH == hotfix/* ]]; then
     # Check if any version files are being modified
     VERSION_FILES=(
         "frontend/package.json"
@@ -18,9 +18,9 @@ if [[ $BRANCH == feature/* ]]; then
         if git diff --cached --name-only | grep -q "^$file$"; then
             # Check if version field is being modified
             if git diff --cached "$file" | grep -E '^\+.*"version":|^\+.*v[0-9]+\.[0-9]+\.[0-9]+'; then
-                echo "❌ ERROR: Version bump detected on feature branch!"
+                echo "❌ ERROR: Version bump detected on feature/hotfix branch!"
                 echo ""
-                echo "Version bumps must only happen on 'main' branch after feature merge."
+                echo "Version bumps must only happen on 'main' branch after merge."
                 echo ""
                 echo "Current branch: $BRANCH"
                 echo "Modified file: $file"

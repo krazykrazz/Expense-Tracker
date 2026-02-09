@@ -48,7 +48,7 @@ jobs:
         run: |
           echo "❌ ERROR: Version bump detected in Pull Request!"
           echo ""
-          echo "Version bumps must NOT be included in feature branch PRs."
+          echo "Version bumps must NOT be included in feature/hotfix branch PRs."
           echo "They should only happen on 'main' AFTER the PR is merged."
           echo ""
           echo "Correct workflow:"

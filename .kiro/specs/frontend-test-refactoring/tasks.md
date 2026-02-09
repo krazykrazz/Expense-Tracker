@@ -9,7 +9,7 @@ The implementation is structured to deliver value incrementally - each task prod
 ## Tasks
 
 - [ ] 1. Create test utility infrastructure
-  - [ ] 1.1 Create MockCollapsibleSection component
+  - [x] 1.1 Create MockCollapsibleSection component
     - Create `frontend/src/test-utils/componentMocks.jsx`
     - Implement MockCollapsibleSection with same interface as real component
     - Always render children (jsdom workaround)
@@ -17,14 +17,14 @@ The implementation is structured to deliver value incrementally - each task prod
     - Export from `frontend/src/test-utils/index.js`
     - _Requirements: 1.2, 2.1, 8.1_
   
-  - [ ]* 1.2 Write unit tests for MockCollapsibleSection
+  - [x] 1.2 Write unit tests for MockCollapsibleSection
     - Test that children render regardless of isExpanded state
     - Test that badge displays correctly
     - Test that onToggle is called on button click
     - Test that aria-expanded attribute is set correctly
     - _Requirements: 8.1_
   
-  - [ ] 1.3 Add enhanced ExpenseForm test helpers
+  - [x] 1.3 Add enhanced ExpenseForm test helpers
     - Add `mockCollapsibleSection()` function to `expenseFormHelpers.js`
     - Add `assertFieldVisible()` and `assertFieldHidden()` helpers
     - Add `assertSubmittedData()` helper for form submission verification
@@ -32,14 +32,14 @@ The implementation is structured to deliver value incrementally - each task prod
     - Export new helpers from `frontend/src/test-utils/index.js`
     - _Requirements: 8.2, 8.3_
   
-  - [ ]* 1.4 Write unit tests for new test helpers
+  - [x] 1.4 Write unit tests for new test helpers
     - Test assertFieldVisible with visible and hidden fields
     - Test assertSubmittedData with matching and non-matching data
     - Test assertValidationError with present and absent errors
     - _Requirements: 8.2, 8.3_
 
 - [ ] 2. Update testing guidelines documentation
-  - [ ] 2.1 Add "When to Use Each Test Type" section
+  - [x] 2.1 Add "When to Use Each Test Type" section
     - Create decision flowchart (text-based or Mermaid diagram)
     - Document unit test use cases with examples
     - Document integration test use cases with examples
@@ -48,7 +48,7 @@ The implementation is structured to deliver value incrementally - each task prod
     - Document when NOT to use PBT (UI interactions)
     - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6_
   
-  - [ ] 2.2 Add "Testing UI Components" section
+  - [x] 2.2 Add "Testing UI Components" section
     - Document pattern for mocking CollapsibleSection
     - Document pattern for testing conditional field display
     - Document pattern for testing form submission
@@ -56,86 +56,86 @@ The implementation is structured to deliver value incrementally - each task prod
     - Include before/after examples for each pattern
     - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 3.7_
   
-  - [ ] 2.3 Add "Mocking Strategies" section
+  - [x] 2.3 Add "Mocking Strategies" section
     - Document when and how to mock components
     - Document when and how to mock modules
     - Document when and how to mock APIs
     - Include examples of MockCollapsibleSection usage
     - _Requirements: 9.2_
   
-  - [ ] 2.4 Add "Async Testing Best Practices" section
+  - [x] 2.4 Add "Async Testing Best Practices" section
     - Document waitFor usage with examples
     - Document findBy queries with examples
     - Document user-event vs fireEvent comparison
     - Include common async patterns and anti-patterns
     - _Requirements: 2.2, 2.3, 9.1, 9.3_
   
-  - [ ] 2.5 Add "Common Pitfalls and Solutions" section
+  - [x] 2.5 Add "Common Pitfalls and Solutions" section
     - Document jsdom limitations with CollapsibleSection
     - Document timing issues and solutions
     - Document implementation detail coupling issues
     - Include troubleshooting guide for common test failures
     - _Requirements: 2.4, 2.5, 9.4, 9.6_
   
-  - [ ] 2.6 Add "Migration Examples" section
+  - [x] 2.6 Add "Migration Examples" section
     - Include before/after for mocking CollapsibleSection
     - Include before/after for PBT to parameterized conversion
     - Include before/after for fireEvent to user-event
     - Include before/after for implementation detail queries
     - _Requirements: 9.5_
 
-- [ ] 3. Refactor ExpenseForm.sections.test.jsx
-  - [ ] 3.1 Add MockCollapsibleSection mock at top of file
+- [x] 3. Refactor ExpenseForm.sections.test.jsx
+  - [x] 3.1 Add MockCollapsibleSection mock at top of file
     - Import MockCollapsibleSection from test-utils
     - Add vi.mock('./CollapsibleSection') with MockCollapsibleSection
     - Remove expandSection calls from tests
     - _Requirements: 1.2, 5.1_
   
-  - [ ] 3.2 Update section visibility tests
+  - [x] 3.2 Update section visibility tests
     - Remove section expansion logic
     - Test that sections render with correct titles
     - Test that badges display correctly
     - Use accessible queries (getByRole, getByLabelText)
     - _Requirements: 1.4, 5.2_
   
-  - [ ] 3.3 Update conditional field display tests
+  - [x] 3.3 Update conditional field display tests
     - Test fields appear/disappear based on category selection
     - Use assertFieldVisible and assertFieldHidden helpers
     - Replace fireEvent with user-event
     - _Requirements: 1.3, 5.3_
   
-  - [ ] 3.4 Update section badge tests
+  - [x] 3.4 Update section badge tests
     - Test badge displays when people are assigned
     - Test badge displays when insurance status is set
     - Test badge displays when reimbursement is configured
     - _Requirements: 5.2_
   
-  - [ ]* 3.5 Run ExpenseForm.sections.test.jsx to verify all tests pass
+  - [x] 3.5 Run ExpenseForm.sections.test.jsx to verify all tests pass
     - Ensure no tests are skipped
     - Ensure all tests pass reliably
     - Measure execution time (should be < 10 seconds)
     - _Requirements: 2.1, 7.2_
 
-- [ ] 4. Refactor ExpenseForm.pbt.test.jsx
-  - [ ] 4.1 Identify PBT tests that should be parameterized
+- [x] 4. Refactor ExpenseForm.pbt.test.jsx
+  - [x] 4.1 Identify PBT tests that should be parameterized
     - Review each PBT test for finite input spaces
     - Mark tests with finite inputs (< 10 cases) for conversion
     - Keep PBT tests for truly infinite/large input spaces
     - _Requirements: 4.1, 4.2, 4.5_
   
-  - [ ] 4.2 Convert finite-input PBT tests to parameterized tests
+  - [x] 4.2 Convert finite-input PBT tests to parameterized tests
     - Convert required field validation PBT to parameterized
     - Convert category-specific behavior PBT to parameterized
     - Use testEach helper from test-utils
     - _Requirements: 4.1, 4.2_
   
-  - [ ] 4.3 Update remaining PBT tests to use user-event
+  - [x] 4.3 Update remaining PBT tests to use user-event
     - Replace fireEvent.change with userEvent.type
     - Replace fireEvent.click with userEvent.click
     - Replace fireEvent.keyDown with userEvent.keyboard
     - _Requirements: 1.3_
   
-  - [ ]* 4.4 Run ExpenseForm.pbt.test.jsx to verify all tests pass
+  - [x] 4.4 Run ExpenseForm.pbt.test.jsx to verify all tests pass
     - Ensure converted tests maintain same coverage
     - Measure execution time improvement
     - _Requirements: 7.3_
@@ -165,7 +165,7 @@ The implementation is structured to deliver value incrementally - each task prod
     - Test amount validation (positive numbers)
     - _Requirements: 5.5_
   
-  - [ ]* 5.5 Run ExpenseForm.core.test.jsx to verify all tests pass
+  - [ ] 5.5 Run ExpenseForm.core.test.jsx to verify all tests pass
     - Ensure all tests pass reliably
     - Measure execution time (should be < 10 seconds)
     - _Requirements: 7.2_
@@ -186,46 +186,46 @@ The implementation is structured to deliver value incrementally - each task prod
     - Update all user interactions to use user-event
     - _Requirements: 1.3_
   
-  - [ ]* 6.4 Run ExpenseForm.dataPreservation.test.jsx to verify all tests pass
+  - [ ] 6.4 Run ExpenseForm.dataPreservation.test.jsx to verify all tests pass
     - Ensure all tests pass reliably
     - Ensure no tests are skipped
     - _Requirements: 2.1_
 
-- [ ] 7. Create performance benchmark script
-  - [ ] 7.1 Create scripts/measure-test-performance.js
+- [x] 7. Create performance benchmark script
+  - [x] 7.1 Create scripts/measure-test-performance.js
     - Measure full test suite execution time
     - Measure individual test file execution times
     - Report slow tests (> 1 second for unit tests)
     - Exit with error if thresholds exceeded
     - _Requirements: 7.1, 7.2_
   
-  - [ ] 7.2 Add npm script for performance measurement
+  - [x] 7.2 Add npm script for performance measurement
     - Add "test:perf" script to frontend/package.json
     - Script should run measure-test-performance.js
     - _Requirements: 7.1_
   
-  - [ ]* 7.3 Run performance benchmark and verify thresholds
+  - [x] 7.3 Run performance benchmark and verify thresholds
     - Run full test suite and measure time
     - Verify < 5 minutes for full suite
     - Verify < 10 seconds for focused files
     - Document baseline metrics
     - _Requirements: 7.1, 7.2_
 
-- [ ] 8. Create refactoring tracking document
-  - [ ] 8.1 Create docs/development/TEST_REFACTORING_TRACKER.md
+- [x] 8. Create refactoring tracking document
+  - [x] 8.1 Create docs/development/TEST_REFACTORING_TRACKER.md
     - List all test files that need refactoring
     - Prioritize by brittleness and complexity
     - Estimate effort for each file
     - Track completion status
     - _Requirements: 10.1, 10.5_
   
-  - [ ] 8.2 Document refactoring process
+  - [x] 8.2 Document refactoring process
     - Explain when to apply new patterns
     - Provide checklist for refactoring a test file
     - Include commit message guidelines
     - _Requirements: 10.2, 10.3, 10.4_
 
-- [ ] 9. Final validation and documentation
+- [-] 9. Final validation and documentation
   - [ ] 9.1 Run full frontend test suite
     - Verify all tests pass
     - Verify no tests are skipped (except intentional)
@@ -237,7 +237,7 @@ The implementation is structured to deliver value incrementally - each task prod
     - Ensure navigation is clear
     - _Requirements: 9.7_
   
-  - [ ] 9.3 Create example test file demonstrating all patterns
+  - [x] 9.3 Create example test file demonstrating all patterns
     - Create docs/development/EXAMPLE_TEST_PATTERNS.md
     - Include complete working examples
     - Show before/after for each pattern

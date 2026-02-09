@@ -9,8 +9,16 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
+
+// Mock all API modules BEFORE importing expenseFormHelpers
+vi.mock('../services/peopleApi');
+vi.mock('../services/expenseApi');
+vi.mock('../services/categorySuggestionApi');
+vi.mock('../services/categoriesApi');
+vi.mock('../services/paymentMethodApi');
+
 import {
   mockCategories,
   mockPaymentMethods,
@@ -29,13 +37,6 @@ import * as expenseApi from '../services/expenseApi';
 import * as categorySuggestionApi from '../services/categorySuggestionApi';
 import * as categoriesApi from '../services/categoriesApi';
 import * as paymentMethodApi from '../services/paymentMethodApi';
-
-// Mock all API modules
-vi.mock('../services/peopleApi');
-vi.mock('../services/expenseApi');
-vi.mock('../services/categorySuggestionApi');
-vi.mock('../services/categoriesApi');
-vi.mock('../services/paymentMethodApi');
 
 describe('expenseFormHelpers - Mock Data', () => {
   it('should export mockCategories with expected structure', () => {
@@ -587,3 +588,4 @@ describe('expenseFormHelpers - submitForm', () => {
     });
   });
 });
+

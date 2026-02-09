@@ -18,7 +18,8 @@
     "test:sections": "vitest --run ExpenseForm.sections",
     "test:people": "vitest --run ExpenseForm.people",
     "test:futureMonths": "vitest --run ExpenseForm.futureMonths",
-    "test:dataPreservation": "vitest --run ExpenseForm.dataPreservation"
+    "test:dataPreservation": "vitest --run ExpenseForm.dataPreservation",
+    "test:perf": "node ../scripts/measure-test-performance.js"
   },
   "dependencies": {
     "react": "^19.2.4",

@@ -33,11 +33,11 @@
  */
 
 import { fireEvent, screen, waitFor } from '@testing-library/react';
-import * as peopleApi from '../services/peopleApi';
-import * as expenseApi from '../services/expenseApi';
-import * as categorySuggestionApi from '../services/categorySuggestionApi';
-import * as categoriesApi from '../services/categoriesApi';
-import * as paymentMethodApi from '../services/paymentMethodApi';
+import * as peopleApi from '../services/peopleApi.js';
+import * as expenseApi from '../services/expenseApi.js';
+import * as categorySuggestionApi from '../services/categorySuggestionApi.js';
+import * as categoriesApi from '../services/categoriesApi.js';
+import * as paymentMethodApi from '../services/paymentMethodApi.js';
 
 // ── Mock Data ──
 
@@ -351,4 +351,230 @@ export const submitForm = async () => {
   
   const submitButton = screen.getByRole('button', { name: /add expense/i });
   fireEvent.click(submitButton);
+};
+
+// ── Enhanced Test Helpers (Task 1.3) ──
+
+/**
+ * Documentation for mocking CollapsibleSection in tests.
+ * 
+ * **Why mock CollapsibleSection?**
+ * The real CollapsibleSection uses CSS display properties to show/hide content.
+ * In jsdom, CSS is not fully evaluated, so visibility checks fail. MockCollapsibleSection
+ * always renders children, allowing tests to focus on user-facing behavior.
+ *
+ * **How to mock CollapsibleSection:**
+ * Add this at the TOP of your test file, before any imports of components that use CollapsibleSection:
+ * 
+ * ```javascript
+ * import { vi } from 'vitest';
+ * import { MockCollapsibleSection } from '../test-utils';
+ * 
+ * vi.mock('../components/CollapsibleSection', () => ({
+ *   default: MockCollapsibleSection
+ * }));
+ * ```
+ *
+ * **When to use:**
+ * - Integration tests that need to interact with fields inside collapsible sections
+ * - Tests that verify conditional field display based on form state
+ * - Tests that verify form submission with data from multiple sections
+ *
+ * **When NOT to use:**
+ * - Unit tests specifically testing CollapsibleSection behavior (use real component)
+ * - E2E tests in real browsers (use real component)
+ *
+ * @example <caption>Basic usage at top of test file</caption>
+ * import { vi } from 'vitest';
+ * import { MockCollapsibleSection } from '../test-utils';
+ * 
+ * // Mock BEFORE importing components that use CollapsibleSection
+ * vi.mock('../components/CollapsibleSection', () => ({
+ *   default: MockCollapsibleSection
+ * }));
+ * 
+ * import ExpenseForm from '../components/ExpenseForm';
+ *
+ * describe('ExpenseForm', () => {
+ *   it('should show insurance fields when Tax - Medical is selected', async () => {
+ *     render(<ExpenseForm onExpenseAdded={vi.fn()} />);
+ *     // No need to expand section - fields are always visible in tests
+ *     const insuranceField = screen.getByLabelText('Insurance Status');
+ *     expect(insuranceField).toBeInTheDocument();
+ *   });
+ * });
+ */
+
+/**
+ * Asserts that a form field is visible in the document.
+ * Queries by label text first, then falls back to role-based queries.
+ *
+ * This helper provides a consistent way to verify field visibility without
+ * coupling to implementation details like test IDs or CSS selectors.
+ *
+ * @param {string} fieldName - The accessible name of the field (label text or aria-label)
+ * @returns {void}
+ * @throws {Error} If the field is not found or not visible
+ *
+ * @example <caption>Verify field appears after category selection</caption>
+ * const categorySelect = screen.getByLabelText('Category');
+ * await userEvent.selectOptions(categorySelect, 'Tax - Medical');
+ * assertFieldVisible('Insurance Status');
+ *
+ * @example <caption>Verify multiple fields are visible</caption>
+ * assertFieldVisible('Date');
+ * assertFieldVisible('Amount');
+ * assertFieldVisible('Category');
+ * assertFieldVisible('Payment Method');
+ */
+export const assertFieldVisible = (fieldName) => {
+  // Try label text first (most accessible)
+  let field = screen.queryByLabelText(fieldName, { exact: false });
+  
+  // Fall back to role-based queries
+  if (!field) {
+    field = screen.queryByRole('textbox', { name: new RegExp(fieldName, 'i') });
+  }
+  if (!field) {
+    field = screen.queryByRole('combobox', { name: new RegExp(fieldName, 'i') });
+  }
+  if (!field) {
+    field = screen.queryByRole('spinbutton', { name: new RegExp(fieldName, 'i') });
+  }
+  
+  expect(field).toBeInTheDocument();
+  expect(field).toBeVisible();
+};
+
+/**
+ * Asserts that a form field is not present in the document.
+ * Queries by label text first, then falls back to role-based queries.
+ *
+ * This helper provides a consistent way to verify conditional field hiding
+ * without coupling to implementation details.
+ *
+ * @param {string} fieldName - The accessible name of the field (label text or aria-label)
+ * @returns {void}
+ *
+ * @example <caption>Verify field is hidden when category changes</caption>
+ * const categorySelect = screen.getByLabelText('Category');
+ * await userEvent.selectOptions(categorySelect, 'Groceries');
+ * assertFieldHidden('Insurance Status');
+ *
+ * @example <caption>Verify conditional fields are hidden by default</caption>
+ * render(<ExpenseForm onExpenseAdded={vi.fn()} />);
+ * assertFieldHidden('Posted Date');
+ * assertFieldHidden('Reimbursement Amount');
+ */
+export const assertFieldHidden = (fieldName) => {
+  // Try label text first (most accessible)
+  let field = screen.queryByLabelText(fieldName, { exact: false });
+  
+  // Fall back to role-based queries
+  if (!field) {
+    field = screen.queryByRole('textbox', { name: new RegExp(fieldName, 'i') });
+  }
+  if (!field) {
+    field = screen.queryByRole('combobox', { name: new RegExp(fieldName, 'i') });
+  }
+  if (!field) {
+    field = screen.queryByRole('spinbutton', { name: new RegExp(fieldName, 'i') });
+  }
+  
+  expect(field).not.toBeInTheDocument();
+};
+
+/**
+ * Asserts that a mock function was called with data matching the expected structure.
+ * Uses expect.objectContaining to allow partial matching, making tests less brittle.
+ *
+ * This helper simplifies form submission verification by focusing on the data
+ * that matters for the test, ignoring implementation details like computed fields.
+ *
+ * @param {Function} mockFn - The mock function to verify (e.g., expenseApi.createExpense)
+ * @param {Object} expectedData - The expected data structure (partial match)
+ * @returns {void}
+ * @throws {Error} If the mock was not called with matching data
+ *
+ * @example <caption>Verify basic expense submission</caption>
+ * await fillBasicFields();
+ * await submitForm();
+ * assertSubmittedData(expenseApi.createExpense, {
+ *   date: '2025-01-15',
+ *   amount: 100.00,
+ *   type: 'Other',
+ *   paymentMethod: 1
+ * });
+ *
+ * @example <caption>Verify tax-deductible expense with insurance</caption>
+ * await fillBasicFieldsWithValues({
+ *   date: '2025-02-01',
+ *   amount: 250.00,
+ *   type: 'Tax - Medical',
+ *   paymentMethod: '2'
+ * });
+ * fireEvent.change(screen.getByLabelText('Insurance Status'), {
+ *   target: { value: 'pending' }
+ * });
+ * await submitForm();
+ * assertSubmittedData(expenseApi.createExpense, {
+ *   type: 'Tax - Medical',
+ *   insuranceStatus: 'pending'
+ * });
+ *
+ * @example <caption>Verify reimbursement data</caption>
+ * await expandSection(container, 'Reimbursement');
+ * fireEvent.change(screen.getByLabelText('Reimbursement Amount'), {
+ *   target: { value: '50.00' }
+ * });
+ * await submitForm();
+ * assertSubmittedData(expenseApi.createExpense, {
+ *   reimbursementAmount: 50.00,
+ *   reimbursementStatus: 'pending'
+ * });
+ */
+export const assertSubmittedData = (mockFn, expectedData) => {
+  expect(mockFn).toHaveBeenCalledWith(
+    expect.objectContaining(expectedData)
+  );
+};
+
+/**
+ * Asserts that a validation error message is displayed in the document.
+ * Waits for the error to appear (useful for async validation).
+ *
+ * This helper provides a consistent way to verify form validation without
+ * coupling to implementation details like error message container structure.
+ *
+ * @param {string} message - The error message text or pattern to match
+ * @returns {Promise<void>}
+ * @throws {Error} If the error message does not appear within the timeout
+ *
+ * @example <caption>Verify required field validation</caption>
+ * render(<ExpenseForm onExpenseAdded={vi.fn()} />);
+ * await submitForm();
+ * await assertValidationError('Date is required');
+ * await assertValidationError('Amount is required');
+ *
+ * @example <caption>Verify amount validation</caption>
+ * fireEvent.change(screen.getByLabelText('Amount'), {
+ *   target: { value: '-10' }
+ * });
+ * await submitForm();
+ * await assertValidationError('Amount must be positive');
+ *
+ * @example <caption>Verify custom validation with regex</caption>
+ * fireEvent.change(screen.getByLabelText('Amount'), {
+ *   target: { value: 'abc' }
+ * });
+ * await submitForm();
+ * await assertValidationError(/invalid.*amount/i);
+ */
+export const assertValidationError = async (message) => {
+  await waitFor(() => {
+    const errorElement = typeof message === 'string'
+      ? screen.getByText(message, { exact: false })
+      : screen.getByText(message);
+    expect(errorElement).toBeInTheDocument();
+  });
 };

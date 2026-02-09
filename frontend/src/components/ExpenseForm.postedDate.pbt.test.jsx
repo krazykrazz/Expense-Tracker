@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, waitFor, fireEvent, cleanup, act, screen } from '@testing-library/react';
+import { render, waitFor, fireEvent, cleanup, act } from '@testing-library/react';
 import * as fc from 'fast-check';
 import ExpenseForm from './ExpenseForm';
 import { CATEGORIES } from '../../../backend/utils/categories';
@@ -18,37 +18,25 @@ import { CATEGORIES } from '../../../backend/utils/categories';
 // Mock fetch globally
 global.fetch = vi.fn();
 
-// Sample payment methods for testing - includes all types
+// Sample payment methods for testing - aligned with expenseFormHelpers.js
 const MOCK_PAYMENT_METHODS = [
   { id: 1, display_name: 'Cash', type: 'cash', is_active: true },
-  { id: 2, display_name: 'Debit Card', type: 'debit', is_active: true },
-  { id: 3, display_name: 'Personal Cheque', type: 'cheque', is_active: true },
-  { id: 4, display_name: 'Visa Credit Card', type: 'credit_card', is_active: true },
-  { id: 5, display_name: 'Mastercard', type: 'credit_card', is_active: true },
-  { id: 6, display_name: 'Amex', type: 'credit_card', is_active: true },
-  { id: 7, display_name: 'Savings Debit', type: 'debit', is_active: true }
+  { id: 2, display_name: 'Credit Card', type: 'credit_card', is_active: true },
+  { id: 3, display_name: 'Debit Card', type: 'debit', is_active: true }
 ];
 
 // Mock the paymentMethodApi module used by usePaymentMethods hook
 vi.mock('../services/paymentMethodApi', () => ({
   getActivePaymentMethods: vi.fn(() => Promise.resolve([
     { id: 1, display_name: 'Cash', type: 'cash', is_active: true },
-    { id: 2, display_name: 'Debit Card', type: 'debit', is_active: true },
-    { id: 3, display_name: 'Personal Cheque', type: 'cheque', is_active: true },
-    { id: 4, display_name: 'Visa Credit Card', type: 'credit_card', is_active: true },
-    { id: 5, display_name: 'Mastercard', type: 'credit_card', is_active: true },
-    { id: 6, display_name: 'Amex', type: 'credit_card', is_active: true },
-    { id: 7, display_name: 'Savings Debit', type: 'debit', is_active: true }
+    { id: 2, display_name: 'Credit Card', type: 'credit_card', is_active: true },
+    { id: 3, display_name: 'Debit Card', type: 'debit', is_active: true }
   ])),
   getPaymentMethod: vi.fn(() => Promise.resolve(null)),
   getPaymentMethods: vi.fn(() => Promise.resolve([
     { id: 1, display_name: 'Cash', type: 'cash', is_active: true },
-    { id: 2, display_name: 'Debit Card', type: 'debit', is_active: true },
-    { id: 3, display_name: 'Personal Cheque', type: 'cheque', is_active: true },
-    { id: 4, display_name: 'Visa Credit Card', type: 'credit_card', is_active: true },
-    { id: 5, display_name: 'Mastercard', type: 'credit_card', is_active: true },
-    { id: 6, display_name: 'Amex', type: 'credit_card', is_active: true },
-    { id: 7, display_name: 'Savings Debit', type: 'debit', is_active: true }
+    { id: 2, display_name: 'Credit Card', type: 'credit_card', is_active: true },
+    { id: 3, display_name: 'Debit Card', type: 'debit', is_active: true }
   ])),
 }));
 
@@ -174,6 +162,22 @@ describe('ExpenseForm Posted Date Field Visibility Property-Based Tests', () => 
             fireEvent.change(paymentMethodSelect, { target: { value: selectedMethod.id.toString() } });
           });
 
+          // Wait a moment for the payment method change to be processed
+          await act(async () => {
+            await new Promise(resolve => setTimeout(resolve, 100));
+          });
+
+          // Expand the Advanced Options section to reveal the posted_date field
+          const advancedOptionsHeader = Array.from(container.querySelectorAll('.collapsible-header'))
+            .find(h => h.textContent.includes('Advanced Options'));
+          
+          if (advancedOptionsHeader && advancedOptionsHeader.getAttribute('aria-expanded') === 'false') {
+            await act(async () => {
+              fireEvent.click(advancedOptionsHeader);
+              await new Promise(resolve => setTimeout(resolve, 100));
+            });
+          }
+
           // Wait for the DOM to reflect the state change
           if (selectedMethod.type === 'credit_card') {
             await waitFor(() => {
@@ -240,7 +244,19 @@ describe('ExpenseForm Posted Date Field Visibility Property-Based Tests', () => 
           // First, select a credit card
           await act(async () => {
             fireEvent.change(paymentMethodSelect, { target: { value: creditCard.id.toString() } });
+            await new Promise(resolve => setTimeout(resolve, 100));
           });
+
+          // Expand the Advanced Options section to reveal the posted_date field
+          const advancedOptionsHeader = Array.from(container.querySelectorAll('.collapsible-header'))
+            .find(h => h.textContent.includes('Advanced Options'));
+          
+          if (advancedOptionsHeader && advancedOptionsHeader.getAttribute('aria-expanded') === 'false') {
+            await act(async () => {
+              fireEvent.click(advancedOptionsHeader);
+              await new Promise(resolve => setTimeout(resolve, 100));
+            });
+          }
 
           // Wait for posted_date field to appear
           await waitFor(() => {
@@ -251,6 +267,7 @@ describe('ExpenseForm Posted Date Field Visibility Property-Based Tests', () => 
           // Now switch to a non-credit card payment method
           await act(async () => {
             fireEvent.change(paymentMethodSelect, { target: { value: nonCreditCard.id.toString() } });
+            await new Promise(resolve => setTimeout(resolve, 100));
           });
 
           // Wait for posted_date field to disappear
@@ -309,7 +326,19 @@ describe('ExpenseForm Posted Date Field Visibility Property-Based Tests', () => 
           // First, select a non-credit card
           await act(async () => {
             fireEvent.change(paymentMethodSelect, { target: { value: nonCreditCard.id.toString() } });
+            await new Promise(resolve => setTimeout(resolve, 100));
           });
+
+          // Expand the Advanced Options section
+          const advancedOptionsHeader = Array.from(container.querySelectorAll('.collapsible-header'))
+            .find(h => h.textContent.includes('Advanced Options'));
+          
+          if (advancedOptionsHeader && advancedOptionsHeader.getAttribute('aria-expanded') === 'false') {
+            await act(async () => {
+              fireEvent.click(advancedOptionsHeader);
+              await new Promise(resolve => setTimeout(resolve, 100));
+            });
+          }
 
           // Give it a moment to ensure field doesn't appear
           await act(async () => {
@@ -323,6 +352,7 @@ describe('ExpenseForm Posted Date Field Visibility Property-Based Tests', () => 
           // Now switch to a credit card payment method
           await act(async () => {
             fireEvent.change(paymentMethodSelect, { target: { value: creditCard.id.toString() } });
+            await new Promise(resolve => setTimeout(resolve, 100));
           });
 
           // Wait for posted_date field to appear

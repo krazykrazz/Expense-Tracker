@@ -156,3 +156,14 @@
     transform: translateY(0);
   }
 }
+
+/* Accessibility: Respect user's motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .collapsible-error-indicator {
+    animation: none;
+  }
+  
+  .collapsible-content {
+    animation: none;
+  }
+}

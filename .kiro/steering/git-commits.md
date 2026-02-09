@@ -71,16 +71,19 @@ For all other scenarios, the agent should:
 3. **Update CHANGELOG.md** with new version entry
 4. **Build the frontend**: `cd frontend && npm run build`
 5. **Auto-commit** the version bump: `git add -A && git commit -m "v5.8.1: <brief description>"`
-6. **Build SHA image**: `.\build-and-push.ps1` (builds with correct version from commit)
-7. **Deploy to staging**: `.\build-and-push.ps1 -Environment staging`
-8. **Test in staging**
-9. **Promote to production**: `.\build-and-push.ps1 -Environment production`
-10. Inform the user what was committed and deployed
+6. **Tag the commit**: `git tag -a "v5.8.1" -m "Release v5.8.1: <brief description>"`
+7. **Build SHA image**: `.\build-and-push.ps1` (builds with correct version from commit)
+8. **Deploy to staging**: `.\build-and-push.ps1 -Environment staging`
+9. **Test in staging**
+10. **Promote to latest (production)**: `.\build-and-push.ps1 -Environment latest`
+11. **Push tag to origin**: `git push origin v5.8.1`
+12. Inform the user what was committed and deployed
 
 **Why This Order:**
 - Version bump on main creates the "release commit" SHA
+- Git tag marks the version in history for easy reference
 - Docker image is built from this SHA with correct version baked in
-- Same binary artifact moves from staging → production
+- Same binary artifact moves from staging → latest (production)
 
 ## Suggested Commit Strategy
 

@@ -58,13 +58,29 @@ For all other scenarios, the agent should:
 
 ## When User Asks to Deploy/Push to Production
 
-1. Make all necessary code changes
-2. Update version numbers in all required locations
-3. Update CHANGELOG.md and in-app changelog
-4. Build the frontend
-5. Build and push the Docker image
-6. **Auto-commit** the version bump with message like `v4.12.8: <brief description>`
-7. Inform the user what was committed and deployed
+**CRITICAL**: Ensure you're on `main` branch and feature branch is already merged.
+
+### Deployment Steps (on main branch only):
+
+1. **Verify on main**: Check current branch with `git branch --show-current`
+2. **Update version numbers** in all required locations:
+   - `frontend/package.json` - "version" field
+   - `backend/package.json` - "version" field
+   - `frontend/src/App.jsx` - Footer version display
+   - `frontend/src/components/BackupSettings.jsx` - In-app changelog
+3. **Update CHANGELOG.md** with new version entry
+4. **Build the frontend**: `cd frontend && npm run build`
+5. **Auto-commit** the version bump: `git add -A && git commit -m "v5.8.1: <brief description>"`
+6. **Build SHA image**: `.\build-and-push.ps1` (builds with correct version from commit)
+7. **Deploy to staging**: `.\build-and-push.ps1 -Environment staging`
+8. **Test in staging**
+9. **Promote to production**: `.\build-and-push.ps1 -Environment production`
+10. Inform the user what was committed and deployed
+
+**Why This Order:**
+- Version bump on main creates the "release commit" SHA
+- Docker image is built from this SHA with correct version baked in
+- Same binary artifact moves from staging → production
 
 ## Suggested Commit Strategy
 

@@ -1,0 +1,66 @@
+name: Version Consistency Check
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'frontend/package.json'
+      - 'backend/package.json'
+      - 'frontend/src/App.jsx'
+      - 'frontend/src/components/BackupSettings.jsx'
+      - 'CHANGELOG.md'
+
+jobs:
+  check-version-bump:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      
+      - name: Check for version changes in PR
+        id: version_check
+        run: |
+          # Get list of changed files
+          CHANGED_FILES=$(git diff --name-only origin/main...HEAD)
+          
+          # Check if any version files changed
+          VERSION_CHANGED=false
+          for file in frontend/package.json backend/package.json frontend/src/App.jsx frontend/src/components/BackupSettings.jsx; do
+            if echo "$CHANGED_FILES" | grep -q "^$file$"; then
+              if git diff origin/main...HEAD "$file" | grep -E '^\+.*"version":|^\+.*v[0-9]+\.[0-9]+\.[0-9]+'; then
+                VERSION_CHANGED=true
+                echo "Version change detected in: $file"
+              fi
+            fi
+          done
+          
+          if [ "$VERSION_CHANGED" = true ]; then
+            echo "version_changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "version_changed=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Fail if version bump in PR
+        if: steps.version_check.outputs.version_changed == 'true'
+        run: |
+          echo "❌ ERROR: Version bump detected in Pull Request!"
+          echo ""
+          echo "Version bumps must NOT be included in feature branch PRs."
+          echo "They should only happen on 'main' AFTER the PR is merged."
+          echo ""
+          echo "Correct workflow:"
+          echo "  1. Merge this PR to main (without version changes)"
+          echo "  2. On main: Update version in all locations"
+          echo "  3. On main: Commit version bump"
+          echo "  4. Build and deploy from that commit"
+          echo ""
+          echo "See: docs/deployment/DEPLOYMENT_WORKFLOW.md"
+          exit 1
+      
+      - name: Success
+        if: steps.version_check.outputs.version_changed == 'false'
+        run: |
+          echo "✅ No version changes detected in PR - correct!"

@@ -1,0 +1,39 @@
+#!/bin/bash
+# Pre-commit hook to prevent version bumps on feature branches
+
+# Get current branch
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
+
+# Check if we're on a feature branch
+if [[ $BRANCH == feature/* ]]; then
+    # Check if any version files are being modified
+    VERSION_FILES=(
+        "frontend/package.json"
+        "backend/package.json"
+        "frontend/src/App.jsx"
+        "frontend/src/components/BackupSettings.jsx"
+    )
+    
+    for file in "${VERSION_FILES[@]}"; do
+        if git diff --cached --name-only | grep -q "^$file$"; then
+            # Check if version field is being modified
+            if git diff --cached "$file" | grep -E '^\+.*"version":|^\+.*v[0-9]+\.[0-9]+\.[0-9]+'; then
+                echo "❌ ERROR: Version bump detected on feature branch!"
+                echo ""
+                echo "Version bumps must only happen on 'main' branch after feature merge."
+                echo ""
+                echo "Current branch: $BRANCH"
+                echo "Modified file: $file"
+                echo ""
+                echo "To fix:"
+                echo "  1. Unstage version changes: git reset HEAD $file"
+                echo "  2. Commit other changes"
+                echo "  3. Merge to main first, then bump version"
+                echo ""
+                exit 1
+            fi
+        fi
+    done
+fi
+
+exit 0

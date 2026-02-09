@@ -150,3 +150,33 @@ export * from './mocks';
  * });
  */
 export { testEach } from './parameterized';
+
+/**
+ * @see module:test-utils/expenseFormHelpers
+ * @description
+ * Shared test utilities for ExpenseForm component tests.
+ * Provides common mock data, setup functions, and interaction helpers
+ * to reduce duplication across split ExpenseForm test files.
+ *
+ * Key exports:
+ * - mockCategories, mockPaymentMethods, mockPeople - Standard mock data
+ * - setupExpenseFormMocks - Configure all API mocks for ExpenseForm tests
+ * - expandSection - Click and wait for collapsible section expansion
+ * - fillBasicFields, fillBasicFieldsWithValues - Fill required form fields
+ * - selectSinglePerson, selectMultiplePeople - People dropdown interactions
+ * - waitForAllocationModal, submitForm - Common test actions
+ *
+ * @example
+ * import { setupExpenseFormMocks, fillBasicFields, expandSection } from '../test-utils';
+ *
+ * beforeEach(() => {
+ *   setupExpenseFormMocks();
+ * });
+ *
+ * it('should expand advanced options', async () => {
+ *   const { container } = render(<ExpenseForm onExpenseAdded={vi.fn()} />);
+ *   await fillBasicFields();
+ *   await expandSection(container, 'Advanced Options');
+ * });
+ */
+export * from './expenseFormHelpers';

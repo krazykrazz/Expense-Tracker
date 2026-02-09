@@ -199,9 +199,9 @@ describe('ExpenseForm - Property 20: ARIA attributes for sections', () => {
             // After focus, should have aria-describedby
             expect(icon).toHaveAttribute('aria-describedby');
             
-            // The tooltip should exist with role="tooltip"
+            // The tooltip should exist with role="tooltip" in document.body (portal)
             const tooltipId = icon.getAttribute('aria-describedby');
-            const tooltip = container.querySelector(`#${tooltipId}`);
+            const tooltip = document.body.querySelector(`#${tooltipId}`);
             expect(tooltip).not.toBeNull();
             expect(tooltip).toHaveAttribute('role', 'tooltip');
             expect(tooltip.textContent).toBe(helpText);
@@ -214,7 +214,7 @@ describe('ExpenseForm - Property 20: ARIA attributes for sections', () => {
             // After Escape, tooltip should be hidden
             const tooltipId = icon.getAttribute('aria-describedby');
             if (tooltipId) {
-              const tooltip = container.querySelector(`#${tooltipId}`);
+              const tooltip = document.body.querySelector(`#${tooltipId}`);
               expect(tooltip).toBeNull();
             }
           });

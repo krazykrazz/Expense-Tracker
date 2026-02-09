@@ -115,6 +115,57 @@ command: npm test
 - **jsdom**: Browser environment simulation
 - **fast-check**: Property-based testing
 
+### ExpenseForm Test Organization
+
+The ExpenseForm tests are split into focused files for better organization and parallel execution:
+
+- **ExpenseForm.core.test.jsx** (13 tests) - Basic rendering, submission, validation, form reset, default values
+- **ExpenseForm.sections.test.jsx** (23 tests) - Collapsible sections, badges, tooltips, section-specific behavior
+- **ExpenseForm.people.test.jsx** (6 tests) - People assignment for medical expenses
+- **ExpenseForm.futureMonths.test.jsx** (7 tests) - Future months recurring feature
+- **ExpenseForm.dataPreservation.test.jsx** (5 tests) - Data persistence during collapse/expand
+- **ExpenseForm.pbt.test.jsx** - Property-based tests (existing)
+- **ExpenseForm.editMode.test.jsx** - Edit mode behavior (existing)
+- **ExpenseForm.invoice.test.jsx** - Invoice upload integration (existing)
+- **ExpenseForm.accessibility.test.jsx** - Accessibility features (existing)
+
+#### Running Specific Test Groups
+
+```bash
+# Run only core tests (basic functionality)
+npm run test:core
+
+# Run only section tests (collapsible sections)
+npm run test:sections
+
+# Run only people assignment tests
+npm run test:people
+
+# Run only future months tests
+npm run test:futureMonths
+
+# Run only data preservation tests
+npm run test:dataPreservation
+
+# Run all ExpenseForm tests (all categories)
+npx vitest --run ExpenseForm
+
+# Run fast tests (reduced PBT iterations)
+npm run test:fast
+
+# Run only changed tests
+npm run test:changed
+```
+
+#### When to Run Each Test Category
+
+- **During form UI changes**: Run `test:core` and `test:sections`
+- **During people feature work**: Run `test:people`
+- **During future months feature work**: Run `test:futureMonths`
+- **During section collapse/expand work**: Run `test:dataPreservation`
+- **Before committing**: Run all tests with `npm test`
+- **Quick feedback loop**: Use `npm run test:changed` or `npm run test:fast`
+
 ## Test Utilities
 
 ### Frontend (`frontend/src/test-utils/`)

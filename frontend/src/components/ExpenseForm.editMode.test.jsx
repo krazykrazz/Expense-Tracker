@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import {
   createExpenseApiMock,
   createPaymentMethodApiMock,
@@ -209,6 +209,26 @@ describe('ExpenseForm - Edit Mode with Backend Data Formats', () => {
       />
     );
 
+    // Wait for component to load
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Doctor Office')).toBeInTheDocument();
+    });
+
+    // Wait for Invoice Attachments section to appear
+    await waitFor(() => {
+      expect(screen.getByText('Invoice Attachments')).toBeInTheDocument();
+    });
+
+    // Expand the Invoice Attachments section
+    const invoiceSection = screen.getByText('Invoice Attachments').closest('.collapsible-header');
+    fireEvent.click(invoiceSection);
+
+    // Wait for the section to expand (aria-expanded="true")
+    await waitFor(() => {
+      expect(invoiceSection.getAttribute('aria-expanded')).toBe('true');
+    });
+
+    // Now wait for InvoiceUpload component
     await waitFor(() => {
       expect(screen.getByTestId('invoice-upload')).toBeInTheDocument();
     });

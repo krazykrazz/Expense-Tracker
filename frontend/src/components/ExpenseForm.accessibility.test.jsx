@@ -219,7 +219,8 @@ describe('ExpenseForm - Accessibility Unit Tests', () => {
       const icon = container.querySelector('[role="button"]');
       await user.hover(icon);
       
-      const tooltip = container.querySelector('[role="tooltip"]');
+      // Tooltip is rendered in a portal to document.body
+      const tooltip = document.body.querySelector('[role="tooltip"]');
       expect(tooltip).toBeInTheDocument();
     });
 
@@ -246,8 +247,8 @@ describe('ExpenseForm - Accessibility Unit Tests', () => {
       await user.tab();
       expect(icon).toHaveFocus();
       
-      // Tooltip should be visible
-      const tooltip = container.querySelector('[role="tooltip"]');
+      // Tooltip should be visible in document.body (portal)
+      const tooltip = document.body.querySelector('[role="tooltip"]');
       expect(tooltip).toBeInTheDocument();
       expect(tooltip).toHaveTextContent('Help text');
     });
@@ -262,13 +263,13 @@ describe('ExpenseForm - Accessibility Unit Tests', () => {
       
       // Focus to show tooltip
       await user.tab();
-      expect(container.querySelector('[role="tooltip"]')).toBeInTheDocument();
+      expect(document.body.querySelector('[role="tooltip"]')).toBeInTheDocument();
       
       // Press Escape
       await user.keyboard('{Escape}');
       
       // Tooltip should be hidden
-      expect(container.querySelector('[role="tooltip"]')).not.toBeInTheDocument();
+      expect(document.body.querySelector('[role="tooltip"]')).not.toBeInTheDocument();
     });
 
     test('should hide tooltip on blur', async () => {
@@ -284,13 +285,13 @@ describe('ExpenseForm - Accessibility Unit Tests', () => {
       
       // Hover to show tooltip (more reliable than focus for this test)
       await user.hover(icon);
-      expect(container.querySelector('[role="tooltip"]')).toBeInTheDocument();
+      expect(document.body.querySelector('[role="tooltip"]')).toBeInTheDocument();
       
       // Move mouse away to trigger blur
       await user.unhover(icon);
       
       // Tooltip should be hidden
-      expect(container.querySelector('[role="tooltip"]')).not.toBeInTheDocument();
+      expect(document.body.querySelector('[role="tooltip"]')).not.toBeInTheDocument();
     });
   });
 

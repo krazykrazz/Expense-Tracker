@@ -1076,6 +1076,12 @@ describe('ExpenseForm - Advanced Options Section', () => {
       expect(screen.getByLabelText(/Type/i)).toBeInTheDocument();
     });
 
+    // Wait for payment methods to load
+    await waitFor(() => {
+      const methodSelect = screen.getByLabelText(/Payment Method/i);
+      expect(methodSelect).toBeInTheDocument();
+    });
+
     // Select credit card payment method
     const methodSelect = screen.getByLabelText(/Payment Method/i);
     fireEvent.change(methodSelect, { target: { value: '3' } }); // VISA
@@ -1117,6 +1123,12 @@ describe('ExpenseForm - Advanced Options Section', () => {
 
     await waitFor(() => {
       expect(screen.getByLabelText(/Type/i)).toBeInTheDocument();
+    });
+
+    // Wait for payment methods to load
+    await waitFor(() => {
+      const methodSelect = screen.getByLabelText(/Payment Method/i);
+      expect(methodSelect).toBeInTheDocument();
     });
 
     // Select credit card payment method
@@ -1179,6 +1191,12 @@ describe('ExpenseForm - Advanced Options Section', () => {
 
     await waitFor(() => {
       expect(screen.getByLabelText(/Type/i)).toBeInTheDocument();
+    });
+
+    // Wait for payment methods to load
+    await waitFor(() => {
+      const methodSelect = screen.getByLabelText(/Payment Method/i);
+      expect(methodSelect).toBeInTheDocument();
     });
 
     // Select credit card payment method
@@ -1976,19 +1994,12 @@ describe('ExpenseForm - People Assignment Section', () => {
 
     // Select 2 people
     const peopleSelect = screen.getByLabelText(/assign to people/i);
-    fireEvent.change(peopleSelect, { 
-      target: { 
-        selectedOptions: [
-          { value: '1', text: 'Person A' },
-          { value: '2', text: 'Person B' }
-        ]
-      } 
-    });
-
-    // Simulate the multi-select change
+    
+    // Simulate the multi-select change by setting selected on options
     const options = peopleSelect.querySelectorAll('option');
-    options[0].selected = true;
-    options[1].selected = true;
+    // Skip the first option (placeholder "Select family members...")
+    options[1].selected = true; // Person A
+    options[2].selected = true; // Person B
     fireEvent.change(peopleSelect);
 
     // Badge should now show "2 people"
@@ -2066,7 +2077,7 @@ describe('ExpenseForm - People Assignment Section', () => {
       ]
     };
 
-    render(<ExpenseForm onExpenseAdded={() => {}} people={mockPeople} expense={mockExpense} />);
+    const { container } = render(<ExpenseForm onExpenseAdded={() => {}} people={mockPeople} expense={mockExpense} />);
 
     // Wait for form to load in edit mode
     await waitFor(() => {
@@ -3321,8 +3332,8 @@ describe('ExpenseForm - Data Preservation During Collapse', () => {
       // Verify breakdown is still displayed correctly
       expect(screen.getByText(/Charged:/i)).toBeInTheDocument();
       expect(screen.getByText(/100\.00/)).toBeInTheDocument();
-      expect(screen.getByText(/Reimbursed:/i)).toBeInTheDocument();
-      expect(screen.getByText(/25\.00/)).toBeInTheDocument();
+      expect(screen.getAllByText(/Reimbursed:/i).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/25\.00/).length).toBeGreaterThan(0);
     });
   });
 

@@ -190,13 +190,13 @@ jobs:
             gh release create "v${{ steps.meta.outputs.version }}" \
               docker-compose-v${{ steps.meta.outputs.version }}.yml \
               --title "Release v${{ steps.meta.outputs.version }}" \
-              --notes "## 🚀 Recommended: Use Pre-Built Container Image
+              --notes '## 🚀 Recommended: Use Pre-Built Container Image
 
 This release is available as a pre-built, tested Docker image. **Using the container image is the recommended deployment method** - no build required!
 
 ### Quick Start (Recommended)
 
-\`\`\`bash
+```bash
 # Download the docker-compose file
 wget https://github.com/${{ github.repository }}/releases/download/v${{ steps.meta.outputs.version }}/docker-compose-v${{ steps.meta.outputs.version }}.yml
 
@@ -204,15 +204,15 @@ wget https://github.com/${{ github.repository }}/releases/download/v${{ steps.me
 docker-compose -f docker-compose-v${{ steps.meta.outputs.version }}.yml up -d
 
 # Access at http://localhost:2424
-\`\`\`
+```
 
 ### Available Container Images
 
 All images are available at GitHub Container Registry (GHCR):
 
-- \`ghcr.io/${{ github.repository_owner }}/expense-tracker:v${{ steps.meta.outputs.version }}\` - **This release** (recommended)
-- \`ghcr.io/${{ github.repository_owner }}/expense-tracker:${{ steps.meta.outputs.sha_short }}\` - Commit SHA (immutable)
-- \`ghcr.io/${{ github.repository_owner }}/expense-tracker:latest\` - Latest main branch
+- `ghcr.io/${{ github.repository_owner }}/expense-tracker:v${{ steps.meta.outputs.version }}` - **This release** (recommended)
+- `ghcr.io/${{ github.repository_owner }}/expense-tracker:${{ steps.meta.outputs.sha_short }}` - Commit SHA (immutable)
+- `ghcr.io/${{ github.repository_owner }}/expense-tracker:latest` - Latest main branch
 
 ### 📦 Assets
 
@@ -221,7 +221,7 @@ All images are available at GitHub Container Registry (GHCR):
 
 ### 📝 What's Changed
 
-See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for detailed changes in this release."
+See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for detailed changes in this release.'
           fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

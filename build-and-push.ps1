@@ -100,6 +100,7 @@ if (-not $skipBuild) {
     
     # Build arguments for labels
     $buildArgs = @(
+        "--build-arg", "IMAGE_TAG=$gitSha",
         "--build-arg", "BUILD_DATE=$buildDate",
         "--build-arg", "GIT_COMMIT=$gitSha",
         "--label", "org.opencontainers.image.created=$buildDate",

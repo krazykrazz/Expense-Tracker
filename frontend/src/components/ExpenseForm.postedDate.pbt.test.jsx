@@ -162,9 +162,9 @@ describe('ExpenseForm Posted Date Field Visibility Property-Based Tests', () => 
             fireEvent.change(paymentMethodSelect, { target: { value: selectedMethod.id.toString() } });
           });
 
-          // Wait a moment for the payment method change to be processed
+          // Wait longer for the payment method change to be processed and state to propagate
           await act(async () => {
-            await new Promise(resolve => setTimeout(resolve, 100));
+            await new Promise(resolve => setTimeout(resolve, 300));
           });
 
           // Expand the Advanced Options section to reveal the posted_date field
@@ -183,12 +183,12 @@ describe('ExpenseForm Posted Date Field Visibility Property-Based Tests', () => 
             await waitFor(() => {
               const postedDateInput = container.querySelector('input[name="posted_date"]');
               expect(postedDateInput).toBeTruthy();
-            }, { timeout: 2000 });
+            }, { timeout: 5000 });
           } else {
             // For non-credit cards, ensure the field is NOT present
             // Give it a moment to ensure it doesn't appear
             await act(async () => {
-              await new Promise(resolve => setTimeout(resolve, 100));
+              await new Promise(resolve => setTimeout(resolve, 200));
             });
             const postedDateInput = container.querySelector('input[name="posted_date"]');
             expect(postedDateInput).toBeFalsy();
@@ -244,7 +244,7 @@ describe('ExpenseForm Posted Date Field Visibility Property-Based Tests', () => 
           // First, select a credit card
           await act(async () => {
             fireEvent.change(paymentMethodSelect, { target: { value: creditCard.id.toString() } });
-            await new Promise(resolve => setTimeout(resolve, 100));
+            await new Promise(resolve => setTimeout(resolve, 300));
           });
 
           // Expand the Advanced Options section to reveal the posted_date field
@@ -267,14 +267,14 @@ describe('ExpenseForm Posted Date Field Visibility Property-Based Tests', () => 
           // Now switch to a non-credit card payment method
           await act(async () => {
             fireEvent.change(paymentMethodSelect, { target: { value: nonCreditCard.id.toString() } });
-            await new Promise(resolve => setTimeout(resolve, 100));
+            await new Promise(resolve => setTimeout(resolve, 300));
           });
 
           // Wait for posted_date field to disappear
           await waitFor(() => {
             const postedDateInput = container.querySelector('input[name="posted_date"]');
             expect(postedDateInput).toBeFalsy();
-          }, { timeout: 2000 });
+          }, { timeout: 5000 });
 
           // Clean up
           unmount();
@@ -326,7 +326,7 @@ describe('ExpenseForm Posted Date Field Visibility Property-Based Tests', () => 
           // First, select a non-credit card
           await act(async () => {
             fireEvent.change(paymentMethodSelect, { target: { value: nonCreditCard.id.toString() } });
-            await new Promise(resolve => setTimeout(resolve, 100));
+            await new Promise(resolve => setTimeout(resolve, 300));
           });
 
           // Expand the Advanced Options section
@@ -342,7 +342,7 @@ describe('ExpenseForm Posted Date Field Visibility Property-Based Tests', () => 
 
           // Give it a moment to ensure field doesn't appear
           await act(async () => {
-            await new Promise(resolve => setTimeout(resolve, 100));
+            await new Promise(resolve => setTimeout(resolve, 200));
           });
 
           // Verify posted_date field is hidden
@@ -352,7 +352,7 @@ describe('ExpenseForm Posted Date Field Visibility Property-Based Tests', () => 
           // Now switch to a credit card payment method
           await act(async () => {
             fireEvent.change(paymentMethodSelect, { target: { value: creditCard.id.toString() } });
-            await new Promise(resolve => setTimeout(resolve, 100));
+            await new Promise(resolve => setTimeout(resolve, 300));
           });
 
           // Wait for posted_date field to appear

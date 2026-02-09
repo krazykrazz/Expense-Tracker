@@ -709,8 +709,23 @@ describe('ExpenseForm - Future Months Feature', () => {
       expect(expenseApi.createExpense).toHaveBeenCalled();
     });
 
+    // After form reset, Advanced Options section should collapse
+    // We need to expand it again to check the checkbox state
+    await waitFor(() => {
+      const advancedOptionsHeaderAfterReset = screen.getByRole('button', { name: /Advanced Options/i });
+      expect(advancedOptionsHeaderAfterReset.getAttribute('aria-expanded')).toBe('false');
+    });
+
+    // Expand Advanced Options section again
+    const advancedOptionsHeaderAfterReset = screen.getByRole('button', { name: /Advanced Options/i });
+    fireEvent.click(advancedOptionsHeaderAfterReset);
+
+    // Wait for section to expand
+    await waitFor(() => {
+      expect(advancedOptionsHeaderAfterReset.getAttribute('aria-expanded')).toBe('true');
+    });
+
     // Future months checkbox should be unchecked after reset
-    // Need to re-query the checkbox after form reset since the component re-renders
     await waitFor(() => {
       const futureMonthsSectionAfterReset = document.querySelector('.future-months-section');
       const checkboxAfterReset = futureMonthsSectionAfterReset.querySelector('input[type="checkbox"]');

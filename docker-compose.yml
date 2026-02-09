@@ -21,15 +21,16 @@ services:
       start_period: 40s
 
   # Staging container for testing new versions with production data copy
-  # Usage:
-  #   1. Build with: .\build-and-push.ps1 -Tag staging
-  #   2. Copy a production backup to ./staging-data/
-  #   3. docker-compose --profile staging up expense-tracker-staging
-  #   4. Test at http://localhost:2627
-  #   5. If good, rebuild with -Tag latest and promote to production
-  expense-tracker-staging:
+  # SHA-Based Workflow:
+  #   1. Build SHA image: .\build-and-push.ps1
+  #   2. Deploy to staging: .\build-and-push.ps1 -Environment staging
+  #   3. Copy a production backup to ./staging-data/
+  #   4. docker-compose --profile staging up expense-tracker-test
+  #   5. Test at http://localhost:2627
+  #   6. If good, promote to latest: .\build-and-push.ps1 -Environment latest
+  expense-tracker-test:
     image: localhost:5000/expense-tracker:staging
-    container_name: expense-tracker-staging
+    container_name: expense-tracker-test
     ports:
       - "2627:2424"
     volumes:

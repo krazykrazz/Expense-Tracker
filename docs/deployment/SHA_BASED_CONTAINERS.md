@@ -88,20 +88,20 @@ Verify the deployment works correctly in staging environment.
 Promote the same SHA image to production (just retag):
 
 ```powershell
-.\build-and-push.ps1 -Environment production
+.\build-and-push.ps1 -Environment latest
 ```
 
 **What happens:**
 - Uses the SAME SHA image (no rebuild)
-- Tags SHA image as `production`: `localhost:5000/expense-tracker:production`
-- Pushes production tag
+- Tags SHA image as `latest`: `localhost:5000/expense-tracker:latest`
+- Pushes latest tag
 - Deploys to `expense-tracker` container
 
 **Output:**
 ```
 SHA image already exists: localhost:5000/expense-tracker:abc1234
 Skipping build (image already built for this commit)
-Environment Tag: localhost:5000/expense-tracker:production
+Environment Tag: localhost:5000/expense-tracker:latest
 Deployed to: expense-tracker
 ```
 
@@ -117,7 +117,7 @@ Deployed to: expense-tracker
 .\build-and-push.ps1 -Environment staging
 
 # Promote to production (retag existing SHA)
-.\build-and-push.ps1 -Environment production
+.\build-and-push.ps1 -Environment latest
 
 # Build multi-platform image
 .\build-and-push.ps1 -MultiPlatform
@@ -130,7 +130,7 @@ Deployed to: expense-tracker
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
-| `-Environment` | Target environment: `staging` or `production` | None (build only) |
+| `-Environment` | Target environment: `staging` or `latest` | None (build only) |
 | `-Registry` | Docker registry URL | `localhost:5000` |
 | `-MultiPlatform` | Build for linux/amd64 and linux/arm64 | False |
 | `-BuildOnly` | Build SHA image but don't tag for environment | False |
@@ -156,7 +156,7 @@ Format: `localhost:5000/expense-tracker:<environment>`
 
 Examples:
 - `localhost:5000/expense-tracker:staging`
-- `localhost:5000/expense-tracker:production`
+- `localhost:5000/expense-tracker:latest`
 
 - **Points to latest deployed SHA** in that environment
 - **Changes with each deployment** - always points to current version
@@ -171,8 +171,8 @@ To rollback to a previous version:
 
 ```powershell
 # Example: Rollback production to SHA def5678
-docker tag localhost:5000/expense-tracker:def5678 localhost:5000/expense-tracker:production
-docker push localhost:5000/expense-tracker:production
+docker tag localhost:5000/expense-tracker:def5678 localhost:5000/expense-tracker:latest
+docker push localhost:5000/expense-tracker:latest
 
 # Restart container
 docker-compose -f "G:\My Drive\Media Related\docker\media-applications.yml" up -d expense-tracker
@@ -180,10 +180,10 @@ docker-compose -f "G:\My Drive\Media Related\docker\media-applications.yml" up -
 
 ## Environment Mapping
 
-| Environment | Docker Compose Service | Container Name |
-|-------------|------------------------|----------------|
-| `staging` | `expense-tracker-test` | expense-tracker-test |
-| `production` | `expense-tracker` | expense-tracker |
+| Environment | Docker Compose Service | Container Name | Docker Tag |
+|-------------|------------------------|----------------|------------|
+| `staging` | `expense-tracker-test` | expense-tracker-test | `staging` |
+| `latest` | `expense-tracker` | expense-tracker | `latest` |
 
 ## Best Practices
 
@@ -217,8 +217,8 @@ Before deploying to any environment, ensure the SHA image is built:
 # Then deploy to staging
 .\build-and-push.ps1 -Environment staging
 
-# Then promote to production
-.\build-and-push.ps1 -Environment production
+# Then promote to latest (production)
+.\build-and-push.ps1 -Environment latest
 ```
 
 ### 3. Test in Staging First
@@ -229,10 +229,10 @@ Never deploy directly to production without testing in staging:
 # ✅ Good
 .\build-and-push.ps1 -Environment staging
 # ... test in staging ...
-.\build-and-push.ps1 -Environment production
+.\build-and-push.ps1 -Environment latest
 
 # ❌ Bad
-.\build-and-push.ps1 -Environment production  # Skipped staging!
+.\build-and-push.ps1 -Environment latest  # Skipped staging!
 ```
 
 ### 4. Keep SHA Tags Forever
@@ -293,14 +293,14 @@ docker inspect expense-tracker | Select-String "Image"
 
 ```powershell
 .\build-and-push.ps1 -Environment staging
-.\build-and-push.ps1 -Environment production
+.\build-and-push.ps1 -Environment latest
 ```
 
 **Key Differences:**
 - Old: Rebuilt image for each tag
 - New: Build once, retag for environments
 - Old: Tags were `staging`, `latest`, `dev`
-- New: Environments are `staging`, `production`
+- New: Environments are `staging`, `latest`
 
 ## See Also
 

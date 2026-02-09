@@ -37,8 +37,8 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
   const [people, setPeople] = useState([]);
   const [categories, setCategories] = useState([]);
   
-  // Payment methods via custom hook (activeOnly for display/edit form)
-  const { paymentMethods } = usePaymentMethods({ activeOnly: true });
+  // Payment methods via custom hook
+  const { paymentMethods } = usePaymentMethods();
 
   // Insurance status management via custom hook
   const {

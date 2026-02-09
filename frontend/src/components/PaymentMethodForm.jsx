@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import './PaymentMethodForm.css';
 import { createPaymentMethod, updatePaymentMethod, getDisplayNames } from '../services/paymentMethodApi';
 import { createLogger } from '../utils/logger';
+import HelpTooltip from './HelpTooltip';
 
 const logger = createLogger('PaymentMethodForm');
 
@@ -291,7 +292,9 @@ const PaymentMethodForm = ({ isOpen, method, onSave, onCancel }) => {
 
           {/* Display Name - required for all types */}
           <div className="form-group">
-            <label htmlFor="display_name">Display Name *</label>
+            <label htmlFor="display_name">
+              Display Name * <HelpTooltip content="Short name shown in dropdowns" position="right" />
+            </label>
             <input
               type="text"
               id="display_name"
@@ -305,13 +308,14 @@ const PaymentMethodForm = ({ isOpen, method, onSave, onCancel }) => {
             {validationErrors.display_name && (
               <span className="validation-error">{validationErrors.display_name}</span>
             )}
-            <span className="form-hint">Short name shown in dropdowns</span>
           </div>
 
           {/* Full Name - required for credit cards */}
           {formData.type === 'credit_card' && (
             <div className="form-group">
-              <label htmlFor="full_name">Full Name *</label>
+              <label htmlFor="full_name">
+                Full Name * <HelpTooltip content="Complete name of the credit card" position="right" />
+              </label>
               <input
                 type="text"
                 id="full_name"
@@ -325,14 +329,15 @@ const PaymentMethodForm = ({ isOpen, method, onSave, onCancel }) => {
               {validationErrors.full_name && (
                 <span className="validation-error">{validationErrors.full_name}</span>
               )}
-              <span className="form-hint">Complete name of the credit card</span>
             </div>
           )}
 
           {/* Account Details - optional for cheque, debit, credit_card */}
           {(formData.type === 'cheque' || formData.type === 'debit' || formData.type === 'credit_card') && (
             <div className="form-group">
-              <label htmlFor="account_details">Account Details</label>
+              <label htmlFor="account_details">
+                Account Details <HelpTooltip content="Optional reference information" position="right" />
+              </label>
               <input
                 type="text"
                 id="account_details"
@@ -342,7 +347,6 @@ const PaymentMethodForm = ({ isOpen, method, onSave, onCancel }) => {
                 disabled={loading}
                 maxLength={100}
               />
-              <span className="form-hint">Optional reference information</span>
             </div>
           )}
 
@@ -390,7 +394,9 @@ const PaymentMethodForm = ({ isOpen, method, onSave, onCancel }) => {
               </div>
 
               <div className="form-group">
-                <label htmlFor="payment_due_day">Payment Due Day *</label>
+                <label htmlFor="payment_due_day">
+                  Payment Due Day * <HelpTooltip content="Day of month when payment is due" position="right" />
+                </label>
                 <input
                   type="number"
                   id="payment_due_day"
@@ -406,11 +412,12 @@ const PaymentMethodForm = ({ isOpen, method, onSave, onCancel }) => {
                 {validationErrors.payment_due_day && (
                   <span className="validation-error">{validationErrors.payment_due_day}</span>
                 )}
-                <span className="form-hint">Day of month when payment is due</span>
               </div>
 
               <div className="form-group">
-                <label htmlFor="billing_cycle_day">Statement Closing Day *</label>
+                <label htmlFor="billing_cycle_day">
+                  Statement Closing Day * <HelpTooltip content="The day your statement closes each month (found on your statement)" position="right" maxWidth={250} />
+                </label>
                 <input
                   type="number"
                   id="billing_cycle_day"
@@ -426,7 +433,6 @@ const PaymentMethodForm = ({ isOpen, method, onSave, onCancel }) => {
                 {validationErrors.billing_cycle_day && (
                   <span className="validation-error">{validationErrors.billing_cycle_day}</span>
                 )}
-                <span className="form-hint">The day your statement closes each month (found on your statement)</span>
               </div>
 
               <div className="form-row">

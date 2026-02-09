@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { createPayment, updatePayment, getPaymentSuggestion } from '../services/loanPaymentApi';
 import { createLogger } from '../utils/logger';
+import HelpTooltip from './HelpTooltip';
 import './LoanPaymentForm.css';
 
 const logger = createLogger('LoanPaymentForm');
@@ -269,6 +270,7 @@ const LoanPaymentForm = ({
                 {getSuggestionLabel()}
               </span>
             )}
+            <HelpTooltip content="Enter a positive amount" position="right" />
           </label>
           <div className="loan-payment-amount-input">
             <span className="currency-symbol">$</span>
@@ -282,13 +284,9 @@ const LoanPaymentForm = ({
               disabled={disabled || submitting}
               autoFocus
               aria-required="true"
-              aria-describedby="amount-hint"
             />
           </div>
           <div className="loan-payment-hint-row">
-            <span id="amount-hint" className="loan-payment-hint">
-              Enter a positive amount
-            </span>
             {suggestion?.suggestedAmount && !usingSuggestion && !editingPayment && (
               <button
                 type="button"

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import HelpTooltip from './HelpTooltip';
 import './PersonAllocationModal.css';
 
 /**
@@ -256,8 +257,12 @@ const PersonAllocationModal = ({
             {insuranceEligible && (
               <div className="allocation-header">
                 <span className="header-person">Person</span>
-                <span className="header-original">Original Cost</span>
-                <span className="header-oop">Out-of-Pocket</span>
+                <span className="header-original">
+                  Original Cost <HelpTooltip content="The full expense before reimbursement" position="top" />
+                </span>
+                <span className="header-oop">
+                  Out-of-Pocket <HelpTooltip content="What each person actually paid after insurance" position="top" />
+                </span>
               </div>
             )}
             {allocations.map(allocation => (
@@ -298,12 +303,6 @@ const PersonAllocationModal = ({
           {error && (
             <div className="error-message">
               {error}
-            </div>
-          )}
-          
-          {insuranceEligible && (
-            <div className="insurance-allocation-note">
-              <small>💡 Original cost is the full expense before reimbursement. Out-of-pocket is what each person actually paid.</small>
             </div>
           )}
         </div>

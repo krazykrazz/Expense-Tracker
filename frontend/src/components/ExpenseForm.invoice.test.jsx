@@ -2,6 +2,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import React from 'react';
 import ExpenseForm from './ExpenseForm';
+import {
+  createExpenseApiMock,
+  createPaymentMethodApiMock,
+  createPeopleApiMock,
+  createCategorySuggestionApiMock,
+  createCategoriesApiMock,
+  createInvoiceApiMock
+} from '../test-utils';
 
 // Mock the API endpoints
 vi.mock('../config', () => ({
@@ -14,7 +22,7 @@ vi.mock('../config', () => ({
   }
 }));
 
-// Mock the API services
+// Mock the API services - delegate to shared factories
 vi.mock('../services/expenseApi', () => ({
   createExpense: vi.fn(() => Promise.resolve({ id: 1 })),
   updateExpense: vi.fn(() => Promise.resolve({ id: 123 })),

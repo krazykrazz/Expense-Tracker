@@ -76,12 +76,29 @@ The frontend uses Vitest with @testing-library/react and fast-check for property
 # Run all frontend tests (single run)
 npm test
 
-# Run specific test file
-npx vitest --run src/components/ExpenseForm.test.jsx
+# Run specific test file by name (DO NOT use npm test with pattern - it causes duplicate --run flag)
+npx vitest --run ExpenseForm
 
 # Run tests matching a pattern
 npx vitest --run --reporter=verbose "pattern"
 ```
+
+### CRITICAL: Frontend Test Command Rules
+
+**WRONG** ❌ - This causes "duplicate --run flag" error:
+```bash
+npm test -- --run ExpenseForm
+npm test -- ExpenseForm
+```
+
+**CORRECT** ✅ - Use npx vitest directly:
+```bash
+npx vitest --run ExpenseForm
+npx vitest --run BillingCycleHistoryForm
+npx vitest --run "PaymentMethodForm|LoanPaymentForm"
+```
+
+**Why:** The `npm test` script in package.json already includes `--run`, so passing it again or using `npm test --` with a pattern causes the duplicate flag error. Always use `npx vitest --run` for specific test patterns.
 
 ### Working Directory
 

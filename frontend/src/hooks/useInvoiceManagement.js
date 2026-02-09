@@ -30,6 +30,23 @@ function useInvoiceManagement({ expenses = [] } = {}) {
   }, []);
 
   /**
+   * Shared error handling helper for async operations.
+   * Logs errors with context and returns a fallback value.
+   * @param {Function} operation - Async operation to execute
+   * @param {string} context - Context description for logging
+   * @param {*} fallback - Fallback value to return on error (default: [])
+   * @returns {Promise<*>} Result of operation or fallback value
+   */
+  const withErrorHandling = useCallback(async (operation, context, fallback = []) => {
+    try {
+      return await operation();
+    } catch (error) {
+      logger.error(`Failed to ${context}:`, error);
+      return fallback;
+    }
+  }, []);
+
+  /**
    * Fetch invoices for a given expense ID. Returns cached result if available.
    * @param {number} expenseId
    * @returns {Promise<Array>} Array of invoices
@@ -40,29 +57,24 @@ function useInvoiceManagement({ expenses = [] } = {}) {
       return invoiceCache.get(expenseId);
     }
 
-    try {
-      const invoices = await getInvoicesForExpense(expenseId);
-      const result = invoices || [];
-      if (isMountedRef.current) {
-        setInvoiceCache(prev => {
-          const newMap = new Map(prev);
-          newMap.set(expenseId, result);
-          return newMap;
-        });
-      }
-      return result;
-    } catch (error) {
-      logger.error(`Failed to fetch invoices for expense ${expenseId}:`, error);
-      if (isMountedRef.current) {
-        setInvoiceCache(prev => {
-          const newMap = new Map(prev);
-          newMap.set(expenseId, []);
-          return newMap;
-        });
-      }
-      return [];
+    const result = await withErrorHandling(
+      async () => {
+        const invoices = await getInvoicesForExpense(expenseId);
+        return invoices || [];
+      },
+      `fetch invoices for expense ${expenseId}`,
+      []
+    );
+
+    if (isMountedRef.current) {
+      setInvoiceCache(prev => {
+        const newMap = new Map(prev);
+        newMap.set(expenseId, result);
+        return newMap;
+      });
     }
-  }, [invoiceCache]);
+    return result;
+  }, [invoiceCache, withErrorHandling]);
 
   /**
    * Handle a new invoice being uploaded/added for an expense.
@@ -136,16 +148,18 @@ function useInvoiceManagement({ expenses = [] } = {}) {
     } else if (expense.invoices && expense.invoices.length > 0) {
       setInvoiceModalInvoices(expense.invoices);
     } else {
-      try {
-        const fetched = await getInvoicesForExpense(expense.id);
-        setInvoiceModalInvoices(fetched || []);
-      } catch (error) {
-        logger.error('Failed to fetch invoices for modal:', error);
-        setInvoiceModalInvoices([]);
-      }
+      const fetched = await withErrorHandling(
+        async () => {
+          const result = await getInvoicesForExpense(expense.id);
+          return result || [];
+        },
+        'fetch invoices for modal',
+        []
+      );
+      setInvoiceModalInvoices(fetched);
     }
     setShowInvoiceModal(true);
-  }, []);
+  }, [withErrorHandling]);
 
   /**
    * Close the invoice modal.
@@ -177,13 +191,15 @@ function useInvoiceManagement({ expenses = [] } = {}) {
 
       // Load all invoices for each expense
       const invoicePromises = expensesToLoad.map(async (expense) => {
-        try {
-          const invoices = await getInvoicesForExpense(expense.id);
-          return { expenseId: expense.id, invoices: invoices || [] };
-        } catch (error) {
-          logger.error(`Failed to load invoices for expense ${expense.id}:`, error);
-          return { expenseId: expense.id, invoices: [] };
-        }
+        const invoices = await withErrorHandling(
+          async () => {
+            const result = await getInvoicesForExpense(expense.id);
+            return result || [];
+          },
+          `load invoices for expense ${expense.id}`,
+          []
+        );
+        return { expenseId: expense.id, invoices };
       });
 
       try {
@@ -211,7 +227,7 @@ function useInvoiceManagement({ expenses = [] } = {}) {
     };
 
     loadInvoiceData();
-  }, [expenses, invoiceCache, loadingInvoices]);
+  }, [expenses, invoiceCache, loadingInvoices, withErrorHandling]);
 
   return {
     invoiceCache,

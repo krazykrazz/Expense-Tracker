@@ -8,15 +8,21 @@ import { vi } from 'vitest';
 export const createExpenseApiMock = (overrides = {}) => ({
   fetchExpenses: vi.fn().mockResolvedValue({ data: [] }),
   fetchExpensesByYear: vi.fn().mockResolvedValue({ data: [] }),
+  getExpenses: vi.fn().mockResolvedValue({ data: [] }),
+  getPlaces: vi.fn().mockResolvedValue([]),
   createExpense: vi.fn().mockResolvedValue({ data: { id: 1 } }),
   updateExpense: vi.fn().mockResolvedValue({ data: { id: 1 } }),
   deleteExpense: vi.fn().mockResolvedValue({ success: true }),
   searchExpenses: vi.fn().mockResolvedValue({ data: [] }),
+  getExpenseWithPeople: vi.fn().mockResolvedValue(null),
   ...overrides
 });
 
 export const createPaymentMethodApiMock = (overrides = {}) => ({
   fetchPaymentMethods: vi.fn().mockResolvedValue([]),
+  getActivePaymentMethods: vi.fn().mockResolvedValue([]),
+  getPaymentMethod: vi.fn().mockResolvedValue(null),
+  getPaymentMethods: vi.fn().mockResolvedValue([]),
   createPaymentMethod: vi.fn().mockResolvedValue({ id: 1 }),
   updatePaymentMethod: vi.fn().mockResolvedValue({ id: 1 }),
   deletePaymentMethod: vi.fn().mockResolvedValue({ success: true }),
@@ -25,9 +31,30 @@ export const createPaymentMethodApiMock = (overrides = {}) => ({
 
 export const createPeopleApiMock = (overrides = {}) => ({
   fetchPeople: vi.fn().mockResolvedValue([]),
+  getPeople: vi.fn().mockResolvedValue([]),
   createPerson: vi.fn().mockResolvedValue({ id: 1 }),
   updatePerson: vi.fn().mockResolvedValue({ id: 1 }),
   deletePerson: vi.fn().mockResolvedValue({ success: true }),
+  ...overrides
+});
+
+export const createCategorySuggestionApiMock = (overrides = {}) => ({
+  fetchCategorySuggestion: vi.fn().mockResolvedValue(null),
+  ...overrides
+});
+
+export const createCategoriesApiMock = (overrides = {}) => ({
+  getCategories: vi.fn().mockResolvedValue([
+    'Other', 'Groceries', 'Gas', 'Dining Out', 'Tax - Medical', 'Tax - Donation'
+  ]),
+  ...overrides
+});
+
+export const createInvoiceApiMock = (overrides = {}) => ({
+  getInvoicesForExpense: vi.fn().mockResolvedValue([]),
+  updateInvoicePersonLink: vi.fn().mockResolvedValue({}),
+  uploadInvoice: vi.fn().mockResolvedValue({ id: 1 }),
+  deleteInvoice: vi.fn().mockResolvedValue({ success: true }),
   ...overrides
 });
 

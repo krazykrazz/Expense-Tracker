@@ -3,6 +3,7 @@ import { render, waitFor, fireEvent, cleanup, act } from '@testing-library/react
 import * as fc from 'fast-check';
 import ExpenseForm from './ExpenseForm';
 import { CATEGORIES } from '../../../backend/utils/categories';
+import { createPaymentMethodApiMock } from '../test-utils';
 
 // Mock fetch globally
 global.fetch = vi.fn();
@@ -15,6 +16,13 @@ const MOCK_PAYMENT_METHODS = [
   { id: 4, display_name: 'Mastercard', type: 'credit_card', is_active: 1 },
   { id: 5, display_name: 'Cheque', type: 'cheque', is_active: 1 }
 ];
+
+// Delegate to shared mock factory
+const paymentMethodApiMock = createPaymentMethodApiMock({
+  getActivePaymentMethods: vi.fn(() => Promise.resolve(MOCK_PAYMENT_METHODS)),
+  getPaymentMethod: vi.fn(() => Promise.resolve(null)),
+  getPaymentMethods: vi.fn(() => Promise.resolve(MOCK_PAYMENT_METHODS)),
+});
 
 // Mock the paymentMethodApi module used by usePaymentMethods hook
 vi.mock('../services/paymentMethodApi', () => ({

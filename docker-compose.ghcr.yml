@@ -1,0 +1,45 @@
+# Docker Compose configuration for running Expense Tracker from GitHub Container Registry
+# This file demonstrates how to deploy the application using pre-built images from GHCR
+
+version: '3.8'
+
+services:
+  expense-tracker:
+    # Replace {owner} with your GitHub username
+    # Replace {version} with desired version (e.g., v5.8.1, latest, or specific SHA)
+    image: ghcr.io/{owner}/expense-tracker:latest
+    container_name: expense-tracker
+    ports:
+      - "2424:2424"
+    volumes:
+      # Persist database across container restarts
+      - ./data:/app/backend/database
+      # Persist uploaded files (invoices, statements)
+      - ./uploads:/app/backend/uploads
+    environment:
+      - NODE_ENV=production
+      - LOG_LEVEL=info
+    restart: unless-stopped
+
+# Example usage:
+# 1. Replace {owner} with your GitHub username in the image line above
+# 2. Choose your version tag:
+#    - latest: Most recent build from main branch
+#    - v5.8.1: Specific version release
+#    - dd3d533: Specific commit SHA
+# 3. Run: docker-compose -f docker-compose.ghcr.yml up -d
+#
+# Example with specific version:
+#   image: ghcr.io/krazykrazz/expense-tracker:v5.8.1
+#
+# Example with specific SHA:
+#   image: ghcr.io/krazykrazz/expense-tracker:dd3d533
+#
+# To pull the latest image:
+#   docker-compose -f docker-compose.ghcr.yml pull
+#
+# To view logs:
+#   docker-compose -f docker-compose.ghcr.yml logs -f
+#
+# To stop:
+#   docker-compose -f docker-compose.ghcr.yml down

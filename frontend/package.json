@@ -9,7 +9,14 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest --run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:changed": "vitest --changed --run",
+    "test:fast": "FAST_CHECK_NUM_RUNS=10 vitest --run",
+    "test:core": "vitest --run ExpenseForm.core",
+    "test:sections": "vitest --run ExpenseForm.sections",
+    "test:people": "vitest --run ExpenseForm.people",
+    "test:futureMonths": "vitest --run ExpenseForm.futureMonths",
+    "test:dataPreservation": "vitest --run ExpenseForm.dataPreservation"
   },
   "dependencies": {
     "react": "^19.2.4",

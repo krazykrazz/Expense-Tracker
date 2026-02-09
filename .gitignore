@@ -81,3 +81,15 @@ test-data/*.zip
 # Test result files
 test-results*.txt
 **/test-results*.txt
+
+# Temporary test fix scripts and documents
+fix-remaining-tests.js
+test-fix-*.md
+test-migration-*.md
+
+# Test PBT directories (temporary test artifacts)
+test-pbt-listing/
+test-pbt-backups/
+
+# One-off documentation (should be in archive if needed)
+SECURITY_REVIEW_FOR_PUBLIC_REPO.md

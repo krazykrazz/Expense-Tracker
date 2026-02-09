@@ -3275,10 +3275,10 @@ async function migrateConfigurablePaymentMethods(db) {
     { id: 1, oldValue: 'Cash', displayName: 'Cash', fullName: 'Cash', type: 'cash' },
     { id: 2, oldValue: 'Debit', displayName: 'Debit', fullName: 'Debit', type: 'debit' },
     { id: 3, oldValue: 'Cheque', displayName: 'Cheque', fullName: 'Cheque', type: 'cheque' },
-    { id: 4, oldValue: 'CIBC MC', displayName: 'CIBC MC', fullName: 'CIBC Mastercard', type: 'credit_card' },
-    { id: 5, oldValue: 'PCF MC', displayName: 'PCF MC', fullName: 'PCF Mastercard', type: 'credit_card' },
-    { id: 6, oldValue: 'WS VISA', displayName: 'WS VISA', fullName: 'WealthSimple VISA', type: 'credit_card' },
-    { id: 7, oldValue: 'VISA', displayName: 'RBC VISA', fullName: 'RBC VISA', type: 'credit_card' }
+    { id: 4, oldValue: 'CIBC MC', displayName: 'Credit Card 1', fullName: 'Credit Card 1', type: 'credit_card' },
+    { id: 5, oldValue: 'PCF MC', displayName: 'Credit Card 2', fullName: 'Credit Card 2', type: 'credit_card' },
+    { id: 6, oldValue: 'WS VISA', displayName: 'Credit Card 3', fullName: 'Credit Card 3', type: 'credit_card' },
+    { id: 7, oldValue: 'VISA', displayName: 'Credit Card 4', fullName: 'Credit Card 4', type: 'credit_card' }
   ];
 
   // Disable foreign keys before table recreation
@@ -3445,10 +3445,10 @@ async function migrateConfigurablePaymentMethods(db) {
           // Handle legacy payment types that were used before standardization
           // Map legacy values to appropriate standard payment methods:
           // - "Auto-Pay" -> Debit (id=2) - typically bank auto-withdrawals
-          // - "Credit Card" -> CIBC MC (id=4) - generic credit card reference
+          // - "Credit Card" -> Credit Card 1 (id=4) - generic credit card reference
           const legacyMapping = [
             { oldValue: 'Auto-Pay', newId: 2, newDisplayName: 'Debit' },
-            { oldValue: 'Credit Card', newId: 4, newDisplayName: 'CIBC MC' },
+            { oldValue: 'Credit Card', newId: 4, newDisplayName: 'Credit Card 1' },
             { oldValue: 'Fixed', newId: 2, newDisplayName: 'Debit' }  // Another legacy value
           ];
           

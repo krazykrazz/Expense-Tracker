@@ -819,6 +819,13 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v5.8.1</div>
+                <div className="changelog-date">February 9, 2026</div>
+                <ul className="changelog-items">
+                  <li>Credit card reminder badge consistency - Statement badges and due dates now shown in multiple payment view</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v5.8.0</div>
                 <div className="changelog-date">February 7, 2026</div>
                 <ul className="changelog-items">

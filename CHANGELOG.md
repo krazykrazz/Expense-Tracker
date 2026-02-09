@@ -1,5 +1,10 @@
 # Changelog
 
+
+## [5.8.1] - 2026-02-09
+
+### Credit card reminder badge consistency improvements
+
 All notable changes to the Expense Tracker application will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),

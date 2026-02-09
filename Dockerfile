@@ -9,6 +9,9 @@ COPY frontend/package*.json ./
 # Install frontend dependencies
 RUN npm ci
 
+# Rebuild esbuild to fix version mismatch
+RUN npm rebuild esbuild
+
 # Copy frontend source code
 COPY frontend/ ./
 

@@ -77,3 +77,7 @@ backend/config/database/backups/
 # Test data artifacts (backup files, archives)
 test-data/*.tar.gz
 test-data/*.zip
+
+# Test result files
+test-results*.txt
+**/test-results*.txt

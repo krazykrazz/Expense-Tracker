@@ -180,3 +180,32 @@ export { testEach } from './parameterized';
  * });
  */
 export * from './expenseFormHelpers';
+
+/**
+ * @see module:test-utils/componentMocks
+ * @description
+ * Mocked React components for testing purposes.
+ * These mocks provide simplified versions of complex components that work reliably
+ * in the jsdom test environment, avoiding issues with CSS-based visibility,
+ * animations, and other browser-specific behaviors.
+ *
+ * Key exports:
+ * - MockCollapsibleSection - Simplified CollapsibleSection that always renders children
+ *
+ * @example
+ * import { MockCollapsibleSection } from '../test-utils';
+ *
+ * vi.mock('./CollapsibleSection', () => ({
+ *   default: MockCollapsibleSection
+ * }));
+ *
+ * it('should render section content', () => {
+ *   render(
+ *     <MockCollapsibleSection title="Test" isExpanded={false} onToggle={vi.fn()}>
+ *       <div>Content</div>
+ *     </MockCollapsibleSection>
+ *   );
+ *   expect(screen.getByText('Content')).toBeInTheDocument();
+ * });
+ */
+export * from './componentMocks.jsx';

@@ -167,6 +167,16 @@
   }
 }
 
+/* Accessibility: Respect user's motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .help-tooltip-top,
+  .help-tooltip-bottom,
+  .help-tooltip-left,
+  .help-tooltip-right {
+    animation: none;
+  }
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .help-tooltip-content {

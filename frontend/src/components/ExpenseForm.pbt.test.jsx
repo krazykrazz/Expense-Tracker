@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, waitFor, fireEvent, cleanup, act } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import * as fc from 'fast-check';
 import ExpenseForm from './ExpenseForm';
 import { CATEGORIES } from '../../../backend/utils/categories';
-import { createPaymentMethodApiMock } from '../test-utils';
+import { createPaymentMethodApiMock, testEach } from '../test-utils';
 
 // Mock fetch globally
 global.fetch = vi.fn();
@@ -145,39 +146,33 @@ describe('ExpenseForm Property-Based Tests', () => {
    * For any valid category from the approved list, the expense form dropdown 
    * should include that category as an option
    * **Validates: Requirements 1.1**
+   * 
+   * NOTE: Converted from PBT to simple test per frontend-test-refactoring spec.
+   * Testing a finite set of categories doesn't require property-based testing.
    */
   it('Property 1: should include all valid categories in the dropdown', async () => {
-    await fc.assert(
-      fc.asyncProperty(
-        // Generate a random subset of categories to verify
-        fc.subarray(CATEGORIES, { minLength: 1, maxLength: CATEGORIES.length }),
-        async (categoriesToCheck) => {
-          // Mock the API responses
-          global.fetch.mockImplementation(createMockFetch());
+    // Mock the API responses
+    global.fetch.mockImplementation(createMockFetch());
 
-          // Render the component
-          const { container } = render(<ExpenseForm onExpenseAdded={() => {}} />);
+    // Render the component
+    const { container } = render(<ExpenseForm onExpenseAdded={() => {}} />);
 
-          // Wait for categories to be fetched and rendered
-          await waitFor(() => {
-            const typeSelect = container.querySelector('select[name="type"]');
-            expect(typeSelect).toBeTruthy();
-            // Check that we have more than just the default "Other" option
-            expect(typeSelect.options.length).toBeGreaterThan(1);
-          });
+    // Wait for categories to be fetched and rendered
+    await waitFor(() => {
+      const typeSelect = container.querySelector('select[name="type"]');
+      expect(typeSelect).toBeTruthy();
+      // Check that we have more than just the default "Other" option
+      expect(typeSelect.options.length).toBeGreaterThan(1);
+    });
 
-          // Get the type dropdown
-          const typeSelect = container.querySelector('select[name="type"]');
-          const optionValues = Array.from(typeSelect.options).map(opt => opt.value);
+    // Get the type dropdown
+    const typeSelect = container.querySelector('select[name="type"]');
+    const optionValues = Array.from(typeSelect.options).map(opt => opt.value);
 
-          // Verify that each category in our random subset is present in the dropdown
-          for (const category of categoriesToCheck) {
-            expect(optionValues).toContain(category);
-          }
-        }
-      ),
-      { numRuns: 100 }
-    );
+    // Verify that all categories are present in the dropdown
+    for (const category of CATEGORIES) {
+      expect(optionValues).toContain(category);
+    }
   });
 
 
@@ -188,110 +183,108 @@ describe('ExpenseForm Property-Based Tests', () => {
    * For any expense submission, the payment method used SHALL be stored 
    * and pre-selected on the next form open.
    * **Validates: Requirements 5.1, 5.3**
+   * 
+   * NOTE: Converted from PBT to parameterized test per frontend-test-refactoring spec.
+   * Testing a finite set of payment methods (5 options) doesn't require property-based testing.
    */
-  it('Property 5: should persist payment method to localStorage and pre-select on next form open', async () => {
-    // Generator for valid payment method IDs (using IDs from mock)
-    const validMethodIdArb = fc.constantFrom(...MOCK_PAYMENT_METHODS.map(m => String(m.id)));
-
-    // The localStorage key used by ExpenseForm (updated to match the new key)
+  testEach(
+    MOCK_PAYMENT_METHODS.map(method => ({
+      methodId: String(method.id),
+      methodName: method.display_name,
+      description: `${method.display_name} (${method.type})`
+    }))
+  ).test('Property 5: should persist $description to localStorage and pre-select on next form open', async ({ methodId }) => {
+    // The localStorage key used by ExpenseForm
     const LAST_PAYMENT_METHOD_KEY = 'expense-tracker-last-payment-method-id';
 
-    await fc.assert(
-      fc.asyncProperty(
-        validMethodIdArb,
-        async (methodId) => {
-          // Clear localStorage before each test
-          localStorage.clear();
+    // Clear localStorage before each test
+    localStorage.clear();
 
-          // Mock the API responses with expense creation handler
-          global.fetch.mockImplementation(createMockFetch({
-            '/expenses': () => Promise.resolve({
-              ok: true,
-              json: () => Promise.resolve({ id: 1, payment_method_id: parseInt(methodId) })
-            })
-          }));
+    // Mock the API responses with expense creation handler
+    global.fetch.mockImplementation(createMockFetch({
+      '/expenses': () => Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ id: 1, payment_method_id: parseInt(methodId) })
+      })
+    }));
 
-          // Render the first form instance
-          const { container, unmount } = render(<ExpenseForm onExpenseAdded={() => {}} />);
+    // Render the first form instance
+    const { container, unmount } = render(<ExpenseForm onExpenseAdded={() => {}} />);
 
-          // Wait for categories and payment methods to be fetched
-          await waitFor(() => {
-            const typeSelect = container.querySelector('select[name="type"]');
-            expect(typeSelect).toBeTruthy();
-          });
+    // Wait for categories and payment methods to be fetched
+    await waitFor(() => {
+      const typeSelect = container.querySelector('select[name="type"]');
+      expect(typeSelect).toBeTruthy();
+    });
 
-          // Wait for payment methods to load
-          await waitFor(() => {
-            const methodSelect = container.querySelector('select[name="payment_method_id"]');
-            expect(methodSelect).toBeTruthy();
-            // Check that we have more than just the placeholder option
-            const options = methodSelect.querySelectorAll('option');
-            expect(options.length).toBeGreaterThan(1);
-          });
+    // Wait for payment methods to load
+    await waitFor(() => {
+      const methodSelect = container.querySelector('select[name="payment_method_id"]');
+      expect(methodSelect).toBeTruthy();
+      // Check that we have more than just the placeholder option
+      const options = methodSelect.querySelectorAll('option');
+      expect(options.length).toBeGreaterThan(1);
+    });
 
-          // Fill in required fields
-          const dateInput = container.querySelector('input[name="date"]');
-          const amountInput = container.querySelector('input[name="amount"]');
-          const methodSelect = container.querySelector('select[name="payment_method_id"]');
+    // Fill in required fields
+    const dateInput = container.querySelector('input[name="date"]');
+    const amountInput = container.querySelector('input[name="amount"]');
+    const methodSelect = container.querySelector('select[name="payment_method_id"]');
 
-          await act(async () => {
-            fireEvent.change(dateInput, { target: { value: '2025-01-15' } });
-            fireEvent.change(amountInput, { target: { value: '50.00' } });
-            fireEvent.change(methodSelect, { target: { value: methodId } });
-          });
+    await act(async () => {
+      await userEvent.clear(dateInput);
+      await userEvent.type(dateInput, '2025-01-15');
+      await userEvent.clear(amountInput);
+      await userEvent.type(amountInput, '50.00');
+      await userEvent.selectOptions(methodSelect, methodId);
+    });
 
-          // Submit the form
-          await act(async () => {
-            const form = container.querySelector('form');
-            fireEvent.submit(form);
-          });
+    // Submit the form
+    await act(async () => {
+      const form = container.querySelector('form');
+      fireEvent.submit(form);
+    });
 
-          // Wait for submission to complete
-          await waitFor(() => {
-            // Check that localStorage was updated with the payment method ID
-            const savedMethod = localStorage.getItem(LAST_PAYMENT_METHOD_KEY);
-            expect(savedMethod).toBe(methodId);
-          });
+    // Wait for submission to complete
+    await waitFor(() => {
+      // Check that localStorage was updated with the payment method ID
+      const savedMethod = localStorage.getItem(LAST_PAYMENT_METHOD_KEY);
+      expect(savedMethod).toBe(methodId);
+    });
 
-          // Wait for any pending state updates before unmount
-          await act(async () => {
-            await new Promise(resolve => setTimeout(resolve, 100));
-          });
+    // Wait for any pending state updates before unmount
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    });
 
-          // Unmount the first form
-          unmount();
+    // Unmount the first form
+    unmount();
 
-          // Render a new form instance (simulating opening the form again)
-          const { container: newContainer, unmount: unmount2 } = render(<ExpenseForm onExpenseAdded={() => {}} />);
+    // Render a new form instance (simulating opening the form again)
+    const { container: newContainer, unmount: unmount2 } = render(<ExpenseForm onExpenseAdded={() => {}} />);
 
-          // Wait for the new form to render and payment methods to load
-          await waitFor(() => {
-            const newMethodSelect = newContainer.querySelector('select[name="payment_method_id"]');
-            expect(newMethodSelect).toBeTruthy();
-            const options = newMethodSelect.querySelectorAll('option');
-            expect(options.length).toBeGreaterThan(1);
-          });
+    // Wait for the new form to render and payment methods to load
+    await waitFor(() => {
+      const newMethodSelect = newContainer.querySelector('select[name="payment_method_id"]');
+      expect(newMethodSelect).toBeTruthy();
+      const options = newMethodSelect.querySelectorAll('option');
+      expect(options.length).toBeGreaterThan(1);
+    });
 
-          // Wait for the payment method to be pre-selected from localStorage
-          await waitFor(() => {
-            const newMethodSelect = newContainer.querySelector('select[name="payment_method_id"]');
-            expect(newMethodSelect.value).toBe(methodId);
-          });
+    // Wait for the payment method to be pre-selected from localStorage
+    await waitFor(() => {
+      const newMethodSelect = newContainer.querySelector('select[name="payment_method_id"]');
+      expect(newMethodSelect.value).toBe(methodId);
+    });
 
-          // Wait for any pending state updates before cleanup
-          await act(async () => {
-            await new Promise(resolve => setTimeout(resolve, 100));
-          });
+    // Wait for any pending state updates before cleanup
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    });
 
-          // Clean up
-          unmount2();
-          localStorage.clear();
-        }
-      ),
-      // Reduced numRuns due to async operations (localStorage, form rendering, unmounting)
-      // Each iteration involves multiple async waits which can be slow on CI
-      { numRuns: 25 }
-    );
+    // Clean up
+    unmount2();
+    localStorage.clear();
   }, 60000);
 
 
@@ -369,13 +362,13 @@ describe('ExpenseForm Property-Based Tests', () => {
           const methodSelect = container.querySelector('select[name="payment_method_id"]');
           const placeInput = container.querySelector('input[name="place"]');
 
-          // Set values using fireEvent wrapped in act
+          // Set values using fireEvent wrapped in act (faster for PBT with many iterations)
           await act(async () => {
             fireEvent.change(dateInput, { target: { value: date } });
             fireEvent.change(amountInput, { target: { value: amount } });
             fireEvent.change(typeSelect, { target: { value: category } });
             fireEvent.change(methodSelect, { target: { value: methodId } });
-            if (place) {
+            if (place && place.trim().length > 0) {
               fireEvent.change(placeInput, { target: { value: place } });
             }
           });
@@ -420,103 +413,83 @@ describe('ExpenseForm Property-Based Tests', () => {
    * For any form render in create mode, only the core fields (Date, Place, Type, Amount, 
    * Payment Method, Notes) should be visible, and all advanced sections should be collapsed.
    * **Validates: Requirements 1.1**
+   * 
+   * NOTE: Converted from PBT to simple test per frontend-test-refactoring spec.
+   * The initial state doesn't vary based on props (people array doesn't affect initial collapse state).
    */
   it('Property 1: should render with all advanced sections collapsed in create mode', async () => {
-    // Generator for random props that don't affect initial state
-    // (people array can vary, but expense should always be null for create mode)
-    const createModePropsArb = fc.record({
-      people: fc.array(
-        fc.record({
-          id: fc.integer({ min: 1, max: 100 }),
-          name: fc.string({ minLength: 1, maxLength: 50 })
-        }),
-        { maxLength: 10 }
-      ),
-      expense: fc.constant(null) // Always null for create mode
+    // Clear sessionStorage to ensure clean state
+    sessionStorage.clear();
+
+    // Mock the API responses
+    global.fetch.mockImplementation(createMockFetch());
+
+    // Render the component in create mode with some people
+    const { container, unmount } = render(
+      <ExpenseForm 
+        onExpenseAdded={() => {}} 
+        people={[
+          { id: 1, name: 'John Doe' },
+          { id: 2, name: 'Jane Smith' }
+        ]}
+        expense={null}
+      />
+    );
+
+    // Wait for the form to render and data to load
+    await waitFor(() => {
+      const typeSelect = container.querySelector('select[name="type"]');
+      expect(typeSelect).toBeTruthy();
     });
 
-    await fc.assert(
-      fc.asyncProperty(
-        createModePropsArb,
-        async (props) => {
-          // Clear sessionStorage to ensure clean state
-          sessionStorage.clear();
+    // Wait for payment methods to load
+    await waitFor(() => {
+      const methodSelect = container.querySelector('select[name="payment_method_id"]');
+      expect(methodSelect).toBeTruthy();
+      const options = methodSelect.querySelectorAll('option');
+      expect(options.length).toBeGreaterThan(1);
+    });
 
-          // Mock the API responses
-          global.fetch.mockImplementation(createMockFetch());
+    // Verify core fields are visible
+    const dateInput = container.querySelector('input[name="date"]');
+    const placeInput = container.querySelector('input[name="place"]');
+    const typeSelect = container.querySelector('select[name="type"]');
+    const amountInput = container.querySelector('input[name="amount"]');
+    const methodSelect = container.querySelector('select[name="payment_method_id"]');
+    const notesTextarea = container.querySelector('textarea[name="notes"]');
 
-          // Render the component in create mode
-          const { container, unmount } = render(
-            <ExpenseForm 
-              onExpenseAdded={() => {}} 
-              people={props.people}
-              expense={props.expense}
-            />
-          );
+    expect(dateInput).toBeTruthy();
+    expect(placeInput).toBeTruthy();
+    expect(typeSelect).toBeTruthy();
+    expect(amountInput).toBeTruthy();
+    expect(methodSelect).toBeTruthy();
+    expect(notesTextarea).toBeTruthy();
 
-          // Wait for the form to render and data to load
-          await waitFor(() => {
-            const typeSelect = container.querySelector('select[name="type"]');
-            expect(typeSelect).toBeTruthy();
-          });
+    // Verify all advanced sections are collapsed (aria-expanded="false")
+    const sectionHeaders = container.querySelectorAll('.collapsible-header');
+    
+    // All sections should be collapsed (aria-expanded="false")
+    sectionHeaders.forEach(header => {
+      const ariaExpanded = header.getAttribute('aria-expanded');
+      expect(ariaExpanded).toBe('false');
+    });
 
-          // Wait for payment methods to load
-          await waitFor(() => {
-            const methodSelect = container.querySelector('select[name="payment_method_id"]');
-            expect(methodSelect).toBeTruthy();
-            const options = methodSelect.querySelectorAll('option');
-            expect(options.length).toBeGreaterThan(1);
-          });
+    // Verify section content is not visible when collapsed
+    const sectionContents = container.querySelectorAll('.collapsible-section-content');
+    sectionContents.forEach(content => {
+      // Content should either not exist or be hidden
+      const isVisible = content && window.getComputedStyle(content).display !== 'none';
+      expect(isVisible).toBe(false);
+    });
 
-          // Verify core fields are visible
-          const dateInput = container.querySelector('input[name="date"]');
-          const placeInput = container.querySelector('input[name="place"]');
-          const typeSelect = container.querySelector('select[name="type"]');
-          const amountInput = container.querySelector('input[name="amount"]');
-          const methodSelect = container.querySelector('select[name="payment_method_id"]');
-          const notesTextarea = container.querySelector('textarea[name="notes"]');
+    // Wait for any pending state updates before cleanup
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    });
 
-          expect(dateInput).toBeTruthy();
-          expect(placeInput).toBeTruthy();
-          expect(typeSelect).toBeTruthy();
-          expect(amountInput).toBeTruthy();
-          expect(methodSelect).toBeTruthy();
-          expect(notesTextarea).toBeTruthy();
-
-          // Verify all advanced sections are collapsed (aria-expanded="false")
-          const advancedOptionsSection = container.querySelector('[data-testid="section-advanced-options"]') 
-            || container.querySelector('.collapsible-header');
-          
-          // Find all collapsible section headers
-          const sectionHeaders = container.querySelectorAll('.collapsible-header');
-          
-          // All sections should be collapsed (aria-expanded="false")
-          sectionHeaders.forEach(header => {
-            const ariaExpanded = header.getAttribute('aria-expanded');
-            expect(ariaExpanded).toBe('false');
-          });
-
-          // Verify section content is not visible when collapsed
-          // The CollapsibleSection component should not render children when collapsed
-          const sectionContents = container.querySelectorAll('.collapsible-section-content');
-          sectionContents.forEach(content => {
-            // Content should either not exist or be hidden
-            const isVisible = content && window.getComputedStyle(content).display !== 'none';
-            expect(isVisible).toBe(false);
-          });
-
-          // Wait for any pending state updates before cleanup
-          await act(async () => {
-            await new Promise(resolve => setTimeout(resolve, 100));
-          });
-
-          // Clean up
-          unmount();
-          sessionStorage.clear();
-        }
-      ),
-      { numRuns: 100 }
-    );
+    // Clean up
+    unmount();
+    sessionStorage.clear();
   });
 
   /**
@@ -1131,7 +1104,7 @@ describe('ExpenseForm Property-Based Tests', () => {
           const advancedOptionsHeader = container.querySelector('.collapsible-section-header');
           const reimbursementHeader = container.querySelectorAll('.collapsible-section-header')[1];
 
-          // Expand sections based on generated states
+          // Expand sections based on generated states using fireEvent (faster for PBT)
           if (sectionStates.advancedOptions && advancedOptionsHeader) {
             const isExpanded = advancedOptionsHeader.getAttribute('aria-expanded') === 'true';
             if (!isExpanded) {
@@ -1156,7 +1129,7 @@ describe('ExpenseForm Property-Based Tests', () => {
             }
           }
 
-          // Fill in form data
+          // Fill in form data using fireEvent (faster for PBT)
           await act(async () => {
             const dateInput = container.querySelector('#date');
             const placeInput = container.querySelector('#place');
@@ -1168,7 +1141,7 @@ describe('ExpenseForm Property-Based Tests', () => {
             fireEvent.change(placeInput, { target: { value: formData.place } });
             fireEvent.change(amountInput, { target: { value: formData.amount } });
             fireEvent.change(typeSelect, { target: { value: formData.type } });
-            if (notesInput) {
+            if (notesInput && formData.notes) {
               fireEvent.change(notesInput, { target: { value: formData.notes } });
             }
           });

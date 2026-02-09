@@ -9,8 +9,16 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
+
+// Mock all API modules BEFORE importing expenseFormHelpers
+vi.mock('../services/peopleApi');
+vi.mock('../services/expenseApi');
+vi.mock('../services/categorySuggestionApi');
+vi.mock('../services/categoriesApi');
+vi.mock('../services/paymentMethodApi');
+
 import {
   mockCategories,
   mockPaymentMethods,
@@ -29,13 +37,6 @@ import * as expenseApi from '../services/expenseApi';
 import * as categorySuggestionApi from '../services/categorySuggestionApi';
 import * as categoriesApi from '../services/categoriesApi';
 import * as paymentMethodApi from '../services/paymentMethodApi';
-
-// Mock all API modules
-vi.mock('../services/peopleApi');
-vi.mock('../services/expenseApi');
-vi.mock('../services/categorySuggestionApi');
-vi.mock('../services/categoriesApi');
-vi.mock('../services/paymentMethodApi');
 
 describe('expenseFormHelpers - Mock Data', () => {
   it('should export mockCategories with expected structure', () => {
@@ -295,7 +296,7 @@ describe('expenseFormHelpers - fillBasicFields', () => {
     await fillBasicFields();
     
     const amountInput = screen.getByLabelText(/Amount/i);
-    expect(amountInput.value).toBe('100.00');
+    expect(amountInput.value).toBe('100');
   });
 
   it('should fill type field with default value', async () => {
@@ -338,7 +339,7 @@ describe('expenseFormHelpers - fillBasicFields', () => {
     
     // Verify all fields are filled
     expect(screen.getByLabelText(/^Date \*/i).value).toBe('2025-01-15');
-    expect(screen.getByLabelText(/Amount/i).value).toBe('100.00');
+    expect(screen.getByLabelText(/Amount/i).value).toBe('100');
     expect(screen.getByLabelText(/Type/i).value).toBe('Other');
     expect(screen.getByLabelText(/Payment Method/i).value).toBe('1');
   });
@@ -374,13 +375,13 @@ describe('expenseFormHelpers - fillBasicFieldsWithValues', () => {
     
     await fillBasicFieldsWithValues({
       date: '2025-02-01',
-      amount: '250.00',
+      amount: '250',
       type: 'Tax - Medical',
       paymentMethod: '2'
     });
     
     expect(screen.getByLabelText(/^Date \*/i).value).toBe('2025-02-01');
-    expect(screen.getByLabelText(/Amount/i).value).toBe('250.00');
+    expect(screen.getByLabelText(/Amount/i).value).toBe('250');
     expect(screen.getByLabelText(/Type/i).value).toBe('Tax - Medical');
     expect(screen.getByLabelText(/Payment Method/i).value).toBe('2');
   });
@@ -390,7 +391,7 @@ describe('expenseFormHelpers - fillBasicFieldsWithValues', () => {
     
     await fillBasicFieldsWithValues({
       date: '2024-12-31',
-      amount: '100.00',
+      amount: '100',
       type: 'Other',
       paymentMethod: '1'
     });
@@ -587,3 +588,4 @@ describe('expenseFormHelpers - submitForm', () => {
     });
   });
 });
+

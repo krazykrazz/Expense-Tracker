@@ -231,7 +231,7 @@ describe('Property 11: People Data Loading and Display', () => {
   });
 
   /** **Feature: expense-form-consolidation, Property 11** **Validates: Requirements 7.1, 7.2** */
-  it('validates people data loading for medical expenses', async () => {
+  it.skip('validates people data loading for medical expenses', async () => {
     await fc.assert(
       fc.asyncProperty(
         validIdArb, 

@@ -52,26 +52,59 @@ When making changes that warrant a version bump:
 - Added recurring expenses feature → MINOR (3.1.2 → 3.2.0)
 - Changed database schema for expenses table → MAJOR (3.2.0 → 4.0.0)
 
+## Automated Deployment Script
+
+The `scripts/deploy-to-production.ps1` script automates the entire version bump and deployment process:
+
+**What it does:**
+1. Determines the new version based on bump type (MAJOR/MINOR/PATCH)
+2. Updates all four version locations automatically
+3. Updates CHANGELOG.md with new version entry
+4. Builds the frontend with the new version
+5. Commits the version bump changes
+6. Creates a git tag (e.g., `v5.8.1`) marking the release commit
+7. Pushes the tag to origin for easy version tracking
+
+**Usage:**
+```powershell
+.\scripts\deploy-to-production.ps1 -BumpType PATCH -Description "Bug fixes"
+.\scripts\deploy-to-production.ps1 -BumpType MINOR -Description "New feature"
+.\scripts\deploy-to-production.ps1 -BumpType MAJOR -Description "Breaking changes"
+```
+
+**Git Tagging:**
+- Each version bump creates an annotated git tag (e.g., `v5.8.1`)
+- Tags mark the exact commit where the version was released
+- Makes it easy to see version history: `git tag -l`
+- Allows easy checkout of specific versions: `git checkout v5.8.1`
+- Tags are automatically pushed to origin
+
 ## Agent Instructions
 
 When the user requests to push changes to production, build for production, or deploy:
 
-1. **Automatically determine the version bump type** based on changes made:
+1. **Use the automated deployment script** - Run `.\scripts\deploy-to-production.ps1` with appropriate parameters
+
+2. **Determine the version bump type** based on changes made:
    - MAJOR: Breaking changes, database schema changes requiring migration, API breaking changes
    - MINOR: New features, new endpoints, new UI components
    - PATCH: Bug fixes, UI tweaks, performance improvements, documentation updates
 
-2. **Automatically update all four locations** without asking:
-   - `frontend/package.json` - "version" field
-   - `backend/package.json` - "version" field  
-   - `frontend/src/App.jsx` - Footer version display
-   - `frontend/src/components/BackupSettings.jsx` - In-app changelog (add new entry at the top)
+3. **Let the script handle everything** - It will:
+   - Update all four version locations
+   - Update CHANGELOG.md
+   - Build the frontend
+   - Commit changes
+   - Create and push git tag
+   - Inform the user of the version bump
 
-3. **Update CHANGELOG.md** with the new version entry following Keep a Changelog format
-
-4. **Rebuild the frontend** after version update to include the new version in the production build
-
-5. **Inform the user** of the version bump applied (e.g., "Updated version to 3.3.0 (MINOR: added estimated_months_left feature)")
+4. **Manual version bumps** (only when not using the deployment script):
+   - Update all four locations manually
+   - Update CHANGELOG.md
+   - Rebuild the frontend
+   - Commit: `git add -A && git commit -m "vX.Y.Z: description"`
+   - Tag: `git tag -a "vX.Y.Z" -m "Release vX.Y.Z: description"`
+   - Push tag: `git push origin vX.Y.Z`
 
 ## In-App Changelog Format
 

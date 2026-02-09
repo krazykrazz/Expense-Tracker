@@ -124,10 +124,10 @@ The deployment workflow ensures:
 
 16. **Promote to production** (same SHA, just retag):
     ```powershell
-    .\build-and-push.ps1 -Environment production
+    .\build-and-push.ps1 -Environment latest
     ```
     
-    This tags the same SHA image as `production` and deploys to `expense-tracker` container.
+    This tags the same SHA image as `latest` and deploys to `expense-tracker` container.
 
 17. **Verify production**:
     - Check version in UI
@@ -142,7 +142,12 @@ The deployment workflow ensures:
     git push origin --delete feature/my-feature
     ```
 
-19. **Document deployment**:
+19. **Push version tag to origin**:
+    ```powershell
+    git push origin v5.8.1
+    ```
+
+20. **Document deployment**:
     - Note SHA deployed to production
     - Record any issues encountered
     - Update deployment logs if maintained
@@ -166,6 +171,7 @@ cd frontend && npm run build && cd ..
 
 # 5. Commit version bump
 git add -A && git commit -m "v5.8.1: Description"
+git tag -a "v5.8.1" -m "Release v5.8.1: Description"
 
 # 6. Build SHA image
 .\build-and-push.ps1
@@ -175,8 +181,11 @@ git add -A && git commit -m "v5.8.1: Description"
 
 # 8. Test in staging...
 
-# 9. Promote to production
-.\build-and-push.ps1 -Environment production
+# 9. Promote to latest (production)
+.\build-and-push.ps1 -Environment latest
+
+# 10. Push tag to origin
+git push origin v5.8.1
 ```
 
 ## Common Mistakes to Avoid
@@ -247,7 +256,7 @@ git commit -m "v5.8.1: My feature"
 .\build-and-push.ps1  # Build once
 .\build-and-push.ps1 -Environment staging  # Tag and deploy
 # Test in staging...
-.\build-and-push.ps1 -Environment production  # Just retag, no rebuild
+.\build-and-push.ps1 -Environment latest  # Just retag, no rebuild
 ```
 
 ## Rollback Procedure
@@ -285,7 +294,7 @@ If production deployment has issues:
 **Fix:**
 1. Ensure version bump is committed
 2. Rebuild SHA image: `.\build-and-push.ps1`
-3. Redeploy: `.\build-and-push.ps1 -Environment production`
+3. Redeploy: `.\build-and-push.ps1 -Environment latest`
 
 ### Container Won't Start
 

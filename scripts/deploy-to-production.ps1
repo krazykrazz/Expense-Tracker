@@ -93,13 +93,16 @@ if ($DryRun) {
     Write-Host "  2. Update CHANGELOG.md"
     Write-Host "  3. Build frontend"
     Write-Host "  4. Commit: v$newVersion`: $Description"
-    Write-Host "  5. Build SHA image"
+    Write-Host "  5. Tag commit: v$newVersion"
+    Write-Host "  6. Build SHA image"
     if (-not $SkipStaging) {
-        Write-Host "  6. Deploy to staging"
-        Write-Host "  7. Wait for confirmation"
-        Write-Host "  8. Deploy to production"
+        Write-Host "  7. Deploy to staging"
+        Write-Host "  8. Wait for confirmation"
+        Write-Host "  9. Deploy to latest (production)"
+        Write-Host " 10. Push commits and tags to origin"
     } else {
-        Write-Host "  6. Deploy to production"
+        Write-Host "  7. Deploy to latest (production)"
+        Write-Host "  8. Push commits and tags to origin"
     }
     exit 0
 }
@@ -169,6 +172,15 @@ if ($LASTEXITCODE -ne 0) {
 $commitSha = git rev-parse --short HEAD
 Write-Success "Committed: $commitSha"
 
+# Step 10.5: Tag the commit
+Write-Step "Tagging commit with v$newVersion..."
+git tag -a "v$newVersion" -m "Release v$newVersion`: $Description"
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Failed to tag commit!"
+    exit 1
+}
+Write-Success "Tagged: v$newVersion"
+
 # Step 11: Build SHA image
 Write-Step "Building SHA image..."
 .\build-and-push.ps1
@@ -197,27 +209,34 @@ if (-not $SkipStaging) {
     if ($confirm -ne "yes") {
         Write-Warning "Production deployment cancelled"
         Write-Host "SHA image $commitSha is ready for production when you're ready:"
-        Write-Host "  .\build-and-push.ps1 -Environment production"
+        Write-Host "  .\build-and-push.ps1 -Environment latest"
         exit 0
     }
 }
 
-# Step 13: Deploy to production
-Write-Step "Deploying to production..."
-.\build-and-push.ps1 -Environment production
+# Step 13: Deploy to latest (production)
+Write-Step "Deploying to latest (production)..."
+.\build-and-push.ps1 -Environment latest
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Production deployment failed!"
     exit 1
 }
-Write-Success "Deployed to production"
+Write-Success "Deployed to production (latest tag)"
 
-# Step 14: Push to origin
-Write-Step "Pushing to origin..."
+# Step 14: Push to origin (including tags)
+Write-Step "Pushing to origin (with tags)..."
 git push origin main
 if ($LASTEXITCODE -ne 0) {
-    Write-Warning "Failed to push to origin - push manually"
+    Write-Warning "Failed to push commits to origin - push manually"
 } else {
     Write-Success "Pushed to origin/main"
+}
+
+git push origin "v$newVersion"
+if ($LASTEXITCODE -ne 0) {
+    Write-Warning "Failed to push tag to origin - push manually: git push origin v$newVersion"
+} else {
+    Write-Success "Pushed tag v$newVersion to origin"
 }
 
 # Summary
@@ -225,8 +244,10 @@ Write-Host ""
 Write-Host "=========================================" -ForegroundColor Green
 Write-Host "Deployment Complete!" -ForegroundColor Green
 Write-Host "=========================================" -ForegroundColor Green
-Write-Host "Version: $newVersion" -ForegroundColor Green
+Write-Host "Version: v$newVersion" -ForegroundColor Green
+Write-Host "Git Tag: v$newVersion" -ForegroundColor Green
 Write-Host "SHA: $commitSha" -ForegroundColor Green
-Write-Host "Environment: production" -ForegroundColor Green
+Write-Host "Docker Tag: latest" -ForegroundColor Green
+Write-Host "Container: expense-tracker" -ForegroundColor Green
 Write-Host "=========================================" -ForegroundColor Green
 Write-Host ""

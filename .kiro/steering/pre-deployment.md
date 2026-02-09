@@ -32,8 +32,9 @@ The same SHA-tagged image is used across all environments (build once, deploy ev
 
 **Why This Order Matters:**
 - The version bump commit creates the "release SHA"
+- Git tag marks this version in history for easy reference
 - The Docker image is built from this SHA and contains the correct version
-- Same binary artifact (with correct version) moves through staging → production
+- Same binary artifact (with correct version) moves through staging → latest (production)
 
 ### SHA-Based Workflow Benefits
 - Build once, deploy to multiple environments

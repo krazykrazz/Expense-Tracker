@@ -710,8 +710,11 @@ describe('ExpenseForm - Future Months Feature', () => {
     });
 
     // Future months checkbox should be unchecked after reset
+    // Need to re-query the checkbox after form reset since the component re-renders
     await waitFor(() => {
-      expect(checkbox.checked).toBe(false);
+      const futureMonthsSectionAfterReset = document.querySelector('.future-months-section');
+      const checkboxAfterReset = futureMonthsSectionAfterReset.querySelector('input[type="checkbox"]');
+      expect(checkboxAfterReset.checked).toBe(false);
     });
   });
 

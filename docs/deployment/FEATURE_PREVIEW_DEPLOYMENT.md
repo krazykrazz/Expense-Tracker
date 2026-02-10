@@ -63,6 +63,11 @@ Full colored output is displayed when run directly in a PowerShell terminal.
 - **Frontend**: http://localhost:3001
 - **Backend API**: http://localhost:2425/api/health
 
+The preview environment displays a **purple banner** at the top with the text "PREVIEW ENVIRONMENT - Testing feature branch before merge" and an eye icon (👁️). This visual indicator helps distinguish the preview environment from:
+- **Staging** (orange banner 🧪)
+- **Development** (blue banner 🔧)
+- **Production** (no banner)
+
 Test your feature thoroughly in the containerized environment.
 
 ### 4. Iterate if Needed

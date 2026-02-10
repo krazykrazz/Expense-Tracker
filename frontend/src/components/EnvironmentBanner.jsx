@@ -8,6 +8,7 @@ import './EnvironmentBanner.css';
  * 
  * - Staging (orange): Docker container with test data copy
  * - Development (blue): Local dev server without Docker
+ * - Preview (purple): Feature branch testing container
  * - Production: No banner shown
  */
 function EnvironmentBanner() {
@@ -39,16 +40,18 @@ function EnvironmentBanner() {
 
   const isStaging = environment === 'staging';
   const isDevelopment = environment === 'development';
+  const isPreview = environment === 'preview';
 
   return (
-    <div className={`environment-banner ${isStaging ? 'staging' : ''} ${isDevelopment ? 'development' : ''}`}>
+    <div className={`environment-banner ${isStaging ? 'staging' : ''} ${isDevelopment ? 'development' : ''} ${isPreview ? 'preview' : ''}`}>
       <span className="environment-icon">
-        {isStaging ? '🧪' : isDevelopment ? '🔧' : '⚠️'}
+        {isStaging ? '🧪' : isDevelopment ? '🔧' : isPreview ? '👁️' : '⚠️'}
       </span>
       <span className="environment-text">
         {isStaging && 'STAGING ENVIRONMENT - Changes here do not affect production data'}
         {isDevelopment && 'DEVELOPMENT MODE - Local server without Docker'}
-        {!isStaging && !isDevelopment && `${environment.toUpperCase()} ENVIRONMENT`}
+        {isPreview && 'PREVIEW ENVIRONMENT - Testing feature branch before merge'}
+        {!isStaging && !isDevelopment && !isPreview && `${environment.toUpperCase()} ENVIRONMENT`}
       </span>
     </div>
   );

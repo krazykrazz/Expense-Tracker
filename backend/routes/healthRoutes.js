@@ -84,7 +84,7 @@ router.get('/health', async (req, res) => {
 router.get('/version', (req, res) => {
   const versionInfo = {
     version: packageJson.version,
-    environment: process.env.NODE_ENV || 'development'
+    environment: process.env.APP_ENV || process.env.NODE_ENV || 'development'
   };
 
   // Add Docker info if available

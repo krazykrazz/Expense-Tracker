@@ -27,6 +27,7 @@ services:
       - LOG_LEVEL=debug
       - SERVICE_TZ=America/Toronto
       - NODE_ENV=production  # Must be production/staging for container frontend path
+      - APP_ENV=preview  # Display environment for banner (overrides NODE_ENV for UI)
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:2424/api/health"]

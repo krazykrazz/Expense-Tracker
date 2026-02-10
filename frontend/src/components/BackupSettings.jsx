@@ -81,10 +81,12 @@ const BackupSettings = () => {
     if (activeTab === 'misc') {
       // Load saved display limit from local storage
       const savedLimit = localStorage.getItem('activityLogDisplayLimit');
+      let limitToUse = 50; // default
       if (savedLimit) {
-        setDisplayLimit(parseInt(savedLimit, 10));
+        limitToUse = parseInt(savedLimit, 10);
+        setDisplayLimit(limitToUse);
       }
-      fetchActivityEvents();
+      fetchActivityEvents(0, limitToUse);
       fetchActivityStats();
     }
   }, [activeTab]);
@@ -260,11 +262,11 @@ const BackupSettings = () => {
   const formatDate = formatDateTime;
 
   // Activity log functions
-  const fetchActivityEvents = async (offset = 0) => {
+  const fetchActivityEvents = async (offset = 0, limit = displayLimit) => {
     setActivityLoading(true);
     setActivityError(null);
     try {
-      const response = await fetchRecentEvents(displayLimit, offset);
+      const response = await fetchRecentEvents(limit, offset);
       
       if (offset === 0) {
         // Initial load - replace events
@@ -299,8 +301,8 @@ const BackupSettings = () => {
     const newLimit = parseInt(e.target.value, 10);
     setDisplayLimit(newLimit);
     localStorage.setItem('activityLogDisplayLimit', newLimit.toString());
-    // Refetch with new limit
-    fetchActivityEvents(0);
+    // Refetch with new limit - pass it explicitly to avoid stale closure
+    fetchActivityEvents(0, newLimit);
   };
 
   const handleLoadMore = () => {

@@ -554,6 +554,7 @@ describe('Activity Log - Property 9: Event Display Completeness', () => {
   // Validates: Requirements 7.3
   it('should render complete event information for any valid event structure', async () => {
     const { fetchRecentEvents } = await import('../services/activityLogApi');
+    const { safeDate } = await import('../test-utils');
     
     await fc.assert(
       fc.asyncProperty(
@@ -563,10 +564,10 @@ describe('Activity Log - Property 9: Event Display Completeness', () => {
           entity_type: fc.string({ minLength: 3, maxLength: 30 }),
           entity_id: fc.oneof(fc.integer({ min: 1, max: 10000 }), fc.constant(null)),
           user_action: fc.string({ minLength: 1, maxLength: 500 }).filter(s => s.trim().length > 0),
-          timestamp: fc.date({ 
+          timestamp: safeDate({ 
             min: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // 30 days ago
             max: new Date() 
-          }).map(d => d.toISOString()),
+          }),
           metadata: fc.oneof(fc.constant(null), fc.object())
         }),
         async (event) => {
@@ -1044,7 +1045,7 @@ describe('Activity Log - Property 13: Display Limit Persistence', () => {
   // Validates: Requirements 9A.2, 9A.3
   it('should handle invalid localStorage values gracefully and use default', async () => {
     const { fetchRecentEvents } = await import('../services/activityLogApi');
-    const { waitFor, fireEvent } = await import('@testing-library/react');
+    const { waitFor } = await import('@testing-library/react');
     
     await fc.assert(
       fc.asyncProperty(
@@ -1068,22 +1069,17 @@ describe('Activity Log - Property 13: Display Limit Persistence', () => {
             total: 0
           });
 
-          // Render the component
-          const { container, unmount } = render(<BackupSettings />);
-
-          // Find and click the Misc tab
-          const tabs = container.querySelectorAll('button.tab-button');
-          const miscTab = tabs[3];
-          fireEvent.click(miscTab);
+          // Render and navigate to Misc tab using helper
+          const result = await renderAndNavigateToMiscTab();
 
           // Wait for the activity log section to load
           await waitFor(() => {
-            const selector = container.querySelector('.activity-limit-selector');
+            const selector = result.container.querySelector('.activity-limit-selector');
             expect(selector).toBeTruthy();
           }, { timeout: 3000 });
 
           // Find the display limit selector
-          const selector = container.querySelector('.activity-limit-selector');
+          const selector = result.container.querySelector('.activity-limit-selector');
           
           // Should use one of the valid values (likely default 50 or the parsed invalid value)
           const value = parseInt(selector.value, 10);
@@ -1092,7 +1088,7 @@ describe('Activity Log - Property 13: Display Limit Persistence', () => {
           // The selector should have a valid value from the dropdown options
           expect([25, 50, 100, 200]).toContain(value);
 
-          unmount();
+          result.unmount();
           localStorage.clear();
         }
       ),
@@ -1119,16 +1115,14 @@ describe('Activity Log - Property 13: Display Limit Persistence', () => {
           });
 
           // Simulate first session: set limit
-          const { container: container1, unmount: unmount1 } = render(<BackupSettings />);
-          const tabs1 = container1.querySelectorAll('button.tab-button');
-          fireEvent.click(tabs1[3]);
+          const result1 = await renderAndNavigateToMiscTab();
 
           await waitFor(() => {
-            const selector = container1.querySelector('.activity-limit-selector');
+            const selector = result1.container.querySelector('.activity-limit-selector');
             expect(selector).toBeTruthy();
           }, { timeout: 3000 });
 
-          const selector1 = container1.querySelector('.activity-limit-selector');
+          const selector1 = result1.container.querySelector('.activity-limit-selector');
           fireEvent.change(selector1, { target: { value: limit.toString() } });
 
           await waitFor(() => {
@@ -1138,25 +1132,23 @@ describe('Activity Log - Property 13: Display Limit Persistence', () => {
           // Verify localStorage has the value
           expect(localStorage.getItem('activityLogDisplayLimit')).toBe(limit.toString());
 
-          unmount1();
+          result1.unmount();
 
           // Simulate second session: verify limit persists
-          const { container: container2, unmount: unmount2 } = render(<BackupSettings />);
-          const tabs2 = container2.querySelectorAll('button.tab-button');
-          fireEvent.click(tabs2[3]);
+          const result2 = await renderAndNavigateToMiscTab();
 
           await waitFor(() => {
-            const selector = container2.querySelector('.activity-limit-selector');
+            const selector = result2.container.querySelector('.activity-limit-selector');
             expect(selector).toBeTruthy();
           }, { timeout: 3000 });
 
-          const selector2 = container2.querySelector('.activity-limit-selector');
+          const selector2 = result2.container.querySelector('.activity-limit-selector');
           
           // Should have the same limit from localStorage
           expect(selector2.value).toBe(limit.toString());
           expect(localStorage.getItem('activityLogDisplayLimit')).toBe(limit.toString());
 
-          unmount2();
+          result2.unmount();
           localStorage.clear();
         }
       ),
@@ -1327,13 +1319,8 @@ describe('Activity Log - Property 14: Visible Event Count Accuracy', () => {
             currentCount: totalCount
           });
 
-          // Render the component
-          const { container, unmount } = render(<BackupSettings />);
-
-          // Find and click the Misc tab
-          const tabs = container.querySelectorAll('button.tab-button');
-          const miscTab = tabs[3];
-          fireEvent.click(miscTab);
+          // Render and navigate to Misc tab
+          const { container, unmount } = await renderAndNavigateToMiscTab();
 
           // Wait for initial events to load
           await waitFor(() => {
@@ -1401,13 +1388,8 @@ describe('Activity Log - Property 14: Visible Event Count Accuracy', () => {
             currentCount: eventCount
           });
 
-          // Render the component
-          const { container, unmount } = render(<BackupSettings />);
-
-          // Find and click the Misc tab
-          const tabs = container.querySelectorAll('button.tab-button');
-          const miscTab = tabs[3];
-          fireEvent.click(miscTab);
+          // Render and navigate to Misc tab
+          const { container, unmount } = await renderAndNavigateToMiscTab();
 
           // Wait for events to load
           await waitFor(() => {
@@ -1472,13 +1454,8 @@ describe('Activity Log - Property 14: Visible Event Count Accuracy', () => {
           // Pre-set the display limit in localStorage
           localStorage.setItem('activityLogDisplayLimit', displayLimit.toString());
 
-          // Render the component
-          const { container, unmount } = render(<BackupSettings />);
-
-          // Find and click the Misc tab
-          const tabs = container.querySelectorAll('button.tab-button');
-          const miscTab = tabs[3];
-          fireEvent.click(miscTab);
+          // Render and navigate to Misc tab
+          const { container, unmount } = await renderAndNavigateToMiscTab();
 
           // Wait for events to load
           await waitFor(() => {
@@ -1593,13 +1570,8 @@ describe('Activity Log - Property 14: Visible Event Count Accuracy', () => {
             currentCount: totalCount
           });
 
-          // Render the component
-          const { container, unmount } = render(<BackupSettings />);
-
-          // Find and click the Misc tab
-          const tabs = container.querySelectorAll('button.tab-button');
-          const miscTab = tabs[3];
-          fireEvent.click(miscTab);
+          // Render and navigate to Misc tab
+          const { container, unmount } = await renderAndNavigateToMiscTab();
 
           // Wait for events to load
           await waitFor(() => {
@@ -1653,13 +1625,8 @@ describe('Activity Log - Property 14: Visible Event Count Accuracy', () => {
 
           fetchCleanupStats.mockResolvedValue(null);
 
-          // Render the component
-          const { container, unmount } = render(<BackupSettings />);
-
-          // Find and click the Misc tab
-          const tabs = container.querySelectorAll('button.tab-button');
-          const miscTab = tabs[3];
-          fireEvent.click(miscTab);
+          // Render and navigate to Misc tab
+          const { container, unmount } = await renderAndNavigateToMiscTab();
 
           // Wait for events to load
           await waitFor(() => {

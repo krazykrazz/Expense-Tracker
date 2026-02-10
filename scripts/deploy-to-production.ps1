@@ -142,12 +142,38 @@ $changelog | Set-Content CHANGELOG.md -NoNewline
 
 Write-Success "CHANGELOG.md updated"
 
-# Step 8: Update BackupSettings.jsx
+# Step 8: Update BackupSettings.jsx changelog
 Write-Step "Updating BackupSettings.jsx changelog..."
-Write-Warning "Manual update required for BackupSettings.jsx"
-Write-Host "Add changelog entry for v$newVersion in frontend/src/components/BackupSettings.jsx"
-Write-Host ""
-Read-Host "Press Enter when BackupSettings.jsx is updated"
+$backupSettingsPath = "frontend/src/components/BackupSettings.jsx"
+$backupSettingsContent = Get-Content $backupSettingsPath -Raw
+
+# Format the date for the changelog
+$changelogDate = Get-Date -Format "MMMM d, yyyy"
+
+# Create the new changelog entry
+$newChangelogEntry = @"
+              <div className="changelog-entry">
+                <div className="changelog-version">v$newVersion</div>
+                <div className="changelog-date">$changelogDate</div>
+                <ul className="changelog-items">
+                  <li>$Description</li>
+                </ul>
+              </div>
+"@
+
+# Find the insertion point (after "Recent Updates" section header and before the first existing entry)
+$insertionPattern = '(<div className="changelog">)\s*(<div className="changelog-entry">)'
+$replacement = "`$1`n$newChangelogEntry`n              `$2"
+
+if ($backupSettingsContent -match $insertionPattern) {
+    $backupSettingsContent = $backupSettingsContent -replace $insertionPattern, $replacement
+    $backupSettingsContent | Set-Content $backupSettingsPath -NoNewline
+    Write-Success "BackupSettings.jsx changelog updated"
+} else {
+    Write-Warning "Could not find changelog insertion point in BackupSettings.jsx"
+    Write-Host "Please manually add changelog entry for v$newVersion"
+    Read-Host "Press Enter when BackupSettings.jsx is updated"
+}
 
 # Step 9: Build frontend
 Write-Step "Building frontend..."

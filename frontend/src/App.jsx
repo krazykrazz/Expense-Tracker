@@ -5,7 +5,6 @@ import MonthSelector from './components/MonthSelector';
 import ExpenseList from './components/ExpenseList';
 import SearchBar from './components/SearchBar';
 import SummaryPanel from './components/SummaryPanel';
-import BackupSettings from './components/BackupSettings';
 import SettingsModal from './components/SettingsModal';
 import SystemModal from './components/SystemModal';
 import AnnualSummary from './components/AnnualSummary';
@@ -133,7 +132,6 @@ function AppContent({ onPaymentMethodsUpdate }) {
   // Consume modal state from context (Phase 3 - ModalContext)
   const {
     showExpenseForm,
-    showBackupSettings,
     showAnnualSummary,
     showTaxDeductible,
     showBudgetManagement,
@@ -145,8 +143,6 @@ function AppContent({ onPaymentMethodsUpdate }) {
     showSystemModal,
     openExpenseForm,
     closeExpenseForm,
-    openBackupSettings,
-    closeBackupSettings,
     openSettingsModal,
     closeSettingsModal,
     openSystemModal,
@@ -317,9 +313,17 @@ function AppContent({ onPaymentMethodsUpdate }) {
         <div className="header-buttons">
           <button 
             className="settings-button" 
-            onClick={openBackupSettings}
+            onClick={openSystemModal}
+            aria-label="System"
+            title="System information, activity log, and tools"
+          >
+            🖥️ System
+          </button>
+          <button 
+            className="settings-button" 
+            onClick={openSettingsModal}
             aria-label="Settings"
-            title="Backup, import, and restore settings"
+            title="Backup configuration and people management"
           >
             ⚙️ Settings
           </button>
@@ -458,21 +462,6 @@ function AppContent({ onPaymentMethodsUpdate }) {
               ×
             </button>
             <ExpenseForm onExpenseAdded={handleExpenseAdded} people={people} />
-          </div>
-        </div>
-      )}
-
-      {showBackupSettings && (
-        <div className="modal-overlay" onClick={closeBackupSettings}>
-          <div className="modal-content modal-content-large" onClick={(e) => e.stopPropagation()}>
-            <button 
-              className="modal-close-button" 
-              onClick={closeBackupSettings}
-              aria-label="Close"
-            >
-              ×
-            </button>
-            <BackupSettings />
           </div>
         </div>
       )}

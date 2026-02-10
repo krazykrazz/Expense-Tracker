@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from 'react';
 import { useModalContext } from '../contexts/ModalContext';
 import useTabState from '../hooks/useTabState';
 import { API_ENDPOINTS } from '../config';
-import { formatDateTime } from '../utils/formatters';
 import { getPeople, createPerson, updatePerson, deletePerson } from '../services/peopleApi';
 import { createLogger } from '../utils/logger';
 import './SettingsModal.css';
@@ -11,7 +10,7 @@ const logger = createLogger('SettingsModal');
 
 const SettingsModal = () => {
   const { closeSettingsModal } = useModalContext();
-  const [activeTab, setActiveTab] = useTabState('settings-modal-tab', 'backups');
+  const [activeTab, setActiveTab] = useTabState('settings-modal-tab', 'backup-config');
   
   // Backup configuration state
   const [config, setConfig] = useState({
@@ -22,7 +21,6 @@ const SettingsModal = () => {
     keepLastN: 7
   });
   
-  const [backups, setBackups] = useState([]);
   const [message, setMessage] = useState({ text: '', type: '' });
   const [loading, setLoading] = useState(true);
   const [nextBackup, setNextBackup] = useState(null);
@@ -51,7 +49,6 @@ const SettingsModal = () => {
   // Fetch initial data
   useEffect(() => {
     fetchConfig();
-    fetchBackupList();
   }, []);
 
   // Fetch people when People tab is active
@@ -82,18 +79,6 @@ const SettingsModal = () => {
       setMessage({ text: 'Failed to load backup settings', type: 'error' });
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchBackupList = async () => {
-    try {
-      const response = await fetch(API_ENDPOINTS.BACKUP_LIST);
-      if (!response.ok) throw new Error('Failed to fetch backup list');
-      
-      const data = await response.json();
-      setBackups(data);
-    } catch (error) {
-      logger.error('Error fetching backups:', error);
     }
   };
 
@@ -132,82 +117,6 @@ const SettingsModal = () => {
       setMessage({ text: error.message, type: 'error' });
     }
   };
-
-  const handleManualBackup = async () => {
-    setMessage({ text: 'Creating backup...', type: 'info' });
-    
-    try {
-      const response = await fetch(API_ENDPOINTS.BACKUP_MANUAL, {
-        method: 'POST'
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create backup');
-      }
-
-      const data = await response.json();
-      setMessage({ text: `Backup created: ${data.filename}`, type: 'success' });
-      fetchBackupList();
-      fetchConfig();
-      
-      if (messageTimerRef.current) clearTimeout(messageTimerRef.current);
-      messageTimerRef.current = setTimeout(() => setMessage({ text: '', type: '' }), 5000);
-    } catch (error) {
-      setMessage({ text: error.message, type: 'error' });
-    }
-  };
-
-  const handleDownloadBackup = () => {
-    window.location.href = API_ENDPOINTS.BACKUP_DOWNLOAD;
-  };
-
-  const handleRestoreBackup = async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    if (!window.confirm('⚠️ WARNING: Restoring from backup will replace ALL current data. This cannot be undone. Are you sure?')) {
-      event.target.value = '';
-      return;
-    }
-
-    setMessage({ text: 'Restoring from backup...', type: 'info' });
-
-    const formData = new FormData();
-    formData.append('backup', file);
-
-    try {
-      const response = await fetch(API_ENDPOINTS.BACKUP_RESTORE, {
-        method: 'POST',
-        body: formData
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to restore backup');
-      }
-
-      setMessage({ text: 'Backup restored successfully! Reloading...', type: 'success' });
-      
-      setTimeout(() => {
-        window.location.reload();
-      }, 2000);
-    } catch (error) {
-      logger.error('Restore error:', error);
-      setMessage({ text: error.message, type: 'error' });
-    }
-
-    // Reset file input
-    event.target.value = '';
-  };
-
-  const formatFileSize = (bytes) => {
-    if (bytes < 1024) return bytes + ' B';
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
-    return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
-  };
-
-  const formatDate = formatDateTime;
 
   // ========== People Management Functions ==========
   
@@ -361,16 +270,10 @@ const SettingsModal = () => {
         
         <div className="settings-tabs">
           <button 
-            className={`tab-button ${activeTab === 'backups' ? 'active' : ''}`}
-            onClick={() => setActiveTab('backups')}
+            className={`tab-button ${activeTab === 'backup-config' ? 'active' : ''}`}
+            onClick={() => setActiveTab('backup-config')}
           >
-            💾 Backups
-          </button>
-          <button 
-            className={`tab-button ${activeTab === 'restore' ? 'active' : ''}`}
-            onClick={() => setActiveTab('restore')}
-          >
-            🔄 Restore
+            💾 Backup Configuration
           </button>
           <button 
             className={`tab-button ${activeTab === 'people' ? 'active' : ''}`}
@@ -381,7 +284,7 @@ const SettingsModal = () => {
         </div>
 
         <div className="tab-content">
-          {activeTab === 'backups' && (
+          {activeTab === 'backup-config' && (
             <div className="tab-panel">
               <div className="settings-section">
                 <h3>Automatic Backups</h3>
@@ -443,7 +346,7 @@ const SettingsModal = () => {
 
                     {nextBackup && (
                       <div className="next-backup-info">
-                        <strong>Next scheduled backup:</strong> {formatDate(nextBackup)}
+                        <strong>Next scheduled backup:</strong> {new Date(nextBackup).toLocaleString()}
                       </div>
                     )}
                   </>
@@ -454,59 +357,6 @@ const SettingsModal = () => {
                     Save Settings
                   </button>
                 </div>
-              </div>
-
-              <div className="settings-section">
-                <h3>Manual Backup</h3>
-                <p>Create a backup right now. Backups include all expenses, income sources, fixed expenses, loans, budgets, investments, invoice files, and configuration data.</p>
-                <div className="manual-backup-buttons">
-                  <button onClick={handleManualBackup} className="backup-button">
-                    💾 Create Backup Now
-                  </button>
-                  <button onClick={handleDownloadBackup} className="download-button">
-                    📥 Download Backup
-                  </button>
-                </div>
-                <small className="backup-hint">Download creates a .tar.gz archive with all data including invoice PDFs.</small>
-              </div>
-
-              {backups.length > 0 && (
-                <div className="settings-section">
-                  <h3>Recent Backups</h3>
-                  <div className="backup-list">
-                    {backups.map((backup, index) => (
-                      <div key={index} className="backup-item">
-                        <div className="backup-info">
-                          <div className="backup-name">{backup.name}</div>
-                          <div className="backup-details">
-                            {formatFileSize(backup.size)} • {formatDate(backup.created)}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {activeTab === 'restore' && (
-            <div className="tab-panel">
-              <div className="settings-section">
-                <h3>Restore from Backup</h3>
-                <p className="warning-text">⚠️ WARNING: This will replace ALL current data. This action cannot be undone!</p>
-                <p className="restore-info">
-                  Accepts <strong>.tar.gz</strong> archives (recommended - includes invoices) or legacy <strong>.db</strong> files (database only).
-                </p>
-                <label className="file-upload-button restore-button">
-                  🔄 Choose Backup File
-                  <input 
-                    type="file" 
-                    accept=".tar.gz,.tgz,.db"
-                    onChange={handleRestoreBackup}
-                    style={{ display: 'none' }}
-                  />
-                </label>
               </div>
             </div>
           )}

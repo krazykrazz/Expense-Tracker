@@ -296,160 +296,6 @@
   box-shadow: var(--focus-ring);
 }
 
-.manual-backup-buttons {
-  display: flex;
-  gap: var(--spacing-3, 12px);
-}
-
-.backup-button,
-.download-button {
-  padding: var(--spacing-3, 12px) var(--spacing-5, 20px);
-  border: none;
-  border-radius: var(--radius-md, 8px);
-  font-size: var(--text-base, 14px);
-  font-weight: var(--font-medium, 500);
-  font-family: var(--font-sans);
-  cursor: pointer;
-  transition: var(--transition-button);
-  box-shadow: var(--shadow-sm);
-}
-
-.backup-button {
-  background: var(--color-positive, #4caf50);
-  color: var(--text-inverse, white);
-}
-
-.backup-button:hover {
-  background: var(--color-positive-dark, #45a049);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
-}
-
-.download-button {
-  background: var(--color-fixed-expense, #2196f3);
-  color: var(--text-inverse, white);
-}
-
-.download-button:hover {
-  background: var(--color-fixed-expense-dark, #1976d2);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
-}
-
-.backup-button:active,
-.download-button:active {
-  transform: translateY(0) scale(0.98);
-}
-
-.backup-button:focus,
-.download-button:focus {
-  outline: none;
-  box-shadow: var(--focus-ring);
-}
-
-.backup-hint {
-  display: block;
-  margin-top: var(--spacing-3, 12px);
-  font-size: var(--text-xs, 12px);
-  color: var(--text-muted, #888);
-  font-family: var(--font-sans);
-}
-
-.backup-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-3, 12px);
-}
-
-.backup-item {
-  background: var(--bg-card, white);
-  padding: var(--spacing-3, 12px);
-  border-radius: var(--radius-md, 8px);
-  border: 1px solid var(--border-default, #e0e0e0);
-  transition: var(--transition-card);
-}
-
-.backup-item:hover {
-  box-shadow: var(--shadow-sm);
-  border-color: var(--border-strong, #cbd5e1);
-}
-
-.backup-info {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-1, 4px);
-}
-
-.backup-name {
-  font-size: var(--text-base, 14px);
-  font-weight: var(--font-medium, 500);
-  color: var(--text-primary, #333);
-  font-family: var(--font-mono);
-}
-
-.backup-details {
-  font-size: var(--text-xs, 12px);
-  color: var(--text-muted, #888);
-  font-family: var(--font-sans);
-}
-
-/* Restore Tab Styles */
-.warning-text {
-  color: var(--color-negative-dark, #d32f2f) !important;
-  font-weight: var(--font-medium, 500);
-}
-
-.restore-info {
-  font-size: var(--text-sm, 13px);
-  color: var(--text-secondary, #555);
-  margin-bottom: var(--spacing-4, 16px);
-}
-
-.restore-info strong {
-  color: var(--color-primary, #0ea5e9);
-}
-
-.file-upload-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--spacing-3, 12px) var(--spacing-5, 20px);
-  background: var(--color-fixed-expense, #2196f3);
-  color: var(--text-inverse, white);
-  border: none;
-  border-radius: var(--radius-md, 8px);
-  font-size: var(--text-base, 14px);
-  font-weight: var(--font-medium, 500);
-  font-family: var(--font-sans);
-  cursor: pointer;
-  transition: var(--transition-button);
-  text-align: center;
-  box-shadow: var(--shadow-sm);
-}
-
-.file-upload-button:hover {
-  background: var(--color-fixed-expense-dark, #1976d2);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
-}
-
-.file-upload-button:active {
-  transform: translateY(0) scale(0.98);
-}
-
-.file-upload-button:focus {
-  outline: none;
-  box-shadow: var(--focus-ring);
-}
-
-.file-upload-button.restore-button {
-  background: var(--color-warning, #ff9800);
-}
-
-.file-upload-button.restore-button:hover {
-  background: var(--color-warning-dark, #f57c00);
-}
-
 /* People Tab Styles */
 .people-loading {
   padding: var(--spacing-5, 20px);
@@ -921,15 +767,6 @@
     padding: var(--spacing-4, 16px);
   }
 
-  .manual-backup-buttons {
-    flex-direction: column;
-  }
-
-  .backup-button,
-  .download-button {
-    width: 100%;
-  }
-
   .people-list-item {
     flex-direction: column;
     align-items: flex-start;
@@ -972,9 +809,6 @@
   
   .tab-button,
   .save-button,
-  .backup-button,
-  .download-button,
-  .file-upload-button,
   .people-add-button,
   .people-save-button,
   .people-delete-confirm-button {
@@ -982,9 +816,6 @@
   }
   
   .save-button:hover,
-  .backup-button:hover,
-  .download-button:hover,
-  .file-upload-button:hover,
   .people-add-button:hover:not(:disabled),
   .people-save-button:hover:not(:disabled),
   .people-delete-confirm-button:hover:not(:disabled) {
@@ -992,9 +823,6 @@
   }
   
   .save-button:active,
-  .backup-button:active,
-  .download-button:active,
-  .file-upload-button:active,
   .people-add-button:active:not(:disabled),
   .people-save-button:active:not(:disabled),
   .people-delete-confirm-button:active:not(:disabled) {

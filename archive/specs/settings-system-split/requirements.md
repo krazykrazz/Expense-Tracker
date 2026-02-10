@@ -2,7 +2,8 @@
 
 ## Introduction
 
-This document specifies the requirements for splitting the current monolithic Settings modal into two separate top-level sections: "Settings" (user configuration) and "System" (system information and management). The current BackupSettings component has grown to 1219 lines and combines user-facing configuration with system administration tools, making it difficult to navigate and maintain. This reorganization will improve usability by clearly separating user preferences from system management functions.
+This document specifies the requirements for splitting the current monolithic Settings modal into two separate top-level sections: "Settings" (user configuration) and "System" (system information and management). 
+The current BackupSettings component has grown to 1219 lines and combines user-facing configuration with system administration tools, making it difficult to navigate and maintain. This reorganization will improve usability by clearly separating user preferences from system management functions.
 
 ## Glossary
 

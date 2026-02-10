@@ -923,11 +923,8 @@ describe('Activity Log - Property 13: Display Limit Persistence', () => {
             total: 0
           });
 
-          // First render: set the limit
-          let result = render(<BackupSettings />);
-          let tabs = result.container.querySelectorAll('button.tab-button');
-          let miscTab = tabs[3];
-          fireEvent.click(miscTab);
+          // First render: set the limit using helper function
+          let result = await renderAndNavigateToMiscTab();
 
           await waitFor(() => {
             const selector = result.container.querySelector('.activity-limit-selector');
@@ -945,10 +942,7 @@ describe('Activity Log - Property 13: Display Limit Persistence', () => {
 
           // Subsequent renders: verify limit is persisted
           for (let i = 0; i < cycles; i++) {
-            result = render(<BackupSettings />);
-            tabs = result.container.querySelectorAll('button.tab-button');
-            miscTab = tabs[3];
-            fireEvent.click(miscTab);
+            result = await renderAndNavigateToMiscTab();
 
             await waitFor(() => {
               const selector = result.container.querySelector('.activity-limit-selector');

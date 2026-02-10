@@ -1014,6 +1014,17 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v5.9.0</div>
+                <div className="changelog-date">February 10, 2026</div>
+                <ul className="changelog-items">
+                  <li>Activity Log feature with comprehensive event tracking</li>
+                  <li>Recent Activity view in Settings → Misc tab</li>
+                  <li>Configurable display limits (25, 50, 100, 200 events)</li>
+                  <li>Automatic cleanup with 90-day retention policy</li>
+                  <li>Tracks all data modifications across the application</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v5.8.1</div>
                 <div className="changelog-date">February 9, 2026</div>
                 <ul className="changelog-items">

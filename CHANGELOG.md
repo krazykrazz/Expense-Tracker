@@ -1,6 +1,11 @@
 # Changelog
 
 
+
+## [5.9.0] - 2026-02-10
+
+### Activity log feature with comprehensive event tracking
+
 ## [5.8.1] - 2026-02-09
 
 ### Credit card reminder badge consistency improvements

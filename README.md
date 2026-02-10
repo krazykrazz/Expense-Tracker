@@ -59,6 +59,7 @@ See **[Development Setup](./docs/development/SETUP.md)** for local registry setu
 - 💾 **Automated Backups** - Scheduled database backups with restore functionality
 - 🔄 **Data Reminders** - Monthly reminders to update investments and loan balances
 - 📋 **Activity Log** - Comprehensive tracking of all data changes with automatic cleanup
+- ⚙️ **Settings & System** - Separate modals for user settings and system information
 - 🌐 **Multi-Device Access** - Access from any device on your local network
 
 For a complete feature list, see **[Feature Documentation](./docs/features/)**.

@@ -69,8 +69,8 @@ Applies standardization changes:
 
 ### Access Point
 
-**Settings Modal → Misc Section:**
-1. Open Settings (gear icon in header)
+**System Modal → Misc Section:**
+1. Open System Information (ℹ️ icon in header)
 2. Click "Misc" tab
 3. Click "Standardize Place Names" button
 

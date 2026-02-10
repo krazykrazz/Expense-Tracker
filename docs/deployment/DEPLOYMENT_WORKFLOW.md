@@ -69,7 +69,7 @@ The deployment workflow ensures:
    - `frontend/package.json`
    - `backend/package.json`
    - `frontend/src/App.jsx` (footer)
-   - `frontend/src/components/BackupSettings.jsx` (changelog)
+   - `frontend/src/components/SystemModal.jsx` (changelog)
 
 10. **Update CHANGELOG.md**:
     ```markdown
@@ -164,7 +164,7 @@ git checkout main
 git pull origin main
 
 # 3. Version bump (update files manually)
-# Edit: frontend/package.json, backend/package.json, App.jsx, BackupSettings.jsx, CHANGELOG.md
+# Edit: frontend/package.json, backend/package.json, App.jsx, SystemModal.jsx, CHANGELOG.md
 
 # 4. Build frontend
 cd frontend && npm run build && cd ..

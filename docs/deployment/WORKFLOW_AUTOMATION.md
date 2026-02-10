@@ -56,7 +56,7 @@ Use the deployment script to handle everything automatically:
 4. Calculates new version number
 5. Updates all version files
 6. Updates CHANGELOG.md
-7. Prompts for BackupSettings.jsx update
+7. Prompts for SystemModal.jsx update
 8. Builds frontend
 9. Commits version bump (creates release SHA)
 10. Builds SHA Docker image

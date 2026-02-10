@@ -225,8 +225,9 @@ Click **"📊 Budget History"** to analyze budget performance over time (3, 6, o
 
 ### Managing People
 
-1. Click **"⚙️ Settings"** → **"People"** tab
-2. Add family members with names and optional dates of birth
+1. Click **"⚙️ Settings"** in the header
+2. Click **"People"** tab
+3. Add family members with names and optional dates of birth
 
 ### Assigning People to Expenses
 
@@ -298,18 +299,20 @@ Click the **"💾 Backup"** button to download your database.
 
 ### Automated Backups
 
-Configure scheduled backups in Backup Settings:
+Configure scheduled backups in Settings:
 
-1. Click **"⚙️ Settings"** → **"Backup"** tab
-2. Enable automated backups
-3. Set backup frequency and retention period
+1. Click **"⚙️ Settings"** in the header
+2. Click **"Backup Configuration"** tab
+3. Enable automated backups
+4. Set backup frequency and retention period
 
 ### Restoring from Backup
 
-1. Click **"⚙️ Settings"** → **"Backup"** tab
-2. Click **"Restore from Backup"**
-3. Select your backup file
-4. Confirm the restore operation
+1. Click **"ℹ️ System Information"** in the header
+2. Click **"Backup Information"** tab
+3. Click **"Restore from Backup"**
+4. Select your backup file
+5. Confirm the restore operation
 
 ### Data Reminders
 
@@ -323,8 +326,8 @@ Receive visual reminders when monthly data needs updating:
 
 View a comprehensive history of all data changes in the application:
 
-1. Click **"⚙️ Settings"** → **"Misc"** tab
-2. Scroll to the **"Activity Log"** section
+1. Click **"ℹ️ System Information"** in the header
+2. Click **"Activity Log"** tab
 3. View recent events with timestamps and details
 
 **Features:**

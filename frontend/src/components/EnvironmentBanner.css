@@ -24,6 +24,11 @@
   color: white;
 }
 
+.environment-banner.preview {
+  background: linear-gradient(90deg, #a855f7, #9333ea);
+  color: white;
+}
+
 .environment-icon {
   margin-right: 8px;
 }

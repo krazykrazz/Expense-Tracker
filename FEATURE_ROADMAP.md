@@ -1,7 +1,7 @@
 # Expense Tracker - Feature Roadmap
 
-**Last Updated**: February 8, 2026  
-**Current Version**: 5.8.0
+**Last Updated**: February 10, 2026  
+**Current Version**: 5.10.0
 
 This document tracks potential features and enhancements for the Expense Tracker application. Features are categorized by priority and implementation status.
 
@@ -581,6 +581,29 @@ This document tracks potential features and enhancements for the Expense Tracker
 ---
 
 ## 🟢 Completed Features
+
+### 🟢 Settings & System Modal Split (v5.11.0)
+**Completed**: February 2026  
+**Spec**: `archive/specs/settings-system-split/`  
+**Description**: Split the monolithic BackupSettings component (1219 lines) into two separate top-level modals: Settings (user configuration) and System (system information and management).
+
+**Features Delivered**:
+- **Settings Modal**: User-facing configuration with Backup Configuration and People tabs
+- **System Modal**: System administration with Backup Information, Activity Log, Misc, About, and Updates tabs
+- **Activity Log Table**: Table-based display with Time, Event Type (styled badges), and Details columns
+- **Retention Configuration**: Integrated retention policy configuration in Activity Log tab
+- **Current Version Badge**: Highlighted badge on changelog entry matching current version
+- **Improved Navigation**: Clear separation between user preferences and system management
+- **Tab-Based Navigation**: Consistent tab interface in both modals with session-persisted tab selection
+- **Backward Compatibility**: All existing functionality preserved, no database changes required
+
+**Benefits**:
+- Reduced component complexity (split 1219-line component into two focused components)
+- Improved usability with clear separation of concerns
+- Better feature discoverability
+- Easier maintenance and future enhancements
+
+---
 
 ### 🟢 ExpenseForm Simplification (v5.8.0)
 **Completed**: February 2026  
@@ -1333,6 +1356,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 ---
 
 **Version History**:
+- v3.2 (2026-02-10): Added Settings & System Modal Split (v5.11.0) to completed features, updated current version to 5.10.0, updated last updated date
 - v3.1 (2026-02-08): Marked ExpenseForm Simplification as completed (v5.8.0), updated current version to 5.8.0, removed from priority matrix
 - v3.0 (2026-02-07): Added Code Quality & Optimization section with 4 items from codebase review (#31-34), updated priority matrix
 - v2.9 (2026-02-07): Added Backend Expense Service Refactor (v5.7.0) to completed features, marked Frontend State Management Phase 4 (SharedDataContext) as completed (v5.6.3), updated priority matrix, updated current version to 5.7.0

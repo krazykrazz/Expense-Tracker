@@ -126,15 +126,15 @@ describe('App.jsx ModalContext Integration', () => {
       expect(settingsModalHeading).toBeInTheDocument();
     });
 
-    // Click the modal overlay (not the content)
-    const overlay = document.querySelector('.modal-overlay');
+    // Click the modal overlay (not the content) - SettingsModal uses settings-modal-overlay class
+    const overlay = document.querySelector('.settings-modal-overlay');
     await user.click(overlay);
 
-    // Modal should be closed - only one h2 should remain (the app title)
+    // Modal should be closed - settings heading should not be present
     await waitFor(() => {
       const settingsHeadings = screen.queryAllByRole('heading', { level: 2 });
       const settingsModalHeading = settingsHeadings.find(h => h.textContent.includes('⚙️ Settings'));
-      expect(settingsModalHeading).not.toBeDefined();
+      expect(settingsModalHeading).toBeUndefined();
     });
   });
 
@@ -251,15 +251,15 @@ describe('App.jsx ModalContext Integration', () => {
       expect(settingsModalHeading).toBeInTheDocument();
     });
 
-    // Click the close button (aria-label="Close")
-    const closeButton = screen.getByRole('button', { name: /^close$/i });
+    // Click the close button (SettingsModal uses settings-modal-close class)
+    const closeButton = document.querySelector('.settings-modal-close');
     await user.click(closeButton);
 
     // Modal should be closed
     await waitFor(() => {
       const settingsHeadings = screen.queryAllByRole('heading', { level: 2 });
       const settingsModalHeading = settingsHeadings.find(h => h.textContent.includes('⚙️ Settings'));
-      expect(settingsModalHeading).not.toBeDefined();
+      expect(settingsModalHeading).toBeUndefined();
     });
   });
 });

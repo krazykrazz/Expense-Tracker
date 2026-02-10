@@ -42,3 +42,5 @@ A full-stack personal expense tracking application for managing household financ
 - Automated and manual database backups with restore functionality
 - Analytics hub with spending predictions, anomaly detection, and seasonal analysis
 - Activity log tracking all data changes with automatic cleanup and retention policy
+- Settings modal for user preferences (backup configuration, payment methods, people management)
+- System modal for system information (version, database stats, backups, activity log, changelog)

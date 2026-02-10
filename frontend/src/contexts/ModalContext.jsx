@@ -12,6 +12,8 @@ export function ModalProvider({ children }) {
   // Modal visibility state
   const [showExpenseForm, setShowExpenseForm] = useState(false);
   const [showBackupSettings, setShowBackupSettings] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showSystemModal, setShowSystemModal] = useState(false);
   const [showAnnualSummary, setShowAnnualSummary] = useState(false);
   const [showTaxDeductible, setShowTaxDeductible] = useState(false);
   const [showBudgetManagement, setShowBudgetManagement] = useState(false);
@@ -26,6 +28,12 @@ export function ModalProvider({ children }) {
 
   const openBackupSettings = useCallback(() => setShowBackupSettings(true), []);
   const closeBackupSettings = useCallback(() => setShowBackupSettings(false), []);
+
+  const openSettingsModal = useCallback(() => setShowSettingsModal(true), []);
+  const closeSettingsModal = useCallback(() => setShowSettingsModal(false), []);
+
+  const openSystemModal = useCallback(() => setShowSystemModal(true), []);
+  const closeSystemModal = useCallback(() => setShowSystemModal(false), []);
 
   const openAnnualSummary = useCallback(() => setShowAnnualSummary(true), []);
   const closeAnnualSummary = useCallback(() => setShowAnnualSummary(false), []);
@@ -52,12 +60,14 @@ export function ModalProvider({ children }) {
   const closeAnalyticsHub = useCallback(() => setShowAnalyticsHub(false), []);
 
   // --- Bulk Close ---
-  // Closes only overlay modals (taxDeductible, annualSummary, backupSettings, budgetHistory)
+  // Closes only overlay modals (taxDeductible, annualSummary, backupSettings, settingsModal, systemModal, budgetHistory)
   // Does NOT affect action modals (expenseForm, budgetManagement, peopleManagement, analyticsHub)
   const closeAllOverlays = useCallback(() => {
     setShowTaxDeductible(false);
     setShowAnnualSummary(false);
     setShowBackupSettings(false);
+    setShowSettingsModal(false);
+    setShowSystemModal(false);
     setShowBudgetHistory(false);
   }, []);
 
@@ -82,6 +92,8 @@ export function ModalProvider({ children }) {
     // Visibility state
     showExpenseForm,
     showBackupSettings,
+    showSettingsModal,
+    showSystemModal,
     showAnnualSummary,
     showTaxDeductible,
     showBudgetManagement,
@@ -93,6 +105,8 @@ export function ModalProvider({ children }) {
     // Open/close handlers
     openExpenseForm, closeExpenseForm,
     openBackupSettings, closeBackupSettings,
+    openSettingsModal, closeSettingsModal,
+    openSystemModal, closeSystemModal,
     openAnnualSummary, closeAnnualSummary,
     openTaxDeductible, closeTaxDeductible,
     openBudgetManagement, closeBudgetManagement,
@@ -103,11 +117,14 @@ export function ModalProvider({ children }) {
     // Bulk operations
     closeAllOverlays,
   }), [
-    showExpenseForm, showBackupSettings, showAnnualSummary,
-    showTaxDeductible, showBudgetManagement, budgetManagementFocusCategory,
-    showBudgetHistory, showPeopleManagement, showAnalyticsHub,
+    showExpenseForm, showBackupSettings, showSettingsModal, showSystemModal,
+    showAnnualSummary, showTaxDeductible, showBudgetManagement,
+    budgetManagementFocusCategory, showBudgetHistory, showPeopleManagement,
+    showAnalyticsHub,
     openExpenseForm, closeExpenseForm,
     openBackupSettings, closeBackupSettings,
+    openSettingsModal, closeSettingsModal,
+    openSystemModal, closeSystemModal,
     openAnnualSummary, closeAnnualSummary,
     openTaxDeductible, closeTaxDeductible,
     openBudgetManagement, closeBudgetManagement,

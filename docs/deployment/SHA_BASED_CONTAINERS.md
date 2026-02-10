@@ -194,7 +194,7 @@ docker-compose -f "G:\My Drive\Media Related\docker\media-applications.yml" up -
 ```powershell
 # ✅ Good - Version bump on main after merge
 git checkout main
-# Update version in package.json files, CHANGELOG, BackupSettings.jsx
+# Update version in package.json files, CHANGELOG, SystemModal.jsx
 npm run build  # Build frontend with new version
 git add -A
 git commit -m "v4.12.8: Feature description"

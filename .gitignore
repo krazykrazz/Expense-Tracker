@@ -11,15 +11,29 @@ backend/database/*.db
 backend/data/*.db
 backend/config/database/*.db
 backend/config/database/*.db-journal
+backend/config/database/*.db-shm
+backend/config/database/*.db-wal
 
 # Invoices (user uploaded files)
 backend/config/invoices/
+backend/invoices/
+
+# Credit card statements (user uploaded files)
+backend/config/statements/
+config/statements/
 
 # Backups (runtime data)
 backend/config/backups/
+backend/backups/
+backend/test-backups/
+config/backups/
 
 # Runtime config (user-specific settings)
 backend/config/config/
+config/config/
+
+# Uploads directory (runtime user data)
+backend/uploads/
 
 # Build outputs
 frontend/dist/
@@ -29,6 +43,7 @@ frontend/build/
 .env
 .env.local
 .env.production
+frontend/.env
 
 # IDE
 .vscode/
@@ -56,19 +71,21 @@ yarn-error.log*
 
 # Test coverage
 backend/coverage/
+frontend/coverage/
 
 # Test artifacts (PBT test outputs)
 test-backups/
 test-pbt-extract/
 test-pbt-insurance-backup/
-backend/config/database/*.db-shm
-backend/config/database/*.db-wal
 
 # Root config folder (runtime only)
 /config/
 
 # Staging environment data (copy of production for testing)
 /staging-data/
+
+# Preview environment data (feature branch testing)
+/preview-data/
 
 test-pbt-backups/
 
@@ -82,6 +99,8 @@ test-data/*.zip
 # Test result files
 test-results*.txt
 **/test-results*.txt
+frontend/test-output.txt
+frontend/test-results*.txt
 
 # Temporary test fix scripts and documents
 fix-remaining-tests.js
@@ -102,3 +121,7 @@ staging-data/
 SECURITY_REVIEW_FOR_PUBLIC_REPO.md
 *_TEST_FIX_SUMMARY.md
 CLEANUP_RECOMMENDATIONS.md
+CLEANUP_SUMMARY.md
+
+# Kiro IDE settings (user-specific)
+.kiro/settings/

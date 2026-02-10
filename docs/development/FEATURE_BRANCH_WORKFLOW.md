@@ -369,7 +369,7 @@ When promoting features, follow the existing version management rules:
    - `frontend/package.json`
    - `backend/package.json`
    - `frontend/src/App.jsx` (footer)
-   - `frontend/src/components/BackupSettings.jsx` (changelog)
+   - `frontend/src/components/SystemModal.jsx` (changelog)
 
 3. **Update CHANGELOG.md** with new version entry
 

@@ -1,0 +1,8 @@
+{
+  "enabled": false,
+  "schedule": "daily",
+  "time": "02:00",
+  "targetPath": "/config/backups",
+  "keepLastN": 7,
+  "lastBackup": null
+}

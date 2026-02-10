@@ -319,6 +319,28 @@ Receive visual reminders when monthly data needs updating:
 - Loan balances for the current month
 - Billing cycle statement balances
 
+### Activity Log
+
+View a comprehensive history of all data changes in the application:
+
+1. Click **"⚙️ Settings"** → **"Misc"** tab
+2. Scroll to the **"Activity Log"** section
+3. View recent events with timestamps and details
+
+**Features:**
+- **Event Tracking**: See all creates, updates, and deletes across expenses, loans, investments, budgets, and more
+- **Human-Readable Timestamps**: Events show as "2 hours ago", "Yesterday at 3:45 PM", etc.
+- **Display Limit**: Choose to show 25, 50, 100, or 200 events (preference saved automatically)
+- **Load More**: Load additional events with a running count ("Showing 50 of 234 events")
+- **Automatic Cleanup**: Events older than 90 days are automatically removed
+
+**Use Cases:**
+- Track when expenses were added or modified
+- Review loan payment history
+- Audit budget changes
+- Monitor backup operations
+- Investigate data discrepancies
+
 ## Tips and Best Practices
 
 ### Expense Entry

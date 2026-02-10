@@ -2475,3 +2475,399 @@ HTTP/1.1 200 OK
 **Last Updated:** February 4, 2026  
 **API Version:** 1.7  
 **Status:** Active
+
+
+---
+
+# Activity Log API
+
+## Overview
+
+The Activity Log API provides comprehensive tracking of all data changes in the application. Events are automatically logged by the backend services using a fire-and-forget pattern to ensure logging failures don't impact main functionality.
+
+### Event Types
+
+| Entity Type | Actions Tracked | Metadata Captured |
+|-------------|----------------|-------------------|
+| expense | create, update, delete | amount, type, place, method |
+| fixed_expense | create, update, delete | name, amount, category |
+| loan | create, update, delete | name, loan_type, initial_balance |
+| investment | create, update, delete | name, type, initial_value |
+| budget | create, update, delete | category, limit, year, month |
+| payment_method | create, update, delete | display_name, type, credit_limit |
+| loan_payment | create, delete | amount, payment_date |
+| backup | create, restore | filename, size |
+
+### Retention Policy
+
+- Activity logs are automatically cleaned up after **90 days**
+- Cleanup runs daily at **2:00 AM** via scheduled job
+- Retention period is configurable via `ACTIVITY_LOG_RETENTION_DAYS` environment variable
+
+---
+
+## Endpoints
+
+### 1. Get Activity Logs
+
+Retrieve paginated activity logs with optional filtering.
+
+**Endpoint:** `GET /api/activity-logs`
+
+**Query Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| page | number | No | Page number (default: 1) |
+| limit | number | No | Items per page (default: 50, max: 200) |
+| entityType | string | No | Filter by entity type |
+| action | string | No | Filter by action (create, update, delete) |
+| startDate | string | No | Filter start date (YYYY-MM-DD) |
+| endDate | string | No | Filter end date (YYYY-MM-DD) |
+
+**Success Response:**
+```json
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "logs": [
+    {
+      "id": 1234,
+      "entity_type": "expense",
+      "entity_id": 567,
+      "action": "create",
+      "metadata": {
+        "amount": 150.00,
+        "type": "Groceries",
+        "place": "Supermarket",
+        "method": "Credit Card"
+      },
+      "timestamp": "2026-02-10T14:30:00.000Z"
+    },
+    {
+      "id": 1233,
+      "entity_type": "loan_payment",
+      "entity_id": 89,
+      "action": "create",
+      "metadata": {
+        "amount": 500.00,
+        "payment_date": "2026-02-10",
+        "loan_name": "Car Loan"
+      },
+      "timestamp": "2026-02-10T10:15:00.000Z"
+    }
+  ],
+  "pagination": {
+    "currentPage": 1,
+    "totalPages": 5,
+    "totalItems": 234,
+    "itemsPerPage": 50,
+    "hasNextPage": true,
+    "hasPreviousPage": false
+  }
+}
+```
+
+**Error Responses:**
+
+```json
+HTTP/1.1 400 Bad Request
+{
+  "error": "Invalid page number"
+}
+```
+
+```json
+HTTP/1.1 400 Bad Request
+{
+  "error": "Limit must be between 1 and 200"
+}
+```
+
+**Example:**
+```javascript
+// Get first page with default limit (50)
+const response = await fetch('http://localhost:2424/api/activity-logs');
+
+// Get specific page with custom limit
+const response = await fetch('http://localhost:2424/api/activity-logs?page=2&limit=100');
+
+// Filter by entity type
+const response = await fetch('http://localhost:2424/api/activity-logs?entityType=expense');
+
+// Filter by date range
+const response = await fetch('http://localhost:2424/api/activity-logs?startDate=2026-02-01&endDate=2026-02-10');
+
+// Combine filters
+const response = await fetch('http://localhost:2424/api/activity-logs?entityType=loan&action=create&limit=25');
+```
+
+---
+
+### 2. Get Activity Log Statistics
+
+Retrieve summary statistics about activity logs.
+
+**Endpoint:** `GET /api/activity-logs/stats`
+
+**Query Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| days | number | No | Number of days to include (default: 30) |
+
+**Success Response:**
+```json
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "totalEvents": 1234,
+  "eventsByType": {
+    "expense": 567,
+    "fixed_expense": 123,
+    "loan": 45,
+    "investment": 34,
+    "budget": 89,
+    "payment_method": 12,
+    "loan_payment": 234,
+    "backup": 130
+  },
+  "eventsByAction": {
+    "create": 789,
+    "update": 345,
+    "delete": 100
+  },
+  "oldestEvent": "2025-11-12T08:00:00.000Z",
+  "newestEvent": "2026-02-10T14:30:00.000Z",
+  "retentionDays": 90
+}
+```
+
+**Example:**
+```javascript
+// Get stats for last 30 days (default)
+const response = await fetch('http://localhost:2424/api/activity-logs/stats');
+
+// Get stats for last 7 days
+const response = await fetch('http://localhost:2424/api/activity-logs/stats?days=7');
+```
+
+---
+
+## Event Metadata Structure
+
+Each entity type captures specific metadata relevant to that entity:
+
+### Expense Events
+```json
+{
+  "amount": 150.00,
+  "type": "Groceries",
+  "place": "Supermarket",
+  "method": "Credit Card",
+  "date": "2026-02-10"
+}
+```
+
+### Fixed Expense Events
+```json
+{
+  "name": "Rent",
+  "amount": 1500.00,
+  "category": "Housing",
+  "year": 2026,
+  "month": 2
+}
+```
+
+### Loan Events
+```json
+{
+  "name": "Car Loan",
+  "loan_type": "loan",
+  "initial_balance": 25000.00
+}
+```
+
+### Investment Events
+```json
+{
+  "name": "TFSA",
+  "type": "TFSA",
+  "initial_value": 10000.00
+}
+```
+
+### Budget Events
+```json
+{
+  "category": "Food",
+  "limit": 800.00,
+  "year": 2026,
+  "month": 2
+}
+```
+
+### Payment Method Events
+```json
+{
+  "display_name": "CIBC MC",
+  "type": "credit_card",
+  "credit_limit": 5000.00
+}
+```
+
+### Loan Payment Events
+```json
+{
+  "amount": 500.00,
+  "payment_date": "2026-02-10",
+  "loan_name": "Car Loan"
+}
+```
+
+### Backup Events
+```json
+{
+  "filename": "backup_20260210_143000.db",
+  "size": 2048576,
+  "operation": "create"
+}
+```
+
+---
+
+## Error Handling
+
+### Standard Error Response Format
+
+All errors follow this format:
+
+```json
+{
+  "error": "Error message description"
+}
+```
+
+### HTTP Status Codes
+
+| Code | Meaning | Description |
+|------|---------|-------------|
+| 200 | OK | Request successful |
+| 400 | Bad Request | Invalid parameters or validation error |
+| 500 | Internal Server Error | Server error occurred |
+
+---
+
+## Performance Considerations
+
+### Pagination
+
+- Default page size: 50 items
+- Maximum page size: 200 items
+- Use pagination for large result sets to avoid performance issues
+
+### Filtering
+
+- Filtering by entity type and action uses indexed queries
+- Date range filtering is optimized for common use cases
+- Combine filters to narrow results and improve performance
+
+### Automatic Cleanup
+
+- Logs older than 90 days are automatically deleted
+- Cleanup runs daily at 2:00 AM
+- Prevents database bloat and maintains performance
+
+---
+
+## Fire-and-Forget Pattern
+
+Activity logging uses a fire-and-forget pattern to ensure reliability:
+
+1. **Non-blocking**: Logging operations don't block main functionality
+2. **Error isolation**: Logging failures don't cause main operations to fail
+3. **Async execution**: Logs are written asynchronously
+4. **Graceful degradation**: If logging fails, the application continues normally
+
+**Example from backend:**
+```javascript
+// Fire-and-forget - don't await, don't block
+activityLogService.logEvent('expense', expenseId, 'create', metadata).catch(err => {
+  logger.error('Failed to log activity:', err);
+});
+```
+
+---
+
+## Testing
+
+### Manual Testing
+
+**Get Activity Logs:**
+```bash
+curl -X GET http://localhost:2424/api/activity-logs \
+  --cookie "session=..."
+```
+
+**Get Activity Logs with Filters:**
+```bash
+curl -X GET "http://localhost:2424/api/activity-logs?entityType=expense&limit=25" \
+  --cookie "session=..."
+```
+
+**Get Statistics:**
+```bash
+curl -X GET http://localhost:2424/api/activity-logs/stats \
+  --cookie "session=..."
+```
+
+### Automated Testing
+
+See test files:
+- `backend/services/activityLogService.validation.pbt.test.js`
+- `backend/services/activityLogService.timestamp.pbt.test.js`
+- `backend/services/activityLogService.metadata.pbt.test.js`
+- `backend/services/activityLogService.resilience.pbt.test.js`
+- `backend/services/activityLogService.cleanup.test.js`
+- `backend/controllers/activityLogController.pagination.pbt.test.js`
+- `backend/services/*.activityLog.integration.test.js` (8 integration test suites)
+
+---
+
+## Configuration
+
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| ACTIVITY_LOG_RETENTION_DAYS | 90 | Number of days to retain activity logs |
+
+**Example:**
+```bash
+# Set custom retention period (60 days)
+ACTIVITY_LOG_RETENTION_DAYS=60 npm start
+```
+
+---
+
+## Changelog - Activity Log
+
+### Version 4.20.0 (February 2026)
+- Added activity log feature with comprehensive event tracking
+- Added `activity_logs` table with automatic cleanup
+- Added activity log API endpoints (GET /activity-logs, GET /activity-logs/stats)
+- Added fire-and-forget logging pattern for reliability
+- Added scheduled cleanup job (daily at 2:00 AM)
+- Added 90-day retention policy (configurable)
+- Added integration with 8 entity types (expenses, fixed expenses, loans, investments, budgets, payment methods, loan payments, backups)
+- Added ActivityLogView component in Settings→Misc tab
+- Added human-readable timestamp formatting
+- Added display limit selector (25, 50, 100, 200 events)
+- Added Load More functionality with event count display
+
+---
+
+**Last Updated:** February 10, 2026  
+**API Version:** 1.8  
+**Status:** Active

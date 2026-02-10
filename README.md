@@ -58,6 +58,7 @@ See **[Development Setup](./docs/development/SETUP.md)** for local registry setu
 ### Data Management
 - 💾 **Automated Backups** - Scheduled database backups with restore functionality
 - 🔄 **Data Reminders** - Monthly reminders to update investments and loan balances
+- 📋 **Activity Log** - Comprehensive tracking of all data changes with automatic cleanup
 - 🌐 **Multi-Device Access** - Access from any device on your local network
 
 For a complete feature list, see **[Feature Documentation](./docs/features/)**.
@@ -124,6 +125,7 @@ For detailed usage instructions, see **[User Guide](./docs/guides/USER_GUIDE.md)
 - Automated and manual database backups
 - Restore from backup files
 - Monthly data reminders
+- Activity log with comprehensive event tracking
 
 ## Project Structure
 

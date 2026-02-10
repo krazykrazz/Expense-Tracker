@@ -69,6 +69,7 @@ expense-tracker/
 - **place_names**: Place name standardization mapping
 - **reminders**: Monthly data reminder tracking
 - **dismissed_anomalies**: Persisted anomaly dismissals for analytics
+- **activity_logs**: Comprehensive event tracking with automatic cleanup
 - **schema_migrations**: Migration tracking
 
 ### Key Fields

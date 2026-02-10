@@ -394,6 +394,29 @@ Persisted anomaly dismissals for analytics.
 **Constraints**:
 - UNIQUE(anomaly_key)
 
+### activity_logs
+
+Comprehensive event tracking for all data changes.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| id | INTEGER PRIMARY KEY | Unique activity log identifier |
+| entity_type | TEXT | Type of entity (expense, loan, investment, etc.) |
+| entity_id | INTEGER | ID of the affected entity |
+| action | TEXT | Action performed (create, update, delete) |
+| metadata | TEXT | JSON string with entity-specific details |
+| timestamp | TEXT | When the event occurred (ISO 8601) |
+
+**Indexes**:
+- entity_type
+- action
+- timestamp
+
+**Retention**: Automatically cleaned up after 90 days (configurable via `ACTIVITY_LOG_RETENTION_DAYS`)
+
+**Supported Entity Types**:
+- expense, fixed_expense, loan, investment, budget, payment_method, loan_payment, backup
+
 ### schema_migrations
 
 Migration tracking for database schema changes.
@@ -429,6 +452,7 @@ Performance indexes are created on:
 
 - `loan_payments(loan_id, payment_date)`
 - `expense_invoices(expense_id, person_id, upload_date)`
+- `activity_logs(entity_type, action, timestamp)`
 
 ## Foreign Key Constraints
 

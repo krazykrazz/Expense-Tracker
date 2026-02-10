@@ -7,8 +7,37 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import fc from 'fast-check';
-import { render } from '@testing-library/react';
+import { render, waitFor, fireEvent } from '@testing-library/react';
 import BackupSettings from './BackupSettings';
+
+// Helper function to render BackupSettings and navigate to Misc tab
+const renderAndNavigateToMiscTab = async () => {
+  const result = render(<BackupSettings />);
+  
+  // Wait for component to render tabs with a longer timeout
+  await waitFor(() => {
+    const tabs = result.container.querySelectorAll('button.tab-button');
+    expect(tabs.length).toBeGreaterThanOrEqual(4);
+  }, { timeout: 5000 });
+
+  // Find and click the Misc tab
+  const tabs = result.container.querySelectorAll('button.tab-button');
+  const miscTab = tabs[3]; // 4th tab (0-indexed)
+  
+  if (!miscTab) {
+    throw new Error('Misc tab not found after waiting');
+  }
+  
+  // Use act to wrap the click event
+  await waitFor(() => {
+    fireEvent.click(miscTab);
+    // Verify the tab was clicked by checking if misc content starts loading
+    const miscContent = result.container.querySelector('.activity-log-section, .activity-limit-selector, .activity-event-list');
+    return miscContent !== null;
+  }, { timeout: 5000 });
+  
+  return result;
+};
 
 // Mock all API calls
 vi.mock('../config', () => ({
@@ -435,7 +464,6 @@ describe('Activity Log - Property 9: Event Display Completeness', () => {
   // Validates: Requirements 7.3
   it('should display both user_action and formatted timestamp for any event', async () => {
     const { fetchRecentEvents } = await import('../services/activityLogApi');
-    const { waitFor, fireEvent } = await import('@testing-library/react');
     
     await fc.assert(
       fc.asyncProperty(
@@ -482,13 +510,8 @@ describe('Activity Log - Property 9: Event Display Completeness', () => {
             total: events.length
           });
 
-          // Render the component
-          const { container } = render(<BackupSettings />);
-
-          // Find and click the Misc tab
-          const tabs = container.querySelectorAll('button.tab-button');
-          const miscTab = tabs[3]; // 4th tab (0-indexed)
-          fireEvent.click(miscTab);
+          // Render and navigate to Misc tab
+          const { container, unmount } = await renderAndNavigateToMiscTab();
 
           // Wait for events to load
           await waitFor(() => {
@@ -519,6 +542,8 @@ describe('Activity Log - Property 9: Event Display Completeness', () => {
             expect(timestampElement.textContent).not.toContain('Z');
             expect(timestampElement.textContent).not.toMatch(/^\d{4}-\d{2}-\d{2}/);
           });
+          
+          unmount();
         }
       ),
       { numRuns: 20 }
@@ -529,7 +554,6 @@ describe('Activity Log - Property 9: Event Display Completeness', () => {
   // Validates: Requirements 7.3
   it('should render complete event information for any valid event structure', async () => {
     const { fetchRecentEvents } = await import('../services/activityLogApi');
-    const { waitFor, fireEvent } = await import('@testing-library/react');
     
     await fc.assert(
       fc.asyncProperty(
@@ -552,13 +576,8 @@ describe('Activity Log - Property 9: Event Display Completeness', () => {
             total: 1
           });
 
-          // Render the component
-          const { container } = render(<BackupSettings />);
-
-          // Find and click the Misc tab
-          const tabs = container.querySelectorAll('button.tab-button');
-          const miscTab = tabs[3]; // 4th tab (0-indexed)
-          fireEvent.click(miscTab);
+          // Render and navigate to Misc tab
+          const { container, unmount } = await renderAndNavigateToMiscTab();
 
           // Wait for events to load
           await waitFor(() => {
@@ -584,6 +603,8 @@ describe('Activity Log - Property 9: Event Display Completeness', () => {
           
           // Should be human-readable, not ISO format
           expect(formattedTimestamp).not.toMatch(/^\d{4}-\d{2}-\d{2}T/);
+          
+          unmount();
         }
       ),
       { numRuns: 50 }
@@ -626,12 +647,8 @@ describe('Activity Log - Property 9: Event Display Completeness', () => {
             total: 1
           });
 
-          const { container } = render(<BackupSettings />);
-
-          // Find and click the Misc tab
-          const tabs = container.querySelectorAll('button.tab-button');
-          const miscTab = tabs[3]; // 4th tab (0-indexed)
-          fireEvent.click(miscTab);
+          // Render and navigate to Misc tab
+          const { container, unmount } = await renderAndNavigateToMiscTab();
 
           await waitFor(() => {
             const eventItem = container.querySelector('.activity-event-item');
@@ -650,6 +667,8 @@ describe('Activity Log - Property 9: Event Display Completeness', () => {
           // Timestamp should always be formatted
           expect(timestampElement.textContent).toBeTruthy();
           expect(timestampElement.textContent.length).toBeGreaterThan(0);
+          
+          unmount();
         }
       ),
       { numRuns: 50 }
@@ -689,12 +708,8 @@ describe('Activity Log - Property 9: Event Display Completeness', () => {
             total: 1
           });
 
-          const { container } = render(<BackupSettings />);
-
-          // Find and click the Misc tab
-          const tabs = container.querySelectorAll('button.tab-button');
-          const miscTab = tabs[3]; // 4th tab (0-indexed)
-          fireEvent.click(miscTab);
+          // Render and navigate to Misc tab
+          const { container, unmount } = await renderAndNavigateToMiscTab();
 
           await waitFor(() => {
             const eventItem = container.querySelector('.activity-event-item');
@@ -717,6 +732,8 @@ describe('Activity Log - Property 9: Event Display Completeness', () => {
           
           // Timestamp should be formatted (not ISO)
           expect(timestampElement.textContent).not.toMatch(/^\d{4}-\d{2}-\d{2}T/);
+          
+          unmount();
         }
       ),
       { numRuns: 50 }
@@ -778,13 +795,8 @@ describe('Activity Log - Property 13: Display Limit Persistence', () => {
             total: 0
           });
 
-          // Render the component
-          const { container, unmount } = render(<BackupSettings />);
-
-          // Find and click the Misc tab
-          const tabs = container.querySelectorAll('button.tab-button');
-          const miscTab = tabs[3]; // 4th tab (0-indexed)
-          fireEvent.click(miscTab);
+          // Render and navigate to Misc tab
+          const { container, unmount } = await renderAndNavigateToMiscTab();
 
           // Wait for the activity log section to load
           await waitFor(() => {
@@ -834,13 +846,8 @@ describe('Activity Log - Property 13: Display Limit Persistence', () => {
             total: 0
           });
 
-          // Render the component
-          const { container, unmount } = render(<BackupSettings />);
-
-          // Find and click the Misc tab
-          const tabs = container.querySelectorAll('button.tab-button');
-          const miscTab = tabs[3]; // 4th tab (0-indexed)
-          fireEvent.click(miscTab);
+          // Render and navigate to Misc tab
+          const { container, unmount } = await renderAndNavigateToMiscTab();
 
           // Wait for the activity log section to load
           await waitFor(() => {
@@ -878,13 +885,8 @@ describe('Activity Log - Property 13: Display Limit Persistence', () => {
       total: 0
     });
 
-    // Render the component
-    const { container, unmount } = render(<BackupSettings />);
-
-    // Find and click the Misc tab
-    const tabs = container.querySelectorAll('button.tab-button');
-    const miscTab = tabs[3]; // 4th tab (0-indexed)
-    fireEvent.click(miscTab);
+    // Render and navigate to Misc tab
+    const { container, unmount } = await renderAndNavigateToMiscTab();
 
     // Wait for the activity log section to load
     await waitFor(() => {
@@ -1002,7 +1004,12 @@ describe('Activity Log - Property 13: Display Limit Persistence', () => {
           // Render the component
           const { container, unmount } = render(<BackupSettings />);
 
-          // Find and click the Misc tab
+          // Wait for tabs to render, then click the Misc tab
+          await waitFor(() => {
+            const tabs = container.querySelectorAll('button.tab-button');
+            expect(tabs.length).toBeGreaterThanOrEqual(4);
+          }, { timeout: 3000 });
+          
           const tabs = container.querySelectorAll('button.tab-button');
           const miscTab = tabs[3];
           fireEvent.click(miscTab);
@@ -1237,13 +1244,8 @@ describe('Activity Log - Property 14: Visible Event Count Accuracy', () => {
             currentCount: totalCount
           });
 
-          // Render the component
-          const { container, unmount } = render(<BackupSettings />);
-
-          // Find and click the Misc tab
-          const tabs = container.querySelectorAll('button.tab-button');
-          const miscTab = tabs[3]; // 4th tab (0-indexed)
-          fireEvent.click(miscTab);
+          // Render and navigate to Misc tab
+          const { container, unmount } = await renderAndNavigateToMiscTab();
 
           // Wait for events to load
           await waitFor(() => {
@@ -1523,13 +1525,8 @@ describe('Activity Log - Property 14: Visible Event Count Accuracy', () => {
       currentCount: 0
     });
 
-    // Render the component
-    const { container, unmount } = render(<BackupSettings />);
-
-    // Find and click the Misc tab
-    const tabs = container.querySelectorAll('button.tab-button');
-    const miscTab = tabs[3];
-    fireEvent.click(miscTab);
+    // Render and navigate to Misc tab
+    const { container, unmount } = await renderAndNavigateToMiscTab();
 
     // Wait for empty state to show
     await waitFor(() => {

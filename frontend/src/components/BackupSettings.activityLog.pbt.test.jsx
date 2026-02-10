@@ -9,6 +9,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import fc from 'fast-check';
 import { render, waitFor, fireEvent } from '@testing-library/react';
 import BackupSettings from './BackupSettings';
+import { safeDate } from '../test-utils';
 
 // Helper function to render BackupSettings and navigate to Misc tab
 const renderAndNavigateToMiscTab = async () => {
@@ -489,10 +490,7 @@ describe('Activity Log - Property 9: Event Display Completeness', () => {
               fc.constant(null)
             ),
             user_action: fc.string({ minLength: 10, maxLength: 200 }).filter(s => s.trim().length > 0),
-            timestamp: fc.date({ 
-              min: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000), // 1 year ago
-              max: new Date() 
-            }).map(d => d.toISOString()),
+            timestamp: safeDate(),
             metadata: fc.oneof(
               fc.constant(null),
               fc.record({
@@ -628,10 +626,7 @@ describe('Activity Log - Property 9: Event Display Completeness', () => {
           fc.constant('Tab\tChar'),
           fc.constant('Unicode: 🎉 💾 📋')
         ),
-        fc.date({ 
-          min: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 7 days ago
-          max: new Date() 
-        }).map(d => d.toISOString()),
+        safeDate(),
         async (userAction, timestamp) => {
           const event = {
             id: 1,
@@ -1546,10 +1541,7 @@ describe('Activity Log - Property 14: Visible Event Count Accuracy', () => {
               fc.constant(null)
             ),
             user_action: fc.string({ minLength: 10, maxLength: 200 }).filter(s => s.trim().length > 0),
-            timestamp: fc.date({ 
-              min: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000),
-              max: new Date() 
-            }).map(d => d.toISOString()),
+            timestamp: safeDate(),
             metadata: fc.oneof(fc.constant(null), fc.object())
           }),
           { minLength: 1, maxLength: 100 }

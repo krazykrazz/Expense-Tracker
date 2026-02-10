@@ -2,6 +2,11 @@
 
 
 
+
+## [5.10.0] - 2026-02-10
+
+### Activity log feature with comprehensive event tracking
+
 ## [5.9.0] - 2026-02-10
 
 ### Activity log feature with comprehensive event tracking

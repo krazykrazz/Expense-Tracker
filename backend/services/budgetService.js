@@ -3,6 +3,7 @@ const { getDatabase } = require('../database/db');
 const { BUDGETABLE_CATEGORIES } = require('../utils/categories');
 const budgetEvents = require('../events/budgetEvents');
 const logger = require('../config/logger');
+const activityLogService = require('./activityLogService');
 
 class BudgetService {
   constructor() {
@@ -98,7 +99,23 @@ class BudgetService {
     };
 
     try {
-      return await budgetRepository.create(budget);
+      const created = await budgetRepository.create(budget);
+      
+      // Log activity event
+      await activityLogService.logEvent(
+        'budget_added',
+        'budget',
+        created.id,
+        `Added budget: ${category} - $${limit.toFixed(2)}`,
+        {
+          category,
+          limit: parseFloat(limit),
+          year: parseInt(year),
+          month: parseInt(month)
+        }
+      );
+      
+      return created;
     } catch (err) {
       // Handle duplicate budget error
       if (err.message && err.message.includes('UNIQUE constraint failed')) {
@@ -124,6 +141,18 @@ class BudgetService {
       throw new Error('Budget not found');
     }
 
+    // Log activity event
+    await activityLogService.logEvent(
+      'budget_updated',
+      'budget',
+      updated.id,
+      `Updated budget: ${updated.category} - $${limit.toFixed(2)}`,
+      {
+        category: updated.category,
+        limit: parseFloat(limit)
+      }
+    );
+
     return updated;
   }
 
@@ -133,11 +162,30 @@ class BudgetService {
    * @returns {Promise<boolean>} True if deleted
    */
   async deleteBudget(id) {
+    // Get budget details before deletion for logging
+    const budget = await budgetRepository.findById(id);
+    
+    if (!budget) {
+      throw new Error('Budget not found');
+    }
+    
     const deleted = await budgetRepository.delete(id);
     
     if (!deleted) {
       throw new Error('Budget not found');
     }
+
+    // Log activity event
+    await activityLogService.logEvent(
+      'budget_deleted',
+      'budget',
+      id,
+      `Deleted budget: ${budget.category} - $${budget.limit.toFixed(2)}`,
+      {
+        category: budget.category,
+        limit: budget.limit
+      }
+    );
 
     return true;
   }

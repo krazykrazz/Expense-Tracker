@@ -13,12 +13,12 @@ The staging environment allows you to test new Docker images with a copy of prod
 
 ```powershell
 # 1. Build and deploy staging image
-.\build-and-push.ps1 -Tag staging
+.\scripts\build-and-push.ps1 -Tag staging
 
 # 2. Test at http://localhost:2627
 
 # 3. If good, deploy to production
-.\build-and-push.ps1 -Tag latest
+.\scripts\build-and-push.ps1 -Tag latest
 ```
 
 ## Architecture
@@ -63,7 +63,7 @@ tar -xzf "path\to\backup.tar.gz" -C staging-data\
 
 1. **Build the staging image:**
    ```powershell
-   .\build-and-push.ps1 -Tag staging
+   .\scripts\build-and-push.ps1 -Tag staging
    ```
 
 2. **Check migration logs:**
@@ -83,7 +83,7 @@ tar -xzf "path\to\backup.tar.gz" -C staging-data\
 
 4. **If successful, deploy to production:**
    ```powershell
-   .\build-and-push.ps1 -Tag latest
+   .\scripts\build-and-push.ps1 -Tag latest
    ```
 
 5. **Clean up staging:**
@@ -109,7 +109,7 @@ When testing migrations, verify:
 
 | Action | Command |
 |--------|---------|
-| Build staging image | `.\build-and-push.ps1 -Tag staging` |
+| Build staging image | `.\scripts\build-and-push.ps1 -Tag staging` |
 | Start staging | `docker-compose --profile staging up -d expense-tracker-staging` |
 | Stop staging | `docker-compose --profile staging down` |
 | View logs | `docker logs -f expense-tracker-staging` |

@@ -1,6 +1,7 @@
 const paymentMethodRepository = require('../repositories/paymentMethodRepository');
 const logger = require('../config/logger');
 const { getTodayString, calculateDaysUntilDue } = require('../utils/dateUtils');
+const activityLogService = require('./activityLogService');
 
 /**
  * Valid payment method types
@@ -191,6 +192,18 @@ class PaymentMethodService {
       displayName: created.display_name 
     });
 
+    // Log activity event
+    await activityLogService.logEvent(
+      'payment_method_added',
+      'payment_method',
+      created.id,
+      `Added payment method: ${created.display_name}`,
+      {
+        name: created.display_name,
+        type: created.type
+      }
+    );
+
     return created;
   }
 
@@ -246,6 +259,18 @@ class PaymentMethodService {
         type: updated.type, 
         displayName: updated.display_name 
       });
+
+      // Log activity event
+      await activityLogService.logEvent(
+        'payment_method_updated',
+        'payment_method',
+        id,
+        `Updated payment method: ${updated.display_name}`,
+        {
+          name: updated.display_name,
+          type: updated.type
+        }
+      );
     }
 
     return updated;
@@ -344,6 +369,20 @@ class PaymentMethodService {
         displayName: updated.display_name, 
         isActive 
       });
+
+      // Log activity event when deactivating
+      if (!isActive) {
+        await activityLogService.logEvent(
+          'payment_method_deactivated',
+          'payment_method',
+          id,
+          `Deactivated payment method: ${updated.display_name}`,
+          {
+            name: updated.display_name,
+            type: updated.type
+          }
+        );
+      }
     }
 
     return updated;

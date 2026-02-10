@@ -143,13 +143,13 @@ Use the provided PowerShell script to build and push to your local registry:
 
 ```powershell
 # Build and push with latest tag
-.\build-and-push.ps1 -Tag latest
+.\scripts\build-and-push.ps1 -Tag latest
 
 # Build and push with custom tag
-.\build-and-push.ps1 -Tag v3.3.0
+.\scripts\build-and-push.ps1 -Tag v3.3.0
 
 # Build multi-platform image (x86_64 and ARM64)
-.\build-and-push.ps1 -Tag latest -MultiPlatform
+.\scripts\build-and-push.ps1 -Tag latest -MultiPlatform
 ```
 
 ### Build Optimization

@@ -64,6 +64,7 @@ The `scripts/deploy-to-production.ps1` script automates the entire version bump 
 5. Commits the version bump changes
 6. Creates a git tag (e.g., `v5.8.1`) marking the release commit
 7. Pushes the tag to origin for easy version tracking
+8. Builds and deploys to **local registry** (localhost:5000)
 
 **Usage:**
 ```powershell
@@ -78,6 +79,14 @@ The `scripts/deploy-to-production.ps1` script automates the entire version bump 
 - Makes it easy to see version history: `git tag -l`
 - Allows easy checkout of specific versions: `git checkout v5.8.1`
 - Tags are automatically pushed to origin
+
+**Public Releases (GHCR):**
+- The local deployment script deploys to `localhost:5000` for internal use
+- When you push the tag to GitHub, CI automatically:
+  - Builds and pushes to GHCR (`ghcr.io/krazykrazz/expense-tracker`)
+  - Creates a GitHub release with GHCR image references
+  - Attaches a docker-compose file for public consumption
+- GitHub releases always reference GHCR, not the local registry
 
 ## Agent Instructions
 

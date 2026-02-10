@@ -9,6 +9,7 @@
 
 const loanPaymentRepository = require('../repositories/loanPaymentRepository');
 const loanRepository = require('../repositories/loanRepository');
+const activityLogService = require('./activityLogService');
 
 class LoanPaymentService {
   /**
@@ -85,18 +86,33 @@ class LoanPaymentService {
    */
   async createPayment(loanId, paymentData) {
     // Verify loan exists and is eligible
-    await this.verifyLoanEligibility(loanId);
+    const loan = await this.verifyLoanEligibility(loanId);
     
     // Validate payment data
     this.validatePayment(paymentData);
     
     // Create the payment
-    return await loanPaymentRepository.create({
+    const payment = await loanPaymentRepository.create({
       loan_id: loanId,
       amount: paymentData.amount,
       payment_date: paymentData.payment_date,
       notes: paymentData.notes || null
     });
+    
+    // Log the event
+    await activityLogService.logEvent(
+      'loan_payment_added',
+      'loan_payment',
+      payment.id,
+      `Added loan payment: ${loan.name} - $${paymentData.amount.toFixed(2)}`,
+      {
+        loanName: loan.name,
+        amount: paymentData.amount,
+        paymentDate: paymentData.payment_date
+      }
+    );
+    
+    return payment;
   }
 
   /**
@@ -127,17 +143,32 @@ class LoanPaymentService {
     }
     
     // Verify the loan is eligible for payment tracking
-    await this.verifyLoanEligibility(existingPayment.loan_id);
+    const loan = await this.verifyLoanEligibility(existingPayment.loan_id);
     
     // Validate the updated payment data
     this.validatePayment(paymentData);
     
     // Update the payment
-    return await loanPaymentRepository.update(paymentId, {
+    const updatedPayment = await loanPaymentRepository.update(paymentId, {
       amount: paymentData.amount,
       payment_date: paymentData.payment_date,
       notes: paymentData.notes || null
     });
+    
+    // Log the event
+    await activityLogService.logEvent(
+      'loan_payment_updated',
+      'loan_payment',
+      paymentId,
+      `Updated loan payment: ${loan.name} - $${paymentData.amount.toFixed(2)}`,
+      {
+        loanName: loan.name,
+        amount: paymentData.amount,
+        paymentDate: paymentData.payment_date
+      }
+    );
+    
+    return updatedPayment;
   }
 
   /**
@@ -154,7 +185,20 @@ class LoanPaymentService {
     }
     
     // Verify the loan is eligible for payment tracking
-    await this.verifyLoanEligibility(existingPayment.loan_id);
+    const loan = await this.verifyLoanEligibility(existingPayment.loan_id);
+    
+    // Log the event before deletion
+    await activityLogService.logEvent(
+      'loan_payment_deleted',
+      'loan_payment',
+      paymentId,
+      `Deleted loan payment: ${loan.name} - $${existingPayment.amount.toFixed(2)}`,
+      {
+        loanName: loan.name,
+        amount: existingPayment.amount,
+        paymentDate: existingPayment.payment_date
+      }
+    );
     
     // Delete the payment
     return await loanPaymentRepository.delete(paymentId);

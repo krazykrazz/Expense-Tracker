@@ -224,13 +224,13 @@ For actual deployment to your local registry, use the PowerShell script:
 
 ```powershell
 # Build and push with latest tag
-.\build-and-push.ps1 -Tag latest
+.\scripts\build-and-push.ps1 -Tag latest
 
 # Build and push with specific version
-.\build-and-push.ps1 -Tag 4.12.0
+.\scripts\build-and-push.ps1 -Tag 4.12.0
 
 # Multi-platform build (x86_64 and ARM64)
-.\build-and-push.ps1 -Tag latest -MultiPlatform
+.\scripts\build-and-push.ps1 -Tag latest -MultiPlatform
 ```
 
 ### Future Registry Integration

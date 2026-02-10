@@ -4,6 +4,7 @@ const { DB_PATH } = require('../database/db');
 const { getBackupPath, getBackupConfigPath, getInvoicesPath, getStatementsPath } = require('../config/paths');
 const logger = require('../config/logger');
 const archiveUtils = require('../utils/archiveUtils');
+const activityLogService = require('./activityLogService');
 
 class BackupService {
   constructor() {
@@ -183,6 +184,22 @@ class BackupService {
 
       // Clean up old backups
       this.cleanupOldBackups(backupPath);
+
+      // Log backup creation event (fire-and-forget, don't let logging failures affect backup)
+      try {
+        await activityLogService.logEvent(
+          'backup_created',
+          'system',
+          null,
+          `Created backup: ${filename}`,
+          {
+            filename,
+            size: archiveResult.size
+          }
+        );
+      } catch (logError) {
+        logger.warn('Failed to log backup creation event:', logError);
+      }
 
       return {
         success: true,
@@ -453,6 +470,22 @@ class BackupService {
         // Check if payment method migration is needed
         // This handles restoring from backups created before the configurable payment methods feature
         await this._checkAndRunPaymentMethodMigration();
+
+        // Log backup restoration event (fire-and-forget, don't let logging failures affect restore)
+        try {
+          await activityLogService.logEvent(
+            'backup_restored',
+            'system',
+            null,
+            `Restored backup: ${path.basename(backupPath)}`,
+            {
+              filename: path.basename(backupPath),
+              filesRestored
+            }
+          );
+        } catch (logError) {
+          logger.warn('Failed to log backup restoration event:', logError);
+        }
 
         return {
           success: true,

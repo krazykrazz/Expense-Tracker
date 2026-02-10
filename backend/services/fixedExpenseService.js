@@ -1,6 +1,7 @@
 const fixedExpenseRepository = require('../repositories/fixedExpenseRepository');
 const paymentMethodRepository = require('../repositories/paymentMethodRepository');
 const loanRepository = require('../repositories/loanRepository');
+const activityLogService = require('./activityLogService');
 const { validateYearMonth } = require('../utils/validators');
 const { CATEGORIES } = require('../utils/categories');
 
@@ -258,6 +259,20 @@ class FixedExpenseService {
     // Create fixed expense in repository
     const created = await fixedExpenseRepository.createFixedExpense(fixedExpense);
 
+    // Log activity event
+    await activityLogService.logEvent(
+      'fixed_expense_added',
+      'fixed_expense',
+      created.id,
+      `Added fixed expense: ${created.name} - $${created.amount.toFixed(2)}`,
+      {
+        name: created.name,
+        amount: created.amount,
+        category: created.category,
+        payment_type: created.payment_type
+      }
+    );
+
     // Add warning if linked loan is paid off
     if (loan && loan.is_paid_off) {
       return {
@@ -336,6 +351,20 @@ class FixedExpenseService {
       return null;
     }
 
+    // Log activity event
+    await activityLogService.logEvent(
+      'fixed_expense_updated',
+      'fixed_expense',
+      updated.id,
+      `Updated fixed expense: ${updated.name} - $${updated.amount.toFixed(2)}`,
+      {
+        name: updated.name,
+        amount: updated.amount,
+        category: updated.category,
+        payment_type: updated.payment_type
+      }
+    );
+
     // Add warning if linked loan is paid off
     if (loan && loan.is_paid_off) {
       return {
@@ -358,8 +387,29 @@ class FixedExpenseService {
       throw new Error('Fixed expense ID is required');
     }
 
+    // Get the fixed expense before deleting for logging
+    const fixedExpense = await fixedExpenseRepository.findById(id);
+
     // Delete fixed expense from repository
-    return await fixedExpenseRepository.deleteFixedExpense(id);
+    const deleted = await fixedExpenseRepository.deleteFixedExpense(id);
+
+    // Log activity event if deletion was successful
+    if (deleted && fixedExpense) {
+      await activityLogService.logEvent(
+        'fixed_expense_deleted',
+        'fixed_expense',
+        id,
+        `Deleted fixed expense: ${fixedExpense.name} - $${fixedExpense.amount.toFixed(2)}`,
+        {
+          name: fixedExpense.name,
+          amount: fixedExpense.amount,
+          category: fixedExpense.category,
+          payment_type: fixedExpense.payment_type
+        }
+      );
+    }
+
+    return deleted;
   }
 
   /**

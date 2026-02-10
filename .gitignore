@@ -70,6 +70,9 @@ backend/config/database/*.db-wal
 # Staging environment data (copy of production for testing)
 /staging-data/
 
+# Preview environment data (feature branch testing)
+/preview-data/
+
 test-pbt-backups/
 
 # Backend config database backups (runtime only)

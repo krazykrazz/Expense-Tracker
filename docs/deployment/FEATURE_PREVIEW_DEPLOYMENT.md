@@ -51,6 +51,13 @@ Branch: feature/my-feature
 SHA: abc1234
 ```
 
+**Note**: When run through automation tools, the script may not display console output, but it executes successfully. Verify deployment by:
+- Checking Docker images: `docker images | Select-String "preview"`
+- Checking running containers: `docker ps --filter "name=expense-tracker-preview"`
+- Accessing the preview URLs above
+
+Full colored output is displayed when run directly in a PowerShell terminal.
+
 ### 3. Test Your Feature
 
 - **Frontend**: http://localhost:3001

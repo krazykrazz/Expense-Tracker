@@ -15,6 +15,12 @@ export const calculateFutureDatePreview = (sourceDate, futureMonths) => {
   if (!sourceDate || futureMonths <= 0) return '';
   
   const date = new Date(sourceDate + 'T00:00:00');
+  
+  // Handle invalid dates
+  if (isNaN(date.getTime())) {
+    return '';
+  }
+  
   const sourceDay = date.getDate();
   
   // Calculate the last future month date
@@ -52,6 +58,12 @@ export const calculateAdvancedOptionsBadge = (futureMonths, postedDate) => {
   
   if (postedDate) {
     const date = new Date(postedDate + 'T00:00:00');
+    
+    // Handle invalid dates
+    if (isNaN(date.getTime())) {
+      return parts.join(' • ');
+    }
+    
     const formatted = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     parts.push(`Posted: ${formatted}`);
   }

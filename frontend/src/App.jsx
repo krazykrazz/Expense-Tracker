@@ -6,6 +6,8 @@ import ExpenseList from './components/ExpenseList';
 import SearchBar from './components/SearchBar';
 import SummaryPanel from './components/SummaryPanel';
 import BackupSettings from './components/BackupSettings';
+import SettingsModal from './components/SettingsModal';
+import SystemModal from './components/SystemModal';
 import AnnualSummary from './components/AnnualSummary';
 import TaxDeductible from './components/TaxDeductible';
 import BudgetManagementModal from './components/BudgetManagementModal';
@@ -139,10 +141,16 @@ function AppContent({ onPaymentMethodsUpdate }) {
     showBudgetHistory,
     showPeopleManagement,
     showAnalyticsHub,
+    showSettingsModal,
+    showSystemModal,
     openExpenseForm,
     closeExpenseForm,
     openBackupSettings,
     closeBackupSettings,
+    openSettingsModal,
+    closeSettingsModal,
+    openSystemModal,
+    closeSystemModal,
     openAnnualSummary,
     closeAnnualSummary,
     openTaxDeductible,
@@ -468,6 +476,10 @@ function AppContent({ onPaymentMethodsUpdate }) {
           </div>
         </div>
       )}
+
+      {showSettingsModal && <SettingsModal />}
+
+      {showSystemModal && <SystemModal />}
 
       {showAnnualSummary && (
         <div className="modal-overlay" onClick={closeAnnualSummary}>

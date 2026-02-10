@@ -93,6 +93,12 @@ test-pbt-listing/
 test-pbt-backups/
 test-insurance-backups/
 test-insurance-extract/
+test-data/
+
+# Staging environment data (already covered above but explicit here)
+staging-data/
 
 # One-off documentation (should be in archive if needed)
 SECURITY_REVIEW_FOR_PUBLIC_REPO.md
+*_TEST_FIX_SUMMARY.md
+CLEANUP_RECOMMENDATIONS.md

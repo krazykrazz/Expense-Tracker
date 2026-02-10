@@ -800,6 +800,18 @@ function createTestDatabase() {
             updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (payment_method_id) REFERENCES payment_methods(id) ON DELETE CASCADE,
             UNIQUE(payment_method_id, cycle_end_date)
+          )`,
+          
+          // activity_logs table (for tracking user actions and system events)
+          `CREATE TABLE IF NOT EXISTS activity_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            event_type TEXT NOT NULL,
+            entity_type TEXT NOT NULL,
+            entity_id INTEGER,
+            user_action TEXT NOT NULL,
+            metadata TEXT,
+            timestamp TEXT NOT NULL DEFAULT (datetime('now')),
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
           )`
         ];
         
@@ -874,7 +886,9 @@ function createTestIndexes(db, resolve, reject) {
     'CREATE INDEX IF NOT EXISTS idx_cc_statements_date ON credit_card_statements(statement_date)',
     'CREATE INDEX IF NOT EXISTS idx_billing_cycles_payment_method ON credit_card_billing_cycles(payment_method_id)',
     'CREATE INDEX IF NOT EXISTS idx_billing_cycles_cycle_end ON credit_card_billing_cycles(cycle_end_date)',
-    'CREATE INDEX IF NOT EXISTS idx_billing_cycles_pm_cycle_end ON credit_card_billing_cycles(payment_method_id, cycle_end_date)'
+    'CREATE INDEX IF NOT EXISTS idx_billing_cycles_pm_cycle_end ON credit_card_billing_cycles(payment_method_id, cycle_end_date)',
+    'CREATE INDEX IF NOT EXISTS idx_activity_logs_timestamp ON activity_logs(timestamp DESC)',
+    'CREATE INDEX IF NOT EXISTS idx_activity_logs_entity ON activity_logs(entity_type, entity_id)'
   ];
   
   let completed = 0;
@@ -984,6 +998,7 @@ async function resetTestDatabase() {
   const tables = [
     'credit_card_statements',
     'credit_card_payments',
+    'credit_card_billing_cycles',
     'expense_invoices',
     'expense_people',
     'expenses',
@@ -992,14 +1007,17 @@ async function resetTestDatabase() {
     'income_sources',
     'budgets',
     'mortgage_payments',
+    'loan_payments',
     'loan_balances',
     'loans',
     'investment_values',
     'investments',
     'place_names',
     'reminders',
+    'dismissed_anomalies',
     'monthly_gross',
     'payment_methods',
+    'activity_logs',
     'schema_migrations'
   ];
   

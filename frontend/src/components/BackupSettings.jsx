@@ -4,6 +4,7 @@ import './BackupSettings.css';
 import { formatDateTime } from '../utils/formatters';
 import PlaceNameStandardization from './PlaceNameStandardization';
 import { getPeople, createPerson, updatePerson, deletePerson } from '../services/peopleApi';
+import { fetchRecentEvents, fetchCleanupStats } from '../services/activityLogApi';
 import { createLogger } from '../utils/logger';
 
 const logger = createLogger('BackupSettings');
@@ -25,6 +26,14 @@ const BackupSettings = () => {
   const [versionInfo, setVersionInfo] = useState(null);
   const [dbStats, setDbStats] = useState(null);
   const [showPlaceNameStandardization, setShowPlaceNameStandardization] = useState(false);
+  
+  // Activity log state
+  const [activityEvents, setActivityEvents] = useState([]);
+  const [activityLoading, setActivityLoading] = useState(false);
+  const [activityError, setActivityError] = useState(null);
+  const [displayLimit, setDisplayLimit] = useState(50);
+  const [hasMore, setHasMore] = useState(false);
+  const [activityStats, setActivityStats] = useState(null);
   
   // Track timeouts for cleanup on unmount
   const messageTimerRef = useRef(null);
@@ -64,6 +73,21 @@ const BackupSettings = () => {
   useEffect(() => {
     if (activeTab === 'about') {
       fetchDbStats();
+    }
+  }, [activeTab]);
+
+  // Fetch activity logs when Misc tab is active
+  useEffect(() => {
+    if (activeTab === 'misc') {
+      // Load saved display limit from local storage
+      const savedLimit = localStorage.getItem('activityLogDisplayLimit');
+      let limitToUse = 50; // default
+      if (savedLimit) {
+        limitToUse = parseInt(savedLimit, 10);
+        setDisplayLimit(limitToUse);
+      }
+      fetchActivityEvents(0, limitToUse);
+      fetchActivityStats();
     }
   }, [activeTab]);
 
@@ -236,6 +260,100 @@ const BackupSettings = () => {
   };
 
   const formatDate = formatDateTime;
+
+  // Activity log functions
+  const fetchActivityEvents = async (offset = 0, limit = displayLimit) => {
+    setActivityLoading(true);
+    setActivityError(null);
+    try {
+      const response = await fetchRecentEvents(limit, offset);
+      
+      if (offset === 0) {
+        // Initial load - replace events
+        setActivityEvents(response.events || []);
+      } else {
+        // Load more - append events
+        setActivityEvents(prev => [...prev, ...(response.events || [])]);
+      }
+      
+      // Check if there are more events to load
+      const currentCount = offset === 0 ? response.events.length : activityEvents.length + response.events.length;
+      setHasMore(currentCount < response.total);
+    } catch (error) {
+      logger.error('Error fetching activity events:', error);
+      setActivityError('Failed to load activity events');
+    } finally {
+      setActivityLoading(false);
+    }
+  };
+
+  const fetchActivityStats = async () => {
+    try {
+      const stats = await fetchCleanupStats();
+      setActivityStats(stats);
+    } catch (error) {
+      logger.error('Error fetching activity stats:', error);
+      // Don't show error to user - stats are optional
+    }
+  };
+
+  const handleDisplayLimitChange = (e) => {
+    const newLimit = parseInt(e.target.value, 10);
+    setDisplayLimit(newLimit);
+    localStorage.setItem('activityLogDisplayLimit', newLimit.toString());
+    // Refetch with new limit - pass it explicitly to avoid stale closure
+    fetchActivityEvents(0, newLimit);
+  };
+
+  const handleLoadMore = () => {
+    fetchActivityEvents(activityEvents.length);
+  };
+
+  const formatTimestamp = (isoTimestamp) => {
+    const eventDate = new Date(isoTimestamp);
+    const now = new Date();
+    const diffMs = now - eventDate;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    // Less than 1 minute
+    if (diffMins < 1) {
+      return 'Just now';
+    }
+    
+    // Less than 1 hour
+    if (diffMins < 60) {
+      return `${diffMins} minute${diffMins !== 1 ? 's' : ''} ago`;
+    }
+    
+    // Less than 24 hours
+    if (diffHours < 24) {
+      return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
+    }
+    
+    // Yesterday
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    if (eventDate.toDateString() === yesterday.toDateString()) {
+      return `Yesterday at ${eventDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}`;
+    }
+    
+    // Less than 7 days
+    if (diffDays < 7) {
+      return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
+    }
+    
+    // Older - show full date and time
+    return eventDate.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: eventDate.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
+  };
 
   // People management functions
   const fetchPeople = async () => {
@@ -727,25 +845,102 @@ const BackupSettings = () => {
       {activeTab === 'misc' && (
         <div className="tab-panel">
           {!showPlaceNameStandardization ? (
-            <div className="settings-section">
-              <h3>Data Management Tools</h3>
-              <p>Miscellaneous tools for managing and cleaning up your expense data.</p>
-              
-              <div className="misc-tools-list">
-                <div className="misc-tool-item">
-                  <div className="misc-tool-info">
-                    <h4>🏷️ Standardize Place Names</h4>
-                    <p>Find and fix inconsistent place names in your expenses (e.g., "Walmart", "walmart", "Wal-Mart")</p>
+            <>
+              <div className="settings-section">
+                <h3>Data Management Tools</h3>
+                <p>Miscellaneous tools for managing and cleaning up your expense data.</p>
+                
+                <div className="misc-tools-list">
+                  <div className="misc-tool-item">
+                    <div className="misc-tool-info">
+                      <h4>🏷️ Standardize Place Names</h4>
+                      <p>Find and fix inconsistent place names in your expenses (e.g., "Walmart", "walmart", "Wal-Mart")</p>
+                    </div>
+                    <button 
+                      className="misc-tool-button"
+                      onClick={() => setShowPlaceNameStandardization(true)}
+                    >
+                      Open Tool
+                    </button>
                   </div>
-                  <button 
-                    className="misc-tool-button"
-                    onClick={() => setShowPlaceNameStandardization(true)}
-                  >
-                    Open Tool
-                  </button>
                 </div>
               </div>
-            </div>
+
+              {/* Activity Log Section */}
+              <div className="settings-section">
+                <div className="activity-log-header">
+                  <h3>📋 Recent Activity</h3>
+                  <div className="activity-log-controls">
+                    <label htmlFor="activity-display-limit">Show:</label>
+                    <select
+                      id="activity-display-limit"
+                      value={displayLimit}
+                      onChange={handleDisplayLimitChange}
+                      disabled={activityLoading}
+                      className="activity-limit-selector"
+                    >
+                      <option value="25">25 events</option>
+                      <option value="50">50 events</option>
+                      <option value="100">100 events</option>
+                      <option value="200">200 events</option>
+                    </select>
+                  </div>
+                </div>
+
+                {activityError && (
+                  <div className="activity-error">
+                    {activityError}
+                  </div>
+                )}
+
+                {activityLoading && activityEvents.length === 0 ? (
+                  <div className="activity-loading">Loading recent activity...</div>
+                ) : activityEvents.length === 0 ? (
+                  <div className="activity-empty">
+                    <p>No recent activity to display.</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="activity-event-list">
+                      {activityEvents.map((event) => (
+                        <div key={event.id} className="activity-event-item">
+                          <div className="activity-event-action">
+                            {event.user_action}
+                          </div>
+                          <div className="activity-event-timestamp">
+                            {formatTimestamp(event.timestamp)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {hasMore && (
+                      <div className="activity-load-more">
+                        <button
+                          onClick={handleLoadMore}
+                          disabled={activityLoading}
+                          className="activity-load-more-button"
+                        >
+                          {activityLoading ? 'Loading...' : 'Load More'}
+                        </button>
+                      </div>
+                    )}
+
+                    <div className="activity-event-count">
+                      Showing {activityEvents.length} of {activityStats?.currentCount || activityEvents.length} events
+                    </div>
+                  </>
+                )}
+
+                {activityStats && (
+                  <div className="activity-retention-info">
+                    <p>
+                      <strong>Retention Policy:</strong> Keeping last {activityStats.retentionDays} days or {activityStats.maxEntries} events
+                    </p>
+                  </div>
+                )}
+              </div>
+            </>
           ) : (
             <PlaceNameStandardization 
               onClose={() => setShowPlaceNameStandardization(false)}

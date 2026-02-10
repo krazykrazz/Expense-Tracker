@@ -183,7 +183,7 @@ Write-Success "Tagged: v$newVersion"
 
 # Step 11: Build SHA image
 Write-Step "Building SHA image..."
-.\build-and-push.ps1
+.\scripts\build-and-push.ps1
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Docker build failed!"
     exit 1
@@ -193,7 +193,7 @@ Write-Success "SHA image built: $commitSha"
 # Step 12: Deploy to staging (unless skipped)
 if (-not $SkipStaging) {
     Write-Step "Deploying to staging..."
-    .\build-and-push.ps1 -Environment staging
+    .\scripts\build-and-push.ps1 -Environment staging
     if ($LASTEXITCODE -ne 0) {
         Write-Error "Staging deployment failed!"
         exit 1
@@ -209,14 +209,14 @@ if (-not $SkipStaging) {
     if ($confirm -ne "yes") {
         Write-Warning "Production deployment cancelled"
         Write-Host "SHA image $commitSha is ready for production when you're ready:"
-        Write-Host "  .\build-and-push.ps1 -Environment latest"
+        Write-Host "  .\scripts\build-and-push.ps1 -Environment latest"
         exit 0
     }
 }
 
 # Step 13: Deploy to latest (production)
 Write-Step "Deploying to latest (production)..."
-.\build-and-push.ps1 -Environment latest
+.\scripts\build-and-push.ps1 -Environment latest
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Production deployment failed!"
     exit 1
@@ -250,4 +250,10 @@ Write-Host "SHA: $commitSha" -ForegroundColor Green
 Write-Host "Docker Tag: latest" -ForegroundColor Green
 Write-Host "Container: expense-tracker" -ForegroundColor Green
 Write-Host "=========================================" -ForegroundColor Green
+Write-Host ""
+Write-Host "NOTE: This deployed to local registry (localhost:5000)" -ForegroundColor Cyan
+Write-Host "For public releases, GitHub Actions will automatically:" -ForegroundColor Cyan
+Write-Host "  - Build and push to GHCR (ghcr.io/krazykrazz/expense-tracker)" -ForegroundColor Cyan
+Write-Host "  - Create GitHub release with GHCR references" -ForegroundColor Cyan
+Write-Host "  - Attach docker-compose file for public use" -ForegroundColor Cyan
 Write-Host ""

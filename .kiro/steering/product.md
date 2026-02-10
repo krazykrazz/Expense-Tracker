@@ -41,3 +41,4 @@ A full-stack personal expense tracking application for managing household financ
 - Dedicated Notifications section grouping all reminder banners with collapsible UI and count badge
 - Automated and manual database backups with restore functionality
 - Analytics hub with spending predictions, anomaly detection, and seasonal analysis
+- Activity log tracking all data changes with automatic cleanup and retention policy

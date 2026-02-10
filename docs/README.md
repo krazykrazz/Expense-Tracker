@@ -1,88 +1,77 @@
-# Documentation
+# Documentation Index
 
-This directory contains all project documentation organized by category.
+Welcome to the Expense Tracker documentation. This index helps you find the right documentation for your needs.
 
-## Directory Structure
+## For End Users
 
-### features/
-Documentation for completed features and implementations:
-- `ANALYTICS_HUB.md` - Spending patterns, predictions, anomaly detection, and merchant analytics
-- `BUDGET_ALERT_NOTIFICATIONS.md` - Proactive budget alert notifications
-- `BUDGET_SUGGESTIONS.md` - Budget suggestion algorithms
-- `CATEGORY_SUGGESTION.md` - Smart expense entry with category suggestions
-- `CONFIGURABLE_PAYMENT_METHODS.md` - Database-driven payment method management
-- `CREDIT_CARD_BILLING_CYCLES.md` - Billing cycle history with statement balances
-- `ENHANCED_ANNUAL_SUMMARY.md` - Year-over-year comparison, savings rate, and summary cards
-- `ENHANCED_FIXED_EXPENSES.md` - Fixed expenses with category and payment type tracking
-- `ESTIMATED_MONTHS_LEFT_FEATURE.md` - Estimated months left for loan payoff
-- `EXPENSE_LIST_UX_IMPROVEMENTS.md` - Smart method filter, filter chips, advanced filters
-- `FIXED_INTEREST_RATE_LOANS.md` - Fixed interest rate support for loans
-- `GENERIC_EXPENSE_REIMBURSEMENT.md` - Reimbursement tracking for any expense type
-- `GLOBAL_EXPENSE_FILTERING.md` - Global filtering by category and payment method
-- `INCOME_SOURCE_CATEGORIES.md` - Income source categorization
-- `INSURANCE_CLAIM_REMINDERS.md` - Automatic alerts for pending insurance claims
-- `INVESTMENT_TRACKING.md` - Investment portfolio tracking (TFSA, RRSP)
-- `LOAN_PAYMENT_TRACKING.md` - Payment-based loan tracking with auto-log and reminders
-- `MEDICAL_EXPENSE_PEOPLE_TRACKING.md` - Associate medical expenses with family members
-- `MEDICAL_INSURANCE_TRACKING.md` - Insurance eligibility and claim status tracking
-- `MERCHANT_ANALYTICS.md` - Merchant spending analytics and insights
-- `MONTHLY_DATA_REMINDERS.md` - Visual reminders to update investment values and loan balances
-- `MORTGAGE_TRACKING.md` - Mortgage analytics with amortization and equity tracking
-- `STICKY_SUMMARY_SCROLLING.md` - Enhanced UI with sticky summary scrolling
-- `TAX_DEDUCTIBLE_ANALYTICS.md` - Year-over-year tax deductible comparison and tax credit calculator
-- `TAX_DEDUCTIBLE_INVOICES.md` - PDF invoice attachments for tax-deductible expenses
-- `TOTAL_DEBT_FEATURE.md` - Total debt tracking across all active loans
+Getting started and using the application:
 
-### deployments/
-- `DEPLOYMENT.md` - General deployment guide
+- [Docker Deployment Guide](guides/DOCKER_DEPLOYMENT.md) - Deploy pre-built images from GHCR
+- [User Guide](guides/USER_GUIDE.md) - Complete feature documentation
+- [Startup Guide](guides/STARTUP_GUIDE.md) - Quick start instructions
+- [Database Schema](DATABASE_SCHEMA.md) - Understanding your data structure
 
-### development/
-Developer guides and CI/CD documentation:
-- `CI_TEST_RELIABILITY.md` - CI testing best practices and reliability improvements
-- `FEATURE_BRANCH_WORKFLOW.md` - Feature branch workflow and PR-based promotion
-- `GITHUB_ACTIONS_CICD.md` - GitHub Actions workflow documentation
-- `STAGING_ENVIRONMENT.md` - Staging environment setup and usage
+## For Developers
 
-### guides/
-User and developer guides:
-- `BUDGET_MANAGEMENT_GUIDE.md` - Budget management procedures
-- `DATABASE_MIGRATION_GUIDE.md` - Database migration procedures
-- `DOCKER.md` - Complete Docker deployment guide
-- `MAINTENANCE_GUIDE_INVOICES.md` - Invoice system maintenance
-- `QUICK_BUILD_GUIDE.md` - Fast reference for Docker builds
-- `README_SILENT_MODE.md` - Silent mode startup documentation
-- `RESTORE_BACKUP_GUIDE.md` - Backup restore procedures
-- `STARTUP_GUIDE.md` - How to start the application
-- `TROUBLESHOOTING_INVOICES.md` - Invoice troubleshooting guide
-- `VALIDATION_UTILITIES_GUIDE.md` - Validation utility documentation
+Contributing and developing:
 
-## Main Documentation
+### Getting Started
+- [Development Setup](development/SETUP.md) - Local development environment
+- [Feature Branch Workflow](development/FEATURE_BRANCH_WORKFLOW.md) - Git workflow and branching
+- [GitHub Actions CI/CD](development/GITHUB_ACTIONS_CICD.md) - Continuous integration
 
-See the root `README.md` for:
-- Project overview and features
-- Installation instructions
-- API endpoints reference
-- Database schema
-- Development workflow
+### Testing
+- [Frontend Testing Guidelines](development/FRONTEND_TESTING_GUIDELINES.md) - Testing practices
+- [Parallel Test Execution](development/PARALLEL_TEST_EXECUTION.md) - Fast test runs
+- [Example Test Patterns](development/EXAMPLE_TEST_PATTERNS.md) - Test examples
 
-## Active Specs
+### Deployment
+- [Deployment Workflow](deployment/DEPLOYMENT_WORKFLOW.md) - Internal deployment process
+- [SHA-Based Containers](deployment/SHA_BASED_CONTAINERS.md) - Container workflow
+- [Workflow Automation](deployment/WORKFLOW_AUTOMATION.md) - Automated deployments
 
-Feature specifications in `.kiro/specs/`:
-- `activity-log/` - Event tracking framework (planned)
-- `mortgage-payment-date-tracking/` - Mortgage payment date tracking (planned)
-- `windows-desktop-app/` - Windows desktop app wrapper (planned)
+### Architecture
+- [API Documentation](API_DOCUMENTATION.md) - REST API reference
+- [Database Schema](DATABASE_SCHEMA.md) - Database structure and relationships
 
-## Steering Rules
+### Features
+- [Feature Documentation](features/) - Detailed feature specifications
+- [Spec Documentation Review](SPEC_DOCUMENTATION_REVIEW_REPORT.md) - Spec review process
 
-Project guidelines in `.kiro/steering/`:
-- `product.md` - Product overview and features
-- `structure.md` - Project structure and architecture
-- `tech.md` - Technology stack and commands
-- `versioning.md` - Version management rules
-- `testing.md` - Testing conventions (Jest 30, Vitest)
-- `api-integration.md` - API integration checklist
-- `git-commits.md` - Git commit and branching rules
-- `logging-best-practices.md` - Logging conventions
-- `pre-deployment.md` - Pre-deployment checklist
-- `docker-compose.md` - Docker Compose configuration
-- `database-migrations.md` - Database migration guidance
+## Documentation Structure
+
+```
+docs/
+├── README.md (this file)
+├── guides/              # End-user documentation
+│   ├── DOCKER_DEPLOYMENT.md
+│   ├── USER_GUIDE.md
+│   └── STARTUP_GUIDE.md
+├── development/         # Developer guides
+│   ├── SETUP.md
+│   ├── FEATURE_BRANCH_WORKFLOW.md
+│   └── FRONTEND_TESTING_GUIDELINES.md
+├── deployment/          # Internal deployment docs
+│   ├── DEPLOYMENT_WORKFLOW.md
+│   └── SHA_BASED_CONTAINERS.md
+├── features/            # Feature specifications
+│   ├── CREDIT_CARD_BILLING_CYCLES.md
+│   ├── LOAN_PAYMENT_TRACKING.md
+│   └── ...
+├── API_DOCUMENTATION.md
+└── DATABASE_SCHEMA.md
+```
+
+## Quick Links
+
+- **I want to use the app**: Start with [Docker Deployment Guide](guides/DOCKER_DEPLOYMENT.md)
+- **I want to contribute**: Start with [Development Setup](development/SETUP.md)
+- **I want to understand a feature**: Check [Feature Documentation](features/)
+- **I want to deploy internally**: See [Deployment Workflow](deployment/DEPLOYMENT_WORKFLOW.md)
+- **I want to understand the API**: See [API Documentation](API_DOCUMENTATION.md)
+
+## Getting Help
+
+- Check the [User Guide](guides/USER_GUIDE.md) for feature questions
+- Review [GitHub Issues](https://github.com/krazykrazz/expense-tracker/issues) for known issues
+- See [Development Setup](development/SETUP.md) for development questions

@@ -24,9 +24,9 @@ Before pushing major changes to production, run through this checklist. See `ver
    - Update `CHANGELOG.md` and `frontend/src/components/BackupSettings.jsx`
    - Build frontend: `cd frontend && npm run build`
    - Commit: `git add -A && git commit -m "v5.8.1: Description"`
-3. **Build SHA image**: `.\build-and-push.ps1` (builds with correct version)
-4. **Deploy to staging**: `.\build-and-push.ps1 -Environment staging`
-5. **Test in staging**, then promote to production: `.\build-and-push.ps1 -Environment production`
+3. **Build SHA image**: `.\scripts\build-and-push.ps1` (builds with correct version)
+4. **Deploy to staging**: `.\scripts\build-and-push.ps1 -Environment staging`
+5. **Test in staging**, then promote to production: `.\scripts\build-and-push.ps1 -Environment production`
 
 The same SHA-tagged image is used across all environments (build once, deploy everywhere).
 
@@ -49,7 +49,7 @@ The same SHA-tagged image is used across all environments (build once, deploy ev
 
 ### Multi-Platform Builds
 ```powershell
-.\build-and-push.ps1 -MultiPlatform
+.\scripts\build-and-push.ps1 -MultiPlatform
 ```
 
 ### See Also

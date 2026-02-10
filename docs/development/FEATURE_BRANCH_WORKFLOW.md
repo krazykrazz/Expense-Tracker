@@ -379,7 +379,7 @@ The existing Docker build and push process remains the same:
 
 ```powershell
 # After promoting to main
-.\build-and-push.ps1 -Tag latest
+.\scripts\build-and-push.ps1 -Tag latest
 ```
 
 ### Pre-deployment Checklist Integration
@@ -470,7 +470,7 @@ The Docker workflow (`.github/workflows/docker.yml`) runs on merge to main:
 
 For actual deployment, use the local script:
 ```powershell
-.\build-and-push.ps1 -Tag latest
+.\scripts\build-and-push.ps1 -Tag latest
 ```
 
 ### Updated Promotion Checklist
@@ -691,7 +691,7 @@ git merge feature/budget-alert-notifications
 git push origin main
 
 # 6. Build and deploy
-.\build-and-push.ps1 -Tag latest
+.\scripts\build-and-push.ps1 -Tag latest
 ```
 
 ---

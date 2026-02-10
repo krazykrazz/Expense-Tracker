@@ -1,4 +1,5 @@
 const investmentRepository = require('../repositories/investmentRepository');
+const activityLogService = require('./activityLogService');
 
 // Valid investment types
 const VALID_INVESTMENT_TYPES = ['TFSA', 'RRSP'];
@@ -71,7 +72,21 @@ class InvestmentService {
     };
 
     // Create investment in repository
-    return await investmentRepository.create(investment);
+    const createdInvestment = await investmentRepository.create(investment);
+    
+    // Log activity event
+    await activityLogService.logEvent(
+      'investment_added',
+      'investment',
+      createdInvestment.id,
+      `Added investment: ${createdInvestment.name}`,
+      {
+        name: createdInvestment.name,
+        account_type: createdInvestment.type
+      }
+    );
+    
+    return createdInvestment;
   }
 
   /**
@@ -114,7 +129,23 @@ class InvestmentService {
     };
 
     // Update investment in repository
-    return await investmentRepository.update(id, updates);
+    const updatedInvestment = await investmentRepository.update(id, updates);
+    
+    if (updatedInvestment) {
+      // Log activity event
+      await activityLogService.logEvent(
+        'investment_updated',
+        'investment',
+        updatedInvestment.id,
+        `Updated investment: ${updatedInvestment.name}`,
+        {
+          name: updatedInvestment.name,
+          account_type: updatedInvestment.type
+        }
+      );
+    }
+    
+    return updatedInvestment;
   }
 
   /**
@@ -128,8 +159,27 @@ class InvestmentService {
       throw new Error('Investment ID is required');
     }
 
+    // Get investment details before deletion for logging
+    const investment = await investmentRepository.findById(id);
+    
     // Delete investment from repository
-    return await investmentRepository.delete(id);
+    const deleted = await investmentRepository.delete(id);
+    
+    if (deleted && investment) {
+      // Log activity event
+      await activityLogService.logEvent(
+        'investment_deleted',
+        'investment',
+        id,
+        `Deleted investment: ${investment.name}`,
+        {
+          name: investment.name,
+          account_type: investment.type
+        }
+      );
+    }
+    
+    return deleted;
   }
 
   /**

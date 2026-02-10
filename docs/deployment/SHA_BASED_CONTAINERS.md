@@ -40,7 +40,7 @@ This project uses a SHA-based container build model for immutable, traceable dep
 Build the image and tag it with the current git SHA:
 
 ```powershell
-.\build-and-push.ps1
+.\scripts\build-and-push.ps1
 ```
 
 **What happens:**
@@ -62,7 +62,7 @@ Git SHA: abc1234
 Tag the SHA image for staging and deploy:
 
 ```powershell
-.\build-and-push.ps1 -Environment staging
+.\scripts\build-and-push.ps1 -Environment staging
 ```
 
 **What happens:**
@@ -88,7 +88,7 @@ Verify the deployment works correctly in staging environment.
 Promote the same SHA image to production (just retag):
 
 ```powershell
-.\build-and-push.ps1 -Environment latest
+.\scripts\build-and-push.ps1 -Environment latest
 ```
 
 **What happens:**
@@ -111,19 +111,19 @@ Deployed to: expense-tracker
 
 ```powershell
 # Build SHA image only (no deploy)
-.\build-and-push.ps1 -BuildOnly
+.\scripts\build-and-push.ps1 -BuildOnly
 
 # Build and deploy to staging
-.\build-and-push.ps1 -Environment staging
+.\scripts\build-and-push.ps1 -Environment staging
 
 # Promote to production (retag existing SHA)
-.\build-and-push.ps1 -Environment latest
+.\scripts\build-and-push.ps1 -Environment latest
 
 # Build multi-platform image
-.\build-and-push.ps1 -MultiPlatform
+.\scripts\build-and-push.ps1 -MultiPlatform
 
 # Skip deployment step
-.\build-and-push.ps1 -Environment staging -SkipDeploy
+.\scripts\build-and-push.ps1 -Environment staging -SkipDeploy
 ```
 
 ### Parameters
@@ -199,7 +199,7 @@ npm run build  # Build frontend with new version
 git add -A
 git commit -m "v4.12.8: Feature description"
 # Now build SHA image with correct version
-.\build-and-push.ps1
+.\scripts\build-and-push.ps1
 
 # ❌ Bad - Version bump on feature branch
 git checkout feature/my-feature
@@ -212,13 +212,13 @@ Before deploying to any environment, ensure the SHA image is built:
 
 ```powershell
 # Build once (after version bump on main)
-.\build-and-push.ps1
+.\scripts\build-and-push.ps1
 
 # Then deploy to staging
-.\build-and-push.ps1 -Environment staging
+.\scripts\build-and-push.ps1 -Environment staging
 
 # Then promote to latest (production)
-.\build-and-push.ps1 -Environment latest
+.\scripts\build-and-push.ps1 -Environment latest
 ```
 
 ### 3. Test in Staging First
@@ -227,12 +227,12 @@ Never deploy directly to production without testing in staging:
 
 ```powershell
 # ✅ Good
-.\build-and-push.ps1 -Environment staging
+.\scripts\build-and-push.ps1 -Environment staging
 # ... test in staging ...
-.\build-and-push.ps1 -Environment latest
+.\scripts\build-and-push.ps1 -Environment latest
 
 # ❌ Bad
-.\build-and-push.ps1 -Environment latest  # Skipped staging!
+.\scripts\build-and-push.ps1 -Environment latest  # Skipped staging!
 ```
 
 ### 4. Keep SHA Tags Forever
@@ -285,15 +285,15 @@ docker inspect expense-tracker | Select-String "Image"
 ### Old Workflow (Tag-based)
 
 ```powershell
-.\build-and-push.ps1 -Tag staging
-.\build-and-push.ps1 -Tag latest
+.\scripts\build-and-push.ps1 -Tag staging
+.\scripts\build-and-push.ps1 -Tag latest
 ```
 
 ### New Workflow (SHA-based)
 
 ```powershell
-.\build-and-push.ps1 -Environment staging
-.\build-and-push.ps1 -Environment latest
+.\scripts\build-and-push.ps1 -Environment staging
+.\scripts\build-and-push.ps1 -Environment latest
 ```
 
 **Key Differences:**

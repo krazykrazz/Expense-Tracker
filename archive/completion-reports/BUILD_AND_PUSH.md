@@ -38,17 +38,17 @@ The PowerShell script provides the most flexibility and features.
 
 ```powershell
 # Build and push with automatic tag detection (based on git branch)
-.\build-and-push.ps1
+.\scripts\build-and-push.ps1
 
 # Build and push with specific tag
-.\build-and-push.ps1 -Tag latest
-.\build-and-push.ps1 -Tag dev
+.\scripts\build-and-push.ps1 -Tag latest
+.\scripts\build-and-push.ps1 -Tag dev
 
 # Build for multiple platforms (requires Docker Buildx)
-.\build-and-push.ps1 -MultiPlatform
+.\scripts\build-and-push.ps1 -MultiPlatform
 
 # Use custom registry
-.\build-and-push.ps1 -Registry myregistry.local:5000
+.\scripts\build-and-push.ps1 -Registry myregistry.local:5000
 ```
 
 #### Parameters
@@ -129,7 +129,7 @@ Multi-platform builds create images that work on both x86_64 (Intel/AMD) and ARM
 
 ```powershell
 # PowerShell
-.\build-and-push.ps1 -MultiPlatform
+.\scripts\build-and-push.ps1 -MultiPlatform
 
 # Batch
 build-and-push.bat --multi-platform

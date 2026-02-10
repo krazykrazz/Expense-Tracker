@@ -4499,6 +4499,99 @@ async function migrateAddFixedExpenseLoanLinkage(db) {
 }
 
 /**
+ * Migration: Add activity_logs table
+ * 
+ * Creates the activity_logs table for tracking user actions and system events.
+ * Includes indexes for efficient querying by timestamp and entity lookups.
+ * 
+ * Requirements: 1.1
+ */
+async function migrateAddActivityLogsTable(db) {
+  const migrationName = 'add_activity_logs_table_v1';
+  
+  // Check if already applied
+  const isApplied = await checkMigrationApplied(db, migrationName);
+  if (isApplied) {
+    logger.info(`Migration "${migrationName}" already applied, skipping`);
+    return;
+  }
+
+  logger.info(`Running migration: ${migrationName}`);
+
+  // Create backup
+  await createBackup();
+
+  return new Promise((resolve, reject) => {
+    db.serialize(() => {
+      db.run('BEGIN TRANSACTION', (err) => {
+        if (err) {
+          return reject(err);
+        }
+
+        // Create activity_logs table
+        db.run(`
+          CREATE TABLE IF NOT EXISTS activity_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            event_type TEXT NOT NULL,
+            entity_type TEXT NOT NULL,
+            entity_id INTEGER,
+            user_action TEXT NOT NULL,
+            metadata TEXT,
+            timestamp TEXT NOT NULL DEFAULT (datetime('now')),
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+          )
+        `, (err) => {
+          if (err) {
+            db.run('ROLLBACK');
+            return reject(err);
+          }
+
+          logger.info('Created activity_logs table');
+
+          // Create index for timestamp (DESC) - most common query pattern
+          db.run(
+            'CREATE INDEX IF NOT EXISTS idx_activity_logs_timestamp ON activity_logs(timestamp DESC)',
+            (err) => {
+              if (err) {
+                db.run('ROLLBACK');
+                return reject(err);
+              }
+
+              logger.info('Created index idx_activity_logs_timestamp');
+
+              // Create index for entity lookups
+              db.run(
+                'CREATE INDEX IF NOT EXISTS idx_activity_logs_entity ON activity_logs(entity_type, entity_id)',
+                (err) => {
+                  if (err) {
+                    db.run('ROLLBACK');
+                    return reject(err);
+                  }
+
+                  logger.info('Created index idx_activity_logs_entity');
+
+                  // Mark migration as applied and commit
+                  markMigrationApplied(db, migrationName).then(() => {
+                    db.run('COMMIT', (err) => {
+                      if (err) {
+                        db.run('ROLLBACK');
+                        return reject(err);
+                      }
+                      logger.info(`Migration "${migrationName}" completed successfully`);
+                      resolve();
+                    });
+                  }).catch(reject);
+                }
+              );
+            }
+          );
+        });
+      });
+    });
+  });
+}
+
+/**
  * Run all pending migrations
  */
 async function runMigrations(db) {
@@ -4534,6 +4627,7 @@ async function runMigrations(db) {
     await migrateAddIsUserEnteredToBillingCycles(db);
     await migrateAddLoanPaymentsTable(db);
     await migrateAddFixedExpenseLoanLinkage(db);
+    await migrateAddActivityLogsTable(db);
     logger.info('All migrations completed');
   } catch (error) {
     logger.error('Migration failed:', error.message);
@@ -4563,5 +4657,6 @@ module.exports = {
   migratePdfStatementsToBillingCycles,
   migrateAddIsUserEnteredToBillingCycles,
   migrateAddLoanPaymentsTable,
-  migrateAddFixedExpenseLoanLinkage
+  migrateAddFixedExpenseLoanLinkage,
+  migrateAddActivityLogsTable
 };

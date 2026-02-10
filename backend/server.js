@@ -4,6 +4,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
+const cron = require('node-cron');
 const { initializeDatabase } = require('./database/db');
 const expenseRoutes = require('./routes/expenseRoutes');
 const backupRoutes = require('./routes/backupRoutes');
@@ -25,7 +26,9 @@ const analyticsRoutes = require('./routes/analyticsRoutes');
 const invoiceRoutes = require('./routes/invoiceRoutes');
 const paymentMethodRoutes = require('./routes/paymentMethodRoutes');
 const billingCycleRoutes = require('./routes/billingCycleRoutes');
+const activityLogRoutes = require('./routes/activityLogRoutes');
 const backupService = require('./services/backupService');
+const activityLogService = require('./services/activityLogService');
 const logger = require('./config/logger');
 const { configureTimezone, getTimezone } = require('./config/timezone');
 const { errorHandler } = require('./middleware/errorHandler');
@@ -174,6 +177,9 @@ app.use('/api/payment-methods', paymentMethodRoutes);
 // Billing Cycle History API routes (nested under payment-methods)
 app.use('/api/payment-methods', billingCycleRoutes);
 
+// Activity Log API routes
+app.use('/api/activity-logs', activityLogRoutes);
+
 // Serve static files from the React app (after build)
 // In container (production/staging): /app/frontend/dist, in development: ../frontend/dist
 const isContainerEnv = process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'staging';
@@ -222,6 +228,19 @@ initializeDatabase()
         logger.info('Automatic backups enabled');
         logger.info(`Next backup: ${nextBackup ? nextBackup.toLocaleString() : 'Not scheduled'}`);
       }
+      
+      // Start activity log cleanup scheduler (runs daily at 2:00 AM)
+      cron.schedule('0 2 * * *', async () => {
+        try {
+          logger.info('Starting scheduled activity log cleanup...');
+          const result = await activityLogService.cleanupOldEvents();
+          logger.info(`Activity log cleanup completed: ${result.deletedCount} events deleted, oldest remaining: ${result.oldestRemaining || 'none'}`);
+        } catch (error) {
+          logger.error('Activity log cleanup failed:', error);
+        }
+      });
+      logger.info('');
+      logger.info('Activity log cleanup scheduled (daily at 2:00 AM)');
     });
   })
   .catch((err) => {

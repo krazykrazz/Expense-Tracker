@@ -99,7 +99,7 @@ The deployment workflow ensures:
 
 13. **Build SHA image** (once, with correct version):
     ```powershell
-    .\build-and-push.ps1
+    .\scripts\build-and-push.ps1
     ```
     
     Output shows:
@@ -111,7 +111,7 @@ The deployment workflow ensures:
 
 14. **Deploy to staging**:
     ```powershell
-    .\build-and-push.ps1 -Environment staging
+    .\scripts\build-and-push.ps1 -Environment staging
     ```
     
     This tags the SHA image as `staging` and deploys to `expense-tracker-test` container.
@@ -124,7 +124,7 @@ The deployment workflow ensures:
 
 16. **Promote to production** (same SHA, just retag):
     ```powershell
-    .\build-and-push.ps1 -Environment latest
+    .\scripts\build-and-push.ps1 -Environment latest
     ```
     
     This tags the same SHA image as `latest` and deploys to `expense-tracker` container.
@@ -174,15 +174,15 @@ git add -A && git commit -m "v5.8.1: Description"
 git tag -a "v5.8.1" -m "Release v5.8.1: Description"
 
 # 6. Build SHA image
-.\build-and-push.ps1
+.\scripts\build-and-push.ps1
 
 # 7. Deploy to staging
-.\build-and-push.ps1 -Environment staging
+.\scripts\build-and-push.ps1 -Environment staging
 
 # 8. Test in staging...
 
 # 9. Promote to latest (production)
-.\build-and-push.ps1 -Environment latest
+.\scripts\build-and-push.ps1 -Environment latest
 
 # 10. Push tag to origin
 git push origin v5.8.1
@@ -219,7 +219,7 @@ git commit -m "v5.8.1: My feature"
 **Wrong:**
 ```powershell
 git checkout main
-.\build-and-push.ps1  # Builds with old version
+.\scripts\build-and-push.ps1  # Builds with old version
 # Update version to 5.8.1
 git commit -m "v5.8.1: My feature"
 ```
@@ -233,17 +233,17 @@ git commit -m "v5.8.1: My feature"
 git checkout main
 # Update version to 5.8.1
 git commit -m "v5.8.1: My feature"
-.\build-and-push.ps1  # Builds with new version
+.\scripts\build-and-push.ps1  # Builds with new version
 ```
 
 ### ❌ Rebuilding for Production
 
 **Wrong:**
 ```powershell
-.\build-and-push.ps1 -Environment staging
+.\scripts\build-and-push.ps1 -Environment staging
 # Test in staging...
-.\build-and-push.ps1  # Rebuild for production
-.\build-and-push.ps1 -Environment production
+.\scripts\build-and-push.ps1  # Rebuild for production
+.\scripts\build-and-push.ps1 -Environment production
 ```
 
 **Why it's wrong:**
@@ -253,10 +253,10 @@ git commit -m "v5.8.1: My feature"
 
 **Right:**
 ```powershell
-.\build-and-push.ps1  # Build once
-.\build-and-push.ps1 -Environment staging  # Tag and deploy
+.\scripts\build-and-push.ps1  # Build once
+.\scripts\build-and-push.ps1 -Environment staging  # Tag and deploy
 # Test in staging...
-.\build-and-push.ps1 -Environment latest  # Just retag, no rebuild
+.\scripts\build-and-push.ps1 -Environment latest  # Just retag, no rebuild
 ```
 
 ## Rollback Procedure
@@ -293,8 +293,8 @@ If production deployment has issues:
 
 **Fix:**
 1. Ensure version bump is committed
-2. Rebuild SHA image: `.\build-and-push.ps1`
-3. Redeploy: `.\build-and-push.ps1 -Environment latest`
+2. Rebuild SHA image: `.\scripts\build-and-push.ps1`
+3. Redeploy: `.\scripts\build-and-push.ps1 -Environment latest`
 
 ### Container Won't Start
 

@@ -52,12 +52,12 @@ REM Check if PowerShell is available
 where pwsh >nul 2>nul
 if %ERRORLEVEL% equ 0 (
     echo Using PowerShell Core...
-    pwsh -ExecutionPolicy Bypass -File "%~dp0build-and-push.ps1" -Tag %TAG% -Registry %REGISTRY% %MULTI_PLATFORM%
+    pwsh -ExecutionPolicy Bypass -File "%~dp0..\build-and-push.ps1" -Tag %TAG% -Registry %REGISTRY% %MULTI_PLATFORM%
 ) else (
     where powershell >nul 2>nul
     if %ERRORLEVEL% equ 0 (
         echo Using Windows PowerShell...
-        powershell -ExecutionPolicy Bypass -File "%~dp0build-and-push.ps1" -Tag %TAG% -Registry %REGISTRY% %MULTI_PLATFORM%
+        powershell -ExecutionPolicy Bypass -File "%~dp0..\build-and-push.ps1" -Tag %TAG% -Registry %REGISTRY% %MULTI_PLATFORM%
     ) else (
         echo ERROR: PowerShell is not available
         exit /b 1

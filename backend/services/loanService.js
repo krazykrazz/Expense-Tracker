@@ -2,6 +2,7 @@ const loanRepository = require('../repositories/loanRepository');
 const loanBalanceRepository = require('../repositories/loanBalanceRepository');
 const mortgageService = require('./mortgageService');
 const { validateNumber, validateString } = require('../utils/validators');
+const activityLogService = require('./activityLogService');
 
 class LoanService {
   /**
@@ -85,7 +86,21 @@ class LoanService {
       fixed_interest_rate: loanType === 'loan' ? (data.fixed_interest_rate ?? null) : null
     };
 
-    return await loanRepository.create(loanData);
+    const createdLoan = await loanRepository.create(loanData);
+    
+    // Log activity event
+    await activityLogService.logEvent(
+      'loan_added',
+      'loan',
+      createdLoan.id,
+      `Added loan: ${createdLoan.name}`,
+      {
+        name: createdLoan.name,
+        loan_type: createdLoan.loan_type
+      }
+    );
+    
+    return createdLoan;
   }
 
   /**
@@ -143,7 +158,23 @@ class LoanService {
     }
     
     // Use the repository method that only updates specified fields
-    return await loanRepository.updateFields(id, updates);
+    const updatedLoan = await loanRepository.updateFields(id, updates);
+    
+    if (updatedLoan) {
+      // Log activity event
+      await activityLogService.logEvent(
+        'loan_updated',
+        'loan',
+        updatedLoan.id,
+        `Updated loan: ${updatedLoan.name}`,
+        {
+          name: updatedLoan.name,
+          loan_type: updatedLoan.loan_type
+        }
+      );
+    }
+    
+    return updatedLoan;
   }
 
   /**
@@ -175,7 +206,21 @@ class LoanService {
       estimated_property_value: data.estimated_property_value || null
     };
 
-    return await loanRepository.create(mortgageData);
+    const createdMortgage = await loanRepository.create(mortgageData);
+    
+    // Log activity event
+    await activityLogService.logEvent(
+      'loan_added',
+      'loan',
+      createdMortgage.id,
+      `Added loan: ${createdMortgage.name}`,
+      {
+        name: createdMortgage.name,
+        loan_type: createdMortgage.loan_type
+      }
+    );
+    
+    return createdMortgage;
   }
 
   /**
@@ -247,7 +292,23 @@ class LoanService {
     }
     
     // Use the repository method that only updates allowed fields
-    return await loanRepository.updateMortgageFields(id, updates);
+    const updatedMortgage = await loanRepository.updateMortgageFields(id, updates);
+    
+    if (updatedMortgage) {
+      // Log activity event
+      await activityLogService.logEvent(
+        'loan_updated',
+        'loan',
+        updatedMortgage.id,
+        `Updated loan: ${updatedMortgage.name}`,
+        {
+          name: updatedMortgage.name,
+          loan_type: updatedMortgage.loan_type
+        }
+      );
+    }
+    
+    return updatedMortgage;
   }
 
   /**
@@ -256,7 +317,26 @@ class LoanService {
    * @returns {Promise<boolean>} True if deleted, false if not found
    */
   async deleteLoan(id) {
-    return await loanRepository.delete(id);
+    // Get loan details before deletion for logging
+    const loan = await loanRepository.findById(id);
+    
+    const deleted = await loanRepository.delete(id);
+    
+    if (deleted && loan) {
+      // Log activity event
+      await activityLogService.logEvent(
+        'loan_deleted',
+        'loan',
+        id,
+        `Deleted loan: ${loan.name}`,
+        {
+          name: loan.name,
+          loan_type: loan.loan_type
+        }
+      );
+    }
+    
+    return deleted;
   }
 
   /**

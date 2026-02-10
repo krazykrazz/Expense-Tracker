@@ -4,7 +4,7 @@
 
 ### Docker Deployment (Production)
 1. Ensure Docker is installed and running
-2. Run `docker-compose up -d` or use `build-and-push.ps1`
+2. Run `docker-compose up -d` or use `scripts\build-and-push.ps1`
 3. Access the app at http://localhost:2424
 4. To stop: `docker-compose down`
 

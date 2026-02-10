@@ -2,6 +2,30 @@ const { getDatabase } = require('../database/db');
 
 class FixedExpenseRepository {
   /**
+   * Get a single fixed expense by ID
+   * @param {number} id - Fixed expense ID
+   * @returns {Promise<Object|null>} Fixed expense object or null if not found
+   */
+  async findById(id) {
+    const db = await getDatabase();
+    return new Promise((resolve, reject) => {
+      const sql = `
+        SELECT id, year, month, name, amount, category, payment_type, 
+               payment_due_day, linked_loan_id, created_at, updated_at
+        FROM fixed_expenses
+        WHERE id = ?
+      `;
+      db.get(sql, [id], (err, row) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(row || null);
+        }
+      });
+    });
+  }
+
+  /**
    * Get all fixed expense items for a specific month
    * @param {number} year - Year
    * @param {number} month - Month (1-12)

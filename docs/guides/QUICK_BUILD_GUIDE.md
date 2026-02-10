@@ -15,17 +15,17 @@ docker run -d -p 5000:5000 --restart=always --name registry registry:2
 
 ```powershell
 # Production build (auto-detects 'main' branch → 'latest' tag)
-.\build-and-push.ps1
+.\scripts\build-and-push.ps1
 
 # Development build (auto-detects 'development' branch → 'dev' tag)
-.\build-and-push.ps1
+.\scripts\build-and-push.ps1
 
 # Force specific tag
-.\build-and-push.ps1 -Tag latest
-.\build-and-push.ps1 -Tag dev
+.\scripts\build-and-push.ps1 -Tag latest
+.\scripts\build-and-push.ps1 -Tag dev
 
 # Multi-platform build (x86_64 + ARM64)
-.\build-and-push.ps1 -MultiPlatform
+.\scripts\build-and-push.ps1 -MultiPlatform
 ```
 
 ### Windows (Batch)

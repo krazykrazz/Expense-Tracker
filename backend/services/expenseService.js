@@ -12,6 +12,7 @@ const expensePeopleService = require('./expensePeopleService');
 const expenseTaxService = require('./expenseTaxService');
 const expenseAggregationService = require('./expenseAggregationService');
 const expenseCategoryService = require('./expenseCategoryService');
+const activityLogService = require('./activityLogService');
 
 /**
  * ExpenseService Facade
@@ -329,6 +330,20 @@ class ExpenseService {
     await this._updateCreditCardBalanceOnCreate(paymentMethod, chargedAmount, expense.date);
     this._triggerBudgetRecalculation(expense.date, expense.type);
 
+    // Log activity event
+    await activityLogService.logEvent(
+      'expense_added',
+      'expense',
+      createdExpense.id,
+      `Added expense: ${expense.place || 'Unknown'} - $${expense.amount.toFixed(2)}`,
+      {
+        amount: expense.amount,
+        category: expense.type,
+        date: expense.date,
+        place: expense.place
+      }
+    );
+
     return createdExpense;
   }
 
@@ -518,6 +533,38 @@ class ExpenseService {
       }
     }
 
+    // Log activity event
+    await activityLogService.logEvent(
+      'expense_updated',
+      'expense',
+      id,
+      `Updated expense: ${expense.place || 'Unknown'} - $${expense.amount.toFixed(2)}`,
+      {
+        amount: expense.amount,
+        category: expense.type,
+        date: expense.date,
+        place: expense.place
+      }
+    );
+
+    // Log insurance status change if it changed
+    const oldClaimStatus = oldExpense.claim_status;
+    const newClaimStatus = expense.claim_status;
+    if (oldClaimStatus !== newClaimStatus && (oldClaimStatus || newClaimStatus)) {
+      await activityLogService.logEvent(
+        'insurance_status_changed',
+        'expense',
+        id,
+        `Insurance status changed: ${oldClaimStatus || 'None'} → ${newClaimStatus || 'None'}`,
+        {
+          previousStatus: oldClaimStatus || null,
+          newStatus: newClaimStatus || null,
+          place: expense.place,
+          amount: expense.amount
+        }
+      );
+    }
+
     if (monthsToCreate === 0) {
       return updatedExpense;
     }
@@ -579,6 +626,20 @@ class ExpenseService {
 
     if (deleted && expense) {
       this._triggerBudgetRecalculation(expense.date, expense.type);
+      
+      // Log activity event
+      await activityLogService.logEvent(
+        'expense_deleted',
+        'expense',
+        id,
+        `Deleted expense: ${expense.place || 'Unknown'} - $${expense.amount.toFixed(2)}`,
+        {
+          amount: expense.amount,
+          category: expense.type,
+          date: expense.date,
+          place: expense.place
+        }
+      );
     }
 
     return deleted;

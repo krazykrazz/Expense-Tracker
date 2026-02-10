@@ -209,10 +209,23 @@ describe('BackupService - Restore Functionality', () => {
   test('restoreBackup restores database from archive', async () => {
     const budgetRepository = require('../repositories/budgetRepository');
     
+    // Use a unique year/month combination to avoid conflicts
+    const uniqueYear = 2098;
+    const uniqueMonth = 6;
+    
+    // Clean up any existing test budget first
+    const db = await require('../database/db').getDatabase();
+    await new Promise((resolve, reject) => {
+      db.run('DELETE FROM budgets WHERE year = ? AND month = ? AND category = ?', 
+        [uniqueYear, uniqueMonth, 'Gas'], 
+        (err) => err ? reject(err) : resolve()
+      );
+    });
+    
     // Create a test budget
     const testBudget = await budgetRepository.create({
-      year: 2098,
-      month: 6,
+      year: uniqueYear,
+      month: uniqueMonth,
       category: 'Gas',
       limit: 500.00
     });

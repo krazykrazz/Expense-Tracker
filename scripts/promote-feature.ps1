@@ -262,7 +262,7 @@ if ($DirectMerge) {
     Write-Host "🎉 Feature '$FeatureName' successfully promoted to main!" -ForegroundColor Green
     Write-Host ""
     Write-Host "Next steps:" -ForegroundColor Cyan
-    Write-Host "1. Consider building and pushing Docker image: .\build-and-push.ps1 -Tag latest" -ForegroundColor White
+    Write-Host "1. Consider building and pushing Docker image: .\scripts\build-and-push.ps1 -Tag latest" -ForegroundColor White
     Write-Host "2. Monitor application for any issues" -ForegroundColor White
     Write-Host "3. Clean up feature branch (optional):" -ForegroundColor White
     Write-Host "   git branch -d $BranchName" -ForegroundColor Gray

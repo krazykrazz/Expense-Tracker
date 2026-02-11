@@ -123,5 +123,8 @@ SECURITY_REVIEW_FOR_PUBLIC_REPO.md
 CLEANUP_RECOMMENDATIONS.md
 CLEANUP_SUMMARY.md
 
-# Kiro IDE settings (user-specific)
-.kiro/settings/
+# Kiro IDE (internal development tooling)
+.kiro/
+
+# Archive (internal development history)
+archive/

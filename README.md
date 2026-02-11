@@ -135,8 +135,7 @@ expense-tracker/
 ├── backend/          # Node.js/Express API server
 ├── frontend/         # React application
 ├── docs/             # Documentation
-├── scripts/          # Deployment and utility scripts
-└── archive/          # Archived specs and reports
+└── scripts/          # Deployment and utility scripts
 ```
 
 For detailed architecture information, see **[Development Documentation](./docs/development/)**.
@@ -175,4 +174,4 @@ MIT
 
 ## Contributing
 
-Pull requests are welcome! For major changes, please open an issue first to discuss what you would like to change.
+Collaborators welcome! If you'd like to contribute, please open an issue first to discuss what you have in mind. For bug fixes and small improvements, feel free to submit a pull request directly.

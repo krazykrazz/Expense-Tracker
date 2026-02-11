@@ -4592,6 +4592,68 @@ async function migrateAddActivityLogsTable(db) {
 }
 
 /**
+ * Migration: Add settings table
+ * 
+ * Creates the settings table for storing application configuration key-value pairs.
+ * Used for configurable retention policy and other system settings.
+ * 
+ * Requirements: 1.1, 6.1
+ */
+async function migrateAddSettingsTable(db) {
+  const migrationName = 'add_settings_table_v1';
+  
+  // Check if already applied
+  const isApplied = await checkMigrationApplied(db, migrationName);
+  if (isApplied) {
+    logger.info(`Migration "${migrationName}" already applied, skipping`);
+    return;
+  }
+
+  logger.info(`Running migration: ${migrationName}`);
+
+  // Create backup
+  await createBackup();
+
+  return new Promise((resolve, reject) => {
+    db.serialize(() => {
+      db.run('BEGIN TRANSACTION', (err) => {
+        if (err) {
+          return reject(err);
+        }
+
+        // Create settings table
+        db.run(`
+          CREATE TABLE IF NOT EXISTS settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+          )
+        `, (err) => {
+          if (err) {
+            db.run('ROLLBACK');
+            return reject(err);
+          }
+
+          logger.info('Created settings table');
+
+          // Mark migration as applied and commit
+          markMigrationApplied(db, migrationName).then(() => {
+            db.run('COMMIT', (err) => {
+              if (err) {
+                db.run('ROLLBACK');
+                return reject(err);
+              }
+              logger.info(`Migration "${migrationName}" completed successfully`);
+              resolve();
+            });
+          }).catch(reject);
+        });
+      });
+    });
+  });
+}
+
+/**
  * Run all pending migrations
  */
 async function runMigrations(db) {
@@ -4628,6 +4690,7 @@ async function runMigrations(db) {
     await migrateAddLoanPaymentsTable(db);
     await migrateAddFixedExpenseLoanLinkage(db);
     await migrateAddActivityLogsTable(db);
+    await migrateAddSettingsTable(db);
     logger.info('All migrations completed');
   } catch (error) {
     logger.error('Migration failed:', error.message);
@@ -4658,5 +4721,6 @@ module.exports = {
   migrateAddIsUserEnteredToBillingCycles,
   migrateAddLoanPaymentsTable,
   migrateAddFixedExpenseLoanLinkage,
-  migrateAddActivityLogsTable
+  migrateAddActivityLogsTable,
+  migrateAddSettingsTable
 };

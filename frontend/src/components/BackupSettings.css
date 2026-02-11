@@ -1382,3 +1382,221 @@
     transform: none;
   }
 }
+
+/* Retention Settings Styles */
+/* Requirements: 3.1 - Retention policy configuration UI */
+
+.retention-settings-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4, 16px);
+  margin-top: var(--spacing-4, 16px);
+}
+
+.retention-impact-info {
+  background: var(--bg-card, white);
+  padding: var(--spacing-4, 16px);
+  border-radius: var(--radius-md, 8px);
+  border: 1px solid #e0e4ff;
+  margin-top: var(--spacing-4, 16px);
+}
+
+.retention-impact-info p {
+  margin: var(--spacing-2, 8px) 0;
+  font-size: var(--text-sm, 13px);
+  color: var(--text-secondary, #555);
+  font-family: var(--font-sans);
+}
+
+.retention-impact-info strong {
+  color: var(--color-primary, #0ea5e9);
+  font-weight: var(--font-semibold, 600);
+}
+
+/* Activity Log Table Styles */
+/* Requirements: 3.1 - Table layout for activity log display */
+
+.activity-table-container {
+  overflow-x: auto;
+  margin-bottom: var(--spacing-4, 16px);
+  border-radius: var(--radius-md, 8px);
+  border: 1px solid var(--border-default, #e0e0e0);
+}
+
+.activity-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--bg-card, white);
+  font-size: var(--text-sm, 13px);
+  font-family: var(--font-sans);
+}
+
+.activity-table thead {
+  background: var(--bg-muted, #f8f9ff);
+  border-bottom: 2px solid var(--border-default, #e0e0e0);
+}
+
+.activity-table th {
+  padding: var(--spacing-3, 12px);
+  text-align: left;
+  font-weight: var(--font-semibold, 600);
+  color: var(--text-secondary, #555);
+  font-size: var(--text-sm, 13px);
+  white-space: nowrap;
+}
+
+.activity-table tbody tr {
+  border-bottom: 1px solid var(--border-muted, #f0f0f0);
+}
+
+.activity-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.activity-table-row {
+  transition: var(--transition-colors);
+}
+
+.activity-table-row:hover {
+  background: var(--bg-muted, #f8f9ff);
+}
+
+.activity-table td {
+  padding: var(--spacing-3, 12px);
+  color: var(--text-primary, #333);
+  vertical-align: top;
+}
+
+.activity-col-time {
+  width: 180px;
+  min-width: 150px;
+}
+
+.activity-col-type {
+  width: 150px;
+  min-width: 120px;
+}
+
+.activity-col-details {
+  width: auto;
+  min-width: 200px;
+}
+
+/* Event Type Badge Styles */
+.event-type-badge {
+  display: inline-block;
+  padding: var(--spacing-1, 4px) var(--spacing-2, 8px);
+  border-radius: var(--radius-sm, 4px);
+  font-size: var(--text-xs, 12px);
+  font-weight: var(--font-medium, 500);
+  font-family: var(--font-sans);
+  white-space: nowrap;
+}
+
+/* Entity-specific badge colors */
+.event-type-expense {
+  background: var(--color-expense-light, #e3f2fd);
+  color: var(--color-expense-dark, #1565c0);
+  border: 1px solid var(--color-expense, #2196f3);
+}
+
+.event-type-income {
+  background: var(--color-positive-light, #e8f5e9);
+  color: var(--color-positive-dark, #2e7d32);
+  border: 1px solid var(--color-positive, #4caf50);
+}
+
+.event-type-fixed_expense {
+  background: #fff3e0;
+  color: #e65100;
+  border: 1px solid #ff9800;
+}
+
+.event-type-loan {
+  background: #fce4ec;
+  color: #880e4f;
+  border: 1px solid #e91e63;
+}
+
+.event-type-investment {
+  background: #f3e5f5;
+  color: #4a148c;
+  border: 1px solid #9c27b0;
+}
+
+.event-type-budget {
+  background: #fff9c4;
+  color: #f57f17;
+  border: 1px solid #fbc02d;
+}
+
+.event-type-payment_method {
+  background: #e0f2f1;
+  color: #004d40;
+  border: 1px solid #009688;
+}
+
+.event-type-person {
+  background: #fce4ec;
+  color: #880e4f;
+  border: 1px solid #e91e63;
+}
+
+.event-type-backup {
+  background: #e8eaf6;
+  color: #283593;
+  border: 1px solid #3f51b5;
+}
+
+.event-type-settings {
+  background: #f5f5f5;
+  color: #424242;
+  border: 1px solid #757575;
+}
+
+/* Default badge style for unknown entity types */
+.event-type-badge:not([class*="event-type-"]) {
+  background: var(--bg-muted, #f5f5f5);
+  color: var(--text-secondary, #555);
+  border: 1px solid var(--border-default, #ddd);
+}
+
+/* Responsive table styles */
+@media (max-width: 768px) {
+  .activity-table-container {
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+  }
+
+  .activity-table {
+    font-size: var(--text-xs, 12px);
+  }
+
+  .activity-table th,
+  .activity-table td {
+    padding: var(--spacing-2, 8px);
+  }
+
+  .activity-col-time {
+    width: 120px;
+    min-width: 100px;
+  }
+
+  .activity-col-type {
+    width: 100px;
+    min-width: 90px;
+  }
+
+  .event-type-badge {
+    font-size: 10px;
+    padding: 2px 6px;
+  }
+}
+
+/* Accessibility: Respect reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .activity-table-row {
+    transition: none;
+  }
+}

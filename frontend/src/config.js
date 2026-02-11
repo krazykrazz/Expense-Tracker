@@ -156,7 +156,8 @@ export const API_ENDPOINTS = {
   
   // Activity Logs
   ACTIVITY_LOGS: `${API_BASE_URL}/api/activity-logs`,
-  ACTIVITY_LOGS_STATS: `${API_BASE_URL}/api/activity-logs/stats`
+  ACTIVITY_LOGS_STATS: `${API_BASE_URL}/api/activity-logs/stats`,
+  ACTIVITY_LOGS_SETTINGS: `${API_BASE_URL}/api/activity-logs/settings`
 };
 
 export default API_BASE_URL;

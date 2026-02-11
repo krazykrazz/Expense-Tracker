@@ -88,44 +88,32 @@ const ActivityLogTable = ({
         </div>
       ) : (
         <>
-          <table className="activity-table">
-            <thead>
-              <tr>
-                <th className="activity-col-action">Action</th>
-                <th className="activity-col-timestamp">Timestamp</th>
-              </tr>
-            </thead>
-            <tbody>
-              {events.map((event) => {
-                const entityType = getEntityType(event.event_type);
-                const eventTypeLabel = getEventTypeLabel(event.event_type);
-                const badgeColor = getEventTypeColor(entityType);
+          <div className="activity-event-list">
+            {events.map((event) => {
+              const entityType = getEntityType(event.event_type);
+              const eventTypeLabel = getEventTypeLabel(event.event_type);
+              const badgeColor = getEventTypeColor(entityType);
 
-                return (
-                  <tr key={event.id} className="activity-event-row">
-                    <td className="activity-col-action">
-                      <div className="activity-event-content">
-                        {eventTypeLabel && (
-                          <span 
-                            className="activity-event-badge"
-                            style={{ backgroundColor: badgeColor }}
-                          >
-                            {eventTypeLabel}
-                          </span>
-                        )}
-                        <span className="activity-event-text">
-                          {event.user_action}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="activity-col-timestamp">
-                      {formatRelativeTime(event.timestamp)}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+              return (
+                <div key={event.id} className="activity-event-item">
+                  <span className="activity-event-timestamp">
+                    {formatRelativeTime(event.timestamp)}
+                  </span>
+                  <span className="activity-event-separator">-</span>
+                  <span 
+                    className="activity-event-badge"
+                    style={{ backgroundColor: badgeColor }}
+                  >
+                    {eventTypeLabel}
+                  </span>
+                  <span className="activity-event-separator">-</span>
+                  <span className="activity-event-details">
+                    {event.user_action}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
 
           {hasMore && (
             <div className="activity-load-more">

@@ -4,7 +4,7 @@
  */
 
 import { API_ENDPOINTS } from '../config.js';
-import { apiGet, logApiError } from '../utils/apiClient.js';
+import { apiGet, apiPut, logApiError } from '../utils/apiClient.js';
 
 /**
  * Fetch recent activity log events with pagination
@@ -69,6 +69,52 @@ export const fetchCleanupStats = async () => {
     return await apiGet(API_ENDPOINTS.ACTIVITY_LOGS_STATS, 'fetch activity log cleanup statistics');
   } catch (error) {
     logApiError('fetching activity log cleanup statistics', error);
+    throw error;
+  }
+};
+
+/**
+ * Fetch current retention policy settings
+ * @returns {Promise<Object>} Retention settings object
+ * 
+ * Response format:
+ * {
+ *   maxAgeDays: number,
+ *   maxCount: number
+ * }
+ * 
+ * _Requirements: 2.1_
+ */
+export const fetchRetentionSettings = async () => {
+  try {
+    return await apiGet(API_ENDPOINTS.ACTIVITY_LOGS_SETTINGS, 'fetch retention settings');
+  } catch (error) {
+    logApiError('fetching retention settings', error);
+    throw error;
+  }
+};
+
+/**
+ * Update retention policy settings
+ * @param {number} maxAgeDays - Maximum age in days (7-365)
+ * @param {number} maxCount - Maximum event count (100-10000)
+ * @returns {Promise<Object>} Updated retention settings object
+ * 
+ * Response format:
+ * {
+ *   maxAgeDays: number,
+ *   maxCount: number,
+ *   message: string
+ * }
+ * 
+ * _Requirements: 2.2_
+ */
+export const updateRetentionSettings = async (maxAgeDays, maxCount) => {
+  try {
+    const data = { maxAgeDays, maxCount };
+    return await apiPut(API_ENDPOINTS.ACTIVITY_LOGS_SETTINGS, data, 'update retention settings');
+  } catch (error) {
+    logApiError('updating retention settings', error);
     throw error;
   }
 };

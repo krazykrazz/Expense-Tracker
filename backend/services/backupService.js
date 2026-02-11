@@ -334,6 +334,8 @@ class BackupService {
       return;
     }
 
+    const MIN_BACKUP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+
     const checkAndBackup = () => {
       const nextBackup = this.getNextBackupTime();
       if (!nextBackup) return;
@@ -344,6 +346,19 @@ class BackupService {
       logger.info(`Next backup scheduled for: ${nextBackup.toLocaleString()}`);
 
       this.scheduledJob = setTimeout(async () => {
+        // Guard against duplicate backups caused by setTimeout timer drift.
+        // setTimeout can fire a few seconds early, causing a backup at e.g. 1:59:55,
+        // then getNextBackupTime() still sees today's 2:00:00 as future and schedules
+        // another immediate backup. Skip if last backup was less than 5 minutes ago.
+        if (this.config.lastBackup) {
+          const timeSinceLastBackup = Date.now() - new Date(this.config.lastBackup).getTime();
+          if (timeSinceLastBackup < MIN_BACKUP_INTERVAL_MS) {
+            logger.info(`Skipping scheduled backup — last backup was ${Math.round(timeSinceLastBackup / 1000)}s ago (minimum interval: ${MIN_BACKUP_INTERVAL_MS / 1000}s)`);
+            checkAndBackup();
+            return;
+          }
+        }
+
         logger.info('Performing scheduled backup...');
         try {
           const result = await this.performBackup();

@@ -8,6 +8,7 @@ const { validateYearMonth } = require('../utils/validators');
 jest.mock('../repositories/fixedExpenseRepository');
 jest.mock('../repositories/paymentMethodRepository');
 jest.mock('../repositories/loanRepository');
+jest.mock('./activityLogService');
 jest.mock('../utils/validators');
 
 // Default mock payment methods for validation
@@ -274,6 +275,12 @@ describe('fixedExpenseService', () => {
   });
 
   describe('updateFixedExpense', () => {
+    const mockOldExpense = { id: 1, year: 2024, month: 11, name: 'Rent', amount: 1200, category: 'Housing', payment_type: 'Debit', payment_due_day: null, linked_loan_id: null };
+
+    beforeEach(() => {
+      fixedExpenseRepository.findById.mockResolvedValue(mockOldExpense);
+    });
+
     it('should update existing fixed expense', async () => {
       const updateData = {
         name: 'Updated Rent',
@@ -380,7 +387,7 @@ describe('fixedExpenseService', () => {
     });
 
     it('should return null when fixed expense not found', async () => {
-      fixedExpenseRepository.updateFixedExpense.mockResolvedValue(null);
+      fixedExpenseRepository.findById.mockResolvedValue(null);
 
       const result = await fixedExpenseService.updateFixedExpense(999, { name: 'Test', amount: 100, category: 'Housing', payment_type: 'Cash' });
 
@@ -389,6 +396,10 @@ describe('fixedExpenseService', () => {
   });
 
   describe('deleteFixedExpense', () => {
+    beforeEach(() => {
+      fixedExpenseRepository.findById.mockResolvedValue({ id: 1, name: 'Rent', amount: 1200, category: 'Housing', payment_type: 'Debit' });
+    });
+
     it('should delete fixed expense by id', async () => {
       fixedExpenseRepository.deleteFixedExpense.mockResolvedValue(true);
 

@@ -32,7 +32,7 @@ cd backend && npm start
 cd frontend && npm run dev
 ```
 
-See **[Development Setup](./docs/development/SETUP.md)** for local registry setup and development workflow.
+See **[Startup Guide](./docs/guides/STARTUP_GUIDE.md)** for detailed development setup and troubleshooting.
 
 ## Key Features
 

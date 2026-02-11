@@ -52,6 +52,7 @@ if ($Stop) {
     }
     exit 0
 }
+
 # Get git metadata
 $gitSha = git rev-parse --short HEAD 2>$null
 $gitBranch = git rev-parse --abbrev-ref HEAD 2>$null
@@ -92,6 +93,7 @@ if ($SkipBuild -and -not $imageExists) {
     Write-Info "Run without -SkipBuild to build the image first."
     exit 1
 }
+
 # Build SHA image if needed
 if (-not $SkipBuild) {
     if ($imageExists) {
@@ -155,6 +157,7 @@ if (-not $SkipBuild) {
         Write-Success "SHA image pushed to registry"
     }
 }
+
 # Tag for preview
 Write-Info "Tagging SHA image for preview: preview-${branchTag}"
 docker tag $shaImage $previewImage

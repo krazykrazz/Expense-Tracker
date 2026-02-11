@@ -28,19 +28,6 @@ docker run -d -p 5000:5000 --restart=always --name registry registry:2
 .\scripts\build-and-push.ps1 -MultiPlatform
 ```
 
-### Windows (Batch)
-
-```batch
-# Default build
-scripts\windows\build-and-push.bat
-
-# Development build
-scripts\windows\build-and-push.bat --dev
-
-# Multi-platform build
-scripts\windows\build-and-push.bat --multi-platform
-```
-
 ### Manual Docker Commands
 
 ```bash

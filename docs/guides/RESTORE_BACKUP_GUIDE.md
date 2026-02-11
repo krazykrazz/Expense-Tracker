@@ -11,38 +11,7 @@ All database backups include:
 - **Investments**: Investment accounts (TFSA, RRSP) with monthly value history
 - **Configuration**: Recurring expenses and other settings
 
-## Quick Start - Easiest Method
-
-Use the automated script:
-
-```bash
-scripts\windows\restore-backup.bat "path\to\your\backup.db"
-```
-
-**Examples:**
-```bash
-# From backend/database folder
-scripts\windows\restore-backup.bat "backend\database\expenses.db"
-
-# From backend/backups folder
-scripts\windows\restore-backup.bat "backend\backups\expense-tracker-backup-2025-11-19.db"
-
-# From any location
-scripts\windows\restore-backup.bat "C:\Users\YourName\Downloads\expenses.db"
-```
-
-The script will:
-1. Stop the Docker container
-2. Create the config directory structure
-3. Copy your backup to `config/database/expenses.db`
-4. Restart the Docker container
-5. Verify the container is healthy
-
----
-
-## Manual Method
-
-If you prefer to do it manually:
+## Restore Process
 
 ### Step 1: Stop the Docker container
 ```bash
@@ -110,11 +79,10 @@ docker-compose restart
 ### Database file is locked
 ```bash
 # Make sure no other processes are using the database
-# Stop any local Node.js servers
-scripts\windows\stop-servers.bat
+# Stop the Docker container
+docker-compose down
 
 # Then try again
-docker-compose down
 # Copy backup file
 docker-compose up -d
 ```
@@ -124,8 +92,7 @@ docker-compose up -d
 # Backup current Docker database first
 copy "config\database\expenses.db" "config\backups\pre-restore-backup.db"
 
-# Then restore your backup
-scripts\windows\restore-backup.bat "path\to\backup.db"
+# Then restore your backup using the manual steps above
 ```
 
 ---
@@ -150,13 +117,16 @@ You can also restore backups through the web interface:
 If you're migrating from the old non-Docker setup:
 
 ```bash
-# 1. Stop old servers
-scripts\windows\stop-servers.bat
+# 1. Stop the Docker container
+docker-compose down
 
-# 2. Use the restore script with your current database
-scripts\windows\restore-backup.bat "backend\database\expenses.db"
+# 2. Copy your current database to the Docker config location
+copy "backend\database\expenses.db" "config\database\expenses.db"
 
-# 3. Done! Access at http://localhost:2424
+# 3. Start the Docker container
+docker-compose up -d
+
+# 4. Done! Access at http://localhost:2424
 ```
 
 ---

@@ -200,5 +200,5 @@ Docker automatically pulls the correct image for your platform.
 ## For Developers
 
 If you want to build images locally or contribute to development, see:
-- [Development Setup](../development/SETUP.md)
-- [Deployment Workflow](../deployment/DEPLOYMENT_WORKFLOW.md)
+- [Startup Guide](./STARTUP_GUIDE.md) - Development setup and troubleshooting
+- [Deployment Workflow](../deployment/DEPLOYMENT_WORKFLOW.md) - SHA-based deployment process

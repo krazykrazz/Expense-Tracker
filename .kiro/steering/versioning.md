@@ -37,13 +37,49 @@ Follow Semantic Versioning (SEMVER): `MAJOR.MINOR.PATCH`
 When making changes that warrant a version bump:
 
 1. **Determine the version type** based on the change
-2. **Update all four locations**:
+2. **Update all four application version locations**:
    - `frontend/package.json` - "version" field
    - `backend/package.json` - "version" field  
    - `frontend/src/App.jsx` - Footer version display
    - `frontend/src/components/BackupSettings.jsx` - In-app changelog section
-3. **Keep versions synchronized** across all locations
-4. **Document the change** in `CHANGELOG.md` following the Keep a Changelog format
+3. **Update documentation version references** (see Documentation Updates section below)
+4. **Keep versions synchronized** across all locations
+5. **Document the change** in `CHANGELOG.md` following the Keep a Changelog format
+
+## Documentation Updates
+
+When releasing a new version, update version references in documentation files to keep examples current:
+
+### Files to Update
+
+1. **`docs/guides/DOCKER_DEPLOYMENT.md`**
+   - Update version examples in "Available Tags" section
+   - Update version in "Using Specific Versions" examples
+   - Update version in docker-compose.yml examples
+   - Update version in "Backup and Restore" date examples
+
+2. **`docs/deployment/SHA_BASED_CONTAINERS.md`**
+   - Update version examples in "Prerequisites: Version Bump on Main" section
+   - Update SHA examples throughout (use actual release SHA)
+   - Update version in "Build Image" output examples
+   - Update version in "Best Practices" examples
+
+3. **`docker-compose.ghcr.yml`**
+   - Update version tag in image reference
+   - Update SHA examples in comments
+
+### Version Reference Guidelines
+
+- Use the **current release version** in all examples (e.g., v5.10.0)
+- Use the **actual release SHA** from the version bump commit
+- Update **date examples** to reflect current year/month
+- Keep examples **consistent** across all documentation files
+
+### When to Update
+
+- **Always** update documentation when deploying a new MINOR or MAJOR version
+- **Optional** for PATCH versions unless examples are significantly outdated
+- Update as part of the version bump commit before building the release
 
 ## Examples
 
@@ -105,10 +141,11 @@ When the user requests to push changes to production, build for production, or d
    - Build the frontend
    - Commit changes
    - Create and push git tag
-   - Inform the user of the version bump
+   - **Note**: Documentation version references should be updated manually (see Documentation Updates section)
 
 4. **Manual version bumps** (only when not using the deployment script):
-   - Update all four locations manually
+   - Update all four application version locations manually
+   - Update documentation version references (see Documentation Updates section)
    - Update CHANGELOG.md
    - Rebuild the frontend
    - Commit: `git add -A && git commit -m "vX.Y.Z: description"`

@@ -20,7 +20,7 @@ cp .env.example .env
 npm run dev
 ```
 
-The application will be available at http://localhost:3000
+The application will be available at http://localhost:5173
 
 ## Build
 
@@ -31,6 +31,6 @@ npm run build
 
 ## API Configuration
 
-The frontend communicates with the backend API. By default, it connects to `http://localhost:5000`.
+The frontend communicates with the backend API. By default, it connects to `http://localhost:2424`.
 
 You can override this by setting the `VITE_API_BASE_URL` environment variable in a `.env` file.

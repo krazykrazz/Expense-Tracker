@@ -104,7 +104,7 @@ The deployment workflow ensures:
     
     Output shows:
     ```
-    SHA Image: localhost:5000/expense-tracker:abc1234
+    SHA Image: ghcr.io/krazykrazz/expense-tracker:abc1234
     Version: 5.8.1
     Git SHA: abc1234
     ```
@@ -270,8 +270,8 @@ If production deployment has issues:
 
 2. **Retag that SHA for production**:
    ```powershell
-   docker tag localhost:5000/expense-tracker:def5678 localhost:5000/expense-tracker:production
-   docker push localhost:5000/expense-tracker:production
+   docker tag ghcr.io/krazykrazz/expense-tracker:def5678 ghcr.io/krazykrazz/expense-tracker:latest
+   docker push ghcr.io/krazykrazz/expense-tracker:latest
    ```
 
 3. **Restart production container**:
@@ -317,7 +317,7 @@ docker logs expense-tracker-test
 docker inspect expense-tracker | Select-String "Image"
 ```
 
-**Should show:** `localhost:5000/expense-tracker:production`
+**Should show:** `ghcr.io/krazykrazz/expense-tracker:latest`
 
 ## See Also
 

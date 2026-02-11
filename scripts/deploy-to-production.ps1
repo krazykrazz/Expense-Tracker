@@ -277,9 +277,6 @@ Write-Host "Docker Tag: latest" -ForegroundColor Green
 Write-Host "Container: expense-tracker" -ForegroundColor Green
 Write-Host "=========================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "NOTE: This deployed to local registry (localhost:5000)" -ForegroundColor Cyan
-Write-Host "For public releases, GitHub Actions will automatically:" -ForegroundColor Cyan
-Write-Host "  - Build and push to GHCR (ghcr.io/krazykrazz/expense-tracker)" -ForegroundColor Cyan
-Write-Host "  - Create GitHub release with GHCR references" -ForegroundColor Cyan
-Write-Host "  - Attach docker-compose file for public use" -ForegroundColor Cyan
+Write-Host "NOTE: Images are pushed to GHCR (ghcr.io/krazykrazz/expense-tracker)" -ForegroundColor Cyan
+Write-Host "CI also builds and pushes to GHCR on merge to main." -ForegroundColor Cyan
 Write-Host ""

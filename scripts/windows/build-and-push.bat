@@ -9,7 +9,7 @@ setlocal
 
 REM Default values
 set TAG=latest
-set REGISTRY=localhost:5000
+set REGISTRY=ghcr.io/krazykrazz
 set MULTI_PLATFORM=
 
 REM Parse command line arguments

@@ -8,7 +8,7 @@ param(
     [string]$Environment,
     
     [Parameter(Mandatory=$false)]
-    [string]$Registry = 'localhost:5000',
+    [string]$Registry = 'ghcr.io/krazykrazz',
     
     [Parameter(Mandatory=$false)]
     [switch]$BuildOnly,
@@ -87,14 +87,25 @@ if (-not $skipBuild) {
     
     # Check registry accessibility (optional, skip if SkipAuth)
     if (-not $SkipAuth) {
-        Write-Info "Checking registry accessibility..."
-        try {
-            $response = Invoke-WebRequest -Uri "http://$Registry/v2/" -Method Get -TimeoutSec 5 -ErrorAction SilentlyContinue
-            if ($response.StatusCode -eq 200) {
-                Write-Success "Registry is accessible"
+        Write-Info "Checking GHCR authentication..."
+        $authCheck = docker login ghcr.io --get-login 2>$null
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warning "Not authenticated to GHCR. Attempting login via gh CLI..."
+            $ghToken = gh auth token 2>$null
+            if ($LASTEXITCODE -eq 0 -and $ghToken) {
+                $ghToken | docker login ghcr.io -u krazykrazz --password-stdin 2>$null
+                if ($LASTEXITCODE -eq 0) {
+                    Write-Success "Authenticated to GHCR via gh CLI"
+                } else {
+                    Write-Error "Failed to authenticate to GHCR. Run: gh auth login"
+                    exit 1
+                }
+            } else {
+                Write-Error "Not authenticated. Run: gh auth login  OR  docker login ghcr.io"
+                exit 1
             }
-        } catch {
-            Write-Warning "Could not verify registry accessibility. Proceeding anyway..."
+        } else {
+            Write-Success "Authenticated to GHCR"
         }
     }
     

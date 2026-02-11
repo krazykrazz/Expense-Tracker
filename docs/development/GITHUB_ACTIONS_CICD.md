@@ -7,10 +7,9 @@ This document provides detailed documentation for the GitHub Actions CI/CD workf
 
 ## Overview
 
-The project uses two GitHub Actions workflows:
+The project uses a single GitHub Actions workflow:
 
-1. **CI Workflow** (`ci.yml`) - Automated testing on pushes and pull requests
-2. **Docker Workflow** (`docker.yml`) - Docker image builds on merge to main
+1. **CI Workflow** (`ci.yml`) - Automated testing on pushes and pull requests, plus Docker image builds and pushes to GHCR on merge to main
 
 ### PR-Based CI Integration
 
@@ -188,70 +187,53 @@ git pull origin main
 
 We recommend `--merge` (default) to preserve the feature branch history.
 
-## Docker Workflow
+## Docker Build & Push (GHCR)
 
 ### Location
 
-`.github/workflows/docker.yml`
+Integrated into `.github/workflows/ci.yml` as the `build-and-push-ghcr` job.
 
 ### Triggers
 
 | Event | Branches | Description |
 |-------|----------|-------------|
-| `push` | `main` | Runs when code is merged to main |
-| `workflow_dispatch` | - | Manual trigger from GitHub UI |
+| `push` | `main` | Runs after tests pass when code is merged to main |
 
 ### What It Does
 
 1. Checks out the repository
-2. Extracts version from `package.json`
-3. Sets up Docker Buildx
-4. Builds the Docker image with version tags
-5. Generates a build summary
+2. Sets up Docker Buildx
+3. Authenticates to GHCR
+4. Builds the Docker image with SHA, version, and `latest` tags
+5. Pushes to `ghcr.io/krazykrazz/expense-tracker`
+6. Creates or updates a GitHub release with a docker-compose file
 
-### Important Limitation: localhost:5000 Registry
+### GHCR Integration
 
-**The Docker workflow builds but does NOT push images.**
+**The CI workflow builds and pushes images to GHCR on merge to main.** The `build-and-push-ghcr` job in `ci.yml` handles this automatically:
 
-Why? GitHub Actions runners cannot access `localhost:5000` because:
-- GitHub runners are remote machines
-- They have no network access to your local machine
-- The local Docker registry is only accessible from your development machine
+- Builds the Docker image after all tests pass
+- Pushes to `ghcr.io/krazykrazz/expense-tracker` with SHA, version, and `latest` tags
+- Creates GitHub releases with docker-compose files attached
 
 ### Local Deployment
 
-For actual deployment to your local registry, use the PowerShell script:
+For local staging/production deployment, use the PowerShell script which also targets GHCR:
 
 ```powershell
-# Build and push with latest tag
-.\scripts\build-and-push.ps1 -Tag latest
+# Build and push SHA image to GHCR
+.\scripts\build-and-push.ps1
 
-# Build and push with specific version
-.\scripts\build-and-push.ps1 -Tag 4.12.0
+# Deploy to staging
+.\scripts\build-and-push.ps1 -Environment staging
 
-# Multi-platform build (x86_64 and ARM64)
-.\scripts\build-and-push.ps1 -Tag latest -MultiPlatform
+# Promote to production
+.\scripts\build-and-push.ps1 -Environment latest
 ```
 
 ### Future Registry Integration
 
-If you set up an external registry (Docker Hub, GitHub Container Registry, AWS ECR), you can modify the workflow to push:
-
-```yaml
-# Example: Push to GitHub Container Registry
-- name: Login to GitHub Container Registry
-  uses: docker/login-action@v3
-  with:
-    registry: ghcr.io
-    username: ${{ github.actor }}
-    password: ${{ secrets.GITHUB_TOKEN }}
-
-- name: Build and push
-  uses: docker/build-push-action@v5
-  with:
-    push: true  # Enable pushing
-    tags: ghcr.io/${{ github.repository }}:${{ steps.version.outputs.version }}
-```
+GHCR is already integrated. The CI workflow pushes to `ghcr.io/krazykrazz/expense-tracker` on every merge to main. Both local scripts and CI use GHCR as the source of truth for staging and production images.
 
 ## Viewing Workflow Results
 

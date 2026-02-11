@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   expense-tracker:
-    image: localhost:5000/expense-tracker:latest
+    image: ghcr.io/krazykrazz/expense-tracker:latest
     container_name: expense-tracker
     ports:
       - "2424:2424"
@@ -21,15 +21,15 @@ services:
       start_period: 40s
 
   # Staging container for testing new versions with production data copy
-  # SHA-Based Workflow:
-  #   1. Build SHA image: .\build-and-push.ps1
-  #   2. Deploy to staging: .\build-and-push.ps1 -Environment staging
+  # GHCR Workflow:
+  #   1. CI builds and pushes to GHCR on merge to main
+  #   2. Pull staging image: docker compose pull expense-tracker-test
   #   3. Copy a production backup to ./staging-data/
-  #   4. docker-compose --profile staging up expense-tracker-test
+  #   4. docker compose --profile staging up expense-tracker-test
   #   5. Test at http://localhost:2627
-  #   6. If good, promote to latest: .\build-and-push.ps1 -Environment latest
+  #   6. If good, promote to latest: .\scripts\build-and-push.ps1 -Environment latest
   expense-tracker-test:
-    image: localhost:5000/expense-tracker:staging
+    image: ghcr.io/krazykrazz/expense-tracker:staging
     container_name: expense-tracker-test
     ports:
       - "2627:2424"

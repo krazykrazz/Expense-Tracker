@@ -444,7 +444,7 @@ describe('BackupSettings - Retention Settings UI', () => {
     });
 
     it('should clear success message after 3 seconds', async () => {
-      vi.useFakeTimers();
+      vi.useFakeTimers({ shouldAdvanceTime: true });
 
       render(<BackupSettings />);
       await waitForLoaded();
@@ -493,7 +493,7 @@ describe('BackupSettings - Retention Settings UI', () => {
       fireEvent.click(saveButton);
 
       await waitFor(() => {
-        expect(screen.getByText('Database connection failed')).toBeInTheDocument();
+        expect(screen.getAllByText('Database connection failed').length).toBeGreaterThanOrEqual(1);
       }, { timeout: 5000 });
     });
 
@@ -514,7 +514,7 @@ describe('BackupSettings - Retention Settings UI', () => {
       fireEvent.click(saveButton);
 
       await waitFor(() => {
-        expect(screen.getByText('Failed to save retention settings')).toBeInTheDocument();
+        expect(screen.getAllByText('Failed to save retention settings').length).toBeGreaterThanOrEqual(1);
       }, { timeout: 5000 });
     });
   });

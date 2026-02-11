@@ -332,10 +332,19 @@ View a comprehensive history of all data changes in the application:
 
 **Features:**
 - **Event Tracking**: See all creates, updates, and deletes across expenses, loans, investments, budgets, and more
+- **Change Details**: Update events show exactly what changed (e.g., "amount: $30.00 → $45.00, category: health → medical")
 - **Human-Readable Timestamps**: Events show as "2 hours ago", "Yesterday at 3:45 PM", etc.
 - **Display Limit**: Choose to show 25, 50, 100, or 200 events (preference saved automatically)
 - **Load More**: Load additional events with a running count ("Showing 50 of 234 events")
-- **Automatic Cleanup**: Events older than 90 days are automatically removed
+- **Automatic Cleanup**: Events are automatically cleaned up based on configurable retention settings
+
+**Configuring Retention:**
+1. Click **"⚙️ Settings"** in the header
+2. Go to the **"General"** tab
+3. Under **"Activity Log Retention Policy"**, set:
+   - **Maximum Age**: How many days to keep events (7–365, default: 90)
+   - **Maximum Count**: Maximum number of events to retain (100–10,000, default: 1,000)
+4. Click **Save** to apply
 
 **Use Cases:**
 - Track when expenses were added or modified

@@ -51,7 +51,8 @@ vi.mock('../config', () => ({
     BACKUP_STATS: '/api/backup/stats',
     VERSION: '/api/version',
     ACTIVITY_LOGS: '/api/activity-logs',
-    ACTIVITY_LOGS_STATS: '/api/activity-logs/stats'
+    ACTIVITY_LOGS_STATS: '/api/activity-logs/stats',
+    ACTIVITY_LOGS_SETTINGS: '/api/activity-logs/settings'
   }
 }));
 
@@ -68,7 +69,9 @@ vi.mock('../services/activityLogApi', () => ({
     retentionDays: 90,
     maxEntries: 1000,
     currentCount: 0
-  })
+  }),
+  fetchRetentionSettings: vi.fn().mockResolvedValue({ maxAgeDays: 90, maxCount: 1000 }),
+  updateRetentionSettings: vi.fn().mockResolvedValue({ maxAgeDays: 90, maxCount: 1000 })
 }));
 
 // Extract formatTimestamp function for testing

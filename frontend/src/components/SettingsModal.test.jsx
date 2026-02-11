@@ -9,8 +9,8 @@ vi.mock('../contexts/ModalContext', () => ({
   })
 }));
 
-// Mock useTabState - returns backup-config as default
-let mockActiveTab = 'backup-config';
+// Mock useTabState - returns general as default (matches actual component behavior)
+let mockActiveTab = 'general';
 const mockSetActiveTab = vi.fn((tab) => { mockActiveTab = tab; });
 vi.mock('../hooks/useTabState', () => ({
   default: () => [mockActiveTab, mockSetActiveTab]
@@ -19,9 +19,16 @@ vi.mock('../hooks/useTabState', () => ({
 // Mock config
 vi.mock('../config', () => ({
   API_ENDPOINTS: {
-    BACKUP_CONFIG: '/api/backup/config'
+    BACKUP_CONFIG: '/api/backup/config',
+    ACTIVITY_LOGS_SETTINGS: '/api/activity-logs/settings'
   },
   default: 'http://localhost:2424'
+}));
+
+// Mock activityLogApi (used by SettingsModal for retention settings)
+vi.mock('../services/activityLogApi', () => ({
+  fetchRetentionSettings: vi.fn().mockResolvedValue({ maxAgeDays: 90, maxCount: 1000 }),
+  updateRetentionSettings: vi.fn().mockResolvedValue({ maxAgeDays: 90, maxCount: 1000 })
 }));
 
 // Mock logger
@@ -62,7 +69,7 @@ describe('SettingsModal', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockActiveTab = 'backup-config';
+    mockActiveTab = 'general';
 
     global.fetch = vi.fn((url) => {
       if (url.includes('/config')) {
@@ -80,23 +87,24 @@ describe('SettingsModal', () => {
   });
 
   describe('Tab structure', () => {
-    it('should render exactly 2 tabs: Backup Configuration and People', async () => {
+    it('should render exactly 3 tabs: General, Backup Configuration and People', async () => {
       render(<SettingsModal />);
       await waitForLoaded();
 
       const tabButtons = screen.getAllByRole('button').filter(btn =>
         btn.classList.contains('tab-button')
       );
-      expect(tabButtons).toHaveLength(2);
+      expect(tabButtons).toHaveLength(3);
+      expect(screen.getByText('⚙️ General')).toBeInTheDocument();
       expect(screen.getByText('💾 Backup Configuration')).toBeInTheDocument();
       expect(screen.getByText('👥 People')).toBeInTheDocument();
     });
 
-    it('should default to Backup Configuration tab', async () => {
+    it('should default to General tab', async () => {
       render(<SettingsModal />);
       await waitForLoaded();
 
-      expect(screen.getByText('Automatic Backups')).toBeInTheDocument();
+      expect(screen.getByText('Activity Log Retention Policy')).toBeInTheDocument();
     });
 
     it('should NOT have a Restore tab', async () => {
@@ -132,6 +140,10 @@ describe('SettingsModal', () => {
   });
 
   describe('Backup Configuration tab', () => {
+    beforeEach(() => {
+      mockActiveTab = 'backup-config';
+    });
+
     it('should display auto backup toggle', async () => {
       render(<SettingsModal />);
       await waitForLoaded();

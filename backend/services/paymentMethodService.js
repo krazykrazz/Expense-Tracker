@@ -260,15 +260,35 @@ class PaymentMethodService {
         displayName: updated.display_name 
       });
 
+      // Build change description
+      const changes = [];
+      if (existing.display_name !== updated.display_name) {
+        changes.push(`name: ${existing.display_name} → ${updated.display_name}`);
+      }
+      if (existing.type !== updated.type) {
+        changes.push(`type: ${existing.type} → ${updated.type}`);
+      }
+      if (existing.credit_limit !== updated.credit_limit) {
+        changes.push(`credit limit: $${existing.credit_limit || 0} → $${updated.credit_limit || 0}`);
+      }
+      if (existing.billing_cycle_day !== updated.billing_cycle_day) {
+        changes.push(`billing cycle day: ${existing.billing_cycle_day || 'none'} → ${updated.billing_cycle_day || 'none'}`);
+      }
+      if (existing.payment_due_day !== updated.payment_due_day) {
+        changes.push(`payment due day: ${existing.payment_due_day || 'none'} → ${updated.payment_due_day || 'none'}`);
+      }
+      const changeSummary = changes.length > 0 ? ` (${changes.join(', ')})` : '';
+
       // Log activity event
       await activityLogService.logEvent(
         'payment_method_updated',
         'payment_method',
         id,
-        `Updated payment method: ${updated.display_name}`,
+        `Updated payment method: ${updated.display_name}${changeSummary}`,
         {
           name: updated.display_name,
-          type: updated.type
+          type: updated.type,
+          changes: changes
         }
       );
     }

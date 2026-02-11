@@ -135,21 +135,32 @@ class BudgetService {
     // Validate amount
     this.validateAmount(limit);
 
+    // Fetch old budget for change tracking
+    const oldBudget = await budgetRepository.findById(id);
+
     const updated = await budgetRepository.updateLimit(id, parseFloat(limit));
     
     if (!updated) {
       throw new Error('Budget not found');
     }
 
+    // Build change description
+    const changes = [];
+    if (oldBudget && parseFloat(oldBudget.limit) !== parseFloat(limit)) {
+      changes.push(`limit: $${parseFloat(oldBudget.limit).toFixed(2)} → $${parseFloat(limit).toFixed(2)}`);
+    }
+    const changeSummary = changes.length > 0 ? ` (${changes.join(', ')})` : '';
+
     // Log activity event
     await activityLogService.logEvent(
       'budget_updated',
       'budget',
       updated.id,
-      `Updated budget: ${updated.category} - $${limit.toFixed(2)}`,
+      `Updated budget: ${updated.category} - $${parseFloat(limit).toFixed(2)}${changeSummary}`,
       {
         category: updated.category,
-        limit: parseFloat(limit)
+        limit: parseFloat(limit),
+        changes: changes
       }
     );
 

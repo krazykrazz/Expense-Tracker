@@ -3,6 +3,7 @@ import { useModalContext } from '../contexts/ModalContext';
 import useTabState from '../hooks/useTabState';
 import { API_ENDPOINTS } from '../config';
 import { getPeople, createPerson, updatePerson, deletePerson } from '../services/peopleApi';
+import { fetchRetentionSettings, updateRetentionSettings } from '../services/activityLogApi';
 import { createLogger } from '../utils/logger';
 import './SettingsModal.css';
 
@@ -10,7 +11,7 @@ const logger = createLogger('SettingsModal');
 
 const SettingsModal = () => {
   const { closeSettingsModal } = useModalContext();
-  const [activeTab, setActiveTab] = useTabState('settings-modal-tab', 'backup-config');
+  const [activeTab, setActiveTab] = useTabState('settings-modal-tab', 'general');
   
   // Backup configuration state
   const [config, setConfig] = useState({
@@ -34,6 +35,16 @@ const SettingsModal = () => {
   const [personValidationErrors, setPersonValidationErrors] = useState({});
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   
+  // Retention settings state
+  const [retentionSettings, setRetentionSettings] = useState({
+    maxAgeDays: 90,
+    maxCount: 1000
+  });
+  const [retentionLoading, setRetentionLoading] = useState(false);
+  const [retentionError, setRetentionError] = useState(null);
+  const [retentionMessage, setRetentionMessage] = useState({ text: '', type: '' });
+  const [retentionValidationErrors, setRetentionValidationErrors] = useState({});
+  
   // Track timeouts for cleanup on unmount
   const messageTimerRef = useRef(null);
   
@@ -55,6 +66,13 @@ const SettingsModal = () => {
   useEffect(() => {
     if (activeTab === 'people') {
       fetchPeople();
+    }
+  }, [activeTab]);
+
+  // Fetch retention settings when General tab is active
+  useEffect(() => {
+    if (activeTab === 'general') {
+      fetchRetentionSettingsData();
     }
   }, [activeTab]);
 
@@ -115,6 +133,91 @@ const SettingsModal = () => {
       messageTimerRef.current = setTimeout(() => setMessage({ text: '', type: '' }), 3000);
     } catch (error) {
       setMessage({ text: error.message, type: 'error' });
+    }
+  };
+
+  // ========== Retention Settings Functions ==========
+
+  const fetchRetentionSettingsData = async () => {
+    setRetentionLoading(true);
+    setRetentionError(null);
+    try {
+      const settings = await fetchRetentionSettings();
+      setRetentionSettings({
+        maxAgeDays: settings.maxAgeDays,
+        maxCount: settings.maxCount
+      });
+    } catch (error) {
+      logger.error('Error fetching retention settings:', error);
+      setRetentionError('Failed to load retention settings');
+    } finally {
+      setRetentionLoading(false);
+    }
+  };
+
+  const validateRetentionSettingsForm = () => {
+    const errors = {};
+    
+    const maxAgeDays = parseInt(retentionSettings.maxAgeDays, 10);
+    const maxCount = parseInt(retentionSettings.maxCount, 10);
+    
+    if (isNaN(maxAgeDays) || maxAgeDays < 7 || maxAgeDays > 365) {
+      errors.maxAgeDays = 'Max age must be between 7 and 365 days';
+    }
+    
+    if (isNaN(maxCount) || maxCount < 100 || maxCount > 10000) {
+      errors.maxCount = 'Max count must be between 100 and 10000 events';
+    }
+    
+    setRetentionValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleRetentionInputChange = (field, value) => {
+    setRetentionSettings(prev => ({ ...prev, [field]: value }));
+    if (retentionValidationErrors[field]) {
+      setRetentionValidationErrors(prev => ({ ...prev, [field]: null }));
+    }
+    if (retentionMessage.text) {
+      setRetentionMessage({ text: '', type: '' });
+    }
+  };
+
+  const handleSaveRetentionSettings = async () => {
+    if (!validateRetentionSettingsForm()) return;
+    
+    setRetentionLoading(true);
+    setRetentionError(null);
+    setRetentionMessage({ text: '', type: '' });
+    
+    try {
+      const maxAgeDays = parseInt(retentionSettings.maxAgeDays, 10);
+      const maxCount = parseInt(retentionSettings.maxCount, 10);
+      
+      const response = await updateRetentionSettings(maxAgeDays, maxCount);
+      
+      setRetentionSettings({
+        maxAgeDays: response.maxAgeDays,
+        maxCount: response.maxCount
+      });
+      
+      setRetentionMessage({ 
+        text: 'Retention settings saved successfully!', 
+        type: 'success' 
+      });
+      
+      setTimeout(() => {
+        setRetentionMessage({ text: '', type: '' });
+      }, 3000);
+    } catch (error) {
+      logger.error('Error saving retention settings:', error);
+      setRetentionError(error.message || 'Failed to save retention settings');
+      setRetentionMessage({ 
+        text: error.message || 'Failed to save retention settings', 
+        type: 'error' 
+      });
+    } finally {
+      setRetentionLoading(false);
     }
   };
 
@@ -270,6 +373,12 @@ const SettingsModal = () => {
         
         <div className="settings-tabs">
           <button 
+            className={`tab-button ${activeTab === 'general' ? 'active' : ''}`}
+            onClick={() => setActiveTab('general')}
+          >
+            ⚙️ General
+          </button>
+          <button 
             className={`tab-button ${activeTab === 'backup-config' ? 'active' : ''}`}
             onClick={() => setActiveTab('backup-config')}
           >
@@ -284,6 +393,77 @@ const SettingsModal = () => {
         </div>
 
         <div className="tab-content">
+          {activeTab === 'general' && (
+            <div className="tab-panel">
+              <div className="settings-section">
+                <h3>Activity Log Retention Policy</h3>
+                <p>Configure how long activity events are kept before automatic cleanup.</p>
+                
+                {retentionError && (
+                  <div className="message error">{retentionError}</div>
+                )}
+                
+                {retentionMessage.text && (
+                  <div className={`message ${retentionMessage.type}`}>
+                    {retentionMessage.text}
+                  </div>
+                )}
+                
+                <div className="form-group">
+                  <label htmlFor="retention-max-age">Maximum Age (days)</label>
+                  <input
+                    id="retention-max-age"
+                    type="number"
+                    min="7"
+                    max="365"
+                    value={retentionSettings.maxAgeDays}
+                    onChange={(e) => handleRetentionInputChange('maxAgeDays', e.target.value)}
+                    disabled={retentionLoading}
+                  />
+                  <small className="field-hint">
+                    Keep events for this many days (7-365)
+                  </small>
+                  {retentionValidationErrors.maxAgeDays && (
+                    <span className="validation-error">
+                      {retentionValidationErrors.maxAgeDays}
+                    </span>
+                  )}
+                </div>
+                
+                <div className="form-group">
+                  <label htmlFor="retention-max-count">Maximum Count</label>
+                  <input
+                    id="retention-max-count"
+                    type="number"
+                    min="100"
+                    max="10000"
+                    value={retentionSettings.maxCount}
+                    onChange={(e) => handleRetentionInputChange('maxCount', e.target.value)}
+                    disabled={retentionLoading}
+                  />
+                  <small className="field-hint">
+                    Keep this many events regardless of age (100-10000)
+                  </small>
+                  {retentionValidationErrors.maxCount && (
+                    <span className="validation-error">
+                      {retentionValidationErrors.maxCount}
+                    </span>
+                  )}
+                </div>
+                
+                <div className="form-actions">
+                  <button
+                    onClick={handleSaveRetentionSettings}
+                    disabled={retentionLoading}
+                    className="save-button"
+                  >
+                    {retentionLoading ? 'Saving...' : 'Save Settings'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {activeTab === 'backup-config' && (
             <div className="tab-panel">
               <div className="settings-section">

@@ -5,8 +5,9 @@
   background: var(--bg-card, white);
   border-radius: var(--radius-xl, 16px);
   box-shadow: var(--shadow-xl);
-  max-width: 900px;
-  width: 90%;
+  min-width: 1200px;
+  width: 1200px;
+  max-width: 98vw;
   max-height: 90vh;
   overflow-y: auto;
   position: relative;
@@ -114,23 +115,20 @@
 }
 
 /* Modal Content */
-.modal-content {
-  padding: var(--spacing-5, 20px);
+.system-modal .modal-content {
+  padding: 0;
+  max-width: 100%;
+  width: 100%;
+  background: none;
+  border-radius: 0;
+  box-shadow: none;
+  overflow-y: visible;
+  animation: none;
 }
 
 .tab-panel {
   animation: slideIn 0.3s;
-}
-
-@keyframes slideIn {
-  from { 
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to { 
-    opacity: 1;
-    transform: translateY(0);
-  }
+  padding: 0;
 }
 
 /* Settings Section */
@@ -138,7 +136,7 @@
   background: #f8f9ff;
   padding: var(--spacing-5, 20px);
   border-radius: var(--radius-lg, 12px);
-  margin-bottom: var(--spacing-5, 20px);
+  margin: var(--spacing-5, 20px);
   border: 1px solid #e0e4ff;
   box-shadow: var(--shadow-sm);
 }
@@ -780,5 +778,26 @@
 
   .settings-tabs {
     display: none;
+  }
+}
+
+/* Activity Log Tab - Full width layout */
+.tab-panel.activity-log-tab {
+  padding: 0;
+}
+
+.tab-panel.activity-log-tab .activity-log-table {
+  padding: var(--spacing-5, 20px);
+  margin: 0;
+}
+
+@keyframes slideIn {
+  from { 
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0);
   }
 }

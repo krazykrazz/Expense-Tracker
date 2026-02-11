@@ -122,6 +122,9 @@ class InvestmentService {
       throw new Error(errors.join('; '));
     }
 
+    // Fetch old investment for change tracking
+    const oldInvestment = await investmentRepository.findById(id);
+
     // Prepare updates object (only name and type)
     const updates = {
       name: data.name.trim(),
@@ -132,15 +135,26 @@ class InvestmentService {
     const updatedInvestment = await investmentRepository.update(id, updates);
     
     if (updatedInvestment) {
+      // Build change description
+      const changes = [];
+      if (oldInvestment && oldInvestment.name !== updatedInvestment.name) {
+        changes.push(`name: ${oldInvestment.name} → ${updatedInvestment.name}`);
+      }
+      if (oldInvestment && oldInvestment.type !== updatedInvestment.type) {
+        changes.push(`type: ${oldInvestment.type} → ${updatedInvestment.type}`);
+      }
+      const changeSummary = changes.length > 0 ? ` (${changes.join(', ')})` : '';
+
       // Log activity event
       await activityLogService.logEvent(
         'investment_updated',
         'investment',
         updatedInvestment.id,
-        `Updated investment: ${updatedInvestment.name}`,
+        `Updated investment: ${updatedInvestment.name}${changeSummary}`,
         {
           name: updatedInvestment.name,
-          account_type: updatedInvestment.type
+          account_type: updatedInvestment.type,
+          changes: changes
         }
       );
     }

@@ -41,7 +41,7 @@ class ExpenseInsuranceService {
       'insurance_status_changed',
       'expense',
       id,
-      `Insurance status changed: ${expense.claim_status || 'None'} → ${status}`,
+      `Insurance status changed: ${expense.claim_status || 'None'} → ${status} (${expense.place || 'Unknown'} - $${parseFloat(expense.amount).toFixed(2)})`,
       {
         previousStatus: expense.claim_status || null,
         newStatus: status,

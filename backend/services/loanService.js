@@ -161,15 +161,29 @@ class LoanService {
     const updatedLoan = await loanRepository.updateFields(id, updates);
     
     if (updatedLoan) {
+      // Build change description
+      const changes = [];
+      if (existingLoan.name !== updatedLoan.name) {
+        changes.push(`name: ${existingLoan.name} → ${updatedLoan.name}`);
+      }
+      if ((existingLoan.notes || '') !== (updatedLoan.notes || '')) {
+        changes.push(`notes changed`);
+      }
+      if (existingLoan.loan_type === 'loan' && existingLoan.fixed_interest_rate !== updatedLoan.fixed_interest_rate) {
+        changes.push(`rate: ${existingLoan.fixed_interest_rate ?? 'none'} → ${updatedLoan.fixed_interest_rate ?? 'none'}`);
+      }
+      const changeSummary = changes.length > 0 ? ` (${changes.join(', ')})` : '';
+
       // Log activity event
       await activityLogService.logEvent(
         'loan_updated',
         'loan',
         updatedLoan.id,
-        `Updated loan: ${updatedLoan.name}`,
+        `Updated loan: ${updatedLoan.name}${changeSummary}`,
         {
           name: updatedLoan.name,
-          loan_type: updatedLoan.loan_type
+          loan_type: updatedLoan.loan_type,
+          changes: changes
         }
       );
     }
@@ -295,15 +309,32 @@ class LoanService {
     const updatedMortgage = await loanRepository.updateMortgageFields(id, updates);
     
     if (updatedMortgage) {
+      // Build change description
+      const changes = [];
+      if (existingLoan.name !== updatedMortgage.name) {
+        changes.push(`name: ${existingLoan.name} → ${updatedMortgage.name}`);
+      }
+      if ((existingLoan.notes || '') !== (updatedMortgage.notes || '')) {
+        changes.push(`notes changed`);
+      }
+      if (existingLoan.estimated_property_value !== updatedMortgage.estimated_property_value) {
+        changes.push(`property value: $${existingLoan.estimated_property_value || 0} → $${updatedMortgage.estimated_property_value || 0}`);
+      }
+      if (existingLoan.renewal_date !== updatedMortgage.renewal_date) {
+        changes.push(`renewal date: ${existingLoan.renewal_date || 'none'} → ${updatedMortgage.renewal_date || 'none'}`);
+      }
+      const changeSummary = changes.length > 0 ? ` (${changes.join(', ')})` : '';
+
       // Log activity event
       await activityLogService.logEvent(
         'loan_updated',
         'loan',
         updatedMortgage.id,
-        `Updated loan: ${updatedMortgage.name}`,
+        `Updated loan: ${updatedMortgage.name}${changeSummary}`,
         {
           name: updatedMortgage.name,
-          loan_type: updatedMortgage.loan_type
+          loan_type: updatedMortgage.loan_type,
+          changes: changes
         }
       );
     }

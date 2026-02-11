@@ -317,64 +317,107 @@ class FixedExpenseService {
    * @returns {Promise<Object|null>} Updated fixed expense with optional warning, or null if not found
    */
   async updateFixedExpense(id, data) {
-    // Validate ID
-    if (!id) {
-      throw new Error('Fixed expense ID is required');
-    }
-
-    // Get valid payment types from database
-    const validPaymentTypes = await this.getValidPaymentTypes();
-
-    // Validate the fixed expense data (includes payment_due_day validation)
-    this.validateFixedExpense(data, validPaymentTypes);
-
-    // Validate linked_loan_id if provided
-    const { error: loanError, loan } = await this.validateLinkedLoanId(data.linked_loan_id);
-    if (loanError) {
-      throw new Error(loanError);
-    }
-
-    // Prepare updates object
-    const updates = {
-      name: data.name.trim(),
-      amount: parseFloat(data.amount),
-      category: data.category.trim(),
-      payment_type: data.payment_type.trim(),
-      payment_due_day: this.normalizePaymentDueDay(data.payment_due_day),
-      linked_loan_id: this.normalizeLinkedLoanId(data.linked_loan_id)
-    };
-
-    // Update fixed expense in repository
-    const updated = await fixedExpenseRepository.updateFixedExpense(id, updates);
-
-    if (!updated) {
-      return null;
-    }
-
-    // Log activity event
-    await activityLogService.logEvent(
-      'fixed_expense_updated',
-      'fixed_expense',
-      updated.id,
-      `Updated fixed expense: ${updated.name} - $${updated.amount.toFixed(2)}`,
-      {
-        name: updated.name,
-        amount: updated.amount,
-        category: updated.category,
-        payment_type: updated.payment_type
+      // Validate ID
+      if (!id) {
+        throw new Error('Fixed expense ID is required');
       }
-    );
 
-    // Add warning if linked loan is paid off
-    if (loan && loan.is_paid_off) {
-      return {
-        ...updated,
-        warning: 'Linked loan is marked as paid off'
+      // Fetch old fixed expense for change tracking
+      const oldExpense = await fixedExpenseRepository.findById(id);
+      if (!oldExpense) {
+        return null;
+      }
+
+      // Get valid payment types from database
+      const validPaymentTypes = await this.getValidPaymentTypes();
+
+      // Validate the fixed expense data (includes payment_due_day validation)
+      this.validateFixedExpense(data, validPaymentTypes);
+
+      // Validate linked_loan_id if provided
+      const { error: loanError, loan } = await this.validateLinkedLoanId(data.linked_loan_id);
+      if (loanError) {
+        throw new Error(loanError);
+      }
+
+      // Prepare updates object
+      const updates = {
+        name: data.name.trim(),
+        amount: parseFloat(data.amount),
+        category: data.category.trim(),
+        payment_type: data.payment_type.trim(),
+        payment_due_day: this.normalizePaymentDueDay(data.payment_due_day),
+        linked_loan_id: this.normalizeLinkedLoanId(data.linked_loan_id)
       };
+
+      // Update fixed expense in repository
+      const updated = await fixedExpenseRepository.updateFixedExpense(id, updates);
+
+      if (!updated) {
+        return null;
+      }
+
+      // Build change description
+      const changes = [];
+      if (oldExpense.name !== updates.name) {
+        changes.push(`name: ${oldExpense.name} → ${updates.name}`);
+      }
+      if (parseFloat(oldExpense.amount) !== updates.amount) {
+        changes.push(`amount: $${parseFloat(oldExpense.amount).toFixed(2)} → $${updates.amount.toFixed(2)}`);
+      }
+      if (oldExpense.category !== updates.category) {
+        changes.push(`category: ${oldExpense.category} → ${updates.category}`);
+      }
+      if (oldExpense.payment_type !== updates.payment_type) {
+        changes.push(`payment: ${oldExpense.payment_type} → ${updates.payment_type}`);
+      }
+      if (oldExpense.payment_due_day !== updates.payment_due_day) {
+        changes.push(`due day: ${oldExpense.payment_due_day || 'none'} → ${updates.payment_due_day || 'none'}`);
+      }
+      // Loan linkage changes
+      const oldLoanId = oldExpense.linked_loan_id || null;
+      const newLoanId = updates.linked_loan_id || null;
+      if (oldLoanId !== newLoanId) {
+        if (!oldLoanId && newLoanId) {
+          const loanName = loan ? loan.name : `ID ${newLoanId}`;
+          changes.push(`linked to loan: ${loanName}`);
+        } else if (oldLoanId && !newLoanId) {
+          changes.push('loan linkage removed');
+        } else {
+          const loanName = loan ? loan.name : `ID ${newLoanId}`;
+          changes.push(`loan changed to: ${loanName}`);
+        }
+      }
+
+      const changeSummary = changes.length > 0 ? ` (${changes.join(', ')})` : '';
+
+      // Log activity event
+      await activityLogService.logEvent(
+        'fixed_expense_updated',
+        'fixed_expense',
+        updated.id,
+        `Updated fixed expense: ${updated.name} - $${updated.amount.toFixed(2)}${changeSummary}`,
+        {
+          name: updated.name,
+          amount: updated.amount,
+          category: updated.category,
+          payment_type: updated.payment_type,
+          changes: changes
+        }
+      );
+
+      // Add warning if linked loan is paid off
+      if (loan && loan.is_paid_off) {
+        return {
+          ...updated,
+          warning: 'Linked loan is marked as paid off'
+        };
+      }
+
+      return updated;
     }
 
-    return updated;
-  }
+
 
   /**
    * Delete a fixed expense item

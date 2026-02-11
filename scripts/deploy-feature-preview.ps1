@@ -85,6 +85,19 @@ Write-Info "  Build Date: $buildDate"
 Write-Info "  SHA Image: $shaImage"
 Write-Info "  Preview Tag: preview-${branchTag}"
 
+# Check if preview container is already running
+$containerRunning = docker ps -q --filter "name=expense-tracker-preview" 2>$null
+
+if ($containerRunning) {
+    Write-Warn "Preview container is already running. Stopping it to rebuild with latest changes..."
+    docker-compose -f docker-compose.preview.yml down
+    if ($LASTEXITCODE -ne 0) {
+        Write-ErrorMsg "Failed to stop existing preview container"
+        exit 1
+    }
+    Write-Success "Existing preview container stopped"
+}
+
 # Check if SHA image already exists
 $imageExists = docker images -q $shaImage 2>$null
 
@@ -92,6 +105,13 @@ if ($SkipBuild -and -not $imageExists) {
     Write-ErrorMsg "Cannot skip build - SHA image does not exist: $shaImage"
     Write-Info "Run without -SkipBuild to build the image first."
     exit 1
+}
+
+# Remove existing SHA image to force rebuild with latest changes
+if ($imageExists -and -not $SkipBuild) {
+    Write-Info "Removing existing SHA image to rebuild with latest changes..."
+    docker rmi $shaImage 2>$null | Out-Null
+    $imageExists = $false
 }
 
 # Build SHA image if needed

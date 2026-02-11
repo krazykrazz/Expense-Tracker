@@ -137,19 +137,28 @@ docker run -d \
   expense-tracker:local
 ```
 
-### Building for GHCR
+### Pulling from GHCR (Normal Workflow)
 
-Use the provided PowerShell script to build and push to GHCR:
+CI builds and pushes images to GHCR on merge to main. Use the pull-and-promote script to deploy:
 
 ```powershell
-# Build and push SHA image
-.\scripts\build-and-push.ps1
-
-# Build and push, then deploy to staging
+# Pull CI-built image and promote to staging
 .\scripts\build-and-push.ps1 -Environment staging
 
-# Build multi-platform image (x86_64 and ARM64)
-.\scripts\build-and-push.ps1 -MultiPlatform
+# Promote to production
+.\scripts\build-and-push.ps1 -Environment latest
+```
+
+### Building Locally (Escape Hatch)
+
+For testing Dockerfile changes, you can build locally:
+
+```powershell
+# Build locally and push to GHCR
+.\scripts\build-and-push.ps1 -LocalBuild
+
+# Multi-platform local build
+.\scripts\build-and-push.ps1 -LocalBuild -MultiPlatform
 ```
 
 ### Build Optimization

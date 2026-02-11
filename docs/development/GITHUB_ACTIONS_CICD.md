@@ -218,22 +218,21 @@ Integrated into `.github/workflows/ci.yml` as the `build-and-push-ghcr` job.
 
 ### Local Deployment
 
-For local staging/production deployment, use the PowerShell script which also targets GHCR:
+For local staging/production deployment, use the pull-and-promote script which pulls CI-built images from GHCR:
 
 ```powershell
-# Build and push SHA image to GHCR
-.\scripts\build-and-push.ps1
-
-# Deploy to staging
+# Pull CI-built image and promote to staging
 .\scripts\build-and-push.ps1 -Environment staging
 
 # Promote to production
 .\scripts\build-and-push.ps1 -Environment latest
 ```
 
-### Future Registry Integration
+CI is the single source of truth for image builds. The local script pulls the CI-built SHA image from GHCR and retags it for the target environment.
 
-GHCR is already integrated. The CI workflow pushes to `ghcr.io/krazykrazz/expense-tracker` on every merge to main. Both local scripts and CI use GHCR as the source of truth for staging and production images.
+### Registry Architecture
+
+GHCR is the single registry. CI pushes SHA and version tags on merge to main. The local script promotes images to `staging` and `latest` tags by pulling and retagging.
 
 ## Viewing Workflow Results
 

@@ -1,6 +1,6 @@
-# Quick Build Guide
+# Quick Deployment Guide
 
-Fast reference for building and pushing the expense-tracker Docker image.
+Fast reference for pulling and promoting the expense-tracker Docker image.
 
 ## Prerequisites
 
@@ -11,30 +11,34 @@ gh auth token | docker login ghcr.io -u krazykrazz --password-stdin
 
 ## Quick Commands
 
-### Windows (PowerShell)
+### Pull and Promote (Normal Workflow)
 
 ```powershell
-# Build SHA image and push to GHCR
+# Pull CI-built image for current commit
 .\scripts\build-and-push.ps1
 
-# Build and deploy to staging
+# Pull and promote to staging
 .\scripts\build-and-push.ps1 -Environment staging
 
 # Promote to production
 .\scripts\build-and-push.ps1 -Environment latest
-
-# Multi-platform build (x86_64 + ARM64)
-.\scripts\build-and-push.ps1 -MultiPlatform
 ```
 
-### Manual Docker Commands
+### Local Build (Escape Hatch)
 
-```bash
-# Build
-docker build -t ghcr.io/krazykrazz/expense-tracker:latest .
+```powershell
+# Build locally (only for testing Dockerfile changes)
+.\scripts\build-and-push.ps1 -LocalBuild
 
-# Push
-docker push ghcr.io/krazykrazz/expense-tracker:latest
+# Multi-platform local build
+.\scripts\build-and-push.ps1 -LocalBuild -MultiPlatform
+```
+
+### Automated Full Deployment
+
+```powershell
+# Version bump + push + wait for CI + staging + production
+.\scripts\deploy-to-production.ps1 -BumpType PATCH -Description "Bug fixes"
 ```
 
 ## Deploy
@@ -67,22 +71,20 @@ docker image ls ghcr.io/krazykrazz/expense-tracker
 # Not authenticated to GHCR?
 gh auth token | docker login ghcr.io -u krazykrazz --password-stdin
 
-# Build cache issues?
-docker builder prune
+# SHA image not found? CI may still be building.
+# Check GitHub Actions for build status.
 
-# Need to rebuild from scratch?
-docker build --no-cache -t ghcr.io/krazykrazz/expense-tracker:latest .
+# Need to build locally? (escape hatch)
+.\scripts\build-and-push.ps1 -LocalBuild
 ```
 
 ## Tags
 
-- **latest**: Production (from `main` branch)
-- **staging**: Pre-production testing
-- **v{x.y.z}**: Version-specific releases
-- **{sha}**: Immutable SHA-tagged images
-
-Each push overwrites the previous image with the same tag.
+- **latest**: Production (promoted locally from CI-built image)
+- **staging**: Pre-production testing (promoted locally)
+- **v{x.y.z}**: Version-specific releases (built by CI)
+- **{sha}**: Immutable SHA-tagged images (built by CI)
 
 ---
 
-For detailed documentation, see [BUILD_AND_PUSH.md](BUILD_AND_PUSH.md)
+For detailed documentation, see [SHA-Based Containers](../deployment/SHA_BASED_CONTAINERS.md)

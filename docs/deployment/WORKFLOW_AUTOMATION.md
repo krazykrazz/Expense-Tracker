@@ -56,14 +56,15 @@ Use the deployment script to handle everything automatically:
 4. Calculates new version number
 5. Updates all version files
 6. Updates CHANGELOG.md
-7. Prompts for SystemModal.jsx update
+7. Updates BackupSettings.jsx changelog
 8. Builds frontend
 9. Commits version bump (creates release SHA)
-10. Builds SHA Docker image
-11. Deploys to staging
-12. Waits for your confirmation
-13. Deploys to production
-14. Pushes to origin
+10. Tags the commit
+11. Pushes to origin (triggers CI build)
+12. Waits for CI to build Docker image on GHCR
+13. Pulls CI-built image and promotes to staging
+14. Waits for your confirmation
+15. Promotes to production (latest)
 
 ### Hotfix Workflow
 

@@ -575,6 +575,122 @@
   display: inline-block;
 }
 
+/* Retention Settings Form */
+.retention-settings-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4, 16px);
+  margin-top: var(--spacing-4, 16px);
+}
+
+.retention-settings-form .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2, 8px);
+}
+
+.retention-settings-form .form-group label {
+  font-size: var(--text-sm, 13px);
+  font-weight: var(--font-medium, 500);
+  color: var(--text-secondary, #555);
+  font-family: var(--font-sans);
+}
+
+.retention-settings-form .form-group input {
+  padding: var(--spacing-3, 12px);
+  border: 1px solid var(--border-default, #e0e0e0);
+  border-radius: var(--radius-md, 8px);
+  font-size: var(--text-base, 14px);
+  font-family: var(--font-sans);
+  transition: var(--transition-colors);
+}
+
+.retention-settings-form .form-group input:focus {
+  outline: none;
+  border-color: var(--color-primary, #0ea5e9);
+  box-shadow: var(--focus-ring);
+}
+
+.retention-settings-form .form-group input:disabled {
+  background: var(--bg-muted, #f8f9ff);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.retention-settings-form .field-hint {
+  font-size: var(--text-xs, 12px);
+  color: var(--text-muted, #888);
+  font-family: var(--font-sans);
+}
+
+.retention-settings-form .validation-error {
+  font-size: var(--text-xs, 12px);
+  color: var(--color-negative, #ef4444);
+  font-family: var(--font-sans);
+  margin-top: var(--spacing-1, 4px);
+}
+
+.retention-settings-form .form-actions {
+  display: flex;
+  justify-content: flex-start;
+  margin-top: var(--spacing-2, 8px);
+}
+
+.retention-settings-form .save-button {
+  padding: var(--spacing-3, 12px) var(--spacing-5, 20px);
+  background: var(--color-primary, #0ea5e9);
+  color: var(--text-inverse, white);
+  border: none;
+  border-radius: var(--radius-md, 8px);
+  font-size: var(--text-base, 14px);
+  font-weight: var(--font-medium, 500);
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: var(--transition-button);
+  box-shadow: var(--shadow-sm);
+}
+
+.retention-settings-form .save-button:hover:not(:disabled) {
+  background: var(--color-primary-hover, #0284c7);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.retention-settings-form .save-button:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
+}
+
+.retention-settings-form .save-button:focus {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.retention-settings-form .save-button:disabled {
+  background: var(--border-default, #ccc);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.retention-impact-info {
+  background: var(--bg-card, white);
+  padding: var(--spacing-4, 16px);
+  border-radius: var(--radius-md, 8px);
+  border: 1px solid #e0e4ff;
+  margin-top: var(--spacing-4, 16px);
+}
+
+.retention-impact-info p {
+  margin: var(--spacing-2, 8px) 0;
+  font-size: var(--text-sm, 13px);
+  color: var(--text-secondary, #555);
+  font-family: var(--font-sans);
+}
+
+.retention-impact-info strong {
+  color: var(--color-primary, #0ea5e9);
+  font-weight: var(--font-semibold, 600);
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .system-modal {

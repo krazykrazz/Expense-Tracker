@@ -1,6 +1,6 @@
 #!/usr/bin/env pwsh
 # Automated Production Deployment Script
-# Enforces correct workflow: version bump → build → staging → production
+# Enforces correct workflow: version bump → push → CI build → pull → staging → production
 
 param(
     [Parameter(Mandatory=$true)]
@@ -14,7 +14,10 @@ param(
     [switch]$SkipStaging,
     
     [Parameter(Mandatory=$false)]
-    [switch]$DryRun
+    [switch]$DryRun,
+    
+    [Parameter(Mandatory=$false)]
+    [int]$CITimeout = 600
 )
 
 function Write-Step { Write-Host "▶ $args" -ForegroundColor Cyan }
@@ -94,15 +97,15 @@ if ($DryRun) {
     Write-Host "  3. Build frontend"
     Write-Host "  4. Commit: v$newVersion`: $Description"
     Write-Host "  5. Tag commit: v$newVersion"
-    Write-Host "  6. Build SHA image"
+    Write-Host "  6. Push to origin (triggers CI build)"
+    Write-Host "  7. Wait for CI to build Docker image"
+    Write-Host "  8. Pull CI-built image from GHCR"
     if (-not $SkipStaging) {
-        Write-Host "  7. Deploy to staging"
-        Write-Host "  8. Wait for confirmation"
-        Write-Host "  9. Deploy to latest (production)"
-        Write-Host " 10. Push commits and tags to origin"
+        Write-Host "  9. Promote to staging"
+        Write-Host " 10. Wait for confirmation"
+        Write-Host " 11. Promote to production (latest)"
     } else {
-        Write-Host "  7. Deploy to latest (production)"
-        Write-Host "  8. Push commits and tags to origin"
+        Write-Host "  9. Promote to production (latest)"
     }
     exit 0
 }
@@ -110,16 +113,13 @@ if ($DryRun) {
 # Step 6: Update version in all files
 Write-Step "Updating version in all files..."
 
-# Update backend/package.json
 $backendPackage.version = $newVersion
 $backendPackage | ConvertTo-Json -Depth 10 | Set-Content backend/package.json
 
-# Update frontend/package.json
 $frontendPackage = Get-Content frontend/package.json | ConvertFrom-Json
 $frontendPackage.version = $newVersion
 $frontendPackage | ConvertTo-Json -Depth 10 | Set-Content frontend/package.json
 
-# Update App.jsx
 $appContent = Get-Content frontend/src/App.jsx -Raw
 $appContent = $appContent -replace 'v\d+\.\d+\.\d+', "v$newVersion"
 $appContent | Set-Content frontend/src/App.jsx -NoNewline
@@ -147,10 +147,7 @@ Write-Step "Updating BackupSettings.jsx changelog..."
 $backupSettingsPath = "frontend/src/components/BackupSettings.jsx"
 $backupSettingsContent = Get-Content $backupSettingsPath -Raw
 
-# Format the date for the changelog
 $changelogDate = Get-Date -Format "MMMM d, yyyy"
-
-# Create the new changelog entry
 $newChangelogEntry = @"
               <div className="changelog-entry">
                 <div className="changelog-version">v$newVersion</div>
@@ -161,7 +158,6 @@ $newChangelogEntry = @"
               </div>
 "@
 
-# Find the insertion point (after "Recent Updates" section header and before the first existing entry)
 $insertionPattern = '(<div className="changelog">)\s*(<div className="changelog-entry">)'
 $replacement = "`$1`n$newChangelogEntry`n              `$2"
 
@@ -207,18 +203,64 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-Success "Tagged: v$newVersion"
 
-# Step 11: Build SHA image
-Write-Step "Building SHA image..."
-.\scripts\build-and-push.ps1
+# Step 11: Push to origin (triggers CI build)
+Write-Step "Pushing to origin (triggers CI build)..."
+git push origin main
 if ($LASTEXITCODE -ne 0) {
-    Write-Error "Docker build failed!"
+    Write-Error "Failed to push to origin"
     exit 1
 }
-Write-Success "SHA image built: $commitSha"
+Write-Success "Pushed to origin/main"
 
-# Step 12: Deploy to staging (unless skipped)
+git push origin "v$newVersion"
+if ($LASTEXITCODE -ne 0) {
+    Write-Warning "Failed to push tag - push manually: git push origin v$newVersion"
+} else {
+    Write-Success "Pushed tag v$newVersion to origin"
+}
+
+# Step 12: Wait for CI to build the Docker image
+Write-Step "Waiting for CI to build Docker image..."
+Write-Info "CI will build and push: ghcr.io/krazykrazz/expense-tracker:$commitSha"
+Write-Info "Timeout: $CITimeout seconds"
+
+$shaImage = "ghcr.io/krazykrazz/expense-tracker:$commitSha"
+$elapsed = 0
+$pollInterval = 15
+$ciReady = $false
+
+while ($elapsed -lt $CITimeout) {
+    docker pull $shaImage 2>$null | Out-Null
+    if ($LASTEXITCODE -eq 0) {
+        $ciReady = $true
+        break
+    }
+    
+    $remaining = $CITimeout - $elapsed
+    Write-Host "`r  Waiting for CI... ($elapsed`s elapsed, ${remaining}s remaining)" -NoNewline
+    Start-Sleep -Seconds $pollInterval
+    $elapsed += $pollInterval
+}
+
+Write-Host ""
+
+if (-not $ciReady) {
+    Write-Error "Timed out waiting for CI to build image ($CITimeout`s)"
+    Write-Host ""
+    Write-Info "The commit and tag have been pushed. CI may still be running."
+    Write-Info "Once CI completes, promote manually:"
+    Write-Info "  .\scripts\build-and-push.ps1 -Environment staging"
+    Write-Info "  .\scripts\build-and-push.ps1 -Environment latest"
+    Write-Host ""
+    Write-Info "Or increase timeout: -CITimeout 900"
+    exit 1
+}
+
+Write-Success "CI-built image available: $shaImage"
+
+# Step 13: Deploy to staging (unless skipped)
 if (-not $SkipStaging) {
-    Write-Step "Deploying to staging..."
+    Write-Step "Promoting to staging..."
     .\scripts\build-and-push.ps1 -Environment staging
     if ($LASTEXITCODE -ne 0) {
         Write-Error "Staging deployment failed!"
@@ -234,36 +276,20 @@ if (-not $SkipStaging) {
     
     if ($confirm -ne "yes") {
         Write-Warning "Production deployment cancelled"
-        Write-Host "SHA image $commitSha is ready for production when you're ready:"
+        Write-Host "CI-built image $commitSha is ready for production when you're ready:"
         Write-Host "  .\scripts\build-and-push.ps1 -Environment latest"
         exit 0
     }
 }
 
-# Step 13: Deploy to latest (production)
-Write-Step "Deploying to latest (production)..."
+# Step 14: Promote to production (latest)
+Write-Step "Promoting to production (latest)..."
 .\scripts\build-and-push.ps1 -Environment latest
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Production deployment failed!"
     exit 1
 }
 Write-Success "Deployed to production (latest tag)"
-
-# Step 14: Push to origin (including tags)
-Write-Step "Pushing to origin (with tags)..."
-git push origin main
-if ($LASTEXITCODE -ne 0) {
-    Write-Warning "Failed to push commits to origin - push manually"
-} else {
-    Write-Success "Pushed to origin/main"
-}
-
-git push origin "v$newVersion"
-if ($LASTEXITCODE -ne 0) {
-    Write-Warning "Failed to push tag to origin - push manually: git push origin v$newVersion"
-} else {
-    Write-Success "Pushed tag v$newVersion to origin"
-}
 
 # Summary
 Write-Host ""
@@ -277,9 +303,5 @@ Write-Host "Docker Tag: latest" -ForegroundColor Green
 Write-Host "Container: expense-tracker" -ForegroundColor Green
 Write-Host "=========================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "NOTE: This deployed to local registry (localhost:5000)" -ForegroundColor Cyan
-Write-Host "For public releases, GitHub Actions will automatically:" -ForegroundColor Cyan
-Write-Host "  - Build and push to GHCR (ghcr.io/krazykrazz/expense-tracker)" -ForegroundColor Cyan
-Write-Host "  - Create GitHub release with GHCR references" -ForegroundColor Cyan
-Write-Host "  - Attach docker-compose file for public use" -ForegroundColor Cyan
+Write-Host "Image built by CI and pulled from GHCR (ghcr.io/krazykrazz/expense-tracker)" -ForegroundColor Cyan
 Write-Host ""

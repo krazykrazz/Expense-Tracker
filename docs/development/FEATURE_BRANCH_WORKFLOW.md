@@ -375,11 +375,11 @@ When promoting features, follow the existing version management rules:
 
 ### Docker Integration
 
-The existing Docker build and push process remains the same:
+The existing Docker build and push process targets GHCR:
 
 ```powershell
-# After promoting to main
-.\scripts\build-and-push.ps1 -Tag latest
+# After promoting to main - build and push to GHCR
+.\scripts\build-and-push.ps1
 ```
 
 ### Pre-deployment Checklist Integration
@@ -462,15 +462,15 @@ All jobs run simultaneously for fast feedback.
 
 ### Docker Build Workflow
 
-The Docker workflow (`.github/workflows/docker.yml`) runs on merge to main:
+The Docker build is integrated into the CI workflow (`ci.yml`). On merge to main, after all tests pass, the `build-and-push-ghcr` job:
 
-- Builds the Docker image to verify Dockerfile correctness
-- Tags with version from `package.json`
-- **Does NOT push** to registry (localhost:5000 not accessible from GitHub)
+- Builds the Docker image
+- Pushes to GHCR with SHA, version, and `latest` tags
+- Creates GitHub releases
 
-For actual deployment, use the local script:
+For local deployment:
 ```powershell
-.\scripts\build-and-push.ps1 -Tag latest
+.\scripts\build-and-push.ps1 -Environment latest
 ```
 
 ### Updated Promotion Checklist

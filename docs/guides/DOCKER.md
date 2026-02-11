@@ -61,7 +61,7 @@ The Docker image is built using a multi-stage process for optimal size and secur
 
 - Docker installed and running
 - Docker Compose (optional, but recommended)
-- Access to local Docker registry at `localhost:5000` (for pulling pre-built images)
+- Access to GitHub Container Registry (GHCR) for pulling pre-built images
 
 ### Using Docker Compose (Recommended)
 
@@ -72,7 +72,7 @@ version: '3.8'
 
 services:
   expense-tracker:
-    image: localhost:5000/expense-tracker:latest
+    image: ghcr.io/krazykrazz/expense-tracker:latest
     container_name: expense-tracker
     ports:
       - "2424:2424"
@@ -104,8 +104,8 @@ Open your browser to `http://localhost:2424`
 ### Using Docker CLI
 
 ```bash
-# Pull the image from local registry
-docker pull localhost:5000/expense-tracker:latest
+# Pull the image from GHCR
+docker pull ghcr.io/krazykrazz/expense-tracker:latest
 
 # Run the container
 docker run -d \
@@ -116,7 +116,7 @@ docker run -d \
   -e SERVICE_TZ=Etc/UTC \
   -e NODE_ENV=production \
   --restart unless-stopped \
-  localhost:5000/expense-tracker:latest
+  ghcr.io/krazykrazz/expense-tracker:latest
 ```
 
 ## Build Instructions
@@ -137,19 +137,28 @@ docker run -d \
   expense-tracker:local
 ```
 
-### Building for Local Registry
+### Pulling from GHCR (Normal Workflow)
 
-Use the provided PowerShell script to build and push to your local registry:
+CI builds and pushes images to GHCR on merge to main. Use the pull-and-promote script to deploy:
 
 ```powershell
-# Build and push with latest tag
-.\scripts\build-and-push.ps1 -Tag latest
+# Pull CI-built image and promote to staging
+.\scripts\build-and-push.ps1 -Environment staging
 
-# Build and push with custom tag
-.\scripts\build-and-push.ps1 -Tag v3.3.0
+# Promote to production
+.\scripts\build-and-push.ps1 -Environment latest
+```
 
-# Build multi-platform image (x86_64 and ARM64)
-.\scripts\build-and-push.ps1 -Tag latest -MultiPlatform
+### Building Locally (Escape Hatch)
+
+For testing Dockerfile changes, you can build locally:
+
+```powershell
+# Build locally and push to GHCR
+.\scripts\build-and-push.ps1 -LocalBuild
+
+# Multi-platform local build
+.\scripts\build-and-push.ps1 -LocalBuild -MultiPlatform
 ```
 
 ### Build Optimization
@@ -373,20 +382,16 @@ docker logs expense-tracker
 
 ```bash
 # Pull the latest image
-docker pull localhost:5000/expense-tracker:latest
+docker pull ghcr.io/krazykrazz/expense-tracker:latest
 
-# Stop and remove the old container
-docker stop expense-tracker
-docker rm expense-tracker
-
-# Start with the new image
+# Run the locally built image
 docker run -d \
   --name expense-tracker \
   -p 2424:2424 \
   -v $(pwd)/config:/config \
   -e LOG_LEVEL=info \
   -e SERVICE_TZ=Etc/UTC \
-  localhost:5000/expense-tracker:latest
+  ghcr.io/krazykrazz/expense-tracker:latest
 
 # Verify the update
 docker logs expense-tracker
@@ -397,12 +402,12 @@ docker logs expense-tracker
 Images are tagged based on the branch:
 
 - **`latest`**: Production releases from the `main` branch
-- **`dev`**: Development releases from the `development` branch
+- **`staging`**: Staging releases for pre-production testing
 
 **Pull specific version:**
 ```bash
-docker pull localhost:5000/expense-tracker:latest
-docker pull localhost:5000/expense-tracker:dev
+docker pull ghcr.io/krazykrazz/expense-tracker:latest
+docker pull ghcr.io/krazykrazz/expense-tracker:staging
 ```
 
 ### Update Checklist

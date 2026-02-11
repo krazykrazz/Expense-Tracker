@@ -46,13 +46,13 @@ Build the image and tag it with the current git SHA:
 **What happens:**
 - Gets current git SHA (e.g., `abc1234`)
 - Reads version from `backend/package.json` (e.g., `4.12.8`)
-- Builds image: `localhost:5000/expense-tracker:abc1234`
-- Pushes SHA-tagged image to registry
+- Builds image: `ghcr.io/krazykrazz/expense-tracker:abc1234`
+- Pushes SHA-tagged image to GHCR
 - Image is now available but not deployed
 
 **Output:**
 ```
-SHA Image: localhost:5000/expense-tracker:abc1234
+SHA Image: ghcr.io/krazykrazz/expense-tracker:abc1234
 Version: 4.12.8
 Git SHA: abc1234
 ```
@@ -67,15 +67,15 @@ Tag the SHA image for staging and deploy:
 
 **What happens:**
 - Checks if SHA image exists (skips build if already built)
-- Tags SHA image as `staging`: `localhost:5000/expense-tracker:staging`
+- Tags SHA image as `staging`: `ghcr.io/krazykrazz/expense-tracker:staging`
 - Pushes staging tag
 - Deploys to `expense-tracker-test` container
 
 **Output:**
 ```
-SHA image already exists: localhost:5000/expense-tracker:abc1234
+SHA image already exists: ghcr.io/krazykrazz/expense-tracker:abc1234
 Skipping build (image already built for this commit)
-Environment Tag: localhost:5000/expense-tracker:staging
+Environment Tag: ghcr.io/krazykrazz/expense-tracker:staging
 Deployed to: expense-tracker-test
 ```
 
@@ -93,15 +93,15 @@ Promote the same SHA image to production (just retag):
 
 **What happens:**
 - Uses the SAME SHA image (no rebuild)
-- Tags SHA image as `latest`: `localhost:5000/expense-tracker:latest`
+- Tags SHA image as `latest`: `ghcr.io/krazykrazz/expense-tracker:latest`
 - Pushes latest tag
 - Deploys to `expense-tracker` container
 
 **Output:**
 ```
-SHA image already exists: localhost:5000/expense-tracker:abc1234
+SHA image already exists: ghcr.io/krazykrazz/expense-tracker:abc1234
 Skipping build (image already built for this commit)
-Environment Tag: localhost:5000/expense-tracker:latest
+Environment Tag: ghcr.io/krazykrazz/expense-tracker:latest
 Deployed to: expense-tracker
 ```
 
@@ -131,7 +131,7 @@ Deployed to: expense-tracker
 | Parameter | Description | Default |
 |-----------|-------------|---------|
 | `-Environment` | Target environment: `staging` or `latest` | None (build only) |
-| `-Registry` | Docker registry URL | `localhost:5000` |
+| `-Registry` | Docker registry URL | `ghcr.io/krazykrazz` |
 | `-MultiPlatform` | Build for linux/amd64 and linux/arm64 | False |
 | `-BuildOnly` | Build SHA image but don't tag for environment | False |
 | `-SkipDeploy` | Skip container deployment | False |
@@ -142,9 +142,9 @@ Deployed to: expense-tracker
 
 ### SHA Tags (Immutable)
 
-Format: `localhost:5000/expense-tracker:<git-sha>`
+Format: `ghcr.io/krazykrazz/expense-tracker:<git-sha>`
 
-Example: `localhost:5000/expense-tracker:abc1234`
+Example: `ghcr.io/krazykrazz/expense-tracker:abc1234`
 
 - **Never changes** - immutable identifier
 - **Links to git commit** - full traceability
@@ -152,11 +152,11 @@ Example: `localhost:5000/expense-tracker:abc1234`
 
 ### Environment Tags (Floating)
 
-Format: `localhost:5000/expense-tracker:<environment>`
+Format: `ghcr.io/krazykrazz/expense-tracker:<environment>`
 
 Examples:
-- `localhost:5000/expense-tracker:staging`
-- `localhost:5000/expense-tracker:latest`
+- `ghcr.io/krazykrazz/expense-tracker:staging`
+- `ghcr.io/krazykrazz/expense-tracker:latest`
 
 - **Points to latest deployed SHA** in that environment
 - **Changes with each deployment** - always points to current version
@@ -171,8 +171,8 @@ To rollback to a previous version:
 
 ```powershell
 # Example: Rollback production to SHA def5678
-docker tag localhost:5000/expense-tracker:def5678 localhost:5000/expense-tracker:latest
-docker push localhost:5000/expense-tracker:latest
+docker tag ghcr.io/krazykrazz/expense-tracker:def5678 ghcr.io/krazykrazz/expense-tracker:latest
+docker push ghcr.io/krazykrazz/expense-tracker:latest
 
 # Restart container
 docker-compose -f "G:\My Drive\Media Related\docker\media-applications.yml" up -d expense-tracker
@@ -256,10 +256,14 @@ If you see "SHA image already exists", the script will skip the build and use th
 
 ### Registry Not Accessible
 
-Ensure your local Docker registry is running:
+Ensure you are authenticated to GHCR:
 
 ```powershell
-docker ps | Select-String "registry"
+# Check authentication
+docker login ghcr.io --get-login
+
+# Login via GitHub CLI
+gh auth token | docker login ghcr.io -u krazykrazz --password-stdin
 ```
 
 ### Container Won't Start

@@ -109,28 +109,31 @@ Retrieve cleanup statistics and retention policy information.
 
 ### Event Types
 
+Update events include detailed change tracking showing old → new values for modified fields. Example:
+`Updated expense: Pharmacy - $45.00 (amount: $30.00 → $45.00, category: health → medical)`
+
 | Event Type | Entity Type | Description |
 |------------|-------------|-------------|
 | `expense_added` | expense | New expense created |
-| `expense_updated` | expense | Expense modified |
+| `expense_updated` | expense | Expense modified (shows what changed: place, amount, category, date, method, posted date) |
 | `expense_deleted` | expense | Expense removed |
 | `fixed_expense_added` | fixed_expense | New fixed expense created |
-| `fixed_expense_updated` | fixed_expense | Fixed expense modified |
+| `fixed_expense_updated` | fixed_expense | Fixed expense modified (shows what changed: name, amount, category, payment type, due day, loan linkage) |
 | `fixed_expense_deleted` | fixed_expense | Fixed expense removed |
 | `loan_added` | loan | New loan created |
-| `loan_updated` | loan | Loan modified |
+| `loan_updated` | loan | Loan modified (shows what changed: name, notes, rate/property value/renewal date) |
 | `loan_deleted` | loan | Loan removed |
 | `loan_payment_added` | loan_payment | New loan payment recorded |
-| `loan_payment_updated` | loan_payment | Loan payment modified |
+| `loan_payment_updated` | loan_payment | Loan payment modified (shows what changed: amount, date, notes) |
 | `loan_payment_deleted` | loan_payment | Loan payment removed |
 | `investment_added` | investment | New investment created |
-| `investment_updated` | investment | Investment modified |
+| `investment_updated` | investment | Investment modified (shows what changed: name, type) |
 | `investment_deleted` | investment | Investment removed |
 | `budget_added` | budget | New budget created |
-| `budget_updated` | budget | Budget modified |
+| `budget_updated` | budget | Budget modified (shows old → new limit) |
 | `budget_deleted` | budget | Budget removed |
 | `payment_method_added` | payment_method | New payment method created |
-| `payment_method_updated` | payment_method | Payment method modified |
+| `payment_method_updated` | payment_method | Payment method modified (shows what changed: name, type, credit limit, billing/due days) |
 | `payment_method_deactivated` | payment_method | Payment method deactivated |
 | `insurance_status_changed` | expense | Medical expense insurance status changed |
 | `backup_created` | system | Database backup created |
@@ -140,14 +143,16 @@ Retrieve cleanup statistics and retention policy information.
 
 ### Retention Policy
 
-The retention policy can be configured in `backend/services/activityLogService.js`:
+Retention settings are configurable via the Settings API and UI:
 
-```javascript
-const RETENTION_CONFIG = {
-  maxDays: 90,        // Maximum age in days
-  maxEntries: 1000    // Maximum number of events
-};
-```
+- **Max Age (days)**: 7–365 (default: 90)
+- **Max Count**: 100–10,000 (default: 1,000)
+
+Settings are stored in the `settings` database table and managed through:
+- **UI**: Settings → General tab → Activity Log Retention Policy
+- **API**: `GET/PUT /api/activity-logs/settings`
+
+The cleanup job reads settings from the database on each run, so changes take effect on the next scheduled cleanup.
 
 ### Cleanup Schedule
 

@@ -1,11 +1,6 @@
 const activityLogRepository = require('../repositories/activityLogRepository');
+const settingsService = require('./settingsService');
 const logger = require('../config/logger');
-
-// Retention policy configuration
-const RETENTION_POLICY = {
-  maxDays: 90,
-  maxEntries: 1000
-};
 
 // Track last cleanup run
 let lastCleanupRun = null;
@@ -95,33 +90,37 @@ async function getRecentEvents(limit = 50, offset = 0) {
 }
 
 /**
- * Clean up old events based on retention policy
+ * Clean up old events based on retention policy from settings
  * @returns {Promise<{deletedCount: number, oldestRemaining: string|null}>}
  */
 async function cleanupOldEvents() {
   try {
+    // Read retention settings from settingsService
+    const settings = await settingsService.getRetentionSettings();
+    
     let totalDeleted = 0;
 
-    // Age-based cleanup: delete events older than maxDays
+    // Age-based cleanup: delete events older than maxAgeDays
     const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - RETENTION_POLICY.maxDays);
+    cutoffDate.setDate(cutoffDate.getDate() - settings.maxAgeDays);
     const deletedByAge = await activityLogRepository.deleteOlderThan(cutoffDate);
     totalDeleted += deletedByAge;
 
     logger.info('Activity log cleanup: Deleted events by age', { 
       deletedCount: deletedByAge, 
-      cutoffDate: cutoffDate.toISOString() 
+      cutoffDate: cutoffDate.toISOString(),
+      maxAgeDays: settings.maxAgeDays
     });
 
-    // Count-based cleanup: delete excess events beyond maxEntries
+    // Count-based cleanup: delete excess events beyond maxCount
     const currentCount = await activityLogRepository.count();
-    if (currentCount > RETENTION_POLICY.maxEntries) {
-      const deletedByCount = await activityLogRepository.deleteExcessEvents(RETENTION_POLICY.maxEntries);
+    if (currentCount > settings.maxCount) {
+      const deletedByCount = await activityLogRepository.deleteExcessEvents(settings.maxCount);
       totalDeleted += deletedByCount;
 
       logger.info('Activity log cleanup: Deleted excess events', { 
         deletedCount: deletedByCount, 
-        maxEntries: RETENTION_POLICY.maxEntries 
+        maxCount: settings.maxCount
       });
     }
 
@@ -148,19 +147,22 @@ async function cleanupOldEvents() {
 }
 
 /**
- * Get cleanup statistics
+ * Get cleanup statistics including current settings
  * @returns {Promise<object>} - Stats object
  */
 async function getCleanupStats() {
   try {
+    // Read current settings
+    const settings = await settingsService.getRetentionSettings();
+    
     const [currentCount, oldestEventTimestamp] = await Promise.all([
       activityLogRepository.count(),
       activityLogRepository.getOldestEventTimestamp()
     ]);
 
     return {
-      retentionDays: RETENTION_POLICY.maxDays,
-      maxEntries: RETENTION_POLICY.maxEntries,
+      retentionDays: settings.maxAgeDays,
+      maxEntries: settings.maxCount,
       currentCount,
       oldestEventTimestamp,
       lastCleanupRun,
@@ -176,6 +178,5 @@ module.exports = {
   logEvent,
   getRecentEvents,
   cleanupOldEvents,
-  getCleanupStats,
-  RETENTION_POLICY
+  getCleanupStats
 };

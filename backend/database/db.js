@@ -812,6 +812,13 @@ function createTestDatabase() {
             metadata TEXT,
             timestamp TEXT NOT NULL DEFAULT (datetime('now')),
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
+          )`,
+          
+          // settings table (for application configuration)
+          `CREATE TABLE IF NOT EXISTS settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
           )`
         ];
         
@@ -1018,6 +1025,7 @@ async function resetTestDatabase() {
     'monthly_gross',
     'payment_methods',
     'activity_logs',
+    'settings',
     'schema_migrations'
   ];
   

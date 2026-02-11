@@ -412,10 +412,20 @@ Comprehensive event tracking for all data changes.
 - action
 - timestamp
 
-**Retention**: Automatically cleaned up after 90 days (configurable via `ACTIVITY_LOG_RETENTION_DAYS`)
+**Retention**: Automatically cleaned up based on configurable retention settings (default: 90 days / 1000 events, managed via Settings → General)
 
 **Supported Entity Types**:
 - expense, fixed_expense, loan, investment, budget, payment_method, loan_payment, backup
+
+### settings
+
+Key-value store for application settings (e.g., retention policy configuration).
+
+| Field | Type | Description |
+|-------|------|-------------|
+| key | TEXT PRIMARY KEY | Setting identifier (e.g., `retention_max_age_days`) |
+| value | TEXT | Setting value (stored as text, parsed by service layer) |
+| updated_at | TEXT | Last update timestamp |
 
 ### schema_migrations
 

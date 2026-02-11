@@ -2500,9 +2500,10 @@ The Activity Log API provides comprehensive tracking of all data changes in the 
 
 ### Retention Policy
 
-- Activity logs are automatically cleaned up after **90 days**
+- Activity logs are automatically cleaned up based on configurable retention settings
 - Cleanup runs daily at **2:00 AM** via scheduled job
-- Retention period is configurable via `ACTIVITY_LOG_RETENTION_DAYS` environment variable
+- Default: 90 days max age, 1000 max events
+- Retention settings are managed via the Settings API endpoints (see below)
 
 ---
 
@@ -2650,6 +2651,68 @@ const response = await fetch('http://localhost:2424/api/activity-logs/stats');
 
 // Get stats for last 7 days
 const response = await fetch('http://localhost:2424/api/activity-logs/stats?days=7');
+```
+
+---
+
+### 3. Get Retention Settings
+
+Retrieve current retention policy settings.
+
+**Endpoint:** `GET /api/activity-logs/settings`
+
+**Success Response:**
+```json
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "maxAgeDays": 90,
+  "maxCount": 1000
+}
+```
+
+---
+
+### 4. Update Retention Settings
+
+Update retention policy settings. Both fields are required.
+
+**Endpoint:** `PUT /api/activity-logs/settings`
+
+**Request Body:**
+```json
+{
+  "maxAgeDays": 60,
+  "maxCount": 500
+}
+```
+
+**Validation Rules:**
+| Field | Type | Range | Description |
+|-------|------|-------|-------------|
+| maxAgeDays | integer | 7–365 | Maximum age of events in days |
+| maxCount | integer | 100–10,000 | Maximum number of events to retain |
+
+**Success Response:**
+```json
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "maxAgeDays": 60,
+  "maxCount": 500,
+  "message": "Retention settings updated successfully"
+}
+```
+
+**Error Responses:**
+```json
+HTTP/1.1 400 Bad Request
+{ "error": "Missing required field: maxAgeDays" }
+
+HTTP/1.1 400 Bad Request
+{ "error": "maxAgeDays must be an integer between 7 and 365" }
 ```
 
 ---
@@ -2837,17 +2900,13 @@ See test files:
 
 ## Configuration
 
-### Environment Variables
+Retention settings are managed via the API and UI rather than environment variables:
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| ACTIVITY_LOG_RETENTION_DAYS | 90 | Number of days to retain activity logs |
+- **UI**: Settings → General tab → Activity Log Retention Policy
+- **API**: `GET/PUT /api/activity-logs/settings`
+- **Defaults**: maxAgeDays: 90, maxCount: 1000
 
-**Example:**
-```bash
-# Set custom retention period (60 days)
-ACTIVITY_LOG_RETENTION_DAYS=60 npm start
-```
+Settings are stored in the `settings` database table and persist across restarts.
 
 ---
 
@@ -2859,7 +2918,9 @@ ACTIVITY_LOG_RETENTION_DAYS=60 npm start
 - Added activity log API endpoints (GET /activity-logs, GET /activity-logs/stats)
 - Added fire-and-forget logging pattern for reliability
 - Added scheduled cleanup job (daily at 2:00 AM)
-- Added 90-day retention policy (configurable)
+- Added 90-day retention policy (configurable via Settings → General)
+- Added retention settings API endpoints (GET/PUT /api/activity-logs/settings)
+- Added settings table for persistent configuration
 - Added integration with 8 entity types (expenses, fixed expenses, loans, investments, budgets, payment methods, loan payments, backups)
 - Added ActivityLogView component in Settings→Misc tab
 - Added human-readable timestamp formatting

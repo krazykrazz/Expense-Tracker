@@ -287,37 +287,16 @@ const SystemModal = () => {
 
   const renderActivityLogTab = () => {
     return (
-      <>
-        <div className="settings-section">
-          <ActivityLogTable
-            events={activityEvents}
-            loading={activityLoading}
-            error={activityError}
-            displayLimit={displayLimit}
-            hasMore={hasMore}
-            stats={activityStats}
-            onDisplayLimitChange={setDisplayLimit}
-            onLoadMore={handleLoadMore}
-          />
-        </div>
-
-        {activityStats && (
-          <div className="settings-section">
-            <h3>Retention Configuration</h3>
-            <div className="retention-config">
-              <div className="retention-config-item">
-                <strong>Retention Period:</strong> {activityStats.retentionDays} days
-              </div>
-              <div className="retention-config-item">
-                <strong>Maximum Entries:</strong> {activityStats.maxEntries.toLocaleString()}
-              </div>
-              <div className="retention-config-item">
-                <strong>Current Count:</strong> {activityStats.currentCount.toLocaleString()}
-              </div>
-            </div>
-          </div>
-        )}
-      </>
+      <ActivityLogTable
+        events={activityEvents}
+        loading={activityLoading}
+        error={activityError}
+        displayLimit={displayLimit}
+        hasMore={hasMore}
+        stats={activityStats}
+        onDisplayLimitChange={setDisplayLimit}
+        onLoadMore={handleLoadMore}
+      />
     );
   };
 
@@ -513,7 +492,7 @@ const SystemModal = () => {
           )}
 
           {activeTab === 'activity-log' && (
-            <div className="tab-panel">
+            <div className="tab-panel activity-log-tab">
               {renderActivityLogTab()}
             </div>
           )}

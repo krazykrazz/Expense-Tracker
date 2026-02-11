@@ -1,6 +1,7 @@
 const expenseRepository = require('../repositories/expenseRepository');
 const expensePeopleRepository = require('../repositories/expensePeopleRepository');
 const expenseValidationService = require('./expenseValidationService');
+const activityLogService = require('./activityLogService');
 
 class ExpenseInsuranceService {
   /**
@@ -34,6 +35,20 @@ class ExpenseInsuranceService {
     if (!updatedExpense) {
       return null;
     }
+
+    // Log insurance status change activity
+    await activityLogService.logEvent(
+      'insurance_status_changed',
+      'expense',
+      id,
+      `Insurance status changed: ${expense.claim_status || 'None'} → ${status} (${expense.place || 'Unknown'} - $${parseFloat(expense.amount).toFixed(2)})`,
+      {
+        previousStatus: expense.claim_status || null,
+        newStatus: status,
+        place: expense.place,
+        amount: expense.amount
+      }
+    );
 
     // Include people data in the response to preserve UI state
     const people = await expensePeopleRepository.getPeopleForExpense(id);

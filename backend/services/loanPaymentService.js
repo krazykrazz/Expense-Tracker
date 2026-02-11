@@ -155,16 +155,30 @@ class LoanPaymentService {
       notes: paymentData.notes || null
     });
     
+    // Build change description
+    const changes = [];
+    if (existingPayment.amount !== paymentData.amount) {
+      changes.push(`amount: $${existingPayment.amount.toFixed(2)} → $${paymentData.amount.toFixed(2)}`);
+    }
+    if (existingPayment.payment_date !== paymentData.payment_date) {
+      changes.push(`date: ${existingPayment.payment_date} → ${paymentData.payment_date}`);
+    }
+    if ((existingPayment.notes || '') !== (paymentData.notes || '')) {
+      changes.push('notes changed');
+    }
+    const changeSummary = changes.length > 0 ? ` (${changes.join(', ')})` : '';
+
     // Log the event
     await activityLogService.logEvent(
       'loan_payment_updated',
       'loan_payment',
       paymentId,
-      `Updated loan payment: ${loan.name} - $${paymentData.amount.toFixed(2)}`,
+      `Updated loan payment: ${loan.name} - $${paymentData.amount.toFixed(2)}${changeSummary}`,
       {
         loanName: loan.name,
         amount: paymentData.amount,
-        paymentDate: paymentData.payment_date
+        paymentDate: paymentData.payment_date,
+        changes: changes
       }
     );
     

@@ -15,8 +15,8 @@ describe('ActivityLogTable - Property-Based Tests', () => {
    * **Feature: settings-system-split, Property 3: Activity Log Table Structure**
    * 
    * For any non-empty array of activity events, rendering the ActivityLogTable 
-   * should produce a table with exactly two columns (Action and Timestamp) and 
-   * one row per event.
+   * should produce a table with exactly three columns (Time, Event Type, and Details) 
+   * and one row per event.
    * 
    * **Validates: Requirements 4.1**
    */
@@ -51,23 +51,24 @@ describe('ActivityLogTable - Property-Based Tests', () => {
         );
 
         // Verify table exists
-        const table = container.querySelector('.activity-table');
+        const table = container.querySelector('.activity-event-table');
         expect(table).toBeTruthy();
 
-        // Verify header row has exactly 2 columns
-        const headerCells = container.querySelectorAll('.activity-table thead th');
-        expect(headerCells.length).toBe(2);
-        expect(headerCells[0].textContent).toBe('Action');
-        expect(headerCells[1].textContent).toBe('Timestamp');
+        // Verify header row has exactly 3 columns
+        const headerCells = container.querySelectorAll('.activity-event-table thead th');
+        expect(headerCells.length).toBe(3);
+        expect(headerCells[0].textContent).toBe('Time');
+        expect(headerCells[1].textContent).toBe('Event Type');
+        expect(headerCells[2].textContent).toBe('Details');
 
         // Verify body has exactly N rows (one per event)
-        const bodyRows = container.querySelectorAll('.activity-table tbody tr');
+        const bodyRows = container.querySelectorAll('.activity-event-table tbody tr');
         expect(bodyRows.length).toBe(events.length);
 
-        // Verify each row has exactly 2 cells
+        // Verify each row has exactly 3 cells
         bodyRows.forEach((row) => {
           const cells = row.querySelectorAll('td');
-          expect(cells.length).toBe(2);
+          expect(cells.length).toBe(3);
         });
       }),
       { numRuns: 100 }
@@ -265,7 +266,7 @@ describe('ActivityLogTable - Property-Based Tests', () => {
         }
 
         // Should have no table rows
-        const bodyRows = container.querySelectorAll('.activity-table tbody tr');
+        const bodyRows = container.querySelectorAll('.activity-event-table tbody tr');
         expect(bodyRows.length).toBe(0);
       }),
       { numRuns: 50 }
@@ -302,7 +303,7 @@ describe('ActivityLogTable - Property-Based Tests', () => {
         expect(errorElement.textContent).toContain(errorMessage.trim());
 
         // Should not render table
-        const table = container.querySelector('.activity-table');
+        const table = container.querySelector('.activity-event-table');
         expect(table).toBeFalsy();
       }),
       { numRuns: 50 }

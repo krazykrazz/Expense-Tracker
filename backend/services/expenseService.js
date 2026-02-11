@@ -533,17 +533,40 @@ class ExpenseService {
       }
     }
 
+    // Build change description
+    const changes = [];
+    if ((oldExpense.place || '') !== (expense.place || '')) {
+      changes.push(`place: ${oldExpense.place || 'none'} → ${expense.place || 'none'}`);
+    }
+    if (oldExpense.amount !== expense.amount) {
+      changes.push(`amount: $${oldExpense.amount.toFixed(2)} → $${expense.amount.toFixed(2)}`);
+    }
+    if (oldExpense.type !== expense.type) {
+      changes.push(`category: ${oldExpense.type} → ${expense.type}`);
+    }
+    if (oldExpense.date !== expense.date) {
+      changes.push(`date: ${oldExpense.date} → ${expense.date}`);
+    }
+    if (oldExpense.method !== expense.method) {
+      changes.push(`method: ${oldExpense.method} → ${expense.method}`);
+    }
+    if ((oldExpense.posted_date || null) !== (expense.posted_date || null)) {
+      changes.push(`posted date: ${oldExpense.posted_date || 'none'} → ${expense.posted_date || 'none'}`);
+    }
+    const changeSummary = changes.length > 0 ? ` (${changes.join(', ')})` : '';
+
     // Log activity event
     await activityLogService.logEvent(
       'expense_updated',
       'expense',
       id,
-      `Updated expense: ${expense.place || 'Unknown'} - $${expense.amount.toFixed(2)}`,
+      `Updated expense: ${expense.place || 'Unknown'} - $${expense.amount.toFixed(2)}${changeSummary}`,
       {
         amount: expense.amount,
         category: expense.type,
         date: expense.date,
-        place: expense.place
+        place: expense.place,
+        changes: changes
       }
     );
 
@@ -555,7 +578,7 @@ class ExpenseService {
         'insurance_status_changed',
         'expense',
         id,
-        `Insurance status changed: ${oldClaimStatus || 'None'} → ${newClaimStatus || 'None'}`,
+        `Insurance status changed: ${oldClaimStatus || 'None'} → ${newClaimStatus || 'None'} (${expense.place || 'Unknown'} - $${expense.amount.toFixed(2)})`,
         {
           previousStatus: oldClaimStatus || null,
           newStatus: newClaimStatus || null,

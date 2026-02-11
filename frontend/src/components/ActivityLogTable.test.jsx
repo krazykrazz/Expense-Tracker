@@ -83,7 +83,7 @@ describe('ActivityLogTable - Unit Tests', () => {
         />
       );
 
-      const table = container.querySelector('.activity-table');
+      const table = container.querySelector('.activity-event-table');
       expect(table).toBeFalsy();
     });
   });
@@ -100,16 +100,17 @@ describe('ActivityLogTable - Unit Tests', () => {
     it('should render table with correct headers', () => {
       const { container } = render(<ActivityLogTable {...defaultProps} />);
 
-      const headers = container.querySelectorAll('.activity-table thead th');
-      expect(headers.length).toBe(2);
-      expect(headers[0].textContent).toBe('Action');
-      expect(headers[1].textContent).toBe('Timestamp');
+      const headers = container.querySelectorAll('.activity-event-table thead th');
+      expect(headers.length).toBe(3);
+      expect(headers[0].textContent).toBe('Time');
+      expect(headers[1].textContent).toBe('Event Type');
+      expect(headers[2].textContent).toBe('Details');
     });
 
     it('should render correct number of table rows', () => {
       const { container } = render(<ActivityLogTable {...defaultProps} />);
 
-      const rows = container.querySelectorAll('.activity-table tbody tr');
+      const rows = container.querySelectorAll('.activity-event-table tbody tr');
       expect(rows.length).toBe(mockEvents.length);
     });
 
@@ -167,7 +168,7 @@ describe('ActivityLogTable - Unit Tests', () => {
       expect(screen.getByText("Something went wrong")).toBeTruthy();
       
       // Table should still be rendered since events are present
-      const table = container.querySelector('.activity-table');
+      const table = container.querySelector('.activity-event-table');
       expect(table).toBeTruthy();
     });
 
@@ -449,7 +450,7 @@ describe('ActivityLogTable - Unit Tests', () => {
     it('should have semantic table structure', () => {
       const { container } = render(<ActivityLogTable {...defaultProps} />);
 
-      const table = container.querySelector('.activity-table');
+      const table = container.querySelector('.activity-event-table');
       const thead = table.querySelector('thead');
       const tbody = table.querySelector('tbody');
 

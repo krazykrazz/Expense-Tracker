@@ -1,0 +1,39 @@
+name: GHCR Cleanup
+
+on:
+  schedule:
+    # Run every Sunday at midnight UTC
+    - cron: '0 0 * * 0'
+  workflow_dispatch:
+
+jobs:
+  cleanup-untagged:
+    name: Delete Untagged Images
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+
+    steps:
+      - name: Delete untagged container versions
+        uses: actions/delete-package-versions@v5
+        with:
+          package-name: 'expense-tracker'
+          package-type: 'container'
+          delete-only-untagged-versions: 'true'
+          min-versions-to-keep: 0
+
+  cleanup-old-versions:
+    name: Delete Old Tagged Images
+    runs-on: ubuntu-latest
+    needs: cleanup-untagged
+    permissions:
+      packages: write
+
+    steps:
+      - name: Delete old versions (keep latest 20, preserve version tags)
+        uses: actions/delete-package-versions@v5
+        with:
+          package-name: 'expense-tracker'
+          package-type: 'container'
+          min-versions-to-keep: 20
+          ignore-versions: '^v\d+\.\d+\.\d+$|^latest$|^staging$'

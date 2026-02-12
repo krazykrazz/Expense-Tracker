@@ -7,6 +7,23 @@ on:
   pull_request:
     branches:
       - main
+  workflow_dispatch:
+    inputs:
+      health_check_timeout:
+        description: 'Health check HTTP timeout in seconds'
+        required: false
+        default: '30'
+        type: string
+      health_check_retries:
+        description: 'Number of health check retry attempts'
+        required: false
+        default: '10'
+        type: string
+      enable_security_scan:
+        description: 'Enable security vulnerability scanning'
+        required: false
+        default: true
+        type: boolean
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -157,6 +174,10 @@ jobs:
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.title=expense-tracker
             org.opencontainers.image.description=Personal expense tracking application
+          annotations: |
+            org.opencontainers.image.created=${{ steps.meta.outputs.build_date }}
+            org.opencontainers.image.version=${{ steps.meta.outputs.version }}
+            org.opencontainers.image.revision=${{ steps.meta.outputs.sha_short }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
       
@@ -212,3 +233,287 @@ jobs:
           fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  deployment-health-check:
+    name: Deployment Health Check
+    runs-on: ubuntu-latest
+    needs: [build-and-push-ghcr]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && github.actor != 'dependabot[bot]'
+    permissions:
+      packages: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract image metadata
+        id: meta
+        run: |
+          echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "image=ghcr.io/${{ github.repository_owner }}/expense-tracker:$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Store previous deployment SHA
+        id: previous
+        run: |
+          REGISTRY="ghcr.io/${{ github.repository_owner }}"
+          IMAGE_NAME="expense-tracker"
+          CURRENT_SHA="${{ steps.meta.outputs.sha_short }}"
+
+          # Query GHCR for the latest tag that isn't the current SHA
+          # Use docker manifest inspect to check if a 'latest' image exists
+          PREVIOUS_SHA="none"
+          if docker pull "$REGISTRY/$IMAGE_NAME:latest" 2>/dev/null; then
+            # Get the digest of the latest image
+            LATEST_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' "$REGISTRY/$IMAGE_NAME:latest" 2>/dev/null || echo "")
+            if [ -n "$LATEST_DIGEST" ]; then
+              PREVIOUS_SHA="latest"
+              echo "Found previous deployment at :latest tag"
+            fi
+          else
+            echo "No previous deployment found at :latest tag"
+          fi
+
+          echo "previous_sha=$PREVIOUS_SHA" >> $GITHUB_OUTPUT
+          echo "registry=$REGISTRY" >> $GITHUB_OUTPUT
+          echo "image_name=$IMAGE_NAME" >> $GITHUB_OUTPUT
+          echo "Previous deployment SHA: $PREVIOUS_SHA"
+
+      - name: Pull deployed Docker image
+        run: docker pull "${{ steps.meta.outputs.image }}"
+
+      - name: Start container
+        run: |
+          docker run -d \
+            --name expense-tracker-health-check \
+            -p 2424:2424 \
+            -e NODE_ENV=production \
+            -e LOG_LEVEL=info \
+            "${{ steps.meta.outputs.image }}"
+
+      - name: Wait for container initialization
+        run: sleep 10
+
+      - name: Make health check script executable
+        run: chmod +x scripts/health-check.sh
+
+      - name: Run backend health check
+        id: backend_health
+        run: |
+          RETRIES=${{ inputs.health_check_retries || '10' }}
+          TIMEOUT=${{ inputs.health_check_timeout || '30' }}
+          ./scripts/health-check.sh http://localhost:2424/api/health "$RETRIES" 3 "$TIMEOUT"
+        continue-on-error: true
+
+      - name: Run frontend health check
+        id: frontend_health
+        run: |
+          RETRIES=${{ inputs.health_check_retries || '10' }}
+          TIMEOUT=${{ inputs.health_check_timeout || '30' }}
+          ./scripts/health-check.sh http://localhost:2424/ "$RETRIES" 3 "$TIMEOUT"
+        continue-on-error: true
+
+      - name: Report health check results
+        if: always()
+        run: |
+          echo "## Deployment Health Check Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** \`${{ steps.meta.outputs.image }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.backend_health.outcome }}" = "success" ]; then
+            echo "✅ Backend health check: **PASSED**" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Backend health check: **FAILED**" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ "${{ steps.frontend_health.outcome }}" = "success" ]; then
+            echo "✅ Frontend health check: **PASSED**" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Frontend health check: **FAILED**" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Collect container logs on failure
+        if: steps.backend_health.outcome == 'failure' || steps.frontend_health.outcome == 'failure'
+        run: |
+          echo "::group::Container logs"
+          docker logs expense-tracker-health-check 2>&1 || true
+          echo "::endgroup::"
+          echo ""
+          echo "::group::Container status"
+          docker inspect expense-tracker-health-check --format='{{.State.Status}}' || true
+          echo "::endgroup::"
+
+      - name: Stop container
+        if: always()
+        run: |
+          docker stop expense-tracker-health-check || true
+          docker rm expense-tracker-health-check || true
+
+      - name: Initiate rollback on health check failure
+        id: rollback
+        if: steps.backend_health.outcome == 'failure' || steps.frontend_health.outcome == 'failure'
+        run: |
+          ROLLBACK_TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          echo "::warning::[$ROLLBACK_TIMESTAMP] Health checks failed, initiating rollback"
+          echo "  Failed SHA: ${{ steps.meta.outputs.sha_short }}"
+          echo "  Previous SHA: ${{ steps.previous.outputs.previous_sha }}"
+          echo "  Backend: ${{ steps.backend_health.outcome }}"
+          echo "  Frontend: ${{ steps.frontend_health.outcome }}"
+
+          if [ "${{ steps.previous.outputs.previous_sha }}" = "none" ]; then
+            echo "::error::[$ROLLBACK_TIMESTAMP] No previous deployment available for rollback"
+            echo "rollback_result=no_previous" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+          chmod +x scripts/rollback.sh
+          ./scripts/rollback.sh \
+            "${{ steps.previous.outputs.previous_sha }}" \
+            "${{ steps.previous.outputs.registry }}" \
+            "${{ steps.previous.outputs.image_name }}" \
+            "expense-tracker-health-check"
+
+          echo "rollback_result=deployed" >> $GITHUB_OUTPUT
+        continue-on-error: true
+
+      - name: Run health checks on rolled-back deployment
+        id: rollback_health
+        if: steps.rollback.outcome == 'success' && steps.rollback.outputs.rollback_result == 'deployed'
+        run: |
+          ROLLBACK_TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          echo "[$ROLLBACK_TIMESTAMP] Running health checks on rolled-back deployment..."
+
+          chmod +x scripts/health-check.sh
+          BACKEND_OK=true
+          FRONTEND_OK=true
+
+          ./scripts/health-check.sh http://localhost:2424/api/health 5 3 30 || BACKEND_OK=false
+          ./scripts/health-check.sh http://localhost:2424/ 5 3 30 || FRONTEND_OK=false
+
+          COMPLETION_TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          if [ "$BACKEND_OK" = "true" ] && [ "$FRONTEND_OK" = "true" ]; then
+            echo "[$COMPLETION_TIMESTAMP] ✓ Rollback health checks passed"
+            echo "rollback_health=passed" >> $GITHUB_OUTPUT
+          else
+            echo "[$COMPLETION_TIMESTAMP] ✗ Rollback health checks failed"
+            echo "  Backend: $BACKEND_OK, Frontend: $FRONTEND_OK"
+            echo "rollback_health=failed" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+        continue-on-error: true
+
+      - name: Report rollback results
+        if: steps.rollback.outcome == 'success' || steps.rollback.outcome == 'failure'
+        run: |
+          TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Rollback Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Trigger:** Health check failure for SHA \`${{ steps.meta.outputs.sha_short }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Previous SHA:** \`${{ steps.previous.outputs.previous_sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Timestamp:** $TIMESTAMP" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ steps.rollback.outputs.rollback_result }}" = "no_previous" ]; then
+            echo "❌ Rollback: **SKIPPED** (no previous deployment available)" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ steps.rollback_health.outputs.rollback_health }}" = "passed" ]; then
+            echo "✅ Rollback: **SUCCESSFUL**" >> $GITHUB_STEP_SUMMARY
+            echo "✅ Rollback health checks: **PASSED**" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Rollback: **FAILED**" >> $GITHUB_STEP_SUMMARY
+            echo "⚠️ **Manual intervention required**" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Generate deployment metadata
+        id: deployment_metadata
+        if: always()
+        run: |
+          DEPLOY_TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          VERSION=$(jq -r .version backend/package.json)
+
+          # Determine deployment status
+          if [ "${{ steps.backend_health.outcome }}" = "success" ] && [ "${{ steps.frontend_health.outcome }}" = "success" ]; then
+            DEPLOY_STATUS="success"
+          elif [ "${{ steps.rollback_health.outputs.rollback_health }}" = "passed" ]; then
+            DEPLOY_STATUS="rolled_back"
+          else
+            DEPLOY_STATUS="failed"
+          fi
+
+          # Determine health check results
+          BACKEND_HEALTH="failed"
+          FRONTEND_HEALTH="failed"
+          [ "${{ steps.backend_health.outcome }}" = "success" ] && BACKEND_HEALTH="passed"
+          [ "${{ steps.frontend_health.outcome }}" = "success" ] && FRONTEND_HEALTH="passed"
+
+          # Build metadata JSON
+          METADATA=$(cat <<EOF
+          {
+            "sha": "${{ steps.meta.outputs.sha_short }}",
+            "timestamp": "$DEPLOY_TIMESTAMP",
+            "environment": "production",
+            "version": "$VERSION",
+            "status": "$DEPLOY_STATUS",
+            "healthChecks": {
+              "backend": "$BACKEND_HEALTH",
+              "frontend": "$FRONTEND_HEALTH"
+            }
+          }
+          EOF
+          )
+
+          # Add rollback info if applicable
+          if [ "$DEPLOY_STATUS" = "rolled_back" ]; then
+            METADATA=$(echo "$METADATA" | jq --arg prevSha "${{ steps.previous.outputs.previous_sha }}" \
+              --arg reason "Health check failure" \
+              --arg ts "$DEPLOY_TIMESTAMP" \
+              '. + { rollbackInfo: { previousSha: $prevSha, reason: $reason, timestamp: $ts } }')
+          fi
+
+          echo "$METADATA" > deployment-record.json
+          echo "Deployment metadata generated:"
+          cat deployment-record.json
+
+          echo "deploy_status=$DEPLOY_STATUS" >> $GITHUB_OUTPUT
+
+      - name: Upload deployment record
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-${{ steps.meta.outputs.sha_short }}
+          path: deployment-record.json
+          retention-days: 30
+
+      - name: Report deployment state in summary
+        if: always()
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Deployment State" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** \`${{ steps.deployment_metadata.outputs.deploy_status }}\`" >> $GITHUB_STEP_SUMMARY
+          if [ -f deployment-record.json ]; then
+            echo '```json' >> $GITHUB_STEP_SUMMARY
+            cat deployment-record.json >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Fail on health check failure
+        if: steps.backend_health.outcome == 'failure' || steps.frontend_health.outcome == 'failure'
+        run: |
+          TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          echo "::error::[$TIMESTAMP] Deployment health checks failed for SHA ${{ steps.meta.outputs.sha_short }}"
+
+          if [ "${{ steps.rollback_health.outputs.rollback_health }}" = "passed" ]; then
+            echo "Rollback to ${{ steps.previous.outputs.previous_sha }} was successful"
+          elif [ "${{ steps.rollback.outputs.rollback_result }}" = "no_previous" ]; then
+            echo "::error::No previous deployment available for rollback - manual intervention required"
+          else
+            echo "::error::[$TIMESTAMP] Rollback also failed - manual intervention required"
+            echo "::error::HALT: All automated recovery actions exhausted"
+          fi
+          exit 1

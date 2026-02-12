@@ -1,5 +1,7 @@
 # Expense Tracker
 
+[![CI](https://github.com/krazykrazz/Expense-Tracker/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/krazykrazz/Expense-Tracker/actions/workflows/ci.yml)
+
 A full-stack personal finance management application for tracking expenses, income, loans, investments, and budgets. Built with React and Node.js, deployed via Docker.
 
 > **Disclaimer**: This project represents an attempt to create a personal project using AI-assisted development to explore the possibilities and limits using these techniques.

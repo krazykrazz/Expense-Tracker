@@ -73,9 +73,9 @@ Branch protection on `main` blocks direct pushes. Version bumps go through a rel
     gh pr create --base main --head release/v5.10.1 --title "Release v5.10.1: Feature description"
     ```
 
-12. **Wait for CI to pass** on the PR, then merge (squash):
+12. **Wait for CI to pass** on the PR, then merge:
     ```powershell
-    gh pr merge release/v5.10.1 --squash --delete-branch
+    gh pr merge release/v5.10.1 --merge --delete-branch
     ```
 
 13. **Tag the merge commit on main**:
@@ -157,7 +157,7 @@ git push -u origin release/v5.10.1
 gh pr create --base main --head release/v5.10.1 --title "Release v5.10.1"
 
 # 7. Wait for CI, merge PR
-gh pr merge release/v5.10.1 --squash --delete-branch
+gh pr merge release/v5.10.1 --merge --delete-branch
 
 # 8. Tag merge commit on main
 git checkout main; git pull origin main

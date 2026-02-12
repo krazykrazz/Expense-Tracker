@@ -58,7 +58,7 @@ Use the deployment script to handle everything automatically:
 6. Commits version bump on release branch
 7. Pushes branch and creates PR via `gh` CLI
 8. Waits for CI checks to pass on the PR
-9. Merges PR (squash) and deletes release branch
+9. Merges PR (merge commit) and deletes release branch
 10. Tags the merge commit on main
 11. Waits for CI to build Docker image on GHCR
 12. Pulls CI-built image and promotes to staging

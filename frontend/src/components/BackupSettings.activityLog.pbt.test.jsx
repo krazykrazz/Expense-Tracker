@@ -237,7 +237,12 @@ describe('Activity Log - Property 8: Timestamp Human Readability', () => {
           // Otherwise, if it's yesterday's date, it shows "Yesterday at..."
           const diffHours = Math.floor((now - yesterday) / 3600000);
           
-          if (diffHours < 24) {
+          const diffMins = Math.floor((now - yesterday) / 60000);
+          
+          if (diffMins < 60) {
+            // Very close to midnight — yesterday's late hour is only minutes ago
+            expect(result).toMatch(/^(\d+ minutes? ago|Just now)$/);
+          } else if (diffHours < 24) {
             // Could be either "X hours ago" or "Yesterday at..." depending on date boundary
             expect(result).toMatch(/^(\d+ hours? ago|Yesterday at \d{1,2}:\d{2} (AM|PM))$/);
           } else {

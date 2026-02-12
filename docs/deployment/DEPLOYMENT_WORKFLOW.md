@@ -6,7 +6,7 @@ This document describes the end-to-end workflow for deploying features to produc
 
 The deployment workflow ensures:
 - Feature branches never contain version bumps
-- Version bumps happen on `main` after feature merge
+- Version bumps happen via release branch PRs merged to `main`
 - CI is the single source of truth for Docker image builds
 - Same binary artifact moves through staging → production
 - Full traceability via git SHA tags
@@ -45,56 +45,71 @@ The deployment workflow ensures:
    git pull origin main
    ```
 
-### Phase 3: Version Bump & Push (on main)
+### Phase 3: Version Bump via Release Branch (PR-based)
 
-8. **Update version in all locations**:
+Branch protection on `main` blocks direct pushes. Version bumps go through a release branch + PR:
+
+8. **Create release branch**:
+   ```powershell
+   git checkout -b release/v5.10.1
+   ```
+
+9. **Update version in all 5 locations**:
    - `frontend/package.json`, `backend/package.json`
    - `frontend/src/App.jsx` (footer)
    - `CHANGELOG.md`
    - `frontend/src/components/BackupSettings.jsx` (changelog)
 
-9. **Build frontend** with new version:
-   ```powershell
-   cd frontend; npm run build; cd ..
-   ```
-
-10. **Commit version bump** (creates release SHA):
+10. **Build frontend** with new version:
     ```powershell
-    git add -A
-    git commit -m "v5.8.1: Feature description"
-    git tag -a "v5.8.1" -m "Release v5.8.1: Feature description"
+    cd frontend; npm run build; cd ..
     ```
 
-11. **Push to origin** (triggers CI build):
+11. **Commit, push, and create PR**:
     ```powershell
-    git push origin main
-    git push origin v5.8.1
+    git add -A
+    git commit -m "v5.10.1: Feature description"
+    git push -u origin release/v5.10.1
+    gh pr create --base main --head release/v5.10.1 --title "Release v5.10.1: Feature description"
+    ```
+
+12. **Wait for CI to pass** on the PR, then merge (squash):
+    ```powershell
+    gh pr merge release/v5.10.1 --squash --delete-branch
+    ```
+
+13. **Tag the merge commit on main**:
+    ```powershell
+    git checkout main
+    git pull origin main
+    git tag -a "v5.10.1" -m "Release v5.10.1: Feature description"
+    git push origin v5.10.1
     ```
 
 ### Phase 4: Pull and Deploy
 
-12. **Wait for CI** to build and push the Docker image to GHCR
+14. **Wait for CI** to build and push the Docker image to GHCR
 
-13. **Pull and promote to staging**:
+15. **Pull and promote to staging**:
     ```powershell
     .\scripts\build-and-push.ps1 -Environment staging
     ```
 
-14. **Test in staging**:
+16. **Test in staging**:
     - Verify version shows correctly in UI footer
     - Test new features
     - Check logs for errors
 
-15. **Promote to production** (same image, just retag):
+17. **Promote to production** (same image, just retag):
     ```powershell
     .\scripts\build-and-push.ps1 -Environment latest
     ```
 
-16. **Verify production**
+18. **Verify production**
 
 ### Phase 5: Cleanup
 
-17. **Delete feature branch**:
+19. **Delete feature branch** (release branch already deleted by PR merge):
     ```powershell
     git branch -d feature/my-feature
     git push origin --delete feature/my-feature
@@ -102,7 +117,7 @@ The deployment workflow ensures:
 
 ## Automated Deployment
 
-Use `deploy-to-production.ps1` to automate the entire process:
+Use `deploy-to-production.ps1` to automate the entire PR-based release workflow:
 
 ```powershell
 # PATCH version bump
@@ -118,7 +133,7 @@ Use `deploy-to-production.ps1` to automate the entire process:
 .\scripts\deploy-to-production.ps1 -BumpType PATCH -Description "Hotfix" -SkipStaging
 ```
 
-The script handles: version bump → commit → tag → push → wait for CI → pull → staging → production.
+The script handles: release branch → version bump → PR → CI → merge → tag → wait for Docker build → staging → production. Fully compatible with branch protection on `main`.
 
 ## Quick Reference
 
@@ -128,24 +143,33 @@ The script handles: version bump → commit → tag → push → wait for CI →
 # 2. Switch to main and pull
 git checkout main; git pull origin main
 
-# 3. Version bump (update files manually or use deploy-to-production.ps1)
+# 3. Create release branch
+git checkout -b release/v5.10.1
 
-# 4. Build frontend
+# 4. Version bump (update all 5 files)
+
+# 5. Build frontend
 cd frontend; npm run build; cd ..
 
-# 5. Commit and tag
-git add -A; git commit -m "v5.8.1: Description"
-git tag -a "v5.8.1" -m "Release v5.8.1: Description"
+# 6. Commit, push, create PR
+git add -A; git commit -m "v5.10.1: Description"
+git push -u origin release/v5.10.1
+gh pr create --base main --head release/v5.10.1 --title "Release v5.10.1"
 
-# 6. Push (triggers CI build)
-git push origin main; git push origin v5.8.1
+# 7. Wait for CI, merge PR
+gh pr merge release/v5.10.1 --squash --delete-branch
 
-# 7. Wait for CI, then promote to staging
+# 8. Tag merge commit on main
+git checkout main; git pull origin main
+git tag -a "v5.10.1" -m "Release v5.10.1: Description"
+git push origin v5.10.1
+
+# 9. Wait for CI Docker build, then promote to staging
 .\scripts\build-and-push.ps1 -Environment staging
 
-# 8. Test in staging...
+# 10. Test in staging...
 
-# 9. Promote to production
+# 11. Promote to production
 .\scripts\build-and-push.ps1 -Environment latest
 ```
 
@@ -167,7 +191,7 @@ CI is the single source of truth. Use `-LocalBuild` only for testing Dockerfile 
 
 ### ❌ Version Bump on Feature Branch
 
-Version bumps create the release SHA and must happen on `main` after merge.
+Version bumps go on a dedicated `release/vX.Y.Z` branch, never on feature branches. The release branch is merged to `main` via PR.
 
 ### ❌ Deploying Before CI Completes
 

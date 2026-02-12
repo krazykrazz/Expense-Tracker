@@ -50,21 +50,22 @@ Use the deployment script to handle everything automatically:
 ```
 
 **What the script does:**
-1. Verifies you're on main branch
-2. Checks for uncommitted changes
-3. Pulls latest from origin
-4. Calculates new version number
-5. Updates all version files
-6. Updates CHANGELOG.md
-7. Updates BackupSettings.jsx changelog
-8. Builds frontend
-9. Commits version bump (creates release SHA)
-10. Tags the commit
-11. Pushes to origin (triggers CI build)
-12. Waits for CI to build Docker image on GHCR
-13. Pulls CI-built image and promotes to staging
-14. Waits for your confirmation
-15. Promotes to production (latest)
+1. Verifies you're on main branch with clean working directory
+2. Calculates new version number
+3. Creates `release/vX.Y.Z` branch from main
+4. Updates all 5 version locations
+5. Builds frontend
+6. Commits version bump on release branch
+7. Pushes branch and creates PR via `gh` CLI
+8. Waits for CI checks to pass on the PR
+9. Merges PR (squash) and deletes release branch
+10. Tags the merge commit on main
+11. Waits for CI to build Docker image on GHCR
+12. Pulls CI-built image and promotes to staging
+13. Waits for your confirmation
+14. Promotes to production (latest)
+
+This workflow is fully compatible with branch protection on main.
 
 ### Hotfix Workflow
 

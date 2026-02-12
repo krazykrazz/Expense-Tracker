@@ -110,6 +110,7 @@ test-migration-*.md
 # Test PBT directories (temporary test artifacts)
 test-pbt-listing/
 test-pbt-backups/
+test-pbt-stats/
 test-insurance-backups/
 test-insurance-extract/
 test-data/

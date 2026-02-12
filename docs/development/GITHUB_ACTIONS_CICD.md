@@ -1,6 +1,6 @@
 # GitHub Actions CI/CD
 
-**Last Updated**: February 8, 2026  
+**Last Updated**: February 12, 2026  
 **Status**: Active
 
 This document provides detailed documentation for the GitHub Actions CI/CD workflows used in the Expense Tracker application.
@@ -28,6 +28,118 @@ When you create a PR (using `promote-feature.ps1` or `create-pr-from-main.ps1`):
 3. Results appear as status checks on the PR
 4. You can merge once all checks pass
 
+## Security Scanning
+
+The CI pipeline includes automated security scanning to catch vulnerabilities before they reach production.
+
+### Dependency Vulnerability Scanning
+
+A `security-audit` job runs `npm audit` on both backend and frontend dependencies during every CI run. It runs in parallel with test jobs and does not block them.
+
+- Fails the check only on `high` or `critical` severity vulnerabilities
+- `low` and `moderate` findings are logged as warnings but don't fail the build
+- Results are reported in the GitHub Actions workflow summary
+- Skipped for Dependabot PRs (`github.actor != 'dependabot[bot]'`)
+
+### Docker Image Scanning (Trivy)
+
+Before pushing to GHCR, the `build-and-push-ghcr` job scans the built Docker image using [Trivy](https://github.com/aquasecurity/trivy-action):
+
+- Scans for `CRITICAL` and `HIGH` severity vulnerabilities
+- Scan results are uploaded as a workflow artifact (30-day retention)
+- Results are included in the workflow summary
+- If Trivy itself fails (tool error, not a vulnerability finding), the build continues with a warning
+
+### Dependabot
+
+Automated dependency update PRs are configured in `.github/dependabot.yml`:
+
+| Ecosystem | Directory | Schedule | PR Limit | Labels |
+|-----------|-----------|----------|----------|--------|
+| npm | `/backend` | Weekly (Monday) | 5 | `dependencies`, `backend` |
+| npm | `/frontend` | Weekly (Monday) | 5 | `dependencies`, `frontend` |
+| npm | `/` | Weekly (Monday) | 3 | `dependencies` |
+| github-actions | `/` | Monthly | 5 | `ci`, `dependencies` |
+
+Minor and patch updates are grouped to reduce PR noise. Dependabot PRs go through the same CI checks as regular PRs.
+
+### Security Policy
+
+The repository includes a `SECURITY.md` file that describes how to report vulnerabilities, the scope of security considerations, and supported versions.
+
+## Deployment Health Checks & Rollback
+
+After a Docker image is built and pushed to GHCR on merge to main, the `deployment-health-check` job verifies the image works correctly.
+
+### Health Check Flow
+
+1. Pulls the newly built Docker image
+2. Starts a container in the CI environment
+3. Waits for initialization (10s)
+4. Runs HTTP health checks against backend (`/api/health`) and frontend (`/`)
+5. Uses configurable retries with exponential backoff
+
+The health check script is at `scripts/health-check.sh`. Parameters:
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `endpoint_url` | (required) | URL to check |
+| `max_retries` | 10 | Number of retry attempts |
+| `retry_delay` | 5s | Initial delay (doubles each retry) |
+| `timeout` | 30s | HTTP request timeout |
+
+### Automatic Rollback
+
+If health checks fail, the workflow automatically attempts to roll back:
+
+1. Stores the previous deployment SHA before deploying
+2. On failure, pulls and deploys the previous image (`scripts/rollback.sh`)
+3. Runs health checks on the rolled-back deployment
+4. If rollback health checks also fail, the workflow fails with an error requiring manual intervention
+
+All rollback actions are logged with timestamps in the workflow summary.
+
+### Deployment State Tracking
+
+Every deployment generates a metadata record stored as a GitHub Actions artifact (30-day retention):
+
+```json
+{
+  "sha": "abc1234",
+  "timestamp": "2026-02-12T14:30:00Z",
+  "environment": "production",
+  "version": "5.12.0",
+  "status": "success",
+  "healthChecks": {
+    "backend": "passed",
+    "frontend": "passed"
+  }
+}
+```
+
+Docker images also include OCI labels for traceability (`org.opencontainers.image.version`, `org.opencontainers.image.revision`, etc.).
+
+To query deployment history, use `scripts/deployment-history.sh`:
+
+```bash
+# Get last 5 successful deployments
+./scripts/deployment-history.sh owner/repo 5
+```
+
+Requires `gh` CLI and `jq`.
+
+## Workflow Configuration
+
+The CI workflow supports `workflow_dispatch` with configurable inputs:
+
+| Input | Default | Description |
+|-------|---------|-------------|
+| `health_check_timeout` | `30` | HTTP timeout in seconds |
+| `health_check_retries` | `10` | Number of retry attempts |
+| `enable_security_scan` | `true` | Enable/disable security scanning |
+
+These can be set when manually triggering the workflow from the Actions tab.
+
 ## CI Workflow
 
 ### Location
@@ -43,7 +155,20 @@ When you create a PR (using `promote-feature.ps1` or `create-pr-from-main.ps1`):
 
 ### Jobs
 
-The CI workflow runs two parallel job groups:
+The CI workflow runs multiple parallel job groups:
+
+#### Security Audit
+
+```yaml
+security-audit:
+  runs-on: ubuntu-latest
+  if: github.actor != 'dependabot[bot]'
+```
+
+- Runs `npm audit --audit-level=high` on backend and frontend
+- Reports results in workflow summary
+- Fails only on high/critical vulnerabilities
+- Runs in parallel with test jobs (non-blocking)
 
 #### Backend Unit Tests
 
@@ -139,10 +264,15 @@ When you create a PR, CI status is displayed directly on the PR page.
 ### Understanding Check Results
 
 Each PR shows these checks:
+- **Security Audit** — npm audit on backend and frontend dependencies
 - **Backend Unit Tests** — Jest unit tests from `backend/`
 - **Backend PBT Shard 1/3, 2/3, 3/3** — PBT test shards (run in parallel)
 - **Backend PBT Tests** — Summary check that passes when all shards pass
 - **Frontend Tests** — Vitest tests from `frontend/`
+
+On merge to main, additional jobs run:
+- **Build and Push to GHCR** — Builds Docker image, scans with Trivy, pushes to GHCR
+- **Deployment Health Check** — Verifies the image, triggers rollback on failure
 
 The branch protection requires `Backend Unit Tests`, `Backend PBT Tests`, and `Frontend Tests` to pass before merging. Branch protection rules enforce this — GitHub will block the merge button until all required checks pass.
 
@@ -213,8 +343,25 @@ Integrated into `.github/workflows/ci.yml` as the `build-and-push-ghcr` job.
 **The CI workflow builds and pushes images to GHCR on merge to main.** The `build-and-push-ghcr` job in `ci.yml` handles this automatically:
 
 - Builds the Docker image after all tests pass
+- Scans the image with Trivy before pushing (fails on CRITICAL/HIGH findings)
 - Pushes to `ghcr.io/krazykrazz/expense-tracker` with SHA, version, and `latest` tags
 - Creates GitHub releases with docker-compose files attached
+- Includes OCI image labels for deployment traceability
+
+#### Deployment Health Check
+
+```yaml
+deployment-health-check:
+  runs-on: ubuntu-latest
+  needs: [build-and-push-ghcr]
+  if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+```
+
+- Pulls the newly built image and starts a container
+- Runs health checks on backend and frontend endpoints
+- On failure: triggers automatic rollback to previous image
+- Generates deployment metadata artifact (30-day retention)
+- Reports results in workflow summary
 
 ### Local Deployment
 
@@ -249,7 +396,7 @@ Each run shows:
 - **Summary**: Overall status and duration
 - **Jobs**: Individual job status (Backend Tests, Frontend Tests)
 - **Logs**: Detailed output from each step
-- **Artifacts**: Any uploaded files (none currently)
+- **Artifacts**: Uploaded files (Trivy scan results, deployment metadata records)
 
 ### Pull Request Checks
 
@@ -373,6 +520,8 @@ Individual test timeouts:
 
 ## Related Documentation
 
+- [CI Optimization Roadmap](./CI_OPTIMIZATION_ROADMAP.md) - Planned and completed CI improvements
+- [CI/CD Troubleshooting Guide](./CI_TROUBLESHOOTING.md) - Common issues and debugging steps
 - [Feature Branch Workflow](./FEATURE_BRANCH_WORKFLOW.md) - Branch strategy and promotion process
 - [Pre-deployment Checklist](../../.kiro/steering/pre-deployment.md) - Steps before deploying
 - [Docker Documentation](../guides/DOCKER.md) - Docker setup and usage

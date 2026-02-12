@@ -1,7 +1,7 @@
 # CI/CD Optimization Roadmap
 
-**Last Updated**: February 10, 2026  
-**Status**: Planning
+**Last Updated**: February 12, 2026  
+**Status**: Phase 1 Complete
 
 This document outlines planned optimizations and improvements for the CI/CD pipeline and deployment process.
 
@@ -28,8 +28,8 @@ The project uses GitHub Actions for CI/CD with:
 #### High Priority
 - ✅ Already optimized: PBT sharding and parallel workers
 - ✅ Already optimized: Per-worker database isolation
-- 🔧 Add test result caching for unchanged files
-- 🔧 Add dependency caching for faster npm installs
+- ✅ Already optimized: Dependency caching via `setup-node` with `cache: 'npm'`
+- ~~Test result caching for unchanged files~~ — Deprioritized: unlimited minutes on public repos makes the complexity not worth the ~2 min savings
 
 #### Medium Priority
 - Add test result annotations for better PR feedback
@@ -63,9 +63,10 @@ The project uses GitHub Actions for CI/CD with:
 **Planned Enhancements**:
 
 #### High Priority
-- Add dependency caching (node_modules)
-- Add deployment health checks
-- Add rollback capability to deployment scripts
+- ✅ Dependency caching (handled by `setup-node` with `cache: 'npm'`)
+- ✅ Deployment health checks (automated in CI after GHCR push)
+- ✅ Rollback capability (automatic on health check failure)
+- ✅ Workflow status badge in README
 
 #### Medium Priority
 - Add PR size labeling
@@ -82,13 +83,16 @@ The project uses GitHub Actions for CI/CD with:
 - Manual PowerShell scripts for local deployment
 - SHA-based immutable images
 - Environment promotion (staging → latest)
+- ✅ Automated health checks after GHCR push
+- ✅ Automatic rollback on health check failure
+- ✅ Deployment metadata stored as workflow artifacts (30-day retention)
 
 **Planned Optimizations**:
 
 #### High Priority
-- Add deployment status tracking
-- Add deployment health verification
-- Add rollback capability
+- ✅ Deployment status tracking (metadata artifacts with SHA, timestamp, version, health results)
+- ✅ Deployment health verification (backend + frontend health checks)
+- ✅ Rollback capability (automatic with post-rollback health verification)
 
 #### Medium Priority
 - Add deployment notifications
@@ -99,16 +103,19 @@ The project uses GitHub Actions for CI/CD with:
 
 ### 5. Security Improvements 🔒
 
-**Planned Enhancements**:
+**Status**: ✅ Complete (Phase 1)
 
-#### Medium Priority
-- Add dependency vulnerability scanning (npm audit)
-- Add Docker image scanning (Trivy)
-- Add security policy documentation
+The repository is now public, making security the highest priority. All Phase 1 security items are implemented.
 
-#### Low Priority
+**Completed**:
+- ✅ Dependency vulnerability scanning (`npm audit` in CI, fails on high/critical)
+- ✅ Docker image scanning (Trivy, fails on CRITICAL/HIGH)
+- ✅ Security policy documentation (`SECURITY.md`)
+- ✅ Dependabot for automated dependency updates (npm + GitHub Actions)
+
+**Future Enhancements** (Lower Priority):
 - Add SAST (Static Application Security Testing)
-- Add dependency update automation (Dependabot)
+- Add secret scanning alerts
 
 ### 6. Monitoring and Observability 📊
 
@@ -128,11 +135,11 @@ The project uses GitHub Actions for CI/CD with:
 **Planned Enhancements**:
 
 #### High Priority
-- Add workflow status badges to README
+- ✅ Workflow status badge in README
 - Add PR template
 
 #### Medium Priority
-- Add CI/CD troubleshooting guide
+- ✅ CI/CD troubleshooting guide (`docs/development/CI_TROUBLESHOOTING.md`)
 - Add performance optimization guide
 
 #### Low Priority
@@ -153,26 +160,34 @@ The project uses GitHub Actions for CI/CD with:
 
 ## Implementation Priority
 
-### Phase 1: High Priority (Immediate Impact)
-**Target**: Q1 2026
+### Phase 1: Security & Deployment Safety ✅ COMPLETE
+**Completed**: February 2026
 
-1. **Test Result Caching**
-   - Cache Jest and Vitest results for unchanged files
-   - Expected speedup: 20-30% for incremental changes
+1. ✅ **Security Hardening**
+   - Dependency vulnerability scanning (npm audit in CI)
+   - Docker image scanning (Trivy before GHCR push)
+   - Dependabot configuration (npm + GitHub Actions)
+   - Security policy (SECURITY.md)
 
-2. **Deployment Health Checks**
-   - Verify container health after deployment
+2. ✅ **Deployment Health Checks**
+   - Automated health checks after GHCR push
+   - Backend and frontend endpoint verification
+   - Configurable retries with exponential backoff
+
+3. ✅ **Rollback Capability**
    - Automatic rollback on health check failure
+   - Post-rollback health verification
+   - Operator alerting on rollback failure
 
-3. **Rollback Capability**
-   - Store previous image tags
-   - One-command rollback to previous version
+4. ✅ **Deployment State Tracking**
+   - Deployment metadata artifacts (30-day retention)
+   - OCI image labels for traceability
+   - Deployment history query script
 
-4. **Dependency Caching**
-   - Cache node_modules for faster installs
-   - Expected speedup: 30-40% for dependency install step
+5. ✅ **Workflow Status Badge**
+   - CI badge in README linking to Actions page
 
-### Phase 2: Medium Priority (Quality of Life)
+### Phase 2: Quality of Life (Next Up)
 **Target**: Q2 2026
 
 1. **PR Size Labeling**
@@ -191,20 +206,20 @@ The project uses GitHub Actions for CI/CD with:
    - Display test failures inline in PR
    - Faster debugging
 
-### Phase 3: Low Priority (Nice to Have)
+### Phase 3: Nice to Have
 **Target**: Q3-Q4 2026
 
 1. **Code Coverage Tracking**
    - Track coverage trends over time
    - Prevent coverage regressions
 
-2. **Dependency Scanning**
-   - Automated vulnerability detection
-   - Security alerts for dependencies
-
-3. **Automated Changelog**
+2. **Automated Changelog**
    - Generate changelog from commits
    - Reduce manual documentation work
+
+3. **SAST**
+   - Static application security testing
+   - Deeper code-level vulnerability detection
 
 ## Success Metrics
 
@@ -227,6 +242,7 @@ The project uses GitHub Actions for CI/CD with:
 ## Related Documentation
 
 - [GitHub Actions CI/CD](./GITHUB_ACTIONS_CICD.md) - Current CI/CD documentation
+- [CI/CD Troubleshooting Guide](./CI_TROUBLESHOOTING.md) - Common issues and debugging steps
 - [Feature Branch Workflow](./FEATURE_BRANCH_WORKFLOW.md) - Branch strategy
 - [Deployment Workflow](../deployment/DEPLOYMENT_WORKFLOW.md) - Deployment process
 - [SHA-Based Containers](../deployment/SHA_BASED_CONTAINERS.md) - Container strategy
@@ -235,5 +251,6 @@ The project uses GitHub Actions for CI/CD with:
 
 | Date | Change | Author |
 |------|--------|--------|
+| 2026-02-12 | Phase 1 complete: security hardening, health checks, rollback, deployment tracking, badge | System |
 | 2026-02-10 | Initial roadmap created | System |
 

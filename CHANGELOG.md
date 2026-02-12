@@ -3,6 +3,11 @@
 
 
 
+
+
+## [5.10.1] - 2026-02-11
+
+### PBT test fix and deployment docs update
 ## [5.10.0] - 2026-02-10
 
 ### Activity log feature with comprehensive event tracking

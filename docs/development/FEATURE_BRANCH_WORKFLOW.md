@@ -157,7 +157,7 @@ Suggested PR title: Your Feature
 
 ### When to Use Direct Merge
 
-> **⚠️ Branch protection is active on `main`.** The `-DirectMerge` flag will be rejected by GitHub because direct pushes to `main` are blocked. All merges must go through a PR with passing status checks (`Backend Unit Tests`, `Backend PBT Tests`, `Frontend Tests`).
+> **⚠️ Branch protection is active on `main`.** The `-DirectMerge` flag will be rejected by GitHub because direct pushes to `main` are blocked. All merges must go through a PR with passing status checks (`Backend Unit Tests`, `Backend PBT Shard 1/3`, `Backend PBT Shard 2/3`, `Backend PBT Shard 3/3`, `Frontend Tests`).
 
 The `-DirectMerge` flag is retained in the script for local-only development scenarios where GitHub branch protection does not apply, but it cannot be used for the production repository.
 
@@ -517,7 +517,7 @@ See [GITHUB_ACTIONS_CICD.md](./GITHUB_ACTIONS_CICD.md) for detailed CI/CD docume
 Branch protection is **active** on the `main` branch with the following rules:
 
 - **Require pull requests** — Direct pushes to `main` are blocked
-- **Required status checks**: `Backend Unit Tests`, `Backend PBT Tests`, `Frontend Tests`
+- **Required status checks**: `Backend Unit Tests`, `Backend PBT Shard 1/3`, `Backend PBT Shard 2/3`, `Backend PBT Shard 3/3`, `Frontend Tests`
 - **Require branches to be up to date** before merging
 
 ### Impact on Workflow

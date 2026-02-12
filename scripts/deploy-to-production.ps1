@@ -313,7 +313,7 @@ if (-not $ciPassed) {
 # Merge the PR
 if ($ciPassed) {
     Write-Step "Merging PR..."
-    gh pr merge $releaseBranch --squash --delete-branch
+    gh pr merge $releaseBranch --merge --delete-branch
     if ($LASTEXITCODE -ne 0) {
         Write-Warn "Auto-merge failed. Please merge the PR manually via GitHub."
     } else {

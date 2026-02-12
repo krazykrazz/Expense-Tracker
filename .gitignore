@@ -88,6 +88,7 @@ test-pbt-insurance-backup/
 /preview-data/
 
 test-pbt-backups/
+test-pbt-payment-methods-backups/
 
 # Backend config database backups (runtime only)
 backend/config/database/backups/

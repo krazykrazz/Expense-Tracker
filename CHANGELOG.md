@@ -5,6 +5,11 @@
 
 
 
+
+
+## [5.11.1] - 2026-02-13
+
+### Fix billing cycle notification showing pre-existing cycles
 ## [5.11.0] - 2026-02-12
 
 ### Billing cycle automation, unified cycle list, statement badge fixes

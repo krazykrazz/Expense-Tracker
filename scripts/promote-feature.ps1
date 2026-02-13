@@ -11,7 +11,9 @@ $BranchName = "feature/$FeatureName"
 # Function to convert kebab-case to Title Case for PR titles
 function ConvertTo-PRTitle {
     param([string]$FeatureName)
-    return ($FeatureName -replace '-', ' ') -replace '\b(\w)', { $_.Groups[1].Value.ToUpper() }
+    $words = $FeatureName -split '-'
+    $titled = $words | ForEach-Object { $_.Substring(0,1).ToUpper() + $_.Substring(1) }
+    return "feat: " + ($titled -join ' ')
 }
 
 # Function to get GitHub compare URL for manual PR creation

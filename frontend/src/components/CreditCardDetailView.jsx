@@ -112,7 +112,7 @@ const CreditCardDetailView = ({
           // Fetch unified billing cycles (with auto-generation)
           setUnifiedBillingCyclesLoading(true);
           try {
-            const unifiedData = await getUnifiedBillingCycles(paymentMethodId, { limit: 12, includeAutoGenerate: true });
+            const unifiedData = await getUnifiedBillingCycles(paymentMethodId, { limit: 12, includeAutoGenerate: false });
             setUnifiedBillingCycles(unifiedData.billingCycles || []);
           } catch (unifiedErr) {
             logger.warn('Failed to fetch unified billing cycles:', unifiedErr);

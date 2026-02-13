@@ -91,6 +91,27 @@ For credit card payment methods:
 - **Upload Statements**: Attach PDF statements with billing period dates
 - **Due Date Reminders**: Get alerts when payment is due within 7 days
 - **Billing Cycle Tracking**: Track statement balances and transaction counts
+- **Auto-Generated Billing Cycles**: The system automatically creates billing cycle records when a cycle ends (see below)
+
+### Auto-Generated Billing Cycles
+
+The system automatically detects when a credit card billing cycle has ended and creates a billing cycle record in the background. You don't need to open the credit card detail view for this to happen — it runs on a daily schedule.
+
+**How it works:**
+
+1. When a billing cycle ends, the system creates a record with a calculated balance based on your tracked expenses
+2. A notification banner appears at the top of the page: **"Auto-generated billing cycle created for {card name}"**
+3. The notification shows the card name, cycle end date, and the calculated balance
+
+**Reviewing and entering the actual balance:**
+
+1. Click the notification banner to navigate to the credit card's billing cycle list
+2. Review the calculated balance — this is the sum of expenses you've tracked for that billing period
+3. Compare it with the actual statement balance from your credit card statement
+4. Enter the actual statement balance to update the record
+5. Once you enter the actual balance, the notification disappears
+
+This ensures your billing cycle records stay up to date even if you don't check the app regularly.
 
 ### Activate/Deactivate
 
@@ -321,6 +342,7 @@ Receive visual reminders when monthly data needs updating:
 - Investment values for the current month
 - Loan balances for the current month
 - Billing cycle statement balances
+- Auto-generated billing cycles awaiting actual statement balance entry
 
 ### Activity Log
 

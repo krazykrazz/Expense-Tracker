@@ -2,7 +2,7 @@
 
 **Version**: 5.4.0  
 **Status**: Implemented  
-**Spec**: `.kiro/specs/credit-card-billing-cycle-history/`, `.kiro/specs/unified-billing-cycles/`
+**Spec**: `.kiro/specs/credit-card-billing-cycle-history/`, `.kiro/specs/unified-billing-cycles/`, `.kiro/specs/billing-cycle-automation/`
 
 ## Overview
 
@@ -22,14 +22,56 @@ The billing cycle list displays all cycles (both user-entered and auto-generated
 - **Optional Fields**: Minimum payment, due date, and notes when available
 - **PDF Indicator**: Shows when a statement PDF is attached
 
-### Automatic Cycle Generation
+### Scheduled Billing Cycle Auto-Generation
 
-The system automatically generates billing cycles based on transaction history:
+Billing cycle records are created automatically by a background scheduler, replacing the previous approach where cycles were generated on-demand when opening the credit card detail view.
 
-- Cycles are created for any period with expenses posted to the credit card
-- Auto-generated cycles show calculated balance based on posted expenses
-- Cycles extend back to the earliest expense for the payment method
-- No manual intervention required - cycles appear automatically
+**How It Works:**
+
+- A `node-cron` background task runs inside the Express server process on a configurable schedule (default: daily at 2:00 AM)
+- On each run, the scheduler scans all active credit cards with a configured `billing_cycle_day`
+- For any completed billing cycle period without a corresponding record, the scheduler creates an auto-generated cycle
+- Auto-generated cycles have `is_user_entered = 0`, `actual_statement_balance = 0`, and a `calculated_statement_balance` derived from tracked expenses in the cycle period
+- The calculated balance uses `COALESCE(original_cost, amount)` for expenses where `COALESCE(posted_date, date)` falls within the cycle dates (inclusive)
+
+**Startup Behavior:**
+
+- On server startup, an initial check runs after 60 seconds to catch any cycles missed during downtime
+- This ensures no billing cycles are missed even if the server was offline when the cron job would have fired
+
+**Configuration:**
+
+The cron schedule is configurable via the `BILLING_CYCLE_CRON` environment variable:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `BILLING_CYCLE_CRON` | `0 2 * * *` (daily at 2:00 AM) | Cron expression controlling how often the scheduler runs |
+
+Docker Compose example:
+```yaml
+services:
+  expense-tracker:
+    environment:
+      - BILLING_CYCLE_CRON=0 2 * * *
+```
+
+**Resilience:**
+
+- An in-memory lock prevents concurrent execution of the scheduler
+- If processing one credit card fails, the scheduler logs the error and continues with remaining cards
+- A warning is logged if a scheduler run exceeds 30 seconds
+- All scheduler activity is captured in the activity log for auditing
+
+### Auto-Generation Notification
+
+When the scheduler creates new billing cycle records, a notification alerts the user to review them:
+
+- A banner appears in the Notifications section: "Auto-generated billing cycle created for {card name}"
+- The notification displays the credit card name, cycle end date, and calculated balance
+- Clicking the notification navigates to the credit card's billing cycle list for review
+- The notification disappears once the user enters an actual statement balance (setting `actual_statement_balance > 0` or `is_user_entered = 1`)
+
+This replaces the "needs entry" billing cycle reminder for auto-generated cycles — since the record already exists, the user is prompted to review and enter the real statement balance rather than being told a cycle needs to be created.
 
 ### Statement Balance Entry
 

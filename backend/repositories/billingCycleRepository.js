@@ -304,7 +304,7 @@ class BillingCycleRepository {
 
   /**
    * Find unreviewed auto-generated billing cycle records
-   * Returns cycles where is_user_entered = 0 AND actual_statement_balance = 0,
+   * Returns cycles where is_user_entered = 0 AND reviewed_at IS NULL,
    * joined with payment_methods to include display_name and full_name
    * @returns {Promise<Array>} Array of unreviewed auto-generated billing cycle records
    * _Requirements: 2.1, 2.4_
@@ -317,7 +317,7 @@ class BillingCycleRepository {
         SELECT bch.*, pm.display_name, pm.full_name
         FROM credit_card_billing_cycles bch
         JOIN payment_methods pm ON bch.payment_method_id = pm.id
-        WHERE bch.is_user_entered = 0 AND bch.actual_statement_balance = 0
+        WHERE bch.is_user_entered = 0 AND bch.reviewed_at IS NULL
         ORDER BY bch.cycle_end_date DESC
       `;
       

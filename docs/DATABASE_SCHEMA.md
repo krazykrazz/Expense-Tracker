@@ -344,6 +344,7 @@ Billing cycle history with statement balances.
 | notes | TEXT | Optional notes |
 | statement_pdf_path | TEXT | Optional path to attached PDF statement |
 | is_user_entered | INTEGER DEFAULT 0 | 0 = auto-generated, 1 = user-entered |
+| reviewed_at | TEXT DEFAULT NULL | Timestamp when auto-generated cycle was acknowledged |
 | created_at | TEXT | Creation timestamp |
 | updated_at | TEXT | Last update timestamp |
 

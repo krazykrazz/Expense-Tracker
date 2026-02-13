@@ -322,7 +322,7 @@ class ReminderService {
 
   /**
    * Get notifications for auto-generated billing cycles that haven't been reviewed
-   * Returns cycles where is_user_entered = 0 AND actual_statement_balance = 0
+   * Returns cycles where is_user_entered = 0 AND reviewed_at IS NULL
    * @param {Date} referenceDate - Reference date (defaults to today)
    * @returns {Promise<Object>} Auto-generated cycle notifications with count and cycles array
    * _Requirements: 2.1, 2.2_

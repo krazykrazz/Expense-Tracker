@@ -58,9 +58,9 @@ describe('useBadgeCalculations - Property-Based Tests', () => {
       fc.assert(
         fc.property(
           fc.integer({ min: 0, max: 12 }),
-          fc.option(fc.date({ min: new Date('2020-01-01'), max: new Date('2030-12-31') }), { nil: null }),
+          fc.option(fc.date({ min: new Date('2020-01-01'), max: new Date('2030-12-31'), noInvalidDate: true }), { nil: null }),
           (futureMonths, dateObj) => {
-            const postedDate = dateObj ? dateObj.toISOString().split('T')[0] : '';
+            const postedDate = (dateObj && !isNaN(dateObj.getTime())) ? dateObj.toISOString().split('T')[0] : '';
             
             // Call twice with same inputs
             const result1 = calculateAdvancedOptionsBadge(futureMonths, postedDate);

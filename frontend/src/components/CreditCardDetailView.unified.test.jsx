@@ -392,7 +392,7 @@ describe('CreditCardDetailView - Unified Billing Cycles', () => {
       });
 
       // Should have called the unified billing cycles API
-      expect(creditCardApi.getUnifiedBillingCycles).toHaveBeenCalledWith(1, { limit: 12, includeAutoGenerate: true });
+      expect(creditCardApi.getUnifiedBillingCycles).toHaveBeenCalledWith(1, { limit: 12, includeAutoGenerate: false });
     });
   });
 

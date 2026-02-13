@@ -13,7 +13,7 @@ const logger = createLogger('BillingCycleHistoryForm');
  * Features:
  * - Pre-populated cycle dates from most recent completed cycle
  * - Validation for non-negative actual_statement_balance
- * - Optional minimum_payment, due_date, notes fields
+ * - Optional minimum_payment, notes fields
  * - Optional PDF statement upload
  * - Display calculated balance for reference
  * - Show discrepancy after successful submission
@@ -43,7 +43,6 @@ const BillingCycleHistoryForm = ({
   const [minimumPayment, setMinimumPayment] = useState(
     editingCycle?.minimum_payment?.toString() || ''
   );
-  const [dueDate, setDueDate] = useState(editingCycle?.due_date || '');
   const [notes, setNotes] = useState(editingCycle?.notes || '');
   const [pdfFile, setPdfFile] = useState(null);
   const [pdfFileName, setPdfFileName] = useState('');
@@ -133,16 +132,8 @@ const BillingCycleHistoryForm = ({
       }
     }
 
-    // Due date validation - optional but must be valid format if provided
-    if (dueDate) {
-      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-      if (!dateRegex.test(dueDate)) {
-        return { isValid: false, error: 'Invalid due date format' };
-      }
-    }
-
     return { isValid: true, error: null };
-  }, [actualBalance, minimumPayment, dueDate]);
+  }, [actualBalance, minimumPayment]);
 
   // Handle form submission
   const handleSubmit = async (e) => {
@@ -169,9 +160,6 @@ const BillingCycleHistoryForm = ({
       // Add optional fields if provided
       if (minimumPayment !== '') {
         data.minimum_payment = parseFloat(minimumPayment);
-      }
-      if (dueDate) {
-        data.due_date = dueDate;
       }
       if (notes.trim()) {
         data.notes = notes.trim();
@@ -220,12 +208,6 @@ const BillingCycleHistoryForm = ({
       setter(sanitized);
       setError(null);
     }
-  };
-
-  // Handle date change
-  const handleDateChange = (e) => {
-    setDueDate(e.target.value);
-    setError(null);
   };
 
   // Handle notes change
@@ -435,21 +417,6 @@ const BillingCycleHistoryForm = ({
               disabled={submitting}
             />
           </div>
-        </div>
-
-        {/* Due Date Field */}
-        <div className="billing-cycle-field">
-          <label htmlFor="due-date" className="billing-cycle-label">
-            Due Date <span className="optional">(optional)</span>
-          </label>
-          <input
-            type="date"
-            id="due-date"
-            className="billing-cycle-input billing-cycle-date"
-            value={dueDate}
-            onChange={handleDateChange}
-            disabled={submitting}
-          />
         </div>
 
         {/* Notes Field */}

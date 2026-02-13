@@ -81,8 +81,7 @@ db.serialize(() => {
           cycle_start_date: cycleStartDate.toISOString().split('T')[0],
           cycle_end_date: cycleEndDate.toISOString().split('T')[0],
           actual_statement_balance: statementBalance,
-          calculated_statement_balance: statementBalance,
-          due_date: dueDate.toISOString().split('T')[0]
+          calculated_statement_balance: statementBalance
         });
 
         console.log(`  - ${card.display_name}: Due ${dueDate.toISOString().split('T')[0]}, Balance: $${statementBalance}`);
@@ -91,8 +90,8 @@ db.serialize(() => {
       // Insert billing cycles
       const insertStmt = db.prepare(`
         INSERT INTO credit_card_billing_cycles 
-        (payment_method_id, cycle_start_date, cycle_end_date, actual_statement_balance, calculated_statement_balance, due_date)
-        VALUES (?, ?, ?, ?, ?, ?)
+        (payment_method_id, cycle_start_date, cycle_end_date, actual_statement_balance, calculated_statement_balance)
+        VALUES (?, ?, ?, ?, ?)
       `);
 
       billingCycles.forEach(cycle => {
@@ -101,8 +100,7 @@ db.serialize(() => {
           cycle.cycle_start_date,
           cycle.cycle_end_date,
           cycle.actual_statement_balance,
-          cycle.calculated_statement_balance,
-          cycle.due_date
+          cycle.calculated_statement_balance
         );
       });
 

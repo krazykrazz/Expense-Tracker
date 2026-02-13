@@ -1,4 +1,7 @@
 const billingCycleHistoryService = require('../services/billingCycleHistoryService');
+const activityLogService = require('../services/activityLogService');
+const paymentMethodRepository = require('../repositories/paymentMethodRepository');
+const billingCycleRepository = require('../repositories/billingCycleRepository');
 const logger = require('../config/logger');
 const path = require('path');
 const fs = require('fs');
@@ -43,7 +46,6 @@ function ensureStatementsDir() {
  * Request body (JSON or multipart/form-data):
  * - actual_statement_balance (required): number >= 0
  * - minimum_payment (optional): number >= 0
- * - due_date (optional): string YYYY-MM-DD
  * - notes (optional): string
  * - statement (optional): PDF file (when using multipart/form-data)
  * 
@@ -63,7 +65,7 @@ async function createBillingCycle(req, res) {
     }
     
     // Handle both JSON and multipart/form-data
-    let actual_statement_balance, minimum_payment, due_date, notes;
+    let actual_statement_balance, minimum_payment, notes;
     
     if (req.body.actual_statement_balance !== undefined) {
       // Parse values - they may be strings from form-data
@@ -73,7 +75,6 @@ async function createBillingCycle(req, res) {
       minimum_payment = req.body.minimum_payment !== undefined && req.body.minimum_payment !== ''
         ? (typeof req.body.minimum_payment === 'string' ? parseFloat(req.body.minimum_payment) : req.body.minimum_payment)
         : undefined;
-      due_date = req.body.due_date || undefined;
       notes = req.body.notes || undefined;
     } else {
       return res.status(400).json({
@@ -96,17 +97,6 @@ async function createBillingCycle(req, res) {
         return res.status(400).json({
           success: false,
           error: 'Minimum payment must be a non-negative number'
-        });
-      }
-    }
-    
-    // Validate due_date format if provided
-    if (due_date !== undefined && due_date !== null && due_date !== '') {
-      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-      if (!dateRegex.test(due_date)) {
-        return res.status(400).json({
-          success: false,
-          error: 'Invalid date format. Use YYYY-MM-DD'
         });
       }
     }
@@ -141,7 +131,7 @@ async function createBillingCycle(req, res) {
     
     const billingCycle = await billingCycleHistoryService.createBillingCycle(
       paymentMethodId,
-      { actual_statement_balance, minimum_payment, due_date, notes, statement_pdf_path }
+      { actual_statement_balance, minimum_payment, notes, statement_pdf_path }
     );
     
     logger.info('Billing cycle created via API:', {
@@ -150,6 +140,30 @@ async function createBillingCycle(req, res) {
       cycleEndDate: billingCycle.cycle_end_date,
       hasPdf: !!statement_pdf_path
     });
+    
+    // Activity logging (fire-and-forget)
+    try {
+      const paymentMethod = await paymentMethodRepository.findById(paymentMethodId);
+      const cardName = paymentMethod ? (paymentMethod.display_name || paymentMethod.full_name) : `Card ${paymentMethodId}`;
+      const discrepancyAmount = billingCycle.discrepancy ? billingCycle.discrepancy.amount : 0;
+      const userAction = `Credit card ${cardName}, billing cycle ${billingCycle.cycle_start_date} to ${billingCycle.cycle_end_date} - statement balance of $${actual_statement_balance.toFixed(2)} logged - discrepancy = $${Math.abs(discrepancyAmount).toFixed(2)}`;
+      await activityLogService.logEvent(
+        'billing_cycle_created',
+        'billing_cycle',
+        billingCycle.id,
+        userAction,
+        {
+          paymentMethodName: cardName,
+          cycleStartDate: billingCycle.cycle_start_date,
+          cycleEndDate: billingCycle.cycle_end_date,
+          actualStatementBalance: actual_statement_balance,
+          calculatedStatementBalance: billingCycle.calculated_statement_balance,
+          discrepancyAmount
+        }
+      );
+    } catch (logError) {
+      logger.error('Failed to log billing cycle creation event:', logError);
+    }
     
     res.status(201).json({
       success: true,
@@ -317,7 +331,6 @@ async function getBillingCycleHistory(req, res) {
  * Request body:
  * - actual_statement_balance (optional): number >= 0
  * - minimum_payment (optional): number >= 0 or null
- * - due_date (optional): string YYYY-MM-DD or null
  * - notes (optional): string or null
  * 
  * _Requirements: 8.3_
@@ -341,7 +354,7 @@ async function updateBillingCycle(req, res) {
       });
     }
     
-    const { actual_statement_balance, minimum_payment, due_date, notes } = req.body;
+    const { actual_statement_balance, minimum_payment, notes } = req.body;
     
     // Validate actual_statement_balance if provided
     if (actual_statement_balance !== undefined && actual_statement_balance !== null) {
@@ -363,27 +376,58 @@ async function updateBillingCycle(req, res) {
       }
     }
     
-    // Validate due_date format if provided
-    if (due_date !== undefined && due_date !== null) {
-      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-      if (!dateRegex.test(due_date)) {
-        return res.status(400).json({
-          success: false,
-          error: 'Invalid date format. Use YYYY-MM-DD'
-        });
+    // Fetch previous record for activity logging
+    let previousBalance = null;
+    try {
+      const existingCycle = await billingCycleRepository.findById(cycleId);
+      if (existingCycle) {
+        previousBalance = existingCycle.actual_statement_balance;
       }
+    } catch (fetchError) {
+      logger.error('Failed to fetch previous billing cycle for logging:', fetchError);
     }
     
     const billingCycle = await billingCycleHistoryService.updateBillingCycle(
       paymentMethodId,
       cycleId,
-      { actual_statement_balance, minimum_payment, due_date, notes }
+      { actual_statement_balance, minimum_payment, notes }
     );
     
     logger.info('Billing cycle updated via API:', {
       id: cycleId,
       paymentMethodId
     });
+    
+    // Activity logging (fire-and-forget)
+    try {
+      const paymentMethod = await paymentMethodRepository.findById(paymentMethodId);
+      const cardName = paymentMethod ? (paymentMethod.display_name || paymentMethod.full_name) : `Card ${paymentMethodId}`;
+      const newBalance = billingCycle.actual_statement_balance;
+      const prevBal = previousBalance !== null ? previousBalance : newBalance;
+      const userAction = `Updated billing cycle for ${cardName} (${billingCycle.cycle_start_date} to ${billingCycle.cycle_end_date}) - statement balance: $${prevBal.toFixed(2)} → $${newBalance.toFixed(2)}`;
+      
+      // Determine changed fields
+      const changedFields = [];
+      if (actual_statement_balance !== undefined) changedFields.push('actual_statement_balance');
+      if (minimum_payment !== undefined) changedFields.push('minimum_payment');
+      if (notes !== undefined) changedFields.push('notes');
+      
+      await activityLogService.logEvent(
+        'billing_cycle_updated',
+        'billing_cycle',
+        cycleId,
+        userAction,
+        {
+          paymentMethodName: cardName,
+          cycleEndDate: billingCycle.cycle_end_date,
+          previousBalance: prevBal,
+          newBalance,
+          changedFields
+        }
+      );
+    } catch (logError) {
+      logger.error('Failed to log billing cycle update event:', logError);
+    }
     
     res.status(200).json({
       success: true,
@@ -474,6 +518,29 @@ async function deleteBillingCycle(req, res) {
       id: cycleId,
       paymentMethodId
     });
+    
+    // Activity logging (fire-and-forget)
+    if (cycleToDelete) {
+      try {
+        const paymentMethod = await paymentMethodRepository.findById(paymentMethodId);
+        const cardName = paymentMethod ? (paymentMethod.display_name || paymentMethod.full_name) : `Card ${paymentMethodId}`;
+        const userAction = `Deleted billing cycle for ${cardName} (${cycleToDelete.cycle_start_date} to ${cycleToDelete.cycle_end_date})`;
+        await activityLogService.logEvent(
+          'billing_cycle_deleted',
+          'billing_cycle',
+          cycleId,
+          userAction,
+          {
+            paymentMethodName: cardName,
+            cycleStartDate: cycleToDelete.cycle_start_date,
+            cycleEndDate: cycleToDelete.cycle_end_date,
+            actualStatementBalance: cycleToDelete.actual_statement_balance
+          }
+        );
+      } catch (logError) {
+        logger.error('Failed to log billing cycle deletion event:', logError);
+      }
+    }
     
     res.status(200).json({
       success: true,

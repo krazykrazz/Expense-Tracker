@@ -132,16 +132,14 @@ const CreditCardReminderBanner = ({
               <span className="reminder-payment-amount" data-testid="required-payment-amount">
                 {formatCurrency(card.required_payment)}
               </span>
-              {/* Balance source indicator - Requirements: 7.3 */}
-              {card.has_actual_balance && (
-                <span 
-                  className="reminder-balance-source actual"
-                  data-testid="balance-source-indicator"
-                  title="From your entered statement balance"
-                >
-                  ✓ Statement
-                </span>
-              )}
+              {/* Statement indicator - Requirements: 7.3 */}
+              <span 
+                className={`reminder-balance-source ${card.has_statement_pdf ? 'actual' : 'required'}`}
+                data-testid="balance-source-indicator"
+                title={card.has_statement_pdf ? 'Statement PDF uploaded' : 'Statement PDF required'}
+              >
+                {card.has_statement_pdf ? '✓' : '📄'} Statement
+              </span>
               {/* Urgency indicator - Requirements: 8.4 */}
               {urgency.label && (
                 <span 
@@ -206,15 +204,13 @@ const CreditCardReminderBanner = ({
                   </div>
                   <div className="reminder-card-badges">
                     {/* Statement badge - Requirements: 1.1, 1.2, 1.3 */}
-                    {card.has_actual_balance && (
-                      <span 
-                        className="reminder-balance-source actual"
-                        data-testid={`balance-source-indicator-${card.id}`}
-                        title="From your entered statement balance"
-                      >
-                        ✓ Statement
-                      </span>
-                    )}
+                    <span 
+                      className={`reminder-balance-source ${card.has_statement_pdf ? 'actual' : 'required'}`}
+                      data-testid={`balance-source-indicator-${card.id}`}
+                      title={card.has_statement_pdf ? 'Statement PDF uploaded' : 'Statement PDF required'}
+                    >
+                      {card.has_statement_pdf ? '✓' : '📄'} Statement
+                    </span>
                     {/* Urgency indicator per card - Requirements: 8.4, 4.1 */}
                     {urgency.label && (
                       <span 

@@ -792,7 +792,6 @@ function createTestDatabase() {
             actual_statement_balance REAL NOT NULL CHECK(actual_statement_balance >= 0),
             calculated_statement_balance REAL NOT NULL CHECK(calculated_statement_balance >= 0),
             minimum_payment REAL CHECK(minimum_payment IS NULL OR minimum_payment >= 0),
-            due_date TEXT,
             notes TEXT,
             statement_pdf_path TEXT,
             is_user_entered INTEGER DEFAULT 0,

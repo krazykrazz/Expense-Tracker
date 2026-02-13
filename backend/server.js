@@ -29,6 +29,7 @@ const billingCycleRoutes = require('./routes/billingCycleRoutes');
 const activityLogRoutes = require('./routes/activityLogRoutes');
 const backupService = require('./services/backupService');
 const activityLogService = require('./services/activityLogService');
+const billingCycleSchedulerService = require('./services/billingCycleSchedulerService');
 const logger = require('./config/logger');
 const { configureTimezone, getTimezone } = require('./config/timezone');
 const { errorHandler } = require('./middleware/errorHandler');
@@ -241,6 +242,20 @@ initializeDatabase()
       });
       logger.info('');
       logger.info('Activity log cleanup scheduled (daily at 2:00 AM)');
+      
+      // Start billing cycle auto-generation scheduler
+      const billingCycleCron = process.env.BILLING_CYCLE_CRON || '0 2 * * *';
+      cron.schedule(billingCycleCron, async () => {
+        await billingCycleSchedulerService.runAutoGeneration();
+      });
+      logger.info('');
+      logger.info(`Billing cycle auto-generation scheduled (cron: ${billingCycleCron})`);
+      
+      // Initial run after startup to catch missed cycles during downtime (Req 5.3)
+      setTimeout(async () => {
+        logger.info('Running initial billing cycle auto-generation check...');
+        await billingCycleSchedulerService.runAutoGeneration();
+      }, 60000);
     });
   })
   .catch((err) => {

@@ -497,10 +497,10 @@ describe('CreditCardReminderBanner', () => {
       expect(paymentAmount).toHaveTextContent('$0.00');
     });
 
-    test('should display balance source indicator when has_actual_balance is true', () => {
+    test('should display balance source indicator with check when has_statement_pdf is true', () => {
       const cardWithActualBalance = { 
         ...mockSingleCard, 
-        has_actual_balance: true 
+        has_statement_pdf: true 
       };
       
       render(
@@ -513,13 +513,14 @@ describe('CreditCardReminderBanner', () => {
       
       const sourceIndicator = screen.getByTestId('balance-source-indicator');
       expect(sourceIndicator).toBeInTheDocument();
-      expect(sourceIndicator).toHaveTextContent('Statement');
+      expect(sourceIndicator).toHaveTextContent('✓ Statement');
+      expect(sourceIndicator).toHaveClass('actual');
     });
 
-    test('should not display balance source indicator when has_actual_balance is false', () => {
+    test('should display balance source indicator without check when has_statement_pdf is false', () => {
       const cardWithoutActualBalance = { 
         ...mockSingleCard, 
-        has_actual_balance: false 
+        has_statement_pdf: false 
       };
       
       render(
@@ -530,7 +531,10 @@ describe('CreditCardReminderBanner', () => {
         />
       );
       
-      expect(screen.queryByTestId('balance-source-indicator')).not.toBeInTheDocument();
+      const sourceIndicator = screen.getByTestId('balance-source-indicator');
+      expect(sourceIndicator).toBeInTheDocument();
+      expect(sourceIndicator).toHaveTextContent('📄 Statement');
+      expect(sourceIndicator).toHaveClass('required');
     });
 
     test('should handle card with negative days_until_due', () => {
@@ -580,10 +584,10 @@ describe('CreditCardReminderBanner', () => {
 
   describe('Badge Consistency - Requirements: 1.1, 1.2, 1.3, 2.1, 2.2, 2.3, 3.1, 3.2, 4.1, 4.2, 4.3, 4.4, 4.5', () => {
     describe('Single Card View', () => {
-      test('should display Statement badge for single card with has_actual_balance true', () => {
+      test('should display Statement badge with check for single card with has_statement_pdf true', () => {
         const cardWithStatement = {
           ...mockSingleCard,
-          has_actual_balance: true
+          has_statement_pdf: true
         };
         
         render(
@@ -598,13 +602,13 @@ describe('CreditCardReminderBanner', () => {
         expect(statementBadge).toBeInTheDocument();
         expect(statementBadge).toHaveTextContent('✓ Statement');
         expect(statementBadge).toHaveClass('reminder-balance-source', 'actual');
-        expect(statementBadge).toHaveAttribute('title', 'From your entered statement balance');
+        expect(statementBadge).toHaveAttribute('title', 'Statement PDF uploaded');
       });
 
-      test('should not display Statement badge for single card with has_actual_balance false', () => {
+      test('should display Statement badge without check for single card with has_statement_pdf false', () => {
         const cardWithoutStatement = {
           ...mockSingleCard,
-          has_actual_balance: false
+          has_statement_pdf: false
         };
         
         render(
@@ -615,7 +619,11 @@ describe('CreditCardReminderBanner', () => {
           />
         );
         
-        expect(screen.queryByTestId('balance-source-indicator')).not.toBeInTheDocument();
+        const statementBadge = screen.getByTestId('balance-source-indicator');
+        expect(statementBadge).toBeInTheDocument();
+        expect(statementBadge).toHaveTextContent('📄 Statement');
+        expect(statementBadge).toHaveClass('reminder-balance-source', 'required');
+        expect(statementBadge).toHaveAttribute('title', 'Statement PDF required');
       });
 
       test('should display due date for single card with payment_due_day', () => {
@@ -656,11 +664,11 @@ describe('CreditCardReminderBanner', () => {
     });
 
     describe('Multiple Cards View', () => {
-      test('should display Statement badges for multiple cards with mixed has_actual_balance', () => {
+      test('should display Statement badges for multiple cards with correct styling based on has_statement_pdf', () => {
         const multipleCards = [
-          { ...mockSingleCard, id: 1, display_name: 'Visa', has_actual_balance: true, required_payment: 500 },
-          { ...mockSingleCard, id: 2, display_name: 'Mastercard', has_actual_balance: false, required_payment: 300 },
-          { ...mockSingleCard, id: 3, display_name: 'Amex', has_actual_balance: true, required_payment: 200 }
+          { ...mockSingleCard, id: 1, display_name: 'Visa', has_statement_pdf: true, required_payment: 500 },
+          { ...mockSingleCard, id: 2, display_name: 'Mastercard', has_statement_pdf: false, required_payment: 300 },
+          { ...mockSingleCard, id: 3, display_name: 'Amex', has_statement_pdf: true, required_payment: 200 }
         ];
         
         render(
@@ -671,17 +679,21 @@ describe('CreditCardReminderBanner', () => {
           />
         );
         
-        // Visa should have Statement badge
+        // Visa should have Statement badge with check (uploaded)
         const visaStatementBadge = screen.getByTestId('balance-source-indicator-1');
         expect(visaStatementBadge).toBeInTheDocument();
         expect(visaStatementBadge).toHaveTextContent('✓ Statement');
         expect(visaStatementBadge).toHaveClass('reminder-balance-source', 'actual');
-        expect(visaStatementBadge).toHaveAttribute('title', 'From your entered statement balance');
+        expect(visaStatementBadge).toHaveAttribute('title', 'Statement PDF uploaded');
         
-        // Mastercard should NOT have Statement badge
-        expect(screen.queryByTestId('balance-source-indicator-2')).not.toBeInTheDocument();
+        // Mastercard should have Statement badge without check (required)
+        const mastercardStatementBadge = screen.getByTestId('balance-source-indicator-2');
+        expect(mastercardStatementBadge).toBeInTheDocument();
+        expect(mastercardStatementBadge).toHaveTextContent('📄 Statement');
+        expect(mastercardStatementBadge).toHaveClass('reminder-balance-source', 'required');
+        expect(mastercardStatementBadge).toHaveAttribute('title', 'Statement PDF required');
         
-        // Amex should have Statement badge
+        // Amex should have Statement badge with check (uploaded)
         const amexStatementBadge = screen.getByTestId('balance-source-indicator-3');
         expect(amexStatementBadge).toBeInTheDocument();
         expect(amexStatementBadge).toHaveTextContent('✓ Statement');
@@ -737,7 +749,7 @@ describe('CreditCardReminderBanner', () => {
             ...mockSingleCard,
             id: 1,
             display_name: 'Visa',
-            has_actual_balance: true,
+            has_statement_pdf: true,
             is_due_soon: true,
             days_until_due: 2,
             required_payment: 500
@@ -746,7 +758,7 @@ describe('CreditCardReminderBanner', () => {
             ...mockSingleCard,
             id: 2,
             display_name: 'Mastercard',
-            has_actual_balance: false,
+            has_statement_pdf: false,
             is_overdue: true,
             required_payment: 300
           }
@@ -814,7 +826,7 @@ describe('CreditCardReminderBanner', () => {
     describe('Backward Compatibility', () => {
       test('should preserve onClick handler functionality', () => {
         const multipleCards = [
-          { ...mockSingleCard, id: 1, display_name: 'Visa', has_actual_balance: true, required_payment: 500 },
+          { ...mockSingleCard, id: 1, display_name: 'Visa', has_statement_pdf: true, required_payment: 500 },
           { ...mockSingleCard, id: 2, display_name: 'Mastercard', required_payment: 300 }
         ];
         
@@ -834,7 +846,7 @@ describe('CreditCardReminderBanner', () => {
 
       test('should preserve onDismiss handler functionality', () => {
         const multipleCards = [
-          { ...mockSingleCard, id: 1, display_name: 'Visa', has_actual_balance: true, required_payment: 500 },
+          { ...mockSingleCard, id: 1, display_name: 'Visa', has_statement_pdf: true, required_payment: 500 },
           { ...mockSingleCard, id: 2, display_name: 'Mastercard', required_payment: 300 }
         ];
         
@@ -855,7 +867,7 @@ describe('CreditCardReminderBanner', () => {
 
       test('should preserve keyboard navigation', () => {
         const multipleCards = [
-          { ...mockSingleCard, id: 1, display_name: 'Visa', has_actual_balance: true, required_payment: 500 },
+          { ...mockSingleCard, id: 1, display_name: 'Visa', has_statement_pdf: true, required_payment: 500 },
           { ...mockSingleCard, id: 2, display_name: 'Mastercard', required_payment: 300 }
         ];
         

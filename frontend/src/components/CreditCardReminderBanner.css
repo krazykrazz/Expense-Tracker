@@ -156,6 +156,11 @@
   color: #155724;
 }
 
+.credit-card-reminder-banner .reminder-balance-source.required {
+  background-color: rgba(255, 193, 7, 0.15);
+  color: #856404;
+}
+
 /* Cards breakdown for multiple cards */
 .credit-card-reminder-banner .reminder-cards-breakdown {
   display: flex;
@@ -292,5 +297,10 @@
   .credit-card-reminder-banner .reminder-balance-source.actual {
     background-color: rgba(40, 167, 69, 0.25);
     color: #28a745;
+  }
+
+  .credit-card-reminder-banner .reminder-balance-source.required {
+    background-color: rgba(255, 193, 7, 0.25);
+    color: #ffc107;
   }
 }

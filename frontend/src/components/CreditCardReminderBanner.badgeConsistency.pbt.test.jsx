@@ -34,23 +34,23 @@ const creditCardArbitrary = (overrides = {}) =>
     is_statement_paid: fc.boolean(),
     is_overdue: fc.boolean(),
     is_due_soon: fc.boolean(),
-    has_actual_balance: fc.boolean(),
+    has_statement_pdf: fc.boolean(),
     cycle_start_date: fc.constant('2026-01-26'),
     cycle_end_date: fc.constant('2026-02-25'),
     ...overrides
   });
 
 /**
- * Generate a credit card with has_actual_balance set to true
+ * Generate a credit card with has_statement_pdf set to true
  */
 const cardWithStatementBadge = () =>
-  creditCardArbitrary({ has_actual_balance: fc.constant(true) });
+  creditCardArbitrary({ has_statement_pdf: fc.constant(true) });
 
 /**
- * Generate a credit card with has_actual_balance set to false
+ * Generate a credit card with has_statement_pdf set to false
  */
 const cardWithoutStatementBadge = () =>
-  creditCardArbitrary({ has_actual_balance: fc.constant(false) });
+  creditCardArbitrary({ has_statement_pdf: fc.constant(false) });
 
 /**
  * Generate a credit card with a defined payment_due_day
@@ -71,10 +71,24 @@ const cardWithoutDueDate = () =>
 // ── Helper Functions ──
 
 /**
- * Extract Statement badge elements from rendered component
+ * Extract all Statement badge elements from rendered component (both actual and required)
  */
-const getStatementBadges = (container) => {
+const getAllStatementBadges = (container) => {
+  return Array.from(container.querySelectorAll('.reminder-balance-source'));
+};
+
+/**
+ * Extract Statement badge elements with 'actual' class (has_statement_pdf = true)
+ */
+const getActualStatementBadges = (container) => {
   return Array.from(container.querySelectorAll('.reminder-balance-source.actual'));
+};
+
+/**
+ * Extract Statement badge elements with 'required' class (has_statement_pdf = false)
+ */
+const getRequiredStatementBadges = (container) => {
+  return Array.from(container.querySelectorAll('.reminder-balance-source.required'));
 };
 
 /**
@@ -105,8 +119,8 @@ const extractDueDateDay = (element) => {
  * Works for both single view (.reminder-payment-info) and multiple view (.reminder-card-badges)
  */
 const isStatementBadgeBeforeUrgency = (container) => {
-  // Get all Statement and Urgency badges in the container
-  const allBadges = Array.from(container.querySelectorAll('.reminder-balance-source.actual, .reminder-urgency-badge'));
+  // Get all Statement (both actual and required) and Urgency badges in the container
+  const allBadges = Array.from(container.querySelectorAll('.reminder-balance-source, .reminder-urgency-badge'));
   
   // Check each pair of adjacent badges
   for (let i = 0; i < allBadges.length - 1; i++) {
@@ -133,7 +147,7 @@ describe('CreditCardReminderBanner - Badge Consistency Properties', () => {
   /**
    * **Feature: credit-card-reminder-badge-consistency, Property 1: Statement Badge Display Consistency**
    * 
-   * For any card with has_actual_balance set to true, the Statement badge should be 
+   * For any card with has_statement_pdf set to true, the Statement badge should be 
    * displayed in both single and multiple payment views with identical styling and content.
    * 
    * **Validates: Requirements 1.1, 1.2, 2.1, 2.2**
@@ -144,8 +158,8 @@ describe('CreditCardReminderBanner - Badge Consistency Properties', () => {
         cardWithStatementBadge(),
         fc.array(creditCardArbitrary(), { minLength: 1, maxLength: 3 }),
         (cardWithBadge, otherCards) => {
-          // Ensure the card with badge has has_actual_balance = true
-          const testCard = { ...cardWithBadge, has_actual_balance: true };
+          // Ensure the card with badge has has_statement_pdf = true
+          const testCard = { ...cardWithBadge, has_statement_pdf: true };
           
           // Test single card view
           const { container: singleContainer } = render(
@@ -157,7 +171,7 @@ describe('CreditCardReminderBanner - Badge Consistency Properties', () => {
             />
           );
           
-          const singleBadges = getStatementBadges(singleContainer);
+          const singleBadges = getActualStatementBadges(singleContainer);
           
           // Test multiple cards view (include the test card)
           const multipleCards = [testCard, ...otherCards].map((card, idx) => ({
@@ -174,9 +188,9 @@ describe('CreditCardReminderBanner - Badge Consistency Properties', () => {
             />
           );
           
-          const multipleBadges = getStatementBadges(multipleContainer);
+          const multipleBadges = getActualStatementBadges(multipleContainer);
           
-          // Property: Statement badge should appear in both views
+          // Property: Statement badge with 'actual' class should appear in both views
           expect(singleBadges.length).toBeGreaterThan(0);
           expect(multipleBadges.length).toBeGreaterThan(0);
           
@@ -197,7 +211,7 @@ describe('CreditCardReminderBanner - Badge Consistency Properties', () => {
           const singleTooltip = singleBadges[0].getAttribute('title');
           const multipleTooltip = multipleBadges[0].getAttribute('title');
           expect(singleTooltip).toBe(multipleTooltip);
-          expect(singleTooltip).toBe('From your entered statement balance');
+          expect(singleTooltip).toBe('Statement PDF uploaded');
         }
       ),
       { numRuns: 100 }
@@ -205,21 +219,21 @@ describe('CreditCardReminderBanner - Badge Consistency Properties', () => {
   });
 
   /**
-   * **Feature: credit-card-reminder-badge-consistency, Property 2: Statement Badge Conditional Rendering**
+   * **Feature: credit-card-reminder-badge-consistency, Property 2: Statement Badge Required State Rendering**
    * 
-   * For any card with has_actual_balance set to false, no Statement badge should be 
-   * rendered in either view.
+   * For any card with has_statement_pdf set to false, the Statement badge should be 
+   * rendered with 'required' class, 📄 icon, and "Statement PDF required" tooltip.
    * 
    * **Validates: Requirements 1.3**
    */
-  test('Property 2: Statement badge not displayed when has_actual_balance is false', () => {
+  test('Property 2: Statement badge shows required state when has_statement_pdf is false', () => {
     fc.assert(
       fc.property(
         cardWithoutStatementBadge(),
         fc.array(creditCardArbitrary(), { minLength: 0, maxLength: 3 }),
         (cardWithoutBadge, otherCards) => {
-          // Ensure the card has has_actual_balance = false
-          const testCard = { ...cardWithoutBadge, has_actual_balance: false };
+          // Ensure the card has has_statement_pdf = false
+          const testCard = { ...cardWithoutBadge, has_statement_pdf: false };
           
           // Test single card view
           const { container: singleContainer } = render(
@@ -231,7 +245,19 @@ describe('CreditCardReminderBanner - Badge Consistency Properties', () => {
             />
           );
           
-          const singleBadges = getStatementBadges(singleContainer);
+          const singleRequiredBadges = getRequiredStatementBadges(singleContainer);
+          const singleActualBadges = getActualStatementBadges(singleContainer);
+          
+          // Property: Badge should be present with 'required' class, not 'actual'
+          expect(singleRequiredBadges.length).toBe(1);
+          expect(singleActualBadges.length).toBe(0);
+          
+          // Property: Badge should show 📄 icon and "Statement" text
+          expect(singleRequiredBadges[0].textContent).toContain('📄');
+          expect(singleRequiredBadges[0].textContent).toContain('Statement');
+          
+          // Property: Tooltip should say "Statement PDF required"
+          expect(singleRequiredBadges[0].getAttribute('title')).toBe('Statement PDF required');
           
           // Test multiple cards view (include the test card)
           const multipleCards = [testCard, ...otherCards].map((card, idx) => ({
@@ -248,30 +274,24 @@ describe('CreditCardReminderBanner - Badge Consistency Properties', () => {
             />
           );
           
-          const multipleBadges = getStatementBadges(multipleContainer);
+          // Property: In multiple view, our test card should have 'required' badge
+          const cardItems = multipleContainer.querySelectorAll('.reminder-card-item');
+          const testCardItem = Array.from(cardItems).find(item => 
+            item.textContent.includes(testCard.display_name)
+          );
           
-          // Property: No Statement badge should appear in single view for this card
-          expect(singleBadges.length).toBe(0);
-          
-          // Property: Count Statement badges in multiple view
-          // Should only be from other cards that have has_actual_balance = true
-          const expectedBadgeCount = otherCards.filter(c => c.has_actual_balance).length;
-          expect(multipleBadges.length).toBe(expectedBadgeCount);
-          
-          // Property: Verify no Statement badge has content related to our test card
-          // by checking that if there are badges, they don't appear in the same card item
-          // as our test card's name
-          if (multipleBadges.length > 0) {
-            const cardItems = multipleContainer.querySelectorAll('.reminder-card-item');
-            const testCardItem = Array.from(cardItems).find(item => 
-              item.textContent.includes(testCard.display_name)
-            );
-            
-            if (testCardItem) {
-              const badgesInTestCardItem = testCardItem.querySelectorAll('.reminder-balance-source.actual');
-              expect(badgesInTestCardItem.length).toBe(0);
-            }
+          if (testCardItem) {
+            const requiredBadgesInCard = testCardItem.querySelectorAll('.reminder-balance-source.required');
+            const actualBadgesInCard = testCardItem.querySelectorAll('.reminder-balance-source.actual');
+            expect(requiredBadgesInCard.length).toBe(1);
+            expect(actualBadgesInCard.length).toBe(0);
+            expect(requiredBadgesInCard[0].textContent).toContain('📄');
+            expect(requiredBadgesInCard[0].getAttribute('title')).toBe('Statement PDF required');
           }
+          
+          // Property: Total statement badges should equal total cards (every card gets a badge)
+          const allBadges = getAllStatementBadges(multipleContainer);
+          expect(allBadges.length).toBe(multipleCards.length);
         }
       ),
       { numRuns: 100 }
@@ -446,25 +466,25 @@ describe('CreditCardReminderBanner - Badge Consistency Properties', () => {
   test('Property 5: Statement badge appears before Urgency indicator', () => {
     fc.assert(
       fc.property(
-        // Generate cards with has_actual_balance = true and at least one urgency flag = true
+        // Generate cards with has_statement_pdf = true and at least one urgency flag = true
         fc.oneof(
           // Card with is_overdue = true
           creditCardArbitrary({
-            has_actual_balance: fc.constant(true),
+            has_statement_pdf: fc.constant(true),
             is_overdue: fc.constant(true),
             is_due_soon: fc.boolean(),
             is_statement_paid: fc.boolean()
           }),
           // Card with is_due_soon = true
           creditCardArbitrary({
-            has_actual_balance: fc.constant(true),
+            has_statement_pdf: fc.constant(true),
             is_overdue: fc.constant(false),
             is_due_soon: fc.constant(true),
             is_statement_paid: fc.boolean()
           }),
           // Card with is_statement_paid = true
           creditCardArbitrary({
-            has_actual_balance: fc.constant(true),
+            has_statement_pdf: fc.constant(true),
             is_overdue: fc.constant(false),
             is_due_soon: fc.constant(false),
             is_statement_paid: fc.constant(true)
@@ -485,7 +505,7 @@ describe('CreditCardReminderBanner - Badge Consistency Properties', () => {
             />
           );
           
-          const singleStatementBadges = getStatementBadges(singleContainer);
+          const singleStatementBadges = getAllStatementBadges(singleContainer);
           const singleUrgencyBadges = getUrgencyBadges(singleContainer);
           
           // Test multiple cards view (include the test card)
@@ -503,10 +523,10 @@ describe('CreditCardReminderBanner - Badge Consistency Properties', () => {
             />
           );
           
-          const multipleStatementBadges = getStatementBadges(multipleContainer);
+          const multipleStatementBadges = getAllStatementBadges(multipleContainer);
           const multipleUrgencyBadges = getUrgencyBadges(multipleContainer);
           
-          // Property: Both badges should be present (Statement badge is guaranteed, urgency badge should be present)
+          // Property: Both badges should be present (Statement badge is always present, urgency badge should be present)
           expect(singleStatementBadges.length).toBeGreaterThan(0);
           expect(singleUrgencyBadges.length).toBeGreaterThan(0);
           
@@ -535,7 +555,7 @@ describe('CreditCardReminderBanner - Badge Consistency Properties', () => {
           const cardItems = multipleContainer.querySelectorAll('.reminder-card-item');
           
           cardItems.forEach(cardItem => {
-            const itemStatementBadges = cardItem.querySelectorAll('.reminder-balance-source.actual');
+            const itemStatementBadges = cardItem.querySelectorAll('.reminder-balance-source');
             const itemUrgencyBadges = cardItem.querySelectorAll('.reminder-urgency-badge');
             
             // If this card item has both badges, verify ordering
@@ -562,18 +582,19 @@ describe('CreditCardReminderBanner - Badge Consistency Properties', () => {
    * **Feature: credit-card-reminder-badge-consistency, Property 6: CSS Class Consistency**
    * 
    * For any Statement badge rendered in the multiple payment view, it should use the same 
-   * CSS class "reminder-balance-source actual" as the single payment view.
+   * CSS classes as the single payment view: "actual" when has_statement_pdf is true,
+   * "required" when has_statement_pdf is false.
    * 
    * **Validates: Requirements 3.1**
    */
   test('Property 6: CSS classes are consistent between single and multiple views', () => {
     fc.assert(
       fc.property(
-        cardWithStatementBadge(),
+        creditCardArbitrary(),
         fc.array(creditCardArbitrary(), { minLength: 1, maxLength: 4 }),
-        (cardWithBadge, otherCards) => {
-          // Ensure the card with badge has has_actual_balance = true
-          const testCard = { ...cardWithBadge, has_actual_balance: true };
+        (testCardBase, otherCards) => {
+          const testCard = { ...testCardBase };
+          const expectedClass = testCard.has_statement_pdf ? 'actual' : 'required';
           
           // Test single card view
           const { container: singleContainer } = render(
@@ -585,7 +606,7 @@ describe('CreditCardReminderBanner - Badge Consistency Properties', () => {
             />
           );
           
-          const singleBadges = getStatementBadges(singleContainer);
+          const singleBadges = getAllStatementBadges(singleContainer);
           
           // Test multiple cards view (include the test card)
           const multipleCards = [testCard, ...otherCards].map((card, idx) => ({
@@ -602,46 +623,34 @@ describe('CreditCardReminderBanner - Badge Consistency Properties', () => {
             />
           );
           
-          const multipleBadges = getStatementBadges(multipleContainer);
+          const multipleBadges = getAllStatementBadges(multipleContainer);
           
-          // Property: Statement badge should exist in both views
+          // Property: Statement badge should exist in both views (always rendered now)
           expect(singleBadges.length).toBeGreaterThan(0);
           expect(multipleBadges.length).toBeGreaterThan(0);
           
-          // Property: Extract CSS classes from single view badge
+          // Property: Single view badge should have the correct state class
           const singleBadgeClasses = Array.from(singleBadges[0].classList).sort();
+          expect(singleBadgeClasses).toContain('reminder-balance-source');
+          expect(singleBadgeClasses).toContain(expectedClass);
           
-          // Property: Extract CSS classes from multiple view badge (first one, which is our test card)
+          // Property: First badge in multiple view (our test card) should match single view
           const multipleBadgeClasses = Array.from(multipleBadges[0].classList).sort();
-          
-          // Property: CSS classes should be identical
           expect(multipleBadgeClasses).toEqual(singleBadgeClasses);
           
-          // Property: Both should contain the required classes
-          expect(singleBadgeClasses).toContain('reminder-balance-source');
-          expect(singleBadgeClasses).toContain('actual');
-          expect(multipleBadgeClasses).toContain('reminder-balance-source');
-          expect(multipleBadgeClasses).toContain('actual');
+          // Property: Verify the exact class string matches between views
+          const normalizeSingle = singleBadges[0].className.split(' ').filter(c => c).sort().join(' ');
+          const normalizeMultiple = multipleBadges[0].className.split(' ').filter(c => c).sort().join(' ');
+          expect(normalizeMultiple).toBe(normalizeSingle);
           
-          // Property: Verify the exact class string matches
-          const singleClassString = singleBadges[0].className;
-          const multipleClassString = multipleBadges[0].className;
-          
-          // Normalize class strings by sorting and comparing
-          const normalizeSingleClasses = singleClassString.split(' ').filter(c => c).sort().join(' ');
-          const normalizeMultipleClasses = multipleClassString.split(' ').filter(c => c).sort().join(' ');
-          
-          expect(normalizeMultipleClasses).toBe(normalizeSingleClasses);
-          
-          // Property: Verify the class string contains the expected pattern
-          expect(normalizeSingleClasses).toMatch(/actual.*reminder-balance-source|reminder-balance-source.*actual/);
-          expect(normalizeMultipleClasses).toMatch(/actual.*reminder-balance-source|reminder-balance-source.*actual/);
-          
-          // Property: For all Statement badges in multiple view, verify they all use the same classes
+          // Property: Every badge in multiple view should have either 'actual' or 'required' (never both, never neither)
           multipleBadges.forEach(badge => {
-            const badgeClasses = Array.from(badge.classList).sort();
-            expect(badgeClasses).toContain('reminder-balance-source');
-            expect(badgeClasses).toContain('actual');
+            const classes = Array.from(badge.classList);
+            expect(classes).toContain('reminder-balance-source');
+            const hasActual = classes.includes('actual');
+            const hasRequired = classes.includes('required');
+            expect(hasActual || hasRequired).toBe(true);
+            expect(hasActual && hasRequired).toBe(false);
           });
         }
       ),
@@ -652,19 +661,22 @@ describe('CreditCardReminderBanner - Badge Consistency Properties', () => {
   /**
    * **Feature: credit-card-reminder-badge-consistency, Property 7: Tooltip Consistency**
    * 
-   * For any Statement badge rendered in the multiple payment view, it should have the same 
-   * tooltip text "From your entered statement balance" as the single payment view.
+   * For any Statement badge, the tooltip should match the state: "Statement PDF uploaded" 
+   * when has_statement_pdf is true, "Statement PDF required" when false. Tooltips should
+   * be consistent between single and multiple views.
    * 
    * **Validates: Requirements 3.2**
    */
   test('Property 7: Tooltip text is consistent between single and multiple views', () => {
     fc.assert(
       fc.property(
-        cardWithStatementBadge(),
+        creditCardArbitrary(),
         fc.array(creditCardArbitrary(), { minLength: 1, maxLength: 4 }),
-        (cardWithBadge, otherCards) => {
-          // Ensure the card with badge has has_actual_balance = true
-          const testCard = { ...cardWithBadge, has_actual_balance: true };
+        (testCardBase, otherCards) => {
+          const testCard = { ...testCardBase };
+          const expectedTooltip = testCard.has_statement_pdf 
+            ? 'Statement PDF uploaded' 
+            : 'Statement PDF required';
           
           // Test single card view
           const { container: singleContainer } = render(
@@ -676,7 +688,7 @@ describe('CreditCardReminderBanner - Badge Consistency Properties', () => {
             />
           );
           
-          const singleBadges = getStatementBadges(singleContainer);
+          const singleBadges = getAllStatementBadges(singleContainer);
           
           // Test multiple cards view (include the test card)
           const multipleCards = [testCard, ...otherCards].map((card, idx) => ({
@@ -693,49 +705,42 @@ describe('CreditCardReminderBanner - Badge Consistency Properties', () => {
             />
           );
           
-          const multipleBadges = getStatementBadges(multipleContainer);
+          const multipleBadges = getAllStatementBadges(multipleContainer);
           
           // Property: Statement badge should exist in both views
           expect(singleBadges.length).toBeGreaterThan(0);
           expect(multipleBadges.length).toBeGreaterThan(0);
           
-          // Property: Extract tooltip from single view badge
+          // Property: Single view tooltip should match expected state
           const singleTooltip = singleBadges[0].getAttribute('title');
-          
-          // Property: Extract tooltip from multiple view badge (first one, which is our test card)
-          const multipleTooltip = multipleBadges[0].getAttribute('title');
-          
-          // Property: Tooltip should exist in both views
-          expect(singleTooltip).not.toBeNull();
-          expect(multipleTooltip).not.toBeNull();
-          
-          // Property: Tooltip text should be identical
-          expect(multipleTooltip).toBe(singleTooltip);
-          
-          // Property: Tooltip should have the expected text
-          const expectedTooltip = 'From your entered statement balance';
           expect(singleTooltip).toBe(expectedTooltip);
+          
+          // Property: Multiple view tooltip (first badge = our test card) should match
+          const multipleTooltip = multipleBadges[0].getAttribute('title');
           expect(multipleTooltip).toBe(expectedTooltip);
+          
+          // Property: Tooltips should be identical between views
+          expect(multipleTooltip).toBe(singleTooltip);
           
           // Property: Tooltip should not be empty
           expect(singleTooltip.trim().length).toBeGreaterThan(0);
           expect(multipleTooltip.trim().length).toBeGreaterThan(0);
           
-          // Property: For all Statement badges in multiple view, verify they all have the same tooltip
-          multipleBadges.forEach(badge => {
-            const tooltip = badge.getAttribute('title');
-            expect(tooltip).toBe(expectedTooltip);
+          // Property: For all Statement badges in multiple view, tooltip should match card's state
+          multipleCards.forEach((card, idx) => {
+            const badge = multipleBadges[idx];
+            if (badge) {
+              const tooltip = badge.getAttribute('title');
+              const expected = card.has_statement_pdf 
+                ? 'Statement PDF uploaded' 
+                : 'Statement PDF required';
+              expect(tooltip).toBe(expected);
+            }
           });
           
           // Property: Verify tooltip is accessible (has title attribute)
           expect(singleBadges[0].hasAttribute('title')).toBe(true);
           expect(multipleBadges[0].hasAttribute('title')).toBe(true);
-          
-          // Property: Verify tooltip attribute value is a non-empty string
-          expect(typeof singleTooltip).toBe('string');
-          expect(typeof multipleTooltip).toBe('string');
-          expect(singleTooltip.length).toBeGreaterThan(0);
-          expect(multipleTooltip.length).toBeGreaterThan(0);
         }
       ),
       { numRuns: 100 }

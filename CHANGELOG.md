@@ -7,6 +7,11 @@
 
 
 
+
+
+## [5.11.2] - 2026-02-13
+
+### Fix billing cycle balance display
 ## [5.11.1] - 2026-02-13
 
 ### Fix billing cycle notification showing pre-existing cycles

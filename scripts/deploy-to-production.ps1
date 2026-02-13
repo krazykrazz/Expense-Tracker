@@ -3,7 +3,7 @@
 # 
 # Workflow:
 #   1. Create release/vX.Y.Z branch from main
-#   2. Bump version in all 5 locations
+#   2. Bump version in all 6 locations
 #   3. Build frontend
 #   4. Commit, push, create PR
 #   5. Wait for CI to pass and PR to merge
@@ -116,7 +116,7 @@ if ($DryRun) {
     Write-Host ""
     Write-Host "Plan:" -ForegroundColor White
     Write-Host "  1. Create branch: $releaseBranch"
-    Write-Host "  2. Update version to $newVersion in all 5 locations"
+    Write-Host "  2. Update version to $newVersion in all 6 locations"
     Write-Host "  3. Build frontend"
     Write-Host "  4. Commit: v${newVersion}: $Description"
     Write-Host "  5. Push branch, create PR"
@@ -196,11 +196,41 @@ $replacement = "`$1`n$newChangelogEntry`n              `$2"
 if ($backupSettingsContent -match $insertionPattern) {
     $backupSettingsContent = $backupSettingsContent -replace $insertionPattern, $replacement
     $backupSettingsContent | Set-Content $backupSettingsPath -NoNewline
-    Write-Success "All 5 version locations updated"
+    Write-Success "BackupSettings.jsx changelog updated"
 } else {
     Write-Warn "Could not find changelog insertion point in BackupSettings.jsx"
     Write-Host "Please manually add changelog entry for v$newVersion"
     Read-Host "Press Enter when BackupSettings.jsx is updated"
+}
+
+# 6. SystemModal.jsx (in-app changelog in Updates tab)
+$systemModalPath = "frontend/src/components/SystemModal.jsx"
+$systemModalContent = Get-Content $systemModalPath -Raw
+
+$newSystemEntry = @"
+            <div className="changelog-entry">
+              <div className="changelog-version">
+                v$newVersion
+                {isCurrentVersion('v$newVersion') && <span className="current-version-badge">Current Version</span>}
+              </div>
+              <div className="changelog-date">$changelogDate</div>
+              <ul className="changelog-items">
+                <li>$Description</li>
+              </ul>
+            </div>
+"@
+
+$systemInsertionPattern = '(<div className="changelog">)\s*(<div className="changelog-entry">)'
+$systemReplacement = "`$1`n$newSystemEntry`n            `$2"
+
+if ($systemModalContent -match $systemInsertionPattern) {
+    $systemModalContent = $systemModalContent -replace $systemInsertionPattern, $systemReplacement
+    $systemModalContent | Set-Content $systemModalPath -NoNewline
+    Write-Success "All 6 version locations updated"
+} else {
+    Write-Warn "Could not find changelog insertion point in SystemModal.jsx"
+    Write-Host "Please manually add changelog entry for v$newVersion"
+    Read-Host "Press Enter when SystemModal.jsx is updated"
 }
 
 # ─────────────────────────────────────────────
@@ -241,7 +271,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Step "Creating Pull Request..."
-$prBody = "## Release v$newVersion`n`n$Description`n`n### Version Bump`n- Updated version in all 5 locations`n- Frontend built`n`n### Post-Merge Steps`nAfter merging, the deploy script will:`n1. Tag the merge commit``n2. Pull CI-built image from GHCR`n3. Promote to staging → production"
+$prBody = "## Release v$newVersion`n`n$Description`n`n### Version Bump`n- Updated version in all 6 locations`n- Frontend built`n`n### Post-Merge Steps`nAfter merging, the deploy script will:`n1. Tag the merge commit``n2. Pull CI-built image from GHCR`n3. Promote to staging → production"
 
 $prUrl = gh pr create --base main --head $releaseBranch --title "Release v${newVersion}: $Description" --body $prBody 2>&1
 

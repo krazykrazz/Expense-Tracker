@@ -3,6 +3,11 @@
 
 
 
+
+
+## [5.11.0] - 2026-02-12
+
+### Billing cycle automation, unified cycle list, statement badge fixes
 ## [5.11.0] - 2026-02-12
 
 ### Added

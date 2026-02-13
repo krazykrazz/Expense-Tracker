@@ -141,6 +141,7 @@ class ReminderService {
           is_due_soon: isDueSoon,
           // New fields for billing cycle history integration
           has_actual_balance: hasActualBalance,
+          has_statement_pdf: !!(billingCycleRecord && billingCycleRecord.statement_pdf_path),
           calculated_statement_balance: statementInfo?.statementBalance ?? null
         };
       }));

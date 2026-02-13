@@ -1732,7 +1732,6 @@ Content-Type: application/json
         "cssClass": "trend-higher"
       },
       "minimum_payment": 25.00,
-      "due_date": "2026-03-01",
       "notes": "Statement received via email",
       "statement_pdf_path": "/statements/2026-02.pdf"
     },
@@ -1753,7 +1752,6 @@ Content-Type: application/json
         "cssClass": "trend-lower"
       },
       "minimum_payment": null,
-      "due_date": null,
       "notes": null,
       "statement_pdf_path": null
     }
@@ -1793,7 +1791,6 @@ Create or update a billing cycle record (upsert by payment_method_id + cycle_end
   "cycle_end_date": "2026-02-15",
   "actual_statement_balance": 1234.56,
   "minimum_payment": 25.00,
-  "due_date": "2026-03-01",
   "notes": "Statement received via email"
 }
 ```
@@ -1805,7 +1802,6 @@ Create or update a billing cycle record (upsert by payment_method_id + cycle_end
 | cycle_end_date | string | Yes | Cycle end date (YYYY-MM-DD) |
 | actual_statement_balance | number | No | User-entered statement balance |
 | minimum_payment | number | No | Minimum payment due |
-| due_date | string | No | Payment due date (YYYY-MM-DD) |
 | notes | string | No | User notes |
 
 **Success Response:**
@@ -1822,7 +1818,6 @@ Content-Type: application/json
     "actual_statement_balance": 1234.56,
     "calculated_statement_balance": 1189.23,
     "minimum_payment": 25.00,
-    "due_date": "2026-03-01",
     "notes": "Statement received via email"
   }
 }
@@ -1856,7 +1851,6 @@ Content-Type: application/json
     "cycle_end_date": "2026-02-15",
     "actual_statement_balance": 1234.56,
     "minimum_payment": 25.00,
-    "due_date": "2026-03-01",
     "notes": "Updated notes"
   }
 }

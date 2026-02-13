@@ -16,7 +16,10 @@ The system automatically logs events for:
 - **Loan Payments**: Create, update, delete operations
 - **Investments**: Create, update, delete operations
 - **Budgets**: Create, update, delete operations
-- **Payment Methods**: Create, update, deactivate operations
+- **Payment Methods**: Create, update, deactivate, delete operations
+- **Billing Cycles**: Create, update, delete operations
+- **Credit Card Payments**: Record, delete operations
+- **Credit Card Statements**: Upload, delete operations
 - **Insurance Status Changes**: When medical expense insurance status changes
 - **Backup Operations**: Backup creation and restoration
 
@@ -135,6 +138,14 @@ Update events include detailed change tracking showing old → new values for mo
 | `payment_method_added` | payment_method | New payment method created |
 | `payment_method_updated` | payment_method | Payment method modified (shows what changed: name, type, credit limit, billing/due days) |
 | `payment_method_deactivated` | payment_method | Payment method deactivated |
+| `payment_method_deleted` | payment_method | Payment method deleted |
+| `billing_cycle_created` | billing_cycle | Billing cycle record created |
+| `billing_cycle_updated` | billing_cycle | Billing cycle record updated (shows what changed: statement balance, minimum payment, notes) |
+| `billing_cycle_deleted` | billing_cycle | Billing cycle record deleted |
+| `credit_card_payment_recorded` | credit_card_payment | Credit card payment recorded |
+| `credit_card_payment_deleted` | credit_card_payment | Credit card payment deleted |
+| `credit_card_statement_uploaded` | credit_card_statement | Credit card statement uploaded |
+| `credit_card_statement_deleted` | credit_card_statement | Credit card statement deleted |
 | `insurance_status_changed` | expense | Medical expense insurance status changed |
 | `backup_created` | system | Database backup created |
 | `backup_restored` | system | Database backup restored |

@@ -44,6 +44,7 @@ Migrations are defined in `backend/database/migrations.js`:
 - `migrateAddIsUserEnteredToBillingCycles` - Adds is_user_entered flag to billing cycles (v5.4.1)
 - `migrateAddLoanPaymentsTable` - Creates loan_payments table for payment-based tracking (v5.5.0)
 - `migrateAddFixedExpenseLoanLinkage` - Adds payment_due_day and linked_loan_id to fixed_expenses (v5.5.0)
+- `migrateRemoveBillingCycleDueDate` - Removes redundant due_date column from credit_card_billing_cycles using recreate-table pattern (v5.6.0)
 
 ## Container Startup
 

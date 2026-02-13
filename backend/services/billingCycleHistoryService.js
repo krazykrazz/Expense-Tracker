@@ -197,7 +197,6 @@ class BillingCycleHistoryService {
    * @param {Object} data - Billing cycle data
    * @param {number} data.actual_statement_balance - User-provided actual balance
    * @param {number} [data.minimum_payment] - Optional minimum payment amount
-   * @param {string} [data.due_date] - Optional due date (YYYY-MM-DD)
    * @param {string} [data.notes] - Optional notes
    * @param {string} [data.statement_pdf_path] - Optional PDF file path
    * @param {Date} [referenceDate] - Reference date for cycle calculation (defaults to today)
@@ -255,7 +254,6 @@ class BillingCycleHistoryService {
       actual_statement_balance: data.actual_statement_balance,
       calculated_statement_balance: calculatedBalance,
       minimum_payment: data.minimum_payment,
-      due_date: data.due_date,
       notes: data.notes,
       statement_pdf_path: data.statement_pdf_path,
       is_user_entered: 1  // User-created cycles are marked as user-entered
@@ -319,7 +317,6 @@ class BillingCycleHistoryService {
    * @param {Object} data - Updated data
    * @param {number} [data.actual_statement_balance] - Updated actual balance
    * @param {number} [data.minimum_payment] - Updated minimum payment
-   * @param {string} [data.due_date] - Updated due date
    * @param {string} [data.notes] - Updated notes
    * @returns {Promise<Object>} Updated record with discrepancy
    * _Requirements: 2.3_
@@ -357,7 +354,6 @@ class BillingCycleHistoryService {
     const updated = await billingCycleRepository.update(cycleId, {
       actual_statement_balance: data.actual_statement_balance,
       minimum_payment: data.minimum_payment,
-      due_date: data.due_date,
       notes: data.notes,
       is_user_entered: 1  // Mark as user-entered when user updates
     });
@@ -536,7 +532,6 @@ class BillingCycleHistoryService {
           actual_statement_balance: 0, // Auto-generated cycles have 0 actual balance
           calculated_statement_balance: calculatedBalance,
           minimum_payment: null,
-          due_date: null,
           notes: null,
           statement_pdf_path: null
         });

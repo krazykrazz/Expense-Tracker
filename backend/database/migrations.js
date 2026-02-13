@@ -4654,6 +4654,155 @@ async function migrateAddSettingsTable(db) {
 }
 
 /**
+ * Migration: Remove redundant due_date column from credit_card_billing_cycles
+ * The due date is derivable from payment_method.payment_due_day + cycle_end_date
+ */
+async function migrateRemoveBillingCycleDueDate(db) {
+  const migrationName = 'remove_billing_cycle_due_date_v1';
+
+  const isApplied = await checkMigrationApplied(db, migrationName);
+  if (isApplied) {
+    logger.debug(`Migration "${migrationName}" already applied, skipping`);
+    return;
+  }
+
+  logger.info(`Running migration: ${migrationName}`);
+
+  await createBackup();
+
+  // Disable foreign keys before table recreation
+  await disableForeignKeys(db);
+
+  return new Promise((resolve, reject) => {
+    db.serialize(() => {
+      db.run('BEGIN TRANSACTION', async (err) => {
+        if (err) {
+          enableForeignKeys(db).catch(() => {});
+          return reject(err);
+        }
+
+        try {
+          // Check if credit_card_billing_cycles table exists
+          const tableExists = await new Promise((res, rej) => {
+            db.get(
+              "SELECT name FROM sqlite_master WHERE type='table' AND name='credit_card_billing_cycles'",
+              (err, row) => err ? rej(err) : res(row)
+            );
+          });
+
+          if (!tableExists) {
+            logger.info('credit_card_billing_cycles table does not exist, skipping migration');
+            await markMigrationApplied(db, migrationName);
+            db.run('COMMIT', (err) => {
+              enableForeignKeys(db).catch(() => {});
+              if (err) {
+                db.run('ROLLBACK');
+                return reject(err);
+              }
+              resolve();
+            });
+            return;
+          }
+
+          // Check if due_date column exists
+          const columns = await new Promise((res, rej) => {
+            db.all("PRAGMA table_info(credit_card_billing_cycles)", (err, rows) => err ? rej(err) : res(rows));
+          });
+
+          const hasDueDate = columns.some(col => col.name === 'due_date');
+          if (!hasDueDate) {
+            logger.info('due_date column does not exist, skipping recreation');
+            await markMigrationApplied(db, migrationName);
+            db.run('COMMIT', (err) => {
+              enableForeignKeys(db).catch(() => {});
+              if (err) {
+                db.run('ROLLBACK');
+                return reject(err);
+              }
+              resolve();
+            });
+            return;
+          }
+
+          // 1. Create new table without due_date
+          await runStatement(db, `
+            CREATE TABLE credit_card_billing_cycles_new (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              payment_method_id INTEGER NOT NULL,
+              cycle_start_date TEXT NOT NULL,
+              cycle_end_date TEXT NOT NULL,
+              actual_statement_balance REAL NOT NULL CHECK(actual_statement_balance >= 0),
+              calculated_statement_balance REAL NOT NULL CHECK(calculated_statement_balance >= 0),
+              minimum_payment REAL CHECK(minimum_payment IS NULL OR minimum_payment >= 0),
+              notes TEXT,
+              statement_pdf_path TEXT,
+              is_user_entered INTEGER DEFAULT 0,
+              created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+              updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (payment_method_id) REFERENCES payment_methods(id) ON DELETE CASCADE,
+              UNIQUE(payment_method_id, cycle_end_date)
+            )
+          `);
+
+          // 2. Copy all data (excluding due_date)
+          await runStatement(db, `
+            INSERT INTO credit_card_billing_cycles_new 
+              (id, payment_method_id, cycle_start_date, cycle_end_date, actual_statement_balance,
+               calculated_statement_balance, minimum_payment, notes, statement_pdf_path,
+               is_user_entered, created_at, updated_at)
+            SELECT id, payment_method_id, cycle_start_date, cycle_end_date, actual_statement_balance,
+                   calculated_statement_balance, minimum_payment, notes, statement_pdf_path,
+                   is_user_entered, created_at, updated_at
+            FROM credit_card_billing_cycles
+          `);
+
+          // 3. Drop old table
+          await runStatement(db, 'DROP TABLE credit_card_billing_cycles');
+
+          // 4. Rename new table
+          await runStatement(db, 'ALTER TABLE credit_card_billing_cycles_new RENAME TO credit_card_billing_cycles');
+
+          // 5. Recreate indexes
+          await runStatement(db, 'CREATE INDEX IF NOT EXISTS idx_billing_cycles_payment_method ON credit_card_billing_cycles(payment_method_id)');
+          await runStatement(db, 'CREATE INDEX IF NOT EXISTS idx_billing_cycles_cycle_end ON credit_card_billing_cycles(cycle_end_date)');
+          await runStatement(db, 'CREATE INDEX IF NOT EXISTS idx_billing_cycles_pm_cycle_end ON credit_card_billing_cycles(payment_method_id, cycle_end_date)');
+
+          // 6. Recreate trigger for updated_at
+          await runStatement(db, `
+            CREATE TRIGGER IF NOT EXISTS update_billing_cycles_timestamp 
+            AFTER UPDATE ON credit_card_billing_cycles
+            BEGIN
+              UPDATE credit_card_billing_cycles SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+            END
+          `);
+
+          logger.info('Recreated credit_card_billing_cycles table without due_date column');
+
+          // Mark migration as applied
+          await markMigrationApplied(db, migrationName);
+
+          // Commit transaction
+          db.run('COMMIT', (err) => {
+            enableForeignKeys(db).catch(() => {});
+            if (err) {
+              db.run('ROLLBACK');
+              return reject(err);
+            }
+            logger.info(`Migration "${migrationName}" completed successfully`);
+            resolve();
+          });
+        } catch (error) {
+          db.run('ROLLBACK');
+          enableForeignKeys(db).catch(() => {});
+          logger.error(`Migration "${migrationName}" failed:`, error);
+          reject(error);
+        }
+      });
+    });
+  });
+}
+
+/**
  * Run all pending migrations
  */
 async function runMigrations(db) {
@@ -4691,6 +4840,7 @@ async function runMigrations(db) {
     await migrateAddFixedExpenseLoanLinkage(db);
     await migrateAddActivityLogsTable(db);
     await migrateAddSettingsTable(db);
+    await migrateRemoveBillingCycleDueDate(db);
     logger.info('All migrations completed');
   } catch (error) {
     logger.error('Migration failed:', error.message);
@@ -4722,5 +4872,6 @@ module.exports = {
   migrateAddLoanPaymentsTable,
   migrateAddFixedExpenseLoanLinkage,
   migrateAddActivityLogsTable,
-  migrateAddSettingsTable
+  migrateAddSettingsTable,
+  migrateRemoveBillingCycleDueDate
 };

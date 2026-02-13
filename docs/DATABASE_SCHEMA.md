@@ -335,21 +335,20 @@ Billing cycle history with statement balances.
 | Field | Type | Description |
 |-------|------|-------------|
 | id | INTEGER PRIMARY KEY | Unique billing cycle identifier |
-| payment_method_id | INTEGER | Foreign key to payment_methods |
-| cycle_start_date | TEXT | Billing cycle start date |
-| cycle_end_date | TEXT | Billing cycle end date |
-| actual_statement_balance | REAL | User-entered statement balance |
-| is_user_entered | INTEGER | 0 = auto-generated, 1 = user-entered |
-| statement_filename | TEXT | Optional attached PDF statement |
-| statement_original_filename | TEXT | Original PDF filename |
-| statement_file_path | TEXT | Path to PDF file |
-| statement_file_size | INTEGER | PDF file size |
-| statement_mime_type | TEXT | PDF MIME type |
+| payment_method_id | INTEGER NOT NULL | Foreign key to payment_methods |
+| cycle_start_date | TEXT NOT NULL | Billing cycle start date |
+| cycle_end_date | TEXT NOT NULL | Billing cycle end date |
+| actual_statement_balance | REAL NOT NULL | User-entered statement balance (CHECK >= 0) |
+| calculated_statement_balance | REAL NOT NULL | System-calculated statement balance (CHECK >= 0) |
+| minimum_payment | REAL | Optional minimum payment amount (CHECK >= 0 or NULL) |
+| notes | TEXT | Optional notes |
+| statement_pdf_path | TEXT | Optional path to attached PDF statement |
+| is_user_entered | INTEGER DEFAULT 0 | 0 = auto-generated, 1 = user-entered |
 | created_at | TEXT | Creation timestamp |
 | updated_at | TEXT | Last update timestamp |
 
 **Constraints**:
-- UNIQUE(payment_method_id, cycle_start_date, cycle_end_date)
+- UNIQUE(payment_method_id, cycle_end_date)
 
 **Foreign Keys**:
 - `payment_method_id` → `payment_methods(id)` ON DELETE CASCADE
@@ -488,7 +487,7 @@ All foreign keys are enforced with appropriate CASCADE or SET NULL actions:
 - `investment_values`: (investment_id, year, month)
 - `budgets`: (year, month, category)
 - `expense_people`: (expense_id, person_id)
-- `credit_card_billing_cycles`: (payment_method_id, cycle_start_date, cycle_end_date)
+- `credit_card_billing_cycles`: (payment_method_id, cycle_end_date)
 - `dismissed_anomalies`: (anomaly_key)
 - `schema_migrations`: (migration_name)
 

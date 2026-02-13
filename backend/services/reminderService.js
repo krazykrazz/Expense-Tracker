@@ -84,8 +84,8 @@ class ReminderService {
         let statementBalance;
         let hasActualBalance = false;
         
-        if (billingCycleRecord) {
-          // Use actual statement balance as authoritative source
+        if (billingCycleRecord && billingCycleRecord.is_user_entered === 1) {
+          // Use actual statement balance as authoritative source (only user-entered records)
           balanceForAlerts = billingCycleRecord.actual_statement_balance;
           statementBalance = billingCycleRecord.actual_statement_balance;
           hasActualBalance = true;

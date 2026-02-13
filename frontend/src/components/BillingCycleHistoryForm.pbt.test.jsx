@@ -39,7 +39,6 @@ const createMockFetch = (additionalHandlers = {}) => {
             actual_statement_balance: body.actual_statement_balance,
             calculated_statement_balance: 500.00,
             minimum_payment: body.minimum_payment || null,
-            due_date: body.due_date || null,
             notes: body.notes || null,
             discrepancy: {
               amount: body.actual_statement_balance - 500.00,

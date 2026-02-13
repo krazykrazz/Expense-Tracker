@@ -343,7 +343,20 @@ class PaymentMethodService {
         type: existing.type, 
         displayName: existing.display_name 
       });
-      
+
+      // Activity logging (fire-and-forget)
+      try {
+        const userAction = `Deleted payment method: ${existing.display_name} (${existing.type})`;
+        const metadata = {
+          name: existing.display_name,
+          type: existing.type,
+          id: id
+        };
+        await activityLogService.logEvent('payment_method_deleted', 'payment_method', id, userAction, metadata);
+      } catch (error) {
+        logger.error('Failed to log payment method deletion activity:', { error, id });
+      }
+
       return {
         success: true,
         message: 'Payment method deleted successfully'

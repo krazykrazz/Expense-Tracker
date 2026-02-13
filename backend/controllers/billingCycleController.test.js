@@ -40,7 +40,6 @@ describe('BillingCycleController - Unit Tests', () => {
         actual_statement_balance: 1234.56,
         calculated_statement_balance: 1189.23,
         minimum_payment: 25.00,
-        due_date: '2025-03-01',
         notes: 'Test note',
         discrepancy: { amount: 45.33, type: 'higher', description: 'Actual balance is 45.33 higher than tracked' }
       };
@@ -49,7 +48,6 @@ describe('BillingCycleController - Unit Tests', () => {
       req.body = {
         actual_statement_balance: 1234.56,
         minimum_payment: 25.00,
-        due_date: '2025-03-01',
         notes: 'Test note'
       };
       billingCycleHistoryService.createBillingCycle.mockResolvedValue(mockBillingCycle);
@@ -58,7 +56,7 @@ describe('BillingCycleController - Unit Tests', () => {
 
       expect(billingCycleHistoryService.createBillingCycle).toHaveBeenCalledWith(
         4,
-        { actual_statement_balance: 1234.56, minimum_payment: 25.00, due_date: '2025-03-01', notes: 'Test note', statement_pdf_path: null }
+        { actual_statement_balance: 1234.56, minimum_payment: 25.00, notes: 'Test note', statement_pdf_path: null }
       );
       expect(res.status).toHaveBeenCalledWith(201);
       expect(res.json).toHaveBeenCalledWith({ success: true, billingCycle: mockBillingCycle });
@@ -144,19 +142,6 @@ describe('BillingCycleController - Unit Tests', () => {
       expect(res.json).toHaveBeenCalledWith({
         success: false,
         error: 'Minimum payment must be a non-negative number'
-      });
-    });
-
-    test('should return 400 for invalid due_date format', async () => {
-      req.params = { id: '4' };
-      req.body = { actual_statement_balance: 100, due_date: '2025/03/01' };
-
-      await billingCycleController.createBillingCycle(req, res);
-
-      expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalledWith({
-        success: false,
-        error: 'Invalid date format. Use YYYY-MM-DD'
       });
     });
 
@@ -344,7 +329,6 @@ describe('BillingCycleController - Unit Tests', () => {
         actual_statement_balance: 1300,
         calculated_statement_balance: 1189.23,
         minimum_payment: 30.00,
-        due_date: '2025-03-05',
         notes: 'Updated note',
         discrepancy: { amount: 110.77, type: 'higher', description: 'Higher' }
       };
@@ -353,7 +337,6 @@ describe('BillingCycleController - Unit Tests', () => {
       req.body = {
         actual_statement_balance: 1300,
         minimum_payment: 30.00,
-        due_date: '2025-03-05',
         notes: 'Updated note'
       };
       billingCycleHistoryService.updateBillingCycle.mockResolvedValue(mockUpdated);
@@ -363,7 +346,7 @@ describe('BillingCycleController - Unit Tests', () => {
       expect(billingCycleHistoryService.updateBillingCycle).toHaveBeenCalledWith(
         4,
         1,
-        { actual_statement_balance: 1300, minimum_payment: 30.00, due_date: '2025-03-05', notes: 'Updated note' }
+        { actual_statement_balance: 1300, minimum_payment: 30.00, notes: 'Updated note' }
       );
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith({ success: true, billingCycle: mockUpdated });
@@ -418,19 +401,6 @@ describe('BillingCycleController - Unit Tests', () => {
       expect(res.json).toHaveBeenCalledWith({
         success: false,
         error: 'Minimum payment must be a non-negative number'
-      });
-    });
-
-    test('should return 400 for invalid due_date format', async () => {
-      req.params = { id: '4', cycleId: '1' };
-      req.body = { due_date: 'March 5, 2025' };
-
-      await billingCycleController.updateBillingCycle(req, res);
-
-      expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalledWith({
-        success: false,
-        error: 'Invalid date format. Use YYYY-MM-DD'
       });
     });
 

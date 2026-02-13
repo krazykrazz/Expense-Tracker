@@ -17,7 +17,6 @@ class BillingCycleRepository {
    * @param {number} data.actual_statement_balance - User-provided actual balance
    * @param {number} data.calculated_statement_balance - System-calculated balance
    * @param {number} [data.minimum_payment] - Optional minimum payment amount
-   * @param {string} [data.due_date] - Optional due date (YYYY-MM-DD)
    * @param {string} [data.notes] - Optional notes
    * @param {string} [data.statement_pdf_path] - Optional PDF file path
    * @param {number} [data.is_user_entered] - 1 if user-entered, 0 if auto-generated (default 0)
@@ -32,8 +31,8 @@ class BillingCycleRepository {
         INSERT INTO credit_card_billing_cycles (
           payment_method_id, cycle_start_date, cycle_end_date,
           actual_statement_balance, calculated_statement_balance,
-          minimum_payment, due_date, notes, statement_pdf_path, is_user_entered
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          minimum_payment, notes, statement_pdf_path, is_user_entered
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
       
       const params = [
@@ -43,7 +42,6 @@ class BillingCycleRepository {
         data.actual_statement_balance,
         data.calculated_statement_balance,
         data.minimum_payment || null,
-        data.due_date || null,
         data.notes || null,
         data.statement_pdf_path || null,
         data.is_user_entered || 0
@@ -72,7 +70,6 @@ class BillingCycleRepository {
           actual_statement_balance: data.actual_statement_balance,
           calculated_statement_balance: data.calculated_statement_balance,
           minimum_payment: data.minimum_payment || null,
-          due_date: data.due_date || null,
           notes: data.notes || null,
           statement_pdf_path: data.statement_pdf_path || null,
           is_user_entered: data.is_user_entered || 0
@@ -196,7 +193,6 @@ class BillingCycleRepository {
    * @param {Object} data - Updated data
    * @param {number} [data.actual_statement_balance] - Updated actual balance
    * @param {number} [data.minimum_payment] - Updated minimum payment
-   * @param {string} [data.due_date] - Updated due date
    * @param {string} [data.notes] - Updated notes
    * @param {string} [data.statement_pdf_path] - Updated PDF path
    * @param {number} [data.is_user_entered] - Set to 1 to mark as user-entered
@@ -224,7 +220,6 @@ class BillingCycleRepository {
           UPDATE credit_card_billing_cycles 
           SET actual_statement_balance = ?,
               minimum_payment = ?,
-              due_date = ?,
               notes = ?,
               statement_pdf_path = ?,
               is_user_entered = ?,
@@ -237,7 +232,6 @@ class BillingCycleRepository {
             ? data.actual_statement_balance 
             : existing.actual_statement_balance,
           data.minimum_payment !== undefined ? data.minimum_payment : existing.minimum_payment,
-          data.due_date !== undefined ? data.due_date : existing.due_date,
           data.notes !== undefined ? data.notes : existing.notes,
           data.statement_pdf_path !== undefined ? data.statement_pdf_path : existing.statement_pdf_path,
           data.is_user_entered !== undefined ? data.is_user_entered : (existing.is_user_entered || 0),

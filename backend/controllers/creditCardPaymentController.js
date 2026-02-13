@@ -1,5 +1,6 @@
 const creditCardPaymentService = require('../services/creditCardPaymentService');
 const paymentMethodService = require('../services/paymentMethodService');
+const activityLogService = require('../services/activityLogService');
 const logger = require('../config/logger');
 
 /**
@@ -48,6 +49,26 @@ async function recordPayment(req, res) {
       paymentMethodId,
       amount
     });
+
+    // Activity logging (fire-and-forget)
+    try {
+      const cardName = paymentMethod.display_name || paymentMethod.full_name || `Card ${paymentMethodId}`;
+      const formattedAmount = parseFloat(amount).toFixed(2);
+      const userAction = `Recorded payment of $${formattedAmount} on ${cardName} (${payment_date})`;
+      await activityLogService.logEvent(
+        'credit_card_payment_recorded',
+        'credit_card_payment',
+        payment.id,
+        userAction,
+        {
+          paymentMethodName: cardName,
+          amount: parseFloat(amount),
+          paymentDate: payment_date
+        }
+      );
+    } catch (logError) {
+      logger.error('Failed to log credit card payment recorded event:', logError);
+    }
 
     res.status(201).json({
       success: true,
@@ -233,6 +254,26 @@ async function deletePayment(req, res) {
       paymentId,
       paymentMethodId
     });
+
+    // Activity logging (fire-and-forget)
+    try {
+      const cardName = paymentMethod.display_name || paymentMethod.full_name || `Card ${paymentMethodId}`;
+      const formattedAmount = parseFloat(payment.amount).toFixed(2);
+      const userAction = `Deleted payment of $${formattedAmount} on ${cardName} (${payment.payment_date})`;
+      await activityLogService.logEvent(
+        'credit_card_payment_deleted',
+        'credit_card_payment',
+        paymentId,
+        userAction,
+        {
+          paymentMethodName: cardName,
+          amount: payment.amount,
+          paymentDate: payment.payment_date
+        }
+      );
+    } catch (logError) {
+      logger.error('Failed to log credit card payment deleted event:', logError);
+    }
 
     res.status(200).json({
       success: true,

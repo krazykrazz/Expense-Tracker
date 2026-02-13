@@ -2,7 +2,7 @@
 
 **Version**: 5.4.0  
 **Status**: Implemented  
-**Spec**: `.kiro/specs/credit-card-billing-cycle-history/`, `.kiro/specs/unified-billing-cycles/`, `.kiro/specs/billing-cycle-automation/`
+**Spec**: `.kiro/specs/credit-card-billing-cycle-history/`, `.kiro/specs/unified-billing-cycles/`, `.kiro/specs/billing-cycle-automation/`, `.kiro/specs/credit-card-billing-fixes/`
 
 ## Overview
 
@@ -19,7 +19,8 @@ The billing cycle list displays all cycles (both user-entered and auto-generated
 - **Balance Type Indicator**: "Actual" badge (green) for user-entered balances, "Calculated" badge (gray) for auto-generated
 - **Transaction Count**: Number of expenses posted during the cycle
 - **Trend Indicator**: Comparison to previous cycle (higher ↑, lower ↓, same ✓)
-- **Optional Fields**: Minimum payment, due date, and notes when available
+- **Optional Fields**: Minimum payment and notes when available
+- **Due Date**: Derived from the payment method's `payment_due_day` (see Due Date Derivation below)
 - **PDF Indicator**: Shows when a statement PDF is attached
 
 ### Scheduled Billing Cycle Auto-Generation
@@ -79,7 +80,7 @@ Users can enter actual statement balances for any billing cycle:
 
 - Click the pencil (✏️) icon on any cycle to enter/edit statement details
 - Enter actual statement balance from your credit card statement
-- Optionally add minimum payment, due date, and notes
+- Optionally add minimum payment and notes
 - Upload statement PDF for record keeping
 - Zero balance is supported for unused credit cards
 
@@ -142,9 +143,9 @@ Clicking delete shows a confirmation dialog with:
 | actual_statement_balance | REAL | User-entered statement balance (NULL if not entered) |
 | calculated_statement_balance | REAL | System-calculated balance from expenses |
 | minimum_payment | REAL | Minimum payment due (optional) |
-| due_date | TEXT | Payment due date (optional) |
 | notes | TEXT | User notes (optional) |
 | statement_pdf_path | TEXT | Path to uploaded statement PDF (optional) |
+| is_user_entered | INTEGER | 1 if user-entered, 0 if auto-generated (default: 0) |
 | created_at | TEXT | Record creation timestamp |
 | updated_at | TEXT | Last update timestamp |
 
@@ -181,7 +182,6 @@ Returns all billing cycles (actual and auto-generated) for a credit card.
         "cssClass": "trend-higher"
       },
       "minimum_payment": 25.00,
-      "due_date": "2026-03-01",
       "notes": "Statement received via email",
       "statement_pdf_path": "/statements/2026-02.pdf"
     }
@@ -203,7 +203,6 @@ Creates or updates a billing cycle record.
   "cycle_end_date": "2026-02-15",
   "actual_statement_balance": 1234.56,
   "minimum_payment": 25.00,
-  "due_date": "2026-03-01",
   "notes": "Statement received via email"
 }
 ```
@@ -231,7 +230,7 @@ Downloads the statement PDF for a billing cycle.
 The system determines which balance to display using this logic:
 
 1. If `actual_statement_balance` is set AND the cycle has been "entered" by the user:
-   - User has entered minimum_payment, due_date, notes, OR
+   - User has entered minimum_payment, notes, OR
    - User has entered a non-zero actual_statement_balance
    - → Use `actual_statement_balance` (balance_type: "actual")
 
@@ -239,6 +238,24 @@ The system determines which balance to display using this logic:
    - → Use `calculated_statement_balance` (balance_type: "calculated")
 
 This allows users to explicitly enter $0.00 for unused credit cards while still showing calculated balances for cycles that haven't been reviewed.
+
+## Due Date Derivation
+
+The due date is no longer stored on billing cycle records. Instead, it is derived at display time from the payment method's `payment_due_day` field:
+
+- **Due date** = `payment_due_day` of the month following `cycle_end_date`
+- If `payment_due_day` exceeds the number of days in that month, it is clamped to the last day of the month
+
+**Examples:**
+
+| cycle_end_date | payment_due_day | Derived Due Date |
+|----------------|-----------------|------------------|
+| 2026-01-15     | 1               | 2026-02-01       |
+| 2026-01-15     | 28              | 2026-02-28       |
+| 2026-01-31     | 30              | 2026-02-28       |
+| 2026-03-15     | 15              | 2026-04-15       |
+
+This ensures a single source of truth — the `payment_due_day` on the payment method — rather than storing a redundant date on each billing cycle record.
 
 ## Migration
 

@@ -170,7 +170,6 @@ class BillingCycleSchedulerService {
           actual_statement_balance: 0,
           calculated_statement_balance: calculatedBalance,
           minimum_payment: null,
-          due_date: null,
           notes: null,
           statement_pdf_path: null
         });

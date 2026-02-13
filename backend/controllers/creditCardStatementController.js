@@ -1,5 +1,6 @@
 const creditCardStatementService = require('../services/creditCardStatementService');
 const paymentMethodService = require('../services/paymentMethodService');
+const activityLogService = require('../services/activityLogService');
 const logger = require('../config/logger');
 const fs = require('fs');
 
@@ -74,6 +75,27 @@ async function uploadStatement(req, res) {
       paymentMethodId,
       filename: statement.original_filename
     });
+
+    // Activity logging (fire-and-forget)
+    try {
+      const cardName = paymentMethod.display_name || paymentMethod.full_name || `Card ${paymentMethodId}`;
+      const userAction = `Uploaded statement for ${cardName} - ${statementDate} (${file.originalname})`;
+      await activityLogService.logEvent(
+        'credit_card_statement_uploaded',
+        'credit_card_statement',
+        statement.id,
+        userAction,
+        {
+          paymentMethodName: cardName,
+          statementDate,
+          originalFilename: file.originalname,
+          statementPeriodStart,
+          statementPeriodEnd
+        }
+      );
+    } catch (logError) {
+      logger.error('Failed to log credit card statement uploaded event:', logError);
+    }
 
     res.status(201).json({
       success: true,
@@ -367,6 +389,25 @@ async function deleteStatement(req, res) {
       statementId,
       paymentMethodId
     });
+
+    // Activity logging (fire-and-forget)
+    try {
+      const cardName = paymentMethod.display_name || paymentMethod.full_name || `Card ${paymentMethodId}`;
+      const userAction = `Deleted statement for ${cardName} - ${statement.statementDate}`;
+      await activityLogService.logEvent(
+        'credit_card_statement_deleted',
+        'credit_card_statement',
+        statementId,
+        userAction,
+        {
+          paymentMethodName: cardName,
+          statementDate: statement.statementDate,
+          originalFilename: statement.originalFilename
+        }
+      );
+    } catch (logError) {
+      logger.error('Failed to log credit card statement deleted event:', logError);
+    }
 
     res.status(200).json({
       success: true,

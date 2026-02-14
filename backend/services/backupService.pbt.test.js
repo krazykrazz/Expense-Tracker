@@ -362,12 +362,12 @@ describe('BackupService - Property-Based Tests', () => {
         expect(backupResult.filename).toBeDefined();
         
         // Verify filename matches the expected pattern:
-        // expense-tracker-backup-YYYY-MM-DD_HH-mm-ss.tar.gz
-        const filenamePattern = /^expense-tracker-backup-\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}\.tar\.gz$/;
+        // expense-tracker-backup-v{VERSION}[-{SHA}]-YYYY-MM-DD_HH-mm-ss.tar.gz
+        const filenamePattern = /^expense-tracker-backup-v[\d.]+-(?:[a-f0-9]{7}-)?\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}\.tar\.gz$/;
         expect(backupResult.filename).toMatch(filenamePattern);
         
         // Extract and validate date components
-        const match = backupResult.filename.match(/expense-tracker-backup-(\d{4})-(\d{2})-(\d{2})_(\d{2})-(\d{2})-(\d{2})\.tar\.gz/);
+        const match = backupResult.filename.match(/expense-tracker-backup-v[\d.]+(?:-[a-f0-9]{7})?-(\d{4})-(\d{2})-(\d{2})_(\d{2})-(\d{2})-(\d{2})\.tar\.gz/);
         expect(match).not.toBeNull();
         
         if (match) {

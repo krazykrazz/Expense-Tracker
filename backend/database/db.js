@@ -2,7 +2,6 @@ const sqlite3 = require('sqlite3').verbose();
 const fs = require('fs');
 const path = require('path');
 const { getDatabasePath, ensureDirectories } = require('../config/paths');
-const { CATEGORIES, BUDGETABLE_CATEGORIES } = require('../utils/categories');
 const logger = require('../config/logger');
 const { initializeInvoiceStorage } = require('../scripts/initializeInvoiceStorage');
 
@@ -89,7 +88,6 @@ function initializeDatabase() {
     });
 
     // Create expenses table with all constraints
-    const categoryList = CATEGORIES.map(c => `'${c}'`).join(', ');
     const createTableSQL = `
       CREATE TABLE IF NOT EXISTS expenses (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -97,7 +95,7 @@ function initializeDatabase() {
         place TEXT,
         notes TEXT,
         amount REAL NOT NULL,
-        type TEXT NOT NULL CHECK(type IN (${categoryList})),
+        type TEXT NOT NULL,
         week INTEGER NOT NULL CHECK(week >= 1 AND week <= 5),
         method TEXT NOT NULL CHECK(method IN ('Cash', 'Debit', 'Cheque', 'CIBC MC', 'PCF MC', 'WS VISA', 'VISA')),
         recurring_id INTEGER,
@@ -125,7 +123,7 @@ function initializeDatabase() {
         place TEXT NOT NULL,
         amount REAL NOT NULL,
         notes TEXT,
-        type TEXT NOT NULL CHECK(type IN (${categoryList})),
+        type TEXT NOT NULL,
         method TEXT NOT NULL CHECK(method IN ('Cash', 'Debit', 'Cheque', 'CIBC MC', 'PCF MC', 'WS VISA', 'VISA')),
         day_of_month INTEGER NOT NULL CHECK(day_of_month >= 1 AND day_of_month <= 31),
         start_month TEXT NOT NULL,
@@ -200,13 +198,12 @@ function initializeDatabase() {
     `;
 
     // Create budgets table
-    const budgetCategoryList = BUDGETABLE_CATEGORIES.map(c => `'${c}'`).join(', ');
     const createBudgetsSQL = `
       CREATE TABLE IF NOT EXISTS budgets (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         year INTEGER NOT NULL,
         month INTEGER NOT NULL CHECK(month >= 1 AND month <= 12),
-        category TEXT NOT NULL CHECK(category IN (${budgetCategoryList})),
+        category TEXT NOT NULL,
         "limit" REAL NOT NULL CHECK("limit" > 0),
         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -509,8 +506,6 @@ function createTestDatabase() {
           }
           
           // Create all tables in sequence
-          const categoryList = CATEGORIES.map(c => `'${c}'`).join(', ');
-        const budgetCategoryList = BUDGETABLE_CATEGORIES.map(c => `'${c}'`).join(', ');
         
         const createStatements = [
           // schema_migrations table (for tracking migrations)
@@ -528,7 +523,7 @@ function createTestDatabase() {
             place TEXT,
             notes TEXT,
             amount REAL NOT NULL,
-            type TEXT NOT NULL CHECK(type IN (${categoryList})),
+            type TEXT NOT NULL,
             week INTEGER NOT NULL CHECK(week >= 1 AND week <= 5),
             method TEXT NOT NULL,
             payment_method_id INTEGER REFERENCES payment_methods(id),
@@ -640,7 +635,7 @@ function createTestDatabase() {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             year INTEGER NOT NULL,
             month INTEGER NOT NULL CHECK(month >= 1 AND month <= 12),
-            category TEXT NOT NULL CHECK(category IN (${budgetCategoryList})),
+            category TEXT NOT NULL,
             "limit" REAL NOT NULL CHECK("limit" > 0),
             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
             updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,

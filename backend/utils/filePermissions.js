@@ -300,6 +300,10 @@ class FilePermissionsUtils {
         }
       }
     } catch (error) {
+      if (error.code === 'ENOENT') {
+        logger.warn('Directory does not exist, skipping secure:', { path: dirPath });
+        return;
+      }
       logger.error('Failed to secure directory:', error);
       throw error;
     }

@@ -266,6 +266,38 @@ class BillingCycleRepository {
   }
 
   /**
+   * Update only the calculated_statement_balance for a billing cycle
+   * Used to keep auto-generated cycle balances fresh when expenses change
+   * @param {number} id - Billing cycle ID
+   * @param {number} calculatedBalance - New calculated balance
+   * @returns {Promise<boolean>} True if updated, false if not found
+   */
+  async updateCalculatedBalance(id, calculatedBalance) {
+    const db = await getDatabase();
+
+    return new Promise((resolve, reject) => {
+      const sql = `
+        UPDATE credit_card_billing_cycles 
+        SET calculated_statement_balance = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `;
+
+      db.run(sql, [calculatedBalance, id], function(err) {
+        if (err) {
+          logger.error('Failed to update calculated balance:', err);
+          reject(err);
+          return;
+        }
+
+        const updated = this.changes > 0;
+        logger.debug('Updated calculated balance:', { id, calculatedBalance, updated });
+        resolve(updated);
+      });
+    });
+  }
+
+  /**
    * Delete a billing cycle record
    * @param {number} id - Billing cycle ID
    * @returns {Promise<boolean>} True if deleted, false if not found

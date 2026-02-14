@@ -33,7 +33,7 @@ Variable expense transactions with comprehensive tracking.
 | reimbursement_source | TEXT | Who will reimburse (employer, insurance, etc.) |
 | created_at | TEXT | Creation timestamp |
 
-**Categories**: Clothing, Dining Out, Entertainment, Gas, Gifts, Groceries, Housing, Insurance, Personal Care, Pet Care, Recreation Activities, Subscriptions, Utilities, Automotive, Other, Tax - Medical, Tax - Donation
+**Categories**: Automotive, Clothing, Dining Out, Entertainment, Gas, Gifts, Groceries, Housing, Insurance, Personal Care, Pet Care, Recreation Activities, Subscriptions, Utilities, Other, Tax - Medical, Tax - Donation
 
 **Foreign Keys**:
 - `payment_method_id` → `payment_methods(id)` ON DELETE SET NULL

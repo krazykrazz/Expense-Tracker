@@ -161,6 +161,38 @@ class BillingCycleHistoryService {
   }
 
   /**
+   * Recalculate the statement balance for a billing cycle period
+   * Uses COALESCE(original_cost, amount) and COALESCE(posted_date, date) for accuracy
+   * @param {number} paymentMethodId - Payment method ID
+   * @param {string} cycleStartDate - Cycle start date (YYYY-MM-DD)
+   * @param {string} cycleEndDate - Cycle end date (YYYY-MM-DD)
+   * @returns {Promise<number>} Recalculated balance (rounded to 2 decimal places)
+   */
+  async recalculateBalance(paymentMethodId, cycleStartDate, cycleEndDate) {
+    const { getDatabase } = require('../database/db');
+    const db = await getDatabase();
+
+    return new Promise((resolve, reject) => {
+      const sql = `
+        SELECT COALESCE(SUM(COALESCE(original_cost, amount)), 0) as total
+        FROM expenses
+        WHERE payment_method_id = ?
+          AND COALESCE(posted_date, date) >= ?
+          AND COALESCE(posted_date, date) <= ?
+      `;
+
+      db.get(sql, [paymentMethodId, cycleStartDate, cycleEndDate], (err, row) => {
+        if (err) {
+          logger.error('Failed to recalculate balance:', err);
+          reject(err);
+          return;
+        }
+        resolve(Math.round((row?.total || 0) * 100) / 100);
+      });
+    });
+  }
+
+  /**
    * Validate payment method for billing cycle operations
    * @param {number} paymentMethodId - Payment method ID
    * @returns {Promise<Object>} Payment method if valid
@@ -649,6 +681,24 @@ class BillingCycleHistoryService {
     
     for (let i = 0; i < cycles.length; i++) {
       const cycle = cycles[i];
+      
+      // For auto-generated cycles, recalculate the balance from current expenses
+      // so it stays accurate when expenses are added/edited/deleted after generation
+      if (cycle.is_user_entered !== 1) {
+        const freshBalance = await this.recalculateBalance(
+          paymentMethodId,
+          cycle.cycle_start_date,
+          cycle.cycle_end_date
+        );
+        
+        // Update in-memory value for effective balance calculation
+        if (freshBalance !== cycle.calculated_statement_balance) {
+          cycle.calculated_statement_balance = freshBalance;
+          
+          // Persist the updated balance back to the database
+          await billingCycleRepository.updateCalculatedBalance(cycle.id, freshBalance);
+        }
+      }
       
       // Calculate effective balance
       const { effectiveBalance, balanceType } = this.calculateEffectiveBalance(cycle);

@@ -1,4 +1,4 @@
-const { CATEGORIES } = require('../utils/categories');
+const { CATEGORIES, normalizeCategory } = require('../utils/categories');
 const VALID_CLAIM_STATUSES = ['not_claimed', 'in_progress', 'paid', 'denied'];
 
 class ExpenseValidationService {
@@ -14,7 +14,11 @@ class ExpenseValidationService {
       if (isNaN(amount) || amount <= 0) errors.push('Amount must be a positive number');
       if (!/^\d+(\.\d{1,2})?$/.test(expense.amount.toString())) errors.push('Amount must have at most 2 decimal places');
     }
-    if (expense.type && !CATEGORIES.includes(expense.type)) errors.push(`Type must be one of: ${CATEGORIES.join(', ')}`);
+    // Normalize legacy category names (e.g., "Vehicle Maintenance" → "Automotive")
+    if (expense.type) {
+      expense.type = normalizeCategory(expense.type);
+      if (!CATEGORIES.includes(expense.type)) errors.push(`Type must be one of: ${CATEGORIES.join(', ')}`);
+    }
     if (expense.place && expense.place.length > 200) errors.push('Place must not exceed 200 characters');
     if (expense.notes && expense.notes.length > 200) errors.push('Notes must not exceed 200 characters');
     if (errors.length > 0) throw new Error(errors.join('; '));

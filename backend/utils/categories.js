@@ -65,7 +65,24 @@ function isBudgetable(category) {
 }
 
 /**
- * Check if a category is valid
+ * Legacy category names that should be auto-mapped to current names.
+ * Used when restoring older database backups that contain renamed categories.
+ */
+const LEGACY_CATEGORY_MAP = {
+  'Vehicle Maintenance': 'Automotive'
+};
+
+/**
+ * Normalize a category name, mapping legacy names to current ones.
+ * @param {string} category - The category to normalize
+ * @returns {string} The normalized category name
+ */
+function normalizeCategory(category) {
+  return LEGACY_CATEGORY_MAP[category] || category;
+}
+
+/**
+ * Check if a category is valid (including legacy names that can be normalized)
  * @param {string} category - The category to check
  * @returns {boolean} True if the category is in the approved list
  */
@@ -77,6 +94,8 @@ module.exports = {
   CATEGORIES,
   BUDGETABLE_CATEGORIES,
   TAX_DEDUCTIBLE_CATEGORIES,
+  LEGACY_CATEGORY_MAP,
+  normalizeCategory,
   isTaxDeductible,
   isBudgetable,
   isValid

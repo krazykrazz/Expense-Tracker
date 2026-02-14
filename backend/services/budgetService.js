@@ -1,6 +1,6 @@
 const budgetRepository = require('../repositories/budgetRepository');
 const { getDatabase } = require('../database/db');
-const { BUDGETABLE_CATEGORIES } = require('../utils/categories');
+const { BUDGETABLE_CATEGORIES, normalizeCategory } = require('../utils/categories');
 const budgetEvents = require('../events/budgetEvents');
 const logger = require('../config/logger');
 const activityLogService = require('./activityLogService');
@@ -41,9 +41,11 @@ class BudgetService {
    * @throws {Error} If category is not budgetable
    */
   validateCategory(category) {
-    if (!BudgetService.BUDGETABLE_CATEGORIES.includes(category)) {
+    const normalized = normalizeCategory(category);
+    if (!BudgetService.BUDGETABLE_CATEGORIES.includes(normalized)) {
       throw new Error(`Budget can only be set for ${BudgetService.BUDGETABLE_CATEGORIES.join(', ')} categories`);
     }
+    return normalized;
   }
 
   /**
@@ -88,7 +90,7 @@ class BudgetService {
   async createBudget(year, month, category, limit) {
     // Validate inputs
     this.validateYearMonth(year, month);
-    this.validateCategory(category);
+    category = this.validateCategory(category);
     this.validateAmount(limit);
 
     const budget = {
@@ -437,7 +439,7 @@ class BudgetService {
   async suggestBudgetAmount(year, month, category) {
     // Validate inputs
     this.validateYearMonth(year, month);
-    this.validateCategory(category);
+    category = this.validateCategory(category);
 
     const targetYear = parseInt(year);
     const targetMonth = parseInt(month);

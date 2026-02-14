@@ -1,7 +1,12 @@
 # Changelog
 
+## [5.11.3] - 2026-02-14
 
-
+### Fixed
+- Fix CHECK constraint migration order causing failures on staging databases
+- Remove CHECK constraints on category columns for simpler category management
+- Fix Vehicle Maintenance category CHECK constraint on restored backups
+- Fix invoice storage ENOENT error on Docker startup
 
 
 

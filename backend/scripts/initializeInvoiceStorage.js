@@ -1,5 +1,6 @@
 const path = require('path');
 const logger = require('../config/logger');
+const { getInvoicesPath } = require('../config/paths');
 const fileStorage = require('../utils/fileStorage');
 const filePermissions = require('../utils/filePermissions');
 
@@ -14,8 +15,8 @@ async function initializeInvoiceStorage() {
     // Initialize base directories
     await fileStorage.initializeDirectories();
 
-    // Set up secure permissions
-    const baseDir = path.join(process.cwd(), 'config', 'invoices');
+    // Set up secure permissions (use centralized path config)
+    const baseDir = getInvoicesPath();
     const tempDir = path.join(baseDir, 'temp');
 
     // Secure the base invoice directory
@@ -78,7 +79,7 @@ async function initializeInvoiceStorage() {
  */
 async function verifyInvoiceStorage() {
   try {
-    const baseDir = path.join(process.cwd(), 'config', 'invoices');
+    const baseDir = getInvoicesPath();
     const tempDir = path.join(baseDir, 'temp');
 
     // Check if directories exist and are accessible

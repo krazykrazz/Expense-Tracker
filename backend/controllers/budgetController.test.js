@@ -559,7 +559,7 @@ describe('BudgetController - Unit Tests', () => {
     test('should return 400 for invalid category', async () => {
       req.query = { year: '2025', month: '11', category: 'Tax - Medical' };
       budgetService.suggestBudgetAmount.mockRejectedValue(
-        new Error('Budget can only be set for Housing, Utilities, Groceries, Dining Out, Insurance, Gas, Vehicle Maintenance, Entertainment, Subscriptions, Recreation Activities, Pet Care, Other categories')
+        new Error('Budget can only be set for Housing, Utilities, Groceries, Dining Out, Insurance, Gas, Automotive, Entertainment, Subscriptions, Recreation Activities, Pet Care, Other categories')
       );
 
       await budgetController.suggestBudget(req, res);
@@ -568,7 +568,7 @@ describe('BudgetController - Unit Tests', () => {
       expect(res.json).toHaveBeenCalledWith({
         error: {
           code: 'INVALID_CATEGORY',
-          message: 'Budget can only be set for Housing, Utilities, Groceries, Dining Out, Insurance, Gas, Vehicle Maintenance, Entertainment, Subscriptions, Recreation Activities, Pet Care, Other categories'
+          message: 'Budget can only be set for Housing, Utilities, Groceries, Dining Out, Insurance, Gas, Automotive, Entertainment, Subscriptions, Recreation Activities, Pet Care, Other categories'
         }
       });
     });

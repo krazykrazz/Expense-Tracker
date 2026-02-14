@@ -17,7 +17,7 @@ const CATEGORIES = [
   'Recreation Activities',
   'Subscriptions',
   'Utilities',
-  'Vehicle Maintenance',
+  'Automotive',
   'Other',
   'Tax - Donation',
   'Tax - Medical'
@@ -37,7 +37,7 @@ const BUDGETABLE_CATEGORIES = [
   'Recreation Activities',
   'Subscriptions',
   'Utilities',
-  'Vehicle Maintenance',
+  'Automotive',
   'Other'
 ];
 

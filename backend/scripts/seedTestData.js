@@ -18,7 +18,7 @@ const places = [
 const categories = [
   'Groceries', 'Dining Out', 'Gas', 'Entertainment', 'Clothing', 'Housing', 'Utilities',
   'Insurance', 'Personal Care', 'Pet Care', 'Recreation Activities', 'Subscriptions',
-  'Vehicle Maintenance', 'Gifts', 'Other', 'Tax - Medical', 'Tax - Donation'
+  'Automotive', 'Gifts', 'Other', 'Tax - Medical', 'Tax - Donation'
 ];
 
 /**
@@ -82,7 +82,7 @@ function getRandomAmount(category) {
     'Pet Care': [20, 150],
     'Recreation Activities': [25, 200],
     'Subscriptions': [5, 50],
-    'Vehicle Maintenance': [50, 800],
+    'Automotive': [50, 800],
     'Gifts': [15, 300],
     'Other': [10, 100],
     'Tax - Medical': [25, 500],

@@ -4903,12 +4903,29 @@ async function migrateRenameVehicleMaintenanceToAutomotive(db) {
   const migrationName = 'rename_vehicle_maintenance_to_automotive_v1';
 
   const isApplied = await checkMigrationApplied(db, migrationName);
-  if (isApplied) {
+  
+  // Even if migration was already applied, check for stale data
+  // (e.g., database restored from an older backup)
+  const hasStaleData = await new Promise((resolve, reject) => {
+    db.get(
+      `SELECT COUNT(*) as count FROM expenses WHERE type = 'Vehicle Maintenance'`,
+      (err, row) => {
+        if (err) return resolve(false); // If table doesn't exist, skip
+        resolve(row && row.count > 0);
+      }
+    );
+  });
+
+  if (isApplied && !hasStaleData) {
     logger.info(`Migration "${migrationName}" already applied, skipping`);
     return;
   }
 
-  logger.info(`Running migration: ${migrationName}`);
+  if (isApplied && hasStaleData) {
+    logger.info(`Migration "${migrationName}" was applied but stale "Vehicle Maintenance" data found (likely restored backup), re-running data fix`);
+  } else {
+    logger.info(`Running migration: ${migrationName}`);
+  }
 
   await createBackup();
 

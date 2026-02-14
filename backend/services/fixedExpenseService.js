@@ -3,7 +3,7 @@ const paymentMethodRepository = require('../repositories/paymentMethodRepository
 const loanRepository = require('../repositories/loanRepository');
 const activityLogService = require('./activityLogService');
 const { validateYearMonth } = require('../utils/validators');
-const { CATEGORIES } = require('../utils/categories');
+const { CATEGORIES, normalizeCategory } = require('../utils/categories');
 
 class FixedExpenseService {
   /**
@@ -28,8 +28,11 @@ class FixedExpenseService {
     // Category validation
     if (!fixedExpense.category || fixedExpense.category.trim() === '') {
       errors.push('Category is required');
-    } else if (!CATEGORIES.includes(fixedExpense.category)) {
-      errors.push(`Invalid category. Must be one of: ${CATEGORIES.join(', ')}`);
+    } else {
+      fixedExpense.category = normalizeCategory(fixedExpense.category);
+      if (!CATEGORIES.includes(fixedExpense.category)) {
+        errors.push(`Invalid category. Must be one of: ${CATEGORIES.join(', ')}`);
+      }
     }
 
     // Payment type validation - validate against database-driven payment methods

@@ -36,11 +36,11 @@ describe('BudgetService - Unit Tests', () => {
     test('should reject tax-deductible categories', async () => {
       await expect(
         budgetService.createBudget(2025, 11, 'Tax - Medical', 500)
-      ).rejects.toThrow('Budget can only be set for Clothing, Dining Out, Entertainment, Gas, Gifts, Groceries, Housing, Insurance, Personal Care, Pet Care, Recreation Activities, Subscriptions, Utilities, Vehicle Maintenance, Other categories');
+      ).rejects.toThrow('Budget can only be set for Automotive, Clothing, Dining Out, Entertainment, Gas, Gifts, Groceries, Housing, Insurance, Personal Care, Pet Care, Recreation Activities, Subscriptions, Utilities, Other categories');
 
       await expect(
         budgetService.createBudget(2025, 11, 'Tax - Donation', 500)
-      ).rejects.toThrow('Budget can only be set for Clothing, Dining Out, Entertainment, Gas, Gifts, Groceries, Housing, Insurance, Personal Care, Pet Care, Recreation Activities, Subscriptions, Utilities, Vehicle Maintenance, Other categories');
+      ).rejects.toThrow('Budget can only be set for Automotive, Clothing, Dining Out, Entertainment, Gas, Gifts, Groceries, Housing, Insurance, Personal Care, Pet Care, Recreation Activities, Subscriptions, Utilities, Other categories');
     });
 
     test('should reject zero amount', async () => {

@@ -50,7 +50,7 @@ Added two new columns to the `fixed_expenses` table:
 - Recreation Activities
 - Subscriptions
 - Utilities
-- Vehicle Maintenance
+- Automotive
 - Other
 
 **Valid Payment Types**:

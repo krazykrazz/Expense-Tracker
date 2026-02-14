@@ -113,7 +113,7 @@ export const safePlaceName = (options = {}) => {
 export const expenseType = fc.constantFrom(
   'Groceries', 'Dining Out', 'Gas', 'Entertainment', 'Clothing',
   'Gifts', 'Housing', 'Insurance', 'Personal Care', 'Pet Care',
-  'Recreation Activities', 'Subscriptions', 'Utilities', 'Vehicle Maintenance',
+  'Recreation Activities', 'Subscriptions', 'Utilities', 'Automotive',
   'Other', 'Tax - Medical', 'Tax - Donation'
 );
 

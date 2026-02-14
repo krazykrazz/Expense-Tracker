@@ -139,7 +139,7 @@ const safeFilename = (options = {}) => {
 const expenseType = fc.constantFrom(
   'Groceries', 'Dining Out', 'Gas', 'Entertainment', 'Clothing',
   'Gifts', 'Housing', 'Insurance', 'Personal Care', 'Pet Care',
-  'Recreation Activities', 'Subscriptions', 'Utilities', 'Vehicle Maintenance',
+  'Recreation Activities', 'Subscriptions', 'Utilities', 'Automotive',
   'Other', 'Tax - Medical', 'Tax - Donation'
 );
 
@@ -154,7 +154,7 @@ const taxDeductibleType = fc.constantFrom('Tax - Medical', 'Tax - Donation');
 const nonTaxDeductibleType = fc.constantFrom(
   'Groceries', 'Dining Out', 'Gas', 'Entertainment', 'Clothing',
   'Gifts', 'Housing', 'Insurance', 'Personal Care', 'Pet Care',
-  'Recreation Activities', 'Subscriptions', 'Utilities', 'Vehicle Maintenance', 'Other'
+  'Recreation Activities', 'Subscriptions', 'Utilities', 'Automotive', 'Other'
 );
 
 /**

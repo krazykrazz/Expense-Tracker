@@ -5166,6 +5166,142 @@ async function migrateFixVehicleMaintenanceConstraints(db) {
 }
 
 /**
+ * Migration: Remove CHECK constraints on category columns
+ * 
+ * The expenses.type and budgets.category columns have CHECK constraints that
+ * enumerate every valid category. This makes renaming or adding categories
+ * require a full table rebuild (SQLite doesn't support ALTER CONSTRAINT).
+ * 
+ * The service layer already validates categories via expenseValidationService.js
+ * using categories.js as the single source of truth, so the CHECK constraints
+ * are redundant. This follows the same pattern as migrateConfigurablePaymentMethods,
+ * which removed the CHECK constraint on the expenses.method column.
+ * 
+ * After this migration, category changes only require:
+ * 1. Update categories.js
+ * 2. UPDATE data rows
+ * No table rebuilds needed.
+ */
+async function migrateRemoveCategoryCheckConstraints(db) {
+  const migrationName = 'remove_category_check_constraints_v1';
+
+  const isApplied = await checkMigrationApplied(db, migrationName);
+  if (isApplied) {
+    logger.info(`Migration "${migrationName}" already applied, skipping`);
+    return;
+  }
+
+  logger.info(`Running migration: ${migrationName}`);
+
+  await createBackup();
+
+  await disableForeignKeys(db);
+
+  try {
+    // Rebuild expenses table without CHECK on type
+    logger.info('Rebuilding expenses table without category CHECK constraint...');
+
+    await runStatement(db, 'BEGIN TRANSACTION');
+
+    try {
+      await runStatement(db, `
+        CREATE TABLE expenses_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          date TEXT NOT NULL,
+          posted_date TEXT DEFAULT NULL,
+          place TEXT,
+          notes TEXT,
+          amount REAL NOT NULL,
+          type TEXT NOT NULL,
+          week INTEGER NOT NULL CHECK(week >= 1 AND week <= 5),
+          method TEXT NOT NULL,
+          payment_method_id INTEGER REFERENCES payment_methods(id),
+          insurance_eligible INTEGER DEFAULT 0,
+          claim_status TEXT DEFAULT NULL CHECK(claim_status IS NULL OR claim_status IN ('not_claimed', 'in_progress', 'paid', 'denied')),
+          original_cost REAL DEFAULT NULL,
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+
+      await runStatement(db, `
+        INSERT INTO expenses_new (id, date, posted_date, place, notes, amount, type, week, method, payment_method_id, insurance_eligible, claim_status, original_cost, created_at)
+        SELECT id, date, posted_date, place, notes, amount, type, week, method, payment_method_id, insurance_eligible, claim_status, original_cost, created_at
+        FROM expenses
+      `);
+
+      await runStatement(db, 'DROP TABLE expenses');
+      await runStatement(db, 'ALTER TABLE expenses_new RENAME TO expenses');
+
+      // Recreate all indexes
+      await runStatement(db, 'CREATE INDEX IF NOT EXISTS idx_date ON expenses(date)');
+      await runStatement(db, 'CREATE INDEX IF NOT EXISTS idx_type ON expenses(type)');
+      await runStatement(db, 'CREATE INDEX IF NOT EXISTS idx_method ON expenses(method)');
+      await runStatement(db, 'CREATE INDEX IF NOT EXISTS idx_expenses_payment_method_id ON expenses(payment_method_id)');
+      await runStatement(db, 'CREATE INDEX IF NOT EXISTS idx_expenses_posted_date ON expenses(posted_date)');
+      await runStatement(db, 'CREATE INDEX IF NOT EXISTS idx_expenses_insurance_eligible ON expenses(insurance_eligible)');
+      await runStatement(db, 'CREATE INDEX IF NOT EXISTS idx_expenses_claim_status ON expenses(claim_status)');
+
+      await runStatement(db, 'COMMIT');
+      logger.info('Expenses table rebuilt without category CHECK constraint');
+    } catch (err) {
+      await runStatement(db, 'ROLLBACK').catch(() => {});
+      throw err;
+    }
+
+    // Rebuild budgets table without CHECK on category
+    logger.info('Rebuilding budgets table without category CHECK constraint...');
+
+    await runStatement(db, 'BEGIN TRANSACTION');
+
+    try {
+      await runStatement(db, `
+        CREATE TABLE budgets_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          year INTEGER NOT NULL,
+          month INTEGER NOT NULL CHECK(month >= 1 AND month <= 12),
+          category TEXT NOT NULL,
+          "limit" REAL NOT NULL CHECK("limit" > 0),
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(year, month, category)
+        )
+      `);
+
+      await runStatement(db, `
+        INSERT INTO budgets_new (id, year, month, category, "limit", created_at, updated_at)
+        SELECT id, year, month, category, "limit", created_at, updated_at
+        FROM budgets
+      `);
+
+      await runStatement(db, 'DROP TABLE budgets');
+      await runStatement(db, 'ALTER TABLE budgets_new RENAME TO budgets');
+
+      // Recreate indexes and trigger
+      await runStatement(db, 'CREATE INDEX IF NOT EXISTS idx_budgets_period ON budgets(year, month)');
+      await runStatement(db, 'CREATE INDEX IF NOT EXISTS idx_budgets_category ON budgets(category)');
+      await runStatement(db, `
+        CREATE TRIGGER IF NOT EXISTS update_budgets_timestamp 
+        AFTER UPDATE ON budgets
+        BEGIN
+          UPDATE budgets SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+        END
+      `);
+
+      await runStatement(db, 'COMMIT');
+      logger.info('Budgets table rebuilt without category CHECK constraint');
+    } catch (err) {
+      await runStatement(db, 'ROLLBACK').catch(() => {});
+      throw err;
+    }
+
+    await markMigrationApplied(db, migrationName);
+    logger.info(`Migration "${migrationName}" completed successfully`);
+  } finally {
+    await enableForeignKeys(db);
+  }
+}
+
+/**
  * Run all pending migrations
  */
 async function runMigrations(db) {
@@ -5207,6 +5343,7 @@ async function runMigrations(db) {
     await migrateMarkExistingAutoGeneratedCyclesAsReviewed(db);
     await migrateRenameVehicleMaintenanceToAutomotive(db);
     await migrateFixVehicleMaintenanceConstraints(db);
+    await migrateRemoveCategoryCheckConstraints(db);
     logger.info('All migrations completed');
   } catch (error) {
     logger.error('Migration failed:', error.message);
@@ -5242,5 +5379,6 @@ module.exports = {
   migrateRemoveBillingCycleDueDate,
   migrateMarkExistingAutoGeneratedCyclesAsReviewed,
   migrateRenameVehicleMaintenanceToAutomotive,
-  migrateFixVehicleMaintenanceConstraints
+  migrateFixVehicleMaintenanceConstraints,
+  migrateRemoveCategoryCheckConstraints
 };

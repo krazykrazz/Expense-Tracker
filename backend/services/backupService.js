@@ -113,7 +113,7 @@ class BackupService {
         }
       }
 
-      // Generate filename with timestamp (format: YYYY-MM-DD_HH-mm-ss)
+      // Generate filename with version, optional SHA, and timestamp
       const now = new Date();
       const year = now.getFullYear();
       const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -122,7 +122,11 @@ class BackupService {
       const minutes = String(now.getMinutes()).padStart(2, '0');
       const seconds = String(now.getSeconds()).padStart(2, '0');
       const timestamp = `${year}-${month}-${day}_${hours}-${minutes}-${seconds}`;
-      const filename = `expense-tracker-backup-${timestamp}.tar.gz`;
+      const packageJson = require('../package.json');
+      const version = packageJson.version || 'unknown';
+      const gitCommit = process.env.GIT_COMMIT;
+      const shaSuffix = gitCommit && gitCommit !== 'unknown' ? `-${gitCommit.substring(0, 7)}` : '';
+      const filename = `expense-tracker-backup-v${version}${shaSuffix}-${timestamp}.tar.gz`;
       const fullPath = path.join(backupPath, filename);
 
       // Collect entries for the archive
@@ -569,17 +573,23 @@ class BackupService {
       }
 
       // Support both old .db and new .tar.gz formats
+      // Old: expense-tracker-backup-2026-02-13_10-54-19.tar.gz
+      // New: expense-tracker-backup-v5.11.2-1a99337-2026-02-13_10-54-19.tar.gz
       const files = fs.readdirSync(backupPath)
         .filter(file => file.startsWith('expense-tracker-backup-') && 
                        (file.endsWith('.tar.gz') || file.endsWith('.db')))
         .map(file => {
           const stats = fs.statSync(path.join(backupPath, file));
+          // Extract version and SHA from new format filenames
+          const metaMatch = file.match(/expense-tracker-backup-v([\d.]+?)(?:-([a-f0-9]{7}))?-\d{4}/);
           return {
             name: file,
             size: stats.size,
             created: stats.mtime.toISOString(),
             path: path.join(backupPath, file),
-            type: file.endsWith('.tar.gz') ? 'archive' : 'database'
+            type: file.endsWith('.tar.gz') ? 'archive' : 'database',
+            version: metaMatch ? metaMatch[1] : null,
+            sha: metaMatch ? metaMatch[2] || null : null
           };
         })
         .sort((a, b) => new Date(b.created) - new Date(a.created));

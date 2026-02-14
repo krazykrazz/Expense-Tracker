@@ -3,6 +3,7 @@
  */
 
 export const CATEGORIES = [
+  'Automotive',
   'Clothing',
   'Dining Out',
   'Entertainment',
@@ -16,7 +17,6 @@ export const CATEGORIES = [
   'Recreation Activities',
   'Subscriptions',
   'Utilities',
-  'Automotive',
   'Other',
   'Tax - Donation',
   'Tax - Medical'

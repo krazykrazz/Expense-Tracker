@@ -4,6 +4,7 @@
  */
 
 const CATEGORIES = [
+  'Automotive',
   'Clothing',
   'Dining Out',
   'Entertainment',
@@ -17,13 +18,13 @@ const CATEGORIES = [
   'Recreation Activities',
   'Subscriptions',
   'Utilities',
-  'Automotive',
   'Other',
   'Tax - Donation',
   'Tax - Medical'
 ];
 
 const BUDGETABLE_CATEGORIES = [
+  'Automotive',
   'Clothing',
   'Dining Out',
   'Entertainment',
@@ -37,7 +38,6 @@ const BUDGETABLE_CATEGORIES = [
   'Recreation Activities',
   'Subscriptions',
   'Utilities',
-  'Automotive',
   'Other'
 ];
 

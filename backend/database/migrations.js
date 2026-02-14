@@ -4991,6 +4991,181 @@ async function migrateRenameVehicleMaintenanceToAutomotive(db) {
 }
 
 /**
+ * Migration: Fix CHECK constraints that still reference 'Vehicle Maintenance'
+ * 
+ * The rename_vehicle_maintenance_to_automotive_v1 migration only updated DATA rows
+ * but did not rebuild the tables to update CHECK constraints. SQLite doesn't support
+ * ALTER CONSTRAINT, so we must recreate the tables with the correct constraint.
+ * 
+ * This migration detects stale constraints by inspecting sqlite_master and rebuilds
+ * the expenses and budgets tables if needed. Like the data migration, it re-runs
+ * even if previously applied when stale constraints are detected (backup restore scenario).
+ */
+async function migrateFixVehicleMaintenanceConstraints(db) {
+  const migrationName = 'fix_vehicle_maintenance_constraints_v1';
+
+  const isApplied = await checkMigrationApplied(db, migrationName);
+
+  // Check if expenses table CHECK constraint still references 'Vehicle Maintenance'
+  const hasStaleExpensesConstraint = await new Promise((resolve, reject) => {
+    db.get(
+      "SELECT sql FROM sqlite_master WHERE type='table' AND name='expenses'",
+      (err, row) => {
+        if (err) return resolve(false);
+        resolve(row && row.sql && row.sql.includes('Vehicle Maintenance'));
+      }
+    );
+  });
+
+  // Check if budgets table CHECK constraint still references 'Vehicle Maintenance'
+  const hasStaleBudgetsConstraint = await new Promise((resolve, reject) => {
+    db.get(
+      "SELECT sql FROM sqlite_master WHERE type='table' AND name='budgets'",
+      (err, row) => {
+        if (err) return resolve(false);
+        resolve(row && row.sql && row.sql.includes('Vehicle Maintenance'));
+      }
+    );
+  });
+
+  const needsRebuild = hasStaleExpensesConstraint || hasStaleBudgetsConstraint;
+
+  if (isApplied && !needsRebuild) {
+    logger.info(`Migration "${migrationName}" already applied, skipping`);
+    return;
+  }
+
+  if (isApplied && needsRebuild) {
+    logger.info(`Migration "${migrationName}" was applied but stale CHECK constraints found (likely restored backup), re-running`);
+  } else {
+    logger.info(`Running migration: ${migrationName}`);
+  }
+
+  if (!needsRebuild) {
+    // No stale constraints, just mark as applied
+    await markMigrationApplied(db, migrationName);
+    logger.info(`Migration "${migrationName}" completed (no stale constraints found)`);
+    return;
+  }
+
+  await createBackup();
+
+  const categoryList = CATEGORIES.map(c => `'${c}'`).join(', ');
+  const budgetCategoryList = BUDGETABLE_CATEGORIES.map(c => `'${c}'`).join(', ');
+
+  // Disable foreign keys before table recreation to prevent CASCADE DELETE
+  await disableForeignKeys(db);
+
+  try {
+    if (hasStaleExpensesConstraint) {
+      logger.info('Rebuilding expenses table with updated CHECK constraint...');
+
+      await runStatement(db, 'BEGIN TRANSACTION');
+
+      try {
+        // Create new expenses table with current CATEGORIES
+        await runStatement(db, `
+          CREATE TABLE expenses_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            date TEXT NOT NULL,
+            posted_date TEXT DEFAULT NULL,
+            place TEXT,
+            notes TEXT,
+            amount REAL NOT NULL,
+            type TEXT NOT NULL CHECK(type IN (${categoryList})),
+            week INTEGER NOT NULL CHECK(week >= 1 AND week <= 5),
+            method TEXT NOT NULL,
+            payment_method_id INTEGER REFERENCES payment_methods(id),
+            insurance_eligible INTEGER DEFAULT 0,
+            claim_status TEXT DEFAULT NULL CHECK(claim_status IS NULL OR claim_status IN ('not_claimed', 'in_progress', 'paid', 'denied')),
+            original_cost REAL DEFAULT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+          )
+        `);
+
+        // Copy all data - handle both column orders (posted_date may be at end or after date)
+        await runStatement(db, `
+          INSERT INTO expenses_new (id, date, posted_date, place, notes, amount, type, week, method, payment_method_id, insurance_eligible, claim_status, original_cost, created_at)
+          SELECT id, date, posted_date, place, notes, amount, type, week, method, payment_method_id, insurance_eligible, claim_status, original_cost, created_at
+          FROM expenses
+        `);
+
+        await runStatement(db, 'DROP TABLE expenses');
+        await runStatement(db, 'ALTER TABLE expenses_new RENAME TO expenses');
+
+        // Recreate all indexes
+        await runStatement(db, 'CREATE INDEX IF NOT EXISTS idx_date ON expenses(date)');
+        await runStatement(db, 'CREATE INDEX IF NOT EXISTS idx_type ON expenses(type)');
+        await runStatement(db, 'CREATE INDEX IF NOT EXISTS idx_method ON expenses(method)');
+        await runStatement(db, 'CREATE INDEX IF NOT EXISTS idx_expenses_payment_method_id ON expenses(payment_method_id)');
+        await runStatement(db, 'CREATE INDEX IF NOT EXISTS idx_expenses_posted_date ON expenses(posted_date)');
+        await runStatement(db, 'CREATE INDEX IF NOT EXISTS idx_expenses_insurance_eligible ON expenses(insurance_eligible)');
+        await runStatement(db, 'CREATE INDEX IF NOT EXISTS idx_expenses_claim_status ON expenses(claim_status)');
+
+        await runStatement(db, 'COMMIT');
+        logger.info('Expenses table rebuilt with updated CHECK constraint');
+      } catch (err) {
+        await runStatement(db, 'ROLLBACK').catch(() => {});
+        throw err;
+      }
+    }
+
+    if (hasStaleBudgetsConstraint) {
+      logger.info('Rebuilding budgets table with updated CHECK constraint...');
+
+      await runStatement(db, 'BEGIN TRANSACTION');
+
+      try {
+        await runStatement(db, `
+          CREATE TABLE budgets_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            year INTEGER NOT NULL,
+            month INTEGER NOT NULL CHECK(month >= 1 AND month <= 12),
+            category TEXT NOT NULL CHECK(category IN (${budgetCategoryList})),
+            "limit" REAL NOT NULL CHECK("limit" > 0),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(year, month, category)
+          )
+        `);
+
+        await runStatement(db, `
+          INSERT INTO budgets_new (id, year, month, category, "limit", created_at, updated_at)
+          SELECT id, year, month, category, "limit", created_at, updated_at
+          FROM budgets
+        `);
+
+        await runStatement(db, 'DROP TABLE budgets');
+        await runStatement(db, 'ALTER TABLE budgets_new RENAME TO budgets');
+
+        // Recreate indexes and trigger
+        await runStatement(db, 'CREATE INDEX IF NOT EXISTS idx_budgets_period ON budgets(year, month)');
+        await runStatement(db, 'CREATE INDEX IF NOT EXISTS idx_budgets_category ON budgets(category)');
+        await runStatement(db, `
+          CREATE TRIGGER IF NOT EXISTS update_budgets_timestamp 
+          AFTER UPDATE ON budgets
+          BEGIN
+            UPDATE budgets SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+          END
+        `);
+
+        await runStatement(db, 'COMMIT');
+        logger.info('Budgets table rebuilt with updated CHECK constraint');
+      } catch (err) {
+        await runStatement(db, 'ROLLBACK').catch(() => {});
+        throw err;
+      }
+    }
+
+    await markMigrationApplied(db, migrationName);
+    logger.info(`Migration "${migrationName}" completed successfully`);
+  } finally {
+    // Always re-enable foreign keys
+    await enableForeignKeys(db);
+  }
+}
+
+/**
  * Run all pending migrations
  */
 async function runMigrations(db) {
@@ -5031,6 +5206,7 @@ async function runMigrations(db) {
     await migrateRemoveBillingCycleDueDate(db);
     await migrateMarkExistingAutoGeneratedCyclesAsReviewed(db);
     await migrateRenameVehicleMaintenanceToAutomotive(db);
+    await migrateFixVehicleMaintenanceConstraints(db);
     logger.info('All migrations completed');
   } catch (error) {
     logger.error('Migration failed:', error.message);
@@ -5065,5 +5241,6 @@ module.exports = {
   migrateAddSettingsTable,
   migrateRemoveBillingCycleDueDate,
   migrateMarkExistingAutoGeneratedCyclesAsReviewed,
-  migrateRenameVehicleMaintenanceToAutomotive
+  migrateRenameVehicleMaintenanceToAutomotive,
+  migrateFixVehicleMaintenanceConstraints
 };

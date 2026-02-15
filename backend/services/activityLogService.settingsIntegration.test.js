@@ -43,6 +43,11 @@ describe('Activity Log Service - Settings Integration', () => {
       // Configure custom retention settings (30 days)
       await settingsService.updateRetentionSettings(30, 1000);
 
+      // Clear activity logs created by updateRetentionSettings
+      await new Promise((resolve, reject) => {
+        db.run('DELETE FROM activity_logs', (err) => err ? reject(err) : resolve());
+      });
+
       // Create events: some older than 30 days, some newer
       const date35DaysAgo = new Date();
       date35DaysAgo.setDate(date35DaysAgo.getDate() - 35);
@@ -83,6 +88,11 @@ describe('Activity Log Service - Settings Integration', () => {
     it('should use configured maxCount from settings', async () => {
       // Configure custom retention settings (max 150 events)
       await settingsService.updateRetentionSettings(90, 150);
+
+      // Clear activity logs created by updateRetentionSettings
+      await new Promise((resolve, reject) => {
+        db.run('DELETE FROM activity_logs', (err) => err ? reject(err) : resolve());
+      });
 
       // Create 200 recent events
       for (let i = 0; i < 200; i++) {
@@ -150,6 +160,11 @@ describe('Activity Log Service - Settings Integration', () => {
     it('should include configured retention settings in stats', async () => {
       // Configure custom settings
       await settingsService.updateRetentionSettings(60, 500);
+
+      // Clear activity logs created by updateRetentionSettings
+      await new Promise((resolve, reject) => {
+        db.run('DELETE FROM activity_logs', (err) => err ? reject(err) : resolve());
+      });
 
       // Create some events
       for (let i = 0; i < 3; i++) {
@@ -232,6 +247,11 @@ describe('Activity Log Service - Settings Integration', () => {
       // Set initial settings (60 days)
       await settingsService.updateRetentionSettings(60, 1000);
 
+      // Clear activity logs created by updateRetentionSettings
+      await new Promise((resolve, reject) => {
+        db.run('DELETE FROM activity_logs', (err) => err ? reject(err) : resolve());
+      });
+
       // Create event 70 days old (older than 60 days)
       const date70DaysAgo = new Date();
       date70DaysAgo.setDate(date70DaysAgo.getDate() - 70);
@@ -264,6 +284,11 @@ describe('Activity Log Service - Settings Integration', () => {
 
       // Update settings to 40 days
       await settingsService.updateRetentionSettings(40, 1000);
+
+      // Clear activity logs created by updateRetentionSettings
+      await new Promise((resolve, reject) => {
+        db.run('DELETE FROM activity_logs WHERE event_type = \'settings_updated\'', (err) => err ? reject(err) : resolve());
+      });
 
       // Second cleanup - should delete the 50-day-old event with new 40-day policy
       const result2 = await activityLogService.cleanupOldEvents();

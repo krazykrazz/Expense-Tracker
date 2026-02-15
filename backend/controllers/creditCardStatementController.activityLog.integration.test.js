@@ -252,14 +252,14 @@ describe('Credit Card Statement Activity Logging - Integration Tests', () => {
 
       expect(logEvent).toBeDefined();
       expect(logEvent.entity_type).toBe('credit_card_statement');
-      expect(logEvent.user_action).toContain('Deleted statement for');
+      expect(logEvent.user_action).toContain('Deleted statement');
       expect(logEvent.user_action).toContain('Test Visa');
       expect(logEvent.user_action).toContain('2025-06-14');
 
       const metadata = JSON.parse(logEvent.metadata);
-      expect(metadata.paymentMethodName).toBe('Test Visa');
+      expect(metadata.cardName).toBe('Test Visa');
       expect(metadata.statementDate).toBe('2025-06-14');
-      expect(metadata.originalFilename).toBe('visa-june.pdf');
+      expect(metadata.filename).toBe('visa-june.pdf');
     });
 
     it('should not log event when deleting non-existent statement', async () => {
@@ -335,9 +335,9 @@ describe('Credit Card Statement Activity Logging - Integration Tests', () => {
             expect(logEvent.user_action).toContain(statementDate);
 
             const metadata = JSON.parse(logEvent.metadata);
-            expect(metadata.paymentMethodName).toBe('Test Visa');
+            expect(metadata.cardName).toBe('Test Visa');
             expect(metadata.statementDate).toBe(statementDate);
-            expect(metadata.originalFilename).toBe(data.filename);
+            expect(metadata.filename).toBe(data.filename);
           }
         ),
         { numRuns: 15 } // Reduced runs for integration test performance

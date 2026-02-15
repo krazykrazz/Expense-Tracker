@@ -504,6 +504,9 @@ class BillingCycleHistoryService {
     if (existing.notes !== updated.notes) {
       changes.push({ field: 'notes', from: existing.notes, to: updated.notes });
     }
+    if (existing.statement_pdf_path !== updated.statement_pdf_path) {
+      changes.push({ field: 'statement_pdf_path', from: existing.statement_pdf_path || null, to: updated.statement_pdf_path || null });
+    }
 
     // Log activity event (fire-and-forget)
     try {

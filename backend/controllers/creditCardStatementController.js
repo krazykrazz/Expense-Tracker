@@ -390,24 +390,7 @@ async function deleteStatement(req, res) {
       paymentMethodId
     });
 
-    // Activity logging (fire-and-forget)
-    try {
-      const cardName = paymentMethod.display_name || paymentMethod.full_name || `Card ${paymentMethodId}`;
-      const userAction = `Deleted statement for ${cardName} - ${statement.statementDate}`;
-      await activityLogService.logEvent(
-        'credit_card_statement_deleted',
-        'credit_card_statement',
-        statementId,
-        userAction,
-        {
-          paymentMethodName: cardName,
-          statementDate: statement.statementDate,
-          originalFilename: statement.originalFilename
-        }
-      );
-    } catch (logError) {
-      logger.error('Failed to log credit card statement deleted event:', logError);
-    }
+    // Activity logging handled by service layer
 
     res.status(200).json({
       success: true,

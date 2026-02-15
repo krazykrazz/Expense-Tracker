@@ -298,7 +298,7 @@ class CreditCardStatementService {
         'credit_card_statement_deleted',
         'credit_card_statement',
         statementId,
-        `Deleted statement "${statement.originalFilename}" from ${cardName}`,
+        `Deleted statement "${statement.originalFilename}" from ${cardName} - ${statement.statementDate}`,
         {
           paymentMethodId: statement.paymentMethodId,
           statementDate: statement.statementDate,

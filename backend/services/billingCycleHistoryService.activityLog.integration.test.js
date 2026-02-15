@@ -130,6 +130,42 @@ describe('Billing Cycle History Activity Logging - Integration Tests', () => {
       expect(notesChange.to).toBe('Updated notes');
     });
 
+    it('should log billing_cycle_updated with statement_pdf_path change when PDF is uploaded', async () => {
+      const createData = {
+        actual_statement_balance: 300.00,
+        minimum_payment: 30.00,
+        notes: 'No PDF yet'
+      };
+      const referenceDate = new Date('2096-08-20');
+      const cycle = await billingCycleHistoryService.createBillingCycle(testPaymentMethodId, createData, referenceDate);
+
+      await clearActivityLogs(db, 'entity_type', ENTITY_TYPE);
+
+      const updateData = {
+        actual_statement_balance: 300.00,
+        minimum_payment: 30.00,
+        notes: 'No PDF yet',
+        statement_pdf_path: 'billing-cycle-1-20960815-12345.pdf'
+      };
+      const updated = await billingCycleHistoryService.updateBillingCycle(testPaymentMethodId, cycle.id, updateData);
+      expect(updated).toBeDefined();
+
+      const events = await activityLogRepository.findRecent(10, 0);
+      const { event, metadata } = findEventWithMetadata(events, 'billing_cycle_updated', cycle.id);
+
+      expect(event).toBeDefined();
+      expect(Array.isArray(metadata.changes)).toBe(true);
+
+      const pdfChange = metadata.changes.find(c => c.field === 'statement_pdf_path');
+      expect(pdfChange).toBeDefined();
+      expect(pdfChange.from).toBeNull();
+      expect(pdfChange.to).toBe('billing-cycle-1-20960815-12345.pdf');
+
+      // Other fields should NOT appear in changes since they didn't change
+      const balanceChange = metadata.changes.find(c => c.field === 'actual_statement_balance');
+      expect(balanceChange).toBeUndefined();
+    });
+
     it('should log billing_cycle_updated with empty changes array when no fields change', async () => {
       const createData = {
         actual_statement_balance: 400.00,

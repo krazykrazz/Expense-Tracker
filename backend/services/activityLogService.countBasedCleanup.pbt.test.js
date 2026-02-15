@@ -67,6 +67,14 @@ describe('Property 8: Count-Based Cleanup', () => {
           // Configure retention settings (set maxAgeDays high to avoid age-based cleanup)
           await settingsService.updateRetentionSettings(365, maxCount);
 
+          // Wait for fire-and-forget logEvent from updateRetentionSettings to settle
+          await new Promise((resolve) => setTimeout(resolve, 50));
+
+          // Clear activity logs created by updateRetentionSettings
+          await new Promise((resolve) => {
+            db.run('DELETE FROM activity_logs', () => resolve());
+          });
+
           // Create events with incrementing timestamps (newer events have higher IDs)
           const now = new Date();
           const baseTime = now.getTime();
@@ -129,6 +137,14 @@ describe('Property 8: Count-Based Cleanup', () => {
           // Configure settings
           await settingsService.updateRetentionSettings(365, maxCount);
 
+          // Wait for fire-and-forget logEvent from updateRetentionSettings to settle
+          await new Promise((resolve) => setTimeout(resolve, 50));
+
+          // Clear activity logs created by updateRetentionSettings
+          await new Promise((resolve) => {
+            db.run('DELETE FROM activity_logs', () => resolve());
+          });
+
           // Create fewer events than maxCount
           for (let i = 0; i < eventCount; i++) {
             await activityLogRepository.insert({
@@ -173,6 +189,14 @@ describe('Property 8: Count-Based Cleanup', () => {
 
           // Configure settings
           await settingsService.updateRetentionSettings(365, maxCount);
+
+          // Wait for fire-and-forget logEvent from updateRetentionSettings to settle
+          await new Promise((resolve) => setTimeout(resolve, 50));
+
+          // Clear activity logs created by updateRetentionSettings
+          await new Promise((resolve) => {
+            db.run('DELETE FROM activity_logs', () => resolve());
+          });
 
           // Create events with known timestamps
           const timestamps = [];
@@ -232,6 +256,14 @@ describe('Property 8: Count-Based Cleanup', () => {
           // Configure settings
           await settingsService.updateRetentionSettings(365, maxCount);
 
+          // Wait for fire-and-forget logEvent from updateRetentionSettings to settle
+          await new Promise((resolve) => setTimeout(resolve, 50));
+
+          // Clear activity logs created by updateRetentionSettings
+          await new Promise((resolve) => {
+            db.run('DELETE FROM activity_logs', () => resolve());
+          });
+
           // Create exactly maxCount events
           for (let i = 0; i < maxCount; i++) {
             await activityLogRepository.insert({
@@ -276,6 +308,14 @@ describe('Property 8: Count-Based Cleanup', () => {
 
           // Configure settings with short maxAgeDays
           await settingsService.updateRetentionSettings(30, maxCount);
+
+          // Wait for fire-and-forget logEvent from updateRetentionSettings to settle
+          await new Promise((resolve) => setTimeout(resolve, 50));
+
+          // Clear activity logs created by updateRetentionSettings
+          await new Promise((resolve) => {
+            db.run('DELETE FROM activity_logs', () => resolve());
+          });
 
           // Create old events (will be deleted by age-based cleanup)
           const oldDate = new Date();

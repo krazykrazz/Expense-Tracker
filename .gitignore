@@ -102,6 +102,9 @@ test-results*.txt
 **/test-results*.txt
 frontend/test-output.txt
 frontend/test-results*.txt
+test-failure-summary.txt
+test-backend-raw.txt
+test-frontend-raw.txt
 
 # Temporary test fix scripts and documents
 fix-remaining-tests.js

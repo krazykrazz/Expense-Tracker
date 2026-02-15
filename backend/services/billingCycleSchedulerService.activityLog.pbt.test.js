@@ -12,23 +12,21 @@ const { pbtOptions, safeAmount, safeString } = require('../test/pbtArbitraries')
 
 // Mock dependencies before requiring the service
 jest.mock('./activityLogService');
-jest.mock('../database/db', () => ({
-  getDatabase: jest.fn()
-}));
 
 const billingCycleSchedulerService = require('./billingCycleSchedulerService');
 const billingCycleRepository = require('../repositories/billingCycleRepository');
 const billingCycleHistoryService = require('./billingCycleHistoryService');
 const activityLogService = require('./activityLogService');
-const { getDatabase } = require('../database/db');
 
 describe('BillingCycleSchedulerService - Activity Logging Property Tests', () => {
   let originalGetMissingPeriods;
   let originalRepoCreate;
+  let originalCalculateCycleBalance;
 
   beforeEach(() => {
     originalGetMissingPeriods = billingCycleHistoryService.getMissingCyclePeriods;
     originalRepoCreate = billingCycleRepository.create;
+    originalCalculateCycleBalance = billingCycleHistoryService.calculateCycleBalance;
 
     activityLogService.logEvent.mockReset();
     activityLogService.logEvent.mockResolvedValue(undefined);
@@ -39,6 +37,7 @@ describe('BillingCycleSchedulerService - Activity Logging Property Tests', () =>
   afterEach(() => {
     billingCycleHistoryService.getMissingCyclePeriods = originalGetMissingPeriods;
     billingCycleRepository.create = originalRepoCreate;
+    billingCycleHistoryService.calculateCycleBalance = originalCalculateCycleBalance;
     billingCycleSchedulerService.isRunning = false;
   });
 
@@ -94,13 +93,15 @@ describe('BillingCycleSchedulerService - Activity Logging Property Tests', () =>
           billingCycleHistoryService.getMissingCyclePeriods = jest.fn()
             .mockResolvedValue([period]);
 
-          // Mock the database query for expense calculation
-          const mockDb = {
-            get: jest.fn((sql, params, cb) => {
-              cb(null, { total: expenseTotal });
-            })
-          };
-          getDatabase.mockResolvedValue(mockDb);
+          // Mock calculateCycleBalance to return the generated balance
+          // processCard now delegates to this shared method instead of inline SQL
+          billingCycleHistoryService.calculateCycleBalance = jest.fn()
+            .mockResolvedValue({
+              calculatedBalance: roundedBalance,
+              previousBalance: 0,
+              totalExpenses: expenseTotal,
+              totalPayments: 0
+            });
 
           // Mock repository create to return a cycle with the generated ID
           billingCycleRepository.create = jest.fn().mockResolvedValue({

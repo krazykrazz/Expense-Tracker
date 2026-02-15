@@ -124,13 +124,15 @@ describe('BillingCycleSchedulerService - Property Tests', () => {
 
   /**
    * Feature: billing-cycle-automation, Property 2: Cycle Data Integrity
-   * **Validates: Requirements 1.3, 8.1, 8.2, 8.3, 8.4**
+   * **Validates: Requirements 1.3, 5.1, 5.2, 8.1, 8.2, 8.3, 8.4**
    * 
-   * For any set of expenses, calculated_statement_balance equals the correct sum
-   * of COALESCE(original_cost, amount), actual_statement_balance=0, is_user_entered=0.
+   * For any set of expenses, payments, and previous cycle balance,
+   * calculated_statement_balance equals max(0, round(previousBalance + expenses - payments, 2)),
+   * actual_statement_balance=0, is_user_entered=0.
    * 
-   * We test this by overriding processCard to simulate the expense calculation
-   * and verify the data passed to billingCycleRepository.create.
+   * We test this by overriding processCard to simulate the corrected balance calculation
+   * (including payment deductions and carry-forward) and verify the data passed to
+   * billingCycleRepository.create.
    */
   test('Property 2: Cycle Data Integrity', async () => {
     await fc.assert(
@@ -143,7 +145,17 @@ describe('BillingCycleSchedulerService - Property Tests', () => {
           }),
           { minLength: 0, maxLength: 5 }
         ),
-        async (expenses) => {
+        // Generate total payments in the cycle period
+        fc.oneof(
+          fc.constant(0),
+          safeAmount({ min: 0.01, max: 5000 })
+        ),
+        // Generate previous cycle effective balance
+        fc.oneof(
+          fc.constant(0),
+          safeAmount({ min: 0.01, max: 10000 })
+        ),
+        async (expenses, totalPayments, previousBalance) => {
           const card = {
             id: 1,
             display_name: 'Test Card',
@@ -153,20 +165,21 @@ describe('BillingCycleSchedulerService - Property Tests', () => {
           };
 
           // Calculate expected sum using COALESCE(original_cost, amount)
-          const expectedSum = expenses.reduce((sum, e) => {
+          const totalExpenses = expenses.reduce((sum, e) => {
             const value = e.original_cost !== null ? e.original_cost : e.amount;
             return sum + value;
           }, 0);
-          const expectedBalance = Math.round(expectedSum * 100) / 100;
+          // Corrected formula: max(0, round(previousBalance + totalExpenses - totalPayments, 2))
+          const expectedBalance = Math.max(0, Math.round((previousBalance + totalExpenses - totalPayments) * 100) / 100);
 
           let createdData = null;
 
           billingCycleRepository.getCreditCardsNeedingBillingCycleEntry = async () => [card];
 
-          // Override processCard to simulate the full flow with controlled expense data
+          // Override processCard to simulate the full flow with controlled data
           const originalProcessCard = billingCycleSchedulerService.processCard.bind(billingCycleSchedulerService);
           billingCycleSchedulerService.processCard = async (c) => {
-            // Simulate what processCard does: calculate balance, create record
+            // Simulate what processCard does: calculate balance using corrected formula
             const data = {
               payment_method_id: c.id,
               cycle_start_date: '2026-01-16',
@@ -191,10 +204,12 @@ describe('BillingCycleSchedulerService - Property Tests', () => {
           expect(createdData).not.toBeNull();
           expect(createdData.actual_statement_balance).toBe(0);
           expect(createdData.calculated_statement_balance).toBe(expectedBalance);
-          // When no expenses, balance should be 0 (Req 8.4)
-          if (expenses.length === 0) {
+          // When no expenses, no payments, and no previous balance, balance should be 0
+          if (expenses.length === 0 && totalPayments === 0 && previousBalance === 0) {
             expect(createdData.calculated_statement_balance).toBe(0);
           }
+          // Balance should never be negative (floor at zero)
+          expect(createdData.calculated_statement_balance).toBeGreaterThanOrEqual(0);
         }
       ),
       pbtOptions()

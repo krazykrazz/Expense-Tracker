@@ -4,33 +4,34 @@
  * 
  * Using fast-check library for property-based testing
  * 
- * **Validates: Requirements 2.2, 2.3, 2.5, 2.6, 7.2, 9.1, 9.2**
+ * Updated for billing-cycle-payment-deduction: autoGenerateBillingCycles now calls
+ * calculateCycleBalance() (which queries expenses, payments, and previous cycle)
+ * instead of statementBalanceService.calculateStatementBalance(). Tests mock
+ * calculateCycleBalance on the service instance to control balance outputs.
+ * 
+ * **Validates: Requirements 2.2, 2.3, 2.5, 2.6, 5.1, 5.2, 7.2, 9.1, 9.2**
  */
 
 const fc = require('fast-check');
-const { pbtOptions, dbPbtOptions, safeDate, calculatePreviousCycleDates } = require('../test/pbtArbitraries');
+const { pbtOptions } = require('../test/pbtArbitraries');
 
 // Import the service to test
 const billingCycleHistoryService = require('./billingCycleHistoryService');
 const billingCycleRepository = require('../repositories/billingCycleRepository');
-const paymentMethodRepository = require('../repositories/paymentMethodRepository');
-const statementBalanceService = require('./statementBalanceService');
 
 describe('BillingCycleHistoryService - Auto-Generation Property Tests', () => {
   // Store original methods for restoration
   let originalRepoFindByPaymentMethod;
   let originalRepoCreate;
   let originalRepoFindByPaymentMethodAndCycleEnd;
-  let originalPMFindById;
-  let originalCalculateStatementBalance;
+  let originalCalculateCycleBalance;
 
   beforeEach(() => {
     // Store original methods
     originalRepoFindByPaymentMethod = billingCycleRepository.findByPaymentMethod;
     originalRepoCreate = billingCycleRepository.create;
     originalRepoFindByPaymentMethodAndCycleEnd = billingCycleRepository.findByPaymentMethodAndCycleEnd;
-    originalPMFindById = paymentMethodRepository.findById;
-    originalCalculateStatementBalance = statementBalanceService.calculateStatementBalance;
+    originalCalculateCycleBalance = billingCycleHistoryService.calculateCycleBalance;
   });
 
   afterEach(() => {
@@ -38,15 +39,14 @@ describe('BillingCycleHistoryService - Auto-Generation Property Tests', () => {
     billingCycleRepository.findByPaymentMethod = originalRepoFindByPaymentMethod;
     billingCycleRepository.create = originalRepoCreate;
     billingCycleRepository.findByPaymentMethodAndCycleEnd = originalRepoFindByPaymentMethodAndCycleEnd;
-    paymentMethodRepository.findById = originalPMFindById;
-    statementBalanceService.calculateStatementBalance = originalCalculateStatementBalance;
+    billingCycleHistoryService.calculateCycleBalance = originalCalculateCycleBalance;
   });
 
   /**
    * Feature: unified-billing-cycles, Property 1: Auto-Generation Date Calculation
    * **Validates: Requirements 2.2**
    * 
-   * For any billing_cycle_day (1-31) and reference date, auto-generated billing cycles 
+   * For any billing_cycle_day (1-28) and reference date, auto-generated billing cycles 
    * SHALL have cycle_start_date and cycle_end_date correctly calculated based on the 
    * billing_cycle_day, where cycle_end_date falls on billing_cycle_day (or last day of 
    * month if billing_cycle_day exceeds month length) and cycle_start_date is the day 
@@ -81,14 +81,13 @@ describe('BillingCycleHistoryService - Auto-Generation Property Tests', () => {
             return cycle;
           };
 
-          // Mock statement balance calculation
-          statementBalanceService.calculateStatementBalance = async () => ({
-            statementBalance: 100,
-            cycleStartDate: '2024-01-01',
-            cycleEndDate: '2024-01-31',
+          // Mock calculateCycleBalance — returns a fixed balance for date calculation tests
+          // The balance value doesn't matter for this property; we're testing dates
+          billingCycleHistoryService.calculateCycleBalance = async () => ({
+            calculatedBalance: 100,
+            previousBalance: 0,
             totalExpenses: 100,
-            totalPayments: 0,
-            isPaid: false
+            totalPayments: 0
           });
 
           // Call auto-generate
@@ -128,20 +127,27 @@ describe('BillingCycleHistoryService - Auto-Generation Property Tests', () => {
 
   /**
    * Feature: unified-billing-cycles, Property 2: Auto-Generated Cycles Have Zero Actual Balance
-   * **Validates: Requirements 2.3**
+   * **Validates: Requirements 2.3, 5.1, 5.2**
    * 
    * For any auto-generated billing cycle, the actual_statement_balance SHALL be 0, 
-   * indicating no user-provided value.
+   * indicating no user-provided value. The calculated_statement_balance SHALL reflect
+   * the corrected formula: max(0, round(previousBalance + expenses - payments, 2)).
    */
   test('Property 2: Auto-Generated Cycles Have Zero Actual Balance', async () => {
     await fc.assert(
       fc.asyncProperty(
         // Generate billing cycle day
         fc.integer({ min: 1, max: 28 }),
-        // Generate calculated balance (any positive value)
+        // Generate previous balance (carry-forward)
+        fc.float({ min: Math.fround(0), max: Math.fround(3000), noNaN: true })
+          .map(n => Math.round(n * 100) / 100),
+        // Generate expense total
         fc.float({ min: Math.fround(0), max: Math.fround(5000), noNaN: true })
           .map(n => Math.round(n * 100) / 100),
-        async (billingCycleDay, calculatedBalance) => {
+        // Generate payment total
+        fc.float({ min: Math.fround(0), max: Math.fround(4000), noNaN: true })
+          .map(n => Math.round(n * 100) / 100),
+        async (billingCycleDay, previousBalance, totalExpenses, totalPayments) => {
           const paymentMethodId = 1;
           let createdCycles = [];
 
@@ -155,14 +161,13 @@ describe('BillingCycleHistoryService - Auto-Generation Property Tests', () => {
             return cycle;
           };
 
-          // Mock statement balance calculation to return the generated balance
-          statementBalanceService.calculateStatementBalance = async () => ({
-            statementBalance: calculatedBalance,
-            cycleStartDate: '2024-01-01',
-            cycleEndDate: '2024-01-31',
-            totalExpenses: calculatedBalance,
-            totalPayments: 0,
-            isPaid: false
+          // Mock calculateCycleBalance with the corrected formula
+          const calculatedBalance = Math.max(0, Math.round((previousBalance + totalExpenses - totalPayments) * 100) / 100);
+          billingCycleHistoryService.calculateCycleBalance = async () => ({
+            calculatedBalance,
+            previousBalance,
+            totalExpenses,
+            totalPayments
           });
 
           // Call auto-generate
@@ -173,8 +178,10 @@ describe('BillingCycleHistoryService - Auto-Generation Property Tests', () => {
           );
 
           // Verify all created cycles have actual_statement_balance = 0
+          // and calculated_statement_balance reflects the corrected formula
           for (const cycle of createdCycles) {
             expect(cycle.actual_statement_balance).toBe(0);
+            expect(cycle.calculated_statement_balance).toBe(calculatedBalance);
           }
 
           return true;
@@ -213,14 +220,12 @@ describe('BillingCycleHistoryService - Auto-Generation Property Tests', () => {
             return cycle;
           };
 
-          // Mock statement balance calculation
-          statementBalanceService.calculateStatementBalance = async () => ({
-            statementBalance: 100,
-            cycleStartDate: '2024-01-01',
-            cycleEndDate: '2024-01-31',
+          // Mock calculateCycleBalance — fixed balance for idempotence test
+          billingCycleHistoryService.calculateCycleBalance = async () => ({
+            calculatedBalance: 100,
+            previousBalance: 0,
             totalExpenses: 100,
-            totalPayments: 0,
-            isPaid: false
+            totalPayments: 0
           });
 
           const referenceDate = new Date('2024-06-15');
@@ -289,14 +294,12 @@ describe('BillingCycleHistoryService - Auto-Generation Property Tests', () => {
             return cycle;
           };
 
-          // Mock statement balance calculation
-          statementBalanceService.calculateStatementBalance = async () => ({
-            statementBalance: 100,
-            cycleStartDate: '2024-01-01',
-            cycleEndDate: '2024-01-31',
+          // Mock calculateCycleBalance — fixed balance for limit test
+          billingCycleHistoryService.calculateCycleBalance = async () => ({
+            calculatedBalance: 100,
+            previousBalance: 0,
             totalExpenses: 100,
-            totalPayments: 0,
-            isPaid: false
+            totalPayments: 0
           });
 
           // Call auto-generate
@@ -307,7 +310,6 @@ describe('BillingCycleHistoryService - Auto-Generation Property Tests', () => {
           );
 
           // Verify we don't generate more than 12 cycles
-          // This is the key constraint - we generate at most 12 billing cycles
           expect(createdCycles.length).toBeLessThanOrEqual(12);
 
           // Verify all cycles have valid dates
@@ -387,14 +389,12 @@ describe('BillingCycleHistoryService - Auto-Generation Property Tests', () => {
             return null;
           };
 
-          // Mock statement balance calculation
-          statementBalanceService.calculateStatementBalance = async () => ({
-            statementBalance: 200,
-            cycleStartDate: '2024-01-01',
-            cycleEndDate: '2024-01-31',
+          // Mock calculateCycleBalance — fixed balance for preservation test
+          billingCycleHistoryService.calculateCycleBalance = async () => ({
+            calculatedBalance: 200,
+            previousBalance: 0,
             totalExpenses: 200,
-            totalPayments: 0,
-            isPaid: false
+            totalPayments: 0
           });
 
           // Call auto-generate

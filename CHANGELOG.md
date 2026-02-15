@@ -2,6 +2,11 @@
 
 
 
+
+
+## [5.12.1] - 2026-02-15
+
+### Fix billing cycle PDF upload on update, fix deploy script CI polling
 ## [5.12.0] - 2026-02-15
 
 ### Billing cycle payment deduction

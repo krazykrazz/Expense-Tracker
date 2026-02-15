@@ -1,5 +1,10 @@
 # Changelog
 
+
+
+## [5.12.0] - 2026-02-15
+
+### Billing cycle payment deduction
 ## [5.11.3] - 2026-02-14
 
 ### Fixed

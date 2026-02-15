@@ -4,6 +4,11 @@
 
 
 
+
+
+## [5.13.0] - 2026-02-15
+
+### Activity log coverage expansion, PBT test race condition fixes
 ## [5.12.1] - 2026-02-15
 
 ### Fix billing cycle PDF upload on update, fix deploy script CI polling

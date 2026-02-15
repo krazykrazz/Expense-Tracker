@@ -440,12 +440,19 @@ class BillingCycleHistoryService {
     
     // Update the record (repository preserves calculated_statement_balance)
     // Mark as user-entered since user is explicitly updating
-    const updated = await billingCycleRepository.update(cycleId, {
+    const updatePayload = {
       actual_statement_balance: data.actual_statement_balance,
       minimum_payment: data.minimum_payment,
       notes: data.notes,
       is_user_entered: 1  // Mark as user-entered when user updates
-    });
+    };
+    
+    // Pass statement_pdf_path if provided (from PDF upload)
+    if (data.statement_pdf_path !== undefined) {
+      updatePayload.statement_pdf_path = data.statement_pdf_path;
+    }
+    
+    const updated = await billingCycleRepository.update(cycleId, updatePayload);
     
     if (!updated) {
       const error = new Error('Failed to update billing cycle record');

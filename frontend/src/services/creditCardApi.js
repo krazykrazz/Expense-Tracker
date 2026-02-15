@@ -491,15 +491,40 @@ export const getBillingCycleHistory = async (paymentMethodId, options = {}) => {
  */
 export const updateBillingCycle = async (paymentMethodId, cycleId, data) => {
   try {
-    const response = await fetchWithRetry(
-      API_ENDPOINTS.PAYMENT_METHOD_BILLING_CYCLE_UPDATE(paymentMethodId, cycleId),
-      {
+    let fetchOptions;
+    
+    // If there's a PDF file, use FormData (same pattern as createBillingCycle)
+    if (data.statement) {
+      const formData = new FormData();
+      if (data.actual_statement_balance !== undefined && data.actual_statement_balance !== null) {
+        formData.append('actual_statement_balance', data.actual_statement_balance.toString());
+      }
+      if (data.minimum_payment !== undefined && data.minimum_payment !== null) {
+        formData.append('minimum_payment', data.minimum_payment.toString());
+      }
+      if (data.notes !== undefined && data.notes !== null) {
+        formData.append('notes', data.notes);
+      }
+      formData.append('statement', data.statement);
+      
+      fetchOptions = {
+        method: 'PUT',
+        body: formData
+      };
+    } else {
+      // No file, use JSON
+      fetchOptions = {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(data)
-      }
+      };
+    }
+    
+    const response = await fetchWithRetry(
+      API_ENDPOINTS.PAYMENT_METHOD_BILLING_CYCLE_UPDATE(paymentMethodId, cycleId),
+      fetchOptions
     );
     
     if (!response.ok) {

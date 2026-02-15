@@ -25,7 +25,7 @@ describe('useBadgeCalculations - Property-Based Tests', () => {
     it('calculateFutureDatePreview is pure and returns consistent strings', () => {
       fc.assert(
         fc.property(
-          fc.date({ min: new Date('2020-01-01'), max: new Date('2030-12-31') }),
+          fc.date({ min: new Date('2020-01-01'), max: new Date('2030-12-31'), noInvalidDate: true }),
           fc.integer({ min: 0, max: 12 }),
           (date, futureMonths) => {
             const sourceDate = date.toISOString().split('T')[0]; // YYYY-MM-DD format

@@ -254,4 +254,133 @@ describe('BillingCycleSchedulerService - Unit Tests', () => {
 
     expect(result).toEqual({ generatedCount: 0, errors: [], skipped: true });
   });
+
+  /**
+   * Tests for processCard internals — validates integration with
+   * calculateCycleBalance (payment deductions + carry-forward).
+   * _Requirements: 5.1, 5.2_
+   */
+  describe('processCard - calculateCycleBalance integration', () => {
+    let originalGetMissing;
+    let originalCalcBalance;
+    let originalCreate;
+    let originalLogEvent;
+
+    beforeEach(() => {
+      originalGetMissing = billingCycleHistoryService.getMissingCyclePeriods;
+      originalCalcBalance = billingCycleHistoryService.calculateCycleBalance;
+      originalCreate = billingCycleRepository.create;
+      originalLogEvent = activityLogService.logEvent;
+    });
+
+    afterEach(() => {
+      billingCycleHistoryService.getMissingCyclePeriods = originalGetMissing;
+      billingCycleHistoryService.calculateCycleBalance = originalCalcBalance;
+      billingCycleRepository.create = originalCreate;
+      activityLogService.logEvent = originalLogEvent;
+    });
+
+    test('calls calculateCycleBalance with correct period dates', async () => {
+      const card = { id: 10, display_name: 'TestCard', billing_cycle_day: 15 };
+      const period = { startDate: '2026-01-16', endDate: '2026-02-15' };
+
+      billingCycleHistoryService.getMissingCyclePeriods = async () => [period];
+      billingCycleHistoryService.calculateCycleBalance = jest.fn().mockResolvedValue({
+        calculatedBalance: 500,
+        previousBalance: 200,
+        totalExpenses: 400,
+        totalPayments: 100
+      });
+      billingCycleRepository.create = async (data) => ({ id: 99, ...data });
+      activityLogService.logEvent = jest.fn().mockResolvedValue(undefined);
+
+      await billingCycleSchedulerService.processCard(card, new Date('2026-02-16'));
+
+      expect(billingCycleHistoryService.calculateCycleBalance).toHaveBeenCalledWith(
+        10, '2026-01-16', '2026-02-15'
+      );
+    });
+
+    test('uses calculatedBalance from calculateCycleBalance in created cycle', async () => {
+      const card = { id: 10, display_name: 'TestCard', billing_cycle_day: 15 };
+      const period = { startDate: '2026-01-16', endDate: '2026-02-15' };
+
+      billingCycleHistoryService.getMissingCyclePeriods = async () => [period];
+      billingCycleHistoryService.calculateCycleBalance = jest.fn().mockResolvedValue({
+        calculatedBalance: 350.75,
+        previousBalance: 100,
+        totalExpenses: 300,
+        totalPayments: 49.25
+      });
+
+      let createdData = null;
+      billingCycleRepository.create = async (data) => {
+        createdData = data;
+        return { id: 1, ...data };
+      };
+      activityLogService.logEvent = jest.fn().mockResolvedValue(undefined);
+
+      await billingCycleSchedulerService.processCard(card, new Date('2026-02-16'));
+
+      expect(createdData.calculated_statement_balance).toBe(350.75);
+      expect(createdData.payment_method_id).toBe(10);
+      expect(createdData.cycle_start_date).toBe('2026-01-16');
+      expect(createdData.cycle_end_date).toBe('2026-02-15');
+    });
+
+    test('handles payments exceeding expenses (floor at zero via calculateCycleBalance)', async () => {
+      const card = { id: 10, display_name: 'TestCard', billing_cycle_day: 15 };
+      const period = { startDate: '2026-01-16', endDate: '2026-02-15' };
+
+      billingCycleHistoryService.getMissingCyclePeriods = async () => [period];
+      billingCycleHistoryService.calculateCycleBalance = jest.fn().mockResolvedValue({
+        calculatedBalance: 0,
+        previousBalance: 100,
+        totalExpenses: 50,
+        totalPayments: 200
+      });
+
+      let createdData = null;
+      billingCycleRepository.create = async (data) => {
+        createdData = data;
+        return { id: 1, ...data };
+      };
+      activityLogService.logEvent = jest.fn().mockResolvedValue(undefined);
+
+      await billingCycleSchedulerService.processCard(card, new Date('2026-02-16'));
+
+      expect(createdData.calculated_statement_balance).toBe(0);
+    });
+
+    test('returns empty array when no missing periods', async () => {
+      const card = { id: 10, display_name: 'TestCard', billing_cycle_day: 15 };
+
+      billingCycleHistoryService.getMissingCyclePeriods = async () => [];
+
+      const result = await billingCycleSchedulerService.processCard(card, new Date('2026-02-16'));
+
+      expect(result).toEqual([]);
+    });
+
+    test('skips UNIQUE constraint errors without throwing', async () => {
+      const card = { id: 10, display_name: 'TestCard', billing_cycle_day: 15 };
+      const period = { startDate: '2026-01-16', endDate: '2026-02-15' };
+
+      billingCycleHistoryService.getMissingCyclePeriods = async () => [period];
+      billingCycleHistoryService.calculateCycleBalance = jest.fn().mockResolvedValue({
+        calculatedBalance: 100,
+        previousBalance: 0,
+        totalExpenses: 100,
+        totalPayments: 0
+      });
+      billingCycleRepository.create = async () => {
+        throw new Error('UNIQUE constraint failed');
+      };
+      activityLogService.logEvent = jest.fn().mockResolvedValue(undefined);
+
+      const result = await billingCycleSchedulerService.processCard(card, new Date('2026-02-16'));
+
+      expect(result).toEqual([]);
+    });
+  });
 });

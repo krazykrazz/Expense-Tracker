@@ -131,6 +131,39 @@ class BillingCycleRepository {
   }
 
   /**
+   * Find the most recent billing cycle before a given date for a payment method
+   * Used to retrieve the previous cycle's balance for carry-forward calculations
+   *
+   * @param {number} paymentMethodId - The payment method ID
+   * @param {string} beforeDate - Date string; returns cycles with cycle_end_date strictly before this date
+   * @returns {Promise<Object|null>} The most recent previous cycle record, or null if none exists
+   * _Requirements: 1.1, 2.1, 3.2_
+   */
+  async findPreviousCycle(paymentMethodId, beforeDate) {
+    const db = await getDatabase();
+
+    return new Promise((resolve, reject) => {
+      const sql = `
+        SELECT * FROM credit_card_billing_cycles
+        WHERE payment_method_id = ? AND cycle_end_date < ?
+        ORDER BY cycle_end_date DESC
+        LIMIT 1
+      `;
+
+      db.get(sql, [paymentMethodId, beforeDate], (err, row) => {
+        if (err) {
+          logger.error('Failed to find previous billing cycle:', err);
+          reject(err);
+          return;
+        }
+
+        resolve(row || null);
+      });
+    });
+  }
+
+
+  /**
    * Get billing cycle history for a payment method
    * Returns records sorted by cycle_end_date in descending order (most recent first)
    * @param {number} paymentMethodId - Payment method ID

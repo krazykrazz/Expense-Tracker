@@ -389,6 +389,21 @@ db.run(`
 - [Credit Card Billing Cycles](./CREDIT_CARD_BILLING_CYCLES.md) - Billing cycle history
 - [Credit Card Posted Date](./CREDIT_CARD_POSTED_DATE.md) - Posted date support
 
+## Relationship to Billing Cycle Calculated Balance
+
+The `statementBalanceService` and the billing cycle auto-generation formula serve different but complementary purposes:
+
+**`statementBalanceService.calculateStatementBalance()`** computes the *current outstanding amount* from the previous billing cycle. It sums expenses within the previous cycle period and subtracts payments made *after* the cycle end date (i.e., payments toward the statement). This drives payment reminders and the "statement paid" status.
+
+**Billing cycle `calculated_statement_balance`** computes the *historical balance at the end of a specific cycle*. It uses the formula: `max(0, round(previousBalance + totalExpenses − totalPayments, 2))`, where payments are those made *within* the cycle period. This includes carry-forward from the previous cycle's effective balance and represents what was owed when the cycle closed.
+
+Key differences:
+- **Payment window**: Statement balance subtracts payments made *after* the cycle ends; billing cycle balance subtracts payments made *during* the cycle
+- **Carry-forward**: Billing cycle balance includes the previous cycle's effective balance; statement balance does not (it only looks at one cycle's expenses)
+- **Purpose**: Statement balance drives payment alerts; billing cycle balance provides historical tracking
+
+Both formulas floor at zero to prevent negative balances. The billing cycle formula is shared across all three auto-generation and recalculation code paths via a single `calculateCycleBalance()` method (see [Credit Card Billing Cycles](./CREDIT_CARD_BILLING_CYCLES.md#calculated-balance-formula) for details).
+
 ## Future Enhancements
 
 - Statement balance history tracking

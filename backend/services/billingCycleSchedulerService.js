@@ -137,30 +137,12 @@ class BillingCycleSchedulerService {
     }
 
     const generatedCycles = [];
-    const { getDatabase } = require('../database/db');
 
     for (const period of missingPeriods) {
       try {
-        // Calculate expenses for the cycle period (Req 1.3, 8.1)
-        const db = await getDatabase();
-        const totalExpenses = await new Promise((resolve, reject) => {
-          const sql = `
-            SELECT COALESCE(SUM(COALESCE(original_cost, amount)), 0) as total
-            FROM expenses
-            WHERE payment_method_id = ?
-              AND COALESCE(posted_date, date) >= ?
-              AND COALESCE(posted_date, date) <= ?
-          `;
-          db.get(sql, [paymentMethodId, period.startDate, period.endDate], (err, row) => {
-            if (err) {
-              reject(err);
-              return;
-            }
-            resolve(row?.total || 0);
-          });
-        });
-
-        const calculatedBalance = Math.round(totalExpenses * 100) / 100;
+        // Use shared helper for balance calculation (Req 1.1, 1.2, 1.3, 1.4, 1.5, 8.1)
+        const { calculatedBalance, previousBalance, totalExpenses, totalPayments } =
+          await billingCycleHistoryService.calculateCycleBalance(paymentMethodId, period.startDate, period.endDate);
 
         // Create auto-generated cycle record (Req 8.2, 8.3, 8.4)
         const cycle = await billingCycleRepository.create({
@@ -194,7 +176,10 @@ class BillingCycleSchedulerService {
           id: cycle.id,
           paymentMethodId,
           cycleEndDate: period.endDate,
-          calculatedBalance
+          calculatedBalance,
+          previousBalance,
+          totalExpenses,
+          totalPayments
         });
       } catch (error) {
         // Skip duplicate entries (UNIQUE constraint) — treat as "already exists" (Req 8.5)

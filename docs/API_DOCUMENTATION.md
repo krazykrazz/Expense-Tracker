@@ -1763,6 +1763,7 @@ Content-Type: application/json
 | Field | Type | Description |
 |-------|------|-------------|
 | id | number/null | Database ID (null for auto-generated cycles) |
+| calculated_statement_balance | number | System-computed balance: `max(0, round(previousBalance + expenses − payments, 2))`. Includes carry-forward from the previous cycle's effective balance, expenses posted during the cycle, and credit card payments made during the cycle. Floored at zero. |
 | effective_balance | number | Balance to display (actual if entered, otherwise calculated) |
 | balance_type | string | "actual" or "calculated" |
 | transaction_count | number | Number of expenses in the cycle |

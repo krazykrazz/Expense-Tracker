@@ -36,8 +36,14 @@ router.post(
 // GET /api/payment-methods/:id/billing-cycles/:cycleId/pdf - Get billing cycle PDF
 router.get('/:id/billing-cycles/:cycleId/pdf', billingCycleController.getBillingCyclePdf);
 
-// PUT /api/payment-methods/:id/billing-cycles/:cycleId - Update a billing cycle record
-router.put('/:id/billing-cycles/:cycleId', billingCycleController.updateBillingCycle);
+// PUT /api/payment-methods/:id/billing-cycles/:cycleId - Update a billing cycle record (with optional PDF)
+router.put(
+  '/:id/billing-cycles/:cycleId',
+  validateUploadRequest,
+  upload.single('statement'),
+  handleMulterError,
+  billingCycleController.updateBillingCycle
+);
 
 // DELETE /api/payment-methods/:id/billing-cycles/:cycleId - Delete a billing cycle record
 router.delete('/:id/billing-cycles/:cycleId', billingCycleController.deleteBillingCycle);

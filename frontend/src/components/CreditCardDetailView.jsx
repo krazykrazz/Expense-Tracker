@@ -334,7 +334,7 @@ const CreditCardDetailView = ({
                       ? formatCurrency(0) 
                       : currentCycleStatus?.hasActualBalance
                         ? formatCurrency(currentCycleStatus.actualBalance)
-                        : formatCurrency(statementBalanceInfo?.statementBalance ?? paymentMethod.statement_balance)
+                        : formatCurrency(currentCycleStatus?.calculatedBalance ?? statementBalanceInfo?.statementBalance ?? paymentMethod.statement_balance)
                     }
                   </div>
                   <div className="balance-description">

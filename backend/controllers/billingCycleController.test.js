@@ -1,8 +1,44 @@
+// Mock dependencies - these are hoisted before any require() calls
+jest.mock('../services/billingCycleHistoryService');
+jest.mock('../services/statementBalanceService', () => ({}));
+jest.mock('../database/db', () => ({
+  getDatabase: jest.fn()
+}));
+jest.mock('../repositories/billingCycleRepository', () => ({
+  findById: jest.fn(),
+  findByPaymentMethod: jest.fn(),
+  findByPaymentMethodAndCycleEnd: jest.fn(),
+  create: jest.fn(),
+  update: jest.fn(),
+  delete: jest.fn()
+}));
+jest.mock('../repositories/paymentMethodRepository', () => ({
+  findById: jest.fn()
+}));
+jest.mock('../services/activityLogService', () => ({
+  logEvent: jest.fn().mockResolvedValue(undefined)
+}));
+jest.mock('../config/logger', () => ({
+  debug: jest.fn(),
+  info: jest.fn(),
+  warn: jest.fn(),
+  error: jest.fn()
+}));
+jest.mock('../config/paths', () => ({
+  getStatementsPath: jest.fn().mockReturnValue('/mock/statements')
+}));
+jest.mock('fs', () => ({
+  existsSync: jest.fn().mockReturnValue(true),
+  mkdirSync: jest.fn(),
+  writeFileSync: jest.fn(),
+  unlinkSync: jest.fn(),
+  createReadStream: jest.fn()
+}));
+
+const fs = require('fs');
 const billingCycleController = require('./billingCycleController');
 const billingCycleHistoryService = require('../services/billingCycleHistoryService');
-
-// Mock the billing cycle history service
-jest.mock('../services/billingCycleHistoryService');
+const billingCycleRepository = require('../repositories/billingCycleRepository');
 
 /**
  * BillingCycleController Unit Tests
@@ -330,6 +366,8 @@ describe('BillingCycleController - Unit Tests', () => {
         calculated_statement_balance: 1189.23,
         minimum_payment: 30.00,
         notes: 'Updated note',
+        cycle_start_date: '2025-01-16',
+        cycle_end_date: '2025-02-15',
         discrepancy: { amount: 110.77, type: 'higher', description: 'Higher' }
       };
 
@@ -339,6 +377,11 @@ describe('BillingCycleController - Unit Tests', () => {
         minimum_payment: 30.00,
         notes: 'Updated note'
       };
+      billingCycleRepository.findById.mockResolvedValue({
+        id: 1,
+        payment_method_id: 4,
+        actual_statement_balance: 1200
+      });
       billingCycleHistoryService.updateBillingCycle.mockResolvedValue(mockUpdated);
 
       await billingCycleController.updateBillingCycle(req, res);
@@ -436,6 +479,142 @@ describe('BillingCycleController - Unit Tests', () => {
         success: false,
         error: 'Billing cycle record does not belong to this payment method'
       });
+    });
+
+    test('should save PDF and pass statement_pdf_path when file is uploaded', async () => {
+      const mockUpdated = {
+        id: 1,
+        payment_method_id: 4,
+        actual_statement_balance: 1300,
+        calculated_statement_balance: 1189.23,
+        cycle_start_date: '2025-01-16',
+        cycle_end_date: '2025-02-15',
+        discrepancy: { amount: 110.77, type: 'higher', description: 'Higher' }
+      };
+
+      req.params = { id: '4', cycleId: '1' };
+      req.body = { actual_statement_balance: '1300' };
+      req.file = {
+        originalname: 'statement.pdf',
+        buffer: Buffer.from('fake-pdf-content')
+      };
+
+      billingCycleRepository.findById.mockResolvedValue({
+        id: 1,
+        payment_method_id: 4,
+        cycle_end_date: '2025-02-15',
+        actual_statement_balance: 1000,
+        statement_pdf_path: null
+      });
+      billingCycleHistoryService.updateBillingCycle.mockResolvedValue(mockUpdated);
+
+      await billingCycleController.updateBillingCycle(req, res);
+
+      // Verify file was written
+      expect(fs.writeFileSync).toHaveBeenCalledWith(
+        expect.stringContaining('billing-cycle-4-20250215'),
+        req.file.buffer
+      );
+
+      // Verify service was called with statement_pdf_path
+      expect(billingCycleHistoryService.updateBillingCycle).toHaveBeenCalledWith(
+        4,
+        1,
+        expect.objectContaining({
+          statement_pdf_path: expect.stringContaining('billing-cycle-4-20250215')
+        })
+      );
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({ success: true, billingCycle: mockUpdated });
+    });
+
+    test('should clean up old PDF when replacing with new upload', async () => {
+      const mockUpdated = {
+        id: 1,
+        payment_method_id: 4,
+        actual_statement_balance: 1300,
+        calculated_statement_balance: 1189.23,
+        cycle_start_date: '2025-01-16',
+        cycle_end_date: '2025-02-15',
+        discrepancy: { amount: 110.77, type: 'higher', description: 'Higher' }
+      };
+
+      req.params = { id: '4', cycleId: '1' };
+      req.body = { actual_statement_balance: '1300' };
+      req.file = {
+        originalname: 'new-statement.pdf',
+        buffer: Buffer.from('new-pdf-content')
+      };
+
+      billingCycleRepository.findById.mockResolvedValue({
+        id: 1,
+        payment_method_id: 4,
+        cycle_end_date: '2025-02-15',
+        actual_statement_balance: 1000,
+        statement_pdf_path: 'old-statement.pdf'
+      });
+      fs.existsSync.mockReturnValue(true);
+      billingCycleHistoryService.updateBillingCycle.mockResolvedValue(mockUpdated);
+
+      await billingCycleController.updateBillingCycle(req, res);
+
+      // Verify old PDF was deleted
+      expect(fs.unlinkSync).toHaveBeenCalledWith(
+        expect.stringContaining('old-statement.pdf')
+      );
+
+      // Verify new file was written
+      expect(fs.writeFileSync).toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    test('should parse string values from form-data when uploading PDF', async () => {
+      const mockUpdated = {
+        id: 1,
+        payment_method_id: 4,
+        actual_statement_balance: 500.50,
+        calculated_statement_balance: 400,
+        cycle_start_date: '2025-01-16',
+        cycle_end_date: '2025-02-15',
+        discrepancy: { amount: 100.50, type: 'higher', description: 'Higher' }
+      };
+
+      req.params = { id: '4', cycleId: '1' };
+      // Form-data sends values as strings
+      req.body = {
+        actual_statement_balance: '500.50',
+        minimum_payment: '25.00',
+        notes: 'From form-data'
+      };
+      req.file = {
+        originalname: 'stmt.pdf',
+        buffer: Buffer.from('pdf')
+      };
+
+      billingCycleRepository.findById.mockResolvedValue({
+        id: 1,
+        payment_method_id: 4,
+        cycle_end_date: '2025-02-15',
+        actual_statement_balance: 0,
+        statement_pdf_path: null
+      });
+      billingCycleHistoryService.updateBillingCycle.mockResolvedValue(mockUpdated);
+
+      await billingCycleController.updateBillingCycle(req, res);
+
+      // Verify numeric values were parsed from strings
+      expect(billingCycleHistoryService.updateBillingCycle).toHaveBeenCalledWith(
+        4,
+        1,
+        expect.objectContaining({
+          actual_statement_balance: 500.50,
+          minimum_payment: 25.00,
+          notes: 'From form-data'
+        })
+      );
+
+      expect(res.status).toHaveBeenCalledWith(200);
     });
   });
 

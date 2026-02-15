@@ -2,7 +2,7 @@
 
 **Version**: 5.4.0  
 **Status**: Implemented  
-**Spec**: `.kiro/specs/credit-card-billing-cycle-history/`, `.kiro/specs/unified-billing-cycles/`, `.kiro/specs/billing-cycle-automation/`, `.kiro/specs/credit-card-billing-fixes/`
+**Spec**: `.kiro/specs/credit-card-billing-cycle-history/`, `.kiro/specs/unified-billing-cycles/`, `.kiro/specs/billing-cycle-automation/`, `.kiro/specs/credit-card-billing-fixes/`, `.kiro/specs/billing-cycle-payment-deduction/`
 
 ## Overview
 
@@ -32,8 +32,12 @@ Billing cycle records are created automatically by a background scheduler, repla
 - A `node-cron` background task runs inside the Express server process on a configurable schedule (default: daily at 2:00 AM)
 - On each run, the scheduler scans all active credit cards with a configured `billing_cycle_day`
 - For any completed billing cycle period without a corresponding record, the scheduler creates an auto-generated cycle
-- Auto-generated cycles have `is_user_entered = 0`, `actual_statement_balance = 0`, and a `calculated_statement_balance` derived from tracked expenses in the cycle period
-- The calculated balance uses `COALESCE(original_cost, amount)` for expenses where `COALESCE(posted_date, date)` falls within the cycle dates (inclusive)
+- Auto-generated cycles have `is_user_entered = 0`, `actual_statement_balance = 0`, and a `calculated_statement_balance` derived from the previous cycle's balance, tracked expenses, and credit card payments in the cycle period
+- The calculated balance formula is: `max(0, round(previousBalance + totalExpenses − totalPayments, 2))`
+  - `previousBalance` is the effective balance from the immediately preceding billing cycle (actual if user-entered, calculated if auto-generated; zero if no previous cycle exists)
+  - `totalExpenses` uses `COALESCE(original_cost, amount)` for expenses where `COALESCE(posted_date, date)` falls within the cycle dates (inclusive)
+  - `totalPayments` is the sum of credit card payments where `payment_date` falls within the cycle dates (inclusive)
+  - The result is floored at zero — balances never go negative
 
 **Startup Behavior:**
 
@@ -239,6 +243,28 @@ The system determines which balance to display using this logic:
 
 This allows users to explicitly enter $0.00 for unused credit cards while still showing calculated balances for cycles that haven't been reviewed.
 
+## Calculated Balance Formula
+
+Auto-generated billing cycles compute the `calculated_statement_balance` using the following formula:
+
+```
+calculated_statement_balance = max(0, round(previousBalance + totalExpenses − totalPayments, 2))
+```
+
+Where:
+- **previousBalance**: The effective balance from the immediately preceding billing cycle record. Uses `actual_statement_balance` if the previous cycle is user-entered (`is_user_entered = 1`), otherwise uses `calculated_statement_balance`. Zero if no previous cycle exists.
+- **totalExpenses**: Sum of `COALESCE(original_cost, amount)` from the `expenses` table where `COALESCE(posted_date, date)` falls within the cycle period (inclusive of start and end dates).
+- **totalPayments**: Sum of `amount` from the `credit_card_payments` table where `payment_date` falls within the cycle period (inclusive of start and end dates).
+
+The formula is floored at zero — if payments exceed the sum of the previous balance and expenses, the calculated balance is set to zero rather than going negative.
+
+This formula is used consistently across all three code paths that compute calculated balances:
+1. **Scheduler auto-generation** (`billingCycleSchedulerService.processCard`) — background cron job
+2. **History service auto-generation** (`billingCycleHistoryService.autoGenerateBillingCycles`) — on-demand generation
+3. **Balance recalculation** (`billingCycleHistoryService.recalculateBalance`) — refreshes auto-generated cycle balances when viewed
+
+All three paths call a shared `calculateCycleBalance()` method to ensure consistency. When the history service generates multiple missing cycles, they are processed in chronological order (oldest first) so each cycle's carry-forward balance is available from the preceding generated cycle.
+
 ## Due Date Derivation
 
 The due date is no longer stored on billing cycle records. Instead, it is derived at display time from the payment method's `payment_due_day` field:
@@ -278,5 +304,5 @@ The migration automatically:
 
 ---
 
-**Last Updated:** February 3, 2026  
+**Last Updated:** February 9, 2026  
 **Status:** Active

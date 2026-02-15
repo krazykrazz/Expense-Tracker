@@ -11,6 +11,7 @@
 const loanPaymentRepository = require('../repositories/loanPaymentRepository');
 const fixedExpenseRepository = require('../repositories/fixedExpenseRepository');
 const loanRepository = require('../repositories/loanRepository');
+const activityLogService = require('./activityLogService');
 const logger = require('../config/logger');
 
 /**
@@ -77,6 +78,15 @@ class AutoPaymentLoggerService {
       paymentDate: paymentDate,
       fixedExpenseName: fixedExpenseName
     });
+
+    // Log activity event for auto-payment
+    activityLogService.logEvent(
+      'auto_payment_logged',
+      'loan_payment',
+      payment.id,
+      `Auto-logged payment of $${fixedExpense.amount.toFixed(2)} for ${fixedExpenseName}`,
+      { loanId: fixedExpense.linked_loan_id, amount: fixedExpense.amount, fixedExpenseName, paymentDate }
+    );
     
     return payment;
   }
@@ -204,11 +214,22 @@ class AutoPaymentLoggerService {
     const paymentDate = `${year}-${monthStr}-${dayStr}`;
     
     // Create the payment
-    return await this.createPaymentFromFixedExpense({
+    const payment = await this.createPaymentFromFixedExpense({
       linked_loan_id: expense.loan_id,
       amount: expense.amount,
       name: expense.fixed_expense_name
     }, paymentDate);
+
+    // Log activity event for auto-payment from suggestion
+    activityLogService.logEvent(
+      'auto_payment_logged',
+      'loan_payment',
+      payment.id,
+      `Auto-logged payment of $${expense.amount.toFixed(2)} from suggestion for fixed expense "${expense.fixed_expense_name}"`,
+      { fixedExpenseId, loanId: expense.loan_id, amount: expense.amount }
+    );
+
+    return payment;
   }
 }
 

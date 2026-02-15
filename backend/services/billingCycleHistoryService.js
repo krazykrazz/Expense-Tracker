@@ -1,6 +1,7 @@
 const billingCycleRepository = require('../repositories/billingCycleRepository');
 const paymentMethodRepository = require('../repositories/paymentMethodRepository');
 const statementBalanceService = require('./statementBalanceService');
+const activityLogService = require('./activityLogService');
 const logger = require('../config/logger');
 
 /**
@@ -306,6 +307,24 @@ class BillingCycleHistoryService {
       discrepancy: discrepancy.amount,
       hasPdf: !!data.statement_pdf_path
     });
+
+    // Log activity event (fire-and-forget)
+    try {
+      await activityLogService.logEvent(
+        'billing_cycle_added',
+        'billing_cycle',
+        billingCycle.id,
+        `Added billing cycle for ${paymentMethod.display_name} ending ${cycleDates.endDate}`,
+        {
+          paymentMethodId,
+          cycleEndDate: cycleDates.endDate,
+          actualBalance: data.actual_statement_balance,
+          cardName: paymentMethod.display_name
+        }
+      );
+    } catch (err) {
+      logger.error('Failed to log billing cycle creation activity:', err);
+    }
     
     return {
       ...billingCycle,
@@ -355,7 +374,7 @@ class BillingCycleHistoryService {
    */
   async updateBillingCycle(paymentMethodId, cycleId, data) {
     // Validate payment method
-    await this.validatePaymentMethod(paymentMethodId);
+    const paymentMethod = await this.validatePaymentMethod(paymentMethodId);
     
     // Get existing record to verify ownership and preserve calculated balance
     const existing = await billingCycleRepository.findById(cycleId);
@@ -409,6 +428,36 @@ class BillingCycleHistoryService {
       calculatedBalance: updated.calculated_statement_balance,
       discrepancy: discrepancy.amount
     });
+
+    // Build changes array for activity log
+    const changes = [];
+    if (existing.actual_statement_balance !== updated.actual_statement_balance) {
+      changes.push({ field: 'actual_statement_balance', from: existing.actual_statement_balance, to: updated.actual_statement_balance });
+    }
+    if (existing.minimum_payment !== updated.minimum_payment) {
+      changes.push({ field: 'minimum_payment', from: existing.minimum_payment, to: updated.minimum_payment });
+    }
+    if (existing.notes !== updated.notes) {
+      changes.push({ field: 'notes', from: existing.notes, to: updated.notes });
+    }
+
+    // Log activity event (fire-and-forget)
+    try {
+      await activityLogService.logEvent(
+        'billing_cycle_updated',
+        'billing_cycle',
+        cycleId,
+        `Updated billing cycle for ${paymentMethod.display_name} ending ${updated.cycle_end_date}`,
+        {
+          paymentMethodId,
+          cycleEndDate: updated.cycle_end_date,
+          changes,
+          cardName: paymentMethod.display_name
+        }
+      );
+    } catch (err) {
+      logger.error('Failed to log billing cycle update activity:', err);
+    }
     
     return {
       ...updated,
@@ -425,7 +474,7 @@ class BillingCycleHistoryService {
    */
   async deleteBillingCycle(paymentMethodId, cycleId) {
     // Validate payment method
-    await this.validatePaymentMethod(paymentMethodId);
+    const paymentMethod = await this.validatePaymentMethod(paymentMethodId);
     
     // Get existing record to verify ownership
     const existing = await billingCycleRepository.findById(cycleId);
@@ -449,6 +498,23 @@ class BillingCycleHistoryService {
       paymentMethodId,
       cycleEndDate: existing.cycle_end_date
     });
+
+    // Log activity event (fire-and-forget)
+    try {
+      await activityLogService.logEvent(
+        'billing_cycle_deleted',
+        'billing_cycle',
+        cycleId,
+        `Deleted billing cycle for ${paymentMethod.display_name} ending ${existing.cycle_end_date}`,
+        {
+          paymentMethodId,
+          cycleEndDate: existing.cycle_end_date,
+          cardName: paymentMethod.display_name
+        }
+      );
+    } catch (err) {
+      logger.error('Failed to log billing cycle deletion activity:', err);
+    }
     
     return deleted;
   }

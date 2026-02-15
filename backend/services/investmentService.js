@@ -82,7 +82,8 @@ class InvestmentService {
       `Added investment: ${createdInvestment.name}`,
       {
         name: createdInvestment.name,
-        account_type: createdInvestment.type
+        account_type: createdInvestment.type,
+        initial_value: createdInvestment.initial_value
       }
     );
     
@@ -188,7 +189,8 @@ class InvestmentService {
         `Deleted investment: ${investment.name}`,
         {
           name: investment.name,
-          account_type: investment.type
+          account_type: investment.type,
+          initial_value: investment.initial_value
         }
       );
     }

@@ -1,4 +1,6 @@
 const investmentValueRepository = require('../repositories/investmentValueRepository');
+const activityLogService = require('./activityLogService');
+const investmentRepository = require('../repositories/investmentRepository');
 
 class InvestmentValueService {
   /**
@@ -121,7 +123,24 @@ class InvestmentValueService {
     };
 
     // Upsert value entry in repository
-    return await investmentValueRepository.upsert(valueEntry);
+    const result = await investmentValueRepository.upsert(valueEntry);
+
+    // Activity logging (fire-and-forget)
+    try {
+      const investment = await investmentRepository.findById(valueEntry.investment_id);
+      const investmentName = investment ? investment.name : 'Unknown';
+      activityLogService.logEvent(
+        'investment_value_updated',
+        'investment_value',
+        result.id,
+        `Updated investment value for ${investmentName} (${valueEntry.year}-${String(valueEntry.month).padStart(2, '0')}) to $${valueEntry.value.toFixed(2)}`,
+        { investmentId: valueEntry.investment_id, year: valueEntry.year, month: valueEntry.month, value: valueEntry.value, investmentName }
+      );
+    } catch (e) {
+      // Fire-and-forget - don't block the operation
+    }
+
+    return result;
   }
 
   /**
@@ -159,7 +178,20 @@ class InvestmentValueService {
     };
 
     // Update value entry in repository
-    return await investmentValueRepository.update(id, updates);
+    const result = await investmentValueRepository.update(id, updates);
+
+    // Activity logging (fire-and-forget)
+    if (result) {
+      activityLogService.logEvent(
+        'investment_value_updated',
+        'investment_value',
+        id,
+        `Updated investment value #${id} to $${value.toFixed(2)}`,
+        { id, value }
+      );
+    }
+
+    return result;
   }
 
   /**
@@ -173,8 +205,24 @@ class InvestmentValueService {
       throw new Error('Value entry ID is required');
     }
 
+    // Fetch value entry BEFORE deletion for activity log metadata
+    const existingValue = await investmentValueRepository.findById(id);
+
     // Delete value entry from repository
-    return await investmentValueRepository.delete(id);
+    const result = await investmentValueRepository.delete(id);
+
+    // Activity logging (fire-and-forget)
+    if (result && existingValue) {
+      activityLogService.logEvent(
+        'investment_value_deleted',
+        'investment_value',
+        id,
+        `Deleted investment value #${id} (${existingValue.year}-${String(existingValue.month).padStart(2, '0')})`,
+        { id, investmentId: existingValue.investment_id, year: existingValue.year, month: existingValue.month }
+      );
+    }
+
+    return result;
   }
 
   /**

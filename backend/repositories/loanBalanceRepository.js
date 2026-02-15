@@ -2,6 +2,27 @@ const { getDatabase } = require('../database/db');
 
 class LoanBalanceRepository {
   /**
+   * Find a balance entry by ID
+   * @param {number} id - Balance entry ID
+   * @returns {Promise<Object|null>} Balance entry or null if not found
+   */
+  async findById(id) {
+    const db = await getDatabase();
+    
+    return new Promise((resolve, reject) => {
+      const sql = 'SELECT * FROM loan_balances WHERE id = ?';
+      
+      db.get(sql, [id], (err, row) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        resolve(row || null);
+      });
+    });
+  }
+
+  /**
    * Create a new balance entry
    * @param {Object} balanceEntry - Balance entry data
    * @returns {Promise<Object>} Created balance entry with ID
@@ -37,6 +58,28 @@ class LoanBalanceRepository {
       });
     });
   }
+
+  /**
+   * Find a balance entry by ID
+   * @param {number} id - Balance entry ID
+   * @returns {Promise<Object|null>} Balance entry or null if not found
+   */
+  async findById(id) {
+    const db = await getDatabase();
+
+    return new Promise((resolve, reject) => {
+      const sql = 'SELECT * FROM loan_balances WHERE id = ?';
+
+      db.get(sql, [id], (err, row) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        resolve(row || null);
+      });
+    });
+  }
+
 
   /**
    * Find all balance entries for a loan

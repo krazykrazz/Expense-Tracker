@@ -2,6 +2,27 @@ const { getDatabase } = require('../database/db');
 
 class InvestmentValueRepository {
   /**
+   * Find a value entry by ID
+   * @param {number} id - Value entry ID
+   * @returns {Promise<Object|null>} Value entry or null if not found
+   */
+  async findById(id) {
+    const db = await getDatabase();
+    
+    return new Promise((resolve, reject) => {
+      const sql = 'SELECT * FROM investment_values WHERE id = ?';
+      
+      db.get(sql, [id], (err, row) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        resolve(row || null);
+      });
+    });
+  }
+
+  /**
    * Create a new value entry
    * @param {Object} valueEntry - Value entry data { investment_id, year, month, value }
    * @returns {Promise<Object>} Created value entry with ID
@@ -35,6 +56,26 @@ class InvestmentValueRepository {
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         });
+      });
+    });
+  }
+  /**
+   * Find a value entry by ID
+   * @param {number} id - Value entry ID
+   * @returns {Promise<Object|null>} Value entry or null if not found
+   */
+  async findById(id) {
+    const db = await getDatabase();
+
+    return new Promise((resolve, reject) => {
+      const sql = 'SELECT * FROM investment_values WHERE id = ?';
+
+      db.get(sql, [id], (err, row) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        resolve(row || null);
       });
     });
   }

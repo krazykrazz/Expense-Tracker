@@ -12,14 +12,22 @@ The system automatically logs events for:
 
 - **Expenses**: Create, update, delete operations
 - **Fixed Expenses**: Create, update, delete operations
-- **Loans**: Create, update, delete operations
+- **Loans**: Create, update, delete, paid-off status changes
 - **Loan Payments**: Create, update, delete operations
+- **Loan Balances**: Create, update, delete operations, rate changes
 - **Investments**: Create, update, delete operations
+- **Investment Values**: Create, update, delete operations
 - **Budgets**: Create, update, delete operations
 - **Payment Methods**: Create, update, deactivate, delete operations
 - **Billing Cycles**: Create, update, delete operations
 - **Credit Card Payments**: Record, delete operations
 - **Credit Card Statements**: Upload, delete operations
+- **Income Sources**: Create, update, delete, copy operations
+- **People**: Create, update, delete operations
+- **Invoices**: Upload, delete, person link updates
+- **Mortgage Payments**: Set, update, delete operations
+- **Auto-Logged Payments**: Automated payment logging from fixed expenses
+- **Settings**: Retention policy updates
 - **Insurance Status Changes**: When medical expense insurance status changes
 - **Backup Operations**: Backup creation and restoration
 
@@ -123,15 +131,22 @@ Update events include detailed change tracking showing old → new values for mo
 | `fixed_expense_added` | fixed_expense | New fixed expense created |
 | `fixed_expense_updated` | fixed_expense | Fixed expense modified (shows what changed: name, amount, category, payment type, due day, loan linkage) |
 | `fixed_expense_deleted` | fixed_expense | Fixed expense removed |
-| `loan_added` | loan | New loan created |
+| `loan_added` | loan | New loan created (includes initial_balance, start_date) |
 | `loan_updated` | loan | Loan modified (shows what changed: name, notes, rate/property value/renewal date) |
-| `loan_deleted` | loan | Loan removed |
+| `loan_deleted` | loan | Loan removed (includes initial_balance, start_date) |
+| `loan_paid_off` | loan | Loan marked as paid off (includes paid_off_date) |
+| `loan_reactivated` | loan | Loan reactivated from paid-off status |
 | `loan_payment_added` | loan_payment | New loan payment recorded |
 | `loan_payment_updated` | loan_payment | Loan payment modified (shows what changed: amount, date, notes) |
 | `loan_payment_deleted` | loan_payment | Loan payment removed |
-| `investment_added` | investment | New investment created |
+| `loan_balance_updated` | loan_balance | Loan balance created or updated (includes year, month, balance, rate) |
+| `loan_balance_deleted` | loan_balance | Loan balance removed |
+| `loan_rate_updated` | loan | Loan interest rate changed (shows previous → new rate) |
+| `investment_added` | investment | New investment created (includes initial_value) |
 | `investment_updated` | investment | Investment modified (shows what changed: name, type) |
-| `investment_deleted` | investment | Investment removed |
+| `investment_deleted` | investment | Investment removed (includes initial_value) |
+| `investment_value_updated` | investment_value | Investment value created or updated (includes year, month, value) |
+| `investment_value_deleted` | investment_value | Investment value removed |
 | `budget_added` | budget | New budget created |
 | `budget_updated` | budget | Budget modified (shows old → new limit) |
 | `budget_deleted` | budget | Budget removed |
@@ -139,13 +154,28 @@ Update events include detailed change tracking showing old → new values for mo
 | `payment_method_updated` | payment_method | Payment method modified (shows what changed: name, type, credit limit, billing/due days) |
 | `payment_method_deactivated` | payment_method | Payment method deactivated |
 | `payment_method_deleted` | payment_method | Payment method deleted |
-| `billing_cycle_created` | billing_cycle | Billing cycle record created |
+| `billing_cycle_added` | billing_cycle | Billing cycle record created |
 | `billing_cycle_updated` | billing_cycle | Billing cycle record updated (shows what changed: statement balance, minimum payment, notes) |
 | `billing_cycle_deleted` | billing_cycle | Billing cycle record deleted |
-| `credit_card_payment_recorded` | credit_card_payment | Credit card payment recorded |
+| `credit_card_payment_added` | credit_card_payment | Credit card payment recorded |
 | `credit_card_payment_deleted` | credit_card_payment | Credit card payment deleted |
 | `credit_card_statement_uploaded` | credit_card_statement | Credit card statement uploaded |
 | `credit_card_statement_deleted` | credit_card_statement | Credit card statement deleted |
+| `income_source_added` | income_source | New income source created |
+| `income_source_updated` | income_source | Income source modified (shows what changed: name, amount, category) |
+| `income_source_deleted` | income_source | Income source removed |
+| `income_sources_copied` | income_source | Income sources copied from previous month |
+| `person_added` | person | New person created |
+| `person_updated` | person | Person modified (shows what changed: name) |
+| `person_deleted` | person | Person removed (includes expense count) |
+| `invoice_uploaded` | invoice | Invoice PDF uploaded for expense |
+| `invoice_deleted` | invoice | Invoice PDF deleted |
+| `invoice_person_link_updated` | invoice | Invoice person association changed |
+| `mortgage_payment_set` | mortgage_payment | Mortgage payment amount set |
+| `mortgage_payment_updated` | mortgage_payment | Mortgage payment modified (shows what changed: amount, effective date) |
+| `mortgage_payment_deleted` | mortgage_payment | Mortgage payment removed |
+| `auto_payment_logged` | loan_payment | Payment automatically logged from fixed expense |
+| `settings_updated` | settings | System settings changed (shows old → new values) |
 | `insurance_status_changed` | expense | Medical expense insurance status changed |
 | `backup_created` | system | Database backup created |
 | `backup_restored` | system | Database backup restored |
@@ -188,10 +218,11 @@ The activity log uses a **fire-and-forget** pattern to ensure logging failures n
 
 The feature includes comprehensive test coverage:
 
-- **17 correctness properties** validated with property-based testing
-- **8 integration test suites** for event logging across all entities
+- **15 correctness properties** validated with property-based testing
+- **13 integration test suites** for event logging across all entities
 - **Unit tests** for service layer, repository layer, and controller layer
 - **Frontend component tests** for UI behavior and interactions
+- **Shared test helpers** in `backend/test/activityLogTestHelpers.js` for consistent testing patterns
 
 ## Performance Considerations
 
@@ -239,10 +270,43 @@ Timestamps are displayed in human-readable format:
 
 For developers working with the activity log system:
 
-- **Spec Location**: `.kiro/specs/activity-log/`
-- **Requirements**: `.kiro/specs/activity-log/requirements.md`
-- **Design**: `.kiro/specs/activity-log/design.md`
-- **Tasks**: `.kiro/specs/activity-log/tasks.md`
+- **Spec Location**: `.kiro/specs/activity-log/` and `.kiro/specs/activity-log-coverage/`
+- **Requirements**: See spec directories for detailed requirements
+- **Design**: See spec directories for design documentation
+- **Tasks**: See spec directories for implementation tasks
+
+### Metadata Patterns
+
+Activity log events include rich metadata to provide complete audit context:
+
+**Loan Events**:
+- Create/delete events include `initial_balance` and `start_date`
+- Paid-off events include `paid_off_date`
+- Rate updates include `previousRate` and `newRate`
+
+**Investment Events**:
+- Create/delete events include `initial_value`
+
+**Credit Card Events**:
+- All events include `cardName` (human-readable payment method name)
+- Payment events include `amount` and `payment_date`
+- Statement events include `filename` and `statementDate`
+- Billing cycle events include `cycleEndDate` and `actualBalance`
+
+**Income Events**:
+- All events include `name`, `amount`, and `category`
+- Copy operations include `sourceMonth`, `targetMonth`, and `count`
+
+**People Events**:
+- Delete events include `hadExpenses` and `expenseCount`
+
+**Invoice Events**:
+- All events include `expenseId` and `filename`
+- Person link updates include `oldPersonId` and `newPersonId`
+
+**Update Events**:
+- All update operations include a `changes` array showing field-level diffs
+- Format: `[{ field: 'fieldName', from: oldValue, to: newValue }]`
 
 ### Adding Event Logging to New Features
 

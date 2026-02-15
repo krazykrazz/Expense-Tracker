@@ -1,55 +1,55 @@
 {
-    "name":  "expense-tracker",
-    "version":  "5.12.1",
-    "description":  "Full-stack Expense Tracker Application",
-    "main":  "server.js",
-    "scripts":  {
-                    "start":  "node server.js",
-                    "dev":  "nodemon server.js",
-                    "build":  "cd client \u0026\u0026 npm install \u0026\u0026 npm run build",
-                    "db:check":  "node scripts/checkDatabaseSchema.js",
-                    "db:migrate":  "node scripts/addFixedExpensesTable.js",
-                    "test":  "cross-env NODE_ENV=test jest --runInBand",
-                    "test:parallel":  "cross-env NODE_ENV=test jest --maxWorkers=50%",
-                    "test:fast":  "cross-env NODE_ENV=test FAST_CHECK_NUM_RUNS=10 jest --runInBand",
-                    "test:fast:parallel":  "cross-env NODE_ENV=test FAST_CHECK_NUM_RUNS=10 jest --maxWorkers=50%",
-                    "test:unit":  "cross-env NODE_ENV=test jest --runInBand --testPathIgnorePatterns=pbt",
-                    "test:unit:parallel":  "cross-env NODE_ENV=test jest --maxWorkers=50% --testPathIgnorePatterns=pbt",
-                    "test:unit:ci":  "cross-env NODE_ENV=test CI=true jest --bail --testPathIgnorePatterns=pbt",
-                    "test:pbt":  "cross-env NODE_ENV=test jest --runInBand --testPathPatterns=pbt",
-                    "test:pbt:parallel":  "cross-env NODE_ENV=test jest --maxWorkers=50% --testPathPatterns=pbt",
-                    "test:pbt:ci":  "cross-env NODE_ENV=test CI=true FAST_CHECK_NUM_RUNS=15 jest --bail --testPathPatterns=pbt",
-                    "test:ci":  "cross-env NODE_ENV=test CI=true FAST_CHECK_NUM_RUNS=15 jest --bail"
-                },
-    "jest":  {
-                 "testTimeout":  30000,
-                 "globalSetup":  "\u003crootDir\u003e/jest.globalSetup.js",
-                 "setupFilesAfterEnv":  [
-                                            "\u003crootDir\u003e/jest.setup.js"
-                                        ],
-                 "testEnvironment":  "node",
-                 "verbose":  false,
-                 "forceExit":  true
-             },
-    "dependencies":  {
-                         "body-parser":  "^2.2.2",
-                         "cors":  "^2.8.6",
-                         "csv-parser":  "^3.2.0",
-                         "express":  "^5.2.1",
-                         "express-rate-limit":  "^8.2.1",
-                         "helmet":  "^8.1.0",
-                         "multer":  "^2.0.2",
-                         "node-cron":  "^3.0.3",
-                         "sqlite3":  "^5.1.6",
-                         "tar":  "^7.5.7"
-                     },
-    "devDependencies":  {
-                            "@types/jest":  "^30.0.0",
-                            "baseline-browser-mapping":  "^2.9.19",
-                            "cross-env":  "^10.1.0",
-                            "fast-check":  "^4.5.3",
-                            "jest":  "^30.2.0",
-                            "nodemon":  "^3.0.1",
-                            "supertest":  "^7.2.2"
-                        }
+  "name": "expense-tracker",
+  "version": "5.13.0",
+  "description": "Full-stack Expense Tracker Application",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "build": "cd client && npm install && npm run build",
+    "db:check": "node scripts/checkDatabaseSchema.js",
+    "db:migrate": "node scripts/addFixedExpensesTable.js",
+    "test": "cross-env NODE_ENV=test jest --runInBand",
+    "test:parallel": "cross-env NODE_ENV=test jest --maxWorkers=50%",
+    "test:fast": "cross-env NODE_ENV=test FAST_CHECK_NUM_RUNS=10 jest --runInBand",
+    "test:fast:parallel": "cross-env NODE_ENV=test FAST_CHECK_NUM_RUNS=10 jest --maxWorkers=50%",
+    "test:unit": "cross-env NODE_ENV=test jest --runInBand --testPathIgnorePatterns=pbt",
+    "test:unit:parallel": "cross-env NODE_ENV=test jest --maxWorkers=50% --testPathIgnorePatterns=pbt",
+    "test:unit:ci": "cross-env NODE_ENV=test CI=true jest --bail --testPathIgnorePatterns=pbt",
+    "test:pbt": "cross-env NODE_ENV=test jest --runInBand --testPathPatterns=pbt",
+    "test:pbt:parallel": "cross-env NODE_ENV=test jest --maxWorkers=50% --testPathPatterns=pbt",
+    "test:pbt:ci": "cross-env NODE_ENV=test CI=true FAST_CHECK_NUM_RUNS=15 jest --bail --testPathPatterns=pbt",
+    "test:ci": "cross-env NODE_ENV=test CI=true FAST_CHECK_NUM_RUNS=15 jest --bail"
+  },
+  "jest": {
+    "testTimeout": 30000,
+    "globalSetup": "<rootDir>/jest.globalSetup.js",
+    "setupFilesAfterEnv": [
+      "<rootDir>/jest.setup.js"
+    ],
+    "testEnvironment": "node",
+    "verbose": false,
+    "forceExit": true
+  },
+  "dependencies": {
+    "body-parser": "^2.2.2",
+    "cors": "^2.8.6",
+    "csv-parser": "^3.2.0",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.2.1",
+    "helmet": "^8.1.0",
+    "multer": "^2.0.2",
+    "node-cron": "^3.0.3",
+    "sqlite3": "^5.1.6",
+    "tar": "^7.5.7"
+  },
+  "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "baseline-browser-mapping": "^2.9.19",
+    "cross-env": "^10.1.0",
+    "fast-check": "^4.5.3",
+    "jest": "^30.2.0",
+    "nodemon": "^3.0.1",
+    "supertest": "^7.2.2"
+  }
 }

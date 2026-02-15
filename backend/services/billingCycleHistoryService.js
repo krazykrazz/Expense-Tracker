@@ -325,13 +325,15 @@ class BillingCycleHistoryService {
       throw error;
     }
     
-    // Get calculated statement balance
-    const statementInfo = await statementBalanceService.calculateStatementBalance(
+    // Get calculated statement balance using the common formula:
+    // max(0, round(previousBalance + expenses - payments, 2))
+    const { calculatedBalance: computedBalance } = await this.calculateCycleBalance(
       paymentMethodId,
-      referenceDate
+      cycleDates.startDate,
+      cycleDates.endDate
     );
     
-    const calculatedBalance = statementInfo ? statementInfo.statementBalance : 0;
+    const calculatedBalance = computedBalance;
     
     // Create the billing cycle record
     const billingCycle = await billingCycleRepository.create({
@@ -661,24 +663,35 @@ class BillingCycleHistoryService {
       cycleDates.endDate
     );
     
-    // Get calculated statement balance
-    const statementInfo = await statementBalanceService.calculateStatementBalance(
+    // Get calculated statement balance using the common formula:
+    // max(0, round(previousBalance + expenses - payments, 2))
+    const { calculatedBalance } = await this.calculateCycleBalance(
       paymentMethodId,
-      referenceDate
+      cycleDates.startDate,
+      cycleDates.endDate
     );
-    
-    const calculatedBalance = statementInfo ? statementInfo.statementBalance : 0;
     
     // Calculate days until cycle end
     const today = new Date(referenceDate);
     const cycleEnd = new Date(cycleDates.endDate);
     const daysUntilCycleEnd = Math.ceil((cycleEnd - today) / (1000 * 60 * 60 * 24));
     
+    // Determine if entry has a user-provided actual balance
+    // Use the same logic as calculateEffectiveBalance: check is_user_entered flag,
+    // with fallback for legacy data where actual_statement_balance differs from 0
+    let hasActualBalance = false;
+    let actualBalance = null;
+    if (existingEntry) {
+      const { balanceType, effectiveBalance } = this.calculateEffectiveBalance(existingEntry);
+      hasActualBalance = balanceType === 'actual';
+      actualBalance = hasActualBalance ? effectiveBalance : null;
+    }
+
     return {
-      hasActualBalance: !!existingEntry,
+      hasActualBalance,
       cycleStartDate: cycleDates.startDate,
       cycleEndDate: cycleDates.endDate,
-      actualBalance: existingEntry ? existingEntry.actual_statement_balance : null,
+      actualBalance,
       calculatedBalance,
       daysUntilCycleEnd,
       needsEntry: !existingEntry

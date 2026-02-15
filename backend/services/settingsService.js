@@ -1,6 +1,15 @@
 const settingsRepository = require('../repositories/settingsRepository');
 const logger = require('../config/logger');
 
+// Lazy require to avoid circular dependency (activityLogService imports settingsService)
+let _activityLogService = null;
+function getActivityLogService() {
+  if (!_activityLogService) {
+    _activityLogService = require('./activityLogService');
+  }
+  return _activityLogService;
+}
+
 // Default retention settings
 const DEFAULT_SETTINGS = {
   maxAgeDays: 90,
@@ -110,6 +119,9 @@ async function updateRetentionSettings(maxAgeDays, maxCount) {
   validateRetentionSettings(maxAgeDays, maxCount);
 
   try {
+    // Fetch current settings before update for activity log
+    const oldSettings = await getRetentionSettings();
+
     // Store as strings in database
     await settingsRepository.setSetting(
       SETTING_KEYS.MAX_AGE_DAYS,
@@ -122,8 +134,22 @@ async function updateRetentionSettings(maxAgeDays, maxCount) {
 
     logger.info('Retention settings updated:', { maxAgeDays, maxCount });
 
+    // Log activity event (fire-and-forget)
+    const newSettings = { maxAgeDays, maxCount };
+    try {
+      getActivityLogService().logEvent(
+        'settings_updated',
+        'settings',
+        null,
+        `Updated retention settings: maxAgeDays ${oldSettings.maxAgeDays} → ${maxAgeDays}, maxCount ${oldSettings.maxCount} → ${maxCount}`,
+        { oldSettings, newSettings }
+      );
+    } catch (logError) {
+      logger.error('Failed to log settings update activity:', logError);
+    }
+
     // Return the updated settings
-    return { maxAgeDays, maxCount };
+    return newSettings;
   } catch (error) {
     logger.error('Error updating retention settings:', error);
     throw new Error('Failed to update retention settings');

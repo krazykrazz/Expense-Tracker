@@ -176,6 +176,11 @@ describe('Settings Service - Integration Tests', () => {
       // Update settings to 60-day retention
       await settingsService.updateRetentionSettings(60, 1000);
 
+      // Clear the settings_updated activity log entry so it doesn't affect counts
+      await new Promise((resolve, reject) => {
+        db.run('DELETE FROM activity_logs WHERE event_type = \'settings_updated\'', (err) => err ? reject(err) : resolve());
+      });
+
       // Run cleanup - should delete events older than 60 days
       const result = await activityLogService.cleanupOldEvents();
 
@@ -194,6 +199,11 @@ describe('Settings Service - Integration Tests', () => {
     test('should use count-based cleanup with updated settings', async () => {
       // Update settings to low max count
       await settingsService.updateRetentionSettings(365, 100);
+
+      // Clear activity logs created by updateRetentionSettings
+      await new Promise((resolve, reject) => {
+        db.run('DELETE FROM activity_logs', (err) => err ? reject(err) : resolve());
+      });
 
       // Create 150 recent events (all within retention period)
       const now = new Date();
@@ -390,6 +400,11 @@ describe('Settings Service - Integration Tests', () => {
       // Update settings to 30-day retention
       await settingsService.updateRetentionSettings(30, 1000);
 
+      // Clear the settings_updated activity log entry so it doesn't affect counts
+      await new Promise((resolve, reject) => {
+        db.run('DELETE FROM activity_logs WHERE event_type = \'settings_updated\'', (err) => err ? reject(err) : resolve());
+      });
+
       // Second cleanup with new 30-day policy - 50-day-old event should be deleted
       result = await activityLogService.cleanupOldEvents();
       expect(result.deletedCount).toBe(1);
@@ -418,6 +433,12 @@ describe('Settings Service - Integration Tests', () => {
 
       // First cleanup with maxCount=150
       await settingsService.updateRetentionSettings(365, 150);
+
+      // Clear the settings_updated activity log entry so it doesn't affect counts
+      await new Promise((resolve, reject) => {
+        db.run('DELETE FROM activity_logs WHERE event_type = \'settings_updated\'', (err) => err ? reject(err) : resolve());
+      });
+
       let result = await activityLogService.cleanupOldEvents();
       expect(result.deletedCount).toBe(50);
 
@@ -441,6 +462,12 @@ describe('Settings Service - Integration Tests', () => {
 
       // Second cleanup with maxCount=120
       await settingsService.updateRetentionSettings(365, 120);
+
+      // Clear the settings_updated activity log entry so it doesn't affect counts
+      await new Promise((resolve, reject) => {
+        db.run('DELETE FROM activity_logs WHERE event_type = \'settings_updated\'', (err) => err ? reject(err) : resolve());
+      });
+
       result = await activityLogService.cleanupOldEvents();
       expect(result.deletedCount).toBe(80);
 
@@ -491,6 +518,11 @@ describe('Settings Service - Integration Tests', () => {
 
       // Set retention to 60 days and max 100 events
       await settingsService.updateRetentionSettings(60, 100);
+
+      // Clear the settings_updated activity log entry so it doesn't affect counts
+      await new Promise((resolve, reject) => {
+        db.run('DELETE FROM activity_logs WHERE event_type = \'settings_updated\'', (err) => err ? reject(err) : resolve());
+      });
 
       // Run cleanup
       const result = await activityLogService.cleanupOldEvents();

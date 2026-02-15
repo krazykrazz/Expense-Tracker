@@ -1,5 +1,6 @@
 const creditCardStatementRepository = require('../repositories/creditCardStatementRepository');
 const paymentMethodRepository = require('../repositories/paymentMethodRepository');
+const activityLogService = require('./activityLogService');
 const fileStorage = require('../utils/fileStorage');
 const fileValidation = require('../utils/fileValidation');
 const { getStatementsPath } = require('../config/paths');
@@ -163,6 +164,20 @@ class CreditCardStatementService {
         size: statement.file_size
       });
 
+      // Log activity event (fire-and-forget)
+      await activityLogService.logEvent(
+        'credit_card_statement_uploaded',
+        'credit_card_statement',
+        statement.id,
+        `Uploaded statement "${file.originalname}" for ${paymentMethod.display_name}`,
+        {
+          paymentMethodId,
+          statementDate,
+          filename: file.originalname,
+          cardName: paymentMethod.display_name
+        }
+      );
+
       return statement;
 
     } catch (error) {
@@ -269,10 +284,28 @@ class CreditCardStatementService {
     const deleted = await creditCardStatementRepository.delete(statementId);
 
     if (deleted) {
+      // Look up card name for activity log
+      const paymentMethod = await paymentMethodRepository.findById(statement.paymentMethodId);
+      const cardName = paymentMethod ? paymentMethod.display_name : 'Unknown';
+
       logger.info('Statement deleted successfully:', {
         statementId,
         paymentMethodId: statement.paymentMethodId
       });
+
+      // Log activity event (fire-and-forget)
+      await activityLogService.logEvent(
+        'credit_card_statement_deleted',
+        'credit_card_statement',
+        statementId,
+        `Deleted statement "${statement.originalFilename}" from ${cardName} - ${statement.statementDate}`,
+        {
+          paymentMethodId: statement.paymentMethodId,
+          statementDate: statement.statementDate,
+          filename: statement.originalFilename,
+          cardName
+        }
+      );
     }
 
     return deleted;

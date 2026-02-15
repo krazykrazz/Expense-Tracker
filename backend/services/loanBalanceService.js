@@ -1,5 +1,6 @@
 const loanBalanceRepository = require('../repositories/loanBalanceRepository');
 const loanRepository = require('../repositories/loanRepository');
+const activityLogService = require('./activityLogService');
 const { validateNumber, validateYearMonth } = require('../utils/validators');
 
 class LoanBalanceService {
@@ -40,6 +41,21 @@ class LoanBalanceService {
 
     const result = await loanBalanceRepository.upsert(balanceData);
     
+    // Activity logging (fire-and-forget)
+    try {
+      const loan = await loanRepository.findById(data.loan_id);
+      const loanName = loan ? loan.name : 'Unknown';
+      activityLogService.logEvent(
+        'loan_balance_updated',
+        'loan_balance',
+        result.id,
+        `Updated loan balance for ${loanName} (${data.year}-${String(data.month).padStart(2, '0')}) to $${data.remaining_balance.toFixed(2)}`,
+        { loanId: data.loan_id, year: data.year, month: data.month, remaining_balance: data.remaining_balance, rate: data.rate, loanName }
+      );
+    } catch (e) {
+      // Fire-and-forget - don't block the operation
+    }
+
     // Auto-mark loan as paid off if balance reaches zero
     if (data.remaining_balance === 0) {
       await this.autoMarkPaidOff(data.loan_id, 0);
@@ -69,6 +85,17 @@ class LoanBalanceService {
 
     const result = await loanBalanceRepository.update(id, balanceData);
     
+    // Activity logging (fire-and-forget)
+    if (result) {
+      activityLogService.logEvent(
+        'loan_balance_updated',
+        'loan_balance',
+        id,
+        `Updated loan balance #${id} (${data.year}-${String(data.month).padStart(2, '0')}) to $${data.remaining_balance.toFixed(2)}`,
+        { id, year: data.year, month: data.month, remaining_balance: data.remaining_balance, rate: data.rate }
+      );
+    }
+
     // Auto-mark loan as paid off if balance reaches zero
     if (result && data.remaining_balance === 0) {
       await this.autoMarkPaidOff(data.loan_id, 0);
@@ -89,8 +116,22 @@ class LoanBalanceService {
    * @returns {Promise<boolean>} True if deleted, false if not found
    */
   async deleteBalance(id, loanId) {
+    // Fetch balance entry BEFORE deletion for activity log metadata
+    const existingBalance = await loanBalanceRepository.findById(id);
+
     const result = await loanBalanceRepository.delete(id);
     
+    // Activity logging (fire-and-forget)
+    if (result && existingBalance) {
+      activityLogService.logEvent(
+        'loan_balance_deleted',
+        'loan_balance',
+        id,
+        `Deleted loan balance #${id} (${existingBalance.year}-${String(existingBalance.month).padStart(2, '0')})`,
+        { id, loanId: existingBalance.loan_id, year: existingBalance.year, month: existingBalance.month }
+      );
+    }
+
     // Recalculate estimated months left after deletion
     if (result && loanId) {
       await this.recalculateEstimatedMonths(loanId);
@@ -314,6 +355,9 @@ class LoanBalanceService {
     // Check if there's an existing balance entry for this month
     const existingEntry = await loanBalanceRepository.findByLoanAndMonth(loanId, currentYear, currentMonth);
 
+    // Capture previous rate for activity logging
+    const previousRate = existingEntry ? existingEntry.rate : null;
+
     if (existingEntry) {
       // Update the existing entry's rate only
       const result = await loanBalanceRepository.update(existingEntry.id, {
@@ -322,6 +366,16 @@ class LoanBalanceService {
         remaining_balance: existingEntry.remaining_balance,
         rate: newRate
       });
+
+      // Activity logging (fire-and-forget)
+      activityLogService.logEvent(
+        'loan_rate_updated',
+        'loan',
+        loanId,
+        `Updated loan #${loanId} rate from ${previousRate}% to ${newRate}%`,
+        { loanId, newRate, previousRate }
+      );
+
       return result;
     }
 
@@ -329,6 +383,8 @@ class LoanBalanceService {
     // Get the most recent balance to use as the current balance
     const balanceHistory = await loanBalanceRepository.findByLoan(loanId);
     let currentBalance;
+    // Capture previous rate from most recent balance if no entry for current month
+    const prevRateFromHistory = balanceHistory.length > 0 ? balanceHistory[0].rate : null;
 
     if (balanceHistory.length > 0) {
       // Use the most recent balance (sorted DESC by year, month)
@@ -350,6 +406,15 @@ class LoanBalanceService {
       remaining_balance: currentBalance,
       rate: newRate
     });
+
+    // Activity logging (fire-and-forget)
+    activityLogService.logEvent(
+      'loan_rate_updated',
+      'loan',
+      loanId,
+      `Updated loan #${loanId} rate from ${prevRateFromHistory}% to ${newRate}%`,
+      { loanId, newRate, previousRate: prevRateFromHistory }
+    );
 
     return result;
   }

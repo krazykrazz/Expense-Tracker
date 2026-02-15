@@ -1,6 +1,7 @@
 const invoiceRepository = require('../repositories/invoiceRepository');
 const expenseRepository = require('../repositories/expenseRepository');
 const expensePeopleRepository = require('../repositories/expensePeopleRepository');
+const activityLogService = require('./activityLogService');
 const fileStorage = require('../utils/fileStorage');
 const fileValidation = require('../utils/fileValidation');
 const logger = require('../config/logger');
@@ -144,6 +145,15 @@ class InvoiceService {
         personId: personId
       });
 
+      // Activity logging (fire-and-forget)
+      activityLogService.logEvent(
+        'invoice_uploaded',
+        'invoice',
+        invoice.id,
+        `Uploaded invoice "${file.originalname}" for expense #${expenseId}`,
+        { expenseId, filename: file.originalname, personId }
+      );
+
       return invoice;
 
     } catch (error) {
@@ -259,6 +269,15 @@ class InvoiceService {
 
       if (deleted) {
         logger.info('Invoice deleted successfully:', { expenseId, invoiceId: invoice.id });
+
+        // Activity logging (fire-and-forget)
+        activityLogService.logEvent(
+          'invoice_deleted',
+          'invoice',
+          invoice.id,
+          `Deleted invoice "${invoice.originalFilename || invoice.filename}" for expense #${expenseId}`,
+          { expenseId, filename: invoice.originalFilename || invoice.filename }
+        );
       }
 
       return deleted;
@@ -366,6 +385,15 @@ class InvoiceService {
 
       if (deleted) {
         logger.info('Invoice deleted successfully:', { invoiceId, expenseId: invoice.expenseId });
+
+        // Activity logging (fire-and-forget)
+        activityLogService.logEvent(
+          'invoice_deleted',
+          'invoice',
+          invoiceId,
+          `Deleted invoice "${invoice.originalFilename || invoice.filename}" (ID: ${invoiceId}) for expense #${invoice.expenseId}`,
+          { invoiceId, expenseId: invoice.expenseId, filename: invoice.originalFilename || invoice.filename }
+        );
       }
 
       return deleted;
@@ -410,6 +438,15 @@ class InvoiceService {
       const updatedInvoice = await invoiceRepository.findById(invoiceId);
 
       logger.info('Invoice person link updated:', { invoiceId, personId, expenseId: invoice.expenseId });
+
+      // Activity logging (fire-and-forget)
+      activityLogService.logEvent(
+        'invoice_person_link_updated',
+        'invoice',
+        invoiceId,
+        `Updated person link for invoice #${invoiceId} (person ${invoice.personId || 'none'} → ${personId || 'none'})`,
+        { invoiceId, oldPersonId: invoice.personId || null, newPersonId: personId || null }
+      );
 
       return updatedInvoice;
 

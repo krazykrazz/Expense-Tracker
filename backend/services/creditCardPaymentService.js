@@ -1,5 +1,6 @@
 const creditCardPaymentRepository = require('../repositories/creditCardPaymentRepository');
 const paymentMethodRepository = require('../repositories/paymentMethodRepository');
+const activityLogService = require('./activityLogService');
 const logger = require('../config/logger');
 
 /**
@@ -102,6 +103,20 @@ class CreditCardPaymentService {
       amount: data.amount,
       date: data.payment_date
     });
+
+    // Log activity event (fire-and-forget)
+    await activityLogService.logEvent(
+      'credit_card_payment_added',
+      'credit_card_payment',
+      payment.id,
+      `Added credit card payment of $${data.amount.toFixed(2)} to ${paymentMethod.display_name}`,
+      {
+        paymentMethodId: data.payment_method_id,
+        amount: data.amount,
+        payment_date: data.payment_date,
+        cardName: paymentMethod.display_name
+      }
+    );
 
     return payment;
   }
@@ -232,11 +247,29 @@ class CreditCardPaymentService {
       // Reverse the balance change (add the payment amount back)
       await paymentMethodRepository.updateBalance(payment.payment_method_id, payment.amount);
 
+      // Look up card name for activity log
+      const paymentMethod = await paymentMethodRepository.findById(payment.payment_method_id);
+      const cardName = paymentMethod ? paymentMethod.display_name : 'Unknown';
+
       logger.info('Deleted credit card payment:', {
         paymentId,
         paymentMethodId: payment.payment_method_id,
         amount: payment.amount
       });
+
+      // Log activity event (fire-and-forget)
+      await activityLogService.logEvent(
+        'credit_card_payment_deleted',
+        'credit_card_payment',
+        paymentId,
+        `Deleted credit card payment of $${payment.amount.toFixed(2)} from ${cardName}`,
+        {
+          paymentMethodId: payment.payment_method_id,
+          amount: payment.amount,
+          payment_date: payment.payment_date,
+          cardName
+        }
+      );
     }
 
     return deleted;

@@ -96,7 +96,9 @@ class LoanService {
       `Added loan: ${createdLoan.name}`,
       {
         name: createdLoan.name,
-        loan_type: createdLoan.loan_type
+        loan_type: createdLoan.loan_type,
+        initial_balance: createdLoan.initial_balance,
+        start_date: createdLoan.start_date
       }
     );
     
@@ -230,7 +232,9 @@ class LoanService {
       `Added loan: ${createdMortgage.name}`,
       {
         name: createdMortgage.name,
-        loan_type: createdMortgage.loan_type
+        loan_type: createdMortgage.loan_type,
+        initial_balance: createdMortgage.initial_balance,
+        start_date: createdMortgage.start_date
       }
     );
     
@@ -362,7 +366,9 @@ class LoanService {
         `Deleted loan: ${loan.name}`,
         {
           name: loan.name,
-          loan_type: loan.loan_type
+          loan_type: loan.loan_type,
+          initial_balance: loan.initial_balance,
+          start_date: loan.start_date
         }
       );
     }
@@ -377,16 +383,43 @@ class LoanService {
    * @returns {Promise<Object|null>} Updated loan or null if not found
    */
   async markPaidOff(id, isPaidOff) {
-    const isPaidOffValue = isPaidOff ? 1 : 0;
-    const updated = await loanRepository.markPaidOff(id, isPaidOffValue);
-    
-    if (!updated) {
-      return null;
+      const isPaidOffValue = isPaidOff ? 1 : 0;
+      const updated = await loanRepository.markPaidOff(id, isPaidOffValue);
+
+      if (!updated) {
+        return null;
+      }
+
+      // Return the updated loan
+      const loan = await loanRepository.findById(id);
+
+      // Log paid-off state change
+      if (isPaidOff) {
+        await activityLogService.logEvent(
+          'loan_paid_off',
+          'loan',
+          id,
+          `Marked loan as paid off: ${loan.name}`,
+          {
+            name: loan.name,
+            paid_off_date: new Date().toISOString().split('T')[0]
+          }
+        );
+      } else {
+        await activityLogService.logEvent(
+          'loan_reactivated',
+          'loan',
+          id,
+          `Reactivated loan: ${loan.name}`,
+          {
+            name: loan.name
+          }
+        );
+      }
+
+      return loan;
     }
-    
-    // Return the updated loan
-    return await loanRepository.findById(id);
-  }
+
 
   /**
    * Get the current interest rate for a loan from the most recent balance entry

@@ -78,6 +78,14 @@ describe('Property 7: Age-Based Cleanup', () => {
           // Configure retention settings
           await settingsService.updateRetentionSettings(maxAgeDays, 10000);
 
+          // Wait for fire-and-forget logEvent from updateRetentionSettings to settle
+          await new Promise((resolve) => setTimeout(resolve, 50));
+
+          // Clear activity logs created by updateRetentionSettings
+          await new Promise((resolve) => {
+            db.run('DELETE FROM activity_logs', () => resolve());
+          });
+
           // Create events with calculated timestamps
           const now = new Date();
           const cutoffDate = new Date(now);
@@ -159,6 +167,14 @@ describe('Property 7: Age-Based Cleanup', () => {
           // Configure settings
           await settingsService.updateRetentionSettings(maxAgeDays, 10000);
 
+          // Wait for fire-and-forget logEvent from updateRetentionSettings to settle
+          await new Promise((resolve) => setTimeout(resolve, 50));
+
+          // Clear activity logs created by updateRetentionSettings
+          await new Promise((resolve) => {
+            db.run('DELETE FROM activity_logs', () => resolve());
+          });
+
           // Create events all older than maxAgeDays
           const daysOld = maxAgeDays + 10;
           const eventDate = new Date();
@@ -214,6 +230,14 @@ describe('Property 7: Age-Based Cleanup', () => {
           // Configure settings (maxAgeDays >= 30, so all events are within limit)
           await settingsService.updateRetentionSettings(maxAgeDays, 10000);
 
+          // Wait for fire-and-forget logEvent from updateRetentionSettings to settle
+          await new Promise((resolve) => setTimeout(resolve, 50));
+
+          // Clear activity logs created by updateRetentionSettings
+          await new Promise((resolve) => {
+            db.run('DELETE FROM activity_logs', () => resolve());
+          });
+
           // Create recent events
           for (const event of events) {
             const eventDate = new Date();
@@ -258,6 +282,14 @@ describe('Property 7: Age-Based Cleanup', () => {
 
           // Configure settings
           await settingsService.updateRetentionSettings(maxAgeDays, 10000);
+
+          // Wait for fire-and-forget logEvent from updateRetentionSettings to settle
+          await new Promise((resolve) => setTimeout(resolve, 50));
+
+          // Clear activity logs created by updateRetentionSettings
+          await new Promise((resolve) => {
+            db.run('DELETE FROM activity_logs', () => resolve());
+          });
 
           const now = new Date();
           

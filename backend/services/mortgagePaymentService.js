@@ -1,5 +1,6 @@
 const mortgagePaymentRepository = require('../repositories/mortgagePaymentRepository');
 const loanRepository = require('../repositories/loanRepository');
+const activityLogService = require('./activityLogService');
 const logger = require('../config/logger');
 
 /**
@@ -103,6 +104,15 @@ class MortgagePaymentService {
       effectiveDate
     });
 
+    // Activity logging (fire-and-forget)
+    activityLogService.logEvent(
+      'mortgage_payment_set',
+      'mortgage_payment',
+      created.id,
+      `Set mortgage payment of $${paymentAmount.toFixed(2)} for ${loan.name} effective ${effectiveDate}`,
+      { mortgageId, paymentAmount, effectiveDate, mortgageName: loan.name }
+    );
+
     return created;
   }
 
@@ -154,6 +164,9 @@ class MortgagePaymentService {
     // Validate payment data
     this.validatePaymentData({ paymentAmount, effectiveDate });
 
+    // Fetch existing payment before update for changes tracking
+    const existingPayment = await mortgagePaymentRepository.findById(paymentId);
+
     const paymentEntry = {
       payment_amount: paymentAmount,
       effective_date: effectiveDate,
@@ -164,6 +177,31 @@ class MortgagePaymentService {
     
     if (updated) {
       logger.info('Updated mortgage payment entry:', { paymentId, paymentAmount, effectiveDate });
+
+      // Build changes array
+      const changes = [];
+      if (existingPayment) {
+        if (existingPayment.payment_amount !== paymentAmount) {
+          changes.push({ field: 'paymentAmount', from: existingPayment.payment_amount, to: paymentAmount });
+        }
+        if (existingPayment.effective_date !== effectiveDate) {
+          changes.push({ field: 'effectiveDate', from: existingPayment.effective_date, to: effectiveDate });
+        }
+        const oldNotes = existingPayment.notes || null;
+        const newNotes = notes ? notes.trim() : null;
+        if (oldNotes !== newNotes) {
+          changes.push({ field: 'notes', from: oldNotes, to: newNotes });
+        }
+      }
+
+      // Activity logging (fire-and-forget)
+      activityLogService.logEvent(
+        'mortgage_payment_updated',
+        'mortgage_payment',
+        paymentId,
+        `Updated mortgage payment #${paymentId} to $${paymentAmount.toFixed(2)} effective ${effectiveDate}`,
+        { paymentId, paymentAmount, effectiveDate, changes }
+      );
     } else {
       logger.warn('Payment entry not found for update:', { paymentId });
     }
@@ -182,10 +220,24 @@ class MortgagePaymentService {
       throw new Error('Payment ID is required');
     }
 
+    // Fetch existing payment before deletion for activity log metadata
+    const existingPayment = await mortgagePaymentRepository.findById(paymentId);
+
     const deleted = await mortgagePaymentRepository.delete(paymentId);
     
     if (deleted) {
       logger.info('Deleted mortgage payment entry:', { paymentId });
+
+      // Activity logging (fire-and-forget)
+      const paymentAmount = existingPayment ? existingPayment.payment_amount : null;
+      const effectiveDate = existingPayment ? existingPayment.effective_date : null;
+      activityLogService.logEvent(
+        'mortgage_payment_deleted',
+        'mortgage_payment',
+        paymentId,
+        `Deleted mortgage payment #${paymentId}${paymentAmount ? ` of $${paymentAmount.toFixed(2)}` : ''}`,
+        { paymentId, paymentAmount, effectiveDate }
+      );
     } else {
       logger.warn('Payment entry not found for deletion:', { paymentId });
     }

@@ -1,6 +1,8 @@
 const incomeRepository = require('../repositories/incomeRepository');
 const { validateYearMonth } = require('../utils/validators');
 const { INCOME_CATEGORIES } = require('../utils/constants');
+const activityLogService = require('./activityLogService');
+const logger = require('../config/logger');
 
 class IncomeService {
   /**
@@ -123,7 +125,24 @@ class IncomeService {
     };
 
     // Create income source in repository
-    return await incomeRepository.createIncomeSource(incomeSource);
+    const created = await incomeRepository.createIncomeSource(incomeSource);
+
+    // Log activity event (fire-and-forget)
+    activityLogService.logEvent(
+      'income_source_added',
+      'income_source',
+      created.id,
+      `Added income source "${incomeSource.name}" of $${incomeSource.amount.toFixed(2)}`,
+      {
+        name: incomeSource.name,
+        amount: incomeSource.amount,
+        category: incomeSource.category,
+        year: incomeSource.year,
+        month: incomeSource.month
+      }
+    );
+
+    return created;
   }
 
   /**
@@ -141,6 +160,9 @@ class IncomeService {
     // Validate the income source data
     this.validateIncomeSource(data);
 
+    // Fetch existing source before update for changes tracking
+    const existingSource = await incomeRepository.findById(id);
+
     // Prepare updates object
     const updates = {
       name: data.name.trim(),
@@ -149,7 +171,37 @@ class IncomeService {
     };
 
     // Update income source in repository
-    return await incomeRepository.updateIncomeSource(id, updates);
+    const updated = await incomeRepository.updateIncomeSource(id, updates);
+
+    if (updated && existingSource) {
+      // Build changes array
+      const changes = [];
+      if (existingSource.name !== updates.name) {
+        changes.push({ field: 'name', from: existingSource.name, to: updates.name });
+      }
+      if (existingSource.amount !== updates.amount) {
+        changes.push({ field: 'amount', from: existingSource.amount, to: updates.amount });
+      }
+      if (existingSource.category !== updates.category) {
+        changes.push({ field: 'category', from: existingSource.category, to: updates.category });
+      }
+
+      // Log activity event (fire-and-forget)
+      activityLogService.logEvent(
+        'income_source_updated',
+        'income_source',
+        id,
+        `Updated income source "${updates.name}"`,
+        {
+          name: updates.name,
+          amount: updates.amount,
+          category: updates.category,
+          changes
+        }
+      );
+    }
+
+    return updated;
   }
 
   /**
@@ -163,8 +215,28 @@ class IncomeService {
       throw new Error('Income source ID is required');
     }
 
+    // Fetch income source BEFORE deletion to capture metadata (Requirement 14.1)
+    const existingSource = await incomeRepository.findById(id);
+
     // Delete income source from repository
-    return await incomeRepository.deleteIncomeSource(id);
+    const deleted = await incomeRepository.deleteIncomeSource(id);
+
+    if (deleted && existingSource) {
+      // Log activity event (fire-and-forget)
+      activityLogService.logEvent(
+        'income_source_deleted',
+        'income_source',
+        id,
+        `Deleted income source "${existingSource.name}" of $${existingSource.amount.toFixed(2)}`,
+        {
+          name: existingSource.name,
+          amount: existingSource.amount,
+          category: existingSource.category
+        }
+      );
+    }
+
+    return deleted;
   }
 
   /**
@@ -195,7 +267,32 @@ class IncomeService {
     }
 
     // Copy from previous month
-    return await incomeRepository.copyFromPreviousMonth(yearNum, monthNum);
+    const copiedSources = await incomeRepository.copyFromPreviousMonth(yearNum, monthNum);
+
+    if (copiedSources.length > 0) {
+      // Calculate source month
+      let sourceMonth = monthNum - 1;
+      let sourceYear = yearNum;
+      if (sourceMonth < 1) {
+        sourceMonth = 12;
+        sourceYear = yearNum - 1;
+      }
+
+      // Log activity event (fire-and-forget)
+      activityLogService.logEvent(
+        'income_sources_copied',
+        'income_source',
+        null,
+        `Copied ${copiedSources.length} income source(s) from ${sourceYear}-${String(sourceMonth).padStart(2, '0')} to ${yearNum}-${String(monthNum).padStart(2, '0')}`,
+        {
+          sourceMonth: `${sourceYear}-${String(sourceMonth).padStart(2, '0')}`,
+          targetMonth: `${yearNum}-${String(monthNum).padStart(2, '0')}`,
+          count: copiedSources.length
+        }
+      );
+    }
+
+    return copiedSources;
   }
 
   /**

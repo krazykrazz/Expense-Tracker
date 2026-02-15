@@ -475,6 +475,7 @@ async function updateBillingCycle(req, res) {
       if (actual_statement_balance !== undefined) changedFields.push('actual_statement_balance');
       if (minimum_payment !== undefined) changedFields.push('minimum_payment');
       if (notes !== undefined) changedFields.push('notes');
+      if (statement_pdf_path !== undefined) changedFields.push('statement_pdf_path');
       
       await activityLogService.logEvent(
         'billing_cycle_updated',

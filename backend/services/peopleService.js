@@ -1,4 +1,5 @@
 const peopleRepository = require('../repositories/peopleRepository');
+const activityLogService = require('./activityLogService');
 const logger = require('../config/logger');
 
 class PeopleService {
@@ -68,7 +69,16 @@ class PeopleService {
 
     // Create person in repository
     const createdPerson = await peopleRepository.create(person);
-    
+
+    // Log activity event (fire-and-forget)
+    activityLogService.logEvent(
+      'person_added',
+      'person',
+      createdPerson.id,
+      `Added person "${person.name}"`,
+      { name: person.name }
+    );
+
     return createdPerson;
   }
 
@@ -95,10 +105,33 @@ class PeopleService {
       dateOfBirth: dateOfBirth || null
     };
 
+    // Fetch existing person before update for changes tracking
+    const existingPerson = await peopleRepository.findById(id);
+
     // Update person in repository
     const updatedPerson = await peopleRepository.update(id, updates);
     
     if (updatedPerson) {
+      // Build changes array
+      const changes = [];
+      if (existingPerson) {
+        if (existingPerson.name !== updates.name) {
+          changes.push({ field: 'name', from: existingPerson.name, to: updates.name });
+        }
+        if (existingPerson.dateOfBirth !== updates.dateOfBirth) {
+          changes.push({ field: 'dateOfBirth', from: existingPerson.dateOfBirth, to: updates.dateOfBirth });
+        }
+      }
+
+      // Log activity event (fire-and-forget)
+      activityLogService.logEvent(
+        'person_updated',
+        'person',
+        id,
+        `Updated person "${updates.name}"`,
+        { name: updates.name, changes }
+      );
+
       logger.info('Updated person:', { id, name: updatedPerson.name });
     } else {
       logger.warn('Person not found for update:', { id });
@@ -136,6 +169,15 @@ class PeopleService {
     const deleted = await peopleRepository.delete(id);
 
     if (deleted) {
+      // Log activity event (fire-and-forget)
+      activityLogService.logEvent(
+        'person_deleted',
+        'person',
+        id,
+        `Deleted person "${person.name}"`,
+        { name: person.name, hadExpenses: hasExpenses, expenseCount }
+      );
+
       logger.info('Deleted person:', { 
         id, 
         name: person.name, 

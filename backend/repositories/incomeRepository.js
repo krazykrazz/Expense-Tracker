@@ -2,6 +2,27 @@ const { getDatabase } = require('../database/db');
 
 class IncomeRepository {
   /**
+   * Find an income source by ID
+   * @param {number} id - Income source ID
+   * @returns {Promise<Object|null>} Income source object or null if not found
+   */
+  async findById(id) {
+    const db = await getDatabase();
+    
+    return new Promise((resolve, reject) => {
+      const sql = 'SELECT id, year, month, name, amount, category, created_at, updated_at FROM income_sources WHERE id = ?';
+      
+      db.get(sql, [id], (err, row) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        resolve(row || null);
+      });
+    });
+  }
+
+  /**
    * Get all income sources for a specific month (now includes category)
    * @param {number} year - Year
    * @param {number} month - Month (1-12)
@@ -27,6 +48,28 @@ class IncomeRepository {
       });
     });
   }
+  /**
+   * Find an income source by ID
+   * @param {number} id - Income source ID
+   * @returns {Promise<Object|null>} Income source object or null if not found
+   */
+  async findById(id) {
+    const db = await getDatabase();
+
+    return new Promise((resolve, reject) => {
+      const sql = 'SELECT id, year, month, name, amount, category, created_at, updated_at FROM income_sources WHERE id = ?';
+
+      db.get(sql, [id], (err, row) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        resolve(row || null);
+      });
+    });
+  }
+
+
 
   /**
    * Get total monthly gross (sum of all sources)

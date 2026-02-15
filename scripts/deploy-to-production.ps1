@@ -307,7 +307,7 @@ while ($elapsed -lt $CITimeout) {
                 $anyFailed = $true
                 break
             }
-            if ($check.state -ne "SUCCESS") {
+            if ($check.state -ne "SUCCESS" -and $check.state -ne "SKIPPED") {
                 $allComplete = $false
             }
         }

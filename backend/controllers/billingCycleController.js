@@ -336,6 +336,8 @@ async function getBillingCycleHistory(req, res) {
  * _Requirements: 8.3_
  */
 async function updateBillingCycle(req, res) {
+  let savedFilePath = null;
+  
   try {
     const paymentMethodId = parseInt(req.params.id);
     const cycleId = parseInt(req.params.cycleId);
@@ -354,7 +356,23 @@ async function updateBillingCycle(req, res) {
       });
     }
     
-    const { actual_statement_balance, minimum_payment, notes } = req.body;
+    // Handle both JSON and multipart/form-data
+    let actual_statement_balance = req.body.actual_statement_balance;
+    let minimum_payment = req.body.minimum_payment;
+    let notes = req.body.notes;
+    
+    // Parse values that may be strings from form-data
+    if (actual_statement_balance !== undefined && actual_statement_balance !== null && actual_statement_balance !== '') {
+      actual_statement_balance = typeof actual_statement_balance === 'string' 
+        ? parseFloat(actual_statement_balance) 
+        : actual_statement_balance;
+    }
+    
+    if (minimum_payment !== undefined && minimum_payment !== null && minimum_payment !== '') {
+      minimum_payment = typeof minimum_payment === 'string' 
+        ? parseFloat(minimum_payment) 
+        : minimum_payment;
+    }
     
     // Validate actual_statement_balance if provided
     if (actual_statement_balance !== undefined && actual_statement_balance !== null) {
@@ -376,6 +394,47 @@ async function updateBillingCycle(req, res) {
       }
     }
     
+    // Handle PDF file upload if present
+    let statement_pdf_path = undefined;
+    if (req.file) {
+      try {
+        const statementsDir = ensureStatementsDir();
+        
+        // Get cycle end date for filename from existing record
+        const existingCycle = await billingCycleRepository.findById(cycleId);
+        const cycleEndDate = existingCycle ? existingCycle.cycle_end_date : new Date().toISOString().split('T')[0];
+        
+        const filename = generateStatementFilename(paymentMethodId, cycleEndDate, req.file.originalname);
+        const filePath = path.join(statementsDir, filename);
+        
+        // Write file from memory buffer
+        fs.writeFileSync(filePath, req.file.buffer);
+        savedFilePath = filePath;
+        statement_pdf_path = filename;
+        
+        // Clean up old PDF if replacing
+        if (existingCycle && existingCycle.statement_pdf_path) {
+          try {
+            const oldPdfPath = path.join(statementsDir, existingCycle.statement_pdf_path);
+            if (fs.existsSync(oldPdfPath)) {
+              fs.unlinkSync(oldPdfPath);
+              logger.info('Replaced old billing cycle PDF:', { old: existingCycle.statement_pdf_path, new: filename });
+            }
+          } catch (cleanupError) {
+            logger.error('Failed to cleanup old PDF:', cleanupError);
+          }
+        }
+        
+        logger.info('Saved billing cycle statement PDF:', { filename, paymentMethodId, cycleId });
+      } catch (fileError) {
+        logger.error('Failed to save statement PDF:', fileError);
+        return res.status(500).json({
+          success: false,
+          error: 'Failed to save statement PDF'
+        });
+      }
+    }
+    
     // Fetch previous record for activity logging
     let previousBalance = null;
     try {
@@ -387,10 +446,15 @@ async function updateBillingCycle(req, res) {
       logger.error('Failed to fetch previous billing cycle for logging:', fetchError);
     }
     
+    const updateData = { actual_statement_balance, minimum_payment, notes };
+    if (statement_pdf_path !== undefined) {
+      updateData.statement_pdf_path = statement_pdf_path;
+    }
+    
     const billingCycle = await billingCycleHistoryService.updateBillingCycle(
       paymentMethodId,
       cycleId,
-      { actual_statement_balance, minimum_payment, notes }
+      updateData
     );
     
     logger.info('Billing cycle updated via API:', {
@@ -435,6 +499,15 @@ async function updateBillingCycle(req, res) {
     });
     
   } catch (error) {
+    // Clean up saved file on error
+    if (savedFilePath && fs.existsSync(savedFilePath)) {
+      try {
+        fs.unlinkSync(savedFilePath);
+      } catch (cleanupError) {
+        logger.error('Failed to cleanup file on error:', cleanupError);
+      }
+    }
+    
     logger.error('Update billing cycle API error:', error);
     
     if (error.code === 'NOT_FOUND') {

@@ -39,7 +39,7 @@
     "express-rate-limit": "^8.2.1",
     "helmet": "^8.1.0",
     "multer": "^2.0.2",
-    "node-cron": "^3.0.3",
+    "node-cron": "^4.2.1",
     "sqlite3": "^5.1.6",
     "tar": "^7.5.9"
   },

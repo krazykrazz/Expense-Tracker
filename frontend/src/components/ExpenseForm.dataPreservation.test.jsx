@@ -290,18 +290,12 @@ describe('ExpenseForm - Data Preservation During Collapse', () => {
       expect(screen.queryByLabelText(/Eligible for Insurance Reimbursement/i)).not.toBeInTheDocument();
     });
     
-    // Change back to medical
-    await user.selectOptions(typeSelect, 'Tax - Medical');
+    // Change back to medical - re-query select to avoid stale reference
+    const typeSelectAgain = screen.getByLabelText(/Type/i);
+    await user.selectOptions(typeSelectAgain, 'Tax - Medical');
 
-    // Wait for Insurance Tracking section to appear and expand it
-    await waitFor(() => {
-      expect(screen.getByText('Insurance Tracking')).toBeInTheDocument();
-    });
-    
-    const insuranceHeader = screen.getByTestId('collapsible-header-insurance-tracking');
-    await user.click(insuranceHeader);
-
-    // Verify insurance checkbox state is cleared (expected for category-specific fields)
+    // MockCollapsibleSection always renders children, so the checkbox should appear
+    // once isMedicalExpense becomes true and the Insurance Tracking section renders
     await waitFor(() => {
       const insuranceCheckboxAfter = screen.getByLabelText(/Eligible for Insurance Reimbursement/i);
       expect(insuranceCheckboxAfter).not.toBeChecked();

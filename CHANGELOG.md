@@ -6,6 +6,11 @@
 
 
 
+
+
+## [5.13.1] - 2026-02-16
+
+### Test suite rationalization: PBT consolidation, CI guardrails, test naming enforcement, performance optimizations
 ## [5.13.0] - 2026-02-15
 
 ### Activity log coverage expansion, PBT test race condition fixes

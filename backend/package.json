@@ -41,7 +41,7 @@
     "multer": "^2.0.2",
     "node-cron": "^4.2.1",
     "sqlite3": "^5.1.6",
-    "tar": "^7.5.7"
+    "tar": "^7.5.9"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",

@@ -8,6 +8,8 @@
  *   - Property 9: Payment History Ordering
  *
  * Validates: Requirements 1.2, 1.3, 8.1, 8.2, 8.3
+  *
+ * @invariant Payment Round-Trip and Ordering: For any valid mortgage payment, creating and reading it returns equivalent data; payment history is ordered chronologically; all payments for a loan are preserved after multiple insertions. Randomization covers diverse payment amounts, dates, and sequences.
  */
 
 const fc = require('fast-check');

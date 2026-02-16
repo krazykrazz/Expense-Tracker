@@ -1,6 +1,8 @@
 /**
  * Property-Based Tests for Formatters
  * Tests universal properties of formatting functions
+  *
+ * @invariant Currency Formatting: For any numeric value, formatting as currency produces a string containing the expected decimal representation; the output is deterministic for the same input. Randomization covers diverse numeric values including negatives and decimals.
  */
 
 import { describe, test, expect } from 'vitest';

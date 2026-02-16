@@ -1,11 +1,13 @@
 /**
  * Property-Based Tests for People Repository
  * Tests universal properties of people storage and retrieval
+  *
+ * @invariant People CRUD Round-Trip: For any valid person record, creating and reading it returns equivalent data; name uniqueness constraints are enforced; cascade deletes remove person-expense associations. Randomization covers diverse name patterns and relationship configurations.
  */
 
 const { describe, test, expect, beforeEach, afterEach } = require('@jest/globals');
 const fc = require('fast-check');
-const { pbtOptions } = require('../test/pbtArbitraries');
+const { dbPbtOptions } = require('../test/pbtArbitraries');
 const peopleRepository = require('./peopleRepository');
 const { getDatabase } = require('../database/db');
 
@@ -95,7 +97,7 @@ describe('People Repository Property-Based Tests', () => {
           expect(deleted).toBe(true);
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -212,7 +214,7 @@ describe('People Repository Property-Based Tests', () => {
           }
         }
       ),
-      pbtOptions() // Fewer runs since this test involves more database operations
+      dbPbtOptions() // Fewer runs since this test involves more database operations
     );
   });
 });

@@ -7,6 +7,8 @@
  * For any valid combination of badge inputs, the extracted badge calculation
  * functions shall return a string result, and calling the same function with
  * the same inputs shall always produce the same output (pure functions).
+  *
+ * @invariant Badge Calculation Purity: For any valid combination of badge inputs, the calculation functions return a string result and are pure (same inputs always produce same output). Randomization covers diverse input combinations to verify determinism.
  */
 
 import { describe, it, expect } from 'vitest';

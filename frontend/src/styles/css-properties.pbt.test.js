@@ -6,6 +6,8 @@
  * - Property 2: Reduced Motion Accessibility
  * 
  * **Validates: Requirements 9.1, 9.4**
+  *
+ * @invariant CSS Design System Consistency: For any CSS file in the project, transition durations fall within 150-300ms; reduced motion media queries are present where transitions are used. Randomization covers diverse CSS file selections.
  */
 
 import { describe, it, expect } from 'vitest';

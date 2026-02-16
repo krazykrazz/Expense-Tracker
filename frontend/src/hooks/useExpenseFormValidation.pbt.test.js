@@ -5,6 +5,8 @@
  * The hook is pure (no state, no side effects) so we can call it directly.
  *
  * Feature: frontend-custom-hooks
+  *
+ * @invariant Validation Completeness: For any expense form input, the validation function correctly identifies all invalid fields; valid inputs pass validation; the validation result is deterministic. Randomization covers diverse field value combinations.
  */
 
 import { describe, test, expect } from 'vitest';

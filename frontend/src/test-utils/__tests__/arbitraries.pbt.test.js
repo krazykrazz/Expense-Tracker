@@ -2,6 +2,8 @@
  * Property tests for arbitraries module.
  * **Property 2: Arbitrary generators produce valid domain values**
  * **Validates: Requirements 3.1**
+  *
+ * @invariant Generator Validity: For any value produced by the arbitrary generators, the output conforms to the domain constraints (valid dates, positive amounts, non-empty strings, valid categories). Randomization inherently tests the generators themselves.
  */
 import { describe, it, expect } from 'vitest';
 import fc from 'fast-check';

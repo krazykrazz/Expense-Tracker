@@ -3,6 +3,8 @@
  * Tests that the component correctly fetches and displays YoY comparison data
  * 
  * **Validates: Requirements 1.1, 2.1**
+  *
+ * @invariant YoY Data Fetching: For any year selection, the component correctly fetches and displays year-over-year comparison data for tax deductible expenses. Randomization covers diverse year values and expense distributions.
  */
 
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';

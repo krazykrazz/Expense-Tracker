@@ -1,3 +1,7 @@
+/**
+ * @invariant Shared Data Consistency: For any sequence of data loading operations, the shared data context provides consistent payment methods and people data; refresh operations update the cached data. Randomization covers diverse operation sequences and data shapes.
+ */
+
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { renderHook, act, cleanup } from '@testing-library/react';
 import * as fc from 'fast-check';

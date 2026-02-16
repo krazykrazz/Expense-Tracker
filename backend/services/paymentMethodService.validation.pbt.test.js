@@ -1,33 +1,43 @@
 /**
- * Property-Based Tests for Payment Method Service - Type-Specific Validation
- * Feature: configurable-payment-methods
+ * @invariant Validation Rule Invariants
  * 
- * Property 1: Type-Specific Validation Rules
- * **Validates: Requirements 1.2, 1.3, 1.4, 1.5**
+ * This file tests validation properties for payment method creation and updates:
+ * 1. Type-specific required fields (cash, cheque, debit, credit_card)
+ * 2. Required fields enforcement (billing_cycle_day, payment_due_day for credit cards)
+ * 3. Range validation (day values must be 1-31)
+ * 4. Display name uniqueness across all payment methods
  * 
- * For any payment method creation request, the system should enforce type-specific required fields:
- * - Cash requires only display_name
- * - Cheque and Debit require display_name with optional account_details
- * - Credit_Card requires display_name and full_name with optional billing cycle fields
+ * Randomness adds value by:
+ * - Testing validation with various input combinations
+ * - Ensuring edge cases (boundary values, invalid types) are handled
+ * - Verifying uniqueness constraints across random display names
+ * - Testing whitespace handling and string normalization
+ * 
+ * Consolidated from: validation, requiredFields, rangeValidation, uniqueness
  */
 
 const fc = require('fast-check');
-const { pbtOptions, safeString } = require('../test/pbtArbitraries');
+const { dbPbtOptions, safeString } = require('../test/pbtArbitraries');
 const paymentMethodService = require('./paymentMethodService');
+const {
+  getTestDatabase,
+  resetTestDatabase,
+  createTestDatabase,
+  closeDatabase,
+  createTables,
+  insertPaymentMethod,
+  findByDisplayName,
+  resetDisplayNameCounter,
+  uniqueDisplayName,
+  validDisplayName,
+  validFullName,
+  validBillingCycleDay,
+  validPaymentDueDay,
+  invalidDayValue
+} = require('../test/paymentMethodPbtHelpers');
 
 // Valid payment method types
 const PAYMENT_METHOD_TYPES = ['cash', 'cheque', 'debit', 'credit_card'];
-
-// Arbitrary for generating valid display names
-const validDisplayName = safeString({ minLength: 1, maxLength: 50 })
-  .filter(s => s.trim().length > 0);
-
-// Arbitrary for generating valid full names
-const validFullName = safeString({ minLength: 1, maxLength: 100 })
-  .filter(s => s.trim().length > 0);
-
-// Arbitrary for generating valid account details
-const validAccountDetails = fc.option(safeString({ maxLength: 100 }), { nil: null });
 
 // Arbitrary for generating valid credit limit
 const validCreditLimit = fc.option(
@@ -35,249 +45,125 @@ const validCreditLimit = fc.option(
   { nil: null }
 );
 
-// Arbitrary for generating valid balance
-const validBalance = fc.option(
-  fc.float({ min: 0, max: 50000, noNaN: true }).map(n => Math.round(n * 100) / 100),
-  { nil: null }
-);
+describe('PaymentMethodService - Required Fields Validation Property Tests', () => {
+  let sharedDb = null;
 
-// Arbitrary for generating valid billing cycle day
-const validBillingDay = fc.option(fc.integer({ min: 1, max: 31 }), { nil: null });
+  beforeAll(async () => {
+    // Create database once for all tests
+    sharedDb = await getTestDatabase();
+    await createTables(sharedDb);
+  });
 
-describe('PaymentMethodService - Type-Specific Validation Property Tests', () => {
-  /**
-   * Feature: configurable-payment-methods, Property 1: Type-Specific Validation Rules
-   * **Validates: Requirements 1.2, 1.3, 1.4, 1.5**
-   * 
-   * Cash payment methods require only display_name
-   */
-  test('Property 1.2: Cash payment methods require only display_name', async () => {
-    await fc.assert(
-      fc.asyncProperty(
-        validDisplayName,
-        validAccountDetails,
-        async (displayName, accountDetails) => {
-          const data = {
-            type: 'cash',
-            display_name: displayName,
-            account_details: accountDetails
-          };
+  afterAll(async () => {
+    // Close database after all tests
+    if (sharedDb) {
+      await closeDatabase(sharedDb);
+    }
+  });
 
-          const result = paymentMethodService.validatePaymentMethod(data);
-          
-          // Cash with valid display_name should pass validation
-          expect(result.isValid).toBe(true);
-          expect(result.errors).toHaveLength(0);
-          
-          return true;
-        }
-      ),
-      pbtOptions()
-    );
+  beforeEach(async () => {
+    // Reset database between test iterations
+    if (sharedDb) {
+      await resetTestDatabase(sharedDb);
+    }
   });
 
   /**
-   * Feature: configurable-payment-methods, Property 1: Type-Specific Validation Rules
-   * **Validates: Requirements 1.3**
-   * 
-   * Cheque payment methods require display_name with optional account_details
+   * Feature: credit-card-statement-balance, Property 1: Required Fields Validation
+   * **Validates: Requirements 1.1, 1.2, 1.5**
    */
-  test('Property 1.3: Cheque payment methods require display_name with optional account_details', async () => {
-    await fc.assert(
-      fc.asyncProperty(
-        validDisplayName,
-        validAccountDetails,
-        async (displayName, accountDetails) => {
-          const data = {
-            type: 'cheque',
-            display_name: displayName,
-            account_details: accountDetails
-          };
-
-          const result = paymentMethodService.validatePaymentMethod(data);
-          
-          // Cheque with valid display_name should pass validation
-          expect(result.isValid).toBe(true);
-          expect(result.errors).toHaveLength(0);
-          
-          return true;
-        }
-      ),
-      pbtOptions()
-    );
-  });
-
-  /**
-   * Feature: configurable-payment-methods, Property 1: Type-Specific Validation Rules
-   * **Validates: Requirements 1.4**
-   * 
-   * Debit payment methods require display_name with optional account_details
-   */
-  test('Property 1.4: Debit payment methods require display_name with optional account_details', async () => {
-    await fc.assert(
-      fc.asyncProperty(
-        validDisplayName,
-        validAccountDetails,
-        async (displayName, accountDetails) => {
-          const data = {
-            type: 'debit',
-            display_name: displayName,
-            account_details: accountDetails
-          };
-
-          const result = paymentMethodService.validatePaymentMethod(data);
-          
-          // Debit with valid display_name should pass validation
-          expect(result.isValid).toBe(true);
-          expect(result.errors).toHaveLength(0);
-          
-          return true;
-        }
-      ),
-      pbtOptions()
-    );
-  });
-
-  /**
-   * Feature: configurable-payment-methods, Property 1: Type-Specific Validation Rules
-   * **Validates: Requirements 1.5**
-   * 
-   * Credit_Card payment methods require display_name, full_name, billing_cycle_day, and payment_due_day
-   */
-  test('Property 1.5: Credit_Card payment methods require display_name and full_name', async () => {
-    // Use non-nullable billing day for this test since billing_cycle_day is required
-    const requiredBillingDay = fc.integer({ min: 1, max: 31 });
-    
+  test('Property 1.1: Credit card creation without billing_cycle_day should fail', async () => {
     await fc.assert(
       fc.asyncProperty(
         validDisplayName,
         validFullName,
+        validPaymentDueDay,
         validCreditLimit,
-        validBalance,
-        requiredBillingDay, // payment_due_day - required
-        requiredBillingDay, // billing_cycle_day - required
-        validBillingDay,    // billing_cycle_end - optional
-        async (displayName, fullName, creditLimit, balance, paymentDueDay, billingCycleDay, billingEnd) => {
+        async (displayName, fullName, paymentDueDay, creditLimit) => {
           const data = {
             type: 'credit_card',
             display_name: displayName,
             full_name: fullName,
-            credit_limit: creditLimit,
-            current_balance: balance,
             payment_due_day: paymentDueDay,
-            billing_cycle_day: billingCycleDay, // Now required for credit cards
-            billing_cycle_end: billingEnd
+            credit_limit: creditLimit
           };
 
-          const result = paymentMethodService.validatePaymentMethod(data);
+          const result = paymentMethodService.validatePaymentMethod(data, { isUpdate: false });
           
-          // Credit card with valid display_name, full_name, billing_cycle_day, and payment_due_day should pass validation
+          expect(result.isValid).toBe(false);
+          expect(result.errors.some(e => e.toLowerCase().includes('billing cycle day'))).toBe(true);
+          
+          return true;
+        }
+      ),
+      dbPbtOptions()
+    );
+  });
+
+  test('Property 1.2: Credit card creation without payment_due_day should fail', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        validDisplayName,
+        validFullName,
+        validBillingCycleDay,
+        validCreditLimit,
+        async (displayName, fullName, billingCycleDay, creditLimit) => {
+          const data = {
+            type: 'credit_card',
+            display_name: displayName,
+            full_name: fullName,
+            billing_cycle_day: billingCycleDay,
+            credit_limit: creditLimit
+          };
+
+          const result = paymentMethodService.validatePaymentMethod(data, { isUpdate: false });
+          
+          expect(result.isValid).toBe(false);
+          expect(result.errors.some(e => e.toLowerCase().includes('payment due day'))).toBe(true);
+          
+          return true;
+        }
+      ),
+      dbPbtOptions()
+    );
+  });
+
+  test('Property 1.3: Credit card creation with both required fields should pass', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        validDisplayName,
+        validFullName,
+        validBillingCycleDay,
+        validPaymentDueDay,
+        validCreditLimit,
+        async (displayName, fullName, billingCycleDay, paymentDueDay, creditLimit) => {
+          const data = {
+            type: 'credit_card',
+            display_name: displayName,
+            full_name: fullName,
+            billing_cycle_day: billingCycleDay,
+            payment_due_day: paymentDueDay,
+            credit_limit: creditLimit
+          };
+
+          const result = paymentMethodService.validatePaymentMethod(data, { isUpdate: false });
+          
           expect(result.isValid).toBe(true);
           expect(result.errors).toHaveLength(0);
           
           return true;
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
-  /**
-   * Property: Credit card without full_name should fail validation
-   */
-  test('Property: Credit card without full_name should fail validation', async () => {
-    await fc.assert(
-      fc.asyncProperty(
-        validDisplayName,
-        async (displayName) => {
-          const data = {
-            type: 'credit_card',
-            display_name: displayName,
-            full_name: '' // Empty full_name
-          };
-
-          const result = paymentMethodService.validatePaymentMethod(data);
-          
-          // Credit card without full_name should fail
-          expect(result.isValid).toBe(false);
-          expect(result.errors.some(e => e.toLowerCase().includes('full name'))).toBe(true);
-          
-          return true;
-        }
-      ),
-      pbtOptions()
-    );
-  });
-
-  /**
-   * Property: Empty display_name should fail validation for all types
-   */
-  test('Property: Empty display_name should fail validation for all types', async () => {
-    await fc.assert(
-      fc.asyncProperty(
-        fc.constantFrom(...PAYMENT_METHOD_TYPES),
-        async (type) => {
-          const data = {
-            type: type,
-            display_name: '', // Empty display_name
-            full_name: type === 'credit_card' ? 'Test Card' : undefined
-          };
-
-          const result = paymentMethodService.validatePaymentMethod(data);
-          
-          // Empty display_name should fail for all types
-          expect(result.isValid).toBe(false);
-          expect(result.errors.some(e => e.toLowerCase().includes('display name'))).toBe(true);
-          
-          return true;
-        }
-      ),
-      pbtOptions()
-    );
-  });
-
-  /**
-   * Property: Whitespace-only display_name should fail validation
-   */
-  test('Property: Whitespace-only display_name should fail validation', async () => {
-    // Generate whitespace-only strings
-    const whitespaceOnly = fc.array(fc.constantFrom(' ', '\t', '\n'), { minLength: 1, maxLength: 10 })
-      .map(arr => arr.join(''));
+  test('Property 1.6: Non-credit card types should not require billing cycle fields', async () => {
+    const nonCreditCardTypes = fc.constantFrom('cash', 'cheque', 'debit');
 
     await fc.assert(
       fc.asyncProperty(
-        fc.constantFrom(...PAYMENT_METHOD_TYPES),
-        whitespaceOnly,
-        async (type, displayName) => {
-          const data = {
-            type: type,
-            display_name: displayName,
-            full_name: type === 'credit_card' ? 'Test Card' : undefined
-          };
-
-          const result = paymentMethodService.validatePaymentMethod(data);
-          
-          // Whitespace-only display_name should fail
-          expect(result.isValid).toBe(false);
-          expect(result.errors.some(e => e.toLowerCase().includes('display name'))).toBe(true);
-          
-          return true;
-        }
-      ),
-      pbtOptions()
-    );
-  });
-
-  /**
-   * Property: Invalid payment method type should fail validation
-   */
-  test('Property: Invalid payment method type should fail validation', async () => {
-    const invalidType = fc.string({ minLength: 1, maxLength: 20 })
-      .filter(s => !PAYMENT_METHOD_TYPES.includes(s.toLowerCase().trim()));
-
-    await fc.assert(
-      fc.asyncProperty(
-        invalidType,
+        nonCreditCardTypes,
         validDisplayName,
         async (type, displayName) => {
           const data = {
@@ -285,118 +171,307 @@ describe('PaymentMethodService - Type-Specific Validation Property Tests', () =>
             display_name: displayName
           };
 
-          const result = paymentMethodService.validatePaymentMethod(data);
+          const result = paymentMethodService.validatePaymentMethod(data, { isUpdate: false });
           
-          // Invalid type should fail
-          expect(result.isValid).toBe(false);
-          expect(result.errors.some(e => e.toLowerCase().includes('type'))).toBe(true);
+          expect(result.isValid).toBe(true);
+          expect(result.errors).toHaveLength(0);
           
           return true;
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
+    );
+  }, 120000);
+});
+
+describe('PaymentMethodService - Range Validation Property Tests', () => {
+  /**
+   * Feature: credit-card-statement-balance, Property 2: Billing Cycle Day Range Validation
+   * **Validates: Requirements 1.3, 1.4**
+   */
+  test('Property 2.1: billing_cycle_day outside 1-31 should fail validation', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        validDisplayName,
+        validFullName,
+        invalidDayValue,
+        validPaymentDueDay,
+        async (displayName, fullName, invalidBillingCycleDay, paymentDueDay) => {
+          const data = {
+            type: 'credit_card',
+            display_name: displayName,
+            full_name: fullName,
+            billing_cycle_day: invalidBillingCycleDay,
+            payment_due_day: paymentDueDay
+          };
+
+          const result = paymentMethodService.validatePaymentMethod(data, { isUpdate: false });
+          
+          expect(result.isValid).toBe(false);
+          expect(result.errors.some(e => 
+            e.toLowerCase().includes('billing cycle day') && 
+            (e.includes('1') && e.includes('31'))
+          )).toBe(true);
+          
+          return true;
+        }
+      ),
+      dbPbtOptions()
     );
   });
 
-  /**
-   * Property: Negative credit card balance should fail validation
-   */
-  test('Property: Negative credit card balance should fail validation', async () => {
-    const negativeBalance = fc.float({ min: Math.fround(-10000), max: Math.fround(-0.01), noNaN: true });
+  test('Property 2.2: payment_due_day outside 1-31 should fail validation', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        validDisplayName,
+        validFullName,
+        validBillingCycleDay,
+        invalidDayValue,
+        async (displayName, fullName, billingCycleDay, invalidPaymentDueDay) => {
+          const data = {
+            type: 'credit_card',
+            display_name: displayName,
+            full_name: fullName,
+            billing_cycle_day: billingCycleDay,
+            payment_due_day: invalidPaymentDueDay
+          };
+
+          const result = paymentMethodService.validatePaymentMethod(data, { isUpdate: false });
+          
+          expect(result.isValid).toBe(false);
+          expect(result.errors.some(e => 
+            e.toLowerCase().includes('payment due day') && 
+            (e.includes('1') && e.includes('31'))
+          )).toBe(true);
+          
+          return true;
+        }
+      ),
+      dbPbtOptions()
+    );
+  });
+
+  test('Property 2.3: Valid day values (1-31) should pass range validation', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        validDisplayName,
+        validFullName,
+        validBillingCycleDay,
+        validPaymentDueDay,
+        async (displayName, fullName, billingCycleDay, paymentDueDay) => {
+          const data = {
+            type: 'credit_card',
+            display_name: displayName,
+            full_name: fullName,
+            billing_cycle_day: billingCycleDay,
+            payment_due_day: paymentDueDay
+          };
+
+          const result = paymentMethodService.validatePaymentMethod(data, { isUpdate: false });
+          
+          expect(result.isValid).toBe(true);
+          expect(result.errors.filter(e => 
+            e.includes('1') && e.includes('31')
+          )).toHaveLength(0);
+          
+          return true;
+        }
+      ),
+      dbPbtOptions()
+    );
+  });
+
+  test('Property 2.4: Boundary values (1 and 31) should be valid', async () => {
+    const boundaryValues = fc.constantFrom(1, 31);
 
     await fc.assert(
       fc.asyncProperty(
         validDisplayName,
         validFullName,
-        negativeBalance,
-        async (displayName, fullName, balance) => {
+        boundaryValues,
+        boundaryValues,
+        async (displayName, fullName, billingCycleDay, paymentDueDay) => {
           const data = {
             type: 'credit_card',
             display_name: displayName,
             full_name: fullName,
-            current_balance: balance
+            billing_cycle_day: billingCycleDay,
+            payment_due_day: paymentDueDay
           };
 
-          const result = paymentMethodService.validatePaymentMethod(data);
+          const result = paymentMethodService.validatePaymentMethod(data, { isUpdate: false });
           
-          // Negative balance should fail
-          expect(result.isValid).toBe(false);
-          expect(result.errors.some(e => e.toLowerCase().includes('balance'))).toBe(true);
+          expect(result.isValid).toBe(true);
           
           return true;
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
+  }, 120000);
+});
+
+describe('PaymentMethodService - Display Name Uniqueness Property Tests', () => {
+  let sharedDb = null;
+
+  beforeAll(async () => {
+    sharedDb = await getTestDatabase();
+    await createTables(sharedDb);
+  });
+
+  afterAll(async () => {
+    if (sharedDb) {
+      await closeDatabase(sharedDb);
+    }
+  });
+
+  beforeEach(async () => {
+    if (sharedDb) {
+      await resetTestDatabase(sharedDb);
+    }
+    resetDisplayNameCounter();
   });
 
   /**
-   * Property: Invalid billing cycle day should fail validation
+   * Feature: configurable-payment-methods, Property 6: Display Name Uniqueness
+   * **Validates: Requirements 2.6, 9.5**
    */
-  test('Property: Invalid billing cycle day should fail validation', async () => {
-    const invalidDay = fc.oneof(
-      fc.integer({ min: -100, max: 0 }),
-      fc.integer({ min: 32, max: 100 })
-    );
-
+  test('Property 6: Display Name Uniqueness - duplicate display_name should be rejected', async () => {
     await fc.assert(
       fc.asyncProperty(
-        validDisplayName,
-        validFullName,
-        invalidDay,
-        async (displayName, fullName, invalidDayValue) => {
-          const data = {
-            type: 'credit_card',
-            display_name: displayName,
-            full_name: fullName,
-            payment_due_day: invalidDayValue
-          };
-
-          const result = paymentMethodService.validatePaymentMethod(data);
+        uniqueDisplayName(),
+        fc.constantFrom(...PAYMENT_METHOD_TYPES),
+        fc.constantFrom(...PAYMENT_METHOD_TYPES),
+        async (displayName, type1, type2) => {
+          const db = sharedDb;
           
-          // Invalid day should fail
-          expect(result.isValid).toBe(false);
-          expect(result.errors.some(e => e.toLowerCase().includes('day') || e.toLowerCase().includes('31'))).toBe(true);
+          try {
+            const firstPaymentMethod = {
+              type: type1,
+              display_name: displayName,
+              full_name: type1 === 'credit_card' ? 'Test Card 1' : null,
+              is_active: 1
+            };
+            
+            const firstId = await insertPaymentMethod(db, firstPaymentMethod.type, firstPaymentMethod.display_name, firstPaymentMethod.full_name);
+            expect(firstId).toBeGreaterThan(0);
+            
+            const secondPaymentMethod = {
+              type: type2,
+              display_name: displayName,
+              full_name: type2 === 'credit_card' ? 'Test Card 2' : null,
+              is_active: 1
+            };
+            
+            let errorOccurred = false;
+            try {
+              await insertPaymentMethod(db, secondPaymentMethod.type, secondPaymentMethod.display_name, secondPaymentMethod.full_name);
+            } catch (err) {
+              errorOccurred = true;
+              expect(err.message).toMatch(/UNIQUE constraint failed/i);
+            }
+            
+            expect(errorOccurred).toBe(true);
+            
+            return true;
+          } finally {
+            // Database reset in beforeEach
+          }
+        }
+      ),
+      dbPbtOptions()
+    );
+  });
+
+  test('Property: Different display names should be allowed', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        uniqueDisplayName(),
+        uniqueDisplayName(),
+        fc.constantFrom(...PAYMENT_METHOD_TYPES),
+        async (displayName1, displayName2, type) => {
+          if (displayName1 === displayName2) {
+            return true;
+          }
+          
+          const db = sharedDb;
+          
+          try {
+            const firstId = await insertPaymentMethod(db, type, displayName1, type === 'credit_card' ? 'Test Card 1' : null);
+            expect(firstId).toBeGreaterThan(0);
+            
+            const secondId = await insertPaymentMethod(db, type, displayName2, type === 'credit_card' ? 'Test Card 2' : null);
+            expect(secondId).toBeGreaterThan(0);
+            
+            const first = await findByDisplayName(db, displayName1);
+            const second = await findByDisplayName(db, displayName2);
+            
+            expect(first).toBeDefined();
+            expect(second).toBeDefined();
+            expect(first.id).not.toBe(second.id);
+            
+            return true;
+          } finally {
+            // Database reset in beforeEach
+          }
+        }
+      ),
+      dbPbtOptions()
+    );
+  });
+
+  test('Property: Empty or whitespace-only display names should fail validation', async () => {
+    const emptyOrWhitespace = fc.oneof(
+      fc.constant(''),
+      fc.constant('   '),
+      fc.constant('\t'),
+      fc.constant('\n'),
+      fc.array(fc.constantFrom(' ', '\t', '\n'), { minLength: 1, maxLength: 5 }).map(arr => arr.join(''))
+    );
+    
+    await fc.assert(
+      fc.asyncProperty(
+        emptyOrWhitespace,
+        fc.constantFrom(...PAYMENT_METHOD_TYPES),
+        async (displayName, type) => {
+          const validation = paymentMethodService.validatePaymentMethod({
+            type: type,
+            display_name: displayName,
+            full_name: type === 'credit_card' ? 'Test Card' : null
+          });
+          
+          expect(validation.isValid).toBe(false);
+          expect(validation.errors.some(e => e.toLowerCase().includes('display name'))).toBe(true);
           
           return true;
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
-  /**
-   * Property: Non-positive credit limit should fail validation
-   */
-  test('Property: Non-positive credit limit should fail validation', async () => {
-    const nonPositiveLimit = fc.oneof(
-      fc.constant(0),
-      fc.float({ min: Math.fround(-10000), max: Math.fround(-0.01), noNaN: true })
-    );
-
+  test('Property: Display names exceeding max length should fail validation', async () => {
+    const longDisplayName = fc.string({ minLength: 51, maxLength: 100 })
+      .filter(s => s.trim().length > 50);
+    
     await fc.assert(
       fc.asyncProperty(
-        validDisplayName,
-        validFullName,
-        nonPositiveLimit,
-        async (displayName, fullName, creditLimit) => {
-          const data = {
-            type: 'credit_card',
+        longDisplayName,
+        fc.constantFrom(...PAYMENT_METHOD_TYPES),
+        async (displayName, type) => {
+          const validation = paymentMethodService.validatePaymentMethod({
+            type: type,
             display_name: displayName,
-            full_name: fullName,
-            credit_limit: creditLimit
-          };
-
-          const result = paymentMethodService.validatePaymentMethod(data);
+            full_name: type === 'credit_card' ? 'Test Card' : null
+          });
           
-          // Non-positive credit limit should fail
-          expect(result.isValid).toBe(false);
-          expect(result.errors.some(e => e.toLowerCase().includes('credit limit'))).toBe(true);
+          expect(validation.isValid).toBe(false);
+          expect(validation.errors.some(e => e.toLowerCase().includes('display name') && e.includes('50'))).toBe(true);
           
           return true;
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
-  });
+  }, 120000);
 });

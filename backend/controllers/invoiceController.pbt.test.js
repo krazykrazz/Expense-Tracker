@@ -4,10 +4,12 @@
  * Feature: multi-invoice-support
  * Properties: 9, 14, 15, 16
  * Validates: Requirements 5.3, 8.1, 8.3, 8.4
+  *
+ * @invariant Invoice API Layer Consistency: For any valid invoice data, the controller layer correctly delegates to the service layer and returns consistent HTTP responses; file upload validation rejects invalid MIME types and oversized files. Randomization covers diverse file metadata and expense associations.
  */
 
 const fc = require('fast-check');
-const { pbtOptions } = require('../test/pbtArbitraries');
+const { dbPbtOptions } = require('../test/pbtArbitraries');
 const invoiceService = require('../services/invoiceService');
 const invoiceRepository = require('../repositories/invoiceRepository');
 const expenseRepository = require('../repositories/expenseRepository');
@@ -151,7 +153,7 @@ describe('Invoice Controller - Property-Based Tests - API Layer', () => {
           return true;
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -249,7 +251,7 @@ describe('Invoice Controller - Property-Based Tests - API Layer', () => {
           return true;
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -340,7 +342,7 @@ describe('Invoice Controller - Property-Based Tests - API Layer', () => {
           return true;
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -409,7 +411,7 @@ describe('Invoice Controller - Property-Based Tests - API Layer', () => {
           return true;
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -444,7 +446,7 @@ describe('Invoice Controller - Property-Based Tests - API Layer', () => {
           return true;
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -485,7 +487,7 @@ describe('Invoice Controller - Property-Based Tests - API Layer', () => {
           return true;
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 

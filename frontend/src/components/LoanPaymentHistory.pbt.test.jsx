@@ -1,3 +1,7 @@
+/**
+ * @invariant Running Balance Accuracy: For any payment history, each entry shows a running balance equal to initial_balance minus the cumulative sum of all payments up to and including that entry. Randomization covers diverse payment sequences and initial balances.
+ */
+
 import { describe, it, expect } from 'vitest';
 import * as fc from 'fast-check';
 

@@ -1,3 +1,7 @@
+/**
+ * @invariant Tab State Persistence: For any tab selection, the state is persisted to localStorage and restored on re-initialization; invalid stored values fall back to the default tab. Randomization covers diverse tab identifiers and storage states.
+ */
+
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import * as fc from 'fast-check';

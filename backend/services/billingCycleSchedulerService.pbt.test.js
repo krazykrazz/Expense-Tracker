@@ -5,6 +5,8 @@
  * Using fast-check library for property-based testing
  * 
  * **Validates: Requirements 1.2, 1.3, 1.4, 5.2, 8.1, 8.2, 8.3, 8.4, 8.5**
+  *
+ * @invariant Scheduler Correctness: For any set of credit cards with billing cycle configurations, the scheduler processes only cards due for cycle generation; generated cycles have correct date ranges and initial balances. Randomization covers diverse card configurations and scheduling states.
  */
 
 const fc = require('fast-check');

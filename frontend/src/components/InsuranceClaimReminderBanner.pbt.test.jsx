@@ -1,3 +1,7 @@
+/**
+ * @invariant Claim Reminder Display: For any set of medical expenses with pending insurance claims, reminders are shown for claims exceeding the age threshold; resolved claims are not shown. Randomization covers diverse claim statuses and expense dates.
+ */
+
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, cleanup, act } from '@testing-library/react';
 import * as fc from 'fast-check';

@@ -6,6 +6,8 @@
  * 
  * Property 24: For any analytics hub view where budget alerts exist for the current month,
  * the spending predictions SHALL display alongside budget status information.
+  *
+ * @invariant Budget Integration Display: For any analytics view where budget alerts exist, spending predictions display alongside budget status information. Randomization covers diverse prediction and budget alert combinations.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';

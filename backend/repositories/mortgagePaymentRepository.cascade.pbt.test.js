@@ -5,6 +5,8 @@
  * Tests Property 10: Cascade Delete Integrity
  *
  * Validates: Requirements 8.5
+  *
+ * @invariant Cascade Delete Integrity: For any mortgage with associated payments, deleting the parent loan cascades to remove all its payment records; no orphaned payments remain. Randomization covers diverse payment counts and loan configurations.
  */
 
 const fc = require('fast-check');

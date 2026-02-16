@@ -1,4 +1,9 @@
+/**
+ * @invariant Settings Persistence Round-Trip: For any valid retention settings (maxAgeDays in 7-365, maxCount in 100-10000), updating and then retrieving them returns the same values. Randomization covers the full valid range to verify no values are lost or transformed.
+ */
+
 const fc = require('fast-check');
+const { dbPbtOptions } = require('../test/pbtArbitraries');
 const settingsService = require('./settingsService');
 const { getDatabase } = require('../database/db');
 
@@ -56,7 +61,7 @@ describe('settingsService - Property 1: Settings Persistence Round-Trip', () => 
           expect(Number.isInteger(retrieved.maxCount)).toBe(true);
         }
       ),
-      { numRuns: 100 }
+      dbPbtOptions({ numRuns: 100 })
     );
   });
 
@@ -91,7 +96,7 @@ describe('settingsService - Property 1: Settings Persistence Round-Trip', () => 
           });
         }
       ),
-      { numRuns: 50 }
+      dbPbtOptions({ numRuns: 50 })
     );
   });
 
@@ -119,7 +124,7 @@ describe('settingsService - Property 1: Settings Persistence Round-Trip', () => 
           expect(retrieved.maxCount).toBe(maxCount);
         }
       ),
-      { numRuns: 100 }
+      dbPbtOptions({ numRuns: 100 })
     );
   });
 });

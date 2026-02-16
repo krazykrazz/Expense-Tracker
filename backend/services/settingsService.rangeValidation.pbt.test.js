@@ -1,3 +1,7 @@
+/**
+ * @invariant Range Validation: For any integer value, maxAgeDays in [7, 365] and maxCount in [100, 10000] are accepted; values outside these ranges are rejected with validation errors. Randomization covers values across and beyond the valid ranges to verify boundary enforcement.
+ */
+
 const fc = require('fast-check');
 const settingsService = require('./settingsService');
 

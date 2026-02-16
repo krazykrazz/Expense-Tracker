@@ -3,6 +3,8 @@
  * Tests universal properties of tax credit calculation functions
  * 
  * **Validates: Requirements 4.1, 4.2, 4.6, 5.1, 5.2, 5.4, 6.3, 6.4, 6.6**
+  *
+ * @invariant Tax Credit Math: For any combination of medical expenses, income, and province, the calculated tax credits are non-negative; the AGI threshold is correctly applied; federal and provincial credits follow their respective rate formulas. Randomization covers diverse financial scenarios.
  */
 
 import { describe, test, expect } from 'vitest';

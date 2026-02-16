@@ -1,10 +1,12 @@
 /**
  * Property-Based Tests for Budget Service
  * Using fast-check library for property-based testing
+  *
+ * @invariant Budget CRUD and Threshold Logic: For any valid budget with a category and amount, storing and retrieving it returns equivalent data; budget utilization percentages are calculated correctly relative to actual spending. Randomization covers diverse budget amounts and spending patterns.
  */
 
 const fc = require('fast-check');
-const { pbtOptions } = require('../test/pbtArbitraries');
+const { dbPbtOptions } = require('../test/pbtArbitraries');
 const budgetService = require('./budgetService');
 const { getDatabase } = require('../database/db');
 const { BUDGETABLE_CATEGORIES } = require('../utils/categories');
@@ -99,7 +101,7 @@ describe('BudgetService - Property-Based Tests', () => {
           expect(Math.abs(actualIncrease - expectedAdditional)).toBeLessThan(0.01);
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   }, 120000); // 2 minute timeout for database operations
 
@@ -170,7 +172,7 @@ describe('BudgetService - Property-Based Tests', () => {
           expect(progress.remaining).toBeLessThan(0);
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   }, 120000); // 2 minute timeout for database operations
 });

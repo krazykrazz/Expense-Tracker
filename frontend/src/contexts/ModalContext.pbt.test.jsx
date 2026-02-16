@@ -1,3 +1,7 @@
+/**
+ * @invariant Modal State Exclusivity: For any sequence of modal open/close operations, at most one modal is open at a time; opening a new modal closes the previous one; close operations are idempotent. Randomization covers diverse modal operation sequences.
+ */
+
 import { describe, it, expect, afterEach } from 'vitest';
 import { renderHook, act, cleanup } from '@testing-library/react';
 import * as fc from 'fast-check';

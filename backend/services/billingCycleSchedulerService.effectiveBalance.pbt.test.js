@@ -8,10 +8,12 @@
  * Using fast-check library for property-based testing
  * 
  * **Validates: Requirements 1.1, 1.5, 2.1, 2.5, 3.2**
+  *
+ * @invariant Effective Balance Selection: For any billing cycle with both user-entered and auto-generated previous balances, the scheduler selects the user-entered balance as authoritative; the balance formula uses this effective balance correctly. Randomization covers diverse balance combinations and flag states.
  */
 
 const fc = require('fast-check');
-const { pbtOptions } = require('../test/pbtArbitraries');
+const { dbPbtOptions } = require('../test/pbtArbitraries');
 
 // Mock the database module before requiring the service
 jest.mock('../database/db', () => ({
@@ -120,7 +122,7 @@ describe('BillingCycleSchedulerService - Previous Balance Effective Selection (P
           expect(result).toBe(expected);
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -157,7 +159,7 @@ describe('BillingCycleSchedulerService - Previous Balance Effective Selection (P
           expect(result).toBe(expected);
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -197,7 +199,7 @@ describe('BillingCycleSchedulerService - Previous Balance Effective Selection (P
           expect(result).toBe(expected);
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -224,7 +226,7 @@ describe('BillingCycleSchedulerService - Previous Balance Effective Selection (P
           expect(result).toBe(expected);
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -261,7 +263,7 @@ describe('BillingCycleSchedulerService - Previous Balance Effective Selection (P
           expect(result).toBe(expected);
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 });

@@ -1,3 +1,7 @@
+/**
+ * @invariant Form Validation Consistency: For any billing cycle form inputs, validation accepts valid date ranges and amounts while rejecting invalid ones; submitted data matches the form state. Randomization covers diverse date and amount combinations.
+ */
+
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, waitFor, fireEvent, cleanup, act } from '@testing-library/react';
 import * as fc from 'fast-check';

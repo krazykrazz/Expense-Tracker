@@ -1,3 +1,7 @@
+/**
+ * @invariant Case-Insensitive Filtering: For any place list and search query, the autocomplete filter returns exactly those places whose names contain the query as a case-insensitive substring. Randomization covers diverse place names and query strings.
+ */
+
 import { describe, it, expect } from 'vitest';
 import fc from 'fast-check';
 

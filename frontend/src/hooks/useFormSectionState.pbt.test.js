@@ -1,3 +1,7 @@
+/**
+ * @invariant Session State Persistence: For any form section toggle state, saving to sessionStorage and reading back returns the same state; the hook correctly initializes from persisted state. Randomization covers diverse section name and state combinations.
+ */
+
 import { describe, test, expect, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import * as fc from 'fast-check';

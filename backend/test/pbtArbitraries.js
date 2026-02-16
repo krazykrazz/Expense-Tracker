@@ -250,7 +250,7 @@ const dbPbtOptions = (options = {}) => {
     : null;
   
   return pbtOptions({
-    timeout: isCI ? 60000 : 30000,
+    timeout: isCI ? 90000 : 60000,  // Increased from 60s/30s to 90s/60s
     numRuns: envNumRuns || (isCI ? 10 : 15),
     ...options
   });

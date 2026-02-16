@@ -13,6 +13,8 @@
  * without specifying a rate must result in a validation error.
  *
  * **Validates: Requirements 2.2, 2.3, 5.4, 5.5, 6.3**
+  *
+ * @invariant Auto-Population Round Trip: For any loan with a non-NULL fixed_interest_rate, creating a balance entry without specifying a rate results in the entry having rate equal to the loan's fixed_interest_rate; loans with NULL fixed_interest_rate require explicit rates. Randomization covers diverse loan configurations and rate values.
  */
 
 const fc = require('fast-check');

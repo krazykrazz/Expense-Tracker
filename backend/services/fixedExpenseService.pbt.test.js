@@ -1,3 +1,7 @@
+/**
+ * @invariant Validation Completeness: For any input to fixed expense creation, invalid categories are rejected and valid categories are accepted; required fields are enforced consistently. Randomization covers the full category space and diverse field combinations.
+ */
+
 const fc = require('fast-check');
 const { pbtOptions } = require('../test/pbtArbitraries');
 const fixedExpenseService = require('./fixedExpenseService');

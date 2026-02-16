@@ -1,10 +1,12 @@
 /**
  * Property-Based Tests for Investment Value Repository
  * Using fast-check library for property-based testing
+  *
+ * @invariant Investment Value History Integrity: For any valid investment value entry, storing and retrieving it returns the correct amount and date; values are correctly associated with their parent investment. Randomization covers diverse value amounts and date distributions.
  */
 
 const fc = require('fast-check');
-const { pbtOptions } = require('../test/pbtArbitraries');
+const { dbPbtOptions } = require('../test/pbtArbitraries');
 const sqlite3 = require('sqlite3').verbose();
 
 // Helper function to create an in-memory test database
@@ -251,7 +253,7 @@ describe('Investment Value Repository - Property-Based Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -324,7 +326,7 @@ describe('Investment Value Repository - Property-Based Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -410,7 +412,7 @@ describe('Investment Value Repository - Property-Based Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -474,7 +476,7 @@ describe('Investment Value Repository - Property-Based Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -534,7 +536,7 @@ describe('Investment Value Repository - Property-Based Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -621,7 +623,7 @@ describe('Investment Value Repository - Property-Based Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 });

@@ -4,6 +4,8 @@
  * Feature: mortgage-payment-date-tracking, Property 1: Next payment date calculation
  * 
  * **Validates: Requirements 2.1, 2.2, 2.3, 2.4, 2.5**
+  *
+ * @invariant Next Payment Date Calculation: For any payment frequency and last payment date, the calculated next payment date is always in the future relative to the reference date; urgency classification follows defined thresholds. Randomization covers diverse frequencies and date combinations.
  */
 
 import { describe, test, expect } from 'vitest';

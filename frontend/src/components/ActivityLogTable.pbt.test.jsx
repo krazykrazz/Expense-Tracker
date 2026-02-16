@@ -1,3 +1,7 @@
+/**
+ * @invariant Table Structure Integrity: For any set of activity log entries, the table renders the correct number of rows with proper column structure; sorting and pagination preserve all entries. Randomization covers diverse entry counts, action types, and metadata shapes.
+ */
+
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import * as fc from 'fast-check';

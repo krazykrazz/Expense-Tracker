@@ -1,3 +1,7 @@
+/**
+ * @invariant Relative Time Formatting: For any valid ISO timestamp, the formatted relative time is deterministic and follows the defined pattern (Just now, X minutes ago, X hours ago, Yesterday, X days ago, or full date). Randomization covers diverse timestamp offsets.
+ */
+
 import { describe, it, expect } from 'vitest';
 import * as fc from 'fast-check';
 import { formatRelativeTime } from './timeFormatters';

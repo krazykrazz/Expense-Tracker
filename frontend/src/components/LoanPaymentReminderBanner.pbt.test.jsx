@@ -1,3 +1,7 @@
+/**
+ * @invariant Payment Reminder Timing: For any loan with a due date, reminders are shown when the payment is upcoming or overdue; paid loans do not show reminders. Randomization covers diverse due date offsets and payment states.
+ */
+
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, cleanup, act } from '@testing-library/react';
 import * as fc from 'fast-check';

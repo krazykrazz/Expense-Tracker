@@ -3,10 +3,12 @@
  * Feature: insurance-claim-reminders
  * 
  * Tests the getMedicalExpensesWithPendingClaims() method
+  *
+ * @invariant Insurance Claims Query Accuracy: For any set of medical expenses with various claim statuses, the pending claims query returns exactly those with actionable statuses (not_claimed, in_progress) that exceed the age threshold. Randomization covers diverse claim status distributions and expense dates.
  */
 
 const fc = require('fast-check');
-const { pbtOptions } = require('../test/pbtArbitraries');
+const { dbPbtOptions } = require('../test/pbtArbitraries');
 const sqlite3 = require('sqlite3').verbose();
 
 // Valid claim statuses
@@ -289,7 +291,7 @@ describe('Reminder Repository - Insurance Claims Property-Based Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -365,7 +367,7 @@ describe('Reminder Repository - Insurance Claims Property-Based Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -433,7 +435,7 @@ describe('Reminder Repository - Insurance Claims Property-Based Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 });

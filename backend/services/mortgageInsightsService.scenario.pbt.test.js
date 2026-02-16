@@ -5,6 +5,8 @@
  * Tests Property 8: Extra Payment Scenario Benefits
  *
  * Validates: Requirements 5.2, 5.3, 5.4
+  *
+ * @invariant Extra Payment Benefits: For any mortgage scenario, making extra payments always results in equal or earlier payoff and equal or less total interest compared to the base scenario; the benefit is monotonically non-decreasing with extra payment amount. Randomization covers diverse extra payment amounts and mortgage terms.
  */
 
 const fc = require('fast-check');

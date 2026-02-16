@@ -1,3 +1,7 @@
+/**
+ * @invariant YoY Percentage Calculation: For any pair of current and previous year values, the percentage change is calculated correctly; the change indicator reflects the direction of change. Randomization covers diverse value pairs including edge cases.
+ */
+
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import * as fc from 'fast-check';

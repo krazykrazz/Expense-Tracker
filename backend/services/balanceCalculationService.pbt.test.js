@@ -8,6 +8,8 @@
  * the calculated current balance should equal max(0, B - sum(P)).
  *
  * **Validates: Requirements 2.1, 2.2, 2.4**
+  *
+ * @invariant Balance Calculation Formula: For any loan with initial balance B and a set of payments P, the calculated current balance equals max(0, B - sum(P)). Randomization covers diverse initial balances and payment sequences to verify the formula holds across all scenarios.
  */
 
 const fc = require('fast-check');

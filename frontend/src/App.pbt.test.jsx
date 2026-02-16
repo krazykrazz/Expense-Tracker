@@ -1,3 +1,7 @@
+/**
+ * @invariant Filter Combination Consistency: For any expense and any combination of active filters, the expense is displayed if and only if it matches all active filter criteria using AND logic. Randomization covers diverse filter combinations and expense attribute distributions.
+ */
+
 import { describe, it, expect } from 'vitest';
 import * as fc from 'fast-check';
 import { CATEGORIES, PAYMENT_METHODS } from './utils/constants';

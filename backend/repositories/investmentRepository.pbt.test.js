@@ -1,10 +1,12 @@
 /**
  * Property-Based Tests for Investment Repository
  * Using fast-check library for property-based testing
+  *
+ * @invariant Investment CRUD Round-Trip: For any valid investment record, creating and reading it back returns equivalent data; investment types (TFSA, RRSP) are preserved correctly. Randomization covers diverse investment names, types, and initial values.
  */
 
 const fc = require('fast-check');
-const { pbtOptions } = require('../test/pbtArbitraries');
+const { dbPbtOptions } = require('../test/pbtArbitraries');
 const sqlite3 = require('sqlite3').verbose();
 
 // Helper function to create an in-memory test database
@@ -205,7 +207,7 @@ describe('Investment Repository - Property-Based Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -256,7 +258,7 @@ describe('Investment Repository - Property-Based Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -308,7 +310,7 @@ describe('Investment Repository - Property-Based Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -357,7 +359,7 @@ describe('Investment Repository - Property-Based Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -416,7 +418,7 @@ describe('Investment Repository - Property-Based Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 });

@@ -1,3 +1,7 @@
+/**
+ * @invariant Filter State Round-Trip: For any filter value set via the context, reading it back returns the same value; resetting filters returns all values to defaults. Randomization covers diverse category, payment method, and year filter values.
+ */
+
 import { describe, it, expect, afterEach } from 'vitest';
 import { renderHook, act, cleanup } from '@testing-library/react';
 import * as fc from 'fast-check';

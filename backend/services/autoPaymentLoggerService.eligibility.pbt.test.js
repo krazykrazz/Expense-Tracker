@@ -2,10 +2,12 @@
  * Property-Based Tests for Auto Payment Logger Service - Eligibility
  * Feature: fixed-expense-loan-linkage
  * Using fast-check library for property-based testing
+  *
+ * @invariant Eligibility Determination: For any fixed expense with a linked loan, auto-payment logging eligibility depends on whether a payment has already been logged for the current period; duplicate logging is prevented. Randomization covers diverse loan linkage states and payment histories.
  */
 
 const fc = require('fast-check');
-const { pbtOptions, dbPbtOptions } = require('../test/pbtArbitraries');
+const { dbPbtOptions } = require('../test/pbtArbitraries');
 const sqlite3 = require('sqlite3').verbose();
 
 // Helper function to create an in-memory test database

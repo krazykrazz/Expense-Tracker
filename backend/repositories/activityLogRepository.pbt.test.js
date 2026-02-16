@@ -1,7 +1,11 @@
+/**
+ * @invariant Activity Log Round-Trip: For any valid activity log entry, storing it and retrieving it returns equivalent data; log entries are ordered chronologically and cleanup operations preserve the most recent entries. Randomization covers diverse action types, metadata shapes, and timestamp distributions.
+ */
+
 const fc = require('fast-check');
 const activityLogRepository = require('./activityLogRepository');
 const { getDatabase } = require('../database/db');
-const { pbtOptions } = require('../test/pbtArbitraries');
+const { dbPbtOptions } = require('../test/pbtArbitraries');
 
 describe('Activity Log Repository - Property-Based Tests', () => {
   let db;
@@ -81,7 +85,7 @@ describe('Activity Log Repository - Property-Based Tests', () => {
             }
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
   });
@@ -131,7 +135,7 @@ describe('Activity Log Repository - Property-Based Tests', () => {
             }
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
   });
@@ -213,7 +217,7 @@ describe('Activity Log Repository - Property-Based Tests', () => {
             }
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
   });
@@ -296,7 +300,7 @@ describe('Activity Log Repository - Property-Based Tests', () => {
             }
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
   });

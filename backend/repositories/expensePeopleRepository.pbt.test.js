@@ -1,11 +1,13 @@
 /**
  * Property-Based Tests for Expense People Repository
  * Tests universal properties of expense-person association storage and retrieval
+  *
+ * @invariant Person-Expense Association Integrity: For any valid expense-person link, creating the association and querying it returns the correct relationship; deleting an expense cascades to remove its person associations. Randomization covers diverse person counts and expense configurations.
  */
 
 const { describe, test, expect, beforeEach, afterEach } = require('@jest/globals');
 const fc = require('fast-check');
-const { pbtOptions } = require('../test/pbtArbitraries');
+const { dbPbtOptions } = require('../test/pbtArbitraries');
 const expensePeopleRepository = require('./expensePeopleRepository');
 const peopleRepository = require('./peopleRepository');
 const { getDatabase } = require('../database/db');
@@ -168,7 +170,7 @@ describe('Expense People Repository Property-Based Tests', () => {
           }
         }
       ),
-      pbtOptions() // Fewer runs since this test involves complex database operations
+      dbPbtOptions() // Fewer runs since this test involves complex database operations
     );
   });
 });

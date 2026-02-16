@@ -743,7 +743,7 @@ describe('BackupService - Property-Based Tests', () => {
               size: result.size,
               timestamp: result.timestamp
             });
-            // Wait 1.1 seconds to ensure different timestamps (filename uses seconds precision)
+            // Wait for unique timestamps (filename uses seconds precision)
             if (i < backupCount - 1) {
               await new Promise(resolve => setTimeout(resolve, 1100));
             }
@@ -798,7 +798,7 @@ describe('BackupService - Property-Based Tests', () => {
 
           return true;
         }),
-        dbPbtOptions() // Reduced runs due to longer delays
+        dbPbtOptions({ numRuns: 3 }) // Reduced: each run creates multiple backups with 1.1s delays
       );
     } finally {
       // Restore original config
@@ -854,7 +854,7 @@ describe('BackupService - Property-Based Tests', () => {
               path: result.path,
               timestamp: new Date(result.timestamp).getTime()
             });
-            // Wait 1.1 seconds to ensure different timestamps (filename uses seconds precision)
+            // Wait for unique timestamps (filename uses seconds precision)
             if (i < totalBackups - 1) {
               await new Promise(resolve => setTimeout(resolve, 1100));
             }
@@ -893,7 +893,7 @@ describe('BackupService - Property-Based Tests', () => {
 
           return true;
         }),
-        dbPbtOptions() // Reduced runs due to longer delays
+        dbPbtOptions({ numRuns: 3 }) // Reduced: each run creates multiple backups with 1.1s delays
       );
     } finally {
       // Restore original config
@@ -1041,7 +1041,7 @@ describe('BackupService - Property-Based Tests', () => {
             }
           }
         }),
-        dbPbtOptions() // Reduced runs due to delays
+        dbPbtOptions({ numRuns: 3 }) // Reduced: each run creates multiple backups with 1.1s delays
       );
     } finally {
       // Restore original config

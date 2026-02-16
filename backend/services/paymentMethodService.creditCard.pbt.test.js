@@ -19,6 +19,8 @@ const fc = require('fast-check');
 const { pbtOptions, dbPbtOptions } = require('../test/pbtArbitraries');
 const paymentMethodService = require('./paymentMethodService');
 const {
+  getTestDatabase,
+  resetTestDatabase,
   createTestDatabase,
   closeDatabase,
   createTables,
@@ -36,6 +38,28 @@ const {
 } = require('../test/paymentMethodPbtHelpers');
 
 describe('PaymentMethodService - Billing Cycle Transaction Count Property-Based Tests', () => {
+  let sharedDb = null;
+
+  beforeAll(async () => {
+    // Create database once for all tests
+    sharedDb = await getTestDatabase();
+    await createTables(sharedDb);
+  });
+
+  afterAll(async () => {
+    // Close database after all tests
+    if (sharedDb) {
+      await closeDatabase(sharedDb);
+    }
+  });
+
+  beforeEach(async () => {
+    // Reset database between test iterations
+    if (sharedDb) {
+      await resetTestDatabase(sharedDb);
+    }
+  });
+
   beforeEach(() => {
     resetDisplayNameCounter();
   });
@@ -59,10 +83,9 @@ describe('PaymentMethodService - Billing Cycle Transaction Count Property-Based 
           { minLength: 1, maxLength: 10 }
         ),
         async (displayName, expenseConfigs) => {
-          const db = await createTestDatabase();
+          const db = sharedDb;
           
           try {
-            await createTables(db);
             const cardId = await insertCreditCard(db, displayName, 'Test Credit Card', 1, 28);
             
             const cycleStartDate = '2025-01-01';
@@ -94,7 +117,7 @@ describe('PaymentMethodService - Billing Cycle Transaction Count Property-Based 
             
             return true;
           } finally {
-            await closeDatabase(db);
+            // Database reset in beforeEach
           }
         }
       ),
@@ -115,10 +138,9 @@ describe('PaymentMethodService - Billing Cycle Transaction Count Property-Based 
           { minLength: 1, maxLength: 5 }
         ),
         async (displayName, expenseConfigs) => {
-          const db = await createTestDatabase();
+          const db = sharedDb;
           
           try {
-            await createTables(db);
             const cardId = await insertCreditCard(db, displayName, 'Test Credit Card', 1, 28);
             
             const cycleStartDate = '2025-01-01';
@@ -137,7 +159,7 @@ describe('PaymentMethodService - Billing Cycle Transaction Count Property-Based 
             
             return true;
           } finally {
-            await closeDatabase(db);
+            // Database reset in beforeEach
           }
         }
       ),
@@ -170,10 +192,9 @@ describe('PaymentMethodService - Billing Cycle Total Accuracy Property-Based Tes
           { minLength: 1, maxLength: 10 }
         ),
         async (displayName, expenseConfigs) => {
-          const db = await createTestDatabase();
+          const db = sharedDb;
           
           try {
-            await createTables(db);
             const cardId = await insertCreditCard(db, displayName, 'Test Credit Card', 1, 28);
             
             const cycleStartDate = '2025-01-01';
@@ -207,7 +228,7 @@ describe('PaymentMethodService - Billing Cycle Total Accuracy Property-Based Tes
             
             return true;
           } finally {
-            await closeDatabase(db);
+            // Database reset in beforeEach
           }
         }
       ),
@@ -227,10 +248,9 @@ describe('PaymentMethodService - Billing Cycle Total Accuracy Property-Based Tes
           { minLength: 1, maxLength: 5 }
         ),
         async (displayName, paymentConfigs) => {
-          const db = await createTestDatabase();
+          const db = sharedDb;
           
           try {
-            await createTables(db);
             const cardId = await insertCreditCard(db, displayName, 'Test Credit Card', 1, 28);
             
             const cycleStartDate = '2025-01-01';
@@ -259,7 +279,7 @@ describe('PaymentMethodService - Billing Cycle Total Accuracy Property-Based Tes
             
             return true;
           } finally {
-            await closeDatabase(db);
+            // Database reset in beforeEach
           }
         }
       ),
@@ -272,10 +292,9 @@ describe('PaymentMethodService - Billing Cycle Total Accuracy Property-Based Tes
       fc.asyncProperty(
         uniqueDisplayName(),
         async (displayName) => {
-          const db = await createTestDatabase();
+          const db = sharedDb;
           
           try {
-            await createTables(db);
             const cardId = await insertCreditCard(db, displayName, 'Test Credit Card', 1, 28);
             
             const cycleStartDate = '2025-01-01';
@@ -290,7 +309,7 @@ describe('PaymentMethodService - Billing Cycle Total Accuracy Property-Based Tes
             
             return true;
           } finally {
-            await closeDatabase(db);
+            // Database reset in beforeEach
           }
         }
       ),
@@ -321,10 +340,9 @@ describe('PaymentMethodService - Payment Reduction Property-Based Tests', () => 
         fc.float({ min: Math.fround(5), max: Math.fround(100), noNaN: true })
           .map(n => Math.round(n * 100) / 100),
         async (displayName, expenseAmounts, paymentAmount) => {
-          const db = await createTestDatabase();
+          const db = sharedDb;
           
           try {
-            await createTables(db);
             const cardId = await insertCreditCard(db, displayName, 'Test Credit Card');
             
             const today = new Date();
@@ -347,7 +365,7 @@ describe('PaymentMethodService - Payment Reduction Property-Based Tests', () => 
             
             return true;
           } finally {
-            await closeDatabase(db);
+            // Database reset in beforeEach
           }
         }
       ),
@@ -367,10 +385,9 @@ describe('PaymentMethodService - Payment Reduction Property-Based Tests', () => 
           { minLength: 2, maxLength: 5 }
         ),
         async (displayName, expenseAmount, paymentAmounts) => {
-          const db = await createTestDatabase();
+          const db = sharedDb;
           
           try {
-            await createTables(db);
             const cardId = await insertCreditCard(db, displayName, 'Test Credit Card');
             
             const today = new Date();
@@ -394,7 +411,7 @@ describe('PaymentMethodService - Payment Reduction Property-Based Tests', () => 
             
             return true;
           } finally {
-            await closeDatabase(db);
+            // Database reset in beforeEach
           }
         }
       ),
@@ -434,10 +451,9 @@ describe('PaymentMethodService - Projected Equals Current Property-Based Tests',
           { minLength: 0, maxLength: 3 }
         ),
         async (displayName, expenseConfigs, paymentConfigs) => {
-          const db = await createTestDatabase();
+          const db = sharedDb;
           
           try {
-            await createTables(db);
             const cardId = await insertCreditCard(db, displayName, 'Test Credit Card');
             
             const today = new Date();
@@ -463,7 +479,7 @@ describe('PaymentMethodService - Projected Equals Current Property-Based Tests',
             
             return true;
           } finally {
-            await closeDatabase(db);
+            // Database reset in beforeEach
           }
         }
       ),
@@ -484,10 +500,9 @@ describe('PaymentMethodService - Projected Equals Current Property-Based Tests',
           { minLength: 0, maxLength: 3 }
         ),
         async (displayName, futureExpenseAmount, daysInFuture, pastExpenseAmounts) => {
-          const db = await createTestDatabase();
+          const db = sharedDb;
           
           try {
-            await createTables(db);
             const cardId = await insertCreditCard(db, displayName, 'Test Credit Card');
             
             const today = new Date();
@@ -513,7 +528,7 @@ describe('PaymentMethodService - Projected Equals Current Property-Based Tests',
             
             return true;
           } finally {
-            await closeDatabase(db);
+            // Database reset in beforeEach
           }
         }
       ),

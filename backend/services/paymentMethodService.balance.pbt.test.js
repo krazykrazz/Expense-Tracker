@@ -20,6 +20,8 @@
 const fc = require('fast-check');
 const { pbtOptions, dbPbtOptions } = require('../test/pbtArbitraries');
 const {
+  getTestDatabase,
+  resetTestDatabase,
   createTestDatabase,
   closeDatabase,
   createTables,
@@ -45,6 +47,28 @@ const {
 } = require('../test/paymentMethodPbtHelpers');
 
 describe('PaymentMethodService - Balance COALESCE Property-Based Tests', () => {
+  let sharedDb = null;
+
+  beforeAll(async () => {
+    // Create database once for all tests
+    sharedDb = await getTestDatabase();
+    await createTables(sharedDb);
+  });
+
+  afterAll(async () => {
+    // Close database after all tests
+    if (sharedDb) {
+      await closeDatabase(sharedDb);
+    }
+  });
+
+  beforeEach(async () => {
+    // Reset database between test iterations
+    if (sharedDb) {
+      await resetTestDatabase(sharedDb);
+    }
+  });
+
   beforeEach(() => {
     resetDisplayNameCounter();
   });
@@ -62,10 +86,9 @@ describe('PaymentMethodService - Balance COALESCE Property-Based Tests', () => {
         fc.float({ min: Math.fround(10), max: Math.fround(500), noNaN: true }).map(n => Math.round(n * 100) / 100),
         expenseType,
         async (displayName, transactionDate, amount, type) => {
-          const db = await createTestDatabase();
+          const db = sharedDb;
           
           try {
-            await createTables(db);
             const cardId = await insertCreditCard(db, displayName, 'Test Credit Card');
             
             await insertExpense(db, transactionDate, null, 'Test Place', amount, type, 1, displayName, cardId);
@@ -79,7 +102,7 @@ describe('PaymentMethodService - Balance COALESCE Property-Based Tests', () => {
             
             return true;
           } finally {
-            await closeDatabase(db);
+            // Database reset in beforeEach
           }
         }
       ),
@@ -96,10 +119,9 @@ describe('PaymentMethodService - Balance COALESCE Property-Based Tests', () => {
         fc.float({ min: Math.fround(10), max: Math.fround(500), noNaN: true }).map(n => Math.round(n * 100) / 100),
         expenseType,
         async (displayName, transactionDate, daysUntilPosting, amount, type) => {
-          const db = await createTestDatabase();
+          const db = sharedDb;
           
           try {
-            await createTables(db);
             const cardId = await insertCreditCard(db, displayName, 'Test Credit Card');
             
             const postedDate = addDays(transactionDate, daysUntilPosting);
@@ -113,7 +135,7 @@ describe('PaymentMethodService - Balance COALESCE Property-Based Tests', () => {
             
             return true;
           } finally {
-            await closeDatabase(db);
+            // Database reset in beforeEach
           }
         }
       ),
@@ -134,10 +156,9 @@ describe('PaymentMethodService - Balance COALESCE Property-Based Tests', () => {
         ),
         validDate,
         async (displayName, expenses, referenceDate) => {
-          const db = await createTestDatabase();
+          const db = sharedDb;
           
           try {
-            await createTables(db);
             const cardId = await insertCreditCard(db, displayName, 'Test Credit Card');
             
             for (const exp of expenses) {
@@ -153,7 +174,7 @@ describe('PaymentMethodService - Balance COALESCE Property-Based Tests', () => {
             
             return true;
           } finally {
-            await closeDatabase(db);
+            // Database reset in beforeEach
           }
         }
       ),
@@ -190,10 +211,9 @@ describe('PaymentMethodService - Balance Ordering Property-Based Tests', () => {
           { minLength: 0, maxLength: 2 }
         ),
         async (displayName, expenseConfigs, paymentConfigs) => {
-          const db = await createTestDatabase();
+          const db = sharedDb;
           
           try {
-            await createTables(db);
             const cardId = await insertCreditCard(db, displayName, 'Test Credit Card', 1, 28);
             
             const today = new Date();
@@ -230,7 +250,7 @@ describe('PaymentMethodService - Balance Ordering Property-Based Tests', () => {
             
             return true;
           } finally {
-            await closeDatabase(db);
+            // Database reset in beforeEach
           }
         }
       ),
@@ -267,10 +287,9 @@ describe('PaymentMethodService - Non-Negative Balance Property-Based Tests', () 
           { minLength: 1, maxLength: 3 }
         ),
         async (displayName, expenseConfigs, paymentConfigs) => {
-          const db = await createTestDatabase();
+          const db = sharedDb;
           
           try {
-            await createTables(db);
             const cardId = await insertCreditCard(db, displayName, 'Test Credit Card', 1, 28);
             
             const today = new Date();
@@ -308,7 +327,7 @@ describe('PaymentMethodService - Non-Negative Balance Property-Based Tests', () 
             
             return true;
           } finally {
-            await closeDatabase(db);
+            // Database reset in beforeEach
           }
         }
       ),
@@ -327,10 +346,9 @@ describe('PaymentMethodService - Non-Negative Balance Property-Based Tests', () 
           { minLength: 1, maxLength: 5 }
         ),
         async (displayName, paymentConfigs) => {
-          const db = await createTestDatabase();
+          const db = sharedDb;
           
           try {
-            await createTables(db);
             const cardId = await insertCreditCard(db, displayName, 'Test Credit Card', 1, 28);
             
             const today = new Date();
@@ -355,7 +373,7 @@ describe('PaymentMethodService - Non-Negative Balance Property-Based Tests', () 
             
             return true;
           } finally {
-            await closeDatabase(db);
+            // Database reset in beforeEach
           }
         }
       ),
@@ -385,10 +403,9 @@ describe('PaymentMethodService - Expense Count and Balance Consistency Property-
           amount: fc.float({ min: Math.fround(50), max: Math.fround(200), noNaN: true }).map(n => Math.round(n * 100) / 100)
         }),
         async (displayName, config) => {
-          const db = await createTestDatabase();
+          const db = sharedDb;
           
           try {
-            await createTables(db);
             const cardId = await insertCreditCard(db, displayName, 'Test Credit Card', 1, 28);
             
             const cycleStartDate = '2025-01-01';
@@ -423,7 +440,7 @@ describe('PaymentMethodService - Expense Count and Balance Consistency Property-
             
             return true;
           } finally {
-            await closeDatabase(db);
+            // Database reset in beforeEach
           }
         }
       ),
@@ -456,10 +473,9 @@ describe('PaymentMethodService - Effective Date Consistency Property-Based Tests
           { minLength: 1, maxLength: 10 }
         ),
         async (displayName, expenseConfigs) => {
-          const db = await createTestDatabase();
+          const db = sharedDb;
           
           try {
-            await createTables(db);
             const cardId = await insertCreditCard(db, displayName, 'Test Credit Card', 1, 28);
             
             const referenceDate = '2025-01-15';
@@ -501,7 +517,7 @@ describe('PaymentMethodService - Effective Date Consistency Property-Based Tests
             
             return true;
           } finally {
-            await closeDatabase(db);
+            // Database reset in beforeEach
           }
         }
       ),

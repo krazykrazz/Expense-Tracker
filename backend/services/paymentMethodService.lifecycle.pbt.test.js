@@ -24,6 +24,28 @@ const { getDatabase } = require('../database/db');
 const PAYMENT_METHOD_TYPES = ['cash', 'cheque', 'debit', 'credit_card'];
 
 describe('PaymentMethodService - Inactive Payment Methods Property Tests', () => {
+  let sharedDb = null;
+
+  beforeAll(async () => {
+    // Create database once for all tests
+    sharedDb = await getTestDatabase();
+    await createTables(sharedDb);
+  });
+
+  afterAll(async () => {
+    // Close database after all tests
+    if (sharedDb) {
+      await closeDatabase(sharedDb);
+    }
+  });
+
+  beforeEach(async () => {
+    // Reset database between test iterations
+    if (sharedDb) {
+      await resetTestDatabase(sharedDb);
+    }
+  });
+
   beforeEach(async () => {
     // Clean up tables in correct order (expenses first due to foreign key)
     const db = await getDatabase();

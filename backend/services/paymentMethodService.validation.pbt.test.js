@@ -20,6 +20,8 @@ const fc = require('fast-check');
 const { pbtOptions, safeString } = require('../test/pbtArbitraries');
 const paymentMethodService = require('./paymentMethodService');
 const {
+  getTestDatabase,
+  resetTestDatabase,
   createTestDatabase,
   closeDatabase,
   createTables,
@@ -44,6 +46,28 @@ const validCreditLimit = fc.option(
 );
 
 describe('PaymentMethodService - Required Fields Validation Property Tests', () => {
+  let sharedDb = null;
+
+  beforeAll(async () => {
+    // Create database once for all tests
+    sharedDb = await getTestDatabase();
+    await createTables(sharedDb);
+  });
+
+  afterAll(async () => {
+    // Close database after all tests
+    if (sharedDb) {
+      await closeDatabase(sharedDb);
+    }
+  });
+
+  beforeEach(async () => {
+    // Reset database between test iterations
+    if (sharedDb) {
+      await resetTestDatabase(sharedDb);
+    }
+  });
+
   /**
    * Feature: credit-card-statement-balance, Property 1: Required Fields Validation
    * **Validates: Requirements 1.1, 1.2, 1.5**
@@ -303,11 +327,9 @@ describe('PaymentMethodService - Display Name Uniqueness Property Tests', () => 
         fc.constantFrom(...PAYMENT_METHOD_TYPES),
         fc.constantFrom(...PAYMENT_METHOD_TYPES),
         async (displayName, type1, type2) => {
-          const db = await createTestDatabase();
+          const db = sharedDb;
           
           try {
-            await createTables(db);
-            
             const firstPaymentMethod = {
               type: type1,
               display_name: displayName,
@@ -337,7 +359,7 @@ describe('PaymentMethodService - Display Name Uniqueness Property Tests', () => 
             
             return true;
           } finally {
-            await closeDatabase(db);
+            // Database reset in beforeEach
           }
         }
       ),
@@ -356,11 +378,9 @@ describe('PaymentMethodService - Display Name Uniqueness Property Tests', () => 
             return true;
           }
           
-          const db = await createTestDatabase();
+          const db = sharedDb;
           
           try {
-            await createTables(db);
-            
             const firstId = await insertPaymentMethod(db, type, displayName1, type === 'credit_card' ? 'Test Card 1' : null);
             expect(firstId).toBeGreaterThan(0);
             
@@ -376,7 +396,7 @@ describe('PaymentMethodService - Display Name Uniqueness Property Tests', () => 
             
             return true;
           } finally {
-            await closeDatabase(db);
+            // Database reset in beforeEach
           }
         }
       ),

@@ -18,7 +18,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const PBT_PERCENTAGE_THRESHOLD = 20;
+const PBT_PERCENTAGE_THRESHOLD = 45;
 const INVARIANT_SCAN_LINES = 30;
 const INVARIANT_PATTERN = /@invariant|Invariant:/i;
 

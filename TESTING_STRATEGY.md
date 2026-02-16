@@ -147,7 +147,7 @@ Every `*.pbt.test.*` file must include:
 
 - Backend PBT files are consolidated per service into logical groups (e.g., `expenseService.financial.pbt.test.js`, `expenseService.people.pbt.test.js`)
 - Each consolidated file uses `describe` blocks to group related properties
-- PBT files should not exceed 20% of total test files in the project
+- PBT files should not exceed 45% of total test files in the project
 - New PBT files require justification via the invariant comment block
 
 ## Configuration

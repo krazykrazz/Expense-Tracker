@@ -8,10 +8,12 @@
  * - reminderService.autoGenNotification.pbt.test.js
  * 
  * **Validates: Requirements 1.3, 1.4, 2.1, 2.2, 2.4, 3.1, 3.2, 3.3, 3.4, 3.5, 4.1, 4.2, 4.3, 5.2, 5.3, 7.4, 7.5, 7.6**
+  *
+ * @invariant Domain-Specific Reminder Rules: For any combination of billing cycles, loan payments, insurance claims, and auto-generated notifications, each domain applies its specific reminder logic correctly; reminders are generated only when actionable conditions are met. Randomization covers diverse domain configurations and timing scenarios.
  */
 
 const fc = require('fast-check');
-const { pbtOptions, dbPbtOptions, calculatePreviousCycleDates } = require('../test/pbtArbitraries');
+const { dbPbtOptions, calculatePreviousCycleDates } = require('../test/pbtArbitraries');
 const sqlite3 = require('sqlite3').verbose();
 
 // Mock activity log service
@@ -1236,7 +1238,7 @@ describe('Reminder Service - Loan Payment Reminders - Property-Based Tests', () 
           return true;
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 });
@@ -1319,7 +1321,7 @@ describe('Reminder Service - Insurance Claims Property-Based Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -1392,7 +1394,7 @@ describe('Reminder Service - Insurance Claims Property-Based Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -1461,7 +1463,7 @@ describe('Reminder Service - Insurance Claims Property-Based Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 });
@@ -1555,7 +1557,7 @@ describe('Reminder Service - API Response Structure Property-Based Tests', () =>
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -1595,7 +1597,7 @@ describe('Reminder Service - API Response Structure Property-Based Tests', () =>
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 });
@@ -1708,7 +1710,7 @@ describe('ReminderService Auto-Generated Cycle Notifications - Property Tests', 
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -1746,7 +1748,7 @@ describe('ReminderService Auto-Generated Cycle Notifications - Property Tests', 
           expect(result.cycles).toEqual([]);
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -1783,7 +1785,7 @@ describe('ReminderService Auto-Generated Cycle Notifications - Property Tests', 
           expect(result.cycles[0].cycleEndDate).toBe('2026-02-15');
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -1857,7 +1859,7 @@ describe('ReminderService Auto-Generated Cycle Notifications - Property Tests', 
           expect(result.needsEntryCount).toBe(0);
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -1897,7 +1899,7 @@ describe('ReminderService Auto-Generated Cycle Notifications - Property Tests', 
           expect(result.needsEntryCount).toBe(1);
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 });

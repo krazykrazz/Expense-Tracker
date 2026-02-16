@@ -8,6 +8,8 @@
  * records are authoritative for alert suppression.
  * 
  * **Validates: Requirements 1.1, 1.2, 1.3, 1.4**
+  *
+ * @invariant Record Classification: For any billing cycle record, the is_user_entered flag correctly distinguishes between manually entered and auto-generated records; this classification determines which records are authoritative for alert suppression. Randomization covers diverse flag combinations and record sources.
  */
 
 const fc = require('fast-check');

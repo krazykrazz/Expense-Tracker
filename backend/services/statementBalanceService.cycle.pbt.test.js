@@ -4,6 +4,8 @@
  * 
  * **Property 7: Billing Cycle Date Calculation**
  * **Validates: Requirements 3.3**
+  *
+ * @invariant Billing Cycle Date Calculation: For any billing_cycle_day (1-31) and reference date, the previous billing cycle start and end dates are calculated correctly with proper month boundary handling. Randomization covers diverse day-of-month values and reference dates including month-end edge cases.
  */
 
 const fc = require('fast-check');

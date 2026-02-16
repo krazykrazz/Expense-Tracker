@@ -17,7 +17,7 @@
  */
 
 const fc = require('fast-check');
-const { pbtOptions } = require('../test/pbtArbitraries');
+const { dbPbtOptions } = require('../test/pbtArbitraries');
 const expenseService = require('./expenseService');
 const expenseRepository = require('../repositories/expenseRepository');
 const paymentMethodRepository = require('../repositories/paymentMethodRepository');
@@ -125,7 +125,7 @@ describe('ExpenseService - Filtering Operations PBT', () => {
             }
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     }, 120000); // 2 minute timeout
   });
@@ -233,7 +233,7 @@ describe('ExpenseService - Filtering Operations PBT', () => {
             }
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     }, 120000); // 2 minute timeout
 
@@ -310,7 +310,7 @@ describe('ExpenseService - Filtering Operations PBT', () => {
             }
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     }, 120000); // 2 minute timeout
   });
@@ -439,7 +439,7 @@ describe('ExpenseService - Filtering Operations PBT', () => {
             expect(report.medicalTotal).toBeCloseTo(expectedMedicalTotal, 2);
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
 
@@ -534,7 +534,7 @@ describe('ExpenseService - Filtering Operations PBT', () => {
             expect(report.medicalTotal).toBeCloseTo(expectedMedicalTotal, 2);
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
 
@@ -601,7 +601,7 @@ describe('ExpenseService - Filtering Operations PBT', () => {
             expect(sumOfAllocations).toBeCloseTo(totalAmount, 2);
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
   });

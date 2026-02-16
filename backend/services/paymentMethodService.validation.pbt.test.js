@@ -17,7 +17,7 @@
  */
 
 const fc = require('fast-check');
-const { pbtOptions, safeString } = require('../test/pbtArbitraries');
+const { dbPbtOptions, safeString } = require('../test/pbtArbitraries');
 const paymentMethodService = require('./paymentMethodService');
 const {
   getTestDatabase,
@@ -96,7 +96,7 @@ describe('PaymentMethodService - Required Fields Validation Property Tests', () 
           return true;
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -124,7 +124,7 @@ describe('PaymentMethodService - Required Fields Validation Property Tests', () 
           return true;
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -154,7 +154,7 @@ describe('PaymentMethodService - Required Fields Validation Property Tests', () 
           return true;
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -179,7 +179,7 @@ describe('PaymentMethodService - Required Fields Validation Property Tests', () 
           return true;
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   }, 120000);
 });
@@ -216,7 +216,7 @@ describe('PaymentMethodService - Range Validation Property Tests', () => {
           return true;
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -247,7 +247,7 @@ describe('PaymentMethodService - Range Validation Property Tests', () => {
           return true;
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -277,7 +277,7 @@ describe('PaymentMethodService - Range Validation Property Tests', () => {
           return true;
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -306,13 +306,29 @@ describe('PaymentMethodService - Range Validation Property Tests', () => {
           return true;
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   }, 120000);
 });
 
 describe('PaymentMethodService - Display Name Uniqueness Property Tests', () => {
-  beforeEach(() => {
+  let sharedDb = null;
+
+  beforeAll(async () => {
+    sharedDb = await getTestDatabase();
+    await createTables(sharedDb);
+  });
+
+  afterAll(async () => {
+    if (sharedDb) {
+      await closeDatabase(sharedDb);
+    }
+  });
+
+  beforeEach(async () => {
+    if (sharedDb) {
+      await resetTestDatabase(sharedDb);
+    }
     resetDisplayNameCounter();
   });
 
@@ -363,7 +379,7 @@ describe('PaymentMethodService - Display Name Uniqueness Property Tests', () => 
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -400,7 +416,7 @@ describe('PaymentMethodService - Display Name Uniqueness Property Tests', () => 
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -430,7 +446,7 @@ describe('PaymentMethodService - Display Name Uniqueness Property Tests', () => 
           return true;
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -455,7 +471,7 @@ describe('PaymentMethodService - Display Name Uniqueness Property Tests', () => 
           return true;
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   }, 120000);
 });

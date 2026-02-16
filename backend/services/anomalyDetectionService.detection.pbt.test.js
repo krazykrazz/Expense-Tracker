@@ -5,10 +5,12 @@
  * - anomalyDetectionService.amountAnomaly.pbt.test.js
  * - anomalyDetectionService.dailyAnomaly.pbt.test.js
  * - anomalyDetectionService.newMerchant.pbt.test.js
+  *
+ * @invariant Anomaly Detection Thresholds: For any expense amount relative to historical spending, anomalies are flagged when the amount exceeds the configured standard deviation threshold; daily spending anomalies and new merchant detections follow consistent rules. Randomization covers diverse spending histories and amount distributions.
  */
 
 const fc = require('fast-check');
-const { pbtOptions, safeAmount, paymentMethod, weekNumber } = require('../test/pbtArbitraries');
+const { dbPbtOptions, safeAmount, paymentMethod, weekNumber } = require('../test/pbtArbitraries');
 
 // Mock activity log service
 jest.mock('./activityLogService');
@@ -151,7 +153,7 @@ describe('AnomalyDetectionService - Amount Anomaly Detection Property Tests', ()
           expect(foundAnomaly.standardDeviations).toBeGreaterThan(ANALYTICS_CONFIG.ANOMALY_STD_DEVIATIONS);
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -198,7 +200,7 @@ describe('AnomalyDetectionService - Amount Anomaly Detection Property Tests', ()
           expect(amountAnomalies.length).toBe(0);
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -402,7 +404,7 @@ describe('AnomalyDetectionService - Daily Total Anomaly Detection Property Tests
           expect(foundAnomaly.anomalyType).toBe(ANOMALY_TYPES.DAILY_TOTAL);
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -444,7 +446,7 @@ describe('AnomalyDetectionService - Daily Total Anomaly Detection Property Tests
           expect(dailyAnomalies.length).toBe(0);
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -642,7 +644,7 @@ describe('AnomalyDetectionService - New Merchant Anomaly Detection Property Test
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -697,7 +699,7 @@ describe('AnomalyDetectionService - New Merchant Anomaly Detection Property Test
           expect(merchantAnomalies.length).toBe(0);
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -752,7 +754,7 @@ describe('AnomalyDetectionService - New Merchant Anomaly Detection Property Test
           expect(merchantAnomalies.length).toBe(0);
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 

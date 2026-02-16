@@ -23,7 +23,7 @@
  */
 
 const fc = require('fast-check');
-const { pbtOptions, safeAmount, safePlaceName } = require('../test/pbtArbitraries');
+const { dbPbtOptions, safeAmount, safePlaceName } = require('../test/pbtArbitraries');
 const expenseService = require('./expenseService');
 const expensePeopleService = require('./expensePeopleService');
 const peopleService = require('./peopleService');
@@ -126,7 +126,7 @@ describe('ExpenseService - People Allocation and Tracking PBT', () => {
             }).toThrow(/Total allocated amount .* must equal expense amount/);
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
 
@@ -147,7 +147,7 @@ describe('ExpenseService - People Allocation and Tracking PBT', () => {
             }).toThrow(/Each allocation amount must be a positive number/);
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
 
@@ -167,7 +167,7 @@ describe('ExpenseService - People Allocation and Tracking PBT', () => {
             }).toThrow(/Each allocation amount must be a positive number/);
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
 
@@ -188,7 +188,7 @@ describe('ExpenseService - People Allocation and Tracking PBT', () => {
             }).toThrow(/Cannot allocate to the same person multiple times/);
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
 
@@ -204,7 +204,7 @@ describe('ExpenseService - People Allocation and Tracking PBT', () => {
             }).toThrow(/At least one person allocation is required/);
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
 
@@ -229,7 +229,7 @@ describe('ExpenseService - People Allocation and Tracking PBT', () => {
             }).toThrow(/Each allocation must have a valid personId/);
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
 
@@ -250,7 +250,7 @@ describe('ExpenseService - People Allocation and Tracking PBT', () => {
             }).not.toThrow();
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
 
@@ -279,7 +279,7 @@ describe('ExpenseService - People Allocation and Tracking PBT', () => {
             // If the amount gets rounded, the property holds vacuously (test passes)
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
   });
@@ -318,7 +318,7 @@ describe('ExpenseService - People Allocation and Tracking PBT', () => {
             expect(allocations.length).toBe(1);
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
 
@@ -345,7 +345,7 @@ describe('ExpenseService - People Allocation and Tracking PBT', () => {
             }).toThrow(/Total allocated amount .* must equal expense amount/);
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
 
@@ -372,7 +372,7 @@ describe('ExpenseService - People Allocation and Tracking PBT', () => {
             }).toThrow(/Total allocated amount .* must equal expense amount/);
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
 
@@ -402,7 +402,7 @@ describe('ExpenseService - People Allocation and Tracking PBT', () => {
             }).toThrow(/Each allocation must have a valid personId/);
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
 
@@ -432,7 +432,7 @@ describe('ExpenseService - People Allocation and Tracking PBT', () => {
             }).toThrow(); // Should throw some validation error
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
 
@@ -458,7 +458,7 @@ describe('ExpenseService - People Allocation and Tracking PBT', () => {
             }).not.toThrow();
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
 
@@ -481,7 +481,7 @@ describe('ExpenseService - People Allocation and Tracking PBT', () => {
             }).toThrow(/Allocation amounts must have at most 2 decimal places/);
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
   });
@@ -640,7 +640,7 @@ describe('ExpenseService - People Allocation and Tracking PBT', () => {
             expect(persistedPeople[0].amount).toBe(amount);
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     }, 120000);
   });

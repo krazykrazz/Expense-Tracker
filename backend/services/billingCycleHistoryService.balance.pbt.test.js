@@ -4,10 +4,12 @@
  * Consolidated from:
  * - billingCycleHistoryService.balanceFormula.pbt.test.js
  * - billingCycleHistoryService.crossPath.pbt.test.js
+  *
+ * @invariant Balance Formula Consistency: For any billing cycle with expenses and payments, the calculated balance follows the formula: previous_balance + new_charges - payments; cross-path verification ensures different calculation paths produce identical results. Randomization covers diverse charge and payment combinations.
  */
 
 const fc = require('fast-check');
-const { pbtOptions, dbPbtOptions } = require('../test/pbtArbitraries');
+const { dbPbtOptions } = require('../test/pbtArbitraries');
 const sqlite3 = require('sqlite3').verbose();
 
 // Mock database and services
@@ -135,7 +137,7 @@ describe('BillingCycleHistoryService - Balance Formula Correctness (Property 1)'
           expect(result).toBe(expected);
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -187,7 +189,7 @@ describe('BillingCycleHistoryService - Balance Formula Correctness (Property 1)'
           expect(result).toBe(0);
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -225,7 +227,7 @@ describe('BillingCycleHistoryService - Balance Formula Correctness (Property 1)'
           expect(result).toBe(expected);
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 });
@@ -338,7 +340,7 @@ describe('BillingCycleHistoryService - Cross-Path Consistency (Property 4)', () 
           expect(autoGenResult).toBe(recalcResult);
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -366,7 +368,7 @@ describe('BillingCycleHistoryService - Cross-Path Consistency (Property 4)', () 
           expect(autoGenResult).toBe(0);
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -394,7 +396,7 @@ describe('BillingCycleHistoryService - Cross-Path Consistency (Property 4)', () 
           expect(autoGenResult).toBe(expected);
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 });

@@ -5,6 +5,8 @@
  * Using fast-check library for property-based testing
  * 
  * **Validates: Requirements 6.1**
+  *
+ * @invariant Activity Logging Per Cycle: For any billing cycle processing run, each processed cycle generates exactly one activity log entry with correct metadata. Randomization covers diverse card counts and cycle configurations.
  */
 
 const fc = require('fast-check');

@@ -4,10 +4,12 @@
  * Consolidated from:
  * - billingCycleHistoryService.chronological.pbt.test.js
  * - billingCycleHistoryService.trend.pbt.test.js
+  *
+ * @invariant Chronological Ordering: For any set of billing cycle history entries, retrieval returns them in chronological order; trend indicators correctly reflect balance direction between consecutive cycles. Randomization covers diverse date distributions and balance sequences.
  */
 
 const fc = require('fast-check');
-const { pbtOptions, dbPbtOptions } = require('../test/pbtArbitraries');
+const { dbPbtOptions } = require('../test/pbtArbitraries');
 const sqlite3 = require('sqlite3').verbose();
 
 // Mock activity log service
@@ -196,7 +198,7 @@ describe('BillingCycleHistoryService - Chronological Processing Order (Property 
           getMissingSpy.mockRestore();
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -289,7 +291,7 @@ describe('BillingCycleHistoryService - Chronological Processing Order (Property 
           getMissingSpy.mockRestore();
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 });
@@ -332,7 +334,7 @@ describe('BillingCycleHistoryService - Trend Indicator Property Tests', () => {
           return true;
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -364,7 +366,7 @@ describe('BillingCycleHistoryService - Trend Indicator Property Tests', () => {
           return true;
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -396,7 +398,7 @@ describe('BillingCycleHistoryService - Trend Indicator Property Tests', () => {
           return true;
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -424,7 +426,7 @@ describe('BillingCycleHistoryService - Trend Indicator Property Tests', () => {
           return true;
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 

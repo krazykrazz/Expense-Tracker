@@ -7,6 +7,8 @@
  * For any array of medical expense objects, calling
  * expenseTaxService.calculateInsuranceSummary(expenses) should return a result
  * deeply equal to the original ExpenseService._calculateInsuranceSummary(expenses).
+  *
+ * @invariant Insurance Summary Equivalence: For any array of medical expense objects, the refactored expenseTaxService.calculateInsuranceSummary produces results deeply equal to the original implementation. Randomization covers diverse expense arrays with varied claim statuses and amounts.
  */
 const fc = require('fast-check');
 const { pbtOptions, safeAmount } = require('../test/pbtArbitraries');

@@ -16,7 +16,7 @@ const fc = require('fast-check');
 const activityLogService = require('./activityLogService');
 const activityLogRepository = require('../repositories/activityLogRepository');
 const { getDatabase } = require('../database/db');
-const { safeString, safeAmount, dbPbtOptions, pbtOptions } = require('../test/pbtArbitraries');
+const { safeString, safeAmount, dbPbtOptions } = require('../test/pbtArbitraries');
 
 describe('activityLogService - Data Properties', () => {
   let db;
@@ -239,7 +239,7 @@ describe('activityLogService - Data Properties', () => {
             expect(result.events).toHaveLength(0);
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
 
@@ -259,7 +259,7 @@ describe('activityLogService - Data Properties', () => {
             expect(result.events).toHaveLength(0);
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
 
@@ -279,7 +279,7 @@ describe('activityLogService - Data Properties', () => {
             expect(result.events).toHaveLength(0);
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
 
@@ -305,7 +305,7 @@ describe('activityLogService - Data Properties', () => {
             expect(event.user_action).toBe(userAction);
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
 
@@ -330,7 +330,7 @@ describe('activityLogService - Data Properties', () => {
             expect(event.user_action).toBe(userAction);
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
 
@@ -351,7 +351,7 @@ describe('activityLogService - Data Properties', () => {
             expect(result.events).toHaveLength(0);
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
   });
@@ -476,7 +476,7 @@ describe('activityLogService - Data Properties', () => {
             expect(activityLogRepository.insert).toHaveBeenCalled();
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
 
@@ -519,7 +519,7 @@ describe('activityLogService - Data Properties', () => {
             expect(result.events[0].event_type).toBe(successEventType);
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
 
@@ -542,7 +542,7 @@ describe('activityLogService - Data Properties', () => {
             ).resolves.not.toThrow();
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
 
@@ -568,7 +568,7 @@ describe('activityLogService - Data Properties', () => {
             expect(result.events).toHaveLength(0);
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
 
@@ -601,7 +601,7 @@ describe('activityLogService - Data Properties', () => {
             expect(mainFlowCompleted).toBe(true);
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
 
@@ -643,7 +643,7 @@ describe('activityLogService - Data Properties', () => {
             expect(result.events).toHaveLength(0);
           }
         ),
-        pbtOptions({ numRuns: 10 }) // Fewer runs due to concurrency
+        dbPbtOptions({ numRuns: 10 }) // Fewer runs due to concurrency
       );
     });
   });

@@ -1,5 +1,9 @@
+/**
+ * @invariant Suggestion Accuracy: For any place name with historical expense data, the category suggestion returns the most frequently used category for that place; places with no history return no suggestion. Randomization covers diverse place names and category frequency distributions.
+ */
+
 const fc = require('fast-check');
-const { pbtOptions } = require('../test/pbtArbitraries');
+const { dbPbtOptions } = require('../test/pbtArbitraries');
 const categorySuggestionService = require('./categorySuggestionService');
 const { getDatabase } = require('../database/db');
 const { CATEGORIES } = require('../utils/categories');
@@ -124,7 +128,7 @@ describe('CategorySuggestionService - Property-Based Tests', () => {
           expect(suggestion.confidence).toBe(0.5);
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   }, 120000);
 
@@ -147,7 +151,7 @@ describe('CategorySuggestionService - Property-Based Tests', () => {
           expect(suggestion).toBeNull();
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   }, 60000);
 

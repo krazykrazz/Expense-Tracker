@@ -15,7 +15,7 @@
  */
 
 const fc = require('fast-check');
-const { pbtOptions, safeAmount, paymentMethod, expenseType, weekNumber } = require('../test/pbtArbitraries');
+const { dbPbtOptions, safeAmount, paymentMethod, expenseType, weekNumber } = require('../test/pbtArbitraries');
 const spendingPatternsService = require('./spendingPatternsService');
 const { getDatabase } = require('../database/db');
 const { ANALYTICS_CONFIG } = require('../utils/analyticsConstants');
@@ -168,7 +168,7 @@ describe('SpendingPatternsService - Data Quality Property Tests', () => {
             expect(result.missingDataMessage).not.toBeNull();
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
 
@@ -216,7 +216,7 @@ describe('SpendingPatternsService - Data Quality Property Tests', () => {
             expect(result.missingDataMessage).toBeNull();
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
 
@@ -284,7 +284,7 @@ describe('SpendingPatternsService - Data Quality Property Tests', () => {
             expect(result.dataQualityScore).toBeLessThanOrEqual(100);
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
   });
@@ -343,7 +343,7 @@ describe('SpendingPatternsService - Data Quality Property Tests', () => {
             expect(Math.abs(merchantPattern.averageAmount - expectedAverage)).toBeLessThan(0.01);
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
 
@@ -389,7 +389,7 @@ describe('SpendingPatternsService - Data Quality Property Tests', () => {
             expect(Math.abs(merchantPattern.amountVariance.max - expectedMax)).toBeLessThan(0.01);
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
 
@@ -432,7 +432,7 @@ describe('SpendingPatternsService - Data Quality Property Tests', () => {
             expect(merchantPattern.averageAmount).toBeLessThanOrEqual(merchantPattern.amountVariance.max);
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
   });

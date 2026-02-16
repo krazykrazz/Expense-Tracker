@@ -1,3 +1,7 @@
+/**
+ * @invariant Change Indicator Logic: For any numeric value change, the indicator shows up-arrow for positive, down-arrow for negative, and dash for zero; the logic is purely determined by the sign of the change. Randomization covers the full range of positive, negative, and zero values.
+ */
+
 import { describe, it, expect } from 'vitest';
 import * as fc from 'fast-check';
 

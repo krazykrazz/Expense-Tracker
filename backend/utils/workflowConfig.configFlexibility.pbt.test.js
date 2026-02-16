@@ -7,6 +7,11 @@
  * For any workflow execution, configurable parameters (health check timeout,
  * retry count) should be respected, and the system should use sensible
  * defaults when parameters are not provided.
+ *
+ * @invariant Configuration Flexibility: For any workflow configuration, user-provided numeric
+ * parameters override defaults; missing or invalid parameters fall back to sensible defaults;
+ * the resolved configuration is always valid and within acceptable bounds. Randomization covers
+ * diverse parameter combinations including nulls, negatives, and extreme values.
  */
 
 const fc = require('fast-check');

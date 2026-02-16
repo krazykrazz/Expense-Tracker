@@ -19,7 +19,7 @@
  */
 
 const fc = require('fast-check');
-const { pbtOptions, safeAmount, safePlaceName } = require('../test/pbtArbitraries');
+const { dbPbtOptions, safeAmount, safePlaceName } = require('../test/pbtArbitraries');
 const expenseService = require('./expenseService');
 const expenseInsuranceService = require('./expenseInsuranceService');
 const { getDatabase } = require('../database/db');
@@ -59,7 +59,7 @@ describe('ExpenseService - Insurance Claims and Reimbursement PBT', () => {
             }).not.toThrow();
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
 
@@ -76,7 +76,7 @@ describe('ExpenseService - Insurance Claims and Reimbursement PBT', () => {
             }).not.toThrow();
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
 
@@ -94,7 +94,7 @@ describe('ExpenseService - Insurance Claims and Reimbursement PBT', () => {
             }).toThrow(/Claim status must be one of/);
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
 
@@ -128,7 +128,7 @@ describe('ExpenseService - Insurance Claims and Reimbursement PBT', () => {
             }).not.toThrow();
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
 
@@ -145,7 +145,7 @@ describe('ExpenseService - Insurance Claims and Reimbursement PBT', () => {
             }).not.toThrow();
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
 
@@ -163,7 +163,7 @@ describe('ExpenseService - Insurance Claims and Reimbursement PBT', () => {
             }).toThrow();
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
   });
@@ -194,7 +194,7 @@ describe('ExpenseService - Insurance Claims and Reimbursement PBT', () => {
         const subServiceResult = expenseInsuranceService.applyInsuranceDefaults(data);
         const facadeResult = expenseService._applyInsuranceDefaults(data);
         expect(subServiceResult).toEqual(facadeResult);
-      }), pbtOptions({ numRuns: 200 }));
+      }), dbPbtOptions({ numRuns: 200 }));
     });
   });
 
@@ -221,7 +221,7 @@ describe('ExpenseService - Insurance Claims and Reimbursement PBT', () => {
             }).not.toThrow();
           }
         ),
-        pbtOptions({ numRuns: 100 })
+        dbPbtOptions({ numRuns: 100 })
       );
     });
 
@@ -239,7 +239,7 @@ describe('ExpenseService - Insurance Claims and Reimbursement PBT', () => {
             }).toThrow('Reimbursement cannot exceed the expense amount');
           }
         ),
-        pbtOptions({ numRuns: 100 })
+        dbPbtOptions({ numRuns: 100 })
       );
     });
 
@@ -257,7 +257,7 @@ describe('ExpenseService - Insurance Claims and Reimbursement PBT', () => {
             }).toThrow('Reimbursement must be a non-negative number');
           }
         ),
-        pbtOptions({ numRuns: 100 })
+        dbPbtOptions({ numRuns: 100 })
       );
     });
 
@@ -283,7 +283,7 @@ describe('ExpenseService - Insurance Claims and Reimbursement PBT', () => {
             }).not.toThrow();
           }
         ),
-        pbtOptions({ numRuns: 100 })
+        dbPbtOptions({ numRuns: 100 })
       );
     });
   });
@@ -363,7 +363,7 @@ describe('ExpenseService - Insurance Claims and Reimbursement PBT', () => {
             }
           }
         ),
-        pbtOptions({ numRuns: 50 })
+        dbPbtOptions({ numRuns: 50 })
       );
     }, 60000);
 
@@ -400,7 +400,7 @@ describe('ExpenseService - Insurance Claims and Reimbursement PBT', () => {
             }
           }
         ),
-        pbtOptions({ numRuns: 50 })
+        dbPbtOptions({ numRuns: 50 })
       );
     }, 60000);
   });

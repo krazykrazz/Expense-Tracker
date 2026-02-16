@@ -1,3 +1,7 @@
+/**
+ * @invariant Budget Alert Thresholds: For any budget utilization percentage, the correct alert level is displayed (warning 80-89%, danger 90-99%, critical >=100%); no alert shows below 80%. Randomization covers diverse spending and budget amount combinations.
+ */
+
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, cleanup, act } from '@testing-library/react';
 import * as fc from 'fast-check';

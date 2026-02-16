@@ -1,5 +1,5 @@
 const fc = require('fast-check');
-const { pbtOptions, dbPbtOptions } = require('../test/pbtArbitraries');
+const { dbPbtOptions } = require('../test/pbtArbitraries');
 const merchantAnalyticsService = require('./merchantAnalyticsService');
 const { getDatabase } = require('../database/db');
 

@@ -1,10 +1,12 @@
 /**
  * Property-Based Tests for Investment Service
  * Using fast-check library for property-based testing
+  *
+ * @invariant Investment CRUD Round-Trip: For any valid investment data, creating and reading it returns equivalent records; investment types are preserved; deletion removes the record completely. Randomization covers diverse investment names, types, and value configurations.
  */
 
 const fc = require('fast-check');
-const { pbtOptions } = require('../test/pbtArbitraries');
+const { dbPbtOptions } = require('../test/pbtArbitraries');
 const sqlite3 = require('sqlite3').verbose();
 
 // Helper function to create an in-memory test database
@@ -237,7 +239,7 @@ describe('Investment Service - Property-Based Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -296,7 +298,7 @@ describe('Investment Service - Property-Based Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 });

@@ -1,5 +1,5 @@
 const fc = require('fast-check');
-const { pbtOptions, dbPbtOptions } = require('../test/pbtArbitraries');
+const { dbPbtOptions } = require('../test/pbtArbitraries');
 const merchantAnalyticsService = require('./merchantAnalyticsService');
 const { getDatabase } = require('../database/db');
 
@@ -162,7 +162,7 @@ describe('MerchantAnalyticsService - Statistics Calculation Property Tests', () 
             expect(Math.abs(percentageTotal - 100)).toBeLessThan(1);
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
   });
@@ -244,7 +244,7 @@ describe('MerchantAnalyticsService - Statistics Calculation Property Tests', () 
             expect(details.lastVisit).toBe(testData.dates[testData.dates.length - 1]);
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
   });
@@ -495,7 +495,7 @@ describe('MerchantAnalyticsService - Statistics Calculation Property Tests', () 
             }
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
   });

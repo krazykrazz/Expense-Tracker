@@ -15,10 +15,11 @@
  */
 
 const fc = require('fast-check');
-const { pbtOptions, safeString } = require('../test/pbtArbitraries');
+const { dbPbtOptions, safeString } = require('../test/pbtArbitraries');
 const paymentMethodService = require('./paymentMethodService');
 const paymentMethodRepository = require('../repositories/paymentMethodRepository');
 const { getDatabase } = require('../database/db');
+const { getTestDatabase, createTables, resetTestDatabase, closeDatabase, insertPaymentMethod } = require('../test/paymentMethodPbtHelpers');
 
 // Valid payment method types
 const PAYMENT_METHOD_TYPES = ['cash', 'cheque', 'debit', 'credit_card'];
@@ -133,7 +134,7 @@ describe('PaymentMethodService - Inactive Payment Methods Property Tests', () =>
           return true;
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -173,7 +174,7 @@ describe('PaymentMethodService - Inactive Payment Methods Property Tests', () =>
           return true;
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -224,7 +225,7 @@ describe('PaymentMethodService - Inactive Payment Methods Property Tests', () =>
           return true;
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -264,7 +265,7 @@ describe('PaymentMethodService - Inactive Payment Methods Property Tests', () =>
           return true;
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -333,7 +334,7 @@ describe('PaymentMethodService - Inactive Payment Methods Property Tests', () =>
           return true;
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 });

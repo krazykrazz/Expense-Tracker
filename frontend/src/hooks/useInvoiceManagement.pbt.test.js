@@ -1,3 +1,7 @@
+/**
+ * @invariant Error Handling Consistency: For any async invoice operation that throws an error, the error handler logs a context-specific message; the hook state remains consistent after errors. Randomization covers diverse error types and operation sequences.
+ */
+
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import * as fc from 'fast-check';

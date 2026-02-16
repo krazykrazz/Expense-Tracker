@@ -7,6 +7,8 @@
  * SHALL be visible if and only if the selected payment method has type 'credit_card'.
  * 
  * Validates: Requirements 1.1, 6.1, 6.4, 6.5
+  *
+ * @invariant Posted Date Visibility: For any payment method selection, the posted_date field is visible if and only if the selected payment method has type credit_card. Randomization covers diverse payment method configurations.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';

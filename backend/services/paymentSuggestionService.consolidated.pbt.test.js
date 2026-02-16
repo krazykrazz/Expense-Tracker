@@ -195,6 +195,57 @@ function insertLoanPayment(db, loanId, amount, paymentDate, notes = null) {
   });
 }
 
+// Helper to insert a mortgage directly
+function insertMortgage(db, mortgage) {
+  return new Promise((resolve, reject) => {
+    const sql = `
+      INSERT INTO loans (name, initial_balance, start_date, notes, loan_type, amortization_period, term_length)
+      VALUES (?, ?, ?, ?, 'mortgage', ?, ?)
+    `;
+
+    const params = [
+      mortgage.name,
+      mortgage.initial_balance,
+      mortgage.start_date,
+      mortgage.notes || null,
+      mortgage.amortization_period || 25,
+      mortgage.term_length || 5
+    ];
+
+    db.run(sql, params, function(err) {
+      if (err) {
+        reject(err);
+        return;
+      }
+      resolve({ id: this.lastID, ...mortgage, loan_type: 'mortgage' });
+    });
+  });
+}
+
+// Helper to insert a mortgage payment entry (payment amount configuration)
+function insertMortgagePayment(db, mortgageId, paymentAmount, effectiveDate, notes = null) {
+  return new Promise((resolve, reject) => {
+    const sql = `
+      INSERT INTO mortgage_payments (loan_id, payment_amount, effective_date, notes)
+      VALUES (?, ?, ?, ?)
+    `;
+
+    db.run(sql, [mortgageId, paymentAmount, effectiveDate, notes], function(err) {
+      if (err) {
+        reject(err);
+        return;
+      }
+      resolve({
+        id: this.lastID,
+        loan_id: mortgageId,
+        payment_amount: paymentAmount,
+        effective_date: effectiveDate,
+        notes
+      });
+    });
+  });
+}
+
 // Arbitrary for a valid loan (not mortgage)
 const loanArb = fc.record({
   name: safeString({ minLength: 1, maxLength: 50 }),
@@ -202,6 +253,16 @@ const loanArb = fc.record({
   start_date: fc.constant('2020-01-01'),
   notes: fc.option(safeString({ maxLength: 200 }), { nil: null }),
   loan_type: fc.constant('loan') // Regular loan, not mortgage
+});
+
+// Arbitrary for a valid mortgage
+const mortgageArb = fc.record({
+  name: safeString({ minLength: 1, maxLength: 50 }),
+  initial_balance: safeAmount({ min: 100000, max: 1000000 }),
+  start_date: fc.constant('2020-01-01'),
+  notes: fc.option(safeString({ maxLength: 200 }), { nil: null }),
+  amortization_period: fc.integer({ min: 15, max: 30 }),
+  term_length: fc.integer({ min: 1, max: 10 })
 });
 
 // Arbitrary for a positive payment amount
@@ -218,32 +279,21 @@ const paymentDateArb = fc.record({
   return `${year}-${monthStr}-${dayStr}`;
 });
 
+// Arbitrary for an effective date (past date)
+const effectiveDateArb = fc.record({
+  year: fc.integer({ min: 2020, max: 2024 }),
+  month: fc.integer({ min: 1, max: 12 }),
+  day: fc.integer({ min: 1, max: 28 })
+}).map(({ year, month, day }) => {
+  const monthStr = month.toString().padStart(2, '0');
+  const dayStr = day.toString().padStart(2, '0');
+  return `${year}-${monthStr}-${dayStr}`;
+});
+
 // Arbitrary for a list of payment amounts (for calculating average)
 const paymentAmountsArb = fc.array(paymentAmountArb, { minLength: 1, maxLength: 10 });
 
 describe('PaymentSuggestionService - Payment Suggestions Property Tests', () => {
-  // ============================================================================
-  // Loan Average Payment Suggestion Tests
-  // ============================================================================
-
-  // Clear module cache before each test to get fresh service instances
-  beforeEach(() => {
-    jest.resetModules();
-  
-  // ============================================================================
-  // Empty History Tests
-  // ============================================================================
-
-
-  // Clear module cache before each test to get fresh service instances
-  beforeEach(() => {
-    jest.resetModules();
-  
-  // ============================================================================
-  // Mortgage Payment Suggestion Tests
-  // ============================================================================
-
-
   // Clear module cache before each test to get fresh service instances
   beforeEach(() => {
     jest.resetModules();
@@ -256,16 +306,408 @@ describe('PaymentSuggestionService - Payment Suggestions Property Tests', () => 
     }
   });
 
-  /**
-   * Property 7: Mortgage Payment Suggestion
-   *
-   * For any mortgage with a monthly_payment field value M, the payment suggestion
-   * should return M with source 'monthly_payment'.
-   *
-   * **Validates: Requirements 3.1**
-   */
-  describe('Property 7: Mortgage Payment Suggestion', () => {
-    test('Mortgage with configured payment should return that amount with source monthly_payment', async () => {
+  // ============================================================================
+  // Loan Average Payment Suggestion Tests (from paymentSuggestionService.average.pbt.test.js)
+  // ============================================================================
+test('Loan with payment history should return average of all payments', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          loanArb,
+          paymentAmountsArb,
+          async (loan, paymentAmounts) => {
+            // Create fresh database for each test
+            mockDb = await createTestDatabase();
+            
+            // Re-require the service to use the new mock
+            jest.resetModules();
+            jest.mock('../database/db', () => ({
+              getDatabase: jest.fn(() => Promise.resolve(mockDb))
+            }));
+            
+            const paymentSuggestionService = require('./paymentSuggestionService');
+
+            // Create a loan
+            const createdLoan = await insertLoan(mockDb, loan);
+
+            // Insert all payments with different dates
+            for (let i = 0; i < paymentAmounts.length; i++) {
+              const month = (i % 12) + 1;
+              const year = 2020 + Math.floor(i / 12);
+              const paymentDate = `${year}-${month.toString().padStart(2, '0')}-15`;
+              await insertLoanPayment(mockDb, createdLoan.id, paymentAmounts[i], paymentDate);
+            }
+
+            // Calculate expected average
+            const totalAmount = paymentAmounts.reduce((sum, amount) => sum + amount, 0);
+            const expectedAverage = totalAmount / paymentAmounts.length;
+            const roundedExpectedAverage = Math.round(expectedAverage * 100) / 100;
+
+            // Get the suggestion
+            const suggestion = await paymentSuggestionService.getSuggestion(createdLoan.id);
+
+            // Verify the suggestion is the average of all payments
+            expect(suggestion.suggestedAmount).toBeCloseTo(roundedExpectedAverage, 2);
+            expect(suggestion.source).toBe('average_history');
+            expect(suggestion.message).toContain('previous payment');
+
+            // Clean up
+            await closeDatabase(mockDb);
+            mockDb = null;
+
+            return true;
+          }
+        ),
+        dbPbtOptions()
+      );
+    });
+
+    test('Loan with single payment should return that payment amount as average', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          loanArb,
+          paymentAmountArb,
+          paymentDateArb,
+          async (loan, paymentAmount, paymentDate) => {
+            // Create fresh database for each test
+            mockDb = await createTestDatabase();
+            
+            // Re-require the service to use the new mock
+            jest.resetModules();
+            jest.mock('../database/db', () => ({
+              getDatabase: jest.fn(() => Promise.resolve(mockDb))
+            }));
+            
+            const paymentSuggestionService = require('./paymentSuggestionService');
+
+            // Create a loan
+            const createdLoan = await insertLoan(mockDb, loan);
+
+            // Insert a single payment
+            await insertLoanPayment(mockDb, createdLoan.id, paymentAmount, paymentDate);
+
+            // Get the suggestion
+            const suggestion = await paymentSuggestionService.getSuggestion(createdLoan.id);
+
+            // Verify the suggestion equals the single payment amount
+            expect(suggestion.suggestedAmount).toBeCloseTo(paymentAmount, 2);
+            expect(suggestion.source).toBe('average_history');
+            expect(suggestion.confidence).toBe('low'); // Low confidence with only 1 payment
+            expect(suggestion.message).toContain('1 previous payment');
+
+            // Clean up
+            await closeDatabase(mockDb);
+            mockDb = null;
+
+            return true;
+          }
+        ),
+        dbPbtOptions()
+      );
+    });
+
+    test('Confidence should increase with more payment history', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          loanArb,
+          fc.integer({ min: 1, max: 10 }),
+          paymentAmountArb,
+          async (loan, paymentCount, baseAmount) => {
+            // Create fresh database for each test
+            mockDb = await createTestDatabase();
+            
+            // Re-require the service to use the new mock
+            jest.resetModules();
+            jest.mock('../database/db', () => ({
+              getDatabase: jest.fn(() => Promise.resolve(mockDb))
+            }));
+            
+            const paymentSuggestionService = require('./paymentSuggestionService');
+
+            // Create a loan
+            const createdLoan = await insertLoan(mockDb, loan);
+
+            // Insert payments
+            for (let i = 0; i < paymentCount; i++) {
+              const month = (i % 12) + 1;
+              const year = 2020 + Math.floor(i / 12);
+              const paymentDate = `${year}-${month.toString().padStart(2, '0')}-15`;
+              await insertLoanPayment(mockDb, createdLoan.id, baseAmount, paymentDate);
+            }
+
+            // Get the suggestion
+            const suggestion = await paymentSuggestionService.getSuggestion(createdLoan.id);
+
+            // Verify confidence level based on payment count
+            if (paymentCount >= 6) {
+              expect(suggestion.confidence).toBe('high');
+            } else if (paymentCount >= 3) {
+              expect(suggestion.confidence).toBe('medium');
+            } else {
+              expect(suggestion.confidence).toBe('low');
+            }
+
+            // Clean up
+            await closeDatabase(mockDb);
+            mockDb = null;
+
+            return true;
+          }
+        ),
+        dbPbtOptions()
+      );
+    });
+
+    test('Average calculation should be mathematically correct', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          loanArb,
+          // Use specific amounts to verify exact calculation
+          fc.array(fc.integer({ min: 100, max: 1000 }), { minLength: 2, maxLength: 5 }),
+          async (loan, intAmounts) => {
+            // Create fresh database for each test
+            mockDb = await createTestDatabase();
+            
+            // Re-require the service to use the new mock
+            jest.resetModules();
+            jest.mock('../database/db', () => ({
+              getDatabase: jest.fn(() => Promise.resolve(mockDb))
+            }));
+            
+            const paymentSuggestionService = require('./paymentSuggestionService');
+
+            // Create a loan
+            const createdLoan = await insertLoan(mockDb, loan);
+
+            // Insert payments with integer amounts for precise calculation
+            for (let i = 0; i < intAmounts.length; i++) {
+              const month = (i % 12) + 1;
+              const year = 2020 + Math.floor(i / 12);
+              const paymentDate = `${year}-${month.toString().padStart(2, '0')}-15`;
+              await insertLoanPayment(mockDb, createdLoan.id, intAmounts[i], paymentDate);
+            }
+
+            // Calculate expected average manually
+            const sum = intAmounts.reduce((a, b) => a + b, 0);
+            const expectedAverage = sum / intAmounts.length;
+            const roundedExpected = Math.round(expectedAverage * 100) / 100;
+
+            // Get the suggestion
+            const suggestion = await paymentSuggestionService.getSuggestion(createdLoan.id);
+
+            // Verify the calculation is mathematically correct
+            expect(suggestion.suggestedAmount).toBeCloseTo(roundedExpected, 2);
+
+            // Clean up
+            await closeDatabase(mockDb);
+            mockDb = null;
+
+            return true;
+          }
+        ),
+        dbPbtOptions()
+      );
+    });
+
+  // ============================================================================
+  // Empty History Tests (from paymentSuggestionService.empty.pbt.test.js)
+  // ============================================================================
+test('Loan with no payment history should return null suggestion', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          loanArb,
+          async (loan) => {
+            // Create fresh database for each test
+            mockDb = await createTestDatabase();
+            
+            // Re-require the service to use the new mock
+            jest.resetModules();
+            jest.mock('../database/db', () => ({
+              getDatabase: jest.fn(() => Promise.resolve(mockDb))
+            }));
+            
+            const paymentSuggestionService = require('./paymentSuggestionService');
+
+            // Create a loan without any payment history
+            const createdLoan = await insertLoan(mockDb, loan);
+
+            // Get the suggestion
+            const suggestion = await paymentSuggestionService.getSuggestion(createdLoan.id);
+
+            // Verify no suggestion is returned
+            expect(suggestion.suggestedAmount).toBeNull();
+            expect(suggestion.source).toBe('none');
+            expect(suggestion.confidence).toBe('low');
+            expect(suggestion.message).toContain('No payment history');
+
+            // Clean up
+            await closeDatabase(mockDb);
+            mockDb = null;
+
+            return true;
+          }
+        ),
+        dbPbtOptions()
+      );
+    });
+
+    test('Mortgage with no configured payment should return null suggestion', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          mortgageArb,
+          async (mortgage) => {
+            // Create fresh database for each test
+            mockDb = await createTestDatabase();
+            
+            // Re-require the service to use the new mock
+            jest.resetModules();
+            jest.mock('../database/db', () => ({
+              getDatabase: jest.fn(() => Promise.resolve(mockDb))
+            }));
+            
+            const paymentSuggestionService = require('./paymentSuggestionService');
+
+            // Create a mortgage without any payment configuration
+            const createdMortgage = await insertLoan(mockDb, mortgage);
+
+            // Get the suggestion
+            const suggestion = await paymentSuggestionService.getSuggestion(createdMortgage.id);
+
+            // Verify no suggestion is returned
+            expect(suggestion.suggestedAmount).toBeNull();
+            expect(suggestion.source).toBe('none');
+            expect(suggestion.confidence).toBe('low');
+
+            // Clean up
+            await closeDatabase(mockDb);
+            mockDb = null;
+
+            return true;
+          }
+        ),
+        dbPbtOptions()
+      );
+    });
+
+    test('Multiple loans without history should all return null suggestions', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          fc.array(loanArb, { minLength: 2, maxLength: 5 }),
+          async (loans) => {
+            // Create fresh database for each test
+            mockDb = await createTestDatabase();
+            
+            // Re-require the service to use the new mock
+            jest.resetModules();
+            jest.mock('../database/db', () => ({
+              getDatabase: jest.fn(() => Promise.resolve(mockDb))
+            }));
+            
+            const paymentSuggestionService = require('./paymentSuggestionService');
+
+            // Create all loans without any payment history
+            const createdLoans = [];
+            for (const loan of loans) {
+              const created = await insertLoan(mockDb, loan);
+              createdLoans.push(created);
+            }
+
+            // Verify each loan returns null suggestion
+            for (const createdLoan of createdLoans) {
+              const suggestion = await paymentSuggestionService.getSuggestion(createdLoan.id);
+              
+              expect(suggestion.suggestedAmount).toBeNull();
+              expect(suggestion.source).toBe('none');
+              expect(suggestion.confidence).toBe('low');
+            }
+
+            // Clean up
+            await closeDatabase(mockDb);
+            mockDb = null;
+
+            return true;
+          }
+        ),
+        dbPbtOptions()
+      );
+    });
+
+    test('Line of credit should throw error for payment suggestions', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          fc.record({
+            name: safeString({ minLength: 1, maxLength: 50 }),
+            initial_balance: safeAmount({ min: 1000, max: 50000 }),
+            start_date: fc.constant('2020-01-01'),
+            notes: fc.option(safeString({ maxLength: 200 }), { nil: null }),
+            loan_type: fc.constant('line_of_credit')
+          }),
+          async (lineOfCredit) => {
+            // Create fresh database for each test
+            mockDb = await createTestDatabase();
+            
+            // Re-require the service to use the new mock
+            jest.resetModules();
+            jest.mock('../database/db', () => ({
+              getDatabase: jest.fn(() => Promise.resolve(mockDb))
+            }));
+            
+            const paymentSuggestionService = require('./paymentSuggestionService');
+
+            // Create a line of credit
+            const createdLOC = await insertLoan(mockDb, lineOfCredit);
+
+            // Verify that getting suggestion throws an error
+            await expect(
+              paymentSuggestionService.getSuggestion(createdLOC.id)
+            ).rejects.toThrow('Payment suggestions are not available for lines of credit');
+
+            // Clean up
+            await closeDatabase(mockDb);
+            mockDb = null;
+
+            return true;
+          }
+        ),
+        dbPbtOptions()
+      );
+    });
+
+    test('Non-existent loan should throw error', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          fc.integer({ min: 1000, max: 9999 }), // Random non-existent ID
+          async (nonExistentId) => {
+            // Create fresh database for each test
+            mockDb = await createTestDatabase();
+            
+            // Re-require the service to use the new mock
+            jest.resetModules();
+            jest.mock('../database/db', () => ({
+              getDatabase: jest.fn(() => Promise.resolve(mockDb))
+            }));
+            
+            const paymentSuggestionService = require('./paymentSuggestionService');
+
+            // Verify that getting suggestion for non-existent loan throws an error
+            await expect(
+              paymentSuggestionService.getSuggestion(nonExistentId)
+            ).rejects.toThrow('Loan not found');
+
+            // Clean up
+            await closeDatabase(mockDb);
+            mockDb = null;
+
+            return true;
+          }
+        ),
+        dbPbtOptions()
+      );
+    });
+
+  // ============================================================================
+  // Mortgage Payment Suggestion Tests (from paymentSuggestionService.mortgage.pbt.test.js)
+  // ============================================================================
+test('Mortgage with configured payment should return that amount with source monthly_payment', async () => {
       await fc.assert(
         fc.asyncProperty(
           mortgageArb,
@@ -402,7 +844,4 @@ describe('PaymentSuggestionService - Payment Suggestions Property Tests', () => 
         dbPbtOptions()
       );
     });
-  });
-});
-
 });

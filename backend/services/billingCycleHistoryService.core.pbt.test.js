@@ -5,6 +5,8 @@
  * - billingCycleHistoryService.pbt.test.js
  * - billingCycleHistoryService.autoGeneration.pbt.test.js
  * - billingCycleHistoryService.effective.pbt.test.js
+  *
+ * @invariant Core Billing Cycle Operations: For any valid billing cycle data, CRUD operations preserve all fields; auto-generation creates cycles for the correct periods; effective balance selection prioritizes user-entered values over auto-generated ones. Randomization covers diverse cycle configurations and date ranges.
  */
 
 const fc = require('fast-check');

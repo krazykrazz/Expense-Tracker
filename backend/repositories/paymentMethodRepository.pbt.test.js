@@ -3,10 +3,12 @@
  * Feature: configurable-payment-methods
  * 
  * Using fast-check library for property-based testing
+  *
+ * @invariant Payment Method CRUD: For any valid payment method, creating and reading it returns equivalent data; type constraints enforce valid payment method types. Randomization covers diverse method names, types, and configuration options.
  */
 
 const fc = require('fast-check');
-const { pbtOptions, safeString } = require('../test/pbtArbitraries');
+const { dbPbtOptions, safeString } = require('../test/pbtArbitraries');
 const sqlite3 = require('sqlite3').verbose();
 
 // Valid payment method types
@@ -256,7 +258,7 @@ describe('PaymentMethodRepository - Property-Based Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -297,7 +299,7 @@ describe('PaymentMethodRepository - Property-Based Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -337,7 +339,7 @@ describe('PaymentMethodRepository - Property-Based Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 });

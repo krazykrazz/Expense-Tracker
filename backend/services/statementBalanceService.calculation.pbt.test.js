@@ -395,22 +395,4 @@ describe('StatementBalanceService - Balance Calculation Property Tests', () => {
     );
   });
 
-  // ============================================================================
-  // Payment Subtraction Tests
-  // ============================================================================
-
-
-  let db;
-  let statementBalanceService;
-  
-  beforeAll(async () => 
-  // ============================================================================
-  // Floor at Zero Tests
-  // ============================================================================
-
-
-  let db;
-  let statementBalanceService;
-  
-  beforeAll(async () => 
 });

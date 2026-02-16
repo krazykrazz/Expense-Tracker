@@ -16,7 +16,7 @@
  */
 
 const fc = require('fast-check');
-const { pbtOptions, safePlaceName, safeAmount } = require('../test/pbtArbitraries');
+const { dbPbtOptions, safePlaceName, safeAmount } = require('../test/pbtArbitraries');
 const expenseService = require('./expenseService');
 const expenseValidationService = require('./expenseValidationService');
 const { getDatabase } = require('../database/db');

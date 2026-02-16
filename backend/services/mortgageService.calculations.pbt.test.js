@@ -7,6 +7,8 @@
  * Tests Property 6: Renewal Status Calculation
  *
  * Validates: Requirements 4.1, 4.4, 5.2, 5.3, 7.1, 7.2, 7.3
+  *
+ * @invariant Equity and Amortization Invariants: For any mortgage, equity equals property value minus remaining balance; amortization schedule payments sum to approximately the original loan amount plus total interest; renewal status correctly reflects term end date proximity. Randomization covers diverse property values, balances, rates, and terms.
  */
 
 const fc = require('fast-check');

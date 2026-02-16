@@ -4,10 +4,12 @@
  * Consolidated from:
  * - anomalyDetectionService.gapExclusion.pbt.test.js
  * - anomalyDetectionService.dismissedLearning.pbt.test.js
+  *
+ * @invariant Anomaly Filtering Rules: For any set of detected anomalies, gap exclusion filters remove anomalies during inactive periods; dismissed anomalies are learned and suppressed in future detections. Randomization covers diverse dismissal patterns and gap period configurations.
  */
 
 const fc = require('fast-check');
-const { pbtOptions, safeAmount, paymentMethod, expenseType, weekNumber } = require('../test/pbtArbitraries');
+const { dbPbtOptions, safeAmount, paymentMethod, expenseType, weekNumber } = require('../test/pbtArbitraries');
 
 // Mock activity log service
 jest.mock('./activityLogService');
@@ -137,7 +139,7 @@ describe('AnomalyDetectionService - Gap Exclusion Property Tests', () => {
           expect(baseline.monthsWithData).toBeLessThanOrEqual(amounts.length);
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -185,7 +187,7 @@ describe('AnomalyDetectionService - Gap Exclusion Property Tests', () => {
           expect(Math.abs(baseline.stdDev - expectedStdDev)).toBeLessThan(0.1);
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -242,7 +244,7 @@ describe('AnomalyDetectionService - Gap Exclusion Property Tests', () => {
           expect(baseline.count).toBe(count);
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 });
@@ -378,7 +380,7 @@ describe('AnomalyDetectionService - Dismissed Anomaly Learning Property Tests', 
           expect(secondAnomalies.length).toBe(0);
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -488,7 +490,7 @@ describe('AnomalyDetectionService - Dismissed Anomaly Learning Property Tests', 
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 

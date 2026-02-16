@@ -5,6 +5,8 @@
  * Tests Property 2: Payment Ordering
  *
  * Validates: Requirements 1.2
+  *
+ * @invariant Payment Ordering: For any set of loan payments, retrieving them returns results ordered by payment date; payment amounts and dates are preserved exactly as stored. Randomization covers diverse payment schedules and amount distributions.
  */
 
 const fc = require('fast-check');

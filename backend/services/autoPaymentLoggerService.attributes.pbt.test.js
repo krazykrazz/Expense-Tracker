@@ -2,10 +2,12 @@
  * Property-Based Tests for Auto Payment Logger Service - Payment Attributes
  * Feature: fixed-expense-loan-linkage
  * Using fast-check library for property-based testing
+  *
+ * @invariant Payment Attribute Preservation: For any auto-logged payment from a fixed expense, the resulting expense record preserves the correct category, amount, payment method, and note prefix from the source fixed expense. Randomization covers diverse fixed expense configurations.
  */
 
 const fc = require('fast-check');
-const { pbtOptions, dbPbtOptions } = require('../test/pbtArbitraries');
+const { dbPbtOptions } = require('../test/pbtArbitraries');
 const sqlite3 = require('sqlite3').verbose();
 
 // Auto-log note prefix (must match the service)

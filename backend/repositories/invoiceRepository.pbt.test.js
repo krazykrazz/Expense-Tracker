@@ -3,11 +3,13 @@
  * Tests universal properties of multi-invoice storage and retrieval
  * 
  * Feature: multi-invoice-support
+  *
+ * @invariant Invoice Storage Round-Trip: For any valid invoice record, storing and retrieving it returns equivalent file metadata and expense associations; cascade deletes remove invoices when their parent expense is deleted. Randomization covers diverse file paths, MIME types, and person linkages.
  */
 
 const { describe, test, expect, beforeEach, afterEach } = require('@jest/globals');
 const fc = require('fast-check');
-const { pbtOptions } = require('../test/pbtArbitraries');
+const { dbPbtOptions } = require('../test/pbtArbitraries');
 const invoiceRepository = require('./invoiceRepository');
 const { getDatabase } = require('../database/db');
 
@@ -139,7 +141,7 @@ describe('Invoice Repository Property-Based Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -200,7 +202,7 @@ describe('Invoice Repository Property-Based Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -253,7 +255,7 @@ describe('Invoice Repository Property-Based Tests', () => {
           await invoiceRepository.deleteById(created.id);
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 });

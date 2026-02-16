@@ -1,3 +1,7 @@
+/**
+ * @invariant Net Worth Calculation: For any combination of total assets and total liabilities, net worth equals assets minus liabilities; the display correctly reflects positive, negative, and zero net worth. Randomization covers diverse financial value combinations.
+ */
+
 import { describe, it, expect } from 'vitest';
 import { render, waitFor } from '@testing-library/react';
 import fc from 'fast-check';

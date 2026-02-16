@@ -52,10 +52,25 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Validate test naming conventions
+        run: node ../scripts/validate-test-naming.js
+
+      - name: Record test start time
+        id: test_start
+        run: echo "start=$(date +%s)" >> $GITHUB_OUTPUT
+
       - name: Run unit tests
         run: npm run test:unit:ci
         env:
           CI: true
+
+      - name: Check runtime budget
+        if: always()
+        run: |
+          ELAPSED=$(( $(date +%s) - ${{ steps.test_start.outputs.start }} ))
+          node ../scripts/check-test-budget.js backend-unit-tests $ELAPSED
+        env:
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
 
   backend-pbt-shards:
     name: Backend PBT Shard ${{ matrix.shard }}
@@ -83,8 +98,20 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Record PBT start time
+        id: pbt_start
+        run: echo "start=$(date +%s)" >> $GITHUB_OUTPUT
+
       - name: Run PBT tests (shard ${{ matrix.shard }})
         run: npx cross-env NODE_ENV=test CI=true FAST_CHECK_NUM_RUNS=15 jest --bail --testPathPatterns=pbt --shard=${{ matrix.shard }}
+
+      - name: Check runtime budget
+        if: always()
+        run: |
+          ELAPSED=$(( $(date +%s) - ${{ steps.pbt_start.outputs.start }} ))
+          node ../scripts/check-test-budget.js backend-pbt-shard $ELAPSED
+        env:
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
 
   backend-pbt-tests:
     name: Backend PBT Tests
@@ -99,6 +126,17 @@ jobs:
             exit 1
           fi
           echo "All PBT shards passed"
+
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+
+      - name: Validate PBT guardrails
+        run: node scripts/validate-pbt-guardrails.js
 
   frontend-tests:
     name: Frontend Tests
@@ -122,8 +160,42 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Validate test naming conventions
+        run: node ../scripts/validate-test-naming.js
+
+      - name: Record test start time
+        id: test_start
+        run: echo "start=$(date +%s)" >> $GITHUB_OUTPUT
+
       - name: Run tests
         run: npx vitest --run --exclude '**/App.performance.test.jsx'
+
+      - name: Check runtime budget
+        if: always()
+        run: |
+          ELAPSED=$(( $(date +%s) - ${{ steps.test_start.outputs.start }} ))
+          node ../scripts/check-test-budget.js frontend-tests $ELAPSED
+        env:
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+
+  test-health-report:
+    name: Test Health Report
+    runs-on: ubuntu-latest
+    if: always() && github.actor != 'dependabot[bot]'
+    needs: [backend-unit-tests, backend-pbt-tests, frontend-tests]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+
+      - name: Report test health
+        run: node scripts/report-test-health.js >> $GITHUB_STEP_SUMMARY
+        env:
+          GITHUB_ACTIONS: true
 
   build-and-push-ghcr:
     name: Build and Push to GHCR

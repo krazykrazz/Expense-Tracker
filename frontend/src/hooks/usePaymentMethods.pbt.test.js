@@ -5,6 +5,8 @@
  * and then reading it back must return the same ID.
  *
  * Feature: frontend-custom-hooks
+  *
+ * @invariant LocalStorage Round-Trip: For any valid payment method ID, saving to localStorage and reading back returns the same ID; the hook correctly initializes from persisted state. Randomization covers diverse payment method IDs.
  */
 
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';

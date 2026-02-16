@@ -15,7 +15,7 @@
  */
 
 const fc = require('fast-check');
-const { pbtOptions, dbPbtOptions } = require('../test/pbtArbitraries');
+const { dbPbtOptions } = require('../test/pbtArbitraries');
 const expenseService = require('./expenseService');
 const budgetEvents = require('../events/budgetEvents');
 const { getDatabase } = require('../database/db');
@@ -93,7 +93,7 @@ describe('ExpenseService - Financial Operations PBT', () => {
             expect(emitSpy).toHaveBeenCalledWith(expenseData.date, expenseData.type);
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     }, 60000);
 
@@ -123,7 +123,7 @@ describe('ExpenseService - Financial Operations PBT', () => {
             }
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     }, 120000);
 
@@ -154,7 +154,7 @@ describe('ExpenseService - Financial Operations PBT', () => {
             expect(calledCategories.every(cat => cat === expenseData.type)).toBe(true);
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     }, 120000);
   });
@@ -216,7 +216,7 @@ describe('ExpenseService - Financial Operations PBT', () => {
             expect(uniqueIds.size).toBe(allIds.length);
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     }, 120000);
 
@@ -239,7 +239,7 @@ describe('ExpenseService - Financial Operations PBT', () => {
             expect(result.id).toBeGreaterThan(0);
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     }, 60000);
   });
@@ -280,7 +280,7 @@ describe('ExpenseService - Financial Operations PBT', () => {
             }
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     }, 120000);
 
@@ -304,7 +304,7 @@ describe('ExpenseService - Financial Operations PBT', () => {
             expect(uniqueDates.size).toBe(allDates.length);
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     }, 120000);
 
@@ -332,7 +332,7 @@ describe('ExpenseService - Financial Operations PBT', () => {
             }
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     }, 120000);
   });
@@ -377,7 +377,7 @@ describe('ExpenseService - Financial Operations PBT', () => {
             expect(uniqueIds.size).toBe(allIds.length);
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     }, 120000);
 
@@ -410,7 +410,7 @@ describe('ExpenseService - Financial Operations PBT', () => {
             expect(result.method).toBe(updatedData.method);
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     }, 60000);
 
@@ -442,7 +442,7 @@ describe('ExpenseService - Financial Operations PBT', () => {
             }
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     }, 120000);
 
@@ -469,7 +469,7 @@ describe('ExpenseService - Financial Operations PBT', () => {
             expect(expense2After.method).toBe(expense2Data.method);
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     }, 120000);
   });
@@ -522,7 +522,7 @@ describe('ExpenseService - Financial Operations PBT', () => {
             expect(result).toMatch(/^\d{4}-\d{2}-\d{2}$/);
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     }, 30000);
 
@@ -567,7 +567,7 @@ describe('ExpenseService - Financial Operations PBT', () => {
             expect(target.year).toBe(expectedYear);
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     }, 30000);
 
@@ -640,7 +640,7 @@ describe('ExpenseService - Financial Operations PBT', () => {
             expect(target.day).toBe(source.day);
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     }, 30000);
 
@@ -677,7 +677,7 @@ describe('ExpenseService - Financial Operations PBT', () => {
             expect(parsed.day).toBeLessThanOrEqual(daysInTargetMonth);
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     }, 30000);
   }, 120000);
@@ -945,7 +945,7 @@ describe('Credit Card Balance Tracking', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -1005,7 +1005,7 @@ describe('Credit Card Balance Tracking', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -1056,7 +1056,7 @@ describe('Credit Card Balance Tracking', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -1093,7 +1093,7 @@ describe('Credit Card Balance Tracking', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   }, 120000);
 });

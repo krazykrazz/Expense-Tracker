@@ -1,10 +1,12 @@
 /**
  * Property-Based Tests for Investment Value Service
  * Using fast-check library for property-based testing
+  *
+ * @invariant Value History Integrity: For any valid investment value entry, storing and retrieving it returns the correct amount and date; values are correctly ordered chronologically. Randomization covers diverse value amounts and date sequences.
  */
 
 const fc = require('fast-check');
-const { pbtOptions } = require('../test/pbtArbitraries');
+const { dbPbtOptions } = require('../test/pbtArbitraries');
 const sqlite3 = require('sqlite3').verbose();
 const investmentValueService = require('./investmentValueService');
 
@@ -170,7 +172,7 @@ describe('Investment Value Service - Property-Based Tests', () => {
           return true;
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -207,7 +209,7 @@ describe('Investment Value Service - Property-Based Tests', () => {
           return true;
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -235,7 +237,7 @@ describe('Investment Value Service - Property-Based Tests', () => {
           return true;
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -337,7 +339,7 @@ describe('Investment Value Service - Property-Based Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 });

@@ -1,3 +1,7 @@
+/**
+ * @invariant Context State Consistency: For any sequence of expense CRUD operations, the context state reflects all applied operations; filter and expense contexts interact correctly. Randomization covers diverse operation sequences and expense data.
+ */
+
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
 import { renderHook, act, cleanup, waitFor } from '@testing-library/react';
 import * as fc from 'fast-check';

@@ -7,10 +7,12 @@
  * 
  * For any credit card with balance B and any valid payment amount P,
  * recording a payment should result in a new balance of exactly B - P.
+  *
+ * @invariant Payment Reduces Balance: For any credit card with balance B and valid payment amount P, recording a payment results in a new balance of exactly B - P. Randomization covers diverse balance and payment amount combinations to verify arithmetic correctness.
  */
 
 const fc = require('fast-check');
-const { pbtOptions, safeString } = require('../test/pbtArbitraries');
+const { dbPbtOptions, safeString } = require('../test/pbtArbitraries');
 const sqlite3 = require('sqlite3').verbose();
 
 // Helper function to create an in-memory test database
@@ -223,7 +225,7 @@ describe('CreditCardPaymentService - Property-Based Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -274,7 +276,7 @@ describe('CreditCardPaymentService - Property-Based Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -312,7 +314,7 @@ describe('CreditCardPaymentService - Property-Based Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -345,7 +347,7 @@ describe('CreditCardPaymentService - Property-Based Tests', () => {
           return true;
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -375,7 +377,7 @@ describe('CreditCardPaymentService - Property-Based Tests', () => {
           return true;
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -411,7 +413,7 @@ describe('CreditCardPaymentService - Property-Based Tests', () => {
           return true;
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 });

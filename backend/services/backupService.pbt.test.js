@@ -4,6 +4,8 @@
  * 
  * NOTE: These tests work with real files and the production database,
  * so they skip the in-memory test database setup.
+  *
+ * @invariant Backup Integrity: For any database state, creating a backup and listing backups returns consistent metadata; backup file naming follows the expected timestamp pattern; retention policies correctly prune old backups. Randomization covers diverse backup schedules and retention configurations.
  */
 
 // Skip in-memory test database - backup tests need real file operations

@@ -9,6 +9,8 @@
  * use balance-based tracking.
  * 
  * **Validates: Requirements 5.1, 5.2**
+  *
+ * @invariant Loan Type Tracking Method: For any loan, if loan_type is loan or mortgage the system supports payment-based tracking; if line_of_credit it uses balance-based tracking. Randomization covers all loan type variants.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';

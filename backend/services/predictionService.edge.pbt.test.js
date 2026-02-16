@@ -14,7 +14,7 @@
  */
 
 const fc = require('fast-check');
-const { pbtOptions, safeAmount } = require('../test/pbtArbitraries');
+const { dbPbtOptions, safeAmount } = require('../test/pbtArbitraries');
 const predictionService = require('./predictionService');
 const { getDatabase } = require('../database/db');
 const { ANALYTICS_CONFIG } = require('../utils/analyticsConstants');
@@ -200,7 +200,7 @@ describe('PredictionService - Edge Cases and Warnings Property Tests', () => {
             }
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
 
@@ -258,7 +258,7 @@ describe('PredictionService - Edge Cases and Warnings Property Tests', () => {
             }
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
 
@@ -457,7 +457,7 @@ describe('PredictionService - Edge Cases and Warnings Property Tests', () => {
             }
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
 
@@ -518,7 +518,7 @@ describe('PredictionService - Edge Cases and Warnings Property Tests', () => {
             }
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
   });
@@ -569,7 +569,7 @@ describe('PredictionService - Edge Cases and Warnings Property Tests', () => {
             }
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
 
@@ -598,7 +598,7 @@ describe('PredictionService - Edge Cases and Warnings Property Tests', () => {
             expect(prediction).toBeCloseTo(historicalAverage, 0);
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
 
@@ -642,7 +642,7 @@ describe('PredictionService - Edge Cases and Warnings Property Tests', () => {
             }
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
 
@@ -676,7 +676,7 @@ describe('PredictionService - Edge Cases and Warnings Property Tests', () => {
             expect(prediction).toBeCloseTo(currentSpent, 2);
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
 

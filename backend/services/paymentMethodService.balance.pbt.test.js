@@ -18,7 +18,7 @@
  */
 
 const fc = require('fast-check');
-const { pbtOptions, dbPbtOptions } = require('../test/pbtArbitraries');
+const { dbPbtOptions } = require('../test/pbtArbitraries');
 const {
   getTestDatabase,
   resetTestDatabase,

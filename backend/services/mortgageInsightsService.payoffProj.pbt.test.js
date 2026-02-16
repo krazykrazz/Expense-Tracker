@@ -6,6 +6,8 @@
  * Tests Property 7: Underpayment Detection
  *
  * Validates: Requirements 4.1, 4.2, 4.4, 4.5, 4.6
+  *
+ * @invariant Payoff Projection Consistency: For any mortgage with balance, rate, and payment amount, the projected payoff date is in the future; higher payments result in earlier payoff; underpayment (payment < monthly interest) is correctly detected. Randomization covers diverse mortgage configurations.
  */
 
 const fc = require('fast-check');

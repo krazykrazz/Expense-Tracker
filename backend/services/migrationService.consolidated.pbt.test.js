@@ -2,7 +2,6 @@
  * Property-Based Tests for MigrationService - Balance Entry Migration
  * 
  * Consolidates:
- * - migrationService.paymentCalc.pbt.test.js (Payment Calculation)
  * - migrationService.preserveBalances.pbt.test.js (Preserve Balance Entries)
  * - migrationService.skipIncreases.pbt.test.js (Skip Balance Increases)
  * 
@@ -15,16 +14,16 @@
  */
 
 /**
- * Property-Based Tests for MigrationService - Payment Calculation
+ * Property-Based Tests for MigrationService - Skip Balance Increases
  *
  * Feature: loan-payment-tracking
- * Tests Property 10: Migration Payment Calculation
+ * Tests Property 12: Migration Skips Balance Increases
  *
- * For any sequence of balance entries [B1, B2, B3, ...] in chronological order,
- * the migration should create payments with amounts equal to the positive differences
- * (B1-B2, B2-B3, ...) where the balance decreased.
+ * For any pair of consecutive balance entries where the later balance is higher
+ * than the earlier balance, the migration should skip that entry and include it
+ * in the skipped list.
  *
- * **Validates: Requirements 4.1, 4.2**
+ * **Validates: Requirements 4.4**
  */
 
 const fc = require('fast-check');
@@ -186,6 +185,25 @@ function insertBalanceEntry(db, entry) {
   });
 }
 
+// Helper to get all balance entries for a loan
+function getBalanceEntries(db, loanId) {
+  return new Promise((resolve, reject) => {
+    const sql = `
+      SELECT * FROM loan_balances 
+      WHERE loan_id = ? 
+      ORDER BY year ASC, month ASC
+    `;
+
+    db.all(sql, [loanId], (err, rows) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      resolve(rows || []);
+    });
+  });
+}
+
 // Arbitrary for a valid loan
 const loanArb = fc.record({
   name: safeString({ minLength: 1, maxLength: 50 }),
@@ -196,16 +214,74 @@ const loanArb = fc.record({
 });
 
 /**
- * Generate a sequence of balance entries with decreasing balances
- * This simulates a loan being paid down over time
+ * Generate a sequence of balance entries with at least one increase
+ * This simulates additional borrowing on a loan
  */
-const decreasingBalanceSequenceArb = (initialBalance) => {
-  return fc.integer({ min: 2, max: 6 }).chain(numEntries => {
-    // Generate payment amounts that sum to less than initial balance
+const balanceSequenceWithIncreasesArb = (initialBalance) => {
+  return fc.integer({ min: 3, max: 6 }).chain(numEntries => {
+    // Generate balance changes where at least one is negative (increase)
     return fc.array(
-      safeAmount({ min: 100, max: initialBalance / numEntries }),
+      fc.integer({ min: -2000, max: 2000 }),
       { minLength: numEntries - 1, maxLength: numEntries - 1 }
-    ).map(payments => {
+    ).filter(changes => {
+      // Ensure at least one change is negative (balance increase)
+      return changes.some(c => c < 0);
+    }).map(changes => {
+      const entries = [];
+      let currentBalance = initialBalance;
+      let year = 2020;
+      let month = 1;
+      
+      // Track which entries should be skipped (where balance increased)
+      const expectedSkippedIndices = [];
+      
+      // First entry is the initial balance
+      entries.push({
+        year,
+        month,
+        remaining_balance: currentBalance,
+        rate: 5.0
+      });
+      
+      // Subsequent entries change by the specified amounts
+      for (let i = 0; i < changes.length; i++) {
+        const change = changes[i];
+        month++;
+        if (month > 12) {
+          month = 1;
+          year++;
+        }
+        
+        const previousBalance = currentBalance;
+        currentBalance = Math.max(0, currentBalance - change);
+        
+        entries.push({
+          year,
+          month,
+          remaining_balance: currentBalance,
+          rate: 5.0
+        });
+        
+        // If balance increased (change was negative), this entry should be skipped
+        if (change < 0) {
+          expectedSkippedIndices.push(i + 1); // +1 because first entry is index 0
+        }
+      }
+      
+      return { entries, expectedSkippedIndices };
+    });
+  });
+};
+
+/**
+ * Generate a sequence with only balance increases (no payments)
+ */
+const onlyIncreasesSequenceArb = (initialBalance) => {
+  return fc.integer({ min: 2, max: 5 }).chain(numEntries => {
+    return fc.array(
+      fc.integer({ min: 100, max: 2000 }), // All positive = balance increases
+      { minLength: numEntries - 1, maxLength: numEntries - 1 }
+    ).map(increases => {
       const entries = [];
       let currentBalance = initialBalance;
       let year = 2020;
@@ -215,52 +291,78 @@ const decreasingBalanceSequenceArb = (initialBalance) => {
       entries.push({
         year,
         month,
-        remaining_balance: currentBalance
+        remaining_balance: currentBalance,
+        rate: 5.0
       });
       
-      // Subsequent entries decrease by payment amounts
-      for (const payment of payments) {
+      // All subsequent entries increase the balance
+      for (const increase of increases) {
         month++;
         if (month > 12) {
           month = 1;
           year++;
         }
-        currentBalance = Math.max(0, currentBalance - payment);
+        currentBalance = currentBalance + increase;
         entries.push({
           year,
           month,
-          remaining_balance: currentBalance
+          remaining_balance: currentBalance,
+          rate: 5.0
         });
       }
       
-      return { entries, expectedPayments: payments };
+      return entries;
     });
   });
 };
 
+/**
+ * Generate a sequence of balance entries (can be increasing or decreasing)
+ */
+const balanceSequenceArb = (initialBalance) => {
+  return fc.integer({ min: 2, max: 6 }).chain(numEntries => {
+    // Generate balance changes (positive = decrease, negative = increase)
+    return fc.array(
+      fc.integer({ min: -1000, max: 2000 }),
+      { minLength: numEntries - 1, maxLength: numEntries - 1 }
+    ).map(changes => {
+      const entries = [];
+      let currentBalance = initialBalance;
+      let year = 2020;
+      let month = 1;
+      
+      // First entry is the initial balance
+      entries.push({
+        year,
+        month,
+        remaining_balance: currentBalance,
+        rate: 5.0
+      });
+      
+      // Subsequent entries change by the specified amounts
+      for (const change of changes) {
+        month++;
+        if (month > 12) {
+          month = 1;
+          year++;
+        }
+        currentBalance = Math.max(0, currentBalance - change);
+        entries.push({
+          year,
+          month,
+          remaining_balance: currentBalance,
+          rate: 5.0
+        });
+      }
+      
+      return entries;
+    });
+  });
+};
+
+
+
 describe('MigrationService - Balance Entry Migration Property Tests', () => {
-  // ============================================================================
-  // Payment Calculation Tests
-  // ============================================================================
-
-  // Clear module cache before each test to get fresh service instances
-  beforeEach(() => {
-    jest.resetModules();
-  
-  // ============================================================================
-  // Preserve Balance Entries Tests
-  // ============================================================================
-
-
-  // Clear module cache before each test to get fresh service instances
-  beforeEach(() => {
-    jest.resetModules();
-  
-  // ============================================================================
-  // Skip Balance Increases Tests
-  // ============================================================================
-
-
   // Clear module cache before each test to get fresh service instances
   beforeEach(() => {
     jest.resetModules();
@@ -273,17 +375,10 @@ describe('MigrationService - Balance Entry Migration Property Tests', () => {
     }
   });
 
-  /**
-   * Property 12: Migration Skips Balance Increases
-   *
-   * For any pair of consecutive balance entries where the later balance is higher
-   * than the earlier balance, the migration should skip that entry and include it
-   * in the skipped list.
-   *
-   * **Validates: Requirements 4.4**
-   */
-  describe('Property 12: Migration Skips Balance Increases', () => {
-    test('Migration skips entries where balance increased', async () => {
+  // ============================================================================
+  // Skip Balance Increases Tests (from migrationService.skipIncreases.pbt.test.js)
+  // ============================================================================
+test('Migration skips entries where balance increased', async () => {
       await fc.assert(
         fc.asyncProperty(
           loanArb,
@@ -534,7 +629,211 @@ describe('MigrationService - Balance Entry Migration Property Tests', () => {
         dbPbtOptions()
       );
     });
-  });
-});
 
+  // ============================================================================
+  // Preserve Balance Entries Tests (from migrationService.preserveBalances.pbt.test.js)
+  // ============================================================================
+test('Migration does not delete or modify original balance entries', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          loanArb,
+          fc.integer({ min: 10000, max: 50000 }).chain(initialBalance => 
+            balanceSequenceArb(initialBalance).map(entries => ({
+              initialBalance,
+              entries
+            }))
+          ),
+          async (loan, { initialBalance, entries }) => {
+            // Create fresh database for each test
+            mockDb = await createTestDatabase();
+            
+            // Re-require the service to use the new mock
+            jest.resetModules();
+            jest.mock('../database/db', () => ({
+              getDatabase: jest.fn(() => Promise.resolve(mockDb))
+            }));
+            
+            const migrationService = require('./migrationService');
+
+            // Create a loan
+            const createdLoan = await insertLoan(mockDb, {
+              ...loan,
+              initial_balance: initialBalance
+            });
+
+            // Insert balance entries and store their IDs
+            const insertedEntries = [];
+            for (const entry of entries) {
+              const inserted = await insertBalanceEntry(mockDb, {
+                loan_id: createdLoan.id,
+                ...entry
+              });
+              insertedEntries.push(inserted);
+            }
+
+            // Get balance entries before migration
+            const entriesBefore = await getBalanceEntries(mockDb, createdLoan.id);
+            expect(entriesBefore.length).toBe(entries.length);
+
+            // Run migration
+            await migrationService.migrateBalanceEntries(createdLoan.id);
+
+            // Get balance entries after migration
+            const entriesAfter = await getBalanceEntries(mockDb, createdLoan.id);
+
+            // Verify all original balance entries still exist
+            expect(entriesAfter.length).toBe(entriesBefore.length);
+
+            // Verify each entry is unchanged
+            for (let i = 0; i < entriesBefore.length; i++) {
+              const before = entriesBefore[i];
+              const after = entriesAfter[i];
+              
+              expect(after.id).toBe(before.id);
+              expect(after.loan_id).toBe(before.loan_id);
+              expect(after.year).toBe(before.year);
+              expect(after.month).toBe(before.month);
+              expect(after.remaining_balance).toBeCloseTo(before.remaining_balance, 2);
+              expect(after.rate).toBeCloseTo(before.rate, 2);
+            }
+
+            // Clean up
+            await closeDatabase(mockDb);
+            mockDb = null;
+
+            return true;
+          }
+        ),
+        dbPbtOptions()
+      );
+    });
+
+    test('Balance entries remain accessible for historical reference after migration', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          loanArb,
+          fc.integer({ min: 10000, max: 50000 }).chain(initialBalance => 
+            balanceSequenceArb(initialBalance).map(entries => ({
+              initialBalance,
+              entries
+            }))
+          ),
+          async (loan, { initialBalance, entries }) => {
+            // Create fresh database for each test
+            mockDb = await createTestDatabase();
+            
+            // Re-require the service to use the new mock
+            jest.resetModules();
+            jest.mock('../database/db', () => ({
+              getDatabase: jest.fn(() => Promise.resolve(mockDb))
+            }));
+            
+            const migrationService = require('./migrationService');
+            const loanBalanceRepository = require('../repositories/loanBalanceRepository');
+
+            // Create a loan
+            const createdLoan = await insertLoan(mockDb, {
+              ...loan,
+              initial_balance: initialBalance
+            });
+
+            // Insert balance entries
+            for (const entry of entries) {
+              await insertBalanceEntry(mockDb, {
+                loan_id: createdLoan.id,
+                ...entry
+              });
+            }
+
+            // Run migration
+            await migrationService.migrateBalanceEntries(createdLoan.id);
+
+            // Verify balance history is still accessible via repository
+            const balanceHistory = await loanBalanceRepository.getBalanceHistory(createdLoan.id);
+            
+            expect(balanceHistory.length).toBe(entries.length);
+            
+            // Verify each entry matches the original
+            for (let i = 0; i < entries.length; i++) {
+              expect(balanceHistory[i].year).toBe(entries[i].year);
+              expect(balanceHistory[i].month).toBe(entries[i].month);
+              expect(balanceHistory[i].remaining_balance).toBeCloseTo(entries[i].remaining_balance, 2);
+            }
+
+            // Clean up
+            await closeDatabase(mockDb);
+            mockDb = null;
+
+            return true;
+          }
+        ),
+        dbPbtOptions()
+      );
+    });
+
+    test('Multiple migrations do not affect balance entries', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          loanArb,
+          fc.integer({ min: 10000, max: 50000 }).chain(initialBalance => 
+            balanceSequenceArb(initialBalance).map(entries => ({
+              initialBalance,
+              entries
+            }))
+          ),
+          async (loan, { initialBalance, entries }) => {
+            // Create fresh database for each test
+            mockDb = await createTestDatabase();
+            
+            // Re-require the service to use the new mock
+            jest.resetModules();
+            jest.mock('../database/db', () => ({
+              getDatabase: jest.fn(() => Promise.resolve(mockDb))
+            }));
+            
+            const migrationService = require('./migrationService');
+
+            // Create a loan
+            const createdLoan = await insertLoan(mockDb, {
+              ...loan,
+              initial_balance: initialBalance
+            });
+
+            // Insert balance entries
+            for (const entry of entries) {
+              await insertBalanceEntry(mockDb, {
+                loan_id: createdLoan.id,
+                ...entry
+              });
+            }
+
+            // Get balance entries before any migration
+            const entriesBefore = await getBalanceEntries(mockDb, createdLoan.id);
+
+            // Run migration multiple times
+            await migrationService.migrateBalanceEntries(createdLoan.id);
+            await migrationService.migrateBalanceEntries(createdLoan.id);
+            await migrationService.migrateBalanceEntries(createdLoan.id);
+
+            // Get balance entries after multiple migrations
+            const entriesAfter = await getBalanceEntries(mockDb, createdLoan.id);
+
+            // Verify balance entries are unchanged
+            expect(entriesAfter.length).toBe(entriesBefore.length);
+
+            for (let i = 0; i < entriesBefore.length; i++) {
+              expect(entriesAfter[i].id).toBe(entriesBefore[i].id);
+              expect(entriesAfter[i].remaining_balance).toBeCloseTo(entriesBefore[i].remaining_balance, 2);
+            }
+
+            // Clean up
+            await closeDatabase(mockDb);
+            mockDb = null;
+
+            return true;
+          }
+        ),
+        dbPbtOptions()
+      );
+    });
 });

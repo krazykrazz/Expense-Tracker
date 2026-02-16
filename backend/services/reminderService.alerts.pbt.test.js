@@ -8,10 +8,12 @@
  * - reminderService.pbt.test.js (general)
  * 
  * **Validates: Requirements 1.1, 1.2, 1.3, 1.4, 2.1, 2.2, 4.1, 4.2, 5.2, 5.3, 5.4, 5.6**
+  *
+ * @invariant Alert Show/Suppression Logic: For any credit card with billing cycle history, alerts are shown when payment is due and suppressed when a sufficient payment has been recorded; backward compatibility ensures old data formats still trigger correct alerts. Randomization covers diverse payment amounts, due dates, and balance configurations.
  */
 
 const fc = require('fast-check');
-const { pbtOptions, calculatePreviousCycleDates } = require('../test/pbtArbitraries');
+const { dbPbtOptions, calculatePreviousCycleDates } = require('../test/pbtArbitraries');
 const sqlite3 = require('sqlite3').verbose();
 
 // Helper functions (consolidated from source files)
@@ -604,7 +606,7 @@ describe('Reminder Service - Alert Show Logic Property Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -696,7 +698,7 @@ describe('Reminder Service - Alert Show Logic Property Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 });
@@ -774,7 +776,7 @@ describe('Reminder Service - Alert Suppression Logic Property Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -860,7 +862,7 @@ describe('Reminder Service - Alert Suppression Logic Property Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -949,7 +951,7 @@ describe('Reminder Service - Alert Suppression Logic Property Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 });
@@ -1024,7 +1026,7 @@ describe('Reminder Service - Backward Compatibility Property Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -1085,7 +1087,7 @@ describe('Reminder Service - Backward Compatibility Property Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -1158,7 +1160,7 @@ describe('Reminder Service - Backward Compatibility Property Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 });
@@ -1248,7 +1250,7 @@ describe('Reminder Service - Property-Based Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -1318,7 +1320,7 @@ describe('Reminder Service - Property-Based Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -1414,7 +1416,7 @@ describe('Reminder Service - Property-Based Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -1493,7 +1495,7 @@ describe('Reminder Service - Property-Based Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -1618,7 +1620,7 @@ describe('Reminder Service - Property-Based Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 });

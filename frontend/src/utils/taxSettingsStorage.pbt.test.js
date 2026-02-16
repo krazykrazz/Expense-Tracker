@@ -3,6 +3,8 @@
  * Tests localStorage persistence for tax credit calculator settings
  * 
  * **Validates: Requirements 3.2, 3.3, 3.6, 6.2**
+  *
+ * @invariant Storage Round-Trip: For any valid tax settings (net income, province, year), saving to localStorage and reading back returns the same values; invalid stored data falls back to defaults. Randomization covers diverse setting values and year combinations.
  */
 
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';

@@ -12,18 +12,6 @@
  * and payment amounts must be positive non-zero values.
  */
 
-/**
- * Property-Based Tests for LoanPaymentService - Date Validation
- *
- * Feature: loan-payment-tracking
- * Tests Property 5: Payment Date Validation
- *
- * For any payment date that is not in YYYY-MM-DD format or is in the future,
- * the system should reject the payment with a validation error.
- *
- * **Validates: Requirements 1.6**
- */
-
 const fc = require('fast-check');
 const sqlite3 = require('sqlite3').verbose();
 const { dbPbtOptions, safeString, safeAmount } = require('../test/pbtArbitraries');
@@ -140,6 +128,13 @@ const loanArb = fc.record({
 // Valid amount for testing
 const validAmount = 100;
 
+// Valid date for testing
+const validPaymentDate = '2024-01-15';
+
+// Arbitrary for negative amounts
+const negativeAmountArb = fc.float({ min: Math.fround(-10000), max: Math.fround(-0.01), noNaN: true })
+  .filter(n => !isNaN(n) && isFinite(n) && n < 0);
+
 /**
  * Arbitrary for future dates (dates after today)
  */
@@ -163,6 +158,7 @@ const futureDateArb = () => {
   });
 };
 
+
 /**
  * Arbitrary for valid past dates (dates on or before today)
  */
@@ -177,7 +173,6 @@ const validPastDateArb = () => {
     month: fc.integer({ min: 1, max: 12 }),
     day: fc.integer({ min: 1, max: 28 })
   }).filter(({ year, month, day }) => {
-    // Filter out future dates
     if (year > maxYear) return false;
     if (year === maxYear && month > maxMonth) return false;
     if (year === maxYear && month === maxMonth && day > maxDay) return false;
@@ -193,46 +188,26 @@ const validPastDateArb = () => {
  * Arbitrary for invalid date formats
  */
 const invalidDateFormatArb = fc.oneof(
-  // Wrong separators
   fc.constant('2024/01/15'),
   fc.constant('2024.01.15'),
   fc.constant('2024 01 15'),
-  // Wrong order
   fc.constant('01-15-2024'),
   fc.constant('15-01-2024'),
-  // Missing parts
   fc.constant('2024-01'),
   fc.constant('2024'),
   fc.constant('01-15'),
-  // Extra parts
   fc.constant('2024-01-15-00'),
-  // Invalid month/day values (format is correct but values are invalid)
   fc.constant('2024-13-01'),
   fc.constant('2024-00-01'),
   fc.constant('2024-01-32'),
   fc.constant('2024-01-00'),
-  // Random strings
   fc.string({ minLength: 1, maxLength: 20 }).filter(s => !/^\d{4}-\d{2}-\d{2}$/.test(s)),
-  // Empty and null-like
   fc.constant(''),
   fc.constant('null'),
   fc.constant('undefined')
 );
 
 describe('LoanPaymentService - Validation Property Tests', () => {
-  // ============================================================================
-  // Date Validation Tests
-  // ============================================================================
-
-  // Clear module cache before each test to get fresh service instances
-  beforeEach(() => {
-    jest.resetModules();
-  
-  // ============================================================================
-  // Amount Validation Tests
-  // ============================================================================
-
-
   // Clear module cache before each test to get fresh service instances
   beforeEach(() => {
     jest.resetModules();
@@ -244,6 +219,225 @@ describe('LoanPaymentService - Validation Property Tests', () => {
       mockDb = null;
     }
   });
+
+  // ============================================================================
+  // Date Validation Tests (from loanPaymentService.dateValidation.pbt.test.js)
+  // ============================================================================
+
+  /**
+   * Property 5: Payment Date Validation
+   *
+   * For any payment date that is not in YYYY-MM-DD format or is in the future,
+   * the system should reject the payment with a validation error.
+   *
+   * **Validates: Requirements 1.6**
+   */
+  describe('Property 5: Payment Date Validation', () => {
+    test('Future dates should be rejected', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          loanArb,
+          futureDateArb(),
+          async (loan, futureDate) => {
+            mockDb = await createTestDatabase();
+            
+            jest.resetModules();
+            jest.mock('../database/db', () => ({
+              getDatabase: jest.fn(() => Promise.resolve(mockDb))
+            }));
+            
+            const loanPaymentService = require('./loanPaymentService');
+            const createdLoan = await insertLoan(mockDb, loan);
+
+            await expect(
+              loanPaymentService.createPayment(createdLoan.id, {
+                amount: validAmount,
+                payment_date: futureDate,
+                notes: null
+              })
+            ).rejects.toThrow('Payment date cannot be in the future');
+
+            await closeDatabase(mockDb);
+            mockDb = null;
+            return true;
+          }
+        ),
+        dbPbtOptions()
+      );
+    });
+
+    test('Invalid date formats should be rejected', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          loanArb,
+          invalidDateFormatArb,
+          async (loan, invalidDate) => {
+            mockDb = await createTestDatabase();
+            
+            jest.resetModules();
+            jest.mock('../database/db', () => ({
+              getDatabase: jest.fn(() => Promise.resolve(mockDb))
+            }));
+            
+            const loanPaymentService = require('./loanPaymentService');
+            const createdLoan = await insertLoan(mockDb, loan);
+
+            await expect(
+              loanPaymentService.createPayment(createdLoan.id, {
+                amount: validAmount,
+                payment_date: invalidDate,
+                notes: null
+              })
+            ).rejects.toThrow(/Payment date/);
+
+            await closeDatabase(mockDb);
+            mockDb = null;
+            return true;
+          }
+        ),
+        dbPbtOptions()
+      );
+    });
+
+    test('Null date should be rejected', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          loanArb,
+          async (loan) => {
+            mockDb = await createTestDatabase();
+            
+            jest.resetModules();
+            jest.mock('../database/db', () => ({
+              getDatabase: jest.fn(() => Promise.resolve(mockDb))
+            }));
+            
+            const loanPaymentService = require('./loanPaymentService');
+            const createdLoan = await insertLoan(mockDb, loan);
+
+            await expect(
+              loanPaymentService.createPayment(createdLoan.id, {
+                amount: validAmount,
+                payment_date: null,
+                notes: null
+              })
+            ).rejects.toThrow('Payment date is required');
+
+            await closeDatabase(mockDb);
+            mockDb = null;
+            return true;
+          }
+        ),
+        dbPbtOptions()
+      );
+    });
+
+    test('Undefined date should be rejected', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          loanArb,
+          async (loan) => {
+            mockDb = await createTestDatabase();
+            
+            jest.resetModules();
+            jest.mock('../database/db', () => ({
+              getDatabase: jest.fn(() => Promise.resolve(mockDb))
+            }));
+            
+            const loanPaymentService = require('./loanPaymentService');
+            const createdLoan = await insertLoan(mockDb, loan);
+
+            await expect(
+              loanPaymentService.createPayment(createdLoan.id, {
+                amount: validAmount,
+                payment_date: undefined,
+                notes: null
+              })
+            ).rejects.toThrow('Payment date is required');
+
+            await closeDatabase(mockDb);
+            mockDb = null;
+            return true;
+          }
+        ),
+        dbPbtOptions()
+      );
+    });
+
+    test('Valid past dates should be accepted', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          loanArb,
+          validPastDateArb(),
+          async (loan, validDate) => {
+            mockDb = await createTestDatabase();
+            
+            jest.resetModules();
+            jest.mock('../database/db', () => ({
+              getDatabase: jest.fn(() => Promise.resolve(mockDb))
+            }));
+            
+            const loanPaymentService = require('./loanPaymentService');
+            const createdLoan = await insertLoan(mockDb, loan);
+
+            const payment = await loanPaymentService.createPayment(createdLoan.id, {
+              amount: validAmount,
+              payment_date: validDate,
+              notes: null
+            });
+
+            expect(payment).toBeDefined();
+            expect(payment.payment_date).toBe(validDate);
+
+            await closeDatabase(mockDb);
+            mockDb = null;
+            return true;
+          }
+        ),
+        dbPbtOptions()
+      );
+    });
+
+    test('Today\'s date should be accepted', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          loanArb,
+          async (loan) => {
+            mockDb = await createTestDatabase();
+            
+            jest.resetModules();
+            jest.mock('../database/db', () => ({
+              getDatabase: jest.fn(() => Promise.resolve(mockDb))
+            }));
+            
+            const loanPaymentService = require('./loanPaymentService');
+            const createdLoan = await insertLoan(mockDb, loan);
+
+            const today = new Date();
+            const todayStr = today.toISOString().split('T')[0];
+
+            const payment = await loanPaymentService.createPayment(createdLoan.id, {
+              amount: validAmount,
+              payment_date: todayStr,
+              notes: null
+            });
+
+            expect(payment).toBeDefined();
+            expect(payment.payment_date).toBe(todayStr);
+
+            await closeDatabase(mockDb);
+            mockDb = null;
+            return true;
+          }
+        ),
+        dbPbtOptions()
+      );
+    });
+  });
+
+
+  // ============================================================================
+  // Amount Validation Tests (from loanPaymentService.amountValidation.pbt.test.js)
+  // ============================================================================
 
   /**
    * Property 4: Payment Amount Validation
@@ -259,21 +453,16 @@ describe('LoanPaymentService - Validation Property Tests', () => {
         fc.asyncProperty(
           loanArb,
           async (loan) => {
-            // Create fresh database for each test
             mockDb = await createTestDatabase();
             
-            // Re-require the service to use the new mock
             jest.resetModules();
             jest.mock('../database/db', () => ({
               getDatabase: jest.fn(() => Promise.resolve(mockDb))
             }));
             
             const loanPaymentService = require('./loanPaymentService');
-
-            // Create a loan
             const createdLoan = await insertLoan(mockDb, loan);
 
-            // Attempt to create a payment with zero amount
             await expect(
               loanPaymentService.createPayment(createdLoan.id, {
                 amount: 0,
@@ -282,10 +471,8 @@ describe('LoanPaymentService - Validation Property Tests', () => {
               })
             ).rejects.toThrow('Payment amount must be a positive number');
 
-            // Clean up
             await closeDatabase(mockDb);
             mockDb = null;
-
             return true;
           }
         ),
@@ -299,21 +486,16 @@ describe('LoanPaymentService - Validation Property Tests', () => {
           loanArb,
           negativeAmountArb,
           async (loan, negativeAmount) => {
-            // Create fresh database for each test
             mockDb = await createTestDatabase();
             
-            // Re-require the service to use the new mock
             jest.resetModules();
             jest.mock('../database/db', () => ({
               getDatabase: jest.fn(() => Promise.resolve(mockDb))
             }));
             
             const loanPaymentService = require('./loanPaymentService');
-
-            // Create a loan
             const createdLoan = await insertLoan(mockDb, loan);
 
-            // Attempt to create a payment with negative amount
             await expect(
               loanPaymentService.createPayment(createdLoan.id, {
                 amount: negativeAmount,
@@ -322,10 +504,8 @@ describe('LoanPaymentService - Validation Property Tests', () => {
               })
             ).rejects.toThrow('Payment amount must be a positive number');
 
-            // Clean up
             await closeDatabase(mockDb);
             mockDb = null;
-
             return true;
           }
         ),
@@ -338,21 +518,16 @@ describe('LoanPaymentService - Validation Property Tests', () => {
         fc.asyncProperty(
           loanArb,
           async (loan) => {
-            // Create fresh database for each test
             mockDb = await createTestDatabase();
             
-            // Re-require the service to use the new mock
             jest.resetModules();
             jest.mock('../database/db', () => ({
               getDatabase: jest.fn(() => Promise.resolve(mockDb))
             }));
             
             const loanPaymentService = require('./loanPaymentService');
-
-            // Create a loan
             const createdLoan = await insertLoan(mockDb, loan);
 
-            // Attempt to create a payment with null amount
             await expect(
               loanPaymentService.createPayment(createdLoan.id, {
                 amount: null,
@@ -361,10 +536,8 @@ describe('LoanPaymentService - Validation Property Tests', () => {
               })
             ).rejects.toThrow('Payment amount is required');
 
-            // Clean up
             await closeDatabase(mockDb);
             mockDb = null;
-
             return true;
           }
         ),
@@ -377,21 +550,16 @@ describe('LoanPaymentService - Validation Property Tests', () => {
         fc.asyncProperty(
           loanArb,
           async (loan) => {
-            // Create fresh database for each test
             mockDb = await createTestDatabase();
             
-            // Re-require the service to use the new mock
             jest.resetModules();
             jest.mock('../database/db', () => ({
               getDatabase: jest.fn(() => Promise.resolve(mockDb))
             }));
             
             const loanPaymentService = require('./loanPaymentService');
-
-            // Create a loan
             const createdLoan = await insertLoan(mockDb, loan);
 
-            // Attempt to create a payment with undefined amount
             await expect(
               loanPaymentService.createPayment(createdLoan.id, {
                 amount: undefined,
@@ -400,10 +568,8 @@ describe('LoanPaymentService - Validation Property Tests', () => {
               })
             ).rejects.toThrow('Payment amount is required');
 
-            // Clean up
             await closeDatabase(mockDb);
             mockDb = null;
-
             return true;
           }
         ),
@@ -417,21 +583,16 @@ describe('LoanPaymentService - Validation Property Tests', () => {
           loanArb,
           fc.string().filter(s => s.trim().length > 0),
           async (loan, stringAmount) => {
-            // Create fresh database for each test
             mockDb = await createTestDatabase();
             
-            // Re-require the service to use the new mock
             jest.resetModules();
             jest.mock('../database/db', () => ({
               getDatabase: jest.fn(() => Promise.resolve(mockDb))
             }));
             
             const loanPaymentService = require('./loanPaymentService');
-
-            // Create a loan
             const createdLoan = await insertLoan(mockDb, loan);
 
-            // Attempt to create a payment with string amount
             await expect(
               loanPaymentService.createPayment(createdLoan.id, {
                 amount: stringAmount,
@@ -440,10 +601,8 @@ describe('LoanPaymentService - Validation Property Tests', () => {
               })
             ).rejects.toThrow('Payment amount must be a valid number');
 
-            // Clean up
             await closeDatabase(mockDb);
             mockDb = null;
-
             return true;
           }
         ),
@@ -456,21 +615,16 @@ describe('LoanPaymentService - Validation Property Tests', () => {
         fc.asyncProperty(
           loanArb,
           async (loan) => {
-            // Create fresh database for each test
             mockDb = await createTestDatabase();
             
-            // Re-require the service to use the new mock
             jest.resetModules();
             jest.mock('../database/db', () => ({
               getDatabase: jest.fn(() => Promise.resolve(mockDb))
             }));
             
             const loanPaymentService = require('./loanPaymentService');
-
-            // Create a loan
             const createdLoan = await insertLoan(mockDb, loan);
 
-            // Attempt to create a payment with NaN amount
             await expect(
               loanPaymentService.createPayment(createdLoan.id, {
                 amount: NaN,
@@ -479,10 +633,8 @@ describe('LoanPaymentService - Validation Property Tests', () => {
               })
             ).rejects.toThrow('Payment amount must be a valid number');
 
-            // Clean up
             await closeDatabase(mockDb);
             mockDb = null;
-
             return true;
           }
         ),
@@ -496,21 +648,16 @@ describe('LoanPaymentService - Validation Property Tests', () => {
           loanArb,
           safeAmount({ min: 0.01, max: 10000 }),
           async (loan, positiveAmount) => {
-            // Create fresh database for each test
             mockDb = await createTestDatabase();
             
-            // Re-require the service to use the new mock
             jest.resetModules();
             jest.mock('../database/db', () => ({
               getDatabase: jest.fn(() => Promise.resolve(mockDb))
             }));
             
             const loanPaymentService = require('./loanPaymentService');
-
-            // Create a loan
             const createdLoan = await insertLoan(mockDb, loan);
 
-            // Create a payment with positive amount - should succeed
             const payment = await loanPaymentService.createPayment(createdLoan.id, {
               amount: positiveAmount,
               payment_date: validPaymentDate,
@@ -520,10 +667,8 @@ describe('LoanPaymentService - Validation Property Tests', () => {
             expect(payment).toBeDefined();
             expect(payment.amount).toBeCloseTo(positiveAmount, 2);
 
-            // Clean up
             await closeDatabase(mockDb);
             mockDb = null;
-
             return true;
           }
         ),
@@ -531,6 +676,4 @@ describe('LoanPaymentService - Validation Property Tests', () => {
       );
     });
   });
-});
-
 });

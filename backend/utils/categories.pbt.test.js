@@ -1,6 +1,8 @@
 /**
  * Property-Based Tests for Category Validation
  * Using fast-check library for property-based testing
+  *
+ * @invariant Category Validation Enforcement: For any string value, isValid returns true if and only if the string appears in the CATEGORIES list; isBudgetable and isTaxDeductible correctly partition their respective subsets. Randomization covers arbitrary strings to verify no false positives or negatives.
  */
 
 const fc = require('fast-check');

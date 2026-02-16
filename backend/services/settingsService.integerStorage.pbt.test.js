@@ -1,4 +1,9 @@
+/**
+ * @invariant Integer Storage Round-Trip: For any integer value stored in the settings table, retrieving it returns the same integer value (not a string or other type). Randomization covers diverse integer values to ensure type preservation across the storage layer.
+ */
+
 const fc = require('fast-check');
+const { dbPbtOptions } = require('../test/pbtArbitraries');
 const settingsService = require('./settingsService');
 const { getDatabase } = require('../database/db');
 
@@ -54,7 +59,7 @@ describe('settingsService - Property 9: Integer Storage and Retrieval', () => {
           expect(typeof retrieved.maxCount).not.toBe('string');
         }
       ),
-      { numRuns: 100 }
+      dbPbtOptions({ numRuns: 100 })
     );
   });
 
@@ -103,7 +108,7 @@ describe('settingsService - Property 9: Integer Storage and Retrieval', () => {
           expect(retrieved.maxCount).toBe(maxCount);
         }
       ),
-      { numRuns: 100 }
+      dbPbtOptions({ numRuns: 100 })
     );
   });
 
@@ -138,7 +143,7 @@ describe('settingsService - Property 9: Integer Storage and Retrieval', () => {
           expect(Number.isInteger(retrieved3.maxCount)).toBe(true);
         }
       ),
-      { numRuns: 50 }
+      dbPbtOptions({ numRuns: 50 })
     );
   });
 

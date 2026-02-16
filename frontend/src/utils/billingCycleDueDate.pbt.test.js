@@ -1,3 +1,7 @@
+/**
+ * @invariant Due Date Derivation: For any billing cycle day (1-31) and cycle end date, the derived due date is always after the cycle end date and handles month-end boundaries correctly. Randomization covers diverse day-of-month values and date combinations.
+ */
+
 import { describe, it, expect } from 'vitest';
 import * as fc from 'fast-check';
 import { deriveDueDate } from './billingCycleDueDate';

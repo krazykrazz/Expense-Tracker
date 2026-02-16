@@ -5,6 +5,8 @@
  * Tests Property 5: Interest Calculation Formula
  *
  * Validates: Requirements 3.1, 3.3, 3.4
+  *
+ * @invariant Interest Calculation Formula: For any mortgage balance and interest rate, the calculated monthly interest equals balance * (annualRate / 12); the result is always non-negative and proportional to both inputs. Randomization covers diverse balance and rate combinations including edge cases.
  */
 
 const fc = require('fast-check');

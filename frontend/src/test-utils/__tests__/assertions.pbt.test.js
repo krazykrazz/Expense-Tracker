@@ -3,6 +3,8 @@
  * **Property 5: Async assertions wait for conditions correctly**
  * **Property 8: Failed assertions include diagnostic information**
  * **Validates: Requirements 3.3, 2.5, 5.5**
+  *
+ * @invariant Assertion Correctness: For any test condition, the custom assertions correctly distinguish passing from failing states; failed assertions include diagnostic information. Randomization covers diverse condition inputs.
  */
 import { describe, it, expect } from 'vitest';
 import fc from 'fast-check';

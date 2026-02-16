@@ -3,10 +3,12 @@
  * Feature: configurable-payment-methods
  * 
  * Using fast-check library for property-based testing
+  *
+ * @invariant Payment Persistence Round-Trip: For any valid credit card payment, storing and retrieving it returns equivalent data; payments are correctly associated with their payment method. Randomization covers diverse payment amounts, dates, and card associations.
  */
 
 const fc = require('fast-check');
-const { pbtOptions, dbPbtOptions, safeDate, safeAmount, safeString } = require('../test/pbtArbitraries');
+const { dbPbtOptions, safeDate, safeAmount, safeString } = require('../test/pbtArbitraries');
 const sqlite3 = require('sqlite3').verbose();
 
 // Helper function to create an in-memory test database

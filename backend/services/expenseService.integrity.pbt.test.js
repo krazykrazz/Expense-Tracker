@@ -17,7 +17,7 @@
  */
 
 const fc = require('fast-check');
-const { pbtOptions, dbPbtOptions } = require('../test/pbtArbitraries');
+const { dbPbtOptions } = require('../test/pbtArbitraries');
 const expenseService = require('./expenseService');
 const { getDatabase } = require('../database/db');
 const { CATEGORIES } = require('../utils/categories');
@@ -110,7 +110,7 @@ describe('ExpenseService - Data Integrity PBT', () => {
             }
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     }, 120000);
   });
@@ -167,7 +167,7 @@ describe('ExpenseService - Data Integrity PBT', () => {
             expect(sourceRetrieved.id).toBe(result.expense.id);
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     }, 120000);
 
@@ -215,7 +215,7 @@ describe('ExpenseService - Data Integrity PBT', () => {
             expect(editedExpense.amount).toBe(updatedData.amount);
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     }, 120000);
   });
@@ -272,7 +272,7 @@ describe('ExpenseService - Data Integrity PBT', () => {
               expect(retrievedExpense.type).toBe(createdExpense.type);
             }
           ),
-          pbtOptions()
+          dbPbtOptions()
         );
       } finally {
         // Clean up created expenses

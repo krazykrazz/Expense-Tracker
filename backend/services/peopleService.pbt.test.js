@@ -1,11 +1,13 @@
 /**
  * Property-Based Tests for People Service
  * Tests universal properties of people management business logic
+  *
+ * @invariant People Management Round-Trip: For any valid person record, creating and reading it returns equivalent data; name trimming and normalization are applied consistently; expense associations are maintained correctly. Randomization covers diverse name patterns and association configurations.
  */
 
 const { describe, test, expect, beforeEach, afterEach } = require('@jest/globals');
 const fc = require('fast-check');
-const { pbtOptions } = require('../test/pbtArbitraries');
+const { dbPbtOptions } = require('../test/pbtArbitraries');
 const peopleService = require('./peopleService');
 const { getDatabase } = require('../database/db');
 
@@ -219,7 +221,7 @@ describe('People Service Property-Based Tests', () => {
           }
         }
       ),
-      pbtOptions() // Fewer runs since this test involves more database operations
+      dbPbtOptions() // Fewer runs since this test involves more database operations
     );
   });
 });

@@ -6,6 +6,8 @@
  * Tests Property 7: Validation Bounds
  *
  * Validates: Requirements 1.2, 1.3, 1.4, 1.5, 1.6, 10.1, 10.2, 10.3, 10.4, 10.5
+  *
+ * @invariant Validation Bounds: For any mortgage input, required fields must be present; numeric values must be within acceptable ranges (positive amounts, valid rates); validation rejects out-of-range values consistently. Randomization covers the full input space including boundary values.
  */
 
 const fc = require('fast-check');

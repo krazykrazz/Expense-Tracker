@@ -7,6 +7,8 @@
  * between single and multiple payment views.
  * 
  * _Requirements: 1.1, 1.2, 1.3, 1.4, 2.1, 2.2, 2.3, 3.1, 3.2, 3.5_
+  *
+ * @invariant Badge Display Consistency: For any credit card reminder data, statement badges and due dates are displayed consistently between single and multiple payment views. Randomization covers diverse balance, due date, and payment configurations.
  */
 
 import { render, fireEvent } from '@testing-library/react';

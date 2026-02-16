@@ -1,0 +1,18 @@
+{
+  "description": "CI test runtime budget configuration. Thresholds are in seconds. Set generously at ~2x current average. Use [skip-budget] in commit message to override.",
+  "budgets": {
+    "backend-unit-tests": {
+      "maxSeconds": 300,
+      "description": "Backend unit tests (Jest)"
+    },
+    "backend-pbt-shard": {
+      "maxSeconds": 900,
+      "description": "Single backend PBT shard (Jest with fast-check)"
+    },
+    "frontend-tests": {
+      "maxSeconds": 300,
+      "description": "Frontend tests (Vitest)"
+    }
+  },
+  "overridePattern": "\\[skip-budget\\]"
+}

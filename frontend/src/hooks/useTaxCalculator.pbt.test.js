@@ -4,6 +4,8 @@
  * Tests localStorage round-trip for tax settings and tax credits computation.
  *
  * Feature: frontend-custom-hooks
+  *
+ * @invariant Tax Settings Round-Trip: For any valid tax settings (net income, province), saving and reading back returns the same values; tax credit calculations are deterministic for the same inputs. Randomization covers diverse income values and province selections.
  */
 
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';

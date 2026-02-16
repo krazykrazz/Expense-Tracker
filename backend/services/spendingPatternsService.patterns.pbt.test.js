@@ -16,7 +16,7 @@
  */
 
 const fc = require('fast-check');
-const { pbtOptions, safeAmount, paymentMethod, expenseType, weekNumber } = require('../test/pbtArbitraries');
+const { dbPbtOptions, safeAmount, paymentMethod, expenseType, weekNumber } = require('../test/pbtArbitraries');
 const spendingPatternsService = require('./spendingPatternsService');
 const { getDatabase } = require('../database/db');
 const { ANALYTICS_CONFIG, PATTERN_FREQUENCIES } = require('../utils/analyticsConstants');
@@ -219,7 +219,7 @@ describe('SpendingPatternsService - Pattern Detection Property Tests', () => {
             }
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
 
@@ -267,7 +267,7 @@ describe('SpendingPatternsService - Pattern Detection Property Tests', () => {
             }
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
 
@@ -316,7 +316,7 @@ describe('SpendingPatternsService - Pattern Detection Property Tests', () => {
             }
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
 
@@ -358,7 +358,7 @@ describe('SpendingPatternsService - Pattern Detection Property Tests', () => {
             expect(merchantPattern).toBeUndefined();
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
 
@@ -457,7 +457,7 @@ describe('SpendingPatternsService - Pattern Detection Property Tests', () => {
             }
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
 
@@ -546,7 +546,7 @@ describe('SpendingPatternsService - Pattern Detection Property Tests', () => {
             }
           }
         ),
-        pbtOptions()
+        dbPbtOptions()
       );
     });
 

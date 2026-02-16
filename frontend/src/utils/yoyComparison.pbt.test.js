@@ -3,6 +3,8 @@
  * Tests percentage change calculations and change indicators
  * 
  * **Validates: Requirements 2.2, 2.3, 2.4, 2.5, 2.6**
+  *
+ * @invariant Percentage Change Accuracy: For any pair of current and previous values where previous is non-zero, the percentage change equals ((current - previous) / previous) * 100; the change indicator correctly reflects positive, negative, and zero changes. Randomization covers diverse value pairs.
  */
 
 import { describe, test, expect } from 'vitest';

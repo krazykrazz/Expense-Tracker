@@ -1,3 +1,7 @@
+/**
+ * @invariant Form Field Validation: For any combination of expense form inputs, required fields are enforced consistently; category validation accepts only valid categories; amount validation rejects non-positive values. Randomization covers diverse input combinations across all form fields.
+ */
+
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, waitFor, fireEvent, cleanup, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';

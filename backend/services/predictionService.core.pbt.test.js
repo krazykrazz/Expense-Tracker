@@ -15,7 +15,7 @@
  */
 
 const fc = require('fast-check');
-const { pbtOptions, safeAmount, paymentMethod, expenseType, weekNumber } = require('../test/pbtArbitraries');
+const { dbPbtOptions, safeAmount, paymentMethod, expenseType, weekNumber } = require('../test/pbtArbitraries');
 const predictionService = require('./predictionService');
 const { getDatabase } = require('../database/db');
 const { CONFIDENCE_LEVELS } = require('../utils/analyticsConstants');

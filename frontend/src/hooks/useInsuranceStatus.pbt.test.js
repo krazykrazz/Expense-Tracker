@@ -6,6 +6,8 @@
  * sets quickStatusExpense to null.
  *
  * Feature: frontend-custom-hooks
+  *
+ * @invariant Quick Status Round-Trip: For any expense, opening the quick status sets quickStatusExpense to that expense, and closing it sets quickStatusExpense to null. Randomization covers diverse expense objects.
  */
 
 import { describe, test, expect, vi, beforeEach } from 'vitest';

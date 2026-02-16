@@ -16,7 +16,7 @@
  */
 
 const fc = require('fast-check');
-const { pbtOptions, dbPbtOptions } = require('../test/pbtArbitraries');
+const { dbPbtOptions } = require('../test/pbtArbitraries');
 const paymentMethodService = require('./paymentMethodService');
 const {
   getTestDatabase,
@@ -169,7 +169,23 @@ describe('PaymentMethodService - Billing Cycle Transaction Count Property-Based 
 });
 
 describe('PaymentMethodService - Billing Cycle Total Accuracy Property-Based Tests', () => {
-  beforeEach(() => {
+  let sharedDb = null;
+
+  beforeAll(async () => {
+    sharedDb = await getTestDatabase();
+    await createTables(sharedDb);
+  });
+
+  afterAll(async () => {
+    if (sharedDb) {
+      await closeDatabase(sharedDb);
+    }
+  });
+
+  beforeEach(async () => {
+    if (sharedDb) {
+      await resetTestDatabase(sharedDb);
+    }
     resetDisplayNameCounter();
   });
 
@@ -319,7 +335,23 @@ describe('PaymentMethodService - Billing Cycle Total Accuracy Property-Based Tes
 });
 
 describe('PaymentMethodService - Payment Reduction Property-Based Tests', () => {
-  beforeEach(() => {
+  let sharedDb = null;
+
+  beforeAll(async () => {
+    sharedDb = await getTestDatabase();
+    await createTables(sharedDb);
+  });
+
+  afterAll(async () => {
+    if (sharedDb) {
+      await closeDatabase(sharedDb);
+    }
+  });
+
+  beforeEach(async () => {
+    if (sharedDb) {
+      await resetTestDatabase(sharedDb);
+    }
     resetDisplayNameCounter();
   });
 
@@ -421,7 +453,23 @@ describe('PaymentMethodService - Payment Reduction Property-Based Tests', () => 
 });
 
 describe('PaymentMethodService - Projected Equals Current Property-Based Tests', () => {
-  beforeEach(() => {
+  let sharedDb = null;
+
+  beforeAll(async () => {
+    sharedDb = await getTestDatabase();
+    await createTables(sharedDb);
+  });
+
+  afterAll(async () => {
+    if (sharedDb) {
+      await closeDatabase(sharedDb);
+    }
+  });
+
+  beforeEach(async () => {
+    if (sharedDb) {
+      await resetTestDatabase(sharedDb);
+    }
     resetDisplayNameCounter();
   });
 
@@ -558,7 +606,7 @@ describe('PaymentMethodService - Credit Utilization Property Tests', () => {
           return true;
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -575,7 +623,7 @@ describe('PaymentMethodService - Credit Utilization Property Tests', () => {
           return true;
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -595,7 +643,7 @@ describe('PaymentMethodService - Credit Utilization Property Tests', () => {
           return true;
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -611,7 +659,7 @@ describe('PaymentMethodService - Credit Utilization Property Tests', () => {
           return true;
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -627,7 +675,7 @@ describe('PaymentMethodService - Credit Utilization Property Tests', () => {
           return true;
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -643,7 +691,7 @@ describe('PaymentMethodService - Credit Utilization Property Tests', () => {
           return true;
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   }, 120000);
 });

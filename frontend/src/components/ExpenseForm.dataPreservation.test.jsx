@@ -293,6 +293,14 @@ describe('ExpenseForm - Data Preservation During Collapse', () => {
     // Change back to medical
     await user.selectOptions(typeSelect, 'Tax - Medical');
 
+    // Wait for Insurance Tracking section to appear and expand it
+    await waitFor(() => {
+      expect(screen.getByText('Insurance Tracking')).toBeInTheDocument();
+    });
+    
+    const insuranceHeader = screen.getByTestId('collapsible-header-insurance-tracking');
+    await user.click(insuranceHeader);
+
     // Verify insurance checkbox state is cleared (expected for category-specific fields)
     await waitFor(() => {
       const insuranceCheckboxAfter = screen.getByLabelText(/Eligible for Insurance Reimbursement/i);

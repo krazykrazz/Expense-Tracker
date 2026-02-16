@@ -301,7 +301,7 @@ describe('BillingCycleRepository - Property-Based Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -362,7 +362,7 @@ describe('BillingCycleRepository - Property-Based Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -410,7 +410,7 @@ describe('BillingCycleRepository - Property-Based Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -476,7 +476,7 @@ describe('BillingCycleRepository - Property-Based Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -540,7 +540,7 @@ describe('BillingCycleRepository - Property-Based Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -611,7 +611,7 @@ describe('BillingCycleRepository - Property-Based Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 });

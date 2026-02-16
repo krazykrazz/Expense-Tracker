@@ -176,7 +176,7 @@ describe('Analytics Controller - Edge Case Handling Property Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -344,7 +344,7 @@ describe('Analytics Controller - Edge Case Handling Property Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 

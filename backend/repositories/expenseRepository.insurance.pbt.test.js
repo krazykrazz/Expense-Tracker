@@ -7,7 +7,7 @@
 
 const { describe, test, expect, beforeEach, afterEach } = require('@jest/globals');
 const fc = require('fast-check');
-const { pbtOptions } = require('../test/pbtArbitraries');
+const { dbPbtOptions } = require('../test/pbtArbitraries');
 const expenseRepository = require('./expenseRepository');
 const { getDatabase } = require('../database/db');
 
@@ -163,7 +163,7 @@ describe('Expense Repository Insurance Property-Based Tests', () => {
           });
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 });

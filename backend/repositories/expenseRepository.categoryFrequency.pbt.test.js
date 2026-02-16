@@ -1,5 +1,5 @@
 const fc = require('fast-check');
-const { pbtOptions } = require('../test/pbtArbitraries');
+const { dbPbtOptions } = require('../test/pbtArbitraries');
 const expenseRepository = require('./expenseRepository');
 const { getDatabase } = require('../database/db');
 const { CATEGORIES } = require('../utils/categories');
@@ -129,7 +129,7 @@ describe('ExpenseRepository - Property-Based Tests for Category Frequency', () =
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   }, 120000);
 
@@ -174,7 +174,7 @@ describe('ExpenseRepository - Property-Based Tests for Category Frequency', () =
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   }, 60000);
 
@@ -222,7 +222,7 @@ describe('ExpenseRepository - Property-Based Tests for Category Frequency', () =
           expect(results[0].count).toBe(3);
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   }, 60000);
 });

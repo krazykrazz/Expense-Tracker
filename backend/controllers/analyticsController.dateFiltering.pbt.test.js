@@ -167,7 +167,7 @@ describe('Analytics Controller - API Date Range Filtering Property Tests', () =>
           expect(totalTransactions).toBe(expectedExpenses.length);
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -233,7 +233,7 @@ describe('Analytics Controller - API Date Range Filtering Property Tests', () =>
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 

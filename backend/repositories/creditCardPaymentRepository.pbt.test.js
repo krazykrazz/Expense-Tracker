@@ -246,7 +246,7 @@ describe('CreditCardPaymentRepository - Property-Based Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -295,7 +295,7 @@ describe('CreditCardPaymentRepository - Property-Based Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -346,7 +346,7 @@ describe('CreditCardPaymentRepository - Property-Based Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 });

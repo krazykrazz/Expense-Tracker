@@ -1,5 +1,5 @@
 const fc = require('fast-check');
-const { pbtOptions } = require('../test/pbtArbitraries');
+const { dbPbtOptions } = require('../test/pbtArbitraries');
 const expenseRepository = require('./expenseRepository');
 const { getDatabase } = require('../database/db');
 
@@ -156,7 +156,7 @@ describe('ExpenseRepository - Merchant Ranking Property Tests', () => {
           expect(testMerchants.length).toBe(merchantData.length);
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 });

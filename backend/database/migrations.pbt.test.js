@@ -4,7 +4,7 @@
  */
 
 const fc = require('fast-check');
-const { pbtOptions } = require('../test/pbtArbitraries');
+const { dbPbtOptions } = require('../test/pbtArbitraries');
 const sqlite3 = require('sqlite3').verbose();
 const fs = require('fs');
 const path = require('path');
@@ -349,7 +349,7 @@ describe('Database Migrations - Property-Based Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -391,7 +391,7 @@ describe('Database Migrations - Property-Based Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -527,7 +527,7 @@ describe('Database Migrations - Property-Based Tests', () => {
           }
         }
       ),
-      pbtOptions() // Reduced runs since this is more complex
+      dbPbtOptions() // Reduced runs since this is more complex
     );
   });
 
@@ -660,7 +660,7 @@ describe('Database Migrations - Property-Based Tests', () => {
           }
         }
       ),
-      pbtOptions() // Reduced runs since this is more complex
+      dbPbtOptions() // Reduced runs since this is more complex
     );
   });
 
@@ -771,7 +771,7 @@ describe('Database Migrations - Property-Based Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 });
@@ -1103,7 +1103,7 @@ describe('Multi-Invoice Support Migration - Property-Based Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -1493,7 +1493,7 @@ describe('Medical Insurance Tracking Migration - Property-Based Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -1617,7 +1617,7 @@ describe('Medical Insurance Tracking Migration - Property-Based Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -1765,7 +1765,7 @@ describe('Medical Insurance Tracking Migration - Property-Based Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -1916,7 +1916,7 @@ describe('Medical Insurance Tracking Migration - Property-Based Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -2026,7 +2026,7 @@ describe('Medical Insurance Tracking Migration - Property-Based Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 });
@@ -2270,7 +2270,7 @@ describe('Posted Date Migration - Property-Based Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -2359,7 +2359,7 @@ describe('Posted Date Migration - Property-Based Tests', () => {
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 

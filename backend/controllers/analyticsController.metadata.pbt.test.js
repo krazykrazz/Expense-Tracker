@@ -158,7 +158,7 @@ describe('Analytics Controller - API Response Metadata Property Tests', () => {
           expect(['low', 'medium', 'high']).toContain(response.metadata.confidenceLevel);
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -220,7 +220,7 @@ describe('Analytics Controller - API Response Metadata Property Tests', () => {
           expect(['low', 'medium', 'high']).toContain(response.metadata.confidenceLevel);
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -281,7 +281,7 @@ describe('Analytics Controller - API Response Metadata Property Tests', () => {
           expect(['low', 'medium', 'high']).toContain(response.metadata.confidenceLevel);
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 

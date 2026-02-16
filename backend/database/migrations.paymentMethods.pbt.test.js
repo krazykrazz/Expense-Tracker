@@ -5,7 +5,7 @@
  */
 
 const fc = require('fast-check');
-const { pbtOptions } = require('../test/pbtArbitraries');
+const { dbPbtOptions } = require('../test/pbtArbitraries');
 const sqlite3 = require('sqlite3').verbose();
 const { CATEGORIES } = require('../utils/categories');
 
@@ -334,7 +334,7 @@ describe('Configurable Payment Methods Migration - Property-Based Tests', () => 
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -422,7 +422,7 @@ describe('Configurable Payment Methods Migration - Property-Based Tests', () => 
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -510,7 +510,7 @@ describe('Configurable Payment Methods Migration - Property-Based Tests', () => 
           }
         }
       ),
-      pbtOptions()
+      dbPbtOptions()
     );
   });
 
@@ -573,7 +573,7 @@ describe('Configurable Payment Methods Migration - Property-Based Tests', () => 
           }
         }
       ),
-      { ...pbtOptions(), numRuns: 1 } // Only need to run once since no random input
+      { ...dbPbtOptions(), numRuns: 1 } // Only need to run once since no random input
     );
   });
 });

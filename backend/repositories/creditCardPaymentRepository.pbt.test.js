@@ -6,7 +6,7 @@
  */
 
 const fc = require('fast-check');
-const { pbtOptions, safeDate, safeAmount, safeString } = require('../test/pbtArbitraries');
+const { pbtOptions, dbPbtOptions, safeDate, safeAmount, safeString } = require('../test/pbtArbitraries');
 const sqlite3 = require('sqlite3').verbose();
 
 // Helper function to create an in-memory test database

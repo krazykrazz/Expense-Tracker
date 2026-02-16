@@ -1,13 +1,11 @@
 /**
  * Property-Based Tests for LoanPaymentService - CRUD Round-Trip
- *
- * Feature: loan-payment-tracking
- * Tests Property 1: Payment CRUD Round-Trip
- *
- * For any valid payment data (positive amount, valid date, optional notes),
- * creating a payment and then retrieving it should return the same data that was submitted.
- *
- * **Validates: Requirements 1.1, 1.3**
+ * 
+ * **Feature: loan-payment-tracking**
+ * **Validates: Round-trip persistence of loan payment operations**
+ * 
+ * @invariant Round-Trip Persistence: Loan payment data written through the service
+ * can be read back with identical values across create, update, and delete operations.
  */
 
 const fc = require('fast-check');

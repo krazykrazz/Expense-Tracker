@@ -180,10 +180,32 @@ describe('PaymentMethodService - Balance COALESCE Property-Based Tests', () => {
       ),
       dbPbtOptions({ numRuns: 30 })
     );
-  });, 120000
+  }, 120000);
 });
 
 describe('PaymentMethodService - Balance Ordering Property-Based Tests', () => {
+  let sharedDb = null;
+
+  beforeAll(async () => {
+    // Create database once for all tests
+    sharedDb = await getTestDatabase();
+    await createTables(sharedDb);
+  });
+
+  afterAll(async () => {
+    // Close database after all tests
+    if (sharedDb) {
+      await closeDatabase(sharedDb);
+    }
+  });
+
+  beforeEach(async () => {
+    // Reset database between test iterations
+    if (sharedDb) {
+      await resetTestDatabase(sharedDb);
+    }
+  });
+
   beforeEach(() => {
     resetDisplayNameCounter();
   });
@@ -256,10 +278,32 @@ describe('PaymentMethodService - Balance Ordering Property-Based Tests', () => {
       ),
       dbPbtOptions({ numRuns: 50 })
     );
-  });, 120000
+  }, 120000);
 });
 
 describe('PaymentMethodService - Non-Negative Balance Property-Based Tests', () => {
+  let sharedDb = null;
+
+  beforeAll(async () => {
+    // Create database once for all tests
+    sharedDb = await getTestDatabase();
+    await createTables(sharedDb);
+  });
+
+  afterAll(async () => {
+    // Close database after all tests
+    if (sharedDb) {
+      await closeDatabase(sharedDb);
+    }
+  });
+
+  beforeEach(async () => {
+    // Reset database between test iterations
+    if (sharedDb) {
+      await resetTestDatabase(sharedDb);
+    }
+  });
+
   beforeEach(() => {
     resetDisplayNameCounter();
   });
@@ -379,10 +423,32 @@ describe('PaymentMethodService - Non-Negative Balance Property-Based Tests', () 
       ),
       dbPbtOptions({ numRuns: 30 })
     );
-  });, 120000
+  }, 120000);
 });
 
 describe('PaymentMethodService - Expense Count and Balance Consistency Property-Based Tests', () => {
+  let sharedDb = null;
+
+  beforeAll(async () => {
+    // Create database once for all tests
+    sharedDb = await getTestDatabase();
+    await createTables(sharedDb);
+  });
+
+  afterAll(async () => {
+    // Close database after all tests
+    if (sharedDb) {
+      await closeDatabase(sharedDb);
+    }
+  });
+
+  beforeEach(async () => {
+    // Reset database between test iterations
+    if (sharedDb) {
+      await resetTestDatabase(sharedDb);
+    }
+  });
+
   beforeEach(() => {
     resetDisplayNameCounter();
   });
@@ -429,7 +495,7 @@ describe('PaymentMethodService - Expense Count and Balance Consistency Property-
               db.run('UPDATE expenses SET posted_date = ? WHERE id = ?', [newPostedDate, expenseId], (err) => {
                 if (err) reject(err);
                 else resolve();
-              });, 120000
+              });
             });
             
             const updatedCount = await countExpensesInCycle(db, cardId, cycleStartDate, cycleEndDate);
@@ -450,6 +516,28 @@ describe('PaymentMethodService - Expense Count and Balance Consistency Property-
 });
 
 describe('PaymentMethodService - Effective Date Consistency Property-Based Tests', () => {
+  let sharedDb = null;
+
+  beforeAll(async () => {
+    // Create database once for all tests
+    sharedDb = await getTestDatabase();
+    await createTables(sharedDb);
+  });
+
+  afterAll(async () => {
+    // Close database after all tests
+    if (sharedDb) {
+      await closeDatabase(sharedDb);
+    }
+  });
+
+  beforeEach(async () => {
+    // Reset database between test iterations
+    if (sharedDb) {
+      await resetTestDatabase(sharedDb);
+    }
+  });
+
   beforeEach(() => {
     resetDisplayNameCounter();
   });

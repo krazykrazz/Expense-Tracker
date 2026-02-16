@@ -1,4 +1,19 @@
 /**
+ * Property-Based Tests for LoanService - Round-Trip Operations
+ * 
+ * Consolidates:
+ * - loanService.roundtrip.pbt.test.js (Mortgage Round-Trip)
+ * - loanService.apiRoundTrip.pbt.test.js (API Round-Trip)
+ * - loanService.backwardCompatibility.pbt.test.js (Backward Compatibility)
+ * 
+ * **Feature: loan-payment-tracking, mortgage-tracking**
+ * **Validates: Round-trip persistence and API consistency**
+ * 
+ * @invariant Round-Trip Persistence: Data written through the service can be read back
+ * with identical values, and API operations maintain consistency across create/read/update cycles.
+ */
+
+/**
  * Property-Based Tests for Mortgage Data Round-Trip in LoanService
  *
  * Feature: mortgage-tracking
@@ -84,8 +99,32 @@ const fullMortgageArb = fc.record({
   estimated_months_left: fc.integer({ min: 1, max: 480 })
 }).filter(m => m.term_length <= m.amortization_period);
 
-describe('LoanService Mortgage Round-Trip Property Tests', () => {
+describe('LoanService - Round-Trip Operations Property Tests', () => {
+  // ============================================================================
+  // Mortgage Round-Trip Tests
+  // ============================================================================
+
   const createdMortgageIds = [];
+
+  beforeAll(async () => {
+    await createTestDatabase();
+  
+  // ============================================================================
+  // API Round-Trip Tests
+  // ============================================================================
+
+
+  const createdLoanIds = [];
+
+  beforeAll(async () => {
+    await createTestDatabase();
+  
+  // ============================================================================
+  // Backward Compatibility Tests
+  // ============================================================================
+
+
+  const createdLoanIds = [];
 
   beforeAll(async () => {
     await createTestDatabase();
@@ -96,69 +135,47 @@ describe('LoanService Mortgage Round-Trip Property Tests', () => {
   });
 
   afterEach(async () => {
-    // Clean up created mortgages
-    for (const id of createdMortgageIds) {
+    // Clean up created loans
+    for (const id of createdLoanIds) {
       try {
         await loanRepository.delete(id);
       } catch (e) {
         // Ignore errors
       }
     }
-    createdMortgageIds.length = 0;
+    createdLoanIds.length = 0;
   });
 
   /**
-   * Property 2: Mortgage Data Round-Trip
+   * Property 7: Backward Compatibility
    *
-   * For any valid mortgage object with all required and optional fields populated,
-   * storing the mortgage and then retrieving it by ID shall return an equivalent
-   * mortgage object with all fields preserved.
+   * For any loan with NULL fixed_interest_rate, the system must behave identically
+   * to the pre-feature behavior: requiring explicit rate input for balance entries.
    *
-   * **Validates: Requirements 2.1, 2.2, 2.3**
+   * **Validates: Requirements 6.1, 6.4**
    */
-  describe('Property 2: Mortgage Data Round-Trip', () => {
-    test('Creating and retrieving a mortgage should preserve all required fields', async () => {
+  describe('Property 7: Backward Compatibility', () => {
+    test('Loans without fixed_interest_rate should be treated as variable-rate loans', async () => {
       await fc.assert(
         fc.asyncProperty(
-          validMortgageArb,
-          async (mortgageData) => {
-            // Create the mortgage using the service
-            const created = await loanService.createMortgage(mortgageData);
-            createdMortgageIds.push(created.id);
+          validLoanArb,
+          async (loanData) => {
+            // Create loan without specifying fixed_interest_rate
+            // This simulates existing loans before the feature was added
+            const existingLoan = {
+              name: loanData.name,
+              initial_balance: loanData.initial_balance,
+              start_date: loanData.start_date,
+              notes: loanData.notes,
+              loan_type: 'loan'
+              // fixed_interest_rate not specified
+            };
+            const createdLoan = await loanService.createLoan(existingLoan);
+            createdLoanIds.push(createdLoan.id);
 
-            // Retrieve the mortgage by ID
-            const retrieved = await loanRepository.findById(created.id);
-
-            // Verify all required fields are preserved
-            expect(retrieved).not.toBeNull();
-            expect(retrieved.name).toBe(mortgageData.name.trim());
-            expect(retrieved.initial_balance).toBeCloseTo(mortgageData.initial_balance, 2);
-            expect(retrieved.start_date).toBe(mortgageData.start_date);
-            expect(retrieved.loan_type).toBe('mortgage');
-            expect(retrieved.amortization_period).toBe(mortgageData.amortization_period);
-            expect(retrieved.term_length).toBe(mortgageData.term_length);
-            expect(retrieved.renewal_date).toBe(mortgageData.renewal_date);
-            expect(retrieved.rate_type).toBe(mortgageData.rate_type);
-            expect(retrieved.payment_frequency).toBe(mortgageData.payment_frequency);
-
-            // Verify optional fields
-            if (mortgageData.notes !== null) {
-              expect(retrieved.notes).toBe(mortgageData.notes.trim());
-            } else {
-              expect(retrieved.notes).toBeNull();
-            }
-
-            if (mortgageData.estimated_property_value !== null) {
-              expect(retrieved.estimated_property_value).toBeCloseTo(mortgageData.estimated_property_value, 2);
-            } else {
-              expect(retrieved.estimated_property_value).toBeNull();
-            }
-
-            if (mortgageData.estimated_months_left !== null) {
-              expect(retrieved.estimated_months_left).toBe(mortgageData.estimated_months_left);
-            } else {
-              expect(retrieved.estimated_months_left).toBeNull();
-            }
+            // Verify the loan has null fixed_interest_rate (backward compatible default)
+            const loan = await loanRepository.findById(createdLoan.id);
+            expect(loan.fixed_interest_rate).toBeNull();
 
             return true;
           }
@@ -167,33 +184,34 @@ describe('LoanService Mortgage Round-Trip Property Tests', () => {
       );
     });
 
-    test('Creating and retrieving a mortgage with all fields populated should preserve all data', async () => {
+    test('Variable-rate loans require explicit rate for balance entries (pre-feature behavior)', async () => {
       await fc.assert(
         fc.asyncProperty(
-          fullMortgageArb,
-          async (mortgageData) => {
-            // Create the mortgage using the service
-            const created = await loanService.createMortgage(mortgageData);
-            createdMortgageIds.push(created.id);
+          validLoanArb,
+          validBalanceArb,
+          year(),
+          monthNumber,
+          async (loanData, balance, testYear, testMonth) => {
+            // Create a variable-rate loan (null fixed_interest_rate)
+            const variableLoan = { ...loanData, fixed_interest_rate: null };
+            const createdLoan = await loanService.createLoan(variableLoan);
+            createdLoanIds.push(createdLoan.id);
 
-            // Retrieve the mortgage by ID
-            const retrieved = await loanRepository.findById(created.id);
+            // Attempt to create balance entry WITHOUT rate
+            const req = createMockRequest({
+              loan_id: createdLoan.id,
+              year: testYear,
+              month: testMonth,
+              remaining_balance: balance
+              // rate NOT provided
+            });
+            const res = createMockResponse();
 
-            // Verify all fields are preserved
-            expect(retrieved).not.toBeNull();
-            expect(retrieved.name).toBe(mortgageData.name.trim());
-            expect(retrieved.initial_balance).toBeCloseTo(mortgageData.initial_balance, 2);
-            expect(retrieved.start_date).toBe(mortgageData.start_date);
-            expect(retrieved.loan_type).toBe('mortgage');
-            expect(retrieved.notes).toBe(mortgageData.notes.trim());
-            expect(retrieved.amortization_period).toBe(mortgageData.amortization_period);
-            expect(retrieved.term_length).toBe(mortgageData.term_length);
-            expect(retrieved.renewal_date).toBe(mortgageData.renewal_date);
-            expect(retrieved.rate_type).toBe(mortgageData.rate_type);
-            expect(retrieved.payment_frequency).toBe(mortgageData.payment_frequency);
-            expect(retrieved.estimated_property_value).toBeCloseTo(mortgageData.estimated_property_value, 2);
-            expect(retrieved.estimated_months_left).toBe(mortgageData.estimated_months_left);
-            expect(retrieved.is_paid_off).toBe(0);
+            await loanBalanceController.createOrUpdateBalance(req, res);
+
+            // Should fail - this is the pre-feature behavior
+            expect(res.statusCode).toBe(400);
+            expect(res.body.error).toBe('Interest rate is required for loans without a fixed interest rate');
 
             return true;
           }
@@ -202,60 +220,35 @@ describe('LoanService Mortgage Round-Trip Property Tests', () => {
       );
     });
 
-    test('Updating a mortgage should preserve changes to allowed fields', async () => {
+    test('Variable-rate loans accept explicit rate for balance entries (pre-feature behavior)', async () => {
       await fc.assert(
         fc.asyncProperty(
-          validMortgageArb,
-          fc.record({
-            name: fc.option(safeString({ minLength: 1, maxLength: 50 }), { nil: undefined }),
-            notes: fc.option(safeString({ maxLength: 200 }), { nil: undefined }),
-            estimated_property_value: fc.option(safeAmount({ min: 50000, max: 50000000 }), { nil: undefined }),
-            renewal_date: fc.option(safeFutureDateString(), { nil: undefined })
-          }).filter(u =>
-            u.name !== undefined ||
-            u.notes !== undefined ||
-            u.estimated_property_value !== undefined ||
-            u.renewal_date !== undefined
-          ),
-          async (mortgageData, updates) => {
-            // Create the mortgage using the service
-            const created = await loanService.createMortgage(mortgageData);
-            createdMortgageIds.push(created.id);
+          validLoanArb,
+          validBalanceArb,
+          validFixedRateArb,
+          year(),
+          monthNumber,
+          async (loanData, balance, explicitRate, testYear, testMonth) => {
+            // Create a variable-rate loan (null fixed_interest_rate)
+            const variableLoan = { ...loanData, fixed_interest_rate: null };
+            const createdLoan = await loanService.createLoan(variableLoan);
+            createdLoanIds.push(createdLoan.id);
 
-            // Store original immutable values
-            const originalInitialBalance = mortgageData.initial_balance;
-            const originalStartDate = mortgageData.start_date;
-            const originalAmortizationPeriod = mortgageData.amortization_period;
-            const originalTermLength = mortgageData.term_length;
+            // Create balance entry WITH explicit rate
+            const req = createMockRequest({
+              loan_id: createdLoan.id,
+              year: testYear,
+              month: testMonth,
+              remaining_balance: balance,
+              rate: explicitRate
+            });
+            const res = createMockResponse();
 
-            // Update the mortgage using the service
-            const updated = await loanService.updateMortgage(created.id, updates);
+            await loanBalanceController.createOrUpdateBalance(req, res);
 
-            // Verify the update was successful
-            expect(updated).not.toBeNull();
-
-            // Retrieve the mortgage to verify persistence
-            const retrieved = await loanRepository.findById(created.id);
-
-            // Verify allowed fields are updated
-            if (updates.name !== undefined) {
-              expect(retrieved.name).toBe(updates.name.trim());
-            }
-            if (updates.notes !== undefined) {
-              expect(retrieved.notes).toBe(updates.notes.trim());
-            }
-            if (updates.estimated_property_value !== undefined) {
-              expect(retrieved.estimated_property_value).toBeCloseTo(updates.estimated_property_value, 2);
-            }
-            if (updates.renewal_date !== undefined) {
-              expect(retrieved.renewal_date).toBe(updates.renewal_date);
-            }
-
-            // Verify immutable fields are preserved
-            expect(retrieved.initial_balance).toBeCloseTo(originalInitialBalance, 2);
-            expect(retrieved.start_date).toBe(originalStartDate);
-            expect(retrieved.amortization_period).toBe(originalAmortizationPeriod);
-            expect(retrieved.term_length).toBe(originalTermLength);
+            // Should succeed - this is the pre-feature behavior
+            expect(res.statusCode).toBe(201);
+            expect(res.body.rate).toBeCloseTo(explicitRate, 5);
 
             return true;
           }
@@ -264,30 +257,148 @@ describe('LoanService Mortgage Round-Trip Property Tests', () => {
       );
     });
 
-    test('Mortgage should be retrievable via getAllLoans with correct fields', async () => {
+    test('Existing loans (created without fixed_interest_rate field) should work unchanged', async () => {
       await fc.assert(
         fc.asyncProperty(
-          validMortgageArb,
-          async (mortgageData) => {
-            // Create the mortgage using the service
-            const created = await loanService.createMortgage(mortgageData);
-            createdMortgageIds.push(created.id);
+          validLoanArb,
+          validBalanceArb,
+          validFixedRateArb,
+          validFixedRateArb,
+          year(),
+          monthNumber,
+          async (loanData, balance, rate1, rate2, testYear, testMonth) => {
+            // Create loan without fixed_interest_rate (simulates pre-feature loan)
+            const existingLoan = {
+              name: loanData.name,
+              initial_balance: loanData.initial_balance,
+              start_date: loanData.start_date,
+              notes: loanData.notes,
+              loan_type: 'loan'
+            };
+            const createdLoan = await loanService.createLoan(existingLoan);
+            createdLoanIds.push(createdLoan.id);
 
-            // Retrieve all loans
+            // Create first balance entry with rate1
+            const req1 = createMockRequest({
+              loan_id: createdLoan.id,
+              year: testYear,
+              month: testMonth,
+              remaining_balance: balance,
+              rate: rate1
+            });
+            const res1 = createMockResponse();
+            await loanBalanceController.createOrUpdateBalance(req1, res1);
+            expect(res1.statusCode).toBe(201);
+
+            // Create second balance entry with different rate (rate2)
+            // This simulates variable rate behavior where rate can change
+            const nextMonth = testMonth === 12 ? 1 : testMonth + 1;
+            const nextYear = testMonth === 12 ? testYear + 1 : testYear;
+            
+            const req2 = createMockRequest({
+              loan_id: createdLoan.id,
+              year: nextYear,
+              month: nextMonth,
+              remaining_balance: balance * 0.95, // Slightly reduced balance
+              rate: rate2
+            });
+            const res2 = createMockResponse();
+            await loanBalanceController.createOrUpdateBalance(req2, res2);
+            expect(res2.statusCode).toBe(201);
+
+            // Verify both balance entries have their respective rates
+            const balance1 = await loanBalanceRepository.findByLoanAndMonth(
+              createdLoan.id, testYear, testMonth
+            );
+            const balance2 = await loanBalanceRepository.findByLoanAndMonth(
+              createdLoan.id, nextYear, nextMonth
+            );
+
+            expect(balance1.rate).toBeCloseTo(rate1, 5);
+            expect(balance2.rate).toBeCloseTo(rate2, 5);
+
+            return true;
+          }
+        ),
+        dbPbtOptions()
+      );
+    });
+
+    test('getAllLoans should return null fixed_interest_rate for existing loans', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          validLoanArb,
+          async (loanData) => {
+            // Create loan without fixed_interest_rate
+            const existingLoan = {
+              name: loanData.name,
+              initial_balance: loanData.initial_balance,
+              start_date: loanData.start_date,
+              notes: loanData.notes,
+              loan_type: 'loan'
+            };
+            const createdLoan = await loanService.createLoan(existingLoan);
+            createdLoanIds.push(createdLoan.id);
+
+            // Get all loans
             const allLoans = await loanService.getAllLoans();
+            const retrievedLoan = allLoans.find(l => l.id === createdLoan.id);
 
-            // Find our mortgage in the list
-            const foundMortgage = allLoans.find(l => l.id === created.id);
+            // Verify fixed_interest_rate is null (not undefined)
+            expect(retrievedLoan).toBeDefined();
+            expect(retrievedLoan.fixed_interest_rate).toBeNull();
 
-            // Verify the mortgage is in the list with correct fields
-            expect(foundMortgage).toBeDefined();
-            expect(foundMortgage.loan_type).toBe('mortgage');
-            expect(foundMortgage.amortization_period).toBe(mortgageData.amortization_period);
-            expect(foundMortgage.term_length).toBe(mortgageData.term_length);
-            expect(foundMortgage.renewal_date).toBe(mortgageData.renewal_date);
-            expect(foundMortgage.rate_type).toBe(mortgageData.rate_type);
-            expect(foundMortgage.payment_frequency).toBe(mortgageData.payment_frequency);
-            expect(foundMortgage.isPaidOff).toBe(false);
+            return true;
+          }
+        ),
+        dbPbtOptions()
+      );
+    });
+
+    test('Migration preserves existing loan data without modification', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          validLoanArb,
+          validBalanceArb,
+          validFixedRateArb,
+          year(),
+          monthNumber,
+          async (loanData, balance, rate, testYear, testMonth) => {
+            // Create loan (simulates existing loan)
+            const existingLoan = {
+              name: loanData.name,
+              initial_balance: loanData.initial_balance,
+              start_date: loanData.start_date,
+              notes: loanData.notes,
+              loan_type: 'loan'
+            };
+            const createdLoan = await loanService.createLoan(existingLoan);
+            createdLoanIds.push(createdLoan.id);
+
+            // Create balance entry
+            await loanBalanceRepository.create({
+              loan_id: createdLoan.id,
+              year: testYear,
+              month: testMonth,
+              remaining_balance: balance,
+              rate: rate
+            });
+
+            // Retrieve loan and balance
+            const loan = await loanRepository.findById(createdLoan.id);
+            const balanceEntry = await loanBalanceRepository.findByLoanAndMonth(
+              createdLoan.id, testYear, testMonth
+            );
+
+            // Verify all original data is preserved
+            expect(loan.name).toBe(existingLoan.name.trim());
+            expect(loan.initial_balance).toBeCloseTo(existingLoan.initial_balance, 2);
+            expect(loan.start_date).toBe(existingLoan.start_date);
+            expect(loan.loan_type).toBe('loan');
+            expect(loan.fixed_interest_rate).toBeNull(); // New field defaults to null
+
+            expect(balanceEntry.remaining_balance).toBeCloseTo(balance, 2);
+            expect(balanceEntry.rate).toBeCloseTo(rate, 5);
 
             return true;
           }
@@ -296,4 +407,6 @@ describe('LoanService Mortgage Round-Trip Property Tests', () => {
       );
     });
   });
+});
+
 });

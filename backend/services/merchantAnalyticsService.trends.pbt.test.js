@@ -72,7 +72,7 @@ describe('MerchantAnalyticsService - Trend Data Generation Property Tests', () =
                       else resolve();
                     }
                   );
-                });, 120000
+                });
               });
 
               // Wait for all inserts to complete
@@ -172,7 +172,7 @@ describe('MerchantAnalyticsService - Trend Data Generation Property Tests', () =
                         else resolve();
                       }
                     );
-                  });, 120000
+                  });
                 });
 
               // Wait for all inserts to complete
@@ -236,7 +236,7 @@ describe('MerchantAnalyticsService - Trend Data Generation Property Tests', () =
         db.run('DELETE FROM expenses', (err) => {
           if (err) reject(err);
           else resolve();
-        });, 120000
+        });
       });
 
       // Month 1: $0, Month 2: $100

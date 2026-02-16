@@ -9,7 +9,7 @@
  */
 
 const fc = require('fast-check');
-const { pbtOptions, safeAmount, paymentMethod, expenseType, weekNumber } = require('../test/pbtArbitraries');
+const { pbtOptions, dbPbtOptions, safeAmount, paymentMethod, expenseType, weekNumber } = require('../test/pbtArbitraries');
 const { getDatabase } = require('../database/db');
 
 const spendingPatternsService = require('../services/spendingPatternsService');

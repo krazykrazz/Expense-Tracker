@@ -85,7 +85,7 @@ describe('MerchantAnalyticsService - Statistics Calculation Property Tests', () 
               db.run('DELETE FROM expenses', (err) => {
                 if (err) reject(err);
                 else resolve();
-              });, 120000
+              });
             });
             
             // Verify database is clean before starting
@@ -193,7 +193,7 @@ describe('MerchantAnalyticsService - Statistics Calculation Property Tests', () 
               db.run('DELETE FROM expenses', (err) => {
                 if (err) reject(err);
                 else resolve();
-              });, 120000
+              });
             });
             
             // Insert test expenses into database
@@ -307,7 +307,7 @@ describe('MerchantAnalyticsService - Statistics Calculation Property Tests', () 
                     return;
                   }
                   resolve();
-                });, 120000
+                });
               });
             });
 
@@ -389,7 +389,7 @@ describe('MerchantAnalyticsService - Statistics Calculation Property Tests', () 
         db.run(sql, ['2024-01-01', testPlace, 'Test', 100.00, 'Groceries', 1, 'Cash'], (err) => {
           if (err) reject(err);
           else resolve();
-        });, 120000
+        });
       });
 
       await new Promise((resolve, reject) => {
@@ -440,7 +440,7 @@ describe('MerchantAnalyticsService - Statistics Calculation Property Tests', () 
               db.run('DELETE FROM expenses', (err) => {
                 if (err) reject(err);
                 else resolve();
-              });, 120000
+              });
             });
             
             // Insert test expenses into database

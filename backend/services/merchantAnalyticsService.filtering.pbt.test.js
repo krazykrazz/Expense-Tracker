@@ -112,7 +112,7 @@ describe('MerchantAnalyticsService - Filtering Property Tests', () => {
               db.run('DELETE FROM expenses', (err) => {
                 if (err) reject(err);
                 else resolve();
-              });, 120000
+              });
             });
 
             // Insert expenses inside the target year
@@ -228,7 +228,7 @@ describe('MerchantAnalyticsService - Filtering Property Tests', () => {
             db.run('COMMIT', (err) => {
               if (err) reject(err);
               else resolve();
-            });, 120000
+            });
           });
         });
         // Small delay to ensure cleanup is complete
@@ -349,7 +349,7 @@ describe('MerchantAnalyticsService - Filtering Property Tests', () => {
         db.run('DELETE FROM expenses', (err) => {
           if (err) reject(err);
           else resolve();
-        });, 120000
+        });
       });
 
       await new Promise((resolve, reject) => {
@@ -477,7 +477,7 @@ describe('MerchantAnalyticsService - Filtering Property Tests', () => {
               db.run('DELETE FROM expense_people', (err) => {
                 if (err && !err.message.includes('no such table')) reject(err);
                 else resolve();
-              });, 120000
+              });
             });
             
             await new Promise((resolve, reject) => {

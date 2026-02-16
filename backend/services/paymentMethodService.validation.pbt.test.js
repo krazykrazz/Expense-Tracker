@@ -181,7 +181,7 @@ describe('PaymentMethodService - Required Fields Validation Property Tests', () 
       ),
       pbtOptions()
     );
-  });, 120000
+  }, 120000);
 });
 
 describe('PaymentMethodService - Range Validation Property Tests', () => {
@@ -308,7 +308,7 @@ describe('PaymentMethodService - Range Validation Property Tests', () => {
       ),
       pbtOptions()
     );
-  });, 120000
+  }, 120000);
 });
 
 describe('PaymentMethodService - Display Name Uniqueness Property Tests', () => {
@@ -457,5 +457,5 @@ describe('PaymentMethodService - Display Name Uniqueness Property Tests', () => 
       ),
       pbtOptions()
     );
-  });, 120000
+  }, 120000);
 });

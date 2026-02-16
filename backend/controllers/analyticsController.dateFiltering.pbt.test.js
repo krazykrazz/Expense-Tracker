@@ -9,7 +9,7 @@
  */
 
 const fc = require('fast-check');
-const { pbtOptions, safeAmount, paymentMethod, expenseType, weekNumber, safeDate } = require('../test/pbtArbitraries');
+const { pbtOptions, dbPbtOptions, safeAmount, paymentMethod, expenseType, weekNumber, safeDate } = require('../test/pbtArbitraries');
 const { getDatabase } = require('../database/db');
 
 // Import controller helper functions by requiring the module

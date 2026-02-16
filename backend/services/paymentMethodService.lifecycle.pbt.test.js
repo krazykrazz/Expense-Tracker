@@ -283,7 +283,7 @@ describe('PaymentMethodService - Inactive Payment Methods Property Tests', () =>
             db.run("DELETE FROM payment_methods WHERE display_name LIKE 'CountTest_%'", (err) => {
               if (err) reject(err);
               else resolve();
-            });, 120000
+            });
           });
           
           const createdIds = [];

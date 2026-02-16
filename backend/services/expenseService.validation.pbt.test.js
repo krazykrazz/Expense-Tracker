@@ -398,6 +398,6 @@ describe('ExpenseService - Validation Logic PBT', () => {
         expect(capture(() => expenseValidationService.validateReimbursement(r, o)))
           .toEqual(capture(() => expenseService.validateReimbursement(r, o)));
       }), dbPbtOptions({ numRuns: 200 }));
-    });, 120000
+    }, 120000);
   });
 });

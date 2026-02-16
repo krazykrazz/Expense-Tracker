@@ -642,6 +642,6 @@ describe('ExpenseService - People Allocation and Tracking PBT', () => {
         ),
         pbtOptions()
       );
-    });, 120000
+    }, 120000);
   });
 });

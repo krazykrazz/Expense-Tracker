@@ -680,7 +680,7 @@ describe('ExpenseService - Financial Operations PBT', () => {
         pbtOptions()
       );
     }, 30000);
-  });, 120000
+  }, 120000);
 });
 
 
@@ -1095,5 +1095,5 @@ describe('Credit Card Balance Tracking', () => {
       ),
       pbtOptions()
     );
-  });, 120000
+  }, 120000);
 });

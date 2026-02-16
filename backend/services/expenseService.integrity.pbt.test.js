@@ -285,5 +285,5 @@ describe('ExpenseService - Data Integrity PBT', () => {
         }
       }
     }, 60000);
-  });, 120000
+  }, 120000);
 });

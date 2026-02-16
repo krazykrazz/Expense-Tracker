@@ -165,7 +165,7 @@ describe('PaymentMethodService - Billing Cycle Transaction Count Property-Based 
       ),
       dbPbtOptions({ numRuns: 30 })
     );
-  });, 120000
+  }, 120000);
 });
 
 describe('PaymentMethodService - Billing Cycle Total Accuracy Property-Based Tests', () => {
@@ -315,7 +315,7 @@ describe('PaymentMethodService - Billing Cycle Total Accuracy Property-Based Tes
       ),
       dbPbtOptions({ numRuns: 20 })
     );
-  });, 120000
+  }, 120000);
 });
 
 describe('PaymentMethodService - Payment Reduction Property-Based Tests', () => {
@@ -417,7 +417,7 @@ describe('PaymentMethodService - Payment Reduction Property-Based Tests', () => 
       ),
       dbPbtOptions({ numRuns: 30 })
     );
-  });, 120000
+  }, 120000);
 });
 
 describe('PaymentMethodService - Projected Equals Current Property-Based Tests', () => {
@@ -534,7 +534,7 @@ describe('PaymentMethodService - Projected Equals Current Property-Based Tests',
       ),
       dbPbtOptions({ numRuns: 50 })
     );
-  });, 120000
+  }, 120000);
 });
 
 
@@ -645,5 +645,5 @@ describe('PaymentMethodService - Credit Utilization Property Tests', () => {
       ),
       pbtOptions()
     );
-  });, 120000
+  }, 120000);
 });

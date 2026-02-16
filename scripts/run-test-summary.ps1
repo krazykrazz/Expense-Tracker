@@ -147,6 +147,8 @@ function Parse-VitestOutput {
 
 # ── Report Building ──────────────────────────────────────
 
+$scriptStart = Get-Date
+
 $report = [System.Collections.Generic.List[string]]::new()
 $report.Add($separator)
 $report.Add("  TEST FAILURE SUMMARY")
@@ -160,6 +162,8 @@ $totalSuites = 0
 $totalPassed = 0
 $totalFailed = 0
 $allFailedSuites = [System.Collections.Generic.List[string]]::new()
+$backendDuration = 0
+$frontendDuration = 0
 
 # ── Backend Tests ────────────────────────────────────────
 
@@ -277,11 +281,24 @@ if (-not $SkipFrontend) {
 
 # ── Totals ───────────────────────────────────────────────
 
+$totalDuration = [math]::Round(((Get-Date) - $scriptStart).TotalSeconds, 1)
+
 $report.Add($separator)
 $report.Add("  TOTALS")
 $report.Add($separator)
 $report.Add("Suites: $totalSuites total")
 $report.Add("Tests:  $totalPassed passed, $totalFailed failed, $($totalPassed + $totalFailed) total")
+$report.Add("")
+
+# Timing breakdown
+$report.Add("TIMING:")
+if (-not $SkipBackend) {
+    $report.Add("  Backend:  ${backendDuration}s")
+}
+if (-not $SkipFrontend) {
+    $report.Add("  Frontend: ${frontendDuration}s")
+}
+$report.Add("  Total:    ${totalDuration}s")
 $report.Add("")
 
 if ($allFailedSuites.Count -gt 0) {
@@ -304,6 +321,7 @@ $report | Out-File -FilePath $reportPath -Encoding UTF8
 
 Write-Host ""
 Write-Host "Summary: $reportPath" -ForegroundColor Cyan
+Write-Host "Total execution time: ${totalDuration}s" -ForegroundColor Cyan
 if ($totalFailed -gt 0) {
     Write-Host "Result:  $totalPassed passed, $totalFailed failed across $totalSuites suites" -ForegroundColor Red
     exit 1

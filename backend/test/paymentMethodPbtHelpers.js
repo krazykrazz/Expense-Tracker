@@ -607,10 +607,13 @@ function resetDisplayNameCounter() {
 
 /**
  * Generate unique display name
+ * Uses fc.integer() to ensure a new unique value is generated for each test iteration
  */
 const uniqueDisplayName = (prefix = 'TestCard') => {
-  displayNameCounter++;
-  return fc.constant(`${prefix}_${displayNameCounter}_${Date.now()}`);
+  return fc.integer().map(n => {
+    displayNameCounter++;
+    return `${prefix}_${displayNameCounter}_${Date.now()}_${Math.abs(n)}`;
+  });
 };
 
 /**

@@ -166,7 +166,8 @@ const InvestmentsModal = ({ isOpen, onClose, onUpdate, highlightIds = [] }) => {
     try {
       await updateInvestment(editingInvestmentId, {
         name: formData.name.trim(),
-        type: formData.type
+        type: formData.type,
+        initial_value: parseFloat(formData.initial_value)
       });
       
       // Refresh investments list

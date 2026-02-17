@@ -241,14 +241,11 @@ function AppContent({ onPaymentMethodsUpdate }) {
   }, [selectedYear, selectedMonth, budgetAlertRefreshTrigger]);
 
   // Listen for navigateToExpenseList event (e.g., from BudgetReminderBanner)
+  // Only closes overlays — the category filter is applied as a local (monthly) filter
+  // by ExpenseList directly, so the user stays in monthly view for budget context.
   useEffect(() => {
-    const handleNavigateToExpenseList = (event) => {
+    const handleNavigateToExpenseList = () => {
       closeAllOverlays();
-      
-      // Use context handler for filter state update
-      if (event.detail?.categoryFilter) {
-        handleFilterTypeChange(event.detail.categoryFilter);
-      }
     };
 
     window.addEventListener('navigateToExpenseList', handleNavigateToExpenseList);
@@ -256,7 +253,7 @@ function AppContent({ onPaymentMethodsUpdate }) {
     return () => {
       window.removeEventListener('navigateToExpenseList', handleNavigateToExpenseList);
     };
-  }, [handleFilterTypeChange, closeAllOverlays]);
+  }, [closeAllOverlays]);
 
   // Listen for filterByInsuranceStatus event
   useEffect(() => {

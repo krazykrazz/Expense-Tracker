@@ -290,6 +290,21 @@ const ExpenseList = memo(({
     }
   }, [initialInsuranceFilter]);
 
+  // Listen for navigateToExpenseList event to set local category filter (monthly scope)
+  // Budget alerts dispatch this so the user sees what's driving their monthly budget
+  useEffect(() => {
+    const handleNavigateToExpenseList = (event) => {
+      if (event.detail?.categoryFilter) {
+        setLocalFilterType(event.detail.categoryFilter);
+      }
+    };
+
+    window.addEventListener('navigateToExpenseList', handleNavigateToExpenseList);
+    return () => {
+      window.removeEventListener('navigateToExpenseList', handleNavigateToExpenseList);
+    };
+  }, []);
+
   // Notify parent only when clearing insurance filter (to exit global view if banner triggered it)
   const handleInsuranceFilterChange = useCallback((value) => {
     setLocalFilterInsurance(value);

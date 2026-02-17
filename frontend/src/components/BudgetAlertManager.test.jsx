@@ -6,6 +6,7 @@
 
 import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
+import { useState } from 'react';
 import BudgetAlertManager from './BudgetAlertManager';
 import * as budgetApi from '../services/budgetApi';
 
@@ -36,6 +37,17 @@ vi.mock('./BudgetReminderBanner', () => ({
 }));
 
 describe('BudgetAlertManager', () => {
+  // Wrapper that captures onRenderContent and renders it, mimicking SummaryPanel behavior
+  const ManagerWithRender = (props) => {
+    const [content, setContent] = useState(null);
+    return (
+      <>
+        <BudgetAlertManager {...props} onRenderContent={setContent} />
+        {content}
+      </>
+    );
+  };
+
   // Mock budgets in flat format (as returned by the API)
   const mockBudgets = [
     { id: 1, year: 2025, month: 12, category: 'Groceries', limit: 500, spent: 427.50 },
@@ -56,7 +68,7 @@ describe('BudgetAlertManager', () => {
   describe('Alert Calculation and State Management', () => {
     test('should fetch budgets and calculate alerts on mount', async () => {
       render(
-        <BudgetAlertManager 
+        <ManagerWithRender 
           year={2025} 
           month={12} 
           onClick={mockOnClick}
@@ -75,7 +87,7 @@ describe('BudgetAlertManager', () => {
 
     test('should refresh alerts when year or month changes', async () => {
       const { rerender } = render(
-        <BudgetAlertManager 
+        <ManagerWithRender 
           year={2025} 
           month={12} 
           onClick={mockOnClick}
@@ -88,7 +100,7 @@ describe('BudgetAlertManager', () => {
 
       // Change month
       rerender(
-        <BudgetAlertManager 
+        <ManagerWithRender 
           year={2025} 
           month={11} 
           onClick={mockOnClick}
@@ -104,7 +116,7 @@ describe('BudgetAlertManager', () => {
 
     test('should refresh alerts when refreshTrigger changes', async () => {
       const { rerender } = render(
-        <BudgetAlertManager 
+        <ManagerWithRender 
           year={2025} 
           month={12} 
           refreshTrigger={0}
@@ -118,7 +130,7 @@ describe('BudgetAlertManager', () => {
 
       // Trigger refresh
       rerender(
-        <BudgetAlertManager 
+        <ManagerWithRender 
           year={2025} 
           month={12} 
           refreshTrigger={1}
@@ -134,8 +146,8 @@ describe('BudgetAlertManager', () => {
     test('should handle empty budget array', async () => {
       budgetApi.getBudgets.mockResolvedValue({ budgets: [] });
 
-      const { container } = render(
-        <BudgetAlertManager 
+      render(
+        <ManagerWithRender 
           year={2025} 
           month={12} 
           onClick={mockOnClick}
@@ -147,7 +159,7 @@ describe('BudgetAlertManager', () => {
       });
 
       // Should render nothing when no alerts
-      expect(container.firstChild).toBeNull();
+      expect(screen.queryByTestId('budget-reminder-banner')).not.toBeInTheDocument();
     });
 
     test('should handle budgets with no alerts needed', async () => {
@@ -157,8 +169,8 @@ describe('BudgetAlertManager', () => {
 
       budgetApi.getBudgets.mockResolvedValue({ budgets: safeBudgets });
 
-      const { container } = render(
-        <BudgetAlertManager 
+      render(
+        <ManagerWithRender 
           year={2025} 
           month={12} 
           onClick={mockOnClick}
@@ -170,14 +182,14 @@ describe('BudgetAlertManager', () => {
       });
 
       // Should render nothing when no alerts needed
-      expect(container.firstChild).toBeNull();
+      expect(screen.queryByTestId('budget-reminder-banner')).not.toBeInTheDocument();
     });
   });
 
   describe('Dismissal Functionality', () => {
     test('should dismiss all alerts when dismiss button clicked', async () => {
       render(
-        <BudgetAlertManager 
+        <ManagerWithRender 
           year={2025} 
           month={12} 
           onClick={mockOnClick}
@@ -203,7 +215,7 @@ describe('BudgetAlertManager', () => {
 
     test('should persist dismissal state during refresh', async () => {
       const { rerender } = render(
-        <BudgetAlertManager 
+        <ManagerWithRender 
           year={2025} 
           month={12} 
           refreshTrigger={0}
@@ -228,7 +240,7 @@ describe('BudgetAlertManager', () => {
 
       // Trigger refresh
       rerender(
-        <BudgetAlertManager 
+        <ManagerWithRender 
           year={2025} 
           month={12} 
           refreshTrigger={1}
@@ -246,7 +258,7 @@ describe('BudgetAlertManager', () => {
 
     test('should clear dismissal state when month changes', async () => {
       const { rerender } = render(
-        <BudgetAlertManager 
+        <ManagerWithRender 
           year={2025} 
           month={12} 
           onClick={mockOnClick}
@@ -270,7 +282,7 @@ describe('BudgetAlertManager', () => {
 
       // Change month (new dismissal state)
       rerender(
-        <BudgetAlertManager 
+        <ManagerWithRender 
           year={2025} 
           month={11} 
           onClick={mockOnClick}
@@ -291,7 +303,7 @@ describe('BudgetAlertManager', () => {
   describe('Click Handler Integration', () => {
     test('should call onClick with correct category when alert clicked', async () => {
       render(
-        <BudgetAlertManager 
+        <ManagerWithRender 
           year={2025} 
           month={12} 
           onClick={mockOnClick}
@@ -312,7 +324,7 @@ describe('BudgetAlertManager', () => {
 
     test('should handle missing onClick callback gracefully', async () => {
       render(
-        <BudgetAlertManager 
+        <ManagerWithRender 
           year={2025} 
           month={12} 
         />
@@ -335,8 +347,8 @@ describe('BudgetAlertManager', () => {
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       budgetApi.getBudgets.mockRejectedValue(new Error('API Error'));
 
-      const { container } = render(
-        <BudgetAlertManager 
+      render(
+        <ManagerWithRender 
           year={2025} 
           month={12} 
           onClick={mockOnClick}
@@ -348,7 +360,7 @@ describe('BudgetAlertManager', () => {
       });
 
       // Should render nothing on error
-      expect(container.firstChild).toBeNull();
+      expect(screen.queryByTestId('budget-reminder-banner')).not.toBeInTheDocument();
       expect(consoleErrorSpy).toHaveBeenCalled();
 
       consoleErrorSpy.mockRestore();
@@ -358,8 +370,8 @@ describe('BudgetAlertManager', () => {
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       budgetApi.getBudgets.mockRejectedValue(new Error('Network timeout'));
 
-      const { container } = render(
-        <BudgetAlertManager 
+      render(
+        <ManagerWithRender 
           year={2025} 
           month={12} 
           onClick={mockOnClick}
@@ -370,7 +382,7 @@ describe('BudgetAlertManager', () => {
         expect(budgetApi.getBudgets).toHaveBeenCalled();
       });
 
-      expect(container.firstChild).toBeNull();
+      expect(screen.queryByTestId('budget-reminder-banner')).not.toBeInTheDocument();
       consoleErrorSpy.mockRestore();
     });
 
@@ -385,7 +397,7 @@ describe('BudgetAlertManager', () => {
       budgetApi.getBudgets.mockResolvedValue({ budgets: malformedBudgets });
 
       render(
-        <BudgetAlertManager 
+        <ManagerWithRender 
           year={2025} 
           month={12} 
           onClick={mockOnClick}
@@ -412,8 +424,8 @@ describe('BudgetAlertManager', () => {
 
       budgetApi.getBudgets.mockReturnValue(loadingPromise);
 
-      const { container } = render(
-        <BudgetAlertManager 
+      render(
+        <ManagerWithRender 
           year={2025} 
           month={12} 
           onClick={mockOnClick}
@@ -421,10 +433,12 @@ describe('BudgetAlertManager', () => {
       );
 
       // Should render nothing while loading
-      expect(container.firstChild).toBeNull();
+      expect(screen.queryByTestId('budget-reminder-banner')).not.toBeInTheDocument();
 
       // Resolve the promise with wrapped format
-      resolvePromise({ budgets: mockBudgets });
+      await act(async () => {
+        resolvePromise({ budgets: mockBudgets });
+      });
 
       // Should render banner after loading
       await waitFor(() => {
@@ -433,8 +447,8 @@ describe('BudgetAlertManager', () => {
     });
 
     test('should render nothing when dismissed', async () => {
-      const { container } = render(
-        <BudgetAlertManager 
+      render(
+        <ManagerWithRender 
           year={2025} 
           month={12} 
           onClick={mockOnClick}
@@ -455,9 +469,6 @@ describe('BudgetAlertManager', () => {
       await waitFor(() => {
         expect(screen.queryByTestId('budget-reminder-banner')).not.toBeInTheDocument();
       });
-
-      // Container should be empty
-      expect(container.firstChild).toBeNull();
     });
   });
 
@@ -477,7 +488,7 @@ describe('BudgetAlertManager', () => {
       });
 
       render(
-        <BudgetAlertManager 
+        <ManagerWithRender 
           year={2025} 
           month={12} 
           onClick={mockOnClick}

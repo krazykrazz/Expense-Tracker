@@ -97,6 +97,7 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
   // Budget alerts are now managed by BudgetAlertManager component
   // _Requirements: 6.1, 6.2, 6.4_
   const [budgetAlertsVisible, setBudgetAlertsVisible] = useState(false);
+  const [budgetAlertRenderContent, setBudgetAlertRenderContent] = useState(null);
   
   // Payment Methods Modal state
   const [showPaymentMethodsModal, setShowPaymentMethodsModal] = useState(false);
@@ -641,21 +642,24 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
 
   return (
     <div className="summary-panel">
-      {/* BudgetAlertManager must render outside NotificationsSection so it always mounts,
-          fetches data, and reports visibility. Otherwise when budget alerts are the only
-          notification, NotificationsSection returns null (count=0) and the manager never
-          mounts — a chicken-and-egg problem. */}
+      {/* BudgetAlertManager renders outside NotificationsSection so it always mounts,
+          fetches data, and reports visibility (avoids chicken-and-egg problem).
+          It uses renderContent callback to pass its banner JSX into NotificationsSection. */}
       <BudgetAlertManager
         year={selectedYear}
         month={selectedMonth}
         refreshTrigger={refreshTrigger}
         onClick={handleBudgetAlertReminderClick}
         onVisibilityChange={setBudgetAlertsVisible}
+        onRenderContent={setBudgetAlertRenderContent}
       />
 
       {/* Notifications Section - Contains all reminder banners */}
       {/* _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_ */}
       <NotificationsSection notificationCount={notificationCount}>
+        {/* Budget Alerts - rendered via BudgetAlertManager's onRenderContent callback */}
+        {budgetAlertRenderContent}
+
         {/* Credit Card Overdue Reminders - Most urgent, show first */}
         {reminderStatus.creditCardReminders?.overdueCount > 0 && 
          !dismissedReminders.creditCardOverdue && (

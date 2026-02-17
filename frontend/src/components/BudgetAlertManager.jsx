@@ -22,7 +22,8 @@ const BudgetAlertManager = ({
   month, 
   refreshTrigger, 
   onClick,  // Single onClick handler for category navigation - Requirements: 6.4
-  onVisibilityChange  // Callback to notify parent of actual visibility state
+  onVisibilityChange,  // Callback to notify parent of actual visibility state
+  onRenderContent  // Callback to pass rendered banner JSX to parent for placement inside NotificationsSection
 }) => {
   const [alerts, setAlerts] = useState([]);
   const [dismissed, setDismissed] = useState(false);
@@ -296,18 +297,25 @@ const BudgetAlertManager = ({
     }
   }, [isVisible, onVisibilityChange]);
 
-  // Don't render anything if not visible
-  if (!isVisible) {
-    return null;
-  }
+  // Pass rendered content to parent so it can be placed inside NotificationsSection
+  useEffect(() => {
+    if (onRenderContent) {
+      if (isVisible) {
+        onRenderContent(
+          <BudgetReminderBanner
+            alerts={alerts}
+            onDismiss={handleDismiss}
+            onClick={handleClick}
+          />
+        );
+      } else {
+        onRenderContent(null);
+      }
+    }
+  }, [isVisible, alerts, handleDismiss, handleClick, onRenderContent]);
 
-  return (
-    <BudgetReminderBanner
-      alerts={alerts}
-      onDismiss={handleDismiss}
-      onClick={handleClick}
-    />
-  );
+  // Rendering is handled by the parent via onRenderContent callback
+  return null;
 };
 
 export default BudgetAlertManager;

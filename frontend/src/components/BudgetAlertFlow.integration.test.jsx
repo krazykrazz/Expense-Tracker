@@ -1,7 +1,19 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { useState } from 'react';
 import BudgetAlertManager from './BudgetAlertManager';
 import * as budgetApi from '../services/budgetApi';
+
+// Wrapper that captures onRenderContent and renders it, mimicking SummaryPanel behavior
+const ManagerWithRender = (props) => {
+  const [content, setContent] = useState(null);
+  return (
+    <>
+      <BudgetAlertManager {...props} onRenderContent={setContent} />
+      {content}
+    </>
+  );
+};
 
 // Mock the budget API
 vi.mock('../services/budgetApi');
@@ -56,7 +68,7 @@ describe('Budget Alert Flow - Complete Integration Test', () => {
     budgetApi.getBudgets.mockImplementation(async () => ({ budgets: getBudgetData() }));
 
     const { rerender } = render(
-      <BudgetAlertManager
+      <ManagerWithRender
         year={2025}
         month={11}
         refreshTrigger={0}
@@ -73,7 +85,7 @@ describe('Budget Alert Flow - Complete Integration Test', () => {
     currentSpent = 400; // 80% of $500
     
     rerender(
-      <BudgetAlertManager
+      <ManagerWithRender
         year={2025}
         month={11}
         refreshTrigger={1}
@@ -95,7 +107,7 @@ describe('Budget Alert Flow - Complete Integration Test', () => {
     currentSpent = 450; // 90% of $500
     
     rerender(
-      <BudgetAlertManager
+      <ManagerWithRender
         year={2025}
         month={11}
         refreshTrigger={2}
@@ -117,7 +129,7 @@ describe('Budget Alert Flow - Complete Integration Test', () => {
     currentSpent = 550; // 110% of $500
     
     rerender(
-      <BudgetAlertManager
+      <ManagerWithRender
         year={2025}
         month={11}
         refreshTrigger={3}
@@ -152,7 +164,7 @@ describe('Budget Alert Flow - Complete Integration Test', () => {
 
     // Step 6: Test session persistence - alert should remain dismissed during same session
     rerender(
-      <BudgetAlertManager
+      <ManagerWithRender
         year={2025}
         month={11}
         refreshTrigger={4}
@@ -171,7 +183,7 @@ describe('Budget Alert Flow - Complete Integration Test', () => {
     
     // Change month to trigger clearDismissalState effect, then change back
     rerender(
-      <BudgetAlertManager
+      <ManagerWithRender
         year={2025}
         month={12}
         refreshTrigger={5}
@@ -184,7 +196,7 @@ describe('Budget Alert Flow - Complete Integration Test', () => {
 
     // Change back to original month with cleared dismissal state
     rerender(
-      <BudgetAlertManager
+      <ManagerWithRender
         year={2025}
         month={11}
         refreshTrigger={6}
@@ -223,7 +235,7 @@ describe('Budget Alert Flow - Complete Integration Test', () => {
     }] }));
 
     const { rerender } = render(
-      <BudgetAlertManager
+      <ManagerWithRender
         year={2025}
         month={12}
         refreshTrigger={0}
@@ -240,7 +252,7 @@ describe('Budget Alert Flow - Complete Integration Test', () => {
     currentSpent = 1050;
     
     rerender(
-      <BudgetAlertManager
+      <ManagerWithRender
         year={2025}
         month={12}
         refreshTrigger={1}
@@ -259,7 +271,7 @@ describe('Budget Alert Flow - Complete Integration Test', () => {
     currentSpent = 850;
     
     rerender(
-      <BudgetAlertManager
+      <ManagerWithRender
         year={2025}
         month={12}
         refreshTrigger={2}
@@ -278,7 +290,7 @@ describe('Budget Alert Flow - Complete Integration Test', () => {
     currentSpent = 700;
     
     rerender(
-      <BudgetAlertManager
+      <ManagerWithRender
         year={2025}
         month={12}
         refreshTrigger={3}
@@ -307,7 +319,7 @@ describe('Budget Alert Flow - Complete Integration Test', () => {
     }] }));
 
     const { rerender } = render(
-      <BudgetAlertManager
+      <ManagerWithRender
         year={2025}
         month={11}
         refreshTrigger={0}
@@ -335,7 +347,7 @@ describe('Budget Alert Flow - Complete Integration Test', () => {
     
     // First change month to clear dismissal state
     rerender(
-      <BudgetAlertManager
+      <ManagerWithRender
         year={2025}
         month={12}
         refreshTrigger={1}
@@ -348,7 +360,7 @@ describe('Budget Alert Flow - Complete Integration Test', () => {
 
     // Change back to original month - dismissal state is now cleared
     rerender(
-      <BudgetAlertManager
+      <ManagerWithRender
         year={2025}
         month={11}
         refreshTrigger={2}

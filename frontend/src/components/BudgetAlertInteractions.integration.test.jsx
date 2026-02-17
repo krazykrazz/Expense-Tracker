@@ -1,7 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { useState } from 'react';
 import BudgetAlertManager from './BudgetAlertManager';
 import * as budgetApi from '../services/budgetApi';
+
+// Wrapper that captures onRenderContent and renders it, mimicking SummaryPanel behavior
+const ManagerWithRender = (props) => {
+  const [content, setContent] = useState(null);
+  return (
+    <>
+      <BudgetAlertManager {...props} onRenderContent={setContent} />
+      {content}
+    </>
+  );
+};
 
 // Mock the budget API
 vi.mock('../services/budgetApi');
@@ -33,7 +45,7 @@ describe('Budget Alert Interactions - Integration Tests', () => {
     ] });
 
     render(
-      <BudgetAlertManager
+      <ManagerWithRender
         year={2025}
         month={11}
         refreshTrigger={0}
@@ -65,7 +77,7 @@ describe('Budget Alert Interactions - Integration Tests', () => {
     ] }));
 
     const { rerender } = render(
-      <BudgetAlertManager
+      <ManagerWithRender
         year={2025}
         month={11}
         refreshTrigger={0}
@@ -83,7 +95,7 @@ describe('Budget Alert Interactions - Integration Tests', () => {
     budgetSpent = 300; // Now 60% spent (no alert)
     
     rerender(
-      <BudgetAlertManager
+      <ManagerWithRender
         year={2025}
         month={11}
         refreshTrigger={1}
@@ -108,7 +120,7 @@ describe('Budget Alert Interactions - Integration Tests', () => {
     ] });
 
     render(
-      <BudgetAlertManager
+      <ManagerWithRender
         year={2025}
         month={11}
         refreshTrigger={0}
@@ -144,7 +156,7 @@ describe('Budget Alert Interactions - Integration Tests', () => {
     ] });
 
     const { rerender } = render(
-      <BudgetAlertManager
+      <ManagerWithRender
         year={2025}
         month={11}
         refreshTrigger={0}
@@ -168,7 +180,7 @@ describe('Budget Alert Interactions - Integration Tests', () => {
 
     // Simulate different refreshTrigger (like after expense operation)
     rerender(
-      <BudgetAlertManager
+      <ManagerWithRender
         year={2025}
         month={11}
         refreshTrigger={1}
@@ -183,7 +195,7 @@ describe('Budget Alert Interactions - Integration Tests', () => {
 
     // Simulate month change (clears dismissal state)
     rerender(
-      <BudgetAlertManager
+      <ManagerWithRender
         year={2025}
         month={12}
         refreshTrigger={1}
@@ -214,7 +226,7 @@ describe('Budget Alert Interactions - Integration Tests', () => {
     ] }));
 
     const { rerender } = render(
-      <BudgetAlertManager
+      <ManagerWithRender
         year={2025}
         month={11}
         refreshTrigger={0}
@@ -232,7 +244,7 @@ describe('Budget Alert Interactions - Integration Tests', () => {
     budgetLimit = 600; // Now 75% spent (no alert)
 
     rerender(
-      <BudgetAlertManager
+      <ManagerWithRender
         year={2025}
         month={11}
         refreshTrigger={1}

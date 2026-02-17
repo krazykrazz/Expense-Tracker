@@ -1,7 +1,19 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { useState } from 'react';
 import BudgetAlertManager from './BudgetAlertManager';
 import * as budgetApi from '../services/budgetApi';
+
+// Wrapper that captures onRenderContent and renders it, mimicking SummaryPanel behavior
+const ManagerWithRender = (props) => {
+  const [content, setContent] = useState(null);
+  return (
+    <>
+      <BudgetAlertManager {...props} onRenderContent={setContent} />
+      {content}
+    </>
+  );
+};
 
 // Mock the budget API
 vi.mock('../services/budgetApi');
@@ -55,7 +67,7 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
     budgetApi.getBudgets.mockImplementation(async () => ({ budgets: getBudgetData() }));
 
     const { rerender } = render(
-      <BudgetAlertManager
+      <ManagerWithRender
         year={2025}
         month={11}
         refreshTrigger={0}
@@ -80,7 +92,7 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
     currentSpent = 350; // 70% of $500 (below 80% threshold)
     
     rerender(
-      <BudgetAlertManager
+      <ManagerWithRender
         year={2025}
         month={11}
         refreshTrigger={1}
@@ -98,7 +110,7 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
     currentSpent = 425; // 85% of $500 (warning level)
     
     rerender(
-      <BudgetAlertManager
+      <ManagerWithRender
         year={2025}
         month={11}
         refreshTrigger={2}
@@ -121,7 +133,7 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
     currentSpent = 475; // 95% of $500 (danger level)
     
     rerender(
-      <BudgetAlertManager
+      <ManagerWithRender
         year={2025}
         month={11}
         refreshTrigger={3}
@@ -143,7 +155,7 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
     currentSpent = 550; // 110% of $500 (critical level)
     
     rerender(
-      <BudgetAlertManager
+      <ManagerWithRender
         year={2025}
         month={11}
         refreshTrigger={4}
@@ -175,7 +187,7 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
     }] }));
 
     const { rerender } = render(
-      <BudgetAlertManager
+      <ManagerWithRender
         year={2025}
         month={11}
         refreshTrigger={0}
@@ -191,7 +203,7 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
     // Rapid changes - simulate multiple expense operations in quick succession
     currentSpent = 850; // 85% (warning)
     rerender(
-      <BudgetAlertManager
+      <ManagerWithRender
         year={2025}
         month={11}
         refreshTrigger={1}
@@ -201,7 +213,7 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
 
     currentSpent = 920; // 92% (danger)
     rerender(
-      <BudgetAlertManager
+      <ManagerWithRender
         year={2025}
         month={11}
         refreshTrigger={2}
@@ -211,7 +223,7 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
 
     currentSpent = 1100; // 110% (critical)
     rerender(
-      <BudgetAlertManager
+      <ManagerWithRender
         year={2025}
         month={11}
         refreshTrigger={3}
@@ -240,7 +252,7 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
     }] }));
 
     const { rerender } = render(
-      <BudgetAlertManager
+      <ManagerWithRender
         year={2025}
         month={11}
         refreshTrigger={0}
@@ -270,7 +282,7 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
     currentSpent = 246;
     
     rerender(
-      <BudgetAlertManager
+      <ManagerWithRender
         year={2025}
         month={11}
         refreshTrigger={1}
@@ -289,7 +301,7 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
     
     // First change month to clear dismissal state
     rerender(
-      <BudgetAlertManager
+      <ManagerWithRender
         year={2025}
         month={12}
         refreshTrigger={2}
@@ -302,7 +314,7 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
 
     // Change back to original month with cleared dismissal state
     rerender(
-      <BudgetAlertManager
+      <ManagerWithRender
         year={2025}
         month={11}
         refreshTrigger={3}
@@ -338,7 +350,7 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
     }] }));
 
     const { rerender } = render(
-      <BudgetAlertManager
+      <ManagerWithRender
         year={2025}
         month={11}
         refreshTrigger={0}
@@ -355,7 +367,7 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
     currentSpent = 80.01;
     
     rerender(
-      <BudgetAlertManager
+      <ManagerWithRender
         year={2025}
         month={11}
         refreshTrigger={1}
@@ -372,7 +384,7 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
     currentSpent = 79.99;
     
     rerender(
-      <BudgetAlertManager
+      <ManagerWithRender
         year={2025}
         month={11}
         refreshTrigger={2}
@@ -389,7 +401,7 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
     currentSpent = 80.00; // Exactly 80%
     
     rerender(
-      <BudgetAlertManager
+      <ManagerWithRender
         year={2025}
         month={11}
         refreshTrigger={3}
@@ -405,7 +417,7 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
     currentSpent = 90.00; // Exactly 90%
     
     rerender(
-      <BudgetAlertManager
+      <ManagerWithRender
         year={2025}
         month={11}
         refreshTrigger={4}
@@ -423,7 +435,7 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
     currentSpent = 100.00; // Exactly 100%
     
     rerender(
-      <BudgetAlertManager
+      <ManagerWithRender
         year={2025}
         month={11}
         refreshTrigger={5}

@@ -1,7 +1,19 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { useState } from 'react';
 import BudgetAlertManager from './BudgetAlertManager';
 import * as budgetApi from '../services/budgetApi';
+
+// Wrapper that captures onRenderContent and renders it, mimicking SummaryPanel behavior
+const ManagerWithRender = (props) => {
+  const [content, setContent] = useState(null);
+  return (
+    <>
+      <BudgetAlertManager {...props} onRenderContent={setContent} />
+      {content}
+    </>
+  );
+};
 
 // Mock the budget API
 vi.mock('../services/budgetApi');
@@ -54,7 +66,7 @@ describe('Budget Alert Multiple Alerts - Integration Test', () => {
     budgetApi.getBudgets.mockResolvedValue({ budgets: budgetData });
 
     render(
-      <BudgetAlertManager
+      <ManagerWithRender
         year={2025}
         month={11}
         refreshTrigger={0}

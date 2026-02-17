@@ -10,6 +10,11 @@
 
 
 
+
+
+## [5.13.3] - 2026-02-17
+
+### Budget alert notification box fix
 ## [5.13.2] - 2026-02-17
 
 ### Bug fixes: backup download naming, budget alerts visibility, monthly category filter, activity log metadata, investment edit

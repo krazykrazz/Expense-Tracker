@@ -8,6 +8,11 @@
 
 
 
+
+
+## [5.13.2] - 2026-02-17
+
+### Bug fixes: backup download naming, budget alerts visibility, monthly category filter, activity log metadata, investment edit
 ## [5.13.1] - 2026-02-16
 
 ### Test suite rationalization: PBT consolidation, CI guardrails, test naming enforcement, performance optimizations

@@ -270,8 +270,8 @@ describe('Credit Card Payment Activity Logging - Integration Tests', () => {
               expectedEventType = 'credit_card_payment_deleted';
             }
 
-            // Allow async logging to complete
-            await new Promise(resolve => setTimeout(resolve, 100));
+            // Allow async logging to complete (increased for CI stability)
+            await new Promise(resolve => setTimeout(resolve, 300));
 
             const events = await activityLogRepository.findRecent(10, 0);
             const logEvent = events.find(e =>

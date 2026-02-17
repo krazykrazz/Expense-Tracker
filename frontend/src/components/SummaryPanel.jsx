@@ -641,6 +641,18 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
 
   return (
     <div className="summary-panel">
+      {/* BudgetAlertManager must render outside NotificationsSection so it always mounts,
+          fetches data, and reports visibility. Otherwise when budget alerts are the only
+          notification, NotificationsSection returns null (count=0) and the manager never
+          mounts — a chicken-and-egg problem. */}
+      <BudgetAlertManager
+        year={selectedYear}
+        month={selectedMonth}
+        refreshTrigger={refreshTrigger}
+        onClick={handleBudgetAlertReminderClick}
+        onVisibilityChange={setBudgetAlertsVisible}
+      />
+
       {/* Notifications Section - Contains all reminder banners */}
       {/* _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_ */}
       <NotificationsSection notificationCount={notificationCount}>
@@ -717,17 +729,6 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
             onClick={handleInsuranceClaimReminderClick}
           />
         )}
-
-        {/* Budget Alert Reminders - Requirements: 6.1, 6.2, 6.4 */}
-        {/* BudgetAlertManager handles its own data fetching, caching, and dismissal */}
-        {/* It notifies parent of actual visibility via onVisibilityChange callback */}
-        <BudgetAlertManager
-          year={selectedYear}
-          month={selectedMonth}
-          refreshTrigger={refreshTrigger}
-          onClick={handleBudgetAlertReminderClick}
-          onVisibilityChange={setBudgetAlertsVisible}
-        />
 
         {/* Investment Data Reminders */}
         {reminderStatus.hasActiveInvestments && 

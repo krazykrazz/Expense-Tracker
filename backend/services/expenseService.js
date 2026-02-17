@@ -335,12 +335,13 @@ class ExpenseService {
       'expense_added',
       'expense',
       createdExpense.id,
-      `Added expense: ${expense.place || 'Unknown'} - $${expense.amount.toFixed(2)}`,
+      `Added expense: ${expense.place || 'Unknown'} - ${expense.amount.toFixed(2)} (${expense.date}, ${method})`,
       {
         amount: expense.amount,
         category: expense.type,
         date: expense.date,
-        place: expense.place
+        place: expense.place,
+        method: method
       }
     );
 
@@ -560,12 +561,13 @@ class ExpenseService {
       'expense_updated',
       'expense',
       id,
-      `Updated expense: ${expense.place || 'Unknown'} - $${expense.amount.toFixed(2)}${changeSummary}`,
+      `Updated expense: ${expense.place || 'Unknown'} - ${expense.amount.toFixed(2)} on ${expense.date}${changeSummary}`,
       {
         amount: expense.amount,
         category: expense.type,
         date: expense.date,
         place: expense.place,
+        method: expense.method,
         changes: changes
       }
     );

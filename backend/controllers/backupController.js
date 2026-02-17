@@ -96,19 +96,10 @@ async function downloadBackup(req, res) {
       fs.mkdirSync(tempDir, { recursive: true });
     }
 
-    // Generate filename with timestamp
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0];
-    const filename = `expense-tracker-backup-${timestamp}.tar.gz`;
-    const tempFilePath = path.join(tempDir, filename);
-
-    // Create the backup archive
+    // Create the backup archive (includes version and SHA in filename)
     const result = await backupService.performBackup(tempDir);
-    
-    // The backup service creates a file with its own timestamp, rename it
-    const createdFile = result.path;
-    if (createdFile !== tempFilePath && fs.existsSync(createdFile)) {
-      fs.renameSync(createdFile, tempFilePath);
-    }
+    const tempFilePath = result.path;
+    const filename = result.filename;
 
     // Set headers for file download
     res.setHeader('Content-Type', 'application/gzip');

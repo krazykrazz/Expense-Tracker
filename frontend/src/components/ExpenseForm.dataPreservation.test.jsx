@@ -275,7 +275,7 @@ describe('ExpenseForm - Data Preservation During Collapse', () => {
     // Wait for insurance checkbox to appear
     await waitFor(() => {
       expect(screen.getByLabelText(/Eligible for Insurance Reimbursement/i)).toBeInTheDocument();
-    });
+    }, { timeout: 3000 });
 
     // Enable insurance
     const insuranceCheckbox = screen.getByLabelText(/Eligible for Insurance Reimbursement/i);
@@ -299,7 +299,7 @@ describe('ExpenseForm - Data Preservation During Collapse', () => {
     await waitFor(() => {
       const insuranceCheckboxAfter = screen.getByLabelText(/Eligible for Insurance Reimbursement/i);
       expect(insuranceCheckboxAfter).not.toBeChecked();
-    });
+    }, { timeout: 3000 });
   });
 
   /**

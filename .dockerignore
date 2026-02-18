@@ -74,3 +74,15 @@ __pycache__/
 # Logs
 logs/
 *.log
+
+# Preview environment data
+preview-data/
+
+# Runtime data directories (large, not needed for build)
+backend/config/*.db
+backend/config/backups/
+backend/config/database/
+backend/config/invoices/
+backend/config/statements/
+test-pbt-backups/
+test-pbt-retention/

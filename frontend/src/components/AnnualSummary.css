@@ -5,20 +5,38 @@
 /* Requirements: 2.1, 8.1, 8.5 - Modern card styling, typography, and spacing */
 
 .annual-summary {
-  padding: var(--spacing-5, 20px);
+  padding: 0;
   max-width: 1200px;
   margin: 0 auto;
 }
 
-.annual-summary h2 {
-  margin-top: 0;
+.annual-summary-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: var(--radius-xl, 16px) var(--radius-xl, 16px) 0 0;
+  padding: var(--spacing-5, 20px) var(--spacing-6, 24px);
   margin-bottom: var(--spacing-5, 20px);
-  color: var(--text-primary, #333);
+}
+
+.annual-summary-header h2 {
+  margin: 0;
+  color: white;
   font-size: var(--heading-2, 20px);
   font-weight: var(--font-semibold, 600);
   font-family: var(--font-sans);
   line-height: var(--leading-tight, 1.25);
   letter-spacing: -0.02em;
+}
+
+.annual-summary > .summary-grid,
+.annual-summary > .summary-section,
+.annual-summary > .yoy-section {
+  padding-left: var(--spacing-5, 20px);
+  padding-right: var(--spacing-5, 20px);
+}
+
+.annual-summary > .summary-grid {
+  margin-left: var(--spacing-5, 20px);
+  margin-right: var(--spacing-5, 20px);
 }
 
 .annual-summary h3 {

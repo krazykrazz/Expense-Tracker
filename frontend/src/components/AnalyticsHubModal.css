@@ -55,27 +55,27 @@
   justify-content: space-between;
   align-items: center;
   padding: var(--spacing-5);
-  border-bottom: 1px solid var(--border-muted);
-  background-color: var(--bg-subtle);
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
   flex-shrink: 0;
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
 }
 
 .analytics-hub-header h2 {
   margin: 0;
   font-size: var(--text-2xl);
   font-weight: var(--font-semibold);
-  color: var(--text-primary);
+  color: white;
 }
 
 .analytics-hub-close {
-  background: none;
+  background: rgba(255, 255, 255, 0.2);
   border: none;
-  font-size: 1.5rem;
+  font-size: 1.1rem;
   cursor: pointer;
-  color: var(--text-tertiary);
+  color: white;
   padding: 0;
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -84,8 +84,12 @@
 }
 
 .analytics-hub-close:hover {
-  color: var(--text-primary);
-  background-color: var(--bg-muted);
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.05);
+}
+
+.analytics-hub-close:active {
+  transform: scale(0.95);
 }
 
 /* Data Quality Bar */

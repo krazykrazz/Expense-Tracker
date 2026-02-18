@@ -101,7 +101,7 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
   // Collapsible panel states
   const [weeklyOpen, setWeeklyOpen] = useState(true);
   const [paymentOpen, setPaymentOpen] = useState(true);
-  const [expenseTypesOpen, setExpenseTypesOpen] = useState(false);
+  const [expenseTypesOpen, setExpenseTypesOpen] = useState(true);
 
   /**
    * Process summary data and update state

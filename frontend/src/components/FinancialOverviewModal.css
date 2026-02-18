@@ -135,6 +135,75 @@
   color: #ef9a9a;
 }
 
+/* ── Credit Card Summary Strip ── */
+.financial-cc-summary {
+  background: rgba(255, 255, 255, 0.08);
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  padding: var(--spacing-3, 12px) var(--spacing-6, 24px);
+}
+
+.financial-cc-summary-title {
+  font-size: var(--text-xs, 11px);
+  font-weight: var(--font-semibold, 600);
+  color: rgba(255, 255, 255, 0.7);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: var(--spacing-2, 8px);
+}
+
+.financial-cc-summary-loading {
+  font-size: var(--text-sm, 13px);
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.financial-cc-summary-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.financial-cc-summary-header-row,
+.financial-cc-summary-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  gap: var(--spacing-4, 16px);
+  align-items: center;
+}
+
+.financial-cc-summary-header-row {
+  font-size: var(--text-xs, 11px);
+  color: rgba(255, 255, 255, 0.55);
+  font-weight: var(--font-medium, 500);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 2px;
+}
+
+.financial-cc-summary-header-row span:not(:first-child),
+.financial-cc-summary-row .financial-cc-amount {
+  text-align: right;
+  min-width: 90px;
+}
+
+.financial-cc-name {
+  font-size: var(--text-sm, 13px);
+  font-weight: var(--font-medium, 500);
+  color: rgba(255, 255, 255, 0.9);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.financial-cc-amount {
+  font-size: var(--text-sm, 13px);
+  font-weight: var(--font-semibold, 600);
+  color: rgba(255, 255, 255, 0.85);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
 /* ── Tab Navigation (following BudgetsModal.css pattern) ── */
 .financial-tabs {
   display: flex;

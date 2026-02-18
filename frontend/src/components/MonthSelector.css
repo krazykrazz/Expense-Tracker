@@ -79,7 +79,8 @@
 .budgets-button,
 .budget-history-button,
 .merchant-analytics-button,
-.analytics-hub-button {
+.analytics-hub-button,
+.financial-overview-button {
   padding: var(--spacing-2, 8px) var(--spacing-4, 16px);
   background: var(--color-primary, #0ea5e9);
   color: var(--text-inverse, white);
@@ -100,7 +101,8 @@
 .budgets-button:hover,
 .budget-history-button:hover,
 .merchant-analytics-button:hover,
-.analytics-hub-button:hover {
+.analytics-hub-button:hover,
+.financial-overview-button:hover {
   background: var(--color-primary-hover, #0284c7);
   transform: translateY(-1px);
   box-shadow: var(--shadow-md);
@@ -112,7 +114,8 @@
 .budgets-button:active,
 .budget-history-button:active,
 .merchant-analytics-button:active,
-.analytics-hub-button:active {
+.analytics-hub-button:active,
+.financial-overview-button:active {
   transform: translateY(0) scale(0.98);
   box-shadow: var(--shadow-xs);
 }
@@ -123,7 +126,8 @@
 .budgets-button:focus,
 .budget-history-button:focus,
 .merchant-analytics-button:focus,
-.analytics-hub-button:focus {
+.analytics-hub-button:focus,
+.financial-overview-button:focus {
   outline: none;
   box-shadow: var(--focus-ring);
 }
@@ -176,6 +180,14 @@
   background: #4f46e5;
 }
 
+.financial-overview-button {
+  background: #0d9488;
+}
+
+.financial-overview-button:hover {
+  background: #0f766e;
+}
+
 /* Payment Methods button - right-justified in toolbar */
 .month-selector .payment-methods-button {
   margin-left: auto;
@@ -217,6 +229,7 @@
   .budget-history-button,
   .merchant-analytics-button,
   .analytics-hub-button,
+  .financial-overview-button,
   .month-selector .payment-methods-button {
     width: 100%;
   }
@@ -238,6 +251,7 @@
   .budget-history-button,
   .merchant-analytics-button,
   .analytics-hub-button,
+  .financial-overview-button,
   .month-selector .payment-methods-button {
     transition: none;
   }
@@ -249,6 +263,7 @@
   .budget-history-button:hover,
   .merchant-analytics-button:hover,
   .analytics-hub-button:hover,
+  .financial-overview-button:hover,
   .month-selector .payment-methods-button:hover {
     transform: none;
   }
@@ -260,6 +275,7 @@
   .budget-history-button:active,
   .merchant-analytics-button:active,
   .analytics-hub-button:active,
+  .financial-overview-button:active,
   .month-selector .payment-methods-button:active {
     transform: none;
   }

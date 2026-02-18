@@ -4,7 +4,8 @@ import { API_ENDPOINTS } from '../config';
 import { getAllLoans, createLoan, updateLoan, deleteLoan } from '../services/loanApi';
 import { getFixedExpensesByLoan } from '../services/fixedExpenseApi';
 import { getAllInvestments, createInvestment, updateInvestment, deleteInvestment } from '../services/investmentApi';
-import { getPaymentMethods, deletePaymentMethod, setPaymentMethodActive } from '../services/paymentMethodApi';
+import { getPaymentMethods, getPaymentMethod, deletePaymentMethod, setPaymentMethodActive } from '../services/paymentMethodApi';
+import { getStatementBalance } from '../services/creditCardApi';
 import { validateName, validateAmount } from '../utils/validation';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import { createLogger } from '../utils/logger';
@@ -42,6 +43,65 @@ const NetWorthSummary = ({ totalInvestments, totalDebt }) => {
           {formatCurrency(netWorth)}
         </span>
       </div>
+    </div>
+  );
+};
+
+// ─── CreditCardSummary ────────────────────────────────────────────────────────
+
+const CreditCardSummary = ({ paymentMethods }) => {
+  const [cardData, setCardData] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const creditCards = (paymentMethods || []).filter(m => m.type === 'credit_card' && m.is_active);
+
+  useEffect(() => {
+    if (creditCards.length === 0) { setLoading(false); return; }
+    const fetchCardData = async () => {
+      setLoading(true);
+      const results = await Promise.all(
+        creditCards.map(async (card) => {
+          let statementBalance = null;
+          let cycleBalance = null;
+          try { statementBalance = await getStatementBalance(card.id); } catch { /* silent */ }
+          try {
+            const method = await getPaymentMethod(card.id);
+            cycleBalance = method?.current_cycle?.total_amount ?? null;
+          } catch { /* silent */ }
+          return { id: card.id, name: card.display_name, currentBalance: card.current_balance, statementBalance, cycleBalance };
+        })
+      );
+      setCardData(results);
+      setLoading(false);
+    };
+    fetchCardData();
+  }, [paymentMethods]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (creditCards.length === 0) return null;
+
+  return (
+    <div className="financial-cc-summary">
+      <div className="financial-cc-summary-title">Credit Cards</div>
+      {loading ? (
+        <div className="financial-cc-summary-loading">Loading...</div>
+      ) : (
+        <div className="financial-cc-summary-grid">
+          <div className="financial-cc-summary-header-row">
+            <span>Card</span>
+            <span>Current</span>
+            <span>Statement</span>
+            <span>Cycle</span>
+          </div>
+          {cardData.map(card => (
+            <div key={card.id} className="financial-cc-summary-row">
+              <span className="financial-cc-name">{card.name}</span>
+              <span className="financial-cc-amount">{formatCurrency(card.currentBalance)}</span>
+              <span className="financial-cc-amount">{card.statementBalance != null ? formatCurrency(card.statementBalance) : '—'}</span>
+              <span className="financial-cc-amount">{card.cycleBalance != null ? formatCurrency(card.cycleBalance) : '—'}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
@@ -854,6 +914,7 @@ const FinancialOverviewModal = ({
   const [totalDebt, setTotalDebt] = useState(_testNetWorth ? _testNetWorth.totalDebt : 0);
   const [highlightLoanIds, setHighlightLoanIds] = useState([]);
   const [highlightInvestmentIds, setHighlightInvestmentIds] = useState([]);
+  const [creditCardMethods, setCreditCardMethods] = useState([]);
 
   // Override persisted tab when initialTab is provided
   useEffect(() => {
@@ -862,24 +923,53 @@ const FinancialOverviewModal = ({
     }
   }, [initialTab, setActiveTab]);
 
-  // Fetch reminder status on open to self-manage highlight IDs
+  // Fetch reminder status and totals on open
   useEffect(() => {
     if (!isOpen) return;
 
-    const fetchReminderStatus = async () => {
+    const fetchOnOpen = async () => {
       try {
+        // Fetch reminder status for highlight badges
         const response = await fetch(API_ENDPOINTS.REMINDER_STATUS(year, month));
-        if (!response.ok) return;
-        const data = await response.json();
-        setHighlightLoanIds((data.loans || []).map(l => l.id));
-        setHighlightInvestmentIds((data.investments || []).map(i => i.id));
+        if (response.ok) {
+          const data = await response.json();
+          setHighlightLoanIds((data.loans || []).filter(l => !l.hasBalance).map(l => l.id));
+          setHighlightInvestmentIds((data.investments || []).filter(i => !i.hasValue).map(i => i.id));
+        }
       } catch (err) {
         logger.error('Error fetching reminder status in FinancialOverviewModal:', err);
       }
+
+      // Fetch totals independently so NetWorthSummary is correct regardless of active tab
+      try {
+        const [loansData, investmentsData] = await Promise.all([
+          getAllLoans(),
+          getAllInvestments(),
+        ]);
+        const debt = (loansData || [])
+          .filter(l => !l.is_paid_off)
+          .reduce((sum, l) => sum + (l.currentBalance || 0), 0);
+        const assets = (investmentsData || [])
+          .reduce((sum, i) => sum + (i.currentValue || 0), 0);
+        if (!_testNetWorth) {
+          setTotalDebt(debt);
+          setTotalInvestments(assets);
+        }
+      } catch (err) {
+        logger.error('Error fetching totals in FinancialOverviewModal:', err);
+      }
+
+      // Fetch credit cards for the summary strip
+      try {
+        const pmData = await getPaymentMethods();
+        setCreditCardMethods((pmData || []).filter(m => m.type === 'credit_card' && m.is_active));
+      } catch (err) {
+        logger.error('Error fetching payment methods in FinancialOverviewModal:', err);
+      }
     };
 
-    fetchReminderStatus();
-  }, [isOpen, year, month]);
+    fetchOnOpen();
+  }, [isOpen, year, month, _testNetWorth]);
 
   const handleClose = () => {
     if (onUpdate) onUpdate();
@@ -897,6 +987,7 @@ const FinancialOverviewModal = ({
             <button className="financial-modal-close" onClick={handleClose} aria-label="Close">✕</button>
           </div>
           <NetWorthSummary totalInvestments={totalInvestments} totalDebt={totalDebt} />
+          <CreditCardSummary paymentMethods={creditCardMethods} />
         </div>
 
         <div className="financial-tabs">

@@ -67,6 +67,14 @@ const MonthSelector = ({ selectedYear, selectedMonth, onMonthChange, onViewAnnua
         📈 Analytics
       </button>
 
+      <button 
+        className="financial-overview-button"
+        onClick={onOpenFinancialOverview}
+        title="Manage loans, investments, and payment methods"
+      >
+        💼 Financial
+      </button>
+
       <div className="selector-group">
         <label htmlFor="year-select">Year:</label>
         <select 
@@ -96,14 +104,6 @@ const MonthSelector = ({ selectedYear, selectedMonth, onMonthChange, onViewAnnua
           ))}
         </select>
       </div>
-
-      <button 
-        className="financial-overview-button"
-        onClick={onOpenFinancialOverview}
-        title="Manage loans, investments, and payment methods"
-      >
-        💼 Financial
-      </button>
     </div>
   );
 };

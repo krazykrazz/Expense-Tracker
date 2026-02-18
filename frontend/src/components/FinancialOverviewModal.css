@@ -165,7 +165,7 @@
 .financial-cc-summary-header-row,
 .financial-cc-summary-row {
   display: grid;
-  grid-template-columns: 1fr auto auto auto;
+  grid-template-columns: 1fr auto auto auto auto;
   gap: var(--spacing-4, 16px);
   align-items: center;
 }
@@ -202,6 +202,29 @@
   color: rgba(255, 255, 255, 0.85);
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
+}
+
+.financial-cc-pay-cell {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.financial-cc-pay-btn {
+  padding: 2px 10px;
+  font-size: var(--text-xs, 11px);
+  font-weight: var(--font-semibold, 600);
+  background: rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.financial-cc-pay-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.5);
 }
 
 /* ── Tab Navigation (following BudgetsModal.css pattern) ── */

@@ -6,6 +6,7 @@ import { getFixedExpensesByLoan } from '../services/fixedExpenseApi';
 import { getAllInvestments, createInvestment, updateInvestment, deleteInvestment } from '../services/investmentApi';
 import { getPaymentMethods, getPaymentMethod, deletePaymentMethod, setPaymentMethodActive } from '../services/paymentMethodApi';
 import { getStatementBalance } from '../services/creditCardApi';
+import CreditCardPaymentForm from './CreditCardPaymentForm';
 import { validateName, validateAmount } from '../utils/validation';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import { createLogger } from '../utils/logger';
@@ -49,35 +50,55 @@ const NetWorthSummary = ({ totalInvestments, totalDebt }) => {
 
 // ─── CreditCardSummary ────────────────────────────────────────────────────────
 
-const CreditCardSummary = ({ paymentMethods }) => {
+const CreditCardSummary = ({ paymentMethods, onPaymentRecorded }) => {
   const [cardData, setCardData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [payingCardId, setPayingCardId] = useState(null);
 
   const creditCards = (paymentMethods || []).filter(m => m.type === 'credit_card' && m.is_active);
 
-  useEffect(() => {
+  const fetchCardData = useCallback(async () => {
     if (creditCards.length === 0) { setLoading(false); return; }
-    const fetchCardData = async () => {
-      setLoading(true);
-      const results = await Promise.all(
-        creditCards.map(async (card) => {
-          let statementBalance = null;
-          let cycleBalance = null;
-          try { statementBalance = await getStatementBalance(card.id); } catch { /* silent */ }
-          try {
-            const method = await getPaymentMethod(card.id);
-            cycleBalance = method?.current_cycle?.total_amount ?? null;
-          } catch { /* silent */ }
-          return { id: card.id, name: card.display_name, currentBalance: card.current_balance, statementBalance, cycleBalance };
-        })
-      );
-      setCardData(results);
-      setLoading(false);
-    };
-    fetchCardData();
+    setLoading(true);
+    const results = await Promise.all(
+      creditCards.map(async (card) => {
+        let statementBalance = null;
+        let cycleBalance = null;
+        try { statementBalance = await getStatementBalance(card.id); } catch { /* silent */ }
+        try {
+          const method = await getPaymentMethod(card.id);
+          cycleBalance = method?.current_cycle?.total_amount ?? null;
+        } catch { /* silent */ }
+        return { id: card.id, name: card.display_name, currentBalance: card.current_balance, statementBalance, cycleBalance };
+      })
+    );
+    setCardData(results);
+    setLoading(false);
   }, [paymentMethods]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => { fetchCardData(); }, [fetchCardData]);
+
   if (creditCards.length === 0) return null;
+
+  const payingCard = payingCardId ? cardData.find(c => c.id === payingCardId) : null;
+
+  if (payingCard) {
+    return (
+      <div className="financial-cc-summary">
+        <CreditCardPaymentForm
+          paymentMethodId={payingCard.id}
+          paymentMethodName={payingCard.name}
+          currentBalance={payingCard.currentBalance}
+          onPaymentRecorded={async () => {
+            setPayingCardId(null);
+            await fetchCardData();
+            if (onPaymentRecorded) onPaymentRecorded();
+          }}
+          onCancel={() => setPayingCardId(null)}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="financial-cc-summary">
@@ -91,6 +112,7 @@ const CreditCardSummary = ({ paymentMethods }) => {
             <span>Current</span>
             <span>Statement</span>
             <span>Cycle</span>
+            <span></span>
           </div>
           {cardData.map(card => (
             <div key={card.id} className="financial-cc-summary-row">
@@ -98,6 +120,15 @@ const CreditCardSummary = ({ paymentMethods }) => {
               <span className="financial-cc-amount">{formatCurrency(card.currentBalance)}</span>
               <span className="financial-cc-amount">{card.statementBalance != null ? formatCurrency(card.statementBalance) : '—'}</span>
               <span className="financial-cc-amount">{card.cycleBalance != null ? formatCurrency(card.cycleBalance) : '—'}</span>
+              <span className="financial-cc-pay-cell">
+                <button
+                  className="financial-cc-pay-btn"
+                  onClick={() => setPayingCardId(card.id)}
+                  title={`Log payment for ${card.name}`}
+                >
+                  Pay
+                </button>
+              </span>
             </div>
           ))}
         </div>
@@ -987,7 +1018,15 @@ const FinancialOverviewModal = ({
             <button className="financial-modal-close" onClick={handleClose} aria-label="Close">✕</button>
           </div>
           <NetWorthSummary totalInvestments={totalInvestments} totalDebt={totalDebt} />
-          <CreditCardSummary paymentMethods={creditCardMethods} />
+          <CreditCardSummary paymentMethods={creditCardMethods} onPaymentRecorded={async () => {
+            // Refresh credit card methods so balances update after payment
+            try {
+              const pmData = await getPaymentMethods();
+              setCreditCardMethods((pmData || []).filter(m => m.type === 'credit_card' && m.is_active));
+            } catch (err) {
+              logger.error('Error refreshing payment methods after payment:', err);
+            }
+          }} />
         </div>
 
         <div className="financial-tabs">

@@ -17,6 +17,7 @@ import * as fc from 'fast-check';
 import ExpenseForm from './ExpenseForm';
 
 vi.mock('../contexts/ModalContext', () => ({
+  ModalProvider: ({ children }) => children,
   useModalContext: () => ({ openFinancialOverview: vi.fn() }),
 }));
 

@@ -28,6 +28,7 @@ import { MockCollapsibleSection } from '../test-utils';
 import ExpenseForm from './ExpenseForm';
 
 vi.mock('../contexts/ModalContext', () => ({
+  ModalProvider: ({ children }) => children,
   useModalContext: () => ({ openFinancialOverview: vi.fn() }),
 }));
 

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 vi.mock('../contexts/ModalContext', () => ({
+  ModalProvider: ({ children }) => children,
   useModalContext: () => ({ openFinancialOverview: vi.fn() }),
 }));
 

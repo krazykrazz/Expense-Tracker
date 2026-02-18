@@ -87,6 +87,7 @@ vi.mock('../utils/constants', () => ({
 }));
 
 vi.mock('../contexts/ModalContext', () => ({
+  ModalProvider: ({ children }) => children,
   useModalContext: () => ({ openFinancialOverview: vi.fn() }),
 }));
 

@@ -12,6 +12,11 @@
 
 
 
+
+
+## [5.14.0] - 2026-02-18
+
+### Budget and Financial Overview modal consolidation
 ## [5.13.3] - 2026-02-17
 
 ### Budget alert notification box fix

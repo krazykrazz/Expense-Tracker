@@ -78,6 +78,14 @@ vi.mock('../utils/logger', () => ({
 
 Element.prototype.scrollIntoView = vi.fn();
 
+vi.mock('../contexts/ModalContext', async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    useModalContext: () => ({ openFinancialOverview: vi.fn() }),
+  };
+});
+
 import ExpenseForm from './ExpenseForm';
 
 global.fetch = vi.fn();

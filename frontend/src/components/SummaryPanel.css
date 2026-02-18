@@ -24,10 +24,10 @@
   padding-bottom: var(--spacing-2);
 }
 
-/* Card Grid Layout - Section spacing (Requirement 8.5) */
+/* Card Grid Layout - 2-column layout (Requirements 13.1, 13.2, 13.3) */
 .summary-grid {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: var(--section-gap);
 }
 
@@ -403,8 +403,7 @@
     gap: var(--spacing-3);
   }
 
-  .full-width,
-  .loans-card {
+  .full-width {
     grid-column: 1;
   }
 

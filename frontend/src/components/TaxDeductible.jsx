@@ -487,7 +487,9 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
   if (loading) {
     return (
       <div className="tax-deductible">
-        <h2>💰 Tax Deductible Expenses {year}</h2>
+        <div className="tax-deductible-header">
+          <h2>💰 Tax Deductible Expenses {year}</h2>
+        </div>
         <div className="loading-message">Loading tax deductible data...</div>
       </div>
     );
@@ -495,7 +497,9 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
 
   return (
     <div className="tax-deductible">
-      <h2>💰 Tax Deductible Expenses {year}</h2>
+      <div className="tax-deductible-header">
+        <h2>💰 Tax Deductible Expenses {year}</h2>
+      </div>
 
       {!taxDeductible || taxDeductible.totalDeductible === 0 ? (
         <div className="empty-state">No tax-deductible expenses found for {year}</div>

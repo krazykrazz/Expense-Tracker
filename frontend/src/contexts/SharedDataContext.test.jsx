@@ -43,11 +43,6 @@ describe('SharedDataContext Unit Tests', () => {
     expect(result.current.paymentMethods).toEqual([]);
   });
 
-  it('initializes showPaymentMethods to false', () => {
-    const { result } = renderHook(() => useSharedDataContext(), { wrapper });
-    expect(result.current.showPaymentMethods).toBe(false);
-  });
-
   it('initializes people as empty array', () => {
     const { result } = renderHook(() => useSharedDataContext(), { wrapper });
     expect(result.current.people).toEqual([]);
@@ -69,14 +64,14 @@ describe('SharedDataContext Unit Tests', () => {
     expect(Array.isArray(result.current.people)).toBe(true);
     expect(Array.isArray(result.current.budgets)).toBe(true);
 
-    // Boolean state
-    expect(typeof result.current.showPaymentMethods).toBe('boolean');
-
     // Handlers
-    expect(typeof result.current.openPaymentMethods).toBe('function');
-    expect(typeof result.current.closePaymentMethods).toBe('function');
     expect(typeof result.current.refreshPaymentMethods).toBe('function');
     expect(typeof result.current.refreshPeople).toBe('function');
     expect(typeof result.current.refreshBudgets).toBe('function');
+
+    // Old payment methods modal state must not exist
+    expect('showPaymentMethods' in result.current).toBe(false);
+    expect('openPaymentMethods' in result.current).toBe(false);
+    expect('closePaymentMethods' in result.current).toBe(false);
   });
 });

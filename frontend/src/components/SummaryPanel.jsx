@@ -1,9 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { API_ENDPOINTS } from '../config';
+import { useModalContext } from '../contexts/ModalContext';
 import IncomeManagementModal from './IncomeManagementModal';
 import FixedExpensesModal from './FixedExpensesModal';
-import LoansModal from './LoansModal';
-import InvestmentsModal from './InvestmentsModal';
 import TrendIndicator from './TrendIndicator';
 import DataReminderBanner from './DataReminderBanner';
 import CreditCardReminderBanner from './CreditCardReminderBanner';
@@ -14,22 +13,16 @@ import InsuranceClaimReminderBanner from './InsuranceClaimReminderBanner';
 import BudgetAlertManager from './BudgetAlertManager';
 import NotificationsSection from './NotificationsSection';
 import AutoLogPrompt from './AutoLogPrompt';
-import PaymentMethodsModal from './PaymentMethodsModal';
 import './SummaryPanel.css';
 
 const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
+  const { openFinancialOverview } = useModalContext();
   const [summary, setSummary] = useState(null);
   const [previousSummary, setPreviousSummary] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [showIncomeModal, setShowIncomeModal] = useState(false);
   const [showFixedExpensesModal, setShowFixedExpensesModal] = useState(false);
-  const [showLoansModal, setShowLoansModal] = useState(false);
-  const [showInvestmentsModal, setShowInvestmentsModal] = useState(false);
-  const [loans, setLoans] = useState([]);
-  const [totalOutstandingDebt, setTotalOutstandingDebt] = useState(0);
-  const [investments, setInvestments] = useState([]);
-  const [totalInvestmentValue, setTotalInvestmentValue] = useState(0);
   
   /**
    * Check if the selected month is in the future
@@ -99,9 +92,6 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
   const [budgetAlertsVisible, setBudgetAlertsVisible] = useState(false);
   const [budgetAlertRenderContent, setBudgetAlertRenderContent] = useState(null);
   
-  // Payment Methods Modal state
-  const [showPaymentMethodsModal, setShowPaymentMethodsModal] = useState(false);
-  
   // Auto-log prompt state
   // _Requirements: 4.1, 4.4, 4.5_
   const [autoLogSuggestions, setAutoLogSuggestions] = useState([]);
@@ -109,9 +99,9 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
   const [dismissedAutoLog, setDismissedAutoLog] = useState(false);
   
   // Collapsible panel states
-  const [weeklyOpen, setWeeklyOpen] = useState(false);
-  const [paymentOpen, setPaymentOpen] = useState(false);
-  const [expenseTypesOpen, setExpenseTypesOpen] = useState(false);
+  const [weeklyOpen, setWeeklyOpen] = useState(true);
+  const [paymentOpen, setPaymentOpen] = useState(true);
+  const [expenseTypesOpen, setExpenseTypesOpen] = useState(true);
 
   /**
    * Process summary data and update state
@@ -122,46 +112,10 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
       // New structure with previous month data
       setSummary(data.current);
       setPreviousSummary(data.previous);
-      
-      // Extract loan data from current summary
-      if (data.current.loans && Array.isArray(data.current.loans)) {
-        setLoans(data.current.loans);
-        setTotalOutstandingDebt(data.current.totalOutstandingDebt || 0);
-      } else {
-        setLoans([]);
-        setTotalOutstandingDebt(0);
-      }
-      
-      // Extract investment data from current summary
-      if (data.current.investments && Array.isArray(data.current.investments)) {
-        setInvestments(data.current.investments);
-        setTotalInvestmentValue(data.current.totalInvestmentValue || 0);
-      } else {
-        setInvestments([]);
-        setTotalInvestmentValue(0);
-      }
     } else {
       // Old structure (single summary)
       setSummary(data);
       setPreviousSummary(null);
-      
-      // Extract loan data from summary response
-      if (data.loans && Array.isArray(data.loans)) {
-        setLoans(data.loans);
-        setTotalOutstandingDebt(data.totalOutstandingDebt || 0);
-      } else {
-        setLoans([]);
-        setTotalOutstandingDebt(0);
-      }
-      
-      // Extract investment data from summary response
-      if (data.investments && Array.isArray(data.investments)) {
-        setInvestments(data.investments);
-        setTotalInvestmentValue(data.totalInvestmentValue || 0);
-      } else {
-        setInvestments([]);
-        setTotalInvestmentValue(0);
-      }
     }
   }, []);
 
@@ -351,8 +305,6 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
   // Modal handlers - simplified using shared fetch function
   const handleOpenIncomeModal = () => setShowIncomeModal(true);
   const handleOpenFixedExpensesModal = () => setShowFixedExpensesModal(true);
-  const handleOpenLoansModal = () => setShowLoansModal(true);
-  const handleOpenInvestmentsModal = () => setShowInvestmentsModal(true);
 
   const handleCloseIncomeModal = async () => {
     setShowIncomeModal(false);
@@ -362,25 +314,6 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
   const handleCloseFixedExpensesModal = async () => {
     setShowFixedExpensesModal(false);
     await fetchSummaryData();
-  };
-
-  const handleCloseLoansModal = async () => {
-    setShowLoansModal(false);
-    await fetchSummaryData();
-    await fetchReminderStatus();
-  };
-
-  const handleCloseInvestmentsModal = async () => {
-    setShowInvestmentsModal(false);
-    await fetchSummaryData();
-    await fetchReminderStatus();
-  };
-
-  const handleInvestmentsUpdate = async () => {
-    // Refresh summary data without closing the modal
-    await fetchSummaryData();
-    // Also refresh reminder status
-    await fetchReminderStatus();
   };
 
   // Reminder handlers
@@ -421,20 +354,19 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
   };
 
   const handleInvestmentReminderClick = () => {
-    setShowInvestmentsModal(true);
+    openFinancialOverview('investments');
   };
 
   const handleLoanReminderClick = () => {
-    setShowLoansModal(true);
+    openFinancialOverview('loans');
   };
 
   const handleCreditCardReminderClick = () => {
-    setShowPaymentMethodsModal(true);
+    openFinancialOverview('payment-methods');
   };
 
   const handleLoanPaymentReminderClick = (loanId) => {
-    // Open loans modal - if a specific loanId is provided, it could be used to highlight that loan
-    setShowLoansModal(true);
+    openFinancialOverview('loans');
   };
 
   /**
@@ -451,11 +383,11 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
 
   /**
    * Handle auto-generated cycle banner click
-   * Opens the Payment Methods modal so user can navigate to the credit card detail view
+   * Opens the Financial Overview modal on the Payment Methods tab
    * _Requirements: 2.3_
    */
   const handleAutoGeneratedCycleClick = () => {
-    setShowPaymentMethodsModal(true);
+    openFinancialOverview('payment-methods');
   };
 
   /**
@@ -468,11 +400,6 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
     window.dispatchEvent(new CustomEvent('navigateToExpenseList', {
       detail: { categoryFilter: category }
     }));
-  };
-
-  const handleClosePaymentMethodsModal = async () => {
-    setShowPaymentMethodsModal(false);
-    await fetchReminderStatus();
   };
 
   /**
@@ -539,14 +466,7 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
     setAutoLogSuggestions([]);
   };
 
-  // Get IDs of investments/loans that need updates
-  const investmentsNeedingUpdate = reminderStatus.investments
-    ? reminderStatus.investments.filter(inv => !inv.hasValue).map(inv => inv.id)
-    : [];
-  
-  const loansNeedingUpdate = reminderStatus.loans
-    ? reminderStatus.loans.filter(loan => !loan.hasBalance).map(loan => loan.id)
-    : [];
+
 
   // Format currency
   const formatCurrency = (amount) => {
@@ -765,7 +685,7 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
       {/* _Requirements: 7.1_ */}
       <h2>Monthly Summary</h2>
 
-      {/* Summary Cards Grid - Order: Income, Fixed, Variable, Balance */}
+      {/* Summary Cards Grid - Order: Income | Balance, Fixed | Variable */}
       <div className="summary-grid">
         {/* Monthly Income Card */}
         <div className="summary-card income-card">
@@ -777,6 +697,18 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
           <button className="card-action-btn" onClick={handleOpenIncomeModal}>
             Manage Income
           </button>
+        </div>
+
+        {/* Balance Card */}
+        <div className="summary-card balance-card">
+          <div className="card-header">
+            <span className="card-icon">📊</span>
+            <span className="card-title">Balance</span>
+          </div>
+          <div className={`card-value ${(summary.monthlyGross - summary.total - summary.totalFixedExpenses) >= 0 ? 'positive' : 'negative'}`}>
+            {formatCurrency((summary.monthlyGross || 0) - (summary.total || 0) - (summary.totalFixedExpenses || 0))}
+          </div>
+          <div className="card-subtitle">Income - All Expenses</div>
         </div>
 
         {/* Fixed Expenses Card */}
@@ -798,18 +730,6 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
             <span className="card-title">Variable Expenses</span>
           </div>
           <div className="card-value expense-value">{formatCurrency(summary.total || 0)}</div>
-        </div>
-
-        {/* Balance Card */}
-        <div className="summary-card balance-card">
-          <div className="card-header">
-            <span className="card-icon">📊</span>
-            <span className="card-title">Balance</span>
-          </div>
-          <div className={`card-value ${(summary.monthlyGross - summary.total - summary.totalFixedExpenses) >= 0 ? 'positive' : 'negative'}`}>
-            {formatCurrency((summary.monthlyGross || 0) - (summary.total || 0) - (summary.totalFixedExpenses || 0))}
-          </div>
-          <div className="card-subtitle">Income - All Expenses</div>
         </div>
 
         {/* Collapsible: Weekly Breakdown */}
@@ -900,69 +820,6 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
             </div>
           )}
         </div>
-
-        {/* Loans Card */}
-        <div className="summary-card loans-card">
-          <div className="card-header">
-            <span className="card-icon">🏦</span>
-            <span className="card-title">Outstanding Debt</span>
-          </div>
-          {loans.length > 0 ? (
-            <>
-              <div className="card-value negative">{formatCurrency(totalOutstandingDebt)}</div>
-              <button className="card-action-btn" onClick={handleOpenLoansModal}>
-                Manage Loans
-              </button>
-            </>
-          ) : (
-            <>
-              <div className="card-value">{formatCurrency(0)}</div>
-              <button className="card-action-btn" onClick={handleOpenLoansModal}>
-                Manage Loans
-              </button>
-            </>
-          )}
-        </div>
-
-        {/* Investments Card */}
-        <div className="summary-card investments-card">
-          <div className="card-header">
-            <span className="card-icon">📈</span>
-            <span className="card-title">Total Investments</span>
-          </div>
-          {investments.length > 0 ? (
-            <>
-              <div className="card-value positive">{formatCurrency(totalInvestmentValue)}</div>
-              <button className="card-action-btn" onClick={handleOpenInvestmentsModal}>
-                Manage Investments
-              </button>
-            </>
-          ) : (
-            <>
-              <div className="card-value">{formatCurrency(0)}</div>
-              <button className="card-action-btn" onClick={handleOpenInvestmentsModal}>
-                Manage Investments
-              </button>
-            </>
-          )}
-        </div>
-
-        {/* Net Worth Card */}
-        <div className="summary-card net-worth-card">
-          <div className="card-header">
-            <span className="card-icon">💎</span>
-            <span className="card-title">Net Worth</span>
-          </div>
-          <div className={`card-value ${(totalInvestmentValue - totalOutstandingDebt) >= 0 ? 'positive' : 'negative'}`}>
-            {formatCurrency(totalInvestmentValue - totalOutstandingDebt)}
-          </div>
-          <div className="net-worth-breakdown">
-            <span className="assets-label">Assets: {formatCurrency(totalInvestmentValue)}</span>
-            <span className="separator">-</span>
-            <span className="liabilities-label">Liabilities: {formatCurrency(totalOutstandingDebt)}</span>
-          </div>
-          <div className="card-subtitle">Current month position</div>
-        </div>
       </div>
 
       {showIncomeModal && (
@@ -982,35 +839,6 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
           year={selectedYear}
           month={selectedMonth}
           onUpdate={handleCloseFixedExpensesModal}
-        />
-      )}
-
-      {showLoansModal && (
-        <LoansModal
-          isOpen={showLoansModal}
-          onClose={handleCloseLoansModal}
-          year={selectedYear}
-          month={selectedMonth}
-          onUpdate={handleCloseLoansModal}
-          highlightIds={loansNeedingUpdate}
-        />
-      )}
-
-      {showInvestmentsModal && (
-        <InvestmentsModal
-          isOpen={showInvestmentsModal}
-          onClose={handleCloseInvestmentsModal}
-          year={selectedYear}
-          month={selectedMonth}
-          onUpdate={handleInvestmentsUpdate}
-          highlightIds={investmentsNeedingUpdate}
-        />
-      )}
-
-      {showPaymentMethodsModal && (
-        <PaymentMethodsModal
-          isOpen={showPaymentMethodsModal}
-          onClose={handleClosePaymentMethodsModal}
         />
       )}
 

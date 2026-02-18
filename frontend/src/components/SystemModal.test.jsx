@@ -4,6 +4,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 // Mock ModalContext
 const mockCloseSystemModal = vi.fn();
 vi.mock('../contexts/ModalContext', () => ({
+  ModalProvider: ({ children }) => children,
   useModalContext: () => ({
     closeSystemModal: mockCloseSystemModal
   })

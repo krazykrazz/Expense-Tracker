@@ -45,10 +45,10 @@ describe('ModalContext Unit Tests', () => {
     expect(result.current.showBackupSettings).toBe(false);
     expect(result.current.showAnnualSummary).toBe(false);
     expect(result.current.showTaxDeductible).toBe(false);
-    expect(result.current.showBudgetManagement).toBe(false);
-    expect(result.current.showBudgetHistory).toBe(false);
+    expect(result.current.showBudgets).toBe(false);
     expect(result.current.showPeopleManagement).toBe(false);
     expect(result.current.showAnalyticsHub).toBe(false);
+    expect(result.current.showFinancialOverview).toBe(false);
   });
 
   it('initializes budgetManagementFocusCategory to null', () => {
@@ -57,6 +57,14 @@ describe('ModalContext Unit Tests', () => {
     });
 
     expect(result.current.budgetManagementFocusCategory).toBe(null);
+  });
+
+  it('initializes financialOverviewInitialTab to null', () => {
+    const { result } = renderHook(() => useModalContext(), {
+      wrapper: ({ children }) => <ModalProvider>{children}</ModalProvider>,
+    });
+
+    expect(result.current.financialOverviewInitialTab).toBe(null);
   });
 
   /**
@@ -72,11 +80,14 @@ describe('ModalContext Unit Tests', () => {
     expect('showBackupSettings' in result.current).toBe(true);
     expect('showAnnualSummary' in result.current).toBe(true);
     expect('showTaxDeductible' in result.current).toBe(true);
-    expect('showBudgetManagement' in result.current).toBe(true);
+    expect('showBudgets' in result.current).toBe(true);
     expect('budgetManagementFocusCategory' in result.current).toBe(true);
-    expect('showBudgetHistory' in result.current).toBe(true);
     expect('showPeopleManagement' in result.current).toBe(true);
     expect('showAnalyticsHub' in result.current).toBe(true);
+    expect('showFinancialOverview' in result.current).toBe(true);
+    expect('financialOverviewInitialTab' in result.current).toBe(true);
+    // Old payment methods modal state must not exist
+    expect('showPaymentMethods' in result.current).toBe(false);
   });
 
   it('provides all expected open handlers', () => {
@@ -88,10 +99,12 @@ describe('ModalContext Unit Tests', () => {
     expect(typeof result.current.openBackupSettings).toBe('function');
     expect(typeof result.current.openAnnualSummary).toBe('function');
     expect(typeof result.current.openTaxDeductible).toBe('function');
-    expect(typeof result.current.openBudgetManagement).toBe('function');
-    expect(typeof result.current.openBudgetHistory).toBe('function');
+    expect(typeof result.current.openBudgets).toBe('function');
     expect(typeof result.current.openPeopleManagement).toBe('function');
     expect(typeof result.current.openAnalyticsHub).toBe('function');
+    expect(typeof result.current.openFinancialOverview).toBe('function');
+    // Old payment methods handlers must not exist
+    expect('openPaymentMethods' in result.current).toBe(false);
   });
 
   it('provides all expected close handlers', () => {
@@ -103,10 +116,12 @@ describe('ModalContext Unit Tests', () => {
     expect(typeof result.current.closeBackupSettings).toBe('function');
     expect(typeof result.current.closeAnnualSummary).toBe('function');
     expect(typeof result.current.closeTaxDeductible).toBe('function');
-    expect(typeof result.current.closeBudgetManagement).toBe('function');
-    expect(typeof result.current.closeBudgetHistory).toBe('function');
+    expect(typeof result.current.closeBudgets).toBe('function');
     expect(typeof result.current.closePeopleManagement).toBe('function');
     expect(typeof result.current.closeAnalyticsHub).toBe('function');
+    expect(typeof result.current.closeFinancialOverview).toBe('function');
+    // Old payment methods handlers must not exist
+    expect('closePaymentMethods' in result.current).toBe(false);
   });
 
   it('provides closeAllOverlays handler', () => {
@@ -158,5 +173,56 @@ describe('ModalContext Unit Tests', () => {
     // Wait for the setTimeout to fire
     const detail = await filterEventPromise;
     expect(detail.insuranceFilter).toBe('Not Claimed');
+  });
+
+  /**
+   * Requirements 4.1, 4.2: openFinancialOverview / closeFinancialOverview
+   */
+  it('openFinancialOverview sets showFinancialOverview to true', () => {
+    const { result } = renderHook(() => useModalContext(), {
+      wrapper: ({ children }) => <ModalProvider>{children}</ModalProvider>,
+    });
+
+    expect(result.current.showFinancialOverview).toBe(false);
+
+    act(() => {
+      result.current.openFinancialOverview();
+    });
+
+    expect(result.current.showFinancialOverview).toBe(true);
+    expect(result.current.financialOverviewInitialTab).toBe(null);
+  });
+
+  it('openFinancialOverview with tab sets financialOverviewInitialTab', () => {
+    const { result } = renderHook(() => useModalContext(), {
+      wrapper: ({ children }) => <ModalProvider>{children}</ModalProvider>,
+    });
+
+    act(() => {
+      result.current.openFinancialOverview('investments');
+    });
+
+    expect(result.current.showFinancialOverview).toBe(true);
+    expect(result.current.financialOverviewInitialTab).toBe('investments');
+  });
+
+  it('closeFinancialOverview resets showFinancialOverview and financialOverviewInitialTab', () => {
+    const { result } = renderHook(() => useModalContext(), {
+      wrapper: ({ children }) => <ModalProvider>{children}</ModalProvider>,
+    });
+
+    act(() => {
+      result.current.openFinancialOverview('loans');
+    });
+
+    expect(result.current.showFinancialOverview).toBe(true);
+    expect(result.current.financialOverviewInitialTab).toBe('loans');
+
+    act(() => {
+      result.current.closeFinancialOverview();
+    });
+
+    expect(result.current.showFinancialOverview).toBe(false);
+    expect(result.current.financialOverviewInitialTab).toBe(null);
   });
 });

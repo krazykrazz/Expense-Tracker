@@ -6,9 +6,7 @@ import { describe, it, expect, afterEach, vi } from 'vitest';
 import { renderHook, act, cleanup } from '@testing-library/react';
 import * as fc from 'fast-check';
 import { SharedDataProvider, useSharedDataContext } from './SharedDataContext';
-import { modalOperationSequence } from '../test-utils/arbitraries';
 import { createSharedDataWrapper } from '../test-utils/wrappers.jsx';
-import { assertSequenceResult } from '../test-utils/assertions';
 
 // Mock API services
 vi.mock('../services/paymentMethodApi', () => ({
@@ -27,180 +25,6 @@ import { getPeople } from '../services/peopleApi';
 import { getBudgets } from '../services/budgetApi';
 
 const wrapper = createSharedDataWrapper({ selectedYear: 2026, selectedMonth: 2 });
-
-describe('SharedDataContext Property-Based Tests', () => {
-  afterEach(() => {
-    cleanup();
-  });
-
-  // Reuse utility arbitraries for modal operation sequences
-  const operationSequenceArb = modalOperationSequence();
-  const consecutiveCountArb = fc.integer({ min: 2, max: 10 });
-
-  /**
-   * **Feature: shared-data-context, Property 2: Modal State Transitions are Idempotent**
-   *
-   * For any sequence of openPaymentMethods and closePaymentMethods calls, the final state
-   * of showPaymentMethods should equal the result of the last operation called (true for
-   * open, false for close). Calling the same operation multiple times consecutively should
-   * have the same effect as calling it once.
-   *
-   * **Validates: Requirements 2.2, 2.3**
-   */
-  describe('Property 2: Modal State Transitions are Idempotent', () => {
-    /**
-     * Property 2a: For any sequence of open/close operations, the final state equals
-     * the result of the last operation (true for open, false for close).
-     */
-    it('2a: final state equals the result of the last operation in any sequence', () => {
-      fc.assert(
-        fc.property(
-          operationSequenceArb,
-          (operations) => {
-            const { result } = renderHook(() => useSharedDataContext(), { wrapper });
-
-            // Initial state should be false
-            expect(result.current.showPaymentMethods).toBe(false);
-
-            // Apply each operation in sequence
-            for (const op of operations) {
-              act(() => {
-                if (op === 'open') {
-                  result.current.openPaymentMethods();
-                } else {
-                  result.current.closePaymentMethods();
-                }
-              });
-            }
-
-            // Final state should match the last operation
-            assertSequenceResult(operations, result.current.showPaymentMethods);
-
-            cleanup();
-          }
-        ),
-        { numRuns: 100 }
-      );
-    });
-
-    /**
-     * Property 2b: Calling openPaymentMethods N times consecutively has the same
-     * effect as calling it once (idempotence of open).
-     */
-    it('2b: calling openPaymentMethods N times has the same effect as calling it once', () => {
-      fc.assert(
-        fc.property(
-          consecutiveCountArb,
-          (n) => {
-            const { result } = renderHook(() => useSharedDataContext(), { wrapper });
-
-            // Call open N times
-            for (let i = 0; i < n; i++) {
-              act(() => {
-                result.current.openPaymentMethods();
-              });
-            }
-
-            // State should be true (same as calling once)
-            expect(result.current.showPaymentMethods).toBe(true);
-
-            cleanup();
-          }
-        ),
-        { numRuns: 100 }
-      );
-    });
-
-    /**
-     * Property 2c: Calling closePaymentMethods N times consecutively has the same
-     * effect as calling it once (idempotence of close).
-     */
-    it('2c: calling closePaymentMethods N times has the same effect as calling it once', () => {
-      fc.assert(
-        fc.property(
-          consecutiveCountArb,
-          (n) => {
-            const { result } = renderHook(() => useSharedDataContext(), { wrapper });
-
-            // First open the modal so we can test closing
-            act(() => {
-              result.current.openPaymentMethods();
-            });
-            expect(result.current.showPaymentMethods).toBe(true);
-
-            // Call close N times
-            for (let i = 0; i < n; i++) {
-              act(() => {
-                result.current.closePaymentMethods();
-              });
-            }
-
-            // State should be false (same as calling once)
-            expect(result.current.showPaymentMethods).toBe(false);
-
-            cleanup();
-          }
-        ),
-        { numRuns: 100 }
-      );
-    });
-
-    /**
-     * Property 2d: For any sequence with consecutive duplicate operations,
-     * the result is the same as the deduplicated sequence.
-     */
-    it('2d: consecutive duplicate operations produce the same result as deduplicated sequence', () => {
-      // Generate sequences where each operation may repeat 1-5 times
-      const repeatedSequenceArb = fc.array(
-        fc.tuple(fc.constantFrom('open', 'close'), fc.integer({ min: 1, max: 5 })),
-        { minLength: 1, maxLength: 10 }
-      );
-
-      fc.assert(
-        fc.property(
-          repeatedSequenceArb,
-          (repeatedOps) => {
-            // Render two hooks: one with repeated ops, one with deduplicated
-            const { result: resultRepeated } = renderHook(() => useSharedDataContext(), { wrapper });
-            const { result: resultDeduped } = renderHook(() => useSharedDataContext(), { wrapper });
-
-            // Apply repeated operations to first hook
-            for (const [op, count] of repeatedOps) {
-              for (let i = 0; i < count; i++) {
-                act(() => {
-                  if (op === 'open') {
-                    resultRepeated.current.openPaymentMethods();
-                  } else {
-                    resultRepeated.current.closePaymentMethods();
-                  }
-                });
-              }
-            }
-
-            // Apply deduplicated operations (each op once) to second hook
-            for (const [op] of repeatedOps) {
-              act(() => {
-                if (op === 'open') {
-                  resultDeduped.current.openPaymentMethods();
-                } else {
-                  resultDeduped.current.closePaymentMethods();
-                }
-              });
-            }
-
-            // Both should have the same final state
-            expect(resultRepeated.current.showPaymentMethods).toBe(
-              resultDeduped.current.showPaymentMethods
-            );
-
-            cleanup();
-          }
-        ),
-        { numRuns: 100 }
-      );
-    });
-  });
-});
 
 
 /**
@@ -922,8 +746,8 @@ describe('Property 4: Error Handling Preserves State', () => {
  * **Feature: shared-data-context, Property 5: Handler References are Stable**
  *
  * For any sequence of re-renders where the dependencies don't change, the handler
- * function references (openPaymentMethods, closePaymentMethods, refreshPaymentMethods,
- * refreshPeople, refreshBudgets) should remain referentially equal (same object reference).
+ * function references (refreshPaymentMethods, refreshPeople, refreshBudgets) should
+ * remain referentially equal (same object reference).
  *
  * **Validates: Requirements 6.4, 6.5**
  */
@@ -934,8 +758,6 @@ describe('Property 5: Handler References are Stable', () => {
   });
 
   const HANDLERS = [
-    'openPaymentMethods',
-    'closePaymentMethods',
     'refreshPaymentMethods',
     'refreshPeople',
     'refreshBudgets',

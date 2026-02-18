@@ -100,6 +100,11 @@ vi.mock('./PersonAllocationModal', () => {
   };
 });
 
+vi.mock('../contexts/ModalContext', () => ({
+  ModalProvider: ({ children }) => children,
+  useModalContext: () => ({ openFinancialOverview: vi.fn() }),
+}));
+
 import ExpenseForm from './ExpenseForm';
 
 // Mock fetch globally

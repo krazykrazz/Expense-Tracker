@@ -16,7 +16,6 @@ export function SharedDataProvider({ children, selectedYear, selectedMonth }) {
   // Payment methods state
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [paymentMethodsRefreshTrigger, setPaymentMethodsRefreshTrigger] = useState(0);
-  const [showPaymentMethods, setShowPaymentMethods] = useState(false);
 
   // People state
   const [people, setPeople] = useState([]);
@@ -94,15 +93,6 @@ export function SharedDataProvider({ children, selectedYear, selectedMonth }) {
 
   // --- Window Event Listeners ---
   useEffect(() => {
-    const handleOpenPaymentMethods = () => {
-      setShowPaymentMethods(true);
-    };
-
-    window.addEventListener('openPaymentMethods', handleOpenPaymentMethods);
-    return () => window.removeEventListener('openPaymentMethods', handleOpenPaymentMethods);
-  }, []);
-
-  useEffect(() => {
     const handlePeopleUpdated = () => {
       setPeopleRefreshTrigger(prev => prev + 1);
     };
@@ -112,8 +102,6 @@ export function SharedDataProvider({ children, selectedYear, selectedMonth }) {
   }, []);
 
   // --- Callbacks ---
-  const openPaymentMethods = useCallback(() => setShowPaymentMethods(true), []);
-  const closePaymentMethods = useCallback(() => setShowPaymentMethods(false), []);
   const refreshPaymentMethods = useCallback(() => setPaymentMethodsRefreshTrigger(prev => prev + 1), []);
   const refreshPeople = useCallback(() => setPeopleRefreshTrigger(prev => prev + 1), []);
   const refreshBudgets = useCallback(() => setBudgetRefreshTrigger(prev => prev + 1), []);
@@ -122,9 +110,6 @@ export function SharedDataProvider({ children, selectedYear, selectedMonth }) {
   const value = useMemo(() => ({
     // Payment Methods
     paymentMethods,
-    showPaymentMethods,
-    openPaymentMethods,
-    closePaymentMethods,
     refreshPaymentMethods,
 
     // People
@@ -136,9 +121,6 @@ export function SharedDataProvider({ children, selectedYear, selectedMonth }) {
     refreshBudgets,
   }), [
     paymentMethods,
-    showPaymentMethods,
-    openPaymentMethods,
-    closePaymentMethods,
     refreshPaymentMethods,
     people,
     refreshPeople,

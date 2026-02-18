@@ -18,7 +18,7 @@ The Budget Tracking & Alerts feature helps you control spending by setting month
 ### Setting Your First Budget
 
 1. **Navigate to the month** you want to budget for using the month selector
-2. **Click "💵 Manage Budgets"** button in the month selector area
+2. **Click "💵 Budgets"** button in the month selector area
 3. **Enter budget amounts** for the categories you want to track:
    - **Food**: Groceries, restaurants, takeout
    - **Gas**: Fuel for vehicles
@@ -118,8 +118,9 @@ Below the summary, individual cards show progress for each budgeted category wit
 
 ### Viewing Budget History
 
-1. **Click "📊 Budget History"** button in the month selector
-2. **Select a time period**: 3, 6, or 12 months
+1. **Click "💵 Budgets"** button in the month selector
+2. **Click the "History" tab**
+3. **Select a time period**: 3, 6, or 12 months
 3. **Review the analysis** showing:
    - Budget vs actual spending for each category
    - Success rate (% of months budget was met)

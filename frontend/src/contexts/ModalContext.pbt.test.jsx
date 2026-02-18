@@ -15,13 +15,12 @@ describe('ModalContext Property-Based Tests', () => {
 
   const wrapper = createModalWrapper();
 
-  // The 7 simple modals (all except budgetManagement which has special focus category handling)
+  // The 7 simple modals (all except budgets which has special focus category handling)
   const SIMPLE_MODALS = [
     'ExpenseForm',
     'BackupSettings',
     'AnnualSummary',
     'TaxDeductible',
-    'BudgetHistory',
     'PeopleManagement',
     'AnalyticsHub',
   ];
@@ -36,7 +35,7 @@ describe('ModalContext Property-Based Tests', () => {
    * **Feature: modal-context, Property 1: Open/close round-trip for simple modals**
    *
    * For any simple modal (expenseForm, backupSettings, annualSummary, taxDeductible,
-   * budgetHistory, peopleManagement, analyticsHub), calling its open handler SHALL set
+   * peopleManagement, analyticsHub), calling its open handler SHALL set
    * its visibility to true, and subsequently calling its close handler SHALL set its
    * visibility back to false. The open/close cycle is a round-trip that restores the
    * initial state.
@@ -174,8 +173,8 @@ describe('ModalContext Property-Based Tests', () => {
               }
             }
 
-            // Also verify budgetManagement is not affected
-            expect(result.current.showBudgetManagement).toBe(false);
+            // Also verify budgets is not affected
+            expect(result.current.showBudgets).toBe(false);
 
             cleanup();
           }
@@ -187,7 +186,7 @@ describe('ModalContext Property-Based Tests', () => {
 });
 
 
-describe('ModalContext Budget Management Property Tests', () => {
+describe('ModalContext Budget Property Tests', () => {
   afterEach(() => {
     cleanup();
   });
@@ -205,20 +204,20 @@ describe('ModalContext Budget Management Property Tests', () => {
   const categorySequenceArb = fc.array(categoryArb, { minLength: 1, maxLength: 10 });
 
   /**
-   * **Feature: modal-context, Property 2: Budget management open with focus category and close resets**
+   * **Feature: budget-modal-consolidation, Property 3: ModalContext open/close round-trip**
    *
-   * For any string category (including null), calling openBudgetManagement(category) SHALL set
-   * showBudgetManagement to true and budgetManagementFocusCategory to the provided category.
-   * Subsequently calling closeBudgetManagement SHALL set showBudgetManagement to false and
+   * For any category string (including null), calling openBudgets(category) SHALL set
+   * showBudgets to true and budgetManagementFocusCategory to the provided category.
+   * Subsequently calling closeBudgets SHALL set showBudgets to false and
    * budgetManagementFocusCategory to null, regardless of what category was previously set.
    *
-   * **Validates: Requirements 2.9, 2.10**
+   * **Validates: Requirements 4.4, 4.5**
    */
-  describe('Property 2: Budget management open with focus category and close resets', () => {
+  describe('Property 3: ModalContext open/close round-trip', () => {
     /**
-     * Property 2a: openBudgetManagement sets visibility to true and focus category to provided value
+     * Property 3a: openBudgets sets visibility to true and focus category to provided value
      */
-    it('2a: openBudgetManagement sets visibility and focus category', () => {
+    it('3a: openBudgets sets visibility and focus category', () => {
       fc.assert(
         fc.property(
           categoryArb,
@@ -226,16 +225,16 @@ describe('ModalContext Budget Management Property Tests', () => {
             const { result } = renderHook(() => useModalContext(), { wrapper });
 
             // Initial state
-            expect(result.current.showBudgetManagement).toBe(false);
+            expect(result.current.showBudgets).toBe(false);
             expect(result.current.budgetManagementFocusCategory).toBe(null);
 
-            // Call openBudgetManagement with category
+            // Call openBudgets with category
             act(() => {
-              result.current.openBudgetManagement(category);
+              result.current.openBudgets(category);
             });
 
             // Verify visibility is true
-            expect(result.current.showBudgetManagement).toBe(true);
+            expect(result.current.showBudgets).toBe(true);
             // Verify focus category is set to the provided value
             expect(result.current.budgetManagementFocusCategory).toBe(category);
 
@@ -247,9 +246,9 @@ describe('ModalContext Budget Management Property Tests', () => {
     });
 
     /**
-     * Property 2b: closeBudgetManagement resets both visibility and focus category
+     * Property 3b: closeBudgets resets both visibility and focus category
      */
-    it('2b: closeBudgetManagement resets visibility to false and focus category to null', () => {
+    it('3b: closeBudgets resets visibility to false and focus category to null', () => {
       fc.assert(
         fc.property(
           categoryArb,
@@ -258,19 +257,19 @@ describe('ModalContext Budget Management Property Tests', () => {
 
             // Open with a category
             act(() => {
-              result.current.openBudgetManagement(category);
+              result.current.openBudgets(category);
             });
 
-            expect(result.current.showBudgetManagement).toBe(true);
+            expect(result.current.showBudgets).toBe(true);
             expect(result.current.budgetManagementFocusCategory).toBe(category);
 
             // Close the modal
             act(() => {
-              result.current.closeBudgetManagement();
+              result.current.closeBudgets();
             });
 
             // Verify both are reset
-            expect(result.current.showBudgetManagement).toBe(false);
+            expect(result.current.showBudgets).toBe(false);
             expect(result.current.budgetManagementFocusCategory).toBe(null);
 
             cleanup();
@@ -281,9 +280,9 @@ describe('ModalContext Budget Management Property Tests', () => {
     });
 
     /**
-     * Property 2c: Multiple open/close cycles with different categories all reset correctly
+     * Property 3c: Multiple open/close cycles with different categories all reset correctly
      */
-    it('2c: multiple open/close cycles with different categories all reset correctly', () => {
+    it('3c: multiple open/close cycles with different categories all reset correctly', () => {
       fc.assert(
         fc.property(
           categorySequenceArb,
@@ -293,19 +292,19 @@ describe('ModalContext Budget Management Property Tests', () => {
             for (const category of categories) {
               // Open with this category
               act(() => {
-                result.current.openBudgetManagement(category);
+                result.current.openBudgets(category);
               });
 
-              expect(result.current.showBudgetManagement).toBe(true);
+              expect(result.current.showBudgets).toBe(true);
               expect(result.current.budgetManagementFocusCategory).toBe(category);
 
               // Close
               act(() => {
-                result.current.closeBudgetManagement();
+                result.current.closeBudgets();
               });
 
               // Both should be reset regardless of what category was used
-              expect(result.current.showBudgetManagement).toBe(false);
+              expect(result.current.showBudgets).toBe(false);
               expect(result.current.budgetManagementFocusCategory).toBe(null);
             }
 
@@ -317,21 +316,21 @@ describe('ModalContext Budget Management Property Tests', () => {
     });
 
     /**
-     * Property 2d: openBudgetManagement without argument defaults category to null
+     * Property 3d: openBudgets without argument defaults category to null
      */
-    it('2d: openBudgetManagement without argument defaults category to null', () => {
+    it('3d: openBudgets without argument defaults category to null', () => {
       fc.assert(
         fc.property(
-          fc.constant(undefined), // Just run once with no argument
+          fc.constant(undefined),
           () => {
             const { result } = renderHook(() => useModalContext(), { wrapper });
 
-            // Call openBudgetManagement without argument
+            // Call openBudgets without argument
             act(() => {
-              result.current.openBudgetManagement();
+              result.current.openBudgets();
             });
 
-            expect(result.current.showBudgetManagement).toBe(true);
+            expect(result.current.showBudgets).toBe(true);
             expect(result.current.budgetManagementFocusCategory).toBe(null);
 
             cleanup();
@@ -351,20 +350,16 @@ describe('ModalContext closeAllOverlays Property Tests', () => {
 
   const wrapper = createModalWrapper();
 
-  // Overlay modals (closed by closeAllOverlays)
-  const OVERLAY_MODALS = ['TaxDeductible', 'AnnualSummary', 'BackupSettings', 'BudgetHistory'];
-
   // Non-overlay modals (NOT closed by closeAllOverlays)
-  const NON_OVERLAY_MODALS = ['ExpenseForm', 'BudgetManagement', 'PeopleManagement', 'AnalyticsHub'];
+  const NON_OVERLAY_MODALS = ['ExpenseForm', 'Budgets', 'PeopleManagement', 'AnalyticsHub'];
 
-  // Arbitrary for random boolean states for all 8 modals
+  // Arbitrary for random boolean states for all modals
   const modalStatesArb = fc.record({
     showExpenseForm: fc.boolean(),
     showBackupSettings: fc.boolean(),
     showAnnualSummary: fc.boolean(),
     showTaxDeductible: fc.boolean(),
-    showBudgetManagement: fc.boolean(),
-    showBudgetHistory: fc.boolean(),
+    showBudgets: fc.boolean(),
     showPeopleManagement: fc.boolean(),
     showAnalyticsHub: fc.boolean(),
   });
@@ -372,11 +367,9 @@ describe('ModalContext closeAllOverlays Property Tests', () => {
   /**
    * **Feature: modal-context, Property 3: closeAllOverlays selectively closes overlay modals**
    *
-   * For any combination of initial modal visibility states (all 8 booleans set randomly to
-   * true or false), calling closeAllOverlays SHALL set showTaxDeductible, showAnnualSummary,
-   * showBackupSettings, and showBudgetHistory to false, while leaving showExpenseForm,
-   * showBudgetManagement, showPeopleManagement, and showAnalyticsHub unchanged from their
-   * initial values.
+   * For any combination of initial modal visibility states, calling closeAllOverlays SHALL set
+   * showTaxDeductible, showAnnualSummary, showBackupSettings to false, while leaving
+   * showExpenseForm, showBudgets, showPeopleManagement, and showAnalyticsHub unchanged.
    *
    * **Validates: Requirements 3.1, 3.2**
    */
@@ -393,15 +386,11 @@ describe('ModalContext closeAllOverlays Property Tests', () => {
 
             // Set initial states for all modals
             act(() => {
-              // Set overlay modals
               if (initialStates.showTaxDeductible) result.current.openTaxDeductible();
               if (initialStates.showAnnualSummary) result.current.openAnnualSummary();
               if (initialStates.showBackupSettings) result.current.openBackupSettings();
-              if (initialStates.showBudgetHistory) result.current.openBudgetHistory();
-
-              // Set non-overlay modals
               if (initialStates.showExpenseForm) result.current.openExpenseForm();
-              if (initialStates.showBudgetManagement) result.current.openBudgetManagement();
+              if (initialStates.showBudgets) result.current.openBudgets();
               if (initialStates.showPeopleManagement) result.current.openPeopleManagement();
               if (initialStates.showAnalyticsHub) result.current.openAnalyticsHub();
             });
@@ -415,7 +404,6 @@ describe('ModalContext closeAllOverlays Property Tests', () => {
             expect(result.current.showTaxDeductible).toBe(false);
             expect(result.current.showAnnualSummary).toBe(false);
             expect(result.current.showBackupSettings).toBe(false);
-            expect(result.current.showBudgetHistory).toBe(false);
 
             cleanup();
           }
@@ -436,15 +424,11 @@ describe('ModalContext closeAllOverlays Property Tests', () => {
 
             // Set initial states for all modals
             act(() => {
-              // Set overlay modals
               if (initialStates.showTaxDeductible) result.current.openTaxDeductible();
               if (initialStates.showAnnualSummary) result.current.openAnnualSummary();
               if (initialStates.showBackupSettings) result.current.openBackupSettings();
-              if (initialStates.showBudgetHistory) result.current.openBudgetHistory();
-
-              // Set non-overlay modals
               if (initialStates.showExpenseForm) result.current.openExpenseForm();
-              if (initialStates.showBudgetManagement) result.current.openBudgetManagement();
+              if (initialStates.showBudgets) result.current.openBudgets();
               if (initialStates.showPeopleManagement) result.current.openPeopleManagement();
               if (initialStates.showAnalyticsHub) result.current.openAnalyticsHub();
             });
@@ -456,7 +440,7 @@ describe('ModalContext closeAllOverlays Property Tests', () => {
 
             // Verify non-overlay modals are UNCHANGED from their initial states
             expect(result.current.showExpenseForm).toBe(initialStates.showExpenseForm);
-            expect(result.current.showBudgetManagement).toBe(initialStates.showBudgetManagement);
+            expect(result.current.showBudgets).toBe(initialStates.showBudgets);
             expect(result.current.showPeopleManagement).toBe(initialStates.showPeopleManagement);
             expect(result.current.showAnalyticsHub).toBe(initialStates.showAnalyticsHub);
 
@@ -483,9 +467,8 @@ describe('ModalContext closeAllOverlays Property Tests', () => {
               if (initialStates.showTaxDeductible) result.current.openTaxDeductible();
               if (initialStates.showAnnualSummary) result.current.openAnnualSummary();
               if (initialStates.showBackupSettings) result.current.openBackupSettings();
-              if (initialStates.showBudgetHistory) result.current.openBudgetHistory();
               if (initialStates.showExpenseForm) result.current.openExpenseForm();
-              if (initialStates.showBudgetManagement) result.current.openBudgetManagement();
+              if (initialStates.showBudgets) result.current.openBudgets();
               if (initialStates.showPeopleManagement) result.current.openPeopleManagement();
               if (initialStates.showAnalyticsHub) result.current.openAnalyticsHub();
             });
@@ -501,13 +484,196 @@ describe('ModalContext closeAllOverlays Property Tests', () => {
             expect(result.current.showTaxDeductible).toBe(false);
             expect(result.current.showAnnualSummary).toBe(false);
             expect(result.current.showBackupSettings).toBe(false);
-            expect(result.current.showBudgetHistory).toBe(false);
 
             // Non-overlay modals should be unchanged
             expect(result.current.showExpenseForm).toBe(initialStates.showExpenseForm);
-            expect(result.current.showBudgetManagement).toBe(initialStates.showBudgetManagement);
+            expect(result.current.showBudgets).toBe(initialStates.showBudgets);
             expect(result.current.showPeopleManagement).toBe(initialStates.showPeopleManagement);
             expect(result.current.showAnalyticsHub).toBe(initialStates.showAnalyticsHub);
+
+            cleanup();
+          }
+        ),
+        { numRuns: 100 }
+      );
+    });
+  });
+});
+
+
+/**
+ * @invariant FinancialOverview Modal Open/Close Round-Trip: For any tab value (including null),
+ * openFinancialOverview(tab) sets showFinancialOverview=true and financialOverviewInitialTab=tab;
+ * closeFinancialOverview() resets both to false/null. The round-trip is idempotent and does not
+ * affect other modal state.
+ */
+describe('ModalContext FinancialOverview Property Tests', () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  const wrapper = createModalWrapper();
+
+  // Valid tab values for the financial overview modal
+  const TAB_VALUES = ['loans', 'investments', 'payment-methods'];
+
+  // Arbitrary for tab (including null for "no initial tab")
+  const tabArb = fc.oneof(
+    fc.constant(null),
+    fc.constantFrom(...TAB_VALUES)
+  );
+
+  // Arbitrary for sequences of tabs
+  const tabSequenceArb = fc.array(tabArb, { minLength: 1, maxLength: 15 });
+
+  /**
+   * **Feature: financial-overview-modal, Property 3: ModalContext open/close round-trip**
+   *
+   * For any tab value (including null), calling openFinancialOverview(tab) SHALL set
+   * showFinancialOverview to true and financialOverviewInitialTab to the provided tab.
+   * Subsequently calling closeFinancialOverview SHALL set showFinancialOverview to false
+   * and financialOverviewInitialTab to null, regardless of what tab was previously set.
+   *
+   * **Validates: Requirements 4.1, 4.2, 4.3, 4.4, 4.5**
+   */
+  describe('Property 3: ModalContext open/close round-trip', () => {
+    /**
+     * Property 3a: openFinancialOverview sets visibility to true and initialTab to provided value
+     */
+    it('3a: openFinancialOverview sets showFinancialOverview=true and financialOverviewInitialTab=tab', () => {
+      fc.assert(
+        fc.property(
+          tabArb,
+          (tab) => {
+            const { result } = renderHook(() => useModalContext(), { wrapper });
+
+            expect(result.current.showFinancialOverview).toBe(false);
+            expect(result.current.financialOverviewInitialTab).toBe(null);
+
+            act(() => {
+              result.current.openFinancialOverview(tab);
+            });
+
+            expect(result.current.showFinancialOverview).toBe(true);
+            expect(result.current.financialOverviewInitialTab).toBe(tab);
+
+            cleanup();
+          }
+        ),
+        { numRuns: 100 }
+      );
+    });
+
+    /**
+     * Property 3b: closeFinancialOverview resets both visibility and initialTab to false/null
+     */
+    it('3b: closeFinancialOverview resets showFinancialOverview=false and financialOverviewInitialTab=null', () => {
+      fc.assert(
+        fc.property(
+          tabArb,
+          (tab) => {
+            const { result } = renderHook(() => useModalContext(), { wrapper });
+
+            act(() => {
+              result.current.openFinancialOverview(tab);
+            });
+
+            expect(result.current.showFinancialOverview).toBe(true);
+            expect(result.current.financialOverviewInitialTab).toBe(tab);
+
+            act(() => {
+              result.current.closeFinancialOverview();
+            });
+
+            expect(result.current.showFinancialOverview).toBe(false);
+            expect(result.current.financialOverviewInitialTab).toBe(null);
+
+            cleanup();
+          }
+        ),
+        { numRuns: 100 }
+      );
+    });
+
+    /**
+     * Property 3c: Multiple open/close cycles with different tabs all reset correctly
+     */
+    it('3c: multiple open/close cycles with different tabs all reset correctly', () => {
+      fc.assert(
+        fc.property(
+          tabSequenceArb,
+          (tabs) => {
+            const { result } = renderHook(() => useModalContext(), { wrapper });
+
+            for (const tab of tabs) {
+              act(() => {
+                result.current.openFinancialOverview(tab);
+              });
+
+              expect(result.current.showFinancialOverview).toBe(true);
+              expect(result.current.financialOverviewInitialTab).toBe(tab);
+
+              act(() => {
+                result.current.closeFinancialOverview();
+              });
+
+              expect(result.current.showFinancialOverview).toBe(false);
+              expect(result.current.financialOverviewInitialTab).toBe(null);
+            }
+
+            cleanup();
+          }
+        ),
+        { numRuns: 100 }
+      );
+    });
+
+    /**
+     * Property 3d: openFinancialOverview without argument defaults initialTab to null
+     */
+    it('3d: openFinancialOverview without argument defaults financialOverviewInitialTab to null', () => {
+      fc.assert(
+        fc.property(
+          fc.constant(undefined),
+          () => {
+            const { result } = renderHook(() => useModalContext(), { wrapper });
+
+            act(() => {
+              result.current.openFinancialOverview();
+            });
+
+            expect(result.current.showFinancialOverview).toBe(true);
+            expect(result.current.financialOverviewInitialTab).toBe(null);
+
+            cleanup();
+          }
+        ),
+        { numRuns: 100 }
+      );
+    });
+
+    /**
+     * Property 3e: Opening FinancialOverview does not affect other modal states
+     */
+    it('3e: opening FinancialOverview does not affect other modal states', () => {
+      fc.assert(
+        fc.property(
+          tabArb,
+          (tab) => {
+            const { result } = renderHook(() => useModalContext(), { wrapper });
+
+            act(() => {
+              result.current.openFinancialOverview(tab);
+            });
+
+            // All other modals should remain false
+            expect(result.current.showExpenseForm).toBe(false);
+            expect(result.current.showBudgets).toBe(false);
+            expect(result.current.showPeopleManagement).toBe(false);
+            expect(result.current.showAnalyticsHub).toBe(false);
+            expect(result.current.showAnnualSummary).toBe(false);
+            expect(result.current.showTaxDeductible).toBe(false);
+            expect(result.current.showBackupSettings).toBe(false);
 
             cleanup();
           }

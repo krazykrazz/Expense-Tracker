@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useModalContext } from '../contexts/ModalContext';
 import { API_ENDPOINTS } from '../config';
 import { getTodayLocalDate } from '../utils/formatters';
 import { getCategories } from '../services/categoriesApi';
@@ -59,6 +60,7 @@ const FUTURE_MONTHS_OPTIONS = [
 
 const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => {
   const isEditing = !!expense;
+  const { openFinancialOverview } = useModalContext();
   
   // Use extracted validation hook (Requirements 4.9, 7.1)
   const { validate } = useExpenseFormValidation();
@@ -945,8 +947,7 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
                 type="button" 
                 className="create-payment-method-link"
                 onClick={() => {
-                  // Dispatch event to open payment methods modal
-                  window.dispatchEvent(new CustomEvent('openPaymentMethods'));
+                  openFinancialOverview('payment-methods');
                 }}
               >
                 Create one

@@ -206,7 +206,9 @@ const AnnualSummary = ({ year }) => {
   if (loading) {
     return (
       <div className="annual-summary">
-        <h2>📊 Annual Summary {year}</h2>
+        <div className="annual-summary-header">
+          <h2>📊 Annual Summary {year}</h2>
+        </div>
         <div className="loading-message">Loading annual summary...</div>
       </div>
     );
@@ -215,7 +217,9 @@ const AnnualSummary = ({ year }) => {
   if (error) {
     return (
       <div className="annual-summary">
-        <h2>📊 Annual Summary {year}</h2>
+        <div className="annual-summary-header">
+          <h2>📊 Annual Summary {year}</h2>
+        </div>
         <div className="error-message">Error: {error}</div>
       </div>
     );
@@ -224,7 +228,9 @@ const AnnualSummary = ({ year }) => {
   if (!summary) {
     return (
       <div className="annual-summary">
-        <h2>📊 Annual Summary {year}</h2>
+        <div className="annual-summary-header">
+          <h2>📊 Annual Summary {year}</h2>
+        </div>
         <div className="empty-state">No expenses or income recorded for {year}</div>
       </div>
     );
@@ -232,7 +238,9 @@ const AnnualSummary = ({ year }) => {
 
   return (
     <div className="annual-summary">
-      <h2>📊 Annual Summary {year}</h2>
+      <div className="annual-summary-header">
+        <h2>📊 Annual Summary {year}</h2>
+      </div>
 
       <div className="summary-grid">
         <div className="summary-card income-card">

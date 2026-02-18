@@ -5,9 +5,26 @@
 /* Requirements: 2.1, 6.1, 6.3, 7.1 - Modern card, badge, and table styling */
 
 .tax-deductible {
-  padding: var(--spacing-5, 20px);
+  padding: 0;
   max-width: 1200px;
   margin: 0 auto;
+}
+
+.tax-deductible-header {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  border-radius: var(--radius-xl, 16px) var(--radius-xl, 16px) 0 0;
+  padding: var(--spacing-5, 20px) var(--spacing-6, 24px);
+  margin-bottom: var(--spacing-5, 20px);
+}
+
+.tax-deductible-header h2 {
+  margin: 0;
+  color: white;
+  font-size: var(--heading-2, 20px);
+  font-weight: var(--font-semibold, 600);
+  font-family: var(--font-sans);
+  line-height: var(--leading-tight, 1.25);
+  letter-spacing: -0.02em;
 }
 
 .tax-deductible h2 {
@@ -19,6 +36,15 @@
   font-family: var(--font-sans);
   line-height: var(--leading-tight, 1.25);
   letter-spacing: -0.02em;
+}
+
+.tax-deductible > .tax-summary-cards,
+.tax-deductible > .yoy-comparison-section,
+.tax-deductible > .tax-credit-calculator-section,
+.tax-deductible > .empty-state,
+.tax-deductible > .tax-details {
+  padding-left: var(--spacing-5, 20px);
+  padding-right: var(--spacing-5, 20px);
 }
 
 .tax-deductible h3 {

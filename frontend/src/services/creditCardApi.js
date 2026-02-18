@@ -605,7 +605,7 @@ export const getCurrentCycleStatus = async (paymentMethodId) => {
     logger.error('Failed to fetch current cycle status:', error);
     throw new Error(`Unable to load current cycle status: ${error.message}`);
   }
-};
+}
 
 /**
  * Get statement balance info for a credit card
@@ -633,7 +633,9 @@ export const getStatementBalance = async (paymentMethodId) => {
     }
     
     const data = await response.json();
-    return data.statementBalance || null;
+    // data.statementBalance is an object { statementBalance, cycleStartDate, ... } or null
+    if (!data.statementBalance) return null;
+    return data.statementBalance.statementBalance ?? null;
   } catch (error) {
     logger.error('Failed to fetch statement balance:', error);
     throw new Error(`Unable to load statement balance: ${error.message}`);

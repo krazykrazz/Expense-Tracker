@@ -1,6 +1,6 @@
 # Expense Tracker - Feature Roadmap
 
-**Last Updated**: February 10, 2026  
+**Last Updated**: February 18, 2026  
 **Current Version**: 5.10.0
 
 This document tracks potential features and enhancements for the Expense Tracker application. Features are categorized by priority and implementation status.
@@ -537,24 +537,32 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ---
 
-### ⚪ 25. Modal Consolidation
-**Status**: Proposed  
+### 🟢 25. Modal Consolidation (Budget + Financial Overview Modals)
+**Status**: Complete (v5.11.0 Budget modals; Financial Overview modals complete)  
 **Priority**: Low  
 **Effort**: High  
-**Description**: Reduce modal fatigue by grouping related features and considering sidebar navigation.
+**Spec**: `.kiro/specs/budget-modal-consolidation/`, `.kiro/specs/financial-overview-modal/`  
+**Description**: Reduce modal fatigue by grouping related features. The budget modals (Manage Budgets + Budget History) have been consolidated into a single tabbed BudgetsModal. The financial modals (Loans, Investments, Payment Methods) have been consolidated into a single tabbed FinancialOverviewModal.
 
-**Key Features**:
-- Group related modals (e.g., "Financial Overview" combining Loans + Investments)
+**Completed**:
+- Unified "💵 Budgets" button in MonthSelector replaces two separate buttons
+- BudgetsModal with "Manage" and "History" tabs replaces BudgetManagementModal and BudgetHistoryView
+- ModalContext simplified to single `showBudgets`/`openBudgets`/`closeBudgets` state
+- Tab persistence via localStorage using `useTabState` hook
+- focusCategory support forces Manage tab when opening from budget alerts
+- Unified "💼 Financial" button in MonthSelector replaces separate "💳 Payment Methods" button
+- FinancialOverviewModal with "Loans", "Investments", and "Payment Methods" tabs replaces LoansModal, InvestmentsModal, and PaymentMethodsModal
+- Net worth summary header (investments − debt) displayed in modal header
+- ModalContext updated: `showFinancialOverview`/`openFinancialOverview`/`closeFinancialOverview` replaces `showPaymentMethods` state
+- SummaryPanel simplified: Loans, Investments, and Net Worth cards removed; 2-column grid layout
+- Weekly Breakdown and Payment Methods sections open by default
+- Deep-link tab support: reminder banners open directly to the relevant tab
+
+**Remaining (future work)**:
 - Consider sidebar navigation for frequently accessed features
-- Reduce number of separate modal entry points
 - Unified settings/management interface
 
-**Benefits**:
-- Reduced cognitive load
-- Faster access to related features
-- More cohesive user experience
-
-**Dependencies**: Significant UI restructuring
+**Dependencies**: Significant UI restructuring for remaining items
 
 ---
 
@@ -1356,6 +1364,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 ---
 
 **Version History**:
+- v3.3 (2026-02-18): Marked Budget Modal Consolidation as partially complete (v5.11.0), updated #25 status from Proposed to Partially Complete
 - v3.2 (2026-02-10): Added Settings & System Modal Split (v5.11.0) to completed features, updated current version to 5.10.0, updated last updated date
 - v3.1 (2026-02-08): Marked ExpenseForm Simplification as completed (v5.8.0), updated current version to 5.8.0, removed from priority matrix
 - v3.0 (2026-02-07): Added Code Quality & Optimization section with 4 items from codebase review (#31-34), updated priority matrix

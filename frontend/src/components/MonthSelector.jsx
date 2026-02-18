@@ -1,6 +1,6 @@
 import './MonthSelector.css';
 
-const MonthSelector = ({ selectedYear, selectedMonth, onMonthChange, onViewAnnualSummary, onViewTaxDeductible, onManageBudgets, onViewBudgetHistory, onOpenAnalyticsHub, onOpenPaymentMethods }) => {
+const MonthSelector = ({ selectedYear, selectedMonth, onMonthChange, onViewAnnualSummary, onViewTaxDeductible, onOpenBudgets, onOpenAnalyticsHub, onOpenFinancialOverview }) => {
   // Generate year range from 2020 to 2030
   const years = [];
   for (let year = 2020; year <= 2030; year++) {
@@ -52,19 +52,11 @@ const MonthSelector = ({ selectedYear, selectedMonth, onMonthChange, onViewAnnua
       </button>
 
       <button 
-        className="manage-budgets-button"
-        onClick={onManageBudgets}
-        title="Manage monthly budgets"
+        className="budgets-button"
+        onClick={onOpenBudgets}
+        title="Manage budgets and view history"
       >
-        💵 Manage Budgets
-      </button>
-
-      <button 
-        className="budget-history-button"
-        onClick={onViewBudgetHistory}
-        title="View budget history"
-      >
-        📈 Budget History
+        💵 Budgets
       </button>
 
       <button 
@@ -106,11 +98,11 @@ const MonthSelector = ({ selectedYear, selectedMonth, onMonthChange, onViewAnnua
       </div>
 
       <button 
-        className="payment-methods-button"
-        onClick={onOpenPaymentMethods}
-        title="Manage payment methods"
+        className="financial-overview-button"
+        onClick={onOpenFinancialOverview}
+        title="Manage loans, investments, and payment methods"
       >
-        💳 Payment Methods
+        💼 Financial
       </button>
     </div>
   );

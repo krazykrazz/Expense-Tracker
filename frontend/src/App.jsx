@@ -9,11 +9,10 @@ import SettingsModal from './components/SettingsModal';
 import SystemModal from './components/SystemModal';
 import AnnualSummary from './components/AnnualSummary';
 import TaxDeductible from './components/TaxDeductible';
-import BudgetManagementModal from './components/BudgetManagementModal';
-import BudgetHistoryView from './components/BudgetHistoryView';
+import BudgetsModal from './components/BudgetsModal';
 import PeopleManagementModal from './components/PeopleManagementModal';
 import AnalyticsHubModal from './components/AnalyticsHubModal';
-import PaymentMethodsModal from './components/PaymentMethodsModal';
+import FinancialOverviewModal from './components/FinancialOverviewModal';
 import FloatingAddButton from './components/FloatingAddButton';
 import EnvironmentBanner from './components/EnvironmentBanner';
 import { API_ENDPOINTS } from './config';
@@ -134,13 +133,14 @@ function AppContent({ onPaymentMethodsUpdate }) {
     showExpenseForm,
     showAnnualSummary,
     showTaxDeductible,
-    showBudgetManagement,
+    showBudgets,
     budgetManagementFocusCategory,
-    showBudgetHistory,
     showPeopleManagement,
     showAnalyticsHub,
     showSettingsModal,
     showSystemModal,
+    showFinancialOverview,
+    financialOverviewInitialTab,
     openExpenseForm,
     closeExpenseForm,
     openSettingsModal,
@@ -151,14 +151,14 @@ function AppContent({ onPaymentMethodsUpdate }) {
     closeAnnualSummary,
     openTaxDeductible,
     closeTaxDeductible,
-    openBudgetManagement,
-    closeBudgetManagement,
-    openBudgetHistory,
-    closeBudgetHistory,
+    openBudgets,
+    closeBudgets,
     openPeopleManagement,
     closePeopleManagement,
     openAnalyticsHub,
     closeAnalyticsHub,
+    openFinancialOverview,
+    closeFinancialOverview,
     closeAllOverlays,
   } = useModalContext();
 
@@ -166,9 +166,6 @@ function AppContent({ onPaymentMethodsUpdate }) {
   const {
     paymentMethods,
     people,
-    showPaymentMethods,
-    openPaymentMethods: contextOpenPaymentMethods,
-    closePaymentMethods,
   } = useSharedDataContext();
 
   const [versionInfo, setVersionInfo] = useState(null);
@@ -283,11 +280,11 @@ function AppContent({ onPaymentMethodsUpdate }) {
     triggerRefresh();
   };
 
-  // Wrapper for closeBudgetManagement that also triggers refresh
-  const handleCloseBudgetManagement = useCallback(() => {
-    closeBudgetManagement();
+  // Wrapper for closeBudgets that also triggers refresh
+  const handleCloseBudgets = useCallback(() => {
+    closeBudgets();
     triggerRefresh();
-  }, [closeBudgetManagement, triggerRefresh]);
+  }, [closeBudgets, triggerRefresh]);
 
   const handlePeopleUpdated = useCallback(() => {
     triggerRefresh();
@@ -365,10 +362,9 @@ function AppContent({ onPaymentMethodsUpdate }) {
             onMonthChange={handleMonthChange}
             onViewAnnualSummary={openAnnualSummary}
             onViewTaxDeductible={openTaxDeductible}
-            onManageBudgets={openBudgetManagement}
-            onViewBudgetHistory={openBudgetHistory}
+            onOpenBudgets={openBudgets}
             onOpenAnalyticsHub={openAnalyticsHub}
-            onOpenPaymentMethods={contextOpenPaymentMethods}
+            onOpenFinancialOverview={openFinancialOverview}
           />
         </div>
         
@@ -497,22 +493,14 @@ function AppContent({ onPaymentMethodsUpdate }) {
         </div>
       )}
 
-      {showBudgetManagement && (
-        <BudgetManagementModal
-          isOpen={showBudgetManagement}
+      {showBudgets && (
+        <BudgetsModal
+          isOpen={showBudgets}
           year={selectedYear}
           month={selectedMonth}
-          onClose={handleCloseBudgetManagement}
+          onClose={handleCloseBudgets}
           onBudgetUpdated={handleBudgetUpdated}
           focusedCategory={budgetManagementFocusCategory}
-        />
-      )}
-
-      {showBudgetHistory && (
-        <BudgetHistoryView
-          year={selectedYear}
-          month={selectedMonth}
-          onClose={closeBudgetHistory}
         />
       )}
 
@@ -536,14 +524,18 @@ function AppContent({ onPaymentMethodsUpdate }) {
         />
       )}
 
-      {showPaymentMethods && (
-        <PaymentMethodsModal
-          isOpen={showPaymentMethods}
-          onClose={closePaymentMethods}
-          onUpdate={() => {
+      {showFinancialOverview && (
+        <FinancialOverviewModal
+          isOpen={showFinancialOverview}
+          onClose={() => {
+            closeFinancialOverview();
             triggerRefresh();
-            onPaymentMethodsUpdate();
           }}
+          year={selectedYear}
+          month={selectedMonth}
+          onUpdate={triggerRefresh}
+          onPaymentMethodsUpdate={onPaymentMethodsUpdate}
+          initialTab={financialOverviewInitialTab}
         />
       )}
 

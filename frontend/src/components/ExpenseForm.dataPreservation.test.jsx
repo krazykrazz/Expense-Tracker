@@ -26,6 +26,11 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MockCollapsibleSection } from '../test-utils';
 import ExpenseForm from './ExpenseForm';
+
+vi.mock('../contexts/ModalContext', () => ({
+  useModalContext: () => ({ openFinancialOverview: vi.fn() }),
+}));
+
 import * as expenseApi from '../services/expenseApi';
 import * as peopleApi from '../services/peopleApi';
 import * as categoriesApi from '../services/categoriesApi';

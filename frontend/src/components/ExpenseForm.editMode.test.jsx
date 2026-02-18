@@ -87,6 +87,10 @@ vi.mock('./InvoiceUpload', () => ({
   )
 }));
 
+vi.mock('../contexts/ModalContext', () => ({
+  useModalContext: () => ({ openFinancialOverview: vi.fn() }),
+}));
+
 import ExpenseForm from './ExpenseForm';
 
 global.fetch = vi.fn();

@@ -72,7 +72,7 @@ Hover over the (?) icons to see tooltips explaining when and why to use each fie
 
 ### Viewing Payment Methods
 
-Click the **"💳 Payment Methods"** button in the navigation to see all configured payment methods.
+Click the **"💼 Financial"** button in the navigation, then select the **"Payment Methods"** tab to see all configured payment methods.
 
 ### Adding Payment Methods
 
@@ -144,7 +144,7 @@ Use the **"📋 Copy from Previous Month"** button to copy previous month's inco
 
 ### Viewing Loans
 
-Click the **"💳 Loans"** button in the summary panel to see all loans.
+Click the **"💼 Financial"** button in the toolbar and select the **"Loans"** tab to see all loans.
 
 ### Adding Loans
 
@@ -180,7 +180,7 @@ Convert existing balance entries to payment format using the migration tool in t
 
 ### Viewing Investments
 
-Click the **"📈 Investments"** button in the summary panel to see all investments.
+Click the **"💼 Financial"** button in the toolbar and select the **"Investments"** tab to see all investments.
 
 ### Adding Investments
 
@@ -197,7 +197,7 @@ Click the **"📈 Investments"** button in the summary panel to see all investme
 
 ### Portfolio Overview
 
-View total portfolio value across all investments in the summary panel.
+View total portfolio value and net worth (investments minus outstanding debt) in the Financial Overview modal header, accessible via the **"💼 Financial"** button.
 
 ### Data Reminders
 
@@ -207,7 +207,7 @@ See reminder banners when investment values need updating for the current month.
 
 ### Managing Budgets
 
-1. Click the **"💵 Manage Budgets"** button in the month selector
+1. Click the **"💵 Budgets"** button in the month selector
 2. Set budget limits for Food, Gas, and Other categories
 3. Budgets automatically carry forward from previous month
 
@@ -240,7 +240,7 @@ Use alert banner buttons to:
 
 ### Budget History
 
-Click **"📊 Budget History"** to analyze budget performance over time (3, 6, or 12 months).
+Click the **"💵 Budgets"** button and select the **History** tab to analyze budget performance over time (3, 6, or 12 months).
 
 ## Medical Expenses
 

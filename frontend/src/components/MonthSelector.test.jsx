@@ -6,10 +6,9 @@ describe('MonthSelector', () => {
   const mockOnMonthChange = vi.fn();
   const mockOnViewAnnualSummary = vi.fn();
   const mockOnViewTaxDeductible = vi.fn();
-  const mockOnManageBudgets = vi.fn();
-  const mockOnViewBudgetHistory = vi.fn();
+  const mockOnOpenBudgets = vi.fn();
   const mockOnOpenAnalyticsHub = vi.fn();
-  const mockOnOpenPaymentMethods = vi.fn();
+  const mockOnOpenFinancialOverview = vi.fn();
   
   const defaultProps = {
     selectedYear: 2024,
@@ -17,10 +16,9 @@ describe('MonthSelector', () => {
     onMonthChange: mockOnMonthChange,
     onViewAnnualSummary: mockOnViewAnnualSummary,
     onViewTaxDeductible: mockOnViewTaxDeductible,
-    onManageBudgets: mockOnManageBudgets,
-    onViewBudgetHistory: mockOnViewBudgetHistory,
+    onOpenBudgets: mockOnOpenBudgets,
     onOpenAnalyticsHub: mockOnOpenAnalyticsHub,
-    onOpenPaymentMethods: mockOnOpenPaymentMethods
+    onOpenFinancialOverview: mockOnOpenFinancialOverview
   };
 
   beforeEach(() => {
@@ -70,19 +68,25 @@ describe('MonthSelector', () => {
       expect(screen.getByText('💰 Income Tax')).toBeInTheDocument();
     });
 
-    it('renders Manage Budgets button', () => {
+    it('renders Budgets button', () => {
       render(<MonthSelector {...defaultProps} />);
-      expect(screen.getByText('💵 Manage Budgets')).toBeInTheDocument();
+      expect(screen.getByText('💵 Budgets')).toBeInTheDocument();
     });
 
-    it('renders Budget History button', () => {
+    it('does not render separate Manage Budgets or Budget History buttons', () => {
       render(<MonthSelector {...defaultProps} />);
-      expect(screen.getByText('📈 Budget History')).toBeInTheDocument();
+      expect(screen.queryByText('💵 Manage Budgets')).not.toBeInTheDocument();
+      expect(screen.queryByText('📈 Budget History')).not.toBeInTheDocument();
     });
 
-    it('renders Payment Methods button', () => {
+    it('renders Financial button', () => {
       render(<MonthSelector {...defaultProps} />);
-      expect(screen.getByText('💳 Payment Methods')).toBeInTheDocument();
+      expect(screen.getByText('💼 Financial')).toBeInTheDocument();
+    });
+
+    it('does not render Payment Methods button', () => {
+      render(<MonthSelector {...defaultProps} />);
+      expect(screen.queryByText('💳 Payment Methods')).not.toBeInTheDocument();
     });
   });
 
@@ -143,28 +147,20 @@ describe('MonthSelector', () => {
       expect(mockOnViewTaxDeductible).toHaveBeenCalled();
     });
 
-    it('calls onManageBudgets when Manage Budgets button is clicked', () => {
+    it('calls onOpenBudgets when Budgets button is clicked', () => {
       render(<MonthSelector {...defaultProps} />);
       
-      fireEvent.click(screen.getByText('💵 Manage Budgets'));
+      fireEvent.click(screen.getByText('💵 Budgets'));
       
-      expect(mockOnManageBudgets).toHaveBeenCalled();
+      expect(mockOnOpenBudgets).toHaveBeenCalled();
     });
 
-    it('calls onViewBudgetHistory when Budget History button is clicked', () => {
+    it('calls onOpenFinancialOverview when Financial button is clicked', () => {
       render(<MonthSelector {...defaultProps} />);
       
-      fireEvent.click(screen.getByText('📈 Budget History'));
+      fireEvent.click(screen.getByText('💼 Financial'));
       
-      expect(mockOnViewBudgetHistory).toHaveBeenCalled();
-    });
-
-    it('calls onOpenPaymentMethods when Payment Methods button is clicked', () => {
-      render(<MonthSelector {...defaultProps} />);
-      
-      fireEvent.click(screen.getByText('💳 Payment Methods'));
-      
-      expect(mockOnOpenPaymentMethods).toHaveBeenCalled();
+      expect(mockOnOpenFinancialOverview).toHaveBeenCalled();
     });
   });
 
@@ -183,25 +179,18 @@ describe('MonthSelector', () => {
       expect(button).toHaveAttribute('title', 'View tax deductible expenses');
     });
 
-    it('has correct title for Manage Budgets button', () => {
+    it('has correct title for Budgets button', () => {
       render(<MonthSelector {...defaultProps} />);
       
-      const button = screen.getByText('💵 Manage Budgets');
-      expect(button).toHaveAttribute('title', 'Manage monthly budgets');
+      const button = screen.getByText('💵 Budgets');
+      expect(button).toHaveAttribute('title', 'Manage budgets and view history');
     });
 
-    it('has correct title for Budget History button', () => {
+    it('has correct title for Financial button', () => {
       render(<MonthSelector {...defaultProps} />);
       
-      const button = screen.getByText('📈 Budget History');
-      expect(button).toHaveAttribute('title', 'View budget history');
-    });
-
-    it('has correct title for Payment Methods button', () => {
-      render(<MonthSelector {...defaultProps} />);
-      
-      const button = screen.getByText('💳 Payment Methods');
-      expect(button).toHaveAttribute('title', 'Manage payment methods');
+      const button = screen.getByText('💼 Financial');
+      expect(button).toHaveAttribute('title', 'Manage loans, investments, and payment methods');
     });
   });
 

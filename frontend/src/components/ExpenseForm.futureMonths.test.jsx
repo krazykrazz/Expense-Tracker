@@ -86,6 +86,10 @@ vi.mock('../utils/constants', () => ({
   PAYMENT_METHODS: ['Cash', 'Credit Card', 'Debit Card']
 }));
 
+vi.mock('../contexts/ModalContext', () => ({
+  useModalContext: () => ({ openFinancialOverview: vi.fn() }),
+}));
+
 import ExpenseForm from './ExpenseForm';
 
 // Mock fetch globally

@@ -24,7 +24,7 @@ Budget Alert Notifications is a proactive notification system that displays prom
 - No page refresh required - updates happen instantly
 
 ### Quick Budget Management
-- **Manage Budgets** button opens budget management modal directly from alert
+- **Manage Budgets** button opens the unified Budgets modal (Manage tab) directly from alert
 - **View Details** link navigates to budget summary section for detailed analysis
 - Alert context passed to budget modal when opened from specific category alert
 - Alerts refresh automatically after budget changes are made
@@ -65,7 +65,7 @@ Core logic for analyzing budget data and generating alerts.
 - BudgetAlertManager positioned at top of main interface
 - Connected to existing budget refresh triggers
 - Passes year, month, and refresh trigger props
-- Connects onManageBudgets callback to existing budget modal
+- Connects onOpenBudgets callback to unified BudgetsModal
 
 #### Real-time Refresh Integration
 - Connected to existing expense operation handlers

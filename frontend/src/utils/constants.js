@@ -31,7 +31,7 @@ export const CATEGORIES = [
  * and for legacy test files that haven't been updated yet.
  * 
  * @see frontend/src/services/paymentMethodApi.js
- * @see frontend/src/components/PaymentMethodsModal.jsx
+ * @see frontend/src/components/FinancialOverviewModal.jsx
  */
 export const PAYMENT_METHODS = [
   'Cash',

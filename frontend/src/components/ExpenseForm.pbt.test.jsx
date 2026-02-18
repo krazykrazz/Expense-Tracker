@@ -7,6 +7,11 @@ import { render, waitFor, fireEvent, cleanup, act } from '@testing-library/react
 import userEvent from '@testing-library/user-event';
 import * as fc from 'fast-check';
 import ExpenseForm from './ExpenseForm';
+
+vi.mock('../contexts/ModalContext', () => ({
+  useModalContext: () => ({ openFinancialOverview: vi.fn() }),
+}));
+
 import { CATEGORIES } from '../../../backend/utils/categories';
 import { createPaymentMethodApiMock, testEach } from '../test-utils';
 

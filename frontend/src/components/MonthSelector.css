@@ -76,6 +76,7 @@
 .annual-summary-button,
 .tax-deductible-button,
 .manage-budgets-button,
+.budgets-button,
 .budget-history-button,
 .merchant-analytics-button,
 .analytics-hub-button {
@@ -96,6 +97,7 @@
 .annual-summary-button:hover,
 .tax-deductible-button:hover,
 .manage-budgets-button:hover,
+.budgets-button:hover,
 .budget-history-button:hover,
 .merchant-analytics-button:hover,
 .analytics-hub-button:hover {
@@ -107,6 +109,7 @@
 .annual-summary-button:active,
 .tax-deductible-button:active,
 .manage-budgets-button:active,
+.budgets-button:active,
 .budget-history-button:active,
 .merchant-analytics-button:active,
 .analytics-hub-button:active {
@@ -117,6 +120,7 @@
 .annual-summary-button:focus,
 .tax-deductible-button:focus,
 .manage-budgets-button:focus,
+.budgets-button:focus,
 .budget-history-button:focus,
 .merchant-analytics-button:focus,
 .analytics-hub-button:focus {
@@ -137,6 +141,14 @@
 }
 
 .manage-budgets-button:hover {
+  background: #7c3aed;
+}
+
+.budgets-button {
+  background: #8b5cf6;
+}
+
+.budgets-button:hover {
   background: #7c3aed;
 }
 
@@ -201,6 +213,7 @@
   .annual-summary-button,
   .tax-deductible-button,
   .manage-budgets-button,
+  .budgets-button,
   .budget-history-button,
   .merchant-analytics-button,
   .analytics-hub-button,
@@ -221,6 +234,7 @@
   .annual-summary-button,
   .tax-deductible-button,
   .manage-budgets-button,
+  .budgets-button,
   .budget-history-button,
   .merchant-analytics-button,
   .analytics-hub-button,
@@ -231,6 +245,7 @@
   .annual-summary-button:hover,
   .tax-deductible-button:hover,
   .manage-budgets-button:hover,
+  .budgets-button:hover,
   .budget-history-button:hover,
   .merchant-analytics-button:hover,
   .analytics-hub-button:hover,
@@ -241,6 +256,7 @@
   .annual-summary-button:active,
   .tax-deductible-button:active,
   .manage-budgets-button:active,
+  .budgets-button:active,
   .budget-history-button:active,
   .merchant-analytics-button:active,
   .analytics-hub-button:active,

@@ -16,6 +16,11 @@
 
 
 
+
+
+## [5.15.1] - 2026-02-19
+
+### Fix crypto.randomUUID crash on HTTP local network access
 ## [5.15.0] - 2026-02-19
 
 ### Real-time data sync, CI guardrail fix, remove unused Windows bat scripts

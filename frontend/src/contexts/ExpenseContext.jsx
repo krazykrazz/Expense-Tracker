@@ -149,6 +149,11 @@ export function ExpenseProvider({ children }) {
     setRefreshTrigger(prev => prev + 1);
   }, []);
 
+  /** Called by useDataSync on remote SSE expense events — re-fetches from server */
+  const refreshExpenses = useCallback(() => {
+    window.dispatchEvent(new CustomEvent('expensesUpdated'));
+  }, []);
+
   const clearError = useCallback(() => {
     setError(null);
   }, []);
@@ -181,12 +186,13 @@ export function ExpenseProvider({ children }) {
     handleExpenseDeleted,
     handleExpenseUpdated,
     triggerRefresh,
+    refreshExpenses,
     clearError,
   }), [
     expenses, filteredExpenses, loading, error,
     refreshTrigger, budgetAlertRefreshTrigger, currentMonthExpenseCount,
     handleExpenseAdded, handleExpenseDeleted, handleExpenseUpdated,
-    triggerRefresh, clearError,
+    triggerRefresh, refreshExpenses, clearError,
   ]);
 
   return (

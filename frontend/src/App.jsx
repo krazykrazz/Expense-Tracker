@@ -127,6 +127,7 @@ function AppContent({ onPaymentMethodsUpdate }) {
     handleExpenseDeleted,
     handleExpenseUpdated,
     triggerRefresh,
+    refreshExpenses,
     clearError,
   } = useExpenseContext();
 
@@ -174,9 +175,8 @@ function AppContent({ onPaymentMethodsUpdate }) {
   } = useSharedDataContext();
 
   // Real-time sync — subscribes to SSE and refreshes data on remote changes
-  // triggerRefresh is aliased as refreshExpenses for the useDataSync interface
   const { toastMessages } = useDataSync({
-    refreshExpenses: triggerRefresh,
+    refreshExpenses,
     refreshBudgets,
     refreshPeople,
     refreshPaymentMethods,

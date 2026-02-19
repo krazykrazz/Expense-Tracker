@@ -87,7 +87,7 @@ class BudgetService {
    * @param {number} limit - Budget limit amount
    * @returns {Promise<Object>} Created budget
    */
-  async createBudget(year, month, category, limit) {
+  async createBudget(year, month, category, limit, tabId = null) {
     // Validate inputs
     this.validateYearMonth(year, month);
     category = this.validateCategory(category);
@@ -113,7 +113,8 @@ class BudgetService {
           category,
           limit: parseFloat(limit),
           year: parseInt(year),
-          month: parseInt(month)
+          month: parseInt(month),
+          tabId
         }
       );
       
@@ -133,7 +134,7 @@ class BudgetService {
    * @param {number} limit - New budget limit amount
    * @returns {Promise<Object|null>} Updated budget or null if not found
    */
-  async updateBudget(id, limit) {
+  async updateBudget(id, limit, tabId = null) {
     // Validate amount
     this.validateAmount(limit);
 
@@ -162,7 +163,8 @@ class BudgetService {
       {
         category: updated.category,
         limit: parseFloat(limit),
-        changes: changes
+        changes: changes,
+        tabId
       }
     );
 
@@ -174,7 +176,7 @@ class BudgetService {
    * @param {number} id - Budget ID
    * @returns {Promise<boolean>} True if deleted
    */
-  async deleteBudget(id) {
+  async deleteBudget(id, tabId = null) {
     // Get budget details before deletion for logging
     const budget = await budgetRepository.findById(id);
     
@@ -196,7 +198,8 @@ class BudgetService {
       `Deleted budget: ${budget.category} - $${budget.limit.toFixed(2)}`,
       {
         category: budget.category,
-        limit: budget.limit
+        limit: budget.limit,
+        tabId
       }
     );
 

@@ -20,7 +20,8 @@ describe('ExpenseController - Future Months Feature', () => {
     req = {
       query: {},
       params: {},
-      body: {}
+      body: {},
+      headers: {}
     };
 
     res = {
@@ -47,7 +48,7 @@ describe('ExpenseController - Future Months Feature', () => {
 
       await expenseController.createExpense(req, res);
 
-      expect(expenseService.createExpense).toHaveBeenCalledWith(baseExpenseData, 0);
+      expect(expenseService.createExpense).toHaveBeenCalledWith(baseExpenseData, 0, null);    expect(expenseService.createExpense).toHaveBeenCalledWith(baseExpenseData, 0, null);
       expect(res.status).toHaveBeenCalledWith(201);
       expect(res.json).toHaveBeenCalledWith(mockExpense);
     });
@@ -60,7 +61,7 @@ describe('ExpenseController - Future Months Feature', () => {
 
       await expenseController.createExpense(req, res);
 
-      expect(expenseService.createExpense).toHaveBeenCalledWith(baseExpenseData, 0);
+      expect(expenseService.createExpense).toHaveBeenCalledWith(baseExpenseData, 0, null);
       expect(res.status).toHaveBeenCalledWith(201);
       expect(res.json).toHaveBeenCalledWith(mockExpense);
     });
@@ -80,7 +81,7 @@ describe('ExpenseController - Future Months Feature', () => {
 
       await expenseController.createExpense(req, res);
 
-      expect(expenseService.createExpense).toHaveBeenCalledWith(baseExpenseData, 3);
+      expect(expenseService.createExpense).toHaveBeenCalledWith(baseExpenseData, 3, null);
       expect(res.status).toHaveBeenCalledWith(201);
       
       const responseBody = res.json.mock.calls[0][0];
@@ -125,7 +126,8 @@ describe('ExpenseController - Future Months Feature', () => {
       expect(expenseService.createExpenseWithPeople).toHaveBeenCalledWith(
         expect.objectContaining({ type: 'Tax - Medical', amount: 50 }),
         peopleAllocations,
-        1
+        1,
+        null
       );
     });
 
@@ -160,7 +162,7 @@ describe('ExpenseController - Future Months Feature', () => {
 
       await expenseController.updateExpense(req, res);
 
-      expect(expenseService.updateExpense).toHaveBeenCalledWith(1, baseExpenseData, 0);
+      expect(expenseService.updateExpense).toHaveBeenCalledWith(1, baseExpenseData, 0, null);
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith(mockExpense);
     });
@@ -180,7 +182,7 @@ describe('ExpenseController - Future Months Feature', () => {
 
       await expenseController.updateExpense(req, res);
 
-      expect(expenseService.updateExpense).toHaveBeenCalledWith(1, baseExpenseData, 2);
+      expect(expenseService.updateExpense).toHaveBeenCalledWith(1, baseExpenseData, 2, null);
       expect(res.status).toHaveBeenCalledWith(200);
       
       const responseBody = res.json.mock.calls[0][0];
@@ -209,7 +211,8 @@ describe('ExpenseController - Future Months Feature', () => {
         1,
         expect.objectContaining({ type: 'Tax - Medical', amount: 100 }),
         peopleAllocations,
-        1
+        1,
+        null
       );
     });
 
@@ -270,6 +273,12 @@ describe('ExpenseController - Future Months Feature', () => {
       expenseService.createExpense.mockResolvedValue(mockResult);
 
       await expenseController.createExpense(req, res);
+
+      expect(expenseService.createExpense).toHaveBeenCalledWith(
+        expect.objectContaining({ date: '2025-11-15' }),
+        3,
+        null
+      );
 
       const responseBody = res.json.mock.calls[0][0];
       expect(responseBody.message).toContain('February 2026');

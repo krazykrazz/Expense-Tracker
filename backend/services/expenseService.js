@@ -287,7 +287,7 @@ class ExpenseService {
    * Create a single expense (internal helper).
    * @private
    */
-  async _createSingleExpense(expenseData) {
+  async _createSingleExpense(expenseData, tabId = null) {
     const processedData = this._applyInsuranceDefaults(expenseData);
     const reimbursementProcessedData = this._processReimbursement(processedData);
 
@@ -341,7 +341,8 @@ class ExpenseService {
         category: expense.type,
         date: expense.date,
         place: expense.place,
-        method: method
+        method: method,
+        tabId
       }
     );
 
@@ -351,12 +352,12 @@ class ExpenseService {
   /**
    * Create a new expense with optional future months.
    */
-  async createExpense(expenseData, futureMonths = 0) {
+  async createExpense(expenseData, futureMonths = 0, tabId = null) {
     this.validateExpense(expenseData);
     this._validateFutureMonths(futureMonths);
 
     const monthsToCreate = futureMonths || 0;
-    const sourceExpense = await this._createSingleExpense(expenseData);
+    const sourceExpense = await this._createSingleExpense(expenseData, tabId);
 
     if (monthsToCreate === 0) {
       return sourceExpense;
@@ -369,7 +370,7 @@ class ExpenseService {
       for (let i = 1; i <= monthsToCreate; i++) {
         const futureDate = this._calculateFutureDate(expenseData.date, i);
         const futureExpenseData = { ...expenseData, date: futureDate };
-        const futureExpense = await this._createSingleExpense(futureExpenseData);
+        const futureExpense = await this._createSingleExpense(futureExpenseData, tabId);
         futureExpenses.push(futureExpense);
         createdExpenseIds.push(futureExpense.id);
       }
@@ -423,7 +424,7 @@ class ExpenseService {
   /**
    * Update an expense with optional future months.
    */
-  async updateExpense(id, expenseData, futureMonths = 0) {
+  async updateExpense(id, expenseData, futureMonths = 0, tabId = null) {
     const oldExpense = await expenseRepository.findById(id);
     if (!oldExpense) {
       return null;
@@ -568,7 +569,8 @@ class ExpenseService {
         date: expense.date,
         place: expense.place,
         method: expense.method,
-        changes: changes
+        changes: changes,
+        tabId
       }
     );
 
@@ -585,7 +587,8 @@ class ExpenseService {
           previousStatus: oldClaimStatus || null,
           newStatus: newClaimStatus || null,
           place: expense.place,
-          amount: expense.amount
+          amount: expense.amount,
+          tabId
         }
       );
     }
@@ -607,7 +610,7 @@ class ExpenseService {
           payment_method_id: payment_method_id,
           method: method
         };
-        const futureExpense = await this._createSingleExpense(futureExpenseData);
+        const futureExpense = await this._createSingleExpense(futureExpenseData, tabId);
         futureExpenses.push(futureExpense);
         createdExpenseIds.push(futureExpense.id);
       }
@@ -631,7 +634,7 @@ class ExpenseService {
   /**
    * Delete an expense.
    */
-  async deleteExpense(id) {
+  async deleteExpense(id, tabId = null) {
     const expense = await expenseRepository.findById(id);
     if (!expense) {
       return false;
@@ -662,7 +665,8 @@ class ExpenseService {
           amount: expense.amount,
           category: expense.type,
           date: expense.date,
-          place: expense.place
+          place: expense.place,
+          tabId
         }
       );
     }
@@ -784,12 +788,12 @@ class ExpenseService {
     return expensePeopleService.handleUnassignedExpenses(expenses);
   }
 
-  async createExpenseWithPeople(expenseData, personAllocations = [], futureMonths = 0) {
-    return expensePeopleService.createExpenseWithPeople(expenseData, personAllocations, futureMonths);
+  async createExpenseWithPeople(expenseData, personAllocations = [], futureMonths = 0, tabId = null) {
+    return expensePeopleService.createExpenseWithPeople(expenseData, personAllocations, futureMonths, tabId);
   }
 
-  async updateExpenseWithPeople(id, expenseData, personAllocations = [], futureMonths = 0) {
-    return expensePeopleService.updateExpenseWithPeople(id, expenseData, personAllocations, futureMonths);
+  async updateExpenseWithPeople(id, expenseData, personAllocations = [], futureMonths = 0, tabId = null) {
+    return expensePeopleService.updateExpenseWithPeople(id, expenseData, personAllocations, futureMonths, tabId);
   }
 
   async getExpenseWithPeople(id) {

@@ -165,7 +165,7 @@
 .financial-cc-summary-header-row,
 .financial-cc-summary-row {
   display: grid;
-  grid-template-columns: 1fr auto auto auto auto;
+  grid-template-columns: 1fr 90px 90px 90px 52px;
   gap: var(--spacing-4, 16px);
   align-items: center;
 }
@@ -181,10 +181,17 @@
   margin-bottom: 2px;
 }
 
-.financial-cc-summary-header-row span:not(:first-child),
+.financial-cc-summary-header-row span:not(:first-child):not(:last-child),
 .financial-cc-summary-row .financial-cc-amount {
   text-align: right;
-  min-width: 90px;
+}
+
+.financial-cc-summary-header-row span:not(:first-child):not(:last-child) {
+  text-align: right;
+}
+
+.financial-cc-summary-header-row span:last-child {
+  width: 52px;
 }
 
 .financial-cc-name {

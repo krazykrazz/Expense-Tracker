@@ -50,7 +50,7 @@ async function createFixedExpense(req, res) {
       return res.status(400).json({ error: 'Year, month, name, and amount are required' });
     }
     
-    const createdFixedExpense = await fixedExpenseService.createFixedExpense(fixedExpenseData);
+    const createdFixedExpense = await fixedExpenseService.createFixedExpense(fixedExpenseData, req.headers['x-tab-id'] ?? null);
     res.status(201).json(createdFixedExpense);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -79,7 +79,7 @@ async function updateFixedExpense(req, res) {
       return res.status(400).json({ error: 'Name and amount are required' });
     }
     
-    const updatedFixedExpense = await fixedExpenseService.updateFixedExpense(id, fixedExpenseData);
+    const updatedFixedExpense = await fixedExpenseService.updateFixedExpense(id, fixedExpenseData, req.headers['x-tab-id'] ?? null);
     
     if (!updatedFixedExpense) {
       return res.status(404).json({ error: 'Fixed expense not found' });
@@ -103,7 +103,7 @@ async function deleteFixedExpense(req, res) {
       return res.status(400).json({ error: 'Invalid fixed expense ID' });
     }
     
-    const deleted = await fixedExpenseService.deleteFixedExpense(id);
+    const deleted = await fixedExpenseService.deleteFixedExpense(id, req.headers['x-tab-id'] ?? null);
     
     if (!deleted) {
       return res.status(404).json({ error: 'Fixed expense not found' });

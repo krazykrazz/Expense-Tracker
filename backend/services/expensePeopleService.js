@@ -26,7 +26,7 @@ class ExpensePeopleService {
    * @param {number} futureMonths - Number of future months to create (0-12, default 0)
    * @returns {Promise<Object>} Created expense with people data and futureExpenses array
    */
-  async createExpenseWithPeople(expenseData, personAllocations = [], futureMonths = 0) {
+  async createExpenseWithPeople(expenseData, personAllocations = [], futureMonths = 0, tabId = null) {
     const facade = this._facadeMethods;
 
     // Validate the expense data first
@@ -47,7 +47,7 @@ class ExpensePeopleService {
     const monthsToCreate = futureMonths || 0;
 
     // Create the source expense first
-    const createdExpense = await facade._createSingleExpense(expenseData);
+    const createdExpense = await facade._createSingleExpense(expenseData, tabId);
     const createdExpenseIds = [createdExpense.id];
 
     // If people allocations are provided, create the associations for source expense
@@ -85,7 +85,7 @@ class ExpensePeopleService {
           date: futureDate
         };
 
-        const futureExpense = await facade._createSingleExpense(futureExpenseData);
+        const futureExpense = await facade._createSingleExpense(futureExpenseData, tabId);
         createdExpenseIds.push(futureExpense.id);
 
         // Copy people allocations for medical expenses (Requirement 1.8)
@@ -143,7 +143,7 @@ class ExpensePeopleService {
    * @param {number} futureMonths - Number of future months to create (0-12, default 0)
    * @returns {Promise<Object|null>} Updated expense with people data and futureExpenses array or null
    */
-  async updateExpenseWithPeople(id, expenseData, personAllocations = [], futureMonths = 0) {
+  async updateExpenseWithPeople(id, expenseData, personAllocations = [], futureMonths = 0, tabId = null) {
     const facade = this._facadeMethods;
 
     // Validate the expense data first
@@ -164,7 +164,7 @@ class ExpensePeopleService {
     const monthsToCreate = futureMonths || 0;
 
     // Update the expense first (without futureMonths to avoid double creation)
-    const updatedExpense = await facade.updateExpense(id, expenseData, 0);
+    const updatedExpense = await facade.updateExpense(id, expenseData, 0, tabId);
 
     if (!updatedExpense) {
       return null;
@@ -203,7 +203,7 @@ class ExpensePeopleService {
           date: futureDate
         };
 
-        const futureExpense = await facade._createSingleExpense(futureExpenseData);
+        const futureExpense = await facade._createSingleExpense(futureExpenseData, tabId);
         createdExpenseIds.push(futureExpense.id);
 
         // Copy people allocations for medical expenses (Requirement 1.8)

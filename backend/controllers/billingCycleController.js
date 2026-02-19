@@ -435,17 +435,6 @@ async function updateBillingCycle(req, res) {
       }
     }
     
-    // Fetch previous record for activity logging
-    let previousBalance = null;
-    try {
-      const existingCycle = await billingCycleRepository.findById(cycleId);
-      if (existingCycle) {
-        previousBalance = existingCycle.actual_statement_balance;
-      }
-    } catch (fetchError) {
-      logger.error('Failed to fetch previous billing cycle for logging:', fetchError);
-    }
-    
     const updateData = { actual_statement_balance, minimum_payment, notes };
     if (statement_pdf_path !== undefined) {
       updateData.statement_pdf_path = statement_pdf_path;
@@ -461,38 +450,6 @@ async function updateBillingCycle(req, res) {
       id: cycleId,
       paymentMethodId
     });
-    
-    // Activity logging (fire-and-forget)
-    try {
-      const paymentMethod = await paymentMethodRepository.findById(paymentMethodId);
-      const cardName = paymentMethod ? (paymentMethod.display_name || paymentMethod.full_name) : `Card ${paymentMethodId}`;
-      const newBalance = billingCycle.actual_statement_balance;
-      const prevBal = previousBalance !== null ? previousBalance : newBalance;
-      const userAction = `Updated billing cycle for ${cardName} (${billingCycle.cycle_start_date} to ${billingCycle.cycle_end_date}) - statement balance: $${prevBal.toFixed(2)} → $${newBalance.toFixed(2)}`;
-      
-      // Determine changed fields
-      const changedFields = [];
-      if (actual_statement_balance !== undefined) changedFields.push('actual_statement_balance');
-      if (minimum_payment !== undefined) changedFields.push('minimum_payment');
-      if (notes !== undefined) changedFields.push('notes');
-      if (statement_pdf_path !== undefined) changedFields.push('statement_pdf_path');
-      
-      await activityLogService.logEvent(
-        'billing_cycle_updated',
-        'billing_cycle',
-        cycleId,
-        userAction,
-        {
-          paymentMethodName: cardName,
-          cycleEndDate: billingCycle.cycle_end_date,
-          previousBalance: prevBal,
-          newBalance,
-          changedFields
-        }
-      );
-    } catch (logError) {
-      logger.error('Failed to log billing cycle update event:', logError);
-    }
     
     res.status(200).json({
       success: true,

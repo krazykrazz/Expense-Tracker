@@ -41,8 +41,42 @@ vi.mock('react-pdf', () => ({
   }
 }));
 
+// Mock EventSource — jsdom does not provide it
+// Tests that need fine-grained control can override this with vi.stubGlobal('EventSource', ...)
+class MockEventSource {
+  constructor(url) {
+    this.url = url;
+    this.readyState = 0; // CONNECTING
+    this.onopen = null;
+    this.onmessage = null;
+    this.onerror = null;
+    MockEventSource.instances.push(this);
+  }
+  close() {
+    this.readyState = 2; // CLOSED
+  }
+  // Helper used by tests to simulate events
+  _triggerOpen() {
+    this.readyState = 1;
+    this.onopen?.();
+  }
+  _triggerMessage(data) {
+    this.onmessage?.({ data: typeof data === 'string' ? data : JSON.stringify(data) });
+  }
+  _triggerError() {
+    this.onerror?.();
+  }
+}
+MockEventSource.instances = [];
+MockEventSource.CONNECTING = 0;
+MockEventSource.OPEN = 1;
+MockEventSource.CLOSED = 2;
+
+globalThis.EventSource = MockEventSource;
+
 // Clean up after each test to prevent memory leaks and state pollution
 afterEach(() => {
+  MockEventSource.instances = [];
   // Clear all timers to prevent "window is not defined" errors
   vi.clearAllTimers();
   

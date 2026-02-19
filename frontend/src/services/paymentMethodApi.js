@@ -5,6 +5,7 @@
 
 import { API_ENDPOINTS } from '../config.js';
 import { createLogger } from '../utils/logger';
+import { fetchWithTabId } from '../utils/tabId';
 
 const logger = createLogger('PaymentMethodApi');
 
@@ -134,7 +135,7 @@ export const getPaymentMethod = async (id) => {
  */
 export const createPaymentMethod = async (paymentMethodData) => {
   try {
-    const response = await fetchWithRetry(API_ENDPOINTS.PAYMENT_METHODS, {
+    const response = await fetchWithTabId(API_ENDPOINTS.PAYMENT_METHODS, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -163,7 +164,7 @@ export const createPaymentMethod = async (paymentMethodData) => {
  */
 export const updatePaymentMethod = async (id, paymentMethodData) => {
   try {
-    const response = await fetchWithRetry(API_ENDPOINTS.PAYMENT_METHOD_BY_ID(id), {
+    const response = await fetchWithTabId(API_ENDPOINTS.PAYMENT_METHOD_BY_ID(id), {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json'
@@ -191,7 +192,7 @@ export const updatePaymentMethod = async (id, paymentMethodData) => {
  */
 export const deletePaymentMethod = async (id) => {
   try {
-    const response = await fetchWithRetry(API_ENDPOINTS.PAYMENT_METHOD_BY_ID(id), {
+    const response = await fetchWithTabId(API_ENDPOINTS.PAYMENT_METHOD_BY_ID(id), {
       method: 'DELETE'
     });
     
@@ -215,7 +216,7 @@ export const deletePaymentMethod = async (id) => {
  */
 export const setPaymentMethodActive = async (id, isActive) => {
   try {
-    const response = await fetchWithRetry(API_ENDPOINTS.PAYMENT_METHOD_SET_ACTIVE(id), {
+    const response = await fetchWithTabId(API_ENDPOINTS.PAYMENT_METHOD_SET_ACTIVE(id), {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json'

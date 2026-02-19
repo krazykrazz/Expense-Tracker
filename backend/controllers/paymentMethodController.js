@@ -103,7 +103,7 @@ async function create(req, res) {
   try {
     const data = req.body;
 
-    const paymentMethod = await paymentMethodService.createPaymentMethod(data);
+    const paymentMethod = await paymentMethodService.createPaymentMethod(data, req.headers['x-tab-id'] ?? null);
 
     logger.debug('Payment method created via API:', {
       id: paymentMethod.id,
@@ -154,7 +154,7 @@ async function update(req, res) {
       });
     }
 
-    const paymentMethod = await paymentMethodService.updatePaymentMethod(id, data);
+    const paymentMethod = await paymentMethodService.updatePaymentMethod(id, data, req.headers['x-tab-id'] ?? null);
 
     if (!paymentMethod) {
       return res.status(404).json({
@@ -211,7 +211,7 @@ async function deletePaymentMethod(req, res) {
       });
     }
 
-    const result = await paymentMethodService.deletePaymentMethod(id);
+    const result = await paymentMethodService.deletePaymentMethod(id, req.headers['x-tab-id'] ?? null);
 
     if (!result.success) {
       // Determine appropriate status code
@@ -269,7 +269,7 @@ async function setActive(req, res) {
       });
     }
 
-    const paymentMethod = await paymentMethodService.setPaymentMethodActive(id, isActive);
+    const paymentMethod = await paymentMethodService.setPaymentMethodActive(id, isActive, req.headers['x-tab-id'] ?? null);
 
     if (!paymentMethod) {
       return res.status(404).json({

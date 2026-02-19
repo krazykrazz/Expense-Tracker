@@ -47,7 +47,8 @@ async function createPerson(req, res) {
       dateOfBirth: dateOfBirth && dateOfBirth.trim() !== '' ? dateOfBirth.trim() : null
     };
     
-    const createdPerson = await peopleService.createPerson(personData.name, personData.dateOfBirth);
+    const tabId = req.headers['x-tab-id'] ?? null;
+    const createdPerson = await peopleService.createPerson(personData.name, personData.dateOfBirth, tabId);
     res.status(201).json(createdPerson);
   } catch (error) {
     logger.error('Error creating person:', error);
@@ -93,7 +94,8 @@ async function updatePerson(req, res) {
       dateOfBirth: dateOfBirth && dateOfBirth.trim() !== '' ? dateOfBirth.trim() : null
     };
     
-    const updatedPerson = await peopleService.updatePerson(id, personData.name, personData.dateOfBirth);
+    const tabId = req.headers['x-tab-id'] ?? null;
+    const updatedPerson = await peopleService.updatePerson(id, personData.name, personData.dateOfBirth, tabId);
     
     if (!updatedPerson) {
       return res.status(404).json({ error: 'Person not found' });
@@ -118,7 +120,8 @@ async function deletePerson(req, res) {
       return res.status(400).json({ error: 'Invalid person ID' });
     }
     
-    const deleted = await peopleService.deletePerson(id);
+    const tabId = req.headers['x-tab-id'] ?? null;
+    const deleted = await peopleService.deletePerson(id, tabId);
     
     if (!deleted) {
       return res.status(404).json({ error: 'Person not found' });

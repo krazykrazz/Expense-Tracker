@@ -6,6 +6,18 @@ const logger = require('../config/logger');
 let lastCleanupRun = null;
 let lastCleanupDeletedCount = 0;
 
+// SSE service injection (avoids circular dependency)
+let _sseService = null;
+
+/**
+ * Inject the SSE service to enable broadcast on activity log events.
+ * Called from server.js after both modules are loaded.
+ * @param {object} svc - sseService instance
+ */
+function setSseService(svc) {
+  _sseService = svc;
+}
+
 /**
  * Log an activity event (fire-and-forget pattern)
  * @param {string} eventType - Machine-readable event type
@@ -51,6 +63,15 @@ async function logEvent(eventType, entityType, entityId, userAction, metadata) {
 
     // Insert event
     await activityLogRepository.insert(event);
+
+    // Broadcast SSE sync event after successful insert (fire-and-forget)
+    if (_sseService) {
+      try {
+        await _sseService.broadcast(entityType, metadata?.tabId ?? null);
+      } catch (err) {
+        logger.error('Activity log: SSE broadcast failed', { err, entityType });
+      }
+    }
   } catch (error) {
     logger.error('Activity log: Failed to log event', { error, eventType, entityType });
     // Do not throw - fail silently
@@ -178,5 +199,6 @@ module.exports = {
   logEvent,
   getRecentEvents,
   cleanupOldEvents,
-  getCleanupStats
+  getCleanupStats,
+  setSseService
 };

@@ -4,6 +4,7 @@
  */
 
 import { createLogger } from './logger';
+import { TAB_ID } from './tabId';
 
 const logger = createLogger('ApiClient');
 
@@ -74,7 +75,8 @@ export async function apiPost(url, data, operation = 'create resource') {
     const response = await fetch(url, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'X-Tab-ID': TAB_ID
       },
       body: JSON.stringify(data)
     });
@@ -99,7 +101,8 @@ export async function apiPut(url, data, operation = 'update resource') {
     const response = await fetch(url, {
       method: 'PUT',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'X-Tab-ID': TAB_ID
       },
       body: JSON.stringify(data)
     });
@@ -121,7 +124,10 @@ export async function apiPut(url, data, operation = 'update resource') {
 export async function apiDelete(url, operation = 'delete resource') {
   try {
     const response = await fetch(url, {
-      method: 'DELETE'
+      method: 'DELETE',
+      headers: {
+        'X-Tab-ID': TAB_ID
+      }
     });
     return await handleResponse(response, operation);
   } catch (error) {
@@ -144,7 +150,8 @@ export async function apiPatch(url, data, operation = 'patch resource') {
     const response = await fetch(url, {
       method: 'PATCH',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'X-Tab-ID': TAB_ID
       },
       body: JSON.stringify(data)
     });

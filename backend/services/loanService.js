@@ -69,7 +69,7 @@ class LoanService {
    * @param {Object} data - Loan data
    * @returns {Promise<Object>} Created loan
    */
-  async createLoan(data) {
+  async createLoan(data, tabId = null) {
     this.validateLoan(data);
     
     const loanType = data.loan_type || 'loan';
@@ -98,7 +98,8 @@ class LoanService {
         name: createdLoan.name,
         loan_type: createdLoan.loan_type,
         initial_balance: createdLoan.initial_balance,
-        start_date: createdLoan.start_date
+        start_date: createdLoan.start_date,
+        tabId
       }
     );
     
@@ -113,7 +114,7 @@ class LoanService {
    * @param {Object} data - Updated loan data
    * @returns {Promise<Object|null>} Updated loan or null if not found
    */
-  async updateLoan(id, data) {
+  async updateLoan(id, data, tabId = null) {
     // First, verify the loan exists
     const existingLoan = await loanRepository.findById(id);
     
@@ -185,7 +186,8 @@ class LoanService {
         {
           name: updatedLoan.name,
           loan_type: updatedLoan.loan_type,
-          changes: changes
+          changes: changes,
+          tabId
         }
       );
     }
@@ -198,7 +200,7 @@ class LoanService {
    * @param {Object} data - Mortgage data including mortgage-specific fields
    * @returns {Promise<Object>} Created mortgage
    */
-  async createMortgage(data) {
+  async createMortgage(data, tabId = null) {
     // Validate standard loan fields first
     this.validateLoan({ ...data, loan_type: 'mortgage' });
     
@@ -234,7 +236,8 @@ class LoanService {
         name: createdMortgage.name,
         loan_type: createdMortgage.loan_type,
         initial_balance: createdMortgage.initial_balance,
-        start_date: createdMortgage.start_date
+        start_date: createdMortgage.start_date,
+        tabId
       }
     );
     
@@ -249,7 +252,7 @@ class LoanService {
    * @param {Object} data - Updated mortgage data
    * @returns {Promise<Object|null>} Updated mortgage or null if not found
    */
-  async updateMortgage(id, data) {
+  async updateMortgage(id, data, tabId = null) {
     // First, verify the loan exists and is a mortgage
     const existingLoan = await loanRepository.findById(id);
     
@@ -338,7 +341,8 @@ class LoanService {
         {
           name: updatedMortgage.name,
           loan_type: updatedMortgage.loan_type,
-          changes: changes
+          changes: changes,
+          tabId
         }
       );
     }
@@ -351,7 +355,7 @@ class LoanService {
    * @param {number} id - Loan ID
    * @returns {Promise<boolean>} True if deleted, false if not found
    */
-  async deleteLoan(id) {
+  async deleteLoan(id, tabId = null) {
     // Get loan details before deletion for logging
     const loan = await loanRepository.findById(id);
     
@@ -368,7 +372,8 @@ class LoanService {
           name: loan.name,
           loan_type: loan.loan_type,
           initial_balance: loan.initial_balance,
-          start_date: loan.start_date
+          start_date: loan.start_date,
+          tabId
         }
       );
     }
@@ -382,7 +387,7 @@ class LoanService {
    * @param {boolean} isPaidOff - True to mark as paid off, false to reactivate
    * @returns {Promise<Object|null>} Updated loan or null if not found
    */
-  async markPaidOff(id, isPaidOff) {
+  async markPaidOff(id, isPaidOff, tabId = null) {
       const isPaidOffValue = isPaidOff ? 1 : 0;
       const updated = await loanRepository.markPaidOff(id, isPaidOffValue);
 
@@ -402,7 +407,8 @@ class LoanService {
           `Marked loan as paid off: ${loan.name}`,
           {
             name: loan.name,
-            paid_off_date: new Date().toISOString().split('T')[0]
+            paid_off_date: new Date().toISOString().split('T')[0],
+            tabId
           }
         );
       } else {
@@ -412,7 +418,8 @@ class LoanService {
           id,
           `Reactivated loan: ${loan.name}`,
           {
-            name: loan.name
+            name: loan.name,
+            tabId
           }
         );
       }

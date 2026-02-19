@@ -156,7 +156,7 @@ class PaymentMethodService {
    * @param {Object} data - Payment method data
    * @returns {Promise<Object>} Created payment method
    */
-  async createPaymentMethod(data) {
+  async createPaymentMethod(data, tabId = null) {
     // Validate input (isUpdate = false for creation)
     const validation = this.validatePaymentMethod(data, { isUpdate: false });
     if (!validation.isValid) {
@@ -200,7 +200,8 @@ class PaymentMethodService {
       `Added payment method: ${created.display_name}`,
       {
         name: created.display_name,
-        type: created.type
+        type: created.type,
+        tabId
       }
     );
 
@@ -213,7 +214,7 @@ class PaymentMethodService {
    * @param {Object} data - Updated payment method data
    * @returns {Promise<Object|null>} Updated payment method or null if not found
    */
-  async updatePaymentMethod(id, data) {
+  async updatePaymentMethod(id, data, tabId = null) {
     if (!id) {
       throw new Error('Payment method ID is required');
     }
@@ -288,7 +289,8 @@ class PaymentMethodService {
         {
           name: updated.display_name,
           type: updated.type,
-          changes: changes
+          changes: changes,
+          tabId
         }
       );
     }
@@ -301,7 +303,7 @@ class PaymentMethodService {
    * @param {number} id - Payment method ID
    * @returns {Promise<Object>} Deletion result
    */
-  async deletePaymentMethod(id) {
+  async deletePaymentMethod(id, tabId = null) {
     if (!id) {
       throw new Error('Payment method ID is required');
     }
@@ -352,7 +354,7 @@ class PaymentMethodService {
           type: existing.type,
           id: id
         };
-        await activityLogService.logEvent('payment_method_deleted', 'payment_method', id, userAction, metadata);
+        await activityLogService.logEvent('payment_method_deleted', 'payment_method', id, userAction, { ...metadata, tabId });
       } catch (error) {
         logger.error('Failed to log payment method deletion activity:', { error, id });
       }
@@ -375,7 +377,7 @@ class PaymentMethodService {
    * @param {boolean} isActive - Active status
    * @returns {Promise<Object|null>} Updated payment method or null if not found
    */
-  async setPaymentMethodActive(id, isActive) {
+  async setPaymentMethodActive(id, isActive, tabId = null) {
     if (!id) {
       throw new Error('Payment method ID is required');
     }
@@ -412,7 +414,8 @@ class PaymentMethodService {
           `Deactivated payment method: ${updated.display_name}`,
           {
             name: updated.display_name,
-            type: updated.type
+            type: updated.type,
+            tabId
           }
         );
       }

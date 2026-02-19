@@ -154,6 +154,12 @@ export const API_ENDPOINTS = {
   INVOICE_BY_ID: (invoiceId) => `${API_BASE_URL}/api/invoices/${invoiceId}`,
   INVOICE_DELETE_ALL: (expenseId) => `${API_BASE_URL}/api/invoices/expense/${expenseId}`,
   
+  // Real-time sync (SSE)
+  SYNC_EVENTS: `${API_BASE_URL}/api/sync/events`,
+
+  // Health
+  HEALTH: `${API_BASE_URL}/api/health`,
+
   // Activity Logs
   ACTIVITY_LOGS: `${API_BASE_URL}/api/activity-logs`,
   ACTIVITY_LOGS_STATS: `${API_BASE_URL}/api/activity-logs/stats`,

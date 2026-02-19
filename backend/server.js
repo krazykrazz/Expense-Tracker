@@ -27,8 +27,10 @@ const invoiceRoutes = require('./routes/invoiceRoutes');
 const paymentMethodRoutes = require('./routes/paymentMethodRoutes');
 const billingCycleRoutes = require('./routes/billingCycleRoutes');
 const activityLogRoutes = require('./routes/activityLogRoutes');
+const syncRoutes = require('./routes/syncRoutes');
 const backupService = require('./services/backupService');
 const activityLogService = require('./services/activityLogService');
+const sseService = require('./services/sseService');
 const billingCycleSchedulerService = require('./services/billingCycleSchedulerService');
 const logger = require('./config/logger');
 const { configureTimezone, getTimezone } = require('./config/timezone');
@@ -36,6 +38,9 @@ const { errorHandler } = require('./middleware/errorHandler');
 
 // Configure timezone at startup
 configureTimezone();
+
+// Wire SSE service into activityLogService (avoids circular dependency)
+activityLogService.setSseService(sseService);
 
 const app = express();
 const PORT = process.env.PORT || 2626;
@@ -102,6 +107,10 @@ const backupLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false
 });
+
+// SSE sync route — registered BEFORE generalLimiter so persistent connections
+// are not counted against the per-IP rate limit
+app.use('/api/sync', syncRoutes);
 
 // Apply general rate limiting to all API routes
 app.use('/api', generalLimiter);

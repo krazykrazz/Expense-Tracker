@@ -44,7 +44,8 @@ async function createIncomeSource(req, res) {
     }
     
     // Pass category to service layer (service will handle default)
-    const createdIncome = await incomeService.createIncomeSource(incomeData);
+    const tabId = req.headers['x-tab-id'] ?? null;
+    const createdIncome = await incomeService.createIncomeSource(incomeData, tabId);
     res.status(201).json(createdIncome);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -71,7 +72,8 @@ async function updateIncomeSource(req, res) {
     }
     
     // Pass category to service layer (service will handle validation)
-    const updatedIncome = await incomeService.updateIncomeSource(id, incomeData);
+    const tabId = req.headers['x-tab-id'] ?? null;
+    const updatedIncome = await incomeService.updateIncomeSource(id, incomeData, tabId);
     
     if (!updatedIncome) {
       return res.status(404).json({ error: 'Income source not found' });
@@ -95,7 +97,8 @@ async function deleteIncomeSource(req, res) {
       return res.status(400).json({ error: 'Invalid income source ID' });
     }
     
-    const deleted = await incomeService.deleteIncomeSource(id);
+    const tabId = req.headers['x-tab-id'] ?? null;
+    const deleted = await incomeService.deleteIncomeSource(id, tabId);
     
     if (!deleted) {
       return res.status(404).json({ error: 'Income source not found' });

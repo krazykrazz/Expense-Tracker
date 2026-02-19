@@ -27,6 +27,7 @@ async function getAllLoans(req, res) {
 async function createLoan(req, res) {
   try {
     const loanData = req.body;
+    const tabId = req.headers['x-tab-id'] ?? null;
     
     if (!loanData.name || loanData.initial_balance === undefined || !loanData.start_date) {
       return res.status(400).json({ error: 'Name, initial_balance, and start_date are required' });
@@ -35,9 +36,9 @@ async function createLoan(req, res) {
     // Use createMortgage for mortgage loan type
     let createdLoan;
     if (loanData.loan_type === 'mortgage') {
-      createdLoan = await loanService.createMortgage(loanData);
+      createdLoan = await loanService.createMortgage(loanData, tabId);
     } else {
-      createdLoan = await loanService.createLoan(loanData);
+      createdLoan = await loanService.createLoan(loanData, tabId);
     }
     
     res.status(201).json(createdLoan);
@@ -60,6 +61,7 @@ async function updateLoan(req, res) {
     }
     
     const loanData = req.body;
+    const tabId = req.headers['x-tab-id'] ?? null;
     
     if (!loanData.name) {
       return res.status(400).json({ error: 'Name is required' });
@@ -74,9 +76,9 @@ async function updateLoan(req, res) {
     let updatedLoan;
     if (existingLoan.loan_type === 'mortgage') {
       // Use updateMortgage which restricts which fields can be modified
-      updatedLoan = await loanService.updateMortgage(id, loanData);
+      updatedLoan = await loanService.updateMortgage(id, loanData, tabId);
     } else {
-      updatedLoan = await loanService.updateLoan(id, loanData);
+      updatedLoan = await loanService.updateLoan(id, loanData, tabId);
     }
     
     if (!updatedLoan) {
@@ -101,7 +103,8 @@ async function deleteLoan(req, res) {
       return res.status(400).json({ error: 'Invalid loan ID' });
     }
     
-    const deleted = await loanService.deleteLoan(id);
+    const tabId = req.headers['x-tab-id'] ?? null;
+    const deleted = await loanService.deleteLoan(id, tabId);
     
     if (!deleted) {
       return res.status(404).json({ error: 'Loan not found' });
@@ -127,12 +130,13 @@ async function markPaidOff(req, res) {
     }
     
     const { isPaidOff } = req.body;
+    const tabId = req.headers['x-tab-id'] ?? null;
     
     if (isPaidOff === undefined) {
       return res.status(400).json({ error: 'isPaidOff is required' });
     }
     
-    const updatedLoan = await loanService.markPaidOff(id, isPaidOff);
+    const updatedLoan = await loanService.markPaidOff(id, isPaidOff, tabId);
     
     if (!updatedLoan) {
       return res.status(404).json({ error: 'Loan not found' });

@@ -209,16 +209,16 @@ describe('Billing Cycle Activity Logging - Integration Tests', () => {
       expect(logEvent.entity_type).toBe('billing_cycle');
       expect(logEvent.user_action).toContain('Updated billing cycle');
       expect(logEvent.user_action).toContain('Test Visa');
-      expect(logEvent.user_action).toContain('$100.00');
-      expect(logEvent.user_action).toContain('$175.50');
 
-      // Verify metadata
+      // Verify metadata (service logs with cardName and changes array)
       const metadata = JSON.parse(logEvent.metadata);
-      expect(metadata.paymentMethodName).toBe('Test Visa');
+      expect(metadata.cardName).toBe('Test Visa');
       expect(metadata.cycleEndDate).toBeDefined();
-      expect(metadata.previousBalance).toBe(100);
-      expect(metadata.newBalance).toBe(175.50);
-      expect(metadata.changedFields).toContain('actual_statement_balance');
+      expect(Array.isArray(metadata.changes)).toBe(true);
+      const balanceChange = metadata.changes.find(c => c.field === 'actual_statement_balance');
+      expect(balanceChange).toBeDefined();
+      expect(balanceChange.from).toBe(100);
+      expect(balanceChange.to).toBe(175.50);
     });
 
     it('should track changed fields in metadata', async () => {
@@ -249,9 +249,10 @@ describe('Billing Cycle Activity Logging - Integration Tests', () => {
       );
 
       const metadata = JSON.parse(logEvent.metadata);
-      expect(metadata.changedFields).toContain('actual_statement_balance');
-      expect(metadata.changedFields).toContain('minimum_payment');
-      expect(metadata.changedFields).toContain('notes');
+      expect(Array.isArray(metadata.changes)).toBe(true);
+      expect(metadata.changes.some(c => c.field === 'actual_statement_balance')).toBe(true);
+      expect(metadata.changes.some(c => c.field === 'minimum_payment')).toBe(true);
+      expect(metadata.changes.some(c => c.field === 'notes')).toBe(true);
     });
   });
 
@@ -416,7 +417,9 @@ describe('Billing Cycle Activity Logging - Integration Tests', () => {
             expect(logEvent.user_action).toContain('Test Visa');
 
             const metadata = JSON.parse(logEvent.metadata);
-            expect(metadata.paymentMethodName).toBe('Test Visa');
+            // cardName is used by service logs (update/delete), paymentMethodName by controller logs (create)
+            const metaCardName = metadata.cardName || metadata.paymentMethodName;
+            expect(metaCardName).toBe('Test Visa');
           }
         ),
         { numRuns: 15 } // Reduced runs for integration test performance

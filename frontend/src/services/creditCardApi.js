@@ -5,6 +5,7 @@
 
 import { API_ENDPOINTS } from '../config.js';
 import { createLogger } from '../utils/logger';
+import { fetchWithTabId } from '../utils/tabId';
 
 const logger = createLogger('CreditCardApi');
 
@@ -63,7 +64,7 @@ const fetchWithRetry = async (url, options = {}, retryCount = 0) => {
  */
 export const recordPayment = async (paymentMethodId, paymentData) => {
   try {
-    const response = await fetchWithRetry(API_ENDPOINTS.PAYMENT_METHOD_PAYMENTS(paymentMethodId), {
+    const response = await fetchWithTabId(API_ENDPOINTS.PAYMENT_METHOD_PAYMENTS(paymentMethodId), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -124,7 +125,7 @@ export const getPayments = async (paymentMethodId, options = {}) => {
  */
 export const deletePayment = async (paymentMethodId, paymentId) => {
   try {
-    const response = await fetchWithRetry(
+    const response = await fetchWithTabId(
       API_ENDPOINTS.PAYMENT_METHOD_PAYMENT(paymentMethodId, paymentId),
       { method: 'DELETE' }
     );
@@ -238,7 +239,7 @@ export const uploadStatement = async (paymentMethodId, file, metadata, onProgres
     }
 
     // Fallback to regular fetch
-    const response = await fetchWithRetry(
+    const response = await fetchWithTabId(
       API_ENDPOINTS.PAYMENT_METHOD_STATEMENTS(paymentMethodId),
       {
         method: 'POST',
@@ -324,7 +325,7 @@ export const downloadStatement = async (paymentMethodId, statementId) => {
  */
 export const deleteStatement = async (paymentMethodId, statementId) => {
   try {
-    const response = await fetchWithRetry(
+    const response = await fetchWithTabId(
       API_ENDPOINTS.PAYMENT_METHOD_STATEMENT(paymentMethodId, statementId),
       { method: 'DELETE' }
     );
@@ -411,7 +412,7 @@ export const createBillingCycle = async (paymentMethodId, data) => {
       }
       formData.append('statement', data.statement);
       
-      response = await fetchWithRetry(
+      response = await fetchWithTabId(
         API_ENDPOINTS.PAYMENT_METHOD_BILLING_CYCLE_CREATE(paymentMethodId),
         {
           method: 'POST',
@@ -420,7 +421,7 @@ export const createBillingCycle = async (paymentMethodId, data) => {
       );
     } else {
       // No file, use JSON
-      response = await fetchWithRetry(
+      response = await fetchWithTabId(
         API_ENDPOINTS.PAYMENT_METHOD_BILLING_CYCLE_CREATE(paymentMethodId),
         {
           method: 'POST',
@@ -522,7 +523,7 @@ export const updateBillingCycle = async (paymentMethodId, cycleId, data) => {
       };
     }
     
-    const response = await fetchWithRetry(
+    const response = await fetchWithTabId(
       API_ENDPOINTS.PAYMENT_METHOD_BILLING_CYCLE_UPDATE(paymentMethodId, cycleId),
       fetchOptions
     );
@@ -547,7 +548,7 @@ export const updateBillingCycle = async (paymentMethodId, cycleId, data) => {
  */
 export const deleteBillingCycle = async (paymentMethodId, cycleId) => {
   try {
-    const response = await fetchWithRetry(
+    const response = await fetchWithTabId(
       API_ENDPOINTS.PAYMENT_METHOD_BILLING_CYCLE_DELETE(paymentMethodId, cycleId),
       { method: 'DELETE' }
     );

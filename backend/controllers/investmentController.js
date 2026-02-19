@@ -26,7 +26,7 @@ async function createInvestment(req, res) {
       return res.status(400).json({ error: 'Name, type, and initial_value are required' });
     }
     
-    const createdInvestment = await investmentService.createInvestment(investmentData);
+    const createdInvestment = await investmentService.createInvestment(investmentData, req.headers['x-tab-id'] ?? null);
     res.status(201).json(createdInvestment);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -52,7 +52,7 @@ async function updateInvestment(req, res) {
       return res.status(400).json({ error: 'Name, type, and initial_value are required' });
     }
     
-    const updatedInvestment = await investmentService.updateInvestment(id, investmentData);
+    const updatedInvestment = await investmentService.updateInvestment(id, investmentData, req.headers['x-tab-id'] ?? null);
     
     if (!updatedInvestment) {
       return res.status(404).json({ error: 'Investment not found' });
@@ -76,7 +76,7 @@ async function deleteInvestment(req, res) {
       return res.status(400).json({ error: 'Invalid investment ID' });
     }
     
-    const deleted = await investmentService.deleteInvestment(id);
+    const deleted = await investmentService.deleteInvestment(id, req.headers['x-tab-id'] ?? null);
     
     if (!deleted) {
       return res.status(404).json({ error: 'Investment not found' });

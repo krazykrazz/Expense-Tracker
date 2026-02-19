@@ -41,6 +41,7 @@ const SystemModal = () => {
   // About tab state
   const [versionInfo, setVersionInfo] = useState(null);
   const [dbStats, setDbStats] = useState(null);
+  const [healthData, setHealthData] = useState(null);
 
   // Cleanup timers on unmount
   useEffect(() => {
@@ -57,10 +58,11 @@ const SystemModal = () => {
     fetchBackupList();
   }, []);
 
-  // Fetch database stats when About tab is active
+  // Fetch database stats and health data when About tab is active
   useEffect(() => {
     if (activeTab === 'about') {
       fetchDbStats();
+      fetchHealthData();
     }
   }, [activeTab]);
 
@@ -90,6 +92,19 @@ const SystemModal = () => {
       }
     } catch (error) {
       logger.error('Error fetching database stats:', error);
+      // Silently fail - don't block UI
+    }
+  };
+
+  const fetchHealthData = async () => {
+    try {
+      const response = await fetch(API_ENDPOINTS.HEALTH);
+      if (response.ok) {
+        const data = await response.json();
+        setHealthData(data);
+      }
+    } catch (error) {
+      logger.error('Error fetching health data:', error);
       // Silently fail - don't block UI
     }
   };
@@ -357,6 +372,20 @@ const SystemModal = () => {
               </div>
               <div className="db-stat-item">
                 <strong>Backup Storage:</strong> {dbStats.totalBackupSizeMB} MB ({dbStats.backupCount} backups)
+              </div>
+            </div>
+          </div>
+        )}
+
+        {healthData && (
+          <div className="settings-section">
+            <h3>Real-Time Sync</h3>
+            <div className="db-stats">
+              <div className="db-stat-item">
+                <strong>Real-time sync connections:</strong>{' '}
+                {healthData.sseConnections === 0
+                  ? '0 active'
+                  : `${healthData.sseConnections} active`}
               </div>
             </div>
           </div>

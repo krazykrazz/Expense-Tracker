@@ -68,7 +68,7 @@ async function createBudget(req, res) {
       });
     }
     
-    const createdBudget = await budgetService.createBudget(year, month, category, limit);
+    const createdBudget = await budgetService.createBudget(year, month, category, limit, req.headers['x-tab-id'] ?? null);
     res.status(201).json(createdBudget);
   } catch (error) {
     // Handle specific error types
@@ -150,7 +150,7 @@ async function updateBudget(req, res) {
       });
     }
     
-    const updatedBudget = await budgetService.updateBudget(id, limit);
+    const updatedBudget = await budgetService.updateBudget(id, limit, req.headers['x-tab-id'] ?? null);
     res.status(200).json(updatedBudget);
   } catch (error) {
     if (error.message.includes('Budget limit must be a positive number')) {
@@ -201,7 +201,7 @@ async function deleteBudget(req, res) {
       });
     }
     
-    await budgetService.deleteBudget(id);
+    await budgetService.deleteBudget(id, req.headers['x-tab-id'] ?? null);
     res.status(204).send();
   } catch (error) {
     if (error.message === 'Budget not found') {

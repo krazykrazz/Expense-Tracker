@@ -229,7 +229,7 @@ class FixedExpenseService {
    * @param {Object} data - { year, month, name, amount, category, payment_type, payment_due_day, linked_loan_id }
    * @returns {Promise<Object>} Created fixed expense with optional warning
    */
-  async createFixedExpense(data) {
+  async createFixedExpense(data, tabId = null) {
     // Validate required fields
     if (!data.year || !data.month) {
       throw new Error('Year and month are required');
@@ -272,7 +272,8 @@ class FixedExpenseService {
         name: created.name,
         amount: created.amount,
         category: created.category,
-        payment_type: created.payment_type
+        payment_type: created.payment_type,
+        tabId
       }
     );
 
@@ -319,7 +320,7 @@ class FixedExpenseService {
    * @param {Object} data - { name, amount, category, payment_type, payment_due_day, linked_loan_id }
    * @returns {Promise<Object|null>} Updated fixed expense with optional warning, or null if not found
    */
-  async updateFixedExpense(id, data) {
+  async updateFixedExpense(id, data, tabId = null) {
       // Validate ID
       if (!id) {
         throw new Error('Fixed expense ID is required');
@@ -405,7 +406,8 @@ class FixedExpenseService {
           amount: updated.amount,
           category: updated.category,
           payment_type: updated.payment_type,
-          changes: changes
+          changes: changes,
+          tabId
         }
       );
 
@@ -427,7 +429,7 @@ class FixedExpenseService {
    * @param {number} id - Fixed expense ID
    * @returns {Promise<boolean>} True if deleted, false if not found
    */
-  async deleteFixedExpense(id) {
+  async deleteFixedExpense(id, tabId = null) {
     // Validate ID
     if (!id) {
       throw new Error('Fixed expense ID is required');
@@ -450,7 +452,8 @@ class FixedExpenseService {
           name: fixedExpense.name,
           amount: fixedExpense.amount,
           category: fixedExpense.category,
-          payment_type: fixedExpense.payment_type
+          payment_type: fixedExpense.payment_type,
+          tabId
         }
       );
     }

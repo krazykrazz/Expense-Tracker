@@ -28,6 +28,7 @@ function generateFutureExpensesMessage(futureCount, lastDate) {
 async function createExpense(req, res) {
   try {
     const { peopleAllocations, futureMonths, ...expenseData } = req.body;
+    const tabId = req.headers['x-tab-id'] ?? null;
     
     // Parse futureMonths (default to 0 if not provided)
     const parsedFutureMonths = futureMonths !== undefined ? parseInt(futureMonths, 10) : 0;
@@ -35,10 +36,10 @@ async function createExpense(req, res) {
     let result;
     if (peopleAllocations && peopleAllocations.length > 0) {
       // Create expense with people allocations
-      result = await expenseService.createExpenseWithPeople(expenseData, peopleAllocations, parsedFutureMonths);
+      result = await expenseService.createExpenseWithPeople(expenseData, peopleAllocations, parsedFutureMonths, tabId);
     } else {
       // Create regular expense without people
-      result = await expenseService.createExpense(expenseData, parsedFutureMonths);
+      result = await expenseService.createExpense(expenseData, parsedFutureMonths, tabId);
     }
     
     // Format response based on whether future expenses were created
@@ -121,6 +122,7 @@ async function updateExpense(req, res) {
     }
     
     const { peopleAllocations, futureMonths, ...expenseData } = req.body;
+    const tabId = req.headers['x-tab-id'] ?? null;
     
     // Parse futureMonths (default to 0 if not provided)
     const parsedFutureMonths = futureMonths !== undefined ? parseInt(futureMonths, 10) : 0;
@@ -128,10 +130,10 @@ async function updateExpense(req, res) {
     let result;
     if (peopleAllocations !== undefined) {
       // Update expense with people allocations (could be empty array to remove all people)
-      result = await expenseService.updateExpenseWithPeople(id, expenseData, peopleAllocations, parsedFutureMonths);
+      result = await expenseService.updateExpenseWithPeople(id, expenseData, peopleAllocations, parsedFutureMonths, tabId);
     } else {
       // Update regular expense without touching people associations
-      result = await expenseService.updateExpense(id, expenseData, parsedFutureMonths);
+      result = await expenseService.updateExpense(id, expenseData, parsedFutureMonths, tabId);
     }
     
     if (!result) {
@@ -169,7 +171,8 @@ async function deleteExpense(req, res) {
       return res.status(400).json({ error: 'Invalid expense ID' });
     }
     
-    const deleted = await expenseService.deleteExpense(id);
+    const tabId = req.headers['x-tab-id'] ?? null;
+    const deleted = await expenseService.deleteExpense(id, tabId);
     
     if (!deleted) {
       return res.status(404).json({ error: 'Expense not found' });

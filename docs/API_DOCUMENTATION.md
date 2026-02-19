@@ -2956,3 +2956,122 @@ Settings are stored in the `settings` database table and persist across restarts
 **Last Updated:** February 10, 2026  
 **API Version:** 1.8  
 **Status:** Active
+
+---
+
+# Real-Time Sync API (SSE)
+
+## Overview
+
+The real-time sync endpoint provides a persistent Server-Sent Events (SSE) stream. Clients subscribe once and receive lightweight push notifications whenever data changes on the server. No polling required.
+
+The SSE route bypasses the general rate limiter so connections are not subject to the 200 req/min limit.
+
+---
+
+## Endpoint
+
+### Subscribe to Real-Time Events
+
+**Endpoint:** `GET /api/sync/events`
+
+**Headers (response):**
+
+| Header | Value |
+|--------|-------|
+| `Content-Type` | `text/event-stream` |
+| `Cache-Control` | `no-cache` |
+| `Connection` | `keep-alive` |
+| `X-Accel-Buffering` | `no` |
+
+**Initial event (on connect):**
+```
+data: {"type":"connected","timestamp":"2026-02-19T12:00:00.000Z"}
+```
+
+**Keepalive (every 25 seconds):**
+```
+: keepalive
+```
+
+**Data change event:**
+```
+data: {"entityType":"expense","tabId":"550e8400-e29b-41d4-a716-446655440000"}
+```
+
+**Event payload fields:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `entityType` | string | Type of data that changed. One of: `expense`, `budget`, `people`, `payment_method`, `loan`, `income`, `investment`, `fixed_expense` |
+| `tabId` | string \| null | The `X-Tab-ID` header value from the originating request, or `null` if not provided. Clients should ignore events where `tabId` matches their own tab ID. |
+
+**Example (JavaScript):**
+```javascript
+const es = new EventSource('/api/sync/events');
+
+es.onopen = () => console.log('Connected');
+
+es.onmessage = (event) => {
+  const data = JSON.parse(event.data);
+  if (data.type === 'connected') return; // initial handshake
+  if (data.tabId === MY_TAB_ID) return;  // self-update suppression
+  console.log('Data changed:', data.entityType);
+};
+
+es.onerror = () => {
+  es.close();
+  // implement exponential backoff before reconnecting
+};
+```
+
+**Self-update suppression:**
+
+Include the `X-Tab-ID` header on all mutation requests. The server echoes this value in the SSE broadcast payload. Clients that originated the change can compare `data.tabId` against their own tab ID and skip the refresh — they already have current state.
+
+```javascript
+fetch('/api/expenses', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'X-Tab-ID': MY_TAB_ID
+  },
+  body: JSON.stringify(expense)
+});
+```
+
+---
+
+## Health Endpoint — SSE Connection Count
+
+The existing health endpoint includes the current SSE connection count:
+
+**Endpoint:** `GET /api/health`
+
+**Response (excerpt):**
+```json
+{
+  "status": "ok",
+  "sseConnections": 3,
+  ...
+}
+```
+
+`sseConnections` is a non-negative integer representing the number of currently active SSE client connections. This value is also displayed in the System Information modal (About tab → Real-Time Sync).
+
+---
+
+## Changelog - Real-Time Sync
+
+### Version 5.15.0 (February 2026)
+- Added `GET /api/sync/events` SSE endpoint for real-time cross-session data sync
+- Added `sseConnections` field to `GET /api/health` response
+- Added `X-Tab-ID` header support on all mutation endpoints for self-update suppression
+- Added `sync_broadcast` activity log entries when broadcasts are delivered
+- Added SSE connection count display in System Information → About tab
+
+---
+
+**Last Updated:** February 19, 2026
+**API Version:** 1.9
+**Status:** Active

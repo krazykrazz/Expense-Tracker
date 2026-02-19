@@ -15,6 +15,8 @@ import AnalyticsHubModal from './components/AnalyticsHubModal';
 import FinancialOverviewModal from './components/FinancialOverviewModal';
 import FloatingAddButton from './components/FloatingAddButton';
 import EnvironmentBanner from './components/EnvironmentBanner';
+import SyncToast from './components/SyncToast';
+import { useDataSync } from './hooks/useDataSync';
 import { API_ENDPOINTS } from './config';
 import { CATEGORIES } from './utils/constants';
 import { getPaymentMethods } from './services/paymentMethodApi';
@@ -166,9 +168,22 @@ function AppContent({ onPaymentMethodsUpdate }) {
   const {
     paymentMethods,
     people,
+    refreshBudgets,
+    refreshPeople,
+    refreshPaymentMethods,
   } = useSharedDataContext();
 
+  // Real-time sync — subscribes to SSE and refreshes data on remote changes
+  // triggerRefresh is aliased as refreshExpenses for the useDataSync interface
+  const { toastMessages } = useDataSync({
+    refreshExpenses: triggerRefresh,
+    refreshBudgets,
+    refreshPeople,
+    refreshPaymentMethods,
+  });
+
   const [versionInfo, setVersionInfo] = useState(null);
+  const [mobileTab, setMobileTab] = useState('expenses'); // 'expenses' | 'summary'
   
   // Budget alerts state for Analytics Hub integration (Requirement 7.4)
   const [budgetAlerts, setBudgetAlerts] = useState([]);
@@ -311,7 +326,7 @@ function AppContent({ onPaymentMethodsUpdate }) {
             aria-label="System"
             title="System information, activity log, and tools"
           >
-            🖥️ System
+            🖥️ <span className="btn-text">System</span>
           </button>
           <button 
             className="settings-button" 
@@ -319,7 +334,7 @@ function AppContent({ onPaymentMethodsUpdate }) {
             aria-label="Settings"
             title="Backup configuration and people management"
           >
-            ⚙️ Settings
+            ⚙️ <span className="btn-text">Settings</span>
           </button>
         </div>
       </header>
@@ -384,7 +399,7 @@ function AppContent({ onPaymentMethodsUpdate }) {
           </div>
         )}
         {!loading && !error && (
-          <div className="content-layout">
+          <div className="content-layout" data-mobile-tab={mobileTab}>
             <div className="content-left">
               <SearchBar 
                 onSearchChange={handleSearchChange}
@@ -544,6 +559,29 @@ function AppContent({ onPaymentMethodsUpdate }) {
         onAddExpense={openExpenseForm}
         expenseCount={currentMonthExpenseCount}
       />
+
+      {/* Sync toast notifications for remote data changes */}
+      <SyncToast messages={toastMessages} />
+
+      {/* Mobile bottom tab bar — hidden on desktop via CSS */}
+      <nav className="mobile-tab-bar" aria-label="Mobile navigation">
+        <button
+          className={mobileTab === 'expenses' ? 'active' : ''}
+          onClick={() => setMobileTab('expenses')}
+          aria-pressed={mobileTab === 'expenses'}
+        >
+          <span className="tab-icon">📋</span>
+          <span>Expenses</span>
+        </button>
+        <button
+          className={mobileTab === 'summary' ? 'active' : ''}
+          onClick={() => setMobileTab('summary')}
+          aria-pressed={mobileTab === 'summary'}
+        >
+          <span className="tab-icon">📊</span>
+          <span>Summary</span>
+        </button>
+      </nav>
 
       <footer className="App-footer">
         <span className="version">

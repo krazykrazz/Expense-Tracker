@@ -60,7 +60,7 @@ class InvestmentService {
    * @param {Object} data - { name, type, initial_value }
    * @returns {Promise<Object>} Created investment
    */
-  async createInvestment(data) {
+  async createInvestment(data, tabId = null) {
     // Validate the investment data
     this.validateInvestment(data);
 
@@ -83,7 +83,8 @@ class InvestmentService {
       {
         name: createdInvestment.name,
         account_type: createdInvestment.type,
-        initial_value: createdInvestment.initial_value
+        initial_value: createdInvestment.initial_value,
+        tabId
       }
     );
     
@@ -96,7 +97,7 @@ class InvestmentService {
    * @param {Object} data - { name, type } (initial_value cannot be updated)
    * @returns {Promise<Object|null>} Updated investment or null if not found
    */
-  async updateInvestment(id, data) {
+  async updateInvestment(id, data, tabId = null) {
     // Validate ID
     if (!id) {
       throw new Error('Investment ID is required');
@@ -155,7 +156,8 @@ class InvestmentService {
         {
           name: updatedInvestment.name,
           account_type: updatedInvestment.type,
-          changes: changes
+          changes: changes,
+          tabId
         }
       );
     }
@@ -168,7 +170,7 @@ class InvestmentService {
    * @param {number} id - Investment ID
    * @returns {Promise<boolean>} True if deleted, false if not found
    */
-  async deleteInvestment(id) {
+  async deleteInvestment(id, tabId = null) {
     // Validate ID
     if (!id) {
       throw new Error('Investment ID is required');
@@ -190,7 +192,8 @@ class InvestmentService {
         {
           name: investment.name,
           account_type: investment.type,
-          initial_value: investment.initial_value
+          initial_value: investment.initial_value,
+          tabId
         }
       );
     }

@@ -51,7 +51,8 @@ vi.mock('../config', () => ({
     BACKUP_MANUAL: '/api/backup/manual',
     BACKUP_DOWNLOAD: '/api/backup',
     BACKUP_RESTORE: '/api/backup/restore',
-    BACKUP_CONFIG: '/api/backup/config'
+    BACKUP_CONFIG: '/api/backup/config',
+    HEALTH: '/api/health'
   },
   default: 'http://localhost:2424'
 }));
@@ -103,6 +104,9 @@ describe('SystemModal', () => {
       }
       if (url.includes('/backup/stats')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(mockDbStats) });
+      }
+      if (url.includes('/api/health')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ sseConnections: 0 }) });
       }
       return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
     });
@@ -193,6 +197,58 @@ describe('SystemModal', () => {
 
       // No changelog in About tab
       expect(screen.queryByText('Recent Updates')).not.toBeInTheDocument();
+    });
+
+    it('should render "3 active" when health response includes sseConnections: 3', async () => {
+      mockActiveTab = 'about';
+      global.fetch = vi.fn((url) => {
+        if (url.includes('/version')) {
+          return Promise.resolve({ ok: true, json: () => Promise.resolve(mockVersionInfo) });
+        }
+        if (url.includes('/backup/list')) {
+          return Promise.resolve({ ok: true, json: () => Promise.resolve(mockBackups) });
+        }
+        if (url.includes('/backup/stats')) {
+          return Promise.resolve({ ok: true, json: () => Promise.resolve(mockDbStats) });
+        }
+        if (url.includes('/api/health')) {
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({ sseConnections: 3 }) });
+        }
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+      });
+
+      render(<SystemModal />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Real-Time Sync')).toBeInTheDocument();
+      });
+      expect(screen.getByText('3 active')).toBeInTheDocument();
+    });
+
+    it('should render "0 active" when health response includes sseConnections: 0', async () => {
+      mockActiveTab = 'about';
+      global.fetch = vi.fn((url) => {
+        if (url.includes('/version')) {
+          return Promise.resolve({ ok: true, json: () => Promise.resolve(mockVersionInfo) });
+        }
+        if (url.includes('/backup/list')) {
+          return Promise.resolve({ ok: true, json: () => Promise.resolve(mockBackups) });
+        }
+        if (url.includes('/backup/stats')) {
+          return Promise.resolve({ ok: true, json: () => Promise.resolve(mockDbStats) });
+        }
+        if (url.includes('/api/health')) {
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({ sseConnections: 0 }) });
+        }
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+      });
+
+      render(<SystemModal />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Real-Time Sync')).toBeInTheDocument();
+      });
+      expect(screen.getByText('0 active')).toBeInTheDocument();
     });
   });
 

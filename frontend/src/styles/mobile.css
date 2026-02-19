@@ -1,0 +1,458 @@
+/**
+ * Mobile-first responsive improvements
+ * Applies only at ≤768px — zero impact on desktop layout.
+ *
+ * Key changes:
+ *  1. Bottom tab bar to switch between Expenses and Summary panels
+ *  2. MonthSelector buttons scroll horizontally instead of stacking
+ *  3. Header collapses to icon-only buttons
+ *  4. Modals slide up from bottom with max-height cap
+ *  5. View mode indicator compact variant
+ *  6. Safe-area insets for notched phones
+ */
+
+/* ─── Bottom Tab Bar ─────────────────────────────────────────────────────── */
+
+.mobile-tab-bar {
+  display: none; /* hidden on desktop */
+}
+
+@media (max-width: 768px) {
+  .mobile-tab-bar {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: var(--z-sticky);
+    background: var(--bg-card);
+    border-top: 1px solid var(--border-default);
+    box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.08);
+    /* Safe area for notched phones */
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .mobile-tab-bar button {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 10px 8px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: var(--font-medium);
+    color: var(--text-tertiary);
+    transition: color var(--transition-fast);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .mobile-tab-bar button.active {
+    color: var(--color-primary);
+  }
+
+  .mobile-tab-bar button .tab-icon {
+    font-size: 20px;
+    line-height: 1;
+  }
+
+  .mobile-tab-bar button .tab-badge {
+    position: absolute;
+    top: 6px;
+    right: calc(50% - 18px);
+    background: var(--color-negative);
+    color: white;
+    font-size: 10px;
+    font-weight: var(--font-bold);
+    min-width: 16px;
+    height: 16px;
+    border-radius: var(--radius-full);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 3px;
+  }
+
+  .mobile-tab-bar button {
+    position: relative;
+  }
+
+  /* Add bottom padding to main content so tab bar doesn't overlap */
+  .App-main {
+    padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  /* Panel visibility toggling via data attribute on content-layout */
+  .content-layout[data-mobile-tab="expenses"] .content-right {
+    display: none;
+  }
+
+  .content-layout[data-mobile-tab="summary"] .content-left {
+    display: none;
+  }
+}
+
+/* ─── MonthSelector: horizontal scroll on mobile ─────────────────────────── */
+
+@media (max-width: 768px) {
+  .month-selector {
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: var(--spacing-2) !important;
+    padding: var(--spacing-2) var(--spacing-3) !important;
+    align-items: center !important;
+    /* Fade edges to hint scrollability */
+    -webkit-mask-image: linear-gradient(to right, transparent 0, black 12px, black calc(100% - 12px), transparent 100%);
+    mask-image: linear-gradient(to right, transparent 0, black 12px, black calc(100% - 12px), transparent 100%);
+  }
+
+  .month-selector::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Buttons stay compact — don't stretch full width */
+  .annual-summary-button,
+  .tax-deductible-button,
+  .manage-budgets-button,
+  .budgets-button,
+  .budget-history-button,
+  .merchant-analytics-button,
+  .analytics-hub-button,
+  .financial-overview-button,
+  .month-selector .payment-methods-button {
+    width: auto !important;
+    flex-shrink: 0;
+    font-size: 12px !important;
+    padding: var(--spacing-2) var(--spacing-3) !important;
+    white-space: nowrap;
+  }
+
+  /* Selector groups stay inline */
+  .selector-group {
+    flex-direction: row !important;
+    align-items: center !important;
+    flex-shrink: 0;
+    gap: var(--spacing-1) !important;
+  }
+
+  .selector-group select {
+    width: auto !important;
+    min-width: 90px;
+    font-size: 13px;
+    padding: var(--spacing-1) var(--spacing-2) !important;
+  }
+
+  .selector-group label {
+    font-size: 12px;
+    white-space: nowrap;
+  }
+}
+
+/* ─── Header: icon-only buttons on small screens ─────────────────────────── */
+
+@media (max-width: 480px) {
+  /* Hide button text, keep emoji icon */
+  .settings-button .btn-text,
+  .recurring-button .btn-text {
+    display: none;
+  }
+
+  .settings-button,
+  .recurring-button {
+    padding: var(--spacing-2) !important;
+    min-width: 36px;
+    justify-content: center;
+    font-size: 18px !important;
+  }
+}
+
+/* ─── Modals: slide up from bottom on mobile ─────────────────────────────── */
+
+@media (max-width: 768px) {
+  .modal-overlay {
+    align-items: flex-end !important;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .modal-content {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 92dvh !important;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0 !important;
+    animation: mobileModalSlideUp 250ms cubic-bezier(0.32, 0.72, 0, 1) !important;
+    /* Drag handle hint */
+    padding-top: 20px;
+  }
+
+  .modal-content::before {
+    content: '';
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 36px;
+    height: 4px;
+    background: var(--border-strong);
+    border-radius: var(--radius-full);
+  }
+
+  .modal-content-large {
+    max-height: 96dvh !important;
+  }
+
+  @keyframes mobileModalSlideUp {
+    from {
+      transform: translateY(100%);
+      opacity: 0.8;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+}
+
+/* ─── View mode indicator: compact on mobile ─────────────────────────────── */
+
+@media (max-width: 768px) {
+  .view-mode-indicator {
+    margin: 6px 0 !important;
+    padding: 6px 10px !important;
+  }
+
+  .view-mode-badge {
+    font-size: 12px !important;
+    padding: 4px 10px !important;
+  }
+
+  .view-mode-banner.global {
+    padding: 8px 10px !important;
+    gap: 8px !important;
+  }
+
+  .view-mode-triggers {
+    font-size: 11px !important;
+  }
+
+  .return-to-monthly-button {
+    font-size: 12px !important;
+    padding: 6px 12px !important;
+  }
+}
+
+/* ─── Summary panel: remove top margin when shown as mobile tab ──────────── */
+
+@media (max-width: 768px) {
+  .content-right .summary-panel {
+    margin-top: 0;
+  }
+}
+
+/* ─── Reduced motion ─────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  @media (max-width: 768px) {
+    .modal-content {
+      animation: none !important;
+    }
+  }
+}
+
+/* ─── Expense table: compact card rows on mobile ─────────────────────────── */
+
+@media (max-width: 768px) {
+  /* Switch from scrollable table to stacked cards */
+  .table-wrapper {
+    overflow-x: visible;
+    border: none;
+    background: transparent;
+    border-radius: 0;
+  }
+
+  .expense-table {
+    display: block;
+  }
+
+  .expense-table thead {
+    display: none;
+  }
+
+  .expense-table tbody {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-2);
+  }
+
+  /* Each row = compact 2-line card */
+  .expense-table tbody tr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-muted);
+    padding: var(--spacing-2) var(--spacing-3);
+    gap: 0;
+    box-shadow: var(--shadow-xs);
+    position: relative;
+  }
+
+  .expense-table tbody tr:hover {
+    box-shadow: var(--shadow-sm);
+  }
+
+  /* Reset all td defaults */
+  .expense-table td {
+    display: none; /* hide all by default, show only what we need */
+    padding: 0;
+    border-bottom: none;
+    height: auto;
+    min-height: unset;
+  }
+
+  .expense-table td::before {
+    display: none;
+  }
+
+  /* ── Line 1: Place (left) + Amount (right) ── */
+
+  /* Place — takes remaining width */
+  .expense-table td:nth-child(2) {
+    display: block;
+    flex: 1 1 0;
+    min-width: 0;
+    font-weight: var(--font-semibold);
+    font-size: var(--text-sm);
+    color: var(--text-primary);
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    padding-right: var(--spacing-2);
+    line-height: 1.4;
+  }
+
+  /* Keep indicators inline and compact */
+  .expense-table td:nth-child(2) .place-cell {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--spacing-1);
+    flex-wrap: nowrap;
+    overflow: hidden;
+  }
+
+  .expense-table td:nth-child(2) .expense-indicators {
+    flex-shrink: 0;
+  }
+
+  /* Amount — right-aligned, bold */
+  .expense-table td:nth-child(4) {
+    display: block;
+    flex: 0 0 auto;
+    text-align: right;
+    font-size: var(--text-sm);
+    font-weight: var(--font-bold);
+    line-height: 1.4;
+  }
+
+  /* ── Line 2: Date · Type · Method (secondary info) ── */
+
+  /* Date — shown as first meta item */
+  .expense-table td:nth-child(1) {
+    display: block;
+    width: 100%;
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+    padding-top: 2px;
+    /* Use flex trick: show date + type + method on one line */
+    /* We achieve this by making date, type, method all inline-block
+       and wrapping them in a shared line via order */
+    order: 10;
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  /* Type */
+  .expense-table td:nth-child(5) {
+    display: block;
+    order: 11;
+    flex: 0 0 auto;
+    font-size: var(--text-xs);
+    color: var(--text-secondary);
+    padding-top: 2px;
+    white-space: nowrap;
+  }
+
+  /* Method */
+  .expense-table td:nth-child(7) {
+    display: block;
+    order: 12;
+    flex: 0 0 auto;
+    font-size: var(--text-xs);
+    color: var(--text-secondary);
+    padding-top: 2px;
+    white-space: nowrap;
+  }
+
+  /* Separator dots between meta items */
+  .expense-table td:nth-child(5)::before,
+  .expense-table td:nth-child(7)::before {
+    content: ' · ';
+    color: var(--text-muted);
+  }
+
+  /* Week — hidden (low value on mobile) */
+  .expense-table td:nth-child(6) {
+    display: none;
+  }
+
+  /* Notes — hidden on mobile */
+  .expense-table td:nth-child(3) {
+    display: none;
+  }
+
+  /* ── Line 3: Actions ── */
+  .expense-table td:nth-child(8) {
+    display: block;
+    order: 20;
+    width: 100%;
+    padding-top: var(--spacing-2);
+    margin-top: var(--spacing-1);
+    border-top: 1px solid var(--border-muted);
+  }
+
+  .expense-table td:nth-child(8) .action-buttons {
+    flex-direction: row;
+    justify-content: flex-end;
+    gap: var(--spacing-2);
+  }
+
+  .expense-table td:nth-child(8) .edit-button,
+  .expense-table td:nth-child(8) .delete-button {
+    flex: 0 0 auto;
+    padding: var(--spacing-1) var(--spacing-3);
+    font-size: var(--text-xs);
+    width: auto;
+  }
+
+  /* Tax row left-border accent */
+  .expense-table tbody tr.tax-medical-row {
+    border-left: 3px solid var(--color-medical);
+  }
+
+  .expense-table tbody tr.tax-donation-row {
+    border-left: 3px solid var(--color-donation);
+  }
+
+  /* Remove last-child border-radius overrides from base CSS */
+  .expense-table tbody tr:last-child td:first-child,
+  .expense-table tbody tr:last-child td:last-child {
+    border-radius: 0;
+  }
+}

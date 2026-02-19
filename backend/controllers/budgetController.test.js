@@ -15,7 +15,8 @@ describe('BudgetController - Unit Tests', () => {
     req = {
       query: {},
       params: {},
-      body: {}
+      body: {},
+      headers: {}
     };
 
     res = {
@@ -94,7 +95,7 @@ describe('BudgetController - Unit Tests', () => {
 
       await budgetController.createBudget(req, res);
 
-      expect(budgetService.createBudget).toHaveBeenCalledWith(2025, 11, 'Groceries', 500);
+      expect(budgetService.createBudget).toHaveBeenCalledWith(2025, 11, 'Groceries', 500, null);
       expect(res.status).toHaveBeenCalledWith(201);
       expect(res.json).toHaveBeenCalledWith(mockBudget);
     });
@@ -179,7 +180,7 @@ describe('BudgetController - Unit Tests', () => {
 
       await budgetController.updateBudget(req, res);
 
-      expect(budgetService.updateBudget).toHaveBeenCalledWith(1, 600);
+      expect(budgetService.updateBudget).toHaveBeenCalledWith(1, 600, null);
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith(mockBudget);
     });
@@ -238,7 +239,7 @@ describe('BudgetController - Unit Tests', () => {
 
       await budgetController.deleteBudget(req, res);
 
-      expect(budgetService.deleteBudget).toHaveBeenCalledWith(1);
+      expect(budgetService.deleteBudget).toHaveBeenCalledWith(1, null);
       expect(res.status).toHaveBeenCalledWith(204);
       expect(res.send).toHaveBeenCalled();
     });

@@ -3,6 +3,7 @@ const router = express.Router();
 const { getDatabase } = require('../database/db');
 const packageJson = require('../package.json');
 const logger = require('../config/logger');
+const sseService = require('../services/sseService');
 
 // Track server start time for uptime calculation
 const serverStartTime = Date.now();
@@ -22,7 +23,8 @@ router.get('/health', async (req, res) => {
     timestamp: new Date().toISOString(),
     uptime: Math.floor((Date.now() - serverStartTime) / 1000), // uptime in seconds
     version: packageJson.version,
-    database: 'unknown'
+    database: 'unknown',
+    sseConnections: sseService.getConnectionCount()
   };
 
   // Add Docker info if available

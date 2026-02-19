@@ -56,7 +56,7 @@ class PeopleService {
    * @param {string} [dateOfBirth] - Person's date of birth (optional, YYYY-MM-DD format)
    * @returns {Promise<Object>} Created person
    */
-  async createPerson(name, dateOfBirth) {
+  async createPerson(name, dateOfBirth, tabId = null) {
     // Validate input data
     const personData = { name, dateOfBirth };
     this.validatePerson(personData);
@@ -76,7 +76,7 @@ class PeopleService {
       'person',
       createdPerson.id,
       `Added person "${person.name}"`,
-      { name: person.name }
+      { name: person.name, tabId }
     );
 
     return createdPerson;
@@ -89,7 +89,7 @@ class PeopleService {
    * @param {string} [dateOfBirth] - Updated date of birth (optional, YYYY-MM-DD format)
    * @returns {Promise<Object|null>} Updated person or null if not found
    */
-  async updatePerson(id, name, dateOfBirth) {
+  async updatePerson(id, name, dateOfBirth, tabId = null) {
     // Validate ID
     if (!id) {
       throw new Error('Person ID is required');
@@ -129,7 +129,7 @@ class PeopleService {
         'person',
         id,
         `Updated person "${updates.name}"`,
-        { name: updates.name, changes }
+        { name: updates.name, changes, tabId }
       );
 
       logger.info('Updated person:', { id, name: updatedPerson.name });
@@ -145,7 +145,7 @@ class PeopleService {
    * @param {number} id - Person ID
    * @returns {Promise<Object>} Deletion result with warning information
    */
-  async deletePerson(id) {
+  async deletePerson(id, tabId = null) {
     // Validate ID
     if (!id) {
       throw new Error('Person ID is required');
@@ -175,7 +175,7 @@ class PeopleService {
         'person',
         id,
         `Deleted person "${person.name}"`,
-        { name: person.name, hadExpenses: hasExpenses, expenseCount }
+        { name: person.name, hadExpenses: hasExpenses, expenseCount, tabId }
       );
 
       logger.info('Deleted person:', { 

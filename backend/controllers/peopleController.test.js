@@ -15,7 +15,8 @@ describe('PeopleController - Unit Tests', () => {
     req = {
       query: {},
       params: {},
-      body: {}
+      body: {},
+      headers: {}
     };
 
     res = {
@@ -76,7 +77,7 @@ describe('PeopleController - Unit Tests', () => {
 
       await peopleController.createPerson(req, res);
 
-      expect(peopleService.createPerson).toHaveBeenCalledWith('John Doe', '1990-01-15');
+      expect(peopleService.createPerson).toHaveBeenCalledWith('John Doe', '1990-01-15', null);
       expect(res.status).toHaveBeenCalledWith(201);
       expect(res.json).toHaveBeenCalledWith(mockPerson);
     });
@@ -95,7 +96,7 @@ describe('PeopleController - Unit Tests', () => {
 
       await peopleController.createPerson(req, res);
 
-      expect(peopleService.createPerson).toHaveBeenCalledWith('Jane Smith', null);
+      expect(peopleService.createPerson).toHaveBeenCalledWith('Jane Smith', null, null);
       expect(res.status).toHaveBeenCalledWith(201);
       expect(res.json).toHaveBeenCalledWith(mockPerson);
     });
@@ -114,7 +115,7 @@ describe('PeopleController - Unit Tests', () => {
 
       await peopleController.createPerson(req, res);
 
-      expect(peopleService.createPerson).toHaveBeenCalledWith('Bob Johnson', null);
+      expect(peopleService.createPerson).toHaveBeenCalledWith('Bob Johnson', null, null);
       expect(res.status).toHaveBeenCalledWith(201);
       expect(res.json).toHaveBeenCalledWith(mockPerson);
     });
@@ -191,7 +192,7 @@ describe('PeopleController - Unit Tests', () => {
 
       await peopleController.updatePerson(req, res);
 
-      expect(peopleService.updatePerson).toHaveBeenCalledWith(1, 'John Updated', '1990-01-15');
+      expect(peopleService.updatePerson).toHaveBeenCalledWith(1, 'John Updated', '1990-01-15', null);
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith(mockPerson);
     });
@@ -211,7 +212,7 @@ describe('PeopleController - Unit Tests', () => {
 
       await peopleController.updatePerson(req, res);
 
-      expect(peopleService.updatePerson).toHaveBeenCalledWith(1, 'John Updated', null);
+      expect(peopleService.updatePerson).toHaveBeenCalledWith(1, 'John Updated', null, null);
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith(mockPerson);
     });
@@ -276,7 +277,7 @@ describe('PeopleController - Unit Tests', () => {
 
       await peopleController.deletePerson(req, res);
 
-      expect(peopleService.deletePerson).toHaveBeenCalledWith(1);
+      expect(peopleService.deletePerson).toHaveBeenCalledWith(1, null);
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith({ 
         message: 'Person deleted successfully',

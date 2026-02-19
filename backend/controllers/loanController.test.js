@@ -22,7 +22,8 @@ describe('loanController', () => {
   beforeEach(() => {
     req = {
       params: {},
-      body: {}
+      body: {},
+      headers: {}
     };
     res = {
       status: jest.fn().mockReturnThis(),
@@ -70,7 +71,7 @@ describe('loanController', () => {
 
       await loanController.createLoan(req, res);
 
-      expect(loanService.createLoan).toHaveBeenCalledWith(req.body);
+      expect(loanService.createLoan).toHaveBeenCalledWith(req.body, null);
       expect(res.status).toHaveBeenCalledWith(201);
       expect(res.json).toHaveBeenCalledWith(mockLoan);
     });
@@ -89,7 +90,7 @@ describe('loanController', () => {
 
       await loanController.createLoan(req, res);
 
-      expect(loanService.createMortgage).toHaveBeenCalledWith(req.body);
+      expect(loanService.createMortgage).toHaveBeenCalledWith(req.body, null);
       expect(res.status).toHaveBeenCalledWith(201);
       expect(res.json).toHaveBeenCalledWith(mockMortgage);
     });
@@ -164,7 +165,7 @@ describe('loanController', () => {
       await loanController.updateLoan(req, res);
 
       expect(loanRepository.findById).toHaveBeenCalledWith(1);
-      expect(loanService.updateLoan).toHaveBeenCalledWith(1, req.body);
+      expect(loanService.updateLoan).toHaveBeenCalledWith(1, req.body, null);
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith(mockUpdated);
     });
@@ -180,7 +181,7 @@ describe('loanController', () => {
 
       await loanController.updateLoan(req, res);
 
-      expect(loanService.updateMortgage).toHaveBeenCalledWith(2, req.body);
+      expect(loanService.updateMortgage).toHaveBeenCalledWith(2, req.body, null);
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith(mockUpdated);
     });
@@ -253,7 +254,7 @@ describe('loanController', () => {
 
       await loanController.deleteLoan(req, res);
 
-      expect(loanService.deleteLoan).toHaveBeenCalledWith(1);
+      expect(loanService.deleteLoan).toHaveBeenCalledWith(1, null);
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith({ message: 'Loan deleted successfully' });
     });
@@ -297,7 +298,7 @@ describe('loanController', () => {
 
       await loanController.markPaidOff(req, res);
 
-      expect(loanService.markPaidOff).toHaveBeenCalledWith(1, true);
+      expect(loanService.markPaidOff).toHaveBeenCalledWith(1, true, null);
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith(mockLoan);
     });
@@ -310,7 +311,7 @@ describe('loanController', () => {
 
       await loanController.markPaidOff(req, res);
 
-      expect(loanService.markPaidOff).toHaveBeenCalledWith(1, false);
+      expect(loanService.markPaidOff).toHaveBeenCalledWith(1, false, null);
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith(mockLoan);
     });

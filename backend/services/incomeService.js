@@ -106,7 +106,7 @@ class IncomeService {
    * @param {Object} data - { year, month, name, amount, category }
    * @returns {Promise<Object>} Created income source
    */
-  async createIncomeSource(data) {
+  async createIncomeSource(data, tabId = null) {
     // Validate required fields
     if (!data.year || !data.month) {
       throw new Error('Year and month are required');
@@ -138,7 +138,8 @@ class IncomeService {
         amount: incomeSource.amount,
         category: incomeSource.category,
         year: incomeSource.year,
-        month: incomeSource.month
+        month: incomeSource.month,
+        tabId
       }
     );
 
@@ -151,7 +152,7 @@ class IncomeService {
    * @param {Object} data - { name, amount, category }
    * @returns {Promise<Object|null>} Updated income source or null if not found
    */
-  async updateIncomeSource(id, data) {
+  async updateIncomeSource(id, data, tabId = null) {
     // Validate ID
     if (!id) {
       throw new Error('Income source ID is required');
@@ -196,7 +197,8 @@ class IncomeService {
           name: updates.name,
           amount: updates.amount,
           category: updates.category,
-          changes
+          changes,
+          tabId
         }
       );
     }
@@ -209,7 +211,7 @@ class IncomeService {
    * @param {number} id - Income source ID
    * @returns {Promise<boolean>} True if deleted, false if not found
    */
-  async deleteIncomeSource(id) {
+  async deleteIncomeSource(id, tabId = null) {
     // Validate ID
     if (!id) {
       throw new Error('Income source ID is required');
@@ -231,7 +233,8 @@ class IncomeService {
         {
           name: existingSource.name,
           amount: existingSource.amount,
-          category: existingSource.category
+          category: existingSource.category,
+          tabId
         }
       );
     }

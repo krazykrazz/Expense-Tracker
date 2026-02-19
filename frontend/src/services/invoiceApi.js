@@ -6,6 +6,7 @@
 
 import { API_ENDPOINTS } from '../config.js';
 import { createLogger } from '../utils/logger';
+import { fetchWithTabId } from '../utils/tabId';
 
 const logger = createLogger('InvoiceApi');
 
@@ -115,7 +116,7 @@ export const getInvoicesForExpense = async (expenseId) => {
  */
 export const deleteInvoice = async (expenseId) => {
   try {
-    const response = await fetchWithRetry(API_ENDPOINTS.INVOICE_DELETE_ALL(expenseId), {
+    const response = await fetchWithTabId(API_ENDPOINTS.INVOICE_DELETE_ALL(expenseId), {
       method: 'DELETE'
     });
     
@@ -138,7 +139,7 @@ export const deleteInvoice = async (expenseId) => {
  */
 export const deleteInvoiceById = async (invoiceId) => {
   try {
-    const response = await fetchWithRetry(API_ENDPOINTS.INVOICE_BY_ID(invoiceId), {
+    const response = await fetchWithTabId(API_ENDPOINTS.INVOICE_BY_ID(invoiceId), {
       method: 'DELETE'
     });
     
@@ -162,7 +163,7 @@ export const deleteInvoiceById = async (invoiceId) => {
  */
 export const updateInvoicePersonLink = async (invoiceId, personId) => {
   try {
-    const response = await fetchWithRetry(API_ENDPOINTS.INVOICE_BY_ID(invoiceId), {
+    const response = await fetchWithTabId(API_ENDPOINTS.INVOICE_BY_ID(invoiceId), {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json'
@@ -250,7 +251,7 @@ export const uploadInvoice = async (expenseId, file, options = {}) => {
     }
 
     // Fallback to regular fetch for simpler uploads
-    const response = await fetchWithRetry(API_ENDPOINTS.INVOICE_UPLOAD, {
+    const response = await fetchWithTabId(API_ENDPOINTS.INVOICE_UPLOAD, {
       method: 'POST',
       body: formData
     });

@@ -14,6 +14,11 @@
 
 
 
+
+
+## [5.15.0] - 2026-02-19
+
+### Real-time data sync, CI guardrail fix, remove unused Windows bat scripts
 ## [5.14.0] - 2026-02-18
 
 ### Budget and Financial Overview modal consolidation

@@ -66,7 +66,9 @@ export function useDataSync({
   const addToast = useCallback((entityType) => {
     const text = TOAST_LABELS[entityType];
     if (!text) return;
-    const id = crypto.randomUUID();
+    const id = (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+      ? crypto.randomUUID()
+      : Math.random().toString(36).slice(2);
     setToastMessages((prev) => [...prev, { id, text }]);
     setTimeout(() => {
       setToastMessages((prev) => prev.filter((m) => m.id !== id));

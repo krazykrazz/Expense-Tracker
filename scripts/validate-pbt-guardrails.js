@@ -63,9 +63,13 @@ function hasInvariantComment(filePath, maxLines) {
 
 /**
  * Check if a file contains a direct import of database/db.
+ * Excludes files that mock database/db via jest.mock() — any require() of database/db
+ * in such a file is just accessing the already-mocked module, not a real DB import.
  */
 function hasDirectDbImport(filePath) {
   const content = fs.readFileSync(filePath, 'utf-8');
+  // If the file mocks database/db, all require() calls to it are mock references, not real imports
+  if (/jest\.mock\s*\(\s*['"][^'"]*database\/db['"]/.test(content)) return false;
   return DB_IMPORT_PATTERNS.some(pattern => pattern.test(content));
 }
 

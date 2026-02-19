@@ -207,6 +207,17 @@ describe('validate-pbt-guardrails', () => {
       });
       expect(hasDirectDbImport(path.join(tmpDir, 'unit.test.js'))).toBe(false);
     });
+
+    test('returns false when database/db is only referenced via jest.mock()', () => {
+      tmpDir = createTempTestDir({
+        'unit.test.js': [
+          "jest.mock('../database/db', () => ({ getDatabase: jest.fn() }));",
+          "const { getDatabase } = require('../database/db');",
+          "describe('test', () => {});",
+        ].join('\n'),
+      });
+      expect(hasDirectDbImport(path.join(tmpDir, 'unit.test.js'))).toBe(false);
+    });
   });
 
   describe('isUnitTestFile', () => {

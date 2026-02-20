@@ -110,8 +110,10 @@ describe('useTabState - Property-Based Tests', () => {
         fc.string({ minLength: 1, maxLength: 20 }), // storageKey
         fc.string({ minLength: 1, maxLength: 20 }), // defaultTab
         (storageKey, defaultTab) => {
+          localStorage.clear();
+
           // Mock localStorage.getItem to throw error
-          const originalGetItem = localStorage.getItem;
+          const originalGetItem = localStorage.getItem.bind(localStorage);
           localStorage.getItem = vi.fn(() => {
             throw new Error('localStorage error');
           });
@@ -120,8 +122,9 @@ describe('useTabState - Property-Based Tests', () => {
           const { result } = renderHook(() => useTabState(storageKey, defaultTab));
           expect(result.current[0]).toBe(defaultTab);
 
-          // Restore original
+          // Restore original and clear any values written during this run
           localStorage.getItem = originalGetItem;
+          localStorage.clear();
         }
       ),
       { numRuns: 50 }

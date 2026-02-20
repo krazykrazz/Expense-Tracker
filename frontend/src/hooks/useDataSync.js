@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+// Note: SyncToast uses useSyncExternalStore to subscribe to toast changes
 import { API_ENDPOINTS } from '../config.js';
 import { getTabId } from '../utils/tabId.js';
 
@@ -44,7 +45,7 @@ const WINDOW_EVENT_ENTITY_TYPES = new Set(['loan', 'income', 'investment', 'fixe
  * @param {Function} props.refreshBudgets
  * @param {Function} props.refreshPeople
  * @param {Function} props.refreshPaymentMethods
- * @returns {{ connectionStatus: string, toastMessages: Array<{id: string, text: string}> }}
+ * @returns {{ connectionStatus: string, subscribeToasts: Function, getToastSnapshot: Function }}
  */
 export function useDataSync({
   refreshExpenses,
@@ -53,7 +54,10 @@ export function useDataSync({
   refreshPaymentMethods,
 } = {}) {
   const [connectionStatus, setConnectionStatus] = useState('connecting');
-  const [toastMessages, setToastMessages] = useState([]);
+
+  // Toast state — ref-based to avoid triggering parent re-renders
+  const toastMessagesRef = useRef([]);
+  const toastListenersRef = useRef(new Set());
 
   // Refs to hold mutable state without triggering re-renders
   const eventSourceRef = useRef(null);
@@ -62,6 +66,29 @@ export function useDataSync({
   const attemptRef = useRef(0);
   const unmountedRef = useRef(false);
 
+  // Refs for refresh callbacks — keeps routeEntityType stable across renders
+  const refreshExpensesRef = useRef(refreshExpenses);
+  const refreshBudgetsRef = useRef(refreshBudgets);
+  const refreshPeopleRef = useRef(refreshPeople);
+  const refreshPaymentMethodsRef = useRef(refreshPaymentMethods);
+
+  // Update refs on every render so the SSE handler always calls the latest version
+  refreshExpensesRef.current = refreshExpenses;
+  refreshBudgetsRef.current = refreshBudgets;
+  refreshPeopleRef.current = refreshPeople;
+  refreshPaymentMethodsRef.current = refreshPaymentMethods;
+
+  const notifyToastListeners = useCallback(() => {
+    toastListenersRef.current.forEach(listener => listener());
+  }, []);
+
+  const subscribeToasts = useCallback((listener) => {
+    toastListenersRef.current.add(listener);
+    return () => toastListenersRef.current.delete(listener);
+  }, []);
+
+  const getToastSnapshot = useCallback(() => toastMessagesRef.current, []);
+
   /** Add a toast and auto-remove it after 2000ms */
   const addToast = useCallback((entityType) => {
     const text = TOAST_LABELS[entityType];
@@ -69,28 +96,30 @@ export function useDataSync({
     const id = (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
       ? crypto.randomUUID()
       : Math.random().toString(36).slice(2);
-    setToastMessages((prev) => [...prev, { id, text }]);
+    toastMessagesRef.current = [...toastMessagesRef.current, { id, text }];
+    notifyToastListeners();
     setTimeout(() => {
-      setToastMessages((prev) => prev.filter((m) => m.id !== id));
+      toastMessagesRef.current = toastMessagesRef.current.filter((m) => m.id !== id);
+      notifyToastListeners();
     }, 2000);
-  }, []);
+  }, [notifyToastListeners]);
 
-  /** Route an entity type to the correct refresh action */
+  /** Route an entity type to the correct refresh action (reads from refs for stability) */
   const routeEntityType = useCallback(
     (entityType) => {
       if (CONTEXT_ENTITY_TYPES.has(entityType)) {
         switch (entityType) {
           case 'expense':
-            refreshExpenses?.();
+            refreshExpensesRef.current?.();
             break;
           case 'budget':
-            refreshBudgets?.();
+            refreshBudgetsRef.current?.();
             break;
           case 'people':
-            refreshPeople?.();
+            refreshPeopleRef.current?.();
             break;
           case 'payment_method':
-            refreshPaymentMethods?.();
+            refreshPaymentMethodsRef.current?.();
             break;
         }
       } else if (WINDOW_EVENT_ENTITY_TYPES.has(entityType)) {
@@ -98,7 +127,7 @@ export function useDataSync({
       }
       addToast(entityType);
     },
-    [refreshExpenses, refreshBudgets, refreshPeople, refreshPaymentMethods, addToast]
+    [addToast]
   );
 
   /** Schedule a debounced refresh for the given entity type (500ms window) */
@@ -197,7 +226,7 @@ export function useDataSync({
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  return { connectionStatus, toastMessages };
+  return { connectionStatus, subscribeToasts, getToastSnapshot };
 }
 
 export default useDataSync;

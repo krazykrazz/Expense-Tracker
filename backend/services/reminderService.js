@@ -207,9 +207,11 @@ class ReminderService {
             };
           }
 
-          // Record exists but not user-entered: needs entry
+          // Record exists but not user-entered AND no balance set: needs entry
+          // Also treat as entered if actual_statement_balance is already populated
+          // (handles auto-generated cycles that had balance filled in before is_user_entered was tracked)
           // _Requirements: 1.3_
-          if (existingEntry.is_user_entered !== 1) {
+          if (existingEntry.is_user_entered !== 1 && existingEntry.actual_statement_balance === null) {
             return {
               paymentMethodId: card.id,
               displayName: card.display_name || card.full_name,

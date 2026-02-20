@@ -37,9 +37,10 @@ router.post(
 router.get('/:id/billing-cycles/:cycleId/pdf', billingCycleController.getBillingCyclePdf);
 
 // PUT /api/payment-methods/:id/billing-cycles/:cycleId - Update a billing cycle record (with optional PDF)
+// Note: validateUploadRequest is intentionally omitted here because PDF is optional on updates.
+// When no file is uploaded, the request is sent as JSON, which validateUploadRequest would reject.
 router.put(
   '/:id/billing-cycles/:cycleId',
-  validateUploadRequest,
   upload.single('statement'),
   handleMulterError,
   billingCycleController.updateBillingCycle

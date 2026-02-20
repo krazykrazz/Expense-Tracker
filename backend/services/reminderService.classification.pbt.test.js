@@ -22,10 +22,12 @@ jest.mock('../repositories/billingCycleRepository');
 jest.mock('../repositories/fixedExpenseRepository');
 jest.mock('../repositories/loanPaymentRepository');
 jest.mock('./activityLogService');
+jest.mock('./timeBoundaryService');
 
 const reminderRepository = require('../repositories/reminderRepository');
 const statementBalanceService = require('./statementBalanceService');
 const billingCycleRepository = require('../repositories/billingCycleRepository');
+const timeBoundaryService = require('./timeBoundaryService');
 const reminderService = require('./reminderService');
 
 // Get the real calculatePreviousCycleDates (not affected by mock)
@@ -89,6 +91,8 @@ function setupMocks({ card, billingCycleRecord, calculatedStatementBalance, refe
 describe('Reminder Service - is_user_entered Alert Suppression Property Tests', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    timeBoundaryService.getBusinessTimezone.mockResolvedValue('America/Toronto');
+    timeBoundaryService.getBusinessDate.mockReturnValue('2025-01-20');
   });
 
   /**

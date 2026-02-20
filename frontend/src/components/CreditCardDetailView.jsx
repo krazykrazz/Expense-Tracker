@@ -177,6 +177,7 @@ const CreditCardDetailView = ({
       cycle_start_date: cycle.cycle_start_date,
       cycle_end_date: cycle.cycle_end_date,
       calculated_statement_balance: cycle.calculated_statement_balance,
+      statement_pdf_path: cycle.statement_pdf_path || null,
       // Don't pass actual_statement_balance so the form knows this is a new entry
       actual_statement_balance: null
     });

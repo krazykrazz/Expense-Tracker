@@ -11,9 +11,11 @@ jest.mock('../repositories/fixedExpenseRepository');
 jest.mock('../repositories/loanPaymentRepository');
 jest.mock('./statementBalanceService');
 jest.mock('./activityLogService');
+jest.mock('./timeBoundaryService');
 
 const billingCycleRepository = require('../repositories/billingCycleRepository');
 const statementBalanceService = require('./statementBalanceService');
+const timeBoundaryService = require('./timeBoundaryService');
 const reminderService = require('./reminderService');
 
 const REF_DATE = new Date('2024-02-15T12:00:00Z');
@@ -36,6 +38,8 @@ function makeCycleRecord(isUserEntered) {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  timeBoundaryService.getBusinessTimezone.mockResolvedValue('America/Toronto');
+  timeBoundaryService.getBusinessDate.mockReturnValue('2024-02-15');
   statementBalanceService.calculatePreviousCycleDates.mockReturnValue({
     startDate: '2024-01-15',
     endDate: '2024-02-14'

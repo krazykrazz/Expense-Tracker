@@ -124,7 +124,7 @@ describe('CreditCardDetailView - Unified Billing Cycles', () => {
         payment_method_id: 1,
         cycle_start_date: '2025-12-26',
         cycle_end_date: '2026-01-25',
-        actual_statement_balance: 0,
+        actual_statement_balance: null,
         calculated_statement_balance: 300,
         effective_balance: 300,
         balance_type: 'calculated',

@@ -25,9 +25,11 @@ jest.mock('../repositories/fixedExpenseRepository');
 jest.mock('../repositories/loanPaymentRepository');
 jest.mock('./statementBalanceService');
 jest.mock('./activityLogService');
+jest.mock('./timeBoundaryService');
 
 const billingCycleRepository = require('../repositories/billingCycleRepository');
 const statementBalanceService = require('./statementBalanceService');
+const timeBoundaryService = require('./timeBoundaryService');
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -65,6 +67,10 @@ describe('ReminderService.getBillingCycleReminders — Property 1: billing cycle
 
   beforeEach(() => {
     jest.clearAllMocks();
+
+    // Mock timeBoundaryService for business date conversion
+    timeBoundaryService.getBusinessTimezone.mockResolvedValue('America/Toronto');
+    timeBoundaryService.getBusinessDate.mockReturnValue('2024-02-15');
 
     // Default: calculatePreviousCycleDates returns a fixed cycle window
     statementBalanceService.calculatePreviousCycleDates.mockReturnValue({

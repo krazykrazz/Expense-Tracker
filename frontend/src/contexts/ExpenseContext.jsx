@@ -153,7 +153,6 @@ export function ExpenseProvider({ children }) {
   const refreshExpenses = useCallback(() => {
     setRefreshTrigger(prev => prev + 1);
     setBudgetAlertRefreshTrigger(prev => prev + 1);
-    window.dispatchEvent(new CustomEvent('expensesUpdated'));
   }, []);
 
   const clearError = useCallback(() => {

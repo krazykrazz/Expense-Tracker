@@ -175,7 +175,7 @@ function AppContent({ onPaymentMethodsUpdate }) {
   } = useSharedDataContext();
 
   // Real-time sync — subscribes to SSE and refreshes data on remote changes
-  const { toastMessages } = useDataSync({
+  const { subscribeToasts, getToastSnapshot } = useDataSync({
     refreshExpenses,
     refreshBudgets,
     refreshPeople,
@@ -561,7 +561,7 @@ function AppContent({ onPaymentMethodsUpdate }) {
       />
 
       {/* Sync toast notifications for remote data changes */}
-      <SyncToast messages={toastMessages} />
+      <SyncToast subscribe={subscribeToasts} getSnapshot={getToastSnapshot} />
 
       {/* Mobile bottom tab bar — hidden on desktop via CSS */}
       <nav className="mobile-tab-bar" aria-label="Mobile navigation">

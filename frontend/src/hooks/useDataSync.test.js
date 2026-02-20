@@ -162,7 +162,7 @@ describe('useDataSync lifecycle', () => {
 
   test('toastMessages is initially empty', () => {
     const { result } = renderHook(() => useDataSync(defaultCallbacks));
-    expect(result.current.toastMessages).toEqual([]);
+    expect(result.current.getToastSnapshot()).toEqual([]);
   });
 
   test('toast is added after a remote sync event fires', () => {
@@ -180,8 +180,8 @@ describe('useDataSync lifecycle', () => {
     // Advance past debounce
     act(() => { vi.advanceTimersByTime(600); });
 
-    expect(result.current.toastMessages).toHaveLength(1);
-    expect(result.current.toastMessages[0].text).toBe('↻ Expenses updated');
+    expect(result.current.getToastSnapshot()).toHaveLength(1);
+    expect(result.current.getToastSnapshot()[0].text).toBe('↻ Expenses updated');
   });
 
   test('toast is removed after 2000ms', () => {
@@ -196,9 +196,9 @@ describe('useDataSync lifecycle', () => {
     });
 
     act(() => { vi.advanceTimersByTime(600); }); // past debounce
-    expect(result.current.toastMessages).toHaveLength(1);
+    expect(result.current.getToastSnapshot()).toHaveLength(1);
 
     act(() => { vi.advanceTimersByTime(2100); }); // past toast lifetime
-    expect(result.current.toastMessages).toHaveLength(0);
+    expect(result.current.getToastSnapshot()).toHaveLength(0);
   });
 });

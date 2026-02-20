@@ -3,6 +3,7 @@ const statementBalanceService = require('./statementBalanceService');
 const billingCycleRepository = require('../repositories/billingCycleRepository');
 const fixedExpenseRepository = require('../repositories/fixedExpenseRepository');
 const loanPaymentRepository = require('../repositories/loanPaymentRepository');
+const timeBoundaryService = require('./timeBoundaryService');
 const { calculateDaysUntilDue } = require('../utils/dateUtils');
 const logger = require('../config/logger');
 
@@ -41,6 +42,13 @@ class ReminderService {
    */
   async getCreditCardReminders(referenceDate = new Date()) {
     try {
+      // Convert referenceDate to business date string to ensure consistent
+      // date interpretation with the billing cycle scheduler.
+      // Raw Date objects read via getUTCDate() can differ from the local
+      // business day near midnight, causing cycle date mismatches.
+      const timezone = await timeBoundaryService.getBusinessTimezone();
+      const businessDateStr = timeBoundaryService.getBusinessDate(referenceDate, timezone);
+
       // Get all active credit cards with due dates
       const creditCards = await reminderRepository.getCreditCardsWithDueDates();
       
@@ -57,7 +65,7 @@ class ReminderService {
           try {
             statementInfo = await statementBalanceService.calculateStatementBalance(
               card.id,
-              referenceDate
+              businessDateStr
             );
             
             // Check for actual statement balance from billing cycle history
@@ -174,6 +182,11 @@ class ReminderService {
    */
   async getBillingCycleReminders(referenceDate = new Date()) {
     try {
+      // Convert referenceDate to business date string to ensure consistent
+      // date interpretation with the billing cycle scheduler.
+      const timezone = await timeBoundaryService.getBusinessTimezone();
+      const businessDateStr = timeBoundaryService.getBusinessDate(referenceDate, timezone);
+
       // Get all credit cards with billing_cycle_day configured
       const creditCards = await billingCycleRepository.getCreditCardsNeedingBillingCycleEntry(referenceDate);
       
@@ -181,9 +194,10 @@ class ReminderService {
       const reminders = await Promise.all(creditCards.map(async (card) => {
         try {
           // Calculate the most recently completed billing cycle dates
+          // Pass business date string to avoid UTC vs local date mismatch
           const cycleDates = statementBalanceService.calculatePreviousCycleDates(
             card.billing_cycle_day,
-            referenceDate
+            businessDateStr
           );
           
           // Check if entry exists for this cycle
@@ -207,11 +221,11 @@ class ReminderService {
             };
           }
 
-          // Record exists but not user-entered AND no balance set: needs entry
-          // Also treat as entered if actual_statement_balance is already populated
-          // (handles auto-generated cycles that had balance filled in before is_user_entered was tracked)
+          // Record exists but not user-entered: needs statement entry
+          // Auto-generated cycles have actual_statement_balance=0 and is_user_entered=0
+          // Legacy cycles with actual_statement_balance > 0 are treated as having a balance
           // _Requirements: 1.3_
-          if (existingEntry.is_user_entered !== 1 && existingEntry.actual_statement_balance === null) {
+          if (existingEntry.is_user_entered !== 1 && existingEntry.actual_statement_balance === 0) {
             return {
               paymentMethodId: card.id,
               displayName: card.display_name || card.full_name,

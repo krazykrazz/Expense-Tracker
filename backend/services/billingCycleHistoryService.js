@@ -622,9 +622,10 @@ class BillingCycleHistoryService {
         });
       }
 
-      // Move reference date back by one month
+      // Move reference date back by one month using UTC methods
+      // to stay consistent with calculatePreviousCycleDates which reads UTC
       currentRef = new Date(currentRef);
-      currentRef.setMonth(currentRef.getMonth() - 1);
+      currentRef.setUTCMonth(currentRef.getUTCMonth() - 1);
     }
 
     return missingPeriods;
@@ -676,7 +677,7 @@ class BillingCycleHistoryService {
             payment_method_id: paymentMethodId,
             cycle_start_date: period.startDate,
             cycle_end_date: period.endDate,
-            actual_statement_balance: 0, // Auto-generated cycles have 0 actual balance
+            actual_statement_balance: 0, // Auto-generated cycles have no user-entered balance
             calculated_statement_balance: calculatedBalance,
             minimum_payment: null,
             notes: null,

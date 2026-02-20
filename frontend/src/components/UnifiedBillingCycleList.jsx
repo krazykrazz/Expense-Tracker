@@ -186,9 +186,9 @@ const UnifiedBillingCycleList = ({
             <div className="unified-cycle-actions">
               <button
                 className="unified-cycle-action-btn edit"
-                onClick={() => (cycle.balance_type === 'actual' || cycle.actual_statement_balance !== null) ? onEdit(cycle) : onEnterStatement(cycle)}
-                title={(cycle.balance_type === 'actual' || cycle.actual_statement_balance !== null) ? "Edit billing cycle" : "Enter statement balance"}
-                aria-label={(cycle.balance_type === 'actual' || cycle.actual_statement_balance !== null)
+                onClick={() => cycle.balance_type === 'actual' ? onEdit(cycle) : onEnterStatement(cycle)}
+                title={cycle.balance_type === 'actual' ? "Edit billing cycle" : "Enter statement balance"}
+                aria-label={cycle.balance_type === 'actual'
                   ? `Edit billing cycle for ${formatDate(cycle.cycle_end_date)}`
                   : `Enter statement for ${formatDate(cycle.cycle_end_date)}`}
               >

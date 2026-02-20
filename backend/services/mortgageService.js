@@ -75,12 +75,12 @@ class MortgageService {
     }
     
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    if (renewalDate <= today) {
+    const todayUTC = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
+    if (renewalDate <= todayUTC) {
       throw new Error('Renewal date must be in the future');
     }
 
-    // Validate rate_type (required, must be 'fixed' or 'variable')
+    // Validate rate_type
     if (mortgageData.rate_type === undefined || mortgageData.rate_type === null || mortgageData.rate_type === '') {
       throw new Error('Rate type is required for mortgages');
     }
@@ -294,16 +294,16 @@ class MortgageService {
     }
 
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const todayUTC = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
     
     const renewal = new Date(renewalDate);
-    renewal.setHours(0, 0, 0, 0);
+    renewal.setUTCHours(0, 0, 0, 0);
 
     // Check if past due
-    const isPastDue = renewal < today;
+    const isPastDue = renewal < todayUTC;
 
     // Calculate months until renewal
-    const diffTime = renewal.getTime() - today.getTime();
+    const diffTime = renewal.getTime() - todayUTC.getTime();
     const diffDays = diffTime / (1000 * 60 * 60 * 24);
     const monthsUntilRenewal = Math.round(diffDays / 30.44); // Average days per month
 

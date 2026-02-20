@@ -75,10 +75,10 @@ class StatementBalanceService {
     }
 
     // Handle months with fewer days than billingCycleDay
-    const daysInEndMonth = new Date(cycleEndYear, cycleEndMonth + 1, 0).getDate();
+    const daysInEndMonth = new Date(Date.UTC(cycleEndYear, cycleEndMonth + 1, 0)).getUTCDate();
     const actualEndDay = Math.min(billingCycleDay, daysInEndMonth);
 
-    const daysInStartMonth = new Date(cycleStartYear, cycleStartMonth + 1, 0).getDate();
+    const daysInStartMonth = new Date(Date.UTC(cycleStartYear, cycleStartMonth + 1, 0)).getUTCDate();
     const actualStartDay = Math.min(billingCycleDay + 1, daysInStartMonth + 1);
     
     // If billingCycleDay + 1 exceeds days in month, start on 1st of next month

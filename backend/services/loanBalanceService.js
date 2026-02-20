@@ -347,10 +347,10 @@ class LoanBalanceService {
     validateNumber(loanId, 'Loan ID');
     validateNumber(newRate, 'Interest rate', { min: 0, max: 100 });
 
-    // Get current date
+    // Get current date using UTC methods
     const now = new Date();
-    const currentYear = now.getFullYear();
-    const currentMonth = now.getMonth() + 1;
+    const currentYear = now.getUTCFullYear();
+    const currentMonth = now.getUTCMonth() + 1;
 
     // Check if there's an existing balance entry for this month
     const existingEntry = await loanBalanceRepository.findByLoanAndMonth(loanId, currentYear, currentMonth);

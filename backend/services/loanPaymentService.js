@@ -42,17 +42,17 @@ class LoanPaymentService {
     }
     
     // Validate that the date is a valid date
-    const date = new Date(paymentData.payment_date + 'T00:00:00');
+    const date = new Date(paymentData.payment_date + 'T00:00:00Z');
     if (isNaN(date.getTime())) {
       throw new Error('Payment date must be in YYYY-MM-DD format');
     }
     
     // Validate that the date is not in the future
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const paymentDate = new Date(paymentData.payment_date + 'T00:00:00');
+    const todayUTC = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
+    const paymentDate = new Date(paymentData.payment_date + 'T00:00:00Z');
     
-    if (paymentDate > today) {
+    if (paymentDate > todayUTC) {
       throw new Error('Payment date cannot be in the future');
     }
   }

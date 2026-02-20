@@ -27,17 +27,14 @@ const invoiceRoutes = require('./routes/invoiceRoutes');
 const paymentMethodRoutes = require('./routes/paymentMethodRoutes');
 const billingCycleRoutes = require('./routes/billingCycleRoutes');
 const activityLogRoutes = require('./routes/activityLogRoutes');
+const settingsRoutes = require('./routes/settingsRoutes');
 const syncRoutes = require('./routes/syncRoutes');
 const backupService = require('./services/backupService');
 const activityLogService = require('./services/activityLogService');
 const sseService = require('./services/sseService');
 const billingCycleSchedulerService = require('./services/billingCycleSchedulerService');
 const logger = require('./config/logger');
-const { configureTimezone, getTimezone } = require('./config/timezone');
 const { errorHandler } = require('./middleware/errorHandler');
-
-// Configure timezone at startup
-configureTimezone();
 
 // Wire SSE service into activityLogService (avoids circular dependency)
 activityLogService.setSseService(sseService);
@@ -90,10 +87,10 @@ const writeLimiter = rateLimit({
   legacyHeaders: false
 });
 
-// Very strict rate limit for file uploads: 10 per 15 minutes
+// Rate limit for file uploads: 30 per 15 minutes
 const uploadLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10,
+  max: 30,
   message: { error: 'Too many file uploads, please try again later' },
   standardHeaders: true,
   legacyHeaders: false
@@ -190,6 +187,9 @@ app.use('/api/payment-methods', billingCycleRoutes);
 // Activity Log API routes
 app.use('/api/activity-logs', activityLogRoutes);
 
+// Settings API routes
+app.use('/api/settings/timezone', settingsRoutes);
+
 // Serve static files from the React app (after build)
 // In container (production/staging): /app/frontend/dist, in development: ../frontend/dist
 const isContainerEnv = process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'staging';
@@ -214,7 +214,7 @@ initializeDatabase()
       logger.info('=== Expense Tracker Server Started ===');
       logger.info(`Environment Configuration:`);
       logger.info(`  - LOG_LEVEL: ${logger.getLogLevel()}`);
-      logger.info(`  - SERVICE_TZ: ${getTimezone()}`);
+      logger.info(`  - TZ: Etc/UTC`);
       logger.info(`  - PORT: ${PORT}`);
       logger.info(`  - NODE_ENV: ${process.env.NODE_ENV || 'development'}`);
       logger.info('');
@@ -239,7 +239,8 @@ initializeDatabase()
         logger.info(`Next backup: ${nextBackup ? nextBackup.toLocaleString() : 'Not scheduled'}`);
       }
       
-      // Start activity log cleanup scheduler (runs daily at 2:00 AM)
+      // Start activity log cleanup scheduler
+      // Runs daily at 2:00 AM UTC (equivalent to 9:00 PM EST / 10:00 PM EDT)
       cron.schedule('0 2 * * *', async () => {
         try {
           logger.info('Starting scheduled activity log cleanup...');
@@ -248,17 +249,17 @@ initializeDatabase()
         } catch (error) {
           logger.error('Activity log cleanup failed:', error);
         }
-      });
+      }, { timezone: 'Etc/UTC' });
       logger.info('');
-      logger.info('Activity log cleanup scheduled (daily at 2:00 AM)');
+      logger.info('Activity log cleanup scheduled (daily at 2:00 AM UTC)');
       
       // Start billing cycle auto-generation scheduler
-      const billingCycleCron = process.env.BILLING_CYCLE_CRON || '0 2 * * *';
-      cron.schedule(billingCycleCron, async () => {
+      // Runs hourly at :00 UTC — date-driven model checks business date transitions
+      cron.schedule('0 * * * *', async () => {
         await billingCycleSchedulerService.runAutoGeneration();
-      });
+      }, { timezone: 'Etc/UTC' });
       logger.info('');
-      logger.info(`Billing cycle auto-generation scheduled (cron: ${billingCycleCron})`);
+      logger.info('Billing cycle auto-generation scheduled (hourly UTC)');
       
       // Initial run after startup to catch missed cycles during downtime (Req 5.3)
       setTimeout(async () => {

@@ -8,14 +8,17 @@
  * _Requirements: 1.5, 5.1, 5.4, 6.2, 6.3_
  */
 
+jest.mock('./activityLogService');
+jest.mock('./timeBoundaryService');
+jest.mock('./settingsService');
+
 const billingCycleSchedulerService = require('./billingCycleSchedulerService');
 const billingCycleRepository = require('../repositories/billingCycleRepository');
 const billingCycleHistoryService = require('./billingCycleHistoryService');
 const activityLogService = require('./activityLogService');
+const timeBoundaryService = require('./timeBoundaryService');
+const settingsService = require('./settingsService');
 const logger = require('../config/logger');
-
-// Mock activity log service
-jest.mock('./activityLogService');
 
 describe('BillingCycleSchedulerService - Unit Tests', () => {
   let originalGetCards;
@@ -30,6 +33,11 @@ describe('BillingCycleSchedulerService - Unit Tests', () => {
     originalRepoCreate = billingCycleRepository.create;
 
     activityLogService.logEvent.mockResolvedValue(undefined);
+    timeBoundaryService.getBusinessTimezone.mockResolvedValue('America/Toronto');
+    timeBoundaryService.getBusinessDate.mockReturnValue('2026-02-16');
+    timeBoundaryService.localDateToUTC.mockImplementation((d) => new Date(d + 'T05:00:00Z'));
+    settingsService.getLastProcessedDate.mockResolvedValue(null);
+    settingsService.updateLastProcessedDate.mockResolvedValue(undefined);
     loggerInfoSpy = jest.spyOn(logger, 'info');
     loggerWarnSpy = jest.spyOn(logger, 'warn');
 

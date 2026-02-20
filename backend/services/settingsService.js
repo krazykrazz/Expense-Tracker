@@ -1,5 +1,6 @@
 const settingsRepository = require('../repositories/settingsRepository');
 const logger = require('../config/logger');
+const { DEFAULT_BUSINESS_TIMEZONE, validateTimezone } = require('../config/timezone');
 
 // Lazy require to avoid circular dependency (activityLogService imports settingsService)
 let _activityLogService = null;
@@ -19,7 +20,9 @@ const DEFAULT_SETTINGS = {
 // Setting keys
 const SETTING_KEYS = {
   MAX_AGE_DAYS: 'activity_log_max_age_days',
-  MAX_COUNT: 'activity_log_max_count'
+  MAX_COUNT: 'activity_log_max_count',
+  BUSINESS_TIMEZONE: 'business_timezone',
+  BILLING_LAST_PROCESSED_DATE: 'billing_last_processed_date'
 };
 
 // Validation constraints
@@ -156,10 +159,79 @@ async function updateRetentionSettings(maxAgeDays, maxCount) {
   }
 }
 
+/**
+ * Get the configured business timezone
+ * @returns {Promise<string>} IANA timezone identifier, defaults to 'America/Toronto'
+ */
+async function getBusinessTimezone() {
+  try {
+    const value = await settingsRepository.getSetting(SETTING_KEYS.BUSINESS_TIMEZONE);
+    return value || DEFAULT_BUSINESS_TIMEZONE;
+  } catch (error) {
+    logger.error('Error getting business timezone, using default:', error);
+    return DEFAULT_BUSINESS_TIMEZONE;
+  }
+}
+
+/**
+ * Update the business timezone setting
+ * @param {string} timezone - Valid IANA timezone identifier
+ * @returns {Promise<string>} The saved timezone
+ * @throws {Error} If the timezone is invalid or save fails
+ */
+async function updateBusinessTimezone(timezone) {
+  if (!validateTimezone(timezone)) {
+    throw new Error(`Invalid IANA timezone identifier: ${timezone}`);
+  }
+  try {
+    await settingsRepository.setSetting(SETTING_KEYS.BUSINESS_TIMEZONE, timezone);
+    logger.info('Business timezone updated:', { timezone });
+    return timezone;
+  } catch (error) {
+    logger.error('Error updating business timezone:', error);
+    throw new Error('Failed to update business timezone');
+  }
+}
+
+/**
+ * Get the last processed date for the billing cycle scheduler
+ * @returns {Promise<string|null>} YYYY-MM-DD string or null if not set
+ */
+async function getLastProcessedDate() {
+  try {
+    const value = await settingsRepository.getSetting(SETTING_KEYS.BILLING_LAST_PROCESSED_DATE);
+    return value || null;
+  } catch (error) {
+    logger.error('Error getting last processed date:', error);
+    return null;
+  }
+}
+
+/**
+ * Update the last processed date for the billing cycle scheduler
+ * @param {string} dateStr - YYYY-MM-DD string
+ * @returns {Promise<void>}
+ * @throws {Error} If save fails
+ */
+async function updateLastProcessedDate(dateStr) {
+  try {
+    await settingsRepository.setSetting(SETTING_KEYS.BILLING_LAST_PROCESSED_DATE, dateStr);
+    logger.debug('Last processed date updated:', { dateStr });
+  } catch (error) {
+    logger.error('Error updating last processed date:', error);
+    throw new Error('Failed to update last processed date');
+  }
+}
+
 module.exports = {
   DEFAULT_SETTINGS,
   CONSTRAINTS,
+  SETTING_KEYS,
   getRetentionSettings,
   updateRetentionSettings,
-  validateRetentionSettings
+  validateRetentionSettings,
+  getBusinessTimezone,
+  updateBusinessTimezone,
+  getLastProcessedDate,
+  updateLastProcessedDate
 };

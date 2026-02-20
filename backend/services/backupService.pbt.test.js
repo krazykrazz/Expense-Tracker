@@ -35,13 +35,9 @@ describe('BackupService - Property-Based Tests', () => {
   });
 
   afterAll(() => {
-    // Clean up test backup directory
+    // Clean up test backup directory (recursive handles nested dirs on Windows)
     if (fs.existsSync(testBackupPath)) {
-      const files = fs.readdirSync(testBackupPath);
-      files.forEach(file => {
-        fs.unlinkSync(path.join(testBackupPath, file));
-      });
-      fs.rmdirSync(testBackupPath);
+      fs.rmSync(testBackupPath, { recursive: true, force: true });
     }
   });
 
@@ -1076,13 +1072,9 @@ describe('Medical Insurance Tracking - Backup/Restore', () => {
   });
 
   afterAll(async () => {
-    // Clean up test backup directory
+    // Clean up test backup directory (recursive handles nested dirs on Windows)
     if (fs.existsSync(testBackupPath)) {
-      const files = fs.readdirSync(testBackupPath);
-      files.forEach(file => {
-        fs.unlinkSync(path.join(testBackupPath, file));
-      });
-      fs.rmdirSync(testBackupPath);
+      fs.rmSync(testBackupPath, { recursive: true, force: true });
     }
   });
 

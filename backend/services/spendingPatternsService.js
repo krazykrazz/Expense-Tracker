@@ -102,8 +102,8 @@ class SpendingPatternsService {
     const start = new Date(startDate);
     const end = new Date(endDate);
     
-    const yearDiff = end.getFullYear() - start.getFullYear();
-    const monthDiff = end.getMonth() - start.getMonth();
+    const yearDiff = end.getUTCFullYear() - start.getUTCFullYear();
+    const monthDiff = end.getUTCMonth() - start.getUTCMonth();
     
     // Add 1 because we count both the start and end months
     return Math.max(1, yearDiff * 12 + monthDiff + 1);
@@ -167,14 +167,14 @@ class SpendingPatternsService {
     const start = new Date(startDate);
     const end = new Date(endDate);
     
-    const current = new Date(start.getFullYear(), start.getMonth(), 1);
-    const endMonth = new Date(end.getFullYear(), end.getMonth(), 1);
+    const current = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), 1));
+    const endMonth = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), 1));
     
     while (current <= endMonth) {
-      const year = current.getFullYear();
-      const month = (current.getMonth() + 1).toString().padStart(2, '0');
+      const year = current.getUTCFullYear();
+      const month = (current.getUTCMonth() + 1).toString().padStart(2, '0');
       months.push(`${year}-${month}`);
-      current.setMonth(current.getMonth() + 1);
+      current.setUTCMonth(current.getUTCMonth() + 1);
     }
     
     return months;
@@ -380,13 +380,13 @@ class SpendingPatternsService {
     
     switch (frequency) {
       case PATTERN_FREQUENCIES.WEEKLY:
-        date.setDate(date.getDate() + ANALYTICS_CONFIG.WEEKLY_INTERVAL);
+        date.setUTCDate(date.getUTCDate() + ANALYTICS_CONFIG.WEEKLY_INTERVAL);
         break;
       case PATTERN_FREQUENCIES.BI_WEEKLY:
-        date.setDate(date.getDate() + ANALYTICS_CONFIG.BI_WEEKLY_INTERVAL);
+        date.setUTCDate(date.getUTCDate() + ANALYTICS_CONFIG.BI_WEEKLY_INTERVAL);
         break;
       case PATTERN_FREQUENCIES.MONTHLY:
-        date.setMonth(date.getMonth() + 1);
+        date.setUTCMonth(date.getUTCMonth() + 1);
         break;
     }
     
@@ -579,8 +579,8 @@ class SpendingPatternsService {
       // Calculate date range for analysis
       const endDate = new Date();
       const startDate = new Date();
-      startDate.setMonth(startDate.getMonth() - months + 1);
-      startDate.setDate(1);
+      startDate.setUTCMonth(startDate.getUTCMonth() - months + 1);
+      startDate.setUTCDate(1);
 
       // Filter expenses to the analysis period
       const filteredExpenses = expenses.filter(e => {
@@ -628,15 +628,15 @@ class SpendingPatternsService {
     // Generate complete month range
     const endDate = new Date();
     const startDate = new Date();
-    startDate.setMonth(startDate.getMonth() - months + 1);
-    startDate.setDate(1);
+    startDate.setUTCMonth(startDate.getUTCMonth() - months + 1);
+    startDate.setUTCDate(1);
     
     const monthlyData = [];
-    const current = new Date(startDate);
+    const current = new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), 1));
     
     while (current <= endDate) {
-      const year = current.getFullYear();
-      const month = current.getMonth() + 1;
+      const year = current.getUTCFullYear();
+      const month = current.getUTCMonth() + 1;
       const key = `${year}-${month.toString().padStart(2, '0')}`;
       
       const monthExpenses = expensesByMonth[key] || [];
@@ -651,7 +651,7 @@ class SpendingPatternsService {
         sameMonthLastYearChange: null // Will be calculated after
       });
       
-      current.setMonth(current.getMonth() + 1);
+      current.setUTCMonth(current.getUTCMonth() + 1);
     }
 
     // Calculate month-over-month changes
@@ -755,7 +755,7 @@ class SpendingPatternsService {
     for (const expense of expenses) {
       const category = expense.type;
       const date = new Date(expense.date);
-      const month = date.getMonth() + 1;
+      const month = date.getUTCMonth() + 1;
       
       if (!categoryMonthData[category]) {
         categoryMonthData[category] = {};

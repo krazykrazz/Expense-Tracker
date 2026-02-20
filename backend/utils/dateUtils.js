@@ -12,36 +12,28 @@ function calculateWeek(date) {
     if (parts.length === 3) {
       dayOfMonth = parseInt(parts[2], 10);
     } else {
-      // Fallback for other formats
-      const dateObj = new Date(date + 'T00:00:00');
-      dayOfMonth = dateObj.getDate();
+      // Fallback for other formats — parse as UTC midnight
+      const dateObj = new Date(date + 'T00:00:00Z');
+      dayOfMonth = dateObj.getUTCDate();
     }
   } else {
-    dayOfMonth = date.getDate();
+    // Use UTC date to avoid local-timezone day shifts
+    dayOfMonth = date.getUTCDate();
   }
   
   return Math.ceil(dayOfMonth / 7);
 }
 
 /**
- * Get today's date as a YYYY-MM-DD string in the configured timezone
- * This avoids timezone issues where UTC date differs from local date
+ * Get today's date as a YYYY-MM-DD string in the configured business timezone.
+ * Delegates to TimeBoundaryService which uses Intl.DateTimeFormat with the
+ * BUSINESS_TIMEZONE setting. Falls back to DEFAULT_BUSINESS_TIMEZONE if unavailable.
  * @returns {string} Today's date in YYYY-MM-DD format
  */
 function getTodayString() {
-  const { getTimezone } = require('../config/timezone');
-  const timezone = getTimezone();
-  
-  // Use Intl.DateTimeFormat to get the date in the configured timezone
-  const formatter = new Intl.DateTimeFormat('en-CA', {
-    timeZone: timezone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  });
-  
-  // en-CA locale returns YYYY-MM-DD format
-  return formatter.format(new Date());
+  const timeBoundaryService = require('../services/timeBoundaryService');
+  const { DEFAULT_BUSINESS_TIMEZONE } = require('../config/timezone');
+  return timeBoundaryService.getBusinessDate(new Date(), DEFAULT_BUSINESS_TIMEZONE);
 }
 
 /**
@@ -56,33 +48,33 @@ function calculateDaysUntilDue(paymentDueDay, referenceDate = new Date()) {
     return null;
   }
 
-  const today = new Date(referenceDate);
-  today.setHours(0, 0, 0, 0);
-  
-  const currentDay = today.getDate();
-  const currentMonth = today.getMonth();
-  const currentYear = today.getFullYear();
-  
+  // Truncate to UTC midnight to avoid local-timezone day shifts
+  const ref = new Date(referenceDate);
+  const today = new Date(Date.UTC(ref.getUTCFullYear(), ref.getUTCMonth(), ref.getUTCDate()));
+
+  const currentDay = today.getUTCDate();
+  const currentMonth = today.getUTCMonth();
+  const currentYear = today.getUTCFullYear();
+
   let dueDate;
-  
+
   if (currentDay <= paymentDueDay) {
     // Due date is this month
-    dueDate = new Date(currentYear, currentMonth, paymentDueDay);
+    dueDate = new Date(Date.UTC(currentYear, currentMonth, paymentDueDay));
   } else {
     // Due date is next month
-    dueDate = new Date(currentYear, currentMonth + 1, paymentDueDay);
+    dueDate = new Date(Date.UTC(currentYear, currentMonth + 1, paymentDueDay));
   }
-  
-  // Handle months with fewer days
-  // If the due day doesn't exist in the target month, use the last day
-  const lastDayOfMonth = new Date(dueDate.getFullYear(), dueDate.getMonth() + 1, 0).getDate();
+
+  // Handle months with fewer days — use last day of target month if needed
+  const lastDayOfMonth = new Date(Date.UTC(dueDate.getUTCFullYear(), dueDate.getUTCMonth() + 1, 0)).getUTCDate();
   if (paymentDueDay > lastDayOfMonth) {
-    dueDate.setDate(lastDayOfMonth);
+    dueDate = new Date(Date.UTC(dueDate.getUTCFullYear(), dueDate.getUTCMonth(), lastDayOfMonth));
   }
-  
+
   const diffTime = dueDate.getTime() - today.getTime();
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  
+
   return diffDays;
 }
 

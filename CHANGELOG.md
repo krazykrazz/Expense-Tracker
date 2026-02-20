@@ -18,6 +18,11 @@
 
 
 
+
+
+## [5.15.2] - 2026-02-19
+
+### Fix SSE sync not refreshing SummaryPanel and budget alerts on remote sessions
 ## [5.15.1] - 2026-02-19
 
 ### Fix crypto.randomUUID crash on HTTP local network access

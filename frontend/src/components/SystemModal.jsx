@@ -411,6 +411,16 @@ const SystemModal = () => {
           <div className="changelog">
             <div className="changelog-entry">
               <div className="changelog-version">
+                v5.16.2
+                {isCurrentVersion('v5.16.2') && <span className="current-version-badge">Current Version</span>}
+              </div>
+              <div className="changelog-date">February 20, 2026</div>
+              <ul className="changelog-items">
+                <li>Fix SSE high CPU usage from render cascade</li>
+              </ul>
+            </div>
+            <div className="changelog-entry">
+              <div className="changelog-version">
                 v5.16.1
                 {isCurrentVersion('v5.16.1') && <span className="current-version-badge">Current Version</span>}
               </div>

@@ -24,6 +24,11 @@
 
 
 
+
+
+## [5.16.1] - 2026-02-20
+
+### Fix UTC timezone mismatch in billing cycle reminders
 ## [5.16.0] - 2026-02-20
 
 ### UTC timezone cleanup: business timezone setting, date-driven billing cycle scheduler, invoice upload rate limit fix

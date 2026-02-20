@@ -26,6 +26,11 @@
 
 
 
+
+
+## [5.16.2] - 2026-02-20
+
+### Fix SSE high CPU usage from render cascade
 ## [5.16.1] - 2026-02-20
 
 ### Fix UTC timezone mismatch in billing cycle reminders

@@ -411,6 +411,16 @@ const SystemModal = () => {
           <div className="changelog">
             <div className="changelog-entry">
               <div className="changelog-version">
+                v5.16.0
+                {isCurrentVersion('v5.16.0') && <span className="current-version-badge">Current Version</span>}
+              </div>
+              <div className="changelog-date">February 20, 2026</div>
+              <ul className="changelog-items">
+                <li>UTC timezone cleanup: business timezone setting, date-driven billing cycle scheduler, invoice upload rate limit fix</li>
+              </ul>
+            </div>
+            <div className="changelog-entry">
+              <div className="changelog-version">
                 v5.15.3
                 {isCurrentVersion('v5.15.3') && <span className="current-version-badge">Current Version</span>}
               </div>

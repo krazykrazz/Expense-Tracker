@@ -411,6 +411,16 @@ const SystemModal = () => {
           <div className="changelog">
             <div className="changelog-entry">
               <div className="changelog-version">
+                v5.15.3
+                {isCurrentVersion('v5.15.3') && <span className="current-version-badge">Current Version</span>}
+              </div>
+              <div className="changelog-date">February 19, 2026</div>
+              <ul className="changelog-items">
+                <li>Fix SSE sync not refreshing SummaryPanel and budget alerts on remote sessions; fix useTabState PBT test isolation</li>
+              </ul>
+            </div>
+            <div className="changelog-entry">
+              <div className="changelog-version">
                 v5.15.2
                 {isCurrentVersion('v5.15.2') && <span className="current-version-badge">Current Version</span>}
               </div>

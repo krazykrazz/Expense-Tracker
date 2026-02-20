@@ -20,6 +20,11 @@
 
 
 
+
+
+## [5.15.3] - 2026-02-19
+
+### Fix SSE sync not refreshing SummaryPanel and budget alerts on remote sessions; fix useTabState PBT test isolation
 ## [5.15.2] - 2026-02-19
 
 ### Fix SSE sync not refreshing SummaryPanel and budget alerts on remote sessions

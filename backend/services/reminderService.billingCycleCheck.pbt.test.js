@@ -52,7 +52,7 @@ function makeCycleRecord(isUserEntered) {
     payment_method_id: 1,
     cycle_start_date: '2024-01-01',
     cycle_end_date: '2024-01-31',
-    actual_statement_balance: isUserEntered ? 500 : 0,
+    actual_statement_balance: isUserEntered ? 500 : null,
     calculated_statement_balance: 480,
     is_user_entered: isUserEntered ? 1 : 0
   };

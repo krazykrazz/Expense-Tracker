@@ -22,6 +22,11 @@
 
 
 
+
+
+## [5.16.0] - 2026-02-20
+
+### UTC timezone cleanup: business timezone setting, date-driven billing cycle scheduler, invoice upload rate limit fix
 ## [5.15.3] - 2026-02-19
 
 ### Fix SSE sync not refreshing SummaryPanel and budget alerts on remote sessions; fix useTabState PBT test isolation

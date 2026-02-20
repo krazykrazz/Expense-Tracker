@@ -151,6 +151,8 @@ export function ExpenseProvider({ children }) {
 
   /** Called by useDataSync on remote SSE expense events — re-fetches from server */
   const refreshExpenses = useCallback(() => {
+    setRefreshTrigger(prev => prev + 1);
+    setBudgetAlertRefreshTrigger(prev => prev + 1);
     window.dispatchEvent(new CustomEvent('expensesUpdated'));
   }, []);
 

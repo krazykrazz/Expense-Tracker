@@ -10,7 +10,7 @@ services:
       - ./config:/config
     environment:
       - LOG_LEVEL=info
-      - SERVICE_TZ=America/Toronto
+      - TZ=Etc/UTC
       - NODE_ENV=production
     restart: unless-stopped
     healthcheck:
@@ -37,7 +37,7 @@ services:
       - ./staging-data:/config
     environment:
       - LOG_LEVEL=debug
-      - SERVICE_TZ=America/Toronto
+      - TZ=Etc/UTC
       - NODE_ENV=staging
     profiles:
       - staging

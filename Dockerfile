@@ -73,7 +73,7 @@ HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=40s \
 # Set environment variables
 ENV NODE_ENV=production \
     LOG_LEVEL=info \
-    SERVICE_TZ=Etc/UTC \
+    TZ=Etc/UTC \
     PORT=2424 \
     IMAGE_TAG=${IMAGE_TAG} \
     BUILD_DATE=${BUILD_DATE} \

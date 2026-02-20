@@ -187,18 +187,49 @@ class ReminderService {
           );
           
           // Check if entry exists for this cycle
+          // _Requirements: 1.1, 1.2, 1.3_
           const existingEntry = await billingCycleRepository.findByPaymentMethodAndCycleEnd(
             card.id,
             cycleDates.endDate
           );
-          
+
+          // No record: cycle hasn't been generated yet — exclude from reminders
+          // _Requirements: 1.2_
+          if (!existingEntry) {
+            return {
+              paymentMethodId: card.id,
+              displayName: card.display_name || card.full_name,
+              cycleStartDate: cycleDates.startDate,
+              cycleEndDate: cycleDates.endDate,
+              needsEntry: false,
+              hasEntry: false,
+              cycleNotYetGenerated: true
+            };
+          }
+
+          // Record exists but not user-entered: needs entry
+          // _Requirements: 1.3_
+          if (existingEntry.is_user_entered !== 1) {
+            return {
+              paymentMethodId: card.id,
+              displayName: card.display_name || card.full_name,
+              cycleStartDate: cycleDates.startDate,
+              cycleEndDate: cycleDates.endDate,
+              needsEntry: true,
+              hasEntry: false,
+              cycleNotYetGenerated: false
+            };
+          }
+
+          // Record exists and is user-entered: no reminder needed
           return {
             paymentMethodId: card.id,
             displayName: card.display_name || card.full_name,
             cycleStartDate: cycleDates.startDate,
             cycleEndDate: cycleDates.endDate,
-            needsEntry: !existingEntry,
-            hasEntry: !!existingEntry
+            needsEntry: false,
+            hasEntry: true,
+            cycleNotYetGenerated: false
           };
         } catch (error) {
           logger.warn('Failed to check billing cycle status for card:', {
@@ -210,7 +241,8 @@ class ReminderService {
         }
       }));
       
-      // Filter out null entries and cards that don't need entry
+      // Filter out null entries (DB failures) and cards that don't need entry
+      // Cards with cycleNotYetGenerated are excluded from reminders per Req 1.2
       const validReminders = reminders.filter(r => r !== null);
       const cardsNeedingEntry = validReminders.filter(r => r.needsEntry);
       
@@ -236,11 +268,11 @@ class ReminderService {
    */
   async getLoanPaymentReminders(referenceDate = new Date()) {
     try {
-      const today = new Date(referenceDate);
-      today.setHours(0, 0, 0, 0);
-      
-      const currentYear = today.getFullYear();
-      const currentMonth = today.getMonth() + 1; // 1-12
+      const ref = new Date(referenceDate);
+      const today = new Date(Date.UTC(ref.getUTCFullYear(), ref.getUTCMonth(), ref.getUTCDate()));
+
+      const currentYear = today.getUTCFullYear();
+      const currentMonth = today.getUTCMonth() + 1; // 1-12
       
       // Get linked fixed expenses with due dates for the current month
       const linkedExpenses = await fixedExpenseRepository.getLinkedFixedExpensesForMonth(
@@ -369,10 +401,10 @@ class ReminderService {
    */
   async getInsuranceClaimReminders(year, month, referenceDate = new Date()) {
     try {
-      // Determine the current month for comparison
+      // Determine the current month for comparison using UTC methods
       const today = new Date(referenceDate);
-      const currentYear = today.getFullYear();
-      const currentMonth = today.getMonth() + 1; // 1-12
+      const currentYear = today.getUTCFullYear();
+      const currentMonth = today.getUTCMonth() + 1; // 1-12
       
       const isViewingCurrentMonth = year === currentYear && month === currentMonth;
       
@@ -389,9 +421,10 @@ class ReminderService {
         
         // When viewing current month, apply per-expense logic:
         // Parse the expense date to determine which month it belongs to
-        const expenseDate = new Date(expense.date);
-        const expenseYear = expenseDate.getFullYear();
-        const expenseMonth = expenseDate.getMonth() + 1; // 1-12
+        // Use UTC methods to avoid local-timezone day shifts on date strings
+        const expenseDate = new Date(expense.date + 'T00:00:00Z');
+        const expenseYear = expenseDate.getUTCFullYear();
+        const expenseMonth = expenseDate.getUTCMonth() + 1; // 1-12
         
         const isExpenseFromCurrentMonth = expenseYear === currentYear && expenseMonth === currentMonth;
         

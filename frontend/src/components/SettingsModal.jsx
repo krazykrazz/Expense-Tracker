@@ -35,6 +35,11 @@ const SettingsModal = () => {
   const [personValidationErrors, setPersonValidationErrors] = useState({});
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   
+  // Timezone setting state
+  const [timezone, setTimezone] = useState('America/Toronto');
+  const [timezoneLoading, setTimezoneLoading] = useState(false);
+  const [timezoneMessage, setTimezoneMessage] = useState({ text: '', type: '' });
+
   // Retention settings state
   const [retentionSettings, setRetentionSettings] = useState({
     maxAgeDays: 90,
@@ -69,10 +74,11 @@ const SettingsModal = () => {
     }
   }, [activeTab]);
 
-  // Fetch retention settings when General tab is active
+  // Fetch retention settings and timezone when General tab is active
   useEffect(() => {
     if (activeTab === 'general') {
       fetchRetentionSettingsData();
+      fetchTimezone();
     }
   }, [activeTab]);
 
@@ -133,6 +139,43 @@ const SettingsModal = () => {
       messageTimerRef.current = setTimeout(() => setMessage({ text: '', type: '' }), 3000);
     } catch (error) {
       setMessage({ text: error.message, type: 'error' });
+    }
+  };
+
+  // ========== Timezone Functions ==========
+
+  const fetchTimezone = async () => {
+    try {
+      const response = await fetch(API_ENDPOINTS.SETTINGS_TIMEZONE);
+      if (!response.ok) throw new Error('Failed to fetch timezone');
+      const data = await response.json();
+      setTimezone(data.timezone || 'America/Toronto');
+    } catch (error) {
+      logger.error('Error fetching timezone:', error);
+    }
+  };
+
+  const handleTimezoneChange = async (newTz) => {
+    setTimezone(newTz);
+    setTimezoneLoading(true);
+    setTimezoneMessage({ text: '', type: '' });
+    try {
+      const response = await fetch(API_ENDPOINTS.SETTINGS_TIMEZONE, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ timezone: newTz })
+      });
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || 'Failed to save timezone');
+      }
+      setTimezoneMessage({ text: 'Timezone saved', type: 'success' });
+      setTimeout(() => setTimezoneMessage({ text: '', type: '' }), 3000);
+    } catch (error) {
+      logger.error('Error saving timezone:', error);
+      setTimezoneMessage({ text: error.message, type: 'error' });
+    } finally {
+      setTimezoneLoading(false);
     }
   };
 
@@ -395,6 +438,89 @@ const SettingsModal = () => {
         <div className="tab-content">
           {activeTab === 'general' && (
             <div className="tab-panel">
+              <div className="settings-section">
+                <h3>Business Timezone</h3>
+                <p>Set the timezone used for billing cycle dates and business day calculations.</p>
+
+                {timezoneMessage.text && (
+                  <div className={`message ${timezoneMessage.type}`}>
+                    {timezoneMessage.text}
+                  </div>
+                )}
+
+                <div className="form-group">
+                  <label htmlFor="business-timezone">Timezone</label>
+                  <select
+                    id="business-timezone"
+                    value={timezone}
+                    onChange={(e) => handleTimezoneChange(e.target.value)}
+                    disabled={timezoneLoading}
+                  >
+                    <optgroup label="North America">
+                      <option value="America/Toronto">America/Toronto (Eastern)</option>
+                      <option value="America/New_York">America/New_York (Eastern)</option>
+                      <option value="America/Chicago">America/Chicago (Central)</option>
+                      <option value="America/Denver">America/Denver (Mountain)</option>
+                      <option value="America/Phoenix">America/Phoenix (Arizona)</option>
+                      <option value="America/Los_Angeles">America/Los_Angeles (Pacific)</option>
+                      <option value="America/Anchorage">America/Anchorage (Alaska)</option>
+                      <option value="Pacific/Honolulu">Pacific/Honolulu (Hawaii)</option>
+                      <option value="America/Vancouver">America/Vancouver (Pacific)</option>
+                      <option value="America/Edmonton">America/Edmonton (Mountain)</option>
+                      <option value="America/Winnipeg">America/Winnipeg (Central)</option>
+                      <option value="America/Halifax">America/Halifax (Atlantic)</option>
+                      <option value="America/St_Johns">America/St_Johns (Newfoundland)</option>
+                      <option value="America/Mexico_City">America/Mexico_City (Central MX)</option>
+                    </optgroup>
+                    <optgroup label="Europe">
+                      <option value="Europe/London">Europe/London (GMT/BST)</option>
+                      <option value="Europe/Paris">Europe/Paris (CET)</option>
+                      <option value="Europe/Berlin">Europe/Berlin (CET)</option>
+                      <option value="Europe/Amsterdam">Europe/Amsterdam (CET)</option>
+                      <option value="Europe/Rome">Europe/Rome (CET)</option>
+                      <option value="Europe/Madrid">Europe/Madrid (CET)</option>
+                      <option value="Europe/Stockholm">Europe/Stockholm (CET)</option>
+                      <option value="Europe/Helsinki">Europe/Helsinki (EET)</option>
+                      <option value="Europe/Athens">Europe/Athens (EET)</option>
+                      <option value="Europe/Moscow">Europe/Moscow (MSK)</option>
+                    </optgroup>
+                    <optgroup label="Asia / Pacific">
+                      <option value="Asia/Tokyo">Asia/Tokyo (JST)</option>
+                      <option value="Asia/Shanghai">Asia/Shanghai (CST)</option>
+                      <option value="Asia/Hong_Kong">Asia/Hong_Kong (HKT)</option>
+                      <option value="Asia/Singapore">Asia/Singapore (SGT)</option>
+                      <option value="Asia/Seoul">Asia/Seoul (KST)</option>
+                      <option value="Asia/Kolkata">Asia/Kolkata (IST)</option>
+                      <option value="Asia/Dubai">Asia/Dubai (GST)</option>
+                      <option value="Asia/Bangkok">Asia/Bangkok (ICT)</option>
+                      <option value="Asia/Jakarta">Asia/Jakarta (WIB)</option>
+                      <option value="Australia/Sydney">Australia/Sydney (AEST)</option>
+                      <option value="Australia/Melbourne">Australia/Melbourne (AEST)</option>
+                      <option value="Australia/Perth">Australia/Perth (AWST)</option>
+                      <option value="Pacific/Auckland">Pacific/Auckland (NZST)</option>
+                    </optgroup>
+                    <optgroup label="South America">
+                      <option value="America/Sao_Paulo">America/Sao_Paulo (BRT)</option>
+                      <option value="America/Buenos_Aires">America/Buenos_Aires (ART)</option>
+                      <option value="America/Santiago">America/Santiago (CLT)</option>
+                      <option value="America/Bogota">America/Bogota (COT)</option>
+                    </optgroup>
+                    <optgroup label="Africa">
+                      <option value="Africa/Cairo">Africa/Cairo (EET)</option>
+                      <option value="Africa/Johannesburg">Africa/Johannesburg (SAST)</option>
+                      <option value="Africa/Lagos">Africa/Lagos (WAT)</option>
+                      <option value="Africa/Nairobi">Africa/Nairobi (EAT)</option>
+                    </optgroup>
+                    <optgroup label="UTC">
+                      <option value="Etc/UTC">Etc/UTC (UTC+0)</option>
+                    </optgroup>
+                  </select>
+                  <small className="field-hint">
+                    Used for billing cycle date boundaries and business day calculations
+                  </small>
+                </div>
+              </div>
+
               <div className="settings-section">
                 <h3>Activity Log Retention Policy</h3>
                 <p>Configure how long activity events are kept before automatic cleanup.</p>

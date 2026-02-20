@@ -1,59 +1,31 @@
 /**
  * Timezone configuration module
- * Supports configurable timezone via SERVICE_TZ environment variable
+ *
+ * Provides the default business timezone constant and a validation utility.
+ * The process timezone is assumed to be UTC (set via TZ=Etc/UTC in the environment).
+ * Business-local date derivation is handled by TimeBoundaryService using Intl.DateTimeFormat.
  */
 
-const logger = require('./logger');
-
-// Default timezone
-const DEFAULT_TIMEZONE = 'Etc/UTC';
+/**
+ * Default business timezone used when no BUSINESS_TIMEZONE setting is configured.
+ * @type {string}
+ */
+const DEFAULT_BUSINESS_TIMEZONE = 'America/Toronto';
 
 /**
- * Validate if a timezone string is valid
- * @param {string} tz - Timezone identifier
- * @returns {boolean} True if valid, false otherwise
+ * Validate whether a string is a valid IANA timezone identifier.
+ * Uses Intl.DateTimeFormat — throws on invalid timezone, returns false.
+ *
+ * @param {string} tz - Timezone identifier to validate
+ * @returns {boolean} True if valid IANA timezone, false otherwise
  */
 function validateTimezone(tz) {
   try {
-    // Try to create a date formatter with the timezone
-    // This will throw if the timezone is invalid
     Intl.DateTimeFormat(undefined, { timeZone: tz });
     return true;
-  } catch (error) {
+  } catch {
     return false;
   }
 }
 
-/**
- * Get the configured timezone
- * @returns {string} Configured timezone identifier
- */
-function getTimezone() {
-  const configuredTz = process.env.SERVICE_TZ || DEFAULT_TIMEZONE;
-  
-  if (validateTimezone(configuredTz)) {
-    return configuredTz;
-  } else {
-    logger.warn(`Invalid timezone "${configuredTz}", falling back to ${DEFAULT_TIMEZONE}`);
-    return DEFAULT_TIMEZONE;
-  }
-}
-
-/**
- * Configure the system timezone
- * Sets the TZ environment variable for the process
- */
-function configureTimezone() {
-  const timezone = getTimezone();
-  
-  // Set TZ environment variable
-  process.env.TZ = timezone;
-  
-  logger.info(`Timezone configured: ${timezone}`);
-}
-
-module.exports = {
-  configureTimezone,
-  getTimezone,
-  validateTimezone
-};
+module.exports = { DEFAULT_BUSINESS_TIMEZONE, validateTimezone };

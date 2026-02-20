@@ -12,14 +12,17 @@
 const fc = require('fast-check');
 const { pbtOptions, safeAmount } = require('../test/pbtArbitraries');
 
+jest.mock('./activityLogService');
+jest.mock('./timeBoundaryService');
+jest.mock('./settingsService');
+
 // Import the service under test
 const billingCycleSchedulerService = require('./billingCycleSchedulerService');
 const billingCycleRepository = require('../repositories/billingCycleRepository');
 const billingCycleHistoryService = require('./billingCycleHistoryService');
 const activityLogService = require('./activityLogService');
-
-// Mock activity log service
-jest.mock('./activityLogService');
+const timeBoundaryService = require('./timeBoundaryService');
+const settingsService = require('./settingsService');
 
 describe('BillingCycleSchedulerService - Property Tests', () => {
   let originalGetCards;
@@ -36,6 +39,11 @@ describe('BillingCycleSchedulerService - Property Tests', () => {
 
     // Reset mocks
     activityLogService.logEvent.mockResolvedValue(undefined);
+    timeBoundaryService.getBusinessTimezone.mockResolvedValue('America/Toronto');
+    timeBoundaryService.getBusinessDate.mockReturnValue('2026-02-16');
+    timeBoundaryService.localDateToUTC.mockImplementation((d) => new Date(d + 'T05:00:00Z'));
+    settingsService.getLastProcessedDate.mockResolvedValue(null);
+    settingsService.updateLastProcessedDate.mockResolvedValue(undefined);
 
     // Ensure lock is released between tests
     billingCycleSchedulerService.isRunning = false;

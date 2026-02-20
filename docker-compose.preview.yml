@@ -25,7 +25,7 @@ services:
       - ./preview-data:/config
     environment:
       - LOG_LEVEL=debug
-      - SERVICE_TZ=America/Toronto
+      - TZ=Etc/UTC
       - NODE_ENV=production  # Must be production/staging for container frontend path
       - APP_ENV=preview  # Display environment for banner (overrides NODE_ENV for UI)
     restart: unless-stopped

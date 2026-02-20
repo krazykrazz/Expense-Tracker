@@ -80,7 +80,7 @@ services:
       - ./config:/config
     environment:
       - LOG_LEVEL=info
-      - SERVICE_TZ=Etc/UTC
+      - TZ=Etc/UTC
       - NODE_ENV=production
     restart: unless-stopped
     healthcheck:
@@ -113,7 +113,7 @@ docker run -d \
   -p 2424:2424 \
   -v $(pwd)/config:/config \
   -e LOG_LEVEL=info \
-  -e SERVICE_TZ=Etc/UTC \
+  -e TZ=Etc/UTC \
   -e NODE_ENV=production \
   --restart unless-stopped \
   ghcr.io/krazykrazz/expense-tracker:latest
@@ -182,7 +182,7 @@ Configure the container behavior using environment variables:
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
 | `LOG_LEVEL` | string | `info` | Logging verbosity: `debug` or `info` |
-| `SERVICE_TZ` | string | `Etc/UTC` | Timezone for date/time operations (e.g., `America/New_York`, `Europe/London`) |
+| `TZ` | string | `Etc/UTC` | Container OS timezone — always set to `Etc/UTC` for consistent UTC operation |
 | `PORT` | number | `2424` | HTTP server port (usually not changed) |
 | `NODE_ENV` | string | `production` | Node environment mode |
 
@@ -199,27 +199,38 @@ environment:
   - LOG_LEVEL=debug
 ```
 
-### SERVICE_TZ
+### TZ
 
-Sets the timezone for all date and time operations in the application:
+The container OS timezone. Always set to `Etc/UTC` — the application runs all internal date/time logic in UTC for consistency and correctness.
 
-**Common timezones:**
-- `America/New_York` - Eastern Time
-- `America/Chicago` - Central Time
-- `America/Denver` - Mountain Time
-- `America/Los_Angeles` - Pacific Time
-- `Europe/London` - UK Time
-- `Europe/Paris` - Central European Time
-- `Asia/Tokyo` - Japan Time
-- `Australia/Sydney` - Australian Eastern Time
-
-**Example:**
 ```yaml
 environment:
-  - SERVICE_TZ=America/New_York
+  - TZ=Etc/UTC
 ```
 
-**Note:** Use standard IANA timezone identifiers. Invalid timezones will fall back to UTC with a warning in logs.
+**Do not change this value.** Setting a non-UTC `TZ` can cause incorrect date calculations in billing cycles, reminders, and scheduled jobs.
+
+### BUSINESS_TIMEZONE
+
+The business timezone used for date boundary calculations (billing cycle dates, business day logic). This is configured through the application UI rather than as an environment variable.
+
+To set your business timezone:
+
+1. Open the application at `http://localhost:2424`
+2. Click **Settings** (⚙️)
+3. On the **General** tab, select your timezone from the **Business Timezone** dropdown
+4. The setting is saved immediately
+
+**Common business timezones:**
+- `America/Toronto` — Eastern Time (default)
+- `America/New_York` — Eastern Time
+- `America/Chicago` — Central Time
+- `America/Denver` — Mountain Time
+- `America/Los_Angeles` — Pacific Time
+- `Europe/London` — UK Time
+- `Europe/Paris` — Central European Time
+- `Asia/Tokyo` — Japan Time
+- `Australia/Sydney` — Australian Eastern Time
 
 ## Configuration Directory
 
@@ -390,7 +401,7 @@ docker run -d \
   -p 2424:2424 \
   -v $(pwd)/config:/config \
   -e LOG_LEVEL=info \
-  -e SERVICE_TZ=Etc/UTC \
+  -e TZ=Etc/UTC \
   ghcr.io/krazykrazz/expense-tracker:latest
 
 # Verify the update
@@ -650,30 +661,28 @@ mv backups-archive-*.tar.gz /external/storage/
 
 ### Time Zone Not Working
 
-**Symptom:** Timestamps showing wrong timezone
+**Symptom:** Billing cycle dates or reminders showing wrong dates
 
 **Diagnosis:**
 ```bash
-# Check container timezone
+# Check container timezone (should be UTC)
 docker exec expense-tracker date
-docker exec expense-tracker cat /etc/timezone
 ```
 
 **Solutions:**
 
-1. **Verify SERVICE_TZ is set correctly:**
+1. **Verify TZ is set to UTC:**
 ```yaml
 environment:
-  - SERVICE_TZ=America/New_York
+  - TZ=Etc/UTC
 ```
 
-2. **Check for typos in timezone name:**
-```bash
-# List valid timezones
-docker exec expense-tracker ls /usr/share/zoneinfo/
-```
+2. **Set your business timezone via the UI:**
+   - Open Settings → General → Business Timezone
+   - Select your local timezone (e.g., `America/New_York`)
+   - This controls billing cycle date boundaries
 
-3. **Restart container after changing timezone:**
+3. **Restart container after changing TZ:**
 ```bash
 docker-compose restart
 ```

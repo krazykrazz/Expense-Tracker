@@ -32,13 +32,13 @@ class PredictionService {
       
       // Calculate days elapsed and remaining
       const today = new Date();
-      const targetDate = new Date(year, month - 1, 1);
-      const lastDayOfMonth = new Date(year, month, 0).getDate();
+      const targetDate = new Date(Date.UTC(year, month - 1, 1));
+      const lastDayOfMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
       
       let daysElapsed;
-      if (today.getFullYear() === year && today.getMonth() + 1 === month) {
+      if (today.getUTCFullYear() === year && today.getUTCMonth() + 1 === month) {
         // Current month - use actual days elapsed
-        daysElapsed = today.getDate();
+        daysElapsed = today.getUTCDate();
       } else if (today > targetDate) {
         // Past month - full month elapsed
         daysElapsed = lastDayOfMonth;
@@ -171,8 +171,8 @@ class PredictionService {
       
       for (const expense of allExpenses) {
         const date = new Date(expense.date);
-        const expYear = date.getFullYear();
-        const expMonth = date.getMonth() + 1;
+        const expYear = date.getUTCFullYear();
+        const expMonth = date.getUTCMonth() + 1;
         
         // Skip current month
         if (expYear === currentYear && expMonth === currentMonth) {
@@ -218,8 +218,8 @@ class PredictionService {
       
       for (const expense of allExpenses) {
         const date = new Date(expense.date);
-        const expYear = date.getFullYear();
-        const expMonth = date.getMonth() + 1;
+        const expYear = date.getUTCFullYear();
+        const expMonth = date.getUTCMonth() + 1;
         
         // Skip current month
         if (expYear === year && expMonth === month) {
@@ -332,8 +332,8 @@ class PredictionService {
       
       for (const expense of allExpenses) {
         const date = new Date(expense.date);
-        const expYear = date.getFullYear();
-        const expMonth = date.getMonth() + 1;
+        const expYear = date.getUTCFullYear();
+        const expMonth = date.getUTCMonth() + 1;
         
         if (expMonth === month && expYear !== year) {
           if (!yearlyTotals[expYear]) {

@@ -1792,27 +1792,23 @@ describe('ReminderService Auto-Generated Cycle Notifications - Property Tests', 
   // --- Property 5 Tests ---
 
   /**
-   * Feature: billing-cycle-automation, Property 5: Billing Cycle Reminder Suppression
-   * **Validates: Requirements 4.1**
-   * 
-   * For any credit card with an auto-generated cycle record for the most recently
-   * completed billing period, getBillingCycleReminders should report hasEntry=true
-   * for that card, regardless of whether the cycle has been reviewed by the user.
+   * Feature: utc-timezone-cleanup, Property 5: Billing Cycle Reminder Correctness
+   * **Validates: Requirements 1.1, 1.2, 1.3**
+   *
+   * When a user-entered cycle record exists (is_user_entered=1), the card should
+   * report hasEntry=true and needsEntry=false (no reminder needed).
+   * When an auto-generated record exists (is_user_entered=0), the card should
+   * report needsEntry=true (reminder needed to enter statement balance).
    */
-  test('Property 5: Billing Cycle Reminder Suppression — auto-generated cycle suppresses reminder', async () => {
+  test('Property 5: Billing Cycle Reminder Correctness — user-entered record suppresses reminder', async () => {
     await fc.assert(
       fc.asyncProperty(
         // billing_cycle_day (1-28 to avoid edge cases)
         fc.integer({ min: 1, max: 28 }),
-        // is_user_entered: 0 or 1 (shouldn't matter for hasEntry)
-        fc.constantFrom(0, 1),
-        // actual_statement_balance: 0 or positive (shouldn't matter for hasEntry)
-        fc.oneof(
-          fc.constant(0),
-          fc.float({ min: Math.fround(0.01), max: Math.fround(5000), noNaN: true })
-            .map(n => Math.round(n * 100) / 100)
-        ),
-        async (billingCycleDay, isUserEntered, actualBalance) => {
+        // actual_statement_balance: positive (user entered a real balance)
+        fc.float({ min: Math.fround(0.01), max: Math.fround(5000), noNaN: true })
+          .map(n => Math.round(n * 100) / 100),
+        async (billingCycleDay, actualBalance) => {
           const referenceDate = new Date('2026-02-20');
           const cycleDates = statementBalanceService.calculatePreviousCycleDates(
             billingCycleDay, referenceDate
@@ -1831,7 +1827,7 @@ describe('ReminderService Auto-Generated Cycle Notifications - Property Tests', 
           // Mock: this card needs billing cycle entry check
           billingCycleRepository.getCreditCardsNeedingBillingCycleEntry = async () => [card];
 
-          // Mock: a billing cycle record exists (auto-generated or user-entered)
+          // Mock: a user-entered billing cycle record exists (is_user_entered=1)
           billingCycleRepository.findByPaymentMethodAndCycleEnd = async (pmId, endDate) => {
             if (pmId === card.id && endDate === cycleDates.endDate) {
               return {
@@ -1839,7 +1835,7 @@ describe('ReminderService Auto-Generated Cycle Notifications - Property Tests', 
                 payment_method_id: card.id,
                 cycle_start_date: cycleDates.startDate,
                 cycle_end_date: cycleDates.endDate,
-                is_user_entered: isUserEntered,
+                is_user_entered: 1,
                 actual_statement_balance: actualBalance,
                 calculated_statement_balance: 100
               };
@@ -1849,13 +1845,11 @@ describe('ReminderService Auto-Generated Cycle Notifications - Property Tests', 
 
           const result = await reminderService.getBillingCycleReminders(referenceDate);
 
-          // The card should report hasEntry=true regardless of is_user_entered or actual_statement_balance
+          // User-entered record: hasEntry=true, needsEntry=false
           const cardReminder = result.allCards.find(c => c.paymentMethodId === card.id);
           expect(cardReminder).toBeDefined();
           expect(cardReminder.hasEntry).toBe(true);
           expect(cardReminder.needsEntry).toBe(false);
-
-          // needsEntryCount should be 0 since the entry exists
           expect(result.needsEntryCount).toBe(0);
         }
       ),
@@ -1864,10 +1858,65 @@ describe('ReminderService Auto-Generated Cycle Notifications - Property Tests', 
   });
 
   /**
-   * Property 5 continued: Without any cycle record, reminder reports hasEntry=false
-   * **Validates: Requirements 4.1**
+   * Property 5 continued: Auto-generated record means needsEntry=true (reminder shown)
+   * **Validates: Requirements 1.3**
    */
-  test('Property 5: Billing Cycle Reminder Suppression — no record means hasEntry=false', async () => {
+  test('Property 5: Billing Cycle Reminder Correctness — auto-generated record triggers reminder', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.integer({ min: 1, max: 28 }),
+        async (billingCycleDay) => {
+          const referenceDate = new Date('2026-02-20');
+          const cycleDates = statementBalanceService.calculatePreviousCycleDates(
+            billingCycleDay, referenceDate
+          );
+
+          const card = {
+            id: 1,
+            display_name: 'Test Card',
+            full_name: 'Test Credit Card',
+            billing_cycle_day: billingCycleDay,
+            type: 'credit_card',
+            is_active: 1,
+            payment_due_day: 15
+          };
+
+          billingCycleRepository.getCreditCardsNeedingBillingCycleEntry = async () => [card];
+
+          // Auto-generated record (is_user_entered=0): reminder should be shown
+          billingCycleRepository.findByPaymentMethodAndCycleEnd = async (pmId, endDate) => {
+            if (pmId === card.id && endDate === cycleDates.endDate) {
+              return {
+                id: 1,
+                payment_method_id: card.id,
+                cycle_start_date: cycleDates.startDate,
+                cycle_end_date: cycleDates.endDate,
+                is_user_entered: 0,
+                actual_statement_balance: 0,
+                calculated_statement_balance: 100
+              };
+            }
+            return null;
+          };
+
+          const result = await reminderService.getBillingCycleReminders(referenceDate);
+
+          const cardReminder = result.allCards.find(c => c.paymentMethodId === card.id);
+          expect(cardReminder).toBeDefined();
+          expect(cardReminder.hasEntry).toBe(false);
+          expect(cardReminder.needsEntry).toBe(true);
+          expect(result.needsEntryCount).toBe(1);
+        }
+      ),
+      dbPbtOptions()
+    );
+  });
+
+  /**
+   * Property 5 continued: No cycle record means cycleNotYetGenerated=true, excluded from reminders
+   * **Validates: Requirements 1.2**
+   */
+  test('Property 5: Billing Cycle Reminder Correctness — no record means cycleNotYetGenerated', async () => {
     await fc.assert(
       fc.asyncProperty(
         fc.integer({ min: 1, max: 28 }),
@@ -1886,17 +1935,18 @@ describe('ReminderService Auto-Generated Cycle Notifications - Property Tests', 
 
           billingCycleRepository.getCreditCardsNeedingBillingCycleEntry = async () => [card];
 
-          // No billing cycle record exists
+          // No billing cycle record exists yet
           billingCycleRepository.findByPaymentMethodAndCycleEnd = async () => null;
 
           const result = await reminderService.getBillingCycleReminders(referenceDate);
 
+          // No record: excluded from reminders (cycleNotYetGenerated)
           const cardReminder = result.allCards.find(c => c.paymentMethodId === card.id);
           expect(cardReminder).toBeDefined();
           expect(cardReminder.hasEntry).toBe(false);
-          expect(cardReminder.needsEntry).toBe(true);
-
-          expect(result.needsEntryCount).toBe(1);
+          expect(cardReminder.needsEntry).toBe(false);
+          expect(cardReminder.cycleNotYetGenerated).toBe(true);
+          expect(result.needsEntryCount).toBe(0);
         }
       ),
       dbPbtOptions()

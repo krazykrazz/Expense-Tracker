@@ -287,8 +287,8 @@ class LoanService {
       }
       
       const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      if (renewalDate <= today) {
+      const todayUTC = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
+      if (renewalDate <= todayUTC) {
         throw new Error('Renewal date must be in the future');
       }
     }

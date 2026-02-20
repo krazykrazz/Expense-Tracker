@@ -29,9 +29,11 @@ Billing cycle records are created automatically by a background scheduler, repla
 
 **How It Works:**
 
-- A `node-cron` background task runs inside the Express server process on a configurable schedule (default: daily at 2:00 AM)
-- On each run, the scheduler scans all active credit cards with a configured `billing_cycle_day`
-- For any completed billing cycle period without a corresponding record, the scheduler creates an auto-generated cycle
+- A `node-cron` background task runs inside the Express server process hourly at `:00 UTC`
+- On each run, the scheduler reads the current business date (derived from the configured `BUSINESS_TIMEZONE` setting) and compares it to the last processed date stored in the application settings
+- If the current business date is ahead of the last processed date, the scheduler processes each missing date sequentially (catching up after downtime)
+- If the current business date equals the last processed date, the run is skipped (already current)
+- For each date processed, the scheduler scans all active credit cards with a configured `billing_cycle_day` and creates auto-generated cycle records for any completed cycle periods without a corresponding record
 - Auto-generated cycles have `is_user_entered = 0`, `actual_statement_balance = 0`, and a `calculated_statement_balance` derived from the previous cycle's balance, tracked expenses, and credit card payments in the cycle period
 - The calculated balance formula is: `max(0, round(previousBalance + totalExpenses − totalPayments, 2))`
   - `previousBalance` is the effective balance from the immediately preceding billing cycle (actual if user-entered, calculated if auto-generated; zero if no previous cycle exists)
@@ -42,22 +44,26 @@ Billing cycle records are created automatically by a background scheduler, repla
 **Startup Behavior:**
 
 - On server startup, an initial check runs after 60 seconds to catch any cycles missed during downtime
-- This ensures no billing cycles are missed even if the server was offline when the cron job would have fired
+- The date-driven model automatically recovers from multi-day outages by processing each missed business date in order
 
 **Configuration:**
 
-The cron schedule is configurable via the `BILLING_CYCLE_CRON` environment variable:
+The scheduler runs hourly at `:00 UTC` (fixed schedule — not configurable via environment variable). The business timezone used for date boundary calculations is configured through the application UI:
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `BILLING_CYCLE_CRON` | `0 2 * * *` (daily at 2:00 AM) | Cron expression controlling how often the scheduler runs |
+1. Open Settings → General → Business Timezone
+2. Select your local timezone (default: `America/Toronto`)
 
-Docker Compose example:
+| Setting | Where | Default | Description |
+|---------|-------|---------|-------------|
+| Business Timezone | Settings UI → General | `America/Toronto` | Timezone for billing cycle date boundaries |
+
+Docker Compose example (no scheduler-specific env vars needed):
 ```yaml
 services:
   expense-tracker:
     environment:
-      - BILLING_CYCLE_CRON=0 2 * * *
+      - TZ=Etc/UTC
+      - LOG_LEVEL=info
 ```
 
 **Resilience:**

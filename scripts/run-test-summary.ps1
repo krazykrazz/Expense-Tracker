@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Runs backend and frontend tests and generates a failure summary report.
 

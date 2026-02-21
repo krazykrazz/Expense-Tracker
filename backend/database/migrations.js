@@ -5441,6 +5441,50 @@ async function migrateAddEffectiveBalanceColumns(db) {
 
 
 /**
+ * Migration: Remove billing_last_processed_date from settings
+ * The scheduler no longer uses a date cursor — gap recovery is handled by CycleGenerationService.
+ */
+async function migrateRemoveBillingLastProcessedDate(db) {
+  const migrationName = 'remove_billing_last_processed_date_v1';
+
+  const isApplied = await checkMigrationApplied(db, migrationName);
+  if (isApplied) {
+    logger.info(`Migration "${migrationName}" already applied, skipping`);
+    return;
+  }
+
+  logger.info(`Running migration: ${migrationName}`);
+
+  try {
+    await new Promise((resolve, reject) => {
+      db.run(
+        `DELETE FROM settings WHERE key = 'billing_last_processed_date'`,
+        function(err) {
+          if (err) {
+            logger.warn('Could not remove billing_last_processed_date setting:', err.message);
+            resolve(); // Don't fail migration
+          } else {
+            if (this.changes > 0) {
+              logger.info('Removed billing_last_processed_date setting');
+            } else {
+              logger.info('billing_last_processed_date setting not found (already removed or never set)');
+            }
+            resolve();
+          }
+        }
+      );
+    });
+
+    await markMigrationApplied(db, migrationName);
+    logger.info(`Migration "${migrationName}" completed successfully`);
+  } catch (error) {
+    logger.warn('Migration to remove billing_last_processed_date encountered error:', error.message);
+    // Continue without failing
+  }
+}
+
+
+/**
  * Run all pending migrations
  */
 async function runMigrations(db) {
@@ -5484,6 +5528,7 @@ async function runMigrations(db) {
     await migrateRenameVehicleMaintenanceToAutomotive(db);
     await migrateRemoveCategoryCheckConstraints(db);
     await migrateAddEffectiveBalanceColumns(db);
+    await migrateRemoveBillingLastProcessedDate(db);
     logger.info('All migrations completed');
   } catch (error) {
     logger.error('Migration failed:', error.message);
@@ -5521,5 +5566,6 @@ module.exports = {
   migrateRenameVehicleMaintenanceToAutomotive,
   migrateFixVehicleMaintenanceConstraints,
   migrateRemoveCategoryCheckConstraints,
-  migrateAddEffectiveBalanceColumns
+  migrateAddEffectiveBalanceColumns,
+  migrateRemoveBillingLastProcessedDate
 };

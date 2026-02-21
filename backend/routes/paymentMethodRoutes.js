@@ -3,6 +3,7 @@ const router = express.Router();
 const paymentMethodController = require('../controllers/paymentMethodController');
 const creditCardPaymentController = require('../controllers/creditCardPaymentController');
 const creditCardStatementController = require('../controllers/creditCardStatementController');
+const billingCycleController = require('../controllers/billingCycleController');
 const {
   upload,
   handleMulterError,
@@ -60,6 +61,9 @@ router.get('/:id/billing-cycles', paymentMethodController.getBillingCycles);
 
 // GET /api/payment-methods/:id/statement-balance - Get calculated statement balance
 router.get('/:id/statement-balance', paymentMethodController.getStatementBalance);
+
+// GET /api/payment-methods/:id/credit-card-detail - Unified credit card detail endpoint
+router.get('/:id/credit-card-detail', billingCycleController.getCreditCardDetail);
 
 // ==========================================
 // Credit Card Payment Routes

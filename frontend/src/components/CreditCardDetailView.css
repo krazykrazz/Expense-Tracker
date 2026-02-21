@@ -92,6 +92,24 @@
   font-size: var(--text-lg);
 }
 
+/* Partial Failure Warning */
+.cc-detail-warning {
+  background-color: var(--color-warning-light, #fff3cd);
+  color: var(--color-warning-dark, #856404);
+  padding: var(--spacing-3) var(--spacing-4);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.cc-detail-warning button {
+  background: none;
+  border: none;
+  color: var(--color-warning-dark, #856404);
+  cursor: pointer;
+  font-size: var(--text-lg);
+}
+
 /* Loading State */
 .cc-detail-loading {
   padding: var(--spacing-8);

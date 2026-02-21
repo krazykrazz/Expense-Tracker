@@ -10,34 +10,32 @@
 
 jest.mock('./activityLogService');
 jest.mock('./timeBoundaryService');
-jest.mock('./settingsService');
 
 const billingCycleSchedulerService = require('./billingCycleSchedulerService');
 const billingCycleRepository = require('../repositories/billingCycleRepository');
-const billingCycleHistoryService = require('./billingCycleHistoryService');
+const cycleGenerationService = require('./cycleGenerationService');
 const activityLogService = require('./activityLogService');
 const timeBoundaryService = require('./timeBoundaryService');
-const settingsService = require('./settingsService');
 const logger = require('../config/logger');
 
 describe('BillingCycleSchedulerService - Unit Tests', () => {
   let originalGetCards;
   let originalGetMissingPeriods;
+  let originalCalcBalance;
   let originalRepoCreate;
   let loggerInfoSpy;
   let loggerWarnSpy;
 
   beforeEach(() => {
     originalGetCards = billingCycleRepository.getCreditCardsNeedingBillingCycleEntry;
-    originalGetMissingPeriods = billingCycleHistoryService.getMissingCyclePeriods;
+    originalGetMissingPeriods = cycleGenerationService.getMissingCyclePeriods;
+    originalCalcBalance = cycleGenerationService.calculateCycleBalance;
     originalRepoCreate = billingCycleRepository.create;
 
     activityLogService.logEvent.mockResolvedValue(undefined);
     timeBoundaryService.getBusinessTimezone.mockResolvedValue('America/Toronto');
     timeBoundaryService.getBusinessDate.mockReturnValue('2026-02-16');
     timeBoundaryService.localDateToUTC.mockImplementation((d) => new Date(d + 'T05:00:00Z'));
-    settingsService.getLastProcessedDate.mockResolvedValue(null);
-    settingsService.updateLastProcessedDate.mockResolvedValue(undefined);
     loggerInfoSpy = jest.spyOn(logger, 'info');
     loggerWarnSpy = jest.spyOn(logger, 'warn');
 
@@ -46,7 +44,8 @@ describe('BillingCycleSchedulerService - Unit Tests', () => {
 
   afterEach(() => {
     billingCycleRepository.getCreditCardsNeedingBillingCycleEntry = originalGetCards;
-    billingCycleHistoryService.getMissingCyclePeriods = originalGetMissingPeriods;
+    cycleGenerationService.getMissingCyclePeriods = originalGetMissingPeriods;
+    cycleGenerationService.calculateCycleBalance = originalCalcBalance;
     billingCycleRepository.create = originalRepoCreate;
 
     loggerInfoSpy.mockRestore();
@@ -275,15 +274,15 @@ describe('BillingCycleSchedulerService - Unit Tests', () => {
     let originalLogEvent;
 
     beforeEach(() => {
-      originalGetMissing = billingCycleHistoryService.getMissingCyclePeriods;
-      originalCalcBalance = billingCycleHistoryService.calculateCycleBalance;
+      originalGetMissing = cycleGenerationService.getMissingCyclePeriods;
+      originalCalcBalance = cycleGenerationService.calculateCycleBalance;
       originalCreate = billingCycleRepository.create;
       originalLogEvent = activityLogService.logEvent;
     });
 
     afterEach(() => {
-      billingCycleHistoryService.getMissingCyclePeriods = originalGetMissing;
-      billingCycleHistoryService.calculateCycleBalance = originalCalcBalance;
+      cycleGenerationService.getMissingCyclePeriods = originalGetMissing;
+      cycleGenerationService.calculateCycleBalance = originalCalcBalance;
       billingCycleRepository.create = originalCreate;
       activityLogService.logEvent = originalLogEvent;
     });
@@ -292,8 +291,8 @@ describe('BillingCycleSchedulerService - Unit Tests', () => {
       const card = { id: 10, display_name: 'TestCard', billing_cycle_day: 15 };
       const period = { startDate: '2026-01-16', endDate: '2026-02-15' };
 
-      billingCycleHistoryService.getMissingCyclePeriods = async () => [period];
-      billingCycleHistoryService.calculateCycleBalance = jest.fn().mockResolvedValue({
+      cycleGenerationService.getMissingCyclePeriods = jest.fn().mockResolvedValue([period]);
+      cycleGenerationService.calculateCycleBalance = jest.fn().mockResolvedValue({
         calculatedBalance: 500,
         previousBalance: 200,
         totalExpenses: 400,
@@ -304,7 +303,7 @@ describe('BillingCycleSchedulerService - Unit Tests', () => {
 
       await billingCycleSchedulerService.processCard(card, new Date('2026-02-16'));
 
-      expect(billingCycleHistoryService.calculateCycleBalance).toHaveBeenCalledWith(
+      expect(cycleGenerationService.calculateCycleBalance).toHaveBeenCalledWith(
         10, '2026-01-16', '2026-02-15'
       );
     });
@@ -313,8 +312,8 @@ describe('BillingCycleSchedulerService - Unit Tests', () => {
       const card = { id: 10, display_name: 'TestCard', billing_cycle_day: 15 };
       const period = { startDate: '2026-01-16', endDate: '2026-02-15' };
 
-      billingCycleHistoryService.getMissingCyclePeriods = async () => [period];
-      billingCycleHistoryService.calculateCycleBalance = jest.fn().mockResolvedValue({
+      cycleGenerationService.getMissingCyclePeriods = jest.fn().mockResolvedValue([period]);
+      cycleGenerationService.calculateCycleBalance = jest.fn().mockResolvedValue({
         calculatedBalance: 350.75,
         previousBalance: 100,
         totalExpenses: 300,
@@ -340,8 +339,8 @@ describe('BillingCycleSchedulerService - Unit Tests', () => {
       const card = { id: 10, display_name: 'TestCard', billing_cycle_day: 15 };
       const period = { startDate: '2026-01-16', endDate: '2026-02-15' };
 
-      billingCycleHistoryService.getMissingCyclePeriods = async () => [period];
-      billingCycleHistoryService.calculateCycleBalance = jest.fn().mockResolvedValue({
+      cycleGenerationService.getMissingCyclePeriods = jest.fn().mockResolvedValue([period]);
+      cycleGenerationService.calculateCycleBalance = jest.fn().mockResolvedValue({
         calculatedBalance: 0,
         previousBalance: 100,
         totalExpenses: 50,
@@ -363,7 +362,7 @@ describe('BillingCycleSchedulerService - Unit Tests', () => {
     test('returns empty array when no missing periods', async () => {
       const card = { id: 10, display_name: 'TestCard', billing_cycle_day: 15 };
 
-      billingCycleHistoryService.getMissingCyclePeriods = async () => [];
+      cycleGenerationService.getMissingCyclePeriods = jest.fn().mockResolvedValue([]);
 
       const result = await billingCycleSchedulerService.processCard(card, new Date('2026-02-16'));
 
@@ -374,8 +373,8 @@ describe('BillingCycleSchedulerService - Unit Tests', () => {
       const card = { id: 10, display_name: 'TestCard', billing_cycle_day: 15 };
       const period = { startDate: '2026-01-16', endDate: '2026-02-15' };
 
-      billingCycleHistoryService.getMissingCyclePeriods = async () => [period];
-      billingCycleHistoryService.calculateCycleBalance = jest.fn().mockResolvedValue({
+      cycleGenerationService.getMissingCyclePeriods = jest.fn().mockResolvedValue([period]);
+      cycleGenerationService.calculateCycleBalance = jest.fn().mockResolvedValue({
         calculatedBalance: 100,
         previousBalance: 0,
         totalExpenses: 100,

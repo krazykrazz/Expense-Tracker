@@ -1,10 +1,9 @@
 'use strict';
 
 const billingCycleRepository = require('../repositories/billingCycleRepository');
-const billingCycleHistoryService = require('./billingCycleHistoryService');
+const cycleGenerationService = require('./cycleGenerationService');
 const activityLogService = require('./activityLogService');
 const timeBoundaryService = require('./timeBoundaryService');
-const settingsService = require('./settingsService');
 const logger = require('../config/logger');
 
 const DURATION_WARNING_THRESHOLD_MS = 30000;
@@ -12,15 +11,14 @@ const DURATION_WARNING_THRESHOLD_MS = 30000;
 /**
  * BillingCycleSchedulerService
  *
- * Date-driven background scheduler that detects completed billing cycles
+ * Simplified background scheduler that detects completed billing cycles
  * across all credit cards and auto-generates billing cycle records.
  *
- * Uses a last_processed_date cursor stored in settings to determine which
- * business dates need processing. On each run it processes every date in
- * [last_processed_date + 1 .. currentBusinessDate] sequentially, updating
- * the cursor after each date so a crash mid-run resumes correctly.
+ * Processes only the current business date (determined via TimeBoundaryService).
+ * Gap recovery for missed cycles is delegated to CycleGenerationService.getMissingCyclePeriods
+ * which looks back up to 24 months to detect and fill any gaps.
  *
- * _Requirements: 5.1-5.10, 6.1-6.3_
+ * _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 1.10_
  */
 class BillingCycleSchedulerService {
   constructor() {
@@ -30,7 +28,7 @@ class BillingCycleSchedulerService {
   /**
    * Execute a single scheduler run.
    * Called by cron and on startup.
-   * Acquires in-memory lock to prevent concurrent execution (Req 5.2).
+   * Acquires in-memory lock to prevent concurrent execution (Req 1.5).
    *
    * @param {Date} [utcNow=new Date()] - UTC reference time
    * @returns {Promise<{ generatedCount: number, errors: Array, skipped?: boolean }>}
@@ -49,57 +47,34 @@ class BillingCycleSchedulerService {
     try {
       const timezone = await timeBoundaryService.getBusinessTimezone();
       const currentBusinessDate = timeBoundaryService.getBusinessDate(utcNow, timezone);
-      const lastProcessedDate = await settingsService.getLastProcessedDate();
+      const dateStart = timeBoundaryService.localDateToUTC(currentBusinessDate, timezone);
 
       logger.info('Billing cycle scheduler: starting run', {
         utcNow: utcNow.toISOString(),
         timezone,
-        currentBusinessDate,
-        lastProcessedDate
+        currentBusinessDate
       });
 
-      let datesToProcess;
-      if (lastProcessedDate === null) {
-        datesToProcess = [currentBusinessDate];
-      } else if (currentBusinessDate > lastProcessedDate) {
-        datesToProcess = this.getDateRange(
-          this._addOneDay(lastProcessedDate),
-          currentBusinessDate
-        );
-      } else {
-        logger.debug('Billing cycle scheduler: already up to date', {
-          currentBusinessDate,
-          lastProcessedDate
-        });
-        return { generatedCount: 0, errors: [] };
-      }
+      const cards = await billingCycleRepository.getCreditCardsNeedingBillingCycleEntry(dateStart);
 
-      for (const businessDate of datesToProcess) {
-        const dateStart = timeBoundaryService.localDateToUTC(businessDate, timezone);
-        const cards = await billingCycleRepository.getCreditCardsNeedingBillingCycleEntry(dateStart);
+      for (const card of cards) {
+        try {
+          const created = await this.processCard(card, dateStart);
+          generatedCount += created.length;
+        } catch (error) {
+          const cardName = card.display_name || card.full_name || `Card ${card.id}`;
+          const errorInfo = { cardId: card.id, cardName, error: error.message };
+          errors.push(errorInfo);
+          logger.error('Billing cycle scheduler: error processing card', errorInfo);
 
-        for (const card of cards) {
-          try {
-            const created = await this.processCard(card, dateStart);
-            generatedCount += created.length;
-          } catch (error) {
-            const cardName = card.display_name || card.full_name || `Card ${card.id}`;
-            const errorInfo = { cardId: card.id, cardName, error: error.message };
-            errors.push(errorInfo);
-            logger.error('Billing cycle scheduler: error processing card', errorInfo);
-
-            await activityLogService.logEvent(
-              'billing_cycle_scheduler_error',
-              'system',
-              null,
-              `Billing cycle scheduler error for ${cardName}: ${error.message}`,
-              { errorMessage: error.message, cardId: card.id }
-            );
-          }
+          await activityLogService.logEvent(
+            'billing_cycle_scheduler_error',
+            'system',
+            null,
+            `Billing cycle scheduler error for ${cardName}: ${error.message}`,
+            { errorMessage: error.message, cardId: card.id }
+          );
         }
-
-        await settingsService.updateLastProcessedDate(businessDate);
-        logger.debug('Billing cycle scheduler: processed date', { businessDate, cards: cards.length });
       }
 
       const durationMs = Date.now() - startTime;
@@ -113,8 +88,7 @@ class BillingCycleSchedulerService {
       logger.info('Billing cycle scheduler: run complete', {
         generatedCount,
         errorCount: errors.length,
-        durationMs,
-        datesProcessed: datesToProcess.length
+        durationMs
       });
 
       await activityLogService.logEvent(
@@ -136,6 +110,8 @@ class BillingCycleSchedulerService {
 
   /**
    * Process a single credit card for a given reference date.
+   * Delegates gap detection to CycleGenerationService.getMissingCyclePeriods
+   * with monthsBack=24 to recover any missed cycles (Req 1.8).
    *
    * @param {Object} card - Credit card payment method record
    * @param {Date} referenceDate - Reference date for cycle detection
@@ -146,11 +122,11 @@ class BillingCycleSchedulerService {
     const billingCycleDay = card.billing_cycle_day;
     const cardName = card.display_name || card.full_name || `Card ${paymentMethodId}`;
 
-    const missingPeriods = await billingCycleHistoryService.getMissingCyclePeriods(
+    const missingPeriods = await cycleGenerationService.getMissingCyclePeriods(
       paymentMethodId,
       billingCycleDay,
       referenceDate,
-      1
+      24
     );
 
     if (missingPeriods.length === 0) {
@@ -162,8 +138,8 @@ class BillingCycleSchedulerService {
 
     for (const period of missingPeriods) {
       try {
-        const { calculatedBalance, previousBalance, totalExpenses, totalPayments } =
-          await billingCycleHistoryService.calculateCycleBalance(
+        const { calculatedBalance } =
+          await cycleGenerationService.calculateCycleBalance(
             paymentMethodId,
             period.startDate,
             period.endDate
@@ -194,10 +170,7 @@ class BillingCycleSchedulerService {
           id: cycle.id,
           paymentMethodId,
           cycleEndDate: period.endDate,
-          calculatedBalance,
-          previousBalance,
-          totalExpenses,
-          totalPayments
+          calculatedBalance
         });
       } catch (error) {
         if (error.message && error.message.includes('UNIQUE constraint')) {
@@ -212,36 +185,6 @@ class BillingCycleSchedulerService {
     }
 
     return generatedCycles;
-  }
-
-  /**
-   * Return an array of YYYY-MM-DD strings from fromDate to toDate (inclusive).
-   * Returns [] if fromDate > toDate.
-   *
-   * @param {string} fromDate - YYYY-MM-DD
-   * @param {string} toDate   - YYYY-MM-DD
-   * @returns {string[]}
-   */
-  getDateRange(fromDate, toDate) {
-    const dates = [];
-    let current = fromDate;
-    while (current <= toDate) {
-      dates.push(current);
-      current = this._addOneDay(current);
-    }
-    return dates;
-  }
-
-  /**
-   * Add one calendar day to a YYYY-MM-DD string.
-   *
-   * @param {string} dateStr - YYYY-MM-DD
-   * @returns {string} YYYY-MM-DD
-   */
-  _addOneDay(dateStr) {
-    const [y, m, d] = dateStr.split('-').map(Number);
-    const next = new Date(Date.UTC(y, m - 1, d + 1));
-    return `${next.getUTCFullYear()}-${String(next.getUTCMonth() + 1).padStart(2, '0')}-${String(next.getUTCDate()).padStart(2, '0')}`;
   }
 }
 

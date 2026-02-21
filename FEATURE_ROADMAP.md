@@ -635,6 +635,161 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ---
 
+### 🟢 Real-Time Data Sync (v4.15.0)
+**Completed**: January 2026  
+**Spec**: `archive/specs/real-time-data-sync/`  
+**Documentation**: `docs/features/REAL_TIME_SYNC.md`  
+**Description**: Server-Sent Events (SSE) based real-time synchronization enabling multi-device access with automatic data refresh when changes occur on another device.
+
+**Features Delivered**:
+- **SSE Connection**: Persistent EventSource connection to `/api/sync/events` endpoint
+- **Entity-Based Routing**: Broadcasts categorized by entity type (expenses, income, fixed_expenses, budgets, loans, investments, payment_methods, people, settings)
+- **Debounced Refresh**: 300ms debounce prevents excessive re-fetching during rapid changes
+- **Self-Update Filtering**: Tab fingerprinting prevents a tab from re-fetching its own changes
+- **Visual Feedback**: SyncToast notification appears when data is refreshed from another device
+- **Reconnection Logic**: Automatic reconnection with exponential backoff on connection loss
+- **Visibility-Based Lifecycle**: Connection torn down when tab is hidden, re-established when visible (v5.10.x)
+- **Full Data Refresh on Return**: All contexts refreshed when reconnecting after tab becomes visible
+
+**Benefits**:
+- Multi-device access without manual refresh
+- Real-time data consistency across browser tabs and devices
+- Minimal CPU usage when tab is in background
+
+---
+
+### 🟢 Activity Log (v4.16.0)
+**Completed**: January 2026  
+**Spec**: `archive/specs/activity-log/`, `archive/specs/activity-log-coverage/`, `archive/specs/activity-log-retention-config/`  
+**Documentation**: `docs/features/ACTIVITY_LOG.md`  
+**Description**: Comprehensive event tracking system capturing all user actions and system events with configurable retention policy and automatic cleanup.
+
+**Features Delivered**:
+- **Event Tracking**: Logs all CRUD operations across expenses, income, fixed expenses, loans, investments, budgets, payment methods, people, settings, backups, and more
+- **Rich Metadata**: Events include contextual metadata (IDs, amounts, names, old/new values)
+- **Configurable Retention**: User-configurable max age (7-365 days) and max entries (100-10000) via Settings UI
+- **Automatic Cleanup**: Scheduled daily cleanup at 2:00 AM based on retention policy
+- **Activity Log Table**: Table-based display with time, event type badges, and details columns
+- **Fire-and-Forget Pattern**: Logging failures never impact core application functionality
+- **Full Coverage**: All service-layer operations emit activity log events
+
+**Benefits**:
+- Complete audit trail of all data changes
+- Configurable data retention for storage management
+- Non-intrusive logging that never blocks user operations
+
+---
+
+### 🟢 Insurance Claim Reminders (v4.18.0)
+**Completed**: January 2026  
+**Spec**: `archive/specs/insurance-claim-reminders/`  
+**Documentation**: `docs/features/INSURANCE_CLAIM_REMINDERS.md`  
+**Description**: Automated reminder system for pending medical insurance claims that have been outstanding for more than 30 days.
+
+**Features Delivered**:
+- **Pending Claim Detection**: Identifies insurance claims with "in_progress" status older than 30 days
+- **Reminder Banners**: Visual notification banners in the Notifications section
+- **Claim Age Display**: Shows how many days each claim has been pending
+- **Quick Navigation**: Click reminder to navigate to the expense for status update
+- **Dismissible Reminders**: Session-based dismissal with reappearance on refresh
+- **Backend API**: Dedicated endpoint for fetching pending claim reminders
+
+**Benefits**:
+- Prevents forgotten insurance claims and lost reimbursements
+- Proactive follow-up on pending claims
+- Better tracking of insurance claim lifecycle
+
+---
+
+### 🟢 Medical Insurance Tracking (v4.14.0)
+**Completed**: January 2026  
+**Spec**: `archive/specs/medical-insurance-tracking/`  
+**Documentation**: `docs/features/MEDICAL_INSURANCE_TRACKING.md`  
+**Description**: Track insurance eligibility and claim status for medical expenses with original cost vs out-of-pocket tracking.
+
+**Features Delivered**:
+- **Insurance Eligibility**: Mark medical expenses as eligible/not eligible for insurance
+- **Claim Status Tracking**: Track claims through not_claimed → in_progress → paid/denied workflow
+- **Cost Tracking**: Record original cost and out-of-pocket amount with automatic reimbursement calculation
+- **Quick Status Updates**: Update claim status directly from expense list without opening edit form
+- **Insurance Summary**: Aggregated view in Tax Deductible showing totals by claim status
+- **Visual Indicators**: Color-coded status badges in expense lists and tax reports
+
+**Benefits**:
+- Complete insurance claim lifecycle tracking
+- Accurate out-of-pocket medical expense reporting for tax purposes
+- Quick status updates reduce friction in claim management
+
+---
+
+### 🟢 Generic Expense Reimbursement (v5.3.0)
+**Completed**: February 2026  
+**Spec**: `archive/specs/generic-expense-reimbursement/`  
+**Documentation**: `docs/features/GENERIC_EXPENSE_REIMBURSEMENT.md`  
+**Description**: Track reimbursements for any expense type (not just medical) with automatic net amount calculation.
+
+**Features Delivered**:
+- **Reimbursement Field**: Add expected reimbursement amount to any non-medical expense
+- **Net Amount Calculation**: Automatic out-of-pocket calculation (amount - reimbursement)
+- **Visual Indicator**: 💰 icon in expense list showing which expenses have reimbursements
+- **Tooltip Breakdown**: Hover to see Charged, Reimbursed, and Net amounts
+- **Credit Card Integration**: Balance adjustments use net amount for accurate tracking
+- **Data Storage**: Uses existing original_cost/amount fields for backward compatibility
+
+**Benefits**:
+- Track employer reimbursements, insurance payouts, and other refunds
+- Accurate out-of-pocket tracking across all expense types
+- Consistent reimbursement UX for both medical and non-medical expenses
+
+---
+
+### 🟢 Credit Card Billing Cycle History (v5.4.0)
+**Completed**: February 2026  
+**Spec**: `archive/specs/credit-card-billing-cycle-history/`, `archive/specs/unified-billing-cycles/`, `archive/specs/billing-cycle-automation/`, `archive/specs/billing-cycle-payment-deduction/`  
+**Documentation**: `docs/features/CREDIT_CARD_BILLING_CYCLES.md`  
+**Description**: Comprehensive billing cycle tracking with automatic cycle generation, statement balance entry, trend analysis, and transaction counting.
+
+**Features Delivered**:
+- **Unified Billing Cycle List**: Single view showing both user-entered and auto-generated cycles
+- **Scheduled Auto-Generation**: Background scheduler creates billing cycle records automatically
+- **Effective Balance**: Shows actual statement balance (if entered) or calculated balance
+- **Calculated Balance Formula**: previousBalance + totalExpenses − totalPayments per cycle
+- **Statement Balance Entry**: Edit any cycle to enter actual statement balance
+- **Transaction Counting**: Shows expense count per billing cycle period
+- **Trend Indicators**: Month-over-month balance change indicators
+- **Statement PDF Attachment**: Upload and view statement PDFs per cycle
+- **Due Date Derivation**: Derived from payment_due_day field rather than stored per cycle
+- **Auto-Generation Notifications**: Banner alerts when new cycles are created
+
+**Benefits**:
+- Complete billing cycle history for credit card management
+- Automatic cycle generation reduces manual data entry
+- Accurate balance tracking with expense and payment integration
+- Statement PDF storage for record keeping
+
+---
+
+### 🟢 Tax Deductible Analytics (v4.18.0)
+**Completed**: January 2026  
+**Spec**: `archive/specs/tax-deductible-analytics/`  
+**Documentation**: `docs/features/TAX_DEDUCTIBLE_ANALYTICS.md`  
+**Description**: Year-over-year comparison and tax credit calculator for tax-deductible expenses.
+
+**Features Delivered**:
+- **YoY Comparison Cards**: Current year vs previous year totals with percentage change indicators
+- **Tax Credit Calculator**: Estimate federal and provincial tax credits based on net income
+- **Province Selection**: Support for all Canadian provinces with province-specific credit rates
+- **App Income Integration**: One-click "Use App Data" to populate net income from income sources
+- **Settings Persistence**: Province and income preferences saved in localStorage
+- **Donation vs Medical Breakdown**: Separate YoY comparison for each deductible type
+
+**Benefits**:
+- Quick year-over-year spending trend visibility
+- Tax credit estimation without external tools
+- Better tax planning with historical comparison
+
+---
+
 ### 🟢 ExpenseForm Simplification (v5.8.0)
 **Completed**: February 2026  
 **Spec**: `.kiro/specs/expense-form-simplification/`  
@@ -1252,24 +1407,26 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ## 🧹 Code Quality & Optimization
 
-### ⚪ 31. Frontend Custom Hooks Extraction
-**Status**: Proposed  
+### 🟢 31. Frontend Custom Hooks Extraction
+**Status**: Completed (v5.8.0)  
+**Completed**: February 2026  
 **Priority**: High  
 **Effort**: Medium  
-**Description**: Extract shared logic from oversized components (ExpenseForm 1663 lines, TaxDeductible 1677 lines, ExpenseList 1111 lines) into reusable custom hooks.
+**Spec**: `archive/specs/frontend-custom-hooks/`  
+**Description**: Extracted shared logic from oversized components (ExpenseForm, TaxDeductible, ExpenseList) into six reusable custom hooks.
 
-**Key Hooks**:
-- `useInsuranceStatus` — Insurance claim logic shared across ExpenseForm, ExpenseList, TaxDeductible
-- `useInvoiceManagement` — Invoice fetching, caching, modal state used in all three components
+**Hooks Delivered**:
+- `useExpenseFormValidation` — Form validation logic with structured error reporting
 - `usePaymentMethods` — Payment method fetching, inactive method handling, last-used memory
-- `useFormValidation` — Expense form validation logic from ExpenseForm
-- `useTaxCalculator` — Tax credit calculator state and logic from TaxDeductible
-- `useYoYComparison` — YoY data fetching and comparison from TaxDeductible
+- `useInsuranceStatus` — Insurance claim status updates and quick status UI state
+- `useInvoiceManagement` — Invoice fetching, caching, modal state, person link updates
+- `useTaxCalculator` — Tax credit calculator state, province selection, app income integration
+- `useYoYComparison` — Year-over-year data fetching and percentage change calculations
 
 **Benefits**:
-- Reduces all three oversized components significantly
-- Eliminates duplicate insurance/invoice/payment method patterns
-- Makes logic independently testable
+- Reduced all three oversized components significantly
+- Eliminated duplicate insurance/invoice/payment method patterns
+- Each hook independently testable with property-based tests
 - Follows React best practices for state management
 
 **Dependencies**: None
@@ -1334,9 +1491,8 @@ This document tracks potential features and enhancements for the Expense Tracker
 ## Priority Matrix
 
 ### High Priority (Implement Next)
-1. Frontend Custom Hooks Extraction (#31)
-2. Expense Templates
-3. Financial Goals Dashboard
+1. Expense Templates
+2. Financial Goals Dashboard
 
 ### Medium Priority
 1. Backend updateExpense Credit Card Balance Refactor (#32)
@@ -1386,6 +1542,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 ---
 
 **Version History**:
+- v3.4 (2026-02-20): Comprehensive documentation audit — added 9 missing completed features to roadmap (Real-Time Data Sync, Activity Log, Insurance Claim Reminders, Medical Insurance Tracking, Generic Expense Reimbursement, Credit Card Billing Cycle History, Tax Deductible Analytics), marked Frontend Custom Hooks (#31) as completed (v5.8.0), updated priority matrix
 - v3.3 (2026-02-18): Marked Budget Modal Consolidation as partially complete (v5.11.0), updated #25 status from Proposed to Partially Complete
 - v3.2 (2026-02-10): Added Settings & System Modal Split (v5.11.0) to completed features, updated current version to 5.10.0, updated last updated date
 - v3.1 (2026-02-08): Marked ExpenseForm Simplification as completed (v5.8.0), updated current version to 5.8.0, removed from priority matrix

@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getPaymentMethod } from '../services/paymentMethodApi';
-import { getPayments, deletePayment, getStatementBalance, deleteBillingCycle, getCurrentCycleStatus, getBillingCyclePdfUrl, getUnifiedBillingCycles } from '../services/creditCardApi';
+import { getCreditCardDetail, deletePayment, deleteBillingCycle, getBillingCyclePdfUrl } from '../services/creditCardApi';
 import { formatCAD as formatCurrency } from '../utils/formatters';
 import { createLogger } from '../utils/logger';
 import CreditCardPaymentForm from './CreditCardPaymentForm';
@@ -35,7 +34,6 @@ const CreditCardDetailView = ({
   const [paymentMethod, setPaymentMethod] = useState(null);
   const [payments, setPayments] = useState([]);
   const [unifiedBillingCycles, setUnifiedBillingCycles] = useState([]);
-  const [unifiedBillingCyclesLoading, setUnifiedBillingCyclesLoading] = useState(false);
   const [statementBalanceInfo, setStatementBalanceInfo] = useState(null);
   const [currentCycleStatus, setCurrentCycleStatus] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -46,6 +44,7 @@ const CreditCardDetailView = ({
   const [editingBillingCycle, setEditingBillingCycle] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [pdfViewerCycle, setPdfViewerCycle] = useState(null);
+  const [partialErrors, setPartialErrors] = useState([]);
 
   // Format date - handles YYYY-MM-DD strings without timezone shift
   const formatDate = (dateString) => {
@@ -76,53 +75,26 @@ const CreditCardDetailView = ({
     return 'good';
   };
 
-  // Fetch all data
+  // Fetch all data via unified endpoint
   const fetchData = useCallback(async () => {
     if (!paymentMethodId) return;
 
     setLoading(true);
     setError(null);
+    setPartialErrors([]);
 
     try {
-      const [methodData, paymentsData] = await Promise.all([
-        getPaymentMethod(paymentMethodId),
-        getPayments(paymentMethodId)
-      ]);
+      const data = await getCreditCardDetail(paymentMethodId);
 
-      setPaymentMethod(methodData);
-      setPayments(paymentsData || []);
-      
-      // Fetch statement balance info and unified billing cycles if billing_cycle_day is configured
-      if (methodData && methodData.billing_cycle_day) {
-        try {
-          const [statementData, cycleStatusData] = await Promise.all([
-            getStatementBalance(paymentMethodId),
-            getCurrentCycleStatus(paymentMethodId)
-          ]);
-          setStatementBalanceInfo(statementData);
-          setCurrentCycleStatus(cycleStatusData);
-          
-          // Fetch unified billing cycles (with auto-generation)
-          setUnifiedBillingCyclesLoading(true);
-          try {
-            const unifiedData = await getUnifiedBillingCycles(paymentMethodId, { limit: 12, includeAutoGenerate: false });
-            setUnifiedBillingCycles(unifiedData.billingCycles || []);
-          } catch (unifiedErr) {
-            logger.warn('Failed to fetch unified billing cycles:', unifiedErr);
-            setUnifiedBillingCycles([]);
-          } finally {
-            setUnifiedBillingCyclesLoading(false);
-          }
-        } catch (statementErr) {
-          logger.warn('Failed to fetch statement balance or cycle status:', statementErr);
-          setStatementBalanceInfo(null);
-          setCurrentCycleStatus(null);
-          setUnifiedBillingCycles([]);
-        }
-      } else {
-        setStatementBalanceInfo(null);
-        setCurrentCycleStatus(null);
-        setUnifiedBillingCycles([]);
+      setPaymentMethod(data.cardDetails);
+      setPayments(data.payments || []);
+      setStatementBalanceInfo(data.statementBalanceInfo || null);
+      setCurrentCycleStatus(data.currentCycleStatus || null);
+      setUnifiedBillingCycles(data.billingCycles || []);
+
+      // Show non-blocking warnings for partial failures
+      if (data.errors && data.errors.length > 0) {
+        setPartialErrors(data.errors);
       }
     } catch (err) {
       logger.error('Failed to fetch credit card data:', err);
@@ -287,6 +259,14 @@ const CreditCardDetailView = ({
           <div className="cc-detail-error">
             {error}
             <button onClick={() => setError(null)}>✕</button>
+          </div>
+        )}
+
+        {/* Partial Failure Warning */}
+        {partialErrors.length > 0 && (
+          <div className="cc-detail-warning" role="alert">
+            Some data could not be loaded: {partialErrors.map(e => e.section).join(', ')}
+            <button onClick={() => setPartialErrors([])}>✕</button>
           </div>
         )}
 
@@ -585,7 +565,7 @@ const CreditCardDetailView = ({
                         onViewPdf={handleViewBillingCyclePdf}
                         formatCurrency={formatCurrency}
                         formatDate={formatDate}
-                        loading={unifiedBillingCyclesLoading}
+                        loading={loading}
                       />
                     </div>
                   ) : (

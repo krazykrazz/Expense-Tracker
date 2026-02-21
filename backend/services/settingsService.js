@@ -21,8 +21,7 @@ const DEFAULT_SETTINGS = {
 const SETTING_KEYS = {
   MAX_AGE_DAYS: 'activity_log_max_age_days',
   MAX_COUNT: 'activity_log_max_count',
-  BUSINESS_TIMEZONE: 'business_timezone',
-  BILLING_LAST_PROCESSED_DATE: 'billing_last_processed_date'
+  BUSINESS_TIMEZONE: 'business_timezone'
 };
 
 // Validation constraints
@@ -193,36 +192,6 @@ async function updateBusinessTimezone(timezone) {
   }
 }
 
-/**
- * Get the last processed date for the billing cycle scheduler
- * @returns {Promise<string|null>} YYYY-MM-DD string or null if not set
- */
-async function getLastProcessedDate() {
-  try {
-    const value = await settingsRepository.getSetting(SETTING_KEYS.BILLING_LAST_PROCESSED_DATE);
-    return value || null;
-  } catch (error) {
-    logger.error('Error getting last processed date:', error);
-    return null;
-  }
-}
-
-/**
- * Update the last processed date for the billing cycle scheduler
- * @param {string} dateStr - YYYY-MM-DD string
- * @returns {Promise<void>}
- * @throws {Error} If save fails
- */
-async function updateLastProcessedDate(dateStr) {
-  try {
-    await settingsRepository.setSetting(SETTING_KEYS.BILLING_LAST_PROCESSED_DATE, dateStr);
-    logger.debug('Last processed date updated:', { dateStr });
-  } catch (error) {
-    logger.error('Error updating last processed date:', error);
-    throw new Error('Failed to update last processed date');
-  }
-}
-
 module.exports = {
   DEFAULT_SETTINGS,
   CONSTRAINTS,
@@ -231,7 +200,5 @@ module.exports = {
   updateRetentionSettings,
   validateRetentionSettings,
   getBusinessTimezone,
-  updateBusinessTimezone,
-  getLastProcessedDate,
-  updateLastProcessedDate
+  updateBusinessTimezone
 };

@@ -644,6 +644,45 @@ export const getStatementBalance = async (paymentMethodId) => {
 };
 
 // ==========================================
+// Unified Credit Card Detail Function
+// ==========================================
+
+/**
+ * Fetch all credit card detail data in a single request.
+ * Replaces separate calls to getPaymentMethod, getPayments, getStatementBalance,
+ * getCurrentCycleStatus, and getUnifiedBillingCycles.
+ * @param {number} paymentMethodId - Payment method ID (must be credit_card type)
+ * @param {Object} [options] - Query options
+ * @param {number} [options.billingCycleLimit] - Max billing cycles to return (default 12)
+ * @returns {Promise<Object>} Unified response with cardDetails, payments, statementBalanceInfo,
+ *   currentCycleStatus, billingCycles, and errors array
+ */
+export const getCreditCardDetail = async (paymentMethodId, options = {}) => {
+  try {
+    const params = new URLSearchParams();
+    if (options.billingCycleLimit) {
+      params.append('billingCycleLimit', options.billingCycleLimit.toString());
+    }
+
+    const url = params.toString()
+      ? `${API_ENDPOINTS.PAYMENT_METHOD_CREDIT_CARD_DETAIL(paymentMethodId)}?${params.toString()}`
+      : API_ENDPOINTS.PAYMENT_METHOD_CREDIT_CARD_DETAIL(paymentMethodId);
+
+    const response = await fetchWithRetry(url);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `Failed to fetch credit card detail (${response.status})`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    logger.error('Failed to fetch credit card detail:', error);
+    throw new Error(`Unable to load credit card detail: ${error.message}`);
+  }
+};
+
+// ==========================================
 // Unified Billing Cycles Functions
 // ==========================================
 

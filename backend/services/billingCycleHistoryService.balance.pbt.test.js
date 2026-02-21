@@ -24,6 +24,7 @@ const billingCycleRepository = require('../repositories/billingCycleRepository')
 const billingCycleHistoryService = require('./billingCycleHistoryService');
 const billingCycleSchedulerService = require('./billingCycleSchedulerService');
 const activityLogService = require('./activityLogService');
+const cycleGenerationService = require('./cycleGenerationService');
 
 /**
  * Arbitrary for a monetary amount rounded to 2 decimal places.
@@ -257,15 +258,27 @@ describe('BillingCycleHistoryService - Cross-Path Consistency (Property 4)', () 
 
   /**
    * Run processCard and return the calculated_statement_balance it created.
+   * processCard delegates to cycleGenerationService for gap detection and balance calculation.
    */
   async function runProcessCard(previousCycle, totalExpenses, totalPayments) {
     setupMockDb(totalExpenses, totalPayments);
     billingCycleRepository.findPreviousCycle.mockResolvedValue(previousCycle);
 
-    // Mock getMissingCyclePeriods to return exactly one period
-    billingCycleHistoryService.getMissingCyclePeriods = jest.fn().mockResolvedValue([
-      { startDate: CYCLE_START, endDate: CYCLE_END }
-    ]);
+    // processCard now delegates to cycleGenerationService — spy on those methods
+    const getMissingSpy = jest.spyOn(cycleGenerationService, 'getMissingCyclePeriods')
+      .mockResolvedValue([{ startDate: CYCLE_START, endDate: CYCLE_END }]);
+
+    // Compute expected balance using the same formula as the real service
+    const { effectiveBalance } = billingCycleHistoryService.calculateEffectiveBalance(previousCycle);
+    const calculatedBalance = Math.max(0, Math.round((effectiveBalance + totalExpenses - totalPayments) * 100) / 100);
+
+    const calcBalanceSpy = jest.spyOn(cycleGenerationService, 'calculateCycleBalance')
+      .mockResolvedValue({
+        calculatedBalance,
+        previousBalance: effectiveBalance,
+        totalExpenses,
+        totalPayments
+      });
 
     let createdBalance = null;
     billingCycleRepository.create.mockImplementation(async (data) => {
@@ -282,6 +295,10 @@ describe('BillingCycleHistoryService - Cross-Path Consistency (Property 4)', () 
     };
 
     await billingCycleSchedulerService.processCard(card, new Date('2024-02-16'));
+
+    getMissingSpy.mockRestore();
+    calcBalanceSpy.mockRestore();
+
     return createdBalance;
   }
 

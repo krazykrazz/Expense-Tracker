@@ -126,6 +126,9 @@ export const API_ENDPOINTS = {
   
   // Unified Billing Cycles (with auto-generation, transaction counts, and trends)
   PAYMENT_METHOD_BILLING_CYCLES_UNIFIED: (id) => `${API_BASE_URL}/api/payment-methods/${id}/billing-cycles/unified`,
+
+  // Unified Credit Card Detail (single endpoint for all card data)
+  PAYMENT_METHOD_CREDIT_CARD_DETAIL: (id) => `${API_BASE_URL}/api/payment-methods/${id}/credit-card-detail`,
   
   // Credit Card Statement Balance
   PAYMENT_METHOD_STATEMENT_BALANCE: (id) => `${API_BASE_URL}/api/payment-methods/${id}/statement-balance`,

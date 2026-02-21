@@ -829,6 +829,97 @@ async function getUnifiedBillingCycles(req, res) {
   }
 }
 
+/**
+ * Get all credit card detail data in a single response
+ * GET /api/payment-methods/:id/credit-card-detail
+ *
+ * Query params:
+ *   billingCycleLimit (default: 12) - max billing cycles to return
+ *
+ * Returns combined response with cardDetails, payments, statementBalanceInfo,
+ * currentCycleStatus, billingCycles, and errors array for partial failures.
+ *
+ * _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7_
+ */
+async function getCreditCardDetail(req, res) {
+  try {
+    const paymentMethodId = parseInt(req.params.id);
+
+    if (isNaN(paymentMethodId)) {
+      return res.status(400).json({ error: 'Invalid payment method ID' });
+    }
+
+    // Fetch payment method first — required for 404/400 checks
+    const paymentMethodService = require('../services/paymentMethodService');
+    const cardDetails = await paymentMethodService.getCreditCardWithComputedFields(paymentMethodId);
+
+    if (!cardDetails) {
+      // Check if it exists but isn't a credit card
+      const pm = await paymentMethodRepository.findById(paymentMethodId);
+      if (!pm) {
+        return res.status(404).json({ error: 'Payment method not found' });
+      }
+      return res.status(400).json({ error: 'Payment method is not a credit card' });
+    }
+
+    const billingCycleLimit = parseInt(req.query.billingCycleLimit) || 12;
+    const hasBillingCycleDay = !!cardDetails.billing_cycle_day;
+    const errors = [];
+
+    // Build parallel queries
+    const creditCardPaymentRepository = require('../repositories/creditCardPaymentRepository');
+    const statementBalanceService = require('../services/statementBalanceService');
+
+    const promises = [
+      creditCardPaymentRepository.findByPaymentMethodId(paymentMethodId)
+    ];
+
+    if (hasBillingCycleDay) {
+      promises.push(
+        statementBalanceService.calculateStatementBalance(paymentMethodId),
+        billingCycleHistoryService.getCurrentCycleStatus(paymentMethodId),
+        billingCycleHistoryService.getUnifiedBillingCycles(paymentMethodId, { limit: billingCycleLimit })
+      );
+    }
+
+    const results = await Promise.allSettled(promises);
+
+    // Map results
+    const mapResult = (settled, section) => {
+      if (settled.status === 'fulfilled') return settled.value;
+      logger.error(`Unified endpoint: ${section} query failed:`, settled.reason);
+      errors.push({ section, message: settled.reason?.message || 'Unknown error' });
+      return null;
+    };
+
+    const payments = mapResult(results[0], 'payments') || [];
+
+    let statementBalanceInfo = null;
+    let currentCycleStatus = null;
+    let billingCycles = [];
+
+    if (hasBillingCycleDay) {
+      statementBalanceInfo = mapResult(results[1], 'statementBalance');
+      currentCycleStatus = mapResult(results[2], 'currentCycleStatus');
+      const unifiedResult = mapResult(results[3], 'billingCycles');
+      billingCycles = unifiedResult ? unifiedResult.billingCycles || [] : [];
+    }
+
+    res.status(200).json({
+      cardDetails,
+      payments,
+      statementBalanceInfo,
+      currentCycleStatus,
+      billingCycles,
+      errors
+    });
+
+  } catch (error) {
+    logger.error('Get credit card detail API error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
 module.exports = {
   createBillingCycle,
   getBillingCycleHistory,
@@ -836,5 +927,6 @@ module.exports = {
   deleteBillingCycle,
   getCurrentCycleStatus,
   getBillingCyclePdf,
-  getUnifiedBillingCycles
+  getUnifiedBillingCycles,
+  getCreditCardDetail
 };

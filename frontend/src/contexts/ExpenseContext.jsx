@@ -64,7 +64,7 @@ export function ExpenseProvider({ children }) {
       }
     };
     fetchExpenses();
-  }, [selectedYear, selectedMonth, isGlobalView, filterYear]);
+  }, [selectedYear, selectedMonth, isGlobalView, filterYear, refreshTrigger]);
 
   // --- expensesUpdated Event Listener ---
   useEffect(() => {

@@ -284,5 +284,5 @@ export const getInvoiceFileUrl = (expenseId, invoiceId) => {
  * @returns {string} URL to fetch the invoice file
  */
 export const getInvoiceUrl = (expenseId) => {
-  return `${API_ENDPOINTS.INVOICE_BY_EXPENSE(expenseId)}/file`;
+  return `${API_ENDPOINTS.INVOICES_FOR_EXPENSE(expenseId)}/file`;
 };

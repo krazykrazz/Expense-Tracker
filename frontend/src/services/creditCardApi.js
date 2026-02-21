@@ -413,7 +413,7 @@ export const createBillingCycle = async (paymentMethodId, data) => {
       formData.append('statement', data.statement);
       
       response = await fetchWithTabId(
-        API_ENDPOINTS.PAYMENT_METHOD_BILLING_CYCLE_CREATE(paymentMethodId),
+        API_ENDPOINTS.PAYMENT_METHOD_BILLING_CYCLES(paymentMethodId),
         {
           method: 'POST',
           body: formData
@@ -422,7 +422,7 @@ export const createBillingCycle = async (paymentMethodId, data) => {
     } else {
       // No file, use JSON
       response = await fetchWithTabId(
-        API_ENDPOINTS.PAYMENT_METHOD_BILLING_CYCLE_CREATE(paymentMethodId),
+        API_ENDPOINTS.PAYMENT_METHOD_BILLING_CYCLES(paymentMethodId),
         {
           method: 'POST',
           headers: {

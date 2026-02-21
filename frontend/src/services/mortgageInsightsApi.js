@@ -13,7 +13,7 @@ import { apiGet, apiPost, apiPut, apiDelete, logApiError } from '../utils/apiCli
  */
 export const getMortgageInsights = async (mortgageId) => {
   try {
-    return await apiGet(API_ENDPOINTS.MORTGAGE_INSIGHTS(mortgageId), 'fetch mortgage insights');
+    return await apiGet(API_ENDPOINTS.LOAN_INSIGHTS(mortgageId), 'fetch mortgage insights');
   } catch (error) {
     logApiError('fetching mortgage insights', error);
     throw error;
@@ -27,7 +27,7 @@ export const getMortgageInsights = async (mortgageId) => {
  */
 export const getMortgagePayments = async (mortgageId) => {
   try {
-    return await apiGet(API_ENDPOINTS.MORTGAGE_PAYMENTS(mortgageId), 'fetch mortgage payments');
+    return await apiGet(API_ENDPOINTS.LOAN_PAYMENTS(mortgageId), 'fetch mortgage payments');
   } catch (error) {
     logApiError('fetching mortgage payments', error);
     throw error;
@@ -42,7 +42,7 @@ export const getMortgagePayments = async (mortgageId) => {
  */
 export const createMortgagePayment = async (mortgageId, data) => {
   try {
-    return await apiPost(API_ENDPOINTS.MORTGAGE_PAYMENTS(mortgageId), data, 'create mortgage payment');
+    return await apiPost(API_ENDPOINTS.LOAN_PAYMENTS(mortgageId), data, 'create mortgage payment');
   } catch (error) {
     logApiError('creating mortgage payment', error);
     throw error;
@@ -58,7 +58,7 @@ export const createMortgagePayment = async (mortgageId, data) => {
  */
 export const updateMortgagePayment = async (mortgageId, paymentId, data) => {
   try {
-    return await apiPut(API_ENDPOINTS.MORTGAGE_PAYMENT(mortgageId, paymentId), data, 'update mortgage payment');
+    return await apiPut(API_ENDPOINTS.LOAN_PAYMENT(mortgageId, paymentId), data, 'update mortgage payment');
   } catch (error) {
     logApiError('updating mortgage payment', error);
     throw error;
@@ -73,7 +73,7 @@ export const updateMortgagePayment = async (mortgageId, paymentId, data) => {
  */
 export const deleteMortgagePayment = async (mortgageId, paymentId) => {
   try {
-    return await apiDelete(API_ENDPOINTS.MORTGAGE_PAYMENT(mortgageId, paymentId), 'delete mortgage payment');
+    return await apiDelete(API_ENDPOINTS.LOAN_PAYMENT(mortgageId, paymentId), 'delete mortgage payment');
   } catch (error) {
     logApiError('deleting mortgage payment', error);
     throw error;
@@ -89,7 +89,7 @@ export const deleteMortgagePayment = async (mortgageId, paymentId) => {
 export const calculateScenario = async (mortgageId, extraPayment) => {
   try {
     return await apiPost(
-      API_ENDPOINTS.MORTGAGE_SCENARIO(mortgageId), 
+      API_ENDPOINTS.LOAN_SCENARIO(mortgageId), 
       { extra_payment: extraPayment }, 
       'calculate mortgage scenario'
     );
@@ -109,7 +109,7 @@ export const calculateScenario = async (mortgageId, extraPayment) => {
 export const updateMortgageRate = async (mortgageId, rate) => {
   try {
     return await apiPut(
-      API_ENDPOINTS.MORTGAGE_RATE(mortgageId), 
+      API_ENDPOINTS.LOAN_RATE(mortgageId), 
       { rate }, 
       'update mortgage rate'
     );

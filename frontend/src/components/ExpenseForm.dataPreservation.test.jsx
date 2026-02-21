@@ -259,12 +259,22 @@ describe('ExpenseForm - Data Preservation During Collapse', () => {
     const user = userEvent.setup();
     render(<ExpenseForm onExpenseAdded={vi.fn()} people={mockPeople} />);
 
-    // Wait for form to load
+    // Wait for form to load and all async mocks to settle
     await waitFor(() => {
       expect(screen.getByLabelText(/^Date \*/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/Type/i)).toBeInTheDocument();
     });
 
-    // Fill in core fields and select medical type
+    // Fill in core fields — select category first to avoid place-triggered
+    // category suggestion fetch racing with the manual category selection
+    const typeSelect = screen.getByLabelText(/Type/i);
+    await user.selectOptions(typeSelect, 'Tax - Medical');
+
+    // Wait for insurance section to render after category change
+    await waitFor(() => {
+      expect(screen.getByLabelText(/Eligible for Insurance Reimbursement/i)).toBeInTheDocument();
+    }, { timeout: 3000 });
+
     const dateInput = screen.getByLabelText(/^Date \*/i);
     await user.clear(dateInput);
     await user.type(dateInput, '2024-06-15');
@@ -272,16 +282,8 @@ describe('ExpenseForm - Data Preservation During Collapse', () => {
     const placeInput = screen.getByLabelText(/Place/i);
     await user.type(placeInput, 'Hospital');
     
-    const typeSelect = screen.getByLabelText(/Type/i);
-    await user.selectOptions(typeSelect, 'Tax - Medical');
-    
     const amountInput = screen.getByLabelText(/Amount/i);
     await user.type(amountInput, '200');
-
-    // Wait for insurance checkbox to appear
-    await waitFor(() => {
-      expect(screen.getByLabelText(/Eligible for Insurance Reimbursement/i)).toBeInTheDocument();
-    }, { timeout: 3000 });
 
     // Enable insurance
     const insuranceCheckbox = screen.getByLabelText(/Eligible for Insurance Reimbursement/i);

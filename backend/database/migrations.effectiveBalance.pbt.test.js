@@ -2,6 +2,10 @@
  * Property-Based Tests for Effective Balance Column Migration & Persistence
  * Feature: billing-cycle-simplification
  *
+ * @invariant Persisted effective_balance/balance_type columns match utility output on create/update
+ * @invariant Migration backfill matches utility for all existing records
+ * @invariant Application functions identically with or without persisted columns
+ *
  * Property 5: Persisted effective balance columns match utility on create/update
  * Property 6: Migration backfill correctness
  * Property 7: Application functions identically with or without persisted columns

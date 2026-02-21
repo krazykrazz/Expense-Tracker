@@ -2,6 +2,9 @@
  * Property-Based Tests for Effective Balance Utility
  * Feature: billing-cycle-simplification, Property 1: Effective balance utility equivalence
  *
+ * @invariant Effective balance utility produces identical results to original
+ * BillingCycleHistoryService.calculateEffectiveBalance for all valid billing cycle records
+ *
  * Tests that the extracted effectiveBalanceUtil.calculateEffectiveBalance produces
  * identical results to the original BillingCycleHistoryService.calculateEffectiveBalance
  * for all valid billing cycle records.

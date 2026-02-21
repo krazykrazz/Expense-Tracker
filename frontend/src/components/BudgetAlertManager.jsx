@@ -154,6 +154,8 @@ const BudgetAlertManager = ({
     return `${year}-${month}-${refreshTrigger}`;
   }, []);
 
+  const calculateAlertsFromBudgetsRef = useRef(null);
+
   /**
    * Debounced alert calculation to prevent rapid updates
    * Requirements: 7.2 - Batch alert updates to minimize re-renders
@@ -166,7 +168,7 @@ const BudgetAlertManager = ({
 
     // Set new timer
     debounceTimerRef.current = setTimeout(() => {
-      calculateAlertsFromBudgets(year, month, refreshTrigger);
+      calculateAlertsFromBudgetsRef.current?.(year, month, refreshTrigger);
     }, DEBOUNCE_DELAY);
   }, []);
 
@@ -225,6 +227,9 @@ const BudgetAlertManager = ({
       setLoading(false);
     }
   }, [getCacheKey, transformBudgetData]);
+
+  // Keep ref in sync so debounced callback always calls latest version
+  calculateAlertsFromBudgetsRef.current = calculateAlertsFromBudgets;
 
   /**
    * Load dismissal state from sessionStorage on mount

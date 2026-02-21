@@ -12,7 +12,7 @@ import {
 } from '../services/budgetApi';
 import { getCategories } from '../services/categoriesApi';
 import { validateAmount } from '../utils/validation';
-import { getMonthNameLong, getMonthNameShort } from '../utils/formatters';
+import { getMonthNameLong, getMonthNameShort, formatCAD } from '../utils/formatters';
 import { createLogger } from '../utils/logger';
 import BudgetCard from './BudgetCard';
 import BudgetProgressBar from './BudgetProgressBar';
@@ -194,8 +194,7 @@ const ManageTabContent = ({ year, month, onBudgetUpdated, focusedCategory }) => 
     }
   };
 
-  const formatCurrency = (amount) =>
-    new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
+  const formatCurrency = (amount) => formatCAD(amount);
 
   return (
     <div className="budgets-tab-panel">
@@ -441,8 +440,7 @@ const HistoryTabContent = ({ year, month }) => {
     URL.revokeObjectURL(url);
   };
 
-  const formatCurrency = (amount) =>
-    new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
+  const formatCurrency = (amount) => formatCAD(amount);
 
   const formatPercentage = (value) => `${value.toFixed(1)}%`;
 

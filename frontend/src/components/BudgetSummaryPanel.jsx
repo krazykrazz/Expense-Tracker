@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { formatCAD } from '../utils/formatters';
 import BudgetCard from './BudgetCard';
 import BudgetProgressBar from './BudgetProgressBar';
 import { getBudgets, getBudgetSummary } from '../services/budgetApi';
@@ -47,15 +48,8 @@ const BudgetSummaryPanel = ({ year, month, onManageBudgets, refreshTrigger = 0 }
     fetchBudgetData();
   }, [year, month, refreshTrigger]);
 
-  // Format currency
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-CA', {
-      style: 'currency',
-      currency: 'CAD',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(Math.abs(amount));
-  };
+  // Format currency - uses cached formatter
+  const formatCurrency = (amount) => formatCAD(Math.abs(amount));
 
   if (loading) {
     return (

@@ -13,6 +13,7 @@ import InsuranceClaimReminderBanner from './InsuranceClaimReminderBanner';
 import BudgetAlertManager from './BudgetAlertManager';
 import NotificationsSection from './NotificationsSection';
 import AutoLogPrompt from './AutoLogPrompt';
+import { formatCAD as formatCurrency } from '../utils/formatters';
 import './SummaryPanel.css';
 
 const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
@@ -395,12 +396,12 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
    * Navigate to expense list filtered by category
    * _Requirements: 6.4_
    */
-  const handleBudgetAlertReminderClick = (category) => {
+  const handleBudgetAlertReminderClick = useCallback((category) => {
     // Dispatch custom event to navigate to expense list with category filter
     window.dispatchEvent(new CustomEvent('navigateToExpenseList', {
       detail: { categoryFilter: category }
     }));
-  };
+  }, []);
 
   /**
    * Handle auto-log payment confirmation
@@ -468,13 +469,7 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
 
 
 
-  // Format currency
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-CA', {
-      style: 'currency',
-      currency: 'CAD'
-    }).format(amount);
-  };
+  // Format currency - uses cached formatter from formatters.js
 
   // Get month name from month number
   const getMonthName = (monthNumber) => {

@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { recordPayment } from '../services/creditCardApi';
+import { formatCAD as formatCurrency } from '../utils/formatters';
 import { createLogger } from '../utils/logger';
 import './CreditCardPaymentForm.css';
 
@@ -38,14 +39,6 @@ const CreditCardPaymentForm = ({
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
-
-  // Format currency for display
-  const formatCurrency = (value) => {
-    return new Intl.NumberFormat('en-CA', {
-      style: 'currency',
-      currency: 'CAD'
-    }).format(value || 0);
-  };
 
   // Validate form data
   const validateForm = useCallback(() => {

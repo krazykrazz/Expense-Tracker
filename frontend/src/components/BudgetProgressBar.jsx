@@ -1,4 +1,5 @@
 import React from 'react';
+import { formatCAD } from '../utils/formatters';
 import './BudgetProgressBar.css';
 
 /**
@@ -33,15 +34,8 @@ const BudgetProgressBar = ({ category, budgetLimit, spent, showAlert = true }) =
   // Determine if we should show alert indicators
   const shouldShowAlert = showAlert && progress >= 80;
   
-  // Format currency
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-CA', {
-      style: 'currency',
-      currency: 'CAD',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(Math.abs(amount));
-  };
+  // Format currency - uses cached formatter
+  const formatCurrency = (amount) => formatCAD(Math.abs(amount));
   
   return (
     <div className="budget-progress-bar">

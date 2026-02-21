@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { getBillingCyclePdfUrl } from '../services/creditCardApi';
+import { formatCAD } from '../utils/formatters';
 import './BillingCycleHistoryList.css';
 
 /**
@@ -21,10 +22,7 @@ const BillingCycleHistoryList = ({
   onEdit = () => {},
   onDelete = () => {},
   onViewPdf = () => {},
-  formatCurrency = (value) => new Intl.NumberFormat('en-CA', {
-    style: 'currency',
-    currency: 'CAD'
-  }).format(value || 0),
+  formatCurrency = (value) => formatCAD(value || 0),
   formatDate = (dateString) => {
     if (!dateString) return '';
     const parts = dateString.split('-');

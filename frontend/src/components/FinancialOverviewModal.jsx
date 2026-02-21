@@ -8,7 +8,7 @@ import { getPaymentMethods, getPaymentMethod, deletePaymentMethod, setPaymentMet
 import { getStatementBalance } from '../services/creditCardApi';
 import CreditCardPaymentForm from './CreditCardPaymentForm';
 import { validateName, validateAmount } from '../utils/validation';
-import { formatCurrency, formatDate } from '../utils/formatters';
+import { formatCurrency, formatDate, formatCAD } from '../utils/formatters';
 import { createLogger } from '../utils/logger';
 import LoanDetailView from './LoanDetailView';
 import TotalDebtView from './TotalDebtView';
@@ -776,8 +776,7 @@ const PaymentMethodsTabContent = ({ onUpdate }) => {
     return 'good';
   };
 
-  const formatCurrencyLocal = (amount) =>
-    new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(amount || 0);
+  const formatCurrencyLocal = (amount) => formatCAD(amount || 0);
 
   if (showAddForm) {
     return (

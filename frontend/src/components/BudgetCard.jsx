@@ -1,4 +1,5 @@
 import React from 'react';
+import { formatCAD } from '../utils/formatters';
 import BudgetProgressBar from './BudgetProgressBar';
 import TrendIndicator from './TrendIndicator';
 import './BudgetCard.css';
@@ -31,15 +32,8 @@ const BudgetCard = ({ category, budgetLimit, spent, previousMonthSpent = null })
     return icons[cat] || '💰';
   };
   
-  // Format currency
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-CA', {
-      style: 'currency',
-      currency: 'CAD',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(Math.abs(amount));
-  };
+  // Format currency - uses cached formatter
+  const formatCurrency = (amount) => formatCAD(Math.abs(amount));
   
   return (
     <div className="budget-card">

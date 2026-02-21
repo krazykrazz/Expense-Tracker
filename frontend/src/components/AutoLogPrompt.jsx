@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { formatCAD as formatCurrency } from '../utils/formatters';
 import './AutoLogPrompt.css';
 
 /**
@@ -25,16 +26,6 @@ const AutoLogPrompt = ({
 
   const currentSuggestion = suggestions[currentIndex];
   const hasMultiple = suggestions.length > 1;
-
-  /**
-   * Format currency for display
-   */
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-CA', {
-      style: 'currency',
-      currency: 'CAD'
-    }).format(amount || 0);
-  };
 
   /**
    * Format loan type for display

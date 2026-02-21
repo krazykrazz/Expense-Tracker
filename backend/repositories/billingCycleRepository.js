@@ -27,15 +27,13 @@ class BillingCycleRepository {
     const db = await getDatabase();
     
     return new Promise((resolve, reject) => {
-      const sql = `
-        INSERT INTO credit_card_billing_cycles (
-          payment_method_id, cycle_start_date, cycle_end_date,
-          actual_statement_balance, calculated_statement_balance,
-          minimum_payment, notes, statement_pdf_path, is_user_entered
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `;
-      
-      const params = [
+      // Build column list and params dynamically to support optional effective_balance/balance_type
+      const columns = [
+        'payment_method_id', 'cycle_start_date', 'cycle_end_date',
+        'actual_statement_balance', 'calculated_statement_balance',
+        'minimum_payment', 'notes', 'statement_pdf_path', 'is_user_entered'
+      ];
+      const values = [
         data.payment_method_id,
         data.cycle_start_date,
         data.cycle_end_date,
@@ -46,36 +44,79 @@ class BillingCycleRepository {
         data.statement_pdf_path || null,
         data.is_user_entered || 0
       ];
+
+      // Include persisted effective balance columns when provided
+      if (data.effective_balance !== undefined && data.effective_balance !== null) {
+        columns.push('effective_balance', 'balance_type');
+        values.push(data.effective_balance, data.balance_type || 'calculated');
+      }
+
+      const placeholders = columns.map(() => '?').join(', ');
+      const sql = `
+        INSERT INTO credit_card_billing_cycles (${columns.join(', ')})
+        VALUES (${placeholders})
+      `;
       
-      db.run(sql, params, function(err) {
+      db.run(sql, values, function(err) {
         if (err) {
+          // If the error is about unknown columns, retry without them
+          if (err.message && err.message.includes('effective_balance')) {
+            const fallbackSql = `
+              INSERT INTO credit_card_billing_cycles (
+                payment_method_id, cycle_start_date, cycle_end_date,
+                actual_statement_balance, calculated_statement_balance,
+                minimum_payment, notes, statement_pdf_path, is_user_entered
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `;
+            const fallbackParams = [
+              data.payment_method_id, data.cycle_start_date, data.cycle_end_date,
+              data.actual_statement_balance, data.calculated_statement_balance,
+              data.minimum_payment || null, data.notes || null,
+              data.statement_pdf_path || null, data.is_user_entered || 0
+            ];
+            db.run(fallbackSql, fallbackParams, function(fallbackErr) {
+              if (fallbackErr) {
+                logger.error('Failed to create billing cycle:', fallbackErr);
+                reject(fallbackErr);
+                return;
+              }
+              resolveCreated(this.lastID, data, resolve);
+            });
+            return;
+          }
           logger.error('Failed to create billing cycle:', err);
           reject(err);
           return;
         }
         
-        logger.debug('Created billing cycle:', { 
-          id: this.lastID, 
-          paymentMethodId: data.payment_method_id,
-          cycleEndDate: data.cycle_end_date,
-          hasPdf: !!data.statement_pdf_path,
-          isUserEntered: data.is_user_entered || 0
-        });
-        
-        resolve({
-          id: this.lastID,
-          payment_method_id: data.payment_method_id,
-          cycle_start_date: data.cycle_start_date,
-          cycle_end_date: data.cycle_end_date,
-          actual_statement_balance: data.actual_statement_balance,
-          calculated_statement_balance: data.calculated_statement_balance,
-          minimum_payment: data.minimum_payment || null,
-          notes: data.notes || null,
-          statement_pdf_path: data.statement_pdf_path || null,
-          is_user_entered: data.is_user_entered || 0
-        });
+        resolveCreated(this.lastID, data, resolve);
       });
     });
+
+    function resolveCreated(id, data, resolve) {
+      logger.debug('Created billing cycle:', { 
+        id, 
+        paymentMethodId: data.payment_method_id,
+        cycleEndDate: data.cycle_end_date,
+        hasPdf: !!data.statement_pdf_path,
+        isUserEntered: data.is_user_entered || 0
+      });
+      
+      resolve({
+        id,
+        payment_method_id: data.payment_method_id,
+        cycle_start_date: data.cycle_start_date,
+        cycle_end_date: data.cycle_end_date,
+        actual_statement_balance: data.actual_statement_balance,
+        calculated_statement_balance: data.calculated_statement_balance,
+        minimum_payment: data.minimum_payment || null,
+        notes: data.notes || null,
+        statement_pdf_path: data.statement_pdf_path || null,
+        is_user_entered: data.is_user_entered || 0,
+        effective_balance: data.effective_balance !== undefined ? data.effective_balance : undefined,
+        balance_type: data.balance_type !== undefined ? data.balance_type : undefined
+      });
+    }
   }
 
   /**
@@ -249,17 +290,15 @@ class BillingCycleRepository {
           return;
         }
         
-        const sql = `
-          UPDATE credit_card_billing_cycles 
-          SET actual_statement_balance = ?,
-              minimum_payment = ?,
-              notes = ?,
-              statement_pdf_path = ?,
-              is_user_entered = ?,
-              updated_at = CURRENT_TIMESTAMP
-          WHERE id = ?
-        `;
-        
+        // Build SET clause dynamically to support optional effective_balance/balance_type
+        const setClauses = [
+          'actual_statement_balance = ?',
+          'minimum_payment = ?',
+          'notes = ?',
+          'statement_pdf_path = ?',
+          'is_user_entered = ?',
+          'updated_at = CURRENT_TIMESTAMP'
+        ];
         const params = [
           data.actual_statement_balance !== undefined 
             ? data.actual_statement_balance 
@@ -267,12 +306,65 @@ class BillingCycleRepository {
           data.minimum_payment !== undefined ? data.minimum_payment : existing.minimum_payment,
           data.notes !== undefined ? data.notes : existing.notes,
           data.statement_pdf_path !== undefined ? data.statement_pdf_path : existing.statement_pdf_path,
-          data.is_user_entered !== undefined ? data.is_user_entered : (existing.is_user_entered || 0),
-          id
+          data.is_user_entered !== undefined ? data.is_user_entered : (existing.is_user_entered || 0)
         ];
+
+        // Include persisted effective balance columns when provided
+        if (data.effective_balance !== undefined) {
+          setClauses.splice(setClauses.length - 1, 0, 'effective_balance = ?', 'balance_type = ?');
+          params.push(data.effective_balance, data.balance_type || 'calculated');
+        }
+
+        params.push(id);
+
+        const sql = `
+          UPDATE credit_card_billing_cycles 
+          SET ${setClauses.join(',\n              ')}
+          WHERE id = ?
+        `;
         
         db.run(sql, params, function(err) {
           if (err) {
+            // If the error is about unknown columns, retry without them
+            if (err.message && err.message.includes('effective_balance')) {
+              const fallbackSql = `
+                UPDATE credit_card_billing_cycles 
+                SET actual_statement_balance = ?,
+                    minimum_payment = ?,
+                    notes = ?,
+                    statement_pdf_path = ?,
+                    is_user_entered = ?,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+              `;
+              const fallbackParams = [
+                data.actual_statement_balance !== undefined 
+                  ? data.actual_statement_balance 
+                  : existing.actual_statement_balance,
+                data.minimum_payment !== undefined ? data.minimum_payment : existing.minimum_payment,
+                data.notes !== undefined ? data.notes : existing.notes,
+                data.statement_pdf_path !== undefined ? data.statement_pdf_path : existing.statement_pdf_path,
+                data.is_user_entered !== undefined ? data.is_user_entered : (existing.is_user_entered || 0),
+                id
+              ];
+              db.run(fallbackSql, fallbackParams, function(fallbackErr) {
+                if (fallbackErr) {
+                  logger.error('Failed to update billing cycle:', fallbackErr);
+                  reject(fallbackErr);
+                  return;
+                }
+                if (this.changes === 0) {
+                  resolve(null);
+                  return;
+                }
+                logger.debug('Updated billing cycle (fallback):', { id, changes: this.changes });
+                db.get('SELECT * FROM credit_card_billing_cycles WHERE id = ?', [id], (err, row) => {
+                  if (err) { reject(err); return; }
+                  resolve(row);
+                });
+              });
+              return;
+            }
             logger.error('Failed to update billing cycle:', err);
             reject(err);
             return;
@@ -305,19 +397,52 @@ class BillingCycleRepository {
    * @param {number} calculatedBalance - New calculated balance
    * @returns {Promise<boolean>} True if updated, false if not found
    */
-  async updateCalculatedBalance(id, calculatedBalance) {
+  async updateCalculatedBalance(id, calculatedBalance, effectiveBalanceData) {
     const db = await getDatabase();
 
     return new Promise((resolve, reject) => {
+      // Build SET clause — include effective_balance/balance_type if provided
+      const setClauses = [
+        'calculated_statement_balance = ?',
+        'updated_at = CURRENT_TIMESTAMP'
+      ];
+      const params = [calculatedBalance];
+
+      if (effectiveBalanceData && effectiveBalanceData.effective_balance !== undefined) {
+        setClauses.splice(setClauses.length - 1, 0, 'effective_balance = ?', 'balance_type = ?');
+        params.push(effectiveBalanceData.effective_balance, effectiveBalanceData.balance_type || 'calculated');
+      }
+
+      params.push(id);
+
       const sql = `
         UPDATE credit_card_billing_cycles 
-        SET calculated_statement_balance = ?,
-            updated_at = CURRENT_TIMESTAMP
+        SET ${setClauses.join(', ')}
         WHERE id = ?
       `;
 
-      db.run(sql, [calculatedBalance, id], function(err) {
+      db.run(sql, params, function(err) {
         if (err) {
+          // If error is about unknown columns, retry without them
+          if (err.message && err.message.includes('effective_balance')) {
+            const fallbackSql = `
+              UPDATE credit_card_billing_cycles 
+              SET calculated_statement_balance = ?,
+                  updated_at = CURRENT_TIMESTAMP
+              WHERE id = ?
+            `;
+            db.run(fallbackSql, [calculatedBalance, id], function(fallbackErr) {
+              if (fallbackErr) {
+                logger.error('Failed to update calculated balance:', fallbackErr);
+                reject(fallbackErr);
+                return;
+              }
+              const updated = this.changes > 0;
+              logger.debug('Updated calculated balance (fallback):', { id, calculatedBalance, updated });
+              resolve(updated);
+            });
+            return;
+          }
           logger.error('Failed to update calculated balance:', err);
           reject(err);
           return;

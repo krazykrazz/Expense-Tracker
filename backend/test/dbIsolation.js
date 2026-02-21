@@ -381,6 +381,8 @@ function createSchema(db) {
       notes TEXT,
       statement_pdf_path TEXT,
       is_user_entered INTEGER DEFAULT 0,
+      effective_balance REAL,
+      balance_type TEXT CHECK(balance_type IS NULL OR balance_type IN ('actual', 'calculated')),
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (payment_method_id) REFERENCES payment_methods(id) ON DELETE CASCADE,

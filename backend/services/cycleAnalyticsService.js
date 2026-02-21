@@ -1,0 +1,267 @@
+const billingCycleRepository = require('../repositories/billingCycleRepository');
+const { calculateEffectiveBalance } = require('../utils/effectiveBalanceUtil');
+const logger = require('../config/logger');
+
+/**
+ * CycleAnalyticsService
+ * Handles discrepancy detection, trend indicator calculation, transaction counting,
+ * and the unified billing cycle enrichment logic.
+ * Extracted from BillingCycleHistoryService as part of the billing cycle simplification.
+ *
+ * Dependencies:
+ *   - billingCycleRepository: data access for billing cycle records
+ *   - effectiveBalanceUtil: effective balance determination
+ *   - cycleGenerationService: auto-generation and balance recalculation (lazy-loaded)
+ *   - cycleCrudService: payment method validation (lazy-loaded)
+ *
+ * _Requirements: 4.2, 4.4, 5.3_
+ */
+
+/**
+ * Lazy-load cycleGenerationService to avoid circular dependencies.
+ */
+function getCycleGenerationService() {
+  return require('./cycleGenerationService');
+}
+
+/**
+ * Lazy-load cycleCrudService for validatePaymentMethod.
+ */
+function getCycleCrudService() {
+  return require('./cycleCrudService');
+}
+
+/**
+ * Calculate discrepancy between actual and calculated balance.
+ * Retained for backend consumers (e.g., activity logging in cycleCrudService).
+ *
+ * @param {number} actualBalance - User-provided actual statement balance
+ * @param {number} calculatedBalance - System-calculated statement balance
+ * @returns {{ amount: number, type: 'higher'|'lower'|'match', description: string }}
+ */
+function calculateDiscrepancy(actualBalance, calculatedBalance) {
+  const amount = actualBalance - calculatedBalance;
+  const roundedAmount = Math.round(amount * 100) / 100;
+
+  let type, description;
+
+  if (roundedAmount > 0) {
+    type = 'higher';
+    description = `Actual balance is $${Math.abs(roundedAmount).toFixed(2)} higher than tracked (potential untracked expenses)`;
+  } else if (roundedAmount < 0) {
+    type = 'lower';
+    description = `Actual balance is $${Math.abs(roundedAmount).toFixed(2)} lower than tracked (potential untracked returns/credits)`;
+  } else {
+    type = 'match';
+    description = 'Tracking is accurate';
+  }
+
+  return { amount: roundedAmount, type, description };
+}
+
+/**
+ * Calculate trend indicator comparing current and previous cycle balances.
+ *
+ * @param {number} currentEffectiveBalance - Current cycle effective balance
+ * @param {number|null|undefined} previousEffectiveBalance - Previous cycle effective balance
+ * @returns {Object|null} Trend indicator or null if no previous cycle
+ */
+function calculateTrendIndicator(currentEffectiveBalance, previousEffectiveBalance) {
+  // Return null if no previous cycle to compare against
+  if (previousEffectiveBalance === null || previousEffectiveBalance === undefined) {
+    return null;
+  }
+
+  const difference = currentEffectiveBalance - previousEffectiveBalance;
+  const absoluteDiff = Math.abs(difference);
+  const roundedDiff = Math.round(absoluteDiff * 100) / 100;
+
+  // $1 tolerance for "same" classification
+  if (roundedDiff <= 1.00) {
+    return {
+      type: 'same',
+      icon: '✓',
+      amount: 0,
+      cssClass: 'trend-same'
+    };
+  }
+
+  if (difference > 0) {
+    return {
+      type: 'higher',
+      icon: '↑',
+      amount: roundedDiff,
+      cssClass: 'trend-higher'
+    };
+  }
+
+  return {
+    type: 'lower',
+    icon: '↓',
+    amount: roundedDiff,
+    cssClass: 'trend-lower'
+  };
+}
+
+/**
+ * Get the count of expense transactions in a billing cycle period.
+ *
+ * @param {number} paymentMethodId - Payment method ID
+ * @param {string} startDate - Cycle start date (YYYY-MM-DD)
+ * @param {string} endDate - Cycle end date (YYYY-MM-DD)
+ * @returns {Promise<number>} Transaction count
+ */
+async function getTransactionCount(paymentMethodId, startDate, endDate) {
+  const { getDatabase } = require('../database/db');
+  const db = await getDatabase();
+
+  return new Promise((resolve, reject) => {
+    const sql = `
+      SELECT COUNT(*) as count
+      FROM expenses
+      WHERE payment_method_id = ?
+        AND COALESCE(posted_date, date) >= ?
+        AND COALESCE(posted_date, date) <= ?
+    `;
+
+    db.get(sql, [paymentMethodId, startDate, endDate], (err, row) => {
+      if (err) {
+        logger.error('Failed to get transaction count:', err);
+        reject(err);
+        return;
+      }
+      resolve(row?.count || 0);
+    });
+  });
+}
+
+/**
+ * Get unified billing cycles with enrichment (effective balance, trend, transaction count).
+ * Auto-generates missing cycles if requested.
+ *
+ * @param {number} paymentMethodId - Payment method ID
+ * @param {Object} [options] - Options
+ * @param {number} [options.limit=12] - Maximum number of cycles to return
+ * @param {boolean} [options.includeAutoGenerate=true] - Whether to auto-generate missing cycles
+ * @param {Date} [options.referenceDate=new Date()] - Reference date for auto-generation
+ * @returns {Promise<{billingCycles: Array, autoGeneratedCount: number, totalCount: number}>}
+ */
+async function getUnifiedBillingCycles(paymentMethodId, options = {}) {
+  const cycleGenerationService = getCycleGenerationService();
+  const cycleCrudService = getCycleCrudService();
+
+  const {
+    limit = 12,
+    includeAutoGenerate = true,
+    referenceDate = new Date()
+  } = options;
+
+  // Validate payment method
+  const paymentMethod = await cycleCrudService.validatePaymentMethod(paymentMethodId);
+
+  let autoGeneratedCount = 0;
+
+  // Auto-generate missing cycles if requested
+  if (includeAutoGenerate) {
+    const generated = await cycleGenerationService.autoGenerateBillingCycles(
+      paymentMethodId,
+      paymentMethod.billing_cycle_day,
+      referenceDate
+    );
+    autoGeneratedCount = generated.length;
+  }
+
+  // Get all billing cycles (sorted by cycle_end_date DESC)
+  const cycles = await billingCycleRepository.findByPaymentMethod(paymentMethodId, { limit });
+
+  // Enrich each cycle with effective_balance, balance_type, transaction_count, trend_indicator
+  const enrichedCycles = [];
+
+  for (let i = 0; i < cycles.length; i++) {
+    const cycle = cycles[i];
+
+    // For auto-generated cycles, recalculate the balance from current expenses
+    // so it stays accurate when expenses are added/edited/deleted after generation
+    if (cycle.is_user_entered !== 1) {
+      const freshBalance = await cycleGenerationService.recalculateBalance(
+        paymentMethodId,
+        cycle.cycle_start_date,
+        cycle.cycle_end_date
+      );
+
+      // Update in-memory value for effective balance calculation
+      if (freshBalance !== cycle.calculated_statement_balance) {
+        cycle.calculated_statement_balance = freshBalance;
+
+        // Recompute effective balance for the updated cycle
+        const recomputed = calculateEffectiveBalance(cycle);
+
+        // Persist the updated balance and effective balance back to the database
+        await billingCycleRepository.updateCalculatedBalance(cycle.id, freshBalance, {
+          effective_balance: recomputed.effectiveBalance,
+          balance_type: recomputed.balanceType
+        });
+      }
+    }
+
+    // Calculate effective balance — use persisted columns if available, fall back to utility
+    let effectiveBalance, balanceType;
+    if (cycle.effective_balance !== null && cycle.effective_balance !== undefined &&
+        cycle.balance_type !== null && cycle.balance_type !== undefined) {
+      effectiveBalance = cycle.effective_balance;
+      balanceType = cycle.balance_type;
+    } else {
+      const computed = calculateEffectiveBalance(cycle);
+      effectiveBalance = computed.effectiveBalance;
+      balanceType = computed.balanceType;
+    }
+
+    // Get transaction count
+    const transactionCount = await getTransactionCount(
+      paymentMethodId,
+      cycle.cycle_start_date,
+      cycle.cycle_end_date
+    );
+
+    // Calculate trend indicator (compare with previous cycle)
+    let trendIndicator = null;
+    if (i < cycles.length - 1) {
+      const previousCycle = cycles[i + 1];
+      let previousEffectiveBalance;
+      if (previousCycle.effective_balance !== null && previousCycle.effective_balance !== undefined &&
+          previousCycle.balance_type !== null && previousCycle.balance_type !== undefined) {
+        previousEffectiveBalance = previousCycle.effective_balance;
+      } else {
+        previousEffectiveBalance = calculateEffectiveBalance(previousCycle).effectiveBalance;
+      }
+      trendIndicator = calculateTrendIndicator(effectiveBalance, previousEffectiveBalance);
+    }
+
+    enrichedCycles.push({
+      ...cycle,
+      effective_balance: effectiveBalance,
+      balance_type: balanceType,
+      transaction_count: transactionCount,
+      trend_indicator: trendIndicator
+    });
+  }
+
+  logger.debug('Retrieved unified billing cycles:', {
+    paymentMethodId,
+    count: enrichedCycles.length,
+    autoGeneratedCount
+  });
+
+  return {
+    billingCycles: enrichedCycles,
+    autoGeneratedCount,
+    totalCount: enrichedCycles.length
+  };
+}
+
+module.exports = {
+  calculateDiscrepancy,
+  calculateTrendIndicator,
+  getTransactionCount,
+  getUnifiedBillingCycles
+};

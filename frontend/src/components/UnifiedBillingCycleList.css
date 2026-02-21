@@ -169,6 +169,35 @@
   white-space: nowrap;
 }
 
+/* Discrepancy Indicator */
+.unified-cycle-discrepancy {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--text-sm);
+  padding: 2px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.unified-cycle-discrepancy.discrepancy-higher {
+  background-color: rgba(245, 158, 11, 0.15);
+  color: var(--color-warning);
+}
+
+.unified-cycle-discrepancy.discrepancy-lower {
+  background-color: rgba(59, 130, 246, 0.15);
+  color: var(--color-info);
+}
+
+.discrepancy-icon {
+  font-size: var(--text-base);
+}
+
+.discrepancy-amount {
+  white-space: nowrap;
+}
+
 /* Trend Indicator */
 .unified-cycle-trend {
   display: flex;
@@ -403,6 +432,7 @@
   .unified-cycle-period,
   .unified-cycle-balance,
   .unified-cycle-transactions,
+  .unified-cycle-discrepancy,
   .unified-cycle-trend,
   .unified-cycle-actions {
     grid-column: 1;

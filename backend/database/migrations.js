@@ -5313,6 +5313,134 @@ async function migrateRemoveCategoryCheckConstraints(db) {
 }
 
 /**
+ * Migration: Add effective_balance and balance_type columns to credit_card_billing_cycles
+ *
+ * Persists the computed effective balance and its type directly in the database
+ * to avoid recomputing on every request. The columns are nullable so the app
+ * falls back to in-memory computation via effectiveBalanceUtil when absent.
+ *
+ * Backfills existing records using the same logic as effectiveBalanceUtil:
+ *   - is_user_entered = 1 → actual balance, type 'actual'
+ *   - actual_statement_balance non-null and non-zero → actual balance, type 'actual'
+ *   - otherwise → calculated balance, type 'calculated'
+ *
+ * Requirements: 6.1, 6.3, 6.6
+ */
+async function migrateAddEffectiveBalanceColumns(db) {
+  const migrationName = 'add_effective_balance_columns_v1';
+
+  const isApplied = await checkMigrationApplied(db, migrationName);
+  if (isApplied) {
+    logger.debug(`Migration "${migrationName}" already applied, skipping`);
+    return;
+  }
+
+  logger.info(`Running migration: ${migrationName}`);
+
+  await createBackup();
+
+  return new Promise((resolve, reject) => {
+    db.serialize(() => {
+      db.run('BEGIN TRANSACTION', (err) => {
+        if (err) {
+          return reject(err);
+        }
+
+        // Check if credit_card_billing_cycles table exists
+        db.get(
+          "SELECT name FROM sqlite_master WHERE type='table' AND name='credit_card_billing_cycles'",
+          (err, row) => {
+            if (err) {
+              db.run('ROLLBACK');
+              return reject(err);
+            }
+
+            if (!row) {
+              logger.info('credit_card_billing_cycles table does not exist, skipping migration');
+              markMigrationApplied(db, migrationName).then(() => {
+                db.run('COMMIT', (err) => {
+                  if (err) {
+                    db.run('ROLLBACK');
+                    return reject(err);
+                  }
+                  resolve();
+                });
+              }).catch(reject);
+              return;
+            }
+
+            // Add effective_balance column
+            db.run(
+              `ALTER TABLE credit_card_billing_cycles ADD COLUMN effective_balance REAL`,
+              (err) => {
+                if (err && !err.message.includes('duplicate column')) {
+                  db.run('ROLLBACK');
+                  return reject(err);
+                }
+                if (err) {
+                  logger.info('effective_balance column already exists');
+                }
+
+                // Add balance_type column
+                db.run(
+                  `ALTER TABLE credit_card_billing_cycles ADD COLUMN balance_type TEXT CHECK(balance_type IS NULL OR balance_type IN ('actual', 'calculated'))`,
+                  (err) => {
+                    if (err && !err.message.includes('duplicate column')) {
+                      db.run('ROLLBACK');
+                      return reject(err);
+                    }
+                    if (err) {
+                      logger.info('balance_type column already exists');
+                    }
+
+                    logger.info('Added effective_balance and balance_type columns');
+
+                    // Backfill existing records
+                    db.run(`
+                      UPDATE credit_card_billing_cycles
+                      SET effective_balance = CASE
+                            WHEN is_user_entered = 1 THEN actual_statement_balance
+                            WHEN actual_statement_balance IS NOT NULL AND actual_statement_balance != 0 THEN actual_statement_balance
+                            ELSE COALESCE(calculated_statement_balance, 0)
+                          END,
+                          balance_type = CASE
+                            WHEN is_user_entered = 1 THEN 'actual'
+                            WHEN actual_statement_balance IS NOT NULL AND actual_statement_balance != 0 THEN 'actual'
+                            ELSE 'calculated'
+                          END
+                      WHERE effective_balance IS NULL
+                    `, function(err) {
+                      if (err) {
+                        db.run('ROLLBACK');
+                        return reject(err);
+                      }
+
+                      logger.info(`Backfilled ${this.changes} billing cycle records with effective_balance/balance_type`);
+
+                      markMigrationApplied(db, migrationName).then(() => {
+                        db.run('COMMIT', (err) => {
+                          if (err) {
+                            db.run('ROLLBACK');
+                            return reject(err);
+                          }
+                          logger.info(`Migration "${migrationName}" completed successfully`);
+                          resolve();
+                        });
+                      }).catch(reject);
+                    });
+                  }
+                );
+              }
+            );
+          }
+        );
+      });
+    });
+  });
+}
+
+
+/**
  * Run all pending migrations
  */
 async function runMigrations(db) {
@@ -5355,6 +5483,7 @@ async function runMigrations(db) {
     await migrateFixVehicleMaintenanceConstraints(db);
     await migrateRenameVehicleMaintenanceToAutomotive(db);
     await migrateRemoveCategoryCheckConstraints(db);
+    await migrateAddEffectiveBalanceColumns(db);
     logger.info('All migrations completed');
   } catch (error) {
     logger.error('Migration failed:', error.message);
@@ -5391,5 +5520,6 @@ module.exports = {
   migrateMarkExistingAutoGeneratedCyclesAsReviewed,
   migrateRenameVehicleMaintenanceToAutomotive,
   migrateFixVehicleMaintenanceConstraints,
-  migrateRemoveCategoryCheckConstraints
+  migrateRemoveCategoryCheckConstraints,
+  migrateAddEffectiveBalanceColumns
 };

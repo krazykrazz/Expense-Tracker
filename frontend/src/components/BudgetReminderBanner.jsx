@@ -1,4 +1,5 @@
 import React from 'react';
+import { formatCAD as formatCurrency } from '../utils/formatters';
 import './BudgetReminderBanner.css';
 
 /**
@@ -15,16 +16,6 @@ const BudgetReminderBanner = ({
   if (!alerts || alerts.length === 0) {
     return null;
   }
-
-  /**
-   * Format currency for display
-   */
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-CA', {
-      style: 'currency',
-      currency: 'CAD'
-    }).format(amount || 0);
-  };
 
   /**
    * Get severity indicator based on alert severity

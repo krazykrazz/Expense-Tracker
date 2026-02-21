@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getPaymentMethod } from '../services/paymentMethodApi';
 import { getPayments, deletePayment, getStatementBalance, deleteBillingCycle, getCurrentCycleStatus, getBillingCyclePdfUrl, getUnifiedBillingCycles } from '../services/creditCardApi';
+import { formatCAD as formatCurrency } from '../utils/formatters';
 import { createLogger } from '../utils/logger';
 import CreditCardPaymentForm from './CreditCardPaymentForm';
 import BillingCycleHistoryForm from './BillingCycleHistoryForm';
@@ -45,14 +46,6 @@ const CreditCardDetailView = ({
   const [editingBillingCycle, setEditingBillingCycle] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [pdfViewerCycle, setPdfViewerCycle] = useState(null);
-
-  // Format currency
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-CA', {
-      style: 'currency',
-      currency: 'CAD'
-    }).format(amount || 0);
-  };
 
   // Format date - handles YYYY-MM-DD strings without timezone shift
   const formatDate = (dateString) => {

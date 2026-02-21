@@ -1,4 +1,5 @@
 import React from 'react';
+import { formatCAD as formatCurrency } from '../utils/formatters';
 import './LoanPaymentReminderBanner.css';
 
 /**
@@ -16,16 +17,6 @@ const LoanPaymentReminderBanner = ({
   if (!payments || payments.length === 0) {
     return null;
   }
-
-  /**
-   * Format currency for display
-   */
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-CA', {
-      style: 'currency',
-      currency: 'CAD'
-    }).format(amount || 0);
-  };
 
   /**
    * Get urgency indicator based on payment status

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { createPayment, updatePayment, getPaymentSuggestion } from '../services/loanPaymentApi';
+import { formatCAD as formatCurrency } from '../utils/formatters';
 import { createLogger } from '../utils/logger';
 import HelpTooltip from './HelpTooltip';
 import './LoanPaymentForm.css';
@@ -82,14 +83,6 @@ const LoanPaymentForm = ({
     } finally {
       setLoadingSuggestion(false);
     }
-  };
-
-  // Format currency for display
-  const formatCurrency = (value) => {
-    return new Intl.NumberFormat('en-CA', {
-      style: 'currency',
-      currency: 'CAD'
-    }).format(value || 0);
   };
 
   // Validate form data

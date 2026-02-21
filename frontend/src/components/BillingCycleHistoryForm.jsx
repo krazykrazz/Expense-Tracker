@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { createBillingCycle, updateBillingCycle, getCurrentCycleStatus, getBillingCyclePdfUrl } from '../services/creditCardApi';
+import { formatCAD as formatCurrency } from '../utils/formatters';
 import { createLogger } from '../utils/logger';
 import HelpTooltip from './HelpTooltip';
 import './BillingCycleHistoryForm.css';
@@ -59,14 +60,6 @@ const BillingCycleHistoryForm = ({
   const [cycleEndDate, setCycleEndDate] = useState(propCycleEndDate || '');
   const [calculatedBalance, setCalculatedBalance] = useState(propCalculatedBalance);
   const [loadingCycleInfo, setLoadingCycleInfo] = useState(false);
-
-  // Format currency for display
-  const formatCurrency = (value) => {
-    return new Intl.NumberFormat('en-CA', {
-      style: 'currency',
-      currency: 'CAD'
-    }).format(value || 0);
-  };
 
   // Format date for display
   const formatDate = (dateString) => {

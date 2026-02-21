@@ -4,6 +4,7 @@
  */
 
 import { createLogger } from './logger';
+import { formatCAD } from './formatters';
 
 const logger = createLogger('BudgetAlerts');
 
@@ -66,14 +67,7 @@ export const getAlertIcon = (severity) => {
  * @param {number} amount - Amount to format
  * @returns {string} Formatted currency string
  */
-const formatCurrency = (amount) => {
-  return new Intl.NumberFormat('en-CA', {
-    style: 'currency',
-    currency: 'CAD',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  }).format(Math.abs(amount));
-};
+const formatCurrency = (amount) => formatCAD(Math.abs(amount));
 
 /**
  * Generate alert message based on budget data and severity

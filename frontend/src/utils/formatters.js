@@ -3,6 +3,27 @@
  */
 
 /**
+ * Cached Intl.NumberFormat instance for CAD currency formatting.
+ * Creating this once at module level avoids the expensive constructor
+ * being called on every render (major perf win in production builds).
+ */
+const cadFormatter = new Intl.NumberFormat('en-CA', {
+  style: 'currency',
+  currency: 'CAD',
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2
+});
+
+/**
+ * Format a number as CAD currency using cached Intl.NumberFormat
+ * @param {number|string} amount - Amount to format
+ * @returns {string} Formatted currency string (e.g., "$1,234.56")
+ */
+export const formatCAD = (amount) => {
+  return cadFormatter.format(parseFloat(amount || 0));
+};
+
+/**
  * Format a number as currency with dollar sign
  * @param {number|string} amount - Amount to format
  * @param {boolean} useLocale - Whether to use locale string formatting (default: true)
@@ -31,7 +52,7 @@ export const formatDate = (dateString) => {
   // This prevents timezone issues where "2026-02-01" becomes "Jan 31" in EST
   if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
     const [year, month, day] = dateString.split('-').map(Number);
-    const date = new Date(year, month - 1, day); // month is 0-indexed
+    const date = new Date(year, month - 1, day);
     return date.toLocaleDateString('en-US', { 
       year: 'numeric', 
       month: 'short', 
@@ -101,7 +122,6 @@ export const formatMonthString = (monthStr) => {
  */
 export const formatLocalDate = (dateString) => {
   if (!dateString) return '';
-  // Parse date string (YYYY-MM-DD) to avoid timezone issues
   const [year, month, day] = dateString.split('-');
   const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
   return date.toLocaleDateString('en-US', { 
@@ -126,8 +146,6 @@ export const formatAmount = (amount) => {
 
 /**
  * Get today's date in YYYY-MM-DD format using local timezone
- * This avoids timezone issues where new Date().toISOString() might return
- * a different date than the user's local date
  * @returns {string} Today's date in YYYY-MM-DD format
  */
 export const getTodayLocalDate = () => {

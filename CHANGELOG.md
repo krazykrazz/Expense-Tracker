@@ -28,6 +28,11 @@
 
 
 
+
+
+## [5.16.3] - 2026-02-20
+
+### Fix flaky insurance checkbox test, deploy script cleanup, documentation audit
 ## [5.16.2] - 2026-02-20
 
 ### Fix SSE high CPU usage from render cascade

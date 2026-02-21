@@ -2,6 +2,11 @@ import { describe, it, expect } from 'vitest';
 import fc from 'fast-check';
 import { API_ENDPOINTS } from './config.js';
 
+/**
+ * @invariant Canonical endpoint functions produce correct URL patterns for all valid IDs
+ * @invariant No duplicate/alias endpoints exist in the config - each resource has exactly one canonical endpoint
+ */
+
 // Feature: config-endpoint-cleanup, Property 1: Canonical endpoint URL equivalence
 describe('Config Endpoint Cleanup - Canonical endpoint URL equivalence', () => {
   const idArb = fc.integer({ min: 1, max: 999999 });

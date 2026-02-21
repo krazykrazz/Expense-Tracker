@@ -7,6 +7,9 @@
     and writes a structured summary to test-failure-summary.txt in the project root.
     Raw output is saved to test-backend-raw.txt and test-frontend-raw.txt for detailed review.
 
+    The summary includes inline failure details: test name, error message, counterexample
+    (for PBT), and source location — so you rarely need to open the raw files.
+
 .PARAMETER SkipBackend
     Skip backend tests.
 
@@ -46,13 +49,12 @@ $branch = & git -C $projectRoot branch --show-current 2>$null
 if (-not $branch) { $branch = "(unknown)" }
 
 $separator = "============================================"
-$subSeparator = "-- {0} {1}" 
+$subSeparator = "-- {0} {1}"
 
 # ── Helpers ──────────────────────────────────────────────
 
 function Strip-Ansi {
     param([string]$text)
-    # Remove ANSI escape sequences
     return $text -replace '\x1b\[[0-9;]*m', '' -replace '\[[\d;]*m', ''
 }
 
@@ -68,7 +70,6 @@ function Parse-JestOutput {
     foreach ($rawLine in $lines) {
         $line = Strip-Ansi $rawLine
 
-        # Parse summary lines
         if ($line -match "Test Suites:\s*(.+)") {
             $parts = $Matches[1]
             if ($parts -match "(\d+)\s+failed") { $results.SuitesFailed = [int]$Matches[1] }
@@ -82,11 +83,7 @@ function Parse-JestOutput {
             if ($parts -match "(\d+)\s+total")  { $results.Tests = [int]$Matches[1] }
         }
 
-        # Capture failed suite names
-        # Jest FAIL lines: "FAIL services/foo.test.js (5.2 s)" or "FAIL services/foo.test.js"
-        # Must start with FAIL (after optional whitespace), followed by a path containing .test.
         if ($line -match "^\s*FAIL\s+(\S+\.test\S+)") {
-            # Strip trailing duration like " (5.2 s)"
             $suiteName = $Matches[1].Trim()
             if ($suiteName -and -not $results.FailedSuiteNames.Contains($suiteName)) {
                 $results.FailedSuiteNames.Add($suiteName)
@@ -109,18 +106,14 @@ function Parse-VitestOutput {
     foreach ($rawLine in $lines) {
         $line = Strip-Ansi $rawLine
 
-        # Vitest summary: " Test Files  3 failed | 159 passed (162)"
         if ($line -match "Test Files\s+(.+)") {
             $parts = $Matches[1]
             if ($parts -match "(\d+)\s+failed") { $results.SuitesFailed = [int]$Matches[1] }
             if ($parts -match "(\d+)\s+passed") { $results.SuitesPassed = [int]$Matches[1] }
-            # Total in parens at end: "(162)"
             if ($parts -match "\((\d+)\)\s*$") { $results.Suites = [int]$Matches[1] }
             elseif ($parts -match "(\d+)\s+total") { $results.Suites = [int]$Matches[1] }
-            # Fallback: sum failed + passed
             if ($results.Suites -eq 0) { $results.Suites = $results.SuitesFailed + $results.SuitesPassed }
         }
-        # Vitest: "      Tests  4 failed | 2089 passed | 12 skipped (2105)"
         if ($line -match "^\s+Tests\s+(.+)") {
             $parts = $Matches[1]
             if ($parts -match "(\d+)\s+failed") { $results.Failed = [int]$Matches[1] }
@@ -130,9 +123,6 @@ function Parse-VitestOutput {
             if ($results.Tests -eq 0) { $results.Tests = $results.Failed + $results.Passed }
         }
 
-        # Vitest FAIL lines: " FAIL  src/hooks/useTabState.pbt.test.js > test name > ..."
-        # After ANSI strip: " FAIL  src/path/file.test.js > description"
-        # Extract just the file path (up to first " > " or end of line)
         if ($line -match "^\s*FAIL\s+(\S+\.test\.\S+?)(?:\s+>|\s*$)") {
             $suiteName = $Matches[1].Trim()
             if ($suiteName -and -not $results.FailedSuiteNames.Contains($suiteName)) {
@@ -144,6 +134,258 @@ function Parse-VitestOutput {
     return $results
 }
 
+# ── Failure Detail Extraction ────────────────────────────
+# Parses raw test output to extract per-test failure details:
+#   - Test name (full path)
+#   - Error message / cause
+#   - PBT counterexample (if applicable)
+#   - Source location
+
+function Extract-JestFailureDetails {
+    param([string[]]$lines)
+
+    $failures = [System.Collections.Generic.List[hashtable]]::new()
+    $cleanLines = $lines | ForEach-Object { Strip-Ansi $_ }
+
+    # Jest outputs a "Summary of all failing tests" section at the end.
+    # Format:
+    #   FAIL services/backupService.pbt.test.js (298.939 s)
+    #     <bullet> SuiteName > GroupName > TestName
+    #       <error details, counterexample, cause, stack>
+    #
+    # The bullet character is garbled Unicode on Windows (e.g. "ΓùÅ").
+    # We detect test entries by: indented line starting with a non-ASCII char
+    # that follows a FAIL suite line, containing " > " path separators.
+
+    $inSummary = $false
+    $currentSuite = ""
+
+    for ($i = 0; $i -lt $cleanLines.Count; $i++) {
+        $line = $cleanLines[$i]
+
+        # Detect the "Summary of all failing tests" section
+        if ($line -match 'Summary of all failing tests') {
+            $inSummary = $true
+            continue
+        }
+
+        if (-not $inSummary) { continue }
+
+        # Track current suite in the summary
+        if ($line -match '^\s*FAIL\s+(\S+\.test\S+)') {
+            $currentSuite = $Matches[1].Trim()
+            continue
+        }
+
+        # Match test name lines: indented, contain separator chars (garbled "›" = "ΓÇ║" on Windows, or ">")
+        # These are the bullet-pointed test names under each FAIL suite
+        if ($currentSuite -ne "" -and $line -match '^\s+\S+\s+(.+(?:ΓÇ║|›|>).+)') {
+            $testName = $Matches[1].Trim()
+            $errorMsg = ""
+            $counterexample = ""
+            $source = ""
+            $cause = ""
+
+            # Scan ahead for error details (up to 50 lines or next test/suite marker)
+            $scanLimit = [Math]::Min($i + 50, $cleanLines.Count - 1)
+            for ($j = $i + 1; $j -le $scanLimit; $j++) {
+                $detail = $cleanLines[$j]
+
+                # Stop at next test entry (indented line with separators after non-ASCII char)
+                # or next FAIL suite line
+                if ($detail -match '^\s*FAIL\s+\S+\.test') { break }
+                if ($detail -match '^\s+\S+\s+.+(?:ΓÇ║|›|>).+' -and $detail -notmatch '^\s+at\s+') { break }
+
+                # PBT counterexample
+                if ($detail -match 'Counterexample:\s*(.+)') {
+                    $counterexample = $Matches[1].Trim()
+                }
+                # PBT seed info
+                if ($detail -match 'Property failed after (\d+) tests') {
+                    $errorMsg = "Property failed after $($Matches[1]) tests"
+                }
+                # Cause line (Jest shows "Cause:" then the actual cause on the next non-empty line)
+                if ($detail -match '^\s*Cause:\s*$') {
+                    for ($k = $j + 1; $k -le $scanLimit; $k++) {
+                        $causeLine = $cleanLines[$k].Trim()
+                        if ($causeLine -ne "") {
+                            $cause = $causeLine
+                            break
+                        }
+                    }
+                }
+                # Direct error messages (EBUSY, ENOENT, expect failures, thrown errors)
+                if ($detail -match '^\s*(Expected|Received|Error:|EBUSY|ENOENT|SQLITE_ERROR|TypeError|ReferenceError)') {
+                    if ($errorMsg -eq "") {
+                        $errorMsg = $detail.Trim()
+                    }
+                }
+                # Also catch inline error messages that start with the error type directly
+                if ($detail -match '^\s+(EBUSY|ENOENT):\s+(.+)') {
+                    if ($errorMsg -eq "") {
+                        $errorMsg = $detail.Trim()
+                    }
+                }
+                # Source location: "at Object.<anonymous> (file.test.js:123:45)"
+                if ($detail -match 'at\s+.*\(.*\.test\.\S+:\d+:\d+\)' -and $source -eq "") {
+                    $source = $detail.Trim()
+                }
+                # Alternative source: "  > 123 |  code here"
+                if ($detail -match '^\s*>\s*\d+\s*\|' -and $source -eq "") {
+                    $source = $detail.Trim()
+                }
+            }
+
+            $failure = @{
+                TestName = "$currentSuite > $testName"
+                Error = if ($cause -ne "") { $cause } elseif ($errorMsg -ne "") { $errorMsg } else { "(see raw output)" }
+                Counterexample = $counterexample
+                Source = $source
+            }
+            $failures.Add($failure)
+        }
+    }
+
+    return $failures
+}
+
+function Extract-VitestFailureDetails {
+    param([string[]]$lines)
+
+    $failures = [System.Collections.Generic.List[hashtable]]::new()
+    $cleanLines = $lines | ForEach-Object { Strip-Ansi $_ }
+
+    # Vitest outputs a "Failed Tests N" section at the end with structured failure info
+    # Format:
+    #   <decorators> Failed Tests 1 <decorators>
+    #
+    #    FAIL  src/file.test.jsx > Suite > Test Name
+    #   Error: Property failed after 41 tests
+    #   { seed: ..., path: "..." }
+    #   Counterexample: [...]
+    #   ...
+    #   Caused by: AssertionError: expected false to be true
+    #   ...
+    #    <arrow> src/file.test.jsx:462:56
+
+    $inFailedSection = $false
+
+    for ($i = 0; $i -lt $cleanLines.Count; $i++) {
+        $line = $cleanLines[$i]
+
+        # Detect the "Failed Tests" summary section
+        if ($line -match 'Failed Tests \d+') {
+            $inFailedSection = $true
+            continue
+        }
+
+        # In the failed section, look for "FAIL  path > suite > test" lines
+        if ($inFailedSection -and $line -match '^\s*FAIL\s+(.+)') {
+            $testPath = $Matches[1].Trim()
+            $errorMsg = ""
+            $counterexample = ""
+            $source = ""
+            $cause = ""
+
+            # Scan ahead for details
+            $scanLimit = [Math]::Min($i + 50, $cleanLines.Count - 1)
+            for ($j = $i + 1; $j -le $scanLimit; $j++) {
+                $detail = $cleanLines[$j]
+
+                # Stop at next FAIL or section boundary (the decorators line)
+                if ($detail -match '^\s*FAIL\s+' -or $detail -match '^\s*Test Files\s+') {
+                    break
+                }
+                # Also stop at the closing decorator line
+                if ($detail -match '^\S+\[[\d/]+\]\S+') {
+                    break
+                }
+
+                if ($detail -match 'Counterexample:\s*(.+)') {
+                    $counterexample = $Matches[1].Trim()
+                }
+                if ($detail -match 'Property failed after (\d+) tests') {
+                    $errorMsg = "Property failed after $($Matches[1]) tests"
+                }
+                # Vitest uses "Caused by:" (not "Cause:")
+                if ($detail -match 'Caused by:\s*(.+)') {
+                    $cause = $Matches[1].Trim()
+                }
+                # Also catch "Error:" lines (but not "Error: Property failed" which is already handled)
+                if ($detail -match '^(Error|AssertionError|TypeError|ReferenceError):\s*(.+)' -and $detail -notmatch 'Property failed after') {
+                    if ($errorMsg -eq "" -or $errorMsg -match '^Property failed') {
+                        $assertMsg = $Matches[0].Trim()
+                        if ($errorMsg -match '^Property failed') {
+                            $errorMsg = "$errorMsg - $assertMsg"
+                        } else {
+                            $errorMsg = $assertMsg
+                        }
+                    }
+                }
+                if ($detail -match '^\s*(Expected|Received|EBUSY|ENOENT|TypeError|ReferenceError)') {
+                    if ($cause -eq "") { $cause = $detail.Trim() }
+                }
+                # Source: Vitest uses arrow chars (garbled on Windows) followed by file:line:col
+                # Pattern: " <arrow> src/file.test.jsx:123:45"
+                if ($detail -match '^\s*\S+\s+(src/\S+\.test\.\S+:\d+:\d+)' -and $source -eq "") {
+                    $source = $Matches[1].Trim()
+                }
+            }
+
+            $failure = @{
+                TestName = $testPath
+                Error = if ($cause -ne "") {
+                    if ($errorMsg -ne "") { "$errorMsg`n             Cause: $cause" } else { $cause }
+                } elseif ($errorMsg -ne "") { $errorMsg } else { "(see raw output)" }
+                Counterexample = $counterexample
+                Source = $source
+            }
+            $failures.Add($failure)
+        }
+
+        # Also stop the failed section at the summary line
+        if ($inFailedSection -and $line -match '^\s*Test Files\s+') {
+            $inFailedSection = $false
+        }
+    }
+
+    return $failures
+}
+
+function Format-FailureDetails {
+    param(
+        [System.Collections.Generic.List[hashtable]]$failures,
+        [string]$runner
+    )
+
+    $output = [System.Collections.Generic.List[string]]::new()
+
+    if ($failures.Count -eq 0) {
+        return $output
+    }
+
+    $output.Add("")
+    $output.Add("  Failure Details:")
+    $output.Add("  " + ("-" * 40))
+
+    $num = 0
+    foreach ($f in $failures) {
+        $num++
+        $output.Add("")
+        $output.Add("  [$num] $($f.TestName)")
+        $output.Add("       Error: $($f.Error)")
+        if ($f.Counterexample -ne "") {
+            $output.Add("       Counterexample: $($f.Counterexample)")
+        }
+        if ($f.Source -ne "") {
+            $output.Add("       Source: $($f.Source)")
+        }
+    }
+
+    $output.Add("")
+
+    return $output
+}
 
 # ── Report Building ──────────────────────────────────────
 
@@ -162,6 +404,7 @@ $totalSuites = 0
 $totalPassed = 0
 $totalFailed = 0
 $allFailedSuites = [System.Collections.Generic.List[string]]::new()
+$allFailureDetails = [System.Collections.Generic.List[hashtable]]::new()
 $backendDuration = 0
 $frontendDuration = 0
 
@@ -202,17 +445,24 @@ if (-not $SkipBackend) {
     $report.Add("Suites: $($be.SuitesPassed) passed, $($be.SuitesFailed) failed, $($be.Suites) total")
     $report.Add("Tests:  $($be.Passed) passed, $($be.Failed) failed, $($be.Tests) total")
     $report.Add("Time:   ${backendDuration}s")
-    $report.Add("")
 
     if ($be.FailedSuiteNames.Count -gt 0) {
+        $report.Add("")
         $report.Add("Failed suites:")
         foreach ($s in $be.FailedSuiteNames) {
             $report.Add("  FAIL  $s")
         }
-        $report.Add("")
-        $report.Add("(See test-backend-raw.txt for full failure details)")
+
+        # Extract and append inline failure details
+        $beFailures = Extract-JestFailureDetails $backendLines
+        $beDetails = Format-FailureDetails $beFailures "Jest"
+        foreach ($line in $beDetails) { $report.Add($line) }
+        foreach ($f in $beFailures) { $allFailureDetails.Add($f) }
+
+        $report.Add("(Full output: test-backend-raw.txt)")
     }
     else {
+        $report.Add("")
         $report.Add("All backend tests passed.")
     }
     $report.Add("")
@@ -257,17 +507,24 @@ if (-not $SkipFrontend) {
     $report.Add("Suites: $($fe.SuitesPassed) passed, $($fe.SuitesFailed) failed, $($fe.Suites) total")
     $report.Add("Tests:  $($fe.Passed) passed, $($fe.Failed) failed, $($fe.Tests) total")
     $report.Add("Time:   ${frontendDuration}s")
-    $report.Add("")
 
     if ($fe.FailedSuiteNames.Count -gt 0) {
+        $report.Add("")
         $report.Add("Failed suites:")
         foreach ($s in $fe.FailedSuiteNames) {
             $report.Add("  FAIL  $s")
         }
-        $report.Add("")
-        $report.Add("(See test-frontend-raw.txt for full failure details)")
+
+        # Extract and append inline failure details
+        $feFailures = Extract-VitestFailureDetails $frontendLines
+        $feDetails = Format-FailureDetails $feFailures "Vitest"
+        foreach ($line in $feDetails) { $report.Add($line) }
+        foreach ($f in $feFailures) { $allFailureDetails.Add($f) }
+
+        $report.Add("(Full output: test-frontend-raw.txt)")
     }
     else {
+        $report.Add("")
         $report.Add("All frontend tests passed.")
     }
     $report.Add("")
@@ -290,7 +547,6 @@ $report.Add("Suites: $totalSuites total")
 $report.Add("Tests:  $totalPassed passed, $totalFailed failed, $($totalPassed + $totalFailed) total")
 $report.Add("")
 
-# Timing breakdown
 $report.Add("TIMING:")
 if (-not $SkipBackend) {
     $report.Add("  Backend:  ${backendDuration}s")
@@ -306,12 +562,32 @@ if ($allFailedSuites.Count -gt 0) {
     foreach ($s in $allFailedSuites) {
         $report.Add("  - $s")
     }
+    $report.Add("")
+
+    # ── Consolidated Failure Details ─────────────────────
+    $report.Add($separator)
+    $report.Add("  ALL FAILURE DETAILS ($($allFailureDetails.Count) tests)")
+    $report.Add($separator)
+
+    $num = 0
+    foreach ($f in $allFailureDetails) {
+        $num++
+        $report.Add("")
+        $report.Add("  [$num] $($f.TestName)")
+        $report.Add("       Error: $($f.Error)")
+        if ($f.Counterexample -ne "") {
+            $report.Add("       Counterexample: $($f.Counterexample)")
+        }
+        if ($f.Source -ne "") {
+            $report.Add("       Source: $($f.Source)")
+        }
+    }
+    $report.Add("")
 }
 else {
     $report.Add("All tests passed.")
 }
 
-$report.Add("")
 $report.Add("Report written: $timestamp")
 $report.Add("Raw output: test-backend-raw.txt, test-frontend-raw.txt")
 
@@ -322,6 +598,31 @@ $report | Out-File -FilePath $reportPath -Encoding UTF8
 Write-Host ""
 Write-Host "Summary: $reportPath" -ForegroundColor Cyan
 Write-Host "Total execution time: ${totalDuration}s" -ForegroundColor Cyan
+
+# Also print failure details to console for quick visibility
+if ($allFailureDetails.Count -gt 0) {
+    Write-Host ""
+    Write-Host "  FAILURE DETAILS:" -ForegroundColor Red
+    Write-Host "  $("-" * 50)" -ForegroundColor DarkGray
+    $num = 0
+    foreach ($f in $allFailureDetails) {
+        $num++
+        Write-Host "  [$num] " -ForegroundColor Red -NoNewline
+        Write-Host $f.TestName -ForegroundColor White
+        Write-Host "       Error: " -ForegroundColor DarkGray -NoNewline
+        Write-Host $f.Error -ForegroundColor Yellow
+        if ($f.Counterexample -ne "") {
+            Write-Host "       Counterexample: " -ForegroundColor DarkGray -NoNewline
+            Write-Host $f.Counterexample -ForegroundColor Magenta
+        }
+        if ($f.Source -ne "") {
+            Write-Host "       Source: " -ForegroundColor DarkGray -NoNewline
+            Write-Host $f.Source -ForegroundColor DarkCyan
+        }
+    }
+    Write-Host ""
+}
+
 if ($totalFailed -gt 0) {
     Write-Host "Result:  $totalPassed passed, $totalFailed failed across $totalSuites suites" -ForegroundColor Red
     exit 1

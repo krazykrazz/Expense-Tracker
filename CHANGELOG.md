@@ -32,6 +32,11 @@
 
 
 
+
+
+## [5.17.1] - 2026-02-21
+
+### Fix SSE expense refresh and billing cycle dismiss persistence
 ## [5.17.0] - 2026-02-21
 
 ### Config endpoint cleanup, billing cycle simplification, billing cycle API optimization

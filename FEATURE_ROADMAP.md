@@ -1,6 +1,6 @@
 # Expense Tracker - Feature Roadmap
 
-**Last Updated**: February 18, 2026  
+**Last Updated**: February 20, 2026  
 **Current Version**: 5.10.0
 
 This document tracks potential features and enhancements for the Expense Tracker application. Features are categorized by priority and implementation status.
@@ -589,6 +589,28 @@ This document tracks potential features and enhancements for the Expense Tracker
 ---
 
 ## 🟢 Completed Features
+
+### 🟢 SSE Visibility Optimization (v5.10.x)
+**Completed**: February 2026  
+**Spec**: `archive/specs/sse-visibility-optimization/`  
+**Description**: Fixed an infinite re-render loop in the real-time sync system and added Page Visibility API integration to eliminate idle CPU usage when the browser tab is hidden.
+
+**Features Delivered**:
+- **Visibility-Driven SSE Lifecycle**: EventSource connection torn down when tab is hidden, re-established when tab becomes visible
+- **Full Data Refresh on Return**: All contexts and window-event entity types refreshed when reconnecting after tab becomes visible, ensuring no missed updates
+- **Idle CPU Reduction**: Drops idle CPU usage from ~12-13% to near-zero when tab is not actively viewed
+- **Infinite Re-Render Fix**: Fixed circular dependency between `useDataSync` and multiple components (SummaryPanel, BudgetAlertManager, formatters) that caused infinite re-render loops
+- **Stable Callback References**: Extracted `useCallback`-wrapped refresh functions to break re-render cycles
+- **Idempotent State Guards**: Visibility change handler is idempotent — no-ops if already in the target state
+- **Deploy Script Fix**: Added local release branch cleanup to `deploy-to-production.ps1` (previously only remote branch was deleted)
+
+**Benefits**:
+- Significant CPU savings for users who keep the app open in a background tab
+- Eliminates browser performance warnings about high CPU usage
+- Data stays current even after extended periods with the tab hidden
+- More stable rendering behavior across all components
+
+---
 
 ### 🟢 Settings & System Modal Split (v5.11.0)
 **Completed**: February 2026  

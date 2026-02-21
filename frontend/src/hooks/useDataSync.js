@@ -65,6 +65,7 @@ export function useDataSync({
   const reconnectTimerRef = useRef(null);
   const attemptRef = useRef(0);
   const unmountedRef = useRef(false);
+  const visibilityReconnectRef = useRef(false);
 
   // Refs for refresh callbacks — keeps routeEntityType stable across renders
   const refreshExpensesRef = useRef(refreshExpenses);
@@ -159,6 +160,20 @@ export function useDataSync({
       if (unmountedRef.current) return;
       attemptRef.current = 0; // reset backoff on successful connection
       setConnectionStatus('connected');
+
+      // If reconnecting after visibility change, refresh all data to catch up
+      if (visibilityReconnectRef.current) {
+        visibilityReconnectRef.current = false;
+        // Refresh context-based entity types
+        refreshExpensesRef.current?.();
+        refreshBudgetsRef.current?.();
+        refreshPeopleRef.current?.();
+        refreshPaymentMethodsRef.current?.();
+        // Dispatch window events for modal-based entity types
+        for (const entityType of WINDOW_EVENT_ENTITY_TYPES) {
+          window.dispatchEvent(new CustomEvent('syncEvent', { detail: { entityType } }));
+        }
+      }
     };
 
     es.onmessage = (event) => {
@@ -201,12 +216,42 @@ export function useDataSync({
     };
   }, [scheduleDebounced]);
 
+  const handleVisibilityChange = useCallback(() => {
+    if (unmountedRef.current) return;
+
+    if (document.hidden) {
+      // Disconnect: close EventSource, clear timers, set status
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
+      Object.values(debounceTimersRef.current).forEach(clearTimeout);
+      debounceTimersRef.current = {};
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = null;
+      }
+      setConnectionStatus('disconnected');
+    } else {
+      // Reconnect: reset backoff, set flag, connect (only if no active connection)
+      if (!eventSourceRef.current) {
+        attemptRef.current = 0;
+        visibilityReconnectRef.current = true;
+        connect();
+      }
+    }
+  }, [connect]);
+
   useEffect(() => {
     unmountedRef.current = false;
     connect();
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       unmountedRef.current = true;
+
+      // Remove visibility listener
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
 
       // Close EventSource
       if (eventSourceRef.current) {

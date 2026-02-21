@@ -78,6 +78,20 @@ After each debounced refresh fires, a brief toast appears in the bottom-right co
 | `investment` | ↻ Investments updated |
 | `fixed_expense` | ↻ Fixed expenses updated |
 
+## Visibility-Based Connection Lifecycle
+
+The `useDataSync` hook integrates with the Page Visibility API to manage the SSE connection based on tab visibility. This eliminates idle CPU usage (~12-13% → near-zero) when the tab is in the background.
+
+| Tab State | Action |
+|-----------|--------|
+| Hidden | Close EventSource, clear all debounce and reconnect timers, set status to `disconnected` |
+| Visible (was disconnected) | Reset backoff counter, reconnect immediately, refresh all data on `onopen` |
+| Visible (already connected) | No-op |
+
+When the tab becomes visible after being hidden, the hook reconnects and triggers a full data refresh (all context refreshes + all window `syncEvent` dispatches) to catch up on any changes made while the tab was hidden. No toast notifications are shown for this bulk catch-up refresh.
+
+The visibility handler is idempotent — repeated hidden/visible events in the same state are safely ignored.
+
 ## Keepalive Mechanism
 
 The server sends a keepalive comment every 25 seconds:

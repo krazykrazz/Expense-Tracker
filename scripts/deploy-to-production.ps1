@@ -370,6 +370,16 @@ if ($LASTEXITCODE -ne 0) {
 $mergeCommitSha = git rev-parse --short HEAD
 Write-Success "On main at $mergeCommitSha"
 
+# Clean up local release branch
+$localBranches = git branch --list $releaseBranch
+if ($localBranches) {
+    git branch -D $releaseBranch 2>$null
+    Write-Info "Cleaned up local branch: $releaseBranch"
+}
+
+# Prune stale remote-tracking refs
+git remote prune origin 2>$null
+
 Write-Step "Tagging v$newVersion..."
 git tag -a "v$newVersion" -m "Release v${newVersion}: $Description"
 if ($LASTEXITCODE -ne 0) {

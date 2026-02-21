@@ -109,7 +109,7 @@ Branch protection on `main` blocks direct pushes. Version bumps go through a rel
 
 ### Phase 5: Cleanup
 
-19. **Delete feature branch** (release branch already deleted by PR merge):
+19. **Delete feature branch** (release branch is automatically cleaned up — remote branch deleted by PR merge, local branch deleted by the deploy script after switching back to main):
     ```powershell
     git branch -d feature/my-feature
     git push origin --delete feature/my-feature

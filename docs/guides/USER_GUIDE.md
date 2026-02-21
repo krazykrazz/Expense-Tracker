@@ -68,6 +68,29 @@ The expense form uses collapsible sections to reduce clutter:
 
 Hover over the (?) icons to see tooltips explaining when and why to use each field.
 
+### Reimbursement Tracking
+
+Track expected reimbursements from employers, insurance, or other sources on any non-medical expense:
+
+1. Create or edit an expense
+2. Expand the **"Advanced Options"** section
+3. Enter the total amount charged as the expense amount
+4. Enter the expected reimbursement amount
+5. The form shows the net out-of-pocket amount automatically
+
+Expenses with reimbursements show a 💰 indicator in the expense list. Hover over it to see the breakdown of Charged, Reimbursed, and Net amounts.
+
+**Note**: Medical expenses use the dedicated Insurance Tracking section instead (see [Medical Expenses](#medical-expenses)).
+
+### Real-Time Multi-Device Sync
+
+The application supports multi-device access with automatic data synchronization:
+
+- **Automatic Updates**: When you add, edit, or delete data on one device, all other open tabs/devices refresh automatically
+- **Visual Notification**: A brief toast notification appears when data is refreshed from another device
+- **Background Optimization**: When a browser tab is hidden, the sync connection is paused to save CPU. Data refreshes automatically when you return to the tab
+- **No Manual Refresh Needed**: All data stays current across devices connected to the same server
+
 ## Payment Methods
 
 ### Viewing Payment Methods

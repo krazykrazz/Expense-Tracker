@@ -155,6 +155,9 @@ export const API_ENDPOINTS = {
   ACTIVITY_LOGS_STATS: `${API_BASE_URL}/api/activity-logs/stats`,
   ACTIVITY_LOGS_SETTINGS: `${API_BASE_URL}/api/activity-logs/settings`,
 
+  // Billing Cycle Dismiss
+  DISMISS_AUTO_GENERATED_CYCLES: `${API_BASE_URL}/api/payment-methods/billing-cycles/dismiss-auto-generated`,
+
   // Settings
   SETTINGS_TIMEZONE: `${API_BASE_URL}/api/settings/timezone`
 };

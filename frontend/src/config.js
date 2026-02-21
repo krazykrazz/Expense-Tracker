@@ -27,22 +27,12 @@ export const API_ENDPOINTS = {
   LOANS: `${API_BASE_URL}/api/loans`,
   LOAN_BY_ID: (id) => `${API_BASE_URL}/api/loans/${id}`,
   LOAN_BALANCES: `${API_BASE_URL}/api/loan-balances`,
-  
-  // Mortgage-specific endpoints
   LOAN_AMORTIZATION: (id) => `${API_BASE_URL}/api/loans/${id}/amortization`,
   LOAN_EQUITY_HISTORY: (id) => `${API_BASE_URL}/api/loans/${id}/equity-history`,
   LOAN_PROPERTY_VALUE: (id) => `${API_BASE_URL}/api/loans/${id}/property-value`,
-  
-  // Mortgage Insights endpoints
-  MORTGAGE_INSIGHTS: (id) => `${API_BASE_URL}/api/loans/${id}/insights`,
-  MORTGAGE_PAYMENTS: (id) => `${API_BASE_URL}/api/loans/${id}/payments`,
-  MORTGAGE_PAYMENT: (id, paymentId) => `${API_BASE_URL}/api/loans/${id}/payments/${paymentId}`,
-  MORTGAGE_SCENARIO: (id) => `${API_BASE_URL}/api/loans/${id}/insights/scenario`,
-  MORTGAGE_RATE: (id) => `${API_BASE_URL}/api/loans/${id}/rate`,
-  
-  // Aliases for loanApi.js compatibility
   LOAN_INSIGHTS: (id) => `${API_BASE_URL}/api/loans/${id}/insights`,
   LOAN_PAYMENTS: (id) => `${API_BASE_URL}/api/loans/${id}/payments`,
+  LOAN_PAYMENT: (id, paymentId) => `${API_BASE_URL}/api/loans/${id}/payments/${paymentId}`,
   LOAN_SCENARIO: (id) => `${API_BASE_URL}/api/loans/${id}/insights/scenario`,
   LOAN_RATE: (id) => `${API_BASE_URL}/api/loans/${id}/rate`,
   
@@ -127,13 +117,11 @@ export const API_ENDPOINTS = {
   PAYMENT_METHOD_STATEMENT: (id, statementId) => `${API_BASE_URL}/api/payment-methods/${id}/statements/${statementId}`,
   
   // Credit Card Billing Cycles
-  PAYMENT_METHOD_BILLING_CYCLE_CREATE: (id) => `${API_BASE_URL}/api/payment-methods/${id}/billing-cycles`,
   PAYMENT_METHOD_BILLING_CYCLE_HISTORY: (id) => `${API_BASE_URL}/api/payment-methods/${id}/billing-cycles/history`,
   PAYMENT_METHOD_BILLING_CYCLE_UPDATE: (id, cycleId) => `${API_BASE_URL}/api/payment-methods/${id}/billing-cycles/${cycleId}`,
   PAYMENT_METHOD_BILLING_CYCLE_DELETE: (id, cycleId) => `${API_BASE_URL}/api/payment-methods/${id}/billing-cycles/${cycleId}`,
   PAYMENT_METHOD_BILLING_CYCLE_CURRENT: (id) => `${API_BASE_URL}/api/payment-methods/${id}/billing-cycles/current`,
   PAYMENT_METHOD_BILLING_CYCLE_PDF: (id, cycleId) => `${API_BASE_URL}/api/payment-methods/${id}/billing-cycles/${cycleId}/pdf`,
-  // Legacy billing cycles endpoint (for backward compatibility)
   PAYMENT_METHOD_BILLING_CYCLES: (id) => `${API_BASE_URL}/api/payment-methods/${id}/billing-cycles`,
   
   // Unified Billing Cycles (with auto-generation, transaction counts, and trends)
@@ -145,7 +133,6 @@ export const API_ENDPOINTS = {
   // Invoices
   INVOICES: `${API_BASE_URL}/api/invoices`,
   INVOICE_UPLOAD: `${API_BASE_URL}/api/invoices/upload`,
-  INVOICE_BY_EXPENSE: (expenseId) => `${API_BASE_URL}/api/invoices/${expenseId}`,
   INVOICE_METADATA: (expenseId) => `${API_BASE_URL}/api/invoices/${expenseId}/metadata`,
   // Multi-invoice support endpoints
   INVOICES_FOR_EXPENSE: (expenseId) => `${API_BASE_URL}/api/invoices/${expenseId}`,

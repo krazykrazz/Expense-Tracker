@@ -7,7 +7,6 @@ import InvoiceUpload from './InvoiceUpload';
 vi.mock('../config', () => ({
   API_ENDPOINTS: {
     INVOICE_UPLOAD: '/api/invoices/upload',
-    INVOICE_BY_EXPENSE: (id) => `/api/invoices/${id}`,
     INVOICE_METADATA: (id) => `/api/invoices/${id}/metadata`,
     INVOICES_FOR_EXPENSE: (id) => `/api/invoices/${id}`,
     INVOICE_BY_ID: (id) => `/api/invoices/invoice/${id}`,

@@ -13,7 +13,7 @@ vi.mock('../config', () => ({
     CATEGORIES: '/api/categories',
     EXPENSES: '/api/expenses',
     INVOICE_UPLOAD: '/api/invoices/upload',
-    INVOICE_BY_EXPENSE: (id) => `/api/invoices/${id}`,
+    INVOICES_FOR_EXPENSE: (id) => `/api/invoices/${id}`,
     INVOICE_METADATA: (id) => `/api/invoices/${id}/metadata`
   }
 }));

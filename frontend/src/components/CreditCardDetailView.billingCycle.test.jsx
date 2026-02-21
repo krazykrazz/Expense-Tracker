@@ -11,7 +11,6 @@ vi.mock('../config', () => ({
     PAYMENT_METHOD_BILLING_CYCLES: (id) => `/api/payment-methods/${id}/billing-cycles`,
     PAYMENT_METHOD_STATEMENT_BALANCE: (id) => `/api/payment-methods/${id}/statement-balance`,
     PAYMENT_METHOD_STATEMENT: (id, statementId) => `/api/payment-methods/${id}/statements/${statementId}`,
-    PAYMENT_METHOD_BILLING_CYCLE_CREATE: (id) => `/api/payment-methods/${id}/billing-cycles`,
     PAYMENT_METHOD_BILLING_CYCLE_HISTORY: (id) => `/api/payment-methods/${id}/billing-cycles/history`,
     PAYMENT_METHOD_BILLING_CYCLE_UPDATE: (id, cycleId) => `/api/payment-methods/${id}/billing-cycles/${cycleId}`,
     PAYMENT_METHOD_BILLING_CYCLE_DELETE: (id, cycleId) => `/api/payment-methods/${id}/billing-cycles/${cycleId}`,

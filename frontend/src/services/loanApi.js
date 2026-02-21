@@ -185,7 +185,7 @@ export const createMortgagePayment = async (id, paymentData) => {
 export const updateMortgagePayment = async (loanId, paymentId, paymentData) => {
   try {
     return await apiPut(
-      `${API_ENDPOINTS.LOAN_PAYMENTS(loanId)}/${paymentId}`, 
+      API_ENDPOINTS.LOAN_PAYMENT(loanId, paymentId), 
       paymentData, 
       'update mortgage payment'
     );
@@ -204,7 +204,7 @@ export const updateMortgagePayment = async (loanId, paymentId, paymentData) => {
 export const deleteMortgagePayment = async (loanId, paymentId) => {
   try {
     return await apiDelete(
-      `${API_ENDPOINTS.LOAN_PAYMENTS(loanId)}/${paymentId}`, 
+      API_ENDPOINTS.LOAN_PAYMENT(loanId, paymentId), 
       'delete mortgage payment'
     );
   } catch (error) {

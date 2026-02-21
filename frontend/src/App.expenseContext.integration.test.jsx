@@ -175,10 +175,19 @@ describe('App.jsx ExpenseContext Integration', () => {
   it('should remove expense from list when delete handler is called via context', async () => {
     const user = userEvent.setup();
 
-    // Add DELETE support to mock
+    // Track deleted IDs so re-fetches return the correct list
+    const deletedIds = new Set();
+
+    // Add DELETE support to mock, and make GET /expenses exclude deleted items
     mockFetch.mockImplementation((url, options) => {
       if (options?.method === 'DELETE' && url.includes('/api/expenses/')) {
+        const idMatch = url.match(/\/api\/expenses\/(\d+)/);
+        if (idMatch) deletedIds.add(parseInt(idMatch[1], 10));
         return Promise.resolve({ ok: true, json: () => Promise.resolve({ message: 'Deleted' }) });
+      }
+      if (url.includes('/api/expenses') && !options?.method) {
+        const remaining = mockExpenses.filter(e => !deletedIds.has(e.id));
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(remaining) });
       }
       return defaultMockImpl(url, options);
     });

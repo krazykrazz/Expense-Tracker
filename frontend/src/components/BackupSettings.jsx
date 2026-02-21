@@ -1214,6 +1214,13 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v5.17.2</div>
+                <div className="changelog-date">February 21, 2026</div>
+                <ul className="changelog-items">
+                  <li>Fix SSE session count leak from stale connections</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v5.17.1</div>
                 <div className="changelog-date">February 21, 2026</div>
                 <ul className="changelog-items">

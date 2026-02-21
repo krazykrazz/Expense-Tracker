@@ -34,6 +34,11 @@
 
 
 
+
+
+## [5.17.2] - 2026-02-21
+
+### Fix SSE session count leak from stale connections
 ## [5.17.1] - 2026-02-21
 
 ### Fix SSE expense refresh and billing cycle dismiss persistence

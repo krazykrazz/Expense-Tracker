@@ -30,6 +30,11 @@
 
 
 
+
+
+## [5.17.0] - 2026-02-21
+
+### Config endpoint cleanup, billing cycle simplification, billing cycle API optimization
 ## [5.16.3] - 2026-02-20
 
 ### Fix flaky insurance checkbox test, deploy script cleanup, documentation audit

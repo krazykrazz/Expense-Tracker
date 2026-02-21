@@ -189,20 +189,11 @@ The existing PBT test files (`paymentMethodService.lifecycle.pbt.test.js`, `.cre
 
 ---
 
-### 7. Prune archive directory and consolidate docs
+### 7. ~~Prune archive directory and consolidate docs~~ ✅ COMPLETED
 
 **Priority: LOW | Effort: LOW | Risk: NONE**
 
-**Problem:** The `archive/` directory contains deprecated components, old migration scripts, 40+ deployment summaries, and completion reports. The `docs/` directory has 58+ markdown files across features, deployment, development, and guides. Some are likely stale.
-
-**Recommendation:**
-- Delete deployment summaries older than 6 months (they're in git history)
-- Delete completion reports (one-time records, also in git history)
-- Review `archive/deprecated-components/` — if nothing imports them, delete entirely
-- Consolidate `docs/features/` — some feature docs may describe functionality that's been superseded
-- Consider a `docs/SUMMARY.md` index file that links to current docs
-
-**Why:** Reduces cognitive overhead when navigating the project. New contributors won't waste time reading stale documentation.
+**Status:** Completed. Deleted the entire `archive/` directory (~220 files: 56 archived specs, 41 deployment docs, 36 reports, 22 completion reports, 21 deprecated components, 14 spec implementations, 13 test scripts, 7 migration scripts, 4 spec summaries, 3 bug fix docs, 2 deprecated docs). Also deleted `backend/scripts/archive/` (~63 one-time scripts) and root test artifacts (`test-budget.json`). All content preserved in git history. Zero code dependencies existed on any deleted files.
 
 ---
 
@@ -233,7 +224,7 @@ The existing PBT test files (`paymentMethodService.lifecycle.pbt.test.js`, `.cre
 | 4 | Group frontend components | MEDIUM | MEDIUM | LOW | None |
 | 5 | Split paymentMethodService | MEDIUM | LOW | LOW | None |
 | 6 | ~~Clean config.js aliases~~ ✅ | LOW | LOW | LOW | None |
-| 7 | Prune archive/docs | LOW | LOW | NONE | None |
+| 7 | ~~Prune archive/docs~~ ✅ | LOW | LOW | NONE | None |
 | 8 | ESM migration | LOW | HIGH | MEDIUM | None |
 
 Items 1-2 are the highest-value changes. Item 3 is a quick win. Items 4-5 are good refactoring targets when touching those areas. Items 6-8 are opportunistic.

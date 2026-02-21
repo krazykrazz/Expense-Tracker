@@ -128,6 +128,12 @@ SECURITY_REVIEW_FOR_PUBLIC_REPO.md
 CLEANUP_RECOMMENDATIONS.md
 CLEANUP_SUMMARY.md
 
+# One-off test data files
+test-budget.json
+
+# Archived one-time scripts
+backend/scripts/archive/
+
 # Kiro IDE (internal development tooling)
 .kiro/
 

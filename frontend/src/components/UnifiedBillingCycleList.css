@@ -61,10 +61,10 @@
   flex-direction: column;
 }
 
-/* List Item */
+/* List Item - Fixed grid with proper action column width */
 .unified-billing-cycle-item {
   display: grid;
-  grid-template-columns: 1.5fr 1fr 1fr minmax(0, 1fr) auto;
+  grid-template-columns: 1.5fr 1fr 1fr minmax(0, 1fr) 80px;
   grid-template-rows: auto auto;
   gap: var(--spacing-2) var(--spacing-3);
   align-items: center;
@@ -282,7 +282,7 @@
   font-style: italic;
 }
 
-/* Actions */
+/* Actions - Fixed width to prevent wrapping */
 .unified-cycle-actions {
   display: flex;
   gap: var(--spacing-1);
@@ -290,6 +290,7 @@
   align-self: center;
   flex-shrink: 0;
   white-space: nowrap;
+  min-width: 80px;
 }
 
 .unified-cycle-action-btn {
@@ -301,6 +302,7 @@
   font-size: var(--text-base);
   opacity: 0.6;
   transition: var(--transition-fast);
+  flex-shrink: 0;
 }
 
 .unified-cycle-action-btn:hover {

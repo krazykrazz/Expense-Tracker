@@ -227,8 +227,18 @@
   transition: background 0.15s, border-color 0.15s;
 }
 
-.financial-cc-pay-btn:hover,
+.financial-cc-view-btn {
+  background: var(--color-primary, #0ea5e9);
+  color: white;
+  border-color: var(--color-primary, #0ea5e9);
+}
+
 .financial-cc-view-btn:hover {
+  background: var(--color-primary-hover, #0284c7);
+  border-color: var(--color-primary-hover, #0284c7);
+}
+
+.financial-cc-pay-btn:hover {
   background: var(--bg-card-hover, #f1f5f9);
   border-color: var(--border-strong, #cbd5e1);
 }
@@ -1293,3 +1303,4 @@
   .payment-method-activate-btn,
   .payment-method-credit-info.clickable { transition: none; }
 }
+

@@ -51,7 +51,7 @@ const LoanRow = ({ loan, needsUpdate = false, fixedExpenseCount = 0, onLogPaymen
               Rate: {currentRate != null && currentRate > 0 ? `${currentRate}%` : 'N/A'}
             </span>
             <span className="loan-row-balance">
-              Balance: {formatCurrency(currentBalance)}
+              Balance: <span className="loan-row-balance-badge">{formatCurrency(currentBalance)}</span>
             </span>
           </div>
         </div>
@@ -63,7 +63,7 @@ const LoanRow = ({ loan, needsUpdate = false, fixedExpenseCount = 0, onLogPaymen
               title={`Log payment for ${name}`}
               data-testid="log-payment-button"
             >
-              💰 Log Payment
+              Log Payment
             </button>
           )}
           <button
@@ -71,21 +71,21 @@ const LoanRow = ({ loan, needsUpdate = false, fixedExpenseCount = 0, onLogPaymen
             onClick={() => onViewDetails && onViewDetails(loan)}
             title={`View details for ${name}`}
           >
-            👁️ View Details
+            View
           </button>
           <button
             className="loan-row-edit-button"
             onClick={() => onEdit && onEdit(loan)}
             title={`Edit ${name}`}
           >
-            ✏️
+            Edit
           </button>
           <button
             className="loan-row-delete-button"
             onClick={() => onDelete && onDelete(loan)}
             title={`Delete ${name}`}
           >
-            🗑️
+            Delete
           </button>
         </div>
       </div>

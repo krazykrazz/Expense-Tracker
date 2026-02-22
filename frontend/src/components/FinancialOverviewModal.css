@@ -198,10 +198,10 @@
   display: inline-block;
   font-size: var(--text-sm, 13px);
   font-weight: var(--font-semibold, 600);
-  color: #991b1b;
-  background-color: rgba(220, 38, 38, 0.08);
-  border-radius: 4px;
-  padding: 1px 6px;
+  color: var(--text-primary, #0f172a);
+  background-color: var(--bg-muted, #f1f5f9);
+  border-radius: var(--radius-sm, 6px);
+  padding: var(--spacing-1, 4px) var(--spacing-2, 8px);
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   text-align: right;

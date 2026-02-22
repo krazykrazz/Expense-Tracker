@@ -134,6 +134,37 @@
   flex: 1;
 }
 
+/* Deactivate Section */
+.form-deactivate-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 16px;
+  margin-top: 8px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.form-deactivate-btn {
+  background-color: var(--color-warning);
+  color: white;
+  border: none;
+  padding: var(--spacing-3) var(--spacing-5);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: var(--text-base);
+  font-weight: var(--font-medium);
+  transition: var(--transition-button);
+}
+
+.form-deactivate-btn:hover:not(:disabled) {
+  background-color: var(--color-warning-dark);
+}
+
+.form-deactivate-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 /* Form Actions */
 .form-actions {
   display: flex;

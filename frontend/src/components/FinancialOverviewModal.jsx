@@ -128,7 +128,7 @@ const CreditCardSummary = ({ paymentMethods, onPaymentRecorded, onViewDetails })
                   onClick={() => onViewDetails && onViewDetails(card)}
                   title={`View details for ${card.name}`}
                 >
-                  👁️
+                  View
                 </button>
                 <button
                   className="financial-cc-pay-btn"
@@ -236,7 +236,7 @@ const PaymentMethodsSection = ({ paymentMethods, loading, onPaymentRecorded, onV
                             onClick={() => onViewDetails && onViewDetails(card)}
                             title={`View details for ${card.name}`}
                           >
-                            👁️
+                            View
                           </button>
                           <button
                             className="financial-cc-pay-btn"
@@ -264,7 +264,7 @@ const PaymentMethodsSection = ({ paymentMethods, loading, onPaymentRecorded, onV
                       onClick={() => onViewDetails && onViewDetails(method)}
                       title={`View details for ${method.display_name}`}
                     >
-                      👁️
+                      View
                     </button>
                   </div>
                 ))}

@@ -411,6 +411,16 @@ const SystemModal = () => {
           <div className="changelog">
             <div className="changelog-entry">
               <div className="changelog-version">
+                v5.17.3
+                {isCurrentVersion('v5.17.3') && <span className="current-version-badge">Current Version</span>}
+              </div>
+              <div className="changelog-date">February 21, 2026</div>
+              <ul className="changelog-items">
+                <li>Fix SSE session count inflation on page refresh</li>
+              </ul>
+            </div>
+            <div className="changelog-entry">
+              <div className="changelog-version">
                 v5.17.2
                 {isCurrentVersion('v5.17.2') && <span className="current-version-badge">Current Version</span>}
               </div>

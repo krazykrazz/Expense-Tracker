@@ -86,40 +86,11 @@ The existing `checkMigrationApplied` / `markMigrationApplied` infrastructure alr
 
 ---
 
-### 3. Replace ModalContext boolean factory with useReducer
+### 3. ~~Replace ModalContext boolean factory with useReducer~~ ✅ COMPLETED
 
 **Priority: MEDIUM | Effort: LOW | Risk: LOW**
 
-**Problem:** `frontend/src/contexts/ModalContext.jsx` (167 lines) is pure boilerplate — 11 `useState` calls, 22 `useCallback` open/close handlers, and a `useMemo` with 30+ dependencies. Every new modal requires adding ~6 lines of identical code in 3 places.
-
-**Current pattern (repeated 11 times):**
-```jsx
-const [showBudgets, setShowBudgets] = useState(false);
-const openBudgets = useCallback(() => setShowBudgets(true), []);
-const closeBudgets = useCallback(() => setShowBudgets(false), []);
-```
-
-**Recommended pattern — single reducer:**
-```jsx
-const [state, dispatch] = useReducer(modalReducer, initialState);
-
-function modalReducer(state, action) {
-  switch (action.type) {
-    case 'OPEN':
-      return { ...state, [action.modal]: true, ...(action.payload || {}) };
-    case 'CLOSE':
-      return { ...state, [action.modal]: false };
-    case 'CLOSE_ALL_OVERLAYS':
-      return { ...state, ...overlayDefaults };
-    default:
-      return state;
-  }
-}
-
-// Usage: dispatch({ type: 'OPEN', modal: 'budgets', payload: { focusCategory: 'Food' } })
-```
-
-This collapses 167 lines to ~50, eliminates the dependency array maintenance, and makes adding new modals a one-line change (add to `initialState`).
+**Status:** Completed. Replaced 11 `useState` calls, 22 `useCallback` open/close handlers, and a 30+ dependency `useMemo` with a single `useReducer` + `modalReducer`. Same public API, same behavior. All 36 tests pass (14 unit, 16 PBT, 6 integration). Adding a new modal is now a one-line change (add to `initialState`).
 
 ---
 
@@ -220,14 +191,14 @@ The existing PBT test files (`paymentMethodService.lifecycle.pbt.test.js`, `.cre
 |---|---|---|---|---|---|
 | 1 | Split migrations.js | HIGH | LOW | LOW | None |
 | 2 | Unify test DB setup | HIGH | MEDIUM | MEDIUM | After #1 |
-| 3 | ModalContext reducer | MEDIUM | LOW | LOW | None |
+| 3 | ~~ModalContext reducer~~ ✅ | MEDIUM | LOW | LOW | None |
 | 4 | Group frontend components | MEDIUM | MEDIUM | LOW | None |
 | 5 | Split paymentMethodService | MEDIUM | LOW | LOW | None |
 | 6 | ~~Clean config.js aliases~~ ✅ | LOW | LOW | LOW | None |
 | 7 | ~~Prune archive/docs~~ ✅ | LOW | LOW | NONE | None |
 | 8 | ESM migration | LOW | HIGH | MEDIUM | None |
 
-Items 1-2 are the highest-value changes. Item 3 is a quick win. Items 4-5 are good refactoring targets when touching those areas. Items 6-8 are opportunistic.
+Items 1-2 are the highest-value changes. Items 4-5 are good refactoring targets when touching those areas. Item 8 is opportunistic.
 
 ---
 

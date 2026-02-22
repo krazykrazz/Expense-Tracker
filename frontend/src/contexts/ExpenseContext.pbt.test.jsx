@@ -564,6 +564,10 @@ describe('ExpenseContext Property-Based Tests', () => {
           async (year1, month1, year2, month2) => {
             // Ensure the two year/month pairs differ so the second change triggers a re-fetch
             fc.pre(year1 !== year2 || month1 !== month2);
+            // Ensure year1/month1 differs from the initial context state (current date)
+            // so that handleMonthChange actually triggers a re-fetch
+            const now = new Date();
+            fc.pre(year1 !== now.getFullYear() || month1 !== (now.getMonth() + 1));
             cleanup();
 
             // Start with a quick-resolving fetch for the initial mount

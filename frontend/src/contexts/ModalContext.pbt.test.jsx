@@ -725,8 +725,8 @@ describe('Feature: financial-overview-redesign, Property 1: ModalContext standal
     fc.constant(null),
     fc.constant(undefined),
     fc.record({
-      cycleStartDate: fc.oneof(fc.constant(null), fc.date({ min: new Date('2020-01-01'), max: new Date('2030-12-31') }).map(d => d.toISOString().split('T')[0])),
-      cycleEndDate: fc.oneof(fc.constant(null), fc.date({ min: new Date('2020-01-01'), max: new Date('2030-12-31') }).map(d => d.toISOString().split('T')[0])),
+      cycleStartDate: fc.oneof(fc.constant(null), fc.date({ min: new Date('2020-01-01'), max: new Date('2030-12-31') }).filter(d => !isNaN(d.getTime())).map(d => d.toISOString().split('T')[0])),
+      cycleEndDate: fc.oneof(fc.constant(null), fc.date({ min: new Date('2020-01-01'), max: new Date('2030-12-31') }).filter(d => !isNaN(d.getTime())).map(d => d.toISOString().split('T')[0])),
       calculatedBalance: fc.oneof(fc.constant(null), fc.double({ min: 0, max: 100000, noNaN: true, noDefaultInfinity: true }))
     })
   );

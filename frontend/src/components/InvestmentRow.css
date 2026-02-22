@@ -1,27 +1,22 @@
-/* InvestmentRow — row component for unified Financial Overview */
+/* InvestmentRow — flat row style for unified Financial Overview */
 
 .investment-row {
-  border: 1px solid var(--border-default, #e2e8f0);
-  border-radius: var(--radius-lg, 12px);
-  padding: var(--spacing-4, 16px);
-  background-color: var(--bg-card, white);
-  transition: all var(--transition-fast, 150ms ease);
+  border-bottom: 1px solid var(--border-default, #e2e8f0);
+  padding: var(--spacing-2, 8px) var(--spacing-4, 16px);
+  transition: background-color var(--transition-fast, 150ms ease);
 }
 
 .investment-row:hover {
-  background-color: var(--bg-card-hover, #fafbfc);
-  box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.06));
-  border-color: var(--border-strong, #cbd5e1);
+  background-color: var(--bg-hover, #f8fafc);
 }
 
 .investment-row.needs-update {
-  border-color: #ff9800;
-  background-color: #fff3e0;
-  box-shadow: 0 0 0 2px rgba(255,152,0,0.2);
+  border-left: 3px solid #ff9800;
+  background-color: #fff8f0;
 }
 
 .investment-row.needs-update:hover {
-  background-color: #ffe0b2;
+  background-color: #fff3e0;
 }
 
 .investment-row-main {
@@ -96,7 +91,6 @@
   margin-left: auto;
 }
 
-.investment-row-update-value-button,
 .investment-row-view-button,
 .investment-row-edit-button,
 .investment-row-delete-button {
@@ -107,15 +101,6 @@
   font-size: 0.9rem;
   transition: all 0.2s;
   white-space: nowrap;
-}
-
-.investment-row-update-value-button {
-  background-color: #4caf50;
-  color: white;
-}
-
-.investment-row-update-value-button:hover {
-  background-color: #43a047;
 }
 
 .investment-row-view-button {
@@ -165,7 +150,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   .investment-row,
-  .investment-row-update-value-button,
   .investment-row-view-button,
   .investment-row-edit-button,
   .investment-row-delete-button {

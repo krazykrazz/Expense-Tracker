@@ -2,17 +2,8 @@ import React from 'react';
 import { formatCurrency } from '../utils/formatters';
 import './InvestmentRow.css';
 
-/**
- * InvestmentRow — displays a single investment in the unified Financial Overview.
- * Shows investment name, current value, type badge, conditional indicators, and quick action buttons.
- */
 const InvestmentRow = ({ investment, needsUpdate = false, onUpdateValue, onViewDetails, onEdit, onDelete }) => {
-  const {
-    id,
-    name,
-    type,
-    currentValue
-  } = investment;
+  const { id, name, type, currentValue } = investment;
 
   return (
     <div className={`investment-row ${needsUpdate ? 'needs-update' : ''}`} data-testid={`investment-row-${id}`}>
@@ -36,13 +27,6 @@ const InvestmentRow = ({ investment, needsUpdate = false, onUpdateValue, onViewD
           </div>
         </div>
         <div className="investment-row-actions">
-          <button
-            className="investment-row-update-value-button"
-            onClick={() => onUpdateValue && onUpdateValue(investment)}
-            title={`Update value for ${name}`}
-          >
-            📈 Update Value
-          </button>
           <button
             className="investment-row-view-button"
             onClick={() => onViewDetails && onViewDetails(investment)}

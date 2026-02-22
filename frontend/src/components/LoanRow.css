@@ -1,27 +1,22 @@
-/* LoanRow — row component for unified Financial Overview */
+/* LoanRow — flat row style for unified Financial Overview */
 
 .loan-row {
-  border: 1px solid var(--border-default, #e2e8f0);
-  border-radius: var(--radius-lg, 12px);
-  padding: var(--spacing-4, 16px);
-  background-color: var(--bg-card, white);
-  transition: all var(--transition-fast, 150ms ease);
+  border-bottom: 1px solid var(--border-default, #e2e8f0);
+  padding: var(--spacing-2, 8px) var(--spacing-4, 16px);
+  transition: background-color var(--transition-fast, 150ms ease);
 }
 
 .loan-row:hover {
-  background-color: var(--bg-card-hover, #fafbfc);
-  box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.06));
-  border-color: var(--border-strong, #cbd5e1);
+  background-color: var(--bg-hover, #f8fafc);
 }
 
 .loan-row.needs-update {
-  border-color: #ff9800;
-  background-color: #fff3e0;
-  box-shadow: 0 0 0 2px rgba(255,152,0,0.2);
+  border-left: 3px solid #ff9800;
+  background-color: #fff8f0;
 }
 
 .loan-row.needs-update:hover {
-  background-color: #ffe0b2;
+  background-color: #fff3e0;
 }
 
 .loan-row-main {
@@ -170,7 +165,6 @@
   background-color: #d32f2f;
 }
 
-/* ── Responsive ── */
 @media (max-width: 768px) {
   .loan-row-main {
     flex-direction: column;

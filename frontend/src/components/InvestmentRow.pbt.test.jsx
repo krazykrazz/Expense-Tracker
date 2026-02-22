@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, cleanup } from '@testing-library/react';
+import { render, screen, cleanup } from '@testing-library/react';
 import * as fc from 'fast-check';
 import InvestmentRow from './InvestmentRow';
 
@@ -34,8 +34,8 @@ describe('InvestmentRow Property-Based Tests', () => {
    * **Feature: financial-overview-redesign, Property 10: Investment row rendering with conditional indicators**
    *
    * For any investment, the Investment_Row SHALL display the investment name, current value,
-   * type badge, and quick action buttons (Update Value, View Details, edit, delete). If the
-   * investment is in the highlight list, an "Update Needed" badge SHALL be present.
+   * type badge, and quick action buttons (View Details, edit, delete). If the investment is in
+   * the highlight list, an "Update Needed" badge SHALL be present.
    *
    * **Validates: Requirements 6.1, 6.2, 6.3, 6.5, 10.7**
    */
@@ -68,12 +68,6 @@ describe('InvestmentRow Property-Based Tests', () => {
           expect(typeBadge).toBeTruthy();
           expect(typeBadge.textContent.trim()).toBe(investment.type);
 
-          // All four action buttons are always present
-          expect(container.querySelector('.investment-row-update-value-button')).toBeTruthy();
-          expect(container.querySelector('.investment-row-view-button')).toBeTruthy();
-          expect(container.querySelector('.investment-row-edit-button')).toBeTruthy();
-          expect(container.querySelector('.investment-row-delete-button')).toBeTruthy();
-
           // Needs update badge: present iff needsUpdate is true
           const needsUpdateBadge = container.querySelector('[data-testid="needs-update-badge"]');
           if (needsUpdate) {
@@ -86,6 +80,42 @@ describe('InvestmentRow Property-Based Tests', () => {
         }
       ),
       { numRuns: 150 }
+    );
+  });
+
+  /**
+   * **Feature: financial-overview-ui-consistency, Property 2: Investment row has exactly one action button and no Update Value button**
+   *
+   * For any investment, rendering InvestmentRow should produce output that contains a View Details
+   * button and should NOT contain any element with the text "Update Value".
+   *
+   * **Validates: Requirements 2.2**
+   */
+  it('Property 2: renders View Details button and no Update Value button', () => {
+    fc.assert(
+      fc.property(
+        investmentArb(),
+        (investment) => {
+          const { unmount } = render(
+            <InvestmentRow
+              investment={investment}
+              onUpdateValue={vi.fn()}
+              onViewDetails={vi.fn()}
+              onEdit={vi.fn()}
+              onDelete={vi.fn()}
+            />
+          );
+
+          // No Update Value button
+          expect(screen.queryByText(/Update Value/i)).toBeNull();
+
+          // View Details button is present
+          expect(screen.getByText(/View Details/i)).toBeInTheDocument();
+
+          unmount();
+        }
+      ),
+      { numRuns: 100 }
     );
   });
 });

@@ -6,7 +6,6 @@ import { getAllInvestments, createInvestment, updateInvestment, deleteInvestment
 import { getPaymentMethods, getPaymentMethod, deletePaymentMethod, setPaymentMethodActive } from '../services/paymentMethodApi';
 import { getStatementBalance } from '../services/creditCardApi';
 import CreditCardPaymentForm from './CreditCardPaymentForm';
-import CreditCardRow from './CreditCardRow';
 import LoanRow from './LoanRow';
 import InvestmentRow from './InvestmentRow';
 import { validateName, validateAmount } from '../utils/validation';
@@ -51,111 +50,98 @@ const NetWorthSummary = ({ totalInvestments, totalDebt }) => {
   );
 };
 
-// ─── CreditCardsSection ───────────────────────────────────────────────────────
+// ─── CreditCardSummary ────────────────────────────────────────────────────────
 
-const CreditCardsSection = ({ paymentMethods, onPaymentRecorded, onViewDetails, onAddPaymentMethod }) => {
+const CreditCardSummary = ({ paymentMethods, onPaymentRecorded, onViewDetails }) => {
   const [cardData, setCardData] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [payingCard, setPayingCard] = useState(null);
+  const [payingCardId, setPayingCardId] = useState(null);
 
   const creditCards = (paymentMethods || []).filter(m => m.type === 'credit_card' && m.is_active);
 
   const fetchCardData = useCallback(async () => {
-    if (creditCards.length === 0) { setLoading(false); setCardData([]); return; }
+    if (creditCards.length === 0) { setLoading(false); return; }
     setLoading(true);
-    setError(null);
-    try {
-      const results = await Promise.all(
-        creditCards.map(async (card) => {
-          let statementBalance = null;
-          let cycleBalance = null;
-          try { statementBalance = await getStatementBalance(card.id); } catch { /* silent */ }
-          try {
-            const method = await getPaymentMethod(card.id);
-            cycleBalance = method?.current_cycle?.total_amount ?? null;
-          } catch { /* silent */ }
-          return {
-            id: card.id,
-            name: card.display_name,
-            currentBalance: card.current_balance,
-            statementBalance,
-            cycleBalance,
-            utilization_percentage: card.utilization_percentage,
-            days_until_due: card.days_until_due,
-            credit_limit: card.credit_limit,
-            paymentMethodId: card.id
-          };
-        })
-      );
-      setCardData(results);
-    } catch (err) {
-      setError(err.message || 'Unable to load credit card data.');
-      logger.error('Error fetching credit card data:', err);
-    } finally {
-      setLoading(false);
-    }
+    const results = await Promise.all(
+      creditCards.map(async (card) => {
+        let statementBalance = null;
+        let cycleBalance = null;
+        try { statementBalance = await getStatementBalance(card.id); } catch { /* silent */ }
+        try {
+          const method = await getPaymentMethod(card.id);
+          cycleBalance = method?.current_cycle?.total_amount ?? null;
+        } catch { /* silent */ }
+        return { id: card.id, name: card.display_name, currentBalance: card.current_balance, statementBalance, cycleBalance };
+      })
+    );
+    setCardData(results);
+    setLoading(false);
   }, [paymentMethods]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { fetchCardData(); }, [fetchCardData]);
 
-  const handlePayClick = (card) => {
-    setPayingCard(card);
-  };
+  if (creditCards.length === 0) return null;
 
-  const handlePaymentRecorded = async () => {
-    setPayingCard(null);
-    await fetchCardData();
-    if (onPaymentRecorded) onPaymentRecorded();
-  };
+  const payingCard = payingCardId ? cardData.find(c => c.id === payingCardId) : null;
+
+  if (payingCard) {
+    return (
+      <div className="financial-cc-summary">
+        <CreditCardPaymentForm
+          paymentMethodId={payingCard.id}
+          paymentMethodName={payingCard.name}
+          currentBalance={payingCard.currentBalance}
+          onPaymentRecorded={async () => {
+            setPayingCardId(null);
+            await fetchCardData();
+            if (onPaymentRecorded) onPaymentRecorded();
+          }}
+          onCancel={() => setPayingCardId(null)}
+        />
+      </div>
+    );
+  }
 
   return (
-    <div className="financial-section" data-testid="credit-cards-section">
-      <div className="financial-section-header">
-        <div className="financial-section-header-left">
-          <span className="financial-section-icon">💳</span>
-          <h3 className="financial-section-title">Credit Cards ({creditCards.length})</h3>
+    <div className="financial-cc-summary">
+      <div className="financial-cc-summary-title">Credit Cards</div>
+      {loading ? (
+        <div className="financial-cc-summary-loading">Loading...</div>
+      ) : (
+        <div className="financial-cc-summary-grid">
+          <div className="financial-cc-summary-header-row">
+            <span>Card</span>
+            <span>Current</span>
+            <span>Statement</span>
+            <span>Cycle</span>
+            <span></span>
+          </div>
+          {cardData.map(card => (
+            <div key={card.id} className="financial-cc-summary-row">
+              <span className="financial-cc-name">{card.name}</span>
+              <span className="financial-cc-amount">{formatCurrency(card.currentBalance)}</span>
+              <span className="financial-cc-amount">{card.statementBalance != null ? formatCurrency(card.statementBalance) : '—'}</span>
+              <span className="financial-cc-amount">{card.cycleBalance != null ? formatCurrency(card.cycleBalance) : '—'}</span>
+              <span className="financial-cc-pay-cell">
+                <button
+                  className="financial-cc-view-btn"
+                  onClick={() => onViewDetails && onViewDetails(card)}
+                  title={`View details for ${card.name}`}
+                >
+                  👁️
+                </button>
+                <button
+                  className="financial-cc-pay-btn"
+                  onClick={() => setPayingCardId(card.id)}
+                  title={`Log payment for ${card.name}`}
+                >
+                  Pay
+                </button>
+              </span>
+            </div>
+          ))}
         </div>
-        <button
-          className="financial-section-add-button"
-          onClick={onAddPaymentMethod}
-          title="Add Payment Method"
-        >
-          + Add
-        </button>
-      </div>
-      <div className="financial-section-content">
-        {error && (
-          <div className="financial-section-error">
-            <div>{error}</div>
-            <button className="financial-error-retry-button" onClick={fetchCardData}>Retry</button>
-          </div>
-        )}
-        {loading ? (
-          <div className="financial-section-loading">Loading credit cards...</div>
-        ) : payingCard ? (
-          <CreditCardPaymentForm
-            paymentMethodId={payingCard.id}
-            paymentMethodName={payingCard.name}
-            currentBalance={payingCard.currentBalance}
-            onPaymentRecorded={handlePaymentRecorded}
-            onCancel={() => setPayingCard(null)}
-          />
-        ) : creditCards.length === 0 ? (
-          <div className="financial-section-empty">No credit cards. Add a payment method to get started.</div>
-        ) : (
-          <div className="financial-section-list">
-            {cardData.map(card => (
-              <CreditCardRow
-                key={card.id}
-                card={card}
-                onPay={handlePayClick}
-                onViewDetails={(c) => onViewDetails && onViewDetails(c)}
-              />
-            ))}
-          </div>
-        )}
-      </div>
+      )}
     </div>
   );
 };
@@ -832,22 +818,50 @@ const FinancialOverviewModal = ({
             <button className="financial-modal-close" onClick={handleClose} aria-label="Close">✕</button>
           </div>
           <NetWorthSummary totalInvestments={totalInvestments} totalDebt={totalDebt} />
+          <CreditCardSummary paymentMethods={creditCardMethods} onViewDetails={handleCreditCardViewDetails} onPaymentRecorded={async () => {
+            try {
+              const pmData = await getPaymentMethods();
+              setCreditCardMethods(pmData || []);
+            } catch (err) {
+              logger.error('Error refreshing payment methods after payment:', err);
+            }
+          }} />
         </div>
 
         <div className="financial-unified-content">
-          <CreditCardsSection
-            paymentMethods={creditCardMethods}
-            onPaymentRecorded={async () => {
-              try {
-                const pmData = await getPaymentMethods();
-                setCreditCardMethods(pmData || []);
-              } catch (err) {
-                logger.error('Error refreshing payment methods after payment:', err);
-              }
-            }}
-            onViewDetails={handleCreditCardViewDetails}
-            onAddPaymentMethod={() => { setEditingPaymentMethod(null); setShowPaymentMethodForm(true); }}
-          />
+
+          {/* Credit Cards Section */}
+          <div className="financial-section" data-testid="credit-cards-section">
+            <div className="financial-section-header">
+              <div className="financial-section-header-left">
+                <span className="financial-section-icon">💳</span>
+                <h3 className="financial-section-title">Credit Cards ({creditCardMethods.filter(m => m.type === 'credit_card').length})</h3>
+              </div>
+              <button
+                className="financial-section-add-button"
+                onClick={() => { setEditingPaymentMethod(null); setShowPaymentMethodForm(true); }}
+                title="Add Credit Card"
+              >
+                + Add
+              </button>
+            </div>
+            <div className="financial-section-content">
+              {creditCardMethods.filter(m => m.type === 'credit_card').length === 0 ? (
+                <div className="financial-section-empty">No credit cards configured yet. Add one to get started.</div>
+              ) : (
+                <div className="financial-section-list">
+                  {creditCardMethods.filter(m => m.type === 'credit_card').map(card => (
+                    <div key={card.id} className="financial-section-item" data-testid={`credit-card-item-${card.id}`}>
+                      <span className="financial-section-item-name">{card.display_name}</span>
+                      {card.credit_limit != null && (
+                        <span className="financial-section-item-detail">{formatCurrency(card.current_balance || 0)} / {formatCurrency(card.credit_limit)}</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
 
           <LoansSection
             year={year}

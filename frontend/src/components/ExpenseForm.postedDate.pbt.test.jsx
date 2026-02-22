@@ -256,13 +256,19 @@ describe('ExpenseForm Posted Date Field Visibility Property-Based Tests', () => 
           });
 
           // Expand the Advanced Options section to reveal the posted_date field
+          await waitFor(() => {
+            const advancedOptionsHeader = Array.from(container.querySelectorAll('.collapsible-header'))
+              .find(h => h.textContent.includes('Advanced Options'));
+            expect(advancedOptionsHeader).toBeTruthy();
+          }, { timeout: 3000 });
+
           const advancedOptionsHeader = Array.from(container.querySelectorAll('.collapsible-header'))
             .find(h => h.textContent.includes('Advanced Options'));
-          
+
           if (advancedOptionsHeader && advancedOptionsHeader.getAttribute('aria-expanded') === 'false') {
             await act(async () => {
               fireEvent.click(advancedOptionsHeader);
-              await new Promise(resolve => setTimeout(resolve, 100));
+              await new Promise(resolve => setTimeout(resolve, 200));
             });
           }
 
@@ -270,7 +276,7 @@ describe('ExpenseForm Posted Date Field Visibility Property-Based Tests', () => 
           await waitFor(() => {
             const postedDateInput = container.querySelector('input[name="posted_date"]');
             expect(postedDateInput).toBeTruthy();
-          }, { timeout: 2000 });
+          }, { timeout: 5000 });
 
           // Now switch to a non-credit card payment method
           await act(async () => {

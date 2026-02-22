@@ -6,7 +6,7 @@
 
 | Layer | Source Files | Largest File (lines) |
 |---|---|---|
-| Backend services | ~30 | paymentMethodService: 1,307 / billingCycleHistoryService: 878 / expenseService: 814 |
+| Backend services | ~30 | billingCycleHistoryService: 878 / expenseService: 814 / paymentMethodService: 310 (split into 3 sub-services) |
 | Backend controllers | ~20 | — |
 | Backend repositories | ~18 | — |
 | Backend routes | 24 | — |
@@ -133,22 +133,20 @@ components/
 
 ---
 
-### 5. Split paymentMethodService.js
+### 5. ~~Split paymentMethodService.js~~ ✅ COMPLETED
 
 **Priority: MEDIUM | Effort: LOW | Risk: LOW**
 
-**Problem:** `backend/services/paymentMethodService.js` at 1,307 lines is the largest service file. It handles CRUD, credit card balance calculations, validation, and display name logic — four distinct responsibilities.
-
-**Recommendation:** Follow the same pattern already used for `expenseService` (which was split into `expenseValidationService`, `expenseTaxService`, `expensePeopleService`):
+**Status:** Completed. Split the 1,307-line monolith into three focused sub-services following the same pattern used for `expenseService`:
 
 ```
-paymentMethodService.js         → CRUD operations (~400 lines)
-paymentMethodBalanceService.js  → balance/utilization calculations (~400 lines)
-paymentMethodValidationService.js → input validation (~300 lines)
-paymentMethodDisplayService.js  → display names, formatting (~200 lines)
+paymentMethodService.js              → CRUD + orchestration, delegates to sub-services (~310 lines)
+paymentMethodValidationService.js    → input validation, display name uniqueness (~130 lines)
+paymentMethodBalanceService.js       → balance/utilization calculations, recalculate (~280 lines)
+paymentMethodBillingCycleService.js  → billing cycle dates, details, history (~220 lines)
 ```
 
-The existing PBT test files (`paymentMethodService.lifecycle.pbt.test.js`, `.creditCard.pbt.test.js`, `.balance.pbt.test.js`, `.validation.pbt.test.js`) already reflect this natural split.
+The main `paymentMethodService.js` preserves the exact same public API via delegation methods, so no consumer imports needed updating. All 66 tests pass (53 paymentMethod + 13 billingCycleController.creditCardDetail).
 
 ---
 
@@ -193,7 +191,7 @@ The existing PBT test files (`paymentMethodService.lifecycle.pbt.test.js`, `.cre
 | 2 | Unify test DB setup | HIGH | MEDIUM | MEDIUM | After #1 |
 | 3 | ~~ModalContext reducer~~ ✅ | MEDIUM | LOW | LOW | None |
 | 4 | Group frontend components | MEDIUM | MEDIUM | LOW | None |
-| 5 | Split paymentMethodService | MEDIUM | LOW | LOW | None |
+| 5 | ~~Split paymentMethodService~~ ✅ | MEDIUM | LOW | LOW | None |
 | 6 | ~~Clean config.js aliases~~ ✅ | LOW | LOW | LOW | None |
 | 7 | ~~Prune archive/docs~~ ✅ | LOW | LOW | NONE | None |
 | 8 | ESM migration | LOW | HIGH | MEDIUM | None |

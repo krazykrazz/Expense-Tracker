@@ -28,7 +28,8 @@ describe('syncController.handleSSEConnection', () => {
     req = {
       on: jest.fn((event, handler) => {
         if (event === 'close') closeHandler = handler;
-      })
+      }),
+      destroyed: false
     };
 
     res = {
@@ -36,7 +37,9 @@ describe('syncController.handleSSEConnection', () => {
       write: jest.fn(),
       on: jest.fn((event, handler) => {
         if (event === 'error') resErrorHandler = handler;
-      })
+      }),
+      writableEnded: false,
+      destroyed: false
     };
 
     sseService.addClient.mockClear();
@@ -99,20 +102,20 @@ describe('syncController.handleSSEConnection', () => {
   });
 
   describe('keepalive interval', () => {
-    it('writes a keepalive comment after 25 seconds', () => {
+    it('writes a keepalive comment after 15 seconds', () => {
       handleSSEConnection(req, res);
       expect(res.write).toHaveBeenCalledTimes(1); // only initial event so far
 
-      jest.advanceTimersByTime(25000);
+      jest.advanceTimersByTime(15000);
 
       expect(res.write).toHaveBeenCalledTimes(2);
       expect(res.write.mock.calls[1][0]).toBe(': keepalive\n\n');
     });
 
-    it('writes multiple keepalive comments at 25s intervals', () => {
+    it('writes multiple keepalive comments at 15s intervals', () => {
       handleSSEConnection(req, res);
 
-      jest.advanceTimersByTime(75000); // 3 intervals
+      jest.advanceTimersByTime(45000); // 3 intervals
 
       // 1 initial + 3 keepalives
       expect(res.write).toHaveBeenCalledTimes(4);
@@ -162,7 +165,7 @@ describe('syncController.handleSSEConnection', () => {
         throw new Error('write EPIPE');
       });
 
-      jest.advanceTimersByTime(25000);
+      jest.advanceTimersByTime(15000);
 
       expect(sseService.removeClient).toHaveBeenCalledWith(clientId);
     });
@@ -175,10 +178,10 @@ describe('syncController.handleSSEConnection', () => {
         throw new Error('write EPIPE');
       });
 
-      jest.advanceTimersByTime(25000); // first keepalive — throws, triggers cleanup
+      jest.advanceTimersByTime(15000); // first keepalive — throws, triggers cleanup
       res.write.mockClear();
 
-      jest.advanceTimersByTime(50000); // no more keepalives should fire
+      jest.advanceTimersByTime(30000); // no more keepalives should fire
 
       expect(res.write).not.toHaveBeenCalled();
     });
@@ -187,7 +190,7 @@ describe('syncController.handleSSEConnection', () => {
       handleSSEConnection(req, res);
 
       res.write.mockImplementation(() => { throw new Error('write EPIPE'); });
-      jest.advanceTimersByTime(25000); // triggers keepalive error → cleanup
+      jest.advanceTimersByTime(15000); // triggers keepalive error → cleanup
 
       // Now close fires too
       closeHandler();
@@ -220,6 +223,52 @@ describe('syncController.handleSSEConnection', () => {
       jest.advanceTimersByTime(50000);
 
       expect(res.write).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('proactive socket state detection', () => {
+    it('removes client when req.destroyed is true at keepalive time', () => {
+      handleSSEConnection(req, res);
+      const clientId = sseService.addClient.mock.calls[0][0];
+
+      req.destroyed = true;
+      jest.advanceTimersByTime(15000);
+
+      expect(sseService.removeClient).toHaveBeenCalledWith(clientId);
+      // write should NOT have been called for keepalive (skipped due to destroyed check)
+      expect(res.write).toHaveBeenCalledTimes(1); // only initial event
+    });
+
+    it('removes client when res.writableEnded is true at keepalive time', () => {
+      handleSSEConnection(req, res);
+      const clientId = sseService.addClient.mock.calls[0][0];
+
+      res.writableEnded = true;
+      jest.advanceTimersByTime(15000);
+
+      expect(sseService.removeClient).toHaveBeenCalledWith(clientId);
+      expect(res.write).toHaveBeenCalledTimes(1); // only initial event
+    });
+
+    it('removes client when res.destroyed is true at keepalive time', () => {
+      handleSSEConnection(req, res);
+      const clientId = sseService.addClient.mock.calls[0][0];
+
+      res.destroyed = true;
+      jest.advanceTimersByTime(15000);
+
+      expect(sseService.removeClient).toHaveBeenCalledWith(clientId);
+      expect(res.write).toHaveBeenCalledTimes(1); // only initial event
+    });
+
+    it('removes client when res.write returns false (backpressure)', () => {
+      handleSSEConnection(req, res);
+      const clientId = sseService.addClient.mock.calls[0][0];
+
+      res.write.mockReturnValue(false);
+      jest.advanceTimersByTime(15000);
+
+      expect(sseService.removeClient).toHaveBeenCalledWith(clientId);
     });
   });
 });

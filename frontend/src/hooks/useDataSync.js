@@ -65,6 +65,7 @@ export function useDataSync({
   const reconnectTimerRef = useRef(null);
   const attemptRef = useRef(0);
   const unmountedRef = useRef(false);
+  const intentionalCloseRef = useRef(false);
   const visibilityReconnectRef = useRef(false);
 
   // Refs for refresh callbacks — keeps routeEntityType stable across renders
@@ -152,6 +153,7 @@ export function useDataSync({
   const connect = useCallback(() => {
     if (unmountedRef.current) return;
 
+    intentionalCloseRef.current = false;
     setConnectionStatus('connecting');
     const es = new EventSource(API_ENDPOINTS.SYNC_EVENTS);
     eventSourceRef.current = es;
@@ -201,6 +203,10 @@ export function useDataSync({
 
     es.onerror = () => {
       if (unmountedRef.current) return;
+      // If the close was intentional (visibility hide or unmount), don't reconnect —
+      // the visibility handler or cleanup will manage reconnection.
+      if (intentionalCloseRef.current) return;
+
       setConnectionStatus('disconnected');
       es.close();
       eventSourceRef.current = null;
@@ -220,6 +226,8 @@ export function useDataSync({
     if (unmountedRef.current) return;
 
     if (document.hidden) {
+      // Mark as intentional so onerror doesn't schedule a rogue reconnect
+      intentionalCloseRef.current = true;
       // Disconnect: close EventSource, clear timers, set status
       if (eventSourceRef.current) {
         eventSourceRef.current.close();
@@ -249,6 +257,7 @@ export function useDataSync({
 
     return () => {
       unmountedRef.current = true;
+      intentionalCloseRef.current = true;
 
       // Remove visibility listener
       document.removeEventListener('visibilitychange', handleVisibilityChange);

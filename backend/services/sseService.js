@@ -82,10 +82,19 @@ async function broadcast(entityType, tabId) {
 }
 
 /**
- * Get the number of currently active client connections
+ * Get the number of currently active client connections.
+ * Prunes any entries whose underlying socket is already destroyed,
+ * so the reported count is accurate at query time.
  * @returns {number}
  */
 function getConnectionCount() {
+  // Prune stale entries whose socket closed without triggering cleanup
+  for (const [clientId, res] of clients) {
+    if (res.writableEnded || res.destroyed) {
+      clients.delete(clientId);
+      logger.debug('SSE: Pruned stale client during count', { clientId, total: clients.size });
+    }
+  }
   return clients.size;
 }
 

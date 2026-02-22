@@ -169,6 +169,13 @@
   white-space: nowrap;
 }
 
+/* Always-present grid cell for discrepancy column — keeps grid columns stable */
+.unified-cycle-discrepancy-cell {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
+
 /* Discrepancy Indicator */
 .unified-cycle-discrepancy {
   display: flex;

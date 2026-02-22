@@ -195,11 +195,16 @@
 }
 
 .financial-cc-amount {
+  display: inline-block;
   font-size: var(--text-sm, 13px);
   font-weight: var(--font-semibold, 600);
-  color: var(--text-primary, #0f172a);
+  color: #991b1b;
+  background-color: rgba(220, 38, 38, 0.08);
+  border-radius: 4px;
+  padding: 1px 6px;
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
+  text-align: right;
 }
 
 .financial-cc-pay-cell {

@@ -142,18 +142,20 @@ const UnifiedBillingCycleList = ({
               </span>
             </div>
 
-            {/* Discrepancy - computed from actual and calculated balances */}
-            {cycle.actual_statement_balance > 0 && (() => {
-              const discrepancy = calculateDiscrepancy(cycle.actual_statement_balance, cycle.calculated_statement_balance);
-              return discrepancy.type !== 'match' ? (
-                <div className={`unified-cycle-discrepancy discrepancy-${discrepancy.type}`}>
-                  <span className="discrepancy-icon">{discrepancy.type === 'higher' ? '↑' : '↓'}</span>
-                  <span className="discrepancy-amount">
-                    {discrepancy.amount > 0 ? '+' : ''}{formatCurrency(discrepancy.amount)}
-                  </span>
-                </div>
-              ) : null;
-            })()}
+            {/* Discrepancy - always rendered to hold grid column 4 */}
+            <div className="unified-cycle-discrepancy-cell">
+              {cycle.actual_statement_balance > 0 && (() => {
+                const discrepancy = calculateDiscrepancy(cycle.actual_statement_balance, cycle.calculated_statement_balance);
+                return discrepancy.type !== 'match' ? (
+                  <div className={`unified-cycle-discrepancy discrepancy-${discrepancy.type}`}>
+                    <span className="discrepancy-icon">{discrepancy.type === 'higher' ? '↑' : '↓'}</span>
+                    <span className="discrepancy-amount">
+                      {discrepancy.amount > 0 ? '+' : ''}{formatCurrency(discrepancy.amount)}
+                    </span>
+                  </div>
+                ) : null;
+              })()}
+            </div>
 
             {/* Trend Indicator */}
             <div className="unified-cycle-trend">

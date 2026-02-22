@@ -907,7 +907,13 @@ const FinancialOverviewModal = ({
   };
 
   const handleCreditCardViewDetails = (card) => {
-    setSelectedCreditCard(card.id);
+    if (card.type && card.type !== 'credit_card') {
+      // Non-CC payment method — open edit form
+      setEditingPaymentMethod(card);
+      setShowPaymentMethodForm(true);
+    } else {
+      setSelectedCreditCard(card.id);
+    }
   };
 
   const handlePaymentMethodFormSave = async () => {

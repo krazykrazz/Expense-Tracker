@@ -36,6 +36,11 @@
 
 
 
+
+
+## [5.17.3] - 2026-02-21
+
+### Fix SSE session count inflation on page refresh
 ## [5.17.2] - 2026-02-21
 
 ### Fix SSE session count leak from stale connections

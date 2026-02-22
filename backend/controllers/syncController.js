@@ -35,16 +35,25 @@ function handleSSEConnection(req, res) {
   // Send initial connected event
   res.write(`data: ${JSON.stringify({ type: 'connected', timestamp: new Date().toISOString() })}\n\n`);
 
-  // Keepalive every 25s — prevents Cloudflare / proxy timeout (100s limit)
-  // Wrapped in try/catch to detect dead connections and clean up stale entries
+  // Keepalive every 15s — detects dead connections faster after page refreshes
+  // Also checks socket state proactively since res.write() may silently buffer
   const keepalive = setInterval(() => {
+    if (req.destroyed || res.writableEnded || res.destroyed) {
+      cleanup();
+      return;
+    }
     try {
-      res.write(': keepalive\n\n');
+      const ok = res.write(': keepalive\n\n');
+      // If write returns false, the buffer is full — likely a dead connection
+      if (ok === false) {
+        logger.warn('SSE: Keepalive write backpressure, removing likely stale client', { clientId });
+        cleanup();
+      }
     } catch (err) {
       logger.warn('SSE: Keepalive write failed, removing stale client', { clientId, err: err.message });
       cleanup();
     }
-  }, 25000);
+  }, 15000);
 
   // Safety net: catch connection errors that don't trigger req 'close'
   res.on('error', () => cleanup());

@@ -169,7 +169,7 @@ describe('FinancialOverviewModal', () => {
     it('should render all three section headers in unified view', async () => {
       render(<FinancialOverviewModal {...defaultProps} />);
       await waitFor(() => {
-        expect(screen.getByTestId('credit-cards-section')).toBeInTheDocument();
+        expect(screen.getByTestId('payment-methods-section')).toBeInTheDocument();
         expect(screen.getByTestId('loans-section')).toBeInTheDocument();
         expect(screen.getByTestId('investments-section')).toBeInTheDocument();
       });
@@ -276,11 +276,11 @@ describe('FinancialOverviewModal', () => {
       });
     });
 
-    it('should show zero count for credit cards when none exist', async () => {
+    it('should show payment methods count in section header', async () => {
       render(<FinancialOverviewModal {...defaultProps} />);
       await waitFor(() => {
-        const ccSection = screen.getByTestId('credit-cards-section');
-        expect(ccSection).toHaveTextContent('Credit Cards (0)');
+        const pmSection = screen.getByTestId('payment-methods-section');
+        expect(pmSection).toHaveTextContent('Payment Methods (1)');
       });
     });
   });
@@ -345,15 +345,13 @@ describe('FinancialOverviewModal', () => {
   });
 
   describe('Empty states', () => {
-    it('should show empty state for credit cards when none exist', async () => {
-      paymentMethodApi.getPaymentMethods.mockResolvedValue([
-        { id: 1, type: 'cash', display_name: 'Cash', is_active: true }
-      ]);
+    it('should show empty state for payment methods when none exist', async () => {
+      paymentMethodApi.getPaymentMethods.mockResolvedValue([]);
 
       render(<FinancialOverviewModal {...defaultProps} />);
       await waitFor(() => {
-        const ccSection = screen.getByTestId('credit-cards-section');
-        expect(ccSection).toHaveTextContent(/No credit cards/i);
+        const pmSection = screen.getByTestId('payment-methods-section');
+        expect(pmSection).toHaveTextContent(/No payment methods/i);
       });
     });
 
@@ -412,14 +410,14 @@ describe('FinancialOverviewModal', () => {
       });
     });
 
-    it('should open PaymentMethodForm when Add button in credit cards section is clicked', async () => {
+    it('should open PaymentMethodForm when Add button in payment methods section is clicked', async () => {
       render(<FinancialOverviewModal {...defaultProps} />);
       await waitFor(() => {
-        expect(screen.getByTestId('credit-cards-section')).toBeInTheDocument();
+        expect(screen.getByTestId('payment-methods-section')).toBeInTheDocument();
       });
 
-      const ccSection = screen.getByTestId('credit-cards-section');
-      const addBtn = ccSection.querySelector('.financial-section-add-button');
+      const pmSection = screen.getByTestId('payment-methods-section');
+      const addBtn = pmSection.querySelector('.financial-section-add-button');
       fireEvent.click(addBtn);
 
       await waitFor(() => {
@@ -487,7 +485,7 @@ describe('FinancialOverviewModal', () => {
     it('should not render any tab navigation buttons for switching between sections', async () => {
       render(<FinancialOverviewModal {...defaultProps} />);
       await waitFor(() => {
-        expect(screen.getByTestId('credit-cards-section')).toBeInTheDocument();
+        expect(screen.getByTestId('payment-methods-section')).toBeInTheDocument();
       });
 
       // There should be no top-level tab buttons like "Loans", "Investments", "Payment Methods"
@@ -496,7 +494,7 @@ describe('FinancialOverviewModal', () => {
       expect(container).toBeInTheDocument();
 
       // All three sections should be visible simultaneously
-      expect(screen.getByTestId('credit-cards-section')).toBeVisible();
+      expect(screen.getByTestId('payment-methods-section')).toBeVisible();
       expect(screen.getByTestId('loans-section')).toBeVisible();
       expect(screen.getByTestId('investments-section')).toBeVisible();
     });

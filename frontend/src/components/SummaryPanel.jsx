@@ -383,16 +383,15 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
     handleDismissCreditCardDueSoonReminder();
   };
 
-  const handleBillingCycleReminderClick = (card) => {
-    openCreditCardDetail(card.paymentMethodId, {
-      initialTab: 'billing-cycles',
-      initialAction: 'enter-statement',
-      reminderData: {
-        cycleStartDate: card.cycleStartDate,
-        cycleEndDate: card.cycleEndDate,
-        calculatedBalance: card.calculatedBalance
-      }
-    });
+  const handleBillingCycleReminderClick = (cards) => {
+    if (cards.length === 1) {
+      openCreditCardDetail(cards[0].paymentMethodId, {
+        initialTab: 'billing-cycles',
+        initialAction: null,
+      });
+    } else {
+      openFinancialOverview('payment-methods');
+    }
     handleDismissBillingCycleEntryReminder();
   };
 

@@ -2,17 +2,15 @@
  * Property-based tests for FinancialOverviewModal unified view.
  *
  * Property 7: Unified view section headers show correct item counts
- * For any combination of credit cards (0..N), loans (0..M), and investments (0..K),
- * the Financial Overview SHALL render three section headers with counts matching
- * the number of items in each category. When a count is zero, the section SHALL
- * display an empty state message.
- *
- * Net Worth Calculation: For any non-negative totalInvestments and totalDebt values,
- * the displayed net worth equals totalInvestments - totalDebt, and the CSS class matches the sign.
+ * Property 3: Payment method subsection visibility matches content
+ * Property 4: Payment method row content completeness
+ * Property 5: Payment Methods section item count equals total active methods
+ * Property 6: Add button disabled state matches loading state
+ * Net Worth Calculation correctness
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, cleanup, within } from '@testing-library/react';
 import * as fc from 'fast-check';
 
 // ── Mock all dependencies ─────────────────────────────────────────────────────
@@ -58,9 +56,9 @@ vi.mock('../utils/validation', () => ({
 }));
 
 vi.mock('../utils/formatters', () => ({
-  formatCurrency: (v) => `$${Number(v || 0).toFixed(2)}`,
+  formatCurrency: (v) => `${Number(v || 0).toFixed(2)}`,
   formatDate: (d) => d || '',
-  formatCAD: (v) => `$${Number(v || 0).toFixed(2)}`
+  formatCAD: (v) => `${Number(v || 0).toFixed(2)}`
 }));
 
 vi.mock('./LoanDetailView', () => ({ default: () => null }));
@@ -110,6 +108,16 @@ const creditCardArb = fc.record({
   total_expense_count: fc.integer({ min: 0, max: 500 }),
 });
 
+const nonCreditCardArb = fc.record({
+  id: fc.integer({ min: 1, max: 10000 }),
+  type: fc.constantFrom('debit', 'cheque', 'cash'),
+  display_name: fc.string({ minLength: 1, maxLength: 30 }).filter(s => s.trim().length > 0),
+  is_active: fc.constant(true),
+  current_balance: fc.constant(null),
+  expense_count: fc.integer({ min: 0, max: 100 }),
+  total_expense_count: fc.integer({ min: 0, max: 500 }),
+});
+
 // Ensure unique IDs within each array
 function uniqueById(arr) {
   const seen = new Set();
@@ -119,6 +127,17 @@ function uniqueById(arr) {
     return true;
   });
 }
+
+const defaultModalProps = {
+  isOpen: true,
+  onClose: vi.fn(),
+  year: 2026,
+  month: 2,
+  onUpdate: vi.fn(),
+  onPaymentMethodsUpdate: vi.fn(),
+  initialTab: null,
+  _testNetWorth: { totalInvestments: 0, totalDebt: 0 },
+};
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
@@ -133,76 +152,51 @@ describe('FinancialOverviewModal PBT', () => {
   });
 
   /**
-   * Feature: financial-overview-redesign, Property 7: Unified view section headers show correct item counts
+   * Feature: financial-overview-ui-consistency, Property 7: Unified view section headers show correct item counts
    * Validates: Requirements 3.1, 3.3, 3.4
    *
-   * For any combination of credit cards (0..N), loans (0..M), and investments (0..K),
+   * For any combination of payment methods (0..N), loans (0..M), and investments (0..K),
    * the Financial Overview SHALL render three section headers with counts matching
-   * the number of items in each category. When a count is zero, the section SHALL
-   * display an empty state message.
+   * the number of items in each category.
    */
   describe('Property 7: Unified view section headers show correct item counts', () => {
     it('section header counts match array lengths for any combination of items', async () => {
       await fc.assert(
         fc.asyncProperty(
-          fc.array(creditCardArb, { minLength: 0, maxLength: 5 }).map(uniqueById),
-          fc.array(loanArb, { minLength: 0, maxLength: 5 }).map(uniqueById),
-          fc.array(investmentArb, { minLength: 0, maxLength: 5 }).map(uniqueById),
-          async (creditCards, loans, investments) => {
-            // Build payment methods: credit cards + a non-CC method to ensure filter works
-            const paymentMethods = [
-              ...creditCards,
-              { id: 99999, type: 'cash', display_name: 'Cash', is_active: true, expense_count: 0, total_expense_count: 0 }
-            ];
+          fc.array(creditCardArb, { minLength: 0, maxLength: 3 }).map(uniqueById),
+          fc.array(nonCreditCardArb, { minLength: 0, maxLength: 3 }).map(uniqueById),
+          fc.array(loanArb, { minLength: 0, maxLength: 3 }).map(uniqueById),
+          fc.array(investmentArb, { minLength: 0, maxLength: 3 }).map(uniqueById),
+          async (creditCards, otherMethods, loans, investments) => {
+            // Ensure no ID collisions between CC and other methods
+            const usedIds = new Set(creditCards.map(c => c.id));
+            const safeOthers = otherMethods.filter(m => !usedIds.has(m.id));
+            const paymentMethods = [...creditCards, ...safeOthers];
+            const totalPmCount = paymentMethods.length;
 
             loanApi.getAllLoans.mockResolvedValue(loans);
             investmentApi.getAllInvestments.mockResolvedValue(investments);
             paymentMethodApi.getPaymentMethods.mockResolvedValue(paymentMethods);
 
             const { unmount } = render(
-              <FinancialOverviewModal
-                isOpen={true}
-                onClose={vi.fn()}
-                year={2026}
-                month={2}
-                onUpdate={vi.fn()}
-                onPaymentMethodsUpdate={vi.fn()}
-                initialTab={null}
-                _testNetWorth={{ totalInvestments: 0, totalDebt: 0 }}
-              />
+              <FinancialOverviewModal {...defaultModalProps} />
             );
 
-            // Wait for all sections to render with data
             await waitFor(() => {
-              const loansSection = screen.getByTestId('loans-section');
-              expect(loansSection).toHaveTextContent(`Loans (${loans.length})`);
+              expect(screen.getByTestId('loans-section')).toHaveTextContent(`Loans (${loans.length})`);
             });
 
-            // Verify loans section header count
-            const loansSection = screen.getByTestId('loans-section');
-            expect(loansSection).toHaveTextContent(`Loans (${loans.length})`);
+            expect(screen.getByTestId('investments-section')).toHaveTextContent(`Investments (${investments.length})`);
+            expect(screen.getByTestId('payment-methods-section')).toHaveTextContent(`Payment Methods (${totalPmCount})`);
 
-            // Verify investments section header count
-            const investmentsSection = screen.getByTestId('investments-section');
-            expect(investmentsSection).toHaveTextContent(`Investments (${investments.length})`);
-
-            // Verify credit cards section header count
-            const ccSection = screen.getByTestId('credit-cards-section');
-            expect(ccSection).toHaveTextContent(`Credit Cards (${creditCards.length})`);
-
-            // Verify empty state messages when count is zero
             if (loans.length === 0) {
-              const loansContent = loansSection.querySelector('.financial-section-empty, .loans-empty');
-              // Active loans tab shows empty when no active loans
-              expect(loansSection).toHaveTextContent(/No active loans/i);
+              expect(screen.getByTestId('loans-section')).toHaveTextContent(/No active loans/i);
             }
-
             if (investments.length === 0) {
-              expect(investmentsSection).toHaveTextContent(/No investments yet/i);
+              expect(screen.getByTestId('investments-section')).toHaveTextContent(/No investments yet/i);
             }
-
-            if (creditCards.length === 0) {
-              expect(ccSection).toHaveTextContent(/No credit cards/i);
+            if (totalPmCount === 0) {
+              expect(screen.getByTestId('payment-methods-section')).toHaveTextContent(/No payment methods/i);
             }
 
             unmount();
@@ -211,35 +205,185 @@ describe('FinancialOverviewModal PBT', () => {
         { numRuns: 100 }
       );
     });
+  });
 
-    it('empty arrays produce zero counts and empty state messages', async () => {
-      loanApi.getAllLoans.mockResolvedValue([]);
-      investmentApi.getAllInvestments.mockResolvedValue([]);
-      paymentMethodApi.getPaymentMethods.mockResolvedValue([]);
+  /**
+   * Feature: financial-overview-ui-consistency, Property 3: Payment method subsection visibility matches content
+   * Validates: Requirements 4.1, 4.4, 4.5
+   *
+   * For any list of active payment methods, the rendered PaymentMethodsSection should show
+   * the Credit Card subsection iff the list contains at least one credit card, and should show
+   * the Other Payment Methods subsection iff the list contains at least one non-credit-card method.
+   */
+  describe('Property 3: Payment method subsection visibility matches content', () => {
+    it('cc-subsection visible iff has credit cards, other-subsection visible iff has non-CC methods', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          fc.array(creditCardArb, { minLength: 0, maxLength: 4 }).map(uniqueById),
+          fc.array(nonCreditCardArb, { minLength: 0, maxLength: 4 }).map(uniqueById),
+          async (creditCards, otherMethods) => {
+            const usedIds = new Set(creditCards.map(c => c.id));
+            const safeOthers = otherMethods.filter(m => !usedIds.has(m.id));
+            const paymentMethods = [...creditCards, ...safeOthers];
 
-      const { unmount } = render(
-        <FinancialOverviewModal
-          isOpen={true}
-          onClose={vi.fn()}
-          year={2026}
-          month={2}
-          onUpdate={vi.fn()}
-          onPaymentMethodsUpdate={vi.fn()}
-          initialTab={null}
-          _testNetWorth={{ totalInvestments: 0, totalDebt: 0 }}
-        />
+            loanApi.getAllLoans.mockResolvedValue([]);
+            investmentApi.getAllInvestments.mockResolvedValue([]);
+            paymentMethodApi.getPaymentMethods.mockResolvedValue(paymentMethods);
+
+            const { unmount } = render(
+              <FinancialOverviewModal {...defaultModalProps} />
+            );
+
+            await waitFor(() => {
+              expect(screen.getByTestId('payment-methods-section')).toBeInTheDocument();
+            });
+
+            if (creditCards.length > 0) {
+              expect(screen.getByTestId('cc-subsection')).toBeInTheDocument();
+            } else {
+              expect(screen.queryByTestId('cc-subsection')).toBeNull();
+            }
+
+            if (safeOthers.length > 0) {
+              expect(screen.getByTestId('other-subsection')).toBeInTheDocument();
+            } else {
+              expect(screen.queryByTestId('other-subsection')).toBeNull();
+            }
+
+            unmount();
+          }
+        ),
+        { numRuns: 100 }
       );
+    });
+  });
 
-      await waitFor(() => {
-        expect(screen.getByTestId('loans-section')).toHaveTextContent('Loans (0)');
-        expect(screen.getByTestId('investments-section')).toHaveTextContent('Investments (0)');
-        expect(screen.getByTestId('credit-cards-section')).toHaveTextContent('Credit Cards (0)');
-      });
+  /**
+   * Feature: financial-overview-ui-consistency, Property 4: Payment method row content completeness
+   * Validates: Requirements 4.3
+   *
+   * For any non-credit-card payment method with a name and type, rendering its row in the
+   * Other Payment Methods subsection should produce output containing the method name,
+   * a type badge, and a View button.
+   */
+  describe('Property 4: Payment method row content completeness', () => {
+    it('each non-CC method row contains name, type badge, and view button', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          nonCreditCardArb,
+          async (method) => {
+            cleanup();
+            const paymentMethods = [method];
 
-      expect(screen.getByTestId('credit-cards-section')).toHaveTextContent(/No credit cards/i);
-      expect(screen.getByTestId('investments-section')).toHaveTextContent(/No investments yet/i);
+            loanApi.getAllLoans.mockResolvedValue([]);
+            investmentApi.getAllInvestments.mockResolvedValue([]);
+            paymentMethodApi.getPaymentMethods.mockResolvedValue(paymentMethods);
 
-      unmount();
+            const { unmount, container } = render(
+              <FinancialOverviewModal {...defaultModalProps} />
+            );
+
+            await waitFor(() => {
+              expect(within(container).getByTestId('other-subsection')).toBeInTheDocument();
+            });
+
+            const subsection = within(container).getByTestId('other-subsection');
+            expect(subsection).toHaveTextContent(method.display_name.trim());
+            expect(subsection.querySelector('[data-testid="type-badge"]')).toBeInTheDocument();
+            expect(subsection.querySelector('.other-payment-method-view-btn')).toBeInTheDocument();
+
+            unmount();
+          }
+        ),
+        { numRuns: 100 }
+      );
+    });
+  });
+
+  /**
+   * Feature: financial-overview-ui-consistency, Property 5: Payment Methods section item count equals total active methods
+   * Validates: Requirements 4.7
+   *
+   * For any list of active payment methods (of any mix of types), the item count displayed
+   * in the Payment Methods section header should equal the total number of active methods.
+   */
+  describe('Property 5: Payment Methods section item count equals total active methods', () => {
+    it('header count equals total active payment methods', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          fc.array(creditCardArb, { minLength: 0, maxLength: 4 }).map(uniqueById),
+          fc.array(nonCreditCardArb, { minLength: 0, maxLength: 4 }).map(uniqueById),
+          async (creditCards, otherMethods) => {
+            const usedIds = new Set(creditCards.map(c => c.id));
+            const safeOthers = otherMethods.filter(m => !usedIds.has(m.id));
+            const paymentMethods = [...creditCards, ...safeOthers];
+            const totalCount = paymentMethods.length;
+
+            loanApi.getAllLoans.mockResolvedValue([]);
+            investmentApi.getAllInvestments.mockResolvedValue([]);
+            paymentMethodApi.getPaymentMethods.mockResolvedValue(paymentMethods);
+
+            const { unmount } = render(
+              <FinancialOverviewModal {...defaultModalProps} />
+            );
+
+            await waitFor(() => {
+              expect(screen.getByTestId('payment-methods-section')).toBeInTheDocument();
+            });
+
+            expect(screen.getByTestId('payment-methods-section'))
+              .toHaveTextContent(`Payment Methods (${totalCount})`);
+
+            unmount();
+          }
+        ),
+        { numRuns: 100 }
+      );
+    });
+  });
+
+  /**
+   * Feature: financial-overview-ui-consistency, Property 6: Add button disabled state matches loading state
+   * Validates: Requirements 3.5
+   *
+   * For any boolean loading state, the Add button in the Payment Methods section header
+   * should be disabled when loading is true and enabled when loading is false.
+   *
+   * Note: Since PaymentMethodsSection is not exported, we test through the full modal.
+   * The modal always passes loading={false} to PaymentMethodsSection, so the Add button
+   * should always be enabled. We verify this property holds across various payment method lists.
+   */
+  describe('Property 6: Add button disabled state matches loading state', () => {
+    it('Add button is enabled when modal is rendered (loading=false)', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          fc.array(
+            fc.oneof(creditCardArb, nonCreditCardArb),
+            { minLength: 0, maxLength: 4 }
+          ).map(uniqueById),
+          async (paymentMethods) => {
+            loanApi.getAllLoans.mockResolvedValue([]);
+            investmentApi.getAllInvestments.mockResolvedValue([]);
+            paymentMethodApi.getPaymentMethods.mockResolvedValue(paymentMethods);
+
+            const { unmount } = render(
+              <FinancialOverviewModal {...defaultModalProps} />
+            );
+
+            await waitFor(() => {
+              expect(screen.getByTestId('payment-methods-section')).toBeInTheDocument();
+            });
+
+            const pmSection = screen.getByTestId('payment-methods-section');
+            const addBtn = pmSection.querySelector('.financial-section-add-button');
+            expect(addBtn).toBeInTheDocument();
+            expect(addBtn.disabled).toBe(false);
+
+            unmount();
+          }
+        ),
+        { numRuns: 100 }
+      );
     });
   });
 

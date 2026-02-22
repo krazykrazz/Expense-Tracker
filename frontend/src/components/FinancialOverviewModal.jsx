@@ -146,6 +146,137 @@ const CreditCardSummary = ({ paymentMethods, onPaymentRecorded, onViewDetails })
   );
 };
 
+// ─── PaymentMethodsSection ────────────────────────────────────────────────────
+
+const TYPE_LABELS = { debit: 'Debit', cheque: 'Cheque', cash: 'Cash' };
+
+const PaymentMethodsSection = ({ paymentMethods, loading, onPaymentRecorded, onViewDetails, onAddNew }) => {
+  const [cardData, setCardData] = useState([]);
+  const [cardLoading, setCardLoading] = useState(true);
+  const [payingCardId, setPayingCardId] = useState(null);
+
+  const allMethods = (paymentMethods || []).filter(m => m.is_active);
+  const creditCards = allMethods.filter(m => m.type === 'credit_card');
+  const otherMethods = allMethods.filter(m => m.type !== 'credit_card');
+  const totalCount = allMethods.length;
+
+  const fetchCardData = useCallback(async () => {
+    if (creditCards.length === 0) { setCardLoading(false); return; }
+    setCardLoading(true);
+    const results = await Promise.all(
+      creditCards.map(async (card) => {
+        let statementBalance = null;
+        let cycleBalance = null;
+        try { statementBalance = await getStatementBalance(card.id); } catch { /* silent */ }
+        try {
+          const method = await getPaymentMethod(card.id);
+          cycleBalance = method?.current_cycle?.total_amount ?? null;
+        } catch { /* silent */ }
+        return { id: card.id, name: card.display_name, currentBalance: card.current_balance, statementBalance, cycleBalance };
+      })
+    );
+    setCardData(results);
+    setCardLoading(false);
+  }, [paymentMethods]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => { fetchCardData(); }, [fetchCardData]);
+
+  const payingCard = payingCardId ? cardData.find(c => c.id === payingCardId) : null;
+
+  const getTypeBadgeLabel = (type) => TYPE_LABELS[type] || (type ? type.charAt(0).toUpperCase() + type.slice(1) : 'Other');
+
+  return (
+    <div className="financial-section" data-testid="payment-methods-section">
+      <div className="financial-section-header">
+        <div className="financial-section-header-left">
+          <span className="financial-section-icon">💳</span>
+          <h3 className="financial-section-title">Payment Methods ({totalCount})</h3>
+        </div>
+        <button className="financial-section-add-button" onClick={onAddNew} disabled={loading}>+ Add</button>
+      </div>
+      <div className="financial-section-content">
+        {totalCount === 0 ? (
+          <div className="financial-section-empty">No payment methods configured yet. Add one to get started.</div>
+        ) : (
+          <>
+            {creditCards.length > 0 && (
+              <div data-testid="cc-subsection" className="payment-methods-cc-subsection">
+                {payingCard ? (
+                  <CreditCardPaymentForm
+                    paymentMethodId={payingCard.id}
+                    paymentMethodName={payingCard.name}
+                    currentBalance={payingCard.currentBalance}
+                    onPaymentRecorded={async () => {
+                      setPayingCardId(null);
+                      await fetchCardData();
+                      if (onPaymentRecorded) onPaymentRecorded();
+                    }}
+                    onCancel={() => setPayingCardId(null)}
+                  />
+                ) : cardLoading ? (
+                  <div className="financial-cc-summary-loading">Loading...</div>
+                ) : (
+                  <div className="financial-cc-summary-grid">
+                    <div className="financial-cc-summary-header-row">
+                      <span>Card</span>
+                      <span>Current</span>
+                      <span>Statement</span>
+                      <span>Cycle</span>
+                      <span></span>
+                    </div>
+                    {cardData.map(card => (
+                      <div key={card.id} className="financial-cc-summary-row">
+                        <span className="financial-cc-name">{card.name}</span>
+                        <span className="financial-cc-amount">{formatCurrency(card.currentBalance)}</span>
+                        <span className="financial-cc-amount">{card.statementBalance != null ? formatCurrency(card.statementBalance) : '—'}</span>
+                        <span className="financial-cc-amount">{card.cycleBalance != null ? formatCurrency(card.cycleBalance) : '—'}</span>
+                        <span className="financial-cc-pay-cell">
+                          <button
+                            className="financial-cc-view-btn"
+                            onClick={() => onViewDetails && onViewDetails(card)}
+                            title={`View details for ${card.name}`}
+                          >
+                            👁️
+                          </button>
+                          <button
+                            className="financial-cc-pay-btn"
+                            onClick={() => setPayingCardId(card.id)}
+                            title={`Log payment for ${card.name}`}
+                          >
+                            Pay
+                          </button>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            {otherMethods.length > 0 && (
+              <div data-testid="other-subsection" className="payment-methods-other-subsection">
+                {creditCards.length > 0 && <div className="payment-methods-subsection-divider">Other Payment Methods</div>}
+                {otherMethods.map(method => (
+                  <div key={method.id} className="other-payment-method-row">
+                    <span className="other-payment-method-name">{method.display_name}</span>
+                    <span className="other-payment-method-type-badge" data-testid="type-badge">{getTypeBadgeLabel(method.type)}</span>
+                    <button
+                      className="other-payment-method-view-btn"
+                      onClick={() => onViewDetails && onViewDetails(method)}
+                      title={`View details for ${method.display_name}`}
+                    >
+                      👁️
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // ─── LoansSection ─────────────────────────────────────────────────────────────
 
 const LoansSection = ({ year, month, onUpdate, highlightIds = [], onTotalDebtChange }) => {
@@ -818,50 +949,24 @@ const FinancialOverviewModal = ({
             <button className="financial-modal-close" onClick={handleClose} aria-label="Close">✕</button>
           </div>
           <NetWorthSummary totalInvestments={totalInvestments} totalDebt={totalDebt} />
-          <CreditCardSummary paymentMethods={creditCardMethods} onViewDetails={handleCreditCardViewDetails} onPaymentRecorded={async () => {
-            try {
-              const pmData = await getPaymentMethods();
-              setCreditCardMethods(pmData || []);
-            } catch (err) {
-              logger.error('Error refreshing payment methods after payment:', err);
-            }
-          }} />
         </div>
 
         <div className="financial-unified-content">
 
-          {/* Credit Cards Section */}
-          <div className="financial-section" data-testid="credit-cards-section">
-            <div className="financial-section-header">
-              <div className="financial-section-header-left">
-                <span className="financial-section-icon">💳</span>
-                <h3 className="financial-section-title">Credit Cards ({creditCardMethods.filter(m => m.type === 'credit_card').length})</h3>
-              </div>
-              <button
-                className="financial-section-add-button"
-                onClick={() => { setEditingPaymentMethod(null); setShowPaymentMethodForm(true); }}
-                title="Add Credit Card"
-              >
-                + Add
-              </button>
-            </div>
-            <div className="financial-section-content">
-              {creditCardMethods.filter(m => m.type === 'credit_card').length === 0 ? (
-                <div className="financial-section-empty">No credit cards configured yet. Add one to get started.</div>
-              ) : (
-                <div className="financial-section-list">
-                  {creditCardMethods.filter(m => m.type === 'credit_card').map(card => (
-                    <div key={card.id} className="financial-section-item" data-testid={`credit-card-item-${card.id}`}>
-                      <span className="financial-section-item-name">{card.display_name}</span>
-                      {card.credit_limit != null && (
-                        <span className="financial-section-item-detail">{formatCurrency(card.current_balance || 0)} / {formatCurrency(card.credit_limit)}</span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+          <PaymentMethodsSection
+            paymentMethods={creditCardMethods}
+            loading={false}
+            onPaymentRecorded={async () => {
+              try {
+                const pmData = await getPaymentMethods();
+                setCreditCardMethods(pmData || []);
+              } catch (err) {
+                logger.error('Error refreshing payment methods after payment:', err);
+              }
+            }}
+            onViewDetails={handleCreditCardViewDetails}
+            onAddNew={() => { setEditingPaymentMethod(null); setShowPaymentMethodForm(true); }}
+          />
 
           <LoansSection
             year={year}

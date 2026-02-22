@@ -33,8 +33,8 @@ const BillingCycleReminderBanner = ({
       return;
     }
     if (onClick) {
-      // Pass the first card for deep-link navigation
-      onClick(cards[0]);
+      // Pass full cards array so parent can branch on cards.length
+      onClick(cards);
     }
   };
 

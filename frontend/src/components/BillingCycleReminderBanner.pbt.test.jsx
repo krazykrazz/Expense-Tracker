@@ -1,17 +1,10 @@
 /**
- * Property-Based Tests for BillingCycleReminderBanner Deep-Link Navigation
+ * Property-Based Tests for BillingCycleReminderBanner Navigation Contract
  *
- * **Feature: financial-overview-redesign, Property 4: BillingCycleReminderBanner deep-link navigation**
+ * Feature: financial-overview-ui-consistency
  *
- * For any non-empty list of cards in BillingCycleReminderBanner, clicking the banner
- * SHALL invoke onClick with the first card, enabling the parent to call
- * openCreditCardDetail with the correct paymentMethodId, initialTab='billing-cycles',
- * initialAction='enter-statement', and reminderData containing that card's cycle dates
- * and calculated balance.
- *
- * **Validates: Requirements 1.1, 1.2**
- *
- * @invariant Deep-Link Navigation: For any non-empty card list, clicking the banner passes the first card to onClick, preserving paymentMethodId, cycleStartDate, cycleEndDate, and calculatedBalance for deep-link navigation.
+ * Tests the updated navigation contract where the banner passes the full cards
+ * array to onClick, enabling context-aware navigation in the parent.
  */
 
 import { render, fireEvent, cleanup } from '@testing-library/react';
@@ -35,52 +28,40 @@ const billingCycleCardArbitrary = () =>
     hasEntry: fc.constant(false)
   });
 
-const nonEmptyCardList = () =>
-  fc.array(billingCycleCardArbitrary(), { minLength: 1, maxLength: 5 });
-
 // ── Property Tests ──
 
-describe('BillingCycleReminderBanner - Deep-Link Navigation Properties', () => {
+describe('BillingCycleReminderBanner - Navigation Contract Properties', () => {
   /**
-   * **Feature: financial-overview-redesign, Property 4: BillingCycleReminderBanner deep-link navigation**
+   * Feature: financial-overview-ui-consistency, Property 7: Banner navigation contract — single card
    *
-   * For any non-empty list of cards, clicking the banner SHALL invoke onClick
-   * with the first card object containing paymentMethodId, cycleStartDate,
-   * cycleEndDate, and calculatedBalance needed for deep-link navigation.
+   * For any single-card BillingCycleReminderBanner, clicking the banner should invoke
+   * onClick with an array of length 1 containing that card's data.
    *
-   * **Validates: Requirements 1.1, 1.2**
+   * **Validates: Requirements 8.1**
    */
-  test('Property 4: Clicking banner passes first card to onClick for deep-link navigation', () => {
+  test('Property 7: Single card — onClick receives array of length 1 with that card', () => {
     fc.assert(
       fc.property(
-        nonEmptyCardList(),
-        (cards) => {
+        billingCycleCardArbitrary(),
+        (card) => {
           const onClick = vi.fn();
-          const onDismiss = vi.fn();
 
           const { getByTestId, unmount } = render(
             <BillingCycleReminderBanner
-              cards={cards}
-              onDismiss={onDismiss}
+              cards={[card]}
+              onDismiss={() => {}}
               onClick={onClick}
             />
           );
 
-          const banner = getByTestId('billing-cycle-reminder-banner');
-          fireEvent.click(banner);
+          fireEvent.click(getByTestId('billing-cycle-reminder-banner'));
 
-          // Property: onClick is called exactly once
           expect(onClick).toHaveBeenCalledTimes(1);
 
-          // Property: onClick receives the first card in the list
-          const receivedCard = onClick.mock.calls[0][0];
-          const expectedCard = cards[0];
-
-          expect(receivedCard.paymentMethodId).toBe(expectedCard.paymentMethodId);
-          expect(receivedCard.cycleStartDate).toBe(expectedCard.cycleStartDate);
-          expect(receivedCard.cycleEndDate).toBe(expectedCard.cycleEndDate);
-          expect(receivedCard.calculatedBalance).toBe(expectedCard.calculatedBalance);
-          expect(receivedCard.displayName).toBe(expectedCard.displayName);
+          const received = onClick.mock.calls[0][0];
+          expect(Array.isArray(received)).toBe(true);
+          expect(received).toHaveLength(1);
+          expect(received[0]).toEqual(card);
 
           unmount();
         }
@@ -90,14 +71,18 @@ describe('BillingCycleReminderBanner - Deep-Link Navigation Properties', () => {
   });
 
   /**
-   * Supplementary property: Keyboard navigation also passes first card
+   * Feature: financial-overview-ui-consistency, Property 8: Banner navigation contract — multiple cards
+   *
+   * For any multi-card BillingCycleReminderBanner (cards.length >= 2), clicking the banner
+   * should invoke onClick with the full cards array.
+   *
+   * **Validates: Requirements 8.2**
    */
-  test('Property 4 (keyboard): Enter/Space key passes first card to onClick', () => {
+  test('Property 8: Multiple cards — onClick receives the full cards array', () => {
     fc.assert(
       fc.property(
-        nonEmptyCardList(),
-        fc.constantFrom('Enter', ' '),
-        (cards, key) => {
+        fc.array(billingCycleCardArbitrary(), { minLength: 2, maxLength: 5 }),
+        (cards) => {
           const onClick = vi.fn();
 
           const { getByTestId, unmount } = render(
@@ -108,13 +93,48 @@ describe('BillingCycleReminderBanner - Deep-Link Navigation Properties', () => {
             />
           );
 
-          const banner = getByTestId('billing-cycle-reminder-banner');
-          fireEvent.keyDown(banner, { key });
+          fireEvent.click(getByTestId('billing-cycle-reminder-banner'));
 
           expect(onClick).toHaveBeenCalledTimes(1);
 
-          const receivedCard = onClick.mock.calls[0][0];
-          expect(receivedCard.paymentMethodId).toBe(cards[0].paymentMethodId);
+          const received = onClick.mock.calls[0][0];
+          expect(Array.isArray(received)).toBe(true);
+          expect(received).toHaveLength(cards.length);
+          expect(received).toEqual(cards);
+
+          unmount();
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+
+  /**
+   * Feature: financial-overview-ui-consistency, Property 9: Banner visibility matches pending card count
+   *
+   * For any list of cards passed to BillingCycleReminderBanner, the banner should render
+   * (not return null) if and only if the list is non-empty.
+   *
+   * **Validates: Requirements 8.3, 8.5**
+   */
+  test('Property 9: Banner renders iff cards array is non-empty', () => {
+    fc.assert(
+      fc.property(
+        fc.array(billingCycleCardArbitrary(), { minLength: 0, maxLength: 5 }),
+        (cards) => {
+          const { container, unmount } = render(
+            <BillingCycleReminderBanner
+              cards={cards}
+              onDismiss={() => {}}
+              onClick={() => {}}
+            />
+          );
+
+          if (cards.length > 0) {
+            expect(container.firstChild).not.toBeNull();
+          } else {
+            expect(container.firstChild).toBeNull();
+          }
 
           unmount();
         }

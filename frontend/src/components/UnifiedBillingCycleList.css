@@ -64,7 +64,7 @@
 /* List Item */
 .unified-billing-cycle-item {
   display: grid;
-  grid-template-columns: 1.5fr 1fr 1fr 1fr auto;
+  grid-template-columns: 1.5fr 1fr 1fr minmax(0, 1fr) auto;
   grid-template-rows: auto auto;
   gap: var(--spacing-2) var(--spacing-3);
   align-items: center;
@@ -178,6 +178,8 @@
   padding: 2px 8px;
   border-radius: 4px;
   white-space: nowrap;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .unified-cycle-discrepancy.discrepancy-higher {
@@ -202,6 +204,7 @@
 .unified-cycle-trend {
   display: flex;
   justify-content: center;
+  min-width: 90px;
 }
 
 .unified-trend-indicator {
@@ -277,7 +280,9 @@
   display: flex;
   gap: var(--spacing-1);
   justify-content: flex-end;
-  align-self: start;
+  align-self: center;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .unified-cycle-action-btn {

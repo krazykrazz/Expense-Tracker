@@ -1,0 +1,203 @@
+/* LoanRow — row component for unified Financial Overview */
+
+.loan-row {
+  border: 1px solid var(--border-default, #e2e8f0);
+  border-radius: var(--radius-lg, 12px);
+  padding: var(--spacing-4, 16px);
+  background-color: var(--bg-card, white);
+  transition: all var(--transition-fast, 150ms ease);
+}
+
+.loan-row:hover {
+  background-color: var(--bg-card-hover, #fafbfc);
+  box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.06));
+  border-color: var(--border-strong, #cbd5e1);
+}
+
+.loan-row.needs-update {
+  border-color: #ff9800;
+  background-color: #fff3e0;
+  box-shadow: 0 0 0 2px rgba(255,152,0,0.2);
+}
+
+.loan-row.needs-update:hover {
+  background-color: #ffe0b2;
+}
+
+.loan-row-main {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.loan-row-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.loan-row-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.loan-row-type-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  border-radius: 4px;
+  vertical-align: middle;
+}
+
+.loan-row-type-badge.loan {
+  background-color: #e3f2fd;
+  color: #1976d2;
+}
+
+.loan-row-type-badge.loc {
+  background-color: #e3f2fd;
+  color: #1976d2;
+}
+
+.loan-row-type-badge.mortgage {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+}
+
+.loan-row-fixed-expense-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  background-color: #fff3e0;
+  color: #e65100;
+  font-size: 0.7rem;
+  font-weight: 600;
+  border-radius: 4px;
+  vertical-align: middle;
+  cursor: help;
+}
+
+.loan-row-needs-update-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background-color: #ff9800;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 12px;
+  vertical-align: middle;
+  animation: loanRowNeedsUpdatePulse 2s ease-in-out infinite;
+}
+
+@keyframes loanRowNeedsUpdatePulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.loan-row-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.loan-row-balance {
+  font-weight: 600;
+  color: #d32f2f;
+}
+
+.loan-row-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.loan-row-log-payment-button,
+.loan-row-view-button,
+.loan-row-edit-button,
+.loan-row-delete-button {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.loan-row-log-payment-button {
+  background-color: #4caf50;
+  color: white;
+}
+
+.loan-row-log-payment-button:hover {
+  background-color: #43a047;
+}
+
+.loan-row-view-button {
+  background-color: #2196f3;
+  color: white;
+}
+
+.loan-row-view-button:hover {
+  background-color: #1976d2;
+}
+
+.loan-row-edit-button {
+  background-color: #ff9800;
+  color: white;
+}
+
+.loan-row-edit-button:hover {
+  background-color: #f57c00;
+}
+
+.loan-row-delete-button {
+  background-color: #f44336;
+  color: white;
+}
+
+.loan-row-delete-button:hover {
+  background-color: #d32f2f;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .loan-row-main {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .loan-row-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .loan-row-details {
+    flex-direction: column;
+    gap: 5px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loan-row,
+  .loan-row-log-payment-button,
+  .loan-row-view-button,
+  .loan-row-edit-button,
+  .loan-row-delete-button {
+    transition: none;
+  }
+
+  .loan-row-needs-update-badge {
+    animation: none;
+  }
+}

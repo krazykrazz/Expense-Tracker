@@ -135,147 +135,138 @@
   color: #ef9a9a;
 }
 
-/* ── Credit Card Summary Strip ── */
-.financial-cc-summary {
-  background: rgba(255, 255, 255, 0.08);
-  border-top: 1px solid rgba(255, 255, 255, 0.15);
-  padding: var(--spacing-3, 12px) var(--spacing-6, 24px);
-}
+/* ── Credit Card Summary Strip (legacy, kept for backward compat) ── */
 
-.financial-cc-summary-title {
-  font-size: var(--text-xs, 11px);
-  font-weight: var(--font-semibold, 600);
-  color: rgba(255, 255, 255, 0.7);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  margin-bottom: var(--spacing-2, 8px);
-}
-
-.financial-cc-summary-loading {
-  font-size: var(--text-sm, 13px);
-  color: rgba(255, 255, 255, 0.6);
-}
-
-.financial-cc-summary-grid {
+/* ── Unified Scrollable Content ── */
+.financial-unified-content {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--spacing-4, 16px);
+  padding: var(--spacing-5, 20px) var(--spacing-6, 24px);
 }
 
-.financial-cc-summary-header-row,
-.financial-cc-summary-row {
-  display: grid;
-  grid-template-columns: 1fr 90px 90px 90px 52px;
-  gap: var(--spacing-4, 16px);
+/* ── Section Layout ── */
+.financial-section {
+  border: 1px solid var(--border-default, #e2e8f0);
+  border-radius: var(--radius-lg, 12px);
+  background: var(--bg-card, white);
+  overflow: hidden;
+}
+
+.financial-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-3, 12px) var(--spacing-4, 16px);
+  background: var(--bg-muted, #f8fafc);
+  border-bottom: 1px solid var(--border-default, #e2e8f0);
+}
+
+.financial-section-header-left {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2, 8px);
+}
+
+.financial-section-icon {
+  font-size: var(--text-lg, 16px);
+}
+
+.financial-section-title {
+  margin: 0;
+  font-size: var(--text-base, 14px);
+  font-weight: var(--font-semibold, 600);
+  color: var(--text-primary, #0f172a);
+}
+
+.financial-section-header-actions {
+  display: flex;
+  gap: var(--spacing-2, 8px);
   align-items: center;
 }
 
-.financial-cc-summary-header-row {
-  font-size: var(--text-xs, 11px);
-  color: rgba(255, 255, 255, 0.55);
-  font-weight: var(--font-medium, 500);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  padding-bottom: 4px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  margin-bottom: 2px;
-}
-
-.financial-cc-summary-header-row span:not(:first-child):not(:last-child),
-.financial-cc-summary-row .financial-cc-amount {
-  text-align: right;
-}
-
-.financial-cc-summary-header-row span:not(:first-child):not(:last-child) {
-  text-align: right;
-}
-
-.financial-cc-summary-header-row span:last-child {
-  width: 52px;
-}
-
-.financial-cc-name {
+.financial-section-add-button {
+  padding: var(--spacing-1, 4px) var(--spacing-3, 12px);
   font-size: var(--text-sm, 13px);
   font-weight: var(--font-medium, 500);
-  color: rgba(255, 255, 255, 0.9);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.financial-cc-amount {
-  font-size: var(--text-sm, 13px);
-  font-weight: var(--font-semibold, 600);
-  color: rgba(255, 255, 255, 0.85);
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-}
-
-.financial-cc-pay-cell {
-  display: flex;
-  justify-content: flex-end;
-}
-
-.financial-cc-pay-btn {
-  padding: 2px 10px;
-  font-size: var(--text-xs, 11px);
-  font-weight: var(--font-semibold, 600);
-  background: rgba(255, 255, 255, 0.15);
-  color: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 4px;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background 0.15s, border-color 0.15s;
-}
-
-.financial-cc-pay-btn:hover {
-  background: rgba(255, 255, 255, 0.25);
-  border-color: rgba(255, 255, 255, 0.5);
-}
-
-/* ── Tab Navigation (following BudgetsModal.css pattern) ── */
-.financial-tabs {
-  display: flex;
-  gap: var(--spacing-2, 8px);
-  padding: 0 var(--spacing-5, 20px);
-  border-bottom: 2px solid #e0e8ff;
-  background: var(--bg-card, white);
-}
-
-.financial-tabs .tab-button {
-  background: none;
+  background: var(--color-primary, #0ea5e9);
+  color: white;
   border: none;
-  padding: var(--spacing-3, 12px) var(--spacing-4, 16px);
-  font-size: var(--text-base, 14px);
-  font-weight: var(--font-medium, 500);
-  font-family: var(--font-sans);
-  color: var(--text-tertiary, #666);
+  border-radius: var(--radius-md, 8px);
   cursor: pointer;
-  border-bottom: 3px solid transparent;
-  transition: var(--transition-colors);
-  margin-bottom: -2px;
-  border-radius: var(--radius-md, 8px) var(--radius-md, 8px) 0 0;
+  transition: all var(--transition-fast, 150ms ease);
 }
 
-.financial-tabs .tab-button:hover {
-  color: #1a73e8;
-  background: rgba(26, 115, 232, 0.05);
+.financial-section-add-button:hover:not(:disabled) {
+  background: var(--color-primary-hover, #0284c7);
 }
 
-.financial-tabs .tab-button.active {
-  color: #1a73e8;
-  border-bottom-color: #1a73e8;
+.financial-section-add-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
-.financial-tabs .tab-button:focus {
-  outline: none;
-  box-shadow: var(--focus-ring);
+.financial-section-debt-trend-button {
+  padding: var(--spacing-1, 4px) var(--spacing-3, 12px);
+  font-size: var(--text-sm, 13px);
+  font-weight: var(--font-medium, 500);
+  background: #059669;
+  color: white;
+  border: none;
+  border-radius: var(--radius-md, 8px);
+  cursor: pointer;
+  transition: all var(--transition-fast, 150ms ease);
 }
 
-/* ── Tab Content ── */
-.financial-tab-content {
-  animation: fadeIn 0.3s;
+.financial-section-debt-trend-button:hover:not(:disabled) {
+  background: #047857;
+}
+
+.financial-section-debt-trend-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.financial-section-content {
+  padding: var(--spacing-3, 12px) var(--spacing-4, 16px);
+}
+
+.financial-section-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2, 8px);
+}
+
+.financial-section-loading {
+  text-align: center;
+  padding: var(--spacing-6, 24px);
+  color: var(--text-secondary, #475569);
+  font-size: var(--text-sm, 13px);
+}
+
+.financial-section-error {
+  background-color: var(--color-negative-light, #fee2e2);
+  color: var(--color-negative-dark, #dc2626);
+  padding: var(--spacing-3, 12px);
+  border-radius: var(--radius-md, 8px);
+  margin-bottom: var(--spacing-3, 12px);
+  font-size: var(--text-sm, 13px);
+}
+
+.financial-section-empty {
+  text-align: center;
+  padding: var(--spacing-6, 24px);
+  color: var(--text-tertiary, #94a3b8);
+  font-size: var(--text-sm, 13px);
+  font-style: italic;
+}
+
+.financial-section-inline-form {
+  margin-bottom: var(--spacing-3, 12px);
+  border: 1px solid var(--border-default, #e2e8f0);
+  border-radius: var(--radius-md, 8px);
+  padding: var(--spacing-3, 12px);
+  background: var(--bg-muted, #f8fafc);
 }
 
 @keyframes fadeIn {
@@ -283,18 +274,14 @@
   to { opacity: 1; }
 }
 
-.financial-tab-panel {
-  animation: slideIn 0.3s;
-}
-
 @keyframes slideIn {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* ── Shared tab panel content styles ── */
+/* ── Shared section content styles ── */
 .financial-modal-content {
-  padding: var(--spacing-5, 20px) var(--spacing-6, 24px);
+  padding: var(--spacing-3, 12px);
 }
 
 .financial-modal-loading {
@@ -343,9 +330,19 @@
     font-size: var(--text-sm, 13px);
   }
 
-  .financial-tabs .tab-button {
-    padding: var(--spacing-2, 8px) var(--spacing-3, 12px);
-    font-size: var(--text-sm, 13px);
+  .financial-unified-content {
+    padding: var(--spacing-3, 12px);
+  }
+
+  .financial-section-header {
+    flex-direction: column;
+    gap: var(--spacing-2, 8px);
+    align-items: flex-start;
+  }
+
+  .financial-section-header-actions {
+    width: 100%;
+    justify-content: flex-end;
   }
 }
 
@@ -369,11 +366,11 @@
 @media (prefers-reduced-motion: reduce) {
   .financial-modal-overlay,
   .financial-modal-container,
-  .financial-tab-content,
-  .financial-tab-panel { animation: none; }
+  .financial-unified-content { animation: none; }
 
   .financial-modal-close,
-  .financial-tabs .tab-button { transition: none; }
+  .financial-section-add-button,
+  .financial-section-debt-trend-button { transition: none; }
 }
 
 

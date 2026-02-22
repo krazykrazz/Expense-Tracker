@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { getCreditCardDetail, deletePayment, deleteBillingCycle, getBillingCyclePdfUrl } from '../services/creditCardApi';
 import { formatCAD as formatCurrency } from '../utils/formatters';
 import { createLogger } from '../utils/logger';
@@ -28,7 +28,11 @@ const CreditCardDetailView = ({
   paymentMethodId,
   isOpen,
   onClose,
-  onUpdate = () => {}
+  onUpdate = () => {},
+  // Deep-link props
+  initialTab = null,
+  initialAction = null,
+  reminderData = null
 }) => {
   // State
   const [paymentMethod, setPaymentMethod] = useState(null);
@@ -38,13 +42,16 @@ const CreditCardDetailView = ({
   const [currentCycleStatus, setCurrentCycleStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState(initialTab || 'overview');
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [showBillingCycleForm, setShowBillingCycleForm] = useState(false);
   const [editingBillingCycle, setEditingBillingCycle] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [pdfViewerCycle, setPdfViewerCycle] = useState(null);
   const [partialErrors, setPartialErrors] = useState([]);
+
+  // Track whether deep-link params have been consumed
+  const deepLinkConsumedRef = useRef(false);
 
   // Format date - handles YYYY-MM-DD strings without timezone shift
   const formatDate = (dateString) => {
@@ -107,9 +114,36 @@ const CreditCardDetailView = ({
   // Fetch data when modal opens
   useEffect(() => {
     if (isOpen && paymentMethodId) {
+      // Reset deep-link consumed flag when opening fresh
+      deepLinkConsumedRef.current = false;
+      // Apply initialTab on open
+      if (initialTab) {
+        setActiveTab(initialTab);
+      } else {
+        setActiveTab('overview');
+      }
       fetchData();
     }
-  }, [isOpen, paymentMethodId, fetchData]);
+  }, [isOpen, paymentMethodId, fetchData, initialTab]);
+
+  // Apply deep-link actions after data loads (once per open)
+  useEffect(() => {
+    if (!isOpen || loading || !paymentMethod || deepLinkConsumedRef.current) return;
+    deepLinkConsumedRef.current = true;
+
+    if (initialAction === 'enter-statement') {
+      // Open BillingCycleHistoryForm pre-populated with reminderData or currentCycleStatus
+      setEditingBillingCycle({
+        cycle_start_date: reminderData?.cycleStartDate || currentCycleStatus?.cycleStartDate || null,
+        cycle_end_date: reminderData?.cycleEndDate || currentCycleStatus?.cycleEndDate || null,
+        calculated_statement_balance: reminderData?.calculatedBalance ?? currentCycleStatus?.calculatedBalance ?? null,
+        actual_statement_balance: null
+      });
+      setShowBillingCycleForm(true);
+    } else if (initialAction === 'log-payment') {
+      setShowPaymentForm(true);
+    }
+  }, [isOpen, loading, paymentMethod, initialAction, reminderData, currentCycleStatus]);
 
   // Handle payment recorded
   const handlePaymentRecorded = async (result) => {

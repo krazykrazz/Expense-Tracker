@@ -13,6 +13,7 @@ import BudgetsModal from './components/BudgetsModal';
 import PeopleManagementModal from './components/PeopleManagementModal';
 import AnalyticsHubModal from './components/AnalyticsHubModal';
 import FinancialOverviewModal from './components/FinancialOverviewModal';
+import CreditCardDetailView from './components/CreditCardDetailView';
 import FloatingAddButton from './components/FloatingAddButton';
 import EnvironmentBanner from './components/EnvironmentBanner';
 import SyncToast from './components/SyncToast';
@@ -162,6 +163,8 @@ function AppContent({ onPaymentMethodsUpdate }) {
     closeAnalyticsHub,
     openFinancialOverview,
     closeFinancialOverview,
+    creditCardDetailState,
+    closeCreditCardDetail,
     closeAllOverlays,
   } = useModalContext();
 
@@ -551,6 +554,18 @@ function AppContent({ onPaymentMethodsUpdate }) {
           onUpdate={triggerRefresh}
           onPaymentMethodsUpdate={onPaymentMethodsUpdate}
           initialTab={financialOverviewInitialTab}
+        />
+      )}
+
+      {/* Standalone CreditCardDetailView - opened from notification banners */}
+      {creditCardDetailState.show && (
+        <CreditCardDetailView
+          paymentMethodId={creditCardDetailState.paymentMethodId}
+          isOpen={creditCardDetailState.show}
+          onClose={closeCreditCardDetail}
+          initialTab={creditCardDetailState.initialTab}
+          initialAction={creditCardDetailState.initialAction}
+          reminderData={creditCardDetailState.reminderData}
         />
       )}
 

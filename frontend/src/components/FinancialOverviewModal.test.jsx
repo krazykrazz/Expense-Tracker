@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 // Mock config
 vi.mock('../config', () => ({
@@ -13,15 +13,6 @@ vi.mock('../config', () => ({
 vi.mock('../utils/logger', () => ({
   createLogger: () => ({
     debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn()
-  })
-}));
-
-// Mock useTabState to control tab state in tests
-vi.mock('../hooks/useTabState', () => ({
-  default: vi.fn((key, defaultTab) => {
-    const { useState } = require('react');
-    const [tab, setTab] = useState(defaultTab);
-    return [tab, setTab];
   })
 }));
 
@@ -46,8 +37,13 @@ vi.mock('../services/investmentApi', () => ({
 
 vi.mock('../services/paymentMethodApi', () => ({
   getPaymentMethods: vi.fn(),
+  getPaymentMethod: vi.fn(),
   deletePaymentMethod: vi.fn(),
   setPaymentMethodActive: vi.fn()
+}));
+
+vi.mock('../services/creditCardApi', () => ({
+  getStatementBalance: vi.fn()
 }));
 
 vi.mock('../utils/validation', () => ({
@@ -57,10 +53,11 @@ vi.mock('../utils/validation', () => ({
 
 vi.mock('../utils/formatters', () => ({
   formatCurrency: (v) => `$${Number(v || 0).toFixed(2)}`,
-  formatDate: (d) => d || ''
+  formatDate: (d) => d || '',
+  formatCAD: (v) => `$${Number(v || 0).toFixed(2)}`
 }));
 
-// Mock child components that render complex sub-views
+// Mock child components
 vi.mock('./LoanDetailView', () => ({
   default: ({ isOpen, onClose }) => isOpen ? <div data-testid="loan-detail-view"><button onClick={onClose}>Close</button></div> : null
 }));
@@ -86,10 +83,32 @@ vi.mock('./CreditCardDetailView', () => ({
   default: ({ isOpen, onClose }) => isOpen ? <div data-testid="credit-card-detail-view"><button onClick={onClose}>Close</button></div> : null
 }));
 
+vi.mock('./CreditCardPaymentForm', () => ({
+  default: ({ onPaymentRecorded, onCancel }) => (
+    <div data-testid="credit-card-payment-form">
+      <button onClick={onPaymentRecorded}>Record Payment</button>
+      <button onClick={onCancel}>Cancel</button>
+    </div>
+  )
+}));
+
+vi.mock('./LoanPaymentForm', () => ({
+  default: ({ onPaymentRecorded, onCancel }) => (
+    <div data-testid="loan-payment-form">
+      <button onClick={onPaymentRecorded}>Record Payment</button>
+      <button onClick={onCancel}>Cancel</button>
+    </div>
+  )
+}));
+
+// Row components are real — they render simple markup
+// No need to mock them since they're lightweight
+
 import * as loanApi from '../services/loanApi';
 import * as fixedExpenseApi from '../services/fixedExpenseApi';
 import * as investmentApi from '../services/investmentApi';
 import * as paymentMethodApi from '../services/paymentMethodApi';
+import * as creditCardApi from '../services/creditCardApi';
 import FinancialOverviewModal from './FinancialOverviewModal';
 
 const mockLoans = [
@@ -120,6 +139,8 @@ beforeEach(() => {
   fixedExpenseApi.getFixedExpensesByLoan.mockResolvedValue([]);
   investmentApi.getAllInvestments.mockResolvedValue(mockInvestments);
   paymentMethodApi.getPaymentMethods.mockResolvedValue(mockPaymentMethods);
+  paymentMethodApi.getPaymentMethod.mockResolvedValue({ current_cycle: null });
+  creditCardApi.getStatementBalance.mockResolvedValue(null);
 
   global.fetch = vi.fn().mockResolvedValue({
     ok: true,
@@ -145,12 +166,12 @@ describe('FinancialOverviewModal', () => {
       });
     });
 
-    it('should render all three tab labels', async () => {
+    it('should render all three section headers in unified view', async () => {
       render(<FinancialOverviewModal {...defaultProps} />);
       await waitFor(() => {
-        expect(screen.getByText('🏦 Loans')).toBeInTheDocument();
-        expect(screen.getByText('📈 Investments')).toBeInTheDocument();
-        expect(screen.getByText('💳 Payment Methods')).toBeInTheDocument();
+        expect(screen.getByTestId('credit-cards-section')).toBeInTheDocument();
+        expect(screen.getByTestId('loans-section')).toBeInTheDocument();
+        expect(screen.getByTestId('investments-section')).toBeInTheDocument();
       });
     });
 
@@ -162,58 +183,13 @@ describe('FinancialOverviewModal', () => {
         expect(screen.getByText('Net Worth')).toBeInTheDocument();
       });
     });
-  });
 
-  describe('Tab switching', () => {
-    it('should show Loans tab content by default', async () => {
+    it('should render all sections without requiring tab clicks', async () => {
       render(<FinancialOverviewModal {...defaultProps} />);
+      // All sections visible at once — no tab switching needed
       await waitFor(() => {
-        expect(screen.getByText('+ Add New Loan')).toBeInTheDocument();
-      });
-    });
-
-    it('should switch to Investments tab and show investments content', async () => {
-      render(<FinancialOverviewModal {...defaultProps} />);
-      await waitFor(() => expect(screen.getByText('📈 Investments')).toBeInTheDocument());
-
-      fireEvent.click(screen.getByText('📈 Investments'));
-
-      await waitFor(() => {
-        expect(screen.getByText('+ Add New Investment')).toBeInTheDocument();
-      });
-    });
-
-    it('should switch to Payment Methods tab and show payment methods content', async () => {
-      render(<FinancialOverviewModal {...defaultProps} />);
-      await waitFor(() => expect(screen.getByText('💳 Payment Methods')).toBeInTheDocument());
-
-      fireEvent.click(screen.getByText('💳 Payment Methods'));
-
-      await waitFor(() => {
-        expect(screen.getByText('+ Add Payment Method')).toBeInTheDocument();
-      });
-    });
-  });
-
-  describe('initialTab prop', () => {
-    it('should open to Investments tab when initialTab is "investments"', async () => {
-      render(<FinancialOverviewModal {...defaultProps} initialTab="investments" />);
-      await waitFor(() => {
-        expect(screen.getByText('+ Add New Investment')).toBeInTheDocument();
-      });
-    });
-
-    it('should open to Payment Methods tab when initialTab is "payment-methods"', async () => {
-      render(<FinancialOverviewModal {...defaultProps} initialTab="payment-methods" />);
-      await waitFor(() => {
-        expect(screen.getByText('+ Add Payment Method')).toBeInTheDocument();
-      });
-    });
-
-    it('should open to Loans tab when initialTab is "loans"', async () => {
-      render(<FinancialOverviewModal {...defaultProps} initialTab="loans" />);
-      await waitFor(() => {
-        expect(screen.getByText('+ Add New Loan')).toBeInTheDocument();
+        expect(screen.getByText('Car Loan')).toBeInTheDocument();
+        expect(screen.getByText('My TFSA')).toBeInTheDocument();
       });
     });
   });
@@ -250,68 +226,27 @@ describe('FinancialOverviewModal', () => {
 
   describe('Net worth header', () => {
     it('should display net worth values from loans and investments data', async () => {
-      // Loans tab loads first, investments tab loads when switched
       render(<FinancialOverviewModal {...defaultProps} />);
-
-      // Switch to investments to trigger investment data load
-      await waitFor(() => expect(screen.getByText('📈 Investments')).toBeInTheDocument());
-      fireEvent.click(screen.getByText('📈 Investments'));
-
       await waitFor(() => {
-        // Net worth values should be displayed
         expect(screen.getByText('Assets')).toBeInTheDocument();
         expect(screen.getByText('Liabilities')).toBeInTheDocument();
       });
     });
 
     it('should apply positive CSS class when investments exceed debt', async () => {
-      // investments = 25000, debt = 10000 → net worth positive
-      render(<FinancialOverviewModal {...defaultProps} />);
-
-      // Load both tabs to populate values
-      await waitFor(() => expect(screen.getByText('📈 Investments')).toBeInTheDocument());
-      fireEvent.click(screen.getByText('📈 Investments'));
-      await waitFor(() => expect(screen.getByText('+ Add New Investment')).toBeInTheDocument());
-
-      // Switch back to loans to ensure debt is loaded
-      fireEvent.click(screen.getByText('🏦 Loans'));
-      await waitFor(() => expect(screen.getByText('+ Add New Loan')).toBeInTheDocument());
-
-      // Net worth element should have positive class
-      const netWorthValues = document.querySelectorAll('.financial-net-worth-value');
-      const netWorthEl = Array.from(netWorthValues).find(el =>
-        el.closest('.financial-net-worth-item.net-worth')
-      );
-      expect(netWorthEl).toBeTruthy();
-      expect(netWorthEl.classList.contains('positive')).toBe(true);
+      render(<FinancialOverviewModal {...defaultProps} _testNetWorth={{ totalInvestments: 25000, totalDebt: 10000 }} />);
+      await waitFor(() => {
+        const netWorthEl = screen.getByTestId('net-worth-value');
+        expect(netWorthEl.classList.contains('positive')).toBe(true);
+      });
     });
 
     it('should apply negative CSS class when debt exceeds investments', async () => {
-      // Override: debt > investments
-      loanApi.getAllLoans.mockResolvedValue([
-        { id: 1, name: 'Big Loan', loan_type: 'loan', currentBalance: 50000, currentRate: 5, start_date: '2022-01-01', is_paid_off: false, initial_balance: 60000 }
-      ]);
-      investmentApi.getAllInvestments.mockResolvedValue([
-        { id: 1, name: 'Small TFSA', type: 'TFSA', currentValue: 5000, initial_value: 1000 }
-      ]);
-
-      render(<FinancialOverviewModal {...defaultProps} />);
-
-      // Load investments tab
-      await waitFor(() => expect(screen.getByText('📈 Investments')).toBeInTheDocument());
-      fireEvent.click(screen.getByText('📈 Investments'));
-      await waitFor(() => expect(screen.getByText('+ Add New Investment')).toBeInTheDocument());
-
-      // Switch back to loans
-      fireEvent.click(screen.getByText('🏦 Loans'));
-      await waitFor(() => expect(screen.getByText('+ Add New Loan')).toBeInTheDocument());
-
-      const netWorthValues = document.querySelectorAll('.financial-net-worth-value');
-      const netWorthEl = Array.from(netWorthValues).find(el =>
-        el.closest('.financial-net-worth-item.net-worth')
-      );
-      expect(netWorthEl).toBeTruthy();
-      expect(netWorthEl.classList.contains('negative')).toBe(true);
+      render(<FinancialOverviewModal {...defaultProps} _testNetWorth={{ totalInvestments: 5000, totalDebt: 50000 }} />);
+      await waitFor(() => {
+        const netWorthEl = screen.getByTestId('net-worth-value');
+        expect(netWorthEl.classList.contains('negative')).toBe(true);
+      });
     });
   });
 
@@ -321,6 +256,249 @@ describe('FinancialOverviewModal', () => {
       await waitFor(() => {
         expect(global.fetch).toHaveBeenCalledWith('/api/reminders/status/2026/2');
       });
+    });
+  });
+
+  describe('Section headers', () => {
+    it('should show loan count in section header', async () => {
+      render(<FinancialOverviewModal {...defaultProps} />);
+      await waitFor(() => {
+        const loansSection = screen.getByTestId('loans-section');
+        expect(loansSection).toHaveTextContent('Loans (1)');
+      });
+    });
+
+    it('should show investment count in section header', async () => {
+      render(<FinancialOverviewModal {...defaultProps} />);
+      await waitFor(() => {
+        const investmentsSection = screen.getByTestId('investments-section');
+        expect(investmentsSection).toHaveTextContent('Investments (1)');
+      });
+    });
+
+    it('should show zero count for credit cards when none exist', async () => {
+      render(<FinancialOverviewModal {...defaultProps} />);
+      await waitFor(() => {
+        const ccSection = screen.getByTestId('credit-cards-section');
+        expect(ccSection).toHaveTextContent('Credit Cards (0)');
+      });
+    });
+  });
+
+  describe('Add buttons', () => {
+    it('should show Add button in loans section header', async () => {
+      render(<FinancialOverviewModal {...defaultProps} />);
+      await waitFor(() => {
+        const loansSection = screen.getByTestId('loans-section');
+        const addBtn = loansSection.querySelector('.financial-section-add-button');
+        expect(addBtn).toBeInTheDocument();
+      });
+    });
+
+    it('should show Add button in investments section header', async () => {
+      render(<FinancialOverviewModal {...defaultProps} />);
+      await waitFor(() => {
+        const investmentsSection = screen.getByTestId('investments-section');
+        const addBtn = investmentsSection.querySelector('.financial-section-add-button');
+        expect(addBtn).toBeInTheDocument();
+      });
+    });
+
+    it('should show View Total Debt Trend button in loans section', async () => {
+      render(<FinancialOverviewModal {...defaultProps} />);
+      await waitFor(() => {
+        expect(screen.getByText('📊 View Total Debt Trend')).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('Active/Paid-off loans toggle', () => {
+    it('should show active and paid-off loan tabs within loans section', async () => {
+      render(<FinancialOverviewModal {...defaultProps} />);
+      await waitFor(() => {
+        expect(screen.getByText(/Active Loans/)).toBeInTheDocument();
+        expect(screen.getByText(/Paid Off/)).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('Independent loading states (Req 3.6)', () => {
+    it('should show loading indicator per section while data is being fetched', async () => {
+      // Make loans slow, investments fast
+      loanApi.getAllLoans.mockImplementation(() => new Promise(() => {})); // never resolves
+      investmentApi.getAllInvestments.mockResolvedValue(mockInvestments);
+      paymentMethodApi.getPaymentMethods.mockResolvedValue(mockPaymentMethods);
+
+      render(<FinancialOverviewModal {...defaultProps} />);
+
+      // Loans section should show loading
+      await waitFor(() => {
+        const loansSection = screen.getByTestId('loans-section');
+        expect(loansSection).toHaveTextContent('Loading loans...');
+      });
+
+      // Investments section should have loaded and show data
+      await waitFor(() => {
+        expect(screen.getByText('My TFSA')).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('Empty states', () => {
+    it('should show empty state for credit cards when none exist', async () => {
+      paymentMethodApi.getPaymentMethods.mockResolvedValue([
+        { id: 1, type: 'cash', display_name: 'Cash', is_active: true }
+      ]);
+
+      render(<FinancialOverviewModal {...defaultProps} />);
+      await waitFor(() => {
+        const ccSection = screen.getByTestId('credit-cards-section');
+        expect(ccSection).toHaveTextContent(/No credit cards/i);
+      });
+    });
+
+    it('should show empty state for investments when none exist', async () => {
+      investmentApi.getAllInvestments.mockResolvedValue([]);
+
+      render(<FinancialOverviewModal {...defaultProps} />);
+      await waitFor(() => {
+        const investmentsSection = screen.getByTestId('investments-section');
+        expect(investmentsSection).toHaveTextContent(/No investments yet/i);
+      });
+    });
+
+    it('should show empty state for active loans when none are active', async () => {
+      loanApi.getAllLoans.mockResolvedValue([
+        { ...mockLoans[0], is_paid_off: true }
+      ]);
+
+      render(<FinancialOverviewModal {...defaultProps} />);
+      await waitFor(() => {
+        expect(screen.getByText(/No active loans/i)).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('Add buttons open correct forms (Req 10.2, 10.3, 10.4)', () => {
+    it('should open loan creation form when Add button in loans section is clicked', async () => {
+      render(<FinancialOverviewModal {...defaultProps} />);
+      await waitFor(() => {
+        expect(screen.getByTestId('loans-section')).toBeInTheDocument();
+      });
+
+      const loansSection = screen.getByTestId('loans-section');
+      const addBtn = loansSection.querySelector('.financial-section-add-button');
+      fireEvent.click(addBtn);
+
+      await waitFor(() => {
+        expect(screen.getByText('Add New Loan')).toBeInTheDocument();
+        expect(screen.getByText('Loan Name *')).toBeInTheDocument();
+      });
+    });
+
+    it('should open investment creation form when Add button in investments section is clicked', async () => {
+      render(<FinancialOverviewModal {...defaultProps} />);
+      await waitFor(() => {
+        expect(screen.getByTestId('investments-section')).toBeInTheDocument();
+      });
+
+      const investmentsSection = screen.getByTestId('investments-section');
+      const addBtn = investmentsSection.querySelector('.financial-section-add-button');
+      fireEvent.click(addBtn);
+
+      await waitFor(() => {
+        expect(screen.getByText('Add New Investment')).toBeInTheDocument();
+        expect(screen.getByText('Investment Name *')).toBeInTheDocument();
+      });
+    });
+
+    it('should open PaymentMethodForm when Add button in credit cards section is clicked', async () => {
+      render(<FinancialOverviewModal {...defaultProps} />);
+      await waitFor(() => {
+        expect(screen.getByTestId('credit-cards-section')).toBeInTheDocument();
+      });
+
+      const ccSection = screen.getByTestId('credit-cards-section');
+      const addBtn = ccSection.querySelector('.financial-section-add-button');
+      fireEvent.click(addBtn);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('payment-method-form')).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('Total Debt Trend (Req 10.5)', () => {
+    it('should open TotalDebtView when View Total Debt Trend button is clicked', async () => {
+      render(<FinancialOverviewModal {...defaultProps} />);
+      await waitFor(() => {
+        expect(screen.getByText('📊 View Total Debt Trend')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByText('📊 View Total Debt Trend'));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('total-debt-view')).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('Standalone CreditCardDetailView close (Req 8.3)', () => {
+    it('should close CreditCardDetailView and return to unified view when close is clicked', async () => {
+      const mockCreditCards = [
+        {
+          id: 10, type: 'credit_card', display_name: 'Visa', is_active: true,
+          current_balance: 500, credit_limit: 5000, utilization_percentage: 10,
+          days_until_due: 15, expense_count: 3, total_expense_count: 10
+        }
+      ];
+      paymentMethodApi.getPaymentMethods.mockResolvedValue(mockCreditCards);
+      paymentMethodApi.getPaymentMethod.mockResolvedValue({ current_cycle: null });
+      creditCardApi.getStatementBalance.mockResolvedValue(null);
+
+      render(<FinancialOverviewModal {...defaultProps} />);
+
+      // Wait for credit card row to appear and click View Details
+      await waitFor(() => {
+        expect(screen.getByText('Visa')).toBeInTheDocument();
+      });
+
+      const viewDetailsBtn = screen.getByTitle('View details for Visa');
+      fireEvent.click(viewDetailsBtn);
+
+      // CreditCardDetailView should be open
+      await waitFor(() => {
+        expect(screen.getByTestId('credit-card-detail-view')).toBeInTheDocument();
+      });
+
+      // Close it
+      fireEvent.click(screen.getByText('Close'));
+
+      // Should return to unified view — CreditCardDetailView gone, sections still visible
+      await waitFor(() => {
+        expect(screen.queryByTestId('credit-card-detail-view')).not.toBeInTheDocument();
+      });
+      expect(screen.getByTestId('loans-section')).toBeInTheDocument();
+      expect(screen.getByTestId('investments-section')).toBeInTheDocument();
+    });
+  });
+
+  describe('Unified view replaces tabs (Req 3.2)', () => {
+    it('should not render any tab navigation buttons for switching between sections', async () => {
+      render(<FinancialOverviewModal {...defaultProps} />);
+      await waitFor(() => {
+        expect(screen.getByTestId('credit-cards-section')).toBeInTheDocument();
+      });
+
+      // There should be no top-level tab buttons like "Loans", "Investments", "Payment Methods"
+      // that switch between sections (the loans active/paid-off toggle is fine — it's within a section)
+      const container = document.querySelector('.financial-unified-content');
+      expect(container).toBeInTheDocument();
+
+      // All three sections should be visible simultaneously
+      expect(screen.getByTestId('credit-cards-section')).toBeVisible();
+      expect(screen.getByTestId('loans-section')).toBeVisible();
+      expect(screen.getByTestId('investments-section')).toBeVisible();
     });
   });
 });

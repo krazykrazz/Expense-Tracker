@@ -1,0 +1,178 @@
+/* InvestmentRow — row component for unified Financial Overview */
+
+.investment-row {
+  border: 1px solid var(--border-default, #e2e8f0);
+  border-radius: var(--radius-lg, 12px);
+  padding: var(--spacing-4, 16px);
+  background-color: var(--bg-card, white);
+  transition: all var(--transition-fast, 150ms ease);
+}
+
+.investment-row:hover {
+  background-color: var(--bg-card-hover, #fafbfc);
+  box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.06));
+  border-color: var(--border-strong, #cbd5e1);
+}
+
+.investment-row.needs-update {
+  border-color: #ff9800;
+  background-color: #fff3e0;
+  box-shadow: 0 0 0 2px rgba(255,152,0,0.2);
+}
+
+.investment-row.needs-update:hover {
+  background-color: #ffe0b2;
+}
+
+.investment-row-main {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.investment-row-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.investment-row-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.investment-row-type-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  background-color: #e3f2fd;
+  color: #1976d2;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 4px;
+  vertical-align: middle;
+}
+
+.investment-row-needs-update-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background-color: #ff9800;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 12px;
+  vertical-align: middle;
+  animation: investmentRowNeedsUpdatePulse 2s ease-in-out infinite;
+}
+
+@keyframes investmentRowNeedsUpdatePulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.investment-row-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.investment-row-current-value {
+  font-weight: 600;
+  color: #2e7d32;
+}
+
+.investment-row-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.investment-row-update-value-button,
+.investment-row-view-button,
+.investment-row-edit-button,
+.investment-row-delete-button {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.investment-row-update-value-button {
+  background-color: #4caf50;
+  color: white;
+}
+
+.investment-row-update-value-button:hover {
+  background-color: #43a047;
+}
+
+.investment-row-view-button {
+  background-color: #2196f3;
+  color: white;
+}
+
+.investment-row-view-button:hover {
+  background-color: #1976d2;
+}
+
+.investment-row-edit-button {
+  background-color: #ff9800;
+  color: white;
+}
+
+.investment-row-edit-button:hover {
+  background-color: #f57c00;
+}
+
+.investment-row-delete-button {
+  background-color: #f44336;
+  color: white;
+}
+
+.investment-row-delete-button:hover {
+  background-color: #d32f2f;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .investment-row-main {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .investment-row-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .investment-row-details {
+    flex-direction: column;
+    gap: 5px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .investment-row,
+  .investment-row-update-value-button,
+  .investment-row-view-button,
+  .investment-row-edit-button,
+  .investment-row-delete-button {
+    transition: none;
+  }
+
+  .investment-row-needs-update-badge {
+    animation: none;
+  }
+}

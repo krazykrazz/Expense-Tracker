@@ -1,0 +1,159 @@
+/* CreditCardRow — row component for unified Financial Overview */
+
+.credit-card-row {
+  border: 1px solid var(--border-default, #e2e8f0);
+  border-radius: var(--radius-lg, 12px);
+  padding: var(--spacing-4, 16px);
+  background-color: var(--bg-card, white);
+  transition: all var(--transition-fast, 150ms ease);
+}
+
+.credit-card-row:hover {
+  background-color: var(--bg-card-hover, #fafbfc);
+  box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.06));
+  border-color: var(--border-strong, #cbd5e1);
+}
+
+.credit-card-row.due-warning {
+  border-color: #f44336;
+  background-color: #fff5f5;
+  box-shadow: 0 0 0 2px rgba(244, 67, 54, 0.15);
+}
+
+.credit-card-row.due-warning:hover {
+  background-color: #ffebee;
+}
+
+.credit-card-row-main {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.credit-card-row-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.credit-card-row-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.credit-card-utilization-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  background-color: #fff3e0;
+  color: #e65100;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 4px;
+}
+
+.credit-card-due-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 4px;
+}
+
+.credit-card-due-badge.due-soon {
+  background-color: #fff8e1;
+  color: #f57f17;
+}
+
+.credit-card-due-badge.overdue {
+  background-color: #ffebee;
+  color: #c62828;
+}
+
+.credit-card-row-balances {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.credit-card-row-balance {
+  font-weight: 500;
+}
+
+.credit-card-row-balance .balance-label {
+  color: #999;
+  font-weight: 400;
+  font-size: 0.85rem;
+}
+
+.credit-card-row-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.credit-card-pay-button,
+.credit-card-view-button {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.credit-card-pay-button {
+  background-color: #4caf50;
+  color: white;
+}
+
+.credit-card-pay-button:hover {
+  background-color: #43a047;
+}
+
+.credit-card-view-button {
+  background-color: #2196f3;
+  color: white;
+}
+
+.credit-card-view-button:hover {
+  background-color: #1976d2;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .credit-card-row-main {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .credit-card-row-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .credit-card-row-balances {
+    flex-direction: column;
+    gap: 5px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .credit-card-row,
+  .credit-card-pay-button,
+  .credit-card-view-button {
+    transition: none;
+  }
+}

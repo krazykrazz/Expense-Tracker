@@ -174,66 +174,48 @@ async function getUnifiedBillingCycles(paymentMethodId, options = {}) {
   // Get all billing cycles (sorted by cycle_end_date DESC)
   const cycles = await billingCycleRepository.findByPaymentMethod(paymentMethodId, { limit });
 
-  // Enrich each cycle with effective_balance, balance_type, transaction_count, trend_indicator
+  // Pass 1: Recalculate all balances so every cycle has fresh data before enrichment.
+  // This prevents the trend ordering bug where cycle[i+1] would still have stale
+  // persisted values when used as the "previous cycle" for trend comparison.
+  for (const cycle of cycles) {
+    const freshBalance = await cycleGenerationService.recalculateBalance(
+      paymentMethodId,
+      cycle.cycle_start_date,
+      cycle.cycle_end_date
+    );
+
+    if (freshBalance !== cycle.calculated_statement_balance) {
+      cycle.calculated_statement_balance = freshBalance;
+
+      const recomputed = calculateEffectiveBalance(cycle);
+
+      await billingCycleRepository.updateCalculatedBalance(cycle.id, freshBalance, {
+        effective_balance: recomputed.effectiveBalance,
+        balance_type: recomputed.balanceType
+      });
+    }
+  }
+
+  // Pass 2: Enrich each cycle with effective balance, transaction count, and trend.
+  // Always compute effective balance inline from the cycle object — the utility is
+  // the single source of truth and the cycle's calculated_statement_balance is
+  // guaranteed fresh from Pass 1.
   const enrichedCycles = [];
 
   for (let i = 0; i < cycles.length; i++) {
     const cycle = cycles[i];
 
-    // For auto-generated cycles, recalculate the balance from current expenses
-    // so it stays accurate when expenses are added/edited/deleted after generation
-    if (cycle.is_user_entered !== 1) {
-      const freshBalance = await cycleGenerationService.recalculateBalance(
-        paymentMethodId,
-        cycle.cycle_start_date,
-        cycle.cycle_end_date
-      );
+    const { effectiveBalance, balanceType } = calculateEffectiveBalance(cycle);
 
-      // Update in-memory value for effective balance calculation
-      if (freshBalance !== cycle.calculated_statement_balance) {
-        cycle.calculated_statement_balance = freshBalance;
-
-        // Recompute effective balance for the updated cycle
-        const recomputed = calculateEffectiveBalance(cycle);
-
-        // Persist the updated balance and effective balance back to the database
-        await billingCycleRepository.updateCalculatedBalance(cycle.id, freshBalance, {
-          effective_balance: recomputed.effectiveBalance,
-          balance_type: recomputed.balanceType
-        });
-      }
-    }
-
-    // Calculate effective balance — use persisted columns if available, fall back to utility
-    let effectiveBalance, balanceType;
-    if (cycle.effective_balance !== null && cycle.effective_balance !== undefined &&
-        cycle.balance_type !== null && cycle.balance_type !== undefined) {
-      effectiveBalance = cycle.effective_balance;
-      balanceType = cycle.balance_type;
-    } else {
-      const computed = calculateEffectiveBalance(cycle);
-      effectiveBalance = computed.effectiveBalance;
-      balanceType = computed.balanceType;
-    }
-
-    // Get transaction count
     const transactionCount = await getTransactionCount(
       paymentMethodId,
       cycle.cycle_start_date,
       cycle.cycle_end_date
     );
 
-    // Calculate trend indicator (compare with previous cycle)
     let trendIndicator = null;
     if (i < cycles.length - 1) {
-      const previousCycle = cycles[i + 1];
-      let previousEffectiveBalance;
-      if (previousCycle.effective_balance !== null && previousCycle.effective_balance !== undefined &&
-          previousCycle.balance_type !== null && previousCycle.balance_type !== undefined) {
-        previousEffectiveBalance = previousCycle.effective_balance;
-      } else {
-        previousEffectiveBalance = calculateEffectiveBalance(previousCycle).effectiveBalance;
-      }
+      const previousEffectiveBalance = calculateEffectiveBalance(cycles[i + 1]).effectiveBalance;
       trendIndicator = calculateTrendIndicator(effectiveBalance, previousEffectiveBalance);
     }
 

@@ -68,14 +68,14 @@ For a complete feature list, see **[Feature Documentation](./docs/features/)**.
 
 ## Tech Stack
 
-- **Frontend:** React 18, Vite, CSS3
+- **Frontend:** React 19, Vite, CSS3
 - **Backend:** Node.js, Express, SQLite3
 - **Deployment:** Docker, Docker Compose
 
 ## Documentation
 
 ### Getting Started
-- **[Docker Deployment Guide](./docs/guides/DOCKER.md)** - Complete Docker setup and configuration
+- **[Docker Deployment Guide](./docs/guides/DOCKER_DEPLOYMENT.md)** - Complete Docker setup and configuration
 - **[Quick Build Guide](./docs/guides/QUICK_BUILD_GUIDE.md)** - Building and publishing Docker images
 - **[Startup Guide](./docs/guides/STARTUP_GUIDE.md)** - First-time setup and configuration
 
@@ -90,6 +90,7 @@ For a complete feature list, see **[Feature Documentation](./docs/features/)**.
 
 ### Reference
 - **[CHANGELOG.md](./CHANGELOG.md)** - Version history and release notes
+- **[CHANGELOG.pre-1.0.md](./CHANGELOG.pre-1.0.md)** - Historical release notes (v1.0.0–v5.17.5)
 - **[Documentation Index](./docs/README.md)** - Complete documentation listing
 
 ## Usage
@@ -158,7 +159,7 @@ The application provides a RESTful API for all operations. For complete API docu
 
 ## Database Schema
 
-The application uses SQLite3 for data persistence. For complete schema documentation including all tables, fields, constraints, and relationships, see **[Database Schema Documentation](./docs/DATABASE_SCHEMA.md)**.
+The application uses SQLite3 for data persistence. The schema is defined declaratively in `backend/database/schema.js` as a single source of truth, shared by both production and test databases. For complete schema documentation including all tables, fields, constraints, and relationships, see **[Database Schema Documentation](./docs/DATABASE_SCHEMA.md)**.
 
 ### Core Tables
 - `expenses` - Variable expense transactions

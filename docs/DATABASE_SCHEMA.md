@@ -345,6 +345,8 @@ Billing cycle history with statement balances.
 | statement_pdf_path | TEXT | Optional path to attached PDF statement |
 | is_user_entered | INTEGER DEFAULT 0 | 0 = auto-generated, 1 = user-entered |
 | reviewed_at | TEXT DEFAULT NULL | Timestamp when auto-generated cycle was acknowledged |
+| effective_balance | REAL DEFAULT NULL | Effective balance override for manual adjustments |
+| balance_type | TEXT DEFAULT 'calculated' | Balance type: 'calculated' or 'manual' |
 | created_at | TEXT | Creation timestamp |
 | updated_at | TEXT | Last update timestamp |
 
@@ -497,8 +499,8 @@ All foreign keys are enforced with appropriate CASCADE or SET NULL actions:
 - `budgets.limit` must be > 0
 - `loan_payments.amount` must be positive
 
-## Migration System
+## Schema Definition
 
-The application uses a migration system tracked in the `schema_migrations` table. Each migration is applied once and recorded with its name and timestamp.
+The database schema is defined declaratively in `backend/database/schema.js` as a single source of truth. This module exports all CREATE TABLE, CREATE INDEX, CREATE TRIGGER, and seed data statements. Both production initialization (`db.js`) and test databases (`createTestDatabase`, `dbIsolation.js`) import from this shared module, ensuring schema parity.
 
-Migrations are located in `backend/database/migrations.js` and are automatically applied on application startup.
+The `schema_migrations` table tracks schema versions. New databases are initialized with a `consolidated_schema_v1` entry. Future schema changes should be added as new migration entries in `backend/database/migrations.js`.

@@ -52,7 +52,7 @@ docker-compose up -d
 Images are available with the following tags:
 
 - `latest` - Latest stable release (recommended for production)
-- `v5.8.1` - Specific version tags (e.g., v5.8.1, v5.8.0)
+- `v1.0.0` - Specific version tags (e.g., v1.0.0)
 - `staging` - Pre-release testing builds
 
 ### Using Specific Versions
@@ -60,8 +60,8 @@ Images are available with the following tags:
 For production deployments, it's recommended to use specific version tags:
 
 ```bash
-docker pull ghcr.io/krazykrazz/expense-tracker:v5.8.1
-docker run -d -p 2424:2424 -v expense-data:/app/backend/database ghcr.io/krazykrazz/expense-tracker:v5.8.1
+docker pull ghcr.io/krazykrazz/expense-tracker:v1.0.0
+docker run -d -p 2424:2424 -v expense-data:/app/backend/database ghcr.io/krazykrazz/expense-tracker:v1.0.0
 ```
 
 Or in docker-compose.yml:
@@ -69,7 +69,7 @@ Or in docker-compose.yml:
 ```yaml
 services:
   expense-tracker:
-    image: ghcr.io/krazykrazz/expense-tracker:v5.8.1
+    image: ghcr.io/krazykrazz/expense-tracker:v1.0.0
     # ... rest of configuration
 ```
 

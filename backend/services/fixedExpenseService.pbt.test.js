@@ -8,7 +8,7 @@ const fixedExpenseService = require('./fixedExpenseService');
 const { CATEGORIES } = require('../utils/categories');
 
 // Valid payment types for testing (simulating database-driven payment methods)
-const VALID_PAYMENT_TYPES = ['Cash', 'Debit', 'Cheque', 'CIBC MC', 'PCF MC', 'WS VISA', 'VISA'];
+const VALID_PAYMENT_TYPES = ['Cash', 'Debit', 'Cheque', 'Credit Card'];
 
 describe('FixedExpenseService Property-Based Tests', () => {
   describe('Validation Properties', () => {

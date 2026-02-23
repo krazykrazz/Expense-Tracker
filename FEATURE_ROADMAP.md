@@ -1,7 +1,7 @@
 # Expense Tracker - Feature Roadmap
 
-**Last Updated**: February 20, 2026  
-**Current Version**: 5.10.0
+**Last Updated**: February 23, 2026  
+**Current Version**: 1.0.0
 
 This document tracks potential features and enhancements for the Expense Tracker application. Features are categorized by priority and implementation status.
 

@@ -11,6 +11,8 @@ The deployment workflow ensures:
 - Same binary artifact moves through staging → production
 - Full traceability via git SHA tags
 
+> **Note:** The application version was rebased from 5.17.5 to 1.0.0 as part of the migration consolidation. All version examples below use the post-rebase numbering scheme starting from 1.0.0.
+
 ## Complete Workflow
 
 ### Phase 1: Feature Development
@@ -51,14 +53,15 @@ Branch protection on `main` blocks direct pushes. Version bumps go through a rel
 
 8. **Create release branch**:
    ```powershell
-   git checkout -b release/v5.10.1
+   git checkout -b release/v1.0.1
    ```
 
-9. **Update version in all 5 locations**:
+9. **Update version in all 6 locations**:
    - `frontend/package.json`, `backend/package.json`
    - `frontend/src/App.jsx` (footer)
    - `CHANGELOG.md`
    - `frontend/src/components/BackupSettings.jsx` (changelog)
+   - `frontend/src/components/SystemModal.jsx` (changelog)
 
 10. **Build frontend** with new version:
     ```powershell
@@ -68,22 +71,22 @@ Branch protection on `main` blocks direct pushes. Version bumps go through a rel
 11. **Commit, push, and create PR**:
     ```powershell
     git add -A
-    git commit -m "v5.10.1: Feature description"
-    git push -u origin release/v5.10.1
-    gh pr create --base main --head release/v5.10.1 --title "Release v5.10.1: Feature description"
+    git commit -m "v1.0.1: Feature description"
+    git push -u origin release/v1.0.1
+    gh pr create --base main --head release/v1.0.1 --title "Release v1.0.1: Feature description"
     ```
 
 12. **Wait for CI to pass** on the PR, then merge:
     ```powershell
-    gh pr merge release/v5.10.1 --merge --delete-branch
+    gh pr merge release/v1.0.1 --merge --delete-branch
     ```
 
 13. **Tag the merge commit on main**:
     ```powershell
     git checkout main
     git pull origin main
-    git tag -a "v5.10.1" -m "Release v5.10.1: Feature description"
-    git push origin v5.10.1
+    git tag -a "v1.0.1" -m "Release v1.0.1: Feature description"
+    git push origin v1.0.1
     ```
 
 ### Phase 4: Pull and Deploy
@@ -144,25 +147,25 @@ The script handles: release branch → version bump → PR → CI → merge → 
 git checkout main; git pull origin main
 
 # 3. Create release branch
-git checkout -b release/v5.10.1
+git checkout -b release/v1.0.1
 
-# 4. Version bump (update all 5 files)
+# 4. Version bump (update all 6 files)
 
 # 5. Build frontend
 cd frontend; npm run build; cd ..
 
 # 6. Commit, push, create PR
-git add -A; git commit -m "v5.10.1: Description"
-git push -u origin release/v5.10.1
-gh pr create --base main --head release/v5.10.1 --title "Release v5.10.1"
+git add -A; git commit -m "v1.0.1: Description"
+git push -u origin release/v1.0.1
+gh pr create --base main --head release/v1.0.1 --title "Release v1.0.1"
 
 # 7. Wait for CI, merge PR
-gh pr merge release/v5.10.1 --merge --delete-branch
+gh pr merge release/v1.0.1 --merge --delete-branch
 
 # 8. Tag merge commit on main
 git checkout main; git pull origin main
-git tag -a "v5.10.1" -m "Release v5.10.1: Description"
-git push origin v5.10.1
+git tag -a "v1.0.1" -m "Release v1.0.1: Description"
+git push origin v1.0.1
 
 # 9. Wait for CI Docker build, then promote to staging
 .\scripts\build-and-push.ps1 -Environment staging

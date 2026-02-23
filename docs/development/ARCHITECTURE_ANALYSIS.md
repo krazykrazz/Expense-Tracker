@@ -1,6 +1,6 @@
 # Architecture Analysis & Improvement Recommendations
 
-> Analysis date: February 2026 | Version: 5.16.3
+> Analysis date: February 2026 | Version: 1.0.0
 
 ## Codebase Metrics
 
@@ -13,8 +13,8 @@
 | Frontend components | ~80 JSX + ~65 CSS | ExpenseForm: 1,533 / ExpenseList: 1,163 / FinancialOverviewModal: 1,080 |
 | Frontend hooks | ~15 | — |
 | Frontend API services | 21 | — |
-| Database migrations | 1 file | 5,395 lines (40+ migrations) |
-| Database init (db.js) | 1 file | 1,118 lines |
+| Database migrations | 1 file | ~50 lines (consolidated schema in schema.js) |
+| Database init (db.js) | 1 file | ~200 lines (imports from schema.js) |
 | Test files | 348 total | 200 backend (96 PBT), 148 frontend (49 PBT) |
 | API endpoints (config.js) | 1 file | ~180 endpoint definitions |
 | Documentation | 58+ markdown files | across docs/, archive/, root |
@@ -46,43 +46,19 @@
 
 ## Improvement Recommendations
 
-### 1. Split migrations.js into individual files
+### 1. ~~Split migrations.js into individual files~~ ✅ COMPLETED
 
 **Priority: HIGH | Effort: LOW | Risk: LOW**
 
-**Problem:** `backend/database/migrations.js` is 5,395 lines containing 40+ migrations in a single file. Every migration ever written lives here, executed sequentially on startup. Hard to navigate, review, or reason about.
-
-**Recommendation:** Move to a file-per-migration pattern:
-
-```
-backend/database/migrations/
-  001_initial_schema.js
-  002_add_budgets_table.js
-  003_expand_categories.js
-  ...
-  index.js          // discovers and runs in order
-```
-
-The existing `checkMigrationApplied` / `markMigrationApplied` infrastructure already tracks by name — each file just exports a single `up(db)` function. The runner reads the directory, sorts by prefix, and skips already-applied ones. No behavioral change, just file organization.
-
-**Why now:** Every new feature adds another migration to the bottom of a 5,400-line file. Code review is painful, merge conflicts are common, and finding a specific migration requires scrolling through thousands of lines.
+**Status:** Completed via migration consolidation spec. Rather than splitting into individual files, the ~5,395-line `migrations.js` was replaced with a ~50-line module exporting only `runMigrations`, `checkMigrationApplied`, and `markMigrationApplied`. All schema definitions were consolidated into `backend/database/schema.js` as a single declarative source of truth. The `runMigrations` function now simply marks `consolidated_schema_v1` if not already present.
 
 ---
 
-### 2. Unify test database setup with production schema
+### 2. ~~Unify test database setup with production schema~~ ✅ COMPLETED
 
 **Priority: HIGH | Effort: MEDIUM | Risk: MEDIUM**
 
-**Problem:** `backend/database/db.js` (1,118 lines) contains a `CREATE TABLE` block that duplicates the production schema for test isolation. When a migration adds a column or table, the test schema must be updated separately — and it's easy to forget, causing test failures that don't reflect production behavior.
-
-**Recommendation:** Test setup should run the real migration pipeline against an in-memory or temp-file SQLite database, not maintain a parallel schema definition. The test helper (`backend/test/dbIsolation.js`) should call the same `runMigrations(db)` function that production uses.
-
-**Benefits:**
-- Tests always match production schema exactly
-- No more "works in tests, fails in production" schema drift
-- Removes ~500 lines of duplicated DDL from db.js
-
-**Risk mitigation:** Run the full backend test suite after the switch to catch any assumptions about schema ordering.
+**Status:** Completed via migration consolidation spec. All three database initialization paths (`initializeDatabase()` in `db.js`, `createTestDatabase()` in `db.js`, and `createSchema()` in `dbIsolation.js`) now import `ALL_STATEMENTS` from the shared `backend/database/schema.js` module. This eliminated ~500 lines of duplicated DDL and ensures test-production schema parity. Property-based tests verify schema parity across all paths.
 
 ---
 
@@ -187,8 +163,8 @@ The main `paymentMethodService.js` preserves the exact same public API via deleg
 
 | # | Recommendation | Priority | Effort | Risk | Dependency |
 |---|---|---|---|---|---|
-| 1 | Split migrations.js | HIGH | LOW | LOW | None |
-| 2 | Unify test DB setup | HIGH | MEDIUM | MEDIUM | After #1 |
+| 1 | ~~Split migrations.js~~ ✅ | HIGH | LOW | LOW | None |
+| 2 | ~~Unify test DB setup~~ ✅ | HIGH | MEDIUM | MEDIUM | After #1 |
 | 3 | ~~ModalContext reducer~~ ✅ | MEDIUM | LOW | LOW | None |
 | 4 | Group frontend components | MEDIUM | MEDIUM | LOW | None |
 | 5 | ~~Split paymentMethodService~~ ✅ | MEDIUM | LOW | LOW | None |
@@ -205,4 +181,4 @@ Items 1-2 are the highest-value changes. Items 4-5 are good refactoring targets 
 - **billing-cycle-simplification** already addresses the `billingCycleHistoryService.js` (878 lines) split — no separate recommendation needed
 - **billing-cycle-api-optimization** will reduce endpoint count in config.js, partially addressing recommendation #6
 - **financial-overview-redesign** is frontend-only and independent of all recommendations above
-- Recommendation #1 (migrations split) should ideally happen before any spec that adds new migrations, to avoid making the file even larger
+- Recommendation #1 (migrations consolidation) and #2 (test DB unification) were completed by the **migration-consolidation** spec — `backend/database/schema.js` is now the single source of truth for all schema definitions

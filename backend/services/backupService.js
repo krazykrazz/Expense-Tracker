@@ -700,38 +700,21 @@ class BackupService {
 
   /**
    * Check if payment method migration is needed and run it if so
-   * This handles restoring from backups created before the configurable payment methods feature
+   * This handles restoring from backups created before the configurable payment methods feature.
+   * With the consolidated schema, initializeDatabase() already creates all tables
+   * and seeds default payment methods, so this is a lightweight safety check.
    * @private
    */
   async _checkAndRunPaymentMethodMigration() {
     try {
       const { getDatabase, initializeDatabase } = require('../database/db');
-      const { migrateConfigurablePaymentMethods } = require('../database/migrations');
       
       // Reinitialize database connection to work with restored database
+      // initializeDatabase() runs the full consolidated schema + runMigrations
       await initializeDatabase();
       const db = await getDatabase();
       
-      // Check if payment_methods table exists
-      const tableExists = await new Promise((resolve, reject) => {
-        db.get(
-          "SELECT name FROM sqlite_master WHERE type='table' AND name='payment_methods'",
-          (err, row) => {
-            if (err) reject(err);
-            else resolve(!!row);
-          }
-        );
-      });
-      
-      if (!tableExists) {
-        // Table doesn't exist, need to run migration
-        logger.info('Payment methods table not found in restored database, running migration...');
-        await migrateConfigurablePaymentMethods(db);
-        logger.info('Payment method migration completed after restore');
-        return;
-      }
-      
-      // Check if payment_methods table is empty
+      // Verify payment_methods table exists and has data
       const paymentMethodCount = await new Promise((resolve, reject) => {
         db.get('SELECT COUNT(*) as count FROM payment_methods', (err, row) => {
           if (err) reject(err);
@@ -740,29 +723,13 @@ class BackupService {
       });
       
       if (paymentMethodCount === 0) {
-        // Check if expenses exist
-        const expenseCount = await new Promise((resolve, reject) => {
-          db.get('SELECT COUNT(*) as count FROM expenses', (err, row) => {
-            if (err) reject(err);
-            else resolve(row ? row.count : 0);
-          });
-        });
-        
-        if (expenseCount > 0) {
-          // Payment methods table is empty but expenses exist, run migration
-          logger.info('Payment methods table is empty but expenses exist, running migration...');
-          await migrateConfigurablePaymentMethods(db);
-          logger.info('Payment method migration completed after restore');
-        } else {
-          logger.debug('Both payment_methods and expenses tables are empty, skipping migration');
-        }
+        logger.warn('Payment methods table is empty after initialization — this should not happen with consolidated schema');
       } else {
-        logger.debug('Payment methods already exist in restored database, skipping migration');
+        logger.debug('Payment methods verified in restored database:', { count: paymentMethodCount });
       }
     } catch (error) {
-      logger.error('Error checking/running payment method migration:', error);
+      logger.error('Error checking payment methods after restore:', error);
       // Don't throw - migration failure shouldn't fail the entire restore
-      // The user can manually run migrations if needed
     }
   }
 }

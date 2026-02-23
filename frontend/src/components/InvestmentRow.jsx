@@ -28,25 +28,25 @@ const InvestmentRow = ({ investment, needsUpdate = false, onUpdateValue, onViewD
         </div>
         <div className="investment-row-actions">
           <button
-            className="investment-row-view-button"
+            className="financial-action-btn-secondary"
             onClick={() => onViewDetails && onViewDetails(investment)}
             title={`View details for ${name}`}
           >
-            👁️ View Details
+            View Details
           </button>
           <button
-            className="investment-row-edit-button"
+            className="financial-action-btn-secondary"
             onClick={() => onEdit && onEdit(investment)}
             title={`Edit ${name}`}
           >
-            ✏️
+            Edit
           </button>
           <button
-            className="investment-row-delete-button"
+            className="financial-action-btn-danger"
             onClick={() => onDelete && onDelete(investment)}
             title={`Delete ${name}`}
           >
-            🗑️
+            Delete
           </button>
         </div>
       </div>

@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { getCreditCardDetail, deletePayment, deleteBillingCycle, getBillingCyclePdfUrl } from '../services/creditCardApi';
+import { setPaymentMethodActive } from '../services/paymentMethodApi';
 import { formatCAD as formatCurrency } from '../utils/formatters';
 import { createLogger } from '../utils/logger';
 import CreditCardPaymentForm from './CreditCardPaymentForm';
 import BillingCycleHistoryForm from './BillingCycleHistoryForm';
 import UnifiedBillingCycleList from './UnifiedBillingCycleList';
 import './CreditCardDetailView.css';
+import './FinancialOverviewModal.css';
 
 const logger = createLogger('CreditCardDetailView');
 
@@ -29,6 +31,7 @@ const CreditCardDetailView = ({
   isOpen,
   onClose,
   onUpdate = () => {},
+  onEdit = null,
   // Deep-link props
   initialTab = null,
   initialAction = null,
@@ -47,6 +50,7 @@ const CreditCardDetailView = ({
   const [showBillingCycleForm, setShowBillingCycleForm] = useState(false);
   const [editingBillingCycle, setEditingBillingCycle] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [deactivateConfirm, setDeactivateConfirm] = useState(false);
   const [pdfViewerCycle, setPdfViewerCycle] = useState(null);
   const [partialErrors, setPartialErrors] = useState([]);
 
@@ -212,6 +216,26 @@ const CreditCardDetailView = ({
     }
   };
 
+  // Handle deactivate button click
+  const handleDeactivateClick = () => {
+    setDeactivateConfirm(true);
+  };
+
+  // Confirm deactivation
+  const confirmDeactivate = async () => {
+    try {
+      await setPaymentMethodActive(paymentMethodId, false);
+      setDeactivateConfirm(false);
+      // Close detail view and refresh parent
+      handleClose();
+      onUpdate();
+    } catch (err) {
+      logger.error('Failed to deactivate payment method:', err);
+      setError(err.message || 'Failed to deactivate payment method');
+      setDeactivateConfirm(false);
+    }
+  };
+
   // Handle view billing cycle PDF
   const handleViewBillingCyclePdf = (cycle) => {
     setPdfViewerCycle(cycle);
@@ -228,6 +252,7 @@ const CreditCardDetailView = ({
     setShowBillingCycleForm(false);
     setEditingBillingCycle(null);
     setDeleteConfirm(null);
+    setDeactivateConfirm(false);
     setError(null);
     onClose();
   };
@@ -285,7 +310,22 @@ const CreditCardDetailView = ({
               <span className="cc-detail-full-name">{paymentMethod.full_name}</span>
             )}
           </div>
-          <button className="cc-detail-close" onClick={handleClose}>✕</button>
+          <div className="cc-detail-header-actions">
+            <button 
+              className="financial-action-btn-secondary cc-header-btn"
+              onClick={() => onEdit && onEdit(paymentMethod)}
+              disabled={!onEdit}
+            >
+              Edit
+            </button>
+            <button 
+              className="financial-action-btn-danger cc-header-btn"
+              onClick={handleDeactivateClick}
+            >
+              Deactivate
+            </button>
+            <button className="cc-detail-close" onClick={handleClose}>✕</button>
+          </div>
         </div>
 
         {/* Error Display */}
@@ -643,6 +683,29 @@ const CreditCardDetailView = ({
                   Delete
                 </button>
                 <button className="confirm-cancel-btn" onClick={() => setDeleteConfirm(null)}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Deactivate Confirmation Dialog */}
+        {deactivateConfirm && (
+          <div className="cc-confirm-overlay">
+            <div className="cc-confirm-dialog">
+              <h3>Deactivate Credit Card</h3>
+              <p>
+                Are you sure you want to deactivate <strong>{paymentMethod?.display_name}</strong>?
+              </p>
+              <p className="confirm-warning">
+                This card will be moved to the Inactive tab. You can reactivate it later if needed.
+              </p>
+              <div className="confirm-actions">
+                <button className="confirm-delete-btn" onClick={confirmDeactivate}>
+                  Deactivate
+                </button>
+                <button className="confirm-cancel-btn" onClick={() => setDeactivateConfirm(false)}>
                   Cancel
                 </button>
               </div>

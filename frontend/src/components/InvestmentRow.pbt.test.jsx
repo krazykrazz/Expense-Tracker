@@ -118,4 +118,56 @@ describe('InvestmentRow Property-Based Tests', () => {
       { numRuns: 100 }
     );
   });
+
+  /**
+   * **Feature: financial-overview-styling-consistency, Property 8: No Icon-Based Actions**
+   *
+   * For all action elements in the Financial Overview Modal, they should be button elements,
+   * not icon-based actions. Investment rows should use button elements with text labels
+   * (View Details, Edit, Delete) instead of icon-only buttons (✏️, 🗑️).
+   *
+   * **Validates: Requirements 7.9**
+   */
+  it('Property 8: uses button elements with text labels, not icon-only actions', () => {
+    fc.assert(
+      fc.property(
+        investmentArb(),
+        (investment) => {
+          const { container, unmount } = render(
+            <InvestmentRow
+              investment={investment}
+              onViewDetails={vi.fn()}
+              onEdit={vi.fn()}
+              onDelete={vi.fn()}
+            />
+          );
+
+          // All action buttons should be button elements
+          const buttons = container.querySelectorAll('.investment-row-actions button');
+          expect(buttons.length).toBeGreaterThanOrEqual(3);
+
+          // Check that buttons have text content (not just icons)
+          const viewDetailsBtn = screen.getByText('View Details');
+          const editBtn = screen.getByText('Edit');
+          const deleteBtn = screen.getByText('Delete');
+
+          expect(viewDetailsBtn.tagName).toBe('BUTTON');
+          expect(editBtn.tagName).toBe('BUTTON');
+          expect(deleteBtn.tagName).toBe('BUTTON');
+
+          // Verify buttons don't contain only emoji/icons
+          expect(viewDetailsBtn.textContent).not.toMatch(/^[✏️🗑️👁️]+$/);
+          expect(editBtn.textContent).not.toMatch(/^[✏️🗑️👁️]+$/);
+          expect(deleteBtn.textContent).not.toMatch(/^[✏️🗑️👁️]+$/);
+
+          // Verify buttons use shared CSS classes
+          expect(editBtn.className).toContain('financial-action-btn');
+          expect(deleteBtn.className).toContain('financial-action-btn');
+
+          unmount();
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
 });

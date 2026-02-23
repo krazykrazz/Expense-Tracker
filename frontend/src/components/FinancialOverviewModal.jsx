@@ -151,11 +151,13 @@ const CreditCardSummary = ({ paymentMethods, onPaymentRecorded, onViewDetails })
 const TYPE_LABELS = { debit: 'Debit', cheque: 'Cheque', cash: 'Cash' };
 
 const PaymentMethodsSection = ({ paymentMethods, loading, onPaymentRecorded, onViewDetails, onAddNew }) => {
+  const [activeTab, setActiveTab] = useState('active');
   const [cardData, setCardData] = useState([]);
   const [cardLoading, setCardLoading] = useState(true);
   const [payingCardId, setPayingCardId] = useState(null);
+  const [reactivating, setReactivating] = useState(null);
 
-  const allMethods = (paymentMethods || []).filter(m => m.is_active);
+  const allMethods = (paymentMethods || []).filter(m => activeTab === 'active' ? m.is_active : !m.is_active);
   const creditCards = allMethods.filter(m => m.type === 'credit_card');
   const otherMethods = allMethods.filter(m => m.type !== 'credit_card');
   const totalCount = allMethods.length;
@@ -177,11 +179,25 @@ const PaymentMethodsSection = ({ paymentMethods, loading, onPaymentRecorded, onV
     );
     setCardData(results);
     setCardLoading(false);
-  }, [paymentMethods]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [creditCards]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { fetchCardData(); }, [fetchCardData]);
 
   const payingCard = payingCardId ? cardData.find(c => c.id === payingCardId) : null;
+
+  const handleReactivate = async (methodId) => {
+    setReactivating(methodId);
+    try {
+      await setPaymentMethodActive(methodId, true);
+      // Trigger refresh by calling onPaymentRecorded which should refresh the parent
+      if (onPaymentRecorded) onPaymentRecorded();
+    } catch (error) {
+      logger.error('Failed to reactivate payment method:', error);
+      alert('Failed to reactivate payment method. Please try again.');
+    } finally {
+      setReactivating(null);
+    }
+  };
 
   const getTypeBadgeLabel = (type) => TYPE_LABELS[type] || (type ? type.charAt(0).toUpperCase() + type.slice(1) : 'Other');
 
@@ -194,6 +210,24 @@ const PaymentMethodsSection = ({ paymentMethods, loading, onPaymentRecorded, onV
         </div>
         <button className="financial-section-add-button" onClick={onAddNew} disabled={loading}>+ Add</button>
       </div>
+      
+      <div className="payment-methods-tabs">
+        <button 
+          className={`payment-methods-tab ${activeTab === 'active' ? 'active' : ''}`}
+          onClick={() => setActiveTab('active')}
+          data-testid="active-tab"
+        >
+          Active
+        </button>
+        <button 
+          className={`payment-methods-tab ${activeTab === 'inactive' ? 'active' : ''}`}
+          onClick={() => setActiveTab('inactive')}
+          data-testid="inactive-tab"
+        >
+          Inactive
+        </button>
+      </div>
+
       <div className="financial-section-content">
         {totalCount === 0 ? (
           <div className="financial-section-empty">No payment methods configured yet. Add one to get started.</div>
@@ -231,20 +265,33 @@ const PaymentMethodsSection = ({ paymentMethods, loading, onPaymentRecorded, onV
                         <span className="financial-cc-amount">{card.statementBalance != null ? formatCurrency(card.statementBalance) : '—'}</span>
                         <span className="financial-cc-amount">{card.cycleBalance != null ? formatCurrency(card.cycleBalance) : '—'}</span>
                         <span className="financial-cc-pay-cell">
-                          <button
-                            className="financial-cc-view-btn"
-                            onClick={() => onViewDetails && onViewDetails(card)}
-                            title={`View details for ${card.name}`}
-                          >
-                            View
-                          </button>
-                          <button
-                            className="financial-cc-pay-btn"
-                            onClick={() => setPayingCardId(card.id)}
-                            title={`Log payment for ${card.name}`}
-                          >
-                            Pay
-                          </button>
+                          {activeTab === 'active' ? (
+                            <>
+                              <button
+                                className="financial-cc-view-btn"
+                                onClick={() => onViewDetails && onViewDetails(card)}
+                                title={`View details for ${card.name}`}
+                              >
+                                View
+                              </button>
+                              <button
+                                className="financial-cc-pay-btn"
+                                onClick={() => setPayingCardId(card.id)}
+                                title={`Log payment for ${card.name}`}
+                              >
+                                Pay
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              className="financial-cc-reactivate-btn"
+                              onClick={() => handleReactivate(card.id)}
+                              disabled={reactivating === card.id}
+                              title={`Reactivate ${card.name}`}
+                            >
+                              {reactivating === card.id ? 'Reactivating...' : 'Reactivate'}
+                            </button>
+                          )}
                         </span>
                       </div>
                     ))}
@@ -259,13 +306,24 @@ const PaymentMethodsSection = ({ paymentMethods, loading, onPaymentRecorded, onV
                   <div key={method.id} className="other-payment-method-row">
                     <span className="other-payment-method-name">{method.display_name}</span>
                     <span className="other-payment-method-type-badge" data-testid="type-badge">{getTypeBadgeLabel(method.type)}</span>
-                    <button
-                      className="other-payment-method-view-btn"
-                      onClick={() => onViewDetails && onViewDetails(method)}
-                      title={`View details for ${method.display_name}`}
-                    >
-                      View
-                    </button>
+                    {activeTab === 'active' ? (
+                      <button
+                        className="other-payment-method-view-btn"
+                        onClick={() => onViewDetails && onViewDetails(method)}
+                        title={`View details for ${method.display_name}`}
+                      >
+                        View
+                      </button>
+                    ) : (
+                      <button
+                        className="other-payment-method-reactivate-btn"
+                        onClick={() => handleReactivate(method.id)}
+                        disabled={reactivating === method.id}
+                        title={`Reactivate ${method.display_name}`}
+                      >
+                        {reactivating === method.id ? 'Reactivating...' : 'Reactivate'}
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
@@ -1001,6 +1059,12 @@ const FinancialOverviewModal = ({
               logger.error('Error refreshing payment methods:', err);
             }
             if (onUpdate) onUpdate();
+          }}
+          onEdit={(creditCard) => {
+            // Close detail view and open edit form
+            setSelectedCreditCard(null);
+            setEditingPaymentMethod(creditCard);
+            setShowPaymentMethodForm(true);
           }}
         />
       </div>

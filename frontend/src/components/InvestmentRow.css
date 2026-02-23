@@ -1,13 +1,16 @@
 /* InvestmentRow — flat row style for unified Financial Overview */
 
 .investment-row {
-  border-bottom: 1px solid var(--border-default, #e2e8f0);
-  padding: var(--spacing-2, 8px) var(--spacing-4, 16px);
-  transition: background-color var(--transition-fast, 150ms ease);
+  background: #f8f9fa;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 12px 16px;
+  margin-bottom: 8px;
+  transition: background 150ms ease;
 }
 
 .investment-row:hover {
-  background-color: var(--bg-hover, #f8fafc);
+  background: #f1f5f9;
 }
 
 .investment-row.needs-update {
@@ -22,20 +25,21 @@
 .investment-row-main {
   display: flex;
   align-items: center;
-  gap: 15px;
-  flex-wrap: nowrap;
+  justify-content: space-between;
+  gap: 16px;
 }
 
 .investment-row-info {
   flex: 1;
-  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .investment-row-name {
-  font-size: var(--text-sm, 13px);
+  font-size: 14px;
   font-weight: 600;
-  color: #333;
-  margin-bottom: 8px;
+  color: #334155;
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -73,17 +77,14 @@
 }
 
 .investment-row-details {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 15px;
-  font-size: var(--text-xs, 11px);
-  color: #666;
+  font-size: 12px;
+  color: #64748b;
 }
 
 .investment-row-current-value {
   display: inline-block;
-  font-weight: var(--font-semibold, 600);
-  font-size: var(--text-xs, 11px);
+  font-weight: 600;
+  font-size: 12px;
   color: #166534;
   background-color: rgba(22, 163, 74, 0.08);
   border-radius: 4px;
@@ -92,47 +93,8 @@
 
 .investment-row-actions {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   flex-shrink: 0;
-  margin-left: auto;
-}
-
-.investment-row-view-button,
-.investment-row-edit-button,
-.investment-row-delete-button {
-  padding: 2px 10px;
-  font-size: var(--text-xs, 11px);
-  font-weight: var(--font-semibold, 600);
-  border: 1px solid var(--border-default, #e2e8f0);
-  border-radius: 4px;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background 0.15s, border-color 0.15s;
-  background: var(--bg-muted, #f8fafc);
-  color: var(--text-primary, #0f172a);
-}
-
-.investment-row-view-button {
-  background: var(--color-primary, #0ea5e9);
-  color: white;
-  border-color: var(--color-primary, #0ea5e9);
-}
-.investment-row-view-button:hover { 
-  background: var(--color-primary-hover, #0284c7);
-  border-color: var(--color-primary-hover, #0284c7);
-}
-
-.investment-row-edit-button:hover { 
-  background: var(--bg-card-hover, #f1f5f9);
-  border-color: var(--border-strong, #cbd5e1);
-}
-
-.investment-row-delete-button {
-  color: var(--color-negative, #ef4444);
-}
-.investment-row-delete-button:hover { 
-  background: #fee2e2;
-  border-color: var(--color-negative, #ef4444);
 }
 
 /* ── Responsive ── */
@@ -140,25 +102,16 @@
   .investment-row-main {
     flex-direction: column;
     align-items: flex-start;
-    flex-wrap: wrap;
   }
 
   .investment-row-actions {
     width: 100%;
     justify-content: flex-end;
   }
-
-  .investment-row-details {
-    flex-direction: column;
-    gap: 5px;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .investment-row,
-  .investment-row-view-button,
-  .investment-row-edit-button,
-  .investment-row-delete-button {
+  .investment-row {
     transition: none;
   }
 

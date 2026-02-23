@@ -28,9 +28,9 @@ const LoanRow = ({ loan, needsUpdate = false, fixedExpenseCount = 0, onLogPaymen
 
   return (
     <div className={`loan-row ${needsUpdate ? 'needs-update' : ''}`} data-testid={`loan-row-${id}`}>
-      <div className="loan-row-main">
+      <div className="loan-row-content">
         <div className="loan-row-info">
-          <div className="loan-row-name">
+          <span className="loan-row-name">
             {name}
             <span className={`loan-row-type-badge ${typeBadge.className}`} data-testid="type-badge">
               {typeBadge.label}
@@ -45,20 +45,15 @@ const LoanRow = ({ loan, needsUpdate = false, fixedExpenseCount = 0, onLogPaymen
                 ⚠️ Update Needed
               </span>
             )}
-          </div>
-          <div className="loan-row-details">
-            <span className="loan-row-rate">
-              Rate: {currentRate != null && currentRate > 0 ? `${currentRate}%` : 'N/A'}
-            </span>
-            <span className="loan-row-balance">
-              Balance: <span className="loan-row-balance-badge">{formatCurrency(currentBalance)}</span>
-            </span>
-          </div>
+          </span>
+          <span className="loan-row-details">
+            Rate: {currentRate != null && currentRate > 0 ? `${currentRate}%` : 'N/A'} | Balance: {formatCurrency(currentBalance)}
+          </span>
         </div>
         <div className="loan-row-actions">
           {payment_tracking_enabled && (
             <button
-              className="loan-row-log-payment-button"
+              className="financial-action-btn-primary"
               onClick={() => onLogPayment && onLogPayment(loan)}
               title={`Log payment for ${name}`}
               data-testid="log-payment-button"
@@ -67,21 +62,21 @@ const LoanRow = ({ loan, needsUpdate = false, fixedExpenseCount = 0, onLogPaymen
             </button>
           )}
           <button
-            className="loan-row-view-button"
+            className="financial-action-btn-secondary"
             onClick={() => onViewDetails && onViewDetails(loan)}
             title={`View details for ${name}`}
           >
             View
           </button>
           <button
-            className="loan-row-edit-button"
+            className="financial-action-btn-secondary"
             onClick={() => onEdit && onEdit(loan)}
             title={`Edit ${name}`}
           >
             Edit
           </button>
           <button
-            className="loan-row-delete-button"
+            className="financial-action-btn-danger"
             onClick={() => onDelete && onDelete(loan)}
             title={`Delete ${name}`}
           >

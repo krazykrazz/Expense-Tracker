@@ -64,9 +64,9 @@ describe('CreditCardRow Property-Based Tests', () => {
           // Card name is displayed
           expect(container.textContent).toContain(card.name);
 
-          // Pay and View Details buttons are present
-          const payButton = container.querySelector('.credit-card-pay-button');
-          const viewButton = container.querySelector('.credit-card-view-button');
+          // Pay and View buttons are present
+          const payButton = container.querySelector('.financial-action-btn-primary');
+          const viewButton = container.querySelector('.financial-action-btn-secondary');
           expect(payButton).toBeTruthy();
           expect(viewButton).toBeTruthy();
 

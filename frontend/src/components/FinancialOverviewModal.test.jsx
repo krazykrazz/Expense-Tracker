@@ -80,7 +80,12 @@ vi.mock('./PaymentMethodForm', () => ({
 }));
 
 vi.mock('./CreditCardDetailView', () => ({
-  default: ({ isOpen, onClose }) => isOpen ? <div data-testid="credit-card-detail-view"><button onClick={onClose}>Close</button></div> : null
+  default: ({ isOpen, onClose, onEdit }) => isOpen ? (
+    <div data-testid="credit-card-detail-view">
+      <button onClick={onClose}>Close</button>
+      {onEdit && <button onClick={() => onEdit({ id: 1, display_name: 'Test Card', type: 'credit_card' })}>Edit</button>}
+    </div>
+  ) : null
 }));
 
 vi.mock('./CreditCardPaymentForm', () => ({
@@ -282,6 +287,291 @@ describe('FinancialOverviewModal', () => {
         const pmSection = screen.getByTestId('payment-methods-section');
         expect(pmSection).toHaveTextContent('Payment Methods (1)');
       });
+    });
+  });
+
+  describe('Payment Methods Tabs', () => {
+    it('should render Active and Inactive tabs', async () => {
+      render(<FinancialOverviewModal {...defaultProps} />);
+      await waitFor(() => {
+        const activeTab = screen.getByTestId('active-tab');
+        const inactiveTab = screen.getByTestId('inactive-tab');
+        expect(activeTab).toBeInTheDocument();
+        expect(inactiveTab).toBeInTheDocument();
+      });
+    });
+
+    it('should have Active tab selected by default', async () => {
+      render(<FinancialOverviewModal {...defaultProps} />);
+      await waitFor(() => {
+        const activeTab = screen.getByTestId('active-tab');
+        expect(activeTab).toHaveClass('active');
+      });
+    });
+
+    it('should switch to Inactive tab when clicked', async () => {
+      render(<FinancialOverviewModal {...defaultProps} />);
+      await waitFor(() => {
+        const inactiveTab = screen.getByTestId('inactive-tab');
+        fireEvent.click(inactiveTab);
+        expect(inactiveTab).toHaveClass('active');
+      });
+    });
+
+    it('should switch back to Active tab when clicked', async () => {
+      render(<FinancialOverviewModal {...defaultProps} />);
+      await waitFor(() => {
+        const activeTab = screen.getByTestId('active-tab');
+        const inactiveTab = screen.getByTestId('inactive-tab');
+        
+        // Click inactive tab
+        fireEvent.click(inactiveTab);
+        expect(inactiveTab).toHaveClass('active');
+        
+        // Click active tab again
+        fireEvent.click(activeTab);
+        expect(activeTab).toHaveClass('active');
+      });
+    });
+
+    it('should display only active payment methods when Active tab is selected', async () => {
+      const mixedPaymentMethods = [
+        { id: 1, type: 'cash', display_name: 'My Cash Wallet', is_active: true },
+        { id: 2, type: 'debit', display_name: 'Debit Card', is_active: true },
+        { id: 3, type: 'credit_card', display_name: 'Old Visa', is_active: false, current_balance: 0 },
+        { id: 4, type: 'cheque', display_name: 'Old Cheque Account', is_active: false }
+      ];
+      paymentMethodApi.getPaymentMethods.mockResolvedValue(mixedPaymentMethods);
+
+      render(<FinancialOverviewModal {...defaultProps} />);
+      
+      await waitFor(() => {
+        const activeTab = screen.getByTestId('active-tab');
+        expect(activeTab).toHaveClass('active');
+      });
+
+      // Should show active payment methods
+      await waitFor(() => {
+        expect(screen.getByText('My Cash Wallet')).toBeInTheDocument();
+        expect(screen.getByText('Debit Card')).toBeInTheDocument();
+      });
+
+      // Should not show inactive payment methods
+      expect(screen.queryByText('Old Visa')).not.toBeInTheDocument();
+      expect(screen.queryByText('Old Cheque Account')).not.toBeInTheDocument();
+    });
+
+    it('should display only inactive payment methods when Inactive tab is selected', async () => {
+      const mixedPaymentMethods = [
+        { id: 1, type: 'cash', display_name: 'Cash', is_active: true },
+        { id: 2, type: 'debit', display_name: 'Debit Card', is_active: true },
+        { id: 3, type: 'credit_card', display_name: 'Old Visa', is_active: false, current_balance: 0 },
+        { id: 4, type: 'cheque', display_name: 'Old Cheque Account', is_active: false }
+      ];
+      paymentMethodApi.getPaymentMethods.mockResolvedValue(mixedPaymentMethods);
+
+      render(<FinancialOverviewModal {...defaultProps} />);
+      
+      await waitFor(() => {
+        const inactiveTab = screen.getByTestId('inactive-tab');
+        fireEvent.click(inactiveTab);
+        expect(inactiveTab).toHaveClass('active');
+      });
+
+      // Should show inactive payment methods
+      await waitFor(() => {
+        expect(screen.getByText('Old Visa')).toBeInTheDocument();
+        expect(screen.getByText('Old Cheque Account')).toBeInTheDocument();
+      });
+
+      // Should not show active payment methods
+      expect(screen.queryByText('Cash')).not.toBeInTheDocument();
+      expect(screen.queryByText('Debit Card')).not.toBeInTheDocument();
+    });
+
+    it('should update count when switching between Active and Inactive tabs', async () => {
+      const mixedPaymentMethods = [
+        { id: 1, type: 'cash', display_name: 'Cash', is_active: true },
+        { id: 2, type: 'debit', display_name: 'Debit Card', is_active: true },
+        { id: 3, type: 'credit_card', display_name: 'Old Visa', is_active: false, current_balance: 0 },
+        { id: 4, type: 'cheque', display_name: 'Old Cheque Account', is_active: false }
+      ];
+      paymentMethodApi.getPaymentMethods.mockResolvedValue(mixedPaymentMethods);
+
+      render(<FinancialOverviewModal {...defaultProps} />);
+      
+      // Active tab should show count of 2
+      await waitFor(() => {
+        const pmSection = screen.getByTestId('payment-methods-section');
+        expect(pmSection).toHaveTextContent('Payment Methods (2)');
+      });
+
+      // Switch to Inactive tab
+      const inactiveTab = screen.getByTestId('inactive-tab');
+      fireEvent.click(inactiveTab);
+
+      // Inactive tab should show count of 2
+      await waitFor(() => {
+        const pmSection = screen.getByTestId('payment-methods-section');
+        expect(pmSection).toHaveTextContent('Payment Methods (2)');
+      });
+    });
+
+    it('should display Reactivate button for inactive credit cards', async () => {
+      const mixedPaymentMethods = [
+        { id: 1, type: 'credit_card', display_name: 'Active Visa', is_active: true, current_balance: 100 },
+        { id: 2, type: 'credit_card', display_name: 'Old Mastercard', is_active: false, current_balance: 0 }
+      ];
+      paymentMethodApi.getPaymentMethods.mockResolvedValue(mixedPaymentMethods);
+      creditCardApi.getStatementBalance.mockResolvedValue(null);
+      paymentMethodApi.getPaymentMethod.mockResolvedValue({ current_cycle: null });
+
+      render(<FinancialOverviewModal {...defaultProps} />);
+      
+      // Switch to Inactive tab
+      await waitFor(() => {
+        const inactiveTab = screen.getByTestId('inactive-tab');
+        fireEvent.click(inactiveTab);
+      });
+
+      // Should show Reactivate button for inactive credit card
+      await waitFor(() => {
+        const reactivateButton = screen.getByTitle('Reactivate Old Mastercard');
+        expect(reactivateButton).toBeInTheDocument();
+        expect(reactivateButton).toHaveTextContent('Reactivate');
+      });
+
+      // Should not show View or Pay buttons
+      expect(screen.queryByTitle('View details for Old Mastercard')).not.toBeInTheDocument();
+      expect(screen.queryByTitle('Log payment for Old Mastercard')).not.toBeInTheDocument();
+    });
+
+    it('should display Reactivate button for inactive other payment methods', async () => {
+      const mixedPaymentMethods = [
+        { id: 1, type: 'cash', display_name: 'Active Cash', is_active: true },
+        { id: 2, type: 'debit', display_name: 'Old Debit', is_active: false }
+      ];
+      paymentMethodApi.getPaymentMethods.mockResolvedValue(mixedPaymentMethods);
+
+      render(<FinancialOverviewModal {...defaultProps} />);
+      
+      // Switch to Inactive tab
+      await waitFor(() => {
+        const inactiveTab = screen.getByTestId('inactive-tab');
+        fireEvent.click(inactiveTab);
+      });
+
+      // Should show Reactivate button for inactive payment method
+      await waitFor(() => {
+        const reactivateButton = screen.getByTitle('Reactivate Old Debit');
+        expect(reactivateButton).toBeInTheDocument();
+        expect(reactivateButton).toHaveTextContent('Reactivate');
+      });
+
+      // Should not show View button
+      expect(screen.queryByTitle('View details for Old Debit')).not.toBeInTheDocument();
+    });
+
+    it('should call API and refresh when Reactivate button is clicked', async () => {
+      const inactiveMethod = { id: 3, type: 'debit', display_name: 'Old Debit', is_active: false };
+      const activeMethod = { id: 3, type: 'debit', display_name: 'Old Debit', is_active: true };
+      
+      paymentMethodApi.getPaymentMethods
+        .mockResolvedValueOnce([inactiveMethod])
+        .mockResolvedValueOnce([activeMethod]);
+      paymentMethodApi.setPaymentMethodActive.mockResolvedValue(activeMethod);
+
+      render(<FinancialOverviewModal {...defaultProps} />);
+      
+      // Switch to Inactive tab
+      await waitFor(() => {
+        const inactiveTab = screen.getByTestId('inactive-tab');
+        fireEvent.click(inactiveTab);
+      });
+
+      // Click Reactivate button
+      await waitFor(() => {
+        const reactivateButton = screen.getByTitle('Reactivate Old Debit');
+        fireEvent.click(reactivateButton);
+      });
+
+      // Should call setPaymentMethodActive with correct parameters
+      await waitFor(() => {
+        expect(paymentMethodApi.setPaymentMethodActive).toHaveBeenCalledWith(3, true);
+      });
+
+      // Should refresh payment methods list
+      await waitFor(() => {
+        expect(paymentMethodApi.getPaymentMethods).toHaveBeenCalledTimes(2);
+      });
+    });
+
+    it('should show error alert when reactivation fails', async () => {
+      const inactiveMethod = { id: 3, type: 'debit', display_name: 'Old Debit', is_active: false };
+      
+      paymentMethodApi.getPaymentMethods.mockResolvedValue([inactiveMethod]);
+      paymentMethodApi.setPaymentMethodActive.mockRejectedValue(new Error('Network error'));
+      
+      // Mock window.alert
+      const alertMock = vi.spyOn(window, 'alert').mockImplementation(() => {});
+
+      render(<FinancialOverviewModal {...defaultProps} />);
+      
+      // Switch to Inactive tab
+      await waitFor(() => {
+        const inactiveTab = screen.getByTestId('inactive-tab');
+        fireEvent.click(inactiveTab);
+      });
+
+      // Click Reactivate button
+      await waitFor(() => {
+        const reactivateButton = screen.getByTitle('Reactivate Old Debit');
+        fireEvent.click(reactivateButton);
+      });
+
+      // Should show error alert
+      await waitFor(() => {
+        expect(alertMock).toHaveBeenCalledWith('Failed to reactivate payment method. Please try again.');
+      });
+
+      alertMock.mockRestore();
+    });
+
+    it('should disable Reactivate button while reactivation is in progress', async () => {
+      const inactiveMethod = { id: 3, type: 'debit', display_name: 'Old Debit', is_active: false };
+      
+      paymentMethodApi.getPaymentMethods.mockResolvedValue([inactiveMethod]);
+      
+      // Make the API call hang to test loading state
+      let resolveReactivate;
+      const reactivatePromise = new Promise((resolve) => {
+        resolveReactivate = resolve;
+      });
+      paymentMethodApi.setPaymentMethodActive.mockReturnValue(reactivatePromise);
+
+      render(<FinancialOverviewModal {...defaultProps} />);
+      
+      // Switch to Inactive tab
+      await waitFor(() => {
+        const inactiveTab = screen.getByTestId('inactive-tab');
+        fireEvent.click(inactiveTab);
+      });
+
+      // Click Reactivate button
+      await waitFor(() => {
+        const reactivateButton = screen.getByTitle('Reactivate Old Debit');
+        fireEvent.click(reactivateButton);
+      });
+
+      // Button should be disabled and show loading text
+      await waitFor(() => {
+        const reactivateButton = screen.getByTitle('Reactivate Old Debit');
+        expect(reactivateButton).toBeDisabled();
+        expect(reactivateButton).toHaveTextContent('Reactivating...');
+      });
+
+      // Resolve the promise
+      resolveReactivate({ id: 3, type: 'debit', display_name: 'Old Debit', is_active: true });
     });
   });
 
@@ -499,4 +789,12 @@ describe('FinancialOverviewModal', () => {
       expect(screen.getByTestId('investments-section')).toBeVisible();
     });
   });
+
+  // Note: Credit Card Edit Flow (Req 1.4) is thoroughly tested in CreditCardDetailView.test.jsx
+  // The unit tests verify that:
+  // - Edit button calls onEdit with credit card data
+  // - Edit button is disabled when onEdit prop is not provided
+  // - The integration with PaymentMethodForm works correctly
 });
+
+

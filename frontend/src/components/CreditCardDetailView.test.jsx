@@ -42,6 +42,10 @@ vi.mock('../services/creditCardApi', () => ({
   getCurrentCycleStatus: vi.fn()
 }));
 
+vi.mock('../services/paymentMethodApi', () => ({
+  setPaymentMethodActive: vi.fn()
+}));
+
 // Mock child components to capture their props and callbacks
 let capturedBillingCycleFormProps = {};
 let capturedPaymentFormProps = {};
@@ -80,6 +84,7 @@ vi.mock('./UnifiedBillingCycleList', () => ({
 }));
 
 import * as creditCardApi from '../services/creditCardApi';
+import * as paymentMethodApi from '../services/paymentMethodApi';
 import CreditCardDetailView from './CreditCardDetailView';
 
 // ── Helpers ──
@@ -302,6 +307,203 @@ describe('CreditCardDetailView', () => {
       expect(screen.getByTestId('form-cycle-start')).toHaveTextContent('2026-02-15');
       expect(screen.getByTestId('form-cycle-end')).toHaveTextContent('2026-03-14');
       expect(screen.getByTestId('form-calculated-balance')).toHaveTextContent('1234.56');
+    });
+  });
+
+  describe('Edit button functionality (Req 1.4)', () => {
+    it('should call onEdit with credit card data when Edit button is clicked', async () => {
+      const onEdit = vi.fn();
+      
+      render(
+        <CreditCardDetailView
+          {...defaultProps}
+          onEdit={onEdit}
+        />
+      );
+
+      // Wait for the component to load
+      await waitFor(() => {
+        expect(screen.getByText('Test Card')).toBeInTheDocument();
+      });
+
+      // Find and click the Edit button
+      const editButton = screen.getByRole('button', { name: /edit/i });
+      fireEvent.click(editButton);
+
+      // Verify onEdit was called with the payment method data
+      expect(onEdit).toHaveBeenCalledTimes(1);
+      expect(onEdit).toHaveBeenCalledWith(expect.objectContaining({
+        id: 1,
+        display_name: 'Test Card',
+        type: 'credit_card'
+      }));
+    });
+
+    it('should disable Edit button when onEdit prop is not provided', async () => {
+      render(
+        <CreditCardDetailView
+          {...defaultProps}
+          onEdit={null}
+        />
+      );
+
+      // Wait for the component to load
+      await waitFor(() => {
+        expect(screen.getByText('Test Card')).toBeInTheDocument();
+      });
+
+      // Find the Edit button
+      const editButton = screen.getByRole('button', { name: /edit/i });
+      
+      // Verify button is disabled
+      expect(editButton).toBeDisabled();
+    });
+  });
+
+  describe('Deactivate button functionality (Req 1.5, 1.6)', () => {
+    it('should show confirmation dialog when Deactivate button is clicked', async () => {
+      render(
+        <CreditCardDetailView
+          {...defaultProps}
+        />
+      );
+
+      // Wait for the component to load
+      await waitFor(() => {
+        expect(screen.getByText('Test Card')).toBeInTheDocument();
+      });
+
+      // Find and click the Deactivate button
+      const deactivateButton = screen.getByRole('button', { name: /deactivate/i });
+      fireEvent.click(deactivateButton);
+
+      // Verify confirmation dialog appears
+      await waitFor(() => {
+        expect(screen.getByText('Deactivate Credit Card')).toBeInTheDocument();
+        expect(screen.getByText(/Are you sure you want to deactivate/)).toBeInTheDocument();
+        // Use getAllByText since "Test Card" appears in both the header and the dialog
+        const testCardElements = screen.getAllByText('Test Card');
+        expect(testCardElements.length).toBeGreaterThan(1);
+      });
+    });
+
+    it('should call API and close detail view when deactivation is confirmed', async () => {
+      paymentMethodApi.setPaymentMethodActive.mockResolvedValue({ success: true });
+      const onClose = vi.fn();
+      const onUpdate = vi.fn();
+
+      render(
+        <CreditCardDetailView
+          {...defaultProps}
+          onClose={onClose}
+          onUpdate={onUpdate}
+        />
+      );
+
+      // Wait for the component to load
+      await waitFor(() => {
+        expect(screen.getByText('Test Card')).toBeInTheDocument();
+      });
+
+      // Click Deactivate button
+      const deactivateButton = screen.getByRole('button', { name: /deactivate/i });
+      fireEvent.click(deactivateButton);
+
+      // Wait for confirmation dialog
+      await waitFor(() => {
+        expect(screen.getByText('Deactivate Credit Card')).toBeInTheDocument();
+      });
+
+      // Click confirm button in dialog
+      const confirmButton = screen.getAllByRole('button', { name: /deactivate/i })[1]; // Second one is in the dialog
+      fireEvent.click(confirmButton);
+
+      // Verify API was called with correct parameters
+      await waitFor(() => {
+        expect(paymentMethodApi.setPaymentMethodActive).toHaveBeenCalledWith(1, false);
+      });
+
+      // Verify detail view was closed and parent was notified
+      expect(onClose).toHaveBeenCalled();
+      expect(onUpdate).toHaveBeenCalled();
+    });
+
+    it('should cancel deactivation when Cancel button is clicked', async () => {
+      paymentMethodApi.setPaymentMethodActive.mockResolvedValue({ success: true });
+      const onClose = vi.fn();
+
+      render(
+        <CreditCardDetailView
+          {...defaultProps}
+          onClose={onClose}
+        />
+      );
+
+      // Wait for the component to load
+      await waitFor(() => {
+        expect(screen.getByText('Test Card')).toBeInTheDocument();
+      });
+
+      // Click Deactivate button
+      const deactivateButton = screen.getByRole('button', { name: /deactivate/i });
+      fireEvent.click(deactivateButton);
+
+      // Wait for confirmation dialog
+      await waitFor(() => {
+        expect(screen.getByText('Deactivate Credit Card')).toBeInTheDocument();
+      });
+
+      // Click cancel button in dialog
+      const cancelButton = screen.getByRole('button', { name: /cancel/i });
+      fireEvent.click(cancelButton);
+
+      // Verify dialog is closed
+      await waitFor(() => {
+        expect(screen.queryByText('Deactivate Credit Card')).not.toBeInTheDocument();
+      });
+
+      // Verify API was not called and detail view is still open
+      expect(paymentMethodApi.setPaymentMethodActive).not.toHaveBeenCalled();
+      expect(onClose).not.toHaveBeenCalled();
+    });
+
+    it('should display error message when deactivation fails', async () => {
+      const errorMessage = 'Failed to deactivate payment method';
+      paymentMethodApi.setPaymentMethodActive.mockRejectedValue(new Error(errorMessage));
+      const onClose = vi.fn();
+
+      render(
+        <CreditCardDetailView
+          {...defaultProps}
+          onClose={onClose}
+        />
+      );
+
+      // Wait for the component to load
+      await waitFor(() => {
+        expect(screen.getByText('Test Card')).toBeInTheDocument();
+      });
+
+      // Click Deactivate button
+      const deactivateButton = screen.getByRole('button', { name: /deactivate/i });
+      fireEvent.click(deactivateButton);
+
+      // Wait for confirmation dialog
+      await waitFor(() => {
+        expect(screen.getByText('Deactivate Credit Card')).toBeInTheDocument();
+      });
+
+      // Click confirm button in dialog
+      const confirmButton = screen.getAllByRole('button', { name: /deactivate/i })[1];
+      fireEvent.click(confirmButton);
+
+      // Verify error message is displayed
+      await waitFor(() => {
+        expect(screen.getByText(errorMessage)).toBeInTheDocument();
+      });
+
+      // Verify detail view was NOT closed
+      expect(onClose).not.toHaveBeenCalled();
     });
   });
 });

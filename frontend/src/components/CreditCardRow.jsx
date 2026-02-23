@@ -60,18 +60,18 @@ const CreditCardRow = ({ card, onPay, onViewDetails }) => {
         </div>
         <div className="credit-card-row-actions">
           <button
-            className="credit-card-pay-button"
+            className="financial-action-btn-primary"
             onClick={() => onPay && onPay(card)}
             title={`Log payment for ${name}`}
           >
-            💳 Pay
+            Pay
           </button>
           <button
-            className="credit-card-view-button"
+            className="financial-action-btn-secondary"
             onClick={() => onViewDetails && onViewDetails(card)}
             title={`View details for ${name}`}
           >
-            👁️ View Details
+            View
           </button>
         </div>
       </div>

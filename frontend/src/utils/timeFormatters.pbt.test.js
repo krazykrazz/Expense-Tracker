@@ -58,7 +58,7 @@ describe('formatRelativeTime - Property-Based Tests', () => {
   it('Property 4: should be deterministic for the same timestamp', () => {
     fc.assert(
       fc.property(
-        fc.date({ min: new Date('2020-01-01'), max: new Date() }),
+        fc.date({ min: new Date('2020-01-01'), max: new Date() }).filter(d => !isNaN(d.getTime())),
         (date) => {
           const isoTimestamp = date.toISOString();
           

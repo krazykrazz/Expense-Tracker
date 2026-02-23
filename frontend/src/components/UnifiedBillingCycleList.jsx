@@ -10,7 +10,7 @@ import './UnifiedBillingCycleList.css';
  * - Cycle dates
  * - Effective balance with balance type indicator (Actual/Calculated)
  * - Transaction count
- * - Trend indicator comparing to previous cycle
+ * - Discrepancy between actual and calculated balance (always shown for actual cycles)
  * - Conditional action buttons based on actual_statement_balance
  * 
  * Requirements: 4.3, 5.1, 5.2, 5.3, 5.4, 5.5, 6.1, 6.2, 6.3, 6.4, 6.5
@@ -39,12 +39,6 @@ const UnifiedBillingCycleList = ({
   error = null
 }) => {
   const [deleteConfirm, setDeleteConfirm] = useState(null);
-
-  // Get trend indicator class
-  const getTrendClass = (trendIndicator) => {
-    if (!trendIndicator) return '';
-    return trendIndicator.cssClass || '';
-  };
 
   // Handle delete click
   const handleDeleteClick = (cycle) => {
@@ -106,72 +100,90 @@ const UnifiedBillingCycleList = ({
       <div className="unified-billing-cycle-list">
         {cycles.map((cycle) => (
           <div key={cycle.id} className="unified-billing-cycle-item">
-            {/* Cycle Period */}
-            <div className="unified-cycle-period">
-              <span className="unified-cycle-dates">
-                {formatDate(cycle.cycle_start_date)} - {formatDate(cycle.cycle_end_date)}
-              </span>
-              {cycle.statement_pdf_path && (
-                <button
-                  className="unified-cycle-pdf-btn"
-                  onClick={() => onViewPdf(cycle)}
-                  title="View statement PDF"
-                  aria-label={`View PDF for ${formatDate(cycle.cycle_end_date)}`}
-                >
-                  📄
-                </button>
-              )}
-            </div>
+            {/* Main row with data and actions inline */}
+            <div className="unified-cycle-main-row">
+              {/* Data section */}
+              <div className="unified-cycle-data">
+                {/* Cycle Period */}
+                <div className="unified-cycle-period">
+                  <span className="unified-cycle-dates">
+                    {formatDate(cycle.cycle_start_date)} - {formatDate(cycle.cycle_end_date)}
+                  </span>
+                  {cycle.statement_pdf_path && (
+                    <button
+                      className="unified-cycle-pdf-btn"
+                      onClick={() => onViewPdf(cycle)}
+                      title="View statement PDF"
+                      aria-label={`View PDF for ${formatDate(cycle.cycle_end_date)}`}
+                    >
+                      📄
+                    </button>
+                  )}
+                </div>
 
-            {/* Effective Balance with Type Indicator */}
-            <div className="unified-cycle-balance">
-              <div className="unified-balance-row">
-                <span className="unified-balance-value">
-                  {formatCurrency(cycle.effective_balance)}
-                </span>
-                <span className={`unified-balance-type ${cycle.balance_type}`}>
-                  {cycle.balance_type === 'actual' ? 'Actual' : 'Calculated'}
-                </span>
+                {/* Effective Balance with Type Indicator */}
+                <div className="unified-cycle-balance">
+                  <div className="unified-balance-row">
+                    <span className="unified-balance-value">
+                      {formatCurrency(cycle.effective_balance)}
+                    </span>
+                    <span className={`unified-balance-type ${cycle.balance_type}`}>
+                      {cycle.balance_type === 'actual' ? 'Actual' : 'Calculated'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Transaction Count */}
+                <div className="unified-cycle-transactions">
+                  <span className="unified-transaction-count">
+                    {cycle.transaction_count} {cycle.transaction_count === 1 ? 'transaction' : 'transactions'}
+                  </span>
+                </div>
+
+                {/* Discrepancy - always shown for actual balance cycles */}
+                {cycle.actual_statement_balance > 0 && (() => {
+                  const discrepancy = calculateDiscrepancy(cycle.actual_statement_balance, cycle.calculated_statement_balance);
+                  return (
+                    <div className={`unified-cycle-discrepancy discrepancy-${discrepancy.type}`}>
+                      <span className="discrepancy-icon">
+                        {discrepancy.type === 'higher' ? '↑' : discrepancy.type === 'lower' ? '↓' : '✓'}
+                      </span>
+                      <span className="discrepancy-amount">
+                        {discrepancy.type === 'match'
+                          ? 'Match'
+                          : `${discrepancy.amount > 0 ? '+' : ''}${formatCurrency(discrepancy.amount)}`}
+                      </span>
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* Actions - Inline with data */}
+              <div className="unified-cycle-actions">
+                <button
+                  className="financial-action-btn-secondary"
+                  onClick={() => cycle.balance_type === 'actual' ? onEdit(cycle) : onEnterStatement(cycle)}
+                  title={cycle.balance_type === 'actual' ? "Edit billing cycle" : "Enter statement balance"}
+                  aria-label={cycle.balance_type === 'actual'
+                    ? `Edit billing cycle for ${formatDate(cycle.cycle_end_date)}`
+                    : `Enter statement for ${formatDate(cycle.cycle_end_date)}`}
+                >
+                  {cycle.balance_type === 'actual' ? 'Edit' : 'Enter Statement'}
+                </button>
+                <button
+                  className="financial-action-btn-danger"
+                  onClick={() => handleDeleteClick(cycle)}
+                  title={cycle.balance_type === 'actual' ? "Delete billing cycle" : "Delete auto-generated cycle (will regenerate)"}
+                  aria-label={cycle.balance_type === 'actual'
+                    ? `Delete billing cycle for ${formatDate(cycle.cycle_end_date)}`
+                    : `Delete auto-generated cycle for ${formatDate(cycle.cycle_end_date)}`}
+                >
+                  Delete
+                </button>
               </div>
             </div>
 
-            {/* Transaction Count */}
-            <div className="unified-cycle-transactions">
-              <span className="unified-transaction-count">
-                {cycle.transaction_count} {cycle.transaction_count === 1 ? 'transaction' : 'transactions'}
-              </span>
-            </div>
-
-            {/* Discrepancy - computed from actual and calculated balances */}
-            {cycle.actual_statement_balance > 0 && (() => {
-              const discrepancy = calculateDiscrepancy(cycle.actual_statement_balance, cycle.calculated_statement_balance);
-              return discrepancy.type !== 'match' ? (
-                <div className={`unified-cycle-discrepancy discrepancy-${discrepancy.type}`}>
-                  <span className="discrepancy-icon">{discrepancy.type === 'higher' ? '↑' : '↓'}</span>
-                  <span className="discrepancy-amount">
-                    {discrepancy.amount > 0 ? '+' : ''}{formatCurrency(discrepancy.amount)}
-                  </span>
-                </div>
-              ) : null;
-            })()}
-
-            {/* Trend Indicator */}
-            <div className="unified-cycle-trend">
-              {cycle.trend_indicator ? (
-                <div className={`unified-trend-indicator ${getTrendClass(cycle.trend_indicator)}`}>
-                  <span className="unified-trend-icon">{cycle.trend_indicator.icon}</span>
-                  <span className="unified-trend-amount">
-                    {formatCurrency(cycle.trend_indicator.amount)}
-                  </span>
-                </div>
-              ) : (
-                <div className="unified-trend-indicator no-trend">
-                  <span className="unified-trend-icon">—</span>
-                </div>
-              )}
-            </div>
-
-            {/* Optional Fields */}
+            {/* Optional Fields - Second row */}
             {(cycle.minimum_payment || cycle.due_date) && (
               <div className="unified-cycle-details">
                 {cycle.minimum_payment && (
@@ -187,36 +199,12 @@ const UnifiedBillingCycleList = ({
               </div>
             )}
 
-            {/* Notes */}
+            {/* Notes - Second row */}
             {cycle.notes && (
               <div className="unified-cycle-notes">
                 {cycle.notes}
               </div>
             )}
-
-            {/* Actions - Consistent pencil/trash for all cycles */}
-            <div className="unified-cycle-actions">
-              <button
-                className="unified-cycle-action-btn edit"
-                onClick={() => cycle.balance_type === 'actual' ? onEdit(cycle) : onEnterStatement(cycle)}
-                title={cycle.balance_type === 'actual' ? "Edit billing cycle" : "Enter statement balance"}
-                aria-label={cycle.balance_type === 'actual'
-                  ? `Edit billing cycle for ${formatDate(cycle.cycle_end_date)}`
-                  : `Enter statement for ${formatDate(cycle.cycle_end_date)}`}
-              >
-                ✏️
-              </button>
-              <button
-                className="unified-cycle-action-btn delete"
-                onClick={() => handleDeleteClick(cycle)}
-                title={cycle.balance_type === 'actual' ? "Delete billing cycle" : "Delete auto-generated cycle (will regenerate)"}
-                aria-label={cycle.balance_type === 'actual'
-                  ? `Delete billing cycle for ${formatDate(cycle.cycle_end_date)}`
-                  : `Delete auto-generated cycle for ${formatDate(cycle.cycle_end_date)}`}
-              >
-                🗑️
-              </button>
-            </div>
           </div>
         ))}
       </div>

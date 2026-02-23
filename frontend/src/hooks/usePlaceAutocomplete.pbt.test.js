@@ -149,6 +149,8 @@ describe('usePlaceAutocomplete - Property-Based Tests', () => {
             if (startPos + length > place.length) return true;
             
             const substring = place.substring(startPos, startPos + length);
+            // filterPlacesList returns [] for whitespace-only queries — skip those cases
+            if (substring.trim() === '') return true;
             const places = [place];
             const filtered = filterPlacesList(places, substring);
             

@@ -61,24 +61,44 @@
   flex-direction: column;
 }
 
-/* List Item */
+/* List Item - Flexbox layout with inline buttons */
 .unified-billing-cycle-item {
-  display: grid;
-  grid-template-columns: 1.5fr 1fr 1fr 1fr auto;
-  grid-template-rows: auto auto;
-  gap: var(--spacing-2) var(--spacing-3);
-  align-items: center;
-  padding: var(--spacing-3) var(--spacing-4);
-  border-bottom: 1px solid var(--border-default);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  padding: 12px 16px;
+  border-bottom: 1px solid #e2e8f0;
+  border-radius: 6px;
+  margin-bottom: 8px;
   transition: var(--transition-fast);
+  background-color: #f8f9fa;
 }
 
 .unified-billing-cycle-item:last-child {
   border-bottom: none;
+  margin-bottom: 0;
 }
 
 .unified-billing-cycle-item:hover {
-  background-color: var(--bg-subtle);
+  background-color: #f1f5f9;
+}
+
+/* Main row with data and actions */
+.unified-cycle-main-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+/* Data section */
+.unified-cycle-data {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 1;
+  min-width: 0;
+  flex-wrap: nowrap;
 }
 
 /* Cycle Period */
@@ -178,6 +198,8 @@
   padding: 2px 8px;
   border-radius: 4px;
   white-space: nowrap;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .unified-cycle-discrepancy.discrepancy-higher {
@@ -190,61 +212,16 @@
   color: var(--color-info);
 }
 
+.unified-cycle-discrepancy.discrepancy-match {
+  background-color: rgba(34, 197, 94, 0.15);
+  color: var(--color-positive);
+}
+
 .discrepancy-icon {
   font-size: var(--text-base);
 }
 
 .discrepancy-amount {
-  white-space: nowrap;
-}
-
-/* Trend Indicator */
-.unified-cycle-trend {
-  display: flex;
-  justify-content: center;
-}
-
-.unified-trend-indicator {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-1);
-  padding: var(--spacing-1) var(--spacing-2);
-  border-radius: var(--radius-md);
-  font-size: var(--text-sm);
-  font-weight: var(--font-medium);
-  min-width: 90px;
-  justify-content: center;
-}
-
-.unified-trend-indicator.trend-higher {
-  background-color: rgba(245, 158, 11, 0.15);
-  color: var(--color-warning);
-  border: 1px solid rgba(245, 158, 11, 0.3);
-}
-
-.unified-trend-indicator.trend-lower {
-  background-color: rgba(59, 130, 246, 0.15);
-  color: var(--color-info);
-  border: 1px solid rgba(59, 130, 246, 0.3);
-}
-
-.unified-trend-indicator.trend-same {
-  background-color: rgba(34, 197, 94, 0.15);
-  color: var(--color-positive);
-  border: 1px solid rgba(34, 197, 94, 0.3);
-}
-
-.unified-trend-indicator.no-trend {
-  background-color: transparent;
-  color: var(--text-tertiary);
-  border: 1px solid var(--border-default);
-}
-
-.unified-trend-icon {
-  font-size: var(--text-base);
-}
-
-.unified-trend-amount {
   white-space: nowrap;
 }
 
@@ -254,8 +231,6 @@
   gap: var(--spacing-3);
   font-size: var(--text-xs);
   color: var(--text-secondary);
-  grid-column: 1 / 4;
-  grid-row: 2;
 }
 
 .unified-detail-item {
@@ -265,39 +240,19 @@
 
 /* Notes */
 .unified-cycle-notes {
-  grid-column: 1 / 5;
-  grid-row: 2;
   font-size: var(--text-xs);
   color: var(--text-tertiary);
   font-style: italic;
 }
 
-/* Actions */
+/* Actions - Fixed width to prevent wrapping */
 .unified-cycle-actions {
   display: flex;
-  gap: var(--spacing-1);
+  gap: 6px;
   justify-content: flex-end;
-  align-self: start;
-}
-
-.unified-cycle-action-btn {
-  background: none;
-  border: none;
-  padding: var(--spacing-1);
-  cursor: pointer;
-  border-radius: var(--radius-sm);
-  font-size: var(--text-base);
-  opacity: 0.6;
-  transition: var(--transition-fast);
-}
-
-.unified-cycle-action-btn:hover {
-  opacity: 1;
-  background-color: var(--bg-muted);
-}
-
-.unified-cycle-action-btn.delete:hover {
-  background-color: var(--color-negative-light);
+  align-self: center;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 /* Confirmation Dialog */
@@ -389,59 +344,37 @@
 
 /* Mobile Responsive */
 @media (max-width: 768px) {
-  .unified-billing-cycle-item {
-    grid-template-columns: 1fr 1fr;
+  .unified-cycle-main-row {
+    flex-direction: column;
+    align-items: flex-start;
     gap: var(--spacing-2);
-    padding: var(--spacing-3);
   }
 
-  .unified-cycle-period {
-    grid-column: 1 / -1;
-  }
-
-  .unified-cycle-balance {
-    grid-column: 1;
-  }
-
-  .unified-cycle-transactions {
-    grid-column: 2;
-    text-align: right;
-  }
-
-  .unified-cycle-trend {
-    grid-column: 1;
-    justify-content: flex-start;
+  .unified-cycle-data {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-2);
+    width: 100%;
   }
 
   .unified-cycle-actions {
-    grid-column: 2;
-    justify-content: flex-end;
-  }
-
-  .unified-trend-indicator {
-    min-width: auto;
+    width: 100%;
+    justify-content: flex-start;
   }
 }
 
 @media (max-width: 480px) {
   .unified-billing-cycle-item {
-    grid-template-columns: 1fr;
-    gap: var(--spacing-2);
-  }
-
-  .unified-cycle-period,
-  .unified-cycle-balance,
-  .unified-cycle-transactions,
-  .unified-cycle-discrepancy,
-  .unified-cycle-trend,
-  .unified-cycle-actions {
-    grid-column: 1;
+    padding: var(--spacing-3);
   }
 
   .unified-cycle-actions {
-    justify-content: flex-start;
-    padding-top: var(--spacing-2);
-    border-top: 1px dashed var(--border-default);
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .unified-cycle-actions button {
+    width: 100%;
   }
 
   .unified-balance-row {
@@ -451,14 +384,6 @@
 
 /* Touch-friendly styles */
 @media (max-width: 768px) and (pointer: coarse) {
-  .unified-cycle-action-btn {
-    min-width: 44px;
-    min-height: 44px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
   .unified-billing-cycle-confirm-dialog .confirm-delete-btn,
   .unified-billing-cycle-confirm-dialog .confirm-cancel-btn {
     min-height: 48px;
@@ -468,7 +393,6 @@
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
   .unified-billing-cycle-item,
-  .unified-cycle-action-btn,
   .unified-cycle-pdf-btn,
   .unified-billing-cycle-confirm-dialog .confirm-delete-btn,
   .unified-billing-cycle-confirm-dialog .confirm-cancel-btn {
@@ -477,12 +401,6 @@
 }
 
 /* Focus visible support */
-.unified-cycle-action-btn:focus-visible {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 2px;
-  opacity: 1;
-}
-
 .unified-billing-cycle-confirm-dialog .confirm-delete-btn:focus-visible,
 .unified-billing-cycle-confirm-dialog .confirm-cancel-btn:focus-visible {
   outline: 2px solid var(--color-primary);

@@ -81,7 +81,8 @@ const CreditCardReminderBanner = ({
       return;
     }
     if (onClick) {
-      onClick();
+      // Pass the first card for deep-link navigation
+      onClick(cards[0]);
     }
   };
 

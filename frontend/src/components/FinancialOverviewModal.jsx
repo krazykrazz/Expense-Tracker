@@ -1,5 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
-import useTabState from '../hooks/useTabState';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { API_ENDPOINTS } from '../config';
 import { getAllLoans, createLoan, updateLoan, deleteLoan } from '../services/loanApi';
 import { getFixedExpensesByLoan } from '../services/fixedExpenseApi';
@@ -7,6 +6,8 @@ import { getAllInvestments, createInvestment, updateInvestment, deleteInvestment
 import { getPaymentMethods, getPaymentMethod, deletePaymentMethod, setPaymentMethodActive } from '../services/paymentMethodApi';
 import { getStatementBalance } from '../services/creditCardApi';
 import CreditCardPaymentForm from './CreditCardPaymentForm';
+import LoanRow from './LoanRow';
+import InvestmentRow from './InvestmentRow';
 import { validateName, validateAmount } from '../utils/validation';
 import { formatCurrency, formatDate, formatCAD } from '../utils/formatters';
 import { createLogger } from '../utils/logger';
@@ -15,6 +16,7 @@ import TotalDebtView from './TotalDebtView';
 import InvestmentDetailView from './InvestmentDetailView';
 import PaymentMethodForm from './PaymentMethodForm';
 import CreditCardDetailView from './CreditCardDetailView';
+import LoanPaymentForm from './LoanPaymentForm';
 import './FinancialOverviewModal.css';
 
 const logger = createLogger('FinancialOverviewModal');
@@ -50,7 +52,7 @@ const NetWorthSummary = ({ totalInvestments, totalDebt }) => {
 
 // ─── CreditCardSummary ────────────────────────────────────────────────────────
 
-const CreditCardSummary = ({ paymentMethods, onPaymentRecorded }) => {
+const CreditCardSummary = ({ paymentMethods, onPaymentRecorded, onViewDetails }) => {
   const [cardData, setCardData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [payingCardId, setPayingCardId] = useState(null);
@@ -122,6 +124,13 @@ const CreditCardSummary = ({ paymentMethods, onPaymentRecorded }) => {
               <span className="financial-cc-amount">{card.cycleBalance != null ? formatCurrency(card.cycleBalance) : '—'}</span>
               <span className="financial-cc-pay-cell">
                 <button
+                  className="financial-cc-view-btn"
+                  onClick={() => onViewDetails && onViewDetails(card)}
+                  title={`View details for ${card.name}`}
+                >
+                  View
+                </button>
+                <button
                   className="financial-cc-pay-btn"
                   onClick={() => setPayingCardId(card.id)}
                   title={`Log payment for ${card.name}`}
@@ -137,9 +146,200 @@ const CreditCardSummary = ({ paymentMethods, onPaymentRecorded }) => {
   );
 };
 
-// ─── LoansTabContent ──────────────────────────────────────────────────────────
+// ─── PaymentMethodsSection ────────────────────────────────────────────────────
 
-const LoansTabContent = ({ year, month, onUpdate, highlightIds = [], onTotalDebtChange }) => {
+const TYPE_LABELS = { debit: 'Debit', cheque: 'Cheque', cash: 'Cash' };
+
+const PaymentMethodsSection = ({ paymentMethods, loading, onPaymentRecorded, onViewDetails, onAddNew }) => {
+  const [activeTab, setActiveTab] = useState('active');
+  const [cardData, setCardData] = useState([]);
+  const [cardLoading, setCardLoading] = useState(true);
+  const [payingCardId, setPayingCardId] = useState(null);
+  const [reactivating, setReactivating] = useState(null);
+
+  const allMethods = (paymentMethods || []).filter(m => activeTab === 'active' ? m.is_active : !m.is_active);
+  const creditCards = allMethods.filter(m => m.type === 'credit_card');
+  // Stable key for credit card IDs to prevent infinite re-fetch loops
+  const creditCardKey = creditCards.map(c => c.id).sort().join(',');
+  const otherMethods = allMethods.filter(m => m.type !== 'credit_card');
+  const totalCount = allMethods.length;
+
+  const fetchCardData = useCallback(async () => {
+    if (creditCards.length === 0) { setCardLoading(false); return; }
+    setCardLoading(true);
+    const results = await Promise.all(
+      creditCards.map(async (card) => {
+        let statementBalance = null;
+        let cycleBalance = null;
+        try { statementBalance = await getStatementBalance(card.id); } catch { /* silent */ }
+        try {
+          const method = await getPaymentMethod(card.id);
+          cycleBalance = method?.current_cycle?.total_amount ?? null;
+        } catch { /* silent */ }
+        return { id: card.id, name: card.display_name, currentBalance: card.current_balance, statementBalance, cycleBalance };
+      })
+    );
+    setCardData(results);
+    setCardLoading(false);
+  }, [creditCardKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => { fetchCardData(); }, [fetchCardData]);
+
+  const payingCard = payingCardId ? cardData.find(c => c.id === payingCardId) : null;
+
+  const handleReactivate = async (methodId) => {
+    setReactivating(methodId);
+    try {
+      await setPaymentMethodActive(methodId, true);
+      // Trigger refresh by calling onPaymentRecorded which should refresh the parent
+      if (onPaymentRecorded) onPaymentRecorded();
+    } catch (error) {
+      logger.error('Failed to reactivate payment method:', error);
+      alert('Failed to reactivate payment method. Please try again.');
+    } finally {
+      setReactivating(null);
+    }
+  };
+
+  const getTypeBadgeLabel = (type) => TYPE_LABELS[type] || (type ? type.charAt(0).toUpperCase() + type.slice(1) : 'Other');
+
+  return (
+    <div className="financial-section" data-testid="payment-methods-section">
+      <div className="financial-section-header">
+        <div className="financial-section-header-left">
+          <span className="financial-section-icon">💳</span>
+          <h3 className="financial-section-title">Payment Methods ({totalCount})</h3>
+        </div>
+        <button className="financial-section-add-button" onClick={onAddNew} disabled={loading}>+ Add</button>
+      </div>
+      
+      <div className="payment-methods-tabs">
+        <button 
+          className={`payment-methods-tab ${activeTab === 'active' ? 'active' : ''}`}
+          onClick={() => setActiveTab('active')}
+          data-testid="active-tab"
+        >
+          Active
+        </button>
+        <button 
+          className={`payment-methods-tab ${activeTab === 'inactive' ? 'active' : ''}`}
+          onClick={() => setActiveTab('inactive')}
+          data-testid="inactive-tab"
+        >
+          Inactive
+        </button>
+      </div>
+
+      <div className="financial-section-content">
+        {totalCount === 0 ? (
+          <div className="financial-section-empty">No payment methods configured yet. Add one to get started.</div>
+        ) : (
+          <>
+            {creditCards.length > 0 && (
+              <div data-testid="cc-subsection" className="payment-methods-cc-subsection">
+                {payingCard ? (
+                  <CreditCardPaymentForm
+                    paymentMethodId={payingCard.id}
+                    paymentMethodName={payingCard.name}
+                    currentBalance={payingCard.currentBalance}
+                    onPaymentRecorded={async () => {
+                      setPayingCardId(null);
+                      await fetchCardData();
+                      if (onPaymentRecorded) onPaymentRecorded();
+                    }}
+                    onCancel={() => setPayingCardId(null)}
+                  />
+                ) : cardLoading ? (
+                  <div className="financial-cc-summary-loading">Loading...</div>
+                ) : (
+                  <div className="financial-cc-summary-grid">
+                    <div className="financial-cc-summary-header-row">
+                      <span>Card</span>
+                      <span>Current</span>
+                      <span>Statement</span>
+                      <span>Cycle</span>
+                      <span></span>
+                    </div>
+                    {cardData.map(card => (
+                      <div key={card.id} className="financial-cc-summary-row">
+                        <span className="financial-cc-name">{card.name}</span>
+                        <span className="financial-cc-amount">{formatCurrency(card.currentBalance)}</span>
+                        <span className="financial-cc-amount">{card.statementBalance != null ? formatCurrency(card.statementBalance) : '—'}</span>
+                        <span className="financial-cc-amount">{card.cycleBalance != null ? formatCurrency(card.cycleBalance) : '—'}</span>
+                        <span className="financial-cc-pay-cell">
+                          {activeTab === 'active' ? (
+                            <>
+                              <button
+                                className="financial-cc-view-btn"
+                                onClick={() => onViewDetails && onViewDetails(card)}
+                                title={`View details for ${card.name}`}
+                              >
+                                View
+                              </button>
+                              <button
+                                className="financial-cc-pay-btn"
+                                onClick={() => setPayingCardId(card.id)}
+                                title={`Log payment for ${card.name}`}
+                              >
+                                Pay
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              className="financial-cc-reactivate-btn"
+                              onClick={() => handleReactivate(card.id)}
+                              disabled={reactivating === card.id}
+                              title={`Reactivate ${card.name}`}
+                            >
+                              {reactivating === card.id ? 'Reactivating...' : 'Reactivate'}
+                            </button>
+                          )}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            {otherMethods.length > 0 && (
+              <div data-testid="other-subsection" className="payment-methods-other-subsection">
+                {creditCards.length > 0 && <div className="payment-methods-subsection-divider">Other Payment Methods</div>}
+                {otherMethods.map(method => (
+                  <div key={method.id} className="other-payment-method-row">
+                    <span className="other-payment-method-name">{method.display_name}</span>
+                    <span className="other-payment-method-type-badge" data-testid="type-badge">{getTypeBadgeLabel(method.type)}</span>
+                    {activeTab === 'active' ? (
+                      <button
+                        className="financial-cc-view-btn"
+                        onClick={() => onViewDetails && onViewDetails(method)}
+                        title={`View details for ${method.display_name}`}
+                      >
+                        View
+                      </button>
+                    ) : (
+                      <button
+                        className="other-payment-method-reactivate-btn"
+                        onClick={() => handleReactivate(method.id)}
+                        disabled={reactivating === method.id}
+                        title={`Reactivate ${method.display_name}`}
+                      >
+                        {reactivating === method.id ? 'Reactivating...' : 'Reactivate'}
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ─── LoansSection ─────────────────────────────────────────────────────────────
+
+const LoansSection = ({ year, month, onUpdate, highlightIds = [], onTotalDebtChange }) => {
   const [loans, setLoans] = useState([]);
   const [activeTab, setActiveTab] = useState('active');
   const [loading, setLoading] = useState(false);
@@ -149,6 +349,7 @@ const LoansTabContent = ({ year, month, onUpdate, highlightIds = [], onTotalDebt
   const [selectedLoanId, setSelectedLoanId] = useState(null);
   const [showTotalDebt, setShowTotalDebt] = useState(false);
   const [loanFixedExpenseCounts, setLoanFixedExpenseCounts] = useState({});
+  const [payingLoan, setPayingLoan] = useState(null);
 
   const [formData, setFormData] = useState({
     name: '', initial_balance: '', start_date: '', loan_type: 'loan', notes: '',
@@ -165,7 +366,6 @@ const LoansTabContent = ({ year, month, onUpdate, highlightIds = [], onTotalDebt
       const loanList = data || [];
       setLoans(loanList);
       await fetchFixedExpenseCounts(loanList);
-      // Lift total debt up for net worth calculation
       const totalDebt = loanList
         .filter(l => !l.is_paid_off)
         .reduce((sum, l) => sum + (l.currentBalance || 0), 0);
@@ -285,12 +485,12 @@ const LoansTabContent = ({ year, month, onUpdate, highlightIds = [], onTotalDebt
     }
   };
 
-  const handleDeleteLoan = async (id) => {
+  const handleDeleteLoan = async (loan) => {
     if (!window.confirm('Delete this loan? This will also delete all balance entries.')) return;
     setLoading(true);
     setError(null);
     try {
-      await deleteLoan(id);
+      await deleteLoan(loan.id);
       await fetchLoans();
     } catch (err) {
       setError(err.message || 'Unable to delete loan.');
@@ -323,9 +523,18 @@ const LoansTabContent = ({ year, month, onUpdate, highlightIds = [], onTotalDebt
     if (onUpdate) onUpdate();
   };
 
+  const handleLogPayment = (loan) => {
+    setPayingLoan(loan);
+  };
+
+  const handlePaymentRecorded = () => {
+    setPayingLoan(null);
+    fetchLoans();
+    if (onUpdate) onUpdate();
+  };
+
   const activeLoans = loans.filter(l => !l.is_paid_off);
   const paidOffLoans = loans.filter(l => l.is_paid_off);
-  const displayedLoans = activeTab === 'active' ? activeLoans : paidOffLoans;
   const selectedLoan = selectedLoanId ? loans.find(l => l.id === selectedLoanId) : null;
 
   if (showTotalDebt) {
@@ -344,28 +553,56 @@ const LoansTabContent = ({ year, month, onUpdate, highlightIds = [], onTotalDebt
   }
 
   return (
-    <div className="financial-tab-panel">
-      {error && (
-        <div className="financial-modal-error">
-          <div>{error}</div>
-          {loans.length === 0 && !loading && (
-            <button className="financial-error-retry-button" onClick={fetchLoans}>Retry</button>
-          )}
+    <div className="financial-section" data-testid="loans-section">
+      <div className="financial-section-header">
+        <div className="financial-section-header-left">
+          <span className="financial-section-icon">🏦</span>
+          <h3 className="financial-section-title">Loans ({loans.length})</h3>
         </div>
-      )}
-      <div className="financial-modal-content">
+        <div className="financial-section-header-actions">
+          <button
+            className="financial-section-debt-trend-button"
+            onClick={() => setShowTotalDebt(true)}
+            disabled={loading}
+            title="View Total Debt Trend"
+          >
+            📊 View Total Debt Trend
+          </button>
+          <button
+            className="financial-section-add-button"
+            onClick={() => { clearForm(); setEditingLoanId(null); setShowAddForm(true); }}
+            disabled={loading || showAddForm}
+            title="Add New Loan"
+          >
+            + Add
+          </button>
+        </div>
+      </div>
+      <div className="financial-section-content">
+        {error && (
+          <div className="financial-section-error">
+            <div>{error}</div>
+            {loans.length === 0 && !loading && (
+              <button className="financial-error-retry-button" onClick={fetchLoans}>Retry</button>
+            )}
+          </div>
+        )}
         {loading && loans.length === 0 ? (
-          <div className="financial-modal-loading">Loading loans...</div>
+          <div className="financial-section-loading">Loading loans...</div>
         ) : (
           <>
-            <div className="loans-add-button-section">
-              <button className="loans-add-new-button" onClick={() => { clearForm(); setEditingLoanId(null); setShowAddForm(true); }} disabled={loading || showAddForm}>
-                + Add New Loan
-              </button>
-              <button className="loans-total-debt-button" onClick={() => setShowTotalDebt(true)} disabled={loading}>
-                📊 View Total Debt Trend
-              </button>
-            </div>
+            {payingLoan && (
+              <div className="financial-section-inline-form">
+                <LoanPaymentForm
+                  loanId={payingLoan.id}
+                  loanName={payingLoan.name}
+                  loanType={payingLoan.loan_type}
+                  currentBalance={payingLoan.currentBalance}
+                  onPaymentRecorded={handlePaymentRecorded}
+                  onCancel={() => setPayingLoan(null)}
+                />
+              </div>
+            )}
 
             {showAddForm && (
               <div className="loans-form-section">
@@ -420,39 +657,22 @@ const LoansTabContent = ({ year, month, onUpdate, highlightIds = [], onTotalDebt
               <button className={`loans-tab ${activeTab === 'paidOff' ? 'active' : ''}`} onClick={() => setActiveTab('paidOff')}>Paid Off ({paidOffLoans.length})</button>
             </div>
 
-            <div className="loans-list">
-              {displayedLoans.length === 0 ? (
-                <div className="loans-empty">{activeTab === 'active' ? 'No active loans.' : 'No paid off loans yet.'}</div>
+            <div className="financial-section-list">
+              {(activeTab === 'active' ? activeLoans : paidOffLoans).length === 0 ? (
+                <div className="financial-section-empty">{activeTab === 'active' ? 'No active loans.' : 'No paid off loans yet.'}</div>
               ) : (
-                displayedLoans.map((loan) => {
-                  const needsUpdate = highlightIds.includes(loan.id);
-                  const fixedExpenseCount = loanFixedExpenseCounts[loan.id] || 0;
-                  return (
-                    <div key={loan.id} className={`loan-item ${needsUpdate ? 'needs-update' : ''}`}>
-                      <div className="loan-item-main">
-                        <div className="loan-item-info">
-                          <div className="loan-item-name">
-                            {loan.name}
-                            {loan.loan_type === 'line_of_credit' && <span className="loan-type-badge">LOC</span>}
-                            {loan.loan_type === 'mortgage' && <span className="loan-type-badge mortgage">Mortgage</span>}
-                            {fixedExpenseCount > 0 && <span className="loan-fixed-expense-badge" title={`${fixedExpenseCount} linked fixed expense(s)`}>📋 {fixedExpenseCount}</span>}
-                            {needsUpdate && <span className="needs-update-badge">⚠️ Update Needed</span>}
-                          </div>
-                          <div className="loan-item-details">
-                            <span className="loan-item-rate">Rate: {loan.currentRate != null && loan.currentRate > 0 ? `${loan.currentRate}%` : 'N/A'}</span>
-                            <span className="loan-item-balance">Balance: {formatCurrency(loan.currentBalance)}</span>
-                            <span className="loan-item-start-date">Started: {formatDate(loan.start_date)}</span>
-                          </div>
-                        </div>
-                        <div className="loan-item-actions">
-                          <button className="loan-view-button" onClick={() => setSelectedLoanId(loan.id)} disabled={loading}>👁️ View</button>
-                          <button className="loan-edit-button" onClick={() => handleEditLoan(loan)} disabled={loading}>✏️</button>
-                          <button className="loan-delete-button" onClick={() => handleDeleteLoan(loan.id)} disabled={loading}>🗑️</button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })
+                (activeTab === 'active' ? activeLoans : paidOffLoans).map((loan) => (
+                  <LoanRow
+                    key={loan.id}
+                    loan={loan}
+                    needsUpdate={highlightIds.includes(loan.id)}
+                    fixedExpenseCount={loanFixedExpenseCounts[loan.id] || 0}
+                    onLogPayment={handleLogPayment}
+                    onViewDetails={(l) => setSelectedLoanId(l.id)}
+                    onEdit={handleEditLoan}
+                    onDelete={handleDeleteLoan}
+                  />
+                ))
               )}
             </div>
           </>
@@ -462,9 +682,9 @@ const LoansTabContent = ({ year, month, onUpdate, highlightIds = [], onTotalDebt
   );
 };
 
-// ─── InvestmentsTabContent ────────────────────────────────────────────────────
+// ─── InvestmentsSection ───────────────────────────────────────────────────────
 
-const InvestmentsTabContent = ({ onUpdate, highlightIds = [], onTotalInvestmentsChange }) => {
+const InvestmentsSection = ({ onUpdate, highlightIds = [], onTotalInvestmentsChange }) => {
   const [investments, setInvestments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -546,12 +766,12 @@ const InvestmentsTabContent = ({ onUpdate, highlightIds = [], onTotalInvestments
     }
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (investment) => {
     if (!window.confirm('Delete this investment? This will also delete all value entries.')) return;
     setLoading(true);
     setError(null);
     try {
-      await deleteInvestment(id);
+      await deleteInvestment(investment.id);
       await fetchInvestments();
     } catch (err) {
       setError(err.message || 'Unable to delete investment.');
@@ -568,39 +788,55 @@ const InvestmentsTabContent = ({ onUpdate, highlightIds = [], onTotalInvestments
     setValidationErrors({});
   };
 
+  const handleUpdateValue = (investment) => {
+    setSelectedInvestmentId(investment.id);
+  };
+
+  const handleViewDetails = (investment) => {
+    setSelectedInvestmentId(investment.id);
+  };
+
   if (selectedInvestmentId) {
     const selectedInvestment = investments.find(i => i.id === selectedInvestmentId);
     return (
       <InvestmentDetailView
         investment={selectedInvestment}
         isOpen={true}
-        onClose={() => setSelectedInvestmentId(null)}
+        onClose={() => { setSelectedInvestmentId(null); }}
         onUpdate={() => { fetchInvestments(); if (onUpdate) onUpdate(); }}
       />
     );
   }
 
   return (
-    <div className="financial-tab-panel">
-      {error && (
-        <div className="financial-modal-error">
-          <div>{error}</div>
-          {investments.length === 0 && !loading && (
-            <button className="financial-error-retry-button" onClick={fetchInvestments}>Retry</button>
-          )}
+    <div className="financial-section" data-testid="investments-section">
+      <div className="financial-section-header">
+        <div className="financial-section-header-left">
+          <span className="financial-section-icon">📈</span>
+          <h3 className="financial-section-title">Investments ({investments.length})</h3>
         </div>
-      )}
-      <div className="financial-modal-content">
+        <button
+          className="financial-section-add-button"
+          onClick={() => { clearForm(); setEditingInvestmentId(null); setShowAddForm(true); }}
+          disabled={loading || showAddForm}
+          title="Add New Investment"
+        >
+          + Add
+        </button>
+      </div>
+      <div className="financial-section-content">
+        {error && (
+          <div className="financial-section-error">
+            <div>{error}</div>
+            {investments.length === 0 && !loading && (
+              <button className="financial-error-retry-button" onClick={fetchInvestments}>Retry</button>
+            )}
+          </div>
+        )}
         {loading && investments.length === 0 ? (
-          <div className="financial-modal-loading">Loading investments...</div>
+          <div className="financial-section-loading">Loading investments...</div>
         ) : (
           <>
-            <div className="investments-add-button-section">
-              <button className="investments-add-new-button" onClick={() => { clearForm(); setEditingInvestmentId(null); setShowAddForm(true); }} disabled={loading || showAddForm}>
-                + Add New Investment
-              </button>
-            </div>
-
             {showAddForm && (
               <div className="investments-form-section">
                 <h3>{editingInvestmentId ? 'Edit Investment' : 'Add New Investment'}</h3>
@@ -633,296 +869,26 @@ const InvestmentsTabContent = ({ onUpdate, highlightIds = [], onTotalInvestments
               </div>
             )}
 
-            <div className="investments-list">
+            <div className="financial-section-list">
               {investments.length === 0 ? (
-                <div className="investments-empty">No investments yet. Add one to get started.</div>
+                <div className="financial-section-empty">No investments yet. Add one to get started.</div>
               ) : (
-                investments.map((investment) => {
-                  const needsUpdate = highlightIds.includes(investment.id);
-                  return (
-                    <div key={investment.id} className={`investment-item ${needsUpdate ? 'needs-update' : ''}`}>
-                      <div className="investment-item-main">
-                        <div className="investment-item-info">
-                          <div className="investment-item-name">
-                            {investment.name}
-                            <span className="investment-type-badge">{investment.type}</span>
-                            {needsUpdate && <span className="needs-update-badge">⚠️ Update Needed</span>}
-                          </div>
-                          <div className="investment-item-details">
-                            <span className="investment-item-current-value">Current Value: {formatCurrency(investment.currentValue)}</span>
-                          </div>
-                        </div>
-                        <div className="investment-item-actions">
-                          <button className="investment-view-button" onClick={() => setSelectedInvestmentId(investment.id)} disabled={loading}>👁️ View</button>
-                          <button className="investment-edit-button" onClick={() => handleEditInvestment(investment)} disabled={loading}>✏️</button>
-                          <button className="investment-delete-button" onClick={() => handleDelete(investment.id)} disabled={loading}>🗑️</button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })
+                investments.map((investment) => (
+                  <InvestmentRow
+                    key={investment.id}
+                    investment={investment}
+                    needsUpdate={highlightIds.includes(investment.id)}
+                    onUpdateValue={handleUpdateValue}
+                    onViewDetails={handleViewDetails}
+                    onEdit={handleEditInvestment}
+                    onDelete={handleDelete}
+                  />
+                ))
               )}
             </div>
           </>
         )}
       </div>
-    </div>
-  );
-};
-
-// ─── PaymentMethodsTabContent ─────────────────────────────────────────────────
-
-const TYPE_LABELS = { cash: 'Cash', cheque: 'Cheque', debit: 'Debit', credit_card: 'Credit Cards' };
-const TYPE_ORDER = ['cash', 'cheque', 'debit', 'credit_card'];
-const UTILIZATION_WARNING_THRESHOLD = 30;
-const UTILIZATION_DANGER_THRESHOLD = 70;
-
-const PaymentMethodsTabContent = ({ onUpdate }) => {
-  const [paymentMethods, setPaymentMethods] = useState([]);
-  const [activeTab, setActiveTab] = useState('active');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [editingMethod, setEditingMethod] = useState(null);
-  const [deleteConfirm, setDeleteConfirm] = useState(null);
-  const [deactivateConfirm, setDeactivateConfirm] = useState(null);
-  const [selectedCreditCard, setSelectedCreditCard] = useState(null);
-
-  const fetchPaymentMethods = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await getPaymentMethods();
-      setPaymentMethods(data || []);
-    } catch (err) {
-      setError(err.message || 'Unable to load payment methods.');
-      logger.error('Error fetching payment methods:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { fetchPaymentMethods(); }, [fetchPaymentMethods]);
-
-  const activePaymentMethods = paymentMethods.filter(m => m.is_active);
-  const inactivePaymentMethods = paymentMethods.filter(m => !m.is_active);
-  const displayedMethods = activeTab === 'active' ? activePaymentMethods : inactivePaymentMethods;
-  const groupedMethods = TYPE_ORDER.reduce((acc, type) => {
-    const methods = displayedMethods.filter(m => m.type === type);
-    if (methods.length > 0) acc[type] = methods;
-    return acc;
-  }, {});
-
-  const handleFormSave = async () => {
-    setShowAddForm(false);
-    setEditingMethod(null);
-    await fetchPaymentMethods();
-    if (onUpdate) onUpdate();
-  };
-
-  const handleToggleActive = async (method) => {
-    const activeCount = paymentMethods.filter(m => m.is_active).length;
-    if (method.is_active && activeCount <= 1) {
-      setError('Cannot deactivate the last active payment method.');
-      return;
-    }
-    if (method.is_active) { setDeactivateConfirm(method); return; }
-    await performToggleActive(method);
-  };
-
-  const performToggleActive = async (method) => {
-    setLoading(true);
-    setError(null);
-    try {
-      await setPaymentMethodActive(method.id, !method.is_active);
-      await fetchPaymentMethods();
-      if (onUpdate) onUpdate();
-    } catch (err) {
-      setError(err.message || 'Unable to update payment method status.');
-      logger.error('Error toggling payment method:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDelete = async (method) => {
-    if (method.total_expense_count > 0) {
-      setError('Cannot delete payment method with associated expenses. Mark it as inactive instead.');
-      return;
-    }
-    setDeleteConfirm(method);
-  };
-
-  const confirmDelete = async () => {
-    if (!deleteConfirm) return;
-    setLoading(true);
-    setError(null);
-    try {
-      await deletePaymentMethod(deleteConfirm.id);
-      setDeleteConfirm(null);
-      await fetchPaymentMethods();
-      if (onUpdate) onUpdate();
-    } catch (err) {
-      setError(err.message || 'Unable to delete payment method.');
-      logger.error('Error deleting payment method:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const getUtilizationClass = (utilization) => {
-    if (utilization >= UTILIZATION_DANGER_THRESHOLD) return 'danger';
-    if (utilization >= UTILIZATION_WARNING_THRESHOLD) return 'warning';
-    return 'good';
-  };
-
-  const formatCurrencyLocal = (amount) => formatCAD(amount || 0);
-
-  if (showAddForm) {
-    return (
-      <PaymentMethodForm
-        isOpen={true}
-        method={editingMethod}
-        onSave={handleFormSave}
-        onCancel={() => { setShowAddForm(false); setEditingMethod(null); }}
-      />
-    );
-  }
-
-  return (
-    <div className="financial-tab-panel">
-      {error && (
-        <div className="financial-modal-error">
-          <div>{error}</div>
-          {paymentMethods.length === 0 && !loading && (
-            <button className="financial-error-retry-button" onClick={fetchPaymentMethods}>Retry</button>
-          )}
-        </div>
-      )}
-      <div className="financial-modal-content">
-        {loading && paymentMethods.length === 0 ? (
-          <div className="financial-modal-loading">Loading payment methods...</div>
-        ) : (
-          <>
-            <div className="payment-methods-add-section">
-              <button className="payment-methods-add-button" onClick={() => { setEditingMethod(null); setShowAddForm(true); }} disabled={loading}>
-                + Add Payment Method
-              </button>
-            </div>
-
-            <div className="payment-methods-tabs">
-              <button className={`payment-methods-tab ${activeTab === 'active' ? 'active' : ''}`} onClick={() => setActiveTab('active')}>
-                Active ({activePaymentMethods.length})
-              </button>
-              <button className={`payment-methods-tab ${activeTab === 'inactive' ? 'active' : ''}`} onClick={() => setActiveTab('inactive')}>
-                Inactive ({inactivePaymentMethods.length})
-              </button>
-            </div>
-
-            <div className="payment-methods-list">
-              {Object.keys(groupedMethods).length === 0 ? (
-                <div className="payment-methods-empty">
-                  {activeTab === 'active' ? 'No active payment methods.' : 'No inactive payment methods.'}
-                </div>
-              ) : (
-                TYPE_ORDER.map(type => {
-                  const methods = groupedMethods[type];
-                  if (!methods || methods.length === 0) return null;
-                  return (
-                    <div key={type} className="payment-methods-group">
-                      <h3 className="payment-methods-group-title">{TYPE_LABELS[type]}</h3>
-                      {methods.map(method => (
-                        <div key={method.id} className={`payment-method-item ${!method.is_active ? 'inactive' : ''}`}>
-                          <div className="payment-method-info">
-                            <div className="payment-method-name">{method.display_name}</div>
-                            {method.full_name && method.full_name !== method.display_name && (
-                              <div className="payment-method-full-name">{method.full_name}</div>
-                            )}
-                            <div className="payment-method-expense-count">
-                              {method.expense_count || 0} expense{(method.expense_count || 0) !== 1 ? 's' : ''} this period
-                            </div>
-                          </div>
-                          {method.type === 'credit_card' && (
-                            <div
-                              className="payment-method-credit-info clickable"
-                              onClick={() => setSelectedCreditCard(method.id)}
-                              role="button"
-                              tabIndex={0}
-                              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedCreditCard(method.id); } }}
-                            >
-                              <div className="credit-balance">Balance: {formatCurrencyLocal(method.current_balance)}</div>
-                              {method.credit_limit > 0 && (
-                                <div className={`credit-utilization ${getUtilizationClass(method.utilization_percentage || 0)}`}>
-                                  <div className="utilization-bar">
-                                    <div className="utilization-fill" style={{ width: `${Math.min(method.utilization_percentage || 0, 100)}%` }} />
-                                  </div>
-                                  <span className="utilization-text">{(method.utilization_percentage || 0).toFixed(1)}% of {formatCurrencyLocal(method.credit_limit)}</span>
-                                </div>
-                              )}
-                              {method.days_until_due !== null && method.days_until_due !== undefined && (
-                                <div className={`credit-due-date ${method.days_until_due <= 7 ? 'due-soon' : ''}`}>
-                                  {method.days_until_due <= 0 ? '⚠️ Payment overdue!' : method.days_until_due <= 7 ? `⚠️ Due in ${method.days_until_due} day${method.days_until_due !== 1 ? 's' : ''}` : `Due in ${method.days_until_due} days`}
-                                </div>
-                              )}
-                              <div className="credit-view-details">View Details →</div>
-                            </div>
-                          )}
-                          <div className="payment-method-actions">
-                            <button className="payment-method-edit-btn" onClick={() => { setEditingMethod(method); setShowAddForm(true); }} disabled={loading}>✏️</button>
-                            {method.is_active ? (
-                              <button className="payment-method-deactivate-btn" onClick={() => handleToggleActive(method)} disabled={loading}>Deactivate</button>
-                            ) : (
-                              <button className="payment-method-activate-btn" onClick={() => handleToggleActive(method)} disabled={loading}>Activate</button>
-                            )}
-                            {(method.total_expense_count || 0) === 0 && (
-                              <button className="payment-method-delete-btn" onClick={() => handleDelete(method)} disabled={loading}>🗑️</button>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </>
-        )}
-      </div>
-
-      {deleteConfirm && (
-        <div className="payment-methods-confirm-overlay">
-          <div className="payment-methods-confirm-dialog">
-            <h3>Delete Payment Method</h3>
-            <p>Are you sure you want to delete "{deleteConfirm.display_name}"?</p>
-            <p className="confirm-warning">This action cannot be undone.</p>
-            <div className="confirm-actions">
-              <button className="confirm-delete-btn" onClick={confirmDelete} disabled={loading}>{loading ? 'Deleting...' : 'Delete'}</button>
-              <button className="confirm-cancel-btn" onClick={() => setDeleteConfirm(null)} disabled={loading}>Cancel</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {deactivateConfirm && (
-        <div className="payment-methods-confirm-overlay">
-          <div className="payment-methods-confirm-dialog">
-            <h3>Deactivate Payment Method</h3>
-            <p>Are you sure you want to deactivate "{deactivateConfirm.display_name}"?</p>
-            <p className="confirm-info">Deactivated methods won't appear in expense form dropdowns.</p>
-            <div className="confirm-actions">
-              <button className="confirm-deactivate-btn" onClick={async () => { await performToggleActive(deactivateConfirm); setDeactivateConfirm(null); }} disabled={loading}>{loading ? 'Deactivating...' : 'Deactivate'}</button>
-              <button className="confirm-cancel-btn" onClick={() => setDeactivateConfirm(null)} disabled={loading}>Cancel</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <CreditCardDetailView
-        paymentMethodId={selectedCreditCard}
-        isOpen={selectedCreditCard !== null}
-        onClose={() => setSelectedCreditCard(null)}
-        onUpdate={async () => { await fetchPaymentMethods(); if (onUpdate) onUpdate(); }}
-      />
     </div>
   );
 };
@@ -939,27 +905,21 @@ const FinancialOverviewModal = ({
   initialTab,
   _testNetWorth,
 }) => {
-  const [activeTab, setActiveTab] = useTabState('financial-overview-modal-tab', 'loans');
   const [totalInvestments, setTotalInvestments] = useState(_testNetWorth ? _testNetWorth.totalInvestments : 0);
   const [totalDebt, setTotalDebt] = useState(_testNetWorth ? _testNetWorth.totalDebt : 0);
   const [highlightLoanIds, setHighlightLoanIds] = useState([]);
   const [highlightInvestmentIds, setHighlightInvestmentIds] = useState([]);
   const [creditCardMethods, setCreditCardMethods] = useState([]);
+  const [selectedCreditCard, setSelectedCreditCard] = useState(null);
+  const [showPaymentMethodForm, setShowPaymentMethodForm] = useState(false);
+  const [editingPaymentMethod, setEditingPaymentMethod] = useState(null);
 
-  // Override persisted tab when initialTab is provided
-  useEffect(() => {
-    if (initialTab !== null && initialTab !== undefined) {
-      setActiveTab(initialTab);
-    }
-  }, [initialTab, setActiveTab]);
-
-  // Fetch reminder status and totals on open
+  // Fetch reminder status and payment methods on open
   useEffect(() => {
     if (!isOpen) return;
 
     const fetchOnOpen = async () => {
       try {
-        // Fetch reminder status for highlight badges
         const response = await fetch(API_ENDPOINTS.REMINDER_STATUS(year, month));
         if (response.ok) {
           const data = await response.json();
@@ -970,7 +930,7 @@ const FinancialOverviewModal = ({
         logger.error('Error fetching reminder status in FinancialOverviewModal:', err);
       }
 
-      // Fetch totals independently so NetWorthSummary is correct regardless of active tab
+      // Fetch totals independently so NetWorthSummary is correct
       try {
         const [loansData, investmentsData] = await Promise.all([
           getAllLoans(),
@@ -989,10 +949,10 @@ const FinancialOverviewModal = ({
         logger.error('Error fetching totals in FinancialOverviewModal:', err);
       }
 
-      // Fetch credit cards for the summary strip
+      // Fetch credit card payment methods
       try {
         const pmData = await getPaymentMethods();
-        setCreditCardMethods((pmData || []).filter(m => m.type === 'credit_card' && m.is_active));
+        setCreditCardMethods(pmData || []);
       } catch (err) {
         logger.error('Error fetching payment methods in FinancialOverviewModal:', err);
       }
@@ -1006,7 +966,45 @@ const FinancialOverviewModal = ({
     onClose();
   };
 
+  const handleCreditCardViewDetails = (card) => {
+    if (card.type && card.type !== 'credit_card') {
+      // Non-CC payment method — open edit form
+      setEditingPaymentMethod(card);
+      setShowPaymentMethodForm(true);
+    } else {
+      setSelectedCreditCard(card.id);
+    }
+  };
+
+  const handlePaymentMethodFormSave = async () => {
+    setShowPaymentMethodForm(false);
+    setEditingPaymentMethod(null);
+    try {
+      const pmData = await getPaymentMethods();
+      setCreditCardMethods(pmData || []);
+    } catch (err) {
+      logger.error('Error refreshing payment methods:', err);
+    }
+    if (onPaymentMethodsUpdate) onPaymentMethodsUpdate();
+    if (onUpdate) onUpdate();
+  };
+
   if (!isOpen) return null;
+
+  if (showPaymentMethodForm) {
+    return (
+      <div className="financial-modal-overlay" onClick={handleClose}>
+        <div className="financial-modal-container" onClick={(e) => e.stopPropagation()}>
+          <PaymentMethodForm
+            isOpen={true}
+            method={editingPaymentMethod}
+            onSave={handlePaymentMethodFormSave}
+            onCancel={() => { setShowPaymentMethodForm(false); setEditingPaymentMethod(null); }}
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="financial-modal-overlay" onClick={handleClose}>
@@ -1017,61 +1015,60 @@ const FinancialOverviewModal = ({
             <button className="financial-modal-close" onClick={handleClose} aria-label="Close">✕</button>
           </div>
           <NetWorthSummary totalInvestments={totalInvestments} totalDebt={totalDebt} />
-          <CreditCardSummary paymentMethods={creditCardMethods} onPaymentRecorded={async () => {
-            // Refresh credit card methods so balances update after payment
+        </div>
+
+        <div className="financial-unified-content">
+
+          <PaymentMethodsSection
+            paymentMethods={creditCardMethods}
+            loading={false}
+            onPaymentRecorded={async () => {
+              try {
+                const pmData = await getPaymentMethods();
+                setCreditCardMethods(pmData || []);
+              } catch (err) {
+                logger.error('Error refreshing payment methods after payment:', err);
+              }
+            }}
+            onViewDetails={handleCreditCardViewDetails}
+            onAddNew={() => { setEditingPaymentMethod(null); setShowPaymentMethodForm(true); }}
+          />
+
+          <LoansSection
+            year={year}
+            month={month}
+            onUpdate={onUpdate}
+            highlightIds={highlightLoanIds}
+            onTotalDebtChange={setTotalDebt}
+          />
+
+          <InvestmentsSection
+            onUpdate={onUpdate}
+            highlightIds={highlightInvestmentIds}
+            onTotalInvestmentsChange={setTotalInvestments}
+          />
+        </div>
+
+        <CreditCardDetailView
+          paymentMethodId={selectedCreditCard}
+          isOpen={selectedCreditCard !== null}
+          onClose={() => setSelectedCreditCard(null)}
+          onUpdate={async () => {
             try {
               const pmData = await getPaymentMethods();
-              setCreditCardMethods((pmData || []).filter(m => m.type === 'credit_card' && m.is_active));
+              setCreditCardMethods(pmData || []);
             } catch (err) {
-              logger.error('Error refreshing payment methods after payment:', err);
+              logger.error('Error refreshing payment methods:', err);
             }
-          }} />
-        </div>
-
-        <div className="financial-tabs">
-          <button
-            className={`tab-button ${activeTab === 'loans' ? 'active' : ''}`}
-            onClick={() => setActiveTab('loans')}
-          >
-            🏦 Loans
-          </button>
-          <button
-            className={`tab-button ${activeTab === 'investments' ? 'active' : ''}`}
-            onClick={() => setActiveTab('investments')}
-          >
-            📈 Investments
-          </button>
-          <button
-            className={`tab-button ${activeTab === 'payment-methods' ? 'active' : ''}`}
-            onClick={() => setActiveTab('payment-methods')}
-          >
-            💳 Payment Methods
-          </button>
-        </div>
-
-        <div className="financial-tab-content">
-          {activeTab === 'loans' && (
-            <LoansTabContent
-              year={year}
-              month={month}
-              onUpdate={onUpdate}
-              highlightIds={highlightLoanIds}
-              onTotalDebtChange={setTotalDebt}
-            />
-          )}
-          {activeTab === 'investments' && (
-            <InvestmentsTabContent
-              onUpdate={onUpdate}
-              highlightIds={highlightInvestmentIds}
-              onTotalInvestmentsChange={setTotalInvestments}
-            />
-          )}
-          {activeTab === 'payment-methods' && (
-            <PaymentMethodsTabContent
-              onUpdate={onPaymentMethodsUpdate || onUpdate}
-            />
-          )}
-        </div>
+            if (onUpdate) onUpdate();
+          }}
+          onEdit={(creditCard) => {
+            // Close detail view and open edit form
+            setSelectedCreditCard(null);
+            setEditingPaymentMethod(creditCard);
+            setShowPaymentMethodForm(true);
+          }}
+        />
       </div>
     </div>
   );

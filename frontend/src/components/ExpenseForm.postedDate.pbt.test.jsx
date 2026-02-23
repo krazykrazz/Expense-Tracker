@@ -249,28 +249,24 @@ describe('ExpenseForm Posted Date Field Visibility Property-Based Tests', () => 
 
           const paymentMethodSelect = container.querySelector('select[name="payment_method_id"]');
 
-          // First, select a credit card
+          // First, select a credit card and wait for state to settle
           await act(async () => {
             fireEvent.change(paymentMethodSelect, { target: { value: creditCard.id.toString() } });
-            await new Promise(resolve => setTimeout(resolve, 300));
+            await new Promise(resolve => setTimeout(resolve, 500));
           });
 
-          // Expand the Advanced Options section to reveal the posted_date field
-          const advancedOptionsHeader = Array.from(container.querySelectorAll('.collapsible-header'))
-            .find(h => h.textContent.includes('Advanced Options'));
-          
-          if (advancedOptionsHeader && advancedOptionsHeader.getAttribute('aria-expanded') === 'false') {
-            await act(async () => {
+          // Expand Advanced Options and wait for posted_date to appear
+          // Use waitFor with retry logic since the section may need re-expanding after re-render
+          await waitFor(async () => {
+            const advancedOptionsHeader = Array.from(container.querySelectorAll('.collapsible-header'))
+              .find(h => h.textContent.includes('Advanced Options'));
+            expect(advancedOptionsHeader).toBeTruthy();
+            if (advancedOptionsHeader.getAttribute('aria-expanded') === 'false') {
               fireEvent.click(advancedOptionsHeader);
-              await new Promise(resolve => setTimeout(resolve, 100));
-            });
-          }
-
-          // Wait for posted_date field to appear
-          await waitFor(() => {
+            }
             const postedDateInput = container.querySelector('input[name="posted_date"]');
             expect(postedDateInput).toBeTruthy();
-          }, { timeout: 2000 });
+          }, { timeout: 5000, interval: 200 });
 
           // Now switch to a non-credit card payment method
           await act(async () => {

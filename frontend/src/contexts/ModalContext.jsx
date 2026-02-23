@@ -1,4 +1,4 @@
-import { createContext, useContext, useReducer, useCallback, useMemo, useEffect } from 'react';
+import { createContext, useContext, useReducer, useState, useCallback, useMemo, useEffect } from 'react';
 
 const ModalContext = createContext(null);
 
@@ -89,6 +89,35 @@ export function ModalProvider({ children }) {
     dispatch({ type: 'CLOSE', modal: 'showFinancialOverview', payload: { financialOverviewInitialTab: null } });
   }, []);
 
+  // --- Standalone CreditCardDetailView State ---
+  const [creditCardDetailState, setCreditCardDetailState] = useState({
+    show: false,
+    paymentMethodId: null,
+    initialTab: null,
+    initialAction: null,
+    reminderData: null
+  });
+
+  const openCreditCardDetail = useCallback((paymentMethodId, options = {}) => {
+    setCreditCardDetailState({
+      show: true,
+      paymentMethodId,
+      initialTab: options.initialTab || null,
+      initialAction: options.initialAction || null,
+      reminderData: options.reminderData || null
+    });
+  }, []);
+
+  const closeCreditCardDetail = useCallback(() => {
+    setCreditCardDetailState({
+      show: false,
+      paymentMethodId: null,
+      initialTab: null,
+      initialAction: null,
+      reminderData: null
+    });
+  }, []);
+
   const closeAllOverlays = useCallback(() => dispatch({ type: 'CLOSE_ALL_OVERLAYS' }), []);
 
   // --- Window Event Listeners ---
@@ -112,6 +141,9 @@ export function ModalProvider({ children }) {
     // Visibility state
     ...state,
 
+    // Standalone CreditCardDetailView state
+    creditCardDetailState,
+
     // Open/close handlers
     openExpenseForm, closeExpenseForm,
     openBackupSettings, closeBackupSettings,
@@ -123,11 +155,13 @@ export function ModalProvider({ children }) {
     openPeopleManagement, closePeopleManagement,
     openAnalyticsHub, closeAnalyticsHub,
     openFinancialOverview, closeFinancialOverview,
+    openCreditCardDetail, closeCreditCardDetail,
 
     // Bulk operations
     closeAllOverlays,
   }), [
     state,
+    creditCardDetailState,
     openExpenseForm, closeExpenseForm,
     openBackupSettings, closeBackupSettings,
     openSettingsModal, closeSettingsModal,
@@ -138,6 +172,7 @@ export function ModalProvider({ children }) {
     openPeopleManagement, closePeopleManagement,
     openAnalyticsHub, closeAnalyticsHub,
     openFinancialOverview, closeFinancialOverview,
+    openCreditCardDetail, closeCreditCardDetail,
     closeAllOverlays,
   ]);
 

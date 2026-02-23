@@ -683,3 +683,222 @@ describe('ModalContext FinancialOverview Property Tests', () => {
     });
   });
 });
+
+
+/**
+ * Feature: financial-overview-redesign, Property 1: ModalContext standalone CreditCardDetail round-trip
+ *
+ * For any paymentMethodId and any combination of initialTab, initialAction, and reminderData options,
+ * calling openCreditCardDetail(id, options) SHALL set creditCardDetailState.show to true with the
+ * provided parameters, and subsequently calling closeCreditCardDetail() SHALL reset all fields to
+ * their defaults (show=false, paymentMethodId=null, initialTab=null, initialAction=null,
+ * reminderData=null), without affecting showFinancialOverview or any other modal state.
+ *
+ * Validates: Requirements 8.1
+ */
+describe('Feature: financial-overview-redesign, Property 1: ModalContext standalone CreditCardDetail round-trip', () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  const wrapper = createModalWrapper();
+
+  // Arbitraries for CreditCardDetail state fields
+  const paymentMethodIdArb = fc.oneof(
+    fc.integer({ min: 1, max: 10000 }),
+    fc.integer({ min: -100, max: -1 })
+  );
+
+  const initialTabArb = fc.oneof(
+    fc.constant(null),
+    fc.constant(undefined),
+    fc.constantFrom('overview', 'payments', 'billing-cycles')
+  );
+
+  const initialActionArb = fc.oneof(
+    fc.constant(null),
+    fc.constant(undefined),
+    fc.constantFrom('enter-statement', 'log-payment')
+  );
+
+  const reminderDataArb = fc.oneof(
+    fc.constant(null),
+    fc.constant(undefined),
+    fc.record({
+      cycleStartDate: fc.oneof(fc.constant(null), fc.date({ min: new Date('2020-01-01'), max: new Date('2030-12-31') }).filter(d => !isNaN(d.getTime())).map(d => d.toISOString().split('T')[0])),
+      cycleEndDate: fc.oneof(fc.constant(null), fc.date({ min: new Date('2020-01-01'), max: new Date('2030-12-31') }).filter(d => !isNaN(d.getTime())).map(d => d.toISOString().split('T')[0])),
+      calculatedBalance: fc.oneof(fc.constant(null), fc.double({ min: 0, max: 100000, noNaN: true, noDefaultInfinity: true }))
+    })
+  );
+
+  const optionsArb = fc.record({
+    initialTab: initialTabArb,
+    initialAction: initialActionArb,
+    reminderData: reminderDataArb
+  });
+
+  /**
+   * Property 1a: openCreditCardDetail sets creditCardDetailState.show to true with provided parameters
+   */
+  it('1a: openCreditCardDetail sets show=true and all provided parameters', () => {
+    fc.assert(
+      fc.property(
+        paymentMethodIdArb,
+        optionsArb,
+        (paymentMethodId, options) => {
+          const { result } = renderHook(() => useModalContext(), { wrapper });
+
+          // Initial state should be defaults
+          expect(result.current.creditCardDetailState.show).toBe(false);
+          expect(result.current.creditCardDetailState.paymentMethodId).toBe(null);
+
+          act(() => {
+            result.current.openCreditCardDetail(paymentMethodId, options);
+          });
+
+          const state = result.current.creditCardDetailState;
+          expect(state.show).toBe(true);
+          expect(state.paymentMethodId).toBe(paymentMethodId);
+          // The implementation uses `|| null` so undefined becomes null
+          expect(state.initialTab).toBe(options.initialTab || null);
+          expect(state.initialAction).toBe(options.initialAction || null);
+          expect(state.reminderData).toEqual(options.reminderData || null);
+
+          cleanup();
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+
+  /**
+   * Property 1b: closeCreditCardDetail resets all fields to defaults
+   */
+  it('1b: closeCreditCardDetail resets all fields to defaults', () => {
+    fc.assert(
+      fc.property(
+        paymentMethodIdArb,
+        optionsArb,
+        (paymentMethodId, options) => {
+          const { result } = renderHook(() => useModalContext(), { wrapper });
+
+          // Open with random params
+          act(() => {
+            result.current.openCreditCardDetail(paymentMethodId, options);
+          });
+
+          expect(result.current.creditCardDetailState.show).toBe(true);
+
+          // Close
+          act(() => {
+            result.current.closeCreditCardDetail();
+          });
+
+          const state = result.current.creditCardDetailState;
+          expect(state.show).toBe(false);
+          expect(state.paymentMethodId).toBe(null);
+          expect(state.initialTab).toBe(null);
+          expect(state.initialAction).toBe(null);
+          expect(state.reminderData).toBe(null);
+
+          cleanup();
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+
+  /**
+   * Property 1c: open/close round-trip does not affect showFinancialOverview or other modal state
+   */
+  it('1c: open/close round-trip preserves isolation from other modal state', () => {
+    fc.assert(
+      fc.property(
+        paymentMethodIdArb,
+        optionsArb,
+        fc.boolean(),
+        (paymentMethodId, options, financialOverviewOpen) => {
+          const { result } = renderHook(() => useModalContext(), { wrapper });
+
+          // Optionally open the financial overview first
+          if (financialOverviewOpen) {
+            act(() => {
+              result.current.openFinancialOverview('loans');
+            });
+          }
+
+          // Capture state of other modals before
+          const beforeFinancialOverview = result.current.showFinancialOverview;
+          const beforeExpenseForm = result.current.showExpenseForm;
+          const beforeBudgets = result.current.showBudgets;
+          const beforeAnalyticsHub = result.current.showAnalyticsHub;
+
+          // Open credit card detail
+          act(() => {
+            result.current.openCreditCardDetail(paymentMethodId, options);
+          });
+
+          // Other modal state should be unchanged
+          expect(result.current.showFinancialOverview).toBe(beforeFinancialOverview);
+          expect(result.current.showExpenseForm).toBe(beforeExpenseForm);
+          expect(result.current.showBudgets).toBe(beforeBudgets);
+          expect(result.current.showAnalyticsHub).toBe(beforeAnalyticsHub);
+
+          // Close credit card detail
+          act(() => {
+            result.current.closeCreditCardDetail();
+          });
+
+          // Other modal state should still be unchanged
+          expect(result.current.showFinancialOverview).toBe(beforeFinancialOverview);
+          expect(result.current.showExpenseForm).toBe(beforeExpenseForm);
+          expect(result.current.showBudgets).toBe(beforeBudgets);
+          expect(result.current.showAnalyticsHub).toBe(beforeAnalyticsHub);
+
+          cleanup();
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+
+  /**
+   * Property 1d: Multiple open/close cycles with different parameters all reset correctly
+   */
+  it('1d: multiple open/close cycles with different parameters all reset correctly', () => {
+    fc.assert(
+      fc.property(
+        fc.array(
+          fc.tuple(paymentMethodIdArb, optionsArb),
+          { minLength: 1, maxLength: 10 }
+        ),
+        (cycles) => {
+          const { result } = renderHook(() => useModalContext(), { wrapper });
+
+          for (const [pmId, opts] of cycles) {
+            act(() => {
+              result.current.openCreditCardDetail(pmId, opts);
+            });
+
+            expect(result.current.creditCardDetailState.show).toBe(true);
+            expect(result.current.creditCardDetailState.paymentMethodId).toBe(pmId);
+
+            act(() => {
+              result.current.closeCreditCardDetail();
+            });
+
+            const state = result.current.creditCardDetailState;
+            expect(state.show).toBe(false);
+            expect(state.paymentMethodId).toBe(null);
+            expect(state.initialTab).toBe(null);
+            expect(state.initialAction).toBe(null);
+            expect(state.reminderData).toBe(null);
+          }
+
+          cleanup();
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+});

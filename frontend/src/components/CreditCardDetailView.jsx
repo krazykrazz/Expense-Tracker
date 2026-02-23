@@ -1,11 +1,13 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { getCreditCardDetail, deletePayment, deleteBillingCycle, getBillingCyclePdfUrl } from '../services/creditCardApi';
+import { setPaymentMethodActive } from '../services/paymentMethodApi';
 import { formatCAD as formatCurrency } from '../utils/formatters';
 import { createLogger } from '../utils/logger';
 import CreditCardPaymentForm from './CreditCardPaymentForm';
 import BillingCycleHistoryForm from './BillingCycleHistoryForm';
 import UnifiedBillingCycleList from './UnifiedBillingCycleList';
 import './CreditCardDetailView.css';
+import './FinancialOverviewModal.css';
 
 const logger = createLogger('CreditCardDetailView');
 
@@ -28,7 +30,12 @@ const CreditCardDetailView = ({
   paymentMethodId,
   isOpen,
   onClose,
-  onUpdate = () => {}
+  onUpdate = () => {},
+  onEdit = null,
+  // Deep-link props
+  initialTab = null,
+  initialAction = null,
+  reminderData = null
 }) => {
   // State
   const [paymentMethod, setPaymentMethod] = useState(null);
@@ -38,13 +45,17 @@ const CreditCardDetailView = ({
   const [currentCycleStatus, setCurrentCycleStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState(initialTab || 'overview');
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [showBillingCycleForm, setShowBillingCycleForm] = useState(false);
   const [editingBillingCycle, setEditingBillingCycle] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [deactivateConfirm, setDeactivateConfirm] = useState(false);
   const [pdfViewerCycle, setPdfViewerCycle] = useState(null);
   const [partialErrors, setPartialErrors] = useState([]);
+
+  // Track whether deep-link params have been consumed
+  const deepLinkConsumedRef = useRef(false);
 
   // Format date - handles YYYY-MM-DD strings without timezone shift
   const formatDate = (dateString) => {
@@ -107,9 +118,36 @@ const CreditCardDetailView = ({
   // Fetch data when modal opens
   useEffect(() => {
     if (isOpen && paymentMethodId) {
+      // Reset deep-link consumed flag when opening fresh
+      deepLinkConsumedRef.current = false;
+      // Apply initialTab on open
+      if (initialTab) {
+        setActiveTab(initialTab);
+      } else {
+        setActiveTab('overview');
+      }
       fetchData();
     }
-  }, [isOpen, paymentMethodId, fetchData]);
+  }, [isOpen, paymentMethodId, fetchData, initialTab]);
+
+  // Apply deep-link actions after data loads (once per open)
+  useEffect(() => {
+    if (!isOpen || loading || !paymentMethod || deepLinkConsumedRef.current) return;
+    deepLinkConsumedRef.current = true;
+
+    if (initialAction === 'enter-statement') {
+      // Open BillingCycleHistoryForm pre-populated with reminderData or currentCycleStatus
+      setEditingBillingCycle({
+        cycle_start_date: reminderData?.cycleStartDate || currentCycleStatus?.cycleStartDate || null,
+        cycle_end_date: reminderData?.cycleEndDate || currentCycleStatus?.cycleEndDate || null,
+        calculated_statement_balance: reminderData?.calculatedBalance ?? currentCycleStatus?.calculatedBalance ?? null,
+        actual_statement_balance: null
+      });
+      setShowBillingCycleForm(true);
+    } else if (initialAction === 'log-payment') {
+      setShowPaymentForm(true);
+    }
+  }, [isOpen, loading, paymentMethod, initialAction, reminderData, currentCycleStatus]);
 
   // Handle payment recorded
   const handlePaymentRecorded = async (result) => {
@@ -178,6 +216,26 @@ const CreditCardDetailView = ({
     }
   };
 
+  // Handle deactivate button click
+  const handleDeactivateClick = () => {
+    setDeactivateConfirm(true);
+  };
+
+  // Confirm deactivation
+  const confirmDeactivate = async () => {
+    try {
+      await setPaymentMethodActive(paymentMethodId, false);
+      setDeactivateConfirm(false);
+      // Close detail view and refresh parent
+      handleClose();
+      onUpdate();
+    } catch (err) {
+      logger.error('Failed to deactivate payment method:', err);
+      setError(err.message || 'Failed to deactivate payment method');
+      setDeactivateConfirm(false);
+    }
+  };
+
   // Handle view billing cycle PDF
   const handleViewBillingCyclePdf = (cycle) => {
     setPdfViewerCycle(cycle);
@@ -194,6 +252,7 @@ const CreditCardDetailView = ({
     setShowBillingCycleForm(false);
     setEditingBillingCycle(null);
     setDeleteConfirm(null);
+    setDeactivateConfirm(false);
     setError(null);
     onClose();
   };
@@ -251,7 +310,22 @@ const CreditCardDetailView = ({
               <span className="cc-detail-full-name">{paymentMethod.full_name}</span>
             )}
           </div>
-          <button className="cc-detail-close" onClick={handleClose}>✕</button>
+          <div className="cc-detail-header-actions">
+            <button 
+              className="financial-action-btn-secondary cc-header-btn"
+              onClick={() => onEdit && onEdit(paymentMethod)}
+              disabled={!onEdit}
+            >
+              Edit
+            </button>
+            <button 
+              className="financial-action-btn-danger cc-header-btn"
+              onClick={handleDeactivateClick}
+            >
+              Deactivate
+            </button>
+            <button className="cc-detail-close" onClick={handleClose}>✕</button>
+          </div>
         </div>
 
         {/* Error Display */}
@@ -609,6 +683,29 @@ const CreditCardDetailView = ({
                   Delete
                 </button>
                 <button className="confirm-cancel-btn" onClick={() => setDeleteConfirm(null)}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Deactivate Confirmation Dialog */}
+        {deactivateConfirm && (
+          <div className="cc-confirm-overlay">
+            <div className="cc-confirm-dialog">
+              <h3>Deactivate Credit Card</h3>
+              <p>
+                Are you sure you want to deactivate <strong>{paymentMethod?.display_name}</strong>?
+              </p>
+              <p className="confirm-warning">
+                This card will be moved to the Inactive tab. You can reactivate it later if needed.
+              </p>
+              <div className="confirm-actions">
+                <button className="confirm-delete-btn" onClick={confirmDeactivate}>
+                  Deactivate
+                </button>
+                <button className="confirm-cancel-btn" onClick={() => setDeactivateConfirm(false)}>
                   Cancel
                 </button>
               </div>

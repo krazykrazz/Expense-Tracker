@@ -58,6 +58,16 @@
   margin-top: var(--spacing-1);
 }
 
+.cc-detail-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+
+.cc-header-btn {
+  white-space: nowrap;
+}
+
 .cc-detail-close {
   background: none;
   border: none;

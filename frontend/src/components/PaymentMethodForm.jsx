@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import './PaymentMethodForm.css';
-import { createPaymentMethod, updatePaymentMethod, getDisplayNames } from '../services/paymentMethodApi';
+import { createPaymentMethod, updatePaymentMethod, getDisplayNames, setPaymentMethodActive } from '../services/paymentMethodApi';
 import { createLogger } from '../utils/logger';
 import HelpTooltip from './HelpTooltip';
 
@@ -254,6 +254,29 @@ const PaymentMethodForm = ({ isOpen, method, onSave, onCancel }) => {
     }
   };
 
+  // Handle deactivate/activate
+  const handleDeactivate = async () => {
+    if (!method || !method.id) {
+      setError('Cannot change status: payment method not found.');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const newActiveStatus = !method.is_active;
+      await setPaymentMethodActive(method.id, newActiveStatus);
+      onSave(); // Refresh the payment methods list
+    } catch (err) {
+      const errorMessage = err.message || 'Unable to change payment method status.';
+      setError(errorMessage);
+      logger.error('Error changing payment method status:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (!isOpen) {
     return null;
   }
@@ -473,6 +496,25 @@ const PaymentMethodForm = ({ isOpen, method, onSave, onCancel }) => {
                 </div>
               </div>
             </>
+          )}
+
+          {/* Deactivate/Activate Button - only shown when editing */}
+          {isEditing && (
+            <div className="form-deactivate-section">
+              <button
+                type="button"
+                className="form-deactivate-btn"
+                onClick={handleDeactivate}
+                disabled={loading}
+              >
+                {method.is_active ? 'Deactivate' : 'Activate'}
+              </button>
+              <span className="form-hint">
+                {method.is_active 
+                  ? 'Deactivating will hide this payment method from dropdowns while preserving historical data'
+                  : 'Activating will make this payment method available for new expenses'}
+              </span>
+            </div>
           )}
 
           {/* Form Actions */}

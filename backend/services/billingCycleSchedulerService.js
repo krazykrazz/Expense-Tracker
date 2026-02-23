@@ -91,13 +91,16 @@ class BillingCycleSchedulerService {
         durationMs
       });
 
-      await activityLogService.logEvent(
-        'billing_cycle_scheduler_run',
-        'system',
-        null,
-        `Billing cycle scheduler completed: ${generatedCount} cycles generated, ${errors.length} errors`,
-        { generatedCount, errorCount: errors.length, durationMs }
-      );
+      // Only log to activity log when something actually happened (avoid hourly noise)
+      if (generatedCount > 0 || errors.length > 0) {
+        await activityLogService.logEvent(
+          'billing_cycle_scheduler_run',
+          'system',
+          null,
+          `Billing cycle scheduler completed: ${generatedCount} cycles generated, ${errors.length} errors`,
+          { generatedCount, errorCount: errors.length, durationMs }
+        );
+      }
 
       return { generatedCount, errors };
     } catch (error) {

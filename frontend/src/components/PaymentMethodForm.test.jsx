@@ -15,7 +15,8 @@ import * as paymentMethodApi from '../services/paymentMethodApi';
 vi.mock('../services/paymentMethodApi', () => ({
   createPaymentMethod: vi.fn(),
   updatePaymentMethod: vi.fn(),
-  getDisplayNames: vi.fn()
+  getDisplayNames: vi.fn(),
+  setPaymentMethodActive: vi.fn()
 }));
 
 import PaymentMethodForm from './PaymentMethodForm';
@@ -26,6 +27,7 @@ describe('PaymentMethodForm - Billing Cycle Day Field', () => {
     paymentMethodApi.getDisplayNames.mockResolvedValue([]);
     paymentMethodApi.createPaymentMethod.mockResolvedValue({ id: 1 });
     paymentMethodApi.updatePaymentMethod.mockResolvedValue({ id: 1 });
+    paymentMethodApi.setPaymentMethodActive.mockResolvedValue({ id: 1, is_active: false });
   });
 
   afterEach(() => {
@@ -301,5 +303,200 @@ describe('PaymentMethodForm - Billing Cycle Day Field', () => {
         })
       );
     });
+  });
+});
+
+describe('PaymentMethodForm - Deactivation UI', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    paymentMethodApi.getDisplayNames.mockResolvedValue([]);
+    paymentMethodApi.setPaymentMethodActive.mockResolvedValue({ id: 1, is_active: false });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  /**
+   * Test deactivate button is shown when editing active payment method
+   * Requirements: 4.1
+   */
+  it('should display deactivate button when editing active payment method', async () => {
+    const activeMethod = {
+      id: 1,
+      type: 'cash',
+      display_name: 'Cash',
+      is_active: true
+    };
+
+    render(<PaymentMethodForm isOpen={true} method={activeMethod} onSave={() => {}} onCancel={() => {}} />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /deactivate/i })).toBeInTheDocument();
+    });
+  });
+
+  /**
+   * Test activate button is shown when editing inactive payment method
+   * Requirements: 4.3
+   */
+  it('should display activate button when editing inactive payment method', async () => {
+    const inactiveMethod = {
+      id: 1,
+      type: 'cash',
+      display_name: 'Cash',
+      is_active: false
+    };
+
+    render(<PaymentMethodForm isOpen={true} method={inactiveMethod} onSave={() => {}} onCancel={() => {}} />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /activate/i })).toBeInTheDocument();
+    });
+  });
+
+  /**
+   * Test deactivate button is not shown when creating new payment method
+   * Requirements: 4.1
+   */
+  it('should not display deactivate button when creating new payment method', async () => {
+    render(<PaymentMethodForm isOpen={true} method={null} onSave={() => {}} onCancel={() => {}} />);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/type/i)).toBeInTheDocument();
+    });
+
+    expect(screen.queryByRole('button', { name: /deactivate/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /activate/i })).not.toBeInTheDocument();
+  });
+
+  /**
+   * Test clicking deactivate button calls setPaymentMethodActive
+   * Requirements: 4.2
+   */
+  it('should call setPaymentMethodActive when deactivate button is clicked', async () => {
+    const mockOnSave = vi.fn();
+    const activeMethod = {
+      id: 1,
+      type: 'cash',
+      display_name: 'Cash',
+      is_active: true
+    };
+
+    render(<PaymentMethodForm isOpen={true} method={activeMethod} onSave={mockOnSave} onCancel={() => {}} />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /deactivate/i })).toBeInTheDocument();
+    });
+
+    // Click deactivate button
+    fireEvent.click(screen.getByRole('button', { name: /deactivate/i }));
+
+    // Verify setPaymentMethodActive was called with correct arguments
+    await waitFor(() => {
+      expect(paymentMethodApi.setPaymentMethodActive).toHaveBeenCalledWith(1, false);
+    });
+
+    // Verify onSave was called to refresh the list
+    await waitFor(() => {
+      expect(mockOnSave).toHaveBeenCalled();
+    });
+  });
+
+  /**
+   * Test clicking activate button calls setPaymentMethodActive
+   * Requirements: 4.4
+   */
+  it('should call setPaymentMethodActive when activate button is clicked', async () => {
+    const mockOnSave = vi.fn();
+    const inactiveMethod = {
+      id: 1,
+      type: 'cash',
+      display_name: 'Cash',
+      is_active: false
+    };
+
+    paymentMethodApi.setPaymentMethodActive.mockResolvedValue({ id: 1, is_active: true });
+
+    render(<PaymentMethodForm isOpen={true} method={inactiveMethod} onSave={mockOnSave} onCancel={() => {}} />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /activate/i })).toBeInTheDocument();
+    });
+
+    // Click activate button
+    fireEvent.click(screen.getByRole('button', { name: /activate/i }));
+
+    // Verify setPaymentMethodActive was called with correct arguments
+    await waitFor(() => {
+      expect(paymentMethodApi.setPaymentMethodActive).toHaveBeenCalledWith(1, true);
+    });
+
+    // Verify onSave was called to refresh the list
+    await waitFor(() => {
+      expect(mockOnSave).toHaveBeenCalled();
+    });
+  });
+
+  /**
+   * Test error handling when deactivation fails
+   * Requirements: 4.6
+   */
+  it('should display error message when deactivation fails', async () => {
+    const activeMethod = {
+      id: 1,
+      type: 'cash',
+      display_name: 'Cash',
+      is_active: true
+    };
+
+    const errorMessage = 'Cannot deactivate payment method with pending transactions';
+    paymentMethodApi.setPaymentMethodActive.mockRejectedValue(new Error(errorMessage));
+
+    render(<PaymentMethodForm isOpen={true} method={activeMethod} onSave={() => {}} onCancel={() => {}} />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /deactivate/i })).toBeInTheDocument();
+    });
+
+    // Click deactivate button
+    fireEvent.click(screen.getByRole('button', { name: /deactivate/i }));
+
+    // Verify error message is displayed
+    await waitFor(() => {
+      expect(screen.getByText(errorMessage)).toBeInTheDocument();
+    });
+  });
+
+  /**
+   * Test deactivate button is disabled while loading
+   * Requirements: 4.2
+   */
+  it('should disable deactivate button while loading', async () => {
+    const activeMethod = {
+      id: 1,
+      type: 'cash',
+      display_name: 'Cash',
+      is_active: true
+    };
+
+    // Make the API call take some time
+    paymentMethodApi.setPaymentMethodActive.mockImplementation(() => 
+      new Promise(resolve => setTimeout(() => resolve({ id: 1, is_active: false }), 100))
+    );
+
+    render(<PaymentMethodForm isOpen={true} method={activeMethod} onSave={() => {}} onCancel={() => {}} />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /deactivate/i })).toBeInTheDocument();
+    });
+
+    const deactivateButton = screen.getByRole('button', { name: /deactivate/i });
+    
+    // Click deactivate button
+    fireEvent.click(deactivateButton);
+
+    // Button should be disabled immediately
+    expect(deactivateButton).toBeDisabled();
   });
 });

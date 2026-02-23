@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { createBillingCycle, updateBillingCycle, getCurrentCycleStatus, getBillingCyclePdfUrl } from '../services/creditCardApi';
+import { createBillingCycle, updateBillingCycle, getCurrentCycleStatus, getBillingCyclePdfUrl, recalculateCycleBalance } from '../services/creditCardApi';
 import { formatCAD as formatCurrency } from '../utils/formatters';
 import { createLogger } from '../utils/logger';
 import HelpTooltip from './HelpTooltip';
@@ -79,15 +79,26 @@ const BillingCycleHistoryForm = ({
   // Fetch current cycle status if not provided via props
   useEffect(() => {
     const fetchCycleStatus = async () => {
-      if (propCycleStartDate && propCycleEndDate && propCalculatedBalance !== null) {
-        // Use props if provided
+      if (!paymentMethodId) return;
+
+      // If cycle dates are provided via props, use them but always recalculate balance live
+      if (propCycleStartDate && propCycleEndDate) {
         setCycleStartDate(propCycleStartDate);
         setCycleEndDate(propCycleEndDate);
-        setCalculatedBalance(propCalculatedBalance);
+        // Show prop balance immediately as placeholder while recalculating
+        if (propCalculatedBalance !== null) {
+          setCalculatedBalance(propCalculatedBalance);
+        }
+        // Always fetch live calculated balance for accuracy
+        try {
+          const liveBalance = await recalculateCycleBalance(paymentMethodId, propCycleStartDate, propCycleEndDate);
+          setCalculatedBalance(liveBalance);
+        } catch (err) {
+          logger.warn('Failed to recalculate live balance, using provided value:', err);
+          // Fall back to prop value if recalculation fails
+        }
         return;
       }
-
-      if (!paymentMethodId) return;
 
       setLoadingCycleInfo(true);
       try {

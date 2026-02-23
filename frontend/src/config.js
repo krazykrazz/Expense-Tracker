@@ -123,6 +123,7 @@ export const API_ENDPOINTS = {
   PAYMENT_METHOD_BILLING_CYCLE_CURRENT: (id) => `${API_BASE_URL}/api/payment-methods/${id}/billing-cycles/current`,
   PAYMENT_METHOD_BILLING_CYCLE_PDF: (id, cycleId) => `${API_BASE_URL}/api/payment-methods/${id}/billing-cycles/${cycleId}/pdf`,
   PAYMENT_METHOD_BILLING_CYCLES: (id) => `${API_BASE_URL}/api/payment-methods/${id}/billing-cycles`,
+  PAYMENT_METHOD_BILLING_CYCLE_RECALCULATE: (id) => `${API_BASE_URL}/api/payment-methods/${id}/billing-cycles/recalculate`,
   
   // Unified Billing Cycles (with auto-generation, transaction counts, and trends)
   PAYMENT_METHOD_BILLING_CYCLES_UNIFIED: (id) => `${API_BASE_URL}/api/payment-methods/${id}/billing-cycles/unified`,

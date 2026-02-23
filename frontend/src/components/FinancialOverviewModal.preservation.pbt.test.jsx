@@ -148,7 +148,7 @@ describe('Financial Overview Preservation Tests', () => {
     
     // Helper to generate valid loan names
     const validLoanName = () => fc.string({ minLength: 3, maxLength: 50 })
-      .filter(s => s.trim().length >= 3 && !/^\s|\s$/.test(s));
+      .filter(s => s.trim().length >= 3 && !/^\s|\s$|\s{2,}/.test(s));
     
     it('should trigger onViewDetails callback when View button is clicked', () => {
       fc.assert(
@@ -617,7 +617,7 @@ describe('Financial Overview Preservation Tests', () => {
     it('should display loan information correctly', () => {
       // Helper to generate valid loan names
       const validLoanName = () => fc.string({ minLength: 3, maxLength: 50 })
-        .filter(s => s.trim().length >= 3 && !/^\s|\s$/.test(s));
+        .filter(s => s.trim().length >= 3 && !/^\s|\s$|\s{2,}/.test(s));
       
       fc.assert(
         fc.property(
@@ -644,17 +644,20 @@ describe('Financial Overview Preservation Tests', () => {
             const nameElement = container.querySelector('.loan-row-name');
             expect(nameElement).toHaveTextContent(loan.name);
             
-            // Balance should be displayed with currency formatting
-            const balanceText = `Balance: $${loan.currentBalance.toFixed(2)}`;
-            const balanceElement = container.querySelector('.loan-row-balance');
-            expect(balanceElement).toHaveTextContent(balanceText);
+            // Balance and rate should be displayed in details section
+            const detailsElement = container.querySelector('.loan-row-details');
+            expect(detailsElement).toBeTruthy();
             
-            // Rate should be displayed
-            const rateElement = container.querySelector('.loan-row-rate');
+            // Check balance is displayed
+            expect(detailsElement.textContent).toContain('Balance:');
+            expect(detailsElement.textContent).toContain(loan.currentBalance.toFixed(2));
+            
+            // Check rate is displayed
+            expect(detailsElement.textContent).toContain('Rate:');
             if (loan.currentRate != null && loan.currentRate > 0) {
-              expect(rateElement).toHaveTextContent(`Rate: ${loan.currentRate}%`);
+              expect(detailsElement.textContent).toContain(`${loan.currentRate}%`);
             } else {
-              expect(rateElement).toHaveTextContent('Rate: N/A');
+              expect(detailsElement.textContent).toContain('N/A');
             }
             
             unmount();

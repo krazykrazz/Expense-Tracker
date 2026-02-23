@@ -47,7 +47,7 @@ const LoanRow = ({ loan, needsUpdate = false, fixedExpenseCount = 0, onLogPaymen
             )}
           </span>
           <span className="loan-row-details">
-            Rate: {currentRate != null && currentRate > 0 ? `${currentRate}%` : 'N/A'} | Balance: {formatCurrency(currentBalance)}
+            Rate: {currentRate != null && currentRate > 0 ? `${currentRate}%` : 'N/A'} | Balance: <span className="loan-row-balance-badge">{formatCurrency(currentBalance)}</span>
           </span>
         </div>
         <div className="loan-row-actions">

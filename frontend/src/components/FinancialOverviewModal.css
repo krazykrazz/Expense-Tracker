@@ -30,7 +30,7 @@
 
 .financial-modal-container {
   background: var(--bg-card, white);
-  border-radius: var(--radius-xl, 16px);
+  border-radius: 8px;
   max-width: 800px;
   width: 90%;
   max-height: 88vh;
@@ -44,7 +44,7 @@
 .financial-modal-header {
   background: linear-gradient(135deg, #1a73e8 0%, #0d47a1 100%);
   color: white;
-  border-radius: var(--radius-xl, 16px) var(--radius-xl, 16px) 0 0;
+  border-radius: 8px 8px 0 0;
   position: sticky;
   top: 0;
   z-index: 10;
@@ -100,20 +100,20 @@
   --financial-bg-hover: #f1f5f9;
   --financial-bg-alt: #f0f4f8;
   --financial-text-primary: #334155;
-  --financial-text-secondary: #64748b;
+  --financial-text-secondary: #475569; /* Changed from #64748b to meet WCAG AA on all backgrounds */
   --financial-border: #e2e8f0;
   --financial-border-strong: #cbd5e1;
   
   /* Button colors */
-  --financial-btn-primary-bg: #10b981;
-  --financial-btn-primary-hover: #059669;
+  --financial-btn-primary-bg: #047857; /* Changed to darker green for WCAG AA with white text */
+  --financial-btn-primary-hover: #065f46;
   --financial-btn-secondary-bg: #f8fafc;
   --financial-btn-secondary-hover: #e2e8f0;
   --financial-btn-secondary-border: #cbd5e1;
   --financial-btn-secondary-border-hover: #94a3b8;
-  --financial-btn-danger-text: #ef4444;
+  --financial-btn-danger-text: #dc2626; /* Changed from #ef4444 to meet WCAG AA */
   --financial-btn-danger-hover-bg: #fee2e2;
-  --financial-btn-danger-border-hover: #ef4444;
+  --financial-btn-danger-border-hover: #dc2626;
   
   /* Spacing */
   --financial-btn-padding: 6px 14px;
@@ -291,6 +291,16 @@
   border-bottom: 1px solid var(--border-default, #e2e8f0);
 }
 
+/* Zebra striping for credit card summary rows */
+.financial-cc-summary-row:nth-child(even) {
+  background-color: var(--financial-bg-base, #f8f9fa);
+  padding-left: 8px;
+  padding-right: 8px;
+  margin-left: -8px;
+  margin-right: -8px;
+  border-radius: 4px;
+}
+
 .financial-cc-summary-row:last-child {
   border-bottom: none;
 }
@@ -357,9 +367,9 @@
   padding: 2px 10px;
   font-size: var(--text-xs, 11px);
   font-weight: var(--font-semibold, 600);
-  background: var(--financial-btn-primary-bg, #10b981);
+  background: var(--financial-btn-primary-bg, #047857);
   color: white;
-  border: 1px solid var(--financial-btn-primary-bg, #10b981);
+  border: 1px solid var(--financial-btn-primary-bg, #047857);
   border-radius: 4px;
   cursor: pointer;
   white-space: nowrap;
@@ -367,8 +377,8 @@
 }
 
 .financial-cc-reactivate-btn:hover:not(:disabled) {
-  background: var(--financial-btn-primary-hover, #059669);
-  border-color: var(--financial-btn-primary-hover, #059669);
+  background: var(--financial-btn-primary-hover, #065f46);
+  border-color: var(--financial-btn-primary-hover, #065f46);
 }
 
 .financial-cc-reactivate-btn:disabled {
@@ -482,9 +492,9 @@
   padding: 2px 10px;
   font-size: var(--text-xs, 11px);
   font-weight: var(--font-semibold, 600);
-  background: var(--financial-btn-primary-bg, #10b981);
+  background: var(--financial-btn-primary-bg, #047857);
   color: white;
-  border: 1px solid var(--financial-btn-primary-bg, #10b981);
+  border: 1px solid var(--financial-btn-primary-bg, #047857);
   border-radius: 4px;
   cursor: pointer;
   white-space: nowrap;
@@ -493,8 +503,8 @@
 }
 
 .other-payment-method-reactivate-btn:hover:not(:disabled) {
-  background: var(--financial-btn-primary-hover, #059669);
-  border-color: var(--financial-btn-primary-hover, #059669);
+  background: var(--financial-btn-primary-hover, #065f46);
+  border-color: var(--financial-btn-primary-hover, #065f46);
 }
 
 .other-payment-method-reactivate-btn:disabled {
@@ -513,9 +523,10 @@
 /* ── Section Layout ── */
 .financial-section {
   border: 1px solid var(--border-default, #e2e8f0);
-  border-radius: var(--radius-lg, 12px);
+  border-radius: 8px;
   background: var(--bg-card, white);
   overflow: hidden;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
 }
 
 .financial-section-header {
@@ -793,7 +804,7 @@
 .loans-form-section {
   background-color: var(--bg-muted, #f1f5f9);
   border: 1px solid var(--border-default, #e2e8f0);
-  border-radius: var(--radius-lg, 12px);
+  border-radius: 8px;
   padding: var(--spacing-5, 20px);
   margin-bottom: var(--spacing-5, 20px);
 }
@@ -913,14 +924,24 @@
 /* Loan item */
 .loan-item {
   border: 1px solid var(--border-default, #e2e8f0);
-  border-radius: var(--radius-lg, 12px);
+  border-radius: 8px;
   padding: var(--spacing-4, 16px);
   background-color: var(--bg-card, white);
   transition: all var(--transition-fast, 150ms ease);
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+/* Zebra striping for loan rows */
+.loan-item:nth-child(even) {
+  background-color: var(--financial-bg-base, #f8f9fa);
+}
+
+.loan-item:nth-child(odd) {
+  background-color: var(--bg-card, white);
 }
 
 .loan-item:hover {
-  background-color: var(--bg-card-hover, #fafbfc);
+  background-color: var(--financial-bg-hover, #f1f5f9);
   box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.06));
   border-color: var(--border-strong, #cbd5e1);
 }
@@ -1019,7 +1040,7 @@
   color: white;
   font-size: 0.75rem;
   font-weight: 600;
-  border-radius: 12px;
+  border-radius: 8px;
   vertical-align: middle;
   animation: needsUpdatePulse 2s ease-in-out infinite;
 }
@@ -1065,7 +1086,7 @@
 .investments-form-section {
   background-color: var(--bg-muted, #f1f5f9);
   border: 1px solid var(--border-default, #e2e8f0);
-  border-radius: var(--radius-lg, 12px);
+  border-radius: 8px;
   padding: var(--spacing-5, 20px);
   margin-bottom: var(--spacing-5, 20px);
 }
@@ -1134,14 +1155,24 @@
 /* Investment item */
 .investment-item {
   border: 1px solid var(--border-default, #e2e8f0);
-  border-radius: var(--radius-lg, 12px);
+  border-radius: 8px;
   padding: var(--spacing-4, 16px);
   background-color: var(--bg-card, white);
   transition: all var(--transition-fast, 150ms ease);
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+/* Zebra striping for investment rows */
+.investment-item:nth-child(even) {
+  background-color: var(--financial-bg-base, #f8f9fa);
+}
+
+.investment-item:nth-child(odd) {
+  background-color: var(--bg-card, white);
 }
 
 .investment-item:hover {
-  background-color: var(--bg-card-hover, #fafbfc);
+  background-color: var(--financial-bg-hover, #f1f5f9);
   box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.06));
   border-color: var(--border-strong, #cbd5e1);
 }
@@ -1278,6 +1309,7 @@
   border: 1px solid #e0e0e0;
   border-radius: 8px;
   overflow: hidden;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
 }
 
 .payment-methods-group-title {
@@ -1299,8 +1331,21 @@
   gap: 16px;
 }
 
+/* Zebra striping for payment method rows */
+.payment-method-item:nth-child(even) {
+  background-color: var(--financial-bg-base, #f8f9fa);
+}
+
+.payment-method-item:nth-child(odd) {
+  background-color: var(--bg-card, white);
+}
+
+.payment-method-item:hover {
+  background-color: var(--financial-bg-hover, #f1f5f9);
+}
+
 .payment-method-item:last-child { border-bottom: none; }
-.payment-method-item.inactive { background-color: #fafafa; opacity: 0.8; }
+.payment-method-item.inactive { opacity: 0.8; }
 
 .payment-method-item .payment-method-info {
   flex: 1;

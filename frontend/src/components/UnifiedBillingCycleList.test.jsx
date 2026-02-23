@@ -381,8 +381,8 @@ describe('UnifiedBillingCycleList', () => {
     it('should show edit and delete buttons for all cycles', () => {
       const { container } = render(<UnifiedBillingCycleList cycles={[mockCycles[0]]} />);
       
-      const editButton = container.querySelector('.unified-cycle-action-btn.edit');
-      const deleteButton = container.querySelector('.unified-cycle-action-btn.delete');
+      const editButton = container.querySelector('.financial-action-btn-secondary');
+      const deleteButton = container.querySelector('.financial-action-btn-danger');
       
       expect(editButton).toBeTruthy();
       expect(deleteButton).toBeTruthy();
@@ -391,8 +391,8 @@ describe('UnifiedBillingCycleList', () => {
     it('should show edit and delete buttons for calculated cycles too', () => {
       const { container } = render(<UnifiedBillingCycleList cycles={[mockCycles[1]]} />);
       
-      const editButton = container.querySelector('.unified-cycle-action-btn.edit');
-      const deleteButton = container.querySelector('.unified-cycle-action-btn.delete');
+      const editButton = container.querySelector('.financial-action-btn-secondary');
+      const deleteButton = container.querySelector('.financial-action-btn-danger');
       
       expect(editButton).toBeTruthy();
       expect(deleteButton).toBeTruthy();
@@ -404,7 +404,7 @@ describe('UnifiedBillingCycleList', () => {
         <UnifiedBillingCycleList cycles={[mockCycles[1]]} onEnterStatement={onEnterStatementMock} />
       );
       
-      const editButton = container.querySelector('.unified-cycle-action-btn.edit');
+      const editButton = container.querySelector('.financial-action-btn-secondary');
       expect(editButton).toBeTruthy();
       
       await act(async () => {
@@ -420,7 +420,7 @@ describe('UnifiedBillingCycleList', () => {
         <UnifiedBillingCycleList cycles={[mockCycles[0]]} onEdit={onEditMock} />
       );
       
-      const editButton = container.querySelector('.unified-cycle-action-btn.edit');
+      const editButton = container.querySelector('.financial-action-btn-secondary');
       expect(editButton).toBeTruthy();
       
       await act(async () => {
@@ -433,7 +433,7 @@ describe('UnifiedBillingCycleList', () => {
     it('should show delete confirmation dialog when delete button is clicked', async () => {
       const { container } = render(<UnifiedBillingCycleList cycles={[mockCycles[0]]} />);
       
-      const deleteButton = container.querySelector('.unified-cycle-action-btn.delete');
+      const deleteButton = container.querySelector('.financial-action-btn-danger');
       expect(deleteButton).toBeTruthy();
       
       await act(async () => {
@@ -452,7 +452,7 @@ describe('UnifiedBillingCycleList', () => {
       );
       
       // Click delete button
-      const deleteButton = container.querySelector('.unified-cycle-action-btn.delete');
+      const deleteButton = container.querySelector('.financial-action-btn-danger');
       await act(async () => {
         fireEvent.click(deleteButton);
       });
@@ -470,7 +470,7 @@ describe('UnifiedBillingCycleList', () => {
       const { container } = render(<UnifiedBillingCycleList cycles={[mockCycles[0]]} />);
       
       // Click delete button
-      const deleteButton = container.querySelector('.unified-cycle-action-btn.delete');
+      const deleteButton = container.querySelector('.financial-action-btn-danger');
       await act(async () => {
         fireEvent.click(deleteButton);
       });
@@ -529,29 +529,29 @@ describe('UnifiedBillingCycleList', () => {
     it('should have accessible edit button with aria-label', () => {
       const { container } = render(<UnifiedBillingCycleList cycles={[mockCycles[0]]} />);
       
-      const editButton = container.querySelector('.unified-cycle-action-btn.edit');
+      const editButton = container.querySelector('.financial-action-btn-secondary');
       expect(editButton.getAttribute('aria-label')).toContain('Edit billing cycle');
     });
 
     it('should have accessible delete button with aria-label', () => {
       const { container } = render(<UnifiedBillingCycleList cycles={[mockCycles[0]]} />);
       
-      const deleteButton = container.querySelector('.unified-cycle-action-btn.delete');
+      const deleteButton = container.querySelector('.financial-action-btn-danger');
       expect(deleteButton.getAttribute('aria-label')).toContain('Delete billing cycle');
     });
 
     it('should have accessible edit button for calculated cycles with aria-label', () => {
       const { container } = render(<UnifiedBillingCycleList cycles={[mockCycles[1]]} />);
       
-      const editButton = container.querySelector('.unified-cycle-action-btn.edit');
+      const editButton = container.querySelector('.financial-action-btn-secondary');
       expect(editButton.getAttribute('aria-label')).toContain('Enter statement');
     });
 
     it('should have title attributes on action buttons', () => {
       const { container } = render(<UnifiedBillingCycleList cycles={[mockCycles[0]]} />);
       
-      const editButton = container.querySelector('.unified-cycle-action-btn.edit');
-      const deleteButton = container.querySelector('.unified-cycle-action-btn.delete');
+      const editButton = container.querySelector('.financial-action-btn-secondary');
+      const deleteButton = container.querySelector('.financial-action-btn-danger');
       
       expect(editButton.getAttribute('title')).toBe('Edit billing cycle');
       expect(deleteButton.getAttribute('title')).toBe('Delete billing cycle');

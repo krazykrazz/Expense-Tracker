@@ -145,9 +145,9 @@
   padding: var(--financial-btn-padding, 6px 14px);
   font-size: var(--financial-btn-font-size, 13px);
   font-weight: 600;
-  background: var(--financial-btn-primary-bg, #10b981);
+  background: var(--financial-btn-primary-bg, #047857);
   color: white;
-  border: 1px solid var(--financial-btn-primary-bg, #10b981);
+  border: 1px solid var(--financial-btn-primary-bg, #047857);
   border-radius: var(--financial-btn-border-radius, 6px);
   cursor: pointer;
   white-space: nowrap;
@@ -155,8 +155,8 @@
 }
 
 .loan-row-log-payment-button:hover:not(:disabled) { 
-  background: var(--financial-btn-primary-hover, #059669);
-  border-color: var(--financial-btn-primary-hover, #059669);
+  background: var(--financial-btn-primary-hover, #065f46);
+  border-color: var(--financial-btn-primary-hover, #065f46);
 }
 
 .loan-row-log-payment-button:disabled {
@@ -218,7 +218,7 @@
   font-size: var(--financial-btn-font-size, 13px);
   font-weight: 600;
   background: var(--financial-btn-secondary-bg, #f8fafc);
-  color: var(--financial-btn-danger-text, #ef4444);
+  color: var(--financial-btn-danger-text, #dc2626);
   border: 1px solid var(--financial-btn-secondary-border, #cbd5e1);
   border-radius: var(--financial-btn-border-radius, 6px);
   cursor: pointer;
@@ -228,7 +228,7 @@
 
 .loan-row-delete-button:hover:not(:disabled) { 
   background: var(--financial-btn-danger-hover-bg, #fee2e2);
-  border-color: var(--financial-btn-danger-border-hover, #ef4444);
+  border-color: var(--financial-btn-danger-border-hover, #dc2626);
 }
 
 .loan-row-delete-button:disabled {

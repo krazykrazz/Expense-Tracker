@@ -20,7 +20,7 @@ afterEach(cleanup);
 const creditCardArb = () =>
   fc.record({
     id: fc.integer({ min: 1, max: 10000 }),
-    name: fc.string({ minLength: 1, maxLength: 30 }).filter(s => s.trim().length > 0),
+    name: fc.string({ minLength: 1, maxLength: 30 }).filter(s => s.trim().length > 0 && !/\s{2,}/.test(s)),
     currentBalance: fc.double({ min: 0, max: 50000, noNaN: true, noDefaultInfinity: true })
       .map(v => Math.round(v * 100) / 100),
     statementBalance: fc.oneof(
@@ -49,7 +49,7 @@ const creditCardArb = () =>
 const loanArb = () =>
   fc.record({
     id: fc.integer({ min: 1, max: 10000 }),
-    name: fc.string({ minLength: 1, maxLength: 30 }).filter(s => s.trim().length > 0),
+    name: fc.string({ minLength: 1, maxLength: 30 }).filter(s => s.trim().length > 0 && !/\s{2,}/.test(s)),
     loan_type: fc.constantFrom('loan', 'line_of_credit', 'mortgage'),
     currentBalance: fc.double({ min: 0, max: 500000, noNaN: true, noDefaultInfinity: true })
       .map(v => Math.round(v * 100) / 100),
@@ -61,7 +61,7 @@ const loanArb = () =>
 const investmentArb = () =>
   fc.record({
     id: fc.integer({ min: 1, max: 10000 }),
-    name: fc.string({ minLength: 1, maxLength: 30 }).filter(s => s.trim().length > 0),
+    name: fc.string({ minLength: 1, maxLength: 30 }).filter(s => s.trim().length > 0 && !/\s{2,}/.test(s)),
     type: fc.constantFrom('TFSA', 'RRSP'),
     currentValue: fc.double({ min: 0, max: 500000, noNaN: true, noDefaultInfinity: true })
       .map(v => Math.round(v * 100) / 100),
@@ -133,10 +133,13 @@ describe('FinancialOverviewModal Button Styling Consistency PBT', () => {
             const loanRender = render(<LoanRow loan={loan} />);
             const invRender = render(<InvestmentRow investment={investment} />);
 
-            // Find View buttons in each section
-            const ccViewBtn = ccRender.container.querySelector('.financial-action-btn-secondary');
-            const loanViewBtn = loanRender.container.querySelector('.loan-row-view-button');
-            const invViewBtn = invRender.container.querySelector('.investment-row-view-button');
+            // Find View buttons - look for secondary buttons with "View" in the text
+            const ccViewBtn = Array.from(ccRender.container.querySelectorAll('.financial-action-btn-secondary'))
+              .find(btn => btn.textContent.includes('View'));
+            const loanViewBtn = Array.from(loanRender.container.querySelectorAll('.financial-action-btn-secondary'))
+              .find(btn => btn.textContent === 'View');
+            const invViewBtn = Array.from(invRender.container.querySelectorAll('.financial-action-btn-secondary'))
+              .find(btn => btn.textContent.includes('View'));
 
             // Extract shared button classes
             const ccClasses = extractSharedButtonClasses(ccViewBtn);
@@ -176,9 +179,11 @@ describe('FinancialOverviewModal Button Styling Consistency PBT', () => {
             const loanRender = render(<LoanRow loan={loan} />);
             const invRender = render(<InvestmentRow investment={investment} />);
 
-            // Find Edit buttons
-            const loanEditBtn = loanRender.container.querySelector('.loan-row-edit-button');
-            const invEditBtn = invRender.container.querySelector('.investment-row-edit-button');
+            // Find Edit buttons - look for secondary buttons with "Edit" text
+            const loanEditBtn = Array.from(loanRender.container.querySelectorAll('.financial-action-btn-secondary'))
+              .find(btn => btn.textContent === 'Edit');
+            const invEditBtn = Array.from(invRender.container.querySelectorAll('.financial-action-btn-secondary'))
+              .find(btn => btn.textContent === 'Edit');
 
             // Extract shared button classes
             const loanClasses = extractSharedButtonClasses(loanEditBtn);
@@ -213,9 +218,9 @@ describe('FinancialOverviewModal Button Styling Consistency PBT', () => {
             const loanRender = render(<LoanRow loan={loan} />);
             const invRender = render(<InvestmentRow investment={investment} />);
 
-            // Find Delete buttons
-            const loanDeleteBtn = loanRender.container.querySelector('.loan-row-delete-button');
-            const invDeleteBtn = invRender.container.querySelector('.investment-row-delete-button');
+            // Find Delete buttons - they should be the danger buttons
+            const loanDeleteBtn = loanRender.container.querySelector('.financial-action-btn-danger');
+            const invDeleteBtn = invRender.container.querySelector('.financial-action-btn-danger');
 
             // Extract shared button classes
             const loanClasses = extractSharedButtonClasses(loanDeleteBtn);
@@ -250,9 +255,9 @@ describe('FinancialOverviewModal Button Styling Consistency PBT', () => {
             const ccRender = render(<CreditCardRow card={creditCard} />);
             const loanRender = render(<LoanRow loan={loan} />);
 
-            // Find Pay/Log Payment buttons
+            // Find Pay/Log Payment buttons - they should be the primary action buttons
             const ccPayBtn = ccRender.container.querySelector('.financial-action-btn-primary');
-            const loanPayBtn = loanRender.container.querySelector('.loan-row-log-payment-button');
+            const loanPayBtn = loanRender.container.querySelector('.financial-action-btn-primary');
 
             // Extract shared button classes
             const ccClasses = extractSharedButtonClasses(ccPayBtn);

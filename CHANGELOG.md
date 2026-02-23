@@ -40,6 +40,11 @@
 
 
 
+
+
+## [5.17.5] - 2026-02-23
+
+### Billing cycle balance display fixes
 ## [5.17.4] - 2026-02-23
 
 ### Financial Overview update and styling changes

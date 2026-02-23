@@ -609,6 +609,33 @@ export const getCurrentCycleStatus = async (paymentMethodId) => {
 }
 
 /**
+ * Recalculate the statement balance for a specific billing cycle period
+ * @param {number} paymentMethodId - Payment method ID
+ * @param {string} startDate - Cycle start date (YYYY-MM-DD)
+ * @param {string} endDate - Cycle end date (YYYY-MM-DD)
+ * @returns {Promise<number>} Recalculated balance
+ */
+export const recalculateCycleBalance = async (paymentMethodId, startDate, endDate) => {
+  try {
+    const params = new URLSearchParams({ startDate, endDate });
+    const response = await fetchWithRetry(
+      `${API_ENDPOINTS.PAYMENT_METHOD_BILLING_CYCLE_RECALCULATE(paymentMethodId)}?${params.toString()}`
+    );
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || 'Failed to recalculate balance');
+    }
+    
+    const data = await response.json();
+    return data.calculatedBalance;
+  } catch (error) {
+    logger.error('Failed to recalculate cycle balance:', error);
+    throw error;
+  }
+};
+
+/**
  * Get statement balance info for a credit card
  * Returns the calculated statement balance based on billing_cycle_day
  * @param {number} paymentMethodId - Payment method ID

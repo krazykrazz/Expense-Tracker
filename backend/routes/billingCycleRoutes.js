@@ -20,6 +20,9 @@ router.post('/billing-cycles/dismiss-auto-generated', billingCycleController.dis
 // Must be before /:cycleId routes to avoid conflict
 router.get('/:id/billing-cycles/unified', billingCycleController.getUnifiedBillingCycles);
 
+// GET /api/payment-methods/:id/billing-cycles/recalculate - Recalculate balance for a cycle period
+router.get('/:id/billing-cycles/recalculate', billingCycleController.recalculateBalance);
+
 // GET /api/payment-methods/:id/billing-cycles/current - Get current billing cycle status
 // Must be before /:cycleId routes to avoid conflict
 router.get('/:id/billing-cycles/current', billingCycleController.getCurrentCycleStatus);

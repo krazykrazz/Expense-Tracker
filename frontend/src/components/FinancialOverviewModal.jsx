@@ -4,7 +4,7 @@ import { getAllLoans, createLoan, updateLoan, deleteLoan } from '../services/loa
 import { getFixedExpensesByLoan } from '../services/fixedExpenseApi';
 import { getAllInvestments, createInvestment, updateInvestment, deleteInvestment } from '../services/investmentApi';
 import { getPaymentMethods, getPaymentMethod, deletePaymentMethod, setPaymentMethodActive } from '../services/paymentMethodApi';
-import { getStatementBalance } from '../services/creditCardApi';
+import { getStatementBalance, getCurrentCycleStatus } from '../services/creditCardApi';
 import CreditCardPaymentForm from './CreditCardPaymentForm';
 import LoanRow from './LoanRow';
 import InvestmentRow from './InvestmentRow';
@@ -66,7 +66,14 @@ const CreditCardSummary = ({ paymentMethods, onPaymentRecorded, onViewDetails })
       creditCards.map(async (card) => {
         let statementBalance = null;
         let cycleBalance = null;
-        try { statementBalance = await getStatementBalance(card.id); } catch { /* silent */ }
+        try {
+          const [calcBalance, cycleStatus] = await Promise.all([
+            getStatementBalance(card.id).catch(() => null),
+            getCurrentCycleStatus(card.id).catch(() => null)
+          ]);
+          // Prefer user-entered actual balance over calculated balance (matches CreditCardDetailView logic)
+          statementBalance = cycleStatus?.hasActualBalance ? cycleStatus.actualBalance : calcBalance;
+        } catch { /* silent */ }
         try {
           const method = await getPaymentMethod(card.id);
           cycleBalance = method?.current_cycle?.total_amount ?? null;
@@ -171,7 +178,14 @@ const PaymentMethodsSection = ({ paymentMethods, loading, onPaymentRecorded, onV
       creditCards.map(async (card) => {
         let statementBalance = null;
         let cycleBalance = null;
-        try { statementBalance = await getStatementBalance(card.id); } catch { /* silent */ }
+        try {
+          const [calcBalance, cycleStatus] = await Promise.all([
+            getStatementBalance(card.id).catch(() => null),
+            getCurrentCycleStatus(card.id).catch(() => null)
+          ]);
+          // Prefer user-entered actual balance over calculated balance (matches CreditCardDetailView logic)
+          statementBalance = cycleStatus?.hasActualBalance ? cycleStatus.actualBalance : calcBalance;
+        } catch { /* silent */ }
         try {
           const method = await getPaymentMethod(card.id);
           cycleBalance = method?.current_cycle?.total_amount ?? null;

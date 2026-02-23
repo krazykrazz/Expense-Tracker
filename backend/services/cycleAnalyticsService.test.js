@@ -317,7 +317,7 @@ describe('CycleAnalyticsService', () => {
       });
     });
 
-    it('does not recalculate balance for user-entered cycles', async () => {
+    it('recalculates balance for user-entered cycles too', async () => {
       billingCycleRepository.findByPaymentMethod.mockResolvedValue([
         {
           id: 1,
@@ -328,10 +328,13 @@ describe('CycleAnalyticsService', () => {
           cycle_end_date: '2025-02-15'
         }
       ]);
+      cycleGenerationService.recalculateBalance.mockResolvedValue(450);
 
       await cycleAnalyticsService.getUnifiedBillingCycles(1);
 
-      expect(cycleGenerationService.recalculateBalance).not.toHaveBeenCalled();
+      expect(cycleGenerationService.recalculateBalance).toHaveBeenCalledWith(
+        1, '2025-01-16', '2025-02-15'
+      );
     });
 
     it('does not update DB when recalculated balance matches existing', async () => {

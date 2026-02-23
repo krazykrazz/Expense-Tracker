@@ -154,81 +154,53 @@ describe('UnifiedBillingCycleList', () => {
   });
 
   /**
-   * Test: Trend indicator rendering
-   * **Validates: Requirements 5.1, 5.2, 5.3, 5.4, 5.5**
+   * Test: Discrepancy rendering for actual-balance cycles
+   * **Validates: Requirements 5.1, 5.2, 5.3**
    */
-  describe('Trend Indicator Rendering', () => {
-    it('should apply trend-higher class for higher trend (orange)', () => {
+  describe('Discrepancy Rendering', () => {
+    it('should show discrepancy for actual-balance cycles', () => {
       const { container } = render(<UnifiedBillingCycleList cycles={[mockCycles[0]]} />);
       
-      const trendIndicator = container.querySelector('.unified-trend-indicator');
-      expect(trendIndicator).toBeTruthy();
-      expect(trendIndicator.classList.contains('trend-higher')).toBe(true);
+      const discrepancy = container.querySelector('.unified-cycle-discrepancy');
+      expect(discrepancy).toBeTruthy();
     });
 
-    it('should apply trend-lower class for lower trend (blue)', () => {
+    it('should not show discrepancy for calculated-balance cycles', () => {
       const { container } = render(<UnifiedBillingCycleList cycles={[mockCycles[1]]} />);
       
-      const trendIndicator = container.querySelector('.unified-trend-indicator');
-      expect(trendIndicator).toBeTruthy();
-      expect(trendIndicator.classList.contains('trend-lower')).toBe(true);
+      const discrepancy = container.querySelector('.unified-cycle-discrepancy');
+      expect(discrepancy).toBeFalsy();
     });
 
-    it('should apply trend-same class for same trend (green)', () => {
-      const { container } = render(<UnifiedBillingCycleList cycles={[mockCycles[2]]} />);
+    it('should show "✓ Match" when actual equals calculated balance', () => {
+      const matchCycle = {
+        ...mockCycles[2],
+        actual_statement_balance: 1300.00,
+        calculated_statement_balance: 1300.00,
+      };
+      const { container } = render(<UnifiedBillingCycleList cycles={[matchCycle]} />);
       
-      const trendIndicator = container.querySelector('.unified-trend-indicator');
-      expect(trendIndicator).toBeTruthy();
-      expect(trendIndicator.classList.contains('trend-same')).toBe(true);
+      const discrepancy = container.querySelector('.unified-cycle-discrepancy.discrepancy-match');
+      expect(discrepancy).toBeTruthy();
+      expect(discrepancy.querySelector('.discrepancy-icon').textContent).toBe('✓');
+      expect(discrepancy.querySelector('.discrepancy-amount').textContent).toBe('Match');
     });
 
-    it('should display up arrow icon for higher trend', () => {
+    it('should show higher discrepancy when actual > calculated', () => {
+      // mockCycles[0]: actual=1234.56, calculated=1189.23 → higher
       const { container } = render(<UnifiedBillingCycleList cycles={[mockCycles[0]]} />);
       
-      const trendIcon = container.querySelector('.unified-trend-icon');
-      expect(trendIcon).toBeTruthy();
-      expect(trendIcon.textContent).toBe('↑');
+      const discrepancy = container.querySelector('.unified-cycle-discrepancy.discrepancy-higher');
+      expect(discrepancy).toBeTruthy();
+      expect(discrepancy.querySelector('.discrepancy-icon').textContent).toBe('↑');
     });
 
-    it('should display down arrow icon for lower trend', () => {
-      const { container } = render(<UnifiedBillingCycleList cycles={[mockCycles[1]]} />);
+    it('should not render any trend indicator elements', () => {
+      const { container } = render(<UnifiedBillingCycleList cycles={mockCycles} />);
       
-      const trendIcon = container.querySelector('.unified-trend-icon');
-      expect(trendIcon).toBeTruthy();
-      expect(trendIcon.textContent).toBe('↓');
-    });
-
-    it('should display checkmark icon for same trend', () => {
-      const { container } = render(<UnifiedBillingCycleList cycles={[mockCycles[2]]} />);
-      
-      const trendIcon = container.querySelector('.unified-trend-icon');
-      expect(trendIcon).toBeTruthy();
-      expect(trendIcon.textContent).toBe('✓');
-    });
-
-    it('should display dash when no trend indicator (no previous cycle)', () => {
-      const { container } = render(<UnifiedBillingCycleList cycles={[mockCycles[3]]} />);
-      
-      const trendIndicator = container.querySelector('.unified-trend-indicator.no-trend');
-      expect(trendIndicator).toBeTruthy();
-      const trendIcon = trendIndicator.querySelector('.unified-trend-icon');
-      expect(trendIcon.textContent).toBe('—');
-    });
-
-    it('should display trend amount for higher trend', () => {
-      const { container } = render(<UnifiedBillingCycleList cycles={[mockCycles[0]]} />);
-      
-      const trendAmount = container.querySelector('.unified-trend-amount');
-      expect(trendAmount).toBeTruthy();
-      expect(trendAmount.textContent).toContain('145.33');
-    });
-
-    it('should display trend amount for lower trend', () => {
-      const { container } = render(<UnifiedBillingCycleList cycles={[mockCycles[1]]} />);
-      
-      const trendAmount = container.querySelector('.unified-trend-amount');
-      expect(trendAmount).toBeTruthy();
-      expect(trendAmount.textContent).toContain('210.77');
+      expect(container.querySelector('.unified-trend-indicator')).toBeFalsy();
+      expect(container.querySelector('.unified-trend-icon')).toBeFalsy();
+      expect(container.querySelector('.unified-trend-amount')).toBeFalsy();
     });
   });
 

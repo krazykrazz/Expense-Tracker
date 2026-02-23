@@ -109,8 +109,8 @@ describe('InvestmentRow Property-Based Tests', () => {
           // No Update Value button
           expect(screen.queryByText(/Update Value/i)).toBeNull();
 
-          // View Details button is present
-          expect(screen.getByText(/View Details/i)).toBeInTheDocument();
+          // View button is present
+          expect(screen.getByText(/^View$/i)).toBeInTheDocument();
 
           unmount();
         }
@@ -147,16 +147,16 @@ describe('InvestmentRow Property-Based Tests', () => {
           expect(buttons.length).toBeGreaterThanOrEqual(3);
 
           // Check that buttons have text content (not just icons)
-          const viewDetailsBtn = screen.getByText('View Details');
+          const viewBtn = screen.getByText('View');
           const editBtn = screen.getByText('Edit');
           const deleteBtn = screen.getByText('Delete');
 
-          expect(viewDetailsBtn.tagName).toBe('BUTTON');
+          expect(viewBtn.tagName).toBe('BUTTON');
           expect(editBtn.tagName).toBe('BUTTON');
           expect(deleteBtn.tagName).toBe('BUTTON');
 
           // Verify buttons don't contain only emoji/icons
-          expect(viewDetailsBtn.textContent).not.toMatch(/^[✏️🗑️👁️]+$/);
+          expect(viewBtn.textContent).not.toMatch(/^[✏️🗑️👁️]+$/);
           expect(editBtn.textContent).not.toMatch(/^[✏️🗑️👁️]+$/);
           expect(deleteBtn.textContent).not.toMatch(/^[✏️🗑️👁️]+$/);
 

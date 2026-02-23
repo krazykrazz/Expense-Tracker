@@ -10,7 +10,7 @@ import './UnifiedBillingCycleList.css';
  * - Cycle dates
  * - Effective balance with balance type indicator (Actual/Calculated)
  * - Transaction count
- * - Trend indicator comparing to previous cycle
+ * - Discrepancy between actual and calculated balance (always shown for actual cycles)
  * - Conditional action buttons based on actual_statement_balance
  * 
  * Requirements: 4.3, 5.1, 5.2, 5.3, 5.4, 5.5, 6.1, 6.2, 6.3, 6.4, 6.5
@@ -39,12 +39,6 @@ const UnifiedBillingCycleList = ({
   error = null
 }) => {
   const [deleteConfirm, setDeleteConfirm] = useState(null);
-
-  // Get trend indicator class
-  const getTrendClass = (trendIndicator) => {
-    if (!trendIndicator) return '';
-    return trendIndicator.cssClass || '';
-  };
 
   // Handle delete click
   const handleDeleteClick = (cycle) => {
@@ -146,32 +140,22 @@ const UnifiedBillingCycleList = ({
                   </span>
                 </div>
 
-                {/* Discrepancy */}
+                {/* Discrepancy - always shown for actual balance cycles */}
                 {cycle.actual_statement_balance > 0 && (() => {
                   const discrepancy = calculateDiscrepancy(cycle.actual_statement_balance, cycle.calculated_statement_balance);
-                  return discrepancy.type !== 'match' ? (
+                  return (
                     <div className={`unified-cycle-discrepancy discrepancy-${discrepancy.type}`}>
-                      <span className="discrepancy-icon">{discrepancy.type === 'higher' ? '↑' : '↓'}</span>
+                      <span className="discrepancy-icon">
+                        {discrepancy.type === 'higher' ? '↑' : discrepancy.type === 'lower' ? '↓' : '✓'}
+                      </span>
                       <span className="discrepancy-amount">
-                        {discrepancy.amount > 0 ? '+' : ''}{formatCurrency(discrepancy.amount)}
+                        {discrepancy.type === 'match'
+                          ? 'Match'
+                          : `${discrepancy.amount > 0 ? '+' : ''}${formatCurrency(discrepancy.amount)}`}
                       </span>
                     </div>
-                  ) : null;
+                  );
                 })()}
-
-                {/* Trend Indicator */}
-                {cycle.trend_indicator ? (
-                  <div className={`unified-trend-indicator ${getTrendClass(cycle.trend_indicator)}`}>
-                    <span className="unified-trend-icon">{cycle.trend_indicator.icon}</span>
-                    <span className="unified-trend-amount">
-                      {formatCurrency(cycle.trend_indicator.amount)}
-                    </span>
-                  </div>
-                ) : (
-                  <div className="unified-trend-indicator no-trend">
-                    <span className="unified-trend-icon">—</span>
-                  </div>
-                )}
               </div>
 
               {/* Actions - Inline with data */}

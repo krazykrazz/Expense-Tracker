@@ -62,7 +62,7 @@ const LoanRow = ({ loan, needsUpdate = false, fixedExpenseCount = 0, onLogPaymen
             </button>
           )}
           <button
-            className="financial-action-btn-secondary"
+            className="financial-cc-view-btn"
             onClick={() => onViewDetails && onViewDetails(loan)}
             title={`View details for ${name}`}
           >

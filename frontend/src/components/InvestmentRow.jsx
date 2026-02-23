@@ -28,11 +28,11 @@ const InvestmentRow = ({ investment, needsUpdate = false, onUpdateValue, onViewD
         </div>
         <div className="investment-row-actions">
           <button
-            className="financial-action-btn-secondary"
+            className="financial-cc-view-btn"
             onClick={() => onViewDetails && onViewDetails(investment)}
             title={`View details for ${name}`}
           >
-            View Details
+            View
           </button>
           <button
             className="financial-action-btn-secondary"

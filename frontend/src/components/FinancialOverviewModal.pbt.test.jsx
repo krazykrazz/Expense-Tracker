@@ -290,7 +290,7 @@ describe('FinancialOverviewModal PBT', () => {
             const subsection = within(container).getByTestId('other-subsection');
             expect(subsection).toHaveTextContent(method.display_name.trim());
             expect(subsection.querySelector('[data-testid="type-badge"]')).toBeInTheDocument();
-            expect(subsection.querySelector('.other-payment-method-view-btn')).toBeInTheDocument();
+            expect(subsection.querySelector('.financial-cc-view-btn')).toBeInTheDocument();
 
             unmount();
           }

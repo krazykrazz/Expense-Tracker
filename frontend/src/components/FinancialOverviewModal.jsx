@@ -310,7 +310,7 @@ const PaymentMethodsSection = ({ paymentMethods, loading, onPaymentRecorded, onV
                     <span className="other-payment-method-type-badge" data-testid="type-badge">{getTypeBadgeLabel(method.type)}</span>
                     {activeTab === 'active' ? (
                       <button
-                        className="other-payment-method-view-btn"
+                        className="financial-cc-view-btn"
                         onClick={() => onViewDetails && onViewDetails(method)}
                         title={`View details for ${method.display_name}`}
                       >

@@ -116,13 +116,13 @@
   --financial-btn-danger-border-hover: #dc2626;
   
   /* Spacing */
-  --financial-btn-padding: 6px 14px;
+  --financial-btn-padding: 2px 10px;
   --financial-btn-gap: 6px;
   --financial-row-padding: 12px 16px;
   --financial-row-gap: 8px;
   
   /* Sizing */
-  --financial-btn-font-size: 13px;
+  --financial-btn-font-size: 11px;
   --financial-btn-border-radius: 6px;
   --financial-row-border-radius: 6px;
 }

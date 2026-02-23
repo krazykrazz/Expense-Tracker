@@ -46,7 +46,7 @@ describe('LoanRow — Property 1: content completeness', () => {
         expect(detailsEl.textContent).toContain('Balance:');
 
         // View button is present with shared class
-        const viewButton = container.querySelector('.financial-action-btn-secondary');
+        const viewButton = container.querySelector('.financial-cc-view-btn');
         expect(viewButton).not.toBeNull();
         expect(viewButton.textContent).toBe('View');
 

@@ -198,7 +198,7 @@ describe('FinancialOverviewModal Button Label Consistency PBT', () => {
             });
 
             // Check other payment method View buttons
-            const otherButtons = container.querySelectorAll('.other-payment-method-view-btn');
+            const otherButtons = container.querySelectorAll('.financial-cc-view-btn');
             otherButtons.forEach(btn => {
               viewButtonLabels.add(btn.textContent.trim());
             });
@@ -212,13 +212,13 @@ describe('FinancialOverviewModal Button Label Consistency PBT', () => {
 
             // Check investment View buttons
             const investmentSection = screen.getByTestId('investments-section');
-            const investmentViewButtons = within(investmentSection).getAllByText(/^View Details$/);
+            const investmentViewButtons = within(investmentSection).getAllByText(/^View$/);
             investmentViewButtons.forEach(btn => {
               viewButtonLabels.add(btn.textContent.trim());
             });
 
             // Verify that View button labels are from the allowed set
-            const allowedViewLabels = new Set(['View', 'View Details']);
+            const allowedViewLabels = new Set(['View']);
             viewButtonLabels.forEach(label => {
               expect(allowedViewLabels.has(label)).toBe(true);
             });
@@ -425,7 +425,7 @@ describe('FinancialOverviewModal Button Label Consistency PBT', () => {
 
             // Define allowed button labels for financial actions
             const allowedActionLabels = new Set([
-              'View', 'View Details', 'Edit', 'Delete', 'Pay', 'Log Payment',
+              'View', 'Edit', 'Delete', 'Pay', 'Log Payment',
               'Reactivate', // For inactive payment methods
               '+ Add', // Add buttons
               '✕', // Close button
@@ -437,12 +437,12 @@ describe('FinancialOverviewModal Button Label Consistency PBT', () => {
 
             // Check that action buttons use consistent labels
             const actionButtons = buttonLabels.filter(label => 
-              ['View', 'View Details', 'Edit', 'Delete', 'Pay', 'Log Payment'].includes(label)
+              ['View', 'Edit', 'Delete', 'Pay', 'Log Payment'].includes(label)
             );
 
             // Verify each action button uses an allowed label
             actionButtons.forEach(label => {
-              expect(['View', 'View Details', 'Edit', 'Delete', 'Pay', 'Log Payment'].includes(label)).toBe(true);
+              expect(['View', 'Edit', 'Delete', 'Pay', 'Log Payment'].includes(label)).toBe(true);
             });
 
             unmount();

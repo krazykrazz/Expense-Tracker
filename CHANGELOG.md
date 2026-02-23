@@ -38,6 +38,11 @@
 
 
 
+
+
+## [5.17.4] - 2026-02-23
+
+### Financial Overview update and styling changes
 ## [5.17.3] - 2026-02-21
 
 ### Fix SSE session count inflation on page refresh

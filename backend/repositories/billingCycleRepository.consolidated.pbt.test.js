@@ -71,8 +71,12 @@ function createBillingCyclesTable(db) {
         actual_statement_balance REAL NOT NULL CHECK(actual_statement_balance >= 0),
         calculated_statement_balance REAL NOT NULL CHECK(calculated_statement_balance >= 0),
         minimum_payment REAL CHECK(minimum_payment IS NULL OR minimum_payment >= 0),
-        due_date TEXT,
         notes TEXT,
+        statement_pdf_path TEXT,
+        is_user_entered INTEGER DEFAULT 0,
+        reviewed_at TEXT DEFAULT NULL,
+        effective_balance REAL DEFAULT NULL,
+        balance_type TEXT DEFAULT 'calculated' CHECK(balance_type IS NULL OR balance_type IN ('actual', 'calculated')),
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (payment_method_id) REFERENCES payment_methods(id) ON DELETE CASCADE,
@@ -81,6 +85,7 @@ function createBillingCyclesTable(db) {
     `, (err) => err ? reject(err) : resolve());
   });
 }
+
 
 function insertCreditCardPaymentMethod(db, displayName, billingCycleDay = null) {
   return new Promise((resolve, reject) => {
@@ -98,13 +103,16 @@ function insertBillingCycle(db, data) {
     db.run(
       `INSERT INTO credit_card_billing_cycles 
        (payment_method_id, cycle_start_date, cycle_end_date, actual_statement_balance, 
-        calculated_statement_balance, minimum_payment, due_date, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        calculated_statement_balance, minimum_payment, notes,
+        effective_balance, balance_type)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         data.payment_method_id, data.cycle_start_date, data.cycle_end_date,
         data.actual_statement_balance, data.calculated_statement_balance,
         data.minimum_payment !== undefined && data.minimum_payment !== null ? data.minimum_payment : null,
-        data.due_date || null, data.notes || null
+        data.notes || null,
+        data.effective_balance !== undefined ? data.effective_balance : null,
+        data.balance_type || null
       ],
       function(err) { err ? reject(err) : resolve(this.lastID); }
     );
@@ -130,6 +138,25 @@ function getBillingCyclesByPaymentMethod(db, paymentMethodId, options = {}) {
   });
 }
 
+function updateBillingCycle(db, id, data) {
+  return new Promise((resolve, reject) => {
+    const sql = `
+      UPDATE credit_card_billing_cycles 
+      SET effective_balance = ?,
+          balance_type = ?,
+          actual_statement_balance = COALESCE(?, actual_statement_balance),
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `;
+    db.run(sql, [
+      data.effective_balance !== undefined ? data.effective_balance : null,
+      data.balance_type || 'calculated',
+      data.actual_statement_balance !== undefined ? data.actual_statement_balance : null,
+      id
+    ], function(err) { err ? reject(err) : resolve(this.changes > 0); });
+  });
+}
+
 function deletePaymentMethod(db, id) {
   return new Promise((resolve, reject) => {
     db.run('DELETE FROM payment_methods WHERE id = ?', [id], function(err) {
@@ -150,8 +177,12 @@ const billingCycleArbitrary = fc.record({
     fc.float({ min: Math.fround(0.01), max: Math.fround(500), noNaN: true }).map(n => Math.round(n * 100) / 100),
     { nil: null }
   ),
-  due_date: fc.option(safeDate(), { nil: null }),
-  notes: fc.option(safeString({ maxLength: 200 }), { nil: null })
+  notes: fc.option(safeString({ maxLength: 200 }), { nil: null }),
+  effective_balance: fc.option(
+    fc.float({ min: Math.fround(0), max: Math.fround(10000), noNaN: true }).map(n => Math.round(n * 100) / 100),
+    { nil: null }
+  ),
+  balance_type: fc.option(fc.constantFrom('actual', 'calculated'), { nil: null })
 });
 
 const billingCyclesWithDistinctDatesArbitrary = fc.array(
@@ -195,8 +226,9 @@ describe('BillingCycleRepository - Property-Based Tests', () => {
           expect(retrieved.actual_statement_balance).toBe(cycleData.actual_statement_balance);
           expect(retrieved.calculated_statement_balance).toBe(cycleData.calculated_statement_balance);
           expect(retrieved.minimum_payment).toBe(cycleData.minimum_payment);
-          expect(retrieved.due_date).toBe(cycleData.due_date);
           expect(retrieved.notes).toBe(cycleData.notes);
+          expect(retrieved.effective_balance).toBe(cycleData.effective_balance);
+          expect(retrieved.balance_type).toBe(cycleData.balance_type);
           return true;
         } finally { await closeInMemoryDb(db); }
       }),
@@ -364,6 +396,69 @@ describe('BillingCycleRepository - Property-Based Tests', () => {
             expect(filtered.length).toBe(expectedCount);
             return true;
           } finally { await closeInMemoryDb(db); }
+        }
+      ),
+      dbPbtOptions()
+    );
+  });
+
+  /**
+   * Feature: migration-consolidation, Property 5: Billing cycle CRUD round-trip
+   * For any valid billing cycle data with effective_balance and balance_type,
+   * verify create-read round-trip and update-read round-trip return correct values.
+   * **Validates: Requirements 5.3, 8.1, 8.2, 8.3**
+   */
+  test('Property 5 (migration-consolidation): Billing cycle CRUD round-trip with effective_balance/balance_type', async () => {
+    let testCounter = 0;
+    await fc.assert(
+      fc.asyncProperty(
+        billingCycleArbitrary,
+        fc.float({ min: Math.fround(0), max: Math.fround(10000), noNaN: true }).map(n => Math.round(n * 100) / 100),
+        fc.constantFrom('actual', 'calculated'),
+        async (cycleData, updatedEffectiveBalance, updatedBalanceType) => {
+          const db = await createInMemoryDb();
+          testCounter++;
+          try {
+            await createPaymentMethodsTable(db);
+            await createBillingCyclesTable(db);
+            const paymentMethodId = await insertCreditCardPaymentMethod(
+              db, `EffBalTestCard_${testCounter}_${Date.now()}`, 15
+            );
+
+            // Create with effective_balance and balance_type
+            const cycleId = await insertBillingCycle(db, {
+              payment_method_id: paymentMethodId,
+              ...cycleData
+            });
+
+            // Read back and verify create round-trip
+            const created = await getBillingCycleById(db, cycleId);
+            expect(created).not.toBeNull();
+            expect(created.effective_balance).toBe(cycleData.effective_balance);
+            expect(created.balance_type).toBe(cycleData.balance_type);
+            expect(created.actual_statement_balance).toBe(cycleData.actual_statement_balance);
+            expect(created.calculated_statement_balance).toBe(cycleData.calculated_statement_balance);
+
+            // Update effective_balance and balance_type
+            const updated = await updateBillingCycle(db, cycleId, {
+              effective_balance: updatedEffectiveBalance,
+              balance_type: updatedBalanceType
+            });
+            expect(updated).toBe(true);
+
+            // Read back and verify update round-trip
+            const afterUpdate = await getBillingCycleById(db, cycleId);
+            expect(afterUpdate).not.toBeNull();
+            expect(afterUpdate.effective_balance).toBe(updatedEffectiveBalance);
+            expect(afterUpdate.balance_type).toBe(updatedBalanceType);
+            // Other fields should be unchanged
+            expect(afterUpdate.actual_statement_balance).toBe(cycleData.actual_statement_balance);
+            expect(afterUpdate.calculated_statement_balance).toBe(cycleData.calculated_statement_balance);
+
+            return true;
+          } finally {
+            await closeInMemoryDb(db);
+          }
         }
       ),
       dbPbtOptions()

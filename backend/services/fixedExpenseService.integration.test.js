@@ -258,7 +258,7 @@ describe('Fixed Expense Service - End-to-End Integration Tests', () => {
         name: 'Netflix',
         amount: 15,
         category: 'Subscriptions',
-        payment_type: 'CIBC MC'
+        payment_type: 'Credit Card'
       });
 
       await fixedExpenseService.createFixedExpense({
@@ -267,7 +267,7 @@ describe('Fixed Expense Service - End-to-End Integration Tests', () => {
         name: 'Spotify',
         amount: 10,
         category: 'Subscriptions',
-        payment_type: 'CIBC MC'
+        payment_type: 'Credit Card'
       });
 
       // Get monthly summary
@@ -275,7 +275,7 @@ describe('Fixed Expense Service - End-to-End Integration Tests', () => {
 
       // Verify payment type totals
       expect(summary.methodTotals.Debit).toBe(1500);
-      expect(summary.methodTotals['CIBC MC']).toBe(25); // 15 + 10
+      expect(summary.methodTotals['Credit Card']).toBe(25); // 15 + 10
     });
 
     test('should update payment type totals when fixed expense is added', async () => {
@@ -327,7 +327,7 @@ describe('Fixed Expense Service - End-to-End Integration Tests', () => {
         name: 'Internet',
         amount: 80,
         category: 'Utilities',
-        payment_type: 'CIBC MC'
+        payment_type: 'Credit Card'
       });
 
       // Carry forward (method takes target year/month and looks back to previous month)
@@ -356,7 +356,7 @@ describe('Fixed Expense Service - End-to-End Integration Tests', () => {
       expect(internet).toBeDefined();
       expect(internet.amount).toBe(80);
       expect(internet.category).toBe('Utilities');
-      expect(internet.payment_type).toBe('CIBC MC');
+      expect(internet.payment_type).toBe('Credit Card');
       expect(internet.year).toBe(targetYear);
       expect(internet.month).toBe(targetMonth);
     });
@@ -445,7 +445,7 @@ describe('Fixed Expense Service - End-to-End Integration Tests', () => {
         name: 'Test Expense',
         amount: 250,
         category: 'Insurance',
-        payment_type: 'CIBC MC'
+        payment_type: 'Credit Card'
       });
 
       // Retrieve and verify all original data preserved
@@ -455,7 +455,7 @@ describe('Fixed Expense Service - End-to-End Integration Tests', () => {
       expect(retrieved[0].name).toBe('Test Expense');
       expect(retrieved[0].amount).toBe(250);
       expect(retrieved[0].category).toBe('Insurance');
-      expect(retrieved[0].payment_type).toBe('CIBC MC');
+      expect(retrieved[0].payment_type).toBe('Credit Card');
       expect(retrieved[0].year).toBe(year);
       expect(retrieved[0].month).toBe(month);
     });
@@ -483,17 +483,17 @@ describe('Fixed Expense Service - End-to-End Integration Tests', () => {
         name: 'Subscription',
         amount: 15,
         category: 'Entertainment',
-        payment_type: 'CIBC MC'
+        payment_type: 'Credit Card'
       });
 
       // Verify update
       expect(updated.category).toBe('Entertainment');
-      expect(updated.payment_type).toBe('CIBC MC');
+      expect(updated.payment_type).toBe('Credit Card');
 
       // Retrieve and verify
       const retrieved = await fixedExpenseRepository.getFixedExpenses(year, month);
       expect(retrieved[0].category).toBe('Entertainment');
-      expect(retrieved[0].payment_type).toBe('CIBC MC');
+      expect(retrieved[0].payment_type).toBe('Credit Card');
     });
 
     test('should validate category when updating', async () => {
@@ -574,7 +574,7 @@ describe('Fixed Expense Service - End-to-End Integration Tests', () => {
         name: 'Internet',
         amount: 80,
         category: 'Utilities',
-        payment_type: 'CIBC MC'
+        payment_type: 'Credit Card'
       });
 
       // Step 2: Create regular expenses
@@ -604,7 +604,7 @@ describe('Fixed Expense Service - End-to-End Integration Tests', () => {
       expect(summary.typeTotals.Groceries).toBe(300);
       
       expect(summary.methodTotals.Debit).toBe(2000); // 1500 + 200 + 300
-      expect(summary.methodTotals['CIBC MC']).toBe(80);
+      expect(summary.methodTotals['Credit Card']).toBe(80);
 
       // Step 4: Update a fixed expense
       const fixedExpenses = await fixedExpenseRepository.getFixedExpenses(year, month);
@@ -616,13 +616,13 @@ describe('Fixed Expense Service - End-to-End Integration Tests', () => {
         name: 'Internet',
         amount: 90, // Increased
         category: 'Utilities',
-        payment_type: 'CIBC MC'
+        payment_type: 'Credit Card'
       });
 
       // Verify updated aggregation
       const updatedSummary = await expenseService.getSummary(year, month);
       expect(updatedSummary.typeTotals.Utilities).toBe(90);
-      expect(updatedSummary.methodTotals['CIBC MC']).toBe(90);
+      expect(updatedSummary.methodTotals['Credit Card']).toBe(90);
 
       // Step 5: Carry forward to next month
       await fixedExpenseService.carryForwardFixedExpenses(year, nextMonth);
@@ -638,7 +638,7 @@ describe('Fixed Expense Service - End-to-End Integration Tests', () => {
 
       const carriedInternet = nextMonthExpenses.find(e => e.name === 'Internet');
       expect(carriedInternet.category).toBe('Utilities');
-      expect(carriedInternet.payment_type).toBe('CIBC MC');
+      expect(carriedInternet.payment_type).toBe('Credit Card');
       expect(carriedInternet.amount).toBe(90); // Updated amount carried forward
     });
   });

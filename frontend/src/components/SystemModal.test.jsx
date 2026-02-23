@@ -75,7 +75,7 @@ vi.mock('../utils/formatters', () => ({
 import SystemModal from './SystemModal';
 
 describe('SystemModal', () => {
-  const mockVersionInfo = { version: '5.10.0', environment: 'production' };
+  const mockVersionInfo = { version: '1.0.0', environment: 'production' };
   const mockBackups = [
     { name: 'backup-2026-02-10.db', size: 1024000, created: '2026-02-10T10:00:00Z' }
   ];
@@ -188,7 +188,7 @@ describe('SystemModal', () => {
         expect(screen.getByText('Version Information')).toBeInTheDocument();
       });
 
-      expect(screen.getByText('5.10.0')).toBeInTheDocument();
+      expect(screen.getByText('1.0.0')).toBeInTheDocument();
       expect(screen.getByText('production')).toBeInTheDocument();
 
       await waitFor(() => {
@@ -258,9 +258,7 @@ describe('SystemModal', () => {
       render(<SystemModal />);
 
       expect(screen.getByText('Recent Updates')).toBeInTheDocument();
-      expect(screen.getByText('v5.10.0')).toBeInTheDocument();
-      expect(screen.getByText('v5.9.0')).toBeInTheDocument();
-      expect(screen.getByText('v5.8.1')).toBeInTheDocument();
+      expect(screen.getByText('v1.0.0')).toBeInTheDocument();
     });
 
     it('should show current version badge on matching entry', async () => {
@@ -274,8 +272,8 @@ describe('SystemModal', () => {
 
       const badge = screen.getByText('Current Version');
       expect(badge).toHaveClass('current-version-badge');
-      // Badge should be inside the v5.10.0 entry (matches versionInfo.version)
-      expect(badge.closest('.changelog-version')).toHaveTextContent('v5.10.0');
+      // Badge should be inside the v1.0.0 entry (matches versionInfo.version)
+      expect(badge.closest('.changelog-version')).toHaveTextContent('v1.0.0');
     });
   });
 });

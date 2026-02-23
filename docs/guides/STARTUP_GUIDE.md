@@ -125,7 +125,7 @@ For official version releases, use the automated deployment script:
 .\scripts\deploy-to-production.ps1 -BumpType PATCH -Description "Bug fixes"
 ```
 
-This handles version bumping, changelog updates, building, tagging, and deployment automatically.
+This handles version bumping, changelog updates, building, tagging, and deployment automatically. Version numbering starts from 1.0.0 following the migration consolidation rebase.
 
 See [Version Management](../../.kiro/steering/versioning.md) for details.
 
@@ -182,7 +182,7 @@ cp backend/database/expenses.db backend/database/expenses.db.backup
 
 # Start fresh (development only!)
 rm backend/database/expenses.db
-npm start  # Will recreate with migrations
+npm start  # Will recreate from consolidated schema (backend/database/schema.js)
 ```
 
 ## Network Access

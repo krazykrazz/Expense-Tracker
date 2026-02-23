@@ -253,7 +253,14 @@ const ExpenseList = memo(({
   const [localFilterInsurance, setLocalFilterInsurance] = useState(initialInsuranceFilter); // Insurance status filter (Requirement 7.4)
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(50); // Default to 50 expenses per page
+  const [pageSize, setPageSize] = useState(() => {
+    try {
+      const stored = localStorage.getItem('expenseListPageSize');
+      return stored ? parseInt(stored, 10) : 50;
+    } catch {
+      return 50;
+    }
+  });
   // People selection state for medical expenses
   const [localPeople, setLocalPeople] = useState([]);
   const people = propPeople || localPeople;
@@ -564,6 +571,11 @@ const ExpenseList = memo(({
   const handlePageSizeChange = useCallback((newSize) => {
     setPageSize(newSize);
     setCurrentPage(1); // Reset to first page when changing page size
+    try {
+      localStorage.setItem('expenseListPageSize', newSize.toString());
+    } catch (error) {
+      console.error('Failed to save page size:', error);
+    }
   }, []);
 
   // Generate grouped options for the smart method filter (Requirement 1.1)

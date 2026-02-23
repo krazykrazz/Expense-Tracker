@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { API_ENDPOINTS } from '../config';
 import { getAllLoans, createLoan, updateLoan, deleteLoan } from '../services/loanApi';
 import { getFixedExpensesByLoan } from '../services/fixedExpenseApi';
@@ -159,6 +159,8 @@ const PaymentMethodsSection = ({ paymentMethods, loading, onPaymentRecorded, onV
 
   const allMethods = (paymentMethods || []).filter(m => activeTab === 'active' ? m.is_active : !m.is_active);
   const creditCards = allMethods.filter(m => m.type === 'credit_card');
+  // Stable key for credit card IDs to prevent infinite re-fetch loops
+  const creditCardKey = creditCards.map(c => c.id).sort().join(',');
   const otherMethods = allMethods.filter(m => m.type !== 'credit_card');
   const totalCount = allMethods.length;
 
@@ -179,7 +181,7 @@ const PaymentMethodsSection = ({ paymentMethods, loading, onPaymentRecorded, onV
     );
     setCardData(results);
     setCardLoading(false);
-  }, [creditCards]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [creditCardKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { fetchCardData(); }, [fetchCardData]);
 

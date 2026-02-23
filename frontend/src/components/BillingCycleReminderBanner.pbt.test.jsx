@@ -1,4 +1,7 @@
 /**
+ * @invariant Billing cycle reminder banner navigation contract: For any set of billing cycle cards
+ * needing entry, clicking the banner triggers onClick with the full cards array for context-aware navigation.
+ *
  * Property-Based Tests for BillingCycleReminderBanner Navigation Contract
  *
  * Feature: financial-overview-ui-consistency

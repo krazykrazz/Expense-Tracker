@@ -1,4 +1,7 @@
 /**
+ * @invariant Loan row content completeness: For any loan, the row renders the name, type badge,
+ * balance, rate, and View button with correct content and styling.
+ *
  * Property-based tests for LoanRow component.
  * Feature: financial-overview-ui-consistency
  * Feature: financial-overview-styling-consistency

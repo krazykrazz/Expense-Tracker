@@ -1,4 +1,7 @@
 /**
+ * @invariant Button styling properties consistency: For all row components, action buttons share
+ * consistent font-size, padding, and border-radius styling properties.
+ *
  * Property-based tests for button styling properties consistency.
  *
  * Feature: financial-overview-styling-consistency

@@ -1,4 +1,7 @@
 /**
+ * @invariant Blue-gray border color consistency: For all borders in the Financial Overview Modal,
+ * border colors are in the blue-gray palette range (#cbd5e1 to #94a3b8).
+ *
  * Property-Based Tests for Blue-Gray Border Colors
  * Feature: financial-overview-styling-consistency
  * 

@@ -1,4 +1,7 @@
 /**
+ * @invariant Functional preservation: View/edit/delete/pay button callbacks, form submission,
+ * responsive layout, keyboard navigation, and hover states are preserved after styling changes.
+ *
  * Preservation Property Tests for Financial Overview Styling Consistency
  * 
  * **Validates: Requirements 8.1, 8.2, 8.3, 8.4, 8.5, 8.6, 9.1, 9.2, 9.3, 9.4, 9.5, 10.1, 10.2, 10.3, 10.4, 10.5**

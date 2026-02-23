@@ -1,4 +1,7 @@
 /**
+ * @invariant Button class consistency across sections: For all row components (CreditCardRow, LoanRow,
+ * InvestmentRow), action buttons use the same CSS class conventions for View, Edit, Delete, and Pay actions.
+ *
  * Property-based tests for button styling consistency across Financial Overview sections.
  *
  * Feature: financial-overview-styling-consistency

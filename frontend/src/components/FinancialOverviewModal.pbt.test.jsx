@@ -1,4 +1,7 @@
 /**
+ * @invariant Unified view section correctness: Section headers show correct item counts, payment method
+ * subsection visibility matches content, row content is complete, and Add button disabled state matches loading.
+ *
  * Property-based tests for FinancialOverviewModal unified view.
  *
  * Property 7: Unified view section headers show correct item counts

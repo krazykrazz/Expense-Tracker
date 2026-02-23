@@ -1,4 +1,7 @@
 /**
+ * @invariant WCAG AA contrast compliance: For all text elements in the Financial Overview Modal,
+ * the contrast ratio between text color and background color is at least 4.5:1.
+ *
  * Property-Based Tests for WCAG AA Contrast Compliance
  * Feature: financial-overview-styling-consistency
  * 

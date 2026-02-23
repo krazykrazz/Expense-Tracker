@@ -1,4 +1,7 @@
 /**
+ * @invariant Blue-gray background consistency: For all row components (Payment Method, Loan, Investment),
+ * background colors are in the blue-gray range (#f8f9fa to #f0f4f8).
+ *
  * Property-Based Tests for Blue-Gray Background Consistency
  * Feature: financial-overview-styling-consistency
  * 

@@ -1,4 +1,7 @@
 /**
+ * @invariant Button label consistency: For all financial sections (payment methods, loans, investments),
+ * action buttons use consistent labels (View, Edit, Delete, Pay).
+ *
  * Property-based tests for button label consistency across financial sections.
  *
  * Feature: financial-overview-styling-consistency

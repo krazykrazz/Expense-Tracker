@@ -1,9 +1,6 @@
 /**
- * Property-Based Test: Button Visual Hierarchy
+ * @invariant Button Visual Hierarchy: For any component rendering both primary and cancel buttons, primary uses '.btn-primary' and cancel uses '.btn-cancel'.
  * Feature: ux-consistency, Property 9: Button visual hierarchy
- *
- * For any component rendering both primary and cancel buttons, verify primary
- * uses `.btn-primary` and cancel uses `.btn-cancel`.
  *
  * **Validates: Requirements 8.4**
  */

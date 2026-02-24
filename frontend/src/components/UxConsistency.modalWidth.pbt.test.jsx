@@ -1,13 +1,6 @@
 /**
- * Property-Based Test: Modal Width Token Adoption
+ * @invariant Modal Width Token Adoption: For any modal container, max-width references a --modal-width-* design token.
  * Feature: ux-consistency, Property 6: Modal width token adoption
- *
- * For any modal container in {PeopleManagementModal, FinancialOverviewModal,
- * MerchantAnalyticsModal, CreditCardDetailView, BudgetsModal, AnalyticsHubModal,
- * SystemModal}, verify `max-width` references a `--modal-width-*` token.
- *
- * This is a CSS static analysis test — read each CSS file and verify max-width
- * uses a modal width token.
  *
  * **Validates: Requirements 7.1, 7.2, 7.3**
  */

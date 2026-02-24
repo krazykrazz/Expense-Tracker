@@ -1,10 +1,6 @@
 /**
- * Property-Based Test: CreditCardDetailView z-index Token Compliance
+ * @invariant CreditCardDetailView z-index Token Compliance: CreditCardDetailView.css contains zero hardcoded z-index numeric values.
  * Feature: ux-consistency, Property 7: CreditCardDetailView z-index token compliance
- *
- * Verify CreditCardDetailView.css contains zero hardcoded z-index numeric values.
- * This is a CSS static analysis test — read the CSS file and verify no hardcoded
- * z-index values exist.
  *
  * **Validates: Requirements 3.1, 3.2, 3.3**
  */

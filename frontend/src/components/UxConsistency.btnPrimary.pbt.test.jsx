@@ -1,9 +1,6 @@
 /**
- * Property-Based Test: Primary Button Design Token Compliance
+ * @invariant Primary Button Design Token Compliance: For any primary button in {FinancialOverviewModal, PeopleManagementModal, PersonAllocationModal}, it uses '.btn-primary' class.
  * Feature: ux-consistency, Property 2: Primary button design token compliance
- *
- * For any primary button in {FinancialOverviewModal, PeopleManagementModal,
- * PersonAllocationModal}, verify it uses `.btn-primary` class.
  *
  * **Validates: Requirements 2.1, 2.2, 2.3**
  */

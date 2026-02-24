@@ -1,10 +1,6 @@
 /**
- * Property-Based Test: Form Input Styling Consistency
+ * @invariant Form Input Styling Consistency: For any form input in {CreditCardPaymentForm, PersonAllocationModal, PeopleManagementModal, FinancialOverviewModal}, it uses '.form-input' class or aligned token values.
  * Feature: ux-consistency, Property 4: Form input styling consistency
- *
- * For any form input in {CreditCardPaymentForm, PersonAllocationModal,
- * PeopleManagementModal, FinancialOverviewModal}, verify it uses `.form-input`
- * class or aligned token values.
  *
  * **Validates: Requirements 5.1, 5.2, 5.3, 5.4**
  */

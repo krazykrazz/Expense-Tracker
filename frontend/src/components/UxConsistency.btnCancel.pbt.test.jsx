@@ -1,9 +1,6 @@
 /**
- * Property-Based Test: Cancel Button Design Token Compliance
+ * @invariant Cancel Button Design Token Compliance: For any cancel button in {CreditCardPaymentForm, PersonAllocationModal, PeopleManagementModal, FinancialOverviewModal}, it uses '.btn-cancel' class.
  * Feature: ux-consistency, Property 3: Cancel button design token compliance
- *
- * For any cancel button in {CreditCardPaymentForm, PersonAllocationModal,
- * PeopleManagementModal, FinancialOverviewModal}, verify it uses `.btn-cancel` class.
  *
  * **Validates: Requirements 8.1, 8.3**
  */

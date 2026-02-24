@@ -1,10 +1,6 @@
 /**
- * Property-Based Test: Modal Overlay Consistency
+ * @invariant Modal Overlay Consistency: For any modal in {AnalyticsHubModal, FinancialOverviewModal, BudgetsModal, MerchantAnalyticsModal, PeopleManagementModal, CreditCardDetailView, PersonAllocationModal}, the overlay element has class 'modal-overlay'.
  * Feature: ux-consistency, Property 1: Modal overlay consistency
- *
- * For any modal in {AnalyticsHubModal, FinancialOverviewModal, BudgetsModal,
- * MerchantAnalyticsModal, PeopleManagementModal, CreditCardDetailView,
- * PersonAllocationModal}, verify the overlay element has class `modal-overlay`.
  *
  * **Validates: Requirements 1.1, 1.2, 1.3**
  */

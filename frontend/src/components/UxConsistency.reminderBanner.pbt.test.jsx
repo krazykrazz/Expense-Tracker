@@ -1,9 +1,6 @@
 /**
- * Property-Based Test: Reminder Banner Structural Consistency
+ * @invariant Reminder Banner Structural Consistency: For any reminder banner in {BudgetReminderBanner, LoanPaymentReminderBanner}, root element has 'reminder-banner' class.
  * Feature: ux-consistency, Property 8: Reminder banner structural consistency
- *
- * For any reminder banner in {BudgetReminderBanner, LoanPaymentReminderBanner},
- * verify root element has `reminder-banner` class.
  *
  * **Validates: Requirements 6.1, 6.2, 6.3, 6.4**
  */

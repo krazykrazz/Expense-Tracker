@@ -1,10 +1,6 @@
 /**
- * Property-Based Test: No rem units in migrated component CSS
+ * @invariant No rem units in migrated CSS: For any CSS file in {CollapsibleSection, BudgetReminderBanner, LoanPaymentReminderBanner, PeopleManagementModal, FinancialOverviewModal}, zero rem-based font-size values and zero hardcoded numeric font-weight values exist.
  * Feature: ux-consistency, Property 5: No rem units in migrated component CSS
- *
- * For any CSS file in {CollapsibleSection.css, BudgetReminderBanner.css,
- * LoanPaymentReminderBanner.css, PeopleManagementModal.css, FinancialOverviewModal.css},
- * verify zero rem-based font-size values and zero hardcoded numeric font-weight values.
  *
  * **Validates: Requirements 4.1, 4.2, 4.3, 4.4, 4.5, 4.7**
  */

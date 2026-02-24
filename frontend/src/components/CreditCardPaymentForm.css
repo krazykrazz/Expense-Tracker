@@ -100,25 +100,14 @@
   font-size: var(--text-xs);
 }
 
+/* Base input styles provided by .form-input in App.css */
+/* Component-specific overrides only */
 .cc-payment-input {
   padding: var(--spacing-2) var(--spacing-3);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-md);
-  font-size: var(--text-base);
-  font-family: var(--font-sans);
-  color: var(--text-primary);
-  background-color: var(--bg-card);
-  transition: var(--transition-input);
 }
 
 .cc-payment-input:hover:not(:disabled) {
   border-color: var(--border-strong);
-}
-
-.cc-payment-input:focus {
-  outline: none;
-  border-color: var(--border-focus);
-  box-shadow: var(--focus-ring);
 }
 
 .cc-payment-input:disabled {
@@ -208,22 +197,15 @@
   margin-top: var(--spacing-2);
 }
 
+/* Base button styles provided by .btn-primary in App.css */
+/* Component-specific overrides only */
 .cc-payment-submit-btn {
   flex: 1;
   padding: var(--spacing-3) var(--spacing-4);
-  background-color: var(--color-primary);
-  color: var(--text-inverse);
-  border: none;
-  border-radius: var(--radius-md);
-  font-size: var(--text-sm);
-  font-weight: var(--font-medium);
   font-family: var(--font-sans);
-  cursor: pointer;
-  transition: var(--transition-button);
 }
 
 .cc-payment-submit-btn:hover:not(:disabled) {
-  background-color: var(--color-primary-hover);
   transform: translateY(-1px);
 }
 
@@ -231,32 +213,15 @@
   transform: translateY(0) scale(0.98);
 }
 
-.cc-payment-submit-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
+/* Base button styles provided by .btn-cancel in App.css */
+/* Component-specific overrides only */
 .cc-payment-cancel-btn {
   padding: var(--spacing-3) var(--spacing-4);
-  background-color: var(--bg-card);
-  color: var(--text-secondary);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-md);
-  font-size: var(--text-sm);
-  font-weight: var(--font-medium);
   font-family: var(--font-sans);
-  cursor: pointer;
-  transition: var(--transition-button);
 }
 
 .cc-payment-cancel-btn:hover:not(:disabled) {
-  background-color: var(--bg-muted);
   border-color: var(--border-strong);
-}
-
-.cc-payment-cancel-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
 }
 
 /* Mobile Responsive */

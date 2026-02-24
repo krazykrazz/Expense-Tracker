@@ -457,7 +457,7 @@ describe('PeopleManagementModal', () => {
     it('should close modal when overlay is clicked', () => {
       render(<PeopleManagementModal {...defaultProps} />);
       
-      const overlay = screen.getByText('Manage Family Members').closest('.people-modal-overlay');
+      const overlay = screen.getByText('Manage Family Members').closest('.modal-overlay');
       fireEvent.click(overlay);
       
       expect(mockOnClose).toHaveBeenCalled();

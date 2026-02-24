@@ -167,7 +167,7 @@ describe('BudgetsModal', () => {
     it('calls onClose when overlay is clicked', () => {
       const onClose = vi.fn();
       render(<BudgetsModal {...defaultProps} onClose={onClose} />);
-      const overlay = document.querySelector('.budgets-modal-overlay');
+      const overlay = document.querySelector('.modal-overlay');
       fireEvent.click(overlay);
       expect(onClose).toHaveBeenCalledTimes(1);
     });

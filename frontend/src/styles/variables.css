@@ -244,4 +244,13 @@
   --z-modal: 500;
   --z-popover: 600;
   --z-tooltip: 700;
+
+  /* ============================================
+     MODAL WIDTH TOKENS
+     Standardized modal sizing
+     ============================================ */
+  --modal-width-sm: 500px;
+  --modal-width-md: 700px;
+  --modal-width-lg: 900px;
+  --modal-width-xl: 1200px;
 }

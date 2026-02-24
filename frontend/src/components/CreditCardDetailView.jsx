@@ -262,7 +262,7 @@ const CreditCardDetailView = ({
   // Show payment form
   if (showPaymentForm && paymentMethod) {
     return (
-      <div className="cc-detail-modal-overlay" onClick={handleClose}>
+      <div className="modal-overlay" onClick={handleClose}>
         <div className="cc-detail-modal-container cc-detail-form-view" onClick={(e) => e.stopPropagation()}>
           <CreditCardPaymentForm
             paymentMethodId={paymentMethodId}
@@ -279,7 +279,7 @@ const CreditCardDetailView = ({
   // Show billing cycle form
   if (showBillingCycleForm && paymentMethod) {
     return (
-      <div className="cc-detail-modal-overlay" onClick={handleClose}>
+      <div className="modal-overlay" onClick={handleClose}>
         <div className="cc-detail-modal-container cc-detail-form-view" onClick={(e) => e.stopPropagation()}>
           <BillingCycleHistoryForm
             paymentMethodId={paymentMethodId}
@@ -300,7 +300,7 @@ const CreditCardDetailView = ({
   }
 
   return (
-    <div className="cc-detail-modal-overlay" onClick={handleClose}>
+    <div className="modal-overlay" onClick={handleClose}>
       <div className="cc-detail-modal-container" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="cc-detail-header">

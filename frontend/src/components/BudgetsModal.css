@@ -1,27 +1,6 @@
 /* BudgetsModal — unified budget modal with tab navigation */
 
 /* ── Overlay & Container (from BudgetManagementModal.css) ── */
-.budgets-modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: var(--bg-overlay, rgba(0, 0, 0, 0.5));
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: var(--z-modal-backdrop, 400);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  animation: budgetOverlayFadeIn var(--transition-fast, 150ms ease);
-}
-
-@keyframes budgetOverlayFadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
 @keyframes budgetModalSlideUp {
   from { opacity: 0; transform: translateY(10px) scale(0.98); }
   to { opacity: 1; transform: translateY(0) scale(1); }
@@ -30,7 +9,7 @@
 .budgets-modal-container {
   background: var(--bg-card, white);
   border-radius: var(--radius-xl, 16px);
-  max-width: 900px;
+  max-width: var(--modal-width-lg);
   width: 90%;
   max-height: 85vh;
   overflow-y: auto;
@@ -629,7 +608,7 @@
 
 /* ── Reduced Motion ── */
 @media (prefers-reduced-motion: reduce) {
-  .budgets-modal-overlay,
+  .modal-overlay,
   .budgets-modal-container,
   .budgets-tab-content,
   .budgets-tab-panel { animation: none; }

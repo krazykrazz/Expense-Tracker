@@ -280,7 +280,7 @@ const PersonAllocationModal = ({
                       placeholder="0.00"
                       step="0.01"
                       min="0"
-                      className="amount-input"
+                      className="amount-input form-input"
                     />
                   </div>
                 )}
@@ -293,7 +293,7 @@ const PersonAllocationModal = ({
                     placeholder="0.00"
                     step="0.01"
                     min="0"
-                    className="amount-input"
+                    className="amount-input form-input"
                   />
                 </div>
               </div>
@@ -310,14 +310,14 @@ const PersonAllocationModal = ({
         <div className="modal-footer">
           <button 
             type="button" 
-            className="cancel-button"
+            className="cancel-button btn-cancel"
             onClick={handleCancel}
           >
             Cancel
           </button>
           <button 
             type="button" 
-            className="save-button"
+            className="save-button btn-primary"
             onClick={handleSave}
             disabled={!isValid}
           >

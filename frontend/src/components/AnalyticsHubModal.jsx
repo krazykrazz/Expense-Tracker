@@ -170,7 +170,7 @@ const AnalyticsHubModal = ({
   }
 
   return (
-    <div className="analytics-hub-overlay" onClick={handleClose}>
+    <div className="modal-overlay" onClick={handleClose}>
       <div className="analytics-hub-container" onClick={(e) => e.stopPropagation()}>
         <div className="analytics-hub-header">
           <h2>Analytics Hub</h2>

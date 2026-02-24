@@ -1,13 +1,5 @@
-.budget-reminder-banner {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  padding: 12px 16px;
-  border-radius: 8px;
-  margin-bottom: 12px;
-  cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
+/* Structural properties (display, padding, border-radius, margin-bottom, cursor, transition) 
+   are provided by the shared .reminder-banner base class in App.css */
 
 .budget-reminder-banner:hover {
   transform: translateY(-1px);
@@ -58,7 +50,7 @@
 }
 
 .budget-reminder-banner .reminder-icon {
-  font-size: 1.3rem;
+  font-size: var(--text-2xl);
   flex-shrink: 0;
   margin-top: 2px;
 }
@@ -71,8 +63,8 @@
 }
 
 .budget-reminder-banner .reminder-message {
-  font-weight: 600;
-  font-size: 0.95rem;
+  font-weight: var(--font-semibold);
+  font-size: var(--text-md);
 }
 
 /* Budget info section */
@@ -85,33 +77,33 @@
 }
 
 .budget-reminder-banner .reminder-budget-label {
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   opacity: 0.9;
 }
 
 .budget-reminder-banner .reminder-budget-amount {
-  font-weight: 700;
-  font-size: 1rem;
+  font-weight: var(--font-bold);
+  font-size: var(--text-lg);
 }
 
 .budget-reminder-banner .reminder-budget-separator {
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   opacity: 0.7;
 }
 
 .budget-reminder-banner .reminder-budget-limit {
-  font-size: 0.9rem;
+  font-size: var(--text-base);
   opacity: 0.9;
 }
 
 .budget-reminder-banner .reminder-remaining {
-  font-size: 0.8rem;
+  font-size: var(--text-sm);
   opacity: 0.85;
   font-style: italic;
 }
 
 .budget-reminder-banner .reminder-alert-count {
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   opacity: 0.9;
 }
 
@@ -122,8 +114,8 @@
   gap: 4px;
   padding: 2px 8px;
   border-radius: 12px;
-  font-size: 0.75rem;
-  font-weight: 600;
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
 }
 
 .budget-reminder-banner .progress-badge.warning {
@@ -148,14 +140,14 @@
   gap: 4px;
   padding: 2px 8px;
   border-radius: 12px;
-  font-size: 0.75rem;
-  font-weight: 600;
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
   text-transform: uppercase;
 }
 
 .budget-reminder-banner .reminder-severity-badge.small {
   padding: 1px 4px;
-  font-size: 0.7rem;
+  font-size: var(--text-xs);
 }
 
 .budget-reminder-banner .reminder-severity-badge.warning {
@@ -187,7 +179,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   padding: 4px 8px;
   border-radius: 4px;
   cursor: pointer;
@@ -200,17 +192,17 @@
 
 .budget-reminder-banner .reminder-alert-category {
   flex: 1;
-  font-weight: 500;
+  font-weight: var(--font-medium);
 }
 
 .budget-reminder-banner .reminder-alert-progress {
-  font-weight: 600;
+  font-weight: var(--font-semibold);
   min-width: 40px;
   text-align: right;
 }
 
 .budget-reminder-banner .reminder-alert-amounts {
-  font-size: 0.8rem;
+  font-size: var(--text-sm);
   opacity: 0.85;
   min-width: 120px;
   text-align: right;
@@ -219,7 +211,7 @@
 .budget-reminder-banner .reminder-dismiss-btn {
   background: transparent;
   border: none;
-  font-size: 1.4rem;
+  font-size: var(--text-3xl);
   cursor: pointer;
   padding: 4px 8px;
   border-radius: 4px;

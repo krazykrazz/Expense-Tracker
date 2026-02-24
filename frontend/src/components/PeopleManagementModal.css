@@ -1,29 +1,3 @@
-/* Modal Overlay */
-.people-modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: var(--bg-overlay, rgba(0, 0, 0, 0.5));
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: var(--z-modal-backdrop, 400);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  animation: peopleOverlayFadeIn var(--transition-fast, 150ms ease);
-}
-
-@keyframes peopleOverlayFadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
 @keyframes peopleModalSlideUp {
   from {
     opacity: 0;
@@ -39,7 +13,7 @@
 .people-modal-container {
   background: var(--bg-card, white);
   border-radius: var(--radius-xl, 16px);
-  max-width: 700px;
+  max-width: var(--modal-width-md);
   width: 90%;
   max-height: 85vh;
   overflow-y: auto;
@@ -136,7 +110,6 @@
 }
 
 .people-add-button {
-  background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
   color: white;
   border: none;
   padding: var(--spacing-3, 12px) var(--spacing-6, 24px);
@@ -193,23 +166,23 @@
 }
 
 .people-form-group label {
-  font-weight: 500;
+  font-weight: var(--font-medium);
   color: #333;
-  font-size: 0.95rem;
+  font-size: var(--text-md);
 }
 
 .people-form-group input {
-  padding: 10px 12px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 1rem;
+  padding: var(--spacing-3) var(--spacing-4);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  font-size: var(--text-lg);
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .people-form-group input:focus {
   outline: none;
-  border-color: #4CAF50;
-  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+  border-color: var(--border-focus);
+  box-shadow: var(--focus-ring);
 }
 
 .people-form-group input.input-error {
@@ -219,7 +192,7 @@
 
 .validation-error {
   color: #f44336;
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   margin-top: 4px;
 }
 
@@ -231,39 +204,35 @@
 }
 
 .people-save-button {
-  background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
   color: white;
   border: none;
   padding: 10px 20px;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 0.95rem;
-  font-weight: 500;
+  font-size: var(--text-md);
+  font-weight: var(--font-medium);
   transition: background-color 0.2s;
 }
 
 .people-save-button:hover:not(:disabled) {
-  background: linear-gradient(135deg, #45a049 0%, #388e3c 100%);
+  background: var(--color-primary-hover);
 }
 
 .people-save-button:disabled {
-  background: #ccc;
+  opacity: 0.6;
   cursor: not-allowed;
 }
 
 .people-cancel-button {
-  background: #6c757d;
-  color: white;
-  border: none;
   padding: 10px 20px;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 0.95rem;
+  font-size: var(--text-md);
   transition: background-color 0.2s;
 }
 
 .people-cancel-button:hover:not(:disabled) {
-  background: #5a6268;
+  background: var(--bg-muted);
 }
 
 /* People List Section */
@@ -274,7 +243,7 @@
 .people-list-section h3 {
   margin: 0 0 16px 0;
   color: #333;
-  font-size: 1.2rem;
+  font-size: var(--text-2xl);
   border-bottom: 2px solid #4CAF50;
   padding-bottom: 8px;
 }
@@ -291,8 +260,8 @@
 }
 
 .people-empty-state p:first-child {
-  font-size: 1.1rem;
-  font-weight: 500;
+  font-size: var(--text-xl);
+  font-weight: var(--font-medium);
 }
 
 /* People List */
@@ -323,14 +292,14 @@
 }
 
 .people-name {
-  font-size: 1.1rem;
-  font-weight: 500;
+  font-size: var(--text-xl);
+  font-weight: var(--font-medium);
   color: #333;
   margin-bottom: 4px;
 }
 
 .people-dob {
-  font-size: 0.9rem;
+  font-size: var(--text-base);
   color: #666;
 }
 
@@ -347,7 +316,7 @@
   padding: 8px 12px;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 1rem;
+  font-size: var(--text-lg);
   transition: all 0.2s;
 }
 
@@ -379,7 +348,7 @@
 .people-info-text {
   margin: 0;
   color: #2e7d32;
-  font-size: 0.95rem;
+  font-size: var(--text-md);
   line-height: 1.4;
 }
 
@@ -446,8 +415,8 @@
   padding: 10px 20px;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 0.95rem;
-  font-weight: 500;
+  font-size: var(--text-md);
+  font-weight: var(--font-medium);
   transition: background-color 0.2s;
 }
 
@@ -467,7 +436,7 @@
   padding: 10px 20px;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 0.95rem;
+  font-size: var(--text-md);
   transition: background-color 0.2s;
 }
 
@@ -487,7 +456,7 @@
   }
   
   .people-modal-header h2 {
-    font-size: 1.3rem;
+    font-size: var(--text-2xl);
   }
   
   .people-modal-content {
@@ -535,7 +504,7 @@
 
 /* Accessibility: Respect reduced motion preferences */
 @media (prefers-reduced-motion: reduce) {
-  .people-modal-overlay,
+  .modal-overlay,
   .people-delete-overlay {
     animation: none;
   }

@@ -399,7 +399,7 @@ describe('MerchantAnalyticsModal', () => {
       });
 
       // Click on overlay (the modal container's parent)
-      const overlay = document.querySelector('.merchant-analytics-modal-overlay');
+      const overlay = document.querySelector('.modal-overlay');
       fireEvent.click(overlay);
       
       expect(mockOnClose).toHaveBeenCalled();

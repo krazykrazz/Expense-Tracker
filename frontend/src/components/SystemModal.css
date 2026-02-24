@@ -7,7 +7,7 @@
   box-shadow: var(--shadow-xl);
   min-width: 1200px;
   width: 1200px;
-  max-width: 98vw;
+  max-width: var(--modal-width-xl);
   max-height: 90vh;
   overflow-y: auto;
   position: relative;

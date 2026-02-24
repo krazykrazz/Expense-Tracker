@@ -3,32 +3,11 @@
  * Requirements: 2.1, 5.1
  */
 
-/* Modal Overlay - Requirement 5.4 */
-.merchant-analytics-modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: var(--bg-overlay);
-  backdrop-filter: blur(4px);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: var(--z-modal, 500);
-  animation: fadeIn var(--transition-fast);
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
 /* Modal Container - Requirement 5.1, 5.2 */
 .merchant-analytics-modal-container {
   background: var(--bg-card);
   border-radius: var(--radius-xl);
-  max-width: 800px;
+  max-width: var(--modal-width-lg);
   width: 90%;
   max-height: 85vh;
   overflow-y: auto;
@@ -433,7 +412,7 @@
 
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
-  .merchant-analytics-modal-overlay,
+  .modal-overlay,
   .merchant-analytics-modal-container {
     animation: none;
   }

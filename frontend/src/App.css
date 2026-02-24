@@ -443,6 +443,84 @@
   .retry-button:active {
     transform: none;
   }
+
+  .btn-primary {
+    transition: none;
+  }
+}
+
+/* ============================================
+   SHARED BASE CLASSES
+   Reusable patterns for consistent styling
+   ============================================ */
+
+/* Primary Action Button */
+.btn-primary {
+  background-color: var(--color-primary);
+  color: var(--text-inverse);
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  padding: var(--spacing-3) var(--spacing-5);
+  cursor: pointer;
+  transition: var(--transition-button);
+}
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--color-primary-hover);
+}
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Cancel/Dismiss Button */
+.btn-cancel {
+  background-color: var(--bg-card);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  padding: var(--spacing-3) var(--spacing-5);
+  cursor: pointer;
+  transition: var(--transition-button);
+}
+.btn-cancel:hover:not(:disabled) {
+  background-color: var(--bg-muted);
+}
+.btn-cancel:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Form Input */
+.form-input {
+  padding: var(--spacing-3) var(--spacing-4);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  font-size: var(--text-base);
+  font-family: var(--font-sans);
+  color: var(--text-primary);
+  background-color: var(--bg-card);
+  transition: var(--transition-input);
+}
+.form-input:focus {
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: var(--focus-ring);
+}
+
+/* Reminder Banner */
+.reminder-banner {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: var(--spacing-3) var(--spacing-4);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-3);
+  cursor: pointer;
+  transition: var(--transition-card);
 }
 
 /* Tablet breakpoint for intermediate responsive behavior */

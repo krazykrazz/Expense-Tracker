@@ -52,7 +52,7 @@ const LoanPaymentReminderBanner = ({
   };
 
   const icon = isOverdue ? '🚨' : '🏦';
-  const bannerClass = isOverdue ? 'loan-payment-reminder-banner overdue' : 'loan-payment-reminder-banner due-soon';
+  const bannerClass = isOverdue ? 'loan-payment-reminder-banner reminder-banner overdue' : 'loan-payment-reminder-banner reminder-banner due-soon';
   
   /**
    * Build message based on number of payments

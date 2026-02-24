@@ -86,7 +86,7 @@ const MerchantAnalyticsModal = ({ isOpen, onClose, onViewExpenses, embedded = fa
   }
 
   return (
-    <div className={`merchant-analytics-modal-overlay ${embedded ? 'embedded' : ''}`} onClick={embedded ? undefined : handleClose}>
+    <div className={`modal-overlay ${embedded ? 'embedded' : ''}`} onClick={embedded ? undefined : handleClose}>
       <div className="merchant-analytics-modal-container" onClick={(e) => e.stopPropagation()}>
         <div className="merchant-analytics-modal-header">
           <h2>Merchant Analytics</h2>

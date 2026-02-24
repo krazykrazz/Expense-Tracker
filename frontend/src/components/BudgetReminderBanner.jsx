@@ -41,9 +41,9 @@ const BudgetReminderBanner = ({
     const hasCritical = alerts.some(a => a.severity === 'critical');
     const hasDanger = alerts.some(a => a.severity === 'danger');
     
-    if (hasCritical) return 'budget-reminder-banner critical';
-    if (hasDanger) return 'budget-reminder-banner danger';
-    return 'budget-reminder-banner warning';
+    if (hasCritical) return 'budget-reminder-banner reminder-banner critical';
+    if (hasDanger) return 'budget-reminder-banner reminder-banner danger';
+    return 'budget-reminder-banner reminder-banner warning';
   };
 
   const icon = '💰';

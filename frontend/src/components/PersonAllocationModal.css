@@ -158,20 +158,14 @@
   z-index: 1;
 }
 
+/* Base input styles provided by .form-input in App.css */
+/* Component-specific overrides only */
 .amount-input {
   width: 120px;
-  padding: 8px 12px 8px 24px;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
+  padding: var(--spacing-2) var(--spacing-3) var(--spacing-2) var(--spacing-6);
   font-size: 14px;
   text-align: right;
   background-color: white;
-}
-
-.amount-input:focus {
-  outline: none;
-  border-color: #0ea5e9;
-  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
 }
 
 /* Error Message */
@@ -195,42 +189,20 @@
   background-color: #f9fafb;
 }
 
+/* Base button styles provided by .btn-cancel in App.css */
+/* Component-specific overrides only */
 .cancel-button {
-  background-color: #f3f4f6;
-  color: #374151;
-  border: 1px solid #d1d5db;
   border-radius: 6px;
   padding: 10px 20px;
   font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.15s ease;
 }
 
-.cancel-button:hover {
-  background-color: #e5e7eb;
-}
-
+/* Base button styles provided by .btn-primary in App.css */
+/* Component-specific overrides only */
 .save-button {
-  background-color: #059669;
-  color: white;
-  border: none;
   border-radius: 6px;
   padding: 10px 20px;
   font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.15s ease;
-}
-
-.save-button:hover:not(:disabled) {
-  background-color: #047857;
-}
-
-.save-button:disabled {
-  background-color: #d1d5db;
-  color: #9ca3af;
-  cursor: not-allowed;
 }
 
 /* Responsive Design */

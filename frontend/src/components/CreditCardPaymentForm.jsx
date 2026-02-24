@@ -174,7 +174,7 @@ const CreditCardPaymentForm = ({
             <input
               type="text"
               id="payment-amount"
-              className="cc-payment-input"
+              className="cc-payment-input form-input"
               value={amount}
               onChange={handleAmountChange}
               placeholder="0.00"
@@ -197,7 +197,7 @@ const CreditCardPaymentForm = ({
           <input
             type="date"
             id="payment-date"
-            className="cc-payment-input cc-payment-date"
+            className="cc-payment-input cc-payment-date form-input"
             value={paymentDate}
             onChange={handleDateChange}
             disabled={disabled || submitting}
@@ -212,7 +212,7 @@ const CreditCardPaymentForm = ({
           </label>
           <textarea
             id="payment-notes"
-            className="cc-payment-input cc-payment-notes"
+            className="cc-payment-input cc-payment-notes form-input"
             value={notes}
             onChange={handleNotesChange}
             placeholder="e.g., Online payment, Bank transfer..."
@@ -240,14 +240,14 @@ const CreditCardPaymentForm = ({
         <div className="cc-payment-actions">
           <button
             type="submit"
-            className="cc-payment-submit-btn"
+            className="cc-payment-submit-btn btn-primary"
             disabled={disabled || submitting || !amount}
           >
             {submitting ? 'Recording...' : 'Record Payment'}
           </button>
           <button
             type="button"
-            className="cc-payment-cancel-btn"
+            className="cc-payment-cancel-btn btn-cancel"
             onClick={onCancel}
             disabled={submitting}
           >

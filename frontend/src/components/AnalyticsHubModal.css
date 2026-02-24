@@ -3,32 +3,11 @@
  * Requirements: 7.1, 7.5, 7.6
  */
 
-/* Modal Overlay */
-.analytics-hub-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: var(--bg-overlay);
-  backdrop-filter: blur(4px);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: var(--z-modal, 500);
-  animation: analyticsHubFadeIn var(--transition-fast);
-}
-
-@keyframes analyticsHubFadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
 /* Modal Container */
 .analytics-hub-container {
   background: var(--bg-card);
   border-radius: var(--radius-xl);
-  max-width: 1000px;
+  max-width: var(--modal-width-lg);
   width: 95%;
   max-height: 90vh;
   display: flex;
@@ -253,7 +232,7 @@
   margin: calc(-1 * var(--spacing-5));
 }
 
-.analytics-hub-merchant-wrapper .merchant-analytics-modal-overlay {
+.analytics-hub-merchant-wrapper .modal-overlay {
   position: static;
   background: none;
   backdrop-filter: none;
@@ -336,7 +315,7 @@
 
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
-  .analytics-hub-overlay,
+  .modal-overlay,
   .analytics-hub-container {
     animation: none;
   }

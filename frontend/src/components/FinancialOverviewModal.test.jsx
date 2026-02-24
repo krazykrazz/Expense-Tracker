@@ -214,7 +214,7 @@ describe('FinancialOverviewModal', () => {
       render(<FinancialOverviewModal {...defaultProps} onClose={onClose} />);
       await waitFor(() => expect(screen.getByText('💼 Financial Overview')).toBeInTheDocument());
 
-      const overlay = document.querySelector('.financial-modal-overlay');
+      const overlay = document.querySelector('.modal-overlay');
       fireEvent.click(overlay);
       expect(onClose).toHaveBeenCalled();
     });

@@ -212,7 +212,7 @@ const PeopleManagementModal = ({ isOpen, onClose, onPeopleUpdated }) => {
   }
 
   return (
-    <div className="people-modal-overlay" onClick={handleClose}>
+    <div className="modal-overlay" onClick={handleClose}>
       <div className="people-modal-container" onClick={(e) => e.stopPropagation()}>
         <div className="people-modal-header">
           <h2>Manage Family Members</h2>
@@ -241,7 +241,7 @@ const PeopleManagementModal = ({ isOpen, onClose, onPeopleUpdated }) => {
               {/* Add Person Section */}
               <div className="people-add-section">
                 <button
-                  className="people-add-button"
+                  className="people-add-button btn-primary"
                   onClick={handleAddPerson}
                   disabled={loading || editingPerson !== null}
                 >
@@ -263,7 +263,7 @@ const PeopleManagementModal = ({ isOpen, onClose, onPeopleUpdated }) => {
                         value={formData.name}
                         onChange={(e) => handleInputChange('name', e.target.value)}
                         placeholder="Enter person's name"
-                        className={validationErrors.name ? 'input-error' : ''}
+                        className={`form-input ${validationErrors.name ? 'input-error' : ''}`}
                         disabled={loading}
                         autoFocus
                       />
@@ -279,7 +279,7 @@ const PeopleManagementModal = ({ isOpen, onClose, onPeopleUpdated }) => {
                         type="date"
                         value={formData.dateOfBirth}
                         onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
-                        className={validationErrors.dateOfBirth ? 'input-error' : ''}
+                        className={`form-input ${validationErrors.dateOfBirth ? 'input-error' : ''}`}
                         disabled={loading}
                       />
                       {validationErrors.dateOfBirth && (
@@ -289,14 +289,14 @@ const PeopleManagementModal = ({ isOpen, onClose, onPeopleUpdated }) => {
 
                     <div className="people-form-actions">
                       <button
-                        className="people-save-button"
+                        className="people-save-button btn-primary"
                         onClick={handleSavePerson}
                         disabled={loading}
                       >
                         {loading ? 'Saving...' : (editingPerson === 'new' ? 'Add Person' : 'Save Changes')}
                       </button>
                       <button
-                        className="people-cancel-button"
+                        className="people-cancel-button btn-cancel"
                         onClick={handleCancelEdit}
                         disabled={loading}
                       >

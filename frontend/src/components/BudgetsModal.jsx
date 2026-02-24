@@ -588,7 +588,7 @@ const BudgetsModal = ({ isOpen, onClose, year, month, onBudgetUpdated, focusedCa
   if (!isOpen) return null;
 
   return (
-    <div className="budgets-modal-overlay" onClick={handleClose}>
+    <div className="modal-overlay" onClick={handleClose}>
       <div className="budgets-modal-container" onClick={(e) => e.stopPropagation()}>
         <div className="budgets-modal-header">
           <h2>💵 Budgets — {getMonthNameLong(month)} {year}</h2>

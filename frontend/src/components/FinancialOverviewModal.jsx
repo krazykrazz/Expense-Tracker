@@ -624,22 +624,22 @@ const LoansSection = ({ year, month, onUpdate, highlightIds = [], onTotalDebtCha
                 <div className="loans-form">
                   <div className="loans-input-group">
                     <label>Loan Name *</label>
-                    <input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="e.g., Car Loan" className={validationErrors.name ? 'input-error' : ''} disabled={loading} />
+                    <input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="e.g., Car Loan" className={`form-input ${validationErrors.name ? 'input-error' : ''}`} disabled={loading} />
                     {validationErrors.name && <span className="validation-error">{validationErrors.name}</span>}
                   </div>
                   <div className="loans-input-group">
                     <label>Initial Balance * {editingLoanId && '(cannot be changed)'}</label>
-                    <input type="number" value={formData.initial_balance} onChange={(e) => setFormData({ ...formData, initial_balance: e.target.value })} placeholder="0.00" step="0.01" min="0" className={validationErrors.initial_balance ? 'input-error' : ''} disabled={loading || !!editingLoanId} />
+                    <input type="number" value={formData.initial_balance} onChange={(e) => setFormData({ ...formData, initial_balance: e.target.value })} placeholder="0.00" step="0.01" min="0" className={`form-input ${validationErrors.initial_balance ? 'input-error' : ''}`} disabled={loading || !!editingLoanId} />
                     {validationErrors.initial_balance && <span className="validation-error">{validationErrors.initial_balance}</span>}
                   </div>
                   <div className="loans-input-group">
                     <label>Start Date * {editingLoanId && '(cannot be changed)'}</label>
-                    <input type="date" value={formData.start_date} onChange={(e) => setFormData({ ...formData, start_date: e.target.value })} className={validationErrors.start_date ? 'input-error' : ''} disabled={loading || !!editingLoanId} />
+                    <input type="date" value={formData.start_date} onChange={(e) => setFormData({ ...formData, start_date: e.target.value })} className={`form-input ${validationErrors.start_date ? 'input-error' : ''}`} disabled={loading || !!editingLoanId} />
                     {validationErrors.start_date && <span className="validation-error">{validationErrors.start_date}</span>}
                   </div>
                   <div className="loans-input-group">
                     <label>Loan Type *</label>
-                    <select value={formData.loan_type} onChange={(e) => setFormData({ ...formData, loan_type: e.target.value })} disabled={loading || !!editingLoanId}>
+                    <select value={formData.loan_type} onChange={(e) => setFormData({ ...formData, loan_type: e.target.value })} className="form-input" disabled={loading || !!editingLoanId}>
                       <option value="loan">Loan</option>
                       <option value="line_of_credit">Line of Credit</option>
                       <option value="mortgage">Mortgage</option>
@@ -648,19 +648,19 @@ const LoansSection = ({ year, month, onUpdate, highlightIds = [], onTotalDebtCha
                   {formData.loan_type === 'loan' && (
                     <div className="loans-input-group">
                       <label>Fixed Interest Rate (%)</label>
-                      <input type="number" value={formData.fixed_interest_rate} onChange={(e) => setFormData({ ...formData, fixed_interest_rate: e.target.value })} placeholder="e.g., 5.25" step="0.01" min="0" className={validationErrors.fixed_interest_rate ? 'input-error' : ''} disabled={loading} />
+                      <input type="number" value={formData.fixed_interest_rate} onChange={(e) => setFormData({ ...formData, fixed_interest_rate: e.target.value })} placeholder="e.g., 5.25" step="0.01" min="0" className={`form-input ${validationErrors.fixed_interest_rate ? 'input-error' : ''}`} disabled={loading} />
                       {validationErrors.fixed_interest_rate && <span className="validation-error">{validationErrors.fixed_interest_rate}</span>}
                     </div>
                   )}
                   <div className="loans-input-group">
                     <label>Notes</label>
-                    <textarea value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} rows="2" disabled={loading} />
+                    <textarea value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} className="form-input" rows="2" disabled={loading} />
                   </div>
                   <div className="loans-form-actions">
-                    <button className="loans-form-submit-button" onClick={editingLoanId ? handleUpdateLoan : handleCreateLoan} disabled={loading}>
+                    <button className="loans-form-submit-button btn-primary" onClick={editingLoanId ? handleUpdateLoan : handleCreateLoan} disabled={loading}>
                       {loading ? 'Saving...' : (editingLoanId ? 'Update Loan' : 'Create Loan')}
                     </button>
-                    <button className="loans-form-cancel-button" onClick={() => { setShowAddForm(false); setEditingLoanId(null); clearForm(); }} disabled={loading}>Cancel</button>
+                    <button className="loans-form-cancel-button btn-cancel" onClick={() => { setShowAddForm(false); setEditingLoanId(null); clearForm(); }} disabled={loading}>Cancel</button>
                   </div>
                 </div>
               </div>
@@ -857,12 +857,12 @@ const InvestmentsSection = ({ onUpdate, highlightIds = [], onTotalInvestmentsCha
                 <div className="investments-form">
                   <div className="investments-input-group">
                     <label>Investment Name *</label>
-                    <input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="e.g., My TFSA" className={validationErrors.name ? 'input-error' : ''} disabled={loading} />
+                    <input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="e.g., My TFSA" className={`form-input ${validationErrors.name ? 'input-error' : ''}`} disabled={loading} />
                     {validationErrors.name && <span className="validation-error">{validationErrors.name}</span>}
                   </div>
                   <div className="investments-input-group">
                     <label>Investment Type *</label>
-                    <select value={formData.type} onChange={(e) => setFormData({ ...formData, type: e.target.value })} className={validationErrors.type ? 'input-error' : ''} disabled={loading}>
+                    <select value={formData.type} onChange={(e) => setFormData({ ...formData, type: e.target.value })} className={`form-input ${validationErrors.type ? 'input-error' : ''}`} disabled={loading}>
                       <option value="TFSA">TFSA</option>
                       <option value="RRSP">RRSP</option>
                     </select>
@@ -870,14 +870,14 @@ const InvestmentsSection = ({ onUpdate, highlightIds = [], onTotalInvestmentsCha
                   </div>
                   <div className="investments-input-group">
                     <label>Initial Value * {editingInvestmentId && '(cannot be changed)'}</label>
-                    <input type="number" value={formData.initial_value} onChange={(e) => setFormData({ ...formData, initial_value: e.target.value })} placeholder="0.00" step="0.01" min="0" className={validationErrors.initial_value ? 'input-error' : ''} disabled={loading || !!editingInvestmentId} />
+                    <input type="number" value={formData.initial_value} onChange={(e) => setFormData({ ...formData, initial_value: e.target.value })} placeholder="0.00" step="0.01" min="0" className={`form-input ${validationErrors.initial_value ? 'input-error' : ''}`} disabled={loading || !!editingInvestmentId} />
                     {validationErrors.initial_value && <span className="validation-error">{validationErrors.initial_value}</span>}
                   </div>
                   <div className="investments-form-actions">
-                    <button className="investments-form-submit-button" onClick={editingInvestmentId ? handleUpdate : handleCreate} disabled={loading}>
+                    <button className="investments-form-submit-button btn-primary" onClick={editingInvestmentId ? handleUpdate : handleCreate} disabled={loading}>
                       {loading ? 'Saving...' : (editingInvestmentId ? 'Update Investment' : 'Create Investment')}
                     </button>
-                    <button className="investments-form-cancel-button" onClick={() => { setShowAddForm(false); setEditingInvestmentId(null); clearForm(); }} disabled={loading}>Cancel</button>
+                    <button className="investments-form-cancel-button btn-cancel" onClick={() => { setShowAddForm(false); setEditingInvestmentId(null); clearForm(); }} disabled={loading}>Cancel</button>
                   </div>
                 </div>
               </div>
@@ -1007,7 +1007,7 @@ const FinancialOverviewModal = ({
 
   if (showPaymentMethodForm) {
     return (
-      <div className="financial-modal-overlay" onClick={handleClose}>
+      <div className="modal-overlay" onClick={handleClose}>
         <div className="financial-modal-container" onClick={(e) => e.stopPropagation()}>
           <PaymentMethodForm
             isOpen={true}
@@ -1021,7 +1021,7 @@ const FinancialOverviewModal = ({
   }
 
   return (
-    <div className="financial-modal-overlay" onClick={handleClose}>
+    <div className="modal-overlay" onClick={handleClose}>
       <div className="financial-modal-container" onClick={(e) => e.stopPropagation()}>
         <div className="financial-modal-header">
           <div className="financial-modal-header-top">

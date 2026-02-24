@@ -9,7 +9,7 @@
 
 .financial-modal-container {
   background: var(--bg-card, white);
-  border-radius: 8px;
+  border-radius: var(--radius-xl, 16px);
   max-width: var(--modal-width-lg);
   width: 90%;
   max-height: 88vh;
@@ -23,7 +23,7 @@
 .financial-modal-header {
   background: linear-gradient(135deg, #1a73e8 0%, #0d47a1 100%);
   color: white;
-  border-radius: 8px 8px 0 0;
+  border-radius: var(--radius-xl, 16px) var(--radius-xl, 16px) 0 0;
   position: sticky;
   top: 0;
   z-index: 10;

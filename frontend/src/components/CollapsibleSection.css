@@ -96,8 +96,8 @@
 }
 
 .collapsible-header:hover .collapsible-badge {
-  background-color: #e0e7ff;
-  border-color: #c7d2fe;
+  background-color: var(--color-primary-light, #e0f2fe);
+  border-color: var(--color-primary, #0ea5e9);
   transform: scale(1.05);
 }
 

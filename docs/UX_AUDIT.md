@@ -261,12 +261,12 @@ Rating each component's adherence to `variables.css` tokens:
 | BackupSettings | ✅ | ✅ | ✅ | ✅ | ✅ | Good |
 | AnalyticsHubModal | ✅ | ✅ | ✅ | ✅ | ✅ | Excellent |
 | BudgetsModal | ✅ | ✅ | ✅ | ✅ | ✅ | Excellent |
-| FinancialOverviewModal | ✅ | ✅ | ✅ | ⚠️ | ✅ | Good |
+| FinancialOverviewModal | ✅ | ✅ | ✅ | ✅ | ✅ | Excellent |
 | PeopleManagementModal | ✅ | ✅ | ✅ | ✅ | ✅ | Excellent |
 | PersonAllocationModal | ✅ | ✅ | ✅ | ✅ | ✅ | Excellent |
-| CollapsibleSection | ✅ | ⚠️ | ✅ | ⚠️ | ✅ | Good |
-| BudgetReminderBanner | ✅ | ⚠️ | ✅ | ✅ | ✅ | Good |
-| LoanPaymentReminderBanner | ✅ | ⚠️ | ✅ | ✅ | ✅ | Good |
+| CollapsibleSection | ✅ | ✅ | ✅ | ✅ | ✅ | Excellent |
+| BudgetReminderBanner | ✅ | ✅ | ✅ | ✅ | ✅ | Excellent |
+| LoanPaymentReminderBanner | ✅ | ✅ | ✅ | ✅ | ✅ | Excellent |
 | CreditCardDetailView | ✅ | ✅ | ✅ | ✅ | ✅ | Excellent |
 | SystemModal | ✅ | ✅ | ✅ | ✅ | ✅ | Excellent |
 
@@ -286,6 +286,10 @@ Legend: ✅ Uses design tokens | ⚠️ Partial (minor items remain) | ❌ Mostl
 | LoanPaymentReminderBanner | Poor | Good | Banner base class, typography converted, font-weights tokenized |
 | CreditCardDetailView | Fair | Excellent | Overlay, z-index, width all migrated to tokens |
 | SystemModal | Good | Excellent | Width → `--modal-width-xl` |
+| FinancialOverviewModal | Good | Excellent | Container/header border-radius → `var(--radius-xl)` |
+| CollapsibleSection | Good | Excellent | Badge hover colors → design tokens |
+| BudgetReminderBanner | Good | Excellent | Status colors documented as intentional semantic modifiers |
+| LoanPaymentReminderBanner | Good | Excellent | Status colors documented as intentional semantic modifiers |
 
 ---
 
@@ -340,8 +344,8 @@ Component-specific color modifiers are applied alongside: `.warning`/`.danger`/`
 8. ~~**Consistent cancel buttons**~~ — `.btn-cancel` base class created and applied
 
 ### Remaining (Low Priority)
-9. **Modal header strategy** — Decide: gradient headers for all modals, or neutral headers for all. Currently it's a mix.
-10. **FinancialOverviewModal border-radius** — Still uses hardcoded `8px` instead of `var(--radius-xl)`.
-11. **Close button standardization** — Close buttons still vary between modals (rgba overlay vs `var(--bg-muted)` vs none).
-12. **CollapsibleSection color tokens** — Some color values still partially hardcoded.
-13. **Banner color tokens** — BudgetReminderBanner and LoanPaymentReminderBanner status colors use hardcoded values for their modifier classes.
+9. ~~**Modal header strategy**~~ — Documented as intentional. Gradient headers are used for full-page modals (FinancialOverview, Budgets, PeopleManagement, AnalyticsHub) while neutral headers are used for detail/utility modals (SystemModal, CreditCardDetail). This is a deliberate design distinction, not an inconsistency.
+10. ~~**FinancialOverviewModal border-radius**~~ — Container and header now use `var(--radius-xl)` token. Inner elements (sections, cards, forms) correctly use `8px` / `var(--radius-md)`.
+11. ~~**Close button standardization**~~ — Documented as intentional. Gradient-header modals use `rgba(255,255,255,0.2)` (white overlay on gradient), neutral-header modals use `background: none` or `var(--bg-muted)`. Style matches header type.
+12. ~~**CollapsibleSection color tokens**~~ — Badge hover colors now use `var(--color-primary-light)` and `var(--color-primary)` tokens.
+13. ~~**Banner color tokens**~~ — Documented as intentional. Status colors (warning amber, danger orange, critical red for budget; due-soon teal, overdue purple for loan) are semantic modifier colors specific to each banner's severity system. These are not candidates for shared design tokens.

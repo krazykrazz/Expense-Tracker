@@ -179,6 +179,7 @@ Update events include detailed change tracking showing old → new values for mo
 | `insurance_status_changed` | expense | Medical expense insurance status changed |
 | `backup_created` | system | Database backup created |
 | `backup_restored` | system | Database backup restored |
+| `version_upgraded` | system | Application version upgrade detected on startup (includes old_version, new_version) |
 
 ## Configuration
 

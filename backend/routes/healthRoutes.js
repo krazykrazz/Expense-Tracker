@@ -86,6 +86,7 @@ router.get('/health', async (req, res) => {
 router.get('/version', (req, res) => {
   const versionInfo = {
     version: packageJson.version,
+    startupId: req.app.locals.startupId,
     environment: process.env.APP_ENV || process.env.NODE_ENV || 'development'
   };
 

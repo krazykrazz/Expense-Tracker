@@ -16,9 +16,11 @@ import FinancialOverviewModal from './components/FinancialOverviewModal';
 import CreditCardDetailView from './components/CreditCardDetailView';
 import FloatingAddButton from './components/FloatingAddButton';
 import EnvironmentBanner from './components/EnvironmentBanner';
+import UpdateBanner from './components/UpdateBanner';
 import SyncToast from './components/SyncToast';
 import VersionUpgradeModal from './components/VersionUpgradeModal';
 import { useDataSync } from './hooks/useDataSync';
+import { useContainerUpdateCheck } from './hooks/useContainerUpdateCheck';
 import useVersionUpgradeCheck from './hooks/useVersionUpgradeCheck';
 import { API_ENDPOINTS } from './config';
 import { changelogEntries } from './utils/changelog';
@@ -180,12 +182,16 @@ function AppContent({ onPaymentMethodsUpdate }) {
     refreshPaymentMethods,
   } = useSharedDataContext();
 
+  // Container update detection — captures baseline version on init, checks on SSE reconnect
+  const { showBanner, newVersion, dismissBanner, onSseReconnect } = useContainerUpdateCheck();
+
   // Real-time sync — subscribes to SSE and refreshes data on remote changes
   const { subscribeToasts, getToastSnapshot } = useDataSync({
     refreshExpenses,
     refreshBudgets,
     refreshPeople,
     refreshPaymentMethods,
+    onReconnect: onSseReconnect,
   });
 
   // Version upgrade modal
@@ -322,6 +328,12 @@ function AppContent({ onPaymentMethodsUpdate }) {
 
   return (
     <div className="App">
+      <UpdateBanner
+        show={showBanner}
+        version={newVersion}
+        onRefresh={() => window.location.reload()}
+        onDismiss={dismissBanner}
+      />
       <EnvironmentBanner />
       <header className="App-header">
         <div className="header-title">

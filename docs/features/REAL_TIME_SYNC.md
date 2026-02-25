@@ -82,6 +82,10 @@ After each debounced refresh fires, a brief toast appears in the bottom-right co
 
 The `useDataSync` hook integrates with the Page Visibility API to manage the SSE connection based on tab visibility. This eliminates idle CPU usage (~12-13% → near-zero) when the tab is in the background.
 
+### onReconnect Callback
+
+The hook accepts an optional `onReconnect` callback that fires when the SSE connection is re-established after a disconnection (not on the initial connect). This is used by `useContainerUpdateCheck` to detect container restarts by comparing the backend's version/startupId against the baseline captured at page load.
+
 | Tab State | Action |
 |-----------|--------|
 | Hidden | Close EventSource, clear all debounce and reconnect timers, set status to `disconnected` |
@@ -125,3 +129,5 @@ Each broadcast to one or more connected clients is recorded in the activity log 
 | `frontend/src/utils/tabId.js` | Stable per-tab ID, `fetchWithTabId` wrapper |
 | `frontend/src/components/SyncToast.jsx` | Toast notification component |
 | `frontend/src/components/SyncToast.css` | Toast styles with reduced-motion support |
+| `frontend/src/hooks/useContainerUpdateCheck.js` | Hook that uses `onReconnect` to detect container restarts |
+| `frontend/src/components/UpdateBanner.jsx` | Banner shown when container update is detected |

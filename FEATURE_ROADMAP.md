@@ -590,6 +590,48 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ## 🟢 Completed Features
 
+### 🟢 Container Update Detection (v1.0.0)
+**Completed**: February 2026  
+**Spec**: `.kiro/specs/container-update-refresh/`  
+**Documentation**: `docs/features/REAL_TIME_SYNC.md`  
+**Description**: Automatic detection of Docker container restarts with a user-facing refresh banner, leveraging the existing SSE reconnection lifecycle.
+
+**Features Delivered**:
+- **Startup ID Tracking**: Backend generates a UUID per server process start, exposed via `GET /api/version` (`startupId` field)
+- **Update Banner**: Blue banner at the top of the page when a container restart is detected: "Application has been updated. Refresh to get the latest version."
+- **SSE Reconnection Integration**: `useDataSync` `onReconnect` callback triggers startup ID comparison after SSE reconnection
+- **Periodic Polling**: `useContainerUpdateCheck` hook polls `/api/version` every 5 minutes as a fallback
+- **Dismiss/Refresh Actions**: Users can refresh the page or dismiss the banner for the current session
+- **Visibility-Aware**: Polling pauses when the tab is hidden and resumes when visible
+
+**Benefits**:
+- Users are immediately aware when the app has been updated after a container restart
+- No manual checking required — detection is fully automatic
+- Integrates cleanly with existing SSE visibility lifecycle
+
+---
+
+### 🟢 Version Upgrade Tracking (v1.0.0)
+**Completed**: February 2026  
+**Spec**: `.kiro/specs/version-upgrade-tracking/`  
+**Description**: Tracks application version upgrades with a changelog modal, activity log integration, and remote update availability checking via GitHub Releases API.
+
+**Features Delivered**:
+- **Changelog Modal**: Automatically shown when the app version changes since the user's last visit, displaying new features and fixes
+- **Version Persistence**: Last seen version stored in localStorage; compared on each page load
+- **Activity Log Integration**: `version_upgraded` event logged with old and new version metadata
+- **Remote Update Checking**: `GET /api/version/check-update` queries GitHub Releases API with 24-hour in-memory cache
+- **Update Availability Indicator**: System Information modal (Updates tab) shows whether a newer version is available with a link to the release
+- **Manual Check**: "Check Now" button to force a fresh update check
+- **useVersionUpgradeCheck Hook**: Encapsulates version comparison, changelog display, and activity log event emission
+
+**Benefits**:
+- Users see what changed after each upgrade without checking release notes manually
+- Update availability visible at a glance in the System modal
+- Full audit trail of version upgrades in the activity log
+
+---
+
 ### 🟢 SSE Visibility Optimization (v5.10.x)
 **Completed**: February 2026  
 **Spec**: `archive/specs/sse-visibility-optimization/`  
@@ -1542,6 +1584,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 ---
 
 **Version History**:
+- v3.5 (2026-02-25): Added Container Update Detection (v1.0.0) and Version Upgrade Tracking (v1.0.0) to completed features
 - v3.4 (2026-02-20): Comprehensive documentation audit — added 9 missing completed features to roadmap (Real-Time Data Sync, Activity Log, Insurance Claim Reminders, Medical Insurance Tracking, Generic Expense Reimbursement, Credit Card Billing Cycle History, Tax Deductible Analytics), marked Frontend Custom Hooks (#31) as completed (v5.8.0), updated priority matrix
 - v3.3 (2026-02-18): Marked Budget Modal Consolidation as partially complete (v5.11.0), updated #25 status from Proposed to Partially Complete
 - v3.2 (2026-02-10): Added Settings & System Modal Split (v5.11.0) to completed features, updated current version to 5.10.0, updated last updated date

@@ -1,3 +1,6 @@
+/**
+ * @invariant Frontend Acknowledgment Persistence: Closing the upgrade modal persists the version in localStorage and prevents re-display on subsequent loads. First-Time User Behavior: No modal is shown when no last_seen_version exists in localStorage regardless of current version.
+ */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
 import fc from 'fast-check';

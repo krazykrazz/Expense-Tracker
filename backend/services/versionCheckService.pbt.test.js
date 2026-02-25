@@ -3,6 +3,8 @@
  * 
  * Tests version persistence, first startup behavior, upgrade event metadata,
  * system classification, and fire-and-forget resilience.
+ *
+ * @invariant Version Persistence Round Trip: Storing and retrieving any semver version returns the same string. First Startup Initialization: No upgrade event is logged when no previous version exists. Same Version Idempotence: Restarting with the same version logs no event. Upgrade Event Completeness: Metadata contains old_version and new_version. System Classification: entity_type is "system" and entity_id is null. Fire-and-Forget Resilience: Errors in logging or settings do not throw.
  */
 
 const fc = require('fast-check');

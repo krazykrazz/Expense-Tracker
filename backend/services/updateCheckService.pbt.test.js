@@ -3,6 +3,8 @@
  * 
  * Tests version comparison correctness, graceful degradation on API errors,
  * cache behavior within TTL, and cache expiry.
+ *
+ * @invariant Version Comparison Correctness: For any two semver strings, isNewerVersion returns true iff latest > current component-by-component. Graceful Degradation: Any GitHub API error returns updateAvailable: false without throwing. Cache TTL: Multiple calls within TTL trigger only one fetch; calls after expiry trigger a fresh fetch.
  */
 
 const fc = require('fast-check');

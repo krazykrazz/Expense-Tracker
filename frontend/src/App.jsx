@@ -17,8 +17,11 @@ import CreditCardDetailView from './components/CreditCardDetailView';
 import FloatingAddButton from './components/FloatingAddButton';
 import EnvironmentBanner from './components/EnvironmentBanner';
 import SyncToast from './components/SyncToast';
+import VersionUpgradeModal from './components/VersionUpgradeModal';
 import { useDataSync } from './hooks/useDataSync';
+import useVersionUpgradeCheck from './hooks/useVersionUpgradeCheck';
 import { API_ENDPOINTS } from './config';
+import { changelogEntries } from './utils/changelog';
 import { CATEGORIES } from './utils/constants';
 import { getPaymentMethods } from './services/paymentMethodApi';
 import { getMonthlyIncomeSources } from './services/incomeApi';
@@ -184,6 +187,9 @@ function AppContent({ onPaymentMethodsUpdate }) {
     refreshPeople,
     refreshPaymentMethods,
   });
+
+  // Version upgrade modal
+  const { showModal: showUpgradeModal, newVersion: upgradeVersion, changelogEntries: upgradeChangelog, handleClose: handleUpgradeClose } = useVersionUpgradeCheck({ changelogEntries });
 
   const [versionInfo, setVersionInfo] = useState(null);
   const [mobileTab, setMobileTab] = useState('expenses'); // 'expenses' | 'summary'
@@ -577,6 +583,14 @@ function AppContent({ onPaymentMethodsUpdate }) {
 
       {/* Sync toast notifications for remote data changes */}
       <SyncToast subscribe={subscribeToasts} getSnapshot={getToastSnapshot} />
+
+      {/* Version upgrade notification modal */}
+      <VersionUpgradeModal
+        isOpen={showUpgradeModal}
+        onClose={handleUpgradeClose}
+        newVersion={upgradeVersion}
+        changelogEntries={upgradeChangelog}
+      />
 
       {/* Mobile bottom tab bar — hidden on desktop via CSS */}
       <nav className="mobile-tab-bar" aria-label="Mobile navigation">

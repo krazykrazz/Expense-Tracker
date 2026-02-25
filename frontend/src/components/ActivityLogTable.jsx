@@ -33,7 +33,8 @@ const ActivityLogTable = ({
       investment: '#4CAF50',
       budget: '#009688',
       payment_method: '#3F51B5',
-      backup: '#607D8B'
+      backup: '#607D8B',
+      version: '#607D8B'
     };
     return colorMap[entityType] || '#757575';
   };
@@ -51,6 +52,17 @@ const ActivityLogTable = ({
     if (!eventType) return 'unknown';
     const parts = eventType.split('_');
     return parts.slice(0, -1).join('_');
+  };
+
+  // Format version upgrade event details from metadata
+  const getVersionUpgradeDetails = (event) => {
+    const metadata = typeof event.metadata === 'string'
+      ? (() => { try { return JSON.parse(event.metadata); } catch { return null; } })()
+      : event.metadata;
+    if (metadata && metadata.old_version && metadata.new_version) {
+      return `Upgraded from v${metadata.old_version} to v${metadata.new_version}`;
+    }
+    return event.user_action;
   };
 
   return (
@@ -117,7 +129,9 @@ const ActivityLogTable = ({
                         </span>
                       </td>
                       <td className="activity-event-details">
-                        {event.user_action}
+                        {event.event_type === 'version_upgraded'
+                          ? getVersionUpgradeDetails(event)
+                          : event.user_action}
                       </td>
                     </tr>
                   );

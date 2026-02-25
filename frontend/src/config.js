@@ -78,6 +78,7 @@ export const API_ENDPOINTS = {
   
   // Version
   VERSION: `${API_BASE_URL}/api/version`,
+  VERSION_CHECK_UPDATE: `${API_BASE_URL}/api/version/check-update`,
   
   // Merchant Analytics
   MERCHANT_ANALYTICS: `${API_BASE_URL}/api/analytics/merchants`,

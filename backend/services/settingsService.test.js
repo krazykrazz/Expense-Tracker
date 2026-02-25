@@ -238,6 +238,57 @@ describe('settingsService', () => {
     });
   });
 
+  describe('getLastKnownVersion', () => {
+    it('should return null when no version is stored', async () => {
+      settingsRepository.getSetting.mockResolvedValue(null);
+
+      const result = await settingsService.getLastKnownVersion();
+
+      expect(result).toBeNull();
+      expect(settingsRepository.getSetting).toHaveBeenCalledWith('last_known_version');
+    });
+
+    it('should return stored version string', async () => {
+      settingsRepository.getSetting.mockResolvedValue('5.10.0');
+
+      const result = await settingsService.getLastKnownVersion();
+
+      expect(result).toBe('5.10.0');
+    });
+
+    it('should return null when repository throws error', async () => {
+      settingsRepository.getSetting.mockRejectedValue(new Error('Database error'));
+
+      const result = await settingsService.getLastKnownVersion();
+
+      expect(result).toBeNull();
+    });
+
+    it('should return null for empty string value', async () => {
+      settingsRepository.getSetting.mockResolvedValue('');
+
+      const result = await settingsService.getLastKnownVersion();
+
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('setLastKnownVersion', () => {
+    it('should persist version string via repository', async () => {
+      settingsRepository.setSetting.mockResolvedValue();
+
+      await settingsService.setLastKnownVersion('5.11.0');
+
+      expect(settingsRepository.setSetting).toHaveBeenCalledWith('last_known_version', '5.11.0');
+    });
+
+    it('should propagate repository errors', async () => {
+      settingsRepository.setSetting.mockRejectedValue(new Error('Database error'));
+
+      await expect(settingsService.setLastKnownVersion('5.11.0')).rejects.toThrow('Database error');
+    });
+  });
+
   describe('validateRetentionSettings', () => {
     it('should not throw for valid settings', () => {
       expect(() => {

@@ -43,6 +43,9 @@ const SystemModal = () => {
   const [dbStats, setDbStats] = useState(null);
   const [healthData, setHealthData] = useState(null);
 
+  // Update check state
+  const [updateInfo, setUpdateInfo] = useState(null);
+
   // Cleanup timers on unmount
   useEffect(() => {
     return () => {
@@ -63,6 +66,13 @@ const SystemModal = () => {
     if (activeTab === 'about') {
       fetchDbStats();
       fetchHealthData();
+    }
+  }, [activeTab]);
+
+  // Fetch update availability when Updates tab becomes active
+  useEffect(() => {
+    if (activeTab === 'updates') {
+      fetchUpdateInfo();
     }
   }, [activeTab]);
 
@@ -106,6 +116,27 @@ const SystemModal = () => {
     } catch (error) {
       logger.error('Error fetching health data:', error);
       // Silently fail - don't block UI
+    }
+  };
+
+  // ========== Update Check Functions ==========
+
+  const fetchUpdateInfo = async () => {
+    try {
+      const response = await fetch(API_ENDPOINTS.VERSION_CHECK_UPDATE);
+      if (response.ok) {
+        const data = await response.json();
+        if (!data.error) {
+          setUpdateInfo(data);
+        } else {
+          setUpdateInfo(null);
+        }
+      } else {
+        setUpdateInfo(null);
+      }
+    } catch (error) {
+      logger.error('Error checking for updates:', error);
+      setUpdateInfo(null);
     }
   };
 
@@ -406,6 +437,15 @@ const SystemModal = () => {
   const renderUpdatesTab = () => {
     return (
       <>
+        {updateInfo && updateInfo.updateAvailable && updateInfo.latestVersion && (
+          <div className="update-available-banner" data-testid="update-available-banner">
+            <div className="update-banner-icon">🎉</div>
+            <div className="update-banner-content">
+              <strong>A new version is available!</strong>
+              <span className="update-banner-version">v{updateInfo.latestVersion}</span>
+            </div>
+          </div>
+        )}
         <div className="settings-section">
           <h3>Recent Updates</h3>
           <div className="changelog">

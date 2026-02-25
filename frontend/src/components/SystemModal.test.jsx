@@ -46,6 +46,7 @@ vi.mock('./PlaceNameStandardization', () => ({
 vi.mock('../config', () => ({
   API_ENDPOINTS: {
     VERSION: '/api/version',
+    VERSION_CHECK_UPDATE: '/api/version/check-update',
     BACKUP_LIST: '/api/backup/list',
     BACKUP_STATS: '/api/backup/stats',
     BACKUP_MANUAL: '/api/backup/manual',
@@ -274,6 +275,130 @@ describe('SystemModal', () => {
       expect(badge).toHaveClass('current-version-badge');
       // Badge should be inside the v1.0.0 entry (matches versionInfo.version)
       expect(badge.closest('.changelog-version')).toHaveTextContent('v1.0.0');
+    });
+  });
+
+  describe('Update banner', () => {
+    it('should display update banner when update is available', async () => {
+      mockActiveTab = 'updates';
+      global.fetch = vi.fn((url) => {
+        if (url.includes('/version/check-update')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({
+              updateAvailable: true,
+              currentVersion: '1.0.0',
+              latestVersion: '1.1.0',
+              checkedAt: '2026-02-15T10:00:00Z'
+            })
+          });
+        }
+        if (url.includes('/version')) {
+          return Promise.resolve({ ok: true, json: () => Promise.resolve(mockVersionInfo) });
+        }
+        if (url.includes('/backup/list')) {
+          return Promise.resolve({ ok: true, json: () => Promise.resolve(mockBackups) });
+        }
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+      });
+
+      render(<SystemModal />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('update-available-banner')).toBeInTheDocument();
+      });
+      expect(screen.getByText('A new version is available!')).toBeInTheDocument();
+      expect(screen.getByText('v1.1.0')).toBeInTheDocument();
+    });
+
+    it('should hide update banner when no update is available', async () => {
+      mockActiveTab = 'updates';
+      global.fetch = vi.fn((url) => {
+        if (url.includes('/version/check-update')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({
+              updateAvailable: false,
+              currentVersion: '1.0.0',
+              latestVersion: '1.0.0',
+              checkedAt: '2026-02-15T10:00:00Z'
+            })
+          });
+        }
+        if (url.includes('/version')) {
+          return Promise.resolve({ ok: true, json: () => Promise.resolve(mockVersionInfo) });
+        }
+        if (url.includes('/backup/list')) {
+          return Promise.resolve({ ok: true, json: () => Promise.resolve(mockBackups) });
+        }
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+      });
+
+      render(<SystemModal />);
+
+      // Wait for fetch to complete
+      await waitFor(() => {
+        expect(global.fetch).toHaveBeenCalledWith('/api/version/check-update');
+      });
+
+      expect(screen.queryByTestId('update-available-banner')).not.toBeInTheDocument();
+    });
+
+    it('should hide update banner when API returns error indicator', async () => {
+      mockActiveTab = 'updates';
+      global.fetch = vi.fn((url) => {
+        if (url.includes('/version/check-update')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({
+              updateAvailable: false,
+              currentVersion: '1.0.0',
+              latestVersion: null,
+              checkedAt: '2026-02-15T10:00:00Z',
+              error: 'GitHub API unreachable'
+            })
+          });
+        }
+        if (url.includes('/version')) {
+          return Promise.resolve({ ok: true, json: () => Promise.resolve(mockVersionInfo) });
+        }
+        if (url.includes('/backup/list')) {
+          return Promise.resolve({ ok: true, json: () => Promise.resolve(mockBackups) });
+        }
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+      });
+
+      render(<SystemModal />);
+
+      await waitFor(() => {
+        expect(global.fetch).toHaveBeenCalledWith('/api/version/check-update');
+      });
+
+      expect(screen.queryByTestId('update-available-banner')).not.toBeInTheDocument();
+    });
+
+    it('should hide update banner on network failure', async () => {
+      mockActiveTab = 'updates';
+      global.fetch = vi.fn((url) => {
+        if (url.includes('/version/check-update')) {
+          return Promise.reject(new Error('Network error'));
+        }
+        if (url.includes('/version')) {
+          return Promise.resolve({ ok: true, json: () => Promise.resolve(mockVersionInfo) });
+        }
+        if (url.includes('/backup/list')) {
+          return Promise.resolve({ ok: true, json: () => Promise.resolve(mockBackups) });
+        }
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+      });
+
+      render(<SystemModal />);
+
+      await waitFor(() => {
+        expect(global.fetch).toHaveBeenCalledWith('/api/version/check-update');
+      });
+
+      expect(screen.queryByTestId('update-available-banner')).not.toBeInTheDocument();
     });
   });
 });

@@ -102,4 +102,23 @@ router.get('/version', (req, res) => {
   res.json(versionInfo);
 });
 
+/**
+ * Check for available updates from GitHub Releases
+ * Returns update availability status with current and latest versions
+ * 
+ * @route GET /api/version/check-update
+ * @returns {Object} Update check result with updateAvailable flag, versions, and timestamp
+ * @returns {number} 200 - Always returns 200, even on errors (updateAvailable: false)
+ */
+router.get('/version/check-update', async (req, res) => {
+  try {
+    const updateCheckService = require('../services/updateCheckService');
+    const result = await updateCheckService.checkForUpdate();
+    res.status(200).json(result);
+  } catch (error) {
+    logger.error('Check-update route error:', error.message);
+    res.status(200).json({ updateAvailable: false, error: 'Internal error' });
+  }
+});
+
 module.exports = router;

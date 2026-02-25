@@ -24,7 +24,12 @@ jest.mock('../config/logger', () => ({
   error: jest.fn()
 }));
 
+jest.mock('../services/updateCheckService', () => ({
+  checkForUpdate: jest.fn()
+}));
+
 const sseService = require('../services/sseService');
+const updateCheckService = require('../services/updateCheckService');
 const healthRouter = require('./healthRoutes');
 
 function buildApp() {
@@ -74,5 +79,51 @@ describe('GET /api/health — sseConnections field', () => {
     expect(res.body).toHaveProperty('sseConnections', 2);
     expect(typeof res.body.sseConnections).toBe('number');
     expect(res.body.sseConnections).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe('GET /api/version/check-update', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('returns the update check result as JSON with status 200', async () => {
+    const mockResult = {
+      updateAvailable: true,
+      currentVersion: '1.0.0-test',
+      latestVersion: '2.0.0',
+      checkedAt: '2025-02-15T10:30:00.000Z'
+    };
+    updateCheckService.checkForUpdate.mockResolvedValue(mockResult);
+
+    const res = await request(buildApp()).get('/api/version/check-update');
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual(mockResult);
+    expect(updateCheckService.checkForUpdate).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns updateAvailable: false when no update is available', async () => {
+    const mockResult = {
+      updateAvailable: false,
+      currentVersion: '1.0.0-test',
+      latestVersion: '1.0.0-test',
+      checkedAt: '2025-02-15T10:30:00.000Z'
+    };
+    updateCheckService.checkForUpdate.mockResolvedValue(mockResult);
+
+    const res = await request(buildApp()).get('/api/version/check-update');
+
+    expect(res.status).toBe(200);
+    expect(res.body.updateAvailable).toBe(false);
+  });
+
+  it('returns 200 with updateAvailable: false when service throws', async () => {
+    updateCheckService.checkForUpdate.mockRejectedValue(new Error('Service failure'));
+
+    const res = await request(buildApp()).get('/api/version/check-update');
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ updateAvailable: false, error: 'Internal error' });
   });
 });

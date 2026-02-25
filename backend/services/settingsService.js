@@ -21,7 +21,8 @@ const DEFAULT_SETTINGS = {
 const SETTING_KEYS = {
   MAX_AGE_DAYS: 'activity_log_max_age_days',
   MAX_COUNT: 'activity_log_max_count',
-  BUSINESS_TIMEZONE: 'business_timezone'
+  BUSINESS_TIMEZONE: 'business_timezone',
+  LAST_KNOWN_VERSION: 'last_known_version'
 };
 
 // Validation constraints
@@ -192,6 +193,29 @@ async function updateBusinessTimezone(timezone) {
   }
 }
 
+/**
+ * Get last known application version
+ * @returns {Promise<string|null>} - Version string or null if not set
+ */
+async function getLastKnownVersion() {
+  try {
+    const value = await settingsRepository.getSetting(SETTING_KEYS.LAST_KNOWN_VERSION);
+    return value || null;
+  } catch (error) {
+    logger.error('Error getting last known version:', error);
+    return null;
+  }
+}
+
+/**
+ * Set last known application version
+ * @param {string} version - Version string
+ * @returns {Promise<void>}
+ */
+async function setLastKnownVersion(version) {
+  await settingsRepository.setSetting(SETTING_KEYS.LAST_KNOWN_VERSION, version);
+}
+
 module.exports = {
   DEFAULT_SETTINGS,
   CONSTRAINTS,
@@ -200,5 +224,7 @@ module.exports = {
   updateRetentionSettings,
   validateRetentionSettings,
   getBusinessTimezone,
-  updateBusinessTimezone
+  updateBusinessTimezone,
+  getLastKnownVersion,
+  setLastKnownVersion
 };

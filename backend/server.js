@@ -33,6 +33,7 @@ const backupService = require('./services/backupService');
 const activityLogService = require('./services/activityLogService');
 const sseService = require('./services/sseService');
 const billingCycleSchedulerService = require('./services/billingCycleSchedulerService');
+const versionCheckService = require('./services/versionCheckService');
 const logger = require('./config/logger');
 const { errorHandler } = require('./middleware/errorHandler');
 
@@ -209,7 +210,14 @@ app.use(errorHandler);
 
 // Initialize database and start server
 initializeDatabase()
-  .then(() => {
+  .then(async () => {
+    // Check for version upgrades and log to activity log (fire-and-forget)
+    try {
+      await versionCheckService.checkAndLogVersionUpgrade();
+    } catch (error) {
+      logger.error('Version check failed during startup (non-blocking):', error);
+    }
+
     app.listen(PORT, '0.0.0.0', () => {
       logger.info('=== Expense Tracker Server Started ===');
       logger.info(`Environment Configuration:`);

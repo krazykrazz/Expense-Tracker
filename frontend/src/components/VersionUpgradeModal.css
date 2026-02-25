@@ -1,0 +1,164 @@
+/* Version Upgrade Modal Styles */
+/* Requirements: 7.1, 7.2, 7.3, 7.4 - Upgrade notification modal */
+
+.version-upgrade-modal {
+  background: var(--bg-card, white);
+  border-radius: var(--radius-xl, 16px);
+  box-shadow: var(--shadow-xl);
+  width: 560px;
+  max-width: 95vw;
+  max-height: 80vh;
+  overflow-y: auto;
+  position: relative;
+  animation: modalSlideIn 0.3s ease-out;
+}
+
+.version-upgrade-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-5, 20px);
+  border-bottom: 2px solid #e0e4ff;
+  position: sticky;
+  top: 0;
+  background: var(--bg-card, white);
+  z-index: 10;
+  border-radius: var(--radius-xl, 16px) var(--radius-xl, 16px) 0 0;
+}
+
+.version-upgrade-title-section {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3, 12px);
+}
+
+.version-upgrade-title-section h2 {
+  margin: 0;
+  color: var(--text-primary, #333);
+  font-size: var(--heading-2, 20px);
+  font-weight: var(--font-semibold, 600);
+  font-family: var(--font-sans);
+}
+
+.version-upgrade-badge {
+  display: inline-block;
+  background: var(--color-positive, #10b981);
+  color: var(--text-inverse, white);
+  font-size: var(--text-xs, 11px);
+  font-weight: var(--font-semibold, 600);
+  font-family: var(--font-sans);
+  padding: 2px 10px;
+  border-radius: var(--radius-full, 9999px);
+  letter-spacing: 0.02em;
+}
+
+.version-upgrade-body {
+  padding: var(--spacing-5, 20px);
+}
+
+.version-upgrade-body .changelog {
+  max-height: none;
+}
+
+.version-upgrade-body .changelog-entry {
+  background: var(--bg-card, white);
+  padding: var(--spacing-4, 16px);
+  border-radius: var(--radius-lg, 12px);
+  border: 1px solid #e0e4ff;
+  margin-bottom: var(--spacing-4, 16px);
+  box-shadow: var(--shadow-sm);
+}
+
+.version-upgrade-body .changelog-entry:last-child {
+  margin-bottom: 0;
+}
+
+.version-upgrade-body .changelog-version {
+  font-size: var(--text-lg, 16px);
+  font-weight: var(--font-semibold, 600);
+  color: var(--color-primary, #0ea5e9);
+  margin-bottom: var(--spacing-1, 4px);
+  font-family: var(--font-sans);
+}
+
+.version-upgrade-body .changelog-date {
+  font-size: var(--text-sm, 13px);
+  color: var(--text-muted, #888);
+  margin-bottom: var(--spacing-3, 12px);
+  font-family: var(--font-sans);
+}
+
+.version-upgrade-body .changelog-category {
+  font-size: var(--text-base, 14px);
+  font-weight: var(--font-semibold, 600);
+  font-family: var(--font-sans);
+  margin: var(--spacing-3, 12px) 0 var(--spacing-2, 8px) 0;
+}
+
+.version-upgrade-body .changelog-category.added {
+  color: var(--color-positive, #10b981);
+}
+
+.version-upgrade-body .changelog-category.changed {
+  color: var(--color-primary, #0ea5e9);
+}
+
+.version-upgrade-body .changelog-category.fixed {
+  color: var(--color-warning, #ff9800);
+}
+
+.version-upgrade-body .changelog-category.removed {
+  color: var(--color-negative, #ef4444);
+}
+
+.version-upgrade-body .changelog-items {
+  margin: 0;
+  padding-left: var(--spacing-5, 20px);
+}
+
+.version-upgrade-body .changelog-items li {
+  margin-bottom: var(--spacing-2, 8px);
+  color: var(--text-secondary, #555);
+  font-size: var(--text-base, 14px);
+  line-height: var(--leading-normal, 1.5);
+  font-family: var(--font-sans);
+}
+
+.version-upgrade-body .changelog-items li:last-child {
+  margin-bottom: 0;
+}
+
+.version-upgrade-fallback {
+  color: var(--text-tertiary, #666);
+  font-size: var(--text-base, 14px);
+  font-family: var(--font-sans);
+  text-align: center;
+  padding: var(--spacing-5, 20px) 0;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .version-upgrade-modal {
+    width: 95%;
+    max-height: 90vh;
+  }
+
+  .version-upgrade-header {
+    padding: var(--spacing-4, 16px);
+  }
+
+  .version-upgrade-title-section h2 {
+    font-size: var(--heading-3, 18px);
+  }
+
+  .version-upgrade-body {
+    padding: var(--spacing-4, 16px);
+  }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .version-upgrade-modal {
+    animation: none;
+  }
+}

@@ -460,3 +460,149 @@ describe('ActivityLogTable - Unit Tests', () => {
     });
   });
 });
+
+describe('ActivityLogTable - Version Upgrade Event Rendering', () => {
+  const defaultProps = {
+    events: [],
+    loading: false,
+    error: null,
+    displayLimit: 50,
+    hasMore: false,
+    stats: null,
+    onDisplayLimitChange: vi.fn(),
+    onLoadMore: vi.fn()
+  };
+
+  it('should render version_upgraded event with formatted message from metadata', () => {
+    const events = [
+      {
+        id: 10,
+        user_action: 'Application upgraded from v5.9.0 to v5.10.0',
+        timestamp: '2025-01-27T10:30:00Z',
+        event_type: 'version_upgraded',
+        entity_type: 'system',
+        entity_id: null,
+        metadata: { old_version: '5.9.0', new_version: '5.10.0' }
+      }
+    ];
+
+    render(<ActivityLogTable {...defaultProps} events={events} />);
+
+    expect(screen.getByText('Upgraded from v5.9.0 to v5.10.0')).toBeTruthy();
+  });
+
+  it('should display old and new versions from metadata', () => {
+    const events = [
+      {
+        id: 11,
+        user_action: 'Application upgraded from v1.0.0 to v2.0.0',
+        timestamp: '2025-02-01T08:00:00Z',
+        event_type: 'version_upgraded',
+        entity_type: 'system',
+        entity_id: null,
+        metadata: { old_version: '1.0.0', new_version: '2.0.0' }
+      }
+    ];
+
+    render(<ActivityLogTable {...defaultProps} events={events} />);
+
+    const detailText = screen.getByText('Upgraded from v1.0.0 to v2.0.0');
+    expect(detailText).toBeTruthy();
+    // Verify both versions are present in the formatted string
+    expect(detailText.textContent).toContain('v1.0.0');
+    expect(detailText.textContent).toContain('v2.0.0');
+  });
+
+  it('should fall back to user_action when metadata is missing', () => {
+    const events = [
+      {
+        id: 12,
+        user_action: 'Application upgraded from v3.0.0 to v3.1.0',
+        timestamp: '2025-02-01T08:00:00Z',
+        event_type: 'version_upgraded',
+        entity_type: 'system',
+        entity_id: null,
+        metadata: null
+      }
+    ];
+
+    render(<ActivityLogTable {...defaultProps} events={events} />);
+
+    expect(screen.getByText('Application upgraded from v3.0.0 to v3.1.0')).toBeTruthy();
+  });
+
+  it('should fall back to user_action when metadata lacks version fields', () => {
+    const events = [
+      {
+        id: 13,
+        user_action: 'Application upgraded from v4.0.0 to v4.1.0',
+        timestamp: '2025-02-01T08:00:00Z',
+        event_type: 'version_upgraded',
+        entity_type: 'system',
+        entity_id: null,
+        metadata: { some_other_field: 'value' }
+      }
+    ];
+
+    render(<ActivityLogTable {...defaultProps} events={events} />);
+
+    expect(screen.getByText('Application upgraded from v4.0.0 to v4.1.0')).toBeTruthy();
+  });
+
+  it('should use system event styling (same color as backup events)', () => {
+    const events = [
+      {
+        id: 14,
+        user_action: 'Application upgraded from v5.9.0 to v5.10.0',
+        timestamp: '2025-01-27T10:30:00Z',
+        event_type: 'version_upgraded',
+        entity_type: 'system',
+        entity_id: null,
+        metadata: { old_version: '5.9.0', new_version: '5.10.0' }
+      }
+    ];
+
+    const { container } = render(<ActivityLogTable {...defaultProps} events={events} />);
+
+    const badge = container.querySelector('.activity-event-badge');
+    // version entity type should use #607D8B (same as backup)
+    expect(badge.style.backgroundColor).toBe('rgb(96, 125, 139)');
+  });
+
+  it('should show "Upgraded" as the event type badge label', () => {
+    const events = [
+      {
+        id: 15,
+        user_action: 'Application upgraded from v5.9.0 to v5.10.0',
+        timestamp: '2025-01-27T10:30:00Z',
+        event_type: 'version_upgraded',
+        entity_type: 'system',
+        entity_id: null,
+        metadata: { old_version: '5.9.0', new_version: '5.10.0' }
+      }
+    ];
+
+    const { container } = render(<ActivityLogTable {...defaultProps} events={events} />);
+
+    const badge = container.querySelector('.activity-event-badge');
+    expect(badge.textContent).toBe('Upgraded');
+  });
+
+  it('should handle metadata as a JSON string gracefully', () => {
+    const events = [
+      {
+        id: 16,
+        user_action: 'Application upgraded from v5.9.0 to v5.10.0',
+        timestamp: '2025-01-27T10:30:00Z',
+        event_type: 'version_upgraded',
+        entity_type: 'system',
+        entity_id: null,
+        metadata: JSON.stringify({ old_version: '5.9.0', new_version: '5.10.0' })
+      }
+    ];
+
+    render(<ActivityLogTable {...defaultProps} events={events} />);
+
+    expect(screen.getByText('Upgraded from v5.9.0 to v5.10.0')).toBeTruthy();
+  });
+});

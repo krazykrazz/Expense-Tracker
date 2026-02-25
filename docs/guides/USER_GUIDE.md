@@ -14,6 +14,8 @@ Complete guide to using the Expense Tracker application.
 - [Medical Expenses](#medical-expenses)
 - [Merchant Analytics](#merchant-analytics)
 - [Data Management](#data-management)
+- [Container Update Detection](#container-update-detection)
+- [Version Upgrade Notifications](#version-upgrade-notifications)
 
 ## Getting Started
 
@@ -397,6 +399,48 @@ View a comprehensive history of all data changes in the application:
 - Audit budget changes
 - Monitor backup operations
 - Investigate data discrepancies
+
+## Container Update Detection
+
+When the application's Docker container is updated and restarted, a banner appears at the top of the page to let you know.
+
+### How It Works
+
+- The app periodically checks whether the server has restarted (e.g., after a container update)
+- If a restart is detected, a blue banner appears: **"Application has been updated. Refresh to get the latest version."**
+- The banner also appears when a lost server connection is re-established
+
+### Actions
+
+- **Refresh**: Click the refresh button on the banner to reload the page and pick up the new version
+- **Dismiss**: Click the × button to hide the banner for the current session
+
+### Automatic Detection
+
+- Checks happen every 5 minutes in the background
+- If the browser tab is hidden and the connection drops, the banner appears automatically when you return to the tab
+- No manual action is needed — the app handles detection for you
+
+## Version Upgrade Notifications
+
+After refreshing into a new version, the app shows you what changed.
+
+### Changelog Modal
+
+- When the app detects that the version has changed since your last visit, a changelog modal automatically appears
+- The modal shows the new version number and a summary of changes (new features, fixes, improvements)
+- Click **"Got it"** to dismiss — you won't see it again until the next upgrade
+
+### Update Availability Indicator
+
+- The System Information modal shows whether a newer version is available on GitHub
+- If an update is available, you'll see the latest version number and a link to the release
+- Update checks happen automatically (cached for 24 hours) and can be triggered manually with the **"Check Now"** button
+
+### Activity Log
+
+- Each version upgrade is recorded in the Activity Log as a `version_upgraded` event
+- This provides a history of when the application was updated
 
 ## Tips and Best Practices
 

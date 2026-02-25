@@ -11,7 +11,7 @@
 | Backend repositories | ~18 | — |
 | Backend routes | 24 | — |
 | Frontend components | ~80 JSX + ~65 CSS | ExpenseForm: 1,533 / ExpenseList: 1,163 / FinancialOverviewModal: 1,080 |
-| Frontend hooks | ~15 | — |
+| Frontend hooks | ~17 | — |
 | Frontend API services | 21 | — |
 | Database migrations | 1 file | ~50 lines (consolidated schema in schema.js) |
 | Database init (db.js) | 1 file | ~200 lines (imports from schema.js) |
@@ -99,7 +99,7 @@ components/
                    SeasonalAnalysisView, AnomalyAlertsView, DataSufficiencyMessage,
                    MerchantAnalyticsModal, MerchantDetailView
   notifications/   NotificationsSection, DataReminderBanner, InsuranceClaimReminderBanner
-  system/          SettingsModal, SystemModal, BackupSettings, ActivityLogTable
+  system/          SettingsModal, SystemModal, BackupSettings, ActivityLogTable, UpdateBanner
   shared/          CollapsibleSection, HelpTooltip, FloatingAddButton, MonthSelector,
                    SyncToast, EnvironmentBanner, TrendIndicator, SimilarityGroup,
                    PlaceNameStandardization

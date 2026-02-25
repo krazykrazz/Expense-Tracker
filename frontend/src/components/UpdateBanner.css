@@ -1,0 +1,89 @@
+.update-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, #1e40af 0%, #1d4ed8 50%, #2563eb 100%);
+  border-bottom: 2px solid #60a5fa;
+  color: #ffffff;
+  font-size: 0.9rem;
+  box-shadow: 0 2px 12px rgba(30, 64, 175, 0.4);
+}
+
+.update-banner-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+}
+
+.update-banner-icon {
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+.update-banner-message {
+  font-weight: 500;
+}
+
+.update-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.update-banner-refresh-btn {
+  background-color: #ffffff;
+  color: #1e40af;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.update-banner-refresh-btn:hover {
+  background-color: #e0e7ff;
+}
+
+.update-banner-refresh-btn:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+}
+
+.update-banner-dismiss-btn {
+  background: transparent;
+  border: none;
+  font-size: 1.4rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  line-height: 1;
+  color: #ffffff;
+  transition: background-color 0.2s ease;
+}
+
+.update-banner-dismiss-btn:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+.update-banner-dismiss-btn:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .update-banner-refresh-btn,
+  .update-banner-dismiss-btn {
+    transition: none;
+  }
+}

@@ -56,12 +56,13 @@ Branch protection on `main` blocks direct pushes. Version bumps go through a rel
    git checkout -b release/v1.0.1
    ```
 
-9. **Update version in all 6 locations**:
+9. **Update version in all 7 locations**:
    - `frontend/package.json`, `backend/package.json`
    - `frontend/src/App.jsx` (footer)
    - `CHANGELOG.md`
    - `frontend/src/components/BackupSettings.jsx` (changelog)
    - `frontend/src/components/SystemModal.jsx` (changelog)
+   - `frontend/src/utils/changelog.js` (centralized in-app changelog data for SystemModal Updates tab and BackupSettings About tab)
 
 10. **Build frontend** with new version:
     ```powershell
@@ -149,7 +150,7 @@ git checkout main; git pull origin main
 # 3. Create release branch
 git checkout -b release/v1.0.1
 
-# 4. Version bump (update all 6 files)
+# 4. Version bump (update all 7 files)
 
 # 5. Build frontend
 cd frontend; npm run build; cd ..

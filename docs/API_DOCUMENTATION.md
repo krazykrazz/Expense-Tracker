@@ -3061,6 +3061,74 @@ The existing health endpoint includes the current SSE connection count:
 
 ---
 
+## Version Endpoint
+
+**Endpoint:** `GET /api/version`
+
+Returns application version, startup identifier, and Docker image information.
+
+**Response:**
+```json
+{
+  "version": "1.0.0",
+  "startupId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "environment": "production",
+  "docker": {
+    "tag": "sha-abc1234",
+    "buildDate": "2026-02-25T10:30:00Z",
+    "commit": "abc1234"
+  }
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `version` | String | Application version from package.json |
+| `startupId` | String | Unique UUID generated on server startup. Changes on every process restart, enabling detection of container restarts even without version bumps. |
+| `environment` | String | Runtime environment (production, development) |
+| `docker` | Object\|null | Docker build metadata (null if not in container) |
+
+---
+
+## Update Check Endpoint
+
+**Endpoint:** `GET /api/version/check-update`
+
+Check if a newer version is available on GitHub Releases.
+
+**Response (update available):**
+```json
+{
+  "updateAvailable": true,
+  "currentVersion": "1.0.0",
+  "latestVersion": "1.1.0",
+  "checkedAt": "2026-02-25T10:30:00.000Z"
+}
+```
+
+**Response (no update / error):**
+```json
+{
+  "updateAvailable": false,
+  "currentVersion": "1.0.0",
+  "latestVersion": "1.0.0",
+  "checkedAt": "2026-02-25T10:30:00.000Z",
+  "error": "GitHub API unreachable"
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `updateAvailable` | Boolean | Whether a newer version exists on GitHub |
+| `currentVersion` | String | Current running application version |
+| `latestVersion` | String\|null | Latest release version from GitHub (null on error) |
+| `checkedAt` | String | ISO timestamp of when the check was performed |
+| `error` | String\|undefined | Error message, only present when GitHub API is unreachable |
+
+Results are cached in memory for 24 hours (configurable via `UPDATE_CHECK_INTERVAL_SECONDS` env var). Cache resets on server restart.
+
+---
+
 ## Changelog - Real-Time Sync
 
 ### Version 5.15.0 (February 2026)

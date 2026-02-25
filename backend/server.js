@@ -1,4 +1,5 @@
 const express = require('express');
+const crypto = require('crypto');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -42,6 +43,16 @@ activityLogService.setSseService(sseService);
 
 const app = express();
 const PORT = process.env.PORT || 2626;
+
+// Generate a unique startup ID that changes on every process restart
+// Used by the frontend to detect container updates/restarts
+try {
+  app.locals.startupId = crypto.randomUUID();
+} catch {
+  app.locals.startupId = Date.now().toString(36) + Math.random().toString(36).slice(2);
+  logger.warn('crypto.randomUUID() unavailable, using fallback startupId');
+}
+logger.info(`Startup ID generated: ${app.locals.startupId}`);
 
 // Trust proxy - required when running behind Docker/nginx/reverse proxy
 // This allows express-rate-limit to correctly identify client IPs from X-Forwarded-For header

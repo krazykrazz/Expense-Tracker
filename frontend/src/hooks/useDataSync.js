@@ -45,6 +45,7 @@ const WINDOW_EVENT_ENTITY_TYPES = new Set(['loan', 'income', 'investment', 'fixe
  * @param {Function} props.refreshBudgets
  * @param {Function} props.refreshPeople
  * @param {Function} props.refreshPaymentMethods
+ * @param {Function} [props.onReconnect] - Optional callback fired on SSE reconnection (not initial connect)
  * @returns {{ connectionStatus: string, subscribeToasts: Function, getToastSnapshot: Function }}
  */
 export function useDataSync({
@@ -52,6 +53,7 @@ export function useDataSync({
   refreshBudgets,
   refreshPeople,
   refreshPaymentMethods,
+  onReconnect,
 } = {}) {
   const [connectionStatus, setConnectionStatus] = useState('connecting');
 
@@ -73,12 +75,14 @@ export function useDataSync({
   const refreshBudgetsRef = useRef(refreshBudgets);
   const refreshPeopleRef = useRef(refreshPeople);
   const refreshPaymentMethodsRef = useRef(refreshPaymentMethods);
+  const onReconnectRef = useRef(onReconnect);
 
   // Update refs on every render so the SSE handler always calls the latest version
   refreshExpensesRef.current = refreshExpenses;
   refreshBudgetsRef.current = refreshBudgets;
   refreshPeopleRef.current = refreshPeople;
   refreshPaymentMethodsRef.current = refreshPaymentMethods;
+  onReconnectRef.current = onReconnect;
 
   const notifyToastListeners = useCallback(() => {
     toastListenersRef.current.forEach(listener => listener());
@@ -160,6 +164,8 @@ export function useDataSync({
 
     es.onopen = () => {
       if (unmountedRef.current) return;
+      // Determine if this is a reconnection before resetting state
+      const isReconnection = attemptRef.current > 0 || visibilityReconnectRef.current;
       attemptRef.current = 0; // reset backoff on successful connection
       setConnectionStatus('connected');
 
@@ -175,6 +181,11 @@ export function useDataSync({
         for (const entityType of WINDOW_EVENT_ENTITY_TYPES) {
           window.dispatchEvent(new CustomEvent('syncEvent', { detail: { entityType } }));
         }
+      }
+
+      // Fire onReconnect callback on reconnections (not initial connect)
+      if (isReconnection) {
+        onReconnectRef.current?.();
       }
     };
 

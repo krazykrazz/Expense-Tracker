@@ -106,8 +106,12 @@ describe('Invoice API Integration Tests', () => {
       const files = fs.readdirSync(invoicesDir, { recursive: true });
       files.forEach(file => {
         const filePath = path.join(invoicesDir, file);
-        if (fs.statSync(filePath).isFile() && filePath.includes('test')) {
-          fs.unlinkSync(filePath);
+        try {
+          if (fs.statSync(filePath).isFile() && filePath.includes('test')) {
+            fs.unlinkSync(filePath);
+          }
+        } catch (err) {
+          // File or directory may have been removed by another test or cleanup — skip it
         }
       });
     }

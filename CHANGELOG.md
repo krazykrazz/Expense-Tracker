@@ -4,6 +4,8 @@
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-02-25
+
 ### Added
 - Container update detection: open browser tabs automatically detect backend restarts/updates and display an update banner prompting users to refresh
 - `startupId` field in `/api/version` response — unique per server process, enables restart detection without version bumps

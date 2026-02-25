@@ -276,15 +276,21 @@ describe('Payment Method Activity Logging - Integration Tests', () => {
   });
 
   describe('Property-Based Test: Payment Method CRUD Event Tracking', () => {
+    let pbtRunCounter = 0;
+
     it('should log correct events for any payment method CRUD operation', async () => {
       await fc.assert(
         fc.asyncProperty(
           fc.constantFrom('cash', 'cheque', 'debit'),
           fc.constantFrom('create', 'update', 'deactivate'),
           fc.record({
-            displayName: fc.string({ minLength: 1, maxLength: 30 }).map(s => `Test PM ${s.trim()}`),
+            displayName: fc.constant(null), // Will be overridden with unique name
           }),
-          async (type, operation, data) => {
+          async (type, operation, _data) => {
+            // Generate a unique display name per iteration to avoid duplicate collisions
+            pbtRunCounter++;
+            const uniqueDisplayName = `Test PM ${pbtRunCounter}_${Date.now()}`;
+
             // Clean up before test
             await new Promise((resolve, reject) => {
               db.run(`DELETE FROM activity_logs WHERE entity_type = 'payment_method'`, (err) => {
@@ -295,13 +301,13 @@ describe('Payment Method Activity Logging - Integration Tests', () => {
 
             let paymentMethodId;
             let expectedEventType;
-            let expectedDisplayName = data.displayName;
+            let expectedDisplayName = uniqueDisplayName;
 
             if (operation === 'create') {
               // Create operation
               const paymentMethodData = {
                 type,
-                display_name: data.displayName,
+                display_name: uniqueDisplayName,
                 is_active: 1
               };
               const created = await paymentMethodService.createPaymentMethod(paymentMethodData);
@@ -311,7 +317,7 @@ describe('Payment Method Activity Logging - Integration Tests', () => {
               // Create first, then update
               const initialData = {
                 type,
-                display_name: data.displayName,
+                display_name: uniqueDisplayName,
                 is_active: 1
               };
               const created = await paymentMethodService.createPaymentMethod(initialData);
@@ -328,7 +334,7 @@ describe('Payment Method Activity Logging - Integration Tests', () => {
               // Update
               const updateData = {
                 type,
-                display_name: `${data.displayName} Updated`,
+                display_name: `${uniqueDisplayName} Updated`,
                 is_active: 1
               };
               await paymentMethodService.updatePaymentMethod(created.id, updateData);
@@ -338,12 +344,12 @@ describe('Payment Method Activity Logging - Integration Tests', () => {
               // Deactivate operation - need at least 2 payment methods
               const pm1Data = {
                 type,
-                display_name: data.displayName,
+                display_name: uniqueDisplayName,
                 is_active: 1
               };
               const pm2Data = {
                 type: 'cash',
-                display_name: `${data.displayName} Extra`,
+                display_name: `${uniqueDisplayName} Extra`,
                 is_active: 1
               };
               const created1 = await paymentMethodService.createPaymentMethod(pm1Data);

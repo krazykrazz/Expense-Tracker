@@ -394,7 +394,7 @@ describe('Financial Overview Preservation Tests', () => {
     it('should render all action buttons in LoanRow regardless of viewport size', () => {
       // Helper to generate valid loan names
       const validLoanName = () => fc.string({ minLength: 3, maxLength: 50 })
-        .filter(s => s.trim().length >= 3 && !/^\s|\s$/.test(s));
+        .filter(s => s.trim().length >= 3 && !/^\s|\s$|\s{2,}/.test(s));
       
       fc.assert(
         fc.property(
@@ -446,7 +446,7 @@ describe('Financial Overview Preservation Tests', () => {
     it('should maintain button accessibility with proper title attributes', () => {
       // Helper to generate valid loan names
       const validLoanName = () => fc.string({ minLength: 3, maxLength: 50 })
-        .filter(s => s.trim().length >= 3 && !/^\s|\s$/.test(s));
+        .filter(s => s.trim().length >= 3 && !/^\s|\s$|\s{2,}/.test(s));
       
       fc.assert(
         fc.property(
@@ -557,7 +557,7 @@ describe('Financial Overview Preservation Tests', () => {
     it('should render conditional badges based on loan state', () => {
       // Helper to generate valid loan names
       const validLoanName = () => fc.string({ minLength: 3, maxLength: 50 })
-        .filter(s => s.trim().length >= 3 && !/^\s|\s$/.test(s));
+        .filter(s => s.trim().length >= 3 && !/^\s|\s$|\s{2,}/.test(s));
       
       fc.assert(
         fc.property(

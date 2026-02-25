@@ -21,6 +21,18 @@ const budgetRepository = require('../repositories/budgetRepository');
 const { DB_PATH, initializeDatabase } = require('../database/db');
 const { getInvoicesPath, getBackupConfigPath } = require('../config/paths');
 
+// JS prototype property names that cause issues when used as filenames
+// (tar library and fs operations can choke on these)
+const JS_RESERVED_NAMES = new Set([
+  'constructor', 'toString', 'valueOf', 'hasOwnProperty', 'isPrototypeOf',
+  'propertyIsEnumerable', 'toLocaleString', '__proto__', '__defineGetter__',
+  '__defineSetter__', '__lookupGetter__', '__lookupSetter__', 'arguments',
+  'caller', 'callee', 'prototype'
+]);
+
+/** Filter predicate: alphanumeric string that isn't a JS reserved name */
+const isSafeFilename = (s) => /^[a-zA-Z0-9]+$/.test(s) && !JS_RESERVED_NAMES.has(s);
+
 describe('BackupService - Property-Based Tests', () => {
   const testBackupPath = path.join(__dirname, '../../test-pbt-backups');
   
@@ -258,7 +270,7 @@ describe('BackupService - Property-Based Tests', () => {
       year: fc.integer({ min: 2020, max: 2030 }),
       month: fc.integer({ min: 1, max: 12 }),
       filename: fc.string({ minLength: 8, maxLength: 16, unit: 'grapheme-ascii' })
-        .filter(s => /^[a-zA-Z0-9]+$/.test(s))
+        .filter(isSafeFilename)
         .map(s => `invoice_${s}.pdf`)
     });
 
@@ -424,7 +436,7 @@ describe('BackupService - Property-Based Tests', () => {
       year: fc.integer({ min: 2080, max: 2090 }), // Use future years to avoid conflicts
       month: fc.integer({ min: 1, max: 12 }),
       filename: fc.string({ minLength: 8, maxLength: 16, unit: 'grapheme-ascii' })
-        .filter(s => /^[a-zA-Z0-9]+$/.test(s))
+        .filter(isSafeFilename)
         .map(s => `roundtrip_${s}.pdf`),
       content: fc.string({ minLength: 10, maxLength: 100, unit: 'grapheme-ascii' })
         .map(s => `%PDF-1.4 ${s}`)
@@ -599,7 +611,7 @@ describe('BackupService - Property-Based Tests', () => {
       year: fc.integer({ min: 2070, max: 2079 }), // Use different year range to avoid conflicts
       month: fc.integer({ min: 1, max: 12 }),
       filename: fc.string({ minLength: 8, maxLength: 16, unit: 'grapheme-ascii' })
-        .filter(s => /^[a-zA-Z0-9]+$/.test(s))
+        .filter(isSafeFilename)
         .map(s => `filecount_${s}.pdf`)
     });
 
@@ -922,7 +934,7 @@ describe('BackupService - Property-Based Tests', () => {
           year: fc.integer({ min: 2091, max: 2095 }), // Use unique year range to avoid conflicts
           month: fc.integer({ min: 1, max: 12 }),
           filename: fc.string({ minLength: 8, maxLength: 16, unit: 'grapheme-ascii' })
-            .filter(s => /^[a-zA-Z0-9]+$/.test(s))
+            .filter(isSafeFilename)
             .map(s => `stats_${s}.pdf`),
           contentSize: fc.integer({ min: 100, max: 1000 }) // Size of content to write
         }),

@@ -56,11 +56,11 @@ const UserMenu = () => {
       {isOpen && isActive && (
         <div className="user-menu-dropdown" role="menu">
           <button
-            className="user-menu-item"
+            className="user-menu-item logout-item"
             onClick={handleLogout}
             role="menuitem"
           >
-            🚪 Logout
+            Logout
           </button>
         </div>
       )}

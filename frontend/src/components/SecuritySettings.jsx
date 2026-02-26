@@ -31,7 +31,7 @@ export function validatePasswordFields(password, confirmation) {
  * Requirements: 9.1, 9.2, 9.3, 9.4, 9.5, 9.6, 9.7, 9.8, 9.9
  */
 const SecuritySettings = () => {
-  const { isPasswordRequired, login, enableAuth, logout, disableAuth, getAccessToken } = useAuthContext();
+  const { isPasswordRequired, login, enableAuth, disableAuth } = useAuthContext();
 
   const [authEnabled, setAuthEnabled] = useState(false);
   const [username, setUsername] = useState('admin');

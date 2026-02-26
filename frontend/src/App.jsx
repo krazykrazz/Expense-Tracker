@@ -36,6 +36,7 @@ import { ModalProvider, useModalContext } from './contexts/ModalContext';
 import { SharedDataProvider, useSharedDataContext } from './contexts/SharedDataContext';
 import { AuthProvider, useAuthContext } from './contexts/AuthContext';
 import LoginScreen from './components/LoginScreen';
+import UserMenu from './components/UserMenu';
 import logo from './assets/tracker.png.png';
 
 function App() {
@@ -390,6 +391,7 @@ function AppContent({ onPaymentMethodsUpdate }) {
           >
             ⚙️ <span className="btn-text">Settings</span>
           </button>
+          <UserMenu />
         </div>
       </header>
       <main className="App-main">

@@ -170,28 +170,25 @@ describe('ExpenseForm Posted Date Field Visibility Property-Based Tests', () => 
             fireEvent.change(paymentMethodSelect, { target: { value: selectedMethod.id.toString() } });
           });
 
-          // Wait longer for the payment method change to be processed and state to propagate
+          // Wait for the payment method change to be processed and state to propagate
           await act(async () => {
             await new Promise(resolve => setTimeout(resolve, 300));
           });
 
-          // Expand the Advanced Options section to reveal the posted_date field
-          const advancedOptionsHeader = Array.from(container.querySelectorAll('.collapsible-header'))
-            .find(h => h.textContent.includes('Advanced Options'));
-          
-          if (advancedOptionsHeader && advancedOptionsHeader.getAttribute('aria-expanded') === 'false') {
-            await act(async () => {
-              fireEvent.click(advancedOptionsHeader);
-              await new Promise(resolve => setTimeout(resolve, 100));
-            });
-          }
-
-          // Wait for the DOM to reflect the state change
+          // Check posted_date visibility based on payment method type
           if (selectedMethod.type === 'credit_card') {
+            // For credit cards, expand Advanced Options and verify posted_date appears
+            // Use waitFor with retry since the section may need re-expanding after re-render
             await waitFor(() => {
+              const advancedOptionsHeader = Array.from(container.querySelectorAll('.collapsible-header'))
+                .find(h => h.textContent.includes('Advanced Options'));
+              expect(advancedOptionsHeader).toBeTruthy();
+              if (advancedOptionsHeader.getAttribute('aria-expanded') === 'false') {
+                fireEvent.click(advancedOptionsHeader);
+              }
               const postedDateInput = container.querySelector('input[name="posted_date"]');
               expect(postedDateInput).toBeTruthy();
-            }, { timeout: 5000 });
+            }, { timeout: 5000, interval: 200 });
           } else {
             // For non-credit cards, ensure the field is NOT present
             // Give it a moment to ensure it doesn't appear

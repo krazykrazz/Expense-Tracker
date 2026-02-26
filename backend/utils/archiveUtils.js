@@ -235,10 +235,42 @@ class ArchiveUtils {
       const srcPath = path.join(src, entry.name);
       const destPath = path.join(dest, entry.name);
 
-      if (entry.isDirectory()) {
-        await this._copyDirectory(srcPath, destPath);
-      } else {
+      try {
+        if (entry.isDirectory()) {
+          await this._copyDirectory(srcPath, destPath);
+        } else {
+          await this._copyFileWithRetry(srcPath, destPath);
+        }
+      } catch (err) {
+        if (err.code === 'ENOENT') {
+          // File was removed between readdir and copyFile — skip it
+          logger.debug(`Skipping file removed during backup: ${srcPath}`);
+        } else {
+          throw err;
+        }
+      }
+    }
+  }
+
+  /**
+   * Copy a single file with retry logic for EBUSY/EPERM (Windows file-locking)
+   * @param {string} srcPath - Source file path
+   * @param {string} destPath - Destination file path
+   * @param {number} maxRetries - Maximum retry attempts
+   * @private
+   */
+  async _copyFileWithRetry(srcPath, destPath, maxRetries = 3) {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
         await fs.promises.copyFile(srcPath, destPath);
+        return;
+      } catch (err) {
+        if ((err.code === 'EBUSY' || err.code === 'EPERM') && attempt < maxRetries) {
+          logger.debug(`File busy, retrying copy (${attempt}/${maxRetries}): ${srcPath}`);
+          await new Promise(resolve => setTimeout(resolve, 100 * attempt));
+        } else {
+          throw err;
+        }
       }
     }
   }

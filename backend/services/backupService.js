@@ -548,13 +548,30 @@ class BackupService {
         // Recursively restore subdirectory
         filesRestored += await this._restoreDirectory(srcPath, destPath);
       } else {
-        // Copy file
+        // Copy file with retry for Windows file-locking issues
         const destFileDir = path.dirname(destPath);
         if (!fs.existsSync(destFileDir)) {
           fs.mkdirSync(destFileDir, { recursive: true });
         }
-        fs.copyFileSync(srcPath, destPath);
-        filesRestored++;
+        
+        let copied = false;
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try {
+            fs.copyFileSync(srcPath, destPath);
+            copied = true;
+            break;
+          } catch (err) {
+            if ((err.code === 'EBUSY' || err.code === 'EPERM') && attempt < 2) {
+              // Wait briefly and retry on Windows file-locking errors
+              await new Promise(resolve => setTimeout(resolve, 100 * (attempt + 1)));
+            } else {
+              throw err;
+            }
+          }
+        }
+        if (copied) {
+          filesRestored++;
+        }
       }
     }
 

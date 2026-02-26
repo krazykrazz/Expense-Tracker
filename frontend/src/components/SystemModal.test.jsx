@@ -308,7 +308,8 @@ describe('SystemModal', () => {
         expect(screen.getByTestId('update-available-banner')).toBeInTheDocument();
       });
       expect(screen.getByText('A new version is available!')).toBeInTheDocument();
-      expect(screen.getByText('v1.1.0')).toBeInTheDocument();
+      const banner = screen.getByTestId('update-available-banner');
+      expect(banner).toHaveTextContent('v1.1.0');
     });
 
     it('should hide update banner when no update is available', async () => {

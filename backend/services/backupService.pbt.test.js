@@ -200,7 +200,12 @@ describe('BackupService - Property-Based Tests', () => {
           await archiveUtils.extractArchive(backupResult.path, testExtractPath);
           
           // Copy extracted database back to original location
+          // Remove stale WAL/SHM files before restoring to avoid conflicts
           const extractedDbPath = path.join(testExtractPath, 'database', 'expenses.db');
+          try {
+            if (fs.existsSync(DB_PATH + '-wal')) fs.unlinkSync(DB_PATH + '-wal');
+            if (fs.existsSync(DB_PATH + '-shm')) fs.unlinkSync(DB_PATH + '-shm');
+          } catch (e) { /* ignore cleanup errors */ }
           fs.copyFileSync(extractedDbPath, DB_PATH);
           
           const { initializeDatabase } = require('../database/db');

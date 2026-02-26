@@ -155,12 +155,17 @@ describe('ExpenseForm Posted Date Field Visibility Property-Based Tests', () => 
           // Render the component
           const { container, unmount } = render(<ExpenseForm onExpenseAdded={() => {}} />);
 
-          // Wait for payment methods to be loaded
+          // Wait for payment methods to be loaded AND initial default selection to complete.
+          // The component's useEffect sets a default payment_method_id after paymentMethods load.
+          // We must wait for that effect to finish before changing the selection, otherwise
+          // the effect's stale closure will overwrite our fireEvent.change selection.
           await waitFor(() => {
             const paymentMethodSelect = container.querySelector('select[name="payment_method_id"]');
             expect(paymentMethodSelect).toBeTruthy();
-            // Check that we have options loaded
             expect(paymentMethodSelect.options.length).toBeGreaterThan(1);
+            // Ensure the initial useEffect has set a default value
+            expect(paymentMethodSelect.value).toBeTruthy();
+            expect(paymentMethodSelect.value).not.toBe('');
           }, { timeout: 3000 });
 
           // Select the payment method
@@ -177,15 +182,24 @@ describe('ExpenseForm Posted Date Field Visibility Property-Based Tests', () => 
 
           // Check posted_date visibility based on payment method type
           if (selectedMethod.type === 'credit_card') {
-            // For credit cards, expand Advanced Options and verify posted_date appears
-            // Use waitFor with retry since the section may need re-expanding after re-render
+            // Wait for isCreditCard state to propagate
             await waitFor(() => {
               const advancedOptionsHeader = Array.from(container.querySelectorAll('.collapsible-header'))
                 .find(h => h.textContent.includes('Advanced Options'));
               expect(advancedOptionsHeader).toBeTruthy();
-              if (advancedOptionsHeader.getAttribute('aria-expanded') === 'false') {
+            }, { timeout: 3000 });
+
+            // Expand Advanced Options if collapsed
+            await act(async () => {
+              const advancedOptionsHeader = Array.from(container.querySelectorAll('.collapsible-header'))
+                .find(h => h.textContent.includes('Advanced Options'));
+              if (advancedOptionsHeader && advancedOptionsHeader.getAttribute('aria-expanded') === 'false') {
                 fireEvent.click(advancedOptionsHeader);
               }
+            });
+
+            // Wait for posted_date to appear after expansion
+            await waitFor(() => {
               const postedDateInput = container.querySelector('input[name="posted_date"]');
               expect(postedDateInput).toBeTruthy();
             }, { timeout: 5000, interval: 200 });
@@ -237,11 +251,16 @@ describe('ExpenseForm Posted Date Field Visibility Property-Based Tests', () => 
           // Render the component
           const { container, unmount } = render(<ExpenseForm onExpenseAdded={() => {}} />);
 
-          // Wait for payment methods to be loaded
+          // Wait for payment methods to be loaded AND initial default selection to complete.
+          // The component's useEffect sets a default payment_method_id after paymentMethods load.
+          // We must wait for that effect to finish before changing the selection, otherwise
+          // the effect's stale closure will overwrite our fireEvent.change selection.
           await waitFor(() => {
             const paymentMethodSelect = container.querySelector('select[name="payment_method_id"]');
             expect(paymentMethodSelect).toBeTruthy();
             expect(paymentMethodSelect.options.length).toBeGreaterThan(1);
+            expect(paymentMethodSelect.value).toBeTruthy();
+            expect(paymentMethodSelect.value).not.toBe('');
           }, { timeout: 3000 });
 
           const paymentMethodSelect = container.querySelector('select[name="payment_method_id"]');
@@ -249,18 +268,27 @@ describe('ExpenseForm Posted Date Field Visibility Property-Based Tests', () => 
           // First, select a credit card and wait for state to settle
           await act(async () => {
             fireEvent.change(paymentMethodSelect, { target: { value: creditCard.id.toString() } });
-            await new Promise(resolve => setTimeout(resolve, 500));
           });
 
-          // Expand Advanced Options and wait for posted_date to appear
-          // Use waitFor with retry logic since the section may need re-expanding after re-render
-          await waitFor(async () => {
+          // Wait for isCreditCard state to propagate by checking for the posted-date-section
+          // which only renders when isCreditCard is true
+          await waitFor(() => {
             const advancedOptionsHeader = Array.from(container.querySelectorAll('.collapsible-header'))
               .find(h => h.textContent.includes('Advanced Options'));
             expect(advancedOptionsHeader).toBeTruthy();
-            if (advancedOptionsHeader.getAttribute('aria-expanded') === 'false') {
+          }, { timeout: 3000 });
+
+          // Expand Advanced Options if collapsed
+          await act(async () => {
+            const advancedOptionsHeader = Array.from(container.querySelectorAll('.collapsible-header'))
+              .find(h => h.textContent.includes('Advanced Options'));
+            if (advancedOptionsHeader && advancedOptionsHeader.getAttribute('aria-expanded') === 'false') {
               fireEvent.click(advancedOptionsHeader);
             }
+          });
+
+          // Wait for posted_date to appear after expansion
+          await waitFor(() => {
             const postedDateInput = container.querySelector('input[name="posted_date"]');
             expect(postedDateInput).toBeTruthy();
           }, { timeout: 5000, interval: 200 });

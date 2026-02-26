@@ -146,6 +146,32 @@ class BackupService {
       const filename = `expense-tracker-backup-v${version}${shaSuffix}-${timestamp}.tar.gz`;
       const fullPath = path.join(backupPath, filename);
 
+      // Checkpoint WAL to ensure all data is flushed to the main database file
+      // This is critical for backup integrity when WAL mode is enabled
+      try {
+        const { getDatabase } = require('../database/db');
+        const db = await getDatabase();
+        await new Promise((resolve, reject) => {
+          db.run('PRAGMA wal_checkpoint(TRUNCATE)', (err) => {
+            if (err) {
+              logger.warn('WAL checkpoint before backup failed:', err.message);
+              resolve(); // Non-fatal: proceed with backup anyway
+            } else {
+              logger.debug('WAL checkpoint completed before backup');
+              resolve();
+            }
+          });
+        });
+        // Do NOT close this connection — in test environments getDatabase()
+        // returns a singleton, and closing it causes SQLITE_MISUSE on all
+        // subsequent queries.  On Windows the open handle also prevents
+        // stale WAL files from being cleaned up during restore.  The
+        // checkpoint already flushed all data to the main DB file, so the
+        // archive will capture a consistent snapshot.
+      } catch (checkpointError) {
+        logger.warn('Could not run WAL checkpoint before backup:', checkpointError.message);
+      }
+
       // Collect entries for the archive
       const entries = [];
 
@@ -447,6 +473,17 @@ class BackupService {
         // Restore database
         const extractedDbPath = path.join(tempExtractPath, 'database', 'expenses.db');
         if (fs.existsSync(extractedDbPath)) {
+          // Remove stale WAL and SHM files before restoring
+          // These can contain outdated data that conflicts with the restored database
+          const walPath = DB_PATH + '-wal';
+          const shmPath = DB_PATH + '-shm';
+          try {
+            if (fs.existsSync(walPath)) fs.unlinkSync(walPath);
+            if (fs.existsSync(shmPath)) fs.unlinkSync(shmPath);
+          } catch (cleanupErr) {
+            logger.warn('Could not remove WAL/SHM files before restore:', cleanupErr.message);
+          }
+          
           fs.copyFileSync(extractedDbPath, DB_PATH);
           filesRestored++;
           logger.info('Database restored successfully');

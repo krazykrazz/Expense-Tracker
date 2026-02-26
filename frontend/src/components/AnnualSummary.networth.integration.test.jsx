@@ -1,5 +1,15 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, waitFor } from '@testing-library/react';
+
+// Mock fetchProvider — authAwareFetch delegates to mockFetch
+const mockFetch = vi.fn();
+vi.mock('../utils/fetchProvider', () => ({
+  authAwareFetch: (...args) => mockFetch(...args),
+  getFetchFn: () => mockFetch,
+  getNativeFetch: () => mockFetch,
+  setFetchFn: vi.fn()
+}));
+
 import AnnualSummary from './AnnualSummary';
 
 // Integration Tests for Net Worth Card
@@ -7,7 +17,7 @@ import AnnualSummary from './AnnualSummary';
 describe('AnnualSummary - Net Worth Card Integration Tests', () => {
   beforeEach(() => {
     // Reset fetch mock before each test
-    global.fetch = undefined;
+    mockFetch.mockReset();
   });
 
   describe('Complete Data Flow from API to UI', () => {
@@ -29,7 +39,7 @@ describe('AnnualSummary - Net Worth Card Integration Tests', () => {
         totalLiabilities: 25000
       };
 
-      global.fetch = async (url) => {
+      mockFetch.mockImplementation(async (url) => {
         if (url.includes('/api/expenses/annual-summary')) {
           return {
             ok: true,
@@ -49,7 +59,7 @@ describe('AnnualSummary - Net Worth Card Integration Tests', () => {
           };
         }
         return { ok: false };
-      };
+      });
 
       const { container } = render(<AnnualSummary year={2024} />);
 
@@ -93,7 +103,7 @@ describe('AnnualSummary - Net Worth Card Integration Tests', () => {
         totalLiabilities: 25000
       };
 
-      global.fetch = async (url) => {
+      mockFetch.mockImplementation(async (url) => {
         if (url.includes('/api/expenses/annual-summary')) {
           return {
             ok: true,
@@ -113,7 +123,7 @@ describe('AnnualSummary - Net Worth Card Integration Tests', () => {
           };
         }
         return { ok: false };
-      };
+      });
 
       const { container } = render(<AnnualSummary year={2024} />);
 
@@ -154,7 +164,7 @@ describe('AnnualSummary - Net Worth Card Integration Tests', () => {
         totalLiabilities: 25000
       };
 
-      global.fetch = async (url) => {
+      mockFetch.mockImplementation(async (url) => {
         if (url.includes('/api/expenses/annual-summary')) {
           return {
             ok: true,
@@ -174,7 +184,7 @@ describe('AnnualSummary - Net Worth Card Integration Tests', () => {
           };
         }
         return { ok: false };
-      };
+      });
 
       const { container } = render(<AnnualSummary year={2024} />);
 
@@ -213,7 +223,7 @@ describe('AnnualSummary - Net Worth Card Integration Tests', () => {
         // No netWorth, totalAssets, or totalLiabilities
       };
 
-      global.fetch = async (url) => {
+      mockFetch.mockImplementation(async (url) => {
         if (url.includes('/api/expenses/annual-summary')) {
           return {
             ok: true,
@@ -233,7 +243,7 @@ describe('AnnualSummary - Net Worth Card Integration Tests', () => {
           };
         }
         return { ok: false };
-      };
+      });
 
       const { container } = render(<AnnualSummary year={2024} />);
 
@@ -270,7 +280,7 @@ describe('AnnualSummary - Net Worth Card Integration Tests', () => {
         totalLiabilities: 100000.25
       };
 
-      global.fetch = async (url) => {
+      mockFetch.mockImplementation(async (url) => {
         if (url.includes('/api/expenses/annual-summary')) {
           return {
             ok: true,
@@ -290,7 +300,7 @@ describe('AnnualSummary - Net Worth Card Integration Tests', () => {
           };
         }
         return { ok: false };
-      };
+      });
 
       const { container } = render(<AnnualSummary year={2024} />);
 
@@ -325,7 +335,7 @@ describe('AnnualSummary - Net Worth Card Integration Tests', () => {
         totalLiabilities: 0
       };
 
-      global.fetch = async (url) => {
+      mockFetch.mockImplementation(async (url) => {
         if (url.includes('/api/expenses/annual-summary')) {
           return {
             ok: true,
@@ -345,7 +355,7 @@ describe('AnnualSummary - Net Worth Card Integration Tests', () => {
           };
         }
         return { ok: false };
-      };
+      });
 
       const { container } = render(<AnnualSummary year={2024} />);
 
@@ -384,7 +394,7 @@ describe('AnnualSummary - Net Worth Card Integration Tests', () => {
         totalLiabilities: 30000
       };
 
-      global.fetch = async (url) => {
+      mockFetch.mockImplementation(async (url) => {
         if (url.includes('/api/expenses/annual-summary')) {
           return {
             ok: true,
@@ -404,7 +414,7 @@ describe('AnnualSummary - Net Worth Card Integration Tests', () => {
           };
         }
         return { ok: false };
-      };
+      });
 
       const { container } = render(<AnnualSummary year={2024} />);
 
@@ -443,7 +453,7 @@ describe('AnnualSummary - Net Worth Card Integration Tests', () => {
         totalLiabilities: 11111.11
       };
 
-      global.fetch = async (url) => {
+      mockFetch.mockImplementation(async (url) => {
         if (url.includes('/api/expenses/annual-summary')) {
           return {
             ok: true,
@@ -463,7 +473,7 @@ describe('AnnualSummary - Net Worth Card Integration Tests', () => {
           };
         }
         return { ok: false };
-      };
+      });
 
       const { container } = render(<AnnualSummary year={2024} />);
 
@@ -500,7 +510,7 @@ describe('AnnualSummary - Net Worth Card Integration Tests', () => {
         totalLiabilities: 25000
       };
 
-      global.fetch = async (url) => {
+      mockFetch.mockImplementation(async (url) => {
         if (url.includes('/api/expenses/annual-summary')) {
           return {
             ok: true,
@@ -520,7 +530,7 @@ describe('AnnualSummary - Net Worth Card Integration Tests', () => {
           };
         }
         return { ok: false };
-      };
+      });
 
       const { container } = render(<AnnualSummary year={2024} />);
 
@@ -556,7 +566,7 @@ describe('AnnualSummary - Net Worth Card Integration Tests', () => {
         totalLiabilities: 25000
       };
 
-      global.fetch = async (url) => {
+      mockFetch.mockImplementation(async (url) => {
         if (url.includes('/api/expenses/annual-summary')) {
           return {
             ok: true,
@@ -576,7 +586,7 @@ describe('AnnualSummary - Net Worth Card Integration Tests', () => {
           };
         }
         return { ok: false };
-      };
+      });
 
       const { container } = render(<AnnualSummary year={2024} />);
 
@@ -631,7 +641,7 @@ describe('AnnualSummary - Net Worth Card Integration Tests', () => {
         totalLiabilities: 25000
       };
 
-      global.fetch = async (url) => {
+      mockFetch.mockImplementation(async (url) => {
         if (url.includes('/api/expenses/annual-summary')) {
           return {
             ok: true,
@@ -651,7 +661,7 @@ describe('AnnualSummary - Net Worth Card Integration Tests', () => {
           };
         }
         return { ok: false };
-      };
+      });
 
       const { container } = render(<AnnualSummary year={2024} />);
 
@@ -673,7 +683,7 @@ describe('AnnualSummary - Net Worth Card Integration Tests', () => {
 
   describe('API Error Handling', () => {
     it('should handle API errors gracefully', async () => {
-      global.fetch = async (url) => {
+      mockFetch.mockImplementation(async (url) => {
         if (url.includes('/api/expenses/annual-summary')) {
           return {
             ok: false,
@@ -681,7 +691,7 @@ describe('AnnualSummary - Net Worth Card Integration Tests', () => {
           };
         }
         return { ok: false };
-      };
+      });
 
       const { container } = render(<AnnualSummary year={2024} />);
 
@@ -700,9 +710,9 @@ describe('AnnualSummary - Net Worth Card Integration Tests', () => {
     });
 
     it('should handle network errors gracefully', async () => {
-      global.fetch = async () => {
+      mockFetch.mockImplementation(async () => {
         throw new Error('Network error');
-      };
+      });
 
       const { container } = render(<AnnualSummary year={2024} />);
 
@@ -754,7 +764,7 @@ describe('AnnualSummary - Net Worth Card Integration Tests', () => {
         totalLiabilities: 25000
       };
 
-      global.fetch = async (url) => {
+      mockFetch.mockImplementation(async (url) => {
         fetchCount++;
         if (url.includes('/api/expenses/annual-summary')) {
           if (url.includes('year=2023')) {
@@ -782,7 +792,7 @@ describe('AnnualSummary - Net Worth Card Integration Tests', () => {
           };
         }
         return { ok: false };
-      };
+      });
 
       const { container, rerender } = render(<AnnualSummary year={2023} />);
 

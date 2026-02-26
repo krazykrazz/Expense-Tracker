@@ -1,6 +1,15 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
+vi.mock('../utils/fetchProvider', async () => {
+  const actual = await vi.importActual('../utils/fetchProvider');
+  return {
+    ...actual,
+    getFetchFn: () => (...args) => globalThis.fetch(...args),
+    authAwareFetch: (...args) => globalThis.fetch(...args),
+  };
+});
+
 // Mock ModalContext
 const mockCloseSettingsModal = vi.fn();
 vi.mock('../contexts/ModalContext', () => ({
@@ -88,17 +97,18 @@ describe('SettingsModal', () => {
   });
 
   describe('Tab structure', () => {
-    it('should render exactly 3 tabs: General, Backup Configuration and People', async () => {
+    it('should render exactly 4 tabs: General, Backup Configuration, People, and Security', async () => {
       render(<SettingsModal />);
       await waitForLoaded();
 
       const tabButtons = screen.getAllByRole('button').filter(btn =>
         btn.classList.contains('tab-button')
       );
-      expect(tabButtons).toHaveLength(3);
+      expect(tabButtons).toHaveLength(4);
       expect(screen.getByText('⚙️ General')).toBeInTheDocument();
       expect(screen.getByText('💾 Backup Configuration')).toBeInTheDocument();
       expect(screen.getByText('👥 People')).toBeInTheDocument();
+      expect(screen.getByText('🔒 Security')).toBeInTheDocument();
     });
 
     it('should default to General tab', async () => {

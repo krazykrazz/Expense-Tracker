@@ -5,6 +5,8 @@ import { API_ENDPOINTS } from '../config';
 import { getPeople, createPerson, updatePerson, deletePerson } from '../services/peopleApi';
 import { fetchRetentionSettings, updateRetentionSettings } from '../services/activityLogApi';
 import { createLogger } from '../utils/logger';
+import { authAwareFetch } from '../utils/fetchProvider';
+import SecuritySettings from './SecuritySettings';
 import './SettingsModal.css';
 
 const logger = createLogger('SettingsModal');
@@ -86,7 +88,7 @@ const SettingsModal = () => {
   
   const fetchConfig = async () => {
     try {
-      const response = await fetch(API_ENDPOINTS.BACKUP_CONFIG);
+      const response = await authAwareFetch(API_ENDPOINTS.BACKUP_CONFIG);
       if (!response.ok) throw new Error('Failed to fetch backup config');
       
       const data = await response.json();
@@ -118,7 +120,7 @@ const SettingsModal = () => {
     setMessage({ text: '', type: '' });
     
     try {
-      const response = await fetch(API_ENDPOINTS.BACKUP_CONFIG, {
+      const response = await authAwareFetch(API_ENDPOINTS.BACKUP_CONFIG, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
@@ -146,7 +148,7 @@ const SettingsModal = () => {
 
   const fetchTimezone = async () => {
     try {
-      const response = await fetch(API_ENDPOINTS.SETTINGS_TIMEZONE);
+      const response = await authAwareFetch(API_ENDPOINTS.SETTINGS_TIMEZONE);
       if (!response.ok) throw new Error('Failed to fetch timezone');
       const data = await response.json();
       setTimezone(data.timezone || 'America/Toronto');
@@ -160,7 +162,7 @@ const SettingsModal = () => {
     setTimezoneLoading(true);
     setTimezoneMessage({ text: '', type: '' });
     try {
-      const response = await fetch(API_ENDPOINTS.SETTINGS_TIMEZONE, {
+      const response = await authAwareFetch(API_ENDPOINTS.SETTINGS_TIMEZONE, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ timezone: newTz })
@@ -432,6 +434,12 @@ const SettingsModal = () => {
             onClick={() => setActiveTab('people')}
           >
             👥 People
+          </button>
+          <button 
+            className={`tab-button ${activeTab === 'security' ? 'active' : ''}`}
+            onClick={() => setActiveTab('security')}
+          >
+            🔒 Security
           </button>
         </div>
 
@@ -842,6 +850,12 @@ const SettingsModal = () => {
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {activeTab === 'security' && (
+            <div className="tab-panel">
+              <SecuritySettings />
             </div>
           )}
 

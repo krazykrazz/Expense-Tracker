@@ -2,9 +2,19 @@
  * @invariant Net Worth Calculation: For any combination of total assets and total liabilities, net worth equals assets minus liabilities; the display correctly reflects positive, negative, and zero net worth. Randomization covers diverse financial value combinations.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, waitFor } from '@testing-library/react';
 import fc from 'fast-check';
+
+// Mock fetchProvider — authAwareFetch delegates to mockFetch
+const mockFetch = vi.fn();
+vi.mock('../utils/fetchProvider', () => ({
+  authAwareFetch: (...args) => mockFetch(...args),
+  getFetchFn: () => mockFetch,
+  getNativeFetch: () => mockFetch,
+  setFetchFn: vi.fn()
+}));
+
 import AnnualSummary from './AnnualSummary';
 
 // Helper to create mock fetch function
@@ -71,7 +81,7 @@ describe('AnnualSummary - Net Worth Color Coding', () => {
           const actualNetWorth = roundedAssets - roundedLiabilities;
           
           // Mock fetch to return our test data
-          global.fetch = createMockFetch(actualNetWorth, roundedAssets, roundedLiabilities);
+          mockFetch.mockImplementation(createMockFetch(actualNetWorth, roundedAssets, roundedLiabilities));
 
           // Render the component
           const { container, unmount } = render(<AnnualSummary year={2024} />);

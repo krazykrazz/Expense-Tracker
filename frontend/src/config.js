@@ -161,7 +161,14 @@ export const API_ENDPOINTS = {
   DISMISS_AUTO_GENERATED_CYCLES: `${API_BASE_URL}/api/payment-methods/billing-cycles/dismiss-auto-generated`,
 
   // Settings
-  SETTINGS_TIMEZONE: `${API_BASE_URL}/api/settings/timezone`
+  SETTINGS_TIMEZONE: `${API_BASE_URL}/api/settings/timezone`,
+
+  // Auth
+  AUTH_STATUS: `${API_BASE_URL}/api/auth/status`,
+  AUTH_LOGIN: `${API_BASE_URL}/api/auth/login`,
+  AUTH_REFRESH: `${API_BASE_URL}/api/auth/refresh`,
+  AUTH_LOGOUT: `${API_BASE_URL}/api/auth/logout`,
+  AUTH_PASSWORD: `${API_BASE_URL}/api/auth/password`
 };
 
 export default API_BASE_URL;

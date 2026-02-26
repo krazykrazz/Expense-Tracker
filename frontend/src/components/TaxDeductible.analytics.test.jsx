@@ -6,6 +6,16 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
+vi.mock('../utils/fetchProvider', async () => {
+  const actual = await vi.importActual('../utils/fetchProvider');
+  return {
+    ...actual,
+    getFetchFn: () => (...args) => globalThis.fetch(...args),
+    authAwareFetch: (...args) => globalThis.fetch(...args),
+  };
+});
+
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import TaxDeductible from './TaxDeductible';
 import * as peopleApi from '../services/peopleApi';

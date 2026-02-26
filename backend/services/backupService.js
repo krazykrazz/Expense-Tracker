@@ -73,6 +73,11 @@ class BackupService {
    * Update backup configuration
    */
   updateConfig(newConfig) {
+    // Validate targetPath if provided (SEC-004: path traversal prevention)
+    if (newConfig.targetPath !== undefined) {
+      this._validateTargetPath(newConfig.targetPath);
+    }
+
     this.config = { ...this.config, ...newConfig };
     this.saveConfig();
     
@@ -84,6 +89,25 @@ class BackupService {
     }
     
     return this.config;
+  }
+
+  /**
+   * Validate that a target path is within the allowed base configuration directory.
+   * Prevents path traversal attacks (SEC-004).
+   * @param {string} targetPath - The path to validate
+   * @throws {Error} If the path resolves outside the allowed directory
+   */
+  _validateTargetPath(targetPath) {
+    const { getConfigDir } = require('../config/paths');
+    const configDir = getConfigDir();
+    const resolvedBase = path.resolve(configDir);
+    const resolvedTarget = path.resolve(targetPath);
+
+    if (!resolvedTarget.startsWith(resolvedBase + path.sep) && resolvedTarget !== resolvedBase) {
+      const error = new Error('Target path must be within the configuration directory');
+      error.statusCode = 400;
+      throw error;
+    }
   }
 
   /**

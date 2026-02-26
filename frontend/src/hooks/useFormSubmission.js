@@ -1,5 +1,6 @@
 import { API_ENDPOINTS } from '../config';
 import { createLogger } from '../utils/logger';
+import { authAwareFetch } from '../utils/fetchProvider';
 
 const logger = createLogger('useFormSubmission');
 
@@ -155,7 +156,7 @@ function useFormSubmission({
           formData.append('personId', item.personId.toString());
         }
 
-        const response = await fetch(API_ENDPOINTS.INVOICE_UPLOAD, {
+        const response = await authAwareFetch(API_ENDPOINTS.INVOICE_UPLOAD, {
           method: 'POST',
           body: formData
         });

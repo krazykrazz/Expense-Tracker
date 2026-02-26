@@ -1,4 +1,12 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+vi.mock('./utils/fetchProvider', () => ({
+  getFetchFn: () => (...args) => globalThis.fetch(...args),
+  authAwareFetch: (...args) => globalThis.fetch(...args),
+  getNativeFetch: () => globalThis.fetch,
+  setFetchFn: vi.fn(),
+}));
+
 import { render, screen, waitFor, within, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from './App';

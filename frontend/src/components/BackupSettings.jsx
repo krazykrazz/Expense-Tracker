@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { API_ENDPOINTS } from '../config';
+import { authAwareFetch } from '../utils/fetchProvider';
 import './BackupSettings.css';
 import { formatDateTime } from '../utils/formatters';
 import PlaceNameStandardization from './PlaceNameStandardization';
@@ -104,7 +105,7 @@ const BackupSettings = () => {
 
   const fetchVersionInfo = async () => {
     try {
-      const response = await fetch(API_ENDPOINTS.VERSION);
+      const response = await authAwareFetch(API_ENDPOINTS.VERSION);
       if (response.ok) {
         const data = await response.json();
         setVersionInfo(data);
@@ -116,7 +117,7 @@ const BackupSettings = () => {
 
   const fetchDbStats = async () => {
     try {
-      const response = await fetch(API_ENDPOINTS.BACKUP_STATS);
+      const response = await authAwareFetch(API_ENDPOINTS.BACKUP_STATS);
       if (response.ok) {
         const data = await response.json();
         setDbStats(data);
@@ -128,7 +129,7 @@ const BackupSettings = () => {
 
   const fetchConfig = async () => {
     try {
-      const response = await fetch(API_ENDPOINTS.BACKUP_CONFIG);
+      const response = await authAwareFetch(API_ENDPOINTS.BACKUP_CONFIG);
       if (!response.ok) throw new Error('Failed to fetch backup config');
       
       const data = await response.json();
@@ -150,7 +151,7 @@ const BackupSettings = () => {
 
   const fetchBackupList = async () => {
     try {
-      const response = await fetch(API_ENDPOINTS.BACKUP_LIST);
+      const response = await authAwareFetch(API_ENDPOINTS.BACKUP_LIST);
       if (!response.ok) throw new Error('Failed to fetch backup list');
       
       const data = await response.json();
@@ -172,7 +173,7 @@ const BackupSettings = () => {
     setMessage({ text: '', type: '' });
     
     try {
-      const response = await fetch(API_ENDPOINTS.BACKUP_CONFIG, {
+      const response = await authAwareFetch(API_ENDPOINTS.BACKUP_CONFIG, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
@@ -200,7 +201,7 @@ const BackupSettings = () => {
     setMessage({ text: 'Creating backup...', type: 'info' });
     
     try {
-      const response = await fetch(API_ENDPOINTS.BACKUP_MANUAL, {
+      const response = await authAwareFetch(API_ENDPOINTS.BACKUP_MANUAL, {
         method: 'POST'
       });
 
@@ -240,7 +241,7 @@ const BackupSettings = () => {
     formData.append('backup', file);
 
     try {
-      const response = await fetch(API_ENDPOINTS.BACKUP_RESTORE, {
+      const response = await authAwareFetch(API_ENDPOINTS.BACKUP_RESTORE, {
         method: 'POST',
         body: formData
       });

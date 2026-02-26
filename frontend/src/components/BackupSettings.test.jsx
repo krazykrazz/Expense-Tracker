@@ -38,6 +38,12 @@ vi.mock('../services/peopleApi', () => ({
   deletePerson: vi.fn()
 }));
 
+// Mock fetchProvider — authAwareFetch delegates to mockFetch
+const mockFetch = vi.fn();
+vi.mock('../utils/fetchProvider', () => ({
+  authAwareFetch: (...args) => mockFetch(...args)
+}));
+
 // Mock PlaceNameStandardization component
 vi.mock('./PlaceNameStandardization', () => ({
   default: ({ onClose }) => (
@@ -103,7 +109,7 @@ describe('BackupSettings', () => {
     vi.clearAllMocks();
     
     // Mock fetch for various endpoints
-    global.fetch = vi.fn((url) => {
+    mockFetch.mockImplementation((url) => {
       if (url.includes('/config')) {
         return Promise.resolve({
           ok: true,
@@ -269,7 +275,7 @@ describe('BackupSettings', () => {
       fireEvent.click(screen.getByText('💾 Create Backup Now'));
 
       await waitFor(() => {
-        expect(global.fetch).toHaveBeenCalledWith(
+        expect(mockFetch).toHaveBeenCalledWith(
           expect.stringContaining('/manual'),
           expect.objectContaining({ method: 'POST' })
         );
@@ -284,7 +290,7 @@ describe('BackupSettings', () => {
       fireEvent.click(screen.getByText('Save Settings'));
 
       await waitFor(() => {
-        expect(global.fetch).toHaveBeenCalledWith(
+        expect(mockFetch).toHaveBeenCalledWith(
           expect.stringContaining('/config'),
           expect.objectContaining({ method: 'PUT' })
         );
@@ -390,7 +396,7 @@ describe('BackupSettings', () => {
   describe('Loading state', () => {
     it('should show loading message initially', async () => {
       // Make fetch hang to show loading state
-      global.fetch = vi.fn(() => new Promise(() => {}));
+      mockFetch.mockImplementation(() => new Promise(() => {}));
 
       render(<BackupSettings />);
 
@@ -400,7 +406,7 @@ describe('BackupSettings', () => {
 
   describe('Error handling', () => {
     it('should show error message when config fetch fails', async () => {
-      global.fetch = vi.fn(() => Promise.resolve({
+      mockFetch.mockImplementation(() => Promise.resolve({
         ok: false,
         json: () => Promise.resolve({ error: 'Failed to fetch' })
       }));

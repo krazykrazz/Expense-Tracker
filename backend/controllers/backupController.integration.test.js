@@ -23,7 +23,7 @@ app.use(express.json());
 app.use('/api', backupRoutes);
 
 describe('Backup API Integration Tests', () => {
-  const testBackupPath = path.join(__dirname, '../../test-api-backups');
+  const testBackupPath = path.join(getBackupPath(), 'test-api-backups');
   const testInvoicesPath = getInvoicesPath();
   let originalConfig;
   let testBackupFilename;

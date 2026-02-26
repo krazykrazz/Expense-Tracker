@@ -1,6 +1,7 @@
 const express = require('express');
 const crypto = require('crypto');
 const bodyParser = require('body-parser');
+const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
@@ -30,13 +31,16 @@ const billingCycleRoutes = require('./routes/billingCycleRoutes');
 const activityLogRoutes = require('./routes/activityLogRoutes');
 const settingsRoutes = require('./routes/settingsRoutes');
 const syncRoutes = require('./routes/syncRoutes');
+const authRoutes = require('./routes/authRoutes');
 const backupService = require('./services/backupService');
+const authService = require('./services/authService');
 const activityLogService = require('./services/activityLogService');
 const sseService = require('./services/sseService');
 const billingCycleSchedulerService = require('./services/billingCycleSchedulerService');
 const versionCheckService = require('./services/versionCheckService');
 const logger = require('./config/logger');
 const { errorHandler } = require('./middleware/errorHandler');
+const { authMiddleware, sseAuthMiddleware } = require('./middleware/authMiddleware');
 
 // Wire SSE service into activityLogService (avoids circular dependency)
 activityLogService.setSseService(sseService);
@@ -90,15 +94,6 @@ const generalLimiter = rateLimit({
   skip: (req) => req.path === '/api/health' // Skip health checks
 });
 
-// Stricter rate limit for write operations: 60 per minute
-const writeLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 60,
-  message: { error: 'Too many write requests, please slow down' },
-  standardHeaders: true,
-  legacyHeaders: false
-});
-
 // Rate limit for file uploads: 30 per 15 minutes
 const uploadLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -118,16 +113,34 @@ const backupLimiter = rateLimit({
 });
 
 // SSE sync route — registered BEFORE generalLimiter so persistent connections
-// are not counted against the per-IP rate limit
-app.use('/api/sync', syncRoutes);
+// are not counted against the per-IP rate limit.
+// sseAuthMiddleware validates JWT from ?token= query param when Password_Gate is active.
+app.use('/api/sync', sseAuthMiddleware, syncRoutes);
 
 // Apply general rate limiting to all API routes
 app.use('/api', generalLimiter);
 
-// Middleware
-app.use(cors()); // Enable CORS for all routes
+// CORS — restricted to configured origin or same-origin (no explicit origin header)
+const corsOptions = {
+  origin: process.env.CORS_ORIGIN || false,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
+app.use(cors(corsOptions));
+
+// Cookie parser — required for refresh token cookie handling
+app.use(cookieParser());
+
+// Body parsers
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+
+// Auth routes — registered BEFORE authMiddleware (public endpoints)
+app.use('/api/auth', authRoutes);
+
+// Auth middleware — enforces JWT auth when Password_Gate is active
+app.use('/api', authMiddleware);
 
 // API routes
 // Health check endpoint (no rate limiting)
@@ -222,6 +235,13 @@ app.use(errorHandler);
 // Initialize database and start server
 initializeDatabase()
   .then(async () => {
+    // Initialize default admin user for auth infrastructure
+    try {
+      await authService.initializeDefaultUser();
+    } catch (error) {
+      logger.error('Auth initialization failed during startup (non-blocking):', error);
+    }
+
     // Check for version upgrades and log to activity log (fire-and-forget)
     try {
       await versionCheckService.checkAndLogVersionUpgrade();
@@ -240,6 +260,8 @@ initializeDatabase()
       logger.info('Security features enabled:');
       logger.info('  - Helmet security headers');
       logger.info('  - Rate limiting (500 req/min general, 10 uploads/15min, 5 backups/hr)');
+      logger.info('  - CORS restricted (origin: ' + (process.env.CORS_ORIGIN || 'same-origin') + ')');
+      logger.info('  - Auth middleware (Password_Gate: ' + (authService.isPasswordGateActive() ? 'active' : 'Open_Mode') + ')');
       logger.info('');
       logger.info(`Server is running on port ${PORT}`);
       logger.info(`API available at http://localhost:${PORT}/api`);

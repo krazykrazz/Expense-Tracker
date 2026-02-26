@@ -6,10 +6,10 @@
 
 | Layer | Source Files | Largest File (lines) |
 |---|---|---|
-| Backend services | ~30 | billingCycleHistoryService: 878 / expenseService: 814 / paymentMethodService: 310 (split into 3 sub-services) |
-| Backend controllers | ~20 | — |
-| Backend repositories | ~18 | — |
-| Backend routes | 24 | — |
+| Backend services | ~32 | billingCycleHistoryService: 878 / expenseService: 814 / paymentMethodService: 310 (split into 3 sub-services) / authService |
+| Backend controllers | ~21 | — |
+| Backend repositories | ~19 | — |
+| Backend routes | 25 | — |
 | Frontend components | ~80 JSX + ~65 CSS | ExpenseForm: 1,533 / ExpenseList: 1,163 / FinancialOverviewModal: 1,080 |
 | Frontend hooks | ~17 | — |
 | Frontend API services | 21 | — |
@@ -41,6 +41,7 @@
 - SSE real-time sync with visibility-based lifecycle is well-engineered
 - Rate limiting is tiered appropriately (500 general, 60 writes, 30 uploads, 5 backups)
 - Security middleware stack (Helmet, CORS, file validation, upload security) is comprehensive
+- Auth infrastructure with optional Password_Gate preserves backward compatibility — Open_Mode works exactly as before, Password_Gate adds JWT-based auth with in-memory cache for zero-overhead passthrough
 
 ---
 
@@ -173,6 +174,36 @@ The main `paymentMethodService.js` preserves the exact same public API via deleg
 | 8 | ESM migration | LOW | HIGH | MEDIUM | None |
 
 Items 1-2 are the highest-value changes. Items 4-5 are good refactoring targets when touching those areas. Item 8 is opportunistic.
+
+---
+
+## Fetch Infrastructure Analysis
+
+> Added after auth-infrastructure spec completion (February 2026)
+
+During the wiring of `authFetch` into the frontend, several structural observations emerged. None are bugs or regressions — the app works correctly. These are consolidation opportunities for a future PR.
+
+### Finding 1: Duplicated `fetchWithRetry` across service files
+
+**Files:** `creditCardApi.js`, `paymentMethodApi.js`, `invoiceApi.js`
+
+All three contain an identical `fetchWithRetry` helper (~30 lines each) with the same retry logic, delay calculation, and error handling. Could be extracted to a shared `frontend/src/utils/fetchWithRetry.js` module. This is the highest-value cleanup.
+
+### Finding 2: Overlapping error handling patterns
+
+`apiClient.js` provides `apiGet`/`apiPost`/`apiPut`/`apiDelete` with centralized error handling, but the three service files above don't use it — they have their own `fetchWithRetry` + manual error handling. Two parallel patterns exist for the same concern.
+
+### Finding 3: `authAwareFetch` is a thin convenience wrapper
+
+`fetchProvider.js` exports `authAwareFetch` which just calls `getFetchFn()()`. It exists for readability in components/hooks that import it directly, but it's functionally identical to calling `getFetchFn()()`. Not worth changing — just documenting.
+
+### Finding 4: Duplicate X-Tab-ID header injection
+
+Both `tabId.js` (`fetchWithTabId`) and `apiClient.js` independently inject the `X-Tab-ID` header. This works because `apiClient.js` uses `getFetchFn()` which resolves to `authFetch` (which doesn't add tab ID), and `tabId.js` wraps that with tab ID injection. The layering is correct but the header logic lives in two places.
+
+### Recommendation
+
+Extract `fetchWithRetry` into a shared utility (Finding 1) — this is the only change worth making. The others are cosmetic and the current layering (`fetchProvider` → `authFetch` → `tabId` → `apiClient`) works correctly.
 
 ---
 

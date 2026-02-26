@@ -5,6 +5,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import fc from 'fast-check';
+
+// Mock fetchProvider — authAwareFetch delegates to mockFetch
+const mockFetch = vi.fn();
+vi.mock('../utils/fetchProvider', () => ({
+  authAwareFetch: (...args) => mockFetch(...args)
+}));
+
 import { useContainerUpdateCheck } from './useContainerUpdateCheck';
 
 // ── Arbitraries ──
@@ -33,29 +40,27 @@ const distinctVersionInfoPair = () =>
 // ── Helpers ──
 
 function mockFetchSuccess(info) {
-  global.fetch = vi.fn().mockResolvedValue({
+  mockFetch.mockResolvedValue({
     ok: true,
     json: () => Promise.resolve(info),
   });
 }
 
 function mockFetchFailure() {
-  global.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
+  mockFetch.mockRejectedValue(new Error('Network error'));
 }
 
 function mockFetchSequence(responses) {
-  const fn = vi.fn();
-  responses.forEach((r, i) => {
+  responses.forEach((r) => {
     if (r.error) {
-      fn.mockRejectedValueOnce(new Error(r.error));
+      mockFetch.mockRejectedValueOnce(new Error(r.error));
     } else {
-      fn.mockResolvedValueOnce({
+      mockFetch.mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve(r.data),
       });
     }
   });
-  global.fetch = fn;
 }
 
 describe('useContainerUpdateCheck - Property-Based Tests', () => {
@@ -91,7 +96,7 @@ describe('useContainerUpdateCheck - Property-Based Tests', () => {
             await vi.advanceTimersByTimeAsync(0);
           });
 
-          expect(global.fetch).toHaveBeenCalledTimes(1);
+          expect(mockFetch).toHaveBeenCalledTimes(1);
           expect(result.current.showBanner).toBe(false);
           expect(result.current.newVersion).toBeNull();
 
@@ -182,7 +187,7 @@ describe('useContainerUpdateCheck - Property-Based Tests', () => {
           }
 
           // Now mock a successful fetch for the reconnect
-          global.fetch = vi.fn().mockResolvedValue({
+          mockFetch.mockReset().mockResolvedValue({
             ok: true,
             json: () => Promise.resolve(info),
           });
@@ -230,7 +235,7 @@ describe('useContainerUpdateCheck - Property-Based Tests', () => {
           });
 
           // Mock the reconnect fetch with different values
-          global.fetch = vi.fn().mockResolvedValue({
+          mockFetch.mockReset().mockResolvedValue({
             ok: true,
             json: () => Promise.resolve(fetched),
           });
@@ -266,7 +271,7 @@ describe('useContainerUpdateCheck - Property-Based Tests', () => {
           });
 
           // Reconnect returns same values
-          global.fetch = vi.fn().mockResolvedValue({
+          mockFetch.mockReset().mockResolvedValue({
             ok: true,
             json: () => Promise.resolve(info),
           });
@@ -310,7 +315,7 @@ describe('useContainerUpdateCheck - Property-Based Tests', () => {
           });
 
           // Mock reconnect to fail
-          global.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
+          mockFetch.mockReset().mockRejectedValue(new Error('Network error'));
 
           act(() => {
             result.current.onSseReconnect();
@@ -352,7 +357,7 @@ describe('useContainerUpdateCheck - Property-Based Tests', () => {
           });
 
           // Trigger mismatch
-          global.fetch = vi.fn().mockResolvedValue({
+          mockFetch.mockReset().mockResolvedValue({
             ok: true,
             json: () => Promise.resolve(fetched),
           });
@@ -376,7 +381,7 @@ describe('useContainerUpdateCheck - Property-Based Tests', () => {
           expect(result.current.newVersion).toBeNull();
 
           // Trigger another mismatch
-          global.fetch = vi.fn().mockResolvedValue({
+          mockFetch.mockReset().mockResolvedValue({
             ok: true,
             json: () => Promise.resolve(fetched),
           });
@@ -422,7 +427,7 @@ describe('useContainerUpdateCheck - Property-Based Tests', () => {
             });
 
             // Trigger mismatch to show banner
-            global.fetch = vi.fn().mockResolvedValue({
+            mockFetch.mockReset().mockResolvedValue({
               ok: true,
               json: () => Promise.resolve(fetched),
             });
@@ -438,8 +443,7 @@ describe('useContainerUpdateCheck - Property-Based Tests', () => {
             expect(result.current.showBanner).toBe(true);
 
             // Reset fetch mock to track new calls
-            const suppressedFetch = vi.fn();
-            global.fetch = suppressedFetch;
+            mockFetch.mockReset();
 
             // Fire N reconnect events while banner is visible
             for (let i = 0; i < reconnectCount; i++) {
@@ -453,7 +457,7 @@ describe('useContainerUpdateCheck - Property-Based Tests', () => {
             });
 
             // No fetches should have been made
-            expect(suppressedFetch).not.toHaveBeenCalled();
+            expect(mockFetch).not.toHaveBeenCalled();
 
             unmount();
           }
@@ -488,11 +492,10 @@ describe('useContainerUpdateCheck - Property-Based Tests', () => {
             });
 
             // Reset fetch to track reconnect calls
-            const reconnectFetch = vi.fn().mockResolvedValue({
+            mockFetch.mockReset().mockResolvedValue({
               ok: true,
               json: () => Promise.resolve(info),
             });
-            global.fetch = reconnectFetch;
 
             // Fire N reconnect events rapidly (within 5s window)
             for (let i = 0; i < reconnectCount; i++) {
@@ -507,7 +510,7 @@ describe('useContainerUpdateCheck - Property-Based Tests', () => {
             });
 
             // Exactly one fetch should have been made
-            expect(reconnectFetch).toHaveBeenCalledTimes(1);
+            expect(mockFetch).toHaveBeenCalledTimes(1);
 
             unmount();
           }

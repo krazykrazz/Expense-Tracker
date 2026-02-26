@@ -6,6 +6,7 @@
 import { API_ENDPOINTS } from '../config.js';
 import { createLogger } from '../utils/logger';
 import { fetchWithTabId } from '../utils/tabId';
+import { getFetchFn } from '../utils/fetchProvider';
 
 const logger = createLogger('CreditCardApi');
 
@@ -28,7 +29,8 @@ const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
  */
 const fetchWithRetry = async (url, options = {}, retryCount = 0) => {
   try {
-    const response = await fetch(url, options);
+    const fn = getFetchFn();
+    const response = await fn(url, options);
     
     if (response.ok || !RETRY_CONFIG.retryableStatuses.includes(response.status)) {
       return response;

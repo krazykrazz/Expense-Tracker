@@ -12,10 +12,8 @@ services:
     ports:
       - "2424:2424"
     volumes:
-      # Persist database across container restarts
-      - ./data:/app/backend/database
-      # Persist uploaded files (invoices, statements)
-      - ./uploads:/app/backend/uploads
+      # Persist all application data (database, invoices, statements, config)
+      - ./config:/config
     environment:
       - NODE_ENV=production
       - LOG_LEVEL=info

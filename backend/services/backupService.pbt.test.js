@@ -743,7 +743,8 @@ describe('BackupService - Property-Based Tests', () => {
           }
 
           // Set high keepLastN BEFORE creating backups to prevent cleanup during creation
-          backupService.updateConfig({ targetPath: testListingPath, keepLastN: 100 });
+          backupService.config.targetPath = testListingPath;
+          backupService.config.keepLastN = 100;
 
           // Step 1: Create multiple backups with sufficient delay to ensure unique timestamps
           const createdBackups = [];
@@ -815,7 +816,8 @@ describe('BackupService - Property-Based Tests', () => {
       );
     } finally {
       // Restore original config
-      backupService.updateConfig({ targetPath: originalConfig.targetPath, keepLastN: originalConfig.keepLastN });
+      backupService.config.targetPath = originalConfig.targetPath;
+      backupService.config.keepLastN = originalConfig.keepLastN;
       // Clean up test directory
       await fs.promises.rm(testListingPath, { recursive: true, force: true }).catch(() => {});
     }
@@ -857,7 +859,8 @@ describe('BackupService - Property-Based Tests', () => {
           const createdBackups = [];
           
           // Set high keepLastN to prevent cleanup during creation
-          backupService.updateConfig({ targetPath: testRetentionPath, keepLastN: 100 });
+          backupService.config.targetPath = testRetentionPath;
+          backupService.config.keepLastN = 100;
           
           for (let i = 0; i < totalBackups; i++) {
             const result = await backupService.performBackup(testRetentionPath);
@@ -879,7 +882,7 @@ describe('BackupService - Property-Based Tests', () => {
           expect(filesBeforeCleanup.length).toBe(totalBackups);
 
           // Step 2: Update config with the actual keepLastN and trigger cleanup
-          backupService.updateConfig({ keepLastN });
+          backupService.config.keepLastN = keepLastN;
           backupService.cleanupOldBackups(testRetentionPath);
 
           // Step 3: Verify exactly keepLastN backups remain
@@ -910,7 +913,8 @@ describe('BackupService - Property-Based Tests', () => {
       );
     } finally {
       // Restore original config
-      backupService.updateConfig({ targetPath: originalConfig.targetPath, keepLastN: originalConfig.keepLastN });
+      backupService.config.targetPath = originalConfig.targetPath;
+      backupService.config.keepLastN = originalConfig.keepLastN;
       // Clean up test directory
       await fs.promises.rm(testRetentionPath, { recursive: true, force: true }).catch(() => {});
     }
@@ -978,7 +982,8 @@ describe('BackupService - Property-Based Tests', () => {
             }
 
             // Step 2: Create backups
-            backupService.updateConfig({ targetPath: testStatsPath, keepLastN: 100 });
+            backupService.config.targetPath = testStatsPath;
+            backupService.config.keepLastN = 100;
             
             let expectedBackupSize = 0;
             for (let i = 0; i < backupCount; i++) {
@@ -1058,7 +1063,8 @@ describe('BackupService - Property-Based Tests', () => {
       );
     } finally {
       // Restore original config
-      backupService.updateConfig({ targetPath: originalConfig.targetPath, keepLastN: originalConfig.keepLastN });
+      backupService.config.targetPath = originalConfig.targetPath;
+      backupService.config.keepLastN = originalConfig.keepLastN;
       // Clean up test directory
       await fs.promises.rm(testStatsPath, { recursive: true, force: true }).catch(() => {});
     }

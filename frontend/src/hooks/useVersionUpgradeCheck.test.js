@@ -1,5 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
+
+// Mock fetchProvider — authAwareFetch delegates to mockFetch
+const mockFetch = vi.fn();
+vi.mock('../utils/fetchProvider', () => ({
+  authAwareFetch: (...args) => mockFetch(...args)
+}));
+
 import useVersionUpgradeCheck from './useVersionUpgradeCheck';
 
 // Mock the logger to suppress output in tests
@@ -37,7 +44,6 @@ describe('useVersionUpgradeCheck', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
-    global.fetch = vi.fn();
   });
 
   afterEach(() => {
@@ -46,7 +52,7 @@ describe('useVersionUpgradeCheck', () => {
   });
 
   it('should not show modal for first-time user (no localStorage)', async () => {
-    global.fetch.mockResolvedValue({
+    mockFetch.mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ version: '2.0.0' })
     });
@@ -56,7 +62,7 @@ describe('useVersionUpgradeCheck', () => {
     );
 
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledTimes(1);
+      expect(mockFetch).toHaveBeenCalledTimes(1);
     });
 
     expect(result.current.showModal).toBe(false);
@@ -65,7 +71,7 @@ describe('useVersionUpgradeCheck', () => {
 
   it('should not show modal when version matches localStorage', async () => {
     localStorage.setItem(LAST_SEEN_VERSION_KEY, '2.0.0');
-    global.fetch.mockResolvedValue({
+    mockFetch.mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ version: '2.0.0' })
     });
@@ -75,7 +81,7 @@ describe('useVersionUpgradeCheck', () => {
     );
 
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledTimes(1);
+      expect(mockFetch).toHaveBeenCalledTimes(1);
     });
 
     expect(result.current.showModal).toBe(false);
@@ -83,7 +89,7 @@ describe('useVersionUpgradeCheck', () => {
 
   it('should show modal when version differs from localStorage', async () => {
     localStorage.setItem(LAST_SEEN_VERSION_KEY, '1.0.0');
-    global.fetch.mockResolvedValue({
+    mockFetch.mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ version: '2.0.0' })
     });
@@ -103,7 +109,7 @@ describe('useVersionUpgradeCheck', () => {
 
   it('should update localStorage and close modal on handleClose', async () => {
     localStorage.setItem(LAST_SEEN_VERSION_KEY, '1.0.0');
-    global.fetch.mockResolvedValue({
+    mockFetch.mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ version: '2.0.0' })
     });
@@ -126,7 +132,7 @@ describe('useVersionUpgradeCheck', () => {
 
   it('should not show modal on API failure', async () => {
     localStorage.setItem(LAST_SEEN_VERSION_KEY, '1.0.0');
-    global.fetch.mockRejectedValue(new Error('Network error'));
+    mockFetch.mockRejectedValue(new Error('Network error'));
 
     const { result } = renderHook(() =>
       useVersionUpgradeCheck({ changelogEntries: sampleChangelog })
@@ -134,7 +140,7 @@ describe('useVersionUpgradeCheck', () => {
 
     // Wait for the effect to complete
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledTimes(1);
+      expect(mockFetch).toHaveBeenCalledTimes(1);
     });
 
     expect(result.current.showModal).toBe(false);
@@ -142,7 +148,7 @@ describe('useVersionUpgradeCheck', () => {
 
   it('should not show modal on non-ok HTTP response', async () => {
     localStorage.setItem(LAST_SEEN_VERSION_KEY, '1.0.0');
-    global.fetch.mockResolvedValue({
+    mockFetch.mockResolvedValue({
       ok: false,
       status: 500,
       json: () => Promise.resolve({})
@@ -153,7 +159,7 @@ describe('useVersionUpgradeCheck', () => {
     );
 
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledTimes(1);
+      expect(mockFetch).toHaveBeenCalledTimes(1);
     });
 
     expect(result.current.showModal).toBe(false);
@@ -161,7 +167,7 @@ describe('useVersionUpgradeCheck', () => {
 
   it('should return empty changelog entries when no match found', async () => {
     localStorage.setItem(LAST_SEEN_VERSION_KEY, '1.0.0');
-    global.fetch.mockResolvedValue({
+    mockFetch.mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ version: '3.0.0' })
     });
@@ -180,7 +186,7 @@ describe('useVersionUpgradeCheck', () => {
 
   it('should handle missing version in API response', async () => {
     localStorage.setItem(LAST_SEEN_VERSION_KEY, '1.0.0');
-    global.fetch.mockResolvedValue({
+    mockFetch.mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({})
     });
@@ -190,7 +196,7 @@ describe('useVersionUpgradeCheck', () => {
     );
 
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledTimes(1);
+      expect(mockFetch).toHaveBeenCalledTimes(1);
     });
 
     expect(result.current.showModal).toBe(false);
@@ -198,7 +204,7 @@ describe('useVersionUpgradeCheck', () => {
 
   it('should work with default empty changelogEntries', async () => {
     localStorage.setItem(LAST_SEEN_VERSION_KEY, '1.0.0');
-    global.fetch.mockResolvedValue({
+    mockFetch.mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ version: '2.0.0' })
     });

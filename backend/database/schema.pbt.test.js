@@ -84,7 +84,8 @@ const EXPECTED_TABLES = {
   credit_card_statements: ['id', 'payment_method_id', 'statement_date', 'statement_period_start', 'statement_period_end', 'filename', 'original_filename', 'file_path', 'file_size', 'mime_type', 'created_at'],
   credit_card_billing_cycles: ['id', 'payment_method_id', 'cycle_start_date', 'cycle_end_date', 'actual_statement_balance', 'calculated_statement_balance', 'minimum_payment', 'notes', 'statement_pdf_path', 'is_user_entered', 'reviewed_at', 'effective_balance', 'balance_type', 'created_at', 'updated_at'],
   activity_logs: ['id', 'event_type', 'entity_type', 'entity_id', 'user_action', 'metadata', 'timestamp', 'created_at'],
-  settings: ['key', 'value', 'updated_at']
+  settings: ['key', 'value', 'updated_at'],
+  users: ['id', 'username', 'password_hash', 'created_at', 'updated_at']
 };
 
 const TABLE_NAMES = Object.keys(EXPECTED_TABLES);
@@ -93,7 +94,7 @@ const TABLE_NAMES = Object.keys(EXPECTED_TABLES);
 // ─── Property 1: Schema completeness ───
 
 describe('Feature: migration-consolidation, Property 1: Schema completeness', () => {
-  test('For any table name from the expected 24, columns match the documented schema', async () => {
+  test('For any table name from the expected 25, columns match the documented schema', async () => {
     await fc.assert(
       fc.asyncProperty(
         fc.constantFrom(...TABLE_NAMES),
@@ -118,12 +119,12 @@ describe('Feature: migration-consolidation, Property 1: Schema completeness', ()
     );
   });
 
-  test('Schema creates exactly 24 tables', async () => {
+  test('Schema creates exactly 25 tables', async () => {
     const db = await openDb();
     try {
       await applySchema(db);
       const tables = await all(db, "SELECT name FROM sqlite_master WHERE type='table' AND name != 'sqlite_sequence' ORDER BY name");
-      expect(tables.length).toBe(24);
+      expect(tables.length).toBe(25);
       const names = tables.map(t => t.name).sort();
       expect(names).toEqual(TABLE_NAMES.sort());
     } finally {

@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const logger = require('../config/logger');
 const { getConfigDir } = require('../config/paths');
+const filePermissions = require('./filePermissions');
 
 /**
  * File storage utilities for invoice management
@@ -175,6 +176,13 @@ class FileStorageUtils {
       
       // Copy file to final location (handles cross-device moves)
       await fs.promises.copyFile(tempPath, finalPath);
+      
+      // Harden file permissions (SEC-006)
+      try {
+        await filePermissions.secureFile(finalPath);
+      } catch (permError) {
+        logger.warn('Failed to set secure permissions on uploaded file:', permError.message);
+      }
       
       // Delete temp file after successful copy
       await fs.promises.unlink(tempPath);

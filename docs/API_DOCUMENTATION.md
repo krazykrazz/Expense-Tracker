@@ -3140,6 +3140,254 @@ Results are cached in memory for 24 hours (configurable via `UPDATE_CHECK_INTERV
 
 ---
 
-**Last Updated:** February 19, 2026
-**API Version:** 1.9
+# Authentication API
+
+## Overview
+
+The Authentication API provides optional password-based authentication for the Expense Tracker. The system operates in two modes:
+
+- **Open_Mode** (default): No password set, all endpoints accessible without authentication
+- **Password_Gate**: Password configured, JWT-based authentication required for all non-public endpoints
+
+### Public Endpoints (always accessible)
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /api/health` | Health check |
+| `GET /api/auth/status` | Check if authentication is required |
+| `POST /api/auth/login` | Authenticate with password |
+| `POST /api/auth/refresh` | Refresh access token |
+
+### Token Lifecycle
+
+- Access tokens expire after 15 minutes
+- Refresh tokens expire after 7 days and are delivered as HTTP-only, SameSite=Strict cookies
+- On 401 with `"code": "TOKEN_EXPIRED"`, clients should attempt a silent refresh before retrying
+
+---
+
+## Auth Endpoints
+
+### 1. Get Auth Status
+
+Check whether authentication is required.
+
+**Endpoint:** `GET /api/auth/status`
+
+**Success Response:**
+```json
+HTTP/1.1 200 OK
+{
+  "passwordRequired": true,
+  "username": "admin"
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| passwordRequired | boolean | Whether Password_Gate is active |
+| username | string | The admin username |
+
+---
+
+### 2. Login
+
+Authenticate with password to receive an access token.
+
+**Endpoint:** `POST /api/auth/login`
+
+**Request Body:**
+```json
+{
+  "password": "your-password"
+}
+```
+
+**Success Response:**
+```json
+HTTP/1.1 200 OK
+Set-Cookie: refreshToken=<jwt>; HttpOnly; SameSite=Strict; Path=/
+
+{
+  "accessToken": "<jwt>"
+}
+```
+
+**Error Response:**
+```json
+HTTP/1.1 401 Unauthorized
+{
+  "error": "Invalid credentials"
+}
+```
+
+**Notes:**
+- Uses constant-time bcrypt comparison to prevent timing attacks
+- Logs `auth_login` or `auth_login_failed` event to activity_logs
+
+---
+
+### 3. Refresh Access Token
+
+Obtain a new access token using the refresh token cookie.
+
+**Endpoint:** `POST /api/auth/refresh`
+
+**Request:** No body required. The refresh token is read from the HTTP-only cookie.
+
+**Success Response:**
+```json
+HTTP/1.1 200 OK
+Set-Cookie: refreshToken=<new-jwt>; HttpOnly; SameSite=Strict; Path=/
+
+{
+  "accessToken": "<new-jwt>"
+}
+```
+
+**Error Response:**
+```json
+HTTP/1.1 401 Unauthorized
+{
+  "error": "Invalid refresh token"
+}
+```
+
+---
+
+### 4. Logout
+
+Clear the refresh token cookie and end the session.
+
+**Endpoint:** `POST /api/auth/logout`
+
+**Success Response:**
+```json
+HTTP/1.1 200 OK
+Set-Cookie: refreshToken=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0
+
+{
+  "message": "Logged out successfully"
+}
+```
+
+**Notes:**
+- Logs `auth_logout` event to activity_logs
+
+---
+
+### 5. Set or Change Password
+
+Set a new password or change the existing password.
+
+**Endpoint:** `PUT /api/auth/password`
+
+**Request Body:**
+```json
+{
+  "currentPassword": "old-password",
+  "newPassword": "new-password"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| currentPassword | string | When Password_Gate active | Current password for verification |
+| newPassword | string | Yes | New password (minimum 4 characters) |
+
+**Success Response:**
+```json
+HTTP/1.1 200 OK
+{
+  "message": "Password updated successfully"
+}
+```
+
+**Error Responses:**
+```json
+HTTP/1.1 400 Bad Request
+{
+  "error": "Password must be at least 4 characters"
+}
+```
+
+```json
+HTTP/1.1 401 Unauthorized
+{
+  "error": "Current password is incorrect"
+}
+```
+
+**Notes:**
+- When transitioning from Open_Mode to Password_Gate, logs `auth_password_gate_enabled`
+- Password is hashed with bcrypt (cost factor 10)
+
+---
+
+### 6. Remove Password
+
+Remove the password and return to Open_Mode.
+
+**Endpoint:** `DELETE /api/auth/password`
+
+**Request Body:**
+```json
+{
+  "currentPassword": "current-password"
+}
+```
+
+**Success Response:**
+```json
+HTTP/1.1 200 OK
+{
+  "message": "Password removed successfully"
+}
+```
+
+**Error Response:**
+```json
+HTTP/1.1 401 Unauthorized
+{
+  "error": "Current password is incorrect"
+}
+```
+
+**Notes:**
+- Logs `auth_password_gate_disabled` event to activity_logs
+- After removal, all endpoints become accessible without authentication
+
+---
+
+## Authentication Error Codes
+
+| Code | HTTP Status | Description |
+|------|-------------|-------------|
+| `AUTH_REQUIRED` | 401 | Missing or invalid token when Password_Gate is active |
+| `TOKEN_EXPIRED` | 401 | Access token has expired (client should attempt refresh) |
+
+**Example error response:**
+```json
+{
+  "error": "Token expired",
+  "code": "TOKEN_EXPIRED"
+}
+```
+
+---
+
+## Changelog - Authentication
+
+### Version 1.0.0 (February 2026)
+- Added optional authentication infrastructure (Password_Gate / Open_Mode)
+- Added `GET /api/auth/status`, `POST /api/auth/login`, `POST /api/auth/refresh`, `POST /api/auth/logout`
+- Added `PUT /api/auth/password`, `DELETE /api/auth/password`
+- Added JWT-based endpoint protection with `AUTH_REQUIRED` and `TOKEN_EXPIRED` error codes
+- Added SSE connection authentication via `?token=<jwt>` query parameter
+- Restricted CORS to same-origin (configurable via `CORS_ORIGIN` env var)
+
+---
+
+**Last Updated:** February 26, 2026
+**API Version:** 2.0
 **Status:** Active

@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import './AnnualSummary.css';
 import { formatAmount, getMonthNameShort } from '../utils/formatters';
 import { getAnnualIncomeByCategory } from '../services/incomeApi';
+import { authAwareFetch } from '../utils/fetchProvider';
 import { createLogger } from '../utils/logger';
 
 const logger = createLogger('AnnualSummary');
@@ -167,8 +168,8 @@ const AnnualSummary = ({ year }) => {
     try {
       // Fetch current year and previous year in parallel
       const [currentResponse, previousResponse] = await Promise.all([
-        fetch(`/api/expenses/annual-summary?year=${year}`),
-        fetch(`/api/expenses/annual-summary?year=${year - 1}`)
+        authAwareFetch(`/api/expenses/annual-summary?year=${year}`),
+        authAwareFetch(`/api/expenses/annual-summary?year=${year - 1}`)
       ]);
       
       if (!currentResponse.ok) {

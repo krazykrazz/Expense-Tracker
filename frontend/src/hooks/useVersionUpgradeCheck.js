@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { API_ENDPOINTS } from '../config';
 import { createLogger } from '../utils/logger';
+import { authAwareFetch } from '../utils/fetchProvider';
 
 const logger = createLogger('useVersionUpgradeCheck');
 
@@ -25,7 +26,7 @@ function useVersionUpgradeCheck({ changelogEntries = [] } = {}) {
 
     async function checkVersion() {
       try {
-        const response = await fetch(API_ENDPOINTS.VERSION);
+        const response = await authAwareFetch(API_ENDPOINTS.VERSION);
         if (!response.ok) {
           logger.error('Failed to fetch version', { status: response.status });
           return;

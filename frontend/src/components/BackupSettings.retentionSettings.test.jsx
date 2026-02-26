@@ -58,6 +58,12 @@ vi.mock('./PlaceNameStandardization', () => ({
   )
 }));
 
+// Mock fetchProvider — authAwareFetch delegates to mockFetch
+const mockFetch = vi.fn();
+vi.mock('../utils/fetchProvider', () => ({
+  authAwareFetch: (...args) => mockFetch(...args)
+}));
+
 import * as activityLogApi from '../services/activityLogApi';
 import BackupSettings from './BackupSettings';
 
@@ -115,7 +121,7 @@ describe('BackupSettings - Retention Settings UI', () => {
     vi.clearAllMocks();
     
     // Mock fetch for backup endpoints
-    global.fetch = vi.fn((url) => {
+    mockFetch.mockImplementation((url) => {
       if (url.includes('/config')) {
         return Promise.resolve({
           ok: true,

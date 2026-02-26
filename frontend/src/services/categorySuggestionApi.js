@@ -5,6 +5,7 @@
 
 import { API_ENDPOINTS } from '../config.js';
 import { createLogger } from '../utils/logger';
+import { getFetchFn } from '../utils/fetchProvider';
 
 const logger = createLogger('CategorySuggestionApi');
 
@@ -20,7 +21,7 @@ export const fetchCategorySuggestion = async (place) => {
   }
 
   try {
-    const response = await fetch(
+    const response = await getFetchFn()(
       `${API_ENDPOINTS.SUGGEST_CATEGORY}?place=${encodeURIComponent(place.trim())}`
     );
 

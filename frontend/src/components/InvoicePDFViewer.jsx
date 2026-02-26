@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { API_ENDPOINTS } from '../config';
 import { createLogger } from '../utils/logger';
+import { authAwareFetch } from '../utils/fetchProvider';
 import './InvoicePDFViewer.css';
 
 const logger = createLogger('InvoicePDFViewer');
@@ -83,7 +84,7 @@ const InvoicePDFViewer = ({
         ? API_ENDPOINTS.INVOICE_FILE(expenseId, invoiceId)
         : API_ENDPOINTS.INVOICE_FILE_LEGACY(expenseId);
       
-      const response = await fetch(fetchUrl);
+      const response = await authAwareFetch(fetchUrl);
 
       if (!response.ok) {
         if (response.status === 404) {

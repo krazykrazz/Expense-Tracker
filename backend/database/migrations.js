@@ -57,27 +57,65 @@ function markMigrationApplied(db, migrationName) {
 }
 
 /**
+ * Run a SQL statement against the database.
+ * @param {object} db - SQLite database instance
+ * @param {string} sql - SQL statement to execute
+ * @param {Array} params - Query parameters
+ * @returns {Promise<void>}
+ */
+function runSql(db, sql, params = []) {
+  return new Promise((resolve, reject) => {
+    db.run(sql, params, (err) => {
+      if (err) reject(err);
+      else resolve();
+    });
+  });
+}
+
+/**
+ * Individual migration definitions.
+ * Each entry has a unique name and an async apply function.
+ */
+const MIGRATIONS = [
+  {
+    name: 'auth_infrastructure_v1',
+    async apply(db) {
+      await runSql(db, "INSERT OR IGNORE INTO users (username, password_hash) VALUES ('admin', '')");
+      logger.info('Seeded default admin user');
+    }
+  }
+];
+
+/**
  * Run all pending migrations.
  *
  * After the schema consolidation every table is created declaratively
- * by `schema.js`.  This function simply records the
- * `consolidated_schema_v1` marker so future migration checks know the
- * consolidated schema is in place.
+ * by `schema.js`.  This function records the `consolidated_schema_v1`
+ * marker and then runs any incremental migrations that haven't been
+ * applied yet.
  *
  * @param {object} db - SQLite database instance
  * @returns {Promise<void>}
  */
 async function runMigrations(db) {
-  const MIGRATION_NAME = 'consolidated_schema_v1';
+  const CONSOLIDATED_NAME = 'consolidated_schema_v1';
 
-  const isApplied = await checkMigrationApplied(db, MIGRATION_NAME);
-  if (isApplied) {
-    logger.info('Consolidated schema already applied, no migrations to run');
-    return;
+  const isConsolidatedApplied = await checkMigrationApplied(db, CONSOLIDATED_NAME);
+  if (!isConsolidatedApplied) {
+    await markMigrationApplied(db, CONSOLIDATED_NAME);
+    logger.info('Marked consolidated_schema_v1 as applied');
   }
 
-  await markMigrationApplied(db, MIGRATION_NAME);
-  logger.info('Marked consolidated_schema_v1 as applied');
+  // Run incremental migrations
+  for (const migration of MIGRATIONS) {
+    const applied = await checkMigrationApplied(db, migration.name);
+    if (applied) continue;
+
+    logger.info(`Running migration: ${migration.name}`);
+    await migration.apply(db);
+    await markMigrationApplied(db, migration.name);
+    logger.info(`Migration ${migration.name} applied`);
+  }
 }
 
 module.exports = {

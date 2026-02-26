@@ -329,10 +329,12 @@ class InvoiceService {
         throw new Error('Expense ID is required');
       }
 
-      // Check if expense exists first
+      // Check if expense exists — return empty array gracefully if not found
+      // (expense may have been deleted while frontend still holds stale references)
       const expense = await expenseRepository.findById(expenseId);
       if (!expense) {
-        throw new Error('Expense not found');
+        logger.debug('Expense not found when fetching invoices, returning empty array:', { expenseId });
+        return [];
       }
 
       // Get all invoices for the expense

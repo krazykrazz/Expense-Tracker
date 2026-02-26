@@ -20,21 +20,22 @@
 
 .user-menu-dropdown {
   position: absolute;
-  top: calc(100% + 4px);
+  top: calc(100% + 6px);
   right: 0;
   background: var(--bg-primary);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  min-width: 120px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  min-width: 140px;
   z-index: 1000;
   overflow: hidden;
+  padding: var(--spacing-1) 0;
 }
 
 .user-menu-item {
   display: block;
   width: 100%;
-  padding: var(--spacing-3) var(--spacing-4);
+  padding: var(--spacing-2) var(--spacing-4);
   background: none;
   border: none;
   color: var(--text-primary);
@@ -51,4 +52,9 @@
 .user-menu-item:focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: -2px;
+}
+
+.user-menu-item.logout-item {
+  color: var(--color-danger, #e74c3c);
+  font-weight: 500;
 }

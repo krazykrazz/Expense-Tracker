@@ -1,6 +1,7 @@
 const creditCardPaymentRepository = require('../repositories/creditCardPaymentRepository');
 const paymentMethodRepository = require('../repositories/paymentMethodRepository');
 const activityLogService = require('./activityLogService');
+const { runInTransaction } = require('../utils/dbHelper');
 const logger = require('../config/logger');
 
 /**
@@ -84,18 +85,28 @@ class CreditCardPaymentService {
       throw new Error('Payments can only be recorded for credit card payment methods');
     }
 
-    // Create payment record
-    const paymentData = {
-      payment_method_id: data.payment_method_id,
-      amount: data.amount,
-      payment_date: data.payment_date,
-      notes: data.notes ? data.notes.trim() : null
-    };
+    // Create payment record and update balance atomically (BUG-004 fix)
+    const payment = await runInTransaction(async (tx) => {
+      const insertResult = await tx.run(
+        `INSERT INTO credit_card_payments (payment_method_id, amount, payment_date, notes) VALUES (?, ?, ?, ?)`,
+        [data.payment_method_id, data.amount, data.payment_date, data.notes ? data.notes.trim() : null]
+      );
 
-    const payment = await creditCardPaymentRepository.create(paymentData);
+      const row = await tx.get('SELECT * FROM payment_methods WHERE id = ?', [data.payment_method_id]);
+      const newBalance = Math.max(0, (row.current_balance || 0) - data.amount);
+      await tx.run(
+        'UPDATE payment_methods SET current_balance = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+        [newBalance, data.payment_method_id]
+      );
 
-    // Update credit card balance (reduce by payment amount)
-    await paymentMethodRepository.updateBalance(data.payment_method_id, -data.amount);
+      return {
+        id: insertResult.lastID,
+        payment_method_id: data.payment_method_id,
+        amount: data.amount,
+        payment_date: data.payment_date,
+        notes: data.notes ? data.notes.trim() : null
+      };
+    });
 
     logger.info('Recorded credit card payment:', {
       paymentId: payment.id,
@@ -240,13 +251,21 @@ class CreditCardPaymentService {
       return false;
     }
 
-    // Delete the payment
-    const deleted = await creditCardPaymentRepository.delete(paymentId);
+    // Delete payment and reverse balance atomically (BUG-004 fix)
+    const deleted = await runInTransaction(async (tx) => {
+      const result = await tx.run('DELETE FROM credit_card_payments WHERE id = ?', [paymentId]);
+      if (result.changes === 0) return false;
+
+      const row = await tx.get('SELECT * FROM payment_methods WHERE id = ?', [payment.payment_method_id]);
+      const newBalance = Math.max(0, (row.current_balance || 0) + payment.amount);
+      await tx.run(
+        'UPDATE payment_methods SET current_balance = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+        [newBalance, payment.payment_method_id]
+      );
+      return true;
+    });
 
     if (deleted) {
-      // Reverse the balance change (add the payment amount back)
-      await paymentMethodRepository.updateBalance(payment.payment_method_id, payment.amount);
-
       // Look up card name for activity log
       const paymentMethod = await paymentMethodRepository.findById(payment.payment_method_id);
       const cardName = paymentMethod ? paymentMethod.display_name : 'Unknown';

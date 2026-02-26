@@ -99,6 +99,23 @@ class BackupService {
         throw new Error('Database file not found');
       }
 
+      // Run integrity check before backup (BUG-007 fix)
+      try {
+        const { getDatabase } = require('../database/db');
+        const db = await getDatabase();
+        const integrityResult = await new Promise((resolve, reject) => {
+          db.get('PRAGMA integrity_check', (err, row) => {
+            if (err) reject(err);
+            else resolve(row);
+          });
+        });
+        if (!integrityResult || integrityResult.integrity_check !== 'ok') {
+          logger.warn('Database integrity check failed before backup:', integrityResult);
+        }
+      } catch (integrityError) {
+        logger.warn('Could not run integrity check before backup:', integrityError.message);
+      }
+
       // Use configured backup path or default from paths module
       const backupPath = targetPath || this.config.targetPath || getBackupPath();
       

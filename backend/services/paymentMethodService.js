@@ -293,35 +293,59 @@ class PaymentMethodService {
    * @returns {Promise<Array>} Array of payment methods with expense counts
    */
   async getAllWithExpenseCounts() {
-    const todayStr = getTodayString();
-    const paymentMethods = await paymentMethodRepository.findAllWithExpenseCounts(todayStr);
-    
-    const withCounts = await Promise.all(
-      paymentMethods.map(async (pm) => {
-        const expenseCount = await this.getExpenseCountForCurrentPeriod(pm);
-        
-        let currentBalance = pm.current_balance;
-        let utilizationPercentage = null;
-        
-        if (pm.type === 'credit_card') {
-          currentBalance = Math.max(0, Math.round((pm.expense_total_to_date - pm.payment_total_to_date) * 100) / 100);
-          utilizationPercentage = paymentMethodBalanceService.calculateUtilizationPercentage(currentBalance, pm.credit_limit);
-        }
-        
-        const { expense_total_to_date, payment_total_to_date, ...cleanPm } = pm;
-        
-        return {
-          ...cleanPm,
-          current_balance: currentBalance,
-          utilization_percentage: utilizationPercentage,
-          expense_count: expenseCount,
-          total_expense_count: pm.total_expense_count
-        };
-      })
-    );
+      const todayStr = getTodayString();
+      const paymentMethods = await paymentMethodRepository.findAllWithExpenseCounts(todayStr);
 
-    return withCounts;
-  }
+      const results = await Promise.allSettled(
+        paymentMethods.map(async (pm) => {
+          const expenseCount = await this.getExpenseCountForCurrentPeriod(pm);
+
+          let currentBalance = pm.current_balance;
+          let utilizationPercentage = null;
+
+          if (pm.type === 'credit_card') {
+            currentBalance = Math.max(0, Math.round((pm.expense_total_to_date - pm.payment_total_to_date) * 100) / 100);
+            utilizationPercentage = paymentMethodBalanceService.calculateUtilizationPercentage(currentBalance, pm.credit_limit);
+          }
+
+          const { expense_total_to_date, payment_total_to_date, ...cleanPm } = pm;
+
+          return {
+            ...cleanPm,
+            current_balance: currentBalance,
+            utilization_percentage: utilizationPercentage,
+            expense_count: expenseCount,
+            total_expense_count: pm.total_expense_count
+          };
+        })
+      );
+
+      // Extract fulfilled results; log and skip rejected ones
+      const withCounts = [];
+      for (let i = 0; i < results.length; i++) {
+        if (results[i].status === 'fulfilled') {
+          withCounts.push(results[i].value);
+        } else {
+          logger.error('Failed to process payment method expense count', {
+            paymentMethodId: paymentMethods[i]?.id,
+            error: results[i].reason?.message || 'Unknown error'
+          });
+          // Return the payment method with fallback values so the list isn't broken
+          const pm = paymentMethods[i];
+          const { expense_total_to_date, payment_total_to_date, ...cleanPm } = pm;
+          withCounts.push({
+            ...cleanPm,
+            current_balance: pm.current_balance,
+            utilization_percentage: null,
+            expense_count: 0,
+            total_expense_count: pm.total_expense_count
+          });
+        }
+      }
+
+      return withCounts;
+    }
+
 
   /**
    * Get expense count for the current period based on payment method type

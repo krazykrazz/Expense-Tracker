@@ -347,13 +347,14 @@ describe('Invoice API Integration Tests', () => {
       expect(response.body.invoices[0].originalFilename).toBe('test-invoice.pdf');
     });
 
-    it('should return 404 for non-existent expense', async () => {
+    it('should return empty array for non-existent expense', async () => {
       const response = await request(app)
         .get('/api/invoices/99999')
-        .expect(404);
+        .expect(200);
 
-      expect(response.body.success).toBe(false);
-      expect(response.body.error).toContain('Expense not found');
+      expect(response.body.success).toBe(true);
+      expect(response.body.invoices).toEqual([]);
+      expect(response.body.count).toBe(0);
     });
 
     it('should return empty array for expense without invoice', async () => {

@@ -1,4 +1,14 @@
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
+
+vi.mock('../utils/fetchProvider', async () => {
+  const actual = await vi.importActual('../utils/fetchProvider');
+  return {
+    ...actual,
+    getFetchFn: () => (...args) => globalThis.fetch(...args),
+    authAwareFetch: (...args) => globalThis.fetch(...args),
+  };
+});
+
 import { renderHook, act, cleanup, waitFor } from '@testing-library/react';
 import { FilterProvider, useFilterContext } from './FilterContext';
 import { ExpenseProvider, useExpenseContext } from './ExpenseContext';

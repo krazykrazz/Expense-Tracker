@@ -356,6 +356,25 @@ Billing cycle history with statement balances.
 **Foreign Keys**:
 - `payment_method_id` → `payment_methods(id)` ON DELETE CASCADE
 
+## Authentication Tables
+
+### users
+
+User accounts for optional authentication (Password_Gate).
+
+| Field | Type | Description |
+|-------|------|-------------|
+| id | INTEGER PRIMARY KEY | Unique user identifier |
+| username | TEXT NOT NULL UNIQUE | Username (default: "admin") |
+| password_hash | TEXT DEFAULT '' | bcrypt password hash (empty = Open_Mode) |
+| created_at | TEXT | Creation timestamp |
+| updated_at | TEXT | Last update timestamp |
+
+**Notes**:
+- A default "admin" user with an empty password hash is created on first startup via migration `auth_infrastructure_v1`
+- When `password_hash` is empty, the application operates in Open_Mode (no authentication required)
+- When `password_hash` is non-empty, the application operates in Password_Gate mode (JWT authentication required)
+
 ## Utility Tables
 
 ### place_names
@@ -417,15 +436,15 @@ Comprehensive event tracking for all data changes.
 **Retention**: Automatically cleaned up based on configurable retention settings (default: 90 days / 1000 events, managed via Settings → General)
 
 **Supported Entity Types**:
-- expense, fixed_expense, loan, investment, budget, payment_method, loan_payment, backup
+- expense, fixed_expense, loan, investment, budget, payment_method, loan_payment, backup, auth
 
 ### settings
 
-Key-value store for application settings (e.g., retention policy configuration).
+Key-value store for application settings (e.g., retention policy configuration, JWT secret).
 
 | Field | Type | Description |
 |-------|------|-------------|
-| key | TEXT PRIMARY KEY | Setting identifier (e.g., `retention_max_age_days`) |
+| key | TEXT PRIMARY KEY | Setting identifier (e.g., `retention_max_age_days`, `jwt_secret`) |
 | value | TEXT | Setting value (stored as text, parsed by service layer) |
 | updated_at | TEXT | Last update timestamp |
 

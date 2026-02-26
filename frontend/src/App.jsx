@@ -23,6 +23,7 @@ import { useDataSync } from './hooks/useDataSync';
 import { useContainerUpdateCheck } from './hooks/useContainerUpdateCheck';
 import useVersionUpgradeCheck from './hooks/useVersionUpgradeCheck';
 import { API_ENDPOINTS } from './config';
+import { authAwareFetch } from './utils/fetchProvider';
 import { changelogEntries } from './utils/changelog';
 import { CATEGORIES } from './utils/constants';
 import { getPaymentMethods } from './services/paymentMethodApi';
@@ -33,6 +34,9 @@ import { FilterProvider, useFilterContext } from './contexts/FilterContext';
 import { ExpenseProvider, useExpenseContext } from './contexts/ExpenseContext';
 import { ModalProvider, useModalContext } from './contexts/ModalContext';
 import { SharedDataProvider, useSharedDataContext } from './contexts/SharedDataContext';
+import { AuthProvider, useAuthContext } from './contexts/AuthContext';
+import LoginScreen from './components/LoginScreen';
+import UserMenu from './components/UserMenu';
 import logo from './assets/tracker.png.png';
 
 function App() {
@@ -65,18 +69,43 @@ function App() {
   }, [paymentMethodsRefreshTrigger]);
 
   return (
-    <FilterProvider paymentMethods={paymentMethods}>
-      <ExpenseProvider>
-        <ModalProvider>
-          <SharedDataBridge
-            onPaymentMethodsUpdate={() => {
-              setPaymentMethodsRefreshTrigger(prev => prev + 1);
-            }}
-          />
-        </ModalProvider>
-      </ExpenseProvider>
-    </FilterProvider>
+    <AuthProvider>
+      <AuthGate>
+        <FilterProvider paymentMethods={paymentMethods}>
+          <ExpenseProvider>
+            <ModalProvider>
+              <SharedDataBridge
+                onPaymentMethodsUpdate={() => {
+                  setPaymentMethodsRefreshTrigger(prev => prev + 1);
+                }}
+              />
+            </ModalProvider>
+          </ExpenseProvider>
+        </FilterProvider>
+      </AuthGate>
+    </AuthProvider>
   );
+}
+
+/**
+ * AuthGate - Conditionally renders LoginScreen or children based on auth state.
+ * Shows a loading state while checking auth status, then either the login screen
+ * (when Password_Gate is active and no token) or the main app.
+ * 
+ * Requirements: 8.1, 8.2
+ */
+function AuthGate({ children }) {
+  const { isAuthenticated, isLoading } = useAuthContext();
+
+  if (isLoading) {
+    return <div className="auth-loading">Loading...</div>;
+  }
+
+  if (!isAuthenticated) {
+    return <LoginScreen />;
+  }
+
+  return children;
 }
 
 /**
@@ -185,6 +214,9 @@ function AppContent({ onPaymentMethodsUpdate }) {
   // Container update detection — captures baseline version on init, checks on SSE reconnect
   const { showBanner, newVersion, dismissBanner, onSseReconnect } = useContainerUpdateCheck();
 
+  // Auth context — needed for SSE token auth (Requirement 7.1, 7.2)
+  const { getAccessToken, isPasswordRequired } = useAuthContext();
+
   // Real-time sync — subscribes to SSE and refreshes data on remote changes
   const { subscribeToasts, getToastSnapshot } = useDataSync({
     refreshExpenses,
@@ -192,6 +224,8 @@ function AppContent({ onPaymentMethodsUpdate }) {
     refreshPeople,
     refreshPaymentMethods,
     onReconnect: onSseReconnect,
+    getAccessToken,
+    isPasswordRequired,
   });
 
   // Version upgrade modal
@@ -210,7 +244,7 @@ function AppContent({ onPaymentMethodsUpdate }) {
 
     const fetchVersionInfo = async () => {
       try {
-        const response = await fetch(API_ENDPOINTS.VERSION);
+        const response = await authAwareFetch(API_ENDPOINTS.VERSION);
         if (response.ok && isMounted) {
           const data = await response.json();
           setVersionInfo(data);
@@ -357,6 +391,7 @@ function AppContent({ onPaymentMethodsUpdate }) {
           >
             ⚙️ <span className="btn-text">Settings</span>
           </button>
+          <UserMenu />
         </div>
       </header>
       <main className="App-main">

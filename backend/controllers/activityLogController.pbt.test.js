@@ -101,6 +101,9 @@ describe('Activity Log Controller - Property-Based Tests', () => {
               events.push(event);
             }
 
+            // Get actual count from DB (may include async events from server startup)
+            const actualTotal = await activityLogRepository.count();
+
             // Make API request
             const response = await request(app)
               .get('/api/activity-logs')
@@ -116,7 +119,7 @@ describe('Activity Log Controller - Property-Based Tests', () => {
             expect(response.body.events.length).toBeLessThanOrEqual(limit);
 
             // Property: Total count should match actual database count
-            expect(response.body.total).toBe(totalEvents);
+            expect(response.body.total).toBe(actualTotal);
 
             // Property: Returned limit should match requested limit
             expect(response.body.limit).toBe(limit);
@@ -125,7 +128,7 @@ describe('Activity Log Controller - Property-Based Tests', () => {
             expect(response.body.offset).toBe(offset);
 
             // Property: If offset < total, we should get min(limit, total - offset) events
-            const expectedCount = Math.max(0, Math.min(limit, totalEvents - offset));
+            const expectedCount = Math.max(0, Math.min(limit, actualTotal - offset));
             expect(response.body.events.length).toBe(expectedCount);
 
             // Property: Events should be in reverse chronological order (newest first)
@@ -173,9 +176,12 @@ describe('Activity Log Controller - Property-Based Tests', () => {
 
             expect(response.status).toBe(200);
 
+            // Get actual count from DB (may include async events from server startup)
+            const actualTotal = await activityLogRepository.count();
+
             // Property: Should return all events when limit > total
-            expect(response.body.events.length).toBe(totalEvents);
-            expect(response.body.total).toBe(totalEvents);
+            expect(response.body.events.length).toBe(actualTotal);
+            expect(response.body.total).toBe(actualTotal);
           }
         ),
         { numRuns: 10 }
@@ -215,9 +221,12 @@ describe('Activity Log Controller - Property-Based Tests', () => {
 
             expect(response.status).toBe(200);
 
+            // Get actual count from DB (may include async events from server startup)
+            const actualTotal = await activityLogRepository.count();
+
             // Property: Should return empty array when offset >= total
             expect(response.body.events.length).toBe(0);
-            expect(response.body.total).toBe(totalEvents);
+            expect(response.body.total).toBe(actualTotal);
           }
         ),
         { numRuns: 10 }

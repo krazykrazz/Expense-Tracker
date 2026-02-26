@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { API_ENDPOINTS } from '../config';
+import { createLogger } from '../utils/logger';
+import { authAwareFetch } from '../utils/fetchProvider';
 
+const logger = createLogger('useActivityLog');
 /**
  * Custom hook for managing activity log data with pagination
  * @param {number} initialLimit - Initial display limit (default: 50)
@@ -30,7 +33,7 @@ function useActivityLog(initialLimit = 50) {
     setError(null);
 
     try {
-      const response = await fetch(
+      const response = await authAwareFetch(
         `${API_ENDPOINTS.ACTIVITY_LOGS}?offset=${newOffset}&limit=${limit}`
       );
 
@@ -61,7 +64,7 @@ function useActivityLog(initialLimit = 50) {
   // Fetch activity stats
   const fetchStats = useCallback(async () => {
     try {
-      const response = await fetch(API_ENDPOINTS.ACTIVITY_LOGS_STATS);
+      const response = await authAwareFetch(API_ENDPOINTS.ACTIVITY_LOGS_STATS);
 
       if (!response.ok) {
         throw new Error(`Failed to fetch activity stats: ${response.statusText}`);

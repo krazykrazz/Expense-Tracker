@@ -1,6 +1,17 @@
 import { describe, it, expect } from 'vitest';
 import { render, waitFor } from '@testing-library/react';
 import fc from 'fast-check';
+
+// Mock fetchProvider — authAwareFetch delegates to mockFetch
+import { vi } from 'vitest';
+const mockFetch = vi.fn();
+vi.mock('../utils/fetchProvider', () => ({
+  authAwareFetch: (...args) => mockFetch(...args),
+  getFetchFn: () => mockFetch,
+  getNativeFetch: () => mockFetch,
+  setFetchFn: vi.fn()
+}));
+
 import AnnualSummary from './AnnualSummary';
 
 // Helper function to determine the expected color class based on net income value
@@ -118,7 +129,7 @@ const createMockFetch = (netIncome) => {
 };
 
 // Mock fetch globally
-global.fetch = async (url) => {
+mockFetch.mockImplementation(async (url) => {
   if (url.includes('/api/expenses/annual-summary')) {
     // Return mock data based on the test
     return {
@@ -163,7 +174,7 @@ global.fetch = async (url) => {
   }
   // Return a proper error response with json method for unmatched URLs
   return { ok: false, status: 404, json: async () => ({ error: 'Not found' }) };
-};
+});
 
 describe('AnnualSummary - Chart Data Completeness', () => {
   // Feature: enhanced-annual-summary, Property 5: Chart data completeness
@@ -199,7 +210,7 @@ describe('AnnualSummary - Chart Data Completeness', () => {
           const highestMonth = monthlyTotals.reduce((max, m) => m.total > max.total ? m : max, monthlyTotals[0]);
 
           // Mock fetch to return our test data
-          global.fetch = async (url) => {
+          mockFetch.mockImplementation(async (url) => {
             if (url.includes('/api/expenses/annual-summary')) {
               return {
                 ok: true,
@@ -242,7 +253,7 @@ describe('AnnualSummary - Chart Data Completeness', () => {
               };
             }
             return { ok: false, status: 404, json: async () => ({ error: 'Not found' }) };
-          };
+          });
 
           // Render the component
           const { container, unmount } = render(<AnnualSummary year={year} />);
@@ -296,7 +307,7 @@ describe('AnnualSummary - Net Income Color Coding', () => {
           const roundedNetIncome = Math.round(netIncome * 100) / 100;
           
           // Mock fetch to return our test data
-          global.fetch = createMockFetch(roundedNetIncome);
+          mockFetch.mockImplementation(createMockFetch(roundedNetIncome));
 
           // Render the component
           const { container, unmount } = render(<AnnualSummary year={2024} />);
@@ -337,7 +348,7 @@ describe('AnnualSummary - Net Income Color Coding', () => {
 
   // Additional unit tests for specific edge cases
   it('should display positive net income with green color', async () => {
-    global.fetch = createMockFetch(2000);
+    mockFetch.mockImplementation(createMockFetch(2000));
 
     const { container } = render(<AnnualSummary year={2024} />);
     
@@ -355,7 +366,7 @@ describe('AnnualSummary - Net Income Color Coding', () => {
   });
 
   it('should display negative net income with red color', async () => {
-    global.fetch = createMockFetch(-2000);
+    mockFetch.mockImplementation(createMockFetch(-2000));
 
     const { container } = render(<AnnualSummary year={2024} />);
     
@@ -373,7 +384,7 @@ describe('AnnualSummary - Net Income Color Coding', () => {
   });
 
   it('should display zero net income with neutral color', async () => {
-    global.fetch = createMockFetch(0);
+    mockFetch.mockImplementation(createMockFetch(0));
 
     const { container } = render(<AnnualSummary year={2024} />);
     
@@ -416,7 +427,7 @@ describe('AnnualSummary - Integration Tests', () => {
         byMethod: { Cash: 4000, Debit: 5000, 'CIBC MC': 3000 }
       };
 
-      global.fetch = async (url) => {
+      mockFetch.mockImplementation(async (url) => {
         if (url.includes('/api/expenses/annual-summary')) {
           return {
             ok: true,
@@ -436,7 +447,7 @@ describe('AnnualSummary - Integration Tests', () => {
           };
         }
         return { ok: false, status: 404, json: async () => ({ error: 'Not found' }) };
-      };
+      });
 
       const { container } = render(<AnnualSummary year={2024} />);
 
@@ -486,7 +497,7 @@ describe('AnnualSummary - Integration Tests', () => {
     });
 
     it('should handle API errors gracefully', async () => {
-      global.fetch = async (url) => {
+      mockFetch.mockImplementation(async (url) => {
         if (url.includes('/api/expenses/annual-summary')) {
           return {
             ok: false,
@@ -494,7 +505,7 @@ describe('AnnualSummary - Integration Tests', () => {
           };
         }
         return { ok: false, status: 404, json: async () => ({ error: 'Not found' }) };
-      };
+      });
 
       const { container } = render(<AnnualSummary year={2024} />);
 
@@ -526,7 +537,7 @@ describe('AnnualSummary - Integration Tests', () => {
         byMethod: {}
       };
 
-      global.fetch = async (url) => {
+      mockFetch.mockImplementation(async (url) => {
         if (url.includes('/api/expenses/annual-summary')) {
           return {
             ok: true,
@@ -546,7 +557,7 @@ describe('AnnualSummary - Integration Tests', () => {
           };
         }
         return { ok: false, status: 404, json: async () => ({ error: 'Not found' }) };
-      };
+      });
 
       const { container } = render(<AnnualSummary year={2024} />);
 
@@ -586,7 +597,7 @@ describe('AnnualSummary - Integration Tests', () => {
         byMethod: {}
       };
 
-      global.fetch = async (url) => {
+      mockFetch.mockImplementation(async (url) => {
         if (url.includes('/api/expenses/annual-summary')) {
           return {
             ok: true,
@@ -606,7 +617,7 @@ describe('AnnualSummary - Integration Tests', () => {
           };
         }
         return { ok: false, status: 404, json: async () => ({ error: 'Not found' }) };
-      };
+      });
 
       const { container } = render(<AnnualSummary year={2024} />);
 
@@ -652,7 +663,7 @@ describe('AnnualSummary - Integration Tests', () => {
         byMethod: {}
       };
 
-      global.fetch = async (url) => {
+      mockFetch.mockImplementation(async (url) => {
         if (url.includes('/api/expenses/annual-summary')) {
           return {
             ok: true,
@@ -672,7 +683,7 @@ describe('AnnualSummary - Integration Tests', () => {
           };
         }
         return { ok: false, status: 404, json: async () => ({ error: 'Not found' }) };
-      };
+      });
 
       const { container } = render(<AnnualSummary year={2024} />);
 
@@ -706,7 +717,7 @@ describe('AnnualSummary - Integration Tests', () => {
         byMethod: {}
       };
 
-      global.fetch = async (url) => {
+      mockFetch.mockImplementation(async (url) => {
         if (url.includes('/api/expenses/annual-summary')) {
           return {
             ok: true,
@@ -726,7 +737,7 @@ describe('AnnualSummary - Integration Tests', () => {
           };
         }
         return { ok: false, status: 404, json: async () => ({ error: 'Not found' }) };
-      };
+      });
 
       const { container } = render(<AnnualSummary year={2024} />);
 
@@ -766,7 +777,7 @@ describe('AnnualSummary - Integration Tests', () => {
         byMethod: {}
       };
 
-      global.fetch = async (url) => {
+      mockFetch.mockImplementation(async (url) => {
         if (url.includes('/api/expenses/annual-summary')) {
           return {
             ok: true,
@@ -786,7 +797,7 @@ describe('AnnualSummary - Integration Tests', () => {
           };
         }
         return { ok: false, status: 404, json: async () => ({ error: 'Not found' }) };
-      };
+      });
 
       const { container } = render(<AnnualSummary year={2024} />);
 
@@ -854,7 +865,7 @@ describe('AnnualSummary - Integration Tests', () => {
         byMethod: {}
       };
 
-      global.fetch = async (url) => {
+      mockFetch.mockImplementation(async (url) => {
         if (url.includes('/api/expenses/annual-summary')) {
           return {
             ok: true,
@@ -874,7 +885,7 @@ describe('AnnualSummary - Integration Tests', () => {
           };
         }
         return { ok: false, status: 404, json: async () => ({ error: 'Not found' }) };
-      };
+      });
 
       const { container } = render(<AnnualSummary year={2024} />);
 
@@ -927,7 +938,7 @@ describe('AnnualSummary - Integration Tests', () => {
         byMethod: {}
       };
 
-      global.fetch = async (url) => {
+      mockFetch.mockImplementation(async (url) => {
         if (url.includes('/api/expenses/annual-summary')) {
           return {
             ok: true,
@@ -947,7 +958,7 @@ describe('AnnualSummary - Integration Tests', () => {
           };
         }
         return { ok: false, status: 404, json: async () => ({ error: 'Not found' }) };
-      };
+      });
 
       const { container } = render(<AnnualSummary year={2024} />);
 
@@ -986,7 +997,7 @@ describe('AnnualSummary - Integration Tests', () => {
         byMethod: {}
       };
 
-      global.fetch = async (url) => {
+      mockFetch.mockImplementation(async (url) => {
         if (url.includes('/api/expenses/annual-summary')) {
           return {
             ok: true,
@@ -1006,7 +1017,7 @@ describe('AnnualSummary - Integration Tests', () => {
           };
         }
         return { ok: false, status: 404, json: async () => ({ error: 'Not found' }) };
-      };
+      });
 
       const { container } = render(<AnnualSummary year={2024} />);
 
@@ -1046,7 +1057,7 @@ describe('AnnualSummary - Integration Tests', () => {
         byMethod: { Cash: 4000, Debit: 5000, 'CIBC MC': 3000 }
       };
 
-      global.fetch = async (url) => {
+      mockFetch.mockImplementation(async (url) => {
         if (url.includes('/api/expenses/annual-summary')) {
           return {
             ok: true,
@@ -1066,7 +1077,7 @@ describe('AnnualSummary - Integration Tests', () => {
           };
         }
         return { ok: false, status: 404, json: async () => ({ error: 'Not found' }) };
-      };
+      });
 
       const { container } = render(<AnnualSummary year={2024} />);
 
@@ -1113,7 +1124,7 @@ describe('AnnualSummary - Integration Tests', () => {
         byMethod: { Cash: 4000, Debit: 5000, 'CIBC MC': 3000 }
       };
 
-      global.fetch = async (url) => {
+      mockFetch.mockImplementation(async (url) => {
         if (url.includes('/api/expenses/annual-summary')) {
           return {
             ok: true,
@@ -1133,7 +1144,7 @@ describe('AnnualSummary - Integration Tests', () => {
           };
         }
         return { ok: false, status: 404, json: async () => ({ error: 'Not found' }) };
-      };
+      });
 
       const { container } = render(<AnnualSummary year={2024} />);
 
@@ -1183,7 +1194,7 @@ describe('AnnualSummary - Integration Tests', () => {
     });
 
     it('should handle API errors gracefully', async () => {
-      global.fetch = async (url) => {
+      mockFetch.mockImplementation(async (url) => {
         if (url.includes('/api/expenses/annual-summary')) {
           return {
             ok: false,
@@ -1191,7 +1202,7 @@ describe('AnnualSummary - Integration Tests', () => {
           };
         }
         return { ok: false, status: 404, json: async () => ({ error: 'Not found' }) };
-      };
+      });
 
       const { container } = render(<AnnualSummary year={2024} />);
 
@@ -1223,7 +1234,7 @@ describe('AnnualSummary - Integration Tests', () => {
         byMethod: {}
       };
 
-      global.fetch = async (url) => {
+      mockFetch.mockImplementation(async (url) => {
         if (url.includes('/api/expenses/annual-summary')) {
           return {
             ok: true,
@@ -1243,7 +1254,7 @@ describe('AnnualSummary - Integration Tests', () => {
           };
         }
         return { ok: false, status: 404, json: async () => ({ error: 'Not found' }) };
-      };
+      });
 
       const { container } = render(<AnnualSummary year={2024} />);
 
@@ -1283,7 +1294,7 @@ describe('AnnualSummary - Integration Tests', () => {
         byMethod: {}
       };
 
-      global.fetch = async (url) => {
+      mockFetch.mockImplementation(async (url) => {
         if (url.includes('/api/expenses/annual-summary')) {
           return {
             ok: true,
@@ -1303,7 +1314,7 @@ describe('AnnualSummary - Integration Tests', () => {
           };
         }
         return { ok: false, status: 404, json: async () => ({ error: 'Not found' }) };
-      };
+      });
 
       const { container } = render(<AnnualSummary year={2024} />);
 
@@ -1349,7 +1360,7 @@ describe('AnnualSummary - Integration Tests', () => {
         byMethod: {}
       };
 
-      global.fetch = async (url) => {
+      mockFetch.mockImplementation(async (url) => {
         if (url.includes('/api/expenses/annual-summary')) {
           return {
             ok: true,
@@ -1369,7 +1380,7 @@ describe('AnnualSummary - Integration Tests', () => {
           };
         }
         return { ok: false, status: 404, json: async () => ({ error: 'Not found' }) };
-      };
+      });
 
       const { container } = render(<AnnualSummary year={2024} />);
 
@@ -1403,7 +1414,7 @@ describe('AnnualSummary - Integration Tests', () => {
         byMethod: {}
       };
 
-      global.fetch = async (url) => {
+      mockFetch.mockImplementation(async (url) => {
         if (url.includes('/api/expenses/annual-summary')) {
           return {
             ok: true,
@@ -1423,7 +1434,7 @@ describe('AnnualSummary - Integration Tests', () => {
           };
         }
         return { ok: false, status: 404, json: async () => ({ error: 'Not found' }) };
-      };
+      });
 
       const { container } = render(<AnnualSummary year={2024} />);
 
@@ -1463,7 +1474,7 @@ describe('AnnualSummary - Integration Tests', () => {
         byMethod: {}
       };
 
-      global.fetch = async (url) => {
+      mockFetch.mockImplementation(async (url) => {
         if (url.includes('/api/expenses/annual-summary')) {
           return {
             ok: true,
@@ -1483,7 +1494,7 @@ describe('AnnualSummary - Integration Tests', () => {
           };
         }
         return { ok: false, status: 404, json: async () => ({ error: 'Not found' }) };
-      };
+      });
 
       const { container } = render(<AnnualSummary year={2024} />);
 
@@ -1551,7 +1562,7 @@ describe('AnnualSummary - Integration Tests', () => {
         byMethod: {}
       };
 
-      global.fetch = async (url) => {
+      mockFetch.mockImplementation(async (url) => {
         if (url.includes('/api/expenses/annual-summary')) {
           return {
             ok: true,
@@ -1571,7 +1582,7 @@ describe('AnnualSummary - Integration Tests', () => {
           };
         }
         return { ok: false, status: 404, json: async () => ({ error: 'Not found' }) };
-      };
+      });
 
       const { container } = render(<AnnualSummary year={2024} />);
 
@@ -1624,7 +1635,7 @@ describe('AnnualSummary - Integration Tests', () => {
         byMethod: {}
       };
 
-      global.fetch = async (url) => {
+      mockFetch.mockImplementation(async (url) => {
         if (url.includes('/api/expenses/annual-summary')) {
           return {
             ok: true,
@@ -1644,7 +1655,7 @@ describe('AnnualSummary - Integration Tests', () => {
           };
         }
         return { ok: false, status: 404, json: async () => ({ error: 'Not found' }) };
-      };
+      });
 
       const { container } = render(<AnnualSummary year={2024} />);
 
@@ -1683,7 +1694,7 @@ describe('AnnualSummary - Integration Tests', () => {
         byMethod: {}
       };
 
-      global.fetch = async (url) => {
+      mockFetch.mockImplementation(async (url) => {
         if (url.includes('/api/expenses/annual-summary')) {
           return {
             ok: true,
@@ -1703,7 +1714,7 @@ describe('AnnualSummary - Integration Tests', () => {
           };
         }
         return { ok: false, status: 404, json: async () => ({ error: 'Not found' }) };
-      };
+      });
 
       const { container } = render(<AnnualSummary year={2024} />);
 
@@ -1743,7 +1754,7 @@ describe('AnnualSummary - Integration Tests', () => {
         byMethod: { Cash: 4000, Debit: 5000, 'CIBC MC': 3000 }
       };
 
-      global.fetch = async (url) => {
+      mockFetch.mockImplementation(async (url) => {
         if (url.includes('/api/expenses/annual-summary')) {
           return {
             ok: true,
@@ -1763,7 +1774,7 @@ describe('AnnualSummary - Integration Tests', () => {
           };
         }
         return { ok: false, status: 404, json: async () => ({ error: 'Not found' }) };
-      };
+      });
 
       const { container } = render(<AnnualSummary year={2024} />);
 
@@ -1811,7 +1822,7 @@ describe('AnnualSummary - Net Worth Card Rendering', () => {
       byMethod: {}
     };
 
-    global.fetch = async (url) => {
+    mockFetch.mockImplementation(async (url) => {
       if (url.includes('/api/expenses/annual-summary')) {
         return {
           ok: true,
@@ -1831,7 +1842,7 @@ describe('AnnualSummary - Net Worth Card Rendering', () => {
         };
       }
       return { ok: false, status: 404, json: async () => ({ error: 'Not found' }) };
-    };
+    });
 
     const { container } = render(<AnnualSummary year={2024} />);
 
@@ -1887,7 +1898,7 @@ describe('AnnualSummary - Net Worth Card Rendering', () => {
       byMethod: {}
     };
 
-    global.fetch = async (url) => {
+    mockFetch.mockImplementation(async (url) => {
       if (url.includes('/api/expenses/annual-summary')) {
         return {
           ok: true,
@@ -1907,7 +1918,7 @@ describe('AnnualSummary - Net Worth Card Rendering', () => {
         };
       }
       return { ok: false, status: 404, json: async () => ({ error: 'Not found' }) };
-    };
+    });
 
     const { container } = render(<AnnualSummary year={2024} />);
 
@@ -1950,7 +1961,7 @@ describe('AnnualSummary - Net Worth Card Rendering', () => {
       byMethod: {}
     };
 
-    global.fetch = async (url) => {
+    mockFetch.mockImplementation(async (url) => {
       if (url.includes('/api/expenses/annual-summary')) {
         return {
           ok: true,
@@ -1970,7 +1981,7 @@ describe('AnnualSummary - Net Worth Card Rendering', () => {
         };
       }
       return { ok: false, status: 404, json: async () => ({ error: 'Not found' }) };
-    };
+    });
 
     const { container } = render(<AnnualSummary year={2024} />);
 
@@ -2013,7 +2024,7 @@ describe('AnnualSummary - Net Worth Card Rendering', () => {
       byMethod: {}
     };
 
-    global.fetch = async (url) => {
+    mockFetch.mockImplementation(async (url) => {
       if (url.includes('/api/expenses/annual-summary')) {
         return {
           ok: true,
@@ -2033,7 +2044,7 @@ describe('AnnualSummary - Net Worth Card Rendering', () => {
         };
       }
       return { ok: false, status: 404, json: async () => ({ error: 'Not found' }) };
-    };
+    });
 
     const { container } = render(<AnnualSummary year={2024} />);
 
@@ -2079,7 +2090,7 @@ describe('AnnualSummary - Net Worth Card Rendering', () => {
       byMethod: {}
     };
 
-    global.fetch = async (url) => {
+    mockFetch.mockImplementation(async (url) => {
       if (url.includes('/api/expenses/annual-summary')) {
         return {
           ok: true,
@@ -2099,7 +2110,7 @@ describe('AnnualSummary - Net Worth Card Rendering', () => {
         };
       }
       return { ok: false, status: 404, json: async () => ({ error: 'Not found' }) };
-    };
+    });
 
     const { container } = render(<AnnualSummary year={2024} />);
 

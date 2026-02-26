@@ -4,6 +4,7 @@ import { formatAmount, formatLocalDate, getMonthNameShort } from '../utils/forma
 import { getCategories } from '../services/categoriesApi';
 import { getPeople } from '../services/peopleApi';
 import { getExpenseWithPeople, updateExpense } from '../services/expenseApi';
+import { authAwareFetch } from '../utils/fetchProvider';
 import usePaymentMethods from '../hooks/usePaymentMethods';
 import useInsuranceStatus from '../hooks/useInsuranceStatus';
 import useInvoiceManagement from '../hooks/useInvoiceManagement';
@@ -170,7 +171,7 @@ const TaxDeductible = ({ year, refreshTrigger }) => {
         url += '&groupByPerson=true';
       }
       
-      const response = await fetch(url);
+      const response = await authAwareFetch(url);
       
       if (!response.ok) {
         throw new Error('Failed to fetch tax deductible data');

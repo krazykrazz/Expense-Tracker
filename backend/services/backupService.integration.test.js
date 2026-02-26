@@ -168,9 +168,9 @@ describe('BackupService - Archive Backup', () => {
     // Create a backup first
     await backupService.performBackup(testBackupPath);
     
-    // Update config to use test path
+    // Directly set config targetPath for test (bypasses path validation since test dir is outside config)
     const originalConfig = backupService.getConfig();
-    backupService.updateConfig({ targetPath: testBackupPath });
+    backupService.config.targetPath = testBackupPath;
     
     try {
       const backups = backupService.getBackupList();
@@ -181,7 +181,7 @@ describe('BackupService - Archive Backup', () => {
       expect(backups[0].size).toBeGreaterThan(0);
     } finally {
       // Restore original config
-      backupService.updateConfig({ targetPath: originalConfig.targetPath });
+      backupService.config.targetPath = originalConfig.targetPath;
     }
   });
 });

@@ -163,6 +163,9 @@ jobs:
       - name: Validate test naming conventions
         run: node ../scripts/validate-test-naming.js
 
+      - name: Validate no raw fetch() calls
+        run: node ../scripts/validate-no-raw-fetch.js
+
       - name: Record test start time
         id: test_start
         run: echo "start=$(date +%s)" >> $GITHUB_OUTPUT

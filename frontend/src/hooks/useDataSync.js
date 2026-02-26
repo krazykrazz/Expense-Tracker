@@ -46,6 +46,8 @@ const WINDOW_EVENT_ENTITY_TYPES = new Set(['loan', 'income', 'investment', 'fixe
  * @param {Function} props.refreshPeople
  * @param {Function} props.refreshPaymentMethods
  * @param {Function} [props.onReconnect] - Optional callback fired on SSE reconnection (not initial connect)
+ * @param {Function} [props.getAccessToken] - Optional function returning current JWT access token
+ * @param {boolean} [props.isPasswordRequired] - Whether Password_Gate is active
  * @returns {{ connectionStatus: string, subscribeToasts: Function, getToastSnapshot: Function }}
  */
 export function useDataSync({
@@ -54,6 +56,8 @@ export function useDataSync({
   refreshPeople,
   refreshPaymentMethods,
   onReconnect,
+  getAccessToken,
+  isPasswordRequired,
 } = {}) {
   const [connectionStatus, setConnectionStatus] = useState('connecting');
 
@@ -77,12 +81,18 @@ export function useDataSync({
   const refreshPaymentMethodsRef = useRef(refreshPaymentMethods);
   const onReconnectRef = useRef(onReconnect);
 
+  // Auth refs — avoid reconnecting SSE when auth callbacks change identity
+  const getAccessTokenRef = useRef(getAccessToken);
+  const isPasswordRequiredRef = useRef(isPasswordRequired);
+
   // Update refs on every render so the SSE handler always calls the latest version
   refreshExpensesRef.current = refreshExpenses;
   refreshBudgetsRef.current = refreshBudgets;
   refreshPeopleRef.current = refreshPeople;
   refreshPaymentMethodsRef.current = refreshPaymentMethods;
   onReconnectRef.current = onReconnect;
+  getAccessTokenRef.current = getAccessToken;
+  isPasswordRequiredRef.current = isPasswordRequired;
 
   const notifyToastListeners = useCallback(() => {
     toastListenersRef.current.forEach(listener => listener());
@@ -159,7 +169,17 @@ export function useDataSync({
 
     intentionalCloseRef.current = false;
     setConnectionStatus('connecting');
-    const es = new EventSource(API_ENDPOINTS.SYNC_EVENTS);
+
+    // When Password_Gate is active, append token as query param (Requirement 7.1)
+    let sseUrl = API_ENDPOINTS.SYNC_EVENTS;
+    if (isPasswordRequiredRef.current && getAccessTokenRef.current) {
+      const token = getAccessTokenRef.current();
+      if (token) {
+        sseUrl += `?token=${encodeURIComponent(token)}`;
+      }
+    }
+
+    const es = new EventSource(sseUrl);
     eventSourceRef.current = es;
 
     es.onopen = () => {

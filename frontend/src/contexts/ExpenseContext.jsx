@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { API_ENDPOINTS } from '../config';
 import { useFilterContext } from './FilterContext';
+import { authAwareFetch } from '../utils/fetchProvider';
 
 const ExpenseContext = createContext(null);
 
@@ -39,7 +40,7 @@ export function ExpenseProvider({ children }) {
         } else {
           url = `${API_ENDPOINTS.EXPENSES}?year=${selectedYear}&month=${selectedMonth}`;
         }
-        const response = await fetch(url);
+        const response = await authAwareFetch(url);
         if (!response.ok) {
           const errorText = await response.text();
           let errorMessage = 'Unable to load expenses. Please try again.';
@@ -82,7 +83,7 @@ export function ExpenseProvider({ children }) {
           } else {
             url = `${API_ENDPOINTS.EXPENSES}?year=${selectedYear}&month=${selectedMonth}`;
           }
-          const response = await fetch(url);
+          const response = await authAwareFetch(url);
           if (response.ok) {
             const data = await response.json();
             setExpenses(data);
@@ -104,7 +105,7 @@ export function ExpenseProvider({ children }) {
       try {
         const now = new Date();
         const url = `${API_ENDPOINTS.EXPENSES}?year=${now.getFullYear()}&month=${now.getMonth() + 1}`;
-        const response = await fetch(url);
+        const response = await authAwareFetch(url);
         if (response.ok && isMounted) {
           const data = await response.json();
           setCurrentMonthExpenseCount(data.length);

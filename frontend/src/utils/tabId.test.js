@@ -1,4 +1,14 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
+vi.mock('./fetchProvider', async () => {
+  const actual = await vi.importActual('./fetchProvider');
+  return {
+    ...actual,
+    getFetchFn: () => (...args) => globalThis.fetch(...args),
+    authAwareFetch: (...args) => globalThis.fetch(...args),
+  };
+});
+
 import { TAB_ID, getTabId, fetchWithTabId } from './tabId.js';
 
 describe('tabId utility', () => {

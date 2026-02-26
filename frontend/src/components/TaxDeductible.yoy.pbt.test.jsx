@@ -8,6 +8,16 @@
  */
 
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
+
+vi.mock('../utils/fetchProvider', async () => {
+  const actual = await vi.importActual('../utils/fetchProvider');
+  return {
+    ...actual,
+    getFetchFn: () => (...args) => globalThis.fetch(...args),
+    authAwareFetch: (...args) => globalThis.fetch(...args),
+  };
+});
+
 import { render, screen, waitFor, cleanup } from '@testing-library/react';
 import fc from 'fast-check';
 import { asyncPbtOptions } from '../test/pbtArbitraries';

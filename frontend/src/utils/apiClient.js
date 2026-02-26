@@ -5,6 +5,7 @@
 
 import { createLogger } from './logger';
 import { TAB_ID } from './tabId';
+import { getFetchFn } from './fetchProvider';
 
 const logger = createLogger('ApiClient');
 
@@ -52,7 +53,7 @@ async function handleResponse(response, operation) {
  */
 export async function apiGet(url, operation = 'fetch data') {
   try {
-    const response = await fetch(url);
+    const response = await getFetchFn()(url);
     return await handleResponse(response, operation);
   } catch (error) {
     if (error instanceof ApiError) {
@@ -72,7 +73,7 @@ export async function apiGet(url, operation = 'fetch data') {
  */
 export async function apiPost(url, data, operation = 'create resource') {
   try {
-    const response = await fetch(url, {
+    const response = await getFetchFn()(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -98,7 +99,7 @@ export async function apiPost(url, data, operation = 'create resource') {
  */
 export async function apiPut(url, data, operation = 'update resource') {
   try {
-    const response = await fetch(url, {
+    const response = await getFetchFn()(url, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -123,7 +124,7 @@ export async function apiPut(url, data, operation = 'update resource') {
  */
 export async function apiDelete(url, operation = 'delete resource') {
   try {
-    const response = await fetch(url, {
+    const response = await getFetchFn()(url, {
       method: 'DELETE',
       headers: {
         'X-Tab-ID': TAB_ID
@@ -147,7 +148,7 @@ export async function apiDelete(url, operation = 'delete resource') {
  */
 export async function apiPatch(url, data, operation = 'patch resource') {
   try {
-    const response = await fetch(url, {
+    const response = await getFetchFn()(url, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',

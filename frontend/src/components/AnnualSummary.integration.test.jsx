@@ -1,5 +1,15 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, waitFor } from '@testing-library/react';
+
+// Mock fetchProvider — authAwareFetch delegates to mockFetch
+const mockFetch = vi.fn();
+vi.mock('../utils/fetchProvider', () => ({
+  authAwareFetch: (...args) => mockFetch(...args),
+  getFetchFn: () => mockFetch,
+  getNativeFetch: () => mockFetch,
+  setFetchFn: vi.fn()
+}));
+
 import AnnualSummary from './AnnualSummary';
 
 // Integration Tests
@@ -27,7 +37,7 @@ describe('AnnualSummary - Integration Tests', () => {
         byMethod: { Cash: 4000, Debit: 5000, 'CIBC MC': 3000 }
       };
 
-      global.fetch = async (url) => {
+      mockFetch.mockImplementation(async (url) => {
         if (url.includes('/api/expenses/annual-summary')) {
           return {
             ok: true,
@@ -47,7 +57,7 @@ describe('AnnualSummary - Integration Tests', () => {
           };
         }
         return { ok: false };
-      };
+      });
 
       const { container } = render(<AnnualSummary year={2024} />);
 
@@ -95,7 +105,7 @@ describe('AnnualSummary - Integration Tests', () => {
     });
 
     it('should handle API errors gracefully', async () => {
-      global.fetch = async (url) => {
+      mockFetch.mockImplementation(async (url) => {
         if (url.includes('/api/expenses/annual-summary')) {
           return {
             ok: false,
@@ -103,7 +113,7 @@ describe('AnnualSummary - Integration Tests', () => {
           };
         }
         return { ok: false };
-      };
+      });
 
       const { container } = render(<AnnualSummary year={2024} />);
 
@@ -135,7 +145,7 @@ describe('AnnualSummary - Integration Tests', () => {
         byMethod: {}
       };
 
-      global.fetch = async (url) => {
+      mockFetch.mockImplementation(async (url) => {
         if (url.includes('/api/expenses/annual-summary')) {
           return {
             ok: true,
@@ -155,7 +165,7 @@ describe('AnnualSummary - Integration Tests', () => {
           };
         }
         return { ok: false };
-      };
+      });
 
       const { container } = render(<AnnualSummary year={2024} />);
 
@@ -196,7 +206,7 @@ describe('AnnualSummary - Integration Tests', () => {
         byMethod: {}
       };
 
-      global.fetch = async (url) => {
+      mockFetch.mockImplementation(async (url) => {
         if (url.includes('/api/expenses/annual-summary')) {
           return {
             ok: true,
@@ -216,7 +226,7 @@ describe('AnnualSummary - Integration Tests', () => {
           };
         }
         return { ok: false };
-      };
+      });
 
       const { container } = render(<AnnualSummary year={2024} />);
 
@@ -262,7 +272,7 @@ describe('AnnualSummary - Integration Tests', () => {
         byMethod: {}
       };
 
-      global.fetch = async (url) => {
+      mockFetch.mockImplementation(async (url) => {
         if (url.includes('/api/expenses/annual-summary')) {
           return {
             ok: true,
@@ -282,7 +292,7 @@ describe('AnnualSummary - Integration Tests', () => {
           };
         }
         return { ok: false };
-      };
+      });
 
       const { container } = render(<AnnualSummary year={2024} />);
 
@@ -316,7 +326,7 @@ describe('AnnualSummary - Integration Tests', () => {
         byMethod: {}
       };
 
-      global.fetch = async (url) => {
+      mockFetch.mockImplementation(async (url) => {
         if (url.includes('/api/expenses/annual-summary')) {
           return {
             ok: true,
@@ -336,7 +346,7 @@ describe('AnnualSummary - Integration Tests', () => {
           };
         }
         return { ok: false };
-      };
+      });
 
       const { container } = render(<AnnualSummary year={2024} />);
 
@@ -376,7 +386,7 @@ describe('AnnualSummary - Integration Tests', () => {
         byMethod: {}
       };
 
-      global.fetch = async (url) => {
+      mockFetch.mockImplementation(async (url) => {
         if (url.includes('/api/expenses/annual-summary')) {
           return {
             ok: true,
@@ -396,7 +406,7 @@ describe('AnnualSummary - Integration Tests', () => {
           };
         }
         return { ok: false };
-      };
+      });
 
       const { container } = render(<AnnualSummary year={2024} />);
 
@@ -464,7 +474,7 @@ describe('AnnualSummary - Integration Tests', () => {
         byMethod: {}
       };
 
-      global.fetch = async (url) => {
+      mockFetch.mockImplementation(async (url) => {
         if (url.includes('/api/expenses/annual-summary')) {
           return {
             ok: true,
@@ -484,7 +494,7 @@ describe('AnnualSummary - Integration Tests', () => {
           };
         }
         return { ok: false };
-      };
+      });
 
       const { container } = render(<AnnualSummary year={2024} />);
 
@@ -537,7 +547,7 @@ describe('AnnualSummary - Integration Tests', () => {
         byMethod: {}
       };
 
-      global.fetch = async (url) => {
+      mockFetch.mockImplementation(async (url) => {
         if (url.includes('/api/expenses/annual-summary')) {
           return {
             ok: true,
@@ -557,7 +567,7 @@ describe('AnnualSummary - Integration Tests', () => {
           };
         }
         return { ok: false };
-      };
+      });
 
       const { container } = render(<AnnualSummary year={2024} />);
 
@@ -596,7 +606,7 @@ describe('AnnualSummary - Integration Tests', () => {
         byMethod: {}
       };
 
-      global.fetch = async (url) => {
+      mockFetch.mockImplementation(async (url) => {
         if (url.includes('/api/expenses/annual-summary')) {
           return {
             ok: true,
@@ -616,7 +626,7 @@ describe('AnnualSummary - Integration Tests', () => {
           };
         }
         return { ok: false };
-      };
+      });
 
       const { container } = render(<AnnualSummary year={2024} />);
 
@@ -656,7 +666,7 @@ describe('AnnualSummary - Integration Tests', () => {
         byMethod: { Cash: 4000, Debit: 5000, 'CIBC MC': 3000 }
       };
 
-      global.fetch = async (url) => {
+      mockFetch.mockImplementation(async (url) => {
         if (url.includes('/api/expenses/annual-summary')) {
           return {
             ok: true,
@@ -676,7 +686,7 @@ describe('AnnualSummary - Integration Tests', () => {
           };
         }
         return { ok: false };
-      };
+      });
 
       const { container } = render(<AnnualSummary year={2024} />);
 

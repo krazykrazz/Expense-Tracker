@@ -1,5 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
+
+// Mock fetchProvider — authAwareFetch delegates to mockFetch
+const mockFetch = vi.fn();
+vi.mock('../utils/fetchProvider', () => ({
+  authAwareFetch: (...args) => mockFetch(...args)
+}));
+
 import { useContainerUpdateCheck } from './useContainerUpdateCheck';
 
 // ── Helpers ──
@@ -8,14 +15,14 @@ const BASELINE = { version: '5.12.0', startupId: 'abc-123' };
 const UPDATED = { version: '5.13.0', startupId: 'def-456' };
 
 function mockFetchSuccess(data) {
-  global.fetch = vi.fn().mockResolvedValue({
+  mockFetch.mockResolvedValue({
     ok: true,
     json: () => Promise.resolve(data),
   });
 }
 
 function mockFetchFailure(error = 'Network error') {
-  global.fetch = vi.fn().mockRejectedValue(new Error(error));
+  mockFetch.mockRejectedValue(new Error(error));
 }
 
 describe('useContainerUpdateCheck', () => {
@@ -40,7 +47,7 @@ describe('useContainerUpdateCheck', () => {
       await vi.advanceTimersByTimeAsync(0);
     });
 
-    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(mockFetch).toHaveBeenCalledTimes(1);
     expect(result.current.showBanner).toBe(false);
     expect(result.current.newVersion).toBeNull();
 
@@ -50,54 +57,52 @@ describe('useContainerUpdateCheck', () => {
   // ── Requirement 1.2: Retry behavior on init failure ──
 
   it('should retry up to 3 times with exponential backoff on init failure', async () => {
-    const fetchMock = vi.fn()
+    mockFetch
       .mockRejectedValueOnce(new Error('fail 1'))
       .mockRejectedValueOnce(new Error('fail 2'))
       .mockRejectedValueOnce(new Error('fail 3'))
       .mockRejectedValueOnce(new Error('fail 4'));
-    global.fetch = fetchMock;
 
     const { result, unmount } = renderHook(() => useContainerUpdateCheck());
 
     // Initial attempt (attempt 0)
     await act(async () => { await vi.advanceTimersByTimeAsync(0); });
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(mockFetch).toHaveBeenCalledTimes(1);
 
     // Retry 1 after 1s (attempt 1)
     await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(mockFetch).toHaveBeenCalledTimes(2);
 
     // Retry 2 after 2s (attempt 2)
     await act(async () => { await vi.advanceTimersByTimeAsync(2000); });
-    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(mockFetch).toHaveBeenCalledTimes(3);
 
     // Retry 3 after 4s (attempt 3 — last attempt, MAX_RETRIES reached)
     await act(async () => { await vi.advanceTimersByTimeAsync(4000); });
-    expect(fetchMock).toHaveBeenCalledTimes(4);
+    expect(mockFetch).toHaveBeenCalledTimes(4);
 
     // No more retries after that
     await act(async () => { await vi.advanceTimersByTimeAsync(10000); });
-    expect(fetchMock).toHaveBeenCalledTimes(4);
+    expect(mockFetch).toHaveBeenCalledTimes(4);
 
     expect(result.current.showBanner).toBe(false);
     unmount();
   });
 
   it('should succeed on retry after initial failures', async () => {
-    const fetchMock = vi.fn()
+    mockFetch
       .mockRejectedValueOnce(new Error('fail'))
       .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(BASELINE) });
-    global.fetch = fetchMock;
 
     const { result, unmount } = renderHook(() => useContainerUpdateCheck());
 
     // Initial attempt fails
     await act(async () => { await vi.advanceTimersByTimeAsync(0); });
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(mockFetch).toHaveBeenCalledTimes(1);
 
     // Retry after 1s succeeds
     await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(mockFetch).toHaveBeenCalledTimes(2);
     expect(result.current.showBanner).toBe(false);
 
     unmount();
@@ -116,7 +121,7 @@ describe('useContainerUpdateCheck', () => {
     }
 
     // Now mock success for reconnect
-    global.fetch = vi.fn().mockResolvedValue({
+    mockFetch.mockResolvedValue({
       ok: true,
       json: () => Promise.resolve(BASELINE),
     });
@@ -139,7 +144,7 @@ describe('useContainerUpdateCheck', () => {
     const { result, unmount } = renderHook(() => useContainerUpdateCheck());
     await act(async () => { await vi.advanceTimersByTimeAsync(0); });
 
-    global.fetch = vi.fn().mockResolvedValue({
+    mockFetch.mockReset().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ ...BASELINE, version: '6.0.0' }),
     });
@@ -161,7 +166,7 @@ describe('useContainerUpdateCheck', () => {
     const { result, unmount } = renderHook(() => useContainerUpdateCheck());
     await act(async () => { await vi.advanceTimersByTimeAsync(0); });
 
-    global.fetch = vi.fn().mockResolvedValue({
+    mockFetch.mockReset().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ ...BASELINE, startupId: 'new-id' }),
     });
@@ -183,7 +188,7 @@ describe('useContainerUpdateCheck', () => {
     const { result, unmount } = renderHook(() => useContainerUpdateCheck());
     await act(async () => { await vi.advanceTimersByTimeAsync(0); });
 
-    global.fetch = vi.fn().mockResolvedValue({
+    mockFetch.mockReset().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve(BASELINE),
     });
@@ -204,7 +209,7 @@ describe('useContainerUpdateCheck', () => {
     const { result, unmount } = renderHook(() => useContainerUpdateCheck());
     await act(async () => { await vi.advanceTimersByTimeAsync(0); });
 
-    global.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
+    mockFetch.mockReset().mockRejectedValue(new Error('Network error'));
 
     act(() => { result.current.onSseReconnect(); });
     await act(async () => { await vi.advanceTimersByTimeAsync(5500); });
@@ -224,7 +229,7 @@ describe('useContainerUpdateCheck', () => {
     await act(async () => { await vi.advanceTimersByTimeAsync(0); });
 
     // Trigger mismatch
-    global.fetch = vi.fn().mockResolvedValue({
+    mockFetch.mockReset().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve(UPDATED),
     });
@@ -233,15 +238,14 @@ describe('useContainerUpdateCheck', () => {
     await act(async () => { await vi.advanceTimersByTimeAsync(5500); });
     expect(result.current.showBanner).toBe(true);
 
-    // Reset fetch mock
-    const suppressedFetch = vi.fn();
-    global.fetch = suppressedFetch;
+    // Reset fetch mock to track suppression
+    mockFetch.mockReset();
 
     // Fire reconnect while banner visible
     act(() => { result.current.onSseReconnect(); });
     await act(async () => { await vi.advanceTimersByTimeAsync(6000); });
 
-    expect(suppressedFetch).not.toHaveBeenCalled();
+    expect(mockFetch).not.toHaveBeenCalled();
 
     unmount();
   });
@@ -254,11 +258,10 @@ describe('useContainerUpdateCheck', () => {
     const { result, unmount } = renderHook(() => useContainerUpdateCheck());
     await act(async () => { await vi.advanceTimersByTimeAsync(0); });
 
-    const reconnectFetch = vi.fn().mockResolvedValue({
+    mockFetch.mockReset().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve(BASELINE),
     });
-    global.fetch = reconnectFetch;
 
     // Fire 5 rapid reconnects
     for (let i = 0; i < 5; i++) {
@@ -267,7 +270,7 @@ describe('useContainerUpdateCheck', () => {
 
     await act(async () => { await vi.advanceTimersByTimeAsync(6000); });
 
-    expect(reconnectFetch).toHaveBeenCalledTimes(1);
+    expect(mockFetch).toHaveBeenCalledTimes(1);
 
     unmount();
   });
@@ -282,19 +285,18 @@ describe('useContainerUpdateCheck', () => {
 
     // Create a slow fetch that doesn't resolve immediately
     let resolveSlowFetch;
-    const slowFetch = vi.fn().mockImplementation(() =>
+    mockFetch.mockReset().mockImplementation(() =>
       new Promise(resolve => {
         resolveSlowFetch = resolve;
       })
     );
-    global.fetch = slowFetch;
 
     // First reconnect starts the debounce
     act(() => { result.current.onSseReconnect(); });
 
     // Advance past debounce to trigger the fetch
     await act(async () => { await vi.advanceTimersByTimeAsync(5500); });
-    expect(slowFetch).toHaveBeenCalledTimes(1);
+    expect(mockFetch).toHaveBeenCalledTimes(1);
 
     // Second reconnect while first is in-flight — should be skipped by inFlightRef
     act(() => { result.current.onSseReconnect(); });
@@ -307,7 +309,7 @@ describe('useContainerUpdateCheck', () => {
     });
 
     // Only 1 fetch total (the in-flight one blocked the second)
-    expect(slowFetch).toHaveBeenCalledTimes(1);
+    expect(mockFetch).toHaveBeenCalledTimes(1);
 
     unmount();
   });
@@ -321,7 +323,7 @@ describe('useContainerUpdateCheck', () => {
     await act(async () => { await vi.advanceTimersByTimeAsync(0); });
 
     // Trigger mismatch
-    global.fetch = vi.fn().mockResolvedValue({
+    mockFetch.mockReset().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve(UPDATED),
     });
@@ -337,7 +339,7 @@ describe('useContainerUpdateCheck', () => {
     expect(result.current.newVersion).toBeNull();
 
     // Trigger another mismatch
-    global.fetch = vi.fn().mockResolvedValue({
+    mockFetch.mockReset().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve(UPDATED),
     });
@@ -359,7 +361,7 @@ describe('useContainerUpdateCheck', () => {
 
     // Set up a slow reconnect fetch
     let resolveReconnect;
-    global.fetch = vi.fn().mockImplementation(() =>
+    mockFetch.mockReset().mockImplementation(() =>
       new Promise(resolve => { resolveReconnect = resolve; })
     );
 
@@ -387,7 +389,7 @@ describe('useContainerUpdateCheck', () => {
     await act(async () => { await vi.advanceTimersByTimeAsync(0); });
 
     // Reconnect returns response missing startupId
-    global.fetch = vi.fn().mockResolvedValue({
+    mockFetch.mockReset().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ version: '6.0.0' }),
     });
@@ -408,7 +410,7 @@ describe('useContainerUpdateCheck', () => {
     await act(async () => { await vi.advanceTimersByTimeAsync(0); });
 
     // Reconnect returns response missing version
-    global.fetch = vi.fn().mockResolvedValue({
+    mockFetch.mockReset().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ startupId: 'new-id' }),
     });

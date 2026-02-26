@@ -4,6 +4,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
 import fc from 'fast-check';
+
+// Mock fetchProvider — authAwareFetch delegates to mockFetch
+const mockFetch = vi.fn();
+vi.mock('../utils/fetchProvider', () => ({
+  authAwareFetch: (...args) => mockFetch(...args)
+}));
+
 import useVersionUpgradeCheck from './useVersionUpgradeCheck';
 
 /**
@@ -36,7 +43,7 @@ const distinctSemverPair = () =>
   fc.tuple(semver(), semver()).filter(([a, b]) => a !== b);
 
 function mockFetchVersion(version) {
-  global.fetch = vi.fn().mockResolvedValue({
+  mockFetch.mockResolvedValue({
     ok: true,
     json: () => Promise.resolve({ version })
   });
@@ -102,7 +109,7 @@ describe('useVersionUpgradeCheck - Property-Based Tests', () => {
           );
 
           await waitFor(() => {
-            expect(global.fetch).toHaveBeenCalled();
+            expect(mockFetch).toHaveBeenCalled();
           });
 
           expect(result2.current.showModal).toBe(false);
@@ -151,7 +158,7 @@ describe('useVersionUpgradeCheck - Property-Based Tests', () => {
           );
 
           await waitFor(() => {
-            expect(global.fetch).toHaveBeenCalled();
+            expect(mockFetch).toHaveBeenCalled();
           });
 
           // Modal should never show for first-time users

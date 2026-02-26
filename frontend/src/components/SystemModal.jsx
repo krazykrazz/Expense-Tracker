@@ -7,6 +7,7 @@ import PlaceNameStandardization from './PlaceNameStandardization';
 import { API_ENDPOINTS } from '../config';
 import { formatDateTime } from '../utils/formatters';
 import { createLogger } from '../utils/logger';
+import { authAwareFetch } from '../utils/fetchProvider';
 import './SystemModal.css';
 
 const logger = createLogger('SystemModal');
@@ -80,7 +81,7 @@ const SystemModal = () => {
   
   const fetchVersionInfo = async () => {
     try {
-      const response = await fetch(API_ENDPOINTS.VERSION);
+      const response = await authAwareFetch(API_ENDPOINTS.VERSION);
       if (response.ok) {
         const data = await response.json();
         setVersionInfo(data);
@@ -95,7 +96,7 @@ const SystemModal = () => {
   
   const fetchDbStats = async () => {
     try {
-      const response = await fetch(API_ENDPOINTS.BACKUP_STATS);
+      const response = await authAwareFetch(API_ENDPOINTS.BACKUP_STATS);
       if (response.ok) {
         const data = await response.json();
         setDbStats(data);
@@ -108,7 +109,7 @@ const SystemModal = () => {
 
   const fetchHealthData = async () => {
     try {
-      const response = await fetch(API_ENDPOINTS.HEALTH);
+      const response = await authAwareFetch(API_ENDPOINTS.HEALTH);
       if (response.ok) {
         const data = await response.json();
         setHealthData(data);
@@ -123,7 +124,7 @@ const SystemModal = () => {
 
   const fetchUpdateInfo = async () => {
     try {
-      const response = await fetch(API_ENDPOINTS.VERSION_CHECK_UPDATE);
+      const response = await authAwareFetch(API_ENDPOINTS.VERSION_CHECK_UPDATE);
       if (response.ok) {
         const data = await response.json();
         if (!data.error) {
@@ -144,7 +145,7 @@ const SystemModal = () => {
 
   const fetchBackupList = async () => {
     try {
-      const response = await fetch(API_ENDPOINTS.BACKUP_LIST);
+      const response = await authAwareFetch(API_ENDPOINTS.BACKUP_LIST);
       if (!response.ok) throw new Error('Failed to fetch backup list');
       
       const data = await response.json();
@@ -159,7 +160,7 @@ const SystemModal = () => {
     setBackupLoading(true);
     
     try {
-      const response = await fetch(API_ENDPOINTS.BACKUP_MANUAL, {
+      const response = await authAwareFetch(API_ENDPOINTS.BACKUP_MANUAL, {
         method: 'POST'
       });
 
@@ -200,7 +201,7 @@ const SystemModal = () => {
     formData.append('backup', file);
 
     try {
-      const response = await fetch(API_ENDPOINTS.BACKUP_RESTORE, {
+      const response = await authAwareFetch(API_ENDPOINTS.BACKUP_RESTORE, {
         method: 'POST',
         body: formData
       });

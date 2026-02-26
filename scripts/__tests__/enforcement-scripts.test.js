@@ -13,6 +13,7 @@ const { classifyTestFile, validateTestNaming } = require('../validate-test-namin
 const { hasInvariantComment, hasDirectDbImport, isUnitTestFile, validatePbtGuardrails } = require('../validate-pbt-guardrails');
 const { classifyFile, generateReport, formatMarkdown, formatPlainText } = require('../report-test-health');
 const { checkBudget, loadBudget } = require('../check-test-budget');
+const { scanFileForRawFetch, validateNoRawFetch, isTestFile, isAllowedFile } = require('../validate-no-raw-fetch');
 
 // Helper: create a temp directory with test files
 function createTempTestDir(files) {
@@ -381,6 +382,147 @@ describe('check-test-budget', () => {
     test('returns null for nonexistent directory', () => {
       const config = loadBudget('/nonexistent/path');
       expect(config).toBeNull();
+    });
+  });
+});
+
+// ─── validate-no-raw-fetch.js ───
+
+describe('validate-no-raw-fetch', () => {
+  describe('isTestFile', () => {
+    test('identifies .test.js files', () => {
+      expect(isTestFile('components/Foo.test.js')).toBe(true);
+    });
+
+    test('identifies .test.jsx files', () => {
+      expect(isTestFile('components/Foo.test.jsx')).toBe(true);
+    });
+
+    test('identifies .pbt.test.js files', () => {
+      expect(isTestFile('utils/bar.pbt.test.js')).toBe(true);
+    });
+
+    test('returns false for source files', () => {
+      expect(isTestFile('utils/apiClient.js')).toBe(false);
+    });
+  });
+
+  describe('isAllowedFile', () => {
+    test('allows authApi.js', () => {
+      expect(isAllowedFile('services/authApi.js')).toBe(true);
+    });
+
+    test('allows fetchProvider.js', () => {
+      expect(isAllowedFile('utils/fetchProvider.js')).toBe(true);
+    });
+
+    test('rejects other files', () => {
+      expect(isAllowedFile('utils/apiClient.js')).toBe(false);
+    });
+  });
+
+  describe('scanFileForRawFetch', () => {
+    let tmpDir;
+
+    afterEach(() => {
+      if (tmpDir) cleanupTempDir(tmpDir);
+    });
+
+    test('detects raw fetch() calls', () => {
+      tmpDir = createTempTestDir({
+        'source.js': 'const response = await fetch("/api/data");\n',
+      });
+      const violations = scanFileForRawFetch(path.join(tmpDir, 'source.js'));
+      expect(violations).toHaveLength(1);
+      expect(violations[0].line).toBe(1);
+    });
+
+    test('ignores fetch in comments', () => {
+      tmpDir = createTempTestDir({
+        'source.js': '// const response = await fetch("/api/data");\n',
+      });
+      const violations = scanFileForRawFetch(path.join(tmpDir, 'source.js'));
+      expect(violations).toHaveLength(0);
+    });
+
+    test('ignores fetch in block comments', () => {
+      tmpDir = createTempTestDir({
+        'source.js': '* fetch("/api/data")\n',
+      });
+      const violations = scanFileForRawFetch(path.join(tmpDir, 'source.js'));
+      expect(violations).toHaveLength(0);
+    });
+
+    test('ignores authAwareFetch calls', () => {
+      tmpDir = createTempTestDir({
+        'source.js': 'const response = await authAwareFetch("/api/data");\n',
+      });
+      const violations = scanFileForRawFetch(path.join(tmpDir, 'source.js'));
+      expect(violations).toHaveLength(0);
+    });
+
+    test('detects multiple violations in one file', () => {
+      tmpDir = createTempTestDir({
+        'source.js': [
+          'const a = await fetch("/api/a");',
+          'const b = "safe";',
+          'const c = await fetch("/api/c");',
+        ].join('\n'),
+      });
+      const violations = scanFileForRawFetch(path.join(tmpDir, 'source.js'));
+      expect(violations).toHaveLength(2);
+      expect(violations[0].line).toBe(1);
+      expect(violations[1].line).toBe(3);
+    });
+  });
+
+  describe('validateNoRawFetch (filesystem)', () => {
+    let tmpDir;
+
+    afterEach(() => {
+      if (tmpDir) cleanupTempDir(tmpDir);
+    });
+
+    test('passes when no raw fetch calls exist', () => {
+      tmpDir = createTempTestDir({
+        'frontend/src/utils/apiClient.js': 'const response = await authAwareFetch("/api");\n',
+        'frontend/src/components/App.jsx': 'import { authAwareFetch } from "../utils/fetchProvider";\n',
+      });
+      const result = validateNoRawFetch(tmpDir);
+      expect(result.violations).toHaveLength(0);
+    });
+
+    test('detects raw fetch in source files', () => {
+      tmpDir = createTempTestDir({
+        'frontend/src/components/Bad.jsx': 'const r = await fetch("/api/bad");\n',
+      });
+      const result = validateNoRawFetch(tmpDir);
+      expect(result.violations).toHaveLength(1);
+      expect(result.violations[0].file).toContain('Bad.jsx');
+    });
+
+    test('excludes test files from scanning', () => {
+      tmpDir = createTempTestDir({
+        'frontend/src/components/Foo.test.jsx': 'const r = await fetch("/api/test");\n',
+      });
+      const result = validateNoRawFetch(tmpDir);
+      expect(result.violations).toHaveLength(0);
+    });
+
+    test('excludes authApi.js from scanning', () => {
+      tmpDir = createTempTestDir({
+        'frontend/src/services/authApi.js': 'const r = await fetch("/api/auth/status");\n',
+      });
+      const result = validateNoRawFetch(tmpDir);
+      expect(result.violations).toHaveLength(0);
+    });
+
+    test('excludes fetchProvider.js from scanning', () => {
+      tmpDir = createTempTestDir({
+        'frontend/src/utils/fetchProvider.js': 'const _nativeFetch = window.fetch.bind(window);\n',
+      });
+      const result = validateNoRawFetch(tmpDir);
+      expect(result.violations).toHaveLength(0);
     });
   });
 });

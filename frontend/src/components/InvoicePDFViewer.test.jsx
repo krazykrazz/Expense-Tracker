@@ -1,6 +1,16 @@
+import { vi } from 'vitest';
+
+vi.mock('../utils/fetchProvider', async () => {
+  const actual = await vi.importActual('../utils/fetchProvider');
+  return {
+    ...actual,
+    getFetchFn: () => (...args) => globalThis.fetch(...args),
+    authAwareFetch: (...args) => globalThis.fetch(...args),
+  };
+});
+
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { vi } from 'vitest';
 import InvoicePDFViewer from './InvoicePDFViewer';
 
 // Mock fetch for PDF loading

@@ -8,64 +8,78 @@ Scope: Full application (frontend + backend + infrastructure) security-focused c
 
 ## Critical Issues
 
-### SEC-001: No Authentication or Authorization System
+### SEC-001: No Authentication or Authorization System — ✅ ADDRESSED
 - **Files**: `backend/server.js`, all route files
 - **Description**: The application has zero authentication. Every API endpoint is publicly accessible to any device on the local network. There is no user login, no session management, no API keys, no token-based auth. Anyone who can reach the server can read, modify, or delete all financial data, trigger backups/restores, change settings, and access uploaded invoices.
 - **Impact**: Complete data exposure. Any device on the network has full read/write access to all personal financial records, income data, loan details, investment information, and tax documents.
 - **Severity**: Critical
 - **Mitigating Factor**: The app is designed for single-household use on a local network, not exposed to the internet. Docker deployment further isolates it. This is a known design tradeoff, not an oversight.
 - **Fix**: Add optional authentication (e.g., a simple PIN or password gate) that can be enabled via settings for users who want it.
+- **Resolution**: Implemented via auth-infrastructure spec. Optional Password_Gate with JWT-based authentication. When a password is set, all API endpoints require a valid Bearer token. Open_Mode preserves existing behavior when no password is configured.
+- **Implementing Files**: `backend/services/authService.js`, `backend/middleware/authMiddleware.js`, `backend/controllers/authController.js`, `backend/routes/authRoutes.js`, `backend/repositories/userRepository.js`
 
-### SEC-002: CORS Allows All Origins
+### SEC-002: CORS Allows All Origins — ✅ ADDRESSED
 - **File**: `backend/server.js` — Line `app.use(cors())`
 - **Description**: CORS is configured with no restrictions (`cors()` with no options), meaning any origin can make requests to the API. Combined with SEC-001, any website open in a browser on the same network could make authenticated-by-default requests to the expense tracker API.
 - **Impact**: A malicious website visited by someone on the local network could silently read or modify all financial data via cross-origin requests.
 - **Severity**: Critical
 - **Mitigating Factor**: Requires the attacker to know the server's local IP and port. The app runs on a private network.
 - **Fix**: Restrict CORS to the app's own origin, or at minimum to the local network subnet. Example: `cors({ origin: ['http://localhost:2424', 'http://192.168.x.x:2424'] })`.
+- **Resolution**: Replaced open `cors()` with restricted configuration: `origin: process.env.CORS_ORIGIN || false`, `credentials: true`. When `CORS_ORIGIN` is not set, defaults to same-origin only.
+- **Implementing Files**: `backend/server.js`
 
 ---
 
 ## High Severity Issues
 
-### SEC-003: Backup/Restore Endpoints Completely Unauthenticated
+### SEC-003: Backup/Restore Endpoints Completely Unauthenticated — ✅ ADDRESSED
 - **File**: `backend/controllers/backupController.js`, `backend/routes/backupRoutes.js`
 - **Description**: All backup operations (download database, restore from archive, update backup config) are accessible without any authentication. An attacker on the network can download the full SQLite database (containing all financial data), restore a malicious backup, or change the backup target path.
 - **Impact**: Full database exfiltration via `GET /api/backup`, or data destruction via restore with a crafted backup file.
 - **Severity**: High
 - **Fix**: At minimum, add a confirmation token or rate-limit downloads more aggressively. Ideally, gate behind authentication (see SEC-001).
+- **Resolution**: All backup endpoints are now protected by `authMiddleware` when Password_Gate is active. Only authenticated requests with a valid JWT can access backup operations.
+- **Implementing Files**: `backend/middleware/authMiddleware.js`, `backend/server.js`
 
-### SEC-004: Backup Config Accepts Arbitrary Target Path from User Input
+### SEC-004: Backup Config Accepts Arbitrary Target Path from User Input — ✅ ADDRESSED
 - **File**: `backend/controllers/backupController.js` — `updateBackupConfig()` (Line 29)
 - **Description**: The `updateBackupConfig` endpoint accepts a `targetPath` field from the request body and calls `fs.mkdirSync(targetPath, { recursive: true })` to create the directory if it doesn't exist. There is no validation that the path is within an expected directory. An attacker could set `targetPath` to any writable location on the filesystem (e.g., `/tmp/exfil`, or overwrite config directories).
 - **Impact**: Arbitrary directory creation anywhere the Node.js process has write access. Could be used to set up exfiltration paths or interfere with other services.
 - **Severity**: High
 - **Fix**: Validate that `targetPath` resolves to a path within the expected config/backup directory. Use `path.resolve()` and check it starts with the allowed base path.
+- **Resolution**: Added path traversal validation to `backupService.updateConfig()`. The resolved `targetPath` is checked to be within the allowed base configuration directory. Requests with paths outside the allowed directory are rejected with 400.
+- **Implementing Files**: `backend/services/backupService.js`
 
 ---
 
 ## Medium Severity Issues
 
-### SEC-005: SSE Connections Unauthenticated
+### SEC-005: SSE Connections Unauthenticated — ✅ ADDRESSED
 - **File**: `backend/services/sseService.js`, `backend/controllers/syncController.js`
 - **Description**: Server-Sent Events connections have no authentication. Any client on the network can connect to the SSE endpoint and receive real-time notifications about all data changes (entity types, creation/update/deletion events).
 - **Impact**: Information leakage about user activity patterns — an observer can see when expenses are added, settings changed, backups performed, etc.
 - **Severity**: Medium
 - **Fix**: Add a connection token or tie SSE connections to authenticated sessions.
+- **Resolution**: Added `sseAuthMiddleware` that validates JWT from `?token=<jwt>` query parameter on SSE connections when Password_Gate is active. Open_Mode allows connections without a token.
+- **Implementing Files**: `backend/middleware/authMiddleware.js`, `backend/server.js`, `frontend/src/hooks/useDataSync.js`
 
-### SEC-006: File Permission Utilities Exist But Are Not Called During Storage
+### SEC-006: File Permission Utilities Exist But Are Not Called During Storage — ✅ ADDRESSED
 - **Files**: `backend/utils/filePermissions.js`, `backend/utils/fileStorage.js`
 - **Description**: `filePermissions.js` contains utilities for setting restrictive file permissions on uploaded files, but these functions are never called in the actual file storage pipeline (`fileStorage.js`). Uploaded invoices and statements are stored with default filesystem permissions.
 - **Impact**: Uploaded financial documents (invoices, credit card statements) may be readable by other processes or users on the host system.
 - **Severity**: Medium
 - **Fix**: Call the file permission utilities after writing files in `fileStorage.js`.
+- **Resolution**: Updated `fileStorage.js` to call `filePermissions.secureFile()` after writing uploaded files.
+- **Implementing Files**: `backend/utils/fileStorage.js`
 
-### SEC-007: `docker-compose.ghcr.yml` Has Stale Volume Mount Paths
+### SEC-007: `docker-compose.ghcr.yml` Has Stale Volume Mount Paths — ✅ ADDRESSED
 - **File**: `docker-compose.ghcr.yml`
 - **Description**: The GHCR compose file mounts `./data:/app/backend/database` and `./uploads:/app/backend/uploads`, but the current application uses a unified `/config` volume mount (as seen in `docker-compose.yml`: `./config:/config`). If someone deploys using the GHCR file, the database and uploads would be written to unmounted paths inside the container and lost on restart.
 - **Impact**: Data loss — database and uploaded files would not persist across container restarts for anyone using this deployment file.
 - **Severity**: Medium
 - **Fix**: Update `docker-compose.ghcr.yml` to use `./config:/config` matching the current directory structure.
+- **Resolution**: Updated `docker-compose.ghcr.yml` volume mounts to `./config:/config`.
+- **Implementing Files**: `docker-compose.ghcr.yml`
 
 ### SEC-008: CSP Uses `'unsafe-inline'` for Scripts and Styles
 - **File**: `backend/server.js` — Helmet CSP configuration
@@ -86,7 +100,7 @@ Scope: Full application (frontend + backend + infrastructure) security-focused c
 
 ## Low Severity Issues
 
-### SEC-010: Docker Compose Missing Security Hardening Options
+### SEC-010: Docker Compose Missing Security Hardening Options — ✅ ADDRESSED
 - **File**: `docker-compose.yml`
 - **Description**: The Docker Compose configuration doesn't include `security_opt: [no-new-privileges:true]`, `cap_drop: [ALL]`, or resource limits (`mem_limit`, `cpus`). While the Dockerfile correctly runs as non-root user `node`, additional container hardening is missing.
 - **Impact**: The container runs with more Linux capabilities than necessary. No resource limits means a runaway process could consume all host resources.
@@ -103,6 +117,8 @@ Scope: Full application (frontend + backend + infrastructure) security-focused c
         memory: 512M
         cpus: '1.0'
   ```
+- **Resolution**: Added `security_opt: [no-new-privileges:true]`, `cap_drop: [ALL]`, and `deploy.resources.limits` (memory and CPU) to `docker-compose.yml`.
+- **Implementing Files**: `docker-compose.yml`
 
 ### SEC-011: GITHUB_REPO Environment Variable Could Redirect Update Checks
 - **File**: `backend/services/updateCheckService.js` — `getGitHubRepo()` function
@@ -142,14 +158,14 @@ The codebase demonstrates solid security practices in several areas:
 
 ## Summary
 
-| Severity | Count | Description |
-|----------|-------|-------------|
-| Critical | 2 | No auth (SEC-001), open CORS (SEC-002) |
-| High | 2 | Unauthenticated backup (SEC-003), arbitrary targetPath (SEC-004) |
-| Medium | 5 | SSE no auth (SEC-005), unused file perms (SEC-006), stale GHCR mounts (SEC-007), unsafe-inline CSP (SEC-008), log redaction (SEC-009) |
-| Low | 2 | Docker hardening (SEC-010), env var SSRF (SEC-011) |
-| **Total** | **11** | |
+| Severity | Count | Addressed | Description |
+|----------|-------|-----------|-------------|
+| Critical | 2 | 2 ✅ | No auth (SEC-001), open CORS (SEC-002) |
+| High | 2 | 2 ✅ | Unauthenticated backup (SEC-003), arbitrary targetPath (SEC-004) |
+| Medium | 5 | 3 ✅ | SSE no auth (SEC-005 ✅), unused file perms (SEC-006 ✅), stale GHCR mounts (SEC-007 ✅), unsafe-inline CSP (SEC-008), log redaction (SEC-009) |
+| Low | 2 | 1 ✅ | Docker hardening (SEC-010 ✅), env var SSRF (SEC-011) |
+| **Total** | **11** | **8 ✅** | |
 
 ### Context
 
-This is a personal household finance app deployed on a local network via Docker. It is not internet-facing. The critical findings (SEC-001, SEC-002) are known design tradeoffs for simplicity in a trusted network environment. The most actionable fixes are SEC-004 (targetPath validation), SEC-006 (enable file permissions), and SEC-007 (fix stale GHCR compose file), as these are straightforward code changes with no UX impact.
+This is a personal household finance app deployed on a local network via Docker. It is not internet-facing. The critical findings (SEC-001, SEC-002) and high-severity findings (SEC-003, SEC-004) have been addressed by the auth-infrastructure spec, along with medium-severity items SEC-005, SEC-006, SEC-007, and low-severity SEC-010. The remaining unaddressed items are SEC-008 (CSP unsafe-inline), SEC-009 (log redaction), and SEC-011 (env var SSRF) — these are lower-priority items that can be addressed independently in future work.

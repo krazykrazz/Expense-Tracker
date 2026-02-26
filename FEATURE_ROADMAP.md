@@ -1,6 +1,6 @@
 # Expense Tracker - Feature Roadmap
 
-**Last Updated**: February 23, 2026  
+**Last Updated**: February 26, 2026  
 **Current Version**: 1.0.0
 
 This document tracks potential features and enhancements for the Expense Tracker application. Features are categorized by priority and implementation status.
@@ -373,6 +373,33 @@ This document tracks potential features and enhancements for the Expense Tracker
 - Plan extra payments with clear savings projections
 
 **Dependencies**: Extends existing loans infrastructure, database migration for mortgage-specific fields
+
+---
+
+## 🔒 Security & Authentication
+
+### 🟡 35. Auth Infrastructure (Phase 1)
+**Status**: In Progress  
+**Priority**: High  
+**Effort**: High  
+**Spec**: `.kiro/specs/auth-infrastructure/`  
+**Description**: Optional authentication infrastructure for the Expense Tracker. Adds a single default admin user with optional password protection, JWT-based session management, API endpoint protection, CORS restriction, SSE authentication, and security hardening fixes from the security audit.
+
+**Key Features**:
+- **Optional Password Gate**: App works without login when no password is set (Open_Mode), requires login only when a password is configured (Password_Gate)
+- **Default Admin User**: Single "admin" user created automatically on first startup with empty password
+- **JWT Authentication**: 15-minute access tokens + 7-day refresh tokens as HTTP-only cookies
+- **API Endpoint Protection**: All endpoints secured when Password_Gate active, with public exemptions for health, auth status, login, and refresh
+- **CORS Restriction**: Replaces open `cors()` with restricted origin policy (SEC-002 fix)
+- **SSE Authentication**: Token-based query parameter auth for Server-Sent Events connections (SEC-005 fix)
+- **Security Settings UI**: New Security section in Settings Modal for password management and auth toggle
+- **Frontend Auth Flow**: Login screen, AuthContext, silent token refresh via authFetch wrapper
+- **Security Hardening**: Path traversal validation for backup targetPath (SEC-004), file permission enforcement (SEC-006), Docker Compose hardening (SEC-010), GHCR volume mount fix (SEC-007)
+- **Activity Log Integration**: Auth events (login, logout, password gate enable/disable) logged to activity_logs
+
+**Security Issues Addressed**: SEC-001, SEC-002, SEC-003, SEC-004, SEC-005, SEC-006, SEC-007, SEC-010
+
+**Dependencies**: None
 
 ---
 
@@ -1584,6 +1611,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 ---
 
 **Version History**:
+- v3.6 (2026-02-26): Added Auth Infrastructure (Phase 1) as 🟡 In Progress in new Security & Authentication section
 - v3.5 (2026-02-25): Added Container Update Detection (v1.0.0) and Version Upgrade Tracking (v1.0.0) to completed features
 - v3.4 (2026-02-20): Comprehensive documentation audit — added 9 missing completed features to roadmap (Real-Time Data Sync, Activity Log, Insurance Claim Reminders, Medical Insurance Tracking, Generic Expense Reimbursement, Credit Card Billing Cycle History, Tax Deductible Analytics), marked Frontend Custom Hooks (#31) as completed (v5.8.0), updated priority matrix
 - v3.3 (2026-02-18): Marked Budget Modal Consolidation as partially complete (v5.11.0), updated #25 status from Proposed to Partially Complete

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { API_ENDPOINTS } from '../config';
+import { authAwareFetch } from '../utils/fetchProvider';
 import './EnvironmentBanner.css';
 
 /**
@@ -17,7 +18,7 @@ function EnvironmentBanner() {
   useEffect(() => {
     const fetchEnvironment = async () => {
       try {
-        const response = await fetch(API_ENDPOINTS.VERSION);
+        const response = await authAwareFetch(API_ENDPOINTS.VERSION);
         if (response.ok) {
           const data = await response.json();
           // Only show banner for non-production environments

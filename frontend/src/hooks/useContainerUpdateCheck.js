@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { API_ENDPOINTS } from '../config';
+import { authAwareFetch } from '../utils/fetchProvider';
 
 /** Retry delays for initial version capture: 1s, 2s, 4s */
 const RETRY_DELAYS = [1000, 2000, 4000];
@@ -11,7 +12,7 @@ const DEBOUNCE_WINDOW_MS = 5000;
  * Returns { version, startupId } or throws on failure/malformed response.
  */
 async function fetchVersionInfo() {
-  const response = await fetch(API_ENDPOINTS.VERSION);
+  const response = await authAwareFetch(API_ENDPOINTS.VERSION);
   if (!response.ok) {
     throw new Error(`Version endpoint returned ${response.status}`);
   }

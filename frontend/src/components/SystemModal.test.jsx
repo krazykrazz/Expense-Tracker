@@ -1,6 +1,14 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 
+// Mock fetchProvider — authAwareFetch delegates to globalThis.fetch
+vi.mock('../utils/fetchProvider', () => ({
+  getFetchFn: () => (...args) => globalThis.fetch(...args),
+  authAwareFetch: (...args) => globalThis.fetch(...args),
+  getNativeFetch: () => globalThis.fetch,
+  setFetchFn: vi.fn(),
+}));
+
 // Mock ModalContext
 const mockCloseSystemModal = vi.fn();
 vi.mock('../contexts/ModalContext', () => ({

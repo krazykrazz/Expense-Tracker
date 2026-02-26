@@ -1,4 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+vi.mock('../utils/fetchProvider', async () => {
+  const actual = await vi.importActual('../utils/fetchProvider');
+  return {
+    ...actual,
+    getFetchFn: () => (...args) => globalThis.fetch(...args),
+    authAwareFetch: (...args) => globalThis.fetch(...args),
+  };
+});
+
 import { render, screen, waitFor } from '@testing-library/react';
 import * as fc from 'fast-check';
 import { ModalProvider } from '../contexts/ModalContext';

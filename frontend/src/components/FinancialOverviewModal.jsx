@@ -5,6 +5,7 @@ import { getFixedExpensesByLoan } from '../services/fixedExpenseApi';
 import { getAllInvestments, createInvestment, updateInvestment, deleteInvestment } from '../services/investmentApi';
 import { getPaymentMethods, getPaymentMethod, deletePaymentMethod, setPaymentMethodActive } from '../services/paymentMethodApi';
 import { getStatementBalance, getCurrentCycleStatus } from '../services/creditCardApi';
+import { authAwareFetch } from '../utils/fetchProvider';
 import CreditCardPaymentForm from './CreditCardPaymentForm';
 import LoanRow from './LoanRow';
 import InvestmentRow from './InvestmentRow';
@@ -934,7 +935,7 @@ const FinancialOverviewModal = ({
 
     const fetchOnOpen = async () => {
       try {
-        const response = await fetch(API_ENDPOINTS.REMINDER_STATUS(year, month));
+        const response = await authAwareFetch(API_ENDPOINTS.REMINDER_STATUS(year, month));
         if (response.ok) {
           const data = await response.json();
           setHighlightLoanIds((data.loans || []).filter(l => !l.hasBalance).map(l => l.id));

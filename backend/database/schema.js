@@ -319,6 +319,15 @@ const TABLE_STATEMENTS = [
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL,
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+  )`,
+
+  // users — authentication user accounts
+  `CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT NOT NULL UNIQUE,
+    password_hash TEXT DEFAULT '',
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
   )`
 ];
 
@@ -422,7 +431,10 @@ const INDEX_STATEMENTS = [
 
   // activity_logs indexes
   'CREATE INDEX IF NOT EXISTS idx_activity_logs_timestamp ON activity_logs(timestamp DESC)',
-  'CREATE INDEX IF NOT EXISTS idx_activity_logs_entity ON activity_logs(entity_type, entity_id)'
+  'CREATE INDEX IF NOT EXISTS idx_activity_logs_entity ON activity_logs(entity_type, entity_id)',
+
+  // users indexes
+  'CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)'
 ];
 
 // ─── Seed Statements ───

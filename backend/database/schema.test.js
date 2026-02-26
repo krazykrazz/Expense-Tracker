@@ -45,7 +45,7 @@ describe('Consolidated Schema – Unit Tests', () => {
     cleanupIsolatedTestDb(db);
   });
 
-  // ── Requirement 1.1, 2.1, 7.2: All 24 tables created ──
+  // ── Requirement 1.1, 2.1, 7.2: All 25 tables created ──
 
   const EXPECTED_TABLES = [
     'schema_migrations', 'expenses', 'monthly_gross', 'income_sources',
@@ -54,17 +54,17 @@ describe('Consolidated Schema – Unit Tests', () => {
     'people', 'expense_people', 'expense_invoices', 'place_names',
     'reminders', 'dismissed_anomalies', 'payment_methods',
     'credit_card_payments', 'credit_card_statements',
-    'credit_card_billing_cycles', 'activity_logs', 'settings'
+    'credit_card_billing_cycles', 'activity_logs', 'settings', 'users'
   ];
 
-  test('creates exactly 24 tables', async () => {
+  test('creates exactly 25 tables', async () => {
     const rows = await dbAll(
       db,
       "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
     );
     const tableNames = rows.map(r => r.name).sort();
     expect(tableNames).toEqual([...EXPECTED_TABLES].sort());
-    expect(tableNames).toHaveLength(24);
+    expect(tableNames).toHaveLength(25);
   });
 
   // ── Requirement 1.4: Default payment methods seeded ──

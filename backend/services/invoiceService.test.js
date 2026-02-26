@@ -594,11 +594,11 @@ describe('InvoiceService', () => {
         .rejects.toThrow('Expense ID is required');
     });
 
-    it('should throw error if expense does not exist', async () => {
+    it('should return empty array if expense does not exist', async () => {
       expenseRepository.findById.mockResolvedValue(null);
 
-      await expect(invoiceService.getInvoicesForExpense(mockExpenseId))
-        .rejects.toThrow('Expense not found');
+      const result = await invoiceService.getInvoicesForExpense(mockExpenseId);
+      expect(result).toEqual([]);
     });
 
     it('should return empty array if no invoices found', async () => {

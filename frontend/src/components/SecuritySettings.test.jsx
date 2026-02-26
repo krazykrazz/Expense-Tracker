@@ -3,7 +3,9 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 // Mock AuthContext
 const mockLogin = vi.fn();
+const mockEnableAuth = vi.fn();
 const mockLogout = vi.fn();
+const mockDisableAuth = vi.fn();
 const mockGetAccessToken = vi.fn(() => 'test-token');
 let mockIsPasswordRequired = false;
 
@@ -11,7 +13,9 @@ vi.mock('../contexts/AuthContext', () => ({
   useAuthContext: () => ({
     isPasswordRequired: mockIsPasswordRequired,
     login: mockLogin,
+    enableAuth: mockEnableAuth,
     logout: mockLogout,
+    disableAuth: mockDisableAuth,
     getAccessToken: mockGetAccessToken,
   }),
 }));
@@ -44,7 +48,9 @@ describe('SecuritySettings', () => {
     mockSetPassword.mockResolvedValue({ message: 'ok' });
     mockRemovePassword.mockResolvedValue({ message: 'ok' });
     mockLogin.mockResolvedValue(undefined);
+    mockEnableAuth.mockResolvedValue(undefined);
     mockLogout.mockResolvedValue(undefined);
+    mockDisableAuth.mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -142,7 +148,7 @@ describe('SecuritySettings', () => {
       });
     });
 
-    it('should call setPassword and login on successful enable', async () => {
+    it('should call setPassword and enableAuth on successful enable', async () => {
       render(<SecuritySettings />);
       await waitForLoaded();
       fireEvent.click(screen.getByLabelText('Enable authentication'));
@@ -151,7 +157,7 @@ describe('SecuritySettings', () => {
       fireEvent.click(screen.getByText('Enable Authentication'));
       await waitFor(() => {
         expect(mockSetPassword).toHaveBeenCalledWith(null, 'test1234');
-        expect(mockLogin).toHaveBeenCalledWith('test1234');
+        expect(mockEnableAuth).toHaveBeenCalledWith('test1234');
       });
     });
 
@@ -209,7 +215,7 @@ describe('SecuritySettings', () => {
       });
     });
 
-    it('should call removePassword and logout on successful disable', async () => {
+    it('should call removePassword and disableAuth on successful disable', async () => {
       render(<SecuritySettings />);
       await waitForLoaded();
       fireEvent.click(screen.getByLabelText('Enable authentication'));
@@ -219,7 +225,7 @@ describe('SecuritySettings', () => {
       fireEvent.click(disableButton);
       await waitFor(() => {
         expect(mockRemovePassword).toHaveBeenCalledWith('mypass');
-        expect(mockLogout).toHaveBeenCalled();
+        expect(mockDisableAuth).toHaveBeenCalled();
       });
     });
 

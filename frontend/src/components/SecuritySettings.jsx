@@ -31,7 +31,7 @@ export function validatePasswordFields(password, confirmation) {
  * Requirements: 9.1, 9.2, 9.3, 9.4, 9.5, 9.6, 9.7, 9.8, 9.9
  */
 const SecuritySettings = () => {
-  const { isPasswordRequired, login, logout, getAccessToken } = useAuthContext();
+  const { isPasswordRequired, login, enableAuth, logout, disableAuth, getAccessToken } = useAuthContext();
 
   const [authEnabled, setAuthEnabled] = useState(false);
   const [username, setUsername] = useState('admin');
@@ -89,8 +89,9 @@ const SecuritySettings = () => {
     setLoading(true);
     try {
       await apiSetPassword(null, newPassword);
-      // Immediately log in so the user gets a token without a separate login step (Req 9.8)
-      await login(newPassword);
+      // Immediately log in and activate Password_Gate so authFetch wires up
+      // before any subsequent API calls (Req 9.8)
+      await enableAuth(newPassword);
       setAuthEnabled(true);
       clearForm();
       showMessage('Authentication enabled successfully', 'success');
@@ -111,7 +112,7 @@ const SecuritySettings = () => {
     setLoading(true);
     try {
       await apiRemovePassword(currentPassword);
-      await logout();
+      await disableAuth();
       setAuthEnabled(false);
       clearForm();
       showMessage('Authentication disabled', 'success');

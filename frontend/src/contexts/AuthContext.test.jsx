@@ -47,7 +47,9 @@ describe('AuthContext', () => {
     expect(typeof result.current.isPasswordRequired).toBe('boolean');
     expect(typeof result.current.isLoading).toBe('boolean');
     expect(typeof result.current.login).toBe('function');
+    expect(typeof result.current.enableAuth).toBe('function');
     expect(typeof result.current.logout).toBe('function');
+    expect(typeof result.current.disableAuth).toBe('function');
     expect(typeof result.current.getAccessToken).toBe('function');
     expect(typeof result.current.refreshToken).toBe('function');
   });
@@ -76,6 +78,7 @@ describe('AuthContext', () => {
 
   it('sets isPasswordRequired=true when Password_Gate active', async () => {
     mockGetAuthStatus.mockResolvedValue({ passwordRequired: true, username: 'admin' });
+    mockRefreshAccessToken.mockRejectedValue(new Error('No cookie'));
 
     const { result } = renderHook(() => useAuthContext(), { wrapper });
 
@@ -104,8 +107,9 @@ describe('AuthContext', () => {
     expect(result.current.isAuthenticated).toBe(true);
   });
 
-  it('isAuthenticated=false when Password_Gate active and no token', async () => {
+  it('isAuthenticated=false when Password_Gate active and no token or refresh cookie', async () => {
     mockGetAuthStatus.mockResolvedValue({ passwordRequired: true, username: 'admin' });
+    mockRefreshAccessToken.mockRejectedValue(new Error('No refresh cookie'));
 
     const { result } = renderHook(() => useAuthContext(), { wrapper });
 
@@ -113,8 +117,21 @@ describe('AuthContext', () => {
     expect(result.current.isAuthenticated).toBe(false);
   });
 
+  it('isAuthenticated=true when Password_Gate active and silent refresh succeeds on mount', async () => {
+    mockGetAuthStatus.mockResolvedValue({ passwordRequired: true, username: 'admin' });
+    mockRefreshAccessToken.mockResolvedValue({ accessToken: 'refreshed-token' });
+
+    const { result } = renderHook(() => useAuthContext(), { wrapper });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.isAuthenticated).toBe(true);
+    expect(result.current.getAccessToken()).toBe('refreshed-token');
+    expect(mockRefreshAccessToken).toHaveBeenCalledTimes(1);
+  });
+
   it('isAuthenticated=true when Password_Gate active and token exists', async () => {
     mockGetAuthStatus.mockResolvedValue({ passwordRequired: true, username: 'admin' });
+    mockRefreshAccessToken.mockRejectedValue(new Error('No cookie'));
     mockLogin.mockResolvedValue({ accessToken: 'test-token' });
 
     const { result } = renderHook(() => useAuthContext(), { wrapper });
@@ -133,6 +150,7 @@ describe('AuthContext', () => {
 
   it('login stores access token and sets isAuthenticated', async () => {
     mockGetAuthStatus.mockResolvedValue({ passwordRequired: true, username: 'admin' });
+    mockRefreshAccessToken.mockRejectedValue(new Error('No cookie'));
     mockLogin.mockResolvedValue({ accessToken: 'my-jwt-token' });
 
     const { result } = renderHook(() => useAuthContext(), { wrapper });
@@ -150,6 +168,7 @@ describe('AuthContext', () => {
 
   it('login propagates errors on failure', async () => {
     mockGetAuthStatus.mockResolvedValue({ passwordRequired: true, username: 'admin' });
+    mockRefreshAccessToken.mockRejectedValue(new Error('No cookie'));
     mockLogin.mockRejectedValue(new Error('Invalid credentials'));
 
     const { result } = renderHook(() => useAuthContext(), { wrapper });
@@ -166,10 +185,52 @@ describe('AuthContext', () => {
     expect(result.current.getAccessToken()).toBeNull();
   });
 
+  // --- enableAuth (Open_Mode → Password_Gate transition) ---
+
+  it('enableAuth sets isPasswordRequired=true and stores token atomically', async () => {
+    mockGetAuthStatus.mockResolvedValue({ passwordRequired: false, username: 'admin' });
+    mockLogin.mockResolvedValue({ accessToken: 'new-token' });
+
+    const { result } = renderHook(() => useAuthContext(), { wrapper });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.isPasswordRequired).toBe(false);
+    expect(result.current.isAuthenticated).toBe(true); // Open_Mode
+
+    await act(async () => {
+      await result.current.enableAuth('mypassword');
+    });
+
+    expect(mockLogin).toHaveBeenCalledWith('mypassword');
+    expect(result.current.isPasswordRequired).toBe(true);
+    expect(result.current.isAuthenticated).toBe(true);
+    expect(result.current.getAccessToken()).toBe('new-token');
+  });
+
+  it('enableAuth propagates errors on failure', async () => {
+    mockGetAuthStatus.mockResolvedValue({ passwordRequired: false, username: 'admin' });
+    mockLogin.mockRejectedValue(new Error('Login failed'));
+
+    const { result } = renderHook(() => useAuthContext(), { wrapper });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await expect(
+      act(async () => {
+        await result.current.enableAuth('bad');
+      })
+    ).rejects.toThrow('Login failed');
+
+    // Should remain in Open_Mode on failure
+    expect(result.current.isPasswordRequired).toBe(false);
+    expect(result.current.isAuthenticated).toBe(true);
+  });
+
   // --- Logout flow (Requirement 8.6) ---
 
   it('logout clears token and calls API', async () => {
     mockGetAuthStatus.mockResolvedValue({ passwordRequired: true, username: 'admin' });
+    mockRefreshAccessToken.mockRejectedValue(new Error('No cookie'));
     mockLogin.mockResolvedValue({ accessToken: 'token-to-clear' });
     mockLogout.mockResolvedValue({ message: 'Logged out' });
 
@@ -194,6 +255,7 @@ describe('AuthContext', () => {
 
   it('logout clears token even if API call fails', async () => {
     mockGetAuthStatus.mockResolvedValue({ passwordRequired: true, username: 'admin' });
+    mockRefreshAccessToken.mockRejectedValue(new Error('No cookie'));
     mockLogin.mockResolvedValue({ accessToken: 'token' });
     mockLogout.mockRejectedValue(new Error('Network error'));
 
@@ -219,7 +281,10 @@ describe('AuthContext', () => {
   it('refreshToken updates token on success and returns true', async () => {
     mockGetAuthStatus.mockResolvedValue({ passwordRequired: true, username: 'admin' });
     mockLogin.mockResolvedValue({ accessToken: 'old-token' });
-    mockRefreshAccessToken.mockResolvedValue({ accessToken: 'new-token' });
+    // First call (mount silent refresh) fails, subsequent calls succeed
+    mockRefreshAccessToken
+      .mockRejectedValueOnce(new Error('No cookie'))
+      .mockResolvedValue({ accessToken: 'new-token' });
 
     const { result } = renderHook(() => useAuthContext(), { wrapper });
 
@@ -242,6 +307,7 @@ describe('AuthContext', () => {
   it('refreshToken clears token on failure and returns false', async () => {
     mockGetAuthStatus.mockResolvedValue({ passwordRequired: true, username: 'admin' });
     mockLogin.mockResolvedValue({ accessToken: 'old-token' });
+    // All refresh calls fail (mount + explicit)
     mockRefreshAccessToken.mockRejectedValue(new Error('Refresh failed'));
 
     const { result } = renderHook(() => useAuthContext(), { wrapper });
@@ -264,6 +330,60 @@ describe('AuthContext', () => {
     expect(result.current.isAuthenticated).toBe(false);
   });
 
+  // --- disableAuth (Password_Gate → Open_Mode transition) ---
+
+  it('disableAuth sets isPasswordRequired=false and clears token atomically', async () => {
+    mockGetAuthStatus.mockResolvedValue({ passwordRequired: true, username: 'admin' });
+    mockRefreshAccessToken.mockRejectedValue(new Error('No cookie'));
+    mockLogin.mockResolvedValue({ accessToken: 'active-token' });
+    mockLogout.mockResolvedValue({ message: 'Logged out' });
+
+    const { result } = renderHook(() => useAuthContext(), { wrapper });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    // Login first
+    await act(async () => {
+      await result.current.login('password');
+    });
+    expect(result.current.isAuthenticated).toBe(true);
+    expect(result.current.isPasswordRequired).toBe(true);
+
+    // disableAuth should keep isAuthenticated=true throughout
+    // (isPasswordRequired becomes false → Open_Mode → always authenticated)
+    await act(async () => {
+      await result.current.disableAuth();
+    });
+
+    expect(result.current.isPasswordRequired).toBe(false);
+    expect(result.current.isAuthenticated).toBe(true); // Open_Mode = always authenticated
+    expect(result.current.getAccessToken()).toBeNull();
+    expect(mockLogout).toHaveBeenCalledTimes(1);
+  });
+
+  it('disableAuth keeps isAuthenticated=true even if logout API fails', async () => {
+    mockGetAuthStatus.mockResolvedValue({ passwordRequired: true, username: 'admin' });
+    mockRefreshAccessToken.mockRejectedValue(new Error('No cookie'));
+    mockLogin.mockResolvedValue({ accessToken: 'token' });
+    mockLogout.mockRejectedValue(new Error('Network error'));
+
+    const { result } = renderHook(() => useAuthContext(), { wrapper });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await act(async () => {
+      await result.current.login('password');
+    });
+
+    await act(async () => {
+      await result.current.disableAuth();
+    });
+
+    expect(result.current.isPasswordRequired).toBe(false);
+    expect(result.current.isAuthenticated).toBe(true);
+    expect(result.current.getAccessToken()).toBeNull();
+  });
+
   // --- getAccessToken ---
 
   it('getAccessToken returns null when no token exists', async () => {
@@ -275,6 +395,7 @@ describe('AuthContext', () => {
 
   it('getAccessToken returns current token after login', async () => {
     mockGetAuthStatus.mockResolvedValue({ passwordRequired: true, username: 'admin' });
+    mockRefreshAccessToken.mockRejectedValue(new Error('No cookie'));
     mockLogin.mockResolvedValue({ accessToken: 'abc123' });
 
     const { result } = renderHook(() => useAuthContext(), { wrapper });

@@ -26,14 +26,28 @@ export function AuthProvider({ children }) {
     tokenRef.current = accessToken;
   }, [accessToken]);
 
-  // On mount, check auth status (Requirement 8.1)
+  // On mount, check auth status and attempt silent refresh (Requirements 8.1, 8.4)
   useEffect(() => {
     let isMounted = true;
     const checkAuthStatus = async () => {
       try {
         const status = await getAuthStatus();
-        if (isMounted) {
-          setIsPasswordRequired(status.passwordRequired);
+        if (!isMounted) return;
+        setIsPasswordRequired(status.passwordRequired);
+
+        // If Password_Gate is active, attempt silent refresh using the HTTP-only
+        // refresh cookie. This lets users survive tab close/reopen without
+        // re-entering their password (cookie has 7-day expiry).
+        if (status.passwordRequired) {
+          try {
+            const result = await refreshAccessToken();
+            if (isMounted) {
+              setAccessToken(result.accessToken);
+              tokenRef.current = result.accessToken;
+            }
+          } catch {
+            // Refresh cookie absent or expired — user must log in again
+          }
         }
       } catch {
         // If we can't reach the server, default to not requiring password
@@ -63,6 +77,18 @@ export function AuthProvider({ children }) {
     tokenRef.current = result.accessToken;
   }, []);
 
+  // enableAuth: atomically transition from Open_Mode → Password_Gate.
+  // Sets isPasswordRequired=true AND stores the token in one batch so the
+  // useEffect that wires authFetch fires before any subsequent API calls.
+  // Without this, login() alone leaves isPasswordRequired=false and all
+  // API calls go out without Bearer tokens → 401s everywhere.
+  const enableAuth = useCallback(async (password) => {
+    const result = await apiLogin(password);
+    setIsPasswordRequired(true);
+    setAccessToken(result.accessToken);
+    tokenRef.current = result.accessToken;
+  }, []);
+
   // Logout: clear token, call API (Requirement 8.6)
   const logout = useCallback(async () => {
     setAccessToken(null);
@@ -71,6 +97,22 @@ export function AuthProvider({ children }) {
       await apiLogout();
     } catch {
       // Logout API failure is non-critical — token is already cleared
+    }
+  }, []);
+
+  // disableAuth: atomically transition from Password_Gate → Open_Mode.
+  // Sets isPasswordRequired=false FIRST so isAuthenticated stays true,
+  // then clears the token and calls logout API. This prevents the flash
+  // of login screen that occurs when logout() runs while isPasswordRequired
+  // is still true.
+  const disableAuth = useCallback(async () => {
+    setIsPasswordRequired(false);
+    setAccessToken(null);
+    tokenRef.current = null;
+    try {
+      await apiLogout();
+    } catch {
+      // Non-critical — cookie cleanup is best-effort
     }
   }, []);
 
@@ -130,10 +172,12 @@ export function AuthProvider({ children }) {
     isPasswordRequired,
     isLoading,
     login,
+    enableAuth,
     logout,
+    disableAuth,
     getAccessToken,
     refreshToken,
-  }), [isAuthenticated, isPasswordRequired, isLoading, login, logout, getAccessToken, refreshToken]);
+  }), [isAuthenticated, isPasswordRequired, isLoading, login, enableAuth, logout, disableAuth, getAccessToken, refreshToken]);
 
   return (
     <AuthContext.Provider value={value}>

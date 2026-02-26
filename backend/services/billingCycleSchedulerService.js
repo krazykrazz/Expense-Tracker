@@ -7,6 +7,7 @@ const timeBoundaryService = require('./timeBoundaryService');
 const logger = require('../config/logger');
 
 const DURATION_WARNING_THRESHOLD_MS = 30000;
+const LOCK_STALENESS_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
 
 /**
  * BillingCycleSchedulerService
@@ -23,6 +24,7 @@ const DURATION_WARNING_THRESHOLD_MS = 30000;
 class BillingCycleSchedulerService {
   constructor() {
     this.isRunning = false;
+    this.lockAcquiredAt = null;
   }
 
   /**
@@ -35,12 +37,24 @@ class BillingCycleSchedulerService {
    */
   async runAutoGeneration(utcNow = new Date()) {
     if (this.isRunning) {
-      logger.debug('Billing cycle scheduler: skipping run, already in progress');
-      return { generatedCount: 0, errors: [], skipped: true };
+      // Check for stale lock — if the lock has been held longer than the threshold,
+      // force-reset it so the scheduler isn't permanently blocked (BUG-001 fix)
+      const lockAge = this.lockAcquiredAt ? Date.now() - this.lockAcquiredAt : 0;
+      if (lockAge < LOCK_STALENESS_THRESHOLD_MS) {
+        logger.debug('Billing cycle scheduler: skipping run, already in progress');
+        return { generatedCount: 0, errors: [], skipped: true };
+      }
+      logger.warn('Billing cycle scheduler: stale lock detected, force-resetting', {
+        lockAgeMs: lockAge,
+        thresholdMs: LOCK_STALENESS_THRESHOLD_MS
+      });
+      this.isRunning = false;
+      this.lockAcquiredAt = null;
     }
 
     this.isRunning = true;
     const startTime = Date.now();
+    this.lockAcquiredAt = startTime;
     const errors = [];
     let generatedCount = 0;
 
@@ -108,6 +122,7 @@ class BillingCycleSchedulerService {
       throw error;
     } finally {
       this.isRunning = false;
+      this.lockAcquiredAt = null;
     }
   }
 

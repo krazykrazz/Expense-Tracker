@@ -152,11 +152,64 @@ async function exists(table, whereClause, params = []) {
   return !!result;
 }
 
+/**
+ * Run an async callback inside a database transaction.
+ * Unlike `transaction()` which takes pre-defined SQL arrays, this accepts
+ * an arbitrary async function, allowing complex multi-step operations
+ * (e.g., SELECT then UPDATE) to be atomic.
+ *
+ * @param {Function} fn - Async function to execute within the transaction.
+ *   Receives the db instance as its argument. Use db.run/db.get/db.all directly.
+ * @returns {Promise<*>} The return value of fn
+ */
+async function runInTransaction(fn) {
+  const db = await getDatabase();
+
+  const runSql = (sql, params = []) =>
+    new Promise((resolve, reject) => {
+      db.run(sql, params, function (err) {
+        if (err) reject(err);
+        else resolve({ lastID: this.lastID, changes: this.changes });
+      });
+    });
+
+  const getSql = (sql, params = []) =>
+    new Promise((resolve, reject) => {
+      db.get(sql, params, (err, row) => {
+        if (err) reject(err);
+        else resolve(row || null);
+      });
+    });
+
+  const allSql = (sql, params = []) =>
+    new Promise((resolve, reject) => {
+      db.all(sql, params, (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows || []);
+      });
+    });
+
+  await runSql('BEGIN TRANSACTION');
+  try {
+    const result = await fn({ run: runSql, get: getSql, all: allSql });
+    await runSql('COMMIT');
+    return result;
+  } catch (err) {
+    try {
+      await runSql('ROLLBACK');
+    } catch (rollbackErr) {
+      logger.error('Transaction rollback failed:', rollbackErr.message);
+    }
+    throw err;
+  }
+}
+
 module.exports = {
   queryAll,
   queryOne,
   execute,
   transaction,
+  runInTransaction,
   count,
   exists
 };

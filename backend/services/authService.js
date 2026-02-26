@@ -184,7 +184,7 @@ async function setPassword(currentPassword, newPassword) {
 
   logger.info('Auth: Password updated for admin user');
 
-  // Log activity events
+  // Log activity event (single event per action to avoid duplicate broadcasts)
   try {
     if (!wasPasswordGateActive) {
       // Transitioning Open_Mode → Password_Gate
@@ -195,14 +195,16 @@ async function setPassword(currentPassword, newPassword) {
         "Authentication enabled for user 'admin'",
         { username: 'admin' }
       );
+    } else {
+      // Password_Gate already active — just a password change
+      getActivityLogService().logEvent(
+        'auth_password_changed',
+        'auth',
+        null,
+        "Password changed for user 'admin'",
+        { username: 'admin' }
+      );
     }
-    getActivityLogService().logEvent(
-      'auth_password_changed',
-      'auth',
-      null,
-      "Password changed for user 'admin'",
-      { username: 'admin' }
-    );
   } catch (logError) {
     logger.error('Auth: Failed to log password change event', logError);
   }

@@ -1,5 +1,10 @@
 # Changelog
 
+
+
+## [1.1.1] - 2026-02-26
+
+### Fix backup SQLITE_MISUSE and posted date PBT race condition
 > For release history prior to 1.0.0 (formerly v1.0.0–v5.17.5), see [CHANGELOG.pre-1.0.md](CHANGELOG.pre-1.0.md).
 
 ## [Unreleased]

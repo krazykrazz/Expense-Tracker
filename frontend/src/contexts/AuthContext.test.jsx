@@ -358,7 +358,9 @@ describe('AuthContext', () => {
     expect(result.current.isPasswordRequired).toBe(false);
     expect(result.current.isAuthenticated).toBe(true); // Open_Mode = always authenticated
     expect(result.current.getAccessToken()).toBeNull();
-    expect(mockLogout).toHaveBeenCalledTimes(1);
+    // disableAuth no longer calls logout API — removePassword already
+    // handles the state transition and activity logging
+    expect(mockLogout).not.toHaveBeenCalled();
   });
 
   it('disableAuth keeps isAuthenticated=true even if logout API fails', async () => {

@@ -102,18 +102,14 @@ export function AuthProvider({ children }) {
 
   // disableAuth: atomically transition from Password_Gate → Open_Mode.
   // Sets isPasswordRequired=false FIRST so isAuthenticated stays true,
-  // then clears the token and calls logout API. This prevents the flash
-  // of login screen that occurs when logout() runs while isPasswordRequired
-  // is still true.
+  // then clears the token. Does NOT call apiLogout() because the
+  // removePassword API already handles the state transition and logs
+  // auth_password_gate_disabled. Calling logout here would create a
+  // duplicate broadcast entry in the activity log.
   const disableAuth = useCallback(async () => {
     setIsPasswordRequired(false);
     setAccessToken(null);
     tokenRef.current = null;
-    try {
-      await apiLogout();
-    } catch {
-      // Non-critical — cookie cleanup is best-effort
-    }
   }, []);
 
   // getAccessToken: return current token from ref (always current)

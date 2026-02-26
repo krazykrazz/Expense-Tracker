@@ -11,6 +11,31 @@
 
 const changelogEntries = [
   {
+    version: '1.1.1',
+    date: 'February 26, 2026',
+    fixed: [
+      'Fix backup SQLITE_MISUSE error caused by closing singleton database after WAL checkpoint',
+      'Fix posted date PBT race condition in ExpenseForm credit card selection',
+    ],
+    added: [],
+    changed: [],
+    removed: [],
+  },
+  {
+    version: '1.1.0',
+    date: 'February 25, 2026',
+    added: [
+      'Container update detection with refresh banner',
+      'Version upgrade tracking with changelog modal',
+      'Remote update availability checking via GitHub Releases API',
+    ],
+    fixed: [
+      'UX consistency fixes for button hierarchy and form inputs',
+    ],
+    changed: [],
+    removed: [],
+  },
+  {
     version: '1.0.0',
     date: 'February 23, 2026',
     changed: [

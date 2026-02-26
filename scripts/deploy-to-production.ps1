@@ -3,7 +3,7 @@
 # 
 # Workflow:
 #   1. Create release/vX.Y.Z branch from main
-#   2. Bump version in all 6 locations
+#   2. Bump version in all 7 locations
 #   3. Build frontend
 #   4. Commit, push, create PR
 #   5. Wait for CI to pass and PR to merge
@@ -116,7 +116,7 @@ if ($DryRun) {
     Write-Host ""
     Write-Host "Plan:" -ForegroundColor White
     Write-Host "  1. Create branch: $releaseBranch"
-    Write-Host "  2. Update version to $newVersion in all 6 locations"
+    Write-Host "  2. Update version to $newVersion in all 7 locations"
     Write-Host "  3. Build frontend"
     Write-Host "  4. Commit: v${newVersion}: $Description"
     Write-Host "  5. Push branch, create PR"
@@ -226,11 +226,39 @@ $systemReplacement = "`$1`n$newSystemEntry`n            `$2"
 if ($systemModalContent -match $systemInsertionPattern) {
     $systemModalContent = $systemModalContent -replace $systemInsertionPattern, $systemReplacement
     $systemModalContent | Set-Content $systemModalPath -NoNewline
-    Write-Success "All 6 version locations updated"
+    Write-Success "SystemModal.jsx changelog updated"
 } else {
     Write-Warn "Could not find changelog insertion point in SystemModal.jsx"
     Write-Host "Please manually add changelog entry for v$newVersion"
     Read-Host "Press Enter when SystemModal.jsx is updated"
+}
+
+# 7. frontend/src/utils/changelog.js (structured changelog for VersionUpgradeModal)
+$changelogJsPath = "frontend/src/utils/changelog.js"
+$changelogJsContent = Get-Content $changelogJsPath -Raw
+
+$newChangelogJsEntry = @"
+  {
+    version: '$newVersion',
+    date: '$changelogDate',
+    added: [],
+    changed: ['$Description'],
+    fixed: [],
+    removed: [],
+  },
+"@
+
+$changelogJsPattern = '(const changelogEntries = \[)\s*(\{)'
+$changelogJsReplacement = "`$1`n$newChangelogJsEntry`n  `$2"
+
+if ($changelogJsContent -match $changelogJsPattern) {
+    $changelogJsContent = $changelogJsContent -replace $changelogJsPattern, $changelogJsReplacement
+    $changelogJsContent | Set-Content $changelogJsPath -NoNewline
+    Write-Success "All 7 version locations updated"
+} else {
+    Write-Warn "Could not find insertion point in changelog.js"
+    Write-Host "Please manually add changelog entry for v$newVersion"
+    Read-Host "Press Enter when changelog.js is updated"
 }
 
 # ─────────────────────────────────────────────
@@ -271,7 +299,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Step "Creating Pull Request..."
-$prBody = "## Release v$newVersion`n`n$Description`n`n### Version Bump`n- Updated version in all 6 locations`n- Frontend built`n`n### Post-Merge Steps`nAfter merging, the deploy script will:`n1. Tag the merge commit``n2. Pull CI-built image from GHCR`n3. Promote to staging → production"
+$prBody = "## Release v$newVersion`n`n$Description`n`n### Version Bump`n- Updated version in all 7 locations`n- Frontend built`n`n### Post-Merge Steps`nAfter merging, the deploy script will:`n1. Tag the merge commit``n2. Pull CI-built image from GHCR`n3. Promote to staging → production"
 
 $prUrl = gh pr create --base main --head $releaseBranch --title "Release v${newVersion}: $Description" --body $prBody 2>&1
 

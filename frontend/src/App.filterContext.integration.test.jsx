@@ -33,6 +33,9 @@ describe('App.jsx FilterContext Integration', () => {
     global.fetch = mockFetch;
 
     mockFetch.mockImplementation((url) => {
+      if (url.includes('/api/auth/status')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ passwordRequired: false }) });
+      }
       if (url.includes('/api/version')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve({ version: '5.6.0' }) });
       }
@@ -121,8 +124,14 @@ describe('App.jsx FilterContext Integration', () => {
     // Initially in monthly view
     expect(screen.getByText(/monthly view/i)).toBeInTheDocument();
 
-    // Apply payment method filter through SearchBar (flows through context)
+    // Wait for payment methods to load into the dropdown
     const paymentFilter = screen.getByLabelText(/filter by payment method/i);
+    await waitFor(() => {
+      const options = Array.from(paymentFilter.options).map(o => o.text);
+      expect(options).toContain('Debit');
+    });
+
+    // Apply payment method filter through SearchBar (flows through context)
     await user.selectOptions(paymentFilter, 'Debit');
 
     // Should switch to global view via context's isGlobalView
@@ -147,6 +156,10 @@ describe('App.jsx FilterContext Integration', () => {
 
     // Trigger global view with payment method filter
     const paymentFilter = screen.getByLabelText(/filter by payment method/i);
+    await waitFor(() => {
+      const options = Array.from(paymentFilter.options).map(o => o.text);
+      expect(options).toContain('Debit');
+    });
     await user.selectOptions(paymentFilter, 'Debit');
 
     await waitFor(() => {

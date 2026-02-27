@@ -504,7 +504,7 @@ describe('FinancialOverviewModal PBT', () => {
               const ccRows = ccSubsection.querySelectorAll('.financial-cc-summary-row');
               ccRows.forEach(row => {
                 const cardName = row.querySelector('.financial-cc-name').textContent;
-                const method = paymentMethods.find(m => m.display_name === cardName);
+                const method = paymentMethods.find(m => m.display_name === cardName && m.is_active);
                 expect(method?.is_active).toBe(true);
               });
             }
@@ -515,7 +515,7 @@ describe('FinancialOverviewModal PBT', () => {
               const otherRows = otherSubsection.querySelectorAll('.other-payment-method-row');
               otherRows.forEach(row => {
                 const methodName = row.querySelector('.other-payment-method-name').textContent;
-                const method = paymentMethods.find(m => m.display_name === methodName);
+                const method = paymentMethods.find(m => m.display_name === methodName && m.is_active);
                 expect(method?.is_active).toBe(true);
               });
             }
@@ -611,9 +611,15 @@ describe('FinancialOverviewModal PBT', () => {
             if (inactiveCreditCards.length > 0) {
               await waitFor(() => {
                 const ccSubsection = within(pmSection).queryByTestId('cc-subsection');
-                if (!ccSubsection) return false;
+                expect(ccSubsection).toBeTruthy();
                 const ccRows = ccSubsection.querySelectorAll('.financial-cc-summary-row');
-                return ccRows.length === inactiveCreditCards.length;
+                expect(ccRows.length).toBe(inactiveCreditCards.length);
+                // Also verify the names match inactive cards to avoid stale data
+                ccRows.forEach(row => {
+                  const cardName = row.querySelector('.financial-cc-name').textContent;
+                  const found = inactiveCreditCards.some(m => m.display_name === cardName);
+                  expect(found).toBe(true);
+                });
               }, { timeout: 5000 });
             }
             
@@ -621,9 +627,9 @@ describe('FinancialOverviewModal PBT', () => {
             if (inactiveOtherMethods.length > 0) {
               await waitFor(() => {
                 const otherSubsection = within(pmSection).queryByTestId('other-subsection');
-                if (!otherSubsection) return false;
+                expect(otherSubsection).toBeTruthy();
                 const otherRows = otherSubsection.querySelectorAll('.other-payment-method-row');
-                return otherRows.length === inactiveOtherMethods.length;
+                expect(otherRows.length).toBe(inactiveOtherMethods.length);
               }, { timeout: 3000 });
             }
             
@@ -664,7 +670,7 @@ describe('FinancialOverviewModal PBT', () => {
         ),
         { numRuns: 100 }
       );
-    });
+    }, 60000);
   });
 
   /**

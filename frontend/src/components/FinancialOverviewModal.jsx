@@ -172,8 +172,14 @@ const PaymentMethodsSection = ({ paymentMethods, loading, onPaymentRecorded, onV
   const otherMethods = allMethods.filter(m => m.type !== 'credit_card');
   const totalCount = allMethods.length;
 
-  const fetchCardData = useCallback(async () => {
-    if (creditCards.length === 0) { setCardLoading(false); return; }
+  // Filter cardData to only include cards that match the current tab's credit cards,
+  // preventing stale data from a previous tab's fetch from being rendered
+  const creditCardIds = useMemo(() => new Set(creditCards.map(c => c.id)), [creditCardKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const filteredCardData = useMemo(() => cardData.filter(c => creditCardIds.has(c.id)), [cardData, creditCardIds]);
+
+  const fetchCardData = useCallback(async (opts = {}) => {
+    const { onStale } = opts;
+    if (creditCards.length === 0) { setCardData([]); setCardLoading(false); return; }
     setCardLoading(true);
     const results = await Promise.all(
       creditCards.map(async (card) => {
@@ -197,13 +203,19 @@ const PaymentMethodsSection = ({ paymentMethods, loading, onPaymentRecorded, onV
         return { id: card.id, name: card.display_name, currentBalance: card.current_balance, statementBalance, cycleBalance };
       })
     );
+    // Skip state update if this fetch was superseded by a newer one
+    if (onStale && onStale()) return;
     setCardData(results);
     setCardLoading(false);
   }, [creditCardKey, activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => { fetchCardData(); }, [fetchCardData]);
+  useEffect(() => {
+    let stale = false;
+    fetchCardData({ onStale: () => stale });
+    return () => { stale = true; };
+  }, [fetchCardData]);
 
-  const payingCard = payingCardId ? cardData.find(c => c.id === payingCardId) : null;
+  const payingCard = payingCardId ? filteredCardData.find(c => c.id === payingCardId) : null;
 
   const handleReactivate = async (methodId) => {
     setReactivating(methodId);
@@ -278,7 +290,7 @@ const PaymentMethodsSection = ({ paymentMethods, loading, onPaymentRecorded, onV
                       <span>Cycle</span>
                       <span></span>
                     </div>
-                    {cardData.map(card => (
+                    {filteredCardData.map(card => (
                       <div key={card.id} className="financial-cc-summary-row">
                         <span className="financial-cc-name">{card.name}</span>
                         <span className="financial-cc-amount">{formatCurrency(card.currentBalance)}</span>

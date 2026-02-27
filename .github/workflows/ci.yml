@@ -470,6 +470,8 @@ jobs:
         id: start_container
         run: |
           CONFIG_DIR=$(mktemp -d)
+          # Match Dockerfile ownership: node user (UID 1000) must be able to write
+          chown -R 1000:1000 "$CONFIG_DIR"
           echo "config_dir=$CONFIG_DIR" >> $GITHUB_OUTPUT
           docker run -d \
             --name expense-tracker-health-check \
@@ -480,8 +482,7 @@ jobs:
             "${{ steps.meta.outputs.image }}"
 
       - name: Wait for container initialization
-        # Must be ≥75% of Dockerfile HEALTHCHECK --start-period=40s
-        run: sleep 30
+        run: sleep 10
 
       - name: Make health check script executable
         run: chmod +x scripts/health-check.sh

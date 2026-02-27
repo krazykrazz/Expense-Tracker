@@ -382,6 +382,15 @@ describe('ExpenseContext Property-Based Tests', () => {
           async (year, month, expenseData) => {
             cleanup();
 
+            // Ensure the target month differs from the current default so the
+            // state change actually triggers a re-fetch via useEffect.
+            const now = new Date();
+            const defaultYear = now.getFullYear();
+            const defaultMonth = now.getMonth() + 1;
+            if (year === defaultYear && month === defaultMonth) {
+              month = (month % 12) + 1; // shift to next month
+            }
+
             // Start with a quick-resolving fetch for the initial mount
             const initialFetch = createMockFetch();
             globalThis.fetch = initialFetch.mockFn;
@@ -444,6 +453,15 @@ describe('ExpenseContext Property-Based Tests', () => {
             fc.string({ minLength: 1, maxLength: 50 }),
             async (year, month, statusCode, errorMsg) => {
               cleanup();
+
+              // Ensure the target month differs from the current default so the
+              // state change actually triggers a re-fetch via useEffect.
+              const now = new Date();
+              const defaultYear = now.getFullYear();
+              const defaultMonth = now.getMonth() + 1;
+              if (year === defaultYear && month === defaultMonth) {
+                month = (month % 12) + 1; // shift to next month
+              }
 
               // Start with a quick-resolving fetch for the initial mount
               const initialFetch = createMockFetch();
@@ -509,6 +527,15 @@ describe('ExpenseContext Property-Based Tests', () => {
             fc.constantFrom('Failed to fetch', 'NetworkError when attempting to fetch resource', 'fetch failed'),
             async (year, month, networkErrorMsg) => {
               cleanup();
+
+              // Ensure the target month differs from the current default so the
+              // state change actually triggers a re-fetch via useEffect.
+              const now = new Date();
+              const defaultYear = now.getFullYear();
+              const defaultMonth = now.getMonth() + 1;
+              if (year === defaultYear && month === defaultMonth) {
+                month = (month % 12) + 1; // shift to next month
+              }
 
               // Start with a quick-resolving fetch for the initial mount
               const initialFetch = createMockFetch();

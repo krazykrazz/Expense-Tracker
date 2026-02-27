@@ -132,7 +132,7 @@ describe('Invoice Service Activity Logging - Integration Tests', () => {
 
     it('should log invoice_uploaded event with personId when person is linked', async () => {
       const expenseId = await createTestExpense(' PersonLink');
-      const personId = await createTestPerson('Test_InvoicePerson');
+      const personId = await createTestPerson(`Test_InvoicePerson_${Date.now()}`);
       await linkPersonToExpense(expenseId, personId);
 
       const invoice = await uploadTestInvoice(expenseId, 'person-invoice.pdf', personId);
@@ -225,8 +225,8 @@ describe('Invoice Service Activity Logging - Integration Tests', () => {
   describe('Update Invoice Person Link Event Logging', () => {
     it('should log invoice_person_link_updated event when updating person link', async () => {
       const expenseId = await createTestExpense(' PersonUpdate');
-      const person1Id = await createTestPerson('Test_Person1');
-      const person2Id = await createTestPerson('Test_Person2');
+      const person1Id = await createTestPerson(`Test_Person1_${Date.now()}`);
+      const person2Id = await createTestPerson(`Test_Person2_${Date.now()}`);
       await linkPersonToExpense(expenseId, person1Id);
       await linkPersonToExpense(expenseId, person2Id);
 
@@ -253,7 +253,7 @@ describe('Invoice Service Activity Logging - Integration Tests', () => {
 
     it('should log invoice_person_link_updated event when removing person link', async () => {
       const expenseId = await createTestExpense(' PersonRemove');
-      const personId = await createTestPerson('Test_PersonRemove');
+      const personId = await createTestPerson(`Test_PersonRemove_${Date.now()}`);
       await linkPersonToExpense(expenseId, personId);
 
       const invoice = await uploadTestInvoice(expenseId, 'remove-person.pdf', personId);
@@ -282,8 +282,8 @@ describe('Invoice Service Activity Logging - Integration Tests', () => {
      */
     it('should log correct events for any invoice CRUD operation', async () => {
       const pbtExpenseId = await createTestExpense(' PBT');
-      const pbtPerson1Id = await createTestPerson('Test_PBTPerson1');
-      const pbtPerson2Id = await createTestPerson('Test_PBTPerson2');
+      const pbtPerson1Id = await createTestPerson(`Test_PBTPerson1_${Date.now()}`);
+      const pbtPerson2Id = await createTestPerson(`Test_PBTPerson2_${Date.now()}`);
       await linkPersonToExpense(pbtExpenseId, pbtPerson1Id);
       await linkPersonToExpense(pbtExpenseId, pbtPerson2Id);
 

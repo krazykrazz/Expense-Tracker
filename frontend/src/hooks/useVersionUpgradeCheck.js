@@ -65,8 +65,17 @@ function useVersionUpgradeCheck({ changelogEntries = [] } = {}) {
           return;
         }
 
-        // Version differs — show upgrade modal
+        // Version differs — show upgrade modal only if we have changelog details.
+        // When the browser serves a stale JS bundle after a container update,
+        // changelog.js won't have the new version's entry yet. In that case,
+        // skip the modal and let the refresh banner handle it. After reload,
+        // the new bundle will have the entry and the modal will show properly
+        // (since last_seen_version wasn't updated).
         const entries = changelogEntries.filter(e => e.version === currentVersion);
+        if (entries.length === 0) {
+          logger.info('No changelog entry for version, deferring modal until bundle refresh', { currentVersion, lastSeen });
+          return;
+        }
         if (!cancelled) {
           setNewVersion(currentVersion);
           setMatchedEntries(entries);

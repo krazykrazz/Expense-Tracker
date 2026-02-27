@@ -7,6 +7,38 @@ vi.mock('./utils/fetchProvider', () => ({
   setFetchFn: vi.fn(),
 }));
 
+// Mock changelog to include test version 2.0.0 so the upgrade modal can match it.
+// Without this, the hook defers the modal (stale-bundle protection) since no entry exists.
+vi.mock('./utils/changelog', () => ({
+  changelogEntries: [
+    {
+      version: '2.0.0',
+      date: 'March 1, 2026',
+      added: ['New feature for testing'],
+      changed: [],
+      fixed: [],
+      removed: [],
+    },
+    {
+      version: '1.0.0',
+      date: 'February 23, 2026',
+      added: ['Initial release'],
+      changed: [],
+      fixed: [],
+      removed: [],
+    },
+  ],
+  getChangelogEntry: (version) => {
+    const entries = [
+      { version: '2.0.0', date: 'March 1, 2026', added: ['New feature for testing'], changed: [], fixed: [], removed: [] },
+      { version: '1.0.0', date: 'February 23, 2026', added: ['Initial release'], changed: [], fixed: [], removed: [] },
+    ];
+    if (!version) return null;
+    const normalized = version.replace(/^v/, '');
+    return entries.find(e => e.version === normalized) || null;
+  },
+}));
+
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from './App';

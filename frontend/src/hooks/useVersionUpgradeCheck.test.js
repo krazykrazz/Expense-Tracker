@@ -165,7 +165,7 @@ describe('useVersionUpgradeCheck', () => {
     expect(result.current.showModal).toBe(false);
   });
 
-  it('should return empty changelog entries when no match found', async () => {
+  it('should defer modal when no changelog entry matches (stale bundle)', async () => {
     localStorage.setItem(LAST_SEEN_VERSION_KEY, '1.0.0');
     mockFetch.mockResolvedValue({
       ok: true,
@@ -177,11 +177,13 @@ describe('useVersionUpgradeCheck', () => {
     );
 
     await waitFor(() => {
-      expect(result.current.showModal).toBe(true);
+      expect(mockFetch).toHaveBeenCalledTimes(1);
     });
 
-    expect(result.current.newVersion).toBe('3.0.0');
-    expect(result.current.changelogEntries).toHaveLength(0);
+    // Modal should NOT show — no matching changelog entry means stale JS bundle
+    expect(result.current.showModal).toBe(false);
+    // localStorage should NOT be updated so the check retries after refresh
+    expect(localStorage.getItem(LAST_SEEN_VERSION_KEY)).toBe('1.0.0');
   });
 
   it('should handle missing version in API response', async () => {
@@ -202,7 +204,7 @@ describe('useVersionUpgradeCheck', () => {
     expect(result.current.showModal).toBe(false);
   });
 
-  it('should work with default empty changelogEntries', async () => {
+  it('should defer modal with default empty changelogEntries', async () => {
     localStorage.setItem(LAST_SEEN_VERSION_KEY, '1.0.0');
     mockFetch.mockResolvedValue({
       ok: true,
@@ -212,9 +214,11 @@ describe('useVersionUpgradeCheck', () => {
     const { result } = renderHook(() => useVersionUpgradeCheck());
 
     await waitFor(() => {
-      expect(result.current.showModal).toBe(true);
+      expect(mockFetch).toHaveBeenCalledTimes(1);
     });
 
-    expect(result.current.changelogEntries).toHaveLength(0);
+    // No changelog entries at all — defer modal
+    expect(result.current.showModal).toBe(false);
+    expect(localStorage.getItem(LAST_SEEN_VERSION_KEY)).toBe('1.0.0');
   });
 });

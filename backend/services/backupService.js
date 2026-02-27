@@ -822,6 +822,13 @@ class BackupService {
       } else {
         logger.debug('Payment methods verified in restored database:', { count: paymentMethodCount });
       }
+
+      // Re-initialize auth state from restored database to prevent stale cache.
+      // Without this, restoring a pre-auth backup into a password-protected system
+      // leaves the in-memory auth cache thinking a password is still set, causing lockout.
+      const authService = require('./authService');
+      await authService.initializeDefaultUser();
+      logger.info('Auth state re-initialized after backup restore');
     } catch (error) {
       logger.error('Error checking payment methods after restore:', error);
       // Don't throw - migration failure shouldn't fail the entire restore

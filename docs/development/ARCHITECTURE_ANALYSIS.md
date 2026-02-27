@@ -183,27 +183,27 @@ Items 1-2 are the highest-value changes. Items 4-5 are good refactoring targets 
 
 During the wiring of `authFetch` into the frontend, several structural observations emerged. None are bugs or regressions — the app works correctly. These are consolidation opportunities for a future PR.
 
-### Finding 1: Duplicated `fetchWithRetry` across service files
+### Finding 1: ~~Duplicated `fetchWithRetry` across service files~~ ✅ COMPLETED
 
 **Files:** `creditCardApi.js`, `paymentMethodApi.js`, `invoiceApi.js`
 
-All three contain an identical `fetchWithRetry` helper (~30 lines each) with the same retry logic, delay calculation, and error handling. Could be extracted to a shared `frontend/src/utils/fetchWithRetry.js` module. This is the highest-value cleanup.
+**Status:** Completed via fetch-infrastructure-consolidation spec. Extracted shared `fetchWithRetry` and `apiGetWithRetry` into `frontend/src/utils/fetchWithRetry.js`. All three service files migrated to use `apiClient.js` methods (`apiGet`, `apiPost`, `apiPut`, `apiDelete`, `apiPatch`) with `apiGetWithRetry` for GET operations. Inline retry implementations removed.
 
-### Finding 2: Overlapping error handling patterns
+### Finding 2: ~~Overlapping error handling patterns~~ ✅ COMPLETED
 
-`apiClient.js` provides `apiGet`/`apiPost`/`apiPut`/`apiDelete` with centralized error handling, but the three service files above don't use it — they have their own `fetchWithRetry` + manual error handling. Two parallel patterns exist for the same concern.
+**Status:** Completed via fetch-infrastructure-consolidation spec. All three service files now use `apiClient.js` for mutations and `apiGetWithRetry` for GETs. The two parallel patterns have been unified — only custom operations (XHR uploads, blob downloads, FormData bodies) retain direct fetch calls with explanatory comments.
 
-### Finding 3: `authAwareFetch` is a thin convenience wrapper
+### Finding 3: ~~`authAwareFetch` is a thin convenience wrapper~~ ✅ COMPLETED
 
-`fetchProvider.js` exports `authAwareFetch` which just calls `getFetchFn()()`. It exists for readability in components/hooks that import it directly, but it's functionally identical to calling `getFetchFn()()`. Not worth changing — just documenting.
+**Status:** Completed. Enhanced JSDoc added to `authAwareFetch` in `fetchProvider.js` documenting that it is an intentional thin wrapper around `getFetchFn()()` for readability, and should not be removed.
 
-### Finding 4: Duplicate X-Tab-ID header injection
+### Finding 4: ~~Duplicate X-Tab-ID header injection~~ ✅ COMPLETED
 
-Both `tabId.js` (`fetchWithTabId`) and `apiClient.js` independently inject the `X-Tab-ID` header. This works because `apiClient.js` uses `getFetchFn()` which resolves to `authFetch` (which doesn't add tab ID), and `tabId.js` wraps that with tab ID injection. The layering is correct but the header logic lives in two places.
+**Status:** Completed via fetch-infrastructure-consolidation spec. `fetchWithTabId` removed from `tabId.js` — X-Tab-ID injection is now handled solely by `apiClient.js`. Custom operations that can't use apiClient import `TAB_ID` directly for header injection. The `getFetchFn` import was removed from `tabId.js`.
 
 ### Recommendation
 
-Extract `fetchWithRetry` into a shared utility (Finding 1) — this is the only change worth making. The others are cosmetic and the current layering (`fetchProvider` → `authFetch` → `tabId` → `apiClient`) works correctly.
+~~Extract `fetchWithRetry` into a shared utility (Finding 1) — this is the only change worth making.~~ All four findings addressed by the fetch-infrastructure-consolidation spec.
 
 ---
 

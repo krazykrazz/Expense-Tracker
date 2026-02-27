@@ -14,7 +14,6 @@ import { useDataSync } from './useDataSync';
 vi.mock('../utils/tabId.js', () => ({
   getTabId: () => 'test-tab-id',
   TAB_ID: 'test-tab-id',
-  fetchWithTabId: vi.fn(),
 }));
 
 // NOTE: vi.mock is hoisted — use string literals, not const references

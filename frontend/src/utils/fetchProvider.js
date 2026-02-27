@@ -17,7 +17,7 @@ const _nativeFetch = window.fetch.bind(window);
 let _fetch = _nativeFetch;
 
 /**
- * Replace the fetch implementation used by apiClient and fetchWithTabId.
+ * Replace the fetch implementation used by apiClient and fetchWithRetry.
  * @param {Function} fn - A fetch-compatible function (e.g. authFetch)
  */
 export function setFetchFn(fn) {
@@ -41,9 +41,15 @@ export function getNativeFetch() {
 }
 
 /**
- * Auth-aware fetch — convenience wrapper that calls the current fetch implementation.
- * Drop-in replacement for `fetch()` in components and hooks.
- * @param  {...any} args - Same arguments as native fetch
+ * Auth-aware fetch — intentional thin convenience wrapper around `getFetchFn()()`.
+ *
+ * Functionally equivalent to calling `getFetchFn()()` directly. It exists for
+ * readability in consumer code (components, hooks) so callers can write
+ * `authAwareFetch(url, opts)` instead of `getFetchFn()(url, opts)`.
+ *
+ * Do not remove — this is a deliberate API surface, not dead code.
+ *
+ * @param  {...any} args - Same arguments as native fetch (url, options)
  * @returns {Promise<Response>}
  */
 export function authAwareFetch(...args) {

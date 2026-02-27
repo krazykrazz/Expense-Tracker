@@ -4,6 +4,11 @@
 
 
 
+
+
+## [1.2.2] - 2026-02-27
+
+### CI pipeline hardening, health check fixes, script cleanup
 ## [1.2.1] - 2026-02-27
 
 ### Fix version upgrade modal stale bundle deferral

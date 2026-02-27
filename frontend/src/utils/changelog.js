@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.2.2',
+    date: 'February 27, 2026',
+    added: [],
+    changed: ['CI pipeline hardening, health check fixes, script cleanup'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.2.1',
     date: 'February 27, 2026',
     added: [],

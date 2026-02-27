@@ -470,8 +470,8 @@ jobs:
         id: start_container
         run: |
           CONFIG_DIR=$(mktemp -d)
-          # Match Dockerfile ownership: node user (UID 1000) must be able to write
-          chown -R 1000:1000 "$CONFIG_DIR"
+          # Make writable by container's node user (UID 1000) without requiring root
+          chmod -R 777 "$CONFIG_DIR"
           echo "config_dir=$CONFIG_DIR" >> $GITHUB_OUTPUT
           docker run -d \
             --name expense-tracker-health-check \

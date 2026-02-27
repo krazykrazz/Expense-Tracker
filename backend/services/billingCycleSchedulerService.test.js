@@ -25,6 +25,7 @@ describe('BillingCycleSchedulerService - Unit Tests', () => {
   let originalRepoCreate;
   let loggerInfoSpy;
   let loggerWarnSpy;
+  let loggerDebugSpy;
 
   beforeEach(() => {
     originalGetCards = billingCycleRepository.getCreditCardsNeedingBillingCycleEntry;
@@ -38,6 +39,7 @@ describe('BillingCycleSchedulerService - Unit Tests', () => {
     timeBoundaryService.localDateToUTC.mockImplementation((d) => new Date(d + 'T05:00:00Z'));
     loggerInfoSpy = jest.spyOn(logger, 'info');
     loggerWarnSpy = jest.spyOn(logger, 'warn');
+    loggerDebugSpy = jest.spyOn(logger, 'debug');
 
     billingCycleSchedulerService.isRunning = false;
   });
@@ -50,6 +52,7 @@ describe('BillingCycleSchedulerService - Unit Tests', () => {
 
     loggerInfoSpy.mockRestore();
     loggerWarnSpy.mockRestore();
+    loggerDebugSpy.mockRestore();
     jest.clearAllMocks();
 
     billingCycleSchedulerService.isRunning = false;
@@ -105,11 +108,10 @@ describe('BillingCycleSchedulerService - Unit Tests', () => {
 
     await billingCycleSchedulerService.runAutoGeneration(new Date('2026-02-16'));
 
-    expect(loggerInfoSpy).toHaveBeenCalledWith(
-      'Billing cycle scheduler: run complete',
+    expect(loggerDebugSpy).toHaveBeenCalledWith(
+      'Billing cycle scheduler: run complete (no-op)',
       expect.objectContaining({
-        generatedCount: 0,
-        errorCount: 0
+        durationMs: expect.any(Number)
       })
     );
   });

@@ -179,24 +179,27 @@ const PaymentMethodsSection = ({ paymentMethods, loading, onPaymentRecorded, onV
       creditCards.map(async (card) => {
         let statementBalance = null;
         let cycleBalance = null;
-        try {
-          const [calcBalance, cycleStatus] = await Promise.all([
-            getStatementBalance(card.id).catch(() => null),
-            getCurrentCycleStatus(card.id).catch(() => null)
-          ]);
-          // Prefer user-entered actual balance over calculated balance (matches CreditCardDetailView logic)
-          statementBalance = cycleStatus?.hasActualBalance ? cycleStatus.actualBalance : calcBalance;
-        } catch { /* silent */ }
-        try {
-          const method = await getPaymentMethod(card.id);
-          cycleBalance = method?.current_cycle?.total_amount ?? null;
-        } catch { /* silent */ }
+        // Skip balance fetches for inactive cards — they may not have billing_cycle_day
+        // configured, which causes validation errors on getCurrentCycleStatus
+        if (activeTab === 'active') {
+          try {
+            const [calcBalance, cycleStatus] = await Promise.all([
+              getStatementBalance(card.id).catch(() => null),
+              getCurrentCycleStatus(card.id).catch(() => null)
+            ]);
+            statementBalance = cycleStatus?.hasActualBalance ? cycleStatus.actualBalance : calcBalance;
+          } catch { /* silent */ }
+          try {
+            const method = await getPaymentMethod(card.id);
+            cycleBalance = method?.current_cycle?.total_amount ?? null;
+          } catch { /* silent */ }
+        }
         return { id: card.id, name: card.display_name, currentBalance: card.current_balance, statementBalance, cycleBalance };
       })
     );
     setCardData(results);
     setCardLoading(false);
-  }, [creditCardKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [creditCardKey, activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { fetchCardData(); }, [fetchCardData]);
 

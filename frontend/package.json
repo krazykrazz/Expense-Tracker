@@ -1,42 +1,42 @@
 {
-  "name": "expense-tracker-frontend",
-  "version": "1.2.1",
-  "description": "Expense Tracker React Frontend",
-  "type": "module",
-  "private": true,
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
-    "test": "vitest --run",
-    "test:parallel": "vitest --run --pool=forks --poolOptions.forks.maxForks=50%",
-    "test:watch": "vitest",
-    "test:changed": "vitest --changed --run",
-    "test:fast": "FAST_CHECK_NUM_RUNS=10 vitest --run",
-    "test:fast:parallel": "FAST_CHECK_NUM_RUNS=10 vitest --run --pool=forks --poolOptions.forks.maxForks=50%",
-    "test:core": "vitest --run ExpenseForm.core",
-    "test:sections": "vitest --run ExpenseForm.sections",
-    "test:people": "vitest --run ExpenseForm.people",
-    "test:futureMonths": "vitest --run ExpenseForm.futureMonths",
-    "test:dataPreservation": "vitest --run ExpenseForm.dataPreservation",
-    "test:perf": "node ../scripts/measure-test-performance.js"
-  },
-  "dependencies": {
-    "prop-types": "^15.8.1",
-    "react": "^19.2.4",
-    "react-dom": "^19.2.4",
-    "react-pdf": "^10.4.0"
-  },
-  "devDependencies": {
-    "@testing-library/jest-dom": "^6.9.1",
-    "@testing-library/react": "^16.3.2",
-    "@testing-library/user-event": "^14.6.1",
-    "@vitejs/plugin-react": "^5.1.4",
-    "@vitest/ui": "^4.0.18",
-    "baseline-browser-mapping": "^2.10.0",
-    "fast-check": "^4.5.3",
-    "jsdom": "^28.1.0",
-    "vite": "^7.3.1",
-    "vitest": "^4.0.10"
-  }
+    "name":  "expense-tracker-frontend",
+    "version":  "1.2.2",
+    "description":  "Expense Tracker React Frontend",
+    "type":  "module",
+    "private":  true,
+    "scripts":  {
+                    "dev":  "vite",
+                    "build":  "vite build",
+                    "preview":  "vite preview",
+                    "test":  "vitest --run",
+                    "test:parallel":  "vitest --run --pool=forks --poolOptions.forks.maxForks=50%",
+                    "test:watch":  "vitest",
+                    "test:changed":  "vitest --changed --run",
+                    "test:fast":  "FAST_CHECK_NUM_RUNS=10 vitest --run",
+                    "test:fast:parallel":  "FAST_CHECK_NUM_RUNS=10 vitest --run --pool=forks --poolOptions.forks.maxForks=50%",
+                    "test:core":  "vitest --run ExpenseForm.core",
+                    "test:sections":  "vitest --run ExpenseForm.sections",
+                    "test:people":  "vitest --run ExpenseForm.people",
+                    "test:futureMonths":  "vitest --run ExpenseForm.futureMonths",
+                    "test:dataPreservation":  "vitest --run ExpenseForm.dataPreservation",
+                    "test:perf":  "node ../scripts/measure-test-performance.js"
+                },
+    "dependencies":  {
+                         "prop-types":  "^15.8.1",
+                         "react":  "^19.2.4",
+                         "react-dom":  "^19.2.4",
+                         "react-pdf":  "^10.4.0"
+                     },
+    "devDependencies":  {
+                            "@testing-library/jest-dom":  "^6.9.1",
+                            "@testing-library/react":  "^16.3.2",
+                            "@testing-library/user-event":  "^14.6.1",
+                            "@vitejs/plugin-react":  "^5.1.4",
+                            "@vitest/ui":  "^4.0.18",
+                            "baseline-browser-mapping":  "^2.10.0",
+                            "fast-check":  "^4.5.3",
+                            "jsdom":  "^28.1.0",
+                            "vite":  "^7.3.1",
+                            "vitest":  "^4.0.10"
+                        }
 }

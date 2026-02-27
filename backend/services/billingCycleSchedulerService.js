@@ -63,7 +63,7 @@ class BillingCycleSchedulerService {
       const currentBusinessDate = timeBoundaryService.getBusinessDate(utcNow, timezone);
       const dateStart = timeBoundaryService.localDateToUTC(currentBusinessDate, timezone);
 
-      logger.info('Billing cycle scheduler: starting run', {
+      logger.debug('Billing cycle scheduler: starting run', {
         utcNow: utcNow.toISOString(),
         timezone,
         currentBusinessDate
@@ -99,11 +99,17 @@ class BillingCycleSchedulerService {
         });
       }
 
-      logger.info('Billing cycle scheduler: run complete', {
-        generatedCount,
-        errorCount: errors.length,
-        durationMs
-      });
+      if (generatedCount > 0 || errors.length > 0) {
+        logger.info('Billing cycle scheduler: run complete', {
+          generatedCount,
+          errorCount: errors.length,
+          durationMs
+        });
+      } else {
+        logger.debug('Billing cycle scheduler: run complete (no-op)', {
+          durationMs
+        });
+      }
 
       // Only log to activity log when something actually happened (avoid hourly noise)
       if (generatedCount > 0 || errors.length > 0) {

@@ -284,9 +284,8 @@ initializeDatabase()
       // Runs daily at 2:00 AM UTC (equivalent to 9:00 PM EST / 10:00 PM EDT)
       cron.schedule('0 2 * * *', async () => {
         try {
-          logger.info('Starting scheduled activity log cleanup...');
-          const result = await activityLogService.cleanupOldEvents();
-          logger.info(`Activity log cleanup completed: ${result.deletedCount} events deleted, oldest remaining: ${result.oldestRemaining || 'none'}`);
+          logger.debug('Starting scheduled activity log cleanup...');
+          await activityLogService.cleanupOldEvents();
         } catch (error) {
           logger.error('Activity log cleanup failed:', error);
         }

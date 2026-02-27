@@ -497,6 +497,12 @@ class BackupService {
         // Restore database
         const extractedDbPath = path.join(tempExtractPath, 'database', 'expenses.db');
         if (fs.existsSync(extractedDbPath)) {
+          // Close all database connections and checkpoint WAL before overwriting.
+          // Without this, open connections hold the WAL file lock (EBUSY on Windows),
+          // and stale WAL data replays on the next connection, undoing the restore.
+          const { closeDatabase } = require('../database/db');
+          await closeDatabase();
+
           // Remove stale WAL and SHM files before restoring
           // These can contain outdated data that conflicts with the restored database
           const walPath = DB_PATH + '-wal';

@@ -60,7 +60,12 @@ jobs:
         run: echo "start=$(date +%s)" >> $GITHUB_OUTPUT
 
       - name: Run unit tests
-        run: npm run test:unit:ci
+        run: npx cross-env NODE_ENV=test CI=true jest --bail --testPathIgnorePatterns=pbt --testPathIgnorePatterns="backup.*(integration|pbt)"
+        env:
+          CI: true
+
+      - name: Run backup integration tests (serial)
+        run: npx cross-env NODE_ENV=test CI=true jest --bail --runInBand --testPathPatterns="backup.*integration\\.test"
         env:
           CI: true
 
@@ -103,7 +108,11 @@ jobs:
         run: echo "start=$(date +%s)" >> $GITHUB_OUTPUT
 
       - name: Run PBT tests (shard ${{ matrix.shard }})
-        run: npx cross-env NODE_ENV=test CI=true FAST_CHECK_NUM_RUNS=15 jest --bail --testPathPatterns=pbt --shard=${{ matrix.shard }}
+        run: npx cross-env NODE_ENV=test CI=true FAST_CHECK_NUM_RUNS=15 jest --bail --testPathPatterns=pbt --testPathIgnorePatterns="backup" --shard=${{ matrix.shard }}
+
+      - name: Run backup tests (serial, shard 1 only)
+        if: matrix.shard == '1/3'
+        run: npm run test:backup:ci
 
       - name: Check runtime budget
         if: always()

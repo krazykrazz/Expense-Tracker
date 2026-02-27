@@ -11,6 +11,26 @@
 
 const changelogEntries = [
   {
+    version: '1.2.0',
+    date: 'February 27, 2026',
+    added: [
+      'Auth infrastructure: password gate, session tokens, authFetch for all frontend API calls',
+      'User menu with logout button in header',
+      'Fetch infrastructure consolidation with centralized retry logic and tab ID tracking',
+      'Raw fetch enforcement script to prevent regression',
+    ],
+    changed: [],
+    fixed: [
+      'Backup restore auth cache staleness causing lockout after restoring pre-auth backups',
+      'Backup WAL replay bug: flush WAL before restore file copy',
+      'Billing cycle scheduler and activity log cleanup log noise reduced',
+      'Auth mode transition race conditions',
+      'Duplicate activity log entries when enabling password',
+      'Graceful handling for deleted expense invoices',
+    ],
+    removed: [],
+  },
+  {
     version: '1.1.1',
     date: 'February 26, 2026',
     fixed: [

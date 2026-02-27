@@ -5,7 +5,10 @@
 param(
     [Parameter(Mandatory=$true)]
     [string]$Title,
-    [string]$Description = ""
+    [string]$Description = "",
+    [switch]$CreateIssue,
+    [ValidateSet('bug', 'enhancement', 'chore')]
+    [string]$IssueLabel = 'bug'
 )
 
 # Function to get GitHub compare URL for manual PR creation
@@ -166,12 +169,47 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 
+# Create GitHub issue if requested
+$issueNumber = $null
+if ($CreateIssue) {
+    $ghCheck = Get-Command gh -ErrorAction SilentlyContinue
+    if ($ghCheck) {
+        Write-Host ""
+        Write-Host "[..] Creating GitHub issue..." -ForegroundColor Yellow
+        
+        $issueBody = if ($Description) { $Description } else { $Title }
+        $issueResult = gh issue create --title $Title --body $issueBody --label $IssueLabel 2>&1
+        
+        if ($LASTEXITCODE -eq 0) {
+            # Extract issue number from URL (e.g., https://github.com/user/repo/issues/123)
+            if ($issueResult -match '/issues/(\d+)') {
+                $issueNumber = $Matches[1]
+                Write-Host "[OK] Issue #$issueNumber created: $issueResult" -ForegroundColor Green
+            } else {
+                Write-Host "[OK] Issue created: $issueResult" -ForegroundColor Green
+            }
+        } else {
+            Write-Host "[!] Failed to create issue: $issueResult" -ForegroundColor Yellow
+            Write-Host "Continuing with PR creation without issue link..." -ForegroundColor Yellow
+        }
+    } else {
+        Write-Host "[!] GitHub CLI (gh) not found - skipping issue creation" -ForegroundColor Yellow
+    }
+}
+
 # Prepare PR body
 $prBody = if ($Description) {
-    "## Summary`n`n$Description`n`n## Checklist`n`n- [ ] CI passes`n- [ ] Ready to merge"
+    "## Summary`n`n$Description"
 } else {
-    "## Summary`n`n$Title`n`n## Checklist`n`n- [ ] CI passes`n- [ ] Ready to merge"
+    "## Summary`n`n$Title"
 }
+
+# Add issue reference if we created one
+if ($issueNumber) {
+    $prBody += "`n`nCloses #$issueNumber"
+}
+
+$prBody += "`n`n## Checklist`n`n- [ ] CI passes`n- [ ] Ready to merge"
 
 # Check if GitHub CLI is available
 $ghAvailable = Get-Command gh -ErrorAction SilentlyContinue

@@ -2,6 +2,23 @@
 
 
 
+## [1.2.0] - 2026-02-27
+
+### Added
+- Auth infrastructure: password gate, session tokens, authFetch wired into all frontend API calls
+- User menu with logout button in header (greyed out when auth inactive)
+- Fetch infrastructure consolidation: centralized fetchWithRetry with exponential backoff, retry logic, and tab ID tracking
+- fetchProvider module (authAwareFetch) replacing raw fetch across all frontend services
+- Raw fetch enforcement script to prevent regression
+
+### Fixed
+- Backup restore auth cache staleness: re-initialize auth state after restore to prevent lockout
+- Backup WAL replay bug: flush WAL before restore file copy via closeDatabase()
+- Billing cycle scheduler and activity log cleanup log noise reduced (debug level for no-op runs)
+- Auth mode transition race conditions (enable/disable/refresh)
+- Duplicate activity log entries when enabling password
+- Graceful handling for deleted expense invoices
+
 ## [1.1.1] - 2026-02-26
 
 ### Fix backup SQLITE_MISUSE and posted date PBT race condition

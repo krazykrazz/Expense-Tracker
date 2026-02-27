@@ -452,6 +452,19 @@ const SystemModal = () => {
           <div className="changelog">
             <div className="changelog-entry">
               <div className="changelog-version">
+                v1.2.0
+                {isCurrentVersion('v1.2.0') && <span className="current-version-badge">Current Version</span>}
+              </div>
+              <div className="changelog-date">February 27, 2026</div>
+              <ul className="changelog-items">
+                <li>Auth infrastructure with password gate and session tokens</li>
+                <li>Fetch infrastructure consolidation with retry logic and tab ID tracking</li>
+                <li>Fix backup restore auth cache staleness and WAL replay bug</li>
+                <li>Reduced scheduler and cleanup log noise</li>
+              </ul>
+            </div>
+            <div className="changelog-entry">
+              <div className="changelog-version">
                 v1.1.1
                 {isCurrentVersion('v1.1.1') && <span className="current-version-badge">Current Version</span>}
               </div>

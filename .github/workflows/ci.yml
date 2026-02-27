@@ -4,9 +4,19 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+      - '.kiro/steering/**'
+      - 'CHANGELOG.md'
   pull_request:
     branches:
       - main
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+      - '.kiro/steering/**'
+      - 'CHANGELOG.md'
   workflow_dispatch:
     inputs:
       health_check_timeout:
@@ -137,14 +147,17 @@ jobs:
           echo "All PBT shards passed"
 
       - name: Checkout code
+        if: needs.backend-pbt-shards.result == 'success'
         uses: actions/checkout@v6
 
       - name: Setup Node.js
+        if: needs.backend-pbt-shards.result == 'success'
         uses: actions/setup-node@v6
         with:
           node-version: '20'
 
       - name: Validate PBT guardrails
+        if: needs.backend-pbt-shards.result == 'success'
         run: node scripts/validate-pbt-guardrails.js
 
   frontend-tests:
@@ -189,6 +202,72 @@ jobs:
           node ../scripts/check-test-budget.js frontend-tests $ELAPSED
         env:
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+
+  security-audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    if: github.actor != 'dependabot[bot]'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+
+      - name: Install backend dependencies
+        run: npm ci
+        working-directory: backend
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: Run backend security audit
+        id: backend_audit
+        run: |
+          echo "## Security Audit Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Backend Dependencies" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if npm audit --audit-level=high 2>&1 | tee audit-output.txt; then
+            echo "✅ No high or critical vulnerabilities found" >> $GITHUB_STEP_SUMMARY
+            echo "backend_status=pass" >> $GITHUB_OUTPUT
+          else
+            echo "❌ High or critical vulnerabilities detected:" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            cat audit-output.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "backend_status=fail" >> $GITHUB_OUTPUT
+          fi
+        working-directory: backend
+        continue-on-error: true
+
+      - name: Run frontend security audit
+        id: frontend_audit
+        run: |
+          echo "### Frontend Dependencies" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if npm audit --audit-level=high 2>&1 | tee audit-output.txt; then
+            echo "✅ No high or critical vulnerabilities found" >> $GITHUB_STEP_SUMMARY
+            echo "frontend_status=pass" >> $GITHUB_OUTPUT
+          else
+            echo "❌ High or critical vulnerabilities detected:" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            cat audit-output.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "frontend_status=fail" >> $GITHUB_OUTPUT
+          fi
+        working-directory: frontend
+        continue-on-error: true
+
+      - name: Fail on high or critical vulnerabilities
+        if: steps.backend_audit.outputs.backend_status == 'fail' || steps.frontend_audit.outputs.frontend_status == 'fail'
+        run: |
+          echo "::error::Security audit found high or critical vulnerabilities"
+          exit 1
 
   test-health-report:
     name: Test Health Report
@@ -284,13 +363,14 @@ jobs:
       
       - name: Create or update release
         run: |
+          VERSION="v${{ steps.meta.outputs.version }}"
+          ASSET="docker-compose-v${{ steps.meta.outputs.version }}.yml"
+
           if [ "${{ steps.check_release.outputs.exists }}" = "true" ]; then
-            echo "Release v${{ steps.meta.outputs.version }} already exists, uploading asset..."
-            gh release upload "v${{ steps.meta.outputs.version }}" \
-              docker-compose-v${{ steps.meta.outputs.version }}.yml \
-              --clobber
+            echo "Release $VERSION already exists, uploading asset..."
+            gh release upload "$VERSION" "$ASSET" --clobber
           else
-            echo "Creating new release v${{ steps.meta.outputs.version }}..."
+            echo "Creating new release $VERSION..."
             echo "## Pre-Built Container Image Available" > release_notes.md
             echo "" >> release_notes.md
             echo "This release is available as a pre-built Docker image at GitHub Container Registry." >> release_notes.md
@@ -298,22 +378,34 @@ jobs:
             echo "### Quick Start" >> release_notes.md
             echo "" >> release_notes.md
             echo "Download the docker-compose file:" >> release_notes.md
-            echo "https://github.com/${{ github.repository }}/releases/download/v${{ steps.meta.outputs.version }}/docker-compose-v${{ steps.meta.outputs.version }}.yml" >> release_notes.md
+            echo "https://github.com/${{ github.repository }}/releases/download/$VERSION/$ASSET" >> release_notes.md
             echo "" >> release_notes.md
-            echo "Then run: docker-compose -f docker-compose-v${{ steps.meta.outputs.version }}.yml up -d" >> release_notes.md
+            echo "Then run: docker-compose -f $ASSET up -d" >> release_notes.md
             echo "" >> release_notes.md
             echo "### Container Images" >> release_notes.md
             echo "" >> release_notes.md
-            echo "- ghcr.io/${{ github.repository_owner }}/expense-tracker:v${{ steps.meta.outputs.version }} (this release)" >> release_notes.md
+            echo "- ghcr.io/${{ github.repository_owner }}/expense-tracker:$VERSION (this release)" >> release_notes.md
             echo "- ghcr.io/${{ github.repository_owner }}/expense-tracker:${{ steps.meta.outputs.sha_short }} (commit SHA)" >> release_notes.md
             echo "- ghcr.io/${{ github.repository_owner }}/expense-tracker:latest (latest main)" >> release_notes.md
             echo "" >> release_notes.md
             echo "See CHANGELOG.md for detailed changes." >> release_notes.md
-            
-            gh release create "v${{ steps.meta.outputs.version }}" \
-              docker-compose-v${{ steps.meta.outputs.version }}.yml \
-              --title "Release v${{ steps.meta.outputs.version }}" \
-              --notes-file release_notes.md
+
+            # Handle race condition: deploy script may create the release between
+            # the check and this step. If gh release create fails because the release
+            # was created externally, fall back to uploading the asset.
+            if ! gh release create "$VERSION" "$ASSET" \
+              --title "Release $VERSION" \
+              --notes-file release_notes.md 2>create_err.txt; then
+              echo "gh release create failed, checking if release was created externally..."
+              if gh release view "$VERSION" &>/dev/null; then
+                echo "Release $VERSION now exists (created externally), uploading asset..."
+                gh release upload "$VERSION" "$ASSET" --clobber
+              else
+                echo "::error::Failed to create release and release does not exist"
+                cat create_err.txt
+                exit 1
+              fi
+            fi
           fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -350,15 +442,16 @@ jobs:
           IMAGE_NAME="expense-tracker"
           CURRENT_SHA="${{ steps.meta.outputs.sha_short }}"
 
-          # Query GHCR for the latest tag that isn't the current SHA
-          # Use docker manifest inspect to check if a 'latest' image exists
+          # Pull :latest and extract the OCI revision label (previous commit SHA)
           PREVIOUS_SHA="none"
           if docker pull "$REGISTRY/$IMAGE_NAME:latest" 2>/dev/null; then
-            # Get the digest of the latest image
-            LATEST_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' "$REGISTRY/$IMAGE_NAME:latest" 2>/dev/null || echo "")
-            if [ -n "$LATEST_DIGEST" ]; then
-              PREVIOUS_SHA="latest"
-              echo "Found previous deployment at :latest tag"
+            PREV=$(docker inspect --format='{{index .Config.Labels "org.opencontainers.image.revision"}}' \
+              "$REGISTRY/$IMAGE_NAME:latest" 2>/dev/null || echo "")
+            if [ -n "$PREV" ] && [ "$PREV" != "$CURRENT_SHA" ]; then
+              PREVIOUS_SHA="$PREV"
+              echo "Found previous deployment SHA: $PREVIOUS_SHA"
+            else
+              echo "Latest image has same SHA as current build ($CURRENT_SHA), no rollback target"
             fi
           else
             echo "No previous deployment found at :latest tag"
@@ -367,22 +460,28 @@ jobs:
           echo "previous_sha=$PREVIOUS_SHA" >> $GITHUB_OUTPUT
           echo "registry=$REGISTRY" >> $GITHUB_OUTPUT
           echo "image_name=$IMAGE_NAME" >> $GITHUB_OUTPUT
+          echo "Current SHA: $CURRENT_SHA"
           echo "Previous deployment SHA: $PREVIOUS_SHA"
 
       - name: Pull deployed Docker image
         run: docker pull "${{ steps.meta.outputs.image }}"
 
       - name: Start container
+        id: start_container
         run: |
+          CONFIG_DIR=$(mktemp -d)
+          echo "config_dir=$CONFIG_DIR" >> $GITHUB_OUTPUT
           docker run -d \
             --name expense-tracker-health-check \
             -p 2424:2424 \
+            -v "$CONFIG_DIR:/config" \
             -e NODE_ENV=production \
             -e LOG_LEVEL=info \
             "${{ steps.meta.outputs.image }}"
 
       - name: Wait for container initialization
-        run: sleep 10
+        # Must be ≥75% of Dockerfile HEALTHCHECK --start-period=40s
+        run: sleep 30
 
       - name: Make health check script executable
         run: chmod +x scripts/health-check.sh
@@ -437,6 +536,10 @@ jobs:
         run: |
           docker stop expense-tracker-health-check || true
           docker rm expense-tracker-health-check || true
+          # Clean up temporary /config volume directory
+          if [ -n "${{ steps.start_container.outputs.config_dir }}" ]; then
+            rm -rf "${{ steps.start_container.outputs.config_dir }}" || true
+          fi
 
       - name: Initiate rollback on health check failure
         id: rollback

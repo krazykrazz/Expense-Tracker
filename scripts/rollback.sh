@@ -70,8 +70,9 @@ docker run -d \
   "$ROLLBACK_IMAGE"
 
 # Wait for container startup
+# Must be ≥75% of Dockerfile HEALTHCHECK --start-period=40s
 echo "[$ROLLBACK_TIMESTAMP] Waiting for container initialization..."
-sleep 10
+sleep 30
 
 COMPLETION_TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 echo ""

@@ -18,7 +18,7 @@ module.exports = async () => {
   if (fs.existsSync(dbDir)) {
     const files = fs.readdirSync(dbDir);
     for (const file of files) {
-      if (file.startsWith('test-expenses-worker-')) {
+      if (file.startsWith('test-expenses-worker-') || file.startsWith('isolated-test-')) {
         try {
           fs.unlinkSync(path.join(dbDir, file));
         } catch (err) {

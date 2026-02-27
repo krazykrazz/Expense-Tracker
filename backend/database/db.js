@@ -371,15 +371,50 @@ async function recreateTestDatabase() {
 }
 
 /**
+ * Close the production database connection after checkpointing the WAL.
+ * This flushes all WAL contents into the main DB file and releases file locks,
+ * which is critical before overwriting the DB file during backup restore.
+ * Without this, stale WAL data can replay on the next connection and undo the restore.
+ */
+function closeDatabase() {
+  return new Promise((resolve, reject) => {
+    const db = new sqlite3.Database(DB_PATH, (err) => {
+      if (err) {
+        logger.warn('Could not open database for WAL checkpoint:', err.message);
+        resolve(); // Non-fatal: proceed with restore anyway
+        return;
+      }
+
+      db.run('PRAGMA wal_checkpoint(TRUNCATE)', (checkpointErr) => {
+        if (checkpointErr) {
+          logger.warn('WAL checkpoint failed during closeDatabase:', checkpointErr.message);
+        } else {
+          logger.debug('WAL checkpoint completed before database close');
+        }
+
+        db.close((closeErr) => {
+          if (closeErr) {
+            logger.warn('Error closing database:', closeErr.message);
+          }
+          resolve();
+        });
+      });
+    });
+  });
+}
+
+/**
  * Check if we're in test mode
  */
 function isTestMode() {
   return process.env.NODE_ENV === 'test';
 }
 
+
 module.exports = {
   initializeDatabase,
   getDatabase,
+  closeDatabase,
   createTestDatabase,
   getTestDatabase,
   getTestDbPath,

@@ -19,6 +19,8 @@
     "test:pbt": "cross-env NODE_ENV=test jest --runInBand --testPathPatterns=pbt",
     "test:pbt:parallel": "cross-env NODE_ENV=test jest --maxWorkers=50% --testPathPatterns=pbt",
     "test:pbt:ci": "cross-env NODE_ENV=test CI=true FAST_CHECK_NUM_RUNS=15 jest --bail --testPathPatterns=pbt",
+    "test:backup": "cross-env NODE_ENV=test jest --runInBand --testPathPatterns=\"backup.*\\.(integration|pbt)\\.test\"",
+    "test:backup:ci": "cross-env NODE_ENV=test CI=true FAST_CHECK_NUM_RUNS=15 jest --bail --runInBand --testPathPatterns=\"backup.*\\.(integration|pbt)\\.test\"",
     "test:ci": "cross-env NODE_ENV=test CI=true FAST_CHECK_NUM_RUNS=15 jest --bail"
   },
   "jest": {

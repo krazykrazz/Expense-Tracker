@@ -40,13 +40,18 @@ describe('Backup API Integration Tests', () => {
       fs.mkdirSync(testBackupPath, { recursive: true });
     }
     
-    // Update config to use test path
-    backupService.updateConfig({ targetPath: testBackupPath });
+    // Update config to use test path (bypass path validation since test dir is outside config dir)
+    backupService.config.targetPath = testBackupPath;
+    backupService.saveConfig();
   });
 
   afterAll(async () => {
-    // Restore original config
-    backupService.updateConfig({ targetPath: originalConfig.targetPath });
+    // Restore original config (guard against beforeAll failure)
+    // Use direct config assignment to bypass path validation (test dir is outside config dir)
+    if (originalConfig) {
+      backupService.config.targetPath = originalConfig.targetPath;
+      backupService.saveConfig();
+    }
     
     // Clean up test directories
     if (fs.existsSync(testBackupPath)) {

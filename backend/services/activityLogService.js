@@ -127,11 +127,18 @@ async function cleanupOldEvents() {
     const deletedByAge = await activityLogRepository.deleteOlderThan(cutoffDate);
     totalDeleted += deletedByAge;
 
-    logger.info('Activity log cleanup: Deleted events by age', { 
-      deletedCount: deletedByAge, 
-      cutoffDate: cutoffDate.toISOString(),
-      maxAgeDays: settings.maxAgeDays
-    });
+    if (deletedByAge > 0) {
+      logger.info('Activity log cleanup: Deleted events by age', { 
+        deletedCount: deletedByAge, 
+        cutoffDate: cutoffDate.toISOString(),
+        maxAgeDays: settings.maxAgeDays
+      });
+    } else {
+      logger.debug('Activity log cleanup: No events to delete by age', { 
+        cutoffDate: cutoffDate.toISOString(),
+        maxAgeDays: settings.maxAgeDays
+      });
+    }
 
     // Count-based cleanup: delete excess events beyond maxCount
     const currentCount = await activityLogRepository.count();
@@ -152,10 +159,16 @@ async function cleanupOldEvents() {
     lastCleanupRun = new Date().toISOString();
     lastCleanupDeletedCount = totalDeleted;
 
-    logger.info('Activity log cleanup: Completed', { 
-      deletedCount: totalDeleted, 
-      oldestRemaining 
-    });
+    if (totalDeleted > 0) {
+      logger.info('Activity log cleanup: Completed', { 
+        deletedCount: totalDeleted, 
+        oldestRemaining 
+      });
+    } else {
+      logger.debug('Activity log cleanup: Completed (no-op)', { 
+        oldestRemaining 
+      });
+    }
 
     return {
       deletedCount: totalDeleted,

@@ -8,7 +8,7 @@
  * fetchProvider. All fetch calls should go through:
  *   - apiClient.js (uses getFetchFn from fetchProvider)
  *   - authAwareFetch (from fetchProvider)
- *   - fetchWithTabId (uses getFetchFn from fetchProvider)
+ *   - fetchWithRetry (uses getFetchFn from fetchProvider)
  *
  * Exits with code 1 if violations are found.
  *

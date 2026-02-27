@@ -14,7 +14,6 @@ import { useDataSync, computeBackoff } from './useDataSync';
 vi.mock('../utils/tabId.js', () => ({
   getTabId: () => 'my-tab-id',
   TAB_ID: 'my-tab-id',
-  fetchWithTabId: vi.fn(),
 }));
 
 vi.mock('../config.js', () => ({

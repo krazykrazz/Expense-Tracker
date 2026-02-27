@@ -5,50 +5,12 @@
 
 import { API_ENDPOINTS } from '../config.js';
 import { createLogger } from '../utils/logger';
-import { fetchWithTabId } from '../utils/tabId';
+import { apiGet, apiPost, apiDelete, ApiError } from '../utils/apiClient';
+import { fetchWithRetry, apiGetWithRetry } from '../utils/fetchWithRetry';
+import { TAB_ID } from '../utils/tabId';
 import { getFetchFn } from '../utils/fetchProvider';
 
 const logger = createLogger('CreditCardApi');
-
-/**
- * Retry configuration for API calls
- */
-const RETRY_CONFIG = {
-  maxRetries: 2,
-  retryDelay: 1000,
-  retryableStatuses: [408, 429, 500, 502, 503, 504]
-};
-
-/**
- * Sleep utility for retry delays
- */
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-/**
- * Enhanced fetch with retry logic
- */
-const fetchWithRetry = async (url, options = {}, retryCount = 0) => {
-  try {
-    const fn = getFetchFn();
-    const response = await fn(url, options);
-    
-    if (response.ok || !RETRY_CONFIG.retryableStatuses.includes(response.status)) {
-      return response;
-    }
-    
-    if (retryCount < RETRY_CONFIG.maxRetries) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-    
-    return response;
-  } catch (error) {
-    if (retryCount < RETRY_CONFIG.maxRetries) {
-      await sleep(RETRY_CONFIG.retryDelay * (retryCount + 1));
-      return fetchWithRetry(url, options, retryCount + 1);
-    }
-    throw error;
-  }
-};
 
 // ==========================================
 // Credit Card Payment Functions
@@ -66,20 +28,11 @@ const fetchWithRetry = async (url, options = {}, retryCount = 0) => {
  */
 export const recordPayment = async (paymentMethodId, paymentData) => {
   try {
-    const response = await fetchWithTabId(API_ENDPOINTS.PAYMENT_METHOD_PAYMENTS(paymentMethodId), {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(paymentData)
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `Failed to record payment (${response.status})`);
-    }
-    
-    return await response.json();
+    return await apiPost(
+      API_ENDPOINTS.PAYMENT_METHOD_PAYMENTS(paymentMethodId),
+      paymentData,
+      'record payment'
+    );
   } catch (error) {
     logger.error('Failed to record credit card payment:', error);
     throw new Error(`Unable to record payment: ${error.message}`);
@@ -104,14 +57,7 @@ export const getPayments = async (paymentMethodId, options = {}) => {
       ? `${API_ENDPOINTS.PAYMENT_METHOD_PAYMENTS(paymentMethodId)}?${params.toString()}`
       : API_ENDPOINTS.PAYMENT_METHOD_PAYMENTS(paymentMethodId);
     
-    const response = await fetchWithRetry(url);
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `Failed to fetch payments (${response.status})`);
-    }
-    
-    const data = await response.json();
+    const data = await apiGetWithRetry(apiGet, url, 'fetch payments');
     return data.payments || [];
   } catch (error) {
     logger.error('Failed to fetch credit card payments:', error);
@@ -127,17 +73,10 @@ export const getPayments = async (paymentMethodId, options = {}) => {
  */
 export const deletePayment = async (paymentMethodId, paymentId) => {
   try {
-    const response = await fetchWithTabId(
+    return await apiDelete(
       API_ENDPOINTS.PAYMENT_METHOD_PAYMENT(paymentMethodId, paymentId),
-      { method: 'DELETE' }
+      'delete payment'
     );
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `Failed to delete payment (${response.status})`);
-    }
-    
-    return await response.json();
   } catch (error) {
     logger.error('Failed to delete credit card payment:', error);
     throw new Error(`Unable to delete payment: ${error.message}`);
@@ -157,16 +96,12 @@ export const getTotalPayments = async (paymentMethodId, startDate, endDate) => {
     params.append('startDate', startDate);
     params.append('endDate', endDate);
     
-    const response = await fetchWithRetry(
-      `${API_ENDPOINTS.PAYMENT_METHOD_PAYMENTS_TOTAL(paymentMethodId)}?${params.toString()}`
+    const data = await apiGetWithRetry(
+      apiGet,
+      `${API_ENDPOINTS.PAYMENT_METHOD_PAYMENTS_TOTAL(paymentMethodId)}?${params.toString()}`,
+      'fetch total payments'
     );
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `Failed to fetch total payments (${response.status})`);
-    }
-    
-    return await response.json();
+    return data;
   } catch (error) {
     logger.error('Failed to fetch total payments:', error);
     throw new Error(`Unable to load total payments: ${error.message}`);
@@ -188,6 +123,7 @@ export const getTotalPayments = async (paymentMethodId, startDate, endDate) => {
  * @param {Function} onProgress - Optional progress callback
  * @returns {Promise<Object>} Created statement data
  */
+// Custom fetch: cannot use apiClient because XHR is needed for upload progress tracking
 export const uploadStatement = async (paymentMethodId, file, metadata, onProgress = null) => {
   try {
     const formData = new FormData();
@@ -235,16 +171,19 @@ export const uploadStatement = async (paymentMethodId, file, metadata, onProgres
         };
 
         xhr.open('POST', API_ENDPOINTS.PAYMENT_METHOD_STATEMENTS(paymentMethodId));
+        xhr.setRequestHeader('X-Tab-ID', TAB_ID);
         xhr.timeout = 60000;
         xhr.send(formData);
       });
     }
 
-    // Fallback to regular fetch
-    const response = await fetchWithTabId(
+    // Fallback to regular fetch (no progress tracking)
+    const fn = getFetchFn();
+    const response = await fn(
       API_ENDPOINTS.PAYMENT_METHOD_STATEMENTS(paymentMethodId),
       {
         method: 'POST',
+        headers: { 'X-Tab-ID': TAB_ID },
         body: formData
       }
     );
@@ -268,16 +207,11 @@ export const uploadStatement = async (paymentMethodId, file, metadata, onProgres
  */
 export const getStatements = async (paymentMethodId) => {
   try {
-    const response = await fetchWithRetry(
-      API_ENDPOINTS.PAYMENT_METHOD_STATEMENTS(paymentMethodId)
+    const data = await apiGetWithRetry(
+      apiGet,
+      API_ENDPOINTS.PAYMENT_METHOD_STATEMENTS(paymentMethodId),
+      'fetch statements'
     );
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `Failed to fetch statements (${response.status})`);
-    }
-    
-    const data = await response.json();
     return data.statements || [];
   } catch (error) {
     logger.error('Failed to fetch statements:', error);
@@ -301,6 +235,7 @@ export const getStatementUrl = (paymentMethodId, statementId) => {
  * @param {number} statementId - Statement ID
  * @returns {Promise<Blob>} Statement file blob
  */
+// Custom fetch: cannot use apiClient because blob response requires manual handling (apiGet always calls response.json())
 export const downloadStatement = async (paymentMethodId, statementId) => {
   try {
     const response = await fetchWithRetry(
@@ -327,17 +262,10 @@ export const downloadStatement = async (paymentMethodId, statementId) => {
  */
 export const deleteStatement = async (paymentMethodId, statementId) => {
   try {
-    const response = await fetchWithTabId(
+    return await apiDelete(
       API_ENDPOINTS.PAYMENT_METHOD_STATEMENT(paymentMethodId, statementId),
-      { method: 'DELETE' }
+      'delete statement'
     );
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `Failed to delete statement (${response.status})`);
-    }
-    
-    return await response.json();
   } catch (error) {
     logger.error('Failed to delete statement:', error);
     throw new Error(`Unable to delete statement: ${error.message}`);
@@ -365,14 +293,7 @@ export const getBillingCycles = async (paymentMethodId, count = 6) => {
       ? `${API_ENDPOINTS.PAYMENT_METHOD_BILLING_CYCLES(paymentMethodId)}?${params.toString()}`
       : API_ENDPOINTS.PAYMENT_METHOD_BILLING_CYCLES(paymentMethodId);
     
-    const response = await fetchWithRetry(url);
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `Failed to fetch billing cycles (${response.status})`);
-    }
-    
-    const data = await response.json();
+    const data = await apiGetWithRetry(apiGet, url, 'fetch billing cycles');
     return data.cycles || [];
   } catch (error) {
     logger.error('Failed to fetch billing cycles:', error);
@@ -395,8 +316,10 @@ export const getBillingCycles = async (paymentMethodId, count = 6) => {
  * @param {File} [data.statement] - Optional PDF file
  * @returns {Promise<Object>} Created billing cycle record with discrepancy info
  */
+// Custom fetch: cannot use apiClient because of conditional FormData/JSON body with optional file upload
 export const createBillingCycle = async (paymentMethodId, data) => {
   try {
+    const fn = getFetchFn();
     let response;
     
     // If there's a PDF file, use FormData
@@ -414,21 +337,23 @@ export const createBillingCycle = async (paymentMethodId, data) => {
       }
       formData.append('statement', data.statement);
       
-      response = await fetchWithTabId(
+      response = await fn(
         API_ENDPOINTS.PAYMENT_METHOD_BILLING_CYCLES(paymentMethodId),
         {
           method: 'POST',
+          headers: { 'X-Tab-ID': TAB_ID },
           body: formData
         }
       );
     } else {
       // No file, use JSON
-      response = await fetchWithTabId(
+      response = await fn(
         API_ENDPOINTS.PAYMENT_METHOD_BILLING_CYCLES(paymentMethodId),
         {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'X-Tab-ID': TAB_ID
           },
           body: JSON.stringify(data)
         }
@@ -467,14 +392,8 @@ export const getBillingCycleHistory = async (paymentMethodId, options = {}) => {
       ? `${API_ENDPOINTS.PAYMENT_METHOD_BILLING_CYCLE_HISTORY(paymentMethodId)}?${params.toString()}`
       : API_ENDPOINTS.PAYMENT_METHOD_BILLING_CYCLE_HISTORY(paymentMethodId);
     
-    const response = await fetchWithRetry(url);
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `Failed to fetch billing cycle history (${response.status})`);
-    }
-    
-    return await response.json();
+    const data = await apiGetWithRetry(apiGet, url, 'fetch billing cycle history');
+    return data;
   } catch (error) {
     logger.error('Failed to fetch billing cycle history:', error);
     throw new Error(`Unable to load billing cycle history: ${error.message}`);
@@ -492,8 +411,10 @@ export const getBillingCycleHistory = async (paymentMethodId, options = {}) => {
  * @param {string} [data.notes] - Updated notes
  * @returns {Promise<Object>} Updated billing cycle record with discrepancy info
  */
+// Custom fetch: cannot use apiClient because of conditional FormData/JSON body with optional file upload
 export const updateBillingCycle = async (paymentMethodId, cycleId, data) => {
   try {
+    const fn = getFetchFn();
     let fetchOptions;
     
     // If there's a PDF file, use FormData (same pattern as createBillingCycle)
@@ -512,6 +433,7 @@ export const updateBillingCycle = async (paymentMethodId, cycleId, data) => {
       
       fetchOptions = {
         method: 'PUT',
+        headers: { 'X-Tab-ID': TAB_ID },
         body: formData
       };
     } else {
@@ -519,13 +441,14 @@ export const updateBillingCycle = async (paymentMethodId, cycleId, data) => {
       fetchOptions = {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'X-Tab-ID': TAB_ID
         },
         body: JSON.stringify(data)
       };
     }
     
-    const response = await fetchWithTabId(
+    const response = await fn(
       API_ENDPOINTS.PAYMENT_METHOD_BILLING_CYCLE_UPDATE(paymentMethodId, cycleId),
       fetchOptions
     );
@@ -550,17 +473,10 @@ export const updateBillingCycle = async (paymentMethodId, cycleId, data) => {
  */
 export const deleteBillingCycle = async (paymentMethodId, cycleId) => {
   try {
-    const response = await fetchWithTabId(
+    return await apiDelete(
       API_ENDPOINTS.PAYMENT_METHOD_BILLING_CYCLE_DELETE(paymentMethodId, cycleId),
-      { method: 'DELETE' }
+      'delete billing cycle'
     );
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `Failed to delete billing cycle (${response.status})`);
-    }
-    
-    return await response.json();
   } catch (error) {
     logger.error('Failed to delete billing cycle:', error);
     throw new Error(`Unable to delete billing cycle: ${error.message}`);
@@ -594,21 +510,17 @@ export const getBillingCyclePdfUrl = (paymentMethodId, cycleId) => {
  */
 export const getCurrentCycleStatus = async (paymentMethodId) => {
   try {
-    const response = await fetchWithRetry(
-      API_ENDPOINTS.PAYMENT_METHOD_BILLING_CYCLE_CURRENT(paymentMethodId)
+    const data = await apiGetWithRetry(
+      apiGet,
+      API_ENDPOINTS.PAYMENT_METHOD_BILLING_CYCLE_CURRENT(paymentMethodId),
+      'fetch current cycle status'
     );
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `Failed to fetch current cycle status (${response.status})`);
-    }
-    
-    return await response.json();
+    return data;
   } catch (error) {
     logger.error('Failed to fetch current cycle status:', error);
     throw new Error(`Unable to load current cycle status: ${error.message}`);
   }
-}
+};
 
 /**
  * Recalculate the statement balance for a specific billing cycle period
@@ -620,16 +532,11 @@ export const getCurrentCycleStatus = async (paymentMethodId) => {
 export const recalculateCycleBalance = async (paymentMethodId, startDate, endDate) => {
   try {
     const params = new URLSearchParams({ startDate, endDate });
-    const response = await fetchWithRetry(
-      `${API_ENDPOINTS.PAYMENT_METHOD_BILLING_CYCLE_RECALCULATE(paymentMethodId)}?${params.toString()}`
+    const data = await apiGetWithRetry(
+      apiGet,
+      `${API_ENDPOINTS.PAYMENT_METHOD_BILLING_CYCLE_RECALCULATE(paymentMethodId)}?${params.toString()}`,
+      'recalculate balance'
     );
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Failed to recalculate balance');
-    }
-    
-    const data = await response.json();
     return data.calculatedBalance;
   } catch (error) {
     logger.error('Failed to recalculate cycle balance:', error);
@@ -653,16 +560,11 @@ export const recalculateCycleBalance = async (paymentMethodId, startDate, endDat
  */
 export const getStatementBalance = async (paymentMethodId) => {
   try {
-    const response = await fetchWithRetry(
-      API_ENDPOINTS.PAYMENT_METHOD_STATEMENT_BALANCE(paymentMethodId)
+    const data = await apiGetWithRetry(
+      apiGet,
+      API_ENDPOINTS.PAYMENT_METHOD_STATEMENT_BALANCE(paymentMethodId),
+      'fetch statement balance'
     );
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `Failed to fetch statement balance (${response.status})`);
-    }
-    
-    const data = await response.json();
     // data.statementBalance is an object { statementBalance, cycleStartDate, ... } or null
     if (!data.statementBalance) return null;
     return data.statementBalance.statementBalance ?? null;
@@ -697,14 +599,8 @@ export const getCreditCardDetail = async (paymentMethodId, options = {}) => {
       ? `${API_ENDPOINTS.PAYMENT_METHOD_CREDIT_CARD_DETAIL(paymentMethodId)}?${params.toString()}`
       : API_ENDPOINTS.PAYMENT_METHOD_CREDIT_CARD_DETAIL(paymentMethodId);
 
-    const response = await fetchWithRetry(url);
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `Failed to fetch credit card detail (${response.status})`);
-    }
-
-    return await response.json();
+    const data = await apiGetWithRetry(apiGet, url, 'fetch credit card detail');
+    return data;
   } catch (error) {
     logger.error('Failed to fetch credit card detail:', error);
     throw new Error(`Unable to load credit card detail: ${error.message}`);
@@ -758,14 +654,8 @@ export const getUnifiedBillingCycles = async (paymentMethodId, options = {}) => 
       ? `${API_ENDPOINTS.PAYMENT_METHOD_BILLING_CYCLES_UNIFIED(paymentMethodId)}?${params.toString()}`
       : API_ENDPOINTS.PAYMENT_METHOD_BILLING_CYCLES_UNIFIED(paymentMethodId);
     
-    const response = await fetchWithRetry(url);
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `Failed to fetch unified billing cycles (${response.status})`);
-    }
-    
-    return await response.json();
+    const data = await apiGetWithRetry(apiGet, url, 'fetch unified billing cycles');
+    return data;
   } catch (error) {
     logger.error('Failed to fetch unified billing cycles:', error);
     throw new Error(`Unable to load unified billing cycles: ${error.message}`);

@@ -6,60 +6,12 @@
 
 import { API_ENDPOINTS } from '../config.js';
 import { createLogger } from '../utils/logger';
-import { fetchWithTabId } from '../utils/tabId';
+import { apiGet, apiDelete, apiPatch, ApiError } from '../utils/apiClient';
+import { apiGetWithRetry } from '../utils/fetchWithRetry';
+import { TAB_ID } from '../utils/tabId';
 import { getFetchFn } from '../utils/fetchProvider';
 
 const logger = createLogger('InvoiceApi');
-
-/**
- * Retry configuration for API calls
- */
-const RETRY_CONFIG = {
-  maxRetries: 2,
-  retryDelay: 1000, // 1 second
-  retryableStatuses: [408, 429, 500, 502, 503, 504]
-};
-
-/**
- * Sleep utility for retry delays
- * @param {number} ms - Milliseconds to sleep
- * @returns {Promise} Promise that resolves after delay
- */
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-/**
- * Enhanced fetch with retry logic
- * @param {string} url - Request URL
- * @param {Object} options - Fetch options
- * @param {number} retryCount - Current retry count
- * @returns {Promise<Response>} Fetch response
- */
-const fetchWithRetry = async (url, options = {}, retryCount = 0) => {
-  try {
-    const fn = getFetchFn();
-    const response = await fn(url, options);
-    
-    // If response is ok or not retryable, return it
-    if (response.ok || !RETRY_CONFIG.retryableStatuses.includes(response.status)) {
-      return response;
-    }
-    
-    // If we can retry, throw error to trigger retry logic
-    if (retryCount < RETRY_CONFIG.maxRetries) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-    
-    return response;
-  } catch (error) {
-    // Retry on network errors or retryable HTTP errors
-    if (retryCount < RETRY_CONFIG.maxRetries) {
-      await sleep(RETRY_CONFIG.retryDelay * (retryCount + 1)); // Exponential backoff
-      return fetchWithRetry(url, options, retryCount + 1);
-    }
-    
-    throw error;
-  }
-};
 
 /**
  * Get invoice metadata for an expense (backward compatible - returns first invoice)
@@ -68,19 +20,12 @@ const fetchWithRetry = async (url, options = {}, retryCount = 0) => {
  */
 export const getInvoiceMetadata = async (expenseId) => {
   try {
-    const response = await fetchWithRetry(API_ENDPOINTS.INVOICE_METADATA(expenseId));
-    
-    if (!response.ok) {
-      if (response.status === 404) {
-        return null; // No invoice found
-      }
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `Failed to fetch invoice metadata (${response.status})`);
-    }
-    
-    const data = await response.json();
+    const data = await apiGetWithRetry(apiGet, API_ENDPOINTS.INVOICE_METADATA(expenseId), 'fetch invoice metadata');
     return data.invoice;
   } catch (error) {
+    if (error instanceof ApiError && error.status === 404) {
+      return null; // No invoice found
+    }
     logger.error('Failed to fetch invoice metadata:', error);
     throw new Error(`Unable to load invoice information: ${error.message}`);
   }
@@ -93,19 +38,12 @@ export const getInvoiceMetadata = async (expenseId) => {
  */
 export const getInvoicesForExpense = async (expenseId) => {
   try {
-    const response = await fetchWithRetry(API_ENDPOINTS.INVOICES_FOR_EXPENSE(expenseId));
-    
-    if (!response.ok) {
-      if (response.status === 404) {
-        return []; // No invoices found
-      }
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `Failed to fetch invoices (${response.status})`);
-    }
-    
-    const data = await response.json();
+    const data = await apiGetWithRetry(apiGet, API_ENDPOINTS.INVOICES_FOR_EXPENSE(expenseId), 'fetch invoices');
     return data.invoices || [];
   } catch (error) {
+    if (error instanceof ApiError && error.status === 404) {
+      return []; // No invoices found
+    }
     logger.error('Failed to fetch invoices for expense:', error);
     throw new Error(`Unable to load invoices: ${error.message}`);
   }
@@ -118,16 +56,7 @@ export const getInvoicesForExpense = async (expenseId) => {
  */
 export const deleteInvoice = async (expenseId) => {
   try {
-    const response = await fetchWithTabId(API_ENDPOINTS.INVOICE_DELETE_ALL(expenseId), {
-      method: 'DELETE'
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `Failed to delete invoice (${response.status})`);
-    }
-    
-    return await response.json();
+    return await apiDelete(API_ENDPOINTS.INVOICE_DELETE_ALL(expenseId), 'delete invoice');
   } catch (error) {
     logger.error('Failed to delete invoice:', error);
     throw new Error(`Unable to delete invoice: ${error.message}`);
@@ -141,16 +70,7 @@ export const deleteInvoice = async (expenseId) => {
  */
 export const deleteInvoiceById = async (invoiceId) => {
   try {
-    const response = await fetchWithTabId(API_ENDPOINTS.INVOICE_BY_ID(invoiceId), {
-      method: 'DELETE'
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `Failed to delete invoice (${response.status})`);
-    }
-    
-    return await response.json();
+    return await apiDelete(API_ENDPOINTS.INVOICE_BY_ID(invoiceId), 'delete invoice');
   } catch (error) {
     logger.error('Failed to delete invoice by ID:', error);
     throw new Error(`Unable to delete invoice: ${error.message}`);
@@ -165,20 +85,7 @@ export const deleteInvoiceById = async (invoiceId) => {
  */
 export const updateInvoicePersonLink = async (invoiceId, personId) => {
   try {
-    const response = await fetchWithTabId(API_ENDPOINTS.INVOICE_BY_ID(invoiceId), {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ personId })
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `Failed to update invoice person link (${response.status})`);
-    }
-    
-    return await response.json();
+    return await apiPatch(API_ENDPOINTS.INVOICE_BY_ID(invoiceId), { personId }, 'update invoice person link');
   } catch (error) {
     logger.error('Failed to update invoice person link:', error);
     throw new Error(`Unable to update invoice: ${error.message}`);
@@ -194,6 +101,7 @@ export const updateInvoicePersonLink = async (invoiceId, personId) => {
  * @param {Function} options.onProgress - Progress callback (optional)
  * @returns {Promise<Object>} Upload response with invoice data
  */
+// Custom fetch: cannot use apiClient because XHR is needed for upload progress tracking
 export const uploadInvoice = async (expenseId, file, options = {}) => {
   const { personId = null, onProgress = null } = options;
   
@@ -253,8 +161,12 @@ export const uploadInvoice = async (expenseId, file, options = {}) => {
     }
 
     // Fallback to regular fetch for simpler uploads
-    const response = await fetchWithTabId(API_ENDPOINTS.INVOICE_UPLOAD, {
+    const fn = getFetchFn();
+    const response = await fn(API_ENDPOINTS.INVOICE_UPLOAD, {
       method: 'POST',
+      headers: {
+        'X-Tab-ID': TAB_ID
+      },
       body: formData
     });
 

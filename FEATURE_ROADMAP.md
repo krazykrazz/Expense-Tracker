@@ -1557,6 +1557,31 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ---
 
+### 🟡 35. Fetch Infrastructure Consolidation
+**Status**: In Progress  
+**Priority**: Medium  
+**Effort**: Low  
+**Spec**: `.kiro/specs/fetch-infrastructure-consolidation/`  
+**Description**: Consolidated duplicated fetch logic across three frontend service files (`paymentMethodApi.js`, `creditCardApi.js`, `invoiceApi.js`) into shared utilities, eliminating code duplication and ensuring consistent error handling, retry behavior, and header injection.
+
+**Changes Delivered**:
+- Extracted shared `fetchWithRetry` and `apiGetWithRetry` into `frontend/src/utils/fetchWithRetry.js`
+- Migrated all three service files to use `apiClient.js` methods (`apiGet`, `apiPost`, `apiPut`, `apiDelete`, `apiPatch`)
+- Removed `fetchWithTabId` from `tabId.js` — X-Tab-ID injection now handled solely by `apiClient.js`
+- Enhanced JSDoc on `authAwareFetch` in `fetchProvider.js`
+- Updated architecture analysis documentation
+- Property-based tests for retry behavioral equivalence
+
+**Benefits**:
+- Eliminated ~90 lines of duplicated retry logic across 3 files
+- Single source of truth for retry configuration and behavior
+- Consistent error handling pattern across all API service files
+- Cleaner dependency graph (no more `fetchWithTabId` wrapper)
+
+**Dependencies**: None (pure frontend refactoring)
+
+---
+
 ## Priority Matrix
 
 ### High Priority (Implement Next)
@@ -1611,6 +1636,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 ---
 
 **Version History**:
+- v3.7 (2026-02-26): Added Fetch Infrastructure Consolidation (#35) as 🟡 In Progress in Code Quality & Optimization section
 - v3.6 (2026-02-26): Added Auth Infrastructure (Phase 1) as 🟡 In Progress in new Security & Authentication section
 - v3.5 (2026-02-25): Added Container Update Detection (v1.0.0) and Version Upgrade Tracking (v1.0.0) to completed features
 - v3.4 (2026-02-20): Comprehensive documentation audit — added 9 missing completed features to roadmap (Real-Time Data Sync, Activity Log, Insurance Claim Reminders, Medical Insurance Tracking, Generic Expense Reimbursement, Credit Card Billing Cycle History, Tax Deductible Analytics), marked Frontend Custom Hooks (#31) as completed (v5.8.0), updated priority matrix

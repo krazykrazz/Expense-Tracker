@@ -139,3 +139,4 @@ backend/scripts/archive/
 
 # Archive (internal development history)
 archive/
+frontend/vitest-output.txt

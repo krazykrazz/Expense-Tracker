@@ -5,51 +5,10 @@
 
 import { API_ENDPOINTS } from '../config.js';
 import { createLogger } from '../utils/logger';
-import { fetchWithTabId } from '../utils/tabId';
-import { getFetchFn } from '../utils/fetchProvider';
+import { apiGet, apiPost, apiPut, apiDelete, apiPatch, ApiError } from '../utils/apiClient';
+import { apiGetWithRetry } from '../utils/fetchWithRetry';
 
 const logger = createLogger('PaymentMethodApi');
-
-/**
- * Retry configuration for API calls
- */
-const RETRY_CONFIG = {
-  maxRetries: 2,
-  retryDelay: 1000,
-  retryableStatuses: [408, 429, 500, 502, 503, 504]
-};
-
-/**
- * Sleep utility for retry delays
- */
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-/**
- * Enhanced fetch with retry logic
- */
-const fetchWithRetry = async (url, options = {}, retryCount = 0) => {
-  try {
-    const fn = getFetchFn();
-    const response = await fn(url, options);
-    
-    if (response.ok || !RETRY_CONFIG.retryableStatuses.includes(response.status)) {
-      return response;
-    }
-    
-    if (retryCount < RETRY_CONFIG.maxRetries) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-    
-    return response;
-  } catch (error) {
-    if (retryCount < RETRY_CONFIG.maxRetries) {
-      await sleep(RETRY_CONFIG.retryDelay * (retryCount + 1));
-      return fetchWithRetry(url, options, retryCount + 1);
-    }
-    throw error;
-  }
-};
-
 
 /**
  * Get all payment methods
@@ -66,17 +25,9 @@ export const getPaymentMethods = async (options = {}) => {
     if (options.activeOnly !== undefined) params.append('activeOnly', options.activeOnly);
     // Include expense counts by default for the payment methods list
     params.append('withCounts', options.withCounts !== false ? 'true' : 'false');
-    
+
     const url = `${API_ENDPOINTS.PAYMENT_METHODS}?${params.toString()}`;
-    
-    const response = await fetchWithRetry(url);
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `Failed to fetch payment methods (${response.status})`);
-    }
-    
-    const data = await response.json();
+    const data = await apiGetWithRetry(apiGet, url, 'fetch payment methods');
     return data.paymentMethods || [];
   } catch (error) {
     logger.error('Failed to fetch payment methods:', error);
@@ -90,14 +41,7 @@ export const getPaymentMethods = async (options = {}) => {
  */
 export const getActivePaymentMethods = async () => {
   try {
-    const response = await fetchWithRetry(API_ENDPOINTS.PAYMENT_METHOD_ACTIVE);
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `Failed to fetch active payment methods (${response.status})`);
-    }
-    
-    const data = await response.json();
+    const data = await apiGetWithRetry(apiGet, API_ENDPOINTS.PAYMENT_METHOD_ACTIVE, 'fetch active payment methods');
     return data.paymentMethods || [];
   } catch (error) {
     logger.error('Failed to fetch active payment methods:', error);
@@ -108,23 +52,16 @@ export const getActivePaymentMethods = async () => {
 /**
  * Get a specific payment method by ID
  * @param {number} id - Payment method ID
- * @returns {Promise<Object>} Payment method data with computed fields
+ * @returns {Promise<Object|null>} Payment method data with computed fields, or null if not found
  */
 export const getPaymentMethod = async (id) => {
   try {
-    const response = await fetchWithRetry(API_ENDPOINTS.PAYMENT_METHOD_BY_ID(id));
-    
-    if (!response.ok) {
-      if (response.status === 404) {
-        return null;
-      }
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `Failed to fetch payment method (${response.status})`);
-    }
-    
-    const data = await response.json();
+    const data = await apiGetWithRetry(apiGet, API_ENDPOINTS.PAYMENT_METHOD_BY_ID(id), 'fetch payment method');
     return data.paymentMethod;
   } catch (error) {
+    if (error instanceof ApiError && error.status === 404) {
+      return null;
+    }
     logger.error('Failed to fetch payment method:', error);
     throw new Error(`Unable to load payment method: ${error.message}`);
   }
@@ -137,20 +74,7 @@ export const getPaymentMethod = async (id) => {
  */
 export const createPaymentMethod = async (paymentMethodData) => {
   try {
-    const response = await fetchWithTabId(API_ENDPOINTS.PAYMENT_METHODS, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(paymentMethodData)
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `Failed to create payment method (${response.status})`);
-    }
-    
-    const data = await response.json();
+    const data = await apiPost(API_ENDPOINTS.PAYMENT_METHODS, paymentMethodData, 'create payment method');
     return data.paymentMethod;
   } catch (error) {
     logger.error('Failed to create payment method:', error);
@@ -166,20 +90,7 @@ export const createPaymentMethod = async (paymentMethodData) => {
  */
 export const updatePaymentMethod = async (id, paymentMethodData) => {
   try {
-    const response = await fetchWithTabId(API_ENDPOINTS.PAYMENT_METHOD_BY_ID(id), {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(paymentMethodData)
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `Failed to update payment method (${response.status})`);
-    }
-    
-    const data = await response.json();
+    const data = await apiPut(API_ENDPOINTS.PAYMENT_METHOD_BY_ID(id), paymentMethodData, 'update payment method');
     return data.paymentMethod;
   } catch (error) {
     logger.error('Failed to update payment method:', error);
@@ -194,16 +105,7 @@ export const updatePaymentMethod = async (id, paymentMethodData) => {
  */
 export const deletePaymentMethod = async (id) => {
   try {
-    const response = await fetchWithTabId(API_ENDPOINTS.PAYMENT_METHOD_BY_ID(id), {
-      method: 'DELETE'
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `Failed to delete payment method (${response.status})`);
-    }
-    
-    return await response.json();
+    return await apiDelete(API_ENDPOINTS.PAYMENT_METHOD_BY_ID(id), 'delete payment method');
   } catch (error) {
     logger.error('Failed to delete payment method:', error);
     throw new Error(`Unable to delete payment method: ${error.message}`);
@@ -218,20 +120,7 @@ export const deletePaymentMethod = async (id) => {
  */
 export const setPaymentMethodActive = async (id, isActive) => {
   try {
-    const response = await fetchWithTabId(API_ENDPOINTS.PAYMENT_METHOD_SET_ACTIVE(id), {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ isActive })
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `Failed to update payment method status (${response.status})`);
-    }
-    
-    const data = await response.json();
+    const data = await apiPatch(API_ENDPOINTS.PAYMENT_METHOD_SET_ACTIVE(id), { isActive }, 'update payment method status');
     return data.paymentMethod;
   } catch (error) {
     logger.error('Failed to update payment method status:', error);
@@ -245,14 +134,7 @@ export const setPaymentMethodActive = async (id, isActive) => {
  */
 export const getDisplayNames = async () => {
   try {
-    const response = await fetchWithRetry(API_ENDPOINTS.PAYMENT_METHOD_DISPLAY_NAMES);
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `Failed to fetch display names (${response.status})`);
-    }
-    
-    const data = await response.json();
+    const data = await apiGetWithRetry(apiGet, API_ENDPOINTS.PAYMENT_METHOD_DISPLAY_NAMES, 'fetch display names');
     return data.displayNames || [];
   } catch (error) {
     logger.error('Failed to fetch display names:', error);

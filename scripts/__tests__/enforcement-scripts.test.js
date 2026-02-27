@@ -357,13 +357,13 @@ describe('check-test-budget', () => {
     });
 
     test('checks PBT shard budget correctly', () => {
-      const result = checkBudget('backend-pbt-shard', 800, '');
+      const result = checkBudget('backend-pbt-shard', 500, '');
       expect(result.passed).toBe(true);
-      expect(result.maxSeconds).toBe(900);
+      expect(result.maxSeconds).toBe(600);
     });
 
     test('fails PBT shard when over budget', () => {
-      const result = checkBudget('backend-pbt-shard', 1000, '');
+      const result = checkBudget('backend-pbt-shard', 700, '');
       expect(result.passed).toBe(false);
     });
   });

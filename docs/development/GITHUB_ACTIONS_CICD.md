@@ -41,14 +41,15 @@ A `security-audit` job runs `npm audit` on both backend and frontend dependencie
 - Results are reported in the GitHub Actions workflow summary
 - Skipped for Dependabot PRs (`github.actor != 'dependabot[bot]'`)
 
-### Docker Image Scanning (Trivy)
+### Docker Image Scanning (Trivy) — Planned
 
-Before pushing to GHCR, the `build-and-push-ghcr` job scans the built Docker image using [Trivy](https://github.com/aquasecurity/trivy-action):
+> **Status: Planned** — This feature does not yet exist in the CI workflow.
 
-- Scans for `CRITICAL` and `HIGH` severity vulnerabilities
-- Scan results are uploaded as a workflow artifact (30-day retention)
-- Results are included in the workflow summary
-- If Trivy itself fails (tool error, not a vulnerability finding), the build continues with a warning
+A future enhancement would scan built Docker images using [Trivy](https://github.com/aquasecurity/trivy-action) before pushing to GHCR:
+
+- Scan for `CRITICAL` and `HIGH` severity vulnerabilities
+- Upload scan results as a workflow artifact
+- Include results in the workflow summary
 
 ### Dependabot
 
@@ -75,7 +76,7 @@ After a Docker image is built and pushed to GHCR on merge to main, the `deployme
 
 1. Pulls the newly built Docker image
 2. Starts a container in the CI environment
-3. Waits for initialization (10s)
+3. Waits for initialization (30s, aligned with Dockerfile HEALTHCHECK start-period)
 4. Runs HTTP health checks against backend (`/api/health`) and frontend (`/`)
 5. Uses configurable retries with exponential backoff
 
@@ -150,8 +151,12 @@ These can be set when manually triggering the workflow from the Actions tab.
 
 | Event | Branches | Description |
 |-------|----------|-------------|
-| `push` | `main`, `feature/**` | Runs on every push to main or feature branches |
+| `push` | `main` | Runs on every push to main (direct or merged PR) |
 | `pull_request` | `main` | Runs when PRs are opened/updated against main |
+
+> **Note**: Feature branches do **not** trigger CI via direct pushes. CI runs on feature branches through the `pull_request` event when a PR is opened against `main`. This matches the branch protection model where all changes go through PRs.
+
+Both `push` and `pull_request` triggers use `paths-ignore` to skip CI for documentation-only changes (`docs/**`, `*.md`, `.kiro/steering/**`, `CHANGELOG.md`).
 
 ### Jobs
 
@@ -271,7 +276,7 @@ Each PR shows these checks:
 - **Frontend Tests** — Vitest tests from `frontend/`
 
 On merge to main, additional jobs run:
-- **Build and Push to GHCR** — Builds Docker image, scans with Trivy, pushes to GHCR
+- **Build and Push to GHCR** — Builds Docker image and pushes to GHCR
 - **Deployment Health Check** — Verifies the image, triggers rollback on failure
 
 The branch protection requires `Backend Unit Tests`, `Backend PBT Tests`, and `Frontend Tests` to pass before merging. Branch protection rules enforce this — GitHub will block the merge button until all required checks pass.
@@ -309,13 +314,14 @@ git pull origin main
 
 ### Merge Options
 
-| Option | Command | When to Use |
-|--------|---------|-------------|
-| Merge commit | `--merge` | Default, preserves branch history |
-| Squash | `--squash` | Combine all commits into one |
-| Rebase | `--rebase` | Linear history, no merge commit |
+| Option | Command | Status |
+|--------|---------|--------|
+| Merge commit | `--merge` | ✅ Available (only option) |
 
-We recommend `--merge` (default) to preserve the feature branch history.
+Merge commits only — squash and rebase are disabled via GitHub repository ruleset. This preserves signed commits and branch topology.
+
+For PRs: `gh pr merge <number> --merge --delete-branch`
+For local merges: `git merge --no-ff`
 
 ## Docker Build & Push (GHCR)
 
@@ -343,7 +349,6 @@ Integrated into `.github/workflows/ci.yml` as the `build-and-push-ghcr` job.
 **The CI workflow builds and pushes images to GHCR on merge to main.** The `build-and-push-ghcr` job in `ci.yml` handles this automatically:
 
 - Builds the Docker image after all tests pass
-- Scans the image with Trivy before pushing (fails on CRITICAL/HIGH findings)
 - Pushes to `ghcr.io/krazykrazz/expense-tracker` with SHA, version, and `latest` tags
 - Creates GitHub releases with docker-compose files attached
 - Includes OCI image labels for deployment traceability
@@ -396,7 +401,7 @@ Each run shows:
 - **Summary**: Overall status and duration
 - **Jobs**: Individual job status (Backend Tests, Frontend Tests)
 - **Logs**: Detailed output from each step
-- **Artifacts**: Uploaded files (Trivy scan results, deployment metadata records)
+- **Artifacts**: Uploaded files (deployment metadata records)
 
 ### Pull Request Checks
 
@@ -427,10 +432,12 @@ When you open a PR:
 #### CI Workflow Not Triggering
 
 **Check:**
-- Branch name matches pattern (`main` or `feature/**`)
+- For direct pushes: only `main` triggers CI
+- For feature branches: CI triggers via `pull_request` when a PR is opened against `main`
 - Workflow file is in `.github/workflows/`
 - YAML syntax is valid
 - GitHub Actions is enabled for the repository
+- Changes are not exclusively in `paths-ignore` paths (docs, markdown, steering files)
 
 #### Slow CI Runs
 

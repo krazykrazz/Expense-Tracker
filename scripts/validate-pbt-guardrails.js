@@ -18,7 +18,25 @@
 const fs = require('fs');
 const path = require('path');
 
-const PBT_PERCENTAGE_THRESHOLD = 48;
+/**
+ * Load PBT percentage threshold from test-budget.json, falling back to 48 if absent or not a number.
+ */
+function loadThreshold(rootDir) {
+  const budgetPath = path.join(rootDir, 'test-budget.json');
+  if (fs.existsSync(budgetPath)) {
+    try {
+      const config = JSON.parse(fs.readFileSync(budgetPath, 'utf-8'));
+      if (typeof config.pbtPercentageThreshold === 'number') {
+        return { value: config.pbtPercentageThreshold, source: 'test-budget.json' };
+      }
+    } catch (e) {
+      // Invalid JSON — fall through to default
+    }
+  }
+  return { value: 48, source: 'default' };
+}
+
+const PBT_PERCENTAGE_THRESHOLD = loadThreshold(path.resolve(__dirname, '..')).value;
 const INVARIANT_SCAN_LINES = 30;
 const INVARIANT_PATTERN = /@invariant|Invariant:/i;
 
@@ -138,6 +156,8 @@ function validatePbtGuardrails(rootDir) {
 
 function main() {
   const rootDir = path.resolve(__dirname, '..');
+  const threshold = loadThreshold(rootDir);
+  console.log(`PBT threshold: ${threshold.value}% (source: ${threshold.source})`);
   const result = validatePbtGuardrails(rootDir);
 
   console.log('PBT Guardrail Validation');
@@ -193,4 +213,4 @@ if (require.main === module) {
   main();
 }
 
-module.exports = { findFiles, hasInvariantComment, hasDirectDbImport, isUnitTestFile, validatePbtGuardrails, PBT_PERCENTAGE_THRESHOLD, INVARIANT_SCAN_LINES };
+module.exports = { findFiles, hasInvariantComment, hasDirectDbImport, isUnitTestFile, validatePbtGuardrails, loadThreshold, PBT_PERCENTAGE_THRESHOLD, INVARIANT_SCAN_LINES };

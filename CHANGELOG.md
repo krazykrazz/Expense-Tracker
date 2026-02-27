@@ -2,6 +2,11 @@
 
 
 
+
+
+## [1.2.1] - 2026-02-27
+
+### Fix version upgrade modal stale bundle deferral
 ## [1.2.0] - 2026-02-27
 
 ### Added

@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.2.1',
+    date: 'February 27, 2026',
+    added: [],
+    changed: ['Fix version upgrade modal stale bundle deferral'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.2.0',
     date: 'February 27, 2026',
     added: [

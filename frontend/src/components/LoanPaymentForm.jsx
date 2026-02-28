@@ -276,6 +276,17 @@ const LoanPaymentForm = ({
   // Calculate new balance after payment using interest-aware balance
   const newBalance = effectiveBalance - (parseFloat(amount) || 0);
 
+  // Interest breakdown for mortgages
+  const interestAccrued = (isMortgage && calculatedBalanceData?.interestAware)
+    ? calculatedBalanceData.totalInterestAccrued || 0
+    : 0;
+
+  // Delta between override and projected balance (when override is provided)
+  const overrideNum = parseFloat(balanceOverride);
+  const hasOverrideValue = showOverride && balanceOverride !== '' && !isNaN(overrideNum) && overrideNum >= 0;
+  const projectedAfterPayment = Math.max(0, newBalance);
+  const overrideDelta = hasOverrideValue ? overrideNum - projectedAfterPayment : 0;
+
   // Get suggestion source label
   const getSuggestionLabel = () => {
     if (!suggestion) return '';
@@ -284,6 +295,10 @@ const LoanPaymentForm = ({
         return 'Monthly Payment';
       case 'average_history':
         return 'Average Payment';
+      case 'calculated_amortization':
+        return 'Calculated Payment';
+      case 'interest_projection':
+        return 'Interest Only';
       default:
         return 'Suggested';
     }
@@ -301,11 +316,30 @@ const LoanPaymentForm = ({
           <span className="balance-label">Current Balance:</span>
           <span className="balance-value">{formatCurrency(effectiveBalance)}</span>
         </div>
+        {isMortgage && interestAccrued > 0 && (
+          <div className="balance-row interest-row">
+            <span className="balance-label">Interest Accrued:</span>
+            <span className="balance-value interest-accrued">
+              {formatCurrency(interestAccrued)}
+            </span>
+          </div>
+        )}
         {amount && parseFloat(amount) > 0 && (
           <div className="balance-row new-balance">
-            <span className="balance-label">After Payment:</span>
+            <span className="balance-label">Projected After Payment:</span>
             <span className={`balance-value ${newBalance < 0 ? 'negative' : ''}`}>
-              {formatCurrency(Math.max(0, newBalance))}
+              {formatCurrency(projectedAfterPayment)}
+            </span>
+          </div>
+        )}
+        {hasOverrideValue && amount && parseFloat(amount) > 0 && (
+          <div className="balance-row override-delta-row">
+            <span className="balance-label">Override Balance:</span>
+            <span className="balance-value">{formatCurrency(overrideNum)}</span>
+            <span className={`balance-delta ${overrideDelta > 0 ? 'delta-higher' : overrideDelta < 0 ? 'delta-lower' : ''}`}>
+              {overrideDelta !== 0 && (
+                <>({overrideDelta > 0 ? '+' : ''}{formatCurrency(overrideDelta)})</>
+              )}
             </span>
           </div>
         )}

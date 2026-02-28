@@ -70,6 +70,34 @@
   color: var(--color-negative);
 }
 
+/* Interest accrued row */
+.loan-payment-balance-info .interest-row .balance-value.interest-accrued {
+  color: var(--color-negative);
+  font-size: var(--text-sm);
+}
+
+/* Override delta row */
+.loan-payment-balance-info .override-delta-row {
+  border-top: 1px dashed var(--border-default);
+  margin-top: var(--spacing-2);
+  padding-top: var(--spacing-2);
+  gap: var(--spacing-2);
+}
+
+.loan-payment-balance-info .balance-delta {
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  margin-left: var(--spacing-1);
+}
+
+.loan-payment-balance-info .balance-delta.delta-higher {
+  color: var(--color-negative);
+}
+
+.loan-payment-balance-info .balance-delta.delta-lower {
+  color: var(--color-positive, #16a34a);
+}
+
 /* Form */
 .loan-payment-form {
   display: flex;

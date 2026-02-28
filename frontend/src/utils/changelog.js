@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.2.4',
+    date: 'February 28, 2026',
+    added: [],
+    changed: ['Anchor-based balance calculation fix for loans and financial overview'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.2.3',
     date: 'February 28, 2026',
     added: [],

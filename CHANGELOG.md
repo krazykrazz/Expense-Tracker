@@ -8,6 +8,11 @@
 
 
 
+
+
+## [1.2.4] - 2026-02-28
+
+### Anchor-based balance calculation fix for loans and financial overview
 ## [1.2.3] - 2026-02-28
 
 ### Fix: use calculated balance as source of truth, fix PBT test cleanup

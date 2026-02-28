@@ -9,6 +9,7 @@ const loanRepository = require('../repositories/loanRepository');
 const loanBalanceRepository = require('../repositories/loanBalanceRepository');
 const mortgagePaymentService = require('./mortgagePaymentService');
 const mortgageService = require('./mortgageService');
+const { calculateMonthlyInterest } = require('../utils/interestCalculation');
 const logger = require('../config/logger');
 
 class MortgageInsightsService {
@@ -59,8 +60,8 @@ class MortgageInsightsService {
     // Calculate weekly interest: daily × 7
     const weekly = daily * 7;
     
-    // Calculate monthly interest: daily × 30.44
-    const monthly = daily * MortgageInsightsService.DAYS_PER_MONTH;
+    // Calculate monthly interest using shared canonical formula: balance × (rate/100) / 12
+    const monthly = calculateMonthlyInterest(balance, annualRate);
     
     // Calculate annual interest: balance × (rate/100)
     const annual = balance * (annualRate / 100);
@@ -68,7 +69,7 @@ class MortgageInsightsService {
     return {
       daily: Math.round(daily * 100) / 100,
       weekly: Math.round(weekly * 100) / 100,
-      monthly: Math.round(monthly * 100) / 100,
+      monthly,
       annual: Math.round(annual * 100) / 100,
       balance: balance,
       rate: annualRate

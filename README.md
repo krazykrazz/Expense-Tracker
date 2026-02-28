@@ -46,7 +46,7 @@ See **[Startup Guide](./docs/guides/STARTUP_GUIDE.md)** for detailed development
 - 📊 **Budget Tracking** - Set budget limits with real-time alerts at 80%, 90%, and 100% thresholds
 
 ### Financial Tracking
-- 💳 **Loans & Mortgages** - Track loans, lines of credit, and mortgages with payment history and balance calculations
+- 💳 **Loans & Mortgages** - Track loans, lines of credit, and mortgages with payment history, interest-aware balance calculations, and balance override
 - 📈 **Investments** - Monitor TFSA and RRSP portfolios with value history and performance charts
 - 💎 **Net Worth** - Automatic calculation showing assets minus liabilities
 - 🏪 **Merchant Analytics** - Analyze spending patterns by merchant with trend charts and insights

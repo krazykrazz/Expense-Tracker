@@ -1,12 +1,12 @@
 # Loan Payment Tracking Feature
 
-**Version**: 4.19.0  
+**Version**: 5.x  
 **Status**: Completed  
-**Spec**: `.kiro/specs/loan-payment-tracking/` and `.kiro/specs/fixed-expense-loan-linkage/`
+**Spec**: `.kiro/specs/loan-payment-tracking/`, `.kiro/specs/fixed-expense-loan-linkage/`, and `.kiro/specs/mortgage-balance-interest-tracking/`
 
 ## Overview
 
-Payment-based tracking system for loans and mortgages, replacing the balance-entry approach for traditional loans. The system stores individual payment records and calculates the current balance dynamically. This approach is more intuitive for users who make regular payments and want to track their debt reduction progress.
+Payment-based tracking system for loans and mortgages, replacing the balance-entry approach for traditional loans. The system stores individual payment records and calculates the current balance dynamically. For mortgages, the balance calculation incorporates interest accrual using the formula `balance × (rate / 100) / 12` per month, producing accurate balances that reflect real-world mortgage amortization. This approach is more intuitive for users who make regular payments and want to track their debt reduction progress.
 
 Lines of credit continue to use balance-based tracking due to their variable usage patterns.
 
@@ -20,10 +20,39 @@ Lines of credit continue to use balance-based tracking due to their variable usa
 - Payment suggestions based on loan type and history
 
 ### Balance Calculation
-- Dynamic balance calculation: `current_balance = initial_balance - sum(payments)`
+- Dynamic balance calculation: `current_balance = initial_balance - sum(payments)` (non-mortgage loans)
 - Balance never goes negative (floored at zero)
 - Total payments and payment count tracking
 - Last payment date display
+
+### Interest-Aware Balance Calculation (Mortgages)
+- Mortgage balances use interest accrual: `(previous_balance + monthly_interest) - payment_amount`
+- Monthly interest is calculated as `balance × (rate / 100) / 12`
+- The system walks forward month-by-month from the most recent balance snapshot (anchor), accruing interest and subtracting payments
+- If a balance snapshot exists, it becomes the anchor; otherwise the initial balance at the start date is used
+- Interest rate is resolved from the most recent `loan_balances` entry with a non-null rate on or before each month
+- If no interest rate is available, falls back to naive subtraction (`initial_balance - sum(payments)`)
+- Shared interest calculation utility (`backend/utils/interestCalculation.js`) provides the canonical formula used by both the accrual engine and `MortgageInsightsService`
+
+### Balance Override (Mortgages)
+- When recording a mortgage payment, users can optionally provide an "Override Balance" value
+- This creates a balance snapshot in the `loan_balances` table that becomes the new anchor for future calculations
+- Useful for correcting drift between the app's calculated balance and the actual mortgage statement balance
+- Override must be a non-negative number; negative values are rejected with a validation error
+- A `balance_override_applied` activity log event is created with metadata including the override value, the calculated value that was replaced, and the mortgage name
+- Override is silently ignored for non-mortgage loans
+
+### Auto-Balance Snapshot (Mortgages)
+- When a mortgage payment is created or updated **without** a balance override, the service automatically calculates the new balance and creates a balance snapshot
+- This keeps the anchor fresh so future interest accrual calculations start from an up-to-date position
+- Only triggers when the mortgage is `interestAware` (i.e., the engine has a rate to work with)
+- Non-fatal: if the auto-snapshot fails, the payment still succeeds (failure is logged as a warning)
+- Resolves the interest rate from the most recent `loan_balances` entry, falling back to `fixed_interest_rate`, then 0
+
+### Total Interest Accrued Display
+- The LoanDetailView Payment Tracking summary shows a "Total Interest Accrued" line for mortgages
+- Only displayed when `interestAware` is true and `totalInterestAccrued > 0`
+- Rendered in red to visually distinguish interest cost from principal payments
 
 ### Payment Suggestions
 - **Mortgages**: Suggests the monthly_payment amount from loan settings
@@ -47,18 +76,20 @@ Lines of credit continue to use balance-based tracking due to their variable usa
 ### Recording a Loan Payment
 1. Open Loans modal from the main interface
 2. Click on a loan (not line of credit)
-3. Navigate to "Payment History" section
+3. Navigate to "Payment History" section (non-mortgage loans)
 4. Click "Add Payment"
 5. Enter payment amount, date, and optional notes
-6. Save - balance updates automatically
+6. For mortgages: optionally provide an "Override Balance" to correct drift from actual statement balance
+7. Save - balance updates automatically
 
 ### Viewing Payment History
 1. Open loan details
-2. View "Payment History" section showing:
+2. For non-mortgage loans, view "Payment History" section showing:
    - Payment date
    - Payment amount
    - Running balance after payment
    - Optional notes
+3. For mortgages, the LoanPaymentHistory component renders the same as other loan types, showing actual payment transactions with interest-aware running balances
 
 ### Using Payment Suggestions
 1. When adding a payment, click "Use Suggested Amount"
@@ -163,7 +194,7 @@ Response:
 ```json
 GET /api/loans/1/calculated-balance
 
-Response:
+Response (non-mortgage):
 {
   "loanId": 1,
   "initialBalance": 10000.00,
@@ -171,6 +202,41 @@ Response:
   "currentBalance": 7500.00,
   "paymentCount": 5,
   "lastPaymentDate": "2026-01-15"
+}
+
+Response (mortgage with interest accrual):
+{
+  "loanId": 1,
+  "initialBalance": 200000.00,
+  "totalPayments": 15000.00,
+  "currentBalance": 192500.00,
+  "totalInterestAccrued": 7500.00,
+  "interestAware": true,
+  "paymentCount": 10,
+  "lastPaymentDate": "2026-02-15"
+}
+```
+
+New fields for mortgages:
+- `totalInterestAccrued`: Sum of all monthly interest applied across the calculation period
+- `interestAware`: Boolean indicating interest accrual was used (false when no rate is available)
+
+### Balance History
+
+The `getBalanceHistory()` endpoint returns `interestAccrued` and `principalPaid` per entry for mortgages:
+
+```json
+GET /api/loans/1/balance-history
+
+Response (mortgage entry):
+{
+  "id": 12,
+  "date": "2025-01-15",
+  "payment": 2500.00,
+  "notes": "January payment",
+  "runningBalance": 478500.25,
+  "interestAccrued": 1950.50,
+  "principalPaid": 549.50
 }
 ```
 
@@ -227,21 +293,24 @@ Response:
 - `AutoLogPrompt.jsx` - Auto-log confirmation dialog
 
 ### Backend
-- `loanPaymentService.js` - Payment CRUD and validation
-- `balanceCalculationService.js` - Dynamic balance calculation
+- `loanPaymentService.js` - Payment CRUD, validation, and balance override processing
+- `balanceCalculationService.js` - Dynamic balance calculation with interest accrual engine for mortgages
+- `interestCalculation.js` - Shared utility for canonical monthly interest formula
 - `paymentSuggestionService.js` - Payment amount suggestions
 - `migrationService.js` - Balance-to-payment migration
-- `autoPaymentLoggerService.js` - Auto-log payment creation
+- `autoPaymentLoggerService.js` - Auto-log payment creation (interest-aware for mortgages)
 - `loanPaymentRepository.js` - Payment data access
 - `reminderService.js` - Extended with loan payment reminders
 
 ## Loan Type Behavior
 
-| Loan Type | Tracking Method | Payment Tracking | Balance Entries |
-|-----------|-----------------|------------------|-----------------|
-| Loan | Payment-based | ✅ Supported | Optional (legacy) |
-| Mortgage | Payment-based | ✅ Supported | Optional (legacy) |
-| Line of Credit | Balance-based | ❌ Not supported | Required |
+| Loan Type | Tracking Method | Payment Tracking | Balance Entries | Interest Accrual |
+|-----------|-----------------|------------------|-----------------|------------------|
+| Loan | Payment-based | ✅ Supported | Optional (legacy) | ❌ Naive subtraction |
+| Mortgage | Payment-based | ✅ Supported (via balance engine) | Optional (legacy) | ✅ Interest-aware |
+| Line of Credit | Balance-based | ❌ Not supported | Required | ❌ Not applicable |
+
+Note: For mortgages, the `LoanPaymentHistory` component renders the same as other loan types, showing actual payment transactions. Mortgage payments are tracked via the interest-aware balance calculation engine. The current payment amount can be edited from the Current Status section within Mortgage Insights.
 
 ## Benefits
 

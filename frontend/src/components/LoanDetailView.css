@@ -1038,6 +1038,10 @@ button:disabled {
   color: var(--color-positive);
 }
 
+.payment-summary-value.interest-accrued {
+  color: #dc3545;
+}
+
 .payment-summary-value.muted {
   color: var(--text-tertiary);
   font-size: var(--text-lg);

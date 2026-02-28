@@ -93,7 +93,7 @@ components/
                    MortgageDetailSection, MortgageInsightsPanel, AmortizationChart, EquityChart,
                    PaymentBalanceChart, PayoffProjectionInsights, CurrentStatusInsights,
                    ScenarioAnalysisInsights, TotalDebtView, AutoLogPrompt, MigrationUtility,
-                   PaymentTrackingHistory, InvestmentDetailView
+                   InvestmentDetailView
   tax/             TaxDeductible, InvoiceUpload, InvoiceList, InvoicePDFViewer,
                    InvoiceIndicator, PeopleManagementModal, PersonAllocationModal
   analytics/       AnalyticsHubModal, SpendingPatternsView, PredictionsView,

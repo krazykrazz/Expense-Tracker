@@ -26,6 +26,7 @@ const LoanPaymentForm = ({
   loanName = 'Loan',
   loanType = 'loan',
   currentBalance = 0,
+  calculatedBalanceData = null,
   editingPayment = null,
   onPaymentRecorded = () => {},
   onCancel = () => {},
@@ -48,6 +49,11 @@ const LoanPaymentForm = ({
   const [suggestion, setSuggestion] = useState(null);
   const [loadingSuggestion, setLoadingSuggestion] = useState(false);
   const [usingSuggestion, setUsingSuggestion] = useState(false);
+
+  // Balance override state (mortgages only)
+  const [balanceOverride, setBalanceOverride] = useState('');
+  const [showOverride, setShowOverride] = useState(false);
+  const [overrideError, setOverrideError] = useState(null);
 
   // Fetch payment suggestion when component mounts
   useEffect(() => {
@@ -116,8 +122,16 @@ const LoanPaymentForm = ({
       return { isValid: false, error: 'Payment date cannot be in the future' };
     }
 
+    // Balance override validation (mortgages only)
+    if (showOverride && balanceOverride !== '') {
+      const overrideNum = parseFloat(balanceOverride);
+      if (isNaN(overrideNum) || overrideNum < 0) {
+        return { isValid: false, error: 'Balance override must be a non-negative number' };
+      }
+    }
+
     return { isValid: true, error: null };
-  }, [amount, paymentDate]);
+  }, [amount, paymentDate, showOverride, balanceOverride]);
 
   // Handle form submission
   const handleSubmit = async (e) => {
@@ -142,6 +156,11 @@ const LoanPaymentForm = ({
         notes: notes.trim() || null
       };
 
+      // Include balance override for mortgages when provided
+      if (showOverride && balanceOverride !== '' && isMortgage) {
+        paymentData.balanceOverride = parseFloat(balanceOverride);
+      }
+
       let result;
       if (editingPayment) {
         result = await updatePayment(loanId, editingPayment.id, paymentData);
@@ -160,6 +179,9 @@ const LoanPaymentForm = ({
         setPaymentDate(getTodayDate());
         setNotes('');
         setUsingSuggestion(false);
+        setBalanceOverride('');
+        setShowOverride(false);
+        setOverrideError(null);
       }
     } catch (err) {
       logger.error('Failed to record payment:', err);
@@ -215,8 +237,55 @@ const LoanPaymentForm = ({
     }
   };
 
-  // Calculate new balance after payment
-  const newBalance = currentBalance - (parseFloat(amount) || 0);
+  // Handle balance override input change
+  const handleOverrideChange = (e) => {
+    let value = e.target.value;
+    const sanitized = value.replace(/[$,\s]/g, '');
+    
+    if (sanitized === '' || /^\d*\.?\d{0,2}$/.test(sanitized)) {
+      setBalanceOverride(sanitized);
+      // Inline validation for negative values
+      const num = parseFloat(sanitized);
+      if (sanitized !== '' && (isNaN(num) || num < 0)) {
+        setOverrideError('Balance override must be a non-negative number');
+      } else {
+        setOverrideError(null);
+      }
+    }
+  };
+
+  // Toggle override section visibility
+  const toggleOverride = () => {
+    setShowOverride(prev => !prev);
+    if (showOverride) {
+      // Clearing override when hiding
+      setBalanceOverride('');
+      setOverrideError(null);
+    }
+  };
+
+  // Determine if override section should be available
+  const isMortgage = loanType === 'mortgage';
+  const showOverrideSection = isMortgage && calculatedBalanceData?.interestAware === true;
+
+  // Use interest-aware balance from API for mortgages when available
+  const effectiveBalance = (isMortgage && calculatedBalanceData?.interestAware)
+    ? calculatedBalanceData.currentBalance
+    : currentBalance;
+
+  // Calculate new balance after payment using interest-aware balance
+  const newBalance = effectiveBalance - (parseFloat(amount) || 0);
+
+  // Interest breakdown for mortgages
+  const interestAccrued = (isMortgage && calculatedBalanceData?.interestAware)
+    ? calculatedBalanceData.totalInterestAccrued || 0
+    : 0;
+
+  // Delta between override and projected balance (when override is provided)
+  const overrideNum = parseFloat(balanceOverride);
+  const hasOverrideValue = showOverride && balanceOverride !== '' && !isNaN(overrideNum) && overrideNum >= 0;
+  const projectedAfterPayment = Math.max(0, newBalance);
+  const overrideDelta = hasOverrideValue ? overrideNum - projectedAfterPayment : 0;
 
   // Get suggestion source label
   const getSuggestionLabel = () => {
@@ -226,6 +295,10 @@ const LoanPaymentForm = ({
         return 'Monthly Payment';
       case 'average_history':
         return 'Average Payment';
+      case 'calculated_amortization':
+        return 'Calculated Payment';
+      case 'interest_projection':
+        return 'Interest Only';
       default:
         return 'Suggested';
     }
@@ -241,13 +314,32 @@ const LoanPaymentForm = ({
       <div className="loan-payment-balance-info">
         <div className="balance-row">
           <span className="balance-label">Current Balance:</span>
-          <span className="balance-value">{formatCurrency(currentBalance)}</span>
+          <span className="balance-value">{formatCurrency(effectiveBalance)}</span>
         </div>
+        {isMortgage && interestAccrued > 0 && (
+          <div className="balance-row interest-row">
+            <span className="balance-label">Interest Accrued:</span>
+            <span className="balance-value interest-accrued">
+              {formatCurrency(interestAccrued)}
+            </span>
+          </div>
+        )}
         {amount && parseFloat(amount) > 0 && (
           <div className="balance-row new-balance">
-            <span className="balance-label">After Payment:</span>
+            <span className="balance-label">Projected After Payment:</span>
             <span className={`balance-value ${newBalance < 0 ? 'negative' : ''}`}>
-              {formatCurrency(Math.max(0, newBalance))}
+              {formatCurrency(projectedAfterPayment)}
+            </span>
+          </div>
+        )}
+        {hasOverrideValue && amount && parseFloat(amount) > 0 && (
+          <div className="balance-row override-delta-row">
+            <span className="balance-label">Override Balance:</span>
+            <span className="balance-value">{formatCurrency(overrideNum)}</span>
+            <span className={`balance-delta ${overrideDelta > 0 ? 'delta-higher' : overrideDelta < 0 ? 'delta-lower' : ''}`}>
+              {overrideDelta !== 0 && (
+                <>({overrideDelta > 0 ? '+' : ''}{formatCurrency(overrideDelta)})</>
+              )}
             </span>
           </div>
         )}
@@ -325,6 +417,48 @@ const LoanPaymentForm = ({
             rows={2}
           />
         </div>
+
+        {/* Balance Override Section (mortgages with interest-aware calculation only) */}
+        {showOverrideSection && (
+          <div className="loan-payment-override-section">
+            <button
+              type="button"
+              className="loan-payment-override-toggle"
+              onClick={toggleOverride}
+              disabled={disabled || submitting}
+            >
+              {showOverride ? 'Hide Override' : 'Override Balance'}
+            </button>
+            {showOverride && (
+              <div className="loan-payment-override-content">
+                <label htmlFor="loan-payment-override" className="loan-payment-label">
+                  Actual Balance After Payment <span className="optional">(optional)</span>
+                </label>
+                <div className="loan-payment-amount-input">
+                  <span className="currency-symbol">$</span>
+                  <input
+                    type="text"
+                    id="loan-payment-override"
+                    className={`loan-payment-input${overrideError ? ' input-error' : ''}`}
+                    value={balanceOverride}
+                    onChange={handleOverrideChange}
+                    placeholder="0.00"
+                    disabled={disabled || submitting}
+                    aria-describedby={overrideError ? 'override-error' : undefined}
+                  />
+                </div>
+                {overrideError && (
+                  <span id="override-error" className="loan-payment-inline-error" role="alert">
+                    {overrideError}
+                  </span>
+                )}
+                <span className="loan-payment-override-hint">
+                  Enter the actual remaining balance from your mortgage statement to correct any drift.
+                </span>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Error Display */}
         {error && (

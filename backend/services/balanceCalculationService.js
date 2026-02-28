@@ -52,10 +52,14 @@ class BalanceCalculationService {
       : null;
     
     // Determine which balance to use as "current"
-    // Always use calculatedBalance (initial_balance - totalPayments) as the source of truth,
-    // since it correctly reflects all logged payments. The actualBalance from loan_balances
-    // is a manual snapshot that doesn't account for payments in the loan_payments table.
-    const currentBalance = calculatedBalance;
+    // If there are logged payments, use calculatedBalance (initial_balance - totalPayments)
+    // since it correctly reflects all logged payments.
+    // If there are NO logged payments but we have a balance snapshot from loan_balances,
+    // use that snapshot — it represents the real balance for loans that existed before
+    // payment tracking was added.
+    const currentBalance = (paymentCount === 0 && actualBalance !== null)
+      ? actualBalance
+      : calculatedBalance;
     
     // Check if there's a discrepancy between calculated and actual
     // A discrepancy indicates the loan had payments before tracking started

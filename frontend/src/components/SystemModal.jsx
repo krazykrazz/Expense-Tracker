@@ -452,6 +452,16 @@ const SystemModal = () => {
           <div className="changelog">
             <div className="changelog-entry">
               <div className="changelog-version">
+                v1.3.1
+                {isCurrentVersion('v1.3.1') && <span className="current-version-badge">Current Version</span>}
+              </div>
+              <div className="changelog-date">February 28, 2026</div>
+              <ul className="changelog-items">
+                <li>Fix budget copy-from-previous-month bugs</li>
+              </ul>
+            </div>
+            <div className="changelog-entry">
+              <div className="changelog-version">
                 v1.3.0
                 {isCurrentVersion('v1.3.0') && <span className="current-version-badge">Current Version</span>}
               </div>

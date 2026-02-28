@@ -160,10 +160,12 @@ class LoanPaymentService {
         }
       );
     } else if (loan.loan_type === 'mortgage') {
-      // Auto-snapshot: when no override is provided, calculate the new balance
-      // and create a snapshot so the engine stays anchored to fresh data
+      // Auto-snapshot: when no override is provided, calculate the balance at the
+      // payment month and create a snapshot so the engine stays anchored to fresh data
       try {
-        const calcResult = await balanceCalculationService.calculateBalance(loanId);
+        const calcResult = await balanceCalculationService.calculateBalance(loanId, {
+          targetDate: paymentData.payment_date
+        });
         if (calcResult.interestAware && calcResult.currentBalance != null) {
           const date = new Date(paymentData.payment_date + 'T00:00:00Z');
           const year = date.getUTCFullYear();

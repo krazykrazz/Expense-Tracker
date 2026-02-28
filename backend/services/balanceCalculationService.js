@@ -39,7 +39,7 @@ class BalanceCalculationService {
    * 
    * Requirements: 2.1, 2.2, 2.4
    */
-  async calculateBalance(loanId) {
+  async calculateBalance(loanId, options = {}) {
     // Get the loan to retrieve initial_balance
     const loan = await loanRepository.findById(loanId);
     
@@ -49,7 +49,7 @@ class BalanceCalculationService {
 
     // Dispatch to interest-aware engine for mortgages
     if (loan.loan_type === 'mortgage') {
-      return this.calculateMortgageBalance(loan);
+      return this.calculateMortgageBalance(loan, options);
     }
     
     // Get total payments and payment count (for reporting purposes)
@@ -137,7 +137,7 @@ class BalanceCalculationService {
    *
    * Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 9.2, 9.4
    */
-  async calculateMortgageBalance(loan) {
+  async calculateMortgageBalance(loan, options = {}) {
     // Get snapshots chronologically (ASC) and payments chronologically
     const snapshots = await loanBalanceRepository.getBalanceHistory(loan.id);
     const paymentsDesc = await loanPaymentRepository.findByLoanOrdered(loan.id);
@@ -215,10 +215,20 @@ class BalanceCalculationService {
       };
     }
 
-    // Walk forward month-by-month from anchor to current date
-    const now = new Date();
-    const currentYear = now.getFullYear();
-    const currentMonth = now.getMonth() + 1;
+    // Walk forward month-by-month from anchor to target date (or current date)
+    let targetYear, targetMonth;
+    if (options.targetDate) {
+      const parts = options.targetDate.split('-');
+      targetYear = parseInt(parts[0], 10);
+      targetMonth = parseInt(parts[1], 10);
+    } else {
+      const now = new Date();
+      targetYear = now.getFullYear();
+      targetMonth = now.getMonth() + 1;
+    }
+
+    const currentYear = targetYear;
+    const currentMonth = targetMonth;
 
     let balance = anchorBalance;
     let totalInterestAccrued = 0;

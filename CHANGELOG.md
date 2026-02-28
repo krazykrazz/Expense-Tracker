@@ -10,6 +10,11 @@
 
 
 
+
+
+## [1.3.0] - 2026-02-28
+
+### Mortgage balance interest tracking, UI refresh fix
 ## [1.2.4] - 2026-02-28
 
 ### Anchor-based balance calculation fix for loans and financial overview

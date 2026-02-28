@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.3.0',
+    date: 'February 28, 2026',
+    added: [],
+    changed: ['Mortgage balance interest tracking, UI refresh fix'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.2.4',
     date: 'February 28, 2026',
     added: [],

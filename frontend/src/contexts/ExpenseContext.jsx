@@ -26,10 +26,27 @@ export function ExpenseProvider({ children }) {
   // Budget alert refresh trigger (exposed for AppContent to use)
   const [budgetAlertRefreshTrigger, setBudgetAlertRefreshTrigger] = useState(0);
 
+  // Track whether we've done the initial load — subsequent refreshes
+  // should NOT flash the loading state (which unmounts the content layout
+  // and causes a jarring visual reset).
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
+
+  // Reset initialLoadDone when view parameters change so the user sees
+  // a loading spinner when switching months/views (but NOT on background
+  // refreshes triggered by triggerRefresh).
+  useEffect(() => {
+    setInitialLoadDone(false);
+  }, [selectedYear, selectedMonth, isGlobalView, filterYear]);
+
   // --- Expense Fetching ---
   useEffect(() => {
     const fetchExpenses = async () => {
-      setLoading(true);
+      // Only show loading spinner on initial load or view-parameter changes,
+      // not on background refreshes (triggerRefresh). This prevents the
+      // content layout from unmounting/remounting and causing a visual flash.
+      if (!initialLoadDone) {
+        setLoading(true);
+      }
       setError(null);
       try {
         let url;
@@ -62,6 +79,7 @@ export function ExpenseProvider({ children }) {
         // Keep existing expenses if we have them
       } finally {
         setLoading(false);
+        if (!initialLoadDone) setInitialLoadDone(true);
       }
     };
     fetchExpenses();

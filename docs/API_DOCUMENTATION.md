@@ -2149,6 +2149,10 @@ Record a new loan payment.
 | notes | string | No | Optional notes |
 | balanceOverride | number | No | Actual remaining balance from mortgage statement (mortgages only, must be non-negative). Creates a balance snapshot to correct drift. Silently ignored for non-mortgage loans. |
 
+**Side Effects (Mortgages):**
+- If `balanceOverride` is provided: creates a balance snapshot at the payment date and logs a `balance_override_applied` activity event.
+- If `balanceOverride` is **not** provided: the service auto-calculates the new balance and creates a snapshot to keep the anchor fresh. This is non-fatal — if it fails, the payment still succeeds. Only triggers when the mortgage is interest-aware.
+
 **Success Response:**
 ```json
 HTTP/1.1 201 Created
@@ -2221,9 +2225,19 @@ Update an existing payment entry.
 {
   "amount": 550.00,
   "payment_date": "2026-01-15",
-  "notes": "Updated payment"
+  "notes": "Updated payment",
+  "balanceOverride": 192000.00
 }
 ```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| amount | number | Yes | Payment amount (must be positive) |
+| payment_date | string | Yes | Payment date (YYYY-MM-DD, not future) |
+| notes | string | No | Optional notes |
+| balanceOverride | number | No | Same behavior as Create Payment (mortgages only) |
+
+**Side Effects (Mortgages):** Same auto-snapshot behavior as Create Payment — override creates an explicit snapshot; no override triggers an auto-calculated snapshot.
 
 **Success Response:**
 ```json

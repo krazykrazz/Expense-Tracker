@@ -42,6 +42,18 @@ Lines of credit continue to use balance-based tracking due to their variable usa
 - A `balance_override_applied` activity log event is created with metadata including the override value, the calculated value that was replaced, and the mortgage name
 - Override is silently ignored for non-mortgage loans
 
+### Auto-Balance Snapshot (Mortgages)
+- When a mortgage payment is created or updated **without** a balance override, the service automatically calculates the new balance and creates a balance snapshot
+- This keeps the anchor fresh so future interest accrual calculations start from an up-to-date position
+- Only triggers when the mortgage is `interestAware` (i.e., the engine has a rate to work with)
+- Non-fatal: if the auto-snapshot fails, the payment still succeeds (failure is logged as a warning)
+- Resolves the interest rate from the most recent `loan_balances` entry, falling back to `fixed_interest_rate`, then 0
+
+### Total Interest Accrued Display
+- The LoanDetailView Payment Tracking summary shows a "Total Interest Accrued" line for mortgages
+- Only displayed when `interestAware` is true and `totalInterestAccrued > 0`
+- Rendered in red to visually distinguish interest cost from principal payments
+
 ### Payment Suggestions
 - **Mortgages**: Suggests the monthly_payment amount from loan settings
 - **Traditional Loans**: Suggests average of previous payment amounts
@@ -77,13 +89,7 @@ Lines of credit continue to use balance-based tracking due to their variable usa
    - Payment amount
    - Running balance after payment
    - Optional notes
-3. Note: The LoanPaymentHistory component (individual payment list) is hidden for mortgages since mortgage payments are tracked via the balance calculation engine, not as individual editable entries
-
-### Viewing Payment Amount History (Mortgages)
-The "Payment Amount History" section (formerly "Payment Tracking") tracks when the recurring mortgage payment amount changes (e.g., after a rate renewal), NOT individual payments.
-- Section heading: "Payment Amount History"
-- Add button: "+ Add Payment Amount Change"
-- Empty state: "No payment amount changes recorded yet"
+3. For mortgages, the LoanPaymentHistory component renders the same as other loan types, showing actual payment transactions with interest-aware running balances
 
 ### Using Payment Suggestions
 1. When adding a payment, click "Use Suggested Amount"
@@ -304,7 +310,7 @@ Response:
 | Mortgage | Payment-based | ✅ Supported (via balance engine) | Optional (legacy) | ✅ Interest-aware |
 | Line of Credit | Balance-based | ❌ Not supported | Required | ❌ Not applicable |
 
-Note: For mortgages, the `LoanPaymentHistory` component is hidden. Mortgage payments are tracked via the interest-aware balance calculation engine, and the `PaymentTrackingHistory` component (labeled "Payment Amount History") tracks payment amount changes over time.
+Note: For mortgages, the `LoanPaymentHistory` component renders the same as other loan types, showing actual payment transactions. Mortgage payments are tracked via the interest-aware balance calculation engine. The current payment amount can be edited from the Current Status section within Mortgage Insights.
 
 ## Benefits
 

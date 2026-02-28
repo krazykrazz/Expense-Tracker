@@ -12,6 +12,11 @@
 
 
 
+
+
+## [1.3.1] - 2026-02-28
+
+### Fix budget copy-from-previous-month bugs
 ## [1.3.0] - 2026-02-28
 
 ### Mortgage balance interest tracking, UI refresh fix

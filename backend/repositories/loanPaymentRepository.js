@@ -202,6 +202,67 @@ class LoanPaymentRepository {
   }
 
   /**
+   * Get the sum of payments for a loan after a specific year/month
+   * Used for anchor-based balance calculation: snapshot_balance - payments_after_snapshot
+   * @param {number} loanId - Loan ID
+   * @param {number} year - Anchor year
+   * @param {number} month - Anchor month (1-12)
+   * @returns {Promise<number>} Total payment amount after the anchor month
+   */
+  async getTotalPaymentsAfterMonth(loanId, year, month) {
+    const db = await getDatabase();
+    
+    return new Promise((resolve, reject) => {
+      const monthStr = String(month).padStart(2, '0');
+      const cutoffDate = `${year}-${monthStr}-31`;
+      
+      const sql = `
+        SELECT COALESCE(SUM(amount), 0) as total
+        FROM loan_payments 
+        WHERE loan_id = ? AND payment_date > ?
+      `;
+      
+      db.get(sql, [loanId, cutoffDate], (err, row) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        resolve(row ? row.total : 0);
+      });
+    });
+  }
+
+  /**
+   * Get the count of payments for a loan after a specific year/month
+   * @param {number} loanId - Loan ID
+   * @param {number} year - Anchor year
+   * @param {number} month - Anchor month (1-12)
+   * @returns {Promise<number>} Number of payments after the anchor month
+   */
+  async getPaymentCountAfterMonth(loanId, year, month) {
+    const db = await getDatabase();
+    
+    return new Promise((resolve, reject) => {
+      const monthStr = String(month).padStart(2, '0');
+      const cutoffDate = `${year}-${monthStr}-31`;
+      
+      const sql = `
+        SELECT COUNT(*) as count
+        FROM loan_payments 
+        WHERE loan_id = ? AND payment_date > ?
+      `;
+      
+      db.get(sql, [loanId, cutoffDate], (err, row) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        resolve(row ? row.count : 0);
+      });
+    });
+  }
+
+  /**
    * Get payment count for a loan
    * @param {number} loanId - Loan ID
    * @returns {Promise<number>} Number of payments

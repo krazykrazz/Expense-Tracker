@@ -361,51 +361,87 @@ class LoanRepository {
    * @returns {Promise<Array>} Array of loans with currentBalance and currentRate
    */
   async getAllWithCurrentBalances() {
-    const db = await getDatabase();
-    
-    return new Promise((resolve, reject) => {
-      const sql = `
-        SELECT 
-          l.id,
-          l.name,
-          l.initial_balance,
-          l.start_date,
-          l.notes,
-          l.loan_type,
-          l.is_paid_off,
-          l.estimated_months_left,
-          l.amortization_period,
-          l.term_length,
-          l.renewal_date,
-          l.rate_type,
-          l.payment_frequency,
-          l.estimated_property_value,
-          l.fixed_interest_rate,
-          l.created_at,
-          l.updated_at,
-          COALESCE(lb.remaining_balance, l.initial_balance) as currentBalance,
-          COALESCE(lb.rate, l.fixed_interest_rate, 0) as currentRate
-        FROM loans l
-        LEFT JOIN (
+      const db = await getDatabase();
+
+      return new Promise((resolve, reject) => {
+        // Anchor-based balance calculation:
+        // - If a loan_balances snapshot exists, use snapshot_balance minus payments after that snapshot month
+        // - If no snapshot exists, use initial_balance minus all payments
+        // This matches the logic in balanceCalculationService.calculateBalance()
+        const sql = `
           SELECT 
-            loan_id,
-            remaining_balance,
-            rate,
-            ROW_NUMBER() OVER (PARTITION BY loan_id ORDER BY year DESC, month DESC) as rn
-          FROM loan_balances
-        ) lb ON l.id = lb.loan_id AND lb.rn = 1
-        ORDER BY l.created_at DESC
-      `;
-      
-      db.all(sql, [], (err, rows) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-        resolve(rows || []);
+            l.id,
+            l.name,
+            l.initial_balance,
+            l.start_date,
+            l.notes,
+            l.loan_type,
+            l.is_paid_off,
+            l.estimated_months_left,
+            l.amortization_period,
+            l.term_length,
+            l.renewal_date,
+            l.rate_type,
+            l.payment_frequency,
+            l.estimated_property_value,
+            l.fixed_interest_rate,
+            l.created_at,
+            l.updated_at,
+            CASE
+              WHEN lb.remaining_balance IS NOT NULL THEN
+                MAX(0, lb.remaining_balance - COALESCE(pa.payments_after, 0))
+              ELSE
+                MAX(0, l.initial_balance - COALESCE(pt.total_payments, 0))
+            END as currentBalance,
+            COALESCE(lb.rate, l.fixed_interest_rate, 0) as currentRate
+          FROM loans l
+          LEFT JOIN (
+            SELECT 
+              loan_id,
+              remaining_balance,
+              rate,
+              year,
+              month,
+              ROW_NUMBER() OVER (PARTITION BY loan_id ORDER BY year DESC, month DESC) as rn
+            FROM loan_balances
+          ) lb ON l.id = lb.loan_id AND lb.rn = 1
+          LEFT JOIN (
+            SELECT 
+              lp.loan_id,
+              SUM(lp.amount) as payments_after
+            FROM loan_payments lp
+            INNER JOIN (
+              SELECT 
+                loan_id,
+                year,
+                month,
+                ROW_NUMBER() OVER (PARTITION BY loan_id ORDER BY year DESC, month DESC) as rn
+              FROM loan_balances
+            ) lb2 ON lp.loan_id = lb2.loan_id AND lb2.rn = 1
+            WHERE lp.payment_date > (lb2.year || '-' || SUBSTR('0' || lb2.month, -2) || '-31')
+            GROUP BY lp.loan_id
+          ) pa ON l.id = pa.loan_id
+          LEFT JOIN (
+            SELECT 
+              loan_id,
+              SUM(amount) as total_payments
+            FROM loan_payments
+            GROUP BY loan_id
+          ) pt ON l.id = pt.loan_id
+          ORDER BY l.created_at DESC
+        `;
+
+        db.all(sql, [], (err, rows) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+          resolve(rows || []);
+        });
       });
-    });
-  }
+    }
+
+
 
   /**
    * Get loans for a specific month (where start_date <= selected month)
@@ -422,6 +458,9 @@ class LoanRepository {
       const lastDayOfMonth = new Date(year, month, 0).getDate();
       const selectedDate = `${year}-${month.toString().padStart(2, '0')}-${lastDayOfMonth.toString().padStart(2, '0')}`;
       
+      // Anchor-based balance calculation (same logic as getAllWithCurrentBalances):
+      // - If a loan_balances snapshot exists, use snapshot_balance minus payments after that snapshot month
+      // - If no snapshot exists, use initial_balance minus all payments
       const sql = `
         SELECT 
           l.id,
@@ -441,7 +480,12 @@ class LoanRepository {
           l.fixed_interest_rate,
           l.created_at,
           l.updated_at,
-          COALESCE(lb.remaining_balance, l.initial_balance) as currentBalance,
+          CASE
+            WHEN lb.remaining_balance IS NOT NULL THEN
+              MAX(0, lb.remaining_balance - COALESCE(pa.payments_after, 0))
+            ELSE
+              MAX(0, l.initial_balance - COALESCE(pt.total_payments, 0))
+          END as currentBalance,
           COALESCE(lb.rate, l.fixed_interest_rate, 0) as currentRate
         FROM loans l
         LEFT JOIN (
@@ -449,6 +493,8 @@ class LoanRepository {
             loan_id,
             remaining_balance,
             rate,
+            year,
+            month,
             ROW_NUMBER() OVER (
               PARTITION BY loan_id 
               ORDER BY year DESC, month DESC
@@ -456,11 +502,38 @@ class LoanRepository {
           FROM loan_balances
           WHERE (year < ? OR (year = ? AND month <= ?))
         ) lb ON l.id = lb.loan_id AND lb.rn = 1
+        LEFT JOIN (
+          SELECT 
+            lp.loan_id,
+            SUM(lp.amount) as payments_after
+          FROM loan_payments lp
+          INNER JOIN (
+            SELECT 
+              loan_id,
+              year,
+              month,
+              ROW_NUMBER() OVER (
+                PARTITION BY loan_id 
+                ORDER BY year DESC, month DESC
+              ) as rn
+            FROM loan_balances
+            WHERE (year < ? OR (year = ? AND month <= ?))
+          ) lb2 ON lp.loan_id = lb2.loan_id AND lb2.rn = 1
+          WHERE lp.payment_date > (lb2.year || '-' || SUBSTR('0' || lb2.month, -2) || '-31')
+          GROUP BY lp.loan_id
+        ) pa ON l.id = pa.loan_id
+        LEFT JOIN (
+          SELECT 
+            loan_id,
+            SUM(amount) as total_payments
+          FROM loan_payments
+          GROUP BY loan_id
+        ) pt ON l.id = pt.loan_id
         WHERE date(l.start_date) <= date(?)
         ORDER BY l.created_at DESC
       `;
       
-      db.all(sql, [year, year, month, selectedDate], (err, rows) => {
+      db.all(sql, [year, year, month, year, year, month, selectedDate], (err, rows) => {
         if (err) {
           reject(err);
           return;

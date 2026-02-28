@@ -246,4 +246,180 @@ describe('LoanPaymentService - Balance Override', () => {
       );
     });
   });
+
+  // --- Auto-snapshot tests (no override provided) ---
+
+  describe('mortgage auto-snapshot on createPayment', () => {
+    beforeEach(() => {
+      loanRepository.findById.mockResolvedValue(baseMortgage);
+    });
+
+    test('auto-creates snapshot from calculated balance when no override provided', async () => {
+      balanceCalculationService.calculateBalance.mockResolvedValue({
+        currentBalance: 497500,
+        interestAware: true
+      });
+
+      await loanPaymentService.createPayment(1, validPaymentData);
+
+      // Snapshot created with calculated balance
+      expect(loanBalanceService.createOrUpdateBalance).toHaveBeenCalledWith(
+        expect.objectContaining({
+          loan_id: 1,
+          year: 2025,
+          month: 1,
+          remaining_balance: 497500
+        })
+      );
+
+      // No override event logged
+      const overrideCalls = activityLogService.logEvent.mock.calls.filter(
+        call => call[0] === 'balance_override_applied'
+      );
+      expect(overrideCalls).toHaveLength(0);
+    });
+
+    test('skips auto-snapshot when calculation is not interest-aware', async () => {
+      balanceCalculationService.calculateBalance.mockResolvedValue({
+        currentBalance: 497500,
+        interestAware: false
+      });
+
+      await loanPaymentService.createPayment(1, validPaymentData);
+
+      expect(loanBalanceService.createOrUpdateBalance).not.toHaveBeenCalled();
+    });
+
+    test('skips auto-snapshot when calculateBalance fails', async () => {
+      balanceCalculationService.calculateBalance.mockRejectedValue(new Error('calc error'));
+
+      // Should not throw — auto-snapshot failure is non-fatal
+      const result = await loanPaymentService.createPayment(1, validPaymentData);
+      expect(result).toHaveProperty('id');
+      expect(loanBalanceService.createOrUpdateBalance).not.toHaveBeenCalled();
+    });
+
+    test('does not auto-snapshot for non-mortgage loans', async () => {
+      loanRepository.findById.mockResolvedValue(baseLoan);
+      loanPaymentRepository.create.mockResolvedValue({ id: 101, ...validPaymentData, loan_id: 2 });
+
+      await loanPaymentService.createPayment(2, validPaymentData);
+
+      expect(loanBalanceService.createOrUpdateBalance).not.toHaveBeenCalled();
+    });
+  });
+
+  // --- updatePayment balance override tests ---
+
+  describe('updatePayment with balance override', () => {
+    const existingPayment = {
+      id: 100,
+      loan_id: 1,
+      amount: 2500,
+      payment_date: '2025-01-15',
+      notes: 'January payment'
+    };
+
+    beforeEach(() => {
+      loanRepository.findById.mockResolvedValue(baseMortgage);
+      loanPaymentRepository.findById.mockResolvedValue(existingPayment);
+      loanPaymentRepository.update.mockResolvedValue({ ...existingPayment, amount: 2600 });
+    });
+
+    test('creates snapshot and logs activity when updating with override', async () => {
+      await loanPaymentService.updatePayment(100, {
+        ...validPaymentData,
+        amount: 2600,
+        balanceOverride: 485000
+      });
+
+      // Payment updated
+      expect(loanPaymentRepository.update).toHaveBeenCalledTimes(1);
+
+      // Snapshot created with override value
+      expect(loanBalanceService.createOrUpdateBalance).toHaveBeenCalledWith(
+        expect.objectContaining({
+          loan_id: 1,
+          year: 2025,
+          month: 1,
+          remaining_balance: 485000
+        })
+      );
+
+      // Activity log: balance_override_applied event
+      const overrideCalls = activityLogService.logEvent.mock.calls.filter(
+        call => call[0] === 'balance_override_applied'
+      );
+      expect(overrideCalls).toHaveLength(1);
+      expect(overrideCalls[0][4]).toEqual(expect.objectContaining({
+        overrideValue: 485000,
+        mortgageName: 'Home Mortgage',
+        paymentDate: '2025-01-15',
+        source: 'balance_override'
+      }));
+    });
+
+    test('auto-creates snapshot from calculated balance when no override provided on update', async () => {
+      balanceCalculationService.calculateBalance.mockResolvedValue({
+        currentBalance: 492000,
+        interestAware: true
+      });
+
+      await loanPaymentService.updatePayment(100, {
+        ...validPaymentData,
+        amount: 2600
+      });
+
+      expect(loanPaymentRepository.update).toHaveBeenCalledTimes(1);
+
+      // Auto-snapshot should be created with calculated balance
+      expect(loanBalanceService.createOrUpdateBalance).toHaveBeenCalledWith(
+        expect.objectContaining({
+          loan_id: 1,
+          remaining_balance: 492000
+        })
+      );
+
+      // No override event logged (auto-snapshot is silent)
+      const overrideCalls = activityLogService.logEvent.mock.calls.filter(
+        call => call[0] === 'balance_override_applied'
+      );
+      expect(overrideCalls).toHaveLength(0);
+    });
+
+    test('rejects negative balance override on update', async () => {
+      await expect(
+        loanPaymentService.updatePayment(100, { ...validPaymentData, balanceOverride: -50 })
+      ).rejects.toThrow('Balance override must be a non-negative number');
+
+      expect(loanPaymentRepository.update).not.toHaveBeenCalled();
+    });
+
+    test('override of 0 is valid on update (mortgage paid off)', async () => {
+      await loanPaymentService.updatePayment(100, {
+        ...validPaymentData,
+        balanceOverride: 0
+      });
+
+      expect(loanBalanceService.createOrUpdateBalance).toHaveBeenCalledWith(
+        expect.objectContaining({
+          loan_id: 1,
+          remaining_balance: 0
+        })
+      );
+    });
+
+    test('does not create snapshot for non-mortgage loan on update', async () => {
+      loanRepository.findById.mockResolvedValue(baseLoan);
+      loanPaymentRepository.findById.mockResolvedValue({ ...existingPayment, loan_id: 2 });
+      loanPaymentRepository.update.mockResolvedValue({ ...existingPayment, loan_id: 2 });
+
+      await loanPaymentService.updatePayment(100, {
+        ...validPaymentData,
+        balanceOverride: 25000
+      });
+
+      expect(loanBalanceService.createOrUpdateBalance).not.toHaveBeenCalled();
+    });
+  });
 });

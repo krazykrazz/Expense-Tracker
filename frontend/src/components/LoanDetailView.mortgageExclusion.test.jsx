@@ -28,15 +28,15 @@ vi.mock('../services/fixedExpenseApi', () => ({
 }));
 
 /**
- * Tests for mortgage exclusion of LoanPaymentHistory and section ordering.
+ * Tests for LoanPaymentHistory rendering and section ordering.
  *
  * Requirements: 3.4, 3.5, 3.6, 4.1
- * - 3.4: LoanPaymentHistory SHALL NOT render when loan_type is mortgage
- * - 3.5: Mortgage section order: MortgageDetailSection → PaymentTrackingHistory → MortgageInsightsPanel
+ * - 3.4: LoanPaymentHistory SHALL render for all loan types including mortgage
+ * - 3.5: Mortgage section order: MortgageDetailSection → MortgageInsightsPanel
  * - 3.6: LoanPaymentHistory SHALL retain heading "Payment History" for non-mortgage loans
  * - 4.1: LoanPaymentHistory continues for non-mortgage loans with existing calculation
  */
-describe('LoanDetailView — Mortgage Exclusion of LoanPaymentHistory', () => {
+describe('LoanDetailView — LoanPaymentHistory rendering', () => {
   const mockOnClose = vi.fn();
   const mockOnUpdate = vi.fn();
 
@@ -87,9 +87,9 @@ describe('LoanDetailView — Mortgage Exclusion of LoanPaymentHistory', () => {
   });
 
   /**
-   * Requirement 3.4: LoanPaymentHistory is NOT rendered for mortgages
+   * Requirement 3.4: LoanPaymentHistory renders for all loan types including mortgage
    */
-  it('should NOT render LoanPaymentHistory when loan type is mortgage', async () => {
+  it('should render LoanPaymentHistory when loan type is mortgage', async () => {
     const { container } = render(
       <LoanDetailView
         loan={baseMortgage}
@@ -105,16 +105,7 @@ describe('LoanDetailView — Mortgage Exclusion of LoanPaymentHistory', () => {
 
     // LoanPaymentHistory renders a container with class "loan-payment-history-container"
     const paymentHistoryContainer = container.querySelector('.loan-payment-history-container');
-    expect(paymentHistoryContainer).not.toBeInTheDocument();
-
-    // The heading "Payment History" from LoanPaymentHistory should not appear
-    // (Note: MortgageInsightsPanel has its own "Payment History" section toggle,
-    //  but LoanPaymentHistory's <h3>Payment History</h3> should not be present)
-    const h3Elements = container.querySelectorAll('h3');
-    const paymentHistoryH3 = Array.from(h3Elements).find(
-      el => el.textContent === 'Payment History'
-    );
-    expect(paymentHistoryH3).toBeFalsy();
+    expect(paymentHistoryContainer).toBeInTheDocument();
   });
 
   /**
@@ -157,9 +148,8 @@ describe('LoanDetailView — Mortgage Exclusion of LoanPaymentHistory', () => {
 
   /**
    * Requirement 3.5: Mortgage section order —
-   * MortgageDetailSection → MortgageInsightsPanel (which contains PaymentTrackingHistory)
+   * MortgageDetailSection → MortgageInsightsPanel
    *
-   * PaymentTrackingHistory is rendered inside MortgageInsightsPanel as a collapsible section.
    * We verify the top-level order: MortgageDetailSection appears before MortgageInsightsPanel.
    */
   it('should render mortgage sections in correct order: MortgageDetailSection → MortgageInsightsPanel', async () => {
@@ -192,9 +182,9 @@ describe('LoanDetailView — Mortgage Exclusion of LoanPaymentHistory', () => {
   });
 
   /**
-   * Requirement 3.4: Mortgage should show Payment Tracking section but NOT LoanPaymentHistory
+   * Requirement 3.4: Mortgage should show Payment Tracking section with LoanPaymentHistory
    */
-  it('should show Payment Tracking section for mortgage but hide LoanPaymentHistory', async () => {
+  it('should show Payment Tracking section for mortgage with LoanPaymentHistory', async () => {
     const { container } = render(
       <LoanDetailView
         loan={baseMortgage}
@@ -208,13 +198,13 @@ describe('LoanDetailView — Mortgage Exclusion of LoanPaymentHistory', () => {
       expect(screen.getByText('Loan Summary')).toBeInTheDocument();
     });
 
-    // Payment Tracking section should still be visible (it contains Log Payment button)
+    // Payment Tracking section should be visible
     const paymentTrackingSection = container.querySelector('.loan-payment-tracking-section');
     expect(paymentTrackingSection).toBeInTheDocument();
 
-    // But LoanPaymentHistory container should NOT be inside it
+    // LoanPaymentHistory container should be inside it
     const paymentHistoryInTracking = paymentTrackingSection?.querySelector('.loan-payment-history-container');
-    expect(paymentHistoryInTracking).toBeFalsy();
+    expect(paymentHistoryInTracking).toBeInTheDocument();
   });
 
   /**
@@ -249,10 +239,9 @@ describe('LoanDetailView — Mortgage Exclusion of LoanPaymentHistory', () => {
   });
 
   /**
-   * Requirement 3.5: MortgageInsightsPanel contains PaymentTrackingHistory
-   * Verify that the mortgage insights panel has a payment history section toggle
+   * Requirement 3.5: MortgageInsightsPanel renders for mortgages
    */
-  it('should include PaymentTrackingHistory inside MortgageInsightsPanel for mortgages', async () => {
+  it('should render MortgageInsightsPanel for mortgages', async () => {
     const { container } = render(
       <LoanDetailView
         loan={baseMortgage}

@@ -1031,12 +1031,153 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
             </div>
           )}
 
-          {/* Mortgage-Specific Sections - Requirements 8.1, 8.2, 8.3, 8.4, 8.5 */}
+          {/* Mortgage Detail Section - Requirements 8.1, 8.2, 8.5, 7.1 */}
+          {loanData.loan_type === 'mortgage' && (
+            <MortgageDetailSection mortgage={loanData} />
+          )}
+
+          {/* Payment Tracking Section - For loans and mortgages only */}
+          {/* Requirements: 5.1, 5.2, 5.3, 6.1, 6.4, 6.5 */}
+          {/* Placed here so mortgages get: Summary → Details → Payment History → Insights */}
+          {usesPaymentTracking && (
+            <div className="loan-payment-tracking-section">
+              <div className="loan-payment-tracking-header">
+                <h3>Payment Tracking</h3>
+                {!showPaymentForm && (
+                  <button
+                    className="loan-log-payment-button"
+                    onClick={handleShowPaymentForm}
+                    disabled={loading || loadingPayments}
+                  >
+                    + Log Payment
+                  </button>
+                )}
+              </div>
+
+              {/* Payment Summary - Requirement 6.4 */}
+              <div className="loan-payment-summary">
+                <div className="payment-summary-item">
+                  <span className="payment-summary-label">Total Payments:</span>
+                  <span className="payment-summary-value positive">
+                    {formatCurrency(totalPayments)}
+                  </span>
+                </div>
+                <div className="payment-summary-item">
+                  <span className="payment-summary-label">Current Balance:</span>
+                  <span className="payment-summary-value">
+                    {formatCurrency(currentBalance)}
+                  </span>
+                </div>
+                {/* Interest accrued for mortgages with interest-aware calculation */}
+                {calculatedBalanceData?.interestAware && calculatedBalanceData?.totalInterestAccrued > 0 && (
+                  <div className="payment-summary-item">
+                    <span className="payment-summary-label">Total Interest Accrued:</span>
+                    <span className="payment-summary-value interest-accrued">
+                      {formatCurrency(calculatedBalanceData.totalInterestAccrued)}
+                    </span>
+                  </div>
+                )}
+                {/* Show calculated balance when there's a discrepancy (historical loan) */}
+                {calculatedBalanceData?.hasDiscrepancy && (
+                  <div className="payment-summary-item payment-summary-discrepancy">
+                    <span className="payment-summary-label">Calculated from Payments:</span>
+                    <span className="payment-summary-value muted">
+                      {formatCurrency(calculatedBalanceData.calculatedBalance)}
+                    </span>
+                    <span className="payment-summary-note">
+                      (Difference due to payments before tracking started)
+                    </span>
+                  </div>
+                )}
+                {calculatedBalanceData?.lastPaymentDate && (
+                  <div className="payment-summary-item">
+                    <span className="payment-summary-label">Last Payment:</span>
+                    <span className="payment-summary-value">
+                      {formatDate(calculatedBalanceData.lastPaymentDate)}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Payment Form - Requirement 6.3 */}
+              {showPaymentForm && (
+                <LoanPaymentForm
+                  loanId={loanData.id}
+                  loanName={loanData.name}
+                  loanType={loanData.loan_type}
+                  currentBalance={currentBalance}
+                  calculatedBalanceData={calculatedBalanceData}
+                  editingPayment={editingPayment}
+                  onPaymentRecorded={handlePaymentRecorded}
+                  onCancel={handleCancelPaymentForm}
+                  disabled={loading || loadingPayments}
+                />
+              )}
+
+              {/* Payment History - Requirement 6.2 */}
+              <LoanPaymentHistory
+                payments={payments}
+                initialBalance={
+                  calculatedBalanceData?.hasDiscrepancy && calculatedBalanceData?.actualBalance != null
+                    ? calculatedBalanceData.actualBalance + totalPayments
+                    : loanData.initial_balance
+                }
+                loading={loadingPayments}
+                onEdit={handleEditPayment}
+                onDelete={handleDeletePayment}
+                disabled={loading || loadingPayments}
+              />
+
+              {/* Payment Balance Chart - Requirements 7.1, 7.2, 7.3 */}
+              {payments.length > 0 && (
+                <PaymentBalanceChart
+                  payments={payments}
+                  initialBalance={
+                    calculatedBalanceData?.hasDiscrepancy && calculatedBalanceData?.actualBalance != null
+                      ? calculatedBalanceData.actualBalance + totalPayments
+                      : loanData.initial_balance
+                  }
+                  loanName={loanData.name}
+                />
+              )}
+
+              {/* Migration Utility - Requirements 4.1, 4.5 */}
+              {balanceHistory.length >= 2 && payments.length === 0 && !showMigrationUtility && (
+                <div className="loan-migration-prompt">
+                  <div className="migration-prompt-content">
+                    <span className="migration-prompt-icon">📊</span>
+                    <div className="migration-prompt-text">
+                      <span className="migration-prompt-title">Have existing balance entries?</span>
+                      <span className="migration-prompt-description">
+                        {balanceHistory.length} balance entries available for migration
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    className="loan-migrate-button"
+                    onClick={handleShowMigrationUtility}
+                    disabled={loading || loadingPayments}
+                  >
+                    Migrate Balances
+                  </button>
+                </div>
+              )}
+
+              {showMigrationUtility && (
+                <MigrationUtility
+                  loanId={loanData.id}
+                  loanName={loanData.name}
+                  onMigrationComplete={handleMigrationComplete}
+                  onClose={handleCloseMigrationUtility}
+                  disabled={loading || loadingPayments}
+                />
+              )}
+            </div>
+          )}
+
+          {/* Mortgage Insights & Charts - After Payment Tracking */}
           {loanData.loan_type === 'mortgage' && (
             <>
-              {/* Mortgage Detail Section - Requirements 8.1, 8.2, 8.5, 7.1 */}
-              <MortgageDetailSection mortgage={loanData} />
-
               {/* Mortgage Insights Panel - Requirements 6.1, 6.2, 6.3, 6.4, 6.5, 8.1 */}
               <MortgageInsightsPanel 
                 mortgageId={loanData.id}
@@ -1176,144 +1317,6 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
                 </div>
               )}
             </>
-          )}
-
-          {/* Payment Tracking Section - For loans and mortgages only */}
-          {/* Requirements: 5.1, 5.2, 5.3, 6.1, 6.4, 6.5 */}
-          {usesPaymentTracking && (
-            <div className="loan-payment-tracking-section">
-              <div className="loan-payment-tracking-header">
-                <h3>Payment Tracking</h3>
-                {!showPaymentForm && (
-                  <button
-                    className="loan-log-payment-button"
-                    onClick={handleShowPaymentForm}
-                    disabled={loading || loadingPayments}
-                  >
-                    + Log Payment
-                  </button>
-                )}
-              </div>
-
-              {/* Payment Summary - Requirement 6.4 */}
-              <div className="loan-payment-summary">
-                <div className="payment-summary-item">
-                  <span className="payment-summary-label">Total Payments:</span>
-                  <span className="payment-summary-value positive">
-                    {formatCurrency(totalPayments)}
-                  </span>
-                </div>
-                <div className="payment-summary-item">
-                  <span className="payment-summary-label">Current Balance:</span>
-                  <span className="payment-summary-value">
-                    {formatCurrency(currentBalance)}
-                  </span>
-                </div>
-                {/* Show calculated balance when there's a discrepancy (historical loan) */}
-                {calculatedBalanceData?.hasDiscrepancy && (
-                  <div className="payment-summary-item payment-summary-discrepancy">
-                    <span className="payment-summary-label">Calculated from Payments:</span>
-                    <span className="payment-summary-value muted">
-                      {formatCurrency(calculatedBalanceData.calculatedBalance)}
-                    </span>
-                    <span className="payment-summary-note">
-                      (Difference due to payments before tracking started)
-                    </span>
-                  </div>
-                )}
-                {calculatedBalanceData?.lastPaymentDate && (
-                  <div className="payment-summary-item">
-                    <span className="payment-summary-label">Last Payment:</span>
-                    <span className="payment-summary-value">
-                      {formatDate(calculatedBalanceData.lastPaymentDate)}
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {/* Payment Form - Requirement 6.3 */}
-              {showPaymentForm && (
-                <LoanPaymentForm
-                  loanId={loanData.id}
-                  loanName={loanData.name}
-                  loanType={loanData.loan_type}
-                  currentBalance={currentBalance}
-                  calculatedBalanceData={calculatedBalanceData}
-                  editingPayment={editingPayment}
-                  onPaymentRecorded={handlePaymentRecorded}
-                  onCancel={handleCancelPaymentForm}
-                  disabled={loading || loadingPayments}
-                />
-              )}
-
-              {/* Payment History - Requirement 6.2 */}
-              {/* Requirement 3.4: Hide LoanPaymentHistory for mortgages — PaymentTrackingHistory provides equivalent info */}
-              {/* For historical loans with discrepancy, use actualBalance + totalPayments as starting point */}
-              {loanData.loan_type !== 'mortgage' && (
-                <LoanPaymentHistory
-                  payments={payments}
-                  initialBalance={
-                    calculatedBalanceData?.hasDiscrepancy && calculatedBalanceData?.actualBalance != null
-                      ? calculatedBalanceData.actualBalance + totalPayments
-                      : loanData.initial_balance
-                  }
-                  loading={loadingPayments}
-                  onEdit={handleEditPayment}
-                  onDelete={handleDeletePayment}
-                  disabled={loading || loadingPayments}
-                />
-              )}
-
-              {/* Payment Balance Chart - Requirements 7.1, 7.2, 7.3 */}
-              {/* Show chart when there are payments to visualize */}
-              {/* For historical loans with discrepancy, use actualBalance + totalPayments as starting point */}
-              {payments.length > 0 && (
-                <PaymentBalanceChart
-                  payments={payments}
-                  initialBalance={
-                    calculatedBalanceData?.hasDiscrepancy && calculatedBalanceData?.actualBalance != null
-                      ? calculatedBalanceData.actualBalance + totalPayments
-                      : loanData.initial_balance
-                  }
-                  loanName={loanData.name}
-                />
-              )}
-
-              {/* Migration Utility - Requirements 4.1, 4.5 */}
-              {/* Show migration option when there are balance entries that could be converted */}
-              {/* Only show if no payments exist yet (migration hasn't been done) */}
-              {balanceHistory.length >= 2 && payments.length === 0 && !showMigrationUtility && (
-                <div className="loan-migration-prompt">
-                  <div className="migration-prompt-content">
-                    <span className="migration-prompt-icon">📊</span>
-                    <div className="migration-prompt-text">
-                      <span className="migration-prompt-title">Have existing balance entries?</span>
-                      <span className="migration-prompt-description">
-                        {balanceHistory.length} balance entries available for migration
-                      </span>
-                    </div>
-                  </div>
-                  <button
-                    className="loan-migrate-button"
-                    onClick={handleShowMigrationUtility}
-                    disabled={loading || loadingPayments}
-                  >
-                    Migrate Balances
-                  </button>
-                </div>
-              )}
-
-              {/* Migration Utility Component */}
-              {showMigrationUtility && (
-                <MigrationUtility
-                  loanId={loanData.id}
-                  loanName={loanData.name}
-                  onMigrationComplete={handleMigrationComplete}
-                  onClose={handleCloseMigrationUtility}
-                  disabled={loading || loadingPayments}
-                />
-              )}
-            </div>
           )}
 
           {/* Balance History Section - For lines of credit only */}

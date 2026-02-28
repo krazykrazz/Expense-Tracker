@@ -5,7 +5,6 @@
  * - Current Status (rate, daily interest, payment info)
  * - Payoff Projections (current vs minimum comparison)
  * - What-If Scenarios (extra payment calculator)
- * - Payment History (tracking payment changes over time)
  * 
  * Requirements: 6.1, 6.2, 6.3, 6.4, 6.5
  */
@@ -15,13 +14,9 @@ import './MortgageInsightsPanel.css';
 import CurrentStatusInsights from './CurrentStatusInsights';
 import PayoffProjectionInsights from './PayoffProjectionInsights';
 import ScenarioAnalysisInsights from './ScenarioAnalysisInsights';
-import PaymentTrackingHistory from './PaymentTrackingHistory';
 import { 
   getMortgageInsights, 
-  getMortgagePayments,
   createMortgagePayment,
-  updateMortgagePayment,
-  deleteMortgagePayment,
   calculateScenario,
   updateMortgageRate
 } from '../services/mortgageInsightsApi';
@@ -35,18 +30,15 @@ const logger = createLogger('MortgageInsightsPanel');
 const SECTION_KEYS = {
   CURRENT_STATUS: 'currentStatus',
   PROJECTIONS: 'projections',
-  SCENARIOS: 'scenarios',
-  PAYMENT_HISTORY: 'paymentHistory'
+  SCENARIOS: 'scenarios'
 };
 
 const MortgageInsightsPanel = ({ mortgageId, mortgageData, paymentDueDay }) => {
   // Data states
   const [insights, setInsights] = useState(null);
-  const [payments, setPayments] = useState([]);
   
   // Loading states - Requirement 6.4
   const [loadingInsights, setLoadingInsights] = useState(true);
-  const [loadingPayments, setLoadingPayments] = useState(true);
   
   // Error state
   const [error, setError] = useState(null);
@@ -55,8 +47,7 @@ const MortgageInsightsPanel = ({ mortgageId, mortgageData, paymentDueDay }) => {
   const [collapsedSections, setCollapsedSections] = useState({
     [SECTION_KEYS.CURRENT_STATUS]: false,
     [SECTION_KEYS.PROJECTIONS]: false,
-    [SECTION_KEYS.SCENARIOS]: false,
-    [SECTION_KEYS.PAYMENT_HISTORY]: true // Start collapsed
+    [SECTION_KEYS.SCENARIOS]: false
   });
 
   /**
@@ -80,31 +71,11 @@ const MortgageInsightsPanel = ({ mortgageId, mortgageData, paymentDueDay }) => {
   }, [mortgageId]);
 
   /**
-   * Fetch payment history
-   */
-  const fetchPayments = useCallback(async () => {
-    if (!mortgageId) return;
-    
-    setLoadingPayments(true);
-    
-    try {
-      const data = await getMortgagePayments(mortgageId);
-      setPayments(data || []);
-    } catch (err) {
-      logger.error('Error fetching payment history:', err);
-      // Don't set error for payments - it's not critical
-    } finally {
-      setLoadingPayments(false);
-    }
-  }, [mortgageId]);
-
-  /**
    * Initial data fetch
    */
   useEffect(() => {
     fetchInsights();
-    fetchPayments();
-  }, [fetchInsights, fetchPayments]);
+  }, [fetchInsights]);
 
   /**
    * Handle adding/editing payment from CurrentStatusInsights
@@ -112,13 +83,12 @@ const MortgageInsightsPanel = ({ mortgageId, mortgageData, paymentDueDay }) => {
   const handleEditPayment = useCallback(async (paymentData) => {
     try {
       await createMortgagePayment(mortgageId, paymentData);
-      // Refresh both insights and payments
-      await Promise.all([fetchInsights(), fetchPayments()]);
+      await fetchInsights();
     } catch (err) {
       logger.error('Error creating payment:', err);
       throw err;
     }
-  }, [mortgageId, fetchInsights, fetchPayments]);
+  }, [mortgageId, fetchInsights]);
 
   /**
    * Handle updating interest rate (for variable rate mortgages)
@@ -133,45 +103,6 @@ const MortgageInsightsPanel = ({ mortgageId, mortgageData, paymentDueDay }) => {
       throw err;
     }
   }, [mortgageId, fetchInsights]);
-
-  /**
-   * Handle adding payment from PaymentTrackingHistory
-   */
-  const handleAddPayment = useCallback(async (paymentData) => {
-    try {
-      await createMortgagePayment(mortgageId, paymentData);
-      await Promise.all([fetchInsights(), fetchPayments()]);
-    } catch (err) {
-      logger.error('Error adding payment:', err);
-      throw err;
-    }
-  }, [mortgageId, fetchInsights, fetchPayments]);
-
-  /**
-   * Handle updating payment
-   */
-  const handleUpdatePayment = useCallback(async (paymentId, paymentData) => {
-    try {
-      await updateMortgagePayment(mortgageId, paymentId, paymentData);
-      await Promise.all([fetchInsights(), fetchPayments()]);
-    } catch (err) {
-      logger.error('Error updating payment:', err);
-      throw err;
-    }
-  }, [mortgageId, fetchInsights, fetchPayments]);
-
-  /**
-   * Handle deleting payment
-   */
-  const handleDeletePayment = useCallback(async (paymentId) => {
-    try {
-      await deleteMortgagePayment(mortgageId, paymentId);
-      await Promise.all([fetchInsights(), fetchPayments()]);
-    } catch (err) {
-      logger.error('Error deleting payment:', err);
-      throw err;
-    }
-  }, [mortgageId, fetchInsights, fetchPayments]);
 
   /**
    * Handle scenario calculation
@@ -197,7 +128,6 @@ const MortgageInsightsPanel = ({ mortgageId, mortgageData, paymentDueDay }) => {
 
   // Check if we have sufficient data for insights - Requirement 6.5
   const hasBalanceData = insights?.dataStatus?.hasBalanceData;
-  const hasPaymentData = insights?.dataStatus?.hasPaymentData;
   const isLoading = loadingInsights;
 
   // Handle missing mortgage data
@@ -229,7 +159,7 @@ const MortgageInsightsPanel = ({ mortgageId, mortgageData, paymentDueDay }) => {
           <p>{error}</p>
           <button 
             className="retry-button"
-            onClick={() => { fetchInsights(); fetchPayments(); }}
+            onClick={() => { fetchInsights(); }}
           >
             Retry
           </button>
@@ -319,32 +249,6 @@ const MortgageInsightsPanel = ({ mortgageId, mortgageData, paymentDueDay }) => {
           )}
         </div>
 
-        {/* Payment History Section - Requirement 6.1 */}
-        <div className={`insights-section-wrapper ${collapsedSections[SECTION_KEYS.PAYMENT_HISTORY] ? 'collapsed' : ''}`}>
-          <button 
-            className="section-toggle"
-            onClick={() => toggleSection(SECTION_KEYS.PAYMENT_HISTORY)}
-            aria-expanded={!collapsedSections[SECTION_KEYS.PAYMENT_HISTORY]}
-          >
-            <span className="section-icon">📝</span>
-            <span className="section-title">Payment History</span>
-            {payments.length > 0 && (
-              <span className="section-badge">{payments.length}</span>
-            )}
-            <span className="toggle-icon">{collapsedSections[SECTION_KEYS.PAYMENT_HISTORY] ? '▶' : '▼'}</span>
-          </button>
-          {!collapsedSections[SECTION_KEYS.PAYMENT_HISTORY] && (
-            <div className="section-content">
-              <PaymentTrackingHistory 
-                payments={payments}
-                onAddPayment={handleAddPayment}
-                onUpdatePayment={handleUpdatePayment}
-                onDeletePayment={handleDeletePayment}
-                loading={loadingPayments}
-              />
-            </div>
-          )}
-        </div>
       </div>
 
       {/* Last Updated Info */}

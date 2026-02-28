@@ -145,12 +145,13 @@ async function updatePayment(req, res) {
       return res.status(400).json({ error: 'Payment does not belong to this loan' });
     }
     
-    const { amount, payment_date, notes } = req.body;
+    const { amount, payment_date, notes, balanceOverride } = req.body;
     
     const updatedPayment = await loanPaymentService.updatePayment(paymentId, {
       amount,
       payment_date,
-      notes
+      notes,
+      balanceOverride: balanceOverride !== undefined ? parseFloat(balanceOverride) : undefined
     });
     
     if (!updatedPayment) {
@@ -164,7 +165,8 @@ async function updatePayment(req, res) {
     }
     if (error.message === 'Payment tracking is only available for loans and mortgages' ||
         error.message.includes('Payment amount') ||
-        error.message.includes('Payment date')) {
+        error.message.includes('Payment date') ||
+        error.message.includes('Balance override')) {
       return res.status(400).json({ error: error.message });
     }
     res.status(500).json({ error: error.message });

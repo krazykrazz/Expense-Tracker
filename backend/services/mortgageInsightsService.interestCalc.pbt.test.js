@@ -31,7 +31,7 @@ describe('MortgageInsightsService Interest Calculation Property Tests', () => {
    * For any mortgage with positive balance B and positive annual rate R,
    * the calculated daily interest shall equal B × (R/100) / 365,
    * weekly interest shall equal daily × 7,
-   * and monthly interest shall equal daily × 30.44 (within floating-point tolerance).
+   * and monthly interest shall equal B × (R/100) / 12 using the canonical shared formula.
    *
    * **Validates: Requirements 3.1, 3.3, 3.4**
    */
@@ -77,7 +77,7 @@ describe('MortgageInsightsService Interest Calculation Property Tests', () => {
       );
     });
 
-    test('Monthly interest equals daily × 30.44', () => {
+    test('Monthly interest equals balance × (rate/100) / 12 (canonical formula)', () => {
       fc.assert(
         fc.property(
           safeBalance(),
@@ -85,11 +85,10 @@ describe('MortgageInsightsService Interest Calculation Property Tests', () => {
           (balance, rate) => {
             const result = mortgageInsightsService.calculateInterestBreakdown(balance, rate);
             
-            const expectedDaily = balance * (rate / 100) / 365;
-            const expectedMonthly = expectedDaily * 30.44;
+            const expectedMonthly = Math.round(balance * (rate / 100) / 12 * 100) / 100;
             
-            // Allow for rounding tolerance
-            expect(Math.abs(result.monthly - Math.round(expectedMonthly * 100) / 100)).toBeLessThanOrEqual(0.01);
+            // Exact match — both use the same canonical formula
+            expect(result.monthly).toBe(expectedMonthly);
             
             return true;
           }

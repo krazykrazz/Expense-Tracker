@@ -4,7 +4,7 @@
  */
 
 import { API_ENDPOINTS } from '../config.js';
-import { apiGet, apiPost, apiPut, apiDelete, logApiError } from '../utils/apiClient.js';
+import { apiGet, apiPost, apiPut, logApiError } from '../utils/apiClient.js';
 
 /**
  * Get mortgage insights including interest breakdown, projections, and status
@@ -21,20 +21,6 @@ export const getMortgageInsights = async (mortgageId) => {
 };
 
 /**
- * Get payment history for a mortgage
- * @param {number} mortgageId - Mortgage loan ID
- * @returns {Promise<Array>} Array of payment entries in chronological order
- */
-export const getMortgagePayments = async (mortgageId) => {
-  try {
-    return await apiGet(API_ENDPOINTS.LOAN_PAYMENTS(mortgageId), 'fetch mortgage payments');
-  } catch (error) {
-    logApiError('fetching mortgage payments', error);
-    throw error;
-  }
-};
-
-/**
  * Create a new mortgage payment entry
  * @param {number} mortgageId - Mortgage loan ID
  * @param {Object} data - { payment_amount, effective_date, notes? }
@@ -45,37 +31,6 @@ export const createMortgagePayment = async (mortgageId, data) => {
     return await apiPost(API_ENDPOINTS.LOAN_PAYMENTS(mortgageId), data, 'create mortgage payment');
   } catch (error) {
     logApiError('creating mortgage payment', error);
-    throw error;
-  }
-};
-
-/**
- * Update an existing mortgage payment entry
- * @param {number} mortgageId - Mortgage loan ID
- * @param {number} paymentId - Payment entry ID
- * @param {Object} data - { payment_amount, effective_date, notes? }
- * @returns {Promise<Object>} Updated payment entry
- */
-export const updateMortgagePayment = async (mortgageId, paymentId, data) => {
-  try {
-    return await apiPut(API_ENDPOINTS.LOAN_PAYMENT(mortgageId, paymentId), data, 'update mortgage payment');
-  } catch (error) {
-    logApiError('updating mortgage payment', error);
-    throw error;
-  }
-};
-
-/**
- * Delete a mortgage payment entry
- * @param {number} mortgageId - Mortgage loan ID
- * @param {number} paymentId - Payment entry ID
- * @returns {Promise<Object>} Success response
- */
-export const deleteMortgagePayment = async (mortgageId, paymentId) => {
-  try {
-    return await apiDelete(API_ENDPOINTS.LOAN_PAYMENT(mortgageId, paymentId), 'delete mortgage payment');
-  } catch (error) {
-    logApiError('deleting mortgage payment', error);
     throw error;
   }
 };

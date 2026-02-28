@@ -151,7 +151,6 @@ CREATE TABLE mortgage_payments (
 - `CurrentStatusInsights.jsx` - Current status section
 - `PayoffProjectionInsights.jsx` - Payoff projections
 - `ScenarioAnalysisInsights.jsx` - What-if calculator
-- `PaymentTrackingHistory.jsx` - Payment history management
 
 ### Backend
 - `mortgageService.js` - Amortization and equity calculations

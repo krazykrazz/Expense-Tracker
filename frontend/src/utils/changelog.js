@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.2.3',
+    date: 'February 28, 2026',
+    added: [],
+    changed: ['Fix: use calculated balance as source of truth, fix PBT test cleanup'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.2.2',
     date: 'February 27, 2026',
     added: [],

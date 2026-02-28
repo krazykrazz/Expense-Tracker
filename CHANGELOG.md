@@ -6,6 +6,11 @@
 
 
 
+
+
+## [1.2.3] - 2026-02-28
+
+### Fix: use calculated balance as source of truth, fix PBT test cleanup
 ## [1.2.2] - 2026-02-27
 
 ### CI pipeline hardening, health check fixes, script cleanup

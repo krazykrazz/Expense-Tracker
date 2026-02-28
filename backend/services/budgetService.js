@@ -236,28 +236,16 @@ class BudgetService {
       // Get budgets from previous month
       const prevBudgets = await budgetRepository.findForCopy(prevYear, prevMonth);
 
-      // If previous month has budgets, copy them to current month
+      // If previous month has budgets, return them as transient carried-forward objects
+      // without persisting to the database (read-only carry-forward)
       if (prevBudgets.length > 0) {
-        const createdBudgets = [];
-        
-        for (const prevBudget of prevBudgets) {
-          try {
-            const newBudget = await budgetRepository.create({
-              year: yearNum,
-              month: monthNum,
-              category: prevBudget.category,
-              limit: prevBudget.limit
-            });
-            createdBudgets.push(newBudget);
-          } catch (err) {
-            // If duplicate error occurs (shouldn't happen but handle it), skip
-            if (!err.message || !err.message.includes('UNIQUE constraint failed')) {
-              throw err;
-            }
-          }
-        }
-
-        budgets = createdBudgets;
+        budgets = prevBudgets.map(prevBudget => ({
+          year: yearNum,
+          month: monthNum,
+          category: prevBudget.category,
+          limit: prevBudget.limit,
+          carriedForward: true
+        }));
       }
     }
 
@@ -641,6 +629,7 @@ class BudgetService {
     for (const category of BudgetService.BUDGETABLE_CATEGORIES) {
       const history = [];
       let totalSpent = 0;
+      let totalBudgeted = 0;
       let monthsWithBudget = 0;
       let monthsBudgetMet = 0;
 
@@ -662,6 +651,7 @@ class BudgetService {
 
         if (budget) {
           monthsWithBudget++;
+          totalBudgeted += budget.limit;
           if (spent <= budget.limit) {
             monthsBudgetMet++;
           }
@@ -678,10 +668,16 @@ class BudgetService {
         ? totalSpent / monthlyData.length 
         : 0;
 
+      // Calculate average budgeted (only across months that have a budget)
+      const averageBudgeted = monthsWithBudget > 0 
+        ? totalBudgeted / monthsWithBudget 
+        : 0;
+
       categories[category] = {
         history,
         successRate,
-        averageSpent
+        averageSpent,
+        averageBudgeted
       };
     }
 

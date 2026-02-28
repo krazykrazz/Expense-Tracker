@@ -2,7 +2,10 @@
     [Parameter(Mandatory=$true)]
     [string]$FeatureName,
     [switch]$SkipTests,
-    [switch]$Force
+    [switch]$Force,
+    [switch]$CreateIssue,
+    [ValidateSet('bug', 'enhancement', 'chore')]
+    [string]$IssueLabel = 'bug'
 )
 
 $BranchName = "feature/$FeatureName"
@@ -217,7 +220,41 @@ if (Test-Path $specPath) {
 # Create PR
 # Generate PR title from feature name
 $prTitle = ConvertTo-PRTitle -FeatureName $FeatureName
-$prBody = "## Summary`n`nThis PR promotes the ``$FeatureName`` feature to main.`n`n## Checklist`n`n- [ ] CI passes`n- [ ] Code reviewed`n- [ ] Ready to merge"
+
+# Create GitHub issue if requested
+$issueNumber = $null
+if ($CreateIssue) {
+    $ghCheck = Get-Command gh -ErrorAction SilentlyContinue
+    if ($ghCheck) {
+        Write-Host ""
+        Write-Host "📝 Creating GitHub issue..." -ForegroundColor Yellow
+        
+        $issueTitle = $prTitle
+        $issueBody = "This PR promotes the ``$FeatureName`` feature to main."
+        $issueResult = gh issue create --title $issueTitle --body $issueBody --label $IssueLabel 2>&1
+        
+        if ($LASTEXITCODE -eq 0) {
+            # Extract issue number from URL (e.g., https://github.com/user/repo/issues/123)
+            if ($issueResult -match '/issues/(\d+)') {
+                $issueNumber = $Matches[1]
+                Write-Host "✅ Issue #$issueNumber created: $issueResult" -ForegroundColor Green
+            } else {
+                Write-Host "✅ Issue created: $issueResult" -ForegroundColor Green
+            }
+        } else {
+            Write-Host "⚠️  Failed to create issue: $issueResult" -ForegroundColor Yellow
+            Write-Host "Continuing with PR creation without issue link..." -ForegroundColor Yellow
+        }
+    } else {
+        Write-Host "⚠️  GitHub CLI (gh) not found - skipping issue creation" -ForegroundColor Yellow
+    }
+}
+
+$prBody = "## Summary`n`nThis PR promotes the ``$FeatureName`` feature to main."
+if ($issueNumber) {
+    $prBody += "`n`nCloses #$issueNumber"
+}
+$prBody += "`n`n## Checklist`n`n- [ ] CI passes`n- [ ] Code reviewed`n- [ ] Ready to merge"
 
 # Push feature branch to origin
 Write-Host ""

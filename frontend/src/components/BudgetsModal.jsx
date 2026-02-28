@@ -180,7 +180,7 @@ const ManageTabContent = ({ year, month, onBudgetUpdated, focusedCategory }) => 
     setError(null);
     try {
       const result = await copyBudgets(prevYear, prevMonth, year, month, true);
-      if (result.copied === 0) {
+      if (result.copied === 0 && result.overwritten === 0) {
         alert(`No budgets found in ${getMonthNameLong(prevMonth)} ${prevYear} to copy.`);
       } else {
         await fetchBudgets();

@@ -519,3 +519,289 @@ describe('BalanceCalculationService Property Tests - Balance Calculation Formula
     });
   });
 });
+
+/**
+ * Property Tests for Anchor-Based Balance Calculation
+ * 
+ * Tests the hybrid approach where loans with balance history use the most recent
+ * snapshot as an anchor, subtracting only payments after that snapshot month.
+ */
+describe('BalanceCalculationService Property Tests - Anchor-Based Calculation', () => {
+  beforeEach(() => {
+    jest.resetModules();
+  });
+
+  afterEach(async () => {
+    if (mockDb) {
+      await closeDatabase(mockDb);
+      mockDb = null;
+    }
+  });
+
+  // Helper to insert a balance entry directly
+  function insertBalanceEntry(db, entry) {
+    return new Promise((resolve, reject) => {
+      const sql = `
+        INSERT INTO loan_balances (loan_id, year, month, remaining_balance, interest_rate)
+        VALUES (?, ?, ?, ?, ?)
+      `;
+      const params = [
+        entry.loan_id,
+        entry.year,
+        entry.month,
+        entry.remaining_balance,
+        entry.interest_rate || 0
+      ];
+      db.run(sql, params, function(err) {
+        if (err) {
+          reject(err);
+          return;
+        }
+        resolve({ id: this.lastID, ...entry });
+      });
+    });
+  }
+
+  test('Anchor-based: balance equals snapshot when all payments are at or before snapshot month', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        loanArb,
+        // Snapshot balance (what the loan was at when tracking started)
+        safeAmount({ min: 1000, max: 50000 }),
+        // Migrated payments (dates before the snapshot month)
+        fc.array(
+          fc.record({
+            amount: safeAmount({ min: 10, max: 2000 }),
+            notes: fc.option(safeString({ maxLength: 100 }), { nil: null })
+          }),
+          { minLength: 0, maxLength: 5 }
+        ),
+        async (loan, snapshotBalance, migratedPayments) => {
+          mockDb = await createTestDatabase();
+          
+          jest.resetModules();
+          jest.mock('../database/db', () => ({
+            getDatabase: jest.fn(() => Promise.resolve(mockDb))
+          }));
+          
+          const balanceCalculationService = require('./balanceCalculationService');
+
+          // Create loan with a large initial_balance (original loan amount)
+          const createdLoan = await insertLoan(mockDb, {
+            ...loan,
+            initial_balance: loan.initial_balance + snapshotBalance // Ensure initial > snapshot
+          });
+
+          // Insert a balance snapshot for 2024-06
+          await insertBalanceEntry(mockDb, {
+            loan_id: createdLoan.id,
+            year: 2024,
+            month: 6,
+            remaining_balance: snapshotBalance
+          });
+
+          // Insert migrated payments with dates BEFORE the snapshot month
+          for (let i = 0; i < migratedPayments.length; i++) {
+            const month = Math.max(1, (i % 5) + 1); // Jan-May 2024
+            await insertPayment(mockDb, {
+              loan_id: createdLoan.id,
+              amount: migratedPayments[i].amount,
+              payment_date: `2024-${String(month).padStart(2, '0')}-15`,
+              notes: migratedPayments[i].notes
+            });
+          }
+
+          const result = await balanceCalculationService.calculateBalance(createdLoan.id);
+
+          // Balance should equal the snapshot since no payments are after it
+          expect(result.currentBalance).toBeCloseTo(snapshotBalance, 2);
+          expect(result.anchorBased).toBe(true);
+
+          await closeDatabase(mockDb);
+          mockDb = null;
+          return true;
+        }
+      ),
+      dbPbtOptions()
+    );
+  });
+
+  test('Anchor-based: balance equals snapshot minus payments after snapshot month', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        loanArb,
+        // Snapshot balance
+        safeAmount({ min: 5000, max: 50000 }),
+        // Payments after the snapshot
+        fc.array(
+          fc.record({
+            amount: safeAmount({ min: 100, max: 1000 })
+          }),
+          { minLength: 1, maxLength: 3 }
+        ),
+        async (loan, snapshotBalance, newPayments) => {
+          mockDb = await createTestDatabase();
+          
+          jest.resetModules();
+          jest.mock('../database/db', () => ({
+            getDatabase: jest.fn(() => Promise.resolve(mockDb))
+          }));
+          
+          const balanceCalculationService = require('./balanceCalculationService');
+
+          const createdLoan = await insertLoan(mockDb, {
+            ...loan,
+            initial_balance: loan.initial_balance + snapshotBalance
+          });
+
+          // Insert snapshot for 2024-06
+          await insertBalanceEntry(mockDb, {
+            loan_id: createdLoan.id,
+            year: 2024,
+            month: 6,
+            remaining_balance: snapshotBalance
+          });
+
+          // Insert payments AFTER the snapshot month (July 2024+)
+          let totalAfterSnapshot = 0;
+          for (let i = 0; i < newPayments.length; i++) {
+            const month = 7 + i; // Jul, Aug, Sep...
+            await insertPayment(mockDb, {
+              loan_id: createdLoan.id,
+              amount: newPayments[i].amount,
+              payment_date: `2024-${String(month).padStart(2, '0')}-15`,
+              notes: null
+            });
+            totalAfterSnapshot += newPayments[i].amount;
+          }
+
+          const result = await balanceCalculationService.calculateBalance(createdLoan.id);
+
+          const expected = Math.max(0, snapshotBalance - totalAfterSnapshot);
+          expect(result.currentBalance).toBeCloseTo(expected, 2);
+          expect(result.anchorBased).toBe(true);
+
+          await closeDatabase(mockDb);
+          mockDb = null;
+          return true;
+        }
+      ),
+      dbPbtOptions()
+    );
+  });
+
+  test('No snapshot: falls back to initial_balance minus all payments', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        loanArb,
+        fc.array(paymentDataArb, { minLength: 1, maxLength: 5 }),
+        async (loan, payments) => {
+          mockDb = await createTestDatabase();
+          
+          jest.resetModules();
+          jest.mock('../database/db', () => ({
+            getDatabase: jest.fn(() => Promise.resolve(mockDb))
+          }));
+          
+          const balanceCalculationService = require('./balanceCalculationService');
+
+          const createdLoan = await insertLoan(mockDb, loan);
+
+          // No balance entries — just payments
+          let totalPayments = 0;
+          for (const p of payments) {
+            await insertPayment(mockDb, { loan_id: createdLoan.id, ...p });
+            totalPayments += p.amount;
+          }
+
+          const result = await balanceCalculationService.calculateBalance(createdLoan.id);
+
+          const expected = Math.max(0, loan.initial_balance - totalPayments);
+          expect(result.currentBalance).toBeCloseTo(expected, 2);
+          expect(result.anchorBased).toBe(false);
+
+          await closeDatabase(mockDb);
+          mockDb = null;
+          return true;
+        }
+      ),
+      dbPbtOptions()
+    );
+  });
+
+  test('Anchor-based: mixed payments before and after snapshot', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        loanArb,
+        safeAmount({ min: 5000, max: 50000 }),
+        // Payments before snapshot
+        fc.array(
+          fc.record({ amount: safeAmount({ min: 100, max: 500 }) }),
+          { minLength: 1, maxLength: 3 }
+        ),
+        // Payments after snapshot
+        fc.array(
+          fc.record({ amount: safeAmount({ min: 100, max: 500 }) }),
+          { minLength: 1, maxLength: 3 }
+        ),
+        async (loan, snapshotBalance, beforePayments, afterPayments) => {
+          mockDb = await createTestDatabase();
+          
+          jest.resetModules();
+          jest.mock('../database/db', () => ({
+            getDatabase: jest.fn(() => Promise.resolve(mockDb))
+          }));
+          
+          const balanceCalculationService = require('./balanceCalculationService');
+
+          const createdLoan = await insertLoan(mockDb, {
+            ...loan,
+            initial_balance: loan.initial_balance + snapshotBalance
+          });
+
+          // Snapshot at 2024-06
+          await insertBalanceEntry(mockDb, {
+            loan_id: createdLoan.id,
+            year: 2024,
+            month: 6,
+            remaining_balance: snapshotBalance
+          });
+
+          // Payments BEFORE snapshot (should be ignored in anchor calculation)
+          for (let i = 0; i < beforePayments.length; i++) {
+            await insertPayment(mockDb, {
+              loan_id: createdLoan.id,
+              amount: beforePayments[i].amount,
+              payment_date: `2024-${String(Math.max(1, (i % 5) + 1)).padStart(2, '0')}-15`,
+              notes: null
+            });
+          }
+
+          // Payments AFTER snapshot (should be subtracted from anchor)
+          let totalAfter = 0;
+          for (let i = 0; i < afterPayments.length; i++) {
+            await insertPayment(mockDb, {
+              loan_id: createdLoan.id,
+              amount: afterPayments[i].amount,
+              payment_date: `2024-${String(7 + i).padStart(2, '0')}-15`,
+              notes: null
+            });
+            totalAfter += afterPayments[i].amount;
+          }
+
+          const result = await balanceCalculationService.calculateBalance(createdLoan.id);
+
+          // Only payments after snapshot should affect the balance
+          const expected = Math.max(0, snapshotBalance - totalAfter);
+          expect(result.currentBalance).toBeCloseTo(expected, 2);
+          expect(result.anchorBased).toBe(true);
+
+          await closeDatabase(mockDb);
+          mockDb = null;
+          return true;
+        }
+      ),
+      dbPbtOptions()
+    );
+  });
+});

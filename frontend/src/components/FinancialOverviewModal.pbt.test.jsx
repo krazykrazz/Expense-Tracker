@@ -171,6 +171,7 @@ describe('FinancialOverviewModal PBT', () => {
           fc.array(loanArb, { minLength: 0, maxLength: 3 }).map(uniqueById),
           fc.array(investmentArb, { minLength: 0, maxLength: 3 }).map(uniqueById),
           async (creditCards, otherMethods, loans, investments) => {
+            cleanup(); // Clean up any previous renders to avoid duplicate testid elements
             // Ensure no ID collisions between CC and other methods
             const usedIds = new Set(creditCards.map(c => c.id));
             const safeOthers = otherMethods.filter(m => !usedIds.has(m.id));
@@ -181,25 +182,25 @@ describe('FinancialOverviewModal PBT', () => {
             investmentApi.getAllInvestments.mockResolvedValue(investments);
             paymentMethodApi.getPaymentMethods.mockResolvedValue(paymentMethods);
 
-            const { unmount } = render(
+            const { unmount, container } = render(
               <FinancialOverviewModal {...defaultModalProps} />
             );
 
             await waitFor(() => {
-              expect(screen.getByTestId('loans-section')).toHaveTextContent(`Loans (${loans.length})`);
+              expect(within(container).getByTestId('loans-section')).toHaveTextContent(`Loans (${loans.length})`);
             });
 
-            expect(screen.getByTestId('investments-section')).toHaveTextContent(`Investments (${investments.length})`);
-            expect(screen.getByTestId('payment-methods-section')).toHaveTextContent(`Payment Methods (${totalPmCount})`);
+            expect(within(container).getByTestId('investments-section')).toHaveTextContent(`Investments (${investments.length})`);
+            expect(within(container).getByTestId('payment-methods-section')).toHaveTextContent(`Payment Methods (${totalPmCount})`);
 
             if (loans.length === 0) {
-              expect(screen.getByTestId('loans-section')).toHaveTextContent(/No active loans/i);
+              expect(within(container).getByTestId('loans-section')).toHaveTextContent(/No active loans/i);
             }
             if (investments.length === 0) {
-              expect(screen.getByTestId('investments-section')).toHaveTextContent(/No investments yet/i);
+              expect(within(container).getByTestId('investments-section')).toHaveTextContent(/No investments yet/i);
             }
             if (totalPmCount === 0) {
-              expect(screen.getByTestId('payment-methods-section')).toHaveTextContent(/No payment methods/i);
+              expect(within(container).getByTestId('payment-methods-section')).toHaveTextContent(/No payment methods/i);
             }
 
             unmount();

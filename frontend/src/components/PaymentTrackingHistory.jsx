@@ -153,13 +153,13 @@ const PaymentTrackingHistory = ({
   return (
     <div className="payment-tracking-history">
       <div className="payment-history-header">
-        <h4>Payment History</h4>
+        <h4>Payment Amount History</h4>
         <button
           className="payment-add-button"
           onClick={handleShowAddForm}
           disabled={loading || showAddForm}
         >
-          + Add Payment Entry
+          + Add Payment Amount Change
         </button>
       </div>
 
@@ -231,8 +231,8 @@ const PaymentTrackingHistory = ({
       ) : payments.length === 0 ? (
         <div className="payment-history-empty">
           <span className="empty-icon">📝</span>
-          <p>No payment entries yet</p>
-          <p className="empty-hint">Add your first payment entry to track payment changes over time</p>
+          <p>No payment amount changes recorded yet</p>
+          <p className="empty-hint">Track when your recurring mortgage payment amount changes (e.g., after a rate renewal)</p>
         </div>
       ) : (
         <div className="payment-history-list">

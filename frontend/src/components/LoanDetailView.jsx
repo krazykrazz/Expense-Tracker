@@ -1238,6 +1238,7 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
                   loanName={loanData.name}
                   loanType={loanData.loan_type}
                   currentBalance={currentBalance}
+                  calculatedBalanceData={calculatedBalanceData}
                   editingPayment={editingPayment}
                   onPaymentRecorded={handlePaymentRecorded}
                   onCancel={handleCancelPaymentForm}
@@ -1246,19 +1247,22 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
               )}
 
               {/* Payment History - Requirement 6.2 */}
+              {/* Requirement 3.4: Hide LoanPaymentHistory for mortgages — PaymentTrackingHistory provides equivalent info */}
               {/* For historical loans with discrepancy, use actualBalance + totalPayments as starting point */}
-              <LoanPaymentHistory
-                payments={payments}
-                initialBalance={
-                  calculatedBalanceData?.hasDiscrepancy && calculatedBalanceData?.actualBalance != null
-                    ? calculatedBalanceData.actualBalance + totalPayments
-                    : loanData.initial_balance
-                }
-                loading={loadingPayments}
-                onEdit={handleEditPayment}
-                onDelete={handleDeletePayment}
-                disabled={loading || loadingPayments}
-              />
+              {loanData.loan_type !== 'mortgage' && (
+                <LoanPaymentHistory
+                  payments={payments}
+                  initialBalance={
+                    calculatedBalanceData?.hasDiscrepancy && calculatedBalanceData?.actualBalance != null
+                      ? calculatedBalanceData.actualBalance + totalPayments
+                      : loanData.initial_balance
+                  }
+                  loading={loadingPayments}
+                  onEdit={handleEditPayment}
+                  onDelete={handleDeletePayment}
+                  disabled={loading || loadingPayments}
+                />
+              )}
 
               {/* Payment Balance Chart - Requirements 7.1, 7.2, 7.3 */}
               {/* Show chart when there are payments to visualize */}

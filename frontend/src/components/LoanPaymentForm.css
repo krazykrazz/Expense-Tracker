@@ -304,6 +304,54 @@
   cursor: not-allowed;
 }
 
+/* Balance Override Section */
+.loan-payment-override-section {
+  border-top: 1px dashed var(--border-default);
+  padding-top: var(--spacing-3);
+}
+
+.loan-payment-override-toggle {
+  font-size: var(--text-sm);
+  color: var(--color-primary);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-weight: var(--font-medium);
+  font-family: var(--font-sans);
+  transition: var(--transition-fast);
+}
+
+.loan-payment-override-toggle:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.loan-payment-override-toggle:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.loan-payment-override-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+  margin-top: var(--spacing-2);
+}
+
+.loan-payment-inline-error {
+  font-size: var(--text-xs);
+  color: var(--color-negative);
+}
+
+.loan-payment-override-hint {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.loan-payment-input.input-error {
+  border-color: var(--color-negative);
+}
+
 /* Mobile Responsive */
 @media (max-width: 600px) {
   .loan-payment-form-container {

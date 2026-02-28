@@ -9,7 +9,11 @@
 
 const loanPaymentRepository = require('../repositories/loanPaymentRepository');
 const loanRepository = require('../repositories/loanRepository');
+const loanBalanceRepository = require('../repositories/loanBalanceRepository');
 const activityLogService = require('./activityLogService');
+const loanBalanceService = require('./loanBalanceService');
+const balanceCalculationService = require('./balanceCalculationService');
+const logger = require('../config/logger');
 
 class LoanPaymentService {
   /**
@@ -90,6 +94,13 @@ class LoanPaymentService {
     
     // Validate payment data
     this.validatePayment(paymentData);
+
+    // Validate balance override if provided
+    if (paymentData.balanceOverride !== undefined && paymentData.balanceOverride !== null) {
+      if (typeof paymentData.balanceOverride !== 'number' || isNaN(paymentData.balanceOverride) || paymentData.balanceOverride < 0) {
+        throw new Error('Balance override must be a non-negative number');
+      }
+    }
     
     // Create the payment
     const payment = await loanPaymentRepository.create({
@@ -98,8 +109,59 @@ class LoanPaymentService {
       payment_date: paymentData.payment_date,
       notes: paymentData.notes || null
     });
+
+    // Handle balance override for mortgages
+    if (loan.loan_type === 'mortgage' && paymentData.balanceOverride != null) {
+      const date = new Date(paymentData.payment_date + 'T00:00:00Z');
+      const year = date.getUTCFullYear();
+      const month = date.getUTCMonth() + 1;
+
+      // Get calculated balance for activity log metadata
+      let calculatedValue = null;
+      try {
+        const calcResult = await balanceCalculationService.calculateBalance(loanId);
+        calculatedValue = calcResult.currentBalance;
+      } catch (err) {
+        logger.warn('Failed to get calculated balance for override metadata', { loanId, error: err.message });
+      }
+
+      // Resolve the current rate for the snapshot
+      const snapshots = await loanBalanceRepository.getBalanceHistory(loanId);
+      let rate = balanceCalculationService.resolveRateAtDate(snapshots, year, month);
+      if (rate == null && loan.fixed_interest_rate) {
+        rate = loan.fixed_interest_rate;
+      }
+      // Default to 0 if no rate available (validateBalanceEntry requires a number)
+      if (rate == null) {
+        rate = 0;
+      }
+
+      // Create balance snapshot via existing service
+      await loanBalanceService.createOrUpdateBalance({
+        loan_id: loanId,
+        year,
+        month,
+        remaining_balance: paymentData.balanceOverride,
+        rate
+      });
+
+      // Log balance override event
+      activityLogService.logEvent(
+        'balance_override_applied',
+        'loan_balance',
+        loanId,
+        `Balance override applied for ${loan.name}: ${paymentData.balanceOverride.toFixed(2)}`,
+        {
+          overrideValue: paymentData.balanceOverride,
+          calculatedValue,
+          mortgageName: loan.name,
+          paymentDate: paymentData.payment_date,
+          source: 'balance_override'
+        }
+      );
+    }
     
-    // Log the event
+    // Log the payment creation event
     await activityLogService.logEvent(
       'loan_payment_added',
       'loan_payment',

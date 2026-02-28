@@ -376,6 +376,33 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ---
 
+### 🟢 16a. Mortgage Balance Interest Tracking
+**Status**: Completed  
+**Completed**: February 2026  
+**Priority**: Medium  
+**Effort**: Medium  
+**Spec**: `.kiro/specs/mortgage-balance-interest-tracking/`  
+**Description**: Interest-aware mortgage balance calculation, balance override mechanism, UI label improvements, and formula consolidation.
+
+**Features Delivered**:
+- **Interest Accrual Engine**: Mortgage balances calculated using `(previous_balance + monthly_interest) - payment_amount` with month-by-month walk from anchor snapshot
+- **Shared Interest Utility**: Canonical `calculateMonthlyInterest(balance, annualRate)` function used by both balance engine and mortgage insights
+- **Balance Override**: Optional override field when recording mortgage payments to correct drift from actual statement balance
+- **Renamed Labels**: "Payment Amount History" (was "Payment History") to clarify it tracks payment amount changes, not individual payments
+- **LoanPaymentHistory Hidden for Mortgages**: Individual payment list hidden since mortgage payments are tracked via the balance engine
+- **Interest-Aware Balance History**: Running balance entries include `interestAccrued` and `principalPaid` per payment
+- **Activity Log Integration**: `balance_override_applied` event with override value, calculated value, and mortgage name
+
+**Benefits**:
+- Accurate mortgage balance reflecting real-world interest accrual
+- Users can correct calculation drift with actual statement balances
+- Clearer UI labels reduce confusion between payment amounts and payment records
+- Consolidated interest formula eliminates duplication
+
+**Dependencies**: Extends mortgage tracking (v4.18.0) and loan payment tracking (v4.19.0)
+
+---
+
 ## 🔒 Security & Authentication
 
 ### 🟡 35. Auth Infrastructure (Phase 1)

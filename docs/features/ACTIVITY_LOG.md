@@ -141,6 +141,7 @@ Update events include detailed change tracking showing old → new values for mo
 | `loan_payment_deleted` | loan_payment | Loan payment removed |
 | `loan_balance_updated` | loan_balance | Loan balance created or updated (includes year, month, balance, rate) |
 | `loan_balance_deleted` | loan_balance | Loan balance removed |
+| `balance_override_applied` | loan_balance | Mortgage balance override applied during payment (includes override value, calculated value, mortgage name, source: 'balance_override') |
 | `loan_rate_updated` | loan | Loan interest rate changed (shows previous → new rate) |
 | `investment_added` | investment | New investment created (includes initial_value) |
 | `investment_updated` | investment | Investment modified (shows what changed: name, type) |
@@ -284,6 +285,8 @@ Activity log events include rich metadata to provide complete audit context:
 - Create/delete events include `initial_balance` and `start_date`
 - Paid-off events include `paid_off_date`
 - Rate updates include `previousRate` and `newRate`
+- Balance override events include `overrideValue`, `calculatedValue`, `mortgageName`, and `source: 'balance_override'`
+- Balance snapshots created via override include `source: 'balance_override'` in `loan_balance_updated` metadata
 
 **Investment Events**:
 - Create/delete events include `initial_value`

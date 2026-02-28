@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { API_ENDPOINTS } from '../config';
 import { useFilterContext } from './FilterContext';
 import { authAwareFetch } from '../utils/fetchProvider';
@@ -26,10 +26,24 @@ export function ExpenseProvider({ children }) {
   // Budget alert refresh trigger (exposed for AppContent to use)
   const [budgetAlertRefreshTrigger, setBudgetAlertRefreshTrigger] = useState(0);
 
+  // Track previous view parameters so the fetch effect can detect
+  // view-parameter changes vs background refreshes (triggerRefresh).
+  // View-parameter changes show a loading spinner; background refreshes don't.
+  const prevViewParamsRef = useRef(null);
+
   // --- Expense Fetching ---
   useEffect(() => {
+    const currentViewParams = `${selectedYear}-${selectedMonth}-${isGlobalView}-${filterYear}`;
+    const isViewChange = prevViewParamsRef.current !== currentViewParams;
+    prevViewParamsRef.current = currentViewParams;
+
     const fetchExpenses = async () => {
-      setLoading(true);
+      // Only show loading spinner on initial load or view-parameter changes,
+      // not on background refreshes (triggerRefresh). This prevents the
+      // content layout from unmounting/remounting and causing a visual flash.
+      if (isViewChange) {
+        setLoading(true);
+      }
       setError(null);
       try {
         let url;

@@ -600,7 +600,6 @@ function AppContent({ onPaymentMethodsUpdate }) {
           isOpen={showFinancialOverview}
           onClose={() => {
             closeFinancialOverview();
-            triggerRefresh();
           }}
           year={selectedYear}
           month={selectedMonth}

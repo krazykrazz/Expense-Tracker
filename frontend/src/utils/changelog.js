@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.3.2',
+    date: 'March 1, 2026',
+    added: [],
+    changed: ['Fix loan/mortgage reminder balance status check'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.3.1',
     date: 'February 28, 2026',
     added: [],

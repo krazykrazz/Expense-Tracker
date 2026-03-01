@@ -76,8 +76,10 @@ class ReminderRepository {
   }
 
   /**
-   * Get all active loans with their balance status for a specific month
-   * Only includes loans that have started (start_date <= requested month)
+   * Get all active loans with their update status for a specific month.
+   * For loans and mortgages (payment-tracked): checks loan_payments for the month.
+   * For lines of credit (balance-tracked): checks loan_balances for the month.
+   * Only includes loans that have started (start_date <= requested month).
    * @param {number} year - Year
    * @param {number} month - Month (1-12)
    * @returns {Promise<Array>} Array of loans with hasBalance flag
@@ -90,6 +92,11 @@ class ReminderRepository {
     const monthStr = month.toString().padStart(2, '0');
     const requestedMonthStart = `${year}-${monthStr}-01`;
     
+    // Build date range for payment lookup (first and last day of month)
+    const lastDay = new Date(year, month, 0).getDate();
+    const monthStart = `${year}-${monthStr}-01`;
+    const monthEnd = `${year}-${monthStr}-${lastDay.toString().padStart(2, '0')}`;
+    
     return new Promise((resolve, reject) => {
       const sql = `
         SELECT 
@@ -97,20 +104,27 @@ class ReminderRepository {
           l.name,
           l.loan_type,
           CASE 
-            WHEN lb.id IS NOT NULL THEN 1 
-            ELSE 0 
+            WHEN l.loan_type IN ('loan', 'mortgage') THEN
+              CASE WHEN lp.id IS NOT NULL THEN 1 ELSE 0 END
+            ELSE
+              CASE WHEN lb.id IS NOT NULL THEN 1 ELSE 0 END
           END as hasBalance
         FROM loans l
+        LEFT JOIN loan_payments lp 
+          ON l.id = lp.loan_id 
+          AND lp.payment_date >= ? 
+          AND lp.payment_date <= ?
         LEFT JOIN loan_balances lb 
           ON l.id = lb.loan_id 
           AND lb.year = ? 
           AND lb.month = ?
         WHERE l.is_paid_off = 0
           AND date(l.start_date) <= date(?)
+        GROUP BY l.id
         ORDER BY l.name ASC
       `;
       
-      db.all(sql, [year, month, requestedMonthStart], (err, rows) => {
+      db.all(sql, [monthStart, monthEnd, year, month, requestedMonthStart], (err, rows) => {
         if (err) {
           reject(err);
           return;

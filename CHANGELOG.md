@@ -14,6 +14,11 @@
 
 
 
+
+
+## [1.3.2] - 2026-03-01
+
+### Fix loan/mortgage reminder balance status check
 ## [1.3.1] - 2026-02-28
 
 ### Fix budget copy-from-previous-month bugs

@@ -402,12 +402,11 @@ describe('Property 5: CI documentation accuracy', () => {
     }
   });
 
-  test('CI docs do not describe Trivy scanning as implemented', () => {
-    // Trivy is marked as "Planned" — verify it's not described as if it exists
+  test('CI docs describe Trivy scanning as implemented', () => {
+    // Trivy scanning is now implemented — verify docs describe the actual implementation
     const trivySection = docsContent.match(/Trivy[\s\S]*?(?=\n###\s|\n##\s|$)/);
-    if (trivySection) {
-      expect(trivySection[0]).toMatch(/Planned|not yet exist|future/i);
-    }
+    expect(trivySection).not.toBeNull();
+    expect(trivySection[0]).toMatch(/build-and-push-ghcr|aquasecurity\/trivy-action|exit-code|CRITICAL.*HIGH/i);
   });
 
   test('push trigger in docs matches actual workflow (main only)', () => {
@@ -445,5 +444,178 @@ describe('Property 5: CI documentation accuracy', () => {
 
   test('docs clarify feature branches trigger CI via pull_request, not push', () => {
     expect(docsContent).toMatch(/feature.*pull_request|pull_request.*feature|feature.*not.*trigger.*push|feature.*do\s+not.*trigger/i);
+  });
+});
+
+// ─── Trivy Docker Image Scanning ───
+// Feature: ci-security-hardening
+// **Validates: Requirements 1.1, 1.2, 1.4, 1.5, 1.6, 1.7**
+
+/**
+ * Extract the steps array from a job block as an array of step text blocks.
+ * Each step starts with "- name:" at the step indentation level.
+ */
+function extractSteps(jobBlock) {
+  const steps = [];
+  // Split on step boundaries (lines starting with "      - name:" at 6-space indent)
+  const stepPattern = /^(\s{6}- name:)/gm;
+  const indices = [];
+  let match;
+  while ((match = stepPattern.exec(jobBlock)) !== null) {
+    indices.push(match.index);
+  }
+  for (let i = 0; i < indices.length; i++) {
+    const start = indices[i];
+    const end = i + 1 < indices.length ? indices[i + 1] : jobBlock.length;
+    steps.push(jobBlock.substring(start, end));
+  }
+  return steps;
+}
+
+describe('Trivy Docker Image Scanning', () => {
+  let buildJobBlock;
+  let buildJobSteps;
+
+  beforeAll(() => {
+    const ciContent = fs.readFileSync(path.join(ROOT_DIR, '.github', 'workflows', 'ci.yml'), 'utf-8');
+
+    // Extract the build-and-push-ghcr job block
+    const jobsMatch = ciContent.match(/^jobs:\s*\n([\s\S]+)/m);
+    if (!jobsMatch) throw new Error('Could not find jobs: block in ci.yml');
+    const jobsBlock = jobsMatch[1];
+
+    const buildJobStart = jobsBlock.indexOf('  build-and-push-ghcr:');
+    if (buildJobStart === -1) throw new Error('Could not find build-and-push-ghcr job');
+
+    const afterBuildJob = jobsBlock.substring(buildJobStart + '  build-and-push-ghcr:'.length);
+    const nextJobMatch = afterBuildJob.match(/\n  [a-z][\w-]+:\s*$/m);
+    buildJobBlock = nextJobMatch
+      ? afterBuildJob.substring(0, nextJobMatch.index)
+      : afterBuildJob;
+
+    buildJobSteps = extractSteps(buildJobBlock);
+  });
+
+  test('build-and-push-ghcr job contains a Trivy scan step with aquasecurity/trivy-action before the push step', () => {
+    const trivyStepIndex = buildJobSteps.findIndex(s => /uses:\s*aquasecurity\/trivy-action/.test(s));
+    expect(trivyStepIndex).toBeGreaterThan(-1);
+
+    // Find the push step: docker/build-push-action with push: true
+    const pushStepIndex = buildJobSteps.findIndex(s =>
+      /uses:\s*docker\/build-push-action/.test(s) && /push:\s*true/.test(s)
+    );
+    expect(pushStepIndex).toBeGreaterThan(-1);
+
+    // Trivy scan must appear before the push step
+    expect(trivyStepIndex).toBeLessThan(pushStepIndex);
+  });
+
+  test('Trivy step has exit-code: 1, severity: CRITICAL,HIGH, and vuln-type: os,library', () => {
+    // Find the first Trivy step (the blocking scan)
+    const trivyStep = buildJobSteps.find(s =>
+      /uses:\s*aquasecurity\/trivy-action/.test(s) && /exit-code:\s*'1'/.test(s)
+    );
+    expect(trivyStep).toBeDefined();
+
+    expect(trivyStep).toMatch(/severity:\s*'CRITICAL,HIGH'/);
+    expect(trivyStep).toMatch(/vuln-type:\s*'os,library'/);
+  });
+
+  test('job contains upload-artifact step for Trivy results with retention-days: 30', () => {
+    const uploadStep = buildJobSteps.find(s =>
+      /uses:\s*actions\/upload-artifact/.test(s) && /trivy/.test(s)
+    );
+    expect(uploadStep).toBeDefined();
+    expect(uploadStep).toMatch(/retention-days:\s*30/);
+  });
+
+  test('job contains a step writing Trivy results to $GITHUB_STEP_SUMMARY', () => {
+    const summaryStep = buildJobSteps.find(s =>
+      /GITHUB_STEP_SUMMARY/.test(s) && /[Vv]ulnerability|[Tt]rivy/.test(s)
+    );
+    expect(summaryStep).toBeDefined();
+
+    // Verify it includes severity counts
+    expect(summaryStep).toMatch(/CRITICAL/);
+    expect(summaryStep).toMatch(/HIGH/);
+  });
+});
+
+// ─── Workflow Dispatch and Security Audit ───
+// Feature: ci-security-hardening
+// **Validates: Requirements 3.1, 3.2, 3.3**
+
+describe('Workflow Dispatch and Security Audit', () => {
+  let ciContent;
+
+  beforeAll(() => {
+    ciContent = fs.readFileSync(path.join(ROOT_DIR, '.github', 'workflows', 'ci.yml'), 'utf-8');
+  });
+
+  test('enable_security_scan is NOT present in workflow_dispatch inputs', () => {
+    // Extract the workflow_dispatch block from the on: trigger section
+    const wdMatch = ciContent.match(/workflow_dispatch:\s*\n(\s+inputs:\s*\n[\s\S]*?)(?=\n\S|\nconcurrency:)/);
+    expect(wdMatch).not.toBeNull();
+
+    const wdBlock = wdMatch[1];
+    expect(wdBlock).not.toMatch(/enable_security_scan/);
+  });
+
+  test('health_check_timeout and health_check_retries ARE present in workflow_dispatch inputs', () => {
+    const wdMatch = ciContent.match(/workflow_dispatch:\s*\n(\s+inputs:\s*\n[\s\S]*?)(?=\n\S|\nconcurrency:)/);
+    expect(wdMatch).not.toBeNull();
+
+    const wdBlock = wdMatch[1];
+    expect(wdBlock).toMatch(/health_check_timeout:/);
+    expect(wdBlock).toMatch(/health_check_retries:/);
+  });
+
+  test('security-audit job if condition contains github.actor != dependabot[bot]', () => {
+    // Extract the security-audit job block
+    const jobMatch = ciContent.match(/^\s{2}security-audit:\s*\n([\s\S]*?)(?=\n\s{2}[a-z][\w-]+:\s*$|\Z)/m);
+    expect(jobMatch).not.toBeNull();
+
+    const jobBlock = jobMatch[1];
+    const ifMatch = jobBlock.match(/if:\s*(.+)/);
+    expect(ifMatch).not.toBeNull();
+    expect(ifMatch[1]).toMatch(/github\.actor\s*!=\s*'dependabot\[bot\]'/);
+  });
+});
+
+
+// ─── Rollback Config Cleanup ───
+// Feature: ci-security-hardening
+// **Validates: Requirement 2.4**
+
+describe('Rollback Config Cleanup', () => {
+  let healthCheckJobBlock;
+
+  beforeAll(() => {
+    const ciContent = fs.readFileSync(path.join(ROOT_DIR, '.github', 'workflows', 'ci.yml'), 'utf-8');
+
+    // Extract the deployment-health-check job block
+    const jobsMatch = ciContent.match(/^jobs:\s*\n([\s\S]+)/m);
+    if (!jobsMatch) throw new Error('Could not find jobs: block in ci.yml');
+    const jobsBlock = jobsMatch[1];
+
+    const jobStart = jobsBlock.indexOf('  deployment-health-check:');
+    if (jobStart === -1) throw new Error('Could not find deployment-health-check job');
+
+    const afterJob = jobsBlock.substring(jobStart + '  deployment-health-check:'.length);
+    const nextJobMatch = afterJob.match(/\n  [a-z][\w-]+:\s*$/m);
+    healthCheckJobBlock = nextJobMatch
+      ? afterJob.substring(0, nextJobMatch.index)
+      : afterJob;
+  });
+
+  test('deployment-health-check job has a step that cleans up the rollback config directory', () => {
+    const steps = extractSteps(healthCheckJobBlock);
+
+    // Find a step that removes the rollback config directory
+    const cleanupStep = steps.find(s =>
+      /rm\s+-rf/.test(s) && /rollback_config_dir/.test(s)
+    );
+
+    expect(cleanupStep).toBeDefined();
   });
 });

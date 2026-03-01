@@ -41,15 +41,36 @@ A `security-audit` job runs `npm audit` on both backend and frontend dependencie
 - Results are reported in the GitHub Actions workflow summary
 - Skipped for Dependabot PRs (`github.actor != 'dependabot[bot]'`)
 
-### Docker Image Scanning (Trivy) — Planned
+### Docker Image Scanning (Trivy)
 
-> **Status: Planned** — This feature does not yet exist in the CI workflow.
+The `build-and-push-ghcr` job scans every Docker image for vulnerabilities using [Trivy](https://github.com/aquasecurity/trivy-action) before pushing to GHCR. The build uses a two-step approach: build and load the image locally, scan it, then push only if the scan passes.
 
-A future enhancement would scan built Docker images using [Trivy](https://github.com/aquasecurity/trivy-action) before pushing to GHCR:
+**Build → Scan → Push Flow:**
 
-- Scan for `CRITICAL` and `HIGH` severity vulnerabilities
-- Upload scan results as a workflow artifact
-- Include results in the workflow summary
+1. **Build + Load** — `docker/build-push-action@v5` with `load: true`, `push: false` loads the image into the local Docker daemon
+2. **Trivy Gate Scan** — `aquasecurity/trivy-action@0.28.0` with `exit-code: '1'` fails the job on `CRITICAL` or `HIGH` severity findings, blocking the push
+3. **Full Report** — A second Trivy run with `exit-code: '0'` and `severity: 'CRITICAL,HIGH,MEDIUM,LOW'` generates a complete report regardless of the gate scan result (`if: always()`)
+4. **Artifact Upload** — `actions/upload-artifact@v4` uploads `trivy-results.txt` with 30-day retention (`if: always()`)
+5. **Workflow Summary** — Writes vulnerability counts by severity (CRITICAL, HIGH, MEDIUM, LOW) to `$GITHUB_STEP_SUMMARY`
+6. **Push** — `docker/build-push-action@v5` with `push: true` pushes the image to GHCR (only runs if the gate scan passes)
+
+**Scan Configuration:**
+
+| Parameter | Value | Description |
+|-----------|-------|-------------|
+| `image-ref` | SHA-tagged image from metadata step | The locally loaded image to scan |
+| `format` | `table` | Human-readable output |
+| `exit-code` | `1` (gate) / `0` (full report) | Gate scan fails on findings; full report always succeeds |
+| `severity` | `CRITICAL,HIGH` (gate) / `CRITICAL,HIGH,MEDIUM,LOW` (full) | Gate blocks on critical/high; full report captures all |
+| `vuln-type` | `os,library` | Scans both OS packages and application dependencies |
+
+**Behavior by severity:**
+
+| Severity | Gate Scan | Push | Artifact |
+|----------|-----------|------|----------|
+| CRITICAL or HIGH | ❌ Fails | Blocked | ✅ Uploaded |
+| MEDIUM or LOW only | ✅ Passes | Proceeds | ✅ Uploaded |
+| No vulnerabilities | ✅ Passes | Proceeds | ✅ Uploaded |
 
 ### Dependabot
 
@@ -137,7 +158,6 @@ The CI workflow supports `workflow_dispatch` with configurable inputs:
 |-------|---------|-------------|
 | `health_check_timeout` | `30` | HTTP timeout in seconds |
 | `health_check_retries` | `10` | Number of retry attempts |
-| `enable_security_scan` | `true` | Enable/disable security scanning |
 
 These can be set when manually triggering the workflow from the Actions tab.
 
@@ -340,9 +360,11 @@ Integrated into `.github/workflows/ci.yml` as the `build-and-push-ghcr` job.
 1. Checks out the repository
 2. Sets up Docker Buildx
 3. Authenticates to GHCR
-4. Builds the Docker image with SHA, version, and `latest` tags
-5. Pushes to `ghcr.io/krazykrazz/expense-tracker`
-6. Creates or updates a GitHub release with a docker-compose file
+4. Builds the Docker image and loads it into the local Docker daemon (not pushed yet)
+5. Runs Trivy vulnerability scan — fails on CRITICAL/HIGH findings (see [Docker Image Scanning](#docker-image-scanning-trivy))
+6. Generates full vulnerability report, uploads scan artifact, and writes workflow summary
+7. Pushes the image to `ghcr.io/krazykrazz/expense-tracker` with SHA, version, and `latest` tags (only if scan passes)
+8. Creates or updates a GitHub release with a docker-compose file
 
 ### GHCR Integration
 

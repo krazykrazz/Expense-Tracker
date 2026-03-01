@@ -29,11 +29,6 @@ on:
         required: false
         default: '10'
         type: string
-      enable_security_scan:
-        description: 'Enable security vulnerability scanning'
-        required: false
-        default: true
-        type: boolean
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -318,8 +313,81 @@ jobs:
           echo "version=$(jq -r .version backend/package.json)" >> $GITHUB_OUTPUT
           echo "build_date=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
       
-      - name: Build and push to GHCR
-        uses: docker/build-push-action@v6
+      - name: Build and load Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          load: true
+          push: false
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/expense-tracker:${{ steps.meta.outputs.sha_short }}
+          build-args: |
+            IMAGE_TAG=${{ steps.meta.outputs.sha_short }}
+            BUILD_DATE=${{ steps.meta.outputs.build_date }}
+            GIT_COMMIT=${{ steps.meta.outputs.sha_short }}
+          labels: |
+            org.opencontainers.image.created=${{ steps.meta.outputs.build_date }}
+            org.opencontainers.image.version=${{ steps.meta.outputs.version }}
+            org.opencontainers.image.revision=${{ steps.meta.outputs.sha_short }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.title=expense-tracker
+            org.opencontainers.image.description=Personal expense tracking application
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Run Trivy vulnerability scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: 'ghcr.io/${{ github.repository_owner }}/expense-tracker:${{ steps.meta.outputs.sha_short }}'
+          format: 'table'
+          output: 'trivy-results.txt'
+          exit-code: '1'
+          severity: 'CRITICAL,HIGH'
+          vuln-type: 'os,library'
+
+      - name: Generate full Trivy vulnerability report
+        if: always()
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: 'ghcr.io/${{ github.repository_owner }}/expense-tracker:${{ steps.meta.outputs.sha_short }}'
+          format: 'table'
+          output: 'trivy-results.txt'
+          exit-code: '0'
+          severity: 'CRITICAL,HIGH,MEDIUM,LOW'
+          vuln-type: 'os,library'
+
+      - name: Upload Trivy scan results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-scan-${{ steps.meta.outputs.sha_short }}
+          path: trivy-results.txt
+          retention-days: 30
+
+      - name: Write Trivy summary
+        if: always()
+        run: |
+          echo "## Docker Image Vulnerability Scan" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** \`ghcr.io/${{ github.repository_owner }}/expense-tracker:${{ steps.meta.outputs.sha_short }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ -f trivy-results.txt ]; then
+            CRITICAL=$(grep -c "CRITICAL" trivy-results.txt || true)
+            HIGH=$(grep -c "HIGH" trivy-results.txt || true)
+            MEDIUM=$(grep -c "MEDIUM" trivy-results.txt || true)
+            LOW=$(grep -c "LOW" trivy-results.txt || true)
+            echo "| Severity | Count |" >> $GITHUB_STEP_SUMMARY
+            echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+            echo "| CRITICAL | $CRITICAL |" >> $GITHUB_STEP_SUMMARY
+            echo "| HIGH | $HIGH |" >> $GITHUB_STEP_SUMMARY
+            echo "| MEDIUM | $MEDIUM |" >> $GITHUB_STEP_SUMMARY
+            echo "| LOW | $LOW |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ No scan results file found" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Push Docker image to GHCR
+        uses: docker/build-push-action@v5
         with:
           context: .
           push: true
@@ -560,11 +628,18 @@ jobs:
           fi
 
           chmod +x scripts/rollback.sh
-          ./scripts/rollback.sh \
+          ROLLBACK_OUTPUT=$(./scripts/rollback.sh \
             "${{ steps.previous.outputs.previous_sha }}" \
             "${{ steps.previous.outputs.registry }}" \
             "${{ steps.previous.outputs.image_name }}" \
-            "expense-tracker-health-check"
+            "expense-tracker-health-check")
+          echo "$ROLLBACK_OUTPUT"
+
+          # Capture config_dir from rollback script output for cleanup
+          ROLLBACK_CONFIG_DIR=$(echo "$ROLLBACK_OUTPUT" | grep '^config_dir=' | tail -1 | cut -d= -f2-)
+          if [ -n "$ROLLBACK_CONFIG_DIR" ]; then
+            echo "rollback_config_dir=$ROLLBACK_CONFIG_DIR" >> $GITHUB_OUTPUT
+          fi
 
           echo "rollback_result=deployed" >> $GITHUB_OUTPUT
         continue-on-error: true
@@ -615,6 +690,13 @@ jobs:
           else
             echo "❌ Rollback: **FAILED**" >> $GITHUB_STEP_SUMMARY
             echo "⚠️ **Manual intervention required**" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Clean up rollback config directory
+        if: always()
+        run: |
+          if [ -n "${{ steps.rollback.outputs.rollback_config_dir }}" ]; then
+            rm -rf "${{ steps.rollback.outputs.rollback_config_dir }}" || true
           fi
 
       - name: Generate deployment metadata

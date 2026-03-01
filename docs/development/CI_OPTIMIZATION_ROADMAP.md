@@ -1,7 +1,7 @@
 # CI/CD Optimization Roadmap
 
-**Last Updated**: February 28, 2026  
-**Status**: Phase 1 In Progress
+**Last Updated**: March 1, 2026  
+**Status**: Phase 1 Complete
 
 This document outlines planned optimizations and improvements for the CI/CD pipeline and deployment process.
 
@@ -72,7 +72,6 @@ The project uses GitHub Actions for CI/CD with:
 - Add PR size labeling
 - Add build time tracking
 - Add PR template for consistency
-- Wire up or remove unused `enable_security_scan` workflow_dispatch input
 
 #### Low Priority
 - Add automated changelog generation
@@ -98,28 +97,27 @@ The project uses GitHub Actions for CI/CD with:
 #### Medium Priority
 - Add deployment notifications
 - Add deployment metrics
-- Mount `/config` volume in rollback container to match main health check (rollback.sh currently omits it)
 
 #### Low Priority
 - Add automated deployment scheduling
 
 ### 5. Security Improvements 🔒
 
-**Status**: In Progress (Phase 1)
+**Status**: Phase 1 Complete
 
-The repository is now public, making security the highest priority. Most Phase 1 security items are implemented; Docker image scanning (Trivy) is still planned.
+The repository is now public, making security the highest priority. All Phase 1 security items are implemented.
 
 **Completed**:
 - ✅ Dependency vulnerability scanning (`npm audit --audit-level=high` in CI security-audit job)
 - ✅ Security policy documentation (`SECURITY.md`)
 - ✅ Dependabot for automated dependency updates (npm + GitHub Actions)
-
-**Planned**:
-- Docker image scanning (Trivy) — not yet implemented in CI workflow
+- ✅ Docker image scanning (Trivy) — scans built images for CRITICAL/HIGH CVEs before pushing to GHCR
+- ✅ Rollback `/config` volume mount fix — rollback container now matches main health check container startup
+- ✅ Dead `enable_security_scan` workflow_dispatch input removed
 
 **Findings from Final Assessment** (ci-pipeline-hardening spec, Task 15):
-- Rollback script (`scripts/rollback.sh`) does not mount `/config` volume when redeploying the rolled-back container, unlike the main health check container — may cause rollback health checks to fail if the app requires `/config` for SQLite initialization
-- The `enable_security_scan` workflow_dispatch input is defined but never referenced in any job condition — dead input that should either be wired up or removed
+- ~~Rollback script (`scripts/rollback.sh`) does not mount `/config` volume~~ — Fixed by ci-security-hardening spec
+- ~~The `enable_security_scan` workflow_dispatch input is defined but never referenced~~ — Removed by ci-security-hardening spec
 - The `test-health-report` job exists in the workflow but is not documented in `GITHUB_ACTIONS_CICD.md`
 
 **Future Enhancements** (Lower Priority):
@@ -170,14 +168,16 @@ The repository is now public, making security the highest priority. Most Phase 1
 
 ## Implementation Priority
 
-### Phase 1: Security & Deployment Safety (In Progress)
-**Updated**: February 2026
+### Phase 1: Security & Deployment Safety (Complete)
+**Updated**: March 2026
 
-1. **Security Hardening** (Partially Complete)
+1. ✅ **Security Hardening**
    - ✅ Dependency vulnerability scanning (`npm audit --audit-level=high` in CI security-audit job — added by ci-pipeline-hardening spec)
-   - ⬜ Docker image scanning (Trivy) — planned, not yet implemented
+   - ✅ Docker image scanning (Trivy) — scans before push, fails on CRITICAL/HIGH, uploads artifact, writes workflow summary
    - ✅ Dependabot configuration (npm + GitHub Actions)
    - ✅ Security policy (SECURITY.md)
+   - ✅ Dead `enable_security_scan` input removed
+   - ✅ Rollback `/config` volume mount fix
 
 2. ✅ **Deployment Health Checks**
    - Automated health checks after GHCR push
@@ -261,6 +261,7 @@ The repository is now public, making security the highest priority. Most Phase 1
 
 | Date | Change | Author |
 |------|--------|--------|
+| 2026-03-01 | Phase 1 complete: marked Trivy scanning, rollback /config fix, and dead input removal as done; removed addressed findings | System |
 | 2026-02-28 | Final assessment (Task 15): fixed CI docs health check wait time (10s→30s), identified rollback /config gap, dead `enable_security_scan` input, undocumented `test-health-report` job | System |
 | 2026-02-27 | Fix Phase 1 status: mark Trivy as planned, update npm audit description to match security-audit job implementation | System |
 | 2026-02-12 | Phase 1 complete: security hardening, health checks, rollback, deployment tracking, badge | System |

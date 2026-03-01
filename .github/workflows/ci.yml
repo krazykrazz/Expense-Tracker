@@ -336,7 +336,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Run Trivy vulnerability scan
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@0.29.0
         with:
           image-ref: 'ghcr.io/${{ github.repository_owner }}/expense-tracker:${{ steps.meta.outputs.sha_short }}'
           format: 'table'
@@ -347,7 +347,7 @@ jobs:
 
       - name: Generate full Trivy vulnerability report
         if: always()
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@0.29.0
         with:
           image-ref: 'ghcr.io/${{ github.repository_owner }}/expense-tracker:${{ steps.meta.outputs.sha_short }}'
           format: 'table'

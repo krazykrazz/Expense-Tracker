@@ -60,11 +60,17 @@ if ! docker pull "$ROLLBACK_IMAGE"; then
 fi
 echo "[$ROLLBACK_TIMESTAMP] Previous image pulled successfully"
 
+# Create temporary /config directory for SQLite initialization
+CONFIG_DIR=$(mktemp -d)
+chmod -R 777 "$CONFIG_DIR"
+echo "[$ROLLBACK_TIMESTAMP] Created temp config directory: $CONFIG_DIR"
+
 # Deploy previous version
 echo "[$ROLLBACK_TIMESTAMP] Starting rolled-back container"
 docker run -d \
   --name "$CONTAINER_NAME" \
   -p 2424:2424 \
+  -v "$CONFIG_DIR:/config" \
   -e NODE_ENV=production \
   -e LOG_LEVEL=info \
   "$ROLLBACK_IMAGE"
@@ -78,5 +84,8 @@ COMPLETION_TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 echo ""
 echo "[$COMPLETION_TIMESTAMP] Rollback deployment complete, verifying health..."
 echo ""
+
+# Output config_dir path so the CI job can capture and clean it up
+echo "config_dir=$CONFIG_DIR"
 
 exit 0

@@ -16,11 +16,10 @@ The project uses a single GitHub Actions workflow:
 **CI runs automatically on all Pull Requests to main.** This is the primary way to verify code before it reaches the main branch. Branch protection on `main` enforces that all three status checks must pass before merging.
 
 **Required Status Checks:**
-- `Backend Unit Tests` — Jest unit tests from `backend/`
-- `Backend PBT Tests` — Jest property-based tests from `backend/`
-- `Frontend Tests` — Vitest tests from `frontend/`
+- `Backend Tests Status` — Aggregator for backend unit and PBT tests
+- `Frontend Tests Status` — Aggregator for frontend tests
 
-> **Note**: A legacy `Backend Tests` check may appear in GitHub's status check list — this is from before the CI was split into unit/PBT jobs and is not used by the current workflow.
+> **Note**: The individual test jobs (`Backend Unit Tests`, `Backend PBT Shard 1/3`, etc.) are not required status checks. The aggregator jobs handle branch protection, allowing tests to be skipped when irrelevant files change while still satisfying branch protection requirements.
 
 When you create a PR (using `promote-feature.ps1` or `create-pr-from-main.ps1`):
 1. GitHub Actions triggers the CI workflow
@@ -182,6 +181,31 @@ Both `push` and `pull_request` triggers use `paths-ignore` to skip CI for docume
 
 The CI workflow runs multiple parallel job groups:
 
+#### Path Filter
+
+```yaml
+path-filter:
+  runs-on: ubuntu-latest
+  if: github.actor != 'dependabot[bot]'
+```
+
+- Evaluates which files changed in the PR using `dorny/paths-filter@v3`
+- Sets outputs for backend, frontend, and shared infrastructure changes
+- Generates workflow summary showing which tests will run
+- Detects empty PRs and ensures all tests run in that case
+
+**Path Patterns:**
+- **Backend**: `backend/**`
+- **Frontend**: `frontend/**`
+- **Shared**: `scripts/**`, `Dockerfile`, `docker-compose*.yml`, `.github/workflows/**`, `.dockerignore`, `package.json`, `package-lock.json`
+
+**Filtering Logic:**
+- Frontend-only changes → Skip backend tests
+- Backend-only changes → Skip frontend tests
+- Shared infrastructure changes → Run all tests
+- Mixed changes → Run all tests
+- Empty PR → Run all tests (fail-safe)
+
 #### Security Audit
 
 ```yaml
@@ -200,6 +224,7 @@ security-audit:
 ```yaml
 backend-unit-tests:
   runs-on: ubuntu-latest
+  needs: path-filter
   working-directory: backend
 ```
 
@@ -207,12 +232,14 @@ backend-unit-tests:
 - **Node.js**: Version 20
 - **Package Manager**: npm with caching
 - **Test Command**: `npm run test:unit:ci` (Jest, parallel workers with per-worker database isolation)
+- **Conditional Execution**: Runs only if backend or shared files changed (or on empty PR or path-filter failure)
 
 #### Backend PBT Tests (Sharded)
 
 ```yaml
 backend-pbt-shards:
   runs-on: ubuntu-latest
+  needs: path-filter
   strategy:
     matrix:
       shard: ['1/3', '2/3', '3/3']
@@ -223,12 +250,29 @@ backend-pbt-shards:
 - **Package Manager**: npm with caching
 - **Test Command**: `jest --bail --testPathPatterns=pbt --shard=N/3` (parallel workers per shard)
 - **Summary Job**: `Backend PBT Tests` aggregates shard results for branch protection
+- **Conditional Execution**: Runs only if backend or shared files changed (or on empty PR or path-filter failure)
+
+#### Backend Tests Status
+
+```yaml
+backend-tests-status:
+  runs-on: ubuntu-latest
+  needs: [path-filter, backend-unit-tests, backend-pbt-tests]
+  if: always()
+```
+
+- **Purpose**: Status aggregator job for branch protection compatibility
+- **Behavior**: 
+  - If tests ran: Verifies they passed
+  - If tests skipped: Reports success
+- **Branch Protection**: This job is the required status check (not the individual test jobs)
 
 #### Frontend Tests
 
 ```yaml
 frontend-tests:
   runs-on: ubuntu-latest
+  needs: path-filter
   working-directory: frontend
 ```
 
@@ -236,6 +280,22 @@ frontend-tests:
 - **Node.js**: Version 20
 - **Package Manager**: npm with caching
 - **Test Command**: `npx vitest --run --exclude '**/App.performance.test.jsx'`
+- **Conditional Execution**: Runs only if frontend or shared files changed (or on empty PR or path-filter failure)
+
+#### Frontend Tests Status
+
+```yaml
+frontend-tests-status:
+  runs-on: ubuntu-latest
+  needs: [path-filter, frontend-tests]
+  if: always()
+```
+
+- **Purpose**: Status aggregator job for branch protection compatibility
+- **Behavior**: 
+  - If tests ran: Verifies they passed
+  - If tests skipped: Reports success
+- **Branch Protection**: This job is the required status check (not the individual test job)
 
 ### Performance Test Exclusion
 
@@ -434,6 +494,32 @@ When you open a PR:
 4. Merge is blocked if checks fail (branch protection is active)
 
 ## Troubleshooting
+
+### Common Issues
+
+#### Path Filtering Not Working as Expected
+
+**Symptoms:**
+- Tests run when they should be skipped
+- Tests skip when they should run
+
+**Debug steps:**
+1. Check the workflow summary for path filter results
+2. Verify file patterns match your changes
+3. Look for shared infrastructure files in your PR
+4. Check if the PR is empty (no file changes)
+
+**Path filter fail-safe behavior:**
+- If path-filter job fails → All tests run
+- If PR is empty → All tests run
+- If shared files changed → All tests run
+
+#### Tests Skipped But Branch Protection Blocks Merge
+
+**This should not happen** with the status aggregator jobs. If it does:
+1. Check that branch protection requires `Backend Tests Status` and `Frontend Tests Status` (not the individual test jobs)
+2. Verify the aggregator jobs ran and reported success
+3. Check workflow logs for the aggregator job output
 
 ### Common Issues
 

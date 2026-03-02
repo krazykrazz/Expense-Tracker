@@ -1,5 +1,7 @@
 const { getDatabase } = require('../database/db');
 const paymentMethodRepository = require('../repositories/paymentMethodRepository');
+const billingCycleRepository = require('../repositories/billingCycleRepository');
+const { calculateEffectiveBalance } = require('../utils/effectiveBalanceUtil');
 const logger = require('../config/logger');
 
 /**
@@ -178,7 +180,7 @@ class StatementBalanceService {
         SELECT COALESCE(SUM(amount), 0) as total
         FROM credit_card_payments
         WHERE payment_method_id = ?
-          AND payment_date > ?
+          AND payment_date >= ?
       `;
       
       db.get(sql, [paymentMethodId, cycleDates.endDate], (err, row) => {
@@ -191,8 +193,31 @@ class StatementBalanceService {
       });
     });
 
+    // Look up the billing cycle record for this period.
+    // When a user-entered actual balance exists, use it as the base instead of
+    // raw expenses. The bank's statement balance already accounts for mid-cycle
+    // payments, so using raw expenses would double-count those payments.
+    const cycleRecord = await billingCycleRepository.findByPaymentMethodAndCycleEnd(
+      paymentMethodId,
+      cycleDates.endDate
+    );
+
+    let baseBalance;
+    let usedActualBalance = false;
+    if (cycleRecord) {
+      const { effectiveBalance, balanceType } = calculateEffectiveBalance(cycleRecord);
+      if (balanceType === 'actual') {
+        baseBalance = effectiveBalance;
+        usedActualBalance = true;
+      } else {
+        baseBalance = totalExpenses;
+      }
+    } else {
+      baseBalance = totalExpenses;
+    }
+
     // Calculate statement balance (floor at zero for overpayment scenarios)
-    const rawBalance = totalExpenses - totalPayments;
+    const rawBalance = baseBalance - totalPayments;
     const statementBalance = Math.max(0, Math.round(rawBalance * 100) / 100);
 
     logger.debug('Calculated statement balance:', {
@@ -201,6 +226,8 @@ class StatementBalanceService {
       cycleEndDate: cycleDates.endDate,
       totalExpenses,
       totalPayments,
+      baseBalance,
+      usedActualBalance,
       statementBalance
     });
 

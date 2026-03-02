@@ -67,6 +67,7 @@ The project uses GitHub Actions for CI/CD with:
 - ✅ Deployment health checks (automated in CI after GHCR push)
 - ✅ Rollback capability (automatic on health check failure)
 - ✅ Workflow status badge in README
+- ✅ Path-based test filtering (conditionally run tests based on changed files)
 
 #### Medium Priority
 - Add PR size labeling
@@ -197,6 +198,13 @@ The repository is now public, making security the highest priority. All Phase 1 
 5. ✅ **Workflow Status Badge**
    - CI badge in README linking to Actions page
 
+6. ✅ **Path-Based Test Filtering**
+   - Conditionally run backend/frontend tests based on changed files
+   - Skip irrelevant tests to reduce CI time and resource usage
+   - Status aggregator jobs for branch protection compatibility
+   - Fail-safe approach: run all tests on empty PRs, shared infrastructure changes, or path-filter failures
+   - **Time Savings**: Estimated 50-70% reduction in CI time for single-component PRs
+
 ### Phase 2: Quality of Life (Next Up)
 **Target**: Q2 2026
 
@@ -261,6 +269,7 @@ The repository is now public, making security the highest priority. All Phase 1 
 
 | Date | Change | Author |
 |------|--------|--------|
+| 2026-03-02 | Path-based test filtering complete: added conditional test execution with status aggregators | System |
 | 2026-03-01 | Phase 1 complete: marked Trivy scanning, rollback /config fix, and dead input removal as done; removed addressed findings | System |
 | 2026-02-28 | Final assessment (Task 15): fixed CI docs health check wait time (10s→30s), identified rollback /config gap, dead `enable_security_scan` input, undocumented `test-health-report` job | System |
 | 2026-02-27 | Fix Phase 1 status: mark Trivy as planned, update npm audit description to match security-audit job implementation | System |

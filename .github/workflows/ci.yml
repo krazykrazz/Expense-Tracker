@@ -35,10 +35,75 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  path-filter:
+    name: Detect Changed Paths
+    runs-on: ubuntu-latest
+    if: github.actor != 'dependabot[bot]'
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      shared: ${{ steps.filter.outputs.shared }}
+      empty_pr: ${{ steps.empty_check.outputs.empty_pr }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Evaluate path filters
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+            frontend:
+              - 'frontend/**'
+            shared:
+              - 'scripts/**'
+              - 'Dockerfile'
+              - 'docker-compose*.yml'
+              - '.github/workflows/**'
+              - '.dockerignore'
+              - 'package.json'
+              - 'package-lock.json'
+
+      - name: Generate filtering summary
+        run: |
+          echo "## Path-Based Test Filtering" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Component | Changed | Tests Will Run |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|---------|----------------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Backend | ${{ steps.filter.outputs.backend }} | ${{ steps.filter.outputs.backend == 'true' || steps.filter.outputs.shared == 'true' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Frontend | ${{ steps.filter.outputs.frontend }} | ${{ steps.filter.outputs.frontend == 'true' || steps.filter.outputs.shared == 'true' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Shared Infrastructure | ${{ steps.filter.outputs.shared }} | N/A |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ steps.filter.outputs.shared }}" = "true" ]; then
+            echo "⚠️ **Shared infrastructure changed - running all tests**" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Check for empty PR
+        id: empty_check
+        run: |
+          if [ "${{ steps.filter.outputs.backend }}" = "false" ] && \
+             [ "${{ steps.filter.outputs.frontend }}" = "false" ] && \
+             [ "${{ steps.filter.outputs.shared }}" = "false" ]; then
+            echo "empty_pr=true" >> $GITHUB_OUTPUT
+            echo "⚠️ **Empty PR detected - will run all tests**" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "empty_pr=false" >> $GITHUB_OUTPUT
+          fi
+
   backend-unit-tests:
     name: Backend Unit Tests
     runs-on: ubuntu-latest
-    if: github.actor != 'dependabot[bot]'
+    needs: path-filter
+    if: |
+      github.actor != 'dependabot[bot]' && (
+        needs.path-filter.outputs.backend == 'true' ||
+        needs.path-filter.outputs.shared == 'true' ||
+        needs.path-filter.outputs.empty_pr == 'true' ||
+        needs.path-filter.result == 'failure'
+      )
     defaults:
       run:
         working-directory: backend
@@ -85,7 +150,14 @@ jobs:
   backend-pbt-shards:
     name: Backend PBT Shard ${{ matrix.shard }}
     runs-on: ubuntu-latest
-    if: github.actor != 'dependabot[bot]'
+    needs: path-filter
+    if: |
+      github.actor != 'dependabot[bot]' && (
+        needs.path-filter.outputs.backend == 'true' ||
+        needs.path-filter.outputs.shared == 'true' ||
+        needs.path-filter.outputs.empty_pr == 'true' ||
+        needs.path-filter.result == 'failure'
+      )
     strategy:
       fail-fast: true
       matrix:
@@ -130,8 +202,15 @@ jobs:
   backend-pbt-tests:
     name: Backend PBT Tests
     runs-on: ubuntu-latest
-    if: always() && github.actor != 'dependabot[bot]'
-    needs: backend-pbt-shards
+    needs: [path-filter, backend-pbt-shards]
+    if: |
+      always() && 
+      github.actor != 'dependabot[bot]' && (
+        needs.path-filter.outputs.backend == 'true' ||
+        needs.path-filter.outputs.shared == 'true' ||
+        needs.path-filter.outputs.empty_pr == 'true' ||
+        needs.path-filter.result == 'failure'
+      )
     steps:
       - name: Check shard results
         run: |
@@ -155,10 +234,40 @@ jobs:
         if: needs.backend-pbt-shards.result == 'success'
         run: node scripts/validate-pbt-guardrails.js
 
+  backend-tests-status:
+    name: Backend Tests Status
+    runs-on: ubuntu-latest
+    if: always() && github.actor != 'dependabot[bot]'
+    needs: [path-filter, backend-unit-tests, backend-pbt-tests]
+    steps:
+      - name: Check backend test results
+        run: |
+          BACKEND_NEEDED="${{ needs.path-filter.outputs.backend == 'true' || needs.path-filter.outputs.shared == 'true' || needs.path-filter.outputs.empty_pr == 'true' || needs.path-filter.result == 'failure' }}"
+          
+          if [ "$BACKEND_NEEDED" = "true" ]; then
+            # Tests ran - check if they passed
+            if [ "${{ needs.backend-unit-tests.result }}" != "success" ] || \
+               [ "${{ needs.backend-pbt-tests.result }}" != "success" ]; then
+              echo "Backend tests failed"
+              exit 1
+            fi
+            echo "Backend tests passed"
+          else
+            # Tests skipped - report as passed
+            echo "Backend tests skipped (no relevant changes)"
+          fi
+
   frontend-tests:
     name: Frontend Tests
     runs-on: ubuntu-latest
-    if: github.actor != 'dependabot[bot]'
+    needs: path-filter
+    if: |
+      github.actor != 'dependabot[bot]' && (
+        needs.path-filter.outputs.frontend == 'true' ||
+        needs.path-filter.outputs.shared == 'true' ||
+        needs.path-filter.outputs.empty_pr == 'true' ||
+        needs.path-filter.result == 'failure'
+      )
     defaults:
       run:
         working-directory: frontend
@@ -197,6 +306,28 @@ jobs:
           node ../scripts/check-test-budget.js frontend-tests $ELAPSED
         env:
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+
+  frontend-tests-status:
+    name: Frontend Tests Status
+    runs-on: ubuntu-latest
+    if: always() && github.actor != 'dependabot[bot]'
+    needs: [path-filter, frontend-tests]
+    steps:
+      - name: Check frontend test results
+        run: |
+          FRONTEND_NEEDED="${{ needs.path-filter.outputs.frontend == 'true' || needs.path-filter.outputs.shared == 'true' || needs.path-filter.outputs.empty_pr == 'true' || needs.path-filter.result == 'failure' }}"
+          
+          if [ "$FRONTEND_NEEDED" = "true" ]; then
+            # Tests ran - check if they passed
+            if [ "${{ needs.frontend-tests.result }}" != "success" ]; then
+              echo "Frontend tests failed"
+              exit 1
+            fi
+            echo "Frontend tests passed"
+          else
+            # Tests skipped - report as passed
+            echo "Frontend tests skipped (no relevant changes)"
+          fi
 
   security-audit:
     name: Security Audit

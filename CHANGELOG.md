@@ -16,6 +16,11 @@
 
 
 
+
+
+## [1.3.3] - 2026-03-02
+
+### Fix statement balance payment calculation
 ## [1.3.2] - 2026-03-01
 
 ### Fix loan/mortgage reminder balance status check

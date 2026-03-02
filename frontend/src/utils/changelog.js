@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.3.3',
+    date: 'March 2, 2026',
+    added: [],
+    changed: ['Fix statement balance payment calculation'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.3.2',
     date: 'March 1, 2026',
     added: [],

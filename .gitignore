@@ -69,6 +69,10 @@ yarn-error.log*
 # Archived files
 *.old
 
+# Test caches
+backend/.jest-cache/
+frontend/.vitest-cache/
+
 # Test coverage
 backend/coverage/
 frontend/coverage/

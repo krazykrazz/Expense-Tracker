@@ -103,13 +103,14 @@ function advancePast500ms() {
 // ── Property 5: Context entity type routing ──────────────────────────────────
 
 describe('Property 5 — entity type to refresh mapping', () => {
-  const CONTEXT_ENTITY_TYPES = ['expense', 'budget', 'people', 'payment_method'];
+  const CONTEXT_ENTITY_TYPES = ['expense', 'budget', 'people', 'payment_method', 'invoice'];
 
   const CALLBACK_MAP = {
     expense: 'refreshExpenses',
     budget: 'refreshBudgets',
     people: 'refreshPeople',
     payment_method: 'refreshPaymentMethods',
+    invoice: 'refreshExpenses', // invoice routes to expense refresh
   };
 
   test('correct callback is called exactly once, no other callbacks called', () => {
@@ -131,9 +132,11 @@ describe('Property 5 — entity type to refresh mapping', () => {
           const expectedCallback = CALLBACK_MAP[entityType];
           expect(callbacks[expectedCallback]).toHaveBeenCalledTimes(1);
 
-          // All other callbacks must NOT have been called
-          for (const [type, cbName] of Object.entries(CALLBACK_MAP)) {
-            if (type !== entityType) {
+          // All other callbacks (by name) must NOT have been called
+          const checkedNames = new Set();
+          for (const [, cbName] of Object.entries(CALLBACK_MAP)) {
+            if (cbName !== expectedCallback && !checkedNames.has(cbName)) {
+              checkedNames.add(cbName);
               expect(callbacks[cbName]).not.toHaveBeenCalled();
             }
           }

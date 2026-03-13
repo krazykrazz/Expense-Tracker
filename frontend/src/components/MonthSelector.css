@@ -1,78 +1,62 @@
-/* Month Selector Styles */
-/* Requirements: 3.1, 4.1 - Modern button and input styling */
+/* Month Selector Styles - Modernized Toolbar */
 
 .month-selector {
   display: flex;
-  gap: var(--spacing-4, 16px);
+  gap: var(--spacing-2);
   align-items: center;
-  padding: var(--spacing-3, 12px) var(--spacing-4, 16px);
-  background: var(--bg-card, white);
-  border-radius: var(--radius-lg, 12px);
-  margin-bottom: var(--spacing-4, 16px);
-  border: 1px solid var(--border-muted, #f1f5f9);
+  padding: var(--spacing-2) var(--spacing-3);
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--spacing-4);
+  border: 1px solid var(--border-muted);
   box-shadow: var(--shadow-sm);
   transition: var(--transition-card);
 }
 
 .month-selector:hover {
   box-shadow: var(--shadow-md);
-  border-color: var(--border-default, #e2e8f0);
+  border-color: var(--border-default);
 }
 
 .selector-group {
   display: flex;
   align-items: center;
-  gap: var(--spacing-2, 8px);
+  gap: var(--spacing-2);
 }
 
 .selector-group label {
-  font-weight: var(--font-medium, 500);
-  color: var(--text-secondary, #475569);
-  font-size: var(--text-sm, 13px);
+  font-weight: var(--font-medium);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
   font-family: var(--font-sans);
-  line-height: var(--leading-normal, 1.5);
+  line-height: var(--leading-normal);
 }
 
 .selector-group select {
-  padding: var(--spacing-2, 8px) var(--spacing-3, 12px);
-  border: 1px solid var(--border-default, #e2e8f0);
-  border-radius: var(--radius-md, 8px);
-  font-size: var(--text-base, 14px);
+  padding: var(--spacing-2) var(--spacing-3);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
   font-family: var(--font-sans);
-  background-color: var(--bg-card, white);
+  background-color: var(--bg-card);
   cursor: pointer;
-  min-width: 120px;
+  min-width: 110px;
   transition: var(--transition-input);
 }
 
 .selector-group select:hover:not(:disabled):not(:focus) {
-  border-color: var(--border-strong, #cbd5e1);
+  border-color: var(--border-strong);
 }
 
 .selector-group select:focus {
   outline: none;
-  border-color: var(--border-focus, #0ea5e9);
+  border-color: var(--border-focus);
   box-shadow: var(--focus-ring);
 }
 
-@media (max-width: 768px) {
-  .month-selector {
-    flex-direction: column;
-    gap: var(--spacing-3, 12px);
-    align-items: stretch;
-  }
-
-  .selector-group {
-    flex-direction: column;
-    align-items: stretch;
-    gap: var(--spacing-1, 4px);
-  }
-
-  .selector-group select {
-    width: 100%;
-  }
-}
-
+/* ============================================
+   NAV BUTTONS - Unified pill style
+   ============================================ */
 .annual-summary-button,
 .tax-deductible-button,
 .manage-budgets-button,
@@ -81,18 +65,18 @@
 .merchant-analytics-button,
 .analytics-hub-button,
 .financial-overview-button {
-  padding: var(--spacing-2, 8px) var(--spacing-4, 16px);
-  background: var(--color-primary, #0ea5e9);
-  color: var(--text-inverse, white);
-  border: none;
-  border-radius: var(--radius-md, 8px);
-  font-size: var(--text-base, 14px);
-  font-weight: var(--font-medium, 500);
+  padding: var(--spacing-2) var(--spacing-3);
+  background: var(--bg-muted);
+  color: var(--text-secondary);
+  border: 1px solid transparent;
+  border-radius: var(--radius-full);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
   font-family: var(--font-sans);
   cursor: pointer;
   transition: var(--transition-button);
   white-space: nowrap;
-  box-shadow: var(--shadow-sm);
+  box-shadow: none;
 }
 
 .annual-summary-button:hover,
@@ -103,9 +87,11 @@
 .merchant-analytics-button:hover,
 .analytics-hub-button:hover,
 .financial-overview-button:hover {
-  background: var(--color-primary-hover, #0284c7);
+  background: var(--color-primary-light);
+  color: var(--color-primary-active);
+  border-color: var(--color-primary);
   transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-sm);
 }
 
 .annual-summary-button:active,
@@ -117,111 +103,76 @@
 .analytics-hub-button:active,
 .financial-overview-button:active {
   transform: translateY(0) scale(0.98);
-  box-shadow: var(--shadow-xs);
+  box-shadow: none;
 }
 
-.annual-summary-button:focus,
-.tax-deductible-button:focus,
-.manage-budgets-button:focus,
-.budgets-button:focus,
-.budget-history-button:focus,
-.merchant-analytics-button:focus,
-.analytics-hub-button:focus,
-.financial-overview-button:focus {
+.annual-summary-button:focus-visible,
+.tax-deductible-button:focus-visible,
+.manage-budgets-button:focus-visible,
+.budgets-button:focus-visible,
+.budget-history-button:focus-visible,
+.merchant-analytics-button:focus-visible,
+.analytics-hub-button:focus-visible,
+.financial-overview-button:focus-visible {
   outline: none;
   box-shadow: var(--focus-ring);
 }
 
-.tax-deductible-button {
-  background: var(--color-positive, #22c55e);
-}
-
-.tax-deductible-button:hover {
-  background: var(--color-positive-dark, #16a34a);
-}
-
-.manage-budgets-button {
-  background: #8b5cf6;
-}
-
-.manage-budgets-button:hover {
-  background: #7c3aed;
-}
-
-.budgets-button {
-  background: #8b5cf6;
-}
-
-.budgets-button:hover {
-  background: #7c3aed;
-}
-
-.budget-history-button {
-  background: var(--color-warning, #f59e0b);
-}
-
-.budget-history-button:hover {
-  background: var(--color-warning-dark, #d97706);
-}
-
-.merchant-analytics-button {
-  background: #ec4899;
-}
-
-.merchant-analytics-button:hover {
-  background: #db2777;
-}
-
-.analytics-hub-button {
-  background: #6366f1;
-}
-
-.analytics-hub-button:hover {
-  background: #4f46e5;
-}
-
-.financial-overview-button {
-  background: #0d9488;
-}
-
-.financial-overview-button:hover {
-  background: #0f766e;
-}
-
-/* Payment Methods button - right-justified in toolbar */
+/* Payment Methods button */
 .month-selector .payment-methods-button {
   margin-left: auto;
-  padding: var(--spacing-2, 8px) var(--spacing-4, 16px);
-  background: #475569;
-  color: var(--text-inverse, white);
-  border: none;
-  border-radius: var(--radius-md, 8px);
-  font-size: var(--text-base, 14px);
-  font-weight: var(--font-medium, 500);
+  padding: var(--spacing-2) var(--spacing-3);
+  background: var(--bg-muted);
+  color: var(--text-secondary);
+  border: 1px solid transparent;
+  border-radius: var(--radius-full);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
   font-family: var(--font-sans);
   cursor: pointer;
   transition: var(--transition-button);
   white-space: nowrap;
-  box-shadow: var(--shadow-sm);
+  box-shadow: none;
 }
 
 .month-selector .payment-methods-button:hover {
-  background: #334155;
+  background: var(--color-primary-light);
+  color: var(--color-primary-active);
+  border-color: var(--color-primary);
   transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-sm);
 }
 
 .month-selector .payment-methods-button:active {
   transform: translateY(0) scale(0.98);
-  box-shadow: var(--shadow-xs);
+  box-shadow: none;
 }
 
-.month-selector .payment-methods-button:focus {
+.month-selector .payment-methods-button:focus-visible {
   outline: none;
   box-shadow: var(--focus-ring);
 }
 
+/* ============================================
+   RESPONSIVE
+   ============================================ */
 @media (max-width: 768px) {
+  .month-selector {
+    flex-direction: column;
+    gap: var(--spacing-3);
+    align-items: stretch;
+  }
+
+  .selector-group {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--spacing-1);
+  }
+
+  .selector-group select {
+    width: 100%;
+  }
+
   .annual-summary-button,
   .tax-deductible-button,
   .manage-budgets-button,
@@ -233,14 +184,15 @@
   .month-selector .payment-methods-button {
     width: 100%;
   }
-  
+
   .month-selector .payment-methods-button {
     margin-left: 0;
   }
 }
 
-
-/* Accessibility: Respect reduced motion preferences */
+/* ============================================
+   REDUCED MOTION
+   ============================================ */
 @media (prefers-reduced-motion: reduce) {
   .month-selector,
   .selector-group select,
@@ -255,7 +207,7 @@
   .month-selector .payment-methods-button {
     transition: none;
   }
-  
+
   .annual-summary-button:hover,
   .tax-deductible-button:hover,
   .manage-budgets-button:hover,
@@ -267,7 +219,7 @@
   .month-selector .payment-methods-button:hover {
     transform: none;
   }
-  
+
   .annual-summary-button:active,
   .tax-deductible-button:active,
   .manage-budgets-button:active,

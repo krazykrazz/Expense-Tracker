@@ -1,37 +1,37 @@
 .floating-add-button {
   position: fixed;
-  bottom: 24px;
-  right: 24px;
-  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
-  color: white;
+  bottom: var(--spacing-6);
+  right: var(--spacing-6);
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 100%);
+  color: var(--text-inverse);
   border: none;
-  border-radius: 56px;
-  padding: 16px 24px;
+  border-radius: var(--radius-full);
+  padding: var(--spacing-4) var(--spacing-6);
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  font-weight: 600;
+  gap: var(--spacing-2);
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
-  transition: all 0.3s ease;
-  z-index: var(--z-fixed, 300);
+  box-shadow: var(--shadow-md);
+  transition: var(--transition-button);
+  z-index: var(--z-fixed);
   min-height: 56px;
 }
 
 .floating-add-button:hover {
-  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
-  box-shadow: 0 6px 16px rgba(14, 165, 233, 0.4);
+  background: linear-gradient(135deg, var(--color-primary-hover) 0%, var(--color-primary-active) 100%);
+  box-shadow: var(--shadow-lg);
   transform: translateY(-2px);
 }
 
 .floating-add-button:active {
   transform: translateY(0);
-  box-shadow: 0 2px 8px rgba(14, 165, 233, 0.3);
+  box-shadow: var(--shadow-sm);
 }
 
 .fab-icon {
-  font-size: 20px;
+  font-size: var(--text-2xl);
   font-weight: 300;
   line-height: 1;
 }
@@ -43,23 +43,23 @@
 /* Mobile responsive */
 @media (max-width: 768px) {
   .floating-add-button {
-    bottom: 16px;
-    right: 16px;
-    padding: 12px 20px;
-    font-size: 13px;
-    border-radius: 48px;
+    bottom: var(--spacing-4);
+    right: var(--spacing-4);
+    padding: var(--spacing-3) var(--spacing-5);
+    font-size: var(--text-sm);
+    border-radius: var(--radius-full);
     min-height: 48px;
   }
   
   .fab-icon {
-    font-size: 18px;
+    font-size: var(--text-xl);
   }
 }
 
 /* Compact version for smaller screens */
 @media (max-width: 480px) {
   .floating-add-button {
-    padding: 12px;
+    padding: var(--spacing-3);
     border-radius: 50%;
     width: 48px;
     height: 48px;
@@ -71,7 +71,7 @@
   }
   
   .fab-icon {
-    font-size: 20px;
+    font-size: var(--text-2xl);
   }
 }
 

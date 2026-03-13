@@ -134,6 +134,10 @@ test-budget.json
 # Archived one-time scripts
 backend/scripts/archive/
 
+# Test runner caches
+backend/.jest-cache/
+frontend/.vitest-cache/
+
 # Kiro IDE (internal development tooling)
 .kiro/
 

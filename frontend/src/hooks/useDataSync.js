@@ -28,10 +28,11 @@ const TOAST_LABELS = {
   income: '↻ Income updated',
   investment: '↻ Investments updated',
   fixed_expense: '↻ Fixed expenses updated',
+  invoice: '↻ Receipts updated',
 };
 
 /** Entity types that call context refresh callbacks */
-const CONTEXT_ENTITY_TYPES = new Set(['expense', 'budget', 'people', 'payment_method']);
+const CONTEXT_ENTITY_TYPES = new Set(['expense', 'budget', 'people', 'payment_method', 'invoice']);
 
 /** Entity types that dispatch window custom events */
 const WINDOW_EVENT_ENTITY_TYPES = new Set(['loan', 'income', 'investment', 'fixed_expense']);
@@ -126,6 +127,7 @@ export function useDataSync({
       if (CONTEXT_ENTITY_TYPES.has(entityType)) {
         switch (entityType) {
           case 'expense':
+          case 'invoice': // invoice changes affect expense list (receipt badges)
             refreshExpensesRef.current?.();
             break;
           case 'budget':

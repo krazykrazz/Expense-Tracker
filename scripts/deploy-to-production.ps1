@@ -176,7 +176,7 @@ $changelog = $changelog -replace '(# Changelog\s*)', "`$1`n$changelogEntry"
 $changelog | Set-Content CHANGELOG.md -NoNewline
 
 # 5. BackupSettings.jsx (in-app changelog)
-$backupSettingsPath = "frontend/src/components/BackupSettings.jsx"
+$backupSettingsPath = "frontend/src/components/system/BackupSettings.jsx"
 $backupSettingsContent = Get-Content $backupSettingsPath -Raw
 
 $changelogDate = Get-Date -Format "MMMM d, yyyy"
@@ -204,7 +204,7 @@ if ($backupSettingsContent -match $insertionPattern) {
 }
 
 # 6. SystemModal.jsx (in-app changelog in Updates tab)
-$systemModalPath = "frontend/src/components/SystemModal.jsx"
+$systemModalPath = "frontend/src/components/system/SystemModal.jsx"
 $systemModalContent = Get-Content $systemModalPath -Raw
 
 $newSystemEntry = @"

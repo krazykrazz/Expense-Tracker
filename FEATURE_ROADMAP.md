@@ -646,6 +646,23 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ## 🟢 Completed Features
 
+### 🟢 Frontend Component Domain Grouping
+**Completed**: March 2026  
+**Spec**: `.kiro/specs/frontend-component-domain-grouping/`  
+**Description**: Reorganized the flat `frontend/src/components/` directory (~80 JSX + ~65 CSS files) into 9 domain-based subdirectories with barrel exports.
+
+**Features Delivered**:
+- **Domain Subdirectories**: `expenses/`, `financial/`, `credit-cards/`, `loans/`, `tax/`, `analytics/`, `notifications/`, `system/`, `shared/`
+- **Barrel Exports**: Each domain has an `index.js` for clean imports
+- **Zero Behavioral Changes**: Pure refactor — all imports, mocks, and CSS paths updated
+
+**Benefits**:
+- Related components grouped together for faster navigation
+- Clearer ownership boundaries between domains
+- Easier onboarding for new contributors
+
+---
+
 ### 🟢 Container Update Detection (v1.0.0)
 **Completed**: February 2026  
 **Spec**: `.kiro/specs/container-update-refresh/`  

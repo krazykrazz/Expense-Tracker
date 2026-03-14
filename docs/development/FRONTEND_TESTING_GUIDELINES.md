@@ -2494,8 +2494,8 @@ vi.mock('./CollapsibleSection', () => ({
 }));
 import ExpenseForm from './ExpenseForm'; // After mock
 
-// 2. Check module path is correct
-vi.mock('../components/CollapsibleSection'); // Relative to test file
+// 2. Check module path is correct (use domain-relative paths)
+vi.mock('../shared/CollapsibleSection'); // Relative to test file in a domain subdirectory
 
 // 3. Match actual export structure
 vi.mock('./utils', () => ({

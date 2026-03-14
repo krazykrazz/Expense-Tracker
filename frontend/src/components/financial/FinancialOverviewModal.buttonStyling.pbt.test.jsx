@@ -12,7 +12,7 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { render, cleanup } from '@testing-library/react';
 import * as fc from 'fast-check';
-import CreditCardRow from './CreditCardRow';
+import CreditCardRow from '../credit-cards/CreditCardRow';
 import LoanRow from '../loans/LoanRow';
 import InvestmentRow from '../loans/InvestmentRow';
 

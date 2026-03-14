@@ -1,0 +1,1322 @@
+import { useState, useEffect, useRef } from 'react';
+import { API_ENDPOINTS } from '../../config';
+import { authAwareFetch } from '../../utils/fetchProvider';
+import './BackupSettings.css';
+import { formatDateTime } from '../../utils/formatters';
+import PlaceNameStandardization from '../shared/PlaceNameStandardization';
+import { getPeople, createPerson, updatePerson, deletePerson } from '../../services/peopleApi';
+import { fetchRecentEvents, fetchCleanupStats, fetchRetentionSettings, updateRetentionSettings } from '../../services/activityLogApi';
+import { createLogger } from '../../utils/logger';
+
+const logger = createLogger('BackupSettings');
+
+const BackupSettings = () => {
+  const [activeTab, setActiveTab] = useState('backups');
+  const [config, setConfig] = useState({
+    enabled: false,
+    schedule: 'daily',
+    time: '02:00',
+    targetPath: '',
+    keepLastN: 7
+  });
+  
+  const [backups, setBackups] = useState([]);
+  const [message, setMessage] = useState({ text: '', type: '' });
+  const [loading, setLoading] = useState(true);
+  const [nextBackup, setNextBackup] = useState(null);
+  const [versionInfo, setVersionInfo] = useState(null);
+  const [dbStats, setDbStats] = useState(null);
+  const [showPlaceNameStandardization, setShowPlaceNameStandardization] = useState(false);
+  
+  // Activity log state
+  const [activityEvents, setActivityEvents] = useState([]);
+  const [activityLoading, setActivityLoading] = useState(false);
+  const [activityError, setActivityError] = useState(null);
+  const [displayLimit, setDisplayLimit] = useState(50);
+  const [hasMore, setHasMore] = useState(false);
+  const [activityStats, setActivityStats] = useState(null);
+  
+  // Retention settings state
+  const [retentionSettings, setRetentionSettings] = useState({
+    maxAgeDays: 90,
+    maxCount: 1000
+  });
+  const [retentionLoading, setRetentionLoading] = useState(false);
+  const [retentionError, setRetentionError] = useState(null);
+  const [retentionMessage, setRetentionMessage] = useState({ text: '', type: '' });
+  const [retentionValidationErrors, setRetentionValidationErrors] = useState({});
+  
+  // Track timeouts for cleanup on unmount
+  const messageTimerRef = useRef(null);
+  
+  // Cleanup timers on unmount
+  useEffect(() => {
+    return () => {
+      if (messageTimerRef.current) {
+        clearTimeout(messageTimerRef.current);
+      }
+    };
+  }, []);
+  
+  // People management state
+  const [people, setPeople] = useState([]);
+  const [editingPerson, setEditingPerson] = useState(null);
+  const [peopleLoading, setPeopleLoading] = useState(false);
+  const [peopleError, setPeopleError] = useState(null);
+  const [personFormData, setPersonFormData] = useState({ name: '', dateOfBirth: '' });
+  const [personValidationErrors, setPersonValidationErrors] = useState({});
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
+
+  useEffect(() => {
+    fetchConfig();
+    fetchBackupList();
+    fetchVersionInfo();
+  }, []);
+
+  // Fetch people when People tab is active
+  useEffect(() => {
+    if (activeTab === 'people') {
+      fetchPeople();
+    }
+  }, [activeTab]);
+
+  // Fetch stats when About tab is active
+  useEffect(() => {
+    if (activeTab === 'about') {
+      fetchDbStats();
+    }
+  }, [activeTab]);
+
+  // Fetch activity logs when Misc tab is active
+  useEffect(() => {
+    if (activeTab === 'misc') {
+      // Load saved display limit from local storage
+      const savedLimit = localStorage.getItem('activityLogDisplayLimit');
+      let limitToUse = 50; // default
+      if (savedLimit) {
+        limitToUse = parseInt(savedLimit, 10);
+        setDisplayLimit(limitToUse);
+      }
+      fetchActivityEvents(0, limitToUse);
+      fetchActivityStats();
+      fetchRetentionSettingsData();
+    }
+  }, [activeTab]);
+
+  const fetchVersionInfo = async () => {
+    try {
+      const response = await authAwareFetch(API_ENDPOINTS.VERSION);
+      if (response.ok) {
+        const data = await response.json();
+        setVersionInfo(data);
+      }
+    } catch (error) {
+      logger.error('Error fetching version info:', error);
+    }
+  };
+
+  const fetchDbStats = async () => {
+    try {
+      const response = await authAwareFetch(API_ENDPOINTS.BACKUP_STATS);
+      if (response.ok) {
+        const data = await response.json();
+        setDbStats(data);
+      }
+    } catch (error) {
+      logger.error('Error fetching database stats:', error);
+    }
+  };
+
+  const fetchConfig = async () => {
+    try {
+      const response = await authAwareFetch(API_ENDPOINTS.BACKUP_CONFIG);
+      if (!response.ok) throw new Error('Failed to fetch backup config');
+      
+      const data = await response.json();
+      setConfig({
+        enabled: data.enabled,
+        schedule: data.schedule,
+        time: data.time,
+        targetPath: data.targetPath || '',
+        keepLastN: data.keepLastN
+      });
+      setNextBackup(data.nextBackup);
+    } catch (error) {
+      logger.error('Error fetching config:', error);
+      setMessage({ text: 'Failed to load backup settings', type: 'error' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchBackupList = async () => {
+    try {
+      const response = await authAwareFetch(API_ENDPOINTS.BACKUP_LIST);
+      if (!response.ok) throw new Error('Failed to fetch backup list');
+      
+      const data = await response.json();
+      setBackups(data);
+    } catch (error) {
+      logger.error('Error fetching backups:', error);
+    }
+  };
+
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setConfig(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
+  };
+
+  const handleSave = async () => {
+    setMessage({ text: '', type: '' });
+    
+    try {
+      const response = await authAwareFetch(API_ENDPOINTS.BACKUP_CONFIG, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(config)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to save settings');
+      }
+
+      const data = await response.json();
+      setNextBackup(data.nextBackup);
+      setMessage({ text: 'Backup settings saved successfully!', type: 'success' });
+      
+      if (messageTimerRef.current) clearTimeout(messageTimerRef.current);
+      messageTimerRef.current = setTimeout(() => setMessage({ text: '', type: '' }), 3000);
+    } catch (error) {
+      setMessage({ text: error.message, type: 'error' });
+    }
+  };
+
+  const handleManualBackup = async () => {
+    setMessage({ text: 'Creating backup...', type: 'info' });
+    
+    try {
+      const response = await authAwareFetch(API_ENDPOINTS.BACKUP_MANUAL, {
+        method: 'POST'
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create backup');
+      }
+
+      const data = await response.json();
+      setMessage({ text: `Backup created: ${data.filename}`, type: 'success' });
+      fetchBackupList();
+      fetchConfig();
+      
+      if (messageTimerRef.current) clearTimeout(messageTimerRef.current);
+      messageTimerRef.current = setTimeout(() => setMessage({ text: '', type: '' }), 5000);
+    } catch (error) {
+      setMessage({ text: error.message, type: 'error' });
+    }
+  };
+
+  const handleDownloadBackup = () => {
+    window.location.href = API_ENDPOINTS.BACKUP_DOWNLOAD;
+  };
+
+  const handleRestoreBackup = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    if (!window.confirm('⚠️ WARNING: Restoring from backup will replace ALL current data. This cannot be undone. Are you sure?')) {
+      event.target.value = '';
+      return;
+    }
+
+    setMessage({ text: 'Restoring from backup...', type: 'info' });
+
+    const formData = new FormData();
+    formData.append('backup', file);
+
+    try {
+      const response = await authAwareFetch(API_ENDPOINTS.BACKUP_RESTORE, {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to restore backup');
+      }
+
+      setMessage({ text: 'Backup restored successfully! Reloading...', type: 'success' });
+      
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+    } catch (error) {
+      logger.error('Restore error:', error);
+      setMessage({ text: error.message, type: 'error' });
+    }
+
+    // Reset file input
+    event.target.value = '';
+  };
+
+  const formatFileSize = (bytes) => {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+  };
+
+  const formatDate = formatDateTime;
+
+  // Activity log functions
+  const fetchActivityEvents = async (offset = 0, limit = displayLimit) => {
+    setActivityLoading(true);
+    setActivityError(null);
+    try {
+      const response = await fetchRecentEvents(limit, offset);
+      
+      if (offset === 0) {
+        // Initial load - replace events
+        setActivityEvents(response.events || []);
+      } else {
+        // Load more - append events
+        setActivityEvents(prev => [...prev, ...(response.events || [])]);
+      }
+      
+      // Check if there are more events to load
+      const currentCount = offset === 0 ? response.events.length : activityEvents.length + response.events.length;
+      setHasMore(currentCount < response.total);
+    } catch (error) {
+      logger.error('Error fetching activity events:', error);
+      setActivityError('Failed to load activity events');
+    } finally {
+      setActivityLoading(false);
+    }
+  };
+
+  const fetchActivityStats = async () => {
+    try {
+      const stats = await fetchCleanupStats();
+      setActivityStats(stats);
+    } catch (error) {
+      logger.error('Error fetching activity stats:', error);
+      // Don't show error to user - stats are optional
+    }
+  };
+
+  const handleDisplayLimitChange = (e) => {
+    const newLimit = parseInt(e.target.value, 10);
+    setDisplayLimit(newLimit);
+    localStorage.setItem('activityLogDisplayLimit', newLimit.toString());
+    // Refetch with new limit - pass it explicitly to avoid stale closure
+    fetchActivityEvents(0, newLimit);
+  };
+
+  const handleLoadMore = () => {
+    fetchActivityEvents(activityEvents.length);
+  };
+
+  const formatTimestamp = (isoTimestamp) => {
+    const eventDate = new Date(isoTimestamp);
+    const now = new Date();
+    const diffMs = now - eventDate;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    // Less than 1 minute
+    if (diffMins < 1) {
+      return 'Just now';
+    }
+    
+    // Less than 1 hour
+    if (diffMins < 60) {
+      return `${diffMins} minute${diffMins !== 1 ? 's' : ''} ago`;
+    }
+    
+    // Less than 24 hours
+    if (diffHours < 24) {
+      return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
+    }
+    
+    // Yesterday
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    if (eventDate.toDateString() === yesterday.toDateString()) {
+      return `Yesterday at ${eventDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}`;
+    }
+    
+    // Less than 7 days
+    if (diffDays < 7) {
+      return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
+    }
+    
+    // Older - show full date and time
+    return eventDate.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: eventDate.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
+  };
+
+  const formatEventType = (eventType) => {
+    // Convert snake_case to Title Case
+    return eventType
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+
+  // Retention settings functions
+  const fetchRetentionSettingsData = async () => {
+    setRetentionLoading(true);
+    setRetentionError(null);
+    try {
+      const settings = await fetchRetentionSettings();
+      setRetentionSettings({
+        maxAgeDays: settings.maxAgeDays,
+        maxCount: settings.maxCount
+      });
+    } catch (error) {
+      logger.error('Error fetching retention settings:', error);
+      setRetentionError('Failed to load retention settings');
+    } finally {
+      setRetentionLoading(false);
+    }
+  };
+
+  const validateRetentionSettingsForm = () => {
+    const errors = {};
+    
+    const maxAgeDays = parseInt(retentionSettings.maxAgeDays, 10);
+    const maxCount = parseInt(retentionSettings.maxCount, 10);
+    
+    if (isNaN(maxAgeDays) || maxAgeDays < 7 || maxAgeDays > 365) {
+      errors.maxAgeDays = 'Max age must be between 7 and 365 days';
+    }
+    
+    if (isNaN(maxCount) || maxCount < 100 || maxCount > 10000) {
+      errors.maxCount = 'Max count must be between 100 and 10000 events';
+    }
+    
+    setRetentionValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleRetentionInputChange = (field, value) => {
+    setRetentionSettings(prev => ({ ...prev, [field]: value }));
+    if (retentionValidationErrors[field]) {
+      setRetentionValidationErrors(prev => ({ ...prev, [field]: null }));
+    }
+    // Clear messages when user starts editing
+    if (retentionMessage.text) {
+      setRetentionMessage({ text: '', type: '' });
+    }
+  };
+
+  const handleSaveRetentionSettings = async () => {
+    if (!validateRetentionSettingsForm()) return;
+    
+    setRetentionLoading(true);
+    setRetentionError(null);
+    setRetentionMessage({ text: '', type: '' });
+    
+    try {
+      const maxAgeDays = parseInt(retentionSettings.maxAgeDays, 10);
+      const maxCount = parseInt(retentionSettings.maxCount, 10);
+      
+      const response = await updateRetentionSettings(maxAgeDays, maxCount);
+      
+      setRetentionSettings({
+        maxAgeDays: response.maxAgeDays,
+        maxCount: response.maxCount
+      });
+      
+      setRetentionMessage({ 
+        text: 'Retention settings saved successfully!', 
+        type: 'success' 
+      });
+      
+      // Refresh activity stats to show updated policy
+      fetchActivityStats();
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => {
+        setRetentionMessage({ text: '', type: '' });
+      }, 3000);
+    } catch (error) {
+      logger.error('Error saving retention settings:', error);
+      setRetentionError(error.message || 'Failed to save retention settings');
+      setRetentionMessage({ 
+        text: error.message || 'Failed to save retention settings', 
+        type: 'error' 
+      });
+    } finally {
+      setRetentionLoading(false);
+    }
+  };
+
+  // People management functions
+  const fetchPeople = async () => {
+    setPeopleLoading(true);
+    setPeopleError(null);
+    try {
+      const data = await getPeople();
+      setPeople(data || []);
+    } catch (err) {
+      setPeopleError(err.message || 'Failed to load family members');
+    } finally {
+      setPeopleLoading(false);
+    }
+  };
+
+  const clearPersonForm = () => {
+    setPersonFormData({ name: '', dateOfBirth: '' });
+    setPersonValidationErrors({});
+    setEditingPerson(null);
+  };
+
+  const validatePersonForm = () => {
+    const errors = {};
+    if (!personFormData.name || personFormData.name.trim() === '') {
+      errors.name = 'Name is required';
+    }
+    if (personFormData.dateOfBirth && personFormData.dateOfBirth.trim() !== '') {
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      if (!dateRegex.test(personFormData.dateOfBirth)) {
+        errors.dateOfBirth = 'Date must be in YYYY-MM-DD format';
+      } else {
+        const date = new Date(personFormData.dateOfBirth);
+        if (isNaN(date.getTime())) {
+          errors.dateOfBirth = 'Invalid date';
+        } else if (date > new Date()) {
+          errors.dateOfBirth = 'Date cannot be in the future';
+        }
+      }
+    }
+    setPersonValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handlePersonInputChange = (field, value) => {
+    setPersonFormData(prev => ({ ...prev, [field]: value }));
+    if (personValidationErrors[field]) {
+      setPersonValidationErrors(prev => ({ ...prev, [field]: null }));
+    }
+  };
+
+  const handleAddPerson = () => {
+    clearPersonForm();
+    setEditingPerson('new');
+  };
+
+  const handleEditPerson = (person) => {
+    setPersonFormData({
+      name: person.name,
+      dateOfBirth: person.dateOfBirth || ''
+    });
+    setEditingPerson(person.id);
+    setPersonValidationErrors({});
+  };
+
+  const handleSavePerson = async () => {
+    if (!validatePersonForm()) return;
+    
+    setPeopleLoading(true);
+    setPeopleError(null);
+    try {
+      const { name, dateOfBirth } = personFormData;
+      const dateValue = dateOfBirth.trim() === '' ? null : dateOfBirth;
+      
+      if (editingPerson === 'new') {
+        await createPerson(name.trim(), dateValue);
+      } else {
+        await updatePerson(editingPerson, name.trim(), dateValue);
+      }
+      await fetchPeople();
+      clearPersonForm();
+      
+      // Dispatch global event to notify other components of people update
+      window.dispatchEvent(new CustomEvent('peopleUpdated'));
+    } catch (err) {
+      setPeopleError(err.message || 'Failed to save person');
+    } finally {
+      setPeopleLoading(false);
+    }
+  };
+
+  const handleCancelPersonEdit = () => {
+    clearPersonForm();
+    setPeopleError(null);
+  };
+
+  const handleDeletePersonClick = (person) => {
+    setDeleteConfirm(person);
+  };
+
+  const handleDeletePersonConfirm = async () => {
+    if (!deleteConfirm) return;
+    
+    setPeopleLoading(true);
+    setPeopleError(null);
+    try {
+      await deletePerson(deleteConfirm.id);
+      await fetchPeople();
+      setDeleteConfirm(null);
+      
+      // Dispatch global event to notify other components of people update
+      window.dispatchEvent(new CustomEvent('peopleUpdated'));
+    } catch (err) {
+      setPeopleError(err.message || 'Failed to delete person');
+    } finally {
+      setPeopleLoading(false);
+    }
+  };
+
+  const handleDeletePersonCancel = () => {
+    setDeleteConfirm(null);
+  };
+
+  const formatPersonDate = (dateString) => {
+    if (!dateString) return 'Not specified';
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-CA', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    } catch {
+      return dateString;
+    }
+  };
+
+  if (loading) {
+    return <div className="backup-settings-loading">Loading settings...</div>;
+  }
+
+  return (
+    <div className="backup-settings">
+      <h2>⚙️ Settings</h2>
+      
+      <div className="settings-tabs">
+        <button 
+          className={`tab-button ${activeTab === 'backups' ? 'active' : ''}`}
+          onClick={() => setActiveTab('backups')}
+        >
+          💾 Backups
+        </button>
+        <button 
+          className={`tab-button ${activeTab === 'import' ? 'active' : ''}`}
+          onClick={() => setActiveTab('import')}
+        >
+          🔄 Restore
+        </button>
+        <button 
+          className={`tab-button ${activeTab === 'people' ? 'active' : ''}`}
+          onClick={() => setActiveTab('people')}
+        >
+          👥 People
+        </button>
+        <button 
+          className={`tab-button ${activeTab === 'misc' ? 'active' : ''}`}
+          onClick={() => setActiveTab('misc')}
+        >
+          🔧 Misc
+        </button>
+        <button 
+          className={`tab-button ${activeTab === 'about' ? 'active' : ''}`}
+          onClick={() => setActiveTab('about')}
+        >
+          ℹ️ About
+        </button>
+      </div>
+
+      <div className="tab-content">
+        {activeTab === 'backups' && (
+          <div className="tab-panel">
+            <div className="settings-section">
+        <h3>Automatic Backups</h3>
+        
+        <div className="form-group checkbox-group">
+          <label className="checkbox-label">
+            <input
+              type="checkbox"
+              name="enabled"
+              checked={config.enabled}
+              onChange={handleChange}
+            />
+            <span>Enable automatic backups</span>
+          </label>
+        </div>
+
+        {config.enabled && (
+          <>
+            <div className="form-group">
+              <label htmlFor="time">Backup Time</label>
+              <input
+                type="time"
+                id="time"
+                name="time"
+                value={config.time}
+                onChange={handleChange}
+              />
+              <small className="field-hint">Daily backup time (24-hour format)</small>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="targetPath">Backup Location</label>
+              <input
+                type="text"
+                id="targetPath"
+                name="targetPath"
+                value={config.targetPath}
+                onChange={handleChange}
+                placeholder="e.g., C:\Backups\ExpenseTracker (leave empty for default)"
+              />
+              <small className="field-hint">
+                <strong>Must be a full absolute path</strong> (e.g., C:\Backups\ExpenseTracker or D:\MyBackups). Leave empty to use default location.
+              </small>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="keepLastN">Keep Last N Backups</label>
+              <input
+                type="number"
+                id="keepLastN"
+                name="keepLastN"
+                value={config.keepLastN}
+                onChange={handleChange}
+                min="1"
+                max="365"
+              />
+              <small className="field-hint">Older backups will be automatically deleted</small>
+            </div>
+
+            {nextBackup && (
+              <div className="next-backup-info">
+                <strong>Next scheduled backup:</strong> {formatDate(nextBackup)}
+              </div>
+            )}
+          </>
+        )}
+
+        <div className="form-actions">
+          <button onClick={handleSave} className="save-button">
+            Save Settings
+          </button>
+        </div>
+      </div>
+
+      <div className="settings-section">
+        <h3>Manual Backup</h3>
+        <p>Create a backup right now. Backups include all expenses, income sources, fixed expenses, loans, budgets, investments, invoice files, and configuration data.</p>
+        <div className="manual-backup-buttons">
+          <button onClick={handleManualBackup} className="backup-button">
+            💾 Create Backup Now
+          </button>
+          <button onClick={handleDownloadBackup} className="download-button">
+            📥 Download Backup
+          </button>
+        </div>
+        <small className="backup-hint">Download creates a .tar.gz archive with all data including invoice PDFs.</small>
+      </div>
+
+
+
+            {backups.length > 0 && (
+              <div className="settings-section">
+                <h3>Recent Backups</h3>
+                <div className="backup-list">
+                  {backups.map((backup, index) => (
+                    <div key={index} className="backup-item">
+                      <div className="backup-info">
+                        <div className="backup-name">{backup.name}</div>
+                        <div className="backup-details">
+                          {formatFileSize(backup.size)} • {formatDate(backup.created)}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+      {activeTab === 'import' && (
+        <div className="tab-panel">
+          <div className="settings-section">
+            <h3>Restore from Backup</h3>
+            <p className="warning-text">⚠️ WARNING: This will replace ALL current data. This action cannot be undone!</p>
+            <p className="restore-info">
+              Accepts <strong>.tar.gz</strong> archives (recommended - includes invoices) or legacy <strong>.db</strong> files (database only).
+            </p>
+            <label className="file-upload-button restore-button">
+              🔄 Choose Backup File
+              <input 
+                type="file" 
+                accept=".tar.gz,.tgz,.db"
+                onChange={handleRestoreBackup}
+                style={{ display: 'none' }}
+              />
+            </label>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'people' && (
+        <div className="tab-panel">
+          <div className="settings-section">
+            <h3>Family Members</h3>
+            <p>Manage family members for medical expense tracking. Associate medical expenses with specific people for detailed tax reporting.</p>
+            
+            {peopleError && (
+              <div className="message error">
+                {peopleError}
+                {people.length === 0 && !peopleLoading && (
+                  <button className="people-retry-button" onClick={fetchPeople}>
+                    Retry
+                  </button>
+                )}
+              </div>
+            )}
+
+            {peopleLoading && people.length === 0 ? (
+              <div className="people-loading">Loading family members...</div>
+            ) : (
+              <>
+                {/* Add Person Button */}
+                <div className="people-add-section">
+                  <button
+                    className="people-add-button"
+                    onClick={handleAddPerson}
+                    disabled={peopleLoading || editingPerson !== null}
+                  >
+                    ➕ Add Family Member
+                  </button>
+                </div>
+
+                {/* Person Form */}
+                {editingPerson !== null && (
+                  <div className="people-form-section">
+                    <h4>{editingPerson === 'new' ? 'Add New Person' : 'Edit Person'}</h4>
+                    
+                    <div className="people-form">
+                      <div className="people-form-group">
+                        <label htmlFor="settings-person-name">Name *</label>
+                        <input
+                          id="settings-person-name"
+                          type="text"
+                          value={personFormData.name}
+                          onChange={(e) => handlePersonInputChange('name', e.target.value)}
+                          placeholder="Enter person's name"
+                          className={personValidationErrors.name ? 'input-error' : ''}
+                          disabled={peopleLoading}
+                          autoFocus
+                        />
+                        {personValidationErrors.name && (
+                          <span className="validation-error">{personValidationErrors.name}</span>
+                        )}
+                      </div>
+
+                      <div className="people-form-group">
+                        <label htmlFor="settings-person-dob">Date of Birth (Optional)</label>
+                        <input
+                          id="settings-person-dob"
+                          type="date"
+                          value={personFormData.dateOfBirth}
+                          onChange={(e) => handlePersonInputChange('dateOfBirth', e.target.value)}
+                          className={personValidationErrors.dateOfBirth ? 'input-error' : ''}
+                          disabled={peopleLoading}
+                        />
+                        {personValidationErrors.dateOfBirth && (
+                          <span className="validation-error">{personValidationErrors.dateOfBirth}</span>
+                        )}
+                      </div>
+
+                      <div className="people-form-actions">
+                        <button
+                          className="people-save-button"
+                          onClick={handleSavePerson}
+                          disabled={peopleLoading}
+                        >
+                          {peopleLoading ? 'Saving...' : (editingPerson === 'new' ? 'Add Person' : 'Save Changes')}
+                        </button>
+                        <button
+                          className="people-cancel-button"
+                          onClick={handleCancelPersonEdit}
+                          disabled={peopleLoading}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* People List */}
+                <div className="people-list-section">
+                  <h4>Family Members ({people.length})</h4>
+                  
+                  {people.length === 0 ? (
+                    <div className="people-empty-state">
+                      <p>No family members added yet.</p>
+                      <p>Click "Add Family Member" to get started.</p>
+                    </div>
+                  ) : (
+                    <div className="people-list">
+                      {people.map((person) => (
+                        <div key={person.id} className="people-list-item">
+                          <div className="people-info">
+                            <div className="people-name">{person.name}</div>
+                            <div className="people-dob">
+                              Born: {formatPersonDate(person.dateOfBirth)}
+                            </div>
+                          </div>
+                          
+                          <div className="people-actions">
+                            <button
+                              className="people-edit-button"
+                              onClick={() => handleEditPerson(person)}
+                              disabled={peopleLoading || editingPerson !== null}
+                              title="Edit person"
+                            >
+                              ✏️
+                            </button>
+                            <button
+                              className="people-delete-button"
+                              onClick={() => handleDeletePersonClick(person)}
+                              disabled={peopleLoading}
+                              title="Delete person"
+                            >
+                              🗑️
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Info Section */}
+                <div className="people-info-note">
+                  <p>
+                    💡 <strong>Note:</strong> Deleting a person will remove them from all associated medical expenses. This action cannot be undone.
+                  </p>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Delete Confirmation */}
+          {deleteConfirm && (
+            <div className="people-delete-overlay">
+              <div className="people-delete-modal">
+                <h3>Confirm Deletion</h3>
+                <p>
+                  Are you sure you want to delete <strong>{deleteConfirm.name}</strong>?
+                </p>
+                <p className="people-delete-warning">
+                  ⚠️ This will remove them from all associated medical expenses and cannot be undone.
+                </p>
+                
+                <div className="people-delete-actions">
+                  <button
+                    className="people-delete-confirm-button"
+                    onClick={handleDeletePersonConfirm}
+                    disabled={peopleLoading}
+                  >
+                    {peopleLoading ? 'Deleting...' : 'Yes, Delete'}
+                  </button>
+                  <button
+                    className="people-delete-cancel-button"
+                    onClick={handleDeletePersonCancel}
+                    disabled={peopleLoading}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'misc' && (
+        <div className="tab-panel">
+          {!showPlaceNameStandardization ? (
+            <>
+              <div className="settings-section">
+                <h3>Data Management Tools</h3>
+                <p>Miscellaneous tools for managing and cleaning up your expense data.</p>
+                
+                <div className="misc-tools-list">
+                  <div className="misc-tool-item">
+                    <div className="misc-tool-info">
+                      <h4>🏷️ Standardize Place Names</h4>
+                      <p>Find and fix inconsistent place names in your expenses (e.g., "Walmart", "walmart", "Wal-Mart")</p>
+                    </div>
+                    <button 
+                      className="misc-tool-button"
+                      onClick={() => setShowPlaceNameStandardization(true)}
+                    >
+                      Open Tool
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Retention Policy Settings Section */}
+              <div className="settings-section">
+                <h3>📋 Activity Log Retention Policy</h3>
+                <p>Configure how long activity events are kept before automatic cleanup.</p>
+                
+                {retentionError && (
+                  <div className="message error">{retentionError}</div>
+                )}
+                
+                {retentionMessage.text && (
+                  <div className={`message ${retentionMessage.type}`}>
+                    {retentionMessage.text}
+                  </div>
+                )}
+                
+                <div className="retention-settings-form">
+                  <div className="form-group">
+                    <label htmlFor="retention-max-age">Maximum Age (days)</label>
+                    <input
+                      id="retention-max-age"
+                      type="number"
+                      min="7"
+                      max="365"
+                      value={retentionSettings.maxAgeDays}
+                      onChange={(e) => handleRetentionInputChange('maxAgeDays', e.target.value)}
+                      disabled={retentionLoading}
+                    />
+                    <small className="field-hint">
+                      Keep events for this many days (7-365)
+                    </small>
+                    {retentionValidationErrors.maxAgeDays && (
+                      <span className="validation-error">
+                        {retentionValidationErrors.maxAgeDays}
+                      </span>
+                    )}
+                  </div>
+                  
+                  <div className="form-group">
+                    <label htmlFor="retention-max-count">Maximum Count</label>
+                    <input
+                      id="retention-max-count"
+                      type="number"
+                      min="100"
+                      max="10000"
+                      value={retentionSettings.maxCount}
+                      onChange={(e) => handleRetentionInputChange('maxCount', e.target.value)}
+                      disabled={retentionLoading}
+                    />
+                    <small className="field-hint">
+                      Keep this many events regardless of age (100-10000)
+                    </small>
+                    {retentionValidationErrors.maxCount && (
+                      <span className="validation-error">
+                        {retentionValidationErrors.maxCount}
+                      </span>
+                    )}
+                  </div>
+                  
+                  <div className="form-actions">
+                    <button
+                      onClick={handleSaveRetentionSettings}
+                      disabled={retentionLoading}
+                      className="save-button"
+                    >
+                      {retentionLoading ? 'Saving...' : 'Save Retention Settings'}
+                    </button>
+                  </div>
+                </div>
+                
+                {/* Impact visualization */}
+                {activityStats && (
+                  <div className="retention-impact-info">
+                    <p>
+                      <strong>Current Status:</strong> {activityStats.currentCount} events stored
+                    </p>
+                    {activityStats.oldestEventTimestamp && (
+                      <p>
+                        <strong>Oldest Event:</strong> {formatTimestamp(activityStats.oldestEventTimestamp)}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Activity Log Section - Table Layout */}
+              <div className="settings-section">
+                <div className="activity-log-header">
+                  <h3>📋 Recent Activity</h3>
+                  <div className="activity-log-controls">
+                    <label htmlFor="activity-display-limit">Show:</label>
+                    <select
+                      id="activity-display-limit"
+                      value={displayLimit}
+                      onChange={handleDisplayLimitChange}
+                      disabled={activityLoading}
+                      className="activity-limit-selector"
+                    >
+                      <option value="25">25 events</option>
+                      <option value="50">50 events</option>
+                      <option value="100">100 events</option>
+                      <option value="200">200 events</option>
+                    </select>
+                  </div>
+                </div>
+
+                {activityError && (
+                  <div className="activity-error">
+                    {activityError}
+                  </div>
+                )}
+
+                {activityLoading && activityEvents.length === 0 ? (
+                  <div className="activity-loading">Loading recent activity...</div>
+                ) : activityEvents.length === 0 ? (
+                  <div className="activity-empty">
+                    <p>No recent activity to display.</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="activity-table-container">
+                      <table className="activity-table">
+                        <thead>
+                          <tr>
+                            <th className="activity-col-time">Time</th>
+                            <th className="activity-col-type">Event Type</th>
+                            <th className="activity-col-details">Details</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {activityEvents.map((event) => (
+                            <tr key={event.id} className="activity-table-row">
+                              <td className="activity-col-time">
+                                {formatTimestamp(event.timestamp)}
+                              </td>
+                              <td className="activity-col-type">
+                                <span className={`event-type-badge event-type-${event.entity_type}`}>
+                                  {formatEventType(event.event_type)}
+                                </span>
+                              </td>
+                              <td className="activity-col-details">
+                                {event.user_action}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {hasMore && (
+                      <div className="activity-load-more">
+                        <button
+                          onClick={handleLoadMore}
+                          disabled={activityLoading}
+                          className="activity-load-more-button"
+                        >
+                          {activityLoading ? 'Loading...' : 'Load More'}
+                        </button>
+                      </div>
+                    )}
+
+                    <div className="activity-event-count">
+                      Showing {activityEvents.length} of {activityStats?.currentCount || activityEvents.length} events
+                    </div>
+                  </>
+                )}
+              </div>
+            </>
+          ) : (
+            <PlaceNameStandardization 
+              onClose={() => setShowPlaceNameStandardization(false)}
+            />
+          )}
+        </div>
+      )}
+
+      {activeTab === 'about' && (
+        <div className="tab-panel">
+          <div className="settings-section">
+            <h3>Version Information</h3>
+            {versionInfo && (
+              <div className="version-info">
+                <div className="version-item">
+                  <strong>Version:</strong> {versionInfo.version}
+                </div>
+                <div className="version-item">
+                  <strong>Environment:</strong> {versionInfo.environment}
+                </div>
+                {versionInfo.docker && (
+                  <>
+                    <div className="version-item">
+                      <strong>Docker Tag:</strong> {versionInfo.docker.tag}
+                    </div>
+                    <div className="version-item">
+                      <strong>Build Date:</strong> {new Date(versionInfo.docker.buildDate).toLocaleString()}
+                    </div>
+                    <div className="version-item">
+                      <strong>Git Commit:</strong> {versionInfo.docker.commit}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+
+          {dbStats && (
+            <div className="settings-section">
+              <h3>Database Statistics</h3>
+              <div className="db-stats">
+                <div className="db-stat-item">
+                  <strong>Total Expenses:</strong> {dbStats.expenseCount.toLocaleString()}
+                </div>
+                <div className="db-stat-item">
+                  <strong>Total Invoices:</strong> {dbStats.invoiceCount.toLocaleString()}
+                </div>
+                <div className="db-stat-item">
+                  <strong>Payment Methods:</strong> {(dbStats.paymentMethodCount || 0).toLocaleString()}
+                </div>
+                <div className="db-stat-item">
+                  <strong>Credit Card Statements:</strong> {(dbStats.statementCount || 0).toLocaleString()}
+                </div>
+                <div className="db-stat-item">
+                  <strong>Credit Card Payments:</strong> {(dbStats.creditCardPaymentCount || 0).toLocaleString()}
+                </div>
+                <div className="db-stat-item">
+                  <strong>Database Size:</strong> {dbStats.databaseSizeMB} MB
+                </div>
+                <div className="db-stat-item">
+                  <strong>Invoice Storage:</strong> {dbStats.invoiceStorageSizeMB} MB
+                </div>
+                <div className="db-stat-item">
+                  <strong>Backup Storage:</strong> {dbStats.totalBackupSizeMB} MB ({dbStats.backupCount} backups)
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="settings-section">
+            <h3>Recent Updates</h3>
+            <div className="changelog">
+              <div className="changelog-entry">
+                <div className="changelog-version">v1.3.3</div>
+                <div className="changelog-date">March 2, 2026</div>
+                <ul className="changelog-items">
+                  <li>Fix statement balance payment calculation</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
+                <div className="changelog-version">v1.3.2</div>
+                <div className="changelog-date">March 1, 2026</div>
+                <ul className="changelog-items">
+                  <li>Fix loan/mortgage reminder balance status check</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
+                <div className="changelog-version">v1.3.1</div>
+                <div className="changelog-date">February 28, 2026</div>
+                <ul className="changelog-items">
+                  <li>Fix budget copy-from-previous-month bugs</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
+                <div className="changelog-version">v1.3.0</div>
+                <div className="changelog-date">February 28, 2026</div>
+                <ul className="changelog-items">
+                  <li>Mortgage balance interest tracking, UI refresh fix</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
+                <div className="changelog-version">v1.2.4</div>
+                <div className="changelog-date">February 28, 2026</div>
+                <ul className="changelog-items">
+                  <li>Anchor-based balance calculation fix for loans and financial overview</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
+                <div className="changelog-version">v1.2.3</div>
+                <div className="changelog-date">February 28, 2026</div>
+                <ul className="changelog-items">
+                  <li>Fix: use calculated balance as source of truth, fix PBT test cleanup</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
+                <div className="changelog-version">v1.2.2</div>
+                <div className="changelog-date">February 27, 2026</div>
+                <ul className="changelog-items">
+                  <li>CI pipeline hardening, health check fixes, script cleanup</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
+                <div className="changelog-version">v1.2.1</div>
+                <div className="changelog-date">February 27, 2026</div>
+                <ul className="changelog-items">
+                  <li>Fix version upgrade modal stale bundle deferral</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
+                <div className="changelog-version">v1.2.0</div>
+                <div className="changelog-date">February 27, 2026</div>
+                <ul className="changelog-items">
+                  <li>Auth infrastructure with password gate and session tokens</li>
+                  <li>Fetch infrastructure consolidation with retry logic and tab ID tracking</li>
+                  <li>Fix backup restore auth cache staleness and WAL replay bug</li>
+                  <li>Reduced scheduler and cleanup log noise</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
+                <div className="changelog-version">v1.1.1</div>
+                <div className="changelog-date">February 26, 2026</div>
+                <ul className="changelog-items">
+                  <li>Fix backup SQLITE_MISUSE and posted date PBT race condition</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
+                <div className="changelog-version">v1.1.0</div>
+                <div className="changelog-date">February 25, 2026</div>
+                <ul className="changelog-items">
+                  <li>Container update detection, version upgrade tracking, remote update checking, UX consistency fixes</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
+                <div className="changelog-version">v1.0.0</div>
+                <div className="changelog-date">February 23, 2026</div>
+                <ul className="changelog-items">
+                  <li>Consolidated ~50 incremental database migrations into single declarative schema module</li>
+                  <li>Rebased application version from 5.17.5 to 1.0.0</li>
+                  <li>Removed backward-compatibility fallback patterns in billing cycle repository</li>
+                  <li>Updated all product documentation to reflect consolidated schema</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {message.text && (
+        <div className={`message ${message.type}`}>
+          {message.text}
+        </div>
+      )}
+      </div>
+    </div>
+  );
+};
+
+export default BackupSettings;

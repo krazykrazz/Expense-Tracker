@@ -4,7 +4,7 @@ import { getAllLoans, createLoan, updateLoan, deleteLoan } from '../../services/
 import { getFixedExpensesByLoan } from '../../services/fixedExpenseApi';
 import { getAllInvestments, createInvestment, updateInvestment, deleteInvestment } from '../../services/investmentApi';
 import { getPaymentMethods, getPaymentMethod, deletePaymentMethod, setPaymentMethodActive } from '../../services/paymentMethodApi';
-import { getStatementBalance, getCurrentCycleStatus } from '../../services/creditCardApi';
+import { getCurrentCycleStatus } from '../../services/creditCardApi';
 import { authAwareFetch } from '../../utils/fetchProvider';
 import CreditCardPaymentForm from '../credit-cards/CreditCardPaymentForm';
 import LoanRow from '../loans/LoanRow';
@@ -68,12 +68,14 @@ const CreditCardSummary = ({ paymentMethods, onPaymentRecorded, onViewDetails })
         let statementBalance = null;
         let cycleBalance = null;
         try {
-          const [calcBalance, cycleStatus] = await Promise.all([
-            getStatementBalance(card.id).catch(() => null),
-            getCurrentCycleStatus(card.id).catch(() => null)
-          ]);
-          // Prefer user-entered actual balance over calculated balance (matches CreditCardDetailView logic)
-          statementBalance = cycleStatus?.hasActualBalance ? cycleStatus.actualBalance : calcBalance;
+          const cycleStatus = await getCurrentCycleStatus(card.id).catch(() => null);
+          // Use same logic as CreditCardDetailView: prefer actual balance, fall back to calculated balance
+          // Both use calculateCycleBalance which includes previous cycle carry-forward
+          if (cycleStatus?.hasActualBalance) {
+            statementBalance = cycleStatus.actualBalance;
+          } else if (cycleStatus?.calculatedBalance != null) {
+            statementBalance = cycleStatus.calculatedBalance;
+          }
         } catch { /* silent */ }
         try {
           const method = await getPaymentMethod(card.id);
@@ -189,11 +191,14 @@ const PaymentMethodsSection = ({ paymentMethods, loading, onPaymentRecorded, onV
         // configured, which causes validation errors on getCurrentCycleStatus
         if (activeTab === 'active') {
           try {
-            const [calcBalance, cycleStatus] = await Promise.all([
-              getStatementBalance(card.id).catch(() => null),
-              getCurrentCycleStatus(card.id).catch(() => null)
-            ]);
-            statementBalance = cycleStatus?.hasActualBalance ? cycleStatus.actualBalance : calcBalance;
+            const cycleStatus = await getCurrentCycleStatus(card.id).catch(() => null);
+            // Use same logic as CreditCardDetailView: prefer actual balance, fall back to calculated balance
+            // Both use calculateCycleBalance which includes previous cycle carry-forward
+            if (cycleStatus?.hasActualBalance) {
+              statementBalance = cycleStatus.actualBalance;
+            } else if (cycleStatus?.calculatedBalance != null) {
+              statementBalance = cycleStatus.calculatedBalance;
+            }
           } catch { /* silent */ }
           try {
             const method = await getPaymentMethod(card.id);

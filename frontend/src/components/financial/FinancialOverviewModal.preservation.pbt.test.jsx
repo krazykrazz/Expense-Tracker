@@ -70,7 +70,7 @@ vi.mock('../../services/paymentMethodApi', () => ({
 }));
 
 vi.mock('../../services/creditCardApi', () => ({
-  getStatementBalance: vi.fn()
+  getCurrentCycleStatus: vi.fn()
 }));
 
 vi.mock('../../utils/validation', () => ({

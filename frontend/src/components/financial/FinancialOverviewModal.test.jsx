@@ -53,7 +53,7 @@ vi.mock('../../services/paymentMethodApi', () => ({
 }));
 
 vi.mock('../../services/creditCardApi', () => ({
-  getStatementBalance: vi.fn()
+  getCurrentCycleStatus: vi.fn()
 }));
 
 vi.mock('../../utils/validation', () => ({
@@ -155,7 +155,7 @@ beforeEach(() => {
   investmentApi.getAllInvestments.mockResolvedValue(mockInvestments);
   paymentMethodApi.getPaymentMethods.mockResolvedValue(mockPaymentMethods);
   paymentMethodApi.getPaymentMethod.mockResolvedValue({ current_cycle: null });
-  creditCardApi.getStatementBalance.mockResolvedValue(null);
+  creditCardApi.getCurrentCycleStatus.mockResolvedValue(null);
 
   global.fetch = vi.fn().mockResolvedValue({
     ok: true,
@@ -433,7 +433,7 @@ describe('FinancialOverviewModal', () => {
         { id: 2, type: 'credit_card', display_name: 'Old Mastercard', is_active: false, current_balance: 0 }
       ];
       paymentMethodApi.getPaymentMethods.mockResolvedValue(mixedPaymentMethods);
-      creditCardApi.getStatementBalance.mockResolvedValue(null);
+      creditCardApi.getCurrentCycleStatus.mockResolvedValue(null);
       paymentMethodApi.getPaymentMethod.mockResolvedValue({ current_cycle: null });
 
       render(<FinancialOverviewModal {...defaultProps} />);
@@ -752,7 +752,7 @@ describe('FinancialOverviewModal', () => {
       ];
       paymentMethodApi.getPaymentMethods.mockResolvedValue(mockCreditCards);
       paymentMethodApi.getPaymentMethod.mockResolvedValue({ current_cycle: null });
-      creditCardApi.getStatementBalance.mockResolvedValue(null);
+      creditCardApi.getCurrentCycleStatus.mockResolvedValue(null);
 
       render(<FinancialOverviewModal {...defaultProps} />);
 

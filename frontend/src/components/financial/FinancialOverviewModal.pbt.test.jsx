@@ -50,7 +50,7 @@ vi.mock('../../services/paymentMethodApi', () => ({
 }));
 
 vi.mock('../../services/creditCardApi', () => ({
-  getStatementBalance: vi.fn().mockResolvedValue(null)
+  getCurrentCycleStatus: vi.fn().mockResolvedValue(null)
 }));
 
 vi.mock('../../utils/validation', () => ({

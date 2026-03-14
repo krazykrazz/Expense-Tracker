@@ -18,6 +18,11 @@
 
 
 
+
+
+## [1.4.0] - 2026-03-14
+
+### Frontend component domain grouping
 ## [1.3.3] - 2026-03-02
 
 ### Fix statement balance payment calculation

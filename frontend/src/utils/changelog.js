@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.4.0',
+    date: 'March 14, 2026',
+    added: [],
+    changed: ['Frontend component domain grouping'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.3.3',
     date: 'March 2, 2026',
     added: [],

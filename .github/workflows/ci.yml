@@ -452,6 +452,7 @@ jobs:
           push: false
           tags: |
             ghcr.io/${{ github.repository_owner }}/expense-tracker:${{ steps.meta.outputs.sha_short }}
+            ghcr.io/${{ github.repository_owner }}/expense-tracker:v${{ steps.meta.outputs.version }}
           build-args: |
             IMAGE_TAG=${{ steps.meta.outputs.sha_short }}
             BUILD_DATE=${{ steps.meta.outputs.build_date }}
@@ -522,30 +523,9 @@ jobs:
           fi
 
       - name: Push Docker image to GHCR
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          tags: |
-            ghcr.io/${{ github.repository_owner }}/expense-tracker:${{ steps.meta.outputs.sha_short }}
-            ghcr.io/${{ github.repository_owner }}/expense-tracker:v${{ steps.meta.outputs.version }}
-          build-args: |
-            IMAGE_TAG=${{ steps.meta.outputs.sha_short }}
-            BUILD_DATE=${{ steps.meta.outputs.build_date }}
-            GIT_COMMIT=${{ steps.meta.outputs.sha_short }}
-          labels: |
-            org.opencontainers.image.created=${{ steps.meta.outputs.build_date }}
-            org.opencontainers.image.version=${{ steps.meta.outputs.version }}
-            org.opencontainers.image.revision=${{ steps.meta.outputs.sha_short }}
-            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-            org.opencontainers.image.title=expense-tracker
-            org.opencontainers.image.description=Personal expense tracking application
-          annotations: |
-            org.opencontainers.image.created=${{ steps.meta.outputs.build_date }}
-            org.opencontainers.image.version=${{ steps.meta.outputs.version }}
-            org.opencontainers.image.revision=${{ steps.meta.outputs.sha_short }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+        run: |
+          docker push ghcr.io/${{ github.repository_owner }}/expense-tracker:${{ steps.meta.outputs.sha_short }}
+          docker push ghcr.io/${{ github.repository_owner }}/expense-tracker:v${{ steps.meta.outputs.version }}
       
       - name: Prepare docker-compose for release
         run: |

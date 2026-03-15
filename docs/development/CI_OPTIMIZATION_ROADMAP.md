@@ -42,14 +42,15 @@ The project uses GitHub Actions for CI/CD with:
 
 **Current State**:
 - Uses BuildKit cache (GitHub Actions cache)
-- Builds from scratch each time
-- Multi-platform support available
+- Single build + load, then push (no duplicate builds)
+- Multi-stage Dockerfile (frontend-builder, backend-deps, runtime)
 
 **Planned Optimizations**:
 
 #### High Priority
-- Multi-stage build optimization in Dockerfile
-- Separate dependency installation from build step
+- ✅ Multi-stage build optimization in Dockerfile (already in place)
+- ✅ Separate dependency installation from build step (already in place)
+- ✅ Eliminated duplicate Docker build in CI — image is now built once, scanned, then pushed (no rebuild)
 
 #### Medium Priority
 - Layer caching improvements
@@ -269,6 +270,7 @@ The repository is now public, making security the highest priority. All Phase 1 
 
 | Date | Change | Author |
 |------|--------|--------|
+| 2026-03-15 | Docker build optimization: eliminated duplicate build in CI, image now built once then pushed | System |
 | 2026-03-02 | Path-based test filtering complete: added conditional test execution with status aggregators | System |
 | 2026-03-01 | Phase 1 complete: marked Trivy scanning, rollback /config fix, and dead input removal as done; removed addressed findings | System |
 | 2026-02-28 | Final assessment (Task 15): fixed CI docs health check wait time (10s→30s), identified rollback /config gap, dead `enable_security_scan` input, undocumented `test-health-report` job | System |

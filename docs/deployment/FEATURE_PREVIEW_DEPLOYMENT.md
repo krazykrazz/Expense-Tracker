@@ -38,7 +38,7 @@ git commit -m "feat: implement my feature"
 **What happens:**
 - Builds SHA-tagged Docker image from current commit
 - Tags image as `preview-<branch-name>` (e.g., `preview-feature-my-feature`)
-- Pushes to local registry
+- Tags image locally for preview
 - Starts preview container on ports 3001/2425
 - Uses isolated `preview-data` volume
 
@@ -128,7 +128,6 @@ This creates a PR, runs CI, and prepares for merge to main.
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
-| `-Registry` | Docker registry URL | `localhost:5000` |
 | `-SkipBuild` | Skip building image (use existing) | False |
 | `-SkipDeploy` | Build image but don't deploy container | False |
 | `-Stop` | Stop and remove preview container | False |
@@ -158,11 +157,11 @@ The preview environment starts with an empty database. You can:
 
 ## Image Tags
 
-Preview images are tagged with the branch name:
+Preview images are tagged locally with the branch name (no registry needed):
 
 ```
-localhost:5000/expense-tracker:abc1234              # SHA tag (immutable)
-localhost:5000/expense-tracker:preview-feature-my-feature  # Preview tag (floating)
+expense-tracker:abc1234              # SHA tag (immutable)
+expense-tracker:preview-feature-my-feature  # Preview tag (floating)
 ```
 
 The preview tag is updated each time you deploy from that branch.
@@ -285,7 +284,7 @@ Remove old preview images:
 docker images | Select-String "preview"
 
 # Remove specific preview image
-docker rmi localhost:5000/expense-tracker:preview-old-branch
+docker rmi expense-tracker:preview-old-branch
 
 # Remove all unused images
 docker image prune -a

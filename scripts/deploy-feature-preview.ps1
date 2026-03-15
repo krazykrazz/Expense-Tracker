@@ -1,11 +1,9 @@
 #!/usr/bin/env pwsh
 # Feature Branch Preview Deployment Script
 # Builds and deploys feature branches to preview containers for testing before merge
+# Uses local Docker images only — no registry push/pull needed
 
 param(
-    [Parameter(Mandatory=$false)]
-    [string]$Registry = 'localhost:5000',
-
     [Parameter(Mandatory=$false)]
     [switch]$SkipBuild,
 
@@ -73,7 +71,7 @@ if ($gitBranch -eq "main") {
 
 # Sanitize branch name for Docker tag (replace / with -)
 $branchTag = $gitBranch -replace '/', '-'
-$imageName = "$Registry/expense-tracker"
+$imageName = "expense-tracker"
 $shaImage = "${imageName}:${gitSha}"
 $previewImage = "${imageName}:preview-${branchTag}"
 
@@ -98,11 +96,11 @@ if ($containerRunning) {
     Write-Success "Existing preview container stopped"
 }
 
-# Check if SHA image already exists
+# Check if SHA image already exists locally
 $imageExists = docker images -q $shaImage 2>$null
 
 if ($SkipBuild -and -not $imageExists) {
-    Write-ErrorMsg "Cannot skip build - SHA image does not exist: $shaImage"
+    Write-ErrorMsg "Cannot skip build - SHA image does not exist locally: $shaImage"
     Write-Info "Run without -SkipBuild to build the image first."
     exit 1
 }
@@ -145,7 +143,7 @@ if (-not $SkipBuild) {
             "--label", "org.opencontainers.image.created=$buildDate",
             "--label", "org.opencontainers.image.version=$version",
             "--label", "org.opencontainers.image.revision=$gitSha",
-            "--label", "org.opencontainers.image.source=https://github.com/yourusername/expense-tracker",
+            "--label", "org.opencontainers.image.source=https://github.com/krazykrazz/expense-tracker",
             "--label", "org.opencontainers.image.title=expense-tracker",
             "--label", "org.opencontainers.image.description=Personal expense tracking application",
             "--label", "app.name=expense-tracker",
@@ -164,17 +162,6 @@ if (-not $SkipBuild) {
         }
 
         Write-Success "SHA image built successfully"
-
-        # Push SHA image to registry
-        Write-Info "Pushing SHA image to registry..."
-        docker push $shaImage
-
-        if ($LASTEXITCODE -ne 0) {
-            Write-ErrorMsg "Push failed"
-            exit 1
-        }
-
-        Write-Success "SHA image pushed to registry"
     }
 }
 
@@ -187,15 +174,7 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-Write-Info "Pushing preview tag to registry..."
-docker push $previewImage
-
-if ($LASTEXITCODE -ne 0) {
-    Write-ErrorMsg "Failed to push preview tag"
-    exit 1
-}
-
-Write-Success "Preview tag pushed: $previewImage"
+Write-Success "Preview image tagged: $previewImage"
 
 # Deploy to preview container if not skipped
 if (-not $SkipDeploy) {
@@ -211,15 +190,12 @@ if (-not $SkipDeploy) {
     # Set environment variable for branch tag
     $env:PREVIEW_BRANCH_TAG = $branchTag
 
-    Write-Info "Pulling latest preview image..."
-    docker-compose -f docker-compose.preview.yml pull expense-tracker-preview 2>$null
-
     Write-Info "Starting preview container..."
     docker-compose -f docker-compose.preview.yml up -d expense-tracker-preview
 
     if ($LASTEXITCODE -ne 0) {
         Write-ErrorMsg "Failed to start preview container"
-        Write-Warn "Image was built and pushed successfully, but container deploy failed."
+        Write-Warn "Image was built successfully, but container deploy failed."
         Write-Info "Manual deploy: docker-compose -f docker-compose.preview.yml up -d expense-tracker-preview"
         exit 1
     }

@@ -21,7 +21,7 @@ export default defineConfig({
       forks: {
         // Single fork in CI for stability, parallel in local dev
         singleFork: isCI,
-        // Use 50% of CPU cores for parallel execution (local dev only)
+        // Use 75% of CPU cores for parallel execution (local dev only)
         maxForks: isCI ? 1 : undefined
       }
     },

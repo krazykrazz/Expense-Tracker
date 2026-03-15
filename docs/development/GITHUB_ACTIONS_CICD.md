@@ -46,12 +46,12 @@ The `build-and-push-ghcr` job scans every Docker image for vulnerabilities using
 
 **Build → Scan → Push Flow:**
 
-1. **Build + Load** — `docker/build-push-action@v5` with `load: true`, `push: false` loads the image into the local Docker daemon
-2. **Trivy Gate Scan** — `aquasecurity/trivy-action@0.28.0` with `exit-code: '1'` fails the job on `CRITICAL` or `HIGH` severity findings, blocking the push
-3. **Full Report** — A second Trivy run with `exit-code: '0'` and `severity: 'CRITICAL,HIGH,MEDIUM,LOW'` generates a complete report regardless of the gate scan result (`if: always()`)
+1. **Build + Load** — `docker/build-push-action@v5` with `load: true`, `push: false` builds the image once and loads it into the local Docker daemon (tagged with both SHA and version)
+2. **Trivy Gate Scan** — Trivy with `exit-code 1` fails the job on `CRITICAL` or `HIGH` severity findings, blocking the push
+3. **Full Report** — A second Trivy run with `exit-code 0` and all severities generates a complete report regardless of the gate scan result (`if: always()`)
 4. **Artifact Upload** — `actions/upload-artifact@v4` uploads `trivy-results.txt` with 30-day retention (`if: always()`)
 5. **Workflow Summary** — Writes vulnerability counts by severity (CRITICAL, HIGH, MEDIUM, LOW) to `$GITHUB_STEP_SUMMARY`
-6. **Push** — `docker/build-push-action@v5` with `push: true` pushes the image to GHCR (only runs if the gate scan passes)
+6. **Push** — `docker push` pushes the already-built local image to GHCR (no rebuild needed, only runs if the gate scan passes)
 
 **Scan Configuration:**
 
@@ -420,10 +420,10 @@ Integrated into `.github/workflows/ci.yml` as the `build-and-push-ghcr` job.
 1. Checks out the repository
 2. Sets up Docker Buildx
 3. Authenticates to GHCR
-4. Builds the Docker image and loads it into the local Docker daemon (not pushed yet)
+4. Builds the Docker image once and loads it into the local Docker daemon (tagged with SHA and version)
 5. Runs Trivy vulnerability scan — fails on CRITICAL/HIGH findings (see [Docker Image Scanning](#docker-image-scanning-trivy))
 6. Generates full vulnerability report, uploads scan artifact, and writes workflow summary
-7. Pushes the image to `ghcr.io/krazykrazz/expense-tracker` with SHA, version, and `latest` tags (only if scan passes)
+7. Pushes the already-built image to `ghcr.io/krazykrazz/expense-tracker` (no rebuild, only if scan passes)
 8. Creates or updates a GitHub release with a docker-compose file
 
 ### GHCR Integration

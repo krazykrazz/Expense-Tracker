@@ -7,7 +7,7 @@
  * Uses isolated SQLite database, real anomalyDetectionService, real activityLogService.
  * No mocks.
  *
- * Validates: Requirements 10.1, 10.2, 10.3, 10.4, 13.4
+ * Validates: Requirements 10.1, 10.2, 10.3, 10.4, 13.4, 17.3, 20.7
  */
 
 const { describe, test, expect, beforeAll, afterAll, beforeEach } = require('@jest/globals');
@@ -87,7 +87,7 @@ describe('Anomaly Detection Activity Logging - Integration Tests', () => {
       expect(event.entity_type).toBe('anomaly');
       expect(event.entity_id).toBe(expenseId);
       expect(event.user_action).toContain('Dismissed');
-      expect(event.user_action).toContain('amount');
+      expect(event.user_action).toContain('Large Transaction');
       expect(event.user_action).toContain('Costco');
 
       expect(metadata.anomaly_type).toBe('amount');
@@ -280,6 +280,198 @@ describe('Anomaly Detection Activity Logging - Integration Tests', () => {
       const { event } = findEventWithMetadata(events, 'suppression_rule_deleted', 99999);
 
       expect(event).toBeNull();
+    });
+  });
+
+  // ── Expanded classification types in dismiss (Requirement 17.3, 20.7) ──
+
+  describe('dismissAnomaly with expanded classification types (Requirement 17.3)', () => {
+    test('should include classification field in metadata when expenseDetails has classification', async () => {
+      const expenseId = await insertExpense({
+        date: '2025-06-15', place: 'Dining Out', type: 'Dining', amount: 800
+      });
+
+      await anomalyDetectionService.dismissAnomaly(expenseId, 'amount', {
+        merchant: 'Dining Out', amount: 800, classification: 'Category_Spending_Spike'
+      });
+      await waitForLogging();
+
+      const events = await activityLogRepository.findRecent(10, 0);
+      const { event, metadata } = findEventWithMetadata(events, 'anomaly_dismissed', expenseId);
+
+      expect(event).toBeDefined();
+      // classification field from expenseDetails
+      expect(metadata.classification).toBe('Category_Spending_Spike');
+      // Legacy anomaly_type preserved for backward compatibility
+      expect(metadata.anomaly_type).toBe('amount');
+      // Human-readable label in user_action
+      expect(event.user_action).toContain('Category Spending Spike');
+      expect(event.user_action).toContain('Dining Out');
+    });
+
+    test('should use LEGACY_TYPE_MAP fallback when classification is not in expenseDetails', async () => {
+      const expenseId = await insertExpense({
+        date: '2025-06-16', place: 'Walmart', type: 'Groceries', amount: 300
+      });
+
+      // No classification in expenseDetails — should fall back to LEGACY_TYPE_MAP
+      await anomalyDetectionService.dismissAnomaly(expenseId, 'amount', {
+        merchant: 'Walmart', amount: 300
+      });
+      await waitForLogging();
+
+      const events = await activityLogRepository.findRecent(10, 0);
+      const { event, metadata } = findEventWithMetadata(events, 'anomaly_dismissed', expenseId);
+
+      expect(event).toBeDefined();
+      // LEGACY_TYPE_MAP maps 'amount' → 'Large_Transaction'
+      expect(metadata.classification).toBe('Large_Transaction');
+      expect(metadata.anomaly_type).toBe('amount');
+      expect(event.user_action).toContain('Large Transaction');
+    });
+
+    test('should use human-readable label for Frequency_Spike classification', async () => {
+      const expenseId = await insertExpense({
+        date: '2025-06-17', place: 'Coffee Shop', type: 'Dining', amount: 150
+      });
+
+      await anomalyDetectionService.dismissAnomaly(expenseId, 'amount', {
+        merchant: 'Coffee Shop', amount: 150, classification: 'Frequency_Spike'
+      });
+      await waitForLogging();
+
+      const events = await activityLogRepository.findRecent(10, 0);
+      const { event, metadata } = findEventWithMetadata(events, 'anomaly_dismissed', expenseId);
+
+      expect(event).toBeDefined();
+      expect(metadata.classification).toBe('Frequency_Spike');
+      expect(event.user_action).toContain('Frequency Spike');
+      expect(event.user_action).toContain('Dismissed');
+    });
+
+    test('should use human-readable label for Recurring_Expense_Increase classification', async () => {
+      const expenseId = await insertExpense({
+        date: '2025-06-18', place: 'Netflix', type: 'Entertainment', amount: 25
+      });
+
+      await anomalyDetectionService.dismissAnomaly(expenseId, 'amount', {
+        merchant: 'Netflix', amount: 25, classification: 'Recurring_Expense_Increase'
+      });
+      await waitForLogging();
+
+      const events = await activityLogRepository.findRecent(10, 0);
+      const { event, metadata } = findEventWithMetadata(events, 'anomaly_dismissed', expenseId);
+
+      expect(event).toBeDefined();
+      expect(metadata.classification).toBe('Recurring_Expense_Increase');
+      expect(event.user_action).toContain('Recurring Expense Increase');
+    });
+
+    test('should use LEGACY_TYPE_MAP for daily_total without explicit classification', async () => {
+      const expenseId = await insertExpense({
+        date: '2025-06-19', place: 'Various', type: 'Groceries', amount: 600
+      });
+
+      await anomalyDetectionService.dismissAnomaly(expenseId, 'daily_total', {
+        merchant: 'Various', amount: 600
+      });
+      await waitForLogging();
+
+      const events = await activityLogRepository.findRecent(10, 0);
+      const { event, metadata } = findEventWithMetadata(events, 'anomaly_dismissed', expenseId);
+
+      expect(event).toBeDefined();
+      // LEGACY_TYPE_MAP maps 'daily_total' → 'Large_Transaction'
+      expect(metadata.classification).toBe('Large_Transaction');
+      expect(metadata.anomaly_type).toBe('daily_total');
+      expect(event.user_action).toContain('Large Transaction');
+    });
+  });
+
+  // ── Expanded classification types in markAsExpected (Requirement 17.3, 20.7) ──
+
+  describe('markAsExpected with expanded classification types (Requirement 17.3)', () => {
+    test('should include classification field in metadata when expenseDetails has classification', async () => {
+      const expenseId = await insertExpense({
+        date: '2025-06-15', place: 'BestBuy', type: 'Electronics', amount: 1200
+      });
+
+      const result = await anomalyDetectionService.markAsExpected(expenseId, 'amount', {
+        merchant: 'BestBuy', amount: 1200, category: 'Electronics', date: '2025-06-15',
+        classification: 'Large_Transaction'
+      });
+      await waitForLogging();
+
+      const events = await activityLogRepository.findRecent(10, 0);
+      const { event, metadata } = findEventWithMetadata(events, 'anomaly_marked_expected', expenseId);
+
+      expect(event).toBeDefined();
+      expect(metadata.classification).toBe('Large_Transaction');
+      expect(metadata.anomaly_type).toBe('amount');
+      expect(metadata.suppression_rule_id).toBe(result.suppressionRuleId);
+      expect(event.user_action).toContain('Large Transaction');
+      expect(event.user_action).toContain('expected');
+    });
+
+    test('should include Seasonal_Deviation classification in metadata', async () => {
+      const expenseId = await insertExpense({
+        date: '2025-06-16', place: 'GiftShop', type: 'Gifts', amount: 400
+      });
+
+      const result = await anomalyDetectionService.markAsExpected(expenseId, 'amount', {
+        merchant: 'GiftShop', amount: 400, category: 'Gifts', date: '2025-06-16',
+        classification: 'Seasonal_Deviation'
+      });
+      await waitForLogging();
+
+      const events = await activityLogRepository.findRecent(10, 0);
+      const { event, metadata } = findEventWithMetadata(events, 'anomaly_marked_expected', expenseId);
+
+      expect(event).toBeDefined();
+      expect(metadata.classification).toBe('Seasonal_Deviation');
+      expect(metadata.anomaly_type).toBe('amount');
+      expect(event.user_action).toContain('Seasonal Deviation');
+    });
+
+    test('should include Emerging_Behavior_Trend classification in metadata', async () => {
+      const expenseId = await insertExpense({
+        date: '2025-06-17', place: 'Uber Eats', type: 'Dining', amount: 200
+      });
+
+      const result = await anomalyDetectionService.markAsExpected(expenseId, 'amount', {
+        merchant: 'Uber Eats', amount: 200, category: 'Dining', date: '2025-06-17',
+        classification: 'Emerging_Behavior_Trend'
+      });
+      await waitForLogging();
+
+      const events = await activityLogRepository.findRecent(10, 0);
+      const { event, metadata } = findEventWithMetadata(events, 'anomaly_marked_expected', expenseId);
+
+      expect(event).toBeDefined();
+      expect(metadata.classification).toBe('Emerging_Behavior_Trend');
+      expect(metadata.anomaly_type).toBe('amount');
+      expect(event.user_action).toContain('Emerging Behavior Trend');
+      expect(event.user_action).toContain('Marked');
+    });
+
+    test('should use LEGACY_TYPE_MAP fallback for new_merchant without explicit classification', async () => {
+      const expenseId = await insertExpense({
+        date: '2025-06-18', place: 'NewPlace', type: 'Shopping', amount: 350
+      });
+
+      const result = await anomalyDetectionService.markAsExpected(expenseId, 'new_merchant', {
+        merchant: 'NewPlace', amount: 350, category: 'Shopping', date: '2025-06-18'
+      });
+      await waitForLogging();
+
+      const events = await activityLogRepository.findRecent(10, 0);
+      const { event, metadata } = findEventWithMetadata(events, 'anomaly_marked_expected', expenseId);
+
+      expect(event).toBeDefined();
+      // LEGACY_TYPE_MAP maps 'new_merchant' → 'New_Merchant'
+      expect(metadata.classification).toBe('New_Merchant');
+      expect(metadata.anomaly_type).toBe('new_merchant');
+      expect(event.user_action).toContain('New Merchant');
     });
   });
 

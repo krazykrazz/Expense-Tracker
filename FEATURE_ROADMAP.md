@@ -1,6 +1,6 @@
 # Expense Tracker - Feature Roadmap
 
-**Last Updated**: February 26, 2026  
+**Last Updated**: March 2026  
 **Current Version**: 1.0.0
 
 This document tracks potential features and enhancements for the Expense Tracker application. Features are categorized by priority and implementation status.
@@ -68,6 +68,41 @@ This document tracks potential features and enhancements for the Expense Tracker
 - Better user experience with relevant alerts only
 
 **Dependencies**: Extends existing anomaly detection service (v4.17.0)
+
+---
+
+### 🟢 2a. Actionable Anomaly Alerts
+**Status**: Completed  
+**Priority**: Medium  
+**Effort**: High  
+**Spec**: `.kiro/specs/actionable-anomaly-alerts/`  
+**Documentation**: `docs/features/ANOMALY_DETECTION.md`  
+**Description**: Enhanced anomaly detection transforming raw statistical deviations into actionable financial insights with 7-type classification, structured explanations, historical context, financial impact estimates, behavioral drift detection, transaction clustering, budget integration, alert frequency controls, and enriched alert card layout.
+
+**Features Delivered**:
+- **7-Type Classification**: Expanded from 3 types to Large_Transaction, Category_Spending_Spike, New_Merchant, Frequency_Spike, Recurring_Expense_Increase, Seasonal_Deviation, Emerging_Behavior_Trend
+- **Structured Explanations**: Each anomaly includes observed value, expected range, deviation percentage, and comparison period
+- **Historical Context**: Purchase rank, category percentile, deviation from average, and frequency comparison
+- **Financial Impact Estimates**: Annualized spending change, savings rate impact, and budget impact projections
+- **Behavioral Drift Detection**: Detects gradual spending increases across 3-month periods with budget suggestions
+- **Transaction Clustering**: Groups related anomalous transactions (travel, moving, renovation, holiday) into single cluster alerts
+- **Budget Integration**: Suppresses redundant category spikes when budget alerts are active, enriches impact estimates with budget projections, suggests budget creation or adjustment on drift alerts
+- **Behavior Pattern Detection**: Classifies anomalies as One-Time Event, Recurring Change, or Emerging Trend
+- **Confidence Scoring**: Low/medium/high confidence based on historical data quantity
+- **Alert Frequency Controls**: Per-category caps (3/month), repeat suppression (30-day window), related alert merging (7-day window)
+- **Low-Value Alert Suppression**: Suppresses rare-category purchases, seasonal spikes, and clustered transactions
+- **Enriched Alert Card Layout**: Restructured AnomalyAlertItem with classification badges, explanation section, historical context, impact estimates, cluster expand/collapse, drift alerts with budget suggestions
+- **CSS Module Migration**: AnomalyAlertItem migrated from global CSS to CSS Module
+- **Activity Log Integration**: Expanded classification types in dismiss and mark-as-expected event metadata
+
+**Benefits**:
+- Actionable insights instead of raw statistical flags
+- Reduced alert fatigue through smart suppression and frequency controls
+- Budget-aware anomaly detection eliminates redundant notifications
+- Gradual spending drift detection catches slow behavioral changes
+- Transaction clustering provides meaningful event-level insights
+
+**Dependencies**: Extends Adaptive Anomaly Detection (#2) and Budget Alert Notifications
 
 ---
 
@@ -1678,6 +1713,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 ---
 
 **Version History**:
+- v3.9 (2026-03): Added Actionable Anomaly Alerts (#2a) as completed in Analytics & Insights section
 - v3.8 (2026-03-14): Marked Adaptive Anomaly Detection as completed (Analytics Hub Revamp spec), updated Analytics Hub description in product.md
 - v3.7 (2026-02-26): Added Fetch Infrastructure Consolidation (#35) as 🟡 In Progress in Code Quality & Optimization section
 - v3.6 (2026-02-26): Added Auth Infrastructure (Phase 1) as 🟡 In Progress in new Security & Authentication section

@@ -190,6 +190,44 @@ Component and utility testing:
 - Existing budget functionality unaffected
 - Clean removal without side effects
 
+## Anomaly Detection Integration
+
+The budget alert system integrates with the [Anomaly Detection](ANOMALY_DETECTION.md) system to eliminate redundant notifications, enrich anomaly insights with budget context, and turn spending drift into actionable budget management suggestions.
+
+### Budget-Aware Anomaly Suppression
+
+When a category already has a budget alert at **Danger** (90–99%) or **Critical** (≥100%) severity, the anomaly detection system suppresses `Category_Spending_Spike` anomalies for that category during the same calendar month. The budget alert already communicates the overspending condition, so a duplicate spike alert would be redundant.
+
+Other anomaly types (Large_Transaction, Frequency_Spike, Recurring_Expense_Increase, Seasonal_Deviation, New_Merchant, Emerging_Behavior_Trend) are **not** suppressed by budget alert status, because they provide distinct insight value beyond what budget tracking covers.
+
+### Budget Impact Projections in Anomaly Alerts
+
+When an anomaly occurs in a category that has an active budget, the anomaly's impact estimate section includes budget-specific projections:
+
+- **Budget limit** — the category's configured monthly budget
+- **Current spent** — how much has been spent so far this month
+- **Projected month-end spending** — extrapolated from the current daily spending rate
+- **Projected overage** — how much the category is expected to exceed (or remain under) the budget limit
+
+This appears in the anomaly alert card as a human-readable summary, for example: *"At this pace, Dining will exceed its $500 budget by $220 this month."*
+
+### Drift-Based Budget Suggestions
+
+Behavioral drift alerts (classification: `Emerging_Behavior_Trend`) can include actionable budget suggestions:
+
+- **Create a budget**: When drift is detected in a category that has no budget defined, the alert suggests creating one. The suggested limit is the recent 3-month average monthly spending, rounded up to the nearest $50.
+- **Adjust a budget**: When drift is detected in a category where the existing budget has reached Critical severity (≥100%) for 2 or more of the last 3 months, the alert suggests increasing the budget limit. The suggested new limit is based on the recent 3-month average, rounded up to the nearest $50.
+
+Budget suggestions are rendered on the anomaly alert card as an actionable prompt with the suggested amount.
+
+### Technical Details
+
+- Budget data is fetched once per anomaly detection cycle via `budgetService` (internal call, not HTTP) and cached for the entire pipeline run.
+- If the budget data fetch fails, the detection pipeline continues without budget integration — budget impact projections and budget suggestions are omitted, and budget-aware suppression is skipped.
+- Suppression is applied after cluster aggregation and benign pattern suppression, as part of the filtering phase.
+
+See [Anomaly Detection](ANOMALY_DETECTION.md) for full details on the anomaly detection system, classification types, and the enrichment pipeline.
+
 ## Future Enhancements
 
 ### Phase 2 Features (Not Currently Implemented)

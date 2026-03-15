@@ -396,7 +396,9 @@ describe('AnomalyDetectionService - Dismissed Anomaly Learning Property Tests', 
 
     const baseAmount = 50;
 
-    // Insert normal expenses
+    // Insert normal expenses for TWO different categories so the anomalies
+    // are in separate categories and won't be merged/suppressed by the
+    // repeat alert suppression (same category + classification within 30 days)
     for (let i = 0; i < 15; i++) {
       await insertExpense({
         date: generateDate(60 + i),
@@ -407,8 +409,18 @@ describe('AnomalyDetectionService - Dismissed Anomaly Learning Property Tests', 
         place: 'Normal Store'
       });
     }
+    for (let i = 0; i < 15; i++) {
+      await insertExpense({
+        date: generateDate(60 + i),
+        amount: baseAmount,
+        type: 'Transportation',
+        method: 'Cash',
+        week: 1,
+        place: 'Normal Transport'
+      });
+    }
 
-    // Create two anomalous expenses
+    // Create two anomalous expenses in DIFFERENT categories
     await insertExpense({
       date: generateDate(5),
       amount: baseAmount * 50,
@@ -421,7 +433,7 @@ describe('AnomalyDetectionService - Dismissed Anomaly Learning Property Tests', 
     await insertExpense({
       date: generateDate(3),
       amount: baseAmount * 50,
-      type: 'Groceries',
+      type: 'Transportation',
       method: 'Cash',
       week: 1,
       place: 'Anomaly Store 2'

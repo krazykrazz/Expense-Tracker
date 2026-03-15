@@ -13,6 +13,7 @@ Complete guide to using the Expense Tracker application.
 - [Budget Tracking](#budget-tracking)
 - [Medical Expenses](#medical-expenses)
 - [Merchant Analytics](#merchant-analytics)
+- [Smart Insights](#smart-insights)
 - [Data Management](#data-management)
 - [Container Update Detection](#container-update-detection)
 - [Version Upgrade Notifications](#version-upgrade-notifications)
@@ -337,6 +338,68 @@ Toggle the **"Include Fixed Expenses"** checkbox to combine variable and recurri
 
 Click **"View All Expenses"** to see the complete list of expenses at any merchant.
 
+## Smart Insights
+
+The Smart Insights panel appears in the right-hand summary area and highlights things that may need your attention — budget overages, upcoming bills, and unusual spending alerts. This section covers the anomaly alerts you may see and how to use them.
+
+### Types of Alerts
+
+The system watches your spending patterns and flags things that look unusual. Each alert has a colored badge indicating what type it is:
+
+- **Large Transaction** — A single purchase that's significantly higher than what you normally spend in that category
+- **Category Spike** — Your total spending in a category this month is much higher than your typical monthly average
+- **New Merchant** — A first-time purchase at an unfamiliar store with a notable amount
+- **Frequency Spike** — You're making purchases in a category much more often than usual this month
+- **Recurring Increase** — A regular expense (like a subscription or utility bill) went up in price compared to recent charges
+- **Seasonal Deviation** — Your spending in a category is significantly different from the same month last year
+- **Emerging Trend** — A gradual spending increase has been detected in a category over recent months
+
+### What Each Alert Shows
+
+Each alert card is organized into clear sections so you can quickly understand what happened and whether it matters:
+
+**Header** — Shows the alert type badge, the merchant or category name, the amount, and the date.
+
+**Why It Was Flagged** — Explains what the system observed versus what it expected. For example, you might see "Observed: $320 · Expected: $80–$160 · +100% above typical" along with the time period used for comparison (e.g., "Compared to: last 12 months").
+
+**Historical Context** — Puts the alert in perspective by showing how this compares to your past spending. Depending on the alert type, you may see things like:
+- Where this ranks among your purchases in the category (e.g., "3rd largest purchase out of 45")
+- What percentile this month falls in compared to other months
+- How often you typically shop at this merchant or in this category
+
+**Financial Impact** — Shows what it would mean for your finances if this pattern continues:
+- Projected yearly cost change (e.g., "+$1,200/year")
+- Effect on your savings rate, when income data is available
+- Budget projection, when you have a budget set for the category (e.g., "At this pace, Dining will exceed its $500 budget by $220 this month")
+
+**Confidence Level** — Each alert includes a confidence indicator (Low, Medium, or High) that reflects how much historical data the system had to work with. Alerts based on a full year of data are marked High confidence, while alerts for newer categories with limited history are marked Low. This helps you weigh how seriously to take each alert.
+
+**Behavior Pattern** — Tells you whether the system thinks this is a one-time event, a recurring change, or part of an emerging trend, so you can decide whether action is needed.
+
+### Cluster Alerts
+
+Sometimes multiple related purchases represent a single real-world event — like a trip, a move, or holiday shopping. When the system detects a group of related unusual transactions within a short time window, it combines them into a single cluster alert instead of showing each one separately.
+
+Cluster alerts show the group label (e.g., "Travel Event" or "Holiday Spending"), the total amount, the number of transactions, and the date range. You can expand the cluster to see the individual transactions inside it.
+
+### Budget Suggestions
+
+When the system detects a gradual spending increase in a category, it may suggest creating or adjusting a budget:
+
+- **Create a budget** — If you don't have a budget for a category where spending is trending upward, the alert suggests a starting limit based on your recent average
+- **Adjust a budget** — If you have a budget that's been consistently exceeded, the alert suggests a new limit that better reflects your actual spending
+
+These suggestions appear directly on the alert card. You can use them as a starting point when managing your budgets.
+
+### Actions
+
+Each alert has two actions:
+
+- **Dismiss** — Hides the alert. You can dismiss alerts that you've already reviewed or that don't require action.
+- **Mark as Expected** — Hides the alert and tells the system not to flag similar spending in the future. Use this for purchases that look unusual statistically but are normal for you (e.g., an annual membership renewal).
+
+Clicking on an alert navigates to the associated expense in your expense list.
+
 ## Data Management
 
 ### Manual Backup
@@ -471,5 +534,6 @@ After refreshing into a new version, the app shows you what changed.
 ### Data Maintenance
 
 - Perform manual backups before major changes
-- Review and dismiss anomaly alerts to improve future predictions
+- Review and dismiss anomaly alerts to keep your Smart Insights panel focused on what matters
+- Use "Mark as Expected" on alerts for spending that's normal for you to reduce future noise
 - Use merchant analytics to identify spending patterns and opportunities for savings

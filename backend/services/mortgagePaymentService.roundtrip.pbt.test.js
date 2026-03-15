@@ -44,10 +44,11 @@ const safePastDateString = () => {
     year: fc.integer({ min: 2020, max: maxYear }),
     month: fc.integer({ min: 1, max: 12 }),
     day: fc.integer({ min: 1, max: 28 })
-  }).filter(({ year, month }) => {
+  }).filter(({ year, month, day }) => {
     // Filter out future dates
     if (year > maxYear) return false;
     if (year === maxYear && month > maxMonth) return false;
+    if (year === maxYear && month === maxMonth && day > maxDay) return false;
     return true;
   }).map(({ year, month, day }) => {
     const monthStr = month.toString().padStart(2, '0');

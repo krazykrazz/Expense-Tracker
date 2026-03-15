@@ -122,7 +122,7 @@ const TrendsView = ({ year, month }) => {
           <div className="trends-view-prediction-content">
             <div className="trends-view-prediction-main">
               <span className="trends-view-prediction-amount">
-                ${formatCurrency(prediction.predictedTotal)}
+                {formatCurrency(prediction.predictedTotal)}
               </span>
               <span className={`trends-view-prediction-confidence ${getConfidenceClass(prediction.confidenceLevel)}`}>
                 {getConfidenceLabel(prediction.confidenceLevel)} confidence
@@ -131,7 +131,7 @@ const TrendsView = ({ year, month }) => {
             <div className="trends-view-prediction-details">
               <div className="trends-view-prediction-detail">
                 <span className="trends-view-prediction-label">Current Spent</span>
-                <span className="trends-view-prediction-value">${formatCurrency(prediction.currentSpent)}</span>
+                <span className="trends-view-prediction-value">{formatCurrency(prediction.currentSpent)}</span>
               </div>
               <div className="trends-view-prediction-detail">
                 <span className="trends-view-prediction-label">Days Remaining</span>
@@ -158,7 +158,7 @@ const TrendsView = ({ year, month }) => {
                     style={{ width: maxHistoryTotal > 0 ? `${(item.total / maxHistoryTotal) * 100}%` : '0%' }}
                   />
                 </div>
-                <span className="trends-view-history-total">${formatCurrency(item.total)}</span>
+                <span className="trends-view-history-total">{formatCurrency(item.total)}</span>
               </div>
             ))}
           </div>
@@ -180,7 +180,7 @@ const TrendsView = ({ year, month }) => {
                   <span className="trends-view-pattern-frequency">{pattern.frequency}</span>
                 </div>
                 <div className="trends-view-pattern-stats">
-                  <span className="trends-view-pattern-amount">${formatCurrency(pattern.averageAmount)}</span>
+                  <span className="trends-view-pattern-amount">{formatCurrency(pattern.averageAmount)}</span>
                   <span className="trends-view-pattern-occurrences">{pattern.occurrences}x</span>
                 </div>
               </div>

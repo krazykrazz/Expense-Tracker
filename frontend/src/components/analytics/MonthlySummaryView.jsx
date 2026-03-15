@@ -74,7 +74,7 @@ const MonthlySummaryView = ({ year, month }) => {
           Total Spending — {getMonthNameLong(month)} {year}
         </div>
         <div className="monthly-summary-total-amount">
-          ${formatCurrency(totalSpending)}
+          {formatCurrency(totalSpending)}
         </div>
       </div>
 
@@ -86,13 +86,13 @@ const MonthlySummaryView = ({ year, month }) => {
             <div className="monthly-summary-mom-stat">
               <span className="monthly-summary-mom-label">Previous Month</span>
               <span className="monthly-summary-mom-value">
-                ${formatCurrency(monthOverMonth.previousTotal)}
+                {formatCurrency(monthOverMonth.previousTotal)}
               </span>
             </div>
             <div className="monthly-summary-mom-stat">
               <span className="monthly-summary-mom-label">Difference</span>
               <span className={`monthly-summary-mom-value ${monthOverMonth.difference > 0 ? 'increase' : monthOverMonth.difference < 0 ? 'decrease' : ''}`}>
-                {monthOverMonth.difference > 0 ? '+' : ''}${formatCurrency(monthOverMonth.difference)}
+                {monthOverMonth.difference > 0 ? '+' : ''}{formatCurrency(monthOverMonth.difference)}
               </span>
             </div>
             <div className="monthly-summary-mom-stat">
@@ -115,7 +115,7 @@ const MonthlySummaryView = ({ year, month }) => {
                 <div key={item.category} className="monthly-summary-ranked-item">
                   <span className="monthly-summary-rank">{index + 1}</span>
                   <span className="monthly-summary-item-name">{item.category}</span>
-                  <span className="monthly-summary-item-amount">${formatCurrency(item.total)}</span>
+                  <span className="monthly-summary-item-amount">{formatCurrency(item.total)}</span>
                 </div>
               ))}
             </div>
@@ -131,7 +131,7 @@ const MonthlySummaryView = ({ year, month }) => {
                 <div key={item.merchant} className="monthly-summary-ranked-item">
                   <span className="monthly-summary-rank">{index + 1}</span>
                   <span className="monthly-summary-item-name">{item.merchant}</span>
-                  <span className="monthly-summary-item-amount">${formatCurrency(item.total)}</span>
+                  <span className="monthly-summary-item-amount">{formatCurrency(item.total)}</span>
                 </div>
               ))}
             </div>
@@ -147,11 +147,11 @@ const MonthlySummaryView = ({ year, month }) => {
             <div className="monthly-summary-budget-stats">
               <div className="monthly-summary-budget-stat">
                 <span className="monthly-summary-budget-label">Budgeted</span>
-                <span className="monthly-summary-budget-value">${formatCurrency(budgetSummary.totalBudgeted)}</span>
+                <span className="monthly-summary-budget-value">{formatCurrency(budgetSummary.totalBudgeted)}</span>
               </div>
               <div className="monthly-summary-budget-stat">
                 <span className="monthly-summary-budget-label">Spent</span>
-                <span className="monthly-summary-budget-value">${formatCurrency(budgetSummary.totalSpent)}</span>
+                <span className="monthly-summary-budget-value">{formatCurrency(budgetSummary.totalSpent)}</span>
               </div>
               <div className="monthly-summary-budget-stat">
                 <span className="monthly-summary-budget-label">Utilization</span>

@@ -22,6 +22,20 @@
   box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);
 }
 
+.anomaly-clickable {
+  cursor: pointer;
+}
+
+.anomaly-clickable:hover {
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.25);
+  transform: translateY(-1px);
+}
+
+.anomaly-clickable:focus-visible {
+  outline: 2px solid var(--color-primary, #0ea5e9);
+  outline-offset: 2px;
+}
+
 .anomaly-alert-content {
   display: flex;
   align-items: flex-start;
@@ -53,6 +67,26 @@
   font-weight: var(--font-semibold, 600);
   font-size: var(--body-text, 14px);
   color: var(--text-primary, #0f172a);
+}
+
+.anomaly-alert-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1, 4px);
+  font-size: var(--caption-text-lg, 13px);
+  color: var(--text-secondary, #475569);
+}
+
+.anomaly-alert-date {
+  white-space: nowrap;
+}
+
+.anomaly-alert-separator {
+  color: var(--text-tertiary, #94a3b8);
+}
+
+.anomaly-alert-category {
+  white-space: nowrap;
 }
 
 .anomaly-alert-type-badge {

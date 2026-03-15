@@ -87,9 +87,17 @@ const MIGRATIONS = [
   {
     name: 'analytics_hub_revamp_v1',
     async apply(db) {
-      // Add columns to dismissed_anomalies
-      await runSql(db, "ALTER TABLE dismissed_anomalies ADD COLUMN anomaly_type TEXT");
-      await runSql(db, "ALTER TABLE dismissed_anomalies ADD COLUMN action TEXT DEFAULT 'dismiss'");
+      // Add columns to dismissed_anomalies (idempotent — columns may already exist from schema.js on fresh DBs)
+      try {
+        await runSql(db, "ALTER TABLE dismissed_anomalies ADD COLUMN anomaly_type TEXT");
+      } catch (err) {
+        if (!err.message.includes('duplicate column name')) throw err;
+      }
+      try {
+        await runSql(db, "ALTER TABLE dismissed_anomalies ADD COLUMN action TEXT DEFAULT 'dismiss'");
+      } catch (err) {
+        if (!err.message.includes('duplicate column name')) throw err;
+      }
 
       // Create anomaly_suppression_rules table
       await runSql(db, `CREATE TABLE IF NOT EXISTS anomaly_suppression_rules (

@@ -9,11 +9,13 @@ import AnomalyAlertItem from './AnomalyAlertItem';
 
 describe('AnomalyAlertItem', () => {
   const baseAnomaly = {
-    expense_id: 42,
-    merchant: 'Expensive Store',
+    expenseId: 42,
+    place: 'Expensive Store',
     amount: 999.99,
-    type: 'amount',
+    anomalyType: 'amount',
     reason: 'Amount is 3x higher than usual for this merchant',
+    date: '2026-03-10',
+    category: 'Shopping',
   };
 
   let onDismiss;
@@ -42,16 +44,44 @@ describe('AnomalyAlertItem', () => {
     );
   });
 
+  it('should render date and category in meta row', () => {
+    render(
+      <AnomalyAlertItem anomaly={baseAnomaly} onDismiss={onDismiss} onMarkExpected={onMarkExpected} />
+    );
+
+    const meta = screen.getByTestId('anomaly-meta');
+    expect(meta).toHaveTextContent('Mar 10, 2026');
+    expect(meta).toHaveTextContent('Shopping');
+  });
+
   it('should render type labels for different anomaly types', () => {
     const { rerender } = render(
-      <AnomalyAlertItem anomaly={{ ...baseAnomaly, type: 'new_merchant' }} onDismiss={onDismiss} onMarkExpected={onMarkExpected} />
+      <AnomalyAlertItem anomaly={{ ...baseAnomaly, anomalyType: 'new_merchant' }} onDismiss={onDismiss} onMarkExpected={onMarkExpected} />
     );
     expect(screen.getByText('New Merchant')).toBeInTheDocument();
 
     rerender(
-      <AnomalyAlertItem anomaly={{ ...baseAnomaly, type: 'daily_total' }} onDismiss={onDismiss} onMarkExpected={onMarkExpected} />
+      <AnomalyAlertItem anomaly={{ ...baseAnomaly, anomalyType: 'daily_total' }} onDismiss={onDismiss} onMarkExpected={onMarkExpected} />
     );
     expect(screen.getByText('High Daily Total')).toBeInTheDocument();
+  });
+
+  it('should be clickable and dispatch scrollToExpense event', () => {
+    const dispatchSpy = vi.spyOn(window, 'dispatchEvent');
+    render(
+      <AnomalyAlertItem anomaly={baseAnomaly} onDismiss={onDismiss} onMarkExpected={onMarkExpected} />
+    );
+
+    const card = screen.getByTestId('anomaly-alert-item');
+    expect(card).toHaveClass('anomaly-clickable');
+    fireEvent.click(card);
+
+    expect(dispatchSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'scrollToExpense',
+        detail: { expenseId: 42 }
+      })
+    );
   });
 
   it('should call onDismiss when dismiss button is clicked', async () => {

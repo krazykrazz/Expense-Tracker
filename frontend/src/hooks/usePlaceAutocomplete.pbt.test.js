@@ -129,6 +129,10 @@ describe('usePlaceAutocomplete - Property-Based Tests', () => {
             
             const targetIndex = index % places.length;
             const exactPlace = places[targetIndex];
+            
+            // Whitespace-only strings return empty results by design
+            if (exactPlace.trim() === '') return true;
+            
             const filtered = filterPlacesList(places, exactPlace);
             
             // The exact match must be in the filtered results

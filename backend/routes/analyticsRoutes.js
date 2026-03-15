@@ -33,4 +33,22 @@ router.get('/anomalies', analyticsController.getAnomalies);
 // POST /api/analytics/anomalies/:expenseId/dismiss - Dismiss an anomaly
 router.post('/anomalies/:expenseId/dismiss', analyticsController.dismissAnomaly);
 
+// GET /api/analytics/monthly-summary/:year/:month - Get monthly summary
+router.get('/monthly-summary/:year/:month', analyticsController.getMonthlySummary);
+
+// GET /api/analytics/trends/:year/:month - Get consolidated trends data
+router.get('/trends/:year/:month', analyticsController.getTrends);
+
+// GET /api/analytics/activity-insights/:year/:month - Get activity insights
+router.get('/activity-insights/:year/:month', analyticsController.getActivityInsights);
+
+// POST /api/analytics/anomalies/:expenseId/mark-expected - Mark anomaly as expected
+router.post('/anomalies/:expenseId/mark-expected', analyticsController.markAnomalyAsExpected);
+
+// GET /api/analytics/anomaly-suppression-rules - Get all suppression rules
+router.get('/anomaly-suppression-rules', analyticsController.getSuppressionRules);
+
+// DELETE /api/analytics/anomaly-suppression-rules/:id - Delete a suppression rule
+router.delete('/anomaly-suppression-rules/:id', analyticsController.deleteSuppressionRule);
+
 module.exports = router;

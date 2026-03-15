@@ -11,11 +11,10 @@ import * as fc from 'fast-check';
 
 // Mock all API services to prevent real network calls
 vi.mock('../../services/analyticsApi', () => ({
-  checkDataSufficiency: vi.fn().mockResolvedValue({
-    availableFeatures: {},
-    dataQualityScore: 50,
-    monthsOfData: 6
-  })
+  getAnomalies: vi.fn().mockResolvedValue([]),
+  getMonthlySummary: vi.fn().mockResolvedValue({}),
+  getTrends: vi.fn().mockResolvedValue({}),
+  getActivityInsights: vi.fn().mockResolvedValue({})
 }));
 
 vi.mock('../../services/merchantAnalyticsApi', () => ({

@@ -8,7 +8,7 @@
  * @module database/schema
  */
 
-// ─── Table Statements (24 tables) ───
+// ─── Table Statements (25 tables) ───
 
 const TABLE_STATEMENTS = [
   // schema_migrations — tracks applied migrations
@@ -231,9 +231,23 @@ const TABLE_STATEMENTS = [
   `CREATE TABLE IF NOT EXISTS dismissed_anomalies (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     expense_id INTEGER NOT NULL,
+    anomaly_type TEXT,
+    action TEXT DEFAULT 'dismiss' CHECK(action IN ('dismiss', 'mark_as_expected')),
     dismissed_at TEXT DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(expense_id),
     FOREIGN KEY (expense_id) REFERENCES expenses(id) ON DELETE CASCADE
+  )`,
+
+  // anomaly_suppression_rules — pattern-level suppression for smart learning
+  `CREATE TABLE IF NOT EXISTS anomaly_suppression_rules (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    rule_type TEXT NOT NULL CHECK(rule_type IN ('merchant_amount', 'merchant_category', 'specific_date')),
+    merchant_name TEXT,
+    category TEXT,
+    amount_min REAL,
+    amount_max REAL,
+    specific_date TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
   )`,
 
   // payment_methods — configurable payment methods
@@ -410,6 +424,10 @@ const INDEX_STATEMENTS = [
 
   // dismissed_anomalies indexes
   'CREATE INDEX IF NOT EXISTS idx_dismissed_anomalies_expense_id ON dismissed_anomalies(expense_id)',
+
+  // anomaly_suppression_rules indexes
+  'CREATE INDEX IF NOT EXISTS idx_suppression_rules_type ON anomaly_suppression_rules(rule_type)',
+  'CREATE INDEX IF NOT EXISTS idx_suppression_rules_merchant ON anomaly_suppression_rules(merchant_name)',
 
   // payment_methods indexes
   'CREATE INDEX IF NOT EXISTS idx_payment_methods_type ON payment_methods(type)',

@@ -47,23 +47,20 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ---
 
-### ⚪ 2. Adaptive Anomaly Detection (Learning from Dismissals)
-**Status**: Proposed  
+### 🟢 2. Adaptive Anomaly Detection (Learning from Dismissals)
+**Status**: Completed  
 **Priority**: Medium  
 **Effort**: Medium  
-**Description**: Use dismissed anomaly history to improve detection accuracy over time.
+**Spec**: `.kiro/specs/analytics-hub-revamp/`  
+**Description**: Two-action anomaly response (dismiss vs mark-as-expected) with automatic suppression rule creation. Part of the Analytics Hub Revamp.
 
-**Key Features**:
-- Analyze patterns in dismissed anomalies (merchant, category, amount ranges)
-- Adjust detection thresholds based on user feedback
-- Reduce false positives for merchants/categories frequently dismissed
-- Learn user's spending patterns that appear anomalous but are normal for them
-- Optional "reset learning" to start fresh
-
-**Current State**:
-- Dismissed anomalies are persisted to database (v4.17.6)
-- Currently only used to filter anomalies from display
-- No threshold adjustment based on dismissal patterns
+**Features Delivered**:
+- Two-action response: "Dismiss" (one-time) and "Mark as Expected" (creates suppression rule)
+- Suppression rules by anomaly type: merchant_amount (±20% range), merchant_category, specific_date
+- Anomaly alerts relocated from Analytics Hub tab to Smart Insights panel
+- Suppression rule management (view/delete) via API
+- Activity logging for all anomaly actions
+- Case-insensitive merchant matching for suppression rules
 
 **Benefits**:
 - Fewer false positive alerts over time
@@ -1636,14 +1633,13 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ### Medium Priority
 1. Backend updateExpense Credit Card Balance Refactor (#32)
-2. Adaptive Anomaly Detection (Learning from Dismissals)
-3. Advanced Expense Search
-4. Custom Reports
-5. Category Insights
-6. Savings Rate Tracker
-7. Debt Payoff Planner
-8. Export Enhancements
-9. Duplicate Expense Feature
+2. Advanced Expense Search
+3. Custom Reports
+4. Category Insights
+5. Savings Rate Tracker
+6. Debt Payoff Planner
+7. Export Enhancements
+8. Duplicate Expense Feature
 
 ### Low Priority
 1. Legacy Payment Method String Deprecation (#33)
@@ -1682,6 +1678,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 ---
 
 **Version History**:
+- v3.8 (2026-03-14): Marked Adaptive Anomaly Detection as completed (Analytics Hub Revamp spec), updated Analytics Hub description in product.md
 - v3.7 (2026-02-26): Added Fetch Infrastructure Consolidation (#35) as 🟡 In Progress in Code Quality & Optimization section
 - v3.6 (2026-02-26): Added Auth Infrastructure (Phase 1) as 🟡 In Progress in new Security & Authentication section
 - v3.5 (2026-02-25): Added Container Update Detection (v1.0.0) and Version Upgrade Tracking (v1.0.0) to completed features

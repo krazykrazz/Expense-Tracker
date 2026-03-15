@@ -86,14 +86,15 @@ export const API_ENDPOINTS = {
   MERCHANT_TREND: (name) => `${API_BASE_URL}/api/analytics/merchants/${encodeURIComponent(name)}/trend`,
   MERCHANT_EXPENSES: (name) => `${API_BASE_URL}/api/analytics/merchants/${encodeURIComponent(name)}/expenses`,
   
-  // Spending Patterns & Predictions Analytics
-  ANALYTICS_PATTERNS: `${API_BASE_URL}/api/analytics/patterns`,
-  ANALYTICS_PATTERNS_DAY_OF_WEEK: `${API_BASE_URL}/api/analytics/patterns/day-of-week`,
-  ANALYTICS_SEASONAL: `${API_BASE_URL}/api/analytics/seasonal`,
-  ANALYTICS_PREDICTIONS: (year, month) => `${API_BASE_URL}/api/analytics/predictions/${year}/${month}`,
+  // Analytics Hub
   ANALYTICS_ANOMALIES: `${API_BASE_URL}/api/analytics/anomalies`,
   ANALYTICS_ANOMALY_DISMISS: (expenseId) => `${API_BASE_URL}/api/analytics/anomalies/${expenseId}/dismiss`,
-  ANALYTICS_DATA_SUFFICIENCY: `${API_BASE_URL}/api/analytics/data-sufficiency`,
+  ANALYTICS_MONTHLY_SUMMARY: (year, month) => `${API_BASE_URL}/api/analytics/monthly-summary/${year}/${month}`,
+  ANALYTICS_TRENDS: (year, month) => `${API_BASE_URL}/api/analytics/trends/${year}/${month}`,
+  ANALYTICS_ACTIVITY_INSIGHTS: (year, month) => `${API_BASE_URL}/api/analytics/activity-insights/${year}/${month}`,
+  ANALYTICS_ANOMALY_MARK_EXPECTED: (expenseId) => `${API_BASE_URL}/api/analytics/anomalies/${expenseId}/mark-expected`,
+  ANALYTICS_SUPPRESSION_RULES: `${API_BASE_URL}/api/analytics/anomaly-suppression-rules`,
+  ANALYTICS_SUPPRESSION_RULE_BY_ID: (id) => `${API_BASE_URL}/api/analytics/anomaly-suppression-rules/${id}`,
   
   // Insurance Status
   INSURANCE_STATUS: (id) => `${API_BASE_URL}/api/expenses/${id}/insurance-status`,

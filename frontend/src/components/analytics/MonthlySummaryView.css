@@ -1,0 +1,337 @@
+/**
+ * MonthlySummaryView Component Styles
+ * Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7
+ */
+
+.monthly-summary-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-5);
+}
+
+/* Loading State */
+.monthly-summary-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-10);
+  color: var(--text-tertiary);
+}
+
+.monthly-summary-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--border-default);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: monthlySummarySpin 1s linear infinite;
+  margin-bottom: var(--spacing-4);
+}
+
+@keyframes monthlySummarySpin {
+  to { transform: rotate(360deg); }
+}
+
+/* Error State */
+.monthly-summary-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-10);
+  text-align: center;
+}
+
+.monthly-summary-error p {
+  color: var(--color-negative);
+  margin-bottom: var(--spacing-4);
+}
+
+.monthly-summary-retry-btn {
+  padding: var(--spacing-2) var(--spacing-4);
+  background-color: var(--color-primary);
+  color: var(--text-inverse);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  font-family: var(--font-sans);
+  transition: var(--transition-button);
+}
+
+.monthly-summary-retry-btn:hover {
+  background-color: var(--color-primary-hover);
+}
+
+/* Empty State */
+.monthly-summary-empty {
+  text-align: center;
+  padding: var(--spacing-8);
+  background-color: var(--bg-subtle);
+  border-radius: var(--radius-lg);
+  border: 1px dashed var(--border-default);
+}
+
+.monthly-summary-empty p {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.monthly-summary-empty-hint {
+  margin-top: var(--spacing-2) !important;
+  font-size: var(--text-sm);
+  color: var(--text-tertiary) !important;
+}
+
+/* Total Spending Card */
+.monthly-summary-total-card {
+  text-align: center;
+  padding: var(--spacing-6);
+  background: linear-gradient(135deg, var(--color-primary-light) 0%, var(--bg-subtle) 100%);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-muted);
+}
+
+.monthly-summary-total-label {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  font-weight: var(--font-medium);
+  margin-bottom: var(--spacing-2);
+}
+
+.monthly-summary-total-amount {
+  font-size: var(--text-4xl);
+  font-weight: var(--font-bold);
+  color: var(--text-primary);
+  font-feature-settings: var(--font-feature-tabular);
+}
+
+/* Month-over-Month */
+.monthly-summary-mom {
+  background-color: var(--bg-subtle);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-4);
+}
+
+.monthly-summary-mom-content {
+  display: flex;
+  gap: var(--spacing-4);
+}
+
+.monthly-summary-mom-stat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-1);
+}
+
+.monthly-summary-mom-label {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.monthly-summary-mom-value {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  font-feature-settings: var(--font-feature-tabular);
+}
+
+.monthly-summary-mom-value.increase {
+  color: var(--color-negative);
+}
+
+.monthly-summary-mom-value.decrease {
+  color: var(--color-positive);
+}
+
+/* Section Title */
+.monthly-summary-section-title {
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  margin: 0 0 var(--spacing-3) 0;
+}
+
+/* Lists Container */
+.monthly-summary-lists {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-5);
+}
+
+/* Section */
+.monthly-summary-section {
+  background-color: var(--bg-subtle);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-4);
+}
+
+/* Ranked List */
+.monthly-summary-ranked-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.monthly-summary-ranked-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  padding: var(--spacing-2) 0;
+  border-bottom: 1px solid var(--border-muted);
+}
+
+.monthly-summary-ranked-item:last-child {
+  border-bottom: none;
+}
+
+.monthly-summary-rank {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--bg-muted);
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.monthly-summary-item-name {
+  flex: 1;
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+}
+
+.monthly-summary-item-amount {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  font-feature-settings: var(--font-feature-tabular);
+}
+
+/* Budget Summary */
+.monthly-summary-budget {
+  background-color: var(--bg-subtle);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-4);
+}
+
+.monthly-summary-budget-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+}
+
+.monthly-summary-budget-stats {
+  display: flex;
+  gap: var(--spacing-4);
+}
+
+.monthly-summary-budget-stat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-1);
+}
+
+.monthly-summary-budget-label {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.monthly-summary-budget-value {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  font-feature-settings: var(--font-feature-tabular);
+}
+
+.monthly-summary-budget-value.over-budget {
+  color: var(--color-negative);
+}
+
+.monthly-summary-budget-bar-container {
+  height: 8px;
+  background-color: var(--bg-muted);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.monthly-summary-budget-bar {
+  height: 100%;
+  background-color: var(--color-positive);
+  border-radius: var(--radius-full);
+  transition: width var(--transition-slow);
+}
+
+.monthly-summary-budget-bar.warning {
+  background-color: var(--color-warning);
+}
+
+.monthly-summary-budget-bar.over-budget {
+  background-color: var(--color-negative);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .monthly-summary-lists {
+    grid-template-columns: 1fr;
+  }
+
+  .monthly-summary-mom-content {
+    flex-direction: column;
+    gap: var(--spacing-2);
+  }
+
+  .monthly-summary-mom-stat {
+    flex-direction: row;
+    justify-content: space-between;
+    padding: var(--spacing-2) 0;
+    border-bottom: 1px solid var(--border-muted);
+  }
+
+  .monthly-summary-mom-stat:last-child {
+    border-bottom: none;
+  }
+
+  .monthly-summary-budget-stats {
+    flex-direction: column;
+    gap: var(--spacing-2);
+  }
+
+  .monthly-summary-budget-stat {
+    flex-direction: row;
+    justify-content: space-between;
+  }
+
+  .monthly-summary-total-amount {
+    font-size: var(--text-3xl);
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .monthly-summary-spinner {
+    animation: none;
+  }
+
+  .monthly-summary-retry-btn,
+  .monthly-summary-budget-bar {
+    transition: none;
+  }
+}

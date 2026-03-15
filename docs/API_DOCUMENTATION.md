@@ -3000,6 +3000,372 @@ Settings are stored in the `settings` database table and persist across restarts
 
 ---
 
+# Analytics Hub API
+
+## Overview
+
+The Analytics Hub API provides consolidated endpoints for the revamped analytics dashboard. Includes monthly spending summaries, trend analysis, activity insights, and anomaly management with smart suppression rules.
+
+All analytics endpoints are prefixed with `/api/analytics`.
+
+---
+
+## Endpoints
+
+### 1. Get Monthly Summary
+
+Get a single-screen monthly spending report card with top categories, top merchants, month-over-month comparison, and budget status.
+
+**Endpoint:** `GET /api/analytics/monthly-summary/:year/:month`
+
+**URL Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| year | number | Yes | Year (2000-2100) |
+| month | number | Yes | Month (1-12) |
+
+**Success Response:**
+```json
+HTTP/1.1 200 OK
+{
+  "totalSpending": 2345.67,
+  "topCategories": [
+    { "category": "Groceries", "total": 567.89 },
+    { "category": "Dining", "total": 234.56 },
+    { "category": "Transport", "total": 189.00 },
+    { "category": "Utilities", "total": 150.00 },
+    { "category": "Entertainment", "total": 95.50 }
+  ],
+  "topMerchants": [
+    { "merchant": "Costco", "total": 234.56 },
+    { "merchant": "Metro", "total": 189.00 },
+    { "merchant": "Shell", "total": 120.00 },
+    { "merchant": "Netflix", "total": 15.99 },
+    { "merchant": "Tim Hortons", "total": 12.50 }
+  ],
+  "monthOverMonth": {
+    "previousTotal": 2100.00,
+    "difference": 245.67,
+    "percentageChange": 11.7
+  },
+  "budgetSummary": {
+    "totalBudgeted": 3000.00,
+    "totalSpent": 2345.67,
+    "utilizationPercentage": 78.2
+  }
+}
+```
+
+**Notes:**
+- `topCategories` and `topMerchants` are limited to 5 entries, sorted by total descending.
+- `monthOverMonth` is `null` when the previous month has no expense data.
+- `budgetSummary` is `null` when no budgets exist for the month.
+
+**Error Responses:**
+```json
+HTTP/1.1 400 Bad Request
+{ "error": "Invalid year. Must be between 2000 and 2100" }
+```
+
+```json
+HTTP/1.1 400 Bad Request
+{ "error": "Invalid month. Must be between 1 and 12" }
+```
+
+---
+
+### 2. Get Consolidated Trends
+
+Get combined prediction, spending history, and recurring pattern data for the Trends tab.
+
+**Endpoint:** `GET /api/analytics/trends/:year/:month`
+
+**URL Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| year | number | Yes | Year (2000-2100) |
+| month | number | Yes | Month (1-12) |
+
+**Success Response:**
+```json
+HTTP/1.1 200 OK
+{
+  "prediction": {
+    "predictedTotal": 2500.00,
+    "confidenceLevel": "medium",
+    "currentSpent": 1800.00,
+    "daysRemaining": 8
+  },
+  "monthlyHistory": [
+    { "year": 2024, "month": 8, "total": 1950.00 },
+    { "year": 2024, "month": 9, "total": 2100.00 },
+    { "year": 2024, "month": 10, "total": 2345.67 },
+    { "year": 2024, "month": 11, "total": 2200.00 },
+    { "year": 2024, "month": 12, "total": 2050.00 },
+    { "year": 2025, "month": 1, "total": 1800.00 }
+  ],
+  "recurringPatterns": [
+    {
+      "merchant": "Netflix",
+      "frequency": "monthly",
+      "averageAmount": 15.99,
+      "occurrences": 6
+    }
+  ],
+  "dataSufficiency": {
+    "prediction": true,
+    "monthlyHistory": true,
+    "recurringPatterns": false
+  },
+  "dataQuality": {
+    "score": 85,
+    "monthsOfData": 10
+  }
+}
+```
+
+**Notes:**
+- Sub-sections (`prediction`, `monthlyHistory`, `recurringPatterns`) are `null` when the corresponding `dataSufficiency` flag is `false`.
+- `recurringPatterns` limited to top 10 by occurrence count.
+- `dataQuality` is computed from completed months only (current in-progress month excluded).
+
+**Error Responses:**
+```json
+HTTP/1.1 400 Bad Request
+{ "error": "Invalid year. Must be between 2000 and 2100" }
+```
+
+---
+
+### 3. Get Activity Insights
+
+Get activity log analytics including entry velocity, entity breakdown, recent changes, and day-of-week patterns.
+
+**Endpoint:** `GET /api/analytics/activity-insights/:year/:month`
+
+**URL Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| year | number | Yes | Year (2000-2100) |
+| month | number | Yes | Month (1-12) |
+
+**Success Response:**
+```json
+HTTP/1.1 200 OK
+{
+  "entryVelocity": {
+    "currentMonth": 45,
+    "previousMonth": 38,
+    "difference": 7
+  },
+  "entityBreakdown": [
+    { "entityType": "expense", "count": 30 },
+    { "entityType": "budget", "count": 8 },
+    { "entityType": "loan", "count": 4 }
+  ],
+  "recentChanges": [
+    {
+      "id": 1234,
+      "timestamp": "2025-01-27T14:30:00.000Z",
+      "entityType": "expense",
+      "userAction": "Added expense: Groceries - $45.67",
+      "metadata": { "amount": 45.67 }
+    }
+  ],
+  "dayOfWeekPatterns": [
+    { "day": "Monday", "count": 12 },
+    { "day": "Wednesday", "count": 10 },
+    { "day": "Friday", "count": 8 }
+  ]
+}
+```
+
+**Notes:**
+- `entityBreakdown` sorted by count descending.
+- `recentChanges` limited to 10 most recent entries, sorted by timestamp descending.
+- `dayOfWeekPatterns` only includes days with activity, sorted by count descending.
+
+**Error Responses:**
+```json
+HTTP/1.1 400 Bad Request
+{ "error": "Invalid year. Must be between 2000 and 2100" }
+```
+
+---
+
+### 4. Mark Anomaly as Expected
+
+Dismiss an anomaly and create a suppression rule to prevent similar anomalies from being flagged in the future.
+
+**Endpoint:** `POST /api/analytics/anomalies/:expenseId/mark-expected`
+
+**URL Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| expenseId | number | Yes | Expense ID of the anomaly |
+
+**Request Body:**
+```json
+{
+  "anomalyType": "amount",
+  "expenseDetails": {
+    "merchant_name": "Costco",
+    "category": "Groceries",
+    "amount": 450.00,
+    "date": "2025-01-15"
+  }
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| anomalyType | string | Yes | Type of anomaly: `amount`, `new_merchant`, or `daily_total` |
+| expenseDetails | object | No | Expense details used to create the suppression rule |
+
+**Suppression rule created by anomaly type:**
+- `amount` → `merchant_amount` rule (merchant name + amount ±20%)
+- `new_merchant` → `merchant_category` rule (merchant name + category)
+- `daily_total` → `specific_date` rule (exact date)
+
+**Success Response:**
+```json
+HTTP/1.1 200 OK
+{
+  "success": true,
+  "message": "Anomaly for expense 123 marked as expected",
+  "suppressionRuleId": 5
+}
+```
+
+**Error Responses:**
+```json
+HTTP/1.1 400 Bad Request
+{ "error": "Expense ID is required" }
+```
+
+```json
+HTTP/1.1 400 Bad Request
+{ "error": "anomalyType is required" }
+```
+
+---
+
+### 5. Get Suppression Rules
+
+Get all active anomaly suppression rules.
+
+**Endpoint:** `GET /api/analytics/anomaly-suppression-rules`
+
+**Success Response:**
+```json
+HTTP/1.1 200 OK
+{
+  "rules": [
+    {
+      "id": 1,
+      "rule_type": "merchant_amount",
+      "merchant_name": "Costco",
+      "category": null,
+      "amount_min": 360.00,
+      "amount_max": 540.00,
+      "specific_date": null,
+      "created_at": "2025-01-15T10:30:00Z"
+    },
+    {
+      "id": 2,
+      "rule_type": "merchant_category",
+      "merchant_name": "New Store",
+      "category": "Groceries",
+      "amount_min": null,
+      "amount_max": null,
+      "specific_date": null,
+      "created_at": "2025-01-16T09:00:00Z"
+    }
+  ]
+}
+```
+
+---
+
+### 6. Delete Suppression Rule
+
+Remove a suppression rule, re-enabling anomaly detection for that pattern.
+
+**Endpoint:** `DELETE /api/analytics/anomaly-suppression-rules/:id`
+
+**URL Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| id | number | Yes | Suppression rule ID |
+
+**Success Response:**
+```json
+HTTP/1.1 200 OK
+{
+  "success": true,
+  "message": "Suppression rule 1 deleted"
+}
+```
+
+**Error Responses:**
+```json
+HTTP/1.1 404 Not Found
+{ "error": "Suppression rule not found" }
+```
+
+```json
+HTTP/1.1 400 Bad Request
+{ "error": "Invalid rule ID. Must be a positive number" }
+```
+
+---
+
+### 7. Dismiss Anomaly (Updated)
+
+Dismiss a specific anomaly. Now accepts an optional `anomalyType` in the request body for more precise tracking.
+
+**Endpoint:** `POST /api/analytics/anomalies/:expenseId/dismiss`
+
+**URL Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| expenseId | number | Yes | Expense ID of the anomaly |
+
+**Request Body (optional):**
+```json
+{
+  "anomalyType": "amount"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| anomalyType | string | No | Type of anomaly: `amount`, `new_merchant`, or `daily_total` |
+
+**Success Response:**
+```json
+HTTP/1.1 200 OK
+{
+  "success": true,
+  "message": "Anomaly for expense 123 dismissed successfully"
+}
+```
+
+---
+
+## Changelog - Analytics Hub
+
+### Analytics Hub Revamp (v5.13.0)
+- Added `GET /api/analytics/monthly-summary/:year/:month` — monthly spending report card
+- Added `GET /api/analytics/trends/:year/:month` — consolidated trends with prediction, history, and patterns
+- Added `GET /api/analytics/activity-insights/:year/:month` — activity log analytics
+- Added `POST /api/analytics/anomalies/:expenseId/mark-expected` — mark anomaly as expected with suppression rule creation
+- Added `GET /api/analytics/anomaly-suppression-rules` — list active suppression rules
+- Added `DELETE /api/analytics/anomaly-suppression-rules/:id` — delete a suppression rule
+- Updated `POST /api/analytics/anomalies/:expenseId/dismiss` — now accepts optional `anomalyType` in body
+
+---
+
 # Real-Time Sync API (SSE)
 
 ## Overview

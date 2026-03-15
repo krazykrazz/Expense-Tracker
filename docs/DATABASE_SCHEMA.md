@@ -404,16 +404,45 @@ Monthly data reminder tracking.
 
 ### dismissed_anomalies
 
-Persisted anomaly dismissals for analytics.
+Persisted anomaly dismissals for analytics. Supports two actions: simple dismiss and mark-as-expected (which also creates a suppression rule).
 
 | Field | Type | Description |
 |-------|------|-------------|
-| id | INTEGER PRIMARY KEY | Unique dismissal identifier |
-| anomaly_key | TEXT | Unique key identifying the anomaly |
-| dismissed_at | TEXT | When the anomaly was dismissed |
+| id | INTEGER PRIMARY KEY AUTOINCREMENT | Unique dismissal identifier |
+| expense_id | INTEGER NOT NULL | ID of the dismissed expense (FK → expenses) |
+| anomaly_type | TEXT | Type of anomaly (amount, new_merchant, daily_total) |
+| action | TEXT DEFAULT 'dismiss' | Action taken: 'dismiss' or 'mark_as_expected' |
+| dismissed_at | TEXT DEFAULT CURRENT_TIMESTAMP | When the anomaly was dismissed |
 
 **Constraints**:
-- UNIQUE(anomaly_key)
+- UNIQUE(expense_id)
+- CHECK(action IN ('dismiss', 'mark_as_expected'))
+- FOREIGN KEY (expense_id) REFERENCES expenses(id) ON DELETE CASCADE
+
+**Indexes**:
+- idx_dismissed_anomalies_expense_id on expense_id
+
+### anomaly_suppression_rules
+
+Pattern-level suppression rules for adaptive anomaly detection. Created when user marks an anomaly as "expected" — prevents similar anomalies from being flagged in the future.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| id | INTEGER PRIMARY KEY AUTOINCREMENT | Unique rule identifier |
+| rule_type | TEXT NOT NULL | Rule type: 'merchant_amount', 'merchant_category', or 'specific_date' |
+| merchant_name | TEXT | Merchant name for merchant-based rules |
+| category | TEXT | Category for merchant_category rules |
+| amount_min | REAL | Minimum amount for merchant_amount rules |
+| amount_max | REAL | Maximum amount for merchant_amount rules |
+| specific_date | TEXT | Date for specific_date rules |
+| created_at | TEXT DEFAULT CURRENT_TIMESTAMP | When the rule was created |
+
+**Constraints**:
+- CHECK(rule_type IN ('merchant_amount', 'merchant_category', 'specific_date'))
+
+**Indexes**:
+- idx_suppression_rules_type on rule_type
+- idx_suppression_rules_merchant on merchant_name
 
 ### activity_logs
 
@@ -436,7 +465,7 @@ Comprehensive event tracking for all data changes.
 **Retention**: Automatically cleaned up based on configurable retention settings (default: 90 days / 1000 events, managed via Settings → General)
 
 **Supported Entity Types**:
-- expense, fixed_expense, loan, investment, budget, payment_method, loan_payment, backup, auth
+- expense, fixed_expense, loan, investment, budget, payment_method, loan_payment, backup, auth, anomaly
 
 ### settings
 
@@ -510,7 +539,7 @@ All foreign keys are enforced with appropriate CASCADE or SET NULL actions:
 - `budgets`: (year, month, category)
 - `expense_people`: (expense_id, person_id)
 - `credit_card_billing_cycles`: (payment_method_id, cycle_end_date)
-- `dismissed_anomalies`: (anomaly_key)
+- `dismissed_anomalies`: (expense_id)
 - `schema_migrations`: (migration_name)
 
 ### Check Constraints

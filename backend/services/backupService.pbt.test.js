@@ -130,7 +130,7 @@ describe('BackupService - Property-Based Tests', () => {
       }),
       dbPbtOptions()
     );
-  }, 60000); // Increase timeout for property-based test
+  }, 120000); // Increase timeout for property-based test
 
   /**
    * Feature: budget-tracking-alerts, Property 15: Backup round-trip
@@ -260,7 +260,7 @@ describe('BackupService - Property-Based Tests', () => {
       }),
       dbPbtOptions()
     );
-  }, 60000); // Increase timeout for property-based test
+  }, 120000); // Increase timeout for I/O-heavy property-based test
 
   /**
    * Feature: invoice-backup-enhancement, Property 1: Archive Contains All Data

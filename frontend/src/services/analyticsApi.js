@@ -4,145 +4,7 @@
  */
 
 import { API_ENDPOINTS } from '../config.js';
-import { apiGet, apiPost, logApiError } from '../utils/apiClient.js';
-
-/**
- * Check data sufficiency for analytics features
- * @returns {Promise<DataSufficiencyResult>} Data sufficiency information
- */
-export const checkDataSufficiency = async () => {
-  try {
-    return await apiGet(API_ENDPOINTS.ANALYTICS_DATA_SUFFICIENCY, 'check data sufficiency');
-  } catch (error) {
-    logApiError('checking data sufficiency', error);
-    throw error;
-  }
-};
-
-/**
- * Get recurring spending patterns
- * @param {Object} options - { minMonths?, toleranceDays?, startDate?, endDate? }
- * @returns {Promise<Array<RecurringPattern>>} Array of recurring patterns
- */
-export const getRecurringPatterns = async (options = {}) => {
-  try {
-    const params = new URLSearchParams();
-    
-    if (options.minMonths) {
-      params.append('minMonths', options.minMonths.toString());
-    }
-    if (options.toleranceDays) {
-      params.append('toleranceDays', options.toleranceDays.toString());
-    }
-    if (options.startDate) {
-      params.append('startDate', options.startDate);
-    }
-    if (options.endDate) {
-      params.append('endDate', options.endDate);
-    }
-    
-    const queryString = params.toString();
-    const url = queryString 
-      ? `${API_ENDPOINTS.ANALYTICS_PATTERNS}?${queryString}`
-      : API_ENDPOINTS.ANALYTICS_PATTERNS;
-    
-    const response = await apiGet(url, 'fetch recurring patterns');
-    // API returns { patterns: [], metadata: {...} }, extract patterns array
-    return response?.patterns || [];
-  } catch (error) {
-    logApiError('fetching recurring patterns', error);
-    throw error;
-  }
-};
-
-/**
- * Get day-of-week spending analysis
- * @param {Object} filters - { startDate?, endDate?, category? }
- * @returns {Promise<DayOfWeekAnalysis>} Day-of-week analysis data
- */
-export const getDayOfWeekPatterns = async (filters = {}) => {
-  try {
-    const params = new URLSearchParams();
-    
-    if (filters.startDate) {
-      params.append('startDate', filters.startDate);
-    }
-    if (filters.endDate) {
-      params.append('endDate', filters.endDate);
-    }
-    if (filters.category) {
-      params.append('category', filters.category);
-    }
-    
-    const queryString = params.toString();
-    const url = queryString
-      ? `${API_ENDPOINTS.ANALYTICS_PATTERNS_DAY_OF_WEEK}?${queryString}`
-      : API_ENDPOINTS.ANALYTICS_PATTERNS_DAY_OF_WEEK;
-    
-    return await apiGet(url, 'fetch day-of-week patterns');
-  } catch (error) {
-    logApiError('fetching day-of-week patterns', error);
-    throw error;
-  }
-};
-
-/**
- * Get seasonal spending analysis
- * @param {Object} options - { months?, startDate?, endDate? }
- * @returns {Promise<SeasonalAnalysis>} Seasonal analysis data
- */
-export const getSeasonalAnalysis = async (options = {}) => {
-  try {
-    const params = new URLSearchParams();
-    
-    if (options.months) {
-      params.append('months', options.months.toString());
-    }
-    if (options.startDate) {
-      params.append('startDate', options.startDate);
-    }
-    if (options.endDate) {
-      params.append('endDate', options.endDate);
-    }
-    
-    const queryString = params.toString();
-    const url = queryString
-      ? `${API_ENDPOINTS.ANALYTICS_SEASONAL}?${queryString}`
-      : API_ENDPOINTS.ANALYTICS_SEASONAL;
-    
-    return await apiGet(url, 'fetch seasonal analysis');
-  } catch (error) {
-    logApiError('fetching seasonal analysis', error);
-    throw error;
-  }
-};
-
-/**
- * Get month-end spending prediction
- * @param {number} year - Year for prediction
- * @param {number} month - Month for prediction (1-12)
- * @param {number} monthlyIncome - Optional monthly income for comparison
- * @returns {Promise<MonthPrediction>} Month prediction data
- */
-export const getMonthPrediction = async (year, month, monthlyIncome = null) => {
-  try {
-    const params = new URLSearchParams();
-    
-    if (monthlyIncome !== null) {
-      params.append('monthlyIncome', monthlyIncome.toString());
-    }
-    
-    const queryString = params.toString();
-    const url = queryString
-      ? `${API_ENDPOINTS.ANALYTICS_PREDICTIONS(year, month)}?${queryString}`
-      : API_ENDPOINTS.ANALYTICS_PREDICTIONS(year, month);
-    
-    return await apiGet(url, 'fetch month prediction');
-  } catch (error) {
-    logApiError('fetching month prediction', error);
-    throw error;
-  }
-};
+import { apiGet, apiPost, apiDelete, logApiError } from '../utils/apiClient.js';
 
 /**
  * Get detected anomalies
@@ -180,13 +42,14 @@ export const getAnomalies = async (options = {}) => {
 /**
  * Dismiss an anomaly (mark as expected behavior)
  * @param {number} expenseId - ID of the expense to dismiss
+ * @param {string} anomalyType - Type of anomaly being dismissed
  * @returns {Promise<void>}
  */
-export const dismissAnomaly = async (expenseId) => {
+export const dismissAnomaly = async (expenseId, anomalyType) => {
   try {
     return await apiPost(
       API_ENDPOINTS.ANALYTICS_ANOMALY_DISMISS(expenseId),
-      {},
+      { anomalyType },
       'dismiss anomaly'
     );
   } catch (error) {
@@ -196,40 +59,93 @@ export const dismissAnomaly = async (expenseId) => {
 };
 
 /**
- * Get all analytics data in a single call (convenience function)
- * @param {number} year - Current year
- * @param {number} month - Current month
- * @param {number} monthlyIncome - Optional monthly income
- * @returns {Promise<Object>} Combined analytics data
+ * Get monthly summary data for a given year/month
+ * @param {number} year - Year
+ * @param {number} month - Month (1-12)
+ * @returns {Promise<MonthlySummaryResponse>} Monthly summary data
  */
-export const getAllAnalytics = async (year, month, monthlyIncome = null) => {
+export const getMonthlySummary = async (year, month) => {
   try {
-    const [
-      dataSufficiency,
-      patterns,
-      dayOfWeek,
-      seasonal,
-      prediction,
-      anomalies
-    ] = await Promise.all([
-      checkDataSufficiency(),
-      getRecurringPatterns().catch(() => []),
-      getDayOfWeekPatterns().catch(() => null),
-      getSeasonalAnalysis().catch(() => null),
-      getMonthPrediction(year, month, monthlyIncome).catch(() => null),
-      getAnomalies().catch(() => [])
-    ]);
-    
-    return {
-      dataSufficiency,
-      patterns,
-      dayOfWeek,
-      seasonal,
-      prediction,
-      anomalies
-    };
+    return await apiGet(API_ENDPOINTS.ANALYTICS_MONTHLY_SUMMARY(year, month), 'fetch monthly summary');
   } catch (error) {
-    logApiError('fetching all analytics', error);
+    logApiError('fetching monthly summary', error);
+    throw error;
+  }
+};
+
+/**
+ * Get consolidated trends data for a given year/month
+ * @param {number} year - Year
+ * @param {number} month - Month (1-12)
+ * @returns {Promise<TrendsResponse>} Trends data
+ */
+export const getTrends = async (year, month) => {
+  try {
+    return await apiGet(API_ENDPOINTS.ANALYTICS_TRENDS(year, month), 'fetch trends');
+  } catch (error) {
+    logApiError('fetching trends', error);
+    throw error;
+  }
+};
+
+/**
+ * Get activity insights for a given year/month
+ * @param {number} year - Year
+ * @param {number} month - Month (1-12)
+ * @returns {Promise<ActivityInsightsResponse>} Activity insights data
+ */
+export const getActivityInsights = async (year, month) => {
+  try {
+    return await apiGet(API_ENDPOINTS.ANALYTICS_ACTIVITY_INSIGHTS(year, month), 'fetch activity insights');
+  } catch (error) {
+    logApiError('fetching activity insights', error);
+    throw error;
+  }
+};
+
+/**
+ * Mark an anomaly as expected (dismiss + create suppression rule)
+ * @param {number} expenseId - ID of the expense
+ * @param {string} anomalyType - Type of anomaly
+ * @param {Object} expenseDetails - Details of the expense for rule creation
+ * @returns {Promise<Object>} Result with suppression rule info
+ */
+export const markAnomalyAsExpected = async (expenseId, anomalyType, expenseDetails) => {
+  try {
+    return await apiPost(
+      API_ENDPOINTS.ANALYTICS_ANOMALY_MARK_EXPECTED(expenseId),
+      { anomalyType, expenseDetails },
+      'mark anomaly as expected'
+    );
+  } catch (error) {
+    logApiError('marking anomaly as expected', error);
+    throw error;
+  }
+};
+
+/**
+ * Get all active suppression rules
+ * @returns {Promise<Array<SuppressionRule>>} Array of suppression rules
+ */
+export const getSuppressionRules = async () => {
+  try {
+    return await apiGet(API_ENDPOINTS.ANALYTICS_SUPPRESSION_RULES, 'fetch suppression rules');
+  } catch (error) {
+    logApiError('fetching suppression rules', error);
+    throw error;
+  }
+};
+
+/**
+ * Delete a suppression rule by ID
+ * @param {number} ruleId - ID of the rule to delete
+ * @returns {Promise<void>}
+ */
+export const deleteSuppressionRule = async (ruleId) => {
+  try {
+    return await apiDelete(API_ENDPOINTS.ANALYTICS_SUPPRESSION_RULE_BY_ID(ruleId), 'delete suppression rule');
+  } catch (error) {
+    logApiError('deleting suppression rule', error);
     throw error;
   }
 };

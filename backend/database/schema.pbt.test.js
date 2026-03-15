@@ -78,7 +78,8 @@ const EXPECTED_TABLES = {
   expense_invoices: ['id', 'expense_id', 'person_id', 'filename', 'original_filename', 'file_path', 'file_size', 'mime_type', 'upload_date'],
   place_names: ['id', 'original_name', 'standardized_name', 'created_at', 'updated_at'],
   reminders: ['id', 'year', 'month', 'type', 'dismissed', 'created_at', 'updated_at'],
-  dismissed_anomalies: ['id', 'expense_id', 'dismissed_at'],
+  dismissed_anomalies: ['id', 'expense_id', 'anomaly_type', 'action', 'dismissed_at'],
+  anomaly_suppression_rules: ['id', 'rule_type', 'merchant_name', 'category', 'amount_min', 'amount_max', 'specific_date', 'created_at'],
   payment_methods: ['id', 'type', 'display_name', 'full_name', 'account_details', 'credit_limit', 'current_balance', 'payment_due_day', 'billing_cycle_start', 'billing_cycle_end', 'billing_cycle_day', 'is_active', 'created_at', 'updated_at'],
   credit_card_payments: ['id', 'payment_method_id', 'amount', 'payment_date', 'notes', 'created_at'],
   credit_card_statements: ['id', 'payment_method_id', 'statement_date', 'statement_period_start', 'statement_period_end', 'filename', 'original_filename', 'file_path', 'file_size', 'mime_type', 'created_at'],
@@ -119,12 +120,12 @@ describe('Feature: migration-consolidation, Property 1: Schema completeness', ()
     );
   });
 
-  test('Schema creates exactly 25 tables', async () => {
+  test('Schema creates exactly 26 tables', async () => {
     const db = await openDb();
     try {
       await applySchema(db);
       const tables = await all(db, "SELECT name FROM sqlite_master WHERE type='table' AND name != 'sqlite_sequence' ORDER BY name");
-      expect(tables.length).toBe(25);
+      expect(tables.length).toBe(26);
       const names = tables.map(t => t.name).sort();
       expect(names).toEqual(TABLE_NAMES.sort());
     } finally {

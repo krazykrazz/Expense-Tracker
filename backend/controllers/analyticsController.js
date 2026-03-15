@@ -2,12 +2,16 @@
  * Analytics Controller
  * 
  * Handles HTTP requests for the Spending Patterns & Predictions feature.
- * Provides endpoints for patterns, predictions, seasonal analysis, and anomaly detection.
+ * Provides endpoints for patterns, predictions, seasonal analysis, anomaly detection,
+ * monthly summary, trends, and activity insights.
  */
 
 const spendingPatternsService = require('../services/spendingPatternsService');
 const predictionService = require('../services/predictionService');
 const anomalyDetectionService = require('../services/anomalyDetectionService');
+const monthlySummaryService = require('../services/monthlySummaryService');
+const trendsService = require('../services/trendsService');
+const activityInsightsService = require('../services/activityInsightsService');
 const logger = require('../config/logger');
 
 /**
@@ -301,6 +305,7 @@ async function getAnomalies(req, res) {
 async function dismissAnomaly(req, res) {
   try {
     const { expenseId } = req.params;
+    const { anomalyType } = req.body || {};
     
     // Validate expenseId
     const expenseIdInt = parseInt(expenseId);
@@ -308,7 +313,7 @@ async function dismissAnomaly(req, res) {
       return res.status(400).json({ error: 'Invalid expenseId. Must be a positive number' });
     }
     
-    await anomalyDetectionService.dismissAnomaly(expenseIdInt);
+    await anomalyDetectionService.dismissAnomaly(expenseIdInt, anomalyType);
     
     res.json({ 
       success: true, 
@@ -317,6 +322,152 @@ async function dismissAnomaly(req, res) {
   } catch (error) {
     logger.error('Error dismissing anomaly:', error);
     res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+/**
+ * Get monthly summary
+ * GET /api/analytics/monthly-summary/:year/:month
+ */
+async function getMonthlySummary(req, res) {
+  try {
+    const { year, month } = req.params;
+
+    const yearInt = parseInt(year);
+    const monthInt = parseInt(month);
+
+    if (isNaN(yearInt) || yearInt < 2000 || yearInt > 2100) {
+      return res.status(400).json({ error: 'Invalid year. Must be between 2000 and 2100' });
+    }
+    if (isNaN(monthInt) || monthInt < 1 || monthInt > 12) {
+      return res.status(400).json({ error: 'Invalid month. Must be between 1 and 12' });
+    }
+
+    const summary = await monthlySummaryService.getMonthlySummary(yearInt, monthInt);
+    res.json(summary);
+  } catch (error) {
+    logger.error('Error getting monthly summary:', error);
+    res.status(500).json({ error: 'Failed to fetch monthly summary' });
+  }
+}
+
+/**
+ * Get consolidated trends data
+ * GET /api/analytics/trends/:year/:month
+ */
+async function getTrends(req, res) {
+  try {
+    const { year, month } = req.params;
+
+    const yearInt = parseInt(year);
+    const monthInt = parseInt(month);
+
+    if (isNaN(yearInt) || yearInt < 2000 || yearInt > 2100) {
+      return res.status(400).json({ error: 'Invalid year. Must be between 2000 and 2100' });
+    }
+    if (isNaN(monthInt) || monthInt < 1 || monthInt > 12) {
+      return res.status(400).json({ error: 'Invalid month. Must be between 1 and 12' });
+    }
+
+    const trends = await trendsService.getTrends(yearInt, monthInt);
+    res.json(trends);
+  } catch (error) {
+    logger.error('Error getting trends:', error);
+    res.status(500).json({ error: 'Failed to fetch trends' });
+  }
+}
+
+/**
+ * Get activity insights
+ * GET /api/analytics/activity-insights/:year/:month
+ */
+async function getActivityInsights(req, res) {
+  try {
+    const { year, month } = req.params;
+
+    const yearInt = parseInt(year);
+    const monthInt = parseInt(month);
+
+    if (isNaN(yearInt) || yearInt < 2000 || yearInt > 2100) {
+      return res.status(400).json({ error: 'Invalid year. Must be between 2000 and 2100' });
+    }
+    if (isNaN(monthInt) || monthInt < 1 || monthInt > 12) {
+      return res.status(400).json({ error: 'Invalid month. Must be between 1 and 12' });
+    }
+
+    const insights = await activityInsightsService.getActivityInsights(yearInt, monthInt);
+    res.json(insights);
+  } catch (error) {
+    logger.error('Error getting activity insights:', error);
+    res.status(500).json({ error: 'Failed to fetch activity insights' });
+  }
+}
+
+/**
+ * Mark an anomaly as expected (dismiss + create suppression rule)
+ * POST /api/analytics/anomalies/:expenseId/mark-expected
+ */
+async function markAnomalyAsExpected(req, res) {
+  try {
+    const { expenseId } = req.params;
+    const { anomalyType, expenseDetails } = req.body || {};
+
+    const expenseIdInt = parseInt(expenseId);
+    if (isNaN(expenseIdInt) || expenseIdInt < 1) {
+      return res.status(400).json({ error: 'Expense ID is required' });
+    }
+    if (!anomalyType) {
+      return res.status(400).json({ error: 'anomalyType is required' });
+    }
+
+    const result = await anomalyDetectionService.markAsExpected(expenseIdInt, anomalyType, expenseDetails);
+    res.json({
+      success: true,
+      message: `Anomaly for expense ${expenseIdInt} marked as expected`,
+      suppressionRuleId: result.suppressionRuleId,
+    });
+  } catch (error) {
+    logger.error('Error marking anomaly as expected:', error);
+    res.status(500).json({ error: 'Failed to mark anomaly as expected' });
+  }
+}
+
+/**
+ * Get all active suppression rules
+ * GET /api/analytics/anomaly-suppression-rules
+ */
+async function getSuppressionRules(req, res) {
+  try {
+    const rules = await anomalyDetectionService.getSuppressionRules();
+    res.json({ rules });
+  } catch (error) {
+    logger.error('Error getting suppression rules:', error);
+    res.status(500).json({ error: 'Failed to fetch suppression rules' });
+  }
+}
+
+/**
+ * Delete a suppression rule by ID
+ * DELETE /api/analytics/anomaly-suppression-rules/:id
+ */
+async function deleteSuppressionRule(req, res) {
+  try {
+    const { id } = req.params;
+
+    const idInt = parseInt(id);
+    if (isNaN(idInt) || idInt < 1) {
+      return res.status(400).json({ error: 'Invalid rule ID. Must be a positive number' });
+    }
+
+    const result = await anomalyDetectionService.deleteSuppressionRule(idInt);
+    if (!result || result.deleted === false) {
+      return res.status(404).json({ error: 'Suppression rule not found' });
+    }
+
+    res.json({ success: true, message: `Suppression rule ${idInt} deleted` });
+  } catch (error) {
+    logger.error('Error deleting suppression rule:', error);
+    res.status(500).json({ error: 'Failed to delete suppression rule' });
   }
 }
 
@@ -375,5 +526,11 @@ module.exports = {
   getMonthPrediction,
   getHistoricalComparison,
   getAnomalies,
-  dismissAnomaly
+  dismissAnomaly,
+  getMonthlySummary,
+  getTrends,
+  getActivityInsights,
+  markAnomalyAsExpected,
+  getSuppressionRules,
+  deleteSuppressionRule
 };

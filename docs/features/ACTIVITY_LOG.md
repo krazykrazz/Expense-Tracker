@@ -178,6 +178,9 @@ Update events include detailed change tracking showing old → new values for mo
 | `auto_payment_logged` | loan_payment | Payment automatically logged from fixed expense |
 | `settings_updated` | settings | System settings changed (shows old → new values) |
 | `insurance_status_changed` | expense | Medical expense insurance status changed |
+| `anomaly_dismissed` | anomaly | Anomaly dismissed by user (includes anomaly_type) |
+| `anomaly_marked_expected` | anomaly | Anomaly marked as expected, suppression rule created (includes anomaly_type, suppression_rule_id) |
+| `suppression_rule_deleted` | anomaly | Anomaly suppression rule deleted (includes rule_type, merchant_name) |
 | `backup_created` | system | Database backup created |
 | `backup_restored` | system | Database backup restored |
 | `version_upgraded` | system | Application version upgrade detected on startup (includes old_version, new_version) |
@@ -307,6 +310,11 @@ Activity log events include rich metadata to provide complete audit context:
 **Invoice Events**:
 - All events include `expenseId` and `filename`
 - Person link updates include `oldPersonId` and `newPersonId`
+
+**Anomaly Events**:
+- `anomaly_dismissed`: `{ anomaly_type: "amount"|"new_merchant"|"daily_total", expense_id: number }`
+- `anomaly_marked_expected`: `{ anomaly_type: "amount"|"new_merchant"|"daily_total", expense_id: number, suppression_rule_id: number }`
+- `suppression_rule_deleted`: `{ rule_id: number, rule_type: "merchant_amount"|"merchant_category"|"specific_date", merchant_name: string }`
 
 **Update Events**:
 - All update operations include a `changes` array showing field-level diffs

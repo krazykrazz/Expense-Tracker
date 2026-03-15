@@ -5,11 +5,15 @@
  * historical baselines. Identifies amount anomalies, daily total anomalies,
  * and new merchant anomalies.
  * 
+ * Supports two-action anomaly response (Dismiss / Mark as Expected) with
+ * persistent suppression rules for smart learning.
+ * 
  * Part of the Spending Patterns & Predictions feature.
  */
 
 const expenseRepository = require('../repositories/expenseRepository');
-const { getDatabase } = require('../database/db');
+const dbHelper = require('../utils/dbHelper');
+const activityLogService = require('./activityLogService');
 const logger = require('../config/logger');
 const { 
   ANALYTICS_CONFIG, 
@@ -24,6 +28,22 @@ class AnomalyDetectionService {
   }
 
   /**
+   * Fire-and-forget activity log helper.
+   * Safely calls activityLogService.logEvent and silently catches errors.
+   * @private
+   */
+  _logActivity(...args) {
+    try {
+      const result = activityLogService.logEvent(...args);
+      if (result && typeof result.catch === 'function') {
+        result.catch(err => logger.error('Activity log failed:', err));
+      }
+    } catch (err) {
+      logger.error('Activity log failed:', err);
+    }
+  }
+
+  /**
    * Load dismissed expense IDs from database
    * @returns {Promise<Set<number>>}
    */
@@ -32,54 +52,20 @@ class AnomalyDetectionService {
       return this._dismissedExpenseIdsCache;
     }
 
-    // Get database (may be a promise in test mode)
-    let db = getDatabase();
-    if (db && typeof db.then === 'function') {
-      db = await db;
-    }
-
-    if (!db || typeof db.get !== 'function') {
+    try {
+      const rows = await dbHelper.queryAll('SELECT expense_id FROM dismissed_anomalies');
+      this._dismissedExpenseIdsCache = new Set(rows.map(r => r.expense_id));
+      logger.debug('Loaded ' + this._dismissedExpenseIdsCache.size + ' dismissed anomalies from database');
+    } catch (err) {
+      logger.error('Error loading dismissed anomalies:', err);
       this._dismissedExpenseIdsCache = new Set();
-      return this._dismissedExpenseIdsCache;
     }
 
-    return new Promise((resolve) => {
-      // Check if table exists first
-      db.get(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name='dismissed_anomalies'",
-        (err, row) => {
-          if (err) {
-            logger.error('Error checking dismissed_anomalies table:', err);
-            // Return empty set on error to avoid breaking anomaly detection
-            this._dismissedExpenseIdsCache = new Set();
-            return resolve(this._dismissedExpenseIdsCache);
-          }
-
-          if (!row) {
-            // Table doesn't exist yet (migration not run)
-            this._dismissedExpenseIdsCache = new Set();
-            return resolve(this._dismissedExpenseIdsCache);
-          }
-
-          db.all('SELECT expense_id FROM dismissed_anomalies', (err, rows) => {
-            if (err) {
-              logger.error('Error loading dismissed anomalies:', err);
-              this._dismissedExpenseIdsCache = new Set();
-              return resolve(this._dismissedExpenseIdsCache);
-            }
-
-            this._dismissedExpenseIdsCache = new Set(rows.map(r => r.expense_id));
-            logger.debug(`Loaded ${this._dismissedExpenseIdsCache.size} dismissed anomalies from database`);
-            resolve(this._dismissedExpenseIdsCache);
-          });
-        }
-      );
-    });
+    return this._dismissedExpenseIdsCache;
   }
 
   /**
    * Calculate baseline statistics for a category
-   * Excludes months with gaps (no expenses) from calculations
    * @param {string} category - The expense category
    * @returns {Promise<CategoryBaseline>}
    */
@@ -88,41 +74,19 @@ class AnomalyDetectionService {
       const expenses = await expenseRepository.findAll();
       
       if (!expenses || expenses.length === 0) {
-        return {
-          category,
-          mean: 0,
-          stdDev: 0,
-          count: 0,
-          monthsWithData: 0,
-          hasValidBaseline: false
-        };
+        return { category, mean: 0, stdDev: 0, count: 0, monthsWithData: 0, hasValidBaseline: false };
       }
 
-      // Filter expenses by category
       const categoryExpenses = expenses.filter(e => e.type === category);
       
       if (categoryExpenses.length === 0) {
-        return {
-          category,
-          mean: 0,
-          stdDev: 0,
-          count: 0,
-          monthsWithData: 0,
-          hasValidBaseline: false
-        };
+        return { category, mean: 0, stdDev: 0, count: 0, monthsWithData: 0, hasValidBaseline: false };
       }
 
-      // Group expenses by month to identify gaps
       const expensesByMonth = this._groupExpensesByMonth(categoryExpenses);
       const monthsWithData = Object.keys(expensesByMonth).length;
-
-      // Get all amounts from months with data (excluding gap months)
       const amounts = categoryExpenses.map(e => e.amount);
-      
-      // Calculate mean
       const mean = amounts.reduce((sum, a) => sum + a, 0) / amounts.length;
-      
-      // Calculate standard deviation
       const squaredDiffs = amounts.map(a => Math.pow(a - mean, 2));
       const variance = squaredDiffs.reduce((sum, d) => sum + d, 0) / amounts.length;
       const stdDev = Math.sqrt(variance);
@@ -148,22 +112,16 @@ class AnomalyDetectionService {
    */
   _groupExpensesByMonth(expenses) {
     const grouped = {};
-    
     for (const expense of expenses) {
       const date = new Date(expense.date);
       const year = date.getFullYear();
       const month = (date.getMonth() + 1).toString().padStart(2, '0');
-      const key = `${year}-${month}`;
-      
-      if (!grouped[key]) {
-        grouped[key] = [];
-      }
+      const key = year + '-' + month;
+      if (!grouped[key]) { grouped[key] = []; }
       grouped[key].push(expense);
     }
-    
     return grouped;
   }
-
 
   /**
    * Detect all types of anomalies in recent expenses
@@ -175,43 +133,42 @@ class AnomalyDetectionService {
       const lookbackDays = options.lookbackDays || 30;
       const expenses = await expenseRepository.findAll();
       
-      if (!expenses || expenses.length === 0) {
-        return [];
-      }
+      if (!expenses || expenses.length === 0) { return []; }
 
-      // Calculate lookback date
       const lookbackDate = new Date();
       lookbackDate.setDate(lookbackDate.getDate() - lookbackDays);
       const lookbackDateStr = lookbackDate.toISOString().split('T')[0];
-
-      // Filter to recent expenses
       const recentExpenses = expenses.filter(e => e.date >= lookbackDateStr);
       
-      if (recentExpenses.length === 0) {
-        return [];
-      }
+      if (recentExpenses.length === 0) { return []; }
 
       const anomalies = [];
 
-      // Detect amount anomalies
       const amountAnomalies = await this._detectAmountAnomalies(recentExpenses, expenses);
       anomalies.push(...amountAnomalies);
 
-      // Detect daily total anomalies
       const dailyAnomalies = await this._detectDailyTotalAnomalies(recentExpenses, expenses);
       anomalies.push(...dailyAnomalies);
 
-      // Detect new merchant anomalies
       const merchantAnomalies = await this._detectNewMerchantAnomalies(recentExpenses, expenses);
       anomalies.push(...merchantAnomalies);
 
-      // Filter out dismissed anomalies (loaded from database)
+      // Filter out dismissed anomalies
       const dismissedExpenseIds = await this._loadDismissedExpenseIds();
-      const filteredAnomalies = anomalies.filter(a => !dismissedExpenseIds.has(a.expenseId));
+      let filteredAnomalies = anomalies.filter(a => !dismissedExpenseIds.has(a.expenseId));
+
+      // Apply suppression rules to filter out matching anomalies
+      try {
+        const rules = await this.getSuppressionRules();
+        if (rules.length > 0) {
+          filteredAnomalies = this._applySuppressionRules(filteredAnomalies, rules);
+        }
+      } catch (err) {
+        logger.error('Error applying suppression rules during anomaly detection:', err);
+      }
 
       // Sort by date descending
       filteredAnomalies.sort((a, b) => new Date(b.date) - new Date(a.date));
-
       return filteredAnomalies;
     } catch (error) {
       logger.error('Error detecting anomalies:', error);
@@ -221,34 +178,22 @@ class AnomalyDetectionService {
 
   /**
    * Detect amount anomalies (expenses > 3 standard deviations from category average)
-   * @param {Array} recentExpenses - Recent expenses to check
-   * @param {Array} allExpenses - All expenses for baseline calculation
-   * @returns {Promise<Array<Anomaly>>}
    */
   async _detectAmountAnomalies(recentExpenses, allExpenses) {
     const anomalies = [];
     const categoryBaselines = {};
 
     for (const expense of recentExpenses) {
-      // Get or calculate baseline for this category
       if (!categoryBaselines[expense.type]) {
         categoryBaselines[expense.type] = await this.calculateCategoryBaseline(expense.type);
       }
-      
       const baseline = categoryBaselines[expense.type];
-      
-      // Skip if no valid baseline
-      if (!baseline.hasValidBaseline || baseline.stdDev === 0) {
-        continue;
-      }
+      if (!baseline.hasValidBaseline || baseline.stdDev === 0) { continue; }
 
-      // Calculate how many standard deviations from mean
       const deviations = (expense.amount - baseline.mean) / baseline.stdDev;
 
-      // Flag if > 3 standard deviations
       if (deviations > ANALYTICS_CONFIG.ANOMALY_STD_DEVIATIONS) {
         const severity = this._calculateSeverity(deviations);
-        
         anomalies.push({
           id: anomalies.length + 1,
           expenseId: expense.id,
@@ -257,7 +202,7 @@ class AnomalyDetectionService {
           amount: expense.amount,
           category: expense.type,
           anomalyType: ANOMALY_TYPES.AMOUNT,
-          reason: `Amount $${expense.amount.toFixed(2)} is ${deviations.toFixed(1)} standard deviations above the category average of $${baseline.mean.toFixed(2)}`,
+          reason: 'Amount ' + expense.amount.toFixed(2) + ' is ' + deviations.toFixed(1) + ' standard deviations above the category average of ' + baseline.mean.toFixed(2),
           severity,
           categoryAverage: baseline.mean,
           standardDeviations: parseFloat(deviations.toFixed(2)),
@@ -265,45 +210,29 @@ class AnomalyDetectionService {
         });
       }
     }
-
     return anomalies;
   }
 
   /**
    * Detect daily total anomalies (days with spending > 2x daily average)
-   * @param {Array} recentExpenses - Recent expenses to check
-   * @param {Array} allExpenses - All expenses for baseline calculation
-   * @returns {Promise<Array<Anomaly>>}
    */
   async _detectDailyTotalAnomalies(recentExpenses, allExpenses) {
     const anomalies = [];
-
-    // Calculate daily average from all expenses
     const dailyTotals = this._calculateDailyTotals(allExpenses);
     const dailyValues = Object.values(dailyTotals);
-    
-    if (dailyValues.length === 0) {
-      return [];
-    }
+    if (dailyValues.length === 0) { return []; }
 
     const dailyAverage = dailyValues.reduce((sum, d) => sum + d, 0) / dailyValues.length;
     const threshold = dailyAverage * ANALYTICS_CONFIG.DAILY_ANOMALY_MULTIPLIER;
-
-    // Calculate daily totals for recent expenses
     const recentDailyTotals = this._calculateDailyTotals(recentExpenses);
 
-    // Check each day against threshold
     for (const [date, total] of Object.entries(recentDailyTotals)) {
       if (total > threshold) {
-        // Find the expenses for this day to report
         const dayExpenses = recentExpenses.filter(e => e.date === date);
         const expenseCount = dayExpenses.length;
         const multiplier = total / dailyAverage;
         const severity = this._calculateDailySeverity(multiplier);
-
-        // Create anomaly for the highest expense of the day
-        const highestExpense = dayExpenses.reduce((max, e) => 
-          e.amount > max.amount ? e : max, dayExpenses[0]);
+        const highestExpense = dayExpenses.reduce((max, e) => e.amount > max.amount ? e : max, dayExpenses[0]);
 
         anomalies.push({
           id: anomalies.length + 1,
@@ -313,7 +242,7 @@ class AnomalyDetectionService {
           amount: total,
           category: 'Multiple',
           anomalyType: ANOMALY_TYPES.DAILY_TOTAL,
-          reason: `${expenseCount} expense${expenseCount > 1 ? 's' : ''} totaling $${total.toFixed(2)} (${multiplier.toFixed(1)}x daily avg of $${dailyAverage.toFixed(2)})`,
+          reason: expenseCount + ' expense' + (expenseCount > 1 ? 's' : '') + ' totaling ' + total.toFixed(2) + ' (' + multiplier.toFixed(1) + 'x daily avg of ' + dailyAverage.toFixed(2) + ')',
           severity,
           categoryAverage: dailyAverage,
           standardDeviations: multiplier,
@@ -322,90 +251,53 @@ class AnomalyDetectionService {
         });
       }
     }
-
     return anomalies;
   }
 
   /**
    * Calculate daily spending totals
-   * @param {Array} expenses - Expenses to calculate totals for
-   * @returns {Object} Object with date keys and total values
    */
   _calculateDailyTotals(expenses) {
     const dailyTotals = {};
-    
     for (const expense of expenses) {
-      if (!dailyTotals[expense.date]) {
-        dailyTotals[expense.date] = 0;
-      }
+      if (!dailyTotals[expense.date]) { dailyTotals[expense.date] = 0; }
       dailyTotals[expense.date] += expense.amount;
     }
-    
     return dailyTotals;
   }
 
-
   /**
    * Detect new merchant anomalies (first-time visits with unusually high amounts)
-   * @param {Array} recentExpenses - Recent expenses to check
-   * @param {Array} allExpenses - All expenses for baseline calculation
-   * @returns {Promise<Array<Anomaly>>}
    */
   async _detectNewMerchantAnomalies(recentExpenses, allExpenses) {
     const anomalies = [];
-
-    // Calculate typical first-visit amount across all merchants
     const firstVisitAmounts = this._calculateFirstVisitAmounts(allExpenses);
-    
-    if (firstVisitAmounts.length === 0) {
-      return [];
-    }
+    if (firstVisitAmounts.length === 0) { return []; }
 
-    // Calculate mean and std dev of first visit amounts
     const mean = firstVisitAmounts.reduce((sum, a) => sum + a, 0) / firstVisitAmounts.length;
     const variance = firstVisitAmounts.reduce((sum, a) => sum + Math.pow(a - mean, 2), 0) / firstVisitAmounts.length;
     const stdDev = Math.sqrt(variance);
-
-    // Threshold: mean + 2 standard deviations (slightly lower than amount anomaly)
     const threshold = mean + (stdDev * 2);
 
-    // Find merchants that appear for the first time in recent expenses
     const historicalMerchants = new Set();
     const recentDates = new Set(recentExpenses.map(e => e.date));
-    
     for (const expense of allExpenses) {
       if (!recentDates.has(expense.date)) {
         historicalMerchants.add((expense.place || '').toLowerCase());
       }
     }
 
-    // Check recent expenses for new merchants with high amounts
     for (const expense of recentExpenses) {
       const merchantKey = (expense.place || '').toLowerCase();
-      
-      // Skip if merchant was seen before recent period
-      if (historicalMerchants.has(merchantKey)) {
-        continue;
-      }
+      if (historicalMerchants.has(merchantKey)) { continue; }
 
-      // Check if this is the first occurrence of this merchant in recent expenses
-      const merchantExpenses = recentExpenses.filter(e => 
-        (e.place || '').toLowerCase() === merchantKey
-      );
-      
-      // Only flag the first visit
-      const firstVisit = merchantExpenses.reduce((first, e) => 
-        e.date < first.date ? e : first, merchantExpenses[0]);
-      
-      if (expense.id !== firstVisit.id) {
-        continue;
-      }
+      const merchantExpenses = recentExpenses.filter(e => (e.place || '').toLowerCase() === merchantKey);
+      const firstVisit = merchantExpenses.reduce((first, e) => e.date < first.date ? e : first, merchantExpenses[0]);
+      if (expense.id !== firstVisit.id) { continue; }
 
-      // Check if amount exceeds threshold
       if (expense.amount > threshold) {
         const deviations = stdDev > 0 ? (expense.amount - mean) / stdDev : 0;
         const severity = this._calculateSeverity(deviations);
-
         anomalies.push({
           id: anomalies.length + 1,
           expenseId: expense.id,
@@ -414,7 +306,7 @@ class AnomalyDetectionService {
           amount: expense.amount,
           category: expense.type,
           anomalyType: ANOMALY_TYPES.NEW_MERCHANT,
-          reason: `First visit to "${expense.place}" with amount $${expense.amount.toFixed(2)} exceeds typical first-visit amount of $${mean.toFixed(2)}`,
+          reason: 'First visit to "' + expense.place + '" with amount ' + expense.amount.toFixed(2) + ' exceeds typical first-visit amount of ' + mean.toFixed(2),
           severity,
           categoryAverage: mean,
           standardDeviations: parseFloat(deviations.toFixed(2)),
@@ -422,145 +314,257 @@ class AnomalyDetectionService {
         });
       }
     }
-
     return anomalies;
   }
 
   /**
    * Calculate first-visit amounts for all merchants
-   * @param {Array} expenses - All expenses
-   * @returns {Array<number>} Array of first-visit amounts
    */
   _calculateFirstVisitAmounts(expenses) {
     const merchantFirstVisits = {};
-    
-    // Sort by date to find first visits
-    const sortedExpenses = [...expenses].sort((a, b) => 
-      new Date(a.date) - new Date(b.date)
-    );
-
+    const sortedExpenses = [...expenses].sort((a, b) => new Date(a.date) - new Date(b.date));
     for (const expense of sortedExpenses) {
       const merchantKey = (expense.place || '').toLowerCase();
-      
       if (!merchantFirstVisits[merchantKey]) {
         merchantFirstVisits[merchantKey] = expense.amount;
       }
     }
-
     return Object.values(merchantFirstVisits);
   }
 
-  /**
-   * Calculate severity based on standard deviations
-   * @param {number} deviations - Number of standard deviations
-   * @returns {string} Severity level
-   */
   _calculateSeverity(deviations) {
-    if (deviations >= 5) {
-      return SEVERITY_LEVELS.HIGH;
-    } else if (deviations >= 4) {
-      return SEVERITY_LEVELS.MEDIUM;
-    }
+    if (deviations >= 5) { return SEVERITY_LEVELS.HIGH; }
+    if (deviations >= 4) { return SEVERITY_LEVELS.MEDIUM; }
     return SEVERITY_LEVELS.LOW;
   }
 
-  /**
-   * Calculate severity for daily anomalies based on multiplier
-   * @param {number} multiplier - How many times the daily average
-   * @returns {string} Severity level
-   */
   _calculateDailySeverity(multiplier) {
-    if (multiplier >= 4) {
-      return SEVERITY_LEVELS.HIGH;
-    } else if (multiplier >= 3) {
-      return SEVERITY_LEVELS.MEDIUM;
-    }
+    if (multiplier >= 4) { return SEVERITY_LEVELS.HIGH; }
+    if (multiplier >= 3) { return SEVERITY_LEVELS.MEDIUM; }
     return SEVERITY_LEVELS.LOW;
   }
 
   /**
-   * Dismiss an anomaly (mark as expected behavior)
-   * Persists to database so it survives container restarts
+   * Dismiss an anomaly (simple dismiss, no suppression rule).
+   * Records dismissal with anomaly_type and action='dismiss'.
+   * Logs activity event via fire-and-forget.
    * @param {number} expenseId - The expense ID to dismiss
+   * @param {string} [anomalyType] - The type of anomaly
+   * @param {Object} [expenseDetails] - Optional expense details for logging
    * @returns {Promise<void>}
    */
-  async dismissAnomaly(expenseId) {
-    // Update cache immediately
+  async dismissAnomaly(expenseId, anomalyType, expenseDetails) {
     if (!this._dismissedExpenseIdsCache) {
       this._dismissedExpenseIdsCache = new Set();
     }
     this._dismissedExpenseIdsCache.add(expenseId);
 
-    // Get database (may be a promise in test mode)
-    let db = getDatabase();
-    if (db && typeof db.then === 'function') {
-      db = await db;
+    await dbHelper.execute(
+      "INSERT OR IGNORE INTO dismissed_anomalies (expense_id, anomaly_type, action) VALUES (?, ?, 'dismiss')",
+      [expenseId, anomalyType || null]
+    );
+
+    logger.debug('Dismissed anomaly for expense:', { expenseId, anomalyType });
+
+    // Activity log — fire-and-forget
+    var details = expenseDetails || {};
+    var merchant = details.merchant || details.place || 'Unknown';
+    var amount = details.amount || 0;
+    this._logActivity(
+      'anomaly_dismissed',
+      'anomaly',
+      expenseId,
+      'Dismissed ' + (anomalyType || 'unknown') + ' anomaly for ' + merchant + ' (' + amount + ')',
+      { anomaly_type: anomalyType, expense_id: expenseId, merchant: merchant, amount: amount }
+    );
+  }
+
+  /**
+   * Mark an anomaly as expected (dismiss + create suppression rule).
+   * Records dismissal with action='mark_as_expected'.
+   * Creates appropriate suppression rule based on anomaly type.
+   * Logs activity event via fire-and-forget.
+   * @param {number} expenseId - The expense ID
+   * @param {string} anomalyType - The type of anomaly
+   * @param {Object} expenseDetails - Expense details { merchant, amount, category, date }
+   * @returns {Promise<{suppressionRuleId: number}>}
+   */
+  async markAsExpected(expenseId, anomalyType, expenseDetails) {
+    if (!this._dismissedExpenseIdsCache) {
+      this._dismissedExpenseIdsCache = new Set();
     }
+    this._dismissedExpenseIdsCache.add(expenseId);
 
-    if (!db || typeof db.get !== 'function') {
-      logger.debug('Database not available for persisting dismissed anomaly');
-      return;
-    }
+    await dbHelper.execute(
+      "INSERT OR IGNORE INTO dismissed_anomalies (expense_id, anomaly_type, action) VALUES (?, ?, 'mark_as_expected')",
+      [expenseId, anomalyType || null]
+    );
 
-    return new Promise((resolve, reject) => {
-      // Check if table exists first
-      db.get(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name='dismissed_anomalies'",
-        (err, row) => {
-          if (err) {
-            logger.error('Error checking dismissed_anomalies table:', err);
-            return reject(err);
-          }
+    var details = expenseDetails || {};
+    var suppressionRuleId = await this._createSuppressionRule(anomalyType, details);
 
-          if (!row) {
-            // Table doesn't exist yet - create it inline
-            db.run(`
-              CREATE TABLE IF NOT EXISTS dismissed_anomalies (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                expense_id INTEGER NOT NULL,
-                dismissed_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE(expense_id),
-                FOREIGN KEY (expense_id) REFERENCES expenses(id) ON DELETE CASCADE
-              )
-            `, (err) => {
-              if (err) {
-                logger.error('Error creating dismissed_anomalies table:', err);
-                return reject(err);
-              }
-              // Now insert
-              this._insertDismissedAnomaly(db, expenseId, resolve, reject);
-            });
-          } else {
-            this._insertDismissedAnomaly(db, expenseId, resolve, reject);
-          }
+    logger.debug('Marked anomaly as expected:', { expenseId, anomalyType, suppressionRuleId });
+
+    // Activity log — fire-and-forget
+    var merchant = details.merchant || details.place || 'Unknown';
+    var amount = details.amount || 0;
+    this._logActivity(
+      'anomaly_marked_expected',
+      'anomaly',
+      expenseId,
+      'Marked ' + (anomalyType || 'unknown') + ' anomaly as expected for ' + merchant + ' (' + amount + ')',
+      {
+        anomaly_type: anomalyType,
+        expense_id: expenseId,
+        merchant: merchant,
+        amount: amount,
+        suppression_rule_id: suppressionRuleId
+      }
+    );
+
+    return { suppressionRuleId: suppressionRuleId };
+  }
+
+  /**
+   * Create a suppression rule based on anomaly type.
+   * @param {string} anomalyType - The anomaly type
+   * @param {Object} expenseDetails - { merchant, amount, category, date }
+   * @returns {Promise<number|null>} The created rule ID
+   * @private
+   */
+  async _createSuppressionRule(anomalyType, expenseDetails) {
+    var merchant = expenseDetails.merchant || expenseDetails.place || null;
+    var amount = expenseDetails.amount || 0;
+    var category = expenseDetails.category || null;
+    var date = expenseDetails.date || null;
+
+    var sql, params;
+
+    switch (anomalyType) {
+      case ANOMALY_TYPES.AMOUNT:
+      case 'amount': {
+        var amountMin = amount * 0.8;
+        var amountMax = amount * 1.2;
+        sql = "INSERT INTO anomaly_suppression_rules (rule_type, merchant_name, amount_min, amount_max) VALUES ('merchant_amount', ?, ?, ?)";
+        params = [merchant, amountMin, amountMax];
+        break;
+      }
+      case ANOMALY_TYPES.NEW_MERCHANT:
+      case 'new_merchant': {
+        sql = "INSERT INTO anomaly_suppression_rules (rule_type, merchant_name, category) VALUES ('merchant_category', ?, ?)";
+        params = [merchant, category];
+        break;
+      }
+      case ANOMALY_TYPES.DAILY_TOTAL:
+      case 'daily_total': {
+        sql = "INSERT INTO anomaly_suppression_rules (rule_type, specific_date) VALUES ('specific_date', ?)";
+        params = [date];
+        break;
+      }
+      default: {
+        logger.warn('Unknown anomaly type for suppression rule:', anomalyType);
+        if (merchant && amount > 0) {
+          var fallbackMin = amount * 0.8;
+          var fallbackMax = amount * 1.2;
+          sql = "INSERT INTO anomaly_suppression_rules (rule_type, merchant_name, amount_min, amount_max) VALUES ('merchant_amount', ?, ?, ?)";
+          params = [merchant, fallbackMin, fallbackMax];
+        } else {
+          return null;
         }
-      );
+      }
+    }
+
+    var result = await dbHelper.execute(sql, params);
+    return result.lastID;
+  }
+
+  /**
+   * Get all active suppression rules.
+   * @returns {Promise<Array<Object>>}
+   */
+  async getSuppressionRules() {
+    return await dbHelper.queryAll('SELECT * FROM anomaly_suppression_rules ORDER BY created_at DESC');
+  }
+
+  /**
+   * Delete a suppression rule by ID.
+   * Logs activity event via fire-and-forget.
+   * @param {number} ruleId - The rule ID to delete
+   * @returns {Promise<{deleted: boolean}>}
+   */
+  async deleteSuppressionRule(ruleId) {
+    var rule = await dbHelper.queryOne('SELECT * FROM anomaly_suppression_rules WHERE id = ?', [ruleId]);
+
+    if (!rule) {
+      return { deleted: false };
+    }
+
+    await dbHelper.execute('DELETE FROM anomaly_suppression_rules WHERE id = ?', [ruleId]);
+
+    logger.debug('Deleted suppression rule:', { ruleId: ruleId });
+
+    // Activity log — fire-and-forget
+    var merchantSuffix = rule.merchant_name ? ' for ' + rule.merchant_name : '';
+    this._logActivity(
+      'suppression_rule_deleted',
+      'suppression_rule',
+      ruleId,
+      'Deleted ' + rule.rule_type + ' suppression rule' + merchantSuffix,
+      {
+        rule_type: rule.rule_type,
+        merchant_name: rule.merchant_name,
+        category: rule.category,
+        amount_min: rule.amount_min,
+        amount_max: rule.amount_max,
+        specific_date: rule.specific_date
+      }
+    );
+
+    return { deleted: true };
+  }
+
+  /**
+   * Apply suppression rules to filter out matching anomalies.
+   * Uses case-insensitive merchant name comparison and amount range inclusivity.
+   * Called internally during detectAnomalies().
+   * @param {Array<Object>} anomalies - Detected anomalies
+   * @param {Array<Object>} rules - Active suppression rules
+   * @returns {Array<Object>} Filtered anomalies (non-matching ones)
+   */
+  _applySuppressionRules(anomalies, rules) {
+    if (!rules || rules.length === 0) { return anomalies; }
+    return anomalies.filter(anomaly => {
+      var isSuppressed = rules.some(rule => this._ruleMatchesAnomaly(rule, anomaly));
+      return !isSuppressed;
     });
   }
 
   /**
-   * Helper to insert dismissed anomaly
+   * Check if a suppression rule matches an anomaly.
    * @private
    */
-  _insertDismissedAnomaly(db, expenseId, resolve, reject) {
-    db.run(
-      'INSERT OR IGNORE INTO dismissed_anomalies (expense_id) VALUES (?)',
-      [expenseId],
-      (err) => {
-        if (err) {
-          logger.error('Error dismissing anomaly:', err);
-          return reject(err);
-        }
-        
-        // Update cache
-        if (this._dismissedExpenseIdsCache) {
-          this._dismissedExpenseIdsCache.add(expenseId);
-        }
-        
-        logger.debug('Dismissed anomaly for expense:', expenseId);
-        resolve();
+  _ruleMatchesAnomaly(rule, anomaly) {
+    switch (rule.rule_type) {
+      case 'merchant_amount': {
+        var merchantMatch = rule.merchant_name && anomaly.place &&
+          rule.merchant_name.toLowerCase() === anomaly.place.toLowerCase();
+        var amountMatch = rule.amount_min != null && rule.amount_max != null &&
+          anomaly.amount >= rule.amount_min && anomaly.amount <= rule.amount_max;
+        return merchantMatch && amountMatch;
       }
-    );
+      case 'merchant_category': {
+        var mcMerchantMatch = rule.merchant_name && anomaly.place &&
+          rule.merchant_name.toLowerCase() === anomaly.place.toLowerCase();
+        var categoryMatch = rule.category && anomaly.category &&
+          rule.category === anomaly.category;
+        return mcMerchantMatch && categoryMatch;
+      }
+      case 'specific_date': {
+        return rule.specific_date && anomaly.date && rule.specific_date === anomaly.date;
+      }
+      default:
+        return false;
+    }
   }
 
   /**
@@ -568,7 +572,7 @@ class AnomalyDetectionService {
    * @returns {Promise<Array<number>>}
    */
   async getDismissedAnomalies() {
-    const dismissedIds = await this._loadDismissedExpenseIds();
+    var dismissedIds = await this._loadDismissedExpenseIds();
     return Array.from(dismissedIds);
   }
 
@@ -577,34 +581,13 @@ class AnomalyDetectionService {
    * @returns {Promise<void>}
    */
   async clearDismissedAnomalies() {
-    // Clear cache
     this._dismissedExpenseIdsCache = new Set();
-    
-    // Also clear from database if in test environment
     if (process.env.NODE_ENV === 'test') {
-      return new Promise((resolve) => {
-        const db = getDatabase();
-        
-        // Handle both sync and async getDatabase
-        const clearTable = (database) => {
-          database.run('DELETE FROM dismissed_anomalies', (err) => {
-            if (err) {
-              logger.debug('Could not clear dismissed_anomalies table (may not exist):', err.message);
-            }
-            resolve();
-          });
-        };
-
-        if (db && typeof db.then === 'function') {
-          // It's a promise
-          db.then(clearTable).catch(() => resolve());
-        } else if (db && typeof db.run === 'function') {
-          // It's already a database instance
-          clearTable(db);
-        } else {
-          resolve();
-        }
-      });
+      try {
+        await dbHelper.execute('DELETE FROM dismissed_anomalies');
+      } catch (err) {
+        logger.debug('Could not clear dismissed_anomalies table:', err.message);
+      }
     }
   }
 }

@@ -23,7 +23,7 @@ Both backend (Jest) and frontend (Vitest) tests now support parallel execution, 
 ### Infrastructure
 - **Per-worker database isolation**: Each Jest worker gets its own SQLite database file
 - **Database files**: `test-expenses-worker-1.db`, `test-expenses-worker-2.db`, etc.
-- **Worker pool**: Uses `--maxWorkers=50%` to utilize half of CPU cores
+- **Worker pool**: Uses `--maxWorkers=75%` to utilize 75% of CPU cores
 - **Cleanup**: Automatic cleanup of worker databases after tests complete
 
 ### Commands
@@ -133,7 +133,7 @@ This reduces the total test time from 50-70 minutes to 12-18 minutes.
 - Verify no DOM pollution between tests
 
 ### Performance Not Improving
-- Check CPU core count: `--maxWorkers=50%` needs multiple cores
+- Check CPU core count: `--maxWorkers=75%` needs multiple cores
 - Verify tests aren't I/O bound (database, file system)
 - Check for test bottlenecks (long-running tests)
 

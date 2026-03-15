@@ -83,6 +83,40 @@ const MIGRATIONS = [
       await runSql(db, "INSERT OR IGNORE INTO users (username, password_hash) VALUES ('admin', '')");
       logger.info('Seeded default admin user');
     }
+  },
+  {
+    name: 'analytics_hub_revamp_v1',
+    async apply(db) {
+      // Add columns to dismissed_anomalies (idempotent — columns may already exist from schema.js on fresh DBs)
+      try {
+        await runSql(db, "ALTER TABLE dismissed_anomalies ADD COLUMN anomaly_type TEXT");
+      } catch (err) {
+        if (!err.message.includes('duplicate column name')) throw err;
+      }
+      try {
+        await runSql(db, "ALTER TABLE dismissed_anomalies ADD COLUMN action TEXT DEFAULT 'dismiss'");
+      } catch (err) {
+        if (!err.message.includes('duplicate column name')) throw err;
+      }
+
+      // Create anomaly_suppression_rules table
+      await runSql(db, `CREATE TABLE IF NOT EXISTS anomaly_suppression_rules (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        rule_type TEXT NOT NULL CHECK(rule_type IN ('merchant_amount', 'merchant_category', 'specific_date')),
+        merchant_name TEXT,
+        category TEXT,
+        amount_min REAL,
+        amount_max REAL,
+        specific_date TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+      )`);
+
+      // Create indexes
+      await runSql(db, "CREATE INDEX IF NOT EXISTS idx_suppression_rules_type ON anomaly_suppression_rules(rule_type)");
+      await runSql(db, "CREATE INDEX IF NOT EXISTS idx_suppression_rules_merchant ON anomaly_suppression_rules(merchant_name)");
+
+      logger.info('Analytics hub revamp migration applied');
+    }
   }
 ];
 

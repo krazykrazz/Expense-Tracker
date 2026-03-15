@@ -5,13 +5,14 @@
  * 1. Date range filtering is accurate and inclusive
  * 2. Edge cases (empty data, zero amounts, division by zero) are handled gracefully
  * 3. Response metadata includes data quality and confidence level indicators
+ * 4. Year/month parameter validation rejects invalid inputs with HTTP 400
  * 
  * Randomization adds value by testing various data distributions, date ranges,
  * and edge cases to ensure the API handles all scenarios correctly without errors.
  */
 
 const fc = require('fast-check');
-const { dbPbtOptions, safeAmount, paymentMethod, expenseType, weekNumber, safeDate } = require('../test/pbtArbitraries');
+const { dbPbtOptions, pbtOptions, safeAmount, paymentMethod, expenseType, weekNumber, safeDate } = require('../test/pbtArbitraries');
 const { getDatabase } = require('../database/db');
 
 const analyticsController = require('./analyticsController');
@@ -751,6 +752,231 @@ describe('Analytics Controller - Property-Based Tests', () => {
 
       sufficiency = await spendingPatternsService.checkDataSufficiency();
       expect(getConfidenceLevelFromMonths(sufficiency.monthsOfData)).toBe('high');
+    });
+
+    test('Property 26: Confidence level correlates with months of data', async () => {
+      // Test low confidence (< 6 months)
+      await new Promise((resolve, reject) => {
+        db.run('DELETE FROM expenses', (err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+
+      // Insert 3 months of data
+      for (let month = 0; month < 3; month++) {
+        await insertExpense({
+          date: generateDateInMonth(2024, 0, month),
+          amount: 100,
+          type: 'Groceries',
+          method: 'Cash',
+          week: 1
+        });
+      }
+
+      let sufficiency = await spendingPatternsService.checkDataSufficiency();
+      expect(getConfidenceLevelFromMonths(sufficiency.monthsOfData)).toBe('low');
+
+      // Add more data to reach medium confidence (6+ months)
+      for (let month = 3; month < 6; month++) {
+        await insertExpense({
+          date: generateDateInMonth(2024, 0, month),
+          amount: 100,
+          type: 'Groceries',
+          method: 'Cash',
+          week: 1
+        });
+      }
+
+      sufficiency = await spendingPatternsService.checkDataSufficiency();
+      expect(getConfidenceLevelFromMonths(sufficiency.monthsOfData)).toBe('medium');
+
+      // Add more data to reach high confidence (12+ months)
+      for (let month = 6; month < 12; month++) {
+        await insertExpense({
+          date: generateDateInMonth(2024, 0, month),
+          amount: 100,
+          type: 'Groceries',
+          method: 'Cash',
+          week: 1
+        });
+      }
+
+      sufficiency = await spendingPatternsService.checkDataSufficiency();
+      expect(getConfidenceLevelFromMonths(sufficiency.monthsOfData)).toBe('high');
+    });
+  });
+
+  describe('Year/Month Parameter Validation', () => {
+    /**
+     * Property 6: Year/month parameter validation for new endpoints
+     *
+     * For any year outside [2000, 2100] or month outside [1, 12] or non-numeric values,
+     * the monthly-summary, trends, and activity-insights endpoints should return HTTP 400.
+     *
+     * **Validates: Requirements 3.2, 5.2, 7.2**
+     */
+
+    /**
+     * Helper to create mock Express req/res for controller testing
+     */
+    function createMockReqRes(params = {}, body = {}) {
+      const req = { params, body };
+      const res = {
+        _status: 200,
+        _json: null,
+        status(code) { this._status = code; return this; },
+        json(data) { this._json = data; return this; }
+      };
+      return { req, res };
+    }
+
+    // Endpoints under test — each takes :year/:month params
+    const endpointsUnderTest = [
+      { name: 'getMonthlySummary', fn: analyticsController.getMonthlySummary },
+      { name: 'getTrends', fn: analyticsController.getTrends },
+      { name: 'getActivityInsights', fn: analyticsController.getActivityInsights },
+    ];
+
+    test('Property 6: Year below 2000 returns HTTP 400 for all new endpoints', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          fc.integer({ min: -9999, max: 1999 }), // invalid year (below range)
+          fc.integer({ min: 1, max: 12 }),        // valid month
+          async (invalidYear, validMonth) => {
+            for (const endpoint of endpointsUnderTest) {
+              const { req, res } = createMockReqRes({
+                year: String(invalidYear),
+                month: String(validMonth)
+              });
+              await endpoint.fn(req, res);
+              expect(res._status).toBe(400);
+              expect(res._json).toBeDefined();
+              expect(res._json.error).toBeDefined();
+            }
+          }
+        ),
+        pbtOptions()
+      );
+    });
+
+    test('Property 6: Year above 2100 returns HTTP 400 for all new endpoints', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          fc.integer({ min: 2101, max: 9999 }), // invalid year (above range)
+          fc.integer({ min: 1, max: 12 }),       // valid month
+          async (invalidYear, validMonth) => {
+            for (const endpoint of endpointsUnderTest) {
+              const { req, res } = createMockReqRes({
+                year: String(invalidYear),
+                month: String(validMonth)
+              });
+              await endpoint.fn(req, res);
+              expect(res._status).toBe(400);
+              expect(res._json).toBeDefined();
+              expect(res._json.error).toBeDefined();
+            }
+          }
+        ),
+        pbtOptions()
+      );
+    });
+
+    test('Property 6: Month outside [1, 12] returns HTTP 400 for all new endpoints', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          fc.integer({ min: 2000, max: 2100 }), // valid year
+          fc.oneof(
+            fc.integer({ min: -100, max: 0 }),   // month below range
+            fc.integer({ min: 13, max: 100 })    // month above range
+          ),
+          async (validYear, invalidMonth) => {
+            for (const endpoint of endpointsUnderTest) {
+              const { req, res } = createMockReqRes({
+                year: String(validYear),
+                month: String(invalidMonth)
+              });
+              await endpoint.fn(req, res);
+              expect(res._status).toBe(400);
+              expect(res._json).toBeDefined();
+              expect(res._json.error).toBeDefined();
+            }
+          }
+        ),
+        pbtOptions()
+      );
+    });
+
+    test('Property 6: Non-numeric year returns HTTP 400 for all new endpoints', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          fc.constantFrom('abc', 'xyz', 'NaN', 'null', 'foo', '--', '!!', 'year', 'undefined', '  '),
+          fc.integer({ min: 1, max: 12 }),
+          async (nonNumericYear, validMonth) => {
+            for (const endpoint of endpointsUnderTest) {
+              const { req, res } = createMockReqRes({
+                year: nonNumericYear,
+                month: String(validMonth)
+              });
+              await endpoint.fn(req, res);
+              expect(res._status).toBe(400);
+              expect(res._json).toBeDefined();
+              expect(res._json.error).toBeDefined();
+            }
+          }
+        ),
+        pbtOptions()
+      );
+    });
+
+    test('Property 6: Non-numeric month returns HTTP 400 for all new endpoints', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          fc.integer({ min: 2000, max: 2100 }),
+          fc.constantFrom('abc', 'xyz', 'NaN', 'null', 'foo', '--', '!!', 'month', 'undefined', '  '),
+          async (validYear, nonNumericMonth) => {
+            for (const endpoint of endpointsUnderTest) {
+              const { req, res } = createMockReqRes({
+                year: String(validYear),
+                month: nonNumericMonth
+              });
+              await endpoint.fn(req, res);
+              expect(res._status).toBe(400);
+              expect(res._json).toBeDefined();
+              expect(res._json.error).toBeDefined();
+            }
+          }
+        ),
+        pbtOptions()
+      );
+    });
+
+    test('Property 6: Both year and month invalid returns HTTP 400 for all new endpoints', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          fc.oneof(
+            fc.integer({ min: -9999, max: 1999 }),
+            fc.integer({ min: 2101, max: 9999 })
+          ),
+          fc.oneof(
+            fc.integer({ min: -100, max: 0 }),
+            fc.integer({ min: 13, max: 100 })
+          ),
+          async (invalidYear, invalidMonth) => {
+            for (const endpoint of endpointsUnderTest) {
+              const { req, res } = createMockReqRes({
+                year: String(invalidYear),
+                month: String(invalidMonth)
+              });
+              await endpoint.fn(req, res);
+              expect(res._status).toBe(400);
+              expect(res._json).toBeDefined();
+              expect(res._json.error).toBeDefined();
+            }
+          }
+        ),
+        pbtOptions()
+      );
     });
   });
 });

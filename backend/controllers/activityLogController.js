@@ -10,8 +10,10 @@ const logger = require('../config/logger');
  */
 async function getRecentEvents(req, res) {
   try {
-    const limit = parseInt(req.query.limit) || 50;
-    const offset = parseInt(req.query.offset) || 0;
+    const rawLimit = req.query.limit !== undefined ? parseInt(req.query.limit) : 50;
+    const limit = isNaN(rawLimit) ? 50 : rawLimit;
+    const rawOffset = req.query.offset !== undefined ? parseInt(req.query.offset) : 0;
+    const offset = isNaN(rawOffset) ? 0 : rawOffset;
 
     // Validate limit
     if (limit < 1 || limit > 200) {

@@ -544,7 +544,7 @@ describe('BackupService - Insurance Fields', () => {
     
     // Create a test person
     const testPerson = await peopleRepository.create({
-      name: 'Insurance Backup Test Person',
+      name: `Insurance Backup Test Person ${Date.now()}`,
       date_of_birth: '1990-01-01'
     });
 
@@ -616,7 +616,7 @@ describe('BackupService - Insurance Fields', () => {
     
     // Create a test person
     const testPerson = await peopleRepository.create({
-      name: 'Insurance Restore Test Person',
+      name: `Insurance Restore Test Person ${Date.now()}`,
       date_of_birth: '1985-05-15'
     });
 

@@ -91,7 +91,8 @@ const ANOMALY_CLASSIFICATIONS = {
   FREQUENCY_SPIKE: 'Frequency_Spike',
   RECURRING_EXPENSE_INCREASE: 'Recurring_Expense_Increase',
   SEASONAL_DEVIATION: 'Seasonal_Deviation',
-  EMERGING_BEHAVIOR_TREND: 'Emerging_Behavior_Trend'
+  EMERGING_BEHAVIOR_TREND: 'Emerging_Behavior_Trend',
+  NEW_SPENDING_TIER: 'New_Spending_Tier'
 };
 
 // Backward-compatible mapping: legacy type → new classification
@@ -117,14 +118,21 @@ const DETECTION_THRESHOLDS = {
   SEASONAL_VARIANCE_THRESHOLD: 0.25,
   MIN_MONTHS_FOR_DRIFT: 6,
   DRIFT_PERIOD_MONTHS: 3,
-  MIN_MONTHS_FOR_SEASONAL: 12
+  MIN_MONTHS_FOR_SEASONAL: 12,
+  VENDOR_PERCENTILE_THRESHOLD: 95,
+  NEW_SPENDING_TIER_MULTIPLIER: 3,
+  VENDOR_FREQUENCY_SPIKE_RATIO: 0.5,
+  MIN_VENDOR_TRANSACTIONS: 10,
+  MIN_VENDOR_TRANSACTIONS_FOR_FREQUENCY: 3
 };
 
 // Suppression configuration (Req 6, 14)
 const SUPPRESSION_CONFIG = {
   RARE_PURCHASE_CATEGORIES: ['Electronics', 'Furniture', 'Appliances'],
   SEASONAL_SPIKE_MONTHS: { 'Gifts': 12, 'Entertainment': 12 },
-  MIN_TRANSACTIONS_FOR_RARE: 4
+  MIN_TRANSACTIONS_FOR_RARE: 4,
+  MIN_VENDOR_TRANSACTIONS_FOR_DETECTION: 10,
+  MIN_CATEGORY_ANNUAL_FREQUENCY: 2
 };
 
 // Throttle configuration (Req 10, 14)
@@ -133,7 +141,8 @@ const THROTTLE_CONFIG = {
   REPEAT_ALERT_SUPPRESSION_DAYS: 30,
   RELATED_ALERT_MERGE_WINDOW_DAYS: 7,
   CLUSTER_WINDOW_DAYS: 7,
-  MIN_CLUSTER_SIZE: 3
+  MIN_CLUSTER_SIZE: 3,
+  MAX_ALERTS_PER_MONTH: 3
 };
 
 // Cluster labels (Req 7)
@@ -143,6 +152,9 @@ const CLUSTER_LABELS = {
   HOME_RENOVATION: 'Home_Renovation',
   HOLIDAY_SPENDING: 'Holiday_Spending'
 };
+
+// Cluster gap multiplier for amount-based clustering (replaces hardcoded 1.8)
+const CLUSTER_GAP_MULTIPLIER = 1.8;
 
 module.exports = {
   ANALYTICS_CONFIG,
@@ -156,5 +168,6 @@ module.exports = {
   DETECTION_THRESHOLDS,
   SUPPRESSION_CONFIG,
   THROTTLE_CONFIG,
-  CLUSTER_LABELS
+  CLUSTER_LABELS,
+  CLUSTER_GAP_MULTIPLIER
 };

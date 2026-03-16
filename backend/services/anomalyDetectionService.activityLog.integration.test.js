@@ -475,6 +475,71 @@ describe('Anomaly Detection Activity Logging - Integration Tests', () => {
     });
   });
 
+  // ── New_Spending_Tier classification (Requirements 6.1, 6.2, 6.3) ──
+
+  describe('dismissAnomaly with New_Spending_Tier classification (Requirement 6.1, 6.3)', () => {
+    test('should log anomaly_dismissed event with New_Spending_Tier classification in metadata', async () => {
+      const expenseId = await insertExpense({
+        date: '2025-06-20', place: 'Premium Store', type: 'Electronics', amount: 3500
+      });
+
+      await anomalyDetectionService.dismissAnomaly(expenseId, 'new_spending_tier', {
+        merchant: 'Premium Store', amount: 3500, classification: 'New_Spending_Tier'
+      });
+      await waitForLogging();
+
+      const events = await activityLogRepository.findRecent(10, 0);
+      const { event, metadata } = findEventWithMetadata(events, 'anomaly_dismissed', expenseId);
+
+      expect(event).toBeDefined();
+      expect(event.entity_type).toBe('anomaly');
+      expect(event.entity_id).toBe(expenseId);
+      expect(event.user_action).toContain('Dismissed');
+      expect(event.user_action).toContain('New Spending Tier');
+      expect(event.user_action).toContain('Premium Store');
+
+      expect(metadata.classification).toBe('New_Spending_Tier');
+      expect(metadata.anomaly_type).toBe('new_spending_tier');
+      expect(metadata.expense_id).toBe(expenseId);
+      expect(metadata.merchant).toBe('Premium Store');
+      expect(metadata.amount).toBe(3500);
+    });
+  });
+
+  describe('markAsExpected with New_Spending_Tier classification (Requirement 6.2, 6.3)', () => {
+    test('should log anomaly_marked_expected event with New_Spending_Tier classification and suppression rule', async () => {
+      const expenseId = await insertExpense({
+        date: '2025-06-21', place: 'Luxury Goods', type: 'Shopping', amount: 5000
+      });
+
+      const result = await anomalyDetectionService.markAsExpected(expenseId, 'new_spending_tier', {
+        merchant: 'Luxury Goods', amount: 5000, category: 'Shopping', date: '2025-06-21',
+        classification: 'New_Spending_Tier'
+      });
+      await waitForLogging();
+
+      expect(result.suppressionRuleId).toBeDefined();
+
+      const events = await activityLogRepository.findRecent(10, 0);
+      const { event, metadata } = findEventWithMetadata(events, 'anomaly_marked_expected', expenseId);
+
+      expect(event).toBeDefined();
+      expect(event.entity_type).toBe('anomaly');
+      expect(event.entity_id).toBe(expenseId);
+      expect(event.user_action).toContain('Marked');
+      expect(event.user_action).toContain('New Spending Tier');
+      expect(event.user_action).toContain('expected');
+      expect(event.user_action).toContain('Luxury Goods');
+
+      expect(metadata.classification).toBe('New_Spending_Tier');
+      expect(metadata.anomaly_type).toBe('new_spending_tier');
+      expect(metadata.expense_id).toBe(expenseId);
+      expect(metadata.merchant).toBe('Luxury Goods');
+      expect(metadata.amount).toBe(5000);
+      expect(metadata.suppression_rule_id).toBe(result.suppressionRuleId);
+    });
+  });
+
   // ── Fire-and-forget pattern (Requirement 10.4) ──
 
   describe('Fire-and-forget logging pattern (Requirement 10.4)', () => {

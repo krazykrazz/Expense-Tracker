@@ -106,6 +106,34 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ---
 
+### 🟢 2b. Anomaly Detection Refinements
+**Status**: Completed  
+**Priority**: Medium  
+**Effort**: Medium  
+**Spec**: `.kiro/specs/anomaly-refinements/`  
+**Documentation**: `docs/features/ANOMALY_DETECTION.md`  
+**Description**: Closes six gaps between the anomaly detection implementation and the original specification by introducing vendor-level baselines, vendor-percentile detection, a new anomaly type, interval-based frequency spikes, data-driven suppression, and a global monthly alert cap. All changes are backend-only.
+
+**Features Delivered**:
+- **Vendor-Level Baselines**: Per-vendor statistical profiles (p25, median, p75, p95, max, avg interval) computed in-memory each detection cycle
+- **Vendor-Percentile Large Transaction Detection**: Flags transactions exceeding vendor p95 with cluster exclusion — falls back to category-level stdDev for vendors with < 10 transactions
+- **New_Spending_Tier Anomaly Type**: Detects transactions exceeding 3× the vendor's historical max with severity tiers (low/medium/high based on ratio)
+- **Interval-Based Vendor Frequency Spikes**: Flags visits occurring in less than half the vendor's average interval between transactions
+- **Data-Driven Suppression Rules**: Suppresses anomalies for vendors with insufficient history (< 10 transactions) and categories with low annual frequency (< 2/year)
+- **Global Monthly Alert Cap**: Limits alerts to 3 per calendar month with severity-based retention; prior-month anomalies pass through unaffected
+- **Extracted Cluster Computation Utility**: Gap-based clustering algorithm extracted from `_findRecurringPattern` into reusable `_computeAmountClusters` method with configurable `CLUSTER_GAP_MULTIPLIER`
+
+**Benefits**:
+- More precise anomaly detection calibrated to per-vendor spending patterns
+- Reduced false positives through cluster exclusion and data-driven suppression
+- Catches dramatic vendor-level spending escalations via New_Spending_Tier
+- Prevents alert fatigue with a hard global monthly cap
+- Cleaner codebase with shared cluster computation utility
+
+**Dependencies**: Extends Actionable Anomaly Alerts (#2a)
+
+---
+
 ### ⚪ 3. Financial Goals Dashboard
 **Status**: Proposed  
 **Priority**: Medium  

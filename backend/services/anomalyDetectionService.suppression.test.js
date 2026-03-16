@@ -94,7 +94,7 @@ describe('AnomalyDetectionService._suppressBenignPatterns', () => {
       const anomalies = [
         makeAnomaly({ category: 'Dining', expenseId: 1 })
       ];
-      const allExpenses = makeExpenses('Dining', 1);
+      const allExpenses = makeExpenses('Dining', 3);
 
       const result = anomalyDetectionService._suppressBenignPatterns(anomalies, allExpenses);
       expect(result).toHaveLength(1);

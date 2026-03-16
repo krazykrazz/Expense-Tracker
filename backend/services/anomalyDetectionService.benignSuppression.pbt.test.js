@@ -156,7 +156,7 @@ describe('Property 12: Benign pattern suppression', () => {
     fc.assert(
       fc.property(
         fc.constantFrom(...nonRareCategories),
-        fc.integer({ min: 0, max: 3 }),
+        fc.integer({ min: 3, max: 10 }),
         (category, histCount) => {
           const anomalies = [makeAnomaly({ category })];
           const allExpenses = makeExpenses(category, histCount);
@@ -204,7 +204,7 @@ describe('Property 12: Benign pattern suppression', () => {
 
       fc.assert(
         fc.property(
-          fc.integer({ min: 1, max: 11 }),
+          fc.integer({ min: 3, max: 11 }),
           (monthsOfData) => {
             const anomalies = [makeAnomaly({ category })];
             const allExpenses = makeExpenses(category, monthsOfData, { startYear: 2025, startMonth: 1 });

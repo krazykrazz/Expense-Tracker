@@ -27,13 +27,16 @@ const {
   CONFIDENCE_LEVELS,
   THROTTLE_CONFIG,
   CLUSTER_LABELS,
-  SUPPRESSION_CONFIG
+  SUPPRESSION_CONFIG,
+  CLUSTER_GAP_MULTIPLIER
 } = require('../utils/analyticsConstants');
 
 class AnomalyDetectionService {
   constructor() {
     // Cache for dismissed expense IDs (loaded from database on first use)
     this._dismissedExpenseIdsCache = null;
+    // Cache for vendor baselines (computed per detection cycle)
+    this._vendorBaselineCache = null;
   }
 
   /**
@@ -196,12 +199,21 @@ class AnomalyDetectionService {
       // ─── Budget Data Fetch ──────────────────────────────────────────────
       // Clear cache and fetch once at start of detection cycle
       this._budgetDataCache = undefined;
+      this._vendorBaselineCache = null;
       let budgetData = null;
       try {
         budgetData = await this._fetchBudgetData();
       } catch (err) {
         logger.warn('Budget data fetch failed at start of detection cycle:', err);
         budgetData = null;
+      }
+
+      // ─── Vendor Baseline Computation ────────────────────────────────────
+      try {
+        this._vendorBaselineCache = this._buildVendorBaselines(expenses);
+      } catch (err) {
+        logger.error('Vendor baseline computation failed:', err);
+        this._vendorBaselineCache = new Map();
       }
 
       const anomalies = [];
@@ -253,6 +265,22 @@ class AnomalyDetectionService {
         anomalies.push(...behavioralDrift);
       } catch (err) {
         logger.error('Behavioral drift detector failed:', err);
+      }
+
+      // New Spending Tier detection
+      try {
+        const newSpendingTier = this._detectNewSpendingTier(recentExpenses, expenses);
+        anomalies.push(...newSpendingTier);
+      } catch (err) {
+        logger.error('New spending tier detector failed:', err);
+      }
+
+      // Vendor frequency spike detection (interval-based)
+      try {
+        const vendorFrequencySpikes = this._detectVendorFrequencySpikes(recentExpenses, expenses);
+        anomalies.push(...vendorFrequencySpikes);
+      } catch (err) {
+        logger.error('Vendor frequency spike detector failed:', err);
       }
 
       // ─── Enrichment Phase ───────────────────────────────────────────────
@@ -386,13 +414,47 @@ class AnomalyDetectionService {
   }
 
   /**
-   * Detect amount anomalies (expenses > 3 standard deviations from category average)
+   * Detect amount anomalies using vendor-percentile approach when sufficient
+   * vendor history exists, falling back to category-level stdDev otherwise.
    */
   async _detectAmountAnomalies(recentExpenses, allExpenses) {
     const anomalies = [];
     const categoryBaselines = {};
+    const vendorCache = this._vendorBaselineCache || new Map();
 
     for (const expense of recentExpenses) {
+      const vendorKey = (expense.place || '').toLowerCase();
+      const vendorBaseline = vendorCache.get(vendorKey);
+
+      // Vendor-percentile path: vendor has sufficient history
+      if (vendorBaseline && vendorBaseline.transactionCount >= DETECTION_THRESHOLDS.MIN_VENDOR_TRANSACTIONS) {
+        if (expense.amount > vendorBaseline.p95) {
+          // Check cluster exclusion — if amount falls within a known cluster, skip
+          const clusters = this._computeAmountClusters(vendorBaseline.sortedAmounts);
+          const insideCluster = clusters.some(c => expense.amount >= c.min && expense.amount <= c.max);
+          if (!insideCluster) {
+            const ratio = vendorBaseline.p95 > 0 ? (expense.amount - vendorBaseline.p95) / vendorBaseline.p95 : 0;
+            const severity = this._calculateSeverity(ratio > 5 ? 5 : ratio > 4 ? 4 : ratio > 3 ? 3.5 : 3.1);
+            anomalies.push({
+              id: anomalies.length + 1,
+              expenseId: expense.id,
+              date: expense.date,
+              place: expense.place,
+              amount: expense.amount,
+              category: expense.type,
+              anomalyType: ANOMALY_TYPES.AMOUNT,
+              reason: 'Amount ' + expense.amount.toFixed(2) + ' exceeds vendor p95 of ' + vendorBaseline.p95.toFixed(2) + ' at "' + expense.place + '"',
+              severity,
+              categoryAverage: vendorBaseline.medianAmount,
+              standardDeviations: parseFloat(ratio.toFixed(2)),
+              dismissed: false
+            });
+          }
+        }
+        continue;
+      }
+
+      // Category-level fallback: insufficient vendor history
       if (!categoryBaselines[expense.type]) {
         categoryBaselines[expense.type] = await this.calculateCategoryBaseline(expense.type);
       }
@@ -723,6 +785,7 @@ class AnomalyDetectionService {
   async _detectRecurringExpenseIncreases(recentExpenses, allExpenses) {
     try {
       const anomalies = [];
+      const recentIds = new Set(recentExpenses.map(e => e.id));
 
       // Step 1: Group all expenses by merchant (place field)
       const merchantGroups = {};
@@ -742,16 +805,35 @@ class AnomalyDetectionService {
 
         transactions.sort((a, b) => new Date(a.date) - new Date(b.date));
 
-        // Step 3: Look at the last 3 transactions
-        const last3 = transactions.slice(-3);
-        const mostRecent = last3[2];
-        const previous2 = [last3[0], last3[1]];
-        const avgOfPrevious2 = (previous2[0].amount + previous2[1].amount) / 2;
+        const mostRecent = transactions[transactions.length - 1];
 
-        // Avoid division by zero
-        if (avgOfPrevious2 === 0) { continue; }
+        // Only flag if the most recent transaction is within the lookback window
+        if (!recentIds.has(mostRecent.id)) { continue; }
 
-        const deviation = (mostRecent.amount - avgOfPrevious2) / avgOfPrevious2;
+        // Step 3: Find the recurring pattern the most recent transaction belongs to.
+        // Use gap-based clustering: sort amounts, split where consecutive values
+        // differ by more than 1.8×, then find which cluster the most recent
+        // transaction falls into. This separates distinct recurring charges at the
+        // same merchant (e.g., a $495 monthly fee vs. $25 one-off purchases).
+        // Compare only against the matching cluster's history.
+        const patternCluster = this._findRecurringPattern(transactions);
+
+        if (!patternCluster || patternCluster.length < 3) { continue; }
+
+        // The most recent transaction must belong to this pattern
+        const mostRecentInCluster = patternCluster[patternCluster.length - 1];
+        if (mostRecentInCluster.id !== mostRecent.id) { continue; }
+
+        // Baseline: median of all prior transactions in the same pattern cluster
+        const priorAmounts = patternCluster.slice(0, -1).map(t => t.amount).sort((a, b) => a - b);
+        const mid = Math.floor(priorAmounts.length / 2);
+        const baselineMedian = priorAmounts.length % 2 !== 0
+          ? priorAmounts[mid]
+          : (priorAmounts[mid - 1] + priorAmounts[mid]) / 2;
+
+        if (baselineMedian === 0) { continue; }
+
+        const deviation = (mostRecent.amount - baselineMedian) / baselineMedian;
 
         // Step 4: Flag if >20% increase
         if (deviation > DETECTION_THRESHOLDS.RECURRING_INCREASE_THRESHOLD) {
@@ -767,7 +849,7 @@ class AnomalyDetectionService {
             classification: ANOMALY_CLASSIFICATIONS.RECURRING_EXPENSE_INCREASE,
             severity: severity,
             dismissed: false,
-            categoryAverage: parseFloat(avgOfPrevious2.toFixed(2)),
+            categoryAverage: parseFloat(baselineMedian.toFixed(2)),
             standardDeviations: 0
           });
           index++;
@@ -779,6 +861,312 @@ class AnomalyDetectionService {
       logger.error('Recurring expense increase detector failed:', error);
       return [];
     }
+  }
+
+  /**
+   * Compute a percentile value from a sorted array using linear interpolation.
+   * index = (p/100) × (n-1), interpolate between floor and ceil values.
+   * @param {Array<number>} sorted - Sorted ascending array of numbers
+   * @param {number} p - Percentile (0-100)
+   * @returns {number} The interpolated percentile value
+   * @private
+   */
+  _percentile(sorted, p) {
+    if (sorted.length === 1) { return sorted[0]; }
+    const index = (p / 100) * (sorted.length - 1);
+    const lower = Math.floor(index);
+    const upper = Math.ceil(index);
+    if (lower === upper) { return sorted[lower]; }
+    const fraction = index - lower;
+    return sorted[lower] + fraction * (sorted[upper] - sorted[lower]);
+  }
+
+  /**
+   * Build vendor-level statistical baselines from all expenses.
+   * Groups expenses by place (case-insensitive, lowercase key) and computes
+   * percentiles, average amount, average days between transactions, and stores
+   * sorted amounts and last transaction date for each vendor.
+   * @param {Array} allExpenses - All historical expenses
+   * @returns {Map<string, Object>} Map of vendor key to VendorBaseline object
+   * @private
+   */
+  _buildVendorBaselines(allExpenses) {
+    const vendorMap = new Map();
+
+    // Group expenses by vendor (case-insensitive)
+    for (const expense of allExpenses) {
+      const key = (expense.place || '').toLowerCase();
+      if (!key) { continue; }
+      if (!vendorMap.has(key)) { vendorMap.set(key, []); }
+      vendorMap.get(key).push(expense);
+    }
+
+    const baselines = new Map();
+
+    for (const [vendor, expenses] of vendorMap) {
+      const sortedAmounts = expenses.map(e => e.amount).sort((a, b) => a - b);
+      const n = sortedAmounts.length;
+
+      const p25 = this._percentile(sortedAmounts, 25);
+      const medianAmount = this._percentile(sortedAmounts, 50);
+      const p75 = this._percentile(sortedAmounts, 75);
+      const p95 = this._percentile(sortedAmounts, 95);
+      const maxAmount = sortedAmounts[n - 1];
+      const avgAmount = sortedAmounts.reduce((sum, a) => sum + a, 0) / n;
+
+      // Compute average days between transactions
+      let avgDaysBetweenTransactions = null;
+      const sortedDates = expenses.map(e => e.date).sort();
+      let lastTransactionDate = sortedDates[sortedDates.length - 1];
+
+      if (n >= 2) {
+        const earliest = new Date(sortedDates[0]);
+        const latest = new Date(sortedDates[sortedDates.length - 1]);
+        const daySpan = (latest - earliest) / (1000 * 60 * 60 * 24);
+        avgDaysBetweenTransactions = daySpan / (n - 1);
+      }
+
+      baselines.set(vendor, {
+        vendor,
+        transactionCount: n,
+        medianAmount,
+        p25,
+        p75,
+        p95,
+        maxAmount,
+        avgAmount,
+        avgDaysBetweenTransactions,
+        sortedAmounts,
+        lastTransactionDate
+      });
+    }
+
+    this._vendorBaselineCache = baselines;
+    return baselines;
+  }
+
+  /**
+   * Compute amount-based clusters from a sorted array of amounts.
+   * Splits where consecutive values differ by more than CLUSTER_GAP_MULTIPLIER × the previous value.
+   * @param {Array<number>} sortedAmounts - Sorted ascending array of amounts
+   * @returns {Array<{min: number, max: number}>} Array of cluster range objects
+   * @private
+   */
+  _computeAmountClusters(sortedAmounts) {
+    if (!sortedAmounts || sortedAmounts.length === 0) { return []; }
+
+    const clusterRanges = [];
+    let rangeStart = sortedAmounts[0];
+    let rangeEnd = sortedAmounts[0];
+
+    for (let i = 1; i < sortedAmounts.length; i++) {
+      if (rangeEnd > 0 && sortedAmounts[i] > rangeEnd * CLUSTER_GAP_MULTIPLIER) {
+        // Gap detected — close current range and start a new one
+        clusterRanges.push({ min: rangeStart, max: rangeEnd });
+        rangeStart = sortedAmounts[i];
+      }
+      rangeEnd = sortedAmounts[i];
+    }
+    clusterRanges.push({ min: rangeStart, max: rangeEnd });
+
+    return clusterRanges;
+  }
+
+  /**
+   * Find the dominant recurring pattern in a merchant's transactions.
+   * Clusters transactions by amount similarity (within 20% tolerance of cluster
+   * center) and returns the cluster containing the most recent transaction,
+   * provided it has at least 3 members. This isolates the actual recurring charge
+   * from one-off purchases at the same merchant.
+   * @param {Array} transactions - Sorted by date ascending
+   * @returns {Array|null} The cluster containing the most recent transaction, or null
+   * @private
+   */
+  _findRecurringPattern(transactions) {
+      if (transactions.length < 3) { return null; }
+
+      // Sort all amounts to find natural cluster boundaries
+      const sortedAmounts = transactions.map(t => t.amount).sort((a, b) => a - b);
+
+      // Use extracted cluster computation
+      const clusterRanges = this._computeAmountClusters(sortedAmounts);
+
+      // Find which cluster the most recent transaction belongs to
+      const mostRecent = transactions[transactions.length - 1];
+      let matchingRange = null;
+      for (const range of clusterRanges) {
+        if (mostRecent.amount >= range.min && mostRecent.amount <= range.max) {
+          matchingRange = range;
+          break;
+        }
+      }
+
+      if (!matchingRange) { return null; }
+
+      // Return all transactions that fall within the matching cluster range
+      return transactions.filter(t => t.amount >= matchingRange.min && t.amount <= matchingRange.max);
+    }
+
+
+  /**
+   * Detect New Spending Tier anomalies — flags when a transaction amount exceeds
+   * NEW_SPENDING_TIER_MULTIPLIER × the historical maximum at the same vendor.
+   * A transaction can trigger both New_Spending_Tier and Large_Transaction independently.
+   * @param {Array} recentExpenses - Expenses within the lookback window
+   * @param {Array} allExpenses - All historical expenses
+   * @returns {Array<Object>} Array of raw anomaly objects
+   * @private
+   */
+  _detectNewSpendingTier(recentExpenses, allExpenses) {
+    const anomalies = [];
+    const multiplier = DETECTION_THRESHOLDS.NEW_SPENDING_TIER_MULTIPLIER;
+
+    // Build a map of vendor → prior transactions (excluding current recent expenses)
+    // We need all transactions at each vendor for history lookup
+    const vendorHistoryMap = new Map();
+    for (const expense of allExpenses) {
+      const key = (expense.place || '').toLowerCase();
+      if (!key) { continue; }
+      if (!vendorHistoryMap.has(key)) { vendorHistoryMap.set(key, []); }
+      vendorHistoryMap.get(key).push(expense);
+    }
+
+    for (const expense of recentExpenses) {
+      const vendorKey = (expense.place || '').toLowerCase();
+      if (!vendorKey) { continue; }
+
+      const vendorTransactions = vendorHistoryMap.get(vendorKey);
+      if (!vendorTransactions) { continue; }
+
+      // Get all prior transactions at this vendor (excluding the current one)
+      const priorTransactions = vendorTransactions.filter(e => e.id !== expense.id);
+
+      // Skip vendors with < 2 historical transactions
+      if (priorTransactions.length < 2) { continue; }
+
+      // Compute historical max (excluding current transaction)
+      const historicalMax = Math.max(...priorTransactions.map(e => e.amount));
+
+      // Skip if historical max is zero or negative (avoid meaningless ratios)
+      if (historicalMax <= 0) { continue; }
+
+      // Flag when amount > multiplier × historicalMax
+      if (expense.amount > multiplier * historicalMax) {
+        const ratio = expense.amount / historicalMax;
+
+        // Assign severity based on ratio
+        let severity;
+        if (ratio > 10) {
+          severity = SEVERITY_LEVELS.HIGH;
+        } else if (ratio > 5) {
+          severity = SEVERITY_LEVELS.MEDIUM;
+        } else {
+          severity = SEVERITY_LEVELS.LOW;
+        }
+
+        anomalies.push({
+          id: Date.now() + anomalies.length,
+          expenseId: expense.id,
+          date: expense.date,
+          place: expense.place,
+          amount: expense.amount,
+          category: expense.type,
+          anomalyType: 'new_spending_tier',
+          classification: ANOMALY_CLASSIFICATIONS.NEW_SPENDING_TIER,
+          reason: 'Amount ' + expense.amount.toFixed(2) + ' is ' + ratio.toFixed(1) + 'x the historical max of ' + historicalMax.toFixed(2) + ' at "' + expense.place + '"',
+          severity,
+          categoryAverage: historicalMax,
+          standardDeviations: parseFloat(ratio.toFixed(2)),
+          dismissed: false
+        });
+      }
+    }
+
+    return anomalies;
+  }
+
+  /**
+   * Detect vendor-level frequency spikes — flags when a transaction at a vendor
+   * occurs unusually soon based on the vendor's historical average interval.
+   * Flags when daysSinceLast < VENDOR_FREQUENCY_SPIKE_RATIO × avgDaysBetweenTransactions.
+   * @param {Array} recentExpenses - Expenses within the lookback window
+   * @param {Array} allExpenses - All historical expenses
+   * @returns {Array<Object>} Array of raw anomaly objects
+   * @private
+   */
+  _detectVendorFrequencySpikes(recentExpenses, allExpenses) {
+    const anomalies = [];
+    const vendorCache = this._vendorBaselineCache || new Map();
+    const ratio = DETECTION_THRESHOLDS.VENDOR_FREQUENCY_SPIKE_RATIO;
+    const minTransactions = DETECTION_THRESHOLDS.MIN_VENDOR_TRANSACTIONS_FOR_FREQUENCY;
+
+    // Build a map of vendor → sorted dates for finding last transaction before each recent expense
+    const vendorDatesMap = new Map();
+    for (const expense of allExpenses) {
+      const key = (expense.place || '').toLowerCase();
+      if (!key) { continue; }
+      if (!vendorDatesMap.has(key)) { vendorDatesMap.set(key, []); }
+      vendorDatesMap.get(key).push(expense.date);
+    }
+    // Sort each vendor's dates ascending
+    for (const [key, dates] of vendorDatesMap) {
+      vendorDatesMap.set(key, dates.sort());
+    }
+
+    for (const expense of recentExpenses) {
+      const vendorKey = (expense.place || '').toLowerCase();
+      if (!vendorKey) { continue; }
+
+      const vendorBaseline = vendorCache.get(vendorKey);
+      if (!vendorBaseline) { continue; }
+
+      // Skip vendors with < MIN_VENDOR_TRANSACTIONS_FOR_FREQUENCY historical transactions
+      if (vendorBaseline.transactionCount < minTransactions) { continue; }
+
+      // Skip if no valid average interval
+      if (!vendorBaseline.avgDaysBetweenTransactions || vendorBaseline.avgDaysBetweenTransactions <= 0) { continue; }
+
+      // Find the most recent transaction date before this expense at this vendor
+      const vendorDates = vendorDatesMap.get(vendorKey) || [];
+      const expenseDate = new Date(expense.date);
+
+      // Find the last date strictly before the current expense date
+      let lastDate = null;
+      for (let i = vendorDates.length - 1; i >= 0; i--) {
+        const d = new Date(vendorDates[i]);
+        if (d < expenseDate) {
+          lastDate = d;
+          break;
+        }
+      }
+
+      if (!lastDate) { continue; }
+
+      // Compute days since last transaction (calendar day difference)
+      const daysSinceLast = (expenseDate - lastDate) / (1000 * 60 * 60 * 24);
+
+      // Flag when daysSinceLast < ratio × avgDaysBetweenTransactions
+      const threshold = ratio * vendorBaseline.avgDaysBetweenTransactions;
+      if (daysSinceLast < threshold) {
+        anomalies.push({
+          id: Date.now() + anomalies.length,
+          expenseId: expense.id,
+          date: expense.date,
+          place: expense.place,
+          amount: expense.amount,
+          category: expense.type,
+          anomalyType: 'frequency_spike',
+          classification: ANOMALY_CLASSIFICATIONS.FREQUENCY_SPIKE,
+          reason: 'Visit to "' + expense.place + '" after ' + daysSinceLast.toFixed(1) + ' days, below threshold of ' + threshold.toFixed(1) + ' days (avg interval: ' + vendorBaseline.avgDaysBetweenTransactions.toFixed(1) + ' days)',
+          severity: SEVERITY_LEVELS.LOW,
+          categoryAverage: vendorBaseline.avgDaysBetweenTransactions,
+          standardDeviations: parseFloat((daysSinceLast / vendorBaseline.avgDaysBetweenTransactions).toFixed(2)),
+          dismissed: false
+        });
+      }
+    }
+
+    return anomalies;
   }
 
   /**
@@ -1045,7 +1433,8 @@ class AnomalyDetectionService {
       [ANOMALY_CLASSIFICATIONS.FREQUENCY_SPIKE]: 'Frequency Spike',
       [ANOMALY_CLASSIFICATIONS.RECURRING_EXPENSE_INCREASE]: 'Recurring Expense Increase',
       [ANOMALY_CLASSIFICATIONS.SEASONAL_DEVIATION]: 'Seasonal Deviation',
-      [ANOMALY_CLASSIFICATIONS.EMERGING_BEHAVIOR_TREND]: 'Emerging Behavior Trend'
+      [ANOMALY_CLASSIFICATIONS.EMERGING_BEHAVIOR_TREND]: 'Emerging Behavior Trend',
+      [ANOMALY_CLASSIFICATIONS.NEW_SPENDING_TIER]: 'New Spending Tier'
     };
 
     const typeLabel = classificationLabels[anomaly.classification] || '';
@@ -1632,6 +2021,50 @@ class AnomalyDetectionService {
           return false;
         }
 
+        // Rule 4: Insufficient vendor history suppression
+        // Suppress vendor-level anomalies for vendors with < MIN_VENDOR_TRANSACTIONS_FOR_DETECTION
+        // historical transactions. Category-level detections (stdDev fallback, daily totals,
+        // new merchant, category spikes) are not affected since they don't rely on vendor baselines.
+        const vendorKey = (anomaly.place || '').toLowerCase();
+        const vendorCache = this._vendorBaselineCache;
+        if (vendorCache && vendorKey) {
+          const vendorBaseline = vendorCache.get(vendorKey);
+          if (vendorBaseline && vendorBaseline.transactionCount < SUPPRESSION_CONFIG.MIN_VENDOR_TRANSACTIONS_FOR_DETECTION) {
+            // Check if this anomaly was produced by a vendor-level detector
+            const isVendorLevelAnomaly = anomaly.anomalyType === 'new_spending_tier' ||
+              (anomaly.reason && anomaly.reason.includes('vendor p95')) ||
+              (anomaly.reason && anomaly.reason.includes('days since last visit'));
+            if (isVendorLevelAnomaly) {
+              logger.debug('Suppressed insufficient vendor history anomaly:', { vendor: anomaly.place, vendorTxnCount: vendorBaseline.transactionCount, anomalyType: anomaly.anomalyType });
+              return false;
+            }
+          }
+        }
+
+        // Rule 5: Low category frequency suppression
+        // Suppress anomalies for categories with annual frequency < MIN_CATEGORY_ANNUAL_FREQUENCY
+        // Only applies to anomaly types that rely on category baselines (amount, category_spending_spike,
+        // frequency spikes). New merchant and daily total anomalies are not affected.
+        const categoryBaselineTypes = ['amount', 'category_spending_spike'];
+        if (categoryBaselineTypes.includes(anomaly.anomalyType)) {
+          const catCount = categoryCounts[category] || 0;
+          if (catCount > 0 && (allExpenses || []).length > 0) {
+            const catExpenses = (allExpenses || []).filter(e => e.type === category);
+            if (catExpenses.length > 0) {
+              const dates = catExpenses.map(e => new Date(e.date));
+              const earliest = new Date(Math.min(...dates));
+              const latest = new Date(Math.max(...dates));
+              const msSpan = latest - earliest;
+              const yearsSpanned = Math.max(msSpan / (365.25 * 24 * 60 * 60 * 1000), 1);
+              const annualFrequency = catCount / yearsSpanned;
+              if (annualFrequency < SUPPRESSION_CONFIG.MIN_CATEGORY_ANNUAL_FREQUENCY) {
+                logger.debug('Suppressed low category frequency anomaly:', { category, annualFrequency: annualFrequency.toFixed(2) });
+                return false;
+              }
+            }
+          }
+        }
+
         return true;
       });
 
@@ -1867,6 +2300,9 @@ class AnomalyDetectionService {
       // Step 3: Enforce per-category cap (MAX_ALERTS_PER_CATEGORY_PER_MONTH)
       result = this._enforcePerCategoryCap(result);
 
+      // Step 4: Enforce global monthly cap (MAX_ALERTS_PER_MONTH)
+      result = this._enforceGlobalMonthlyCap(result);
+
       return result;
     } catch (error) {
       logger.error('Alert frequency controls failed:', error);
@@ -2065,6 +2501,64 @@ class AnomalyDetectionService {
     }
 
     return result;
+  }
+
+  /**
+   * Enforce a global monthly alert cap across all categories.
+   * Filters anomalies to the current calendar month, caps at MAX_ALERTS_PER_MONTH,
+   * keeping the highest severity (date desc tiebreaker). Prior-month anomalies pass through.
+   * @param {Array} anomalies
+   * @returns {Array}
+   * @private
+   */
+  _enforceGlobalMonthlyCap(anomalies) {
+    if (!anomalies || anomalies.length === 0) {
+      return anomalies || [];
+    }
+
+    const maxPerMonth = THROTTLE_CONFIG.MAX_ALERTS_PER_MONTH;
+    const severityOrder = { [SEVERITY_LEVELS.HIGH]: 3, [SEVERITY_LEVELS.MEDIUM]: 2, [SEVERITY_LEVELS.LOW]: 1 };
+
+    const now = new Date();
+    const currentMonthKey = now.getFullYear() + '-' + (now.getMonth() + 1).toString().padStart(2, '0');
+
+    // Partition into current-month and prior-month anomalies
+    const currentMonth = [];
+    const priorMonths = [];
+    for (const anomaly of anomalies) {
+      const dateObj = new Date(anomaly.date);
+      const monthKey = dateObj.getFullYear() + '-' + (dateObj.getMonth() + 1).toString().padStart(2, '0');
+      if (monthKey === currentMonthKey) {
+        currentMonth.push(anomaly);
+      } else {
+        priorMonths.push(anomaly);
+      }
+    }
+
+    // If current month is within cap, return all
+    if (currentMonth.length <= maxPerMonth) {
+      return [...currentMonth, ...priorMonths];
+    }
+
+    // Sort current-month by severity desc, then date desc
+    currentMonth.sort((a, b) => {
+      const sevDiff = (severityOrder[b.severity] || 0) - (severityOrder[a.severity] || 0);
+      if (sevDiff !== 0) { return sevDiff; }
+      return new Date(b.date) - new Date(a.date);
+    });
+
+    const kept = currentMonth.slice(0, maxPerMonth);
+    const dropped = currentMonth.slice(maxPerMonth);
+
+    for (const d of dropped) {
+      logger.debug('Dropped alert due to global monthly cap:', {
+        category: d.category,
+        date: d.date,
+        severity: d.severity
+      });
+    }
+
+    return [...kept, ...priorMonths];
   }
 
   /**

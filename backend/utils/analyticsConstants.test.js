@@ -59,8 +59,8 @@ describe('analyticsConstants', () => {
   // --- ANOMALY_CLASSIFICATIONS ---
 
   describe('ANOMALY_CLASSIFICATIONS', () => {
-    test('has all 7 classification types', () => {
-      expect(Object.keys(ANOMALY_CLASSIFICATIONS)).toHaveLength(7);
+    test('has all 8 classification types', () => {
+      expect(Object.keys(ANOMALY_CLASSIFICATIONS)).toHaveLength(8);
     });
 
     test('defines correct values for each type', () => {
@@ -139,7 +139,12 @@ describe('analyticsConstants', () => {
         'SEASONAL_VARIANCE_THRESHOLD',
         'MIN_MONTHS_FOR_DRIFT',
         'DRIFT_PERIOD_MONTHS',
-        'MIN_MONTHS_FOR_SEASONAL'
+        'MIN_MONTHS_FOR_SEASONAL',
+        'VENDOR_PERCENTILE_THRESHOLD',
+        'NEW_SPENDING_TIER_MULTIPLIER',
+        'VENDOR_FREQUENCY_SPIKE_RATIO',
+        'MIN_VENDOR_TRANSACTIONS',
+        'MIN_VENDOR_TRANSACTIONS_FOR_FREQUENCY'
       ];
       expectedKeys.forEach(key => {
         expect(DETECTION_THRESHOLDS).toHaveProperty(key);
@@ -198,8 +203,8 @@ describe('analyticsConstants', () => {
       expect(THROTTLE_CONFIG.MIN_CLUSTER_SIZE).toBe(3);
     });
 
-    test('has all 5 config keys', () => {
-      expect(Object.keys(THROTTLE_CONFIG)).toHaveLength(5);
+    test('has all 6 config keys', () => {
+      expect(Object.keys(THROTTLE_CONFIG)).toHaveLength(6);
     });
 
     test('all values are numbers', () => {

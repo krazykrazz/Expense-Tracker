@@ -16,6 +16,7 @@ const budgetService = require('./budgetService');
 const dbHelper = require('../utils/dbHelper');
 const activityLogService = require('./activityLogService');
 const logger = require('../config/logger');
+const { detectEventGroups } = require('./eventGroupingDetector');
 const { 
   ANALYTICS_CONFIG, 
   ANOMALY_TYPES,
@@ -28,7 +29,9 @@ const {
   THROTTLE_CONFIG,
   CLUSTER_LABELS,
   SUPPRESSION_CONFIG,
-  CLUSTER_GAP_MULTIPLIER
+  CLUSTER_GAP_MULTIPLIER,
+  ALERT_TEXT_LIMITS,
+  ALERT_TYPE_PRIORITY
 } = require('../utils/analyticsConstants');
 
 class AnomalyDetectionService {
@@ -350,8 +353,32 @@ class AnomalyDetectionService {
         }
       }
 
+      // ─── Alert_Builder Phase ────────────────────────────────────────────
+      // Attach plain-language summary, explanation, typical range, and
+      // simplified classification to each anomaly for the frontend card layout.
+      const BEHAVIOR_TO_SIMPLIFIED = {
+        [BEHAVIOR_PATTERNS.ONE_TIME_EVENT]: 'one_time_event',
+        [BEHAVIOR_PATTERNS.RECURRING_CHANGE]: 'recurring_change',
+        [BEHAVIOR_PATTERNS.EMERGING_TREND]: 'emerging_pattern'
+      };
+
+      for (const anomaly of anomalies) {
+        try {
+          anomaly.summary = this._buildSummaryText(anomaly);
+          anomaly.explanationText = this._buildExplanationText(anomaly, baselineCache[anomaly.category]);
+          anomaly.typicalRange = this._buildTypicalRange(anomaly);
+          anomaly.simplifiedClassification = BEHAVIOR_TO_SIMPLIFIED[anomaly.behaviorPattern] || 'one_time_event';
+        } catch (err) {
+          logger.warn('Alert builder failed for anomaly ' + anomaly.id + ':', err);
+          anomaly.summary = anomaly.summary || 'Unusual activity detected';
+          anomaly.explanationText = anomaly.explanationText || '';
+          anomaly.typicalRange = anomaly.typicalRange || null;
+          anomaly.simplifiedClassification = anomaly.simplifiedClassification || 'one_time_event';
+        }
+      }
+
       // ─── Filtering Phase ──────────────────────────────────────────────
-      // Execute in order: cluster aggregation → benign pattern suppression →
+      // Execute in order: cluster aggregation → event grouping → benign pattern suppression →
       // budget-aware suppression → frequency controls → dismissed/suppression rule filtering
 
       // Step 1: Cluster aggregation
@@ -360,6 +387,35 @@ class AnomalyDetectionService {
         filteredAnomalies = this._aggregateClusters(filteredAnomalies);
       } catch (err) {
         logger.error('Cluster aggregation failed in pipeline:', err);
+      }
+
+      // Step 1b: Event grouping — consolidate 48h event groups after cluster aggregation
+      try {
+        const { eventGroups, ungrouped } = detectEventGroups(filteredAnomalies);
+        filteredAnomalies = [...ungrouped, ...eventGroups.map(g => g.alert)];
+
+        // Log activity for each detected event group
+        for (const group of eventGroups) {
+          try {
+            this._logActivity(
+              'event_group_detected',
+              'anomaly',
+              null,
+              'Detected ' + group.theme + ' event: ' + group.transactionCount + ' transactions totaling $' + group.totalAmount.toFixed(2),
+              {
+                event_theme: group.theme,
+                transaction_count: group.transactionCount,
+                total_amount: group.totalAmount,
+                date_range: { start: group.dateRange.start, end: group.dateRange.end }
+              }
+            );
+          } catch (logErr) {
+            logger.warn('Activity log failed for event group:', logErr);
+          }
+        }
+      } catch (err) {
+        logger.error('Event grouping failed in pipeline:', err);
+        // Continue with ungrouped set on failure
       }
 
       // Step 2: Benign pattern suppression
@@ -1736,6 +1792,197 @@ class AnomalyDetectionService {
 
   // ─── Filtering Pipeline Methods ──────────────────────────────────────
 
+  // ─── Alert_Builder Private Methods ─────────────────────────────────
+  // Generate plain-language summary, explanation, and typical range strings
+  // from enriched anomaly objects. These run after the enrichment phase and
+  // attach simplified fields for the frontend Alert_Card layout.
+
+  /**
+   * Generate a plain-language summary (≤40 chars) for the anomaly.
+   * Maps each of the 8 classification types to a human-readable template.
+   * @param {Object} anomaly - Enriched anomaly object
+   * @returns {string} Summary text, max 40 characters
+   * @private
+   */
+  _buildSummaryText(anomaly) {
+    const maxLen = ALERT_TEXT_LIMITS.SUMMARY_MAX_LENGTH;
+    const vendor = anomaly.place || '';
+    const category = anomaly.category || '';
+    let text;
+
+    switch (anomaly.classification) {
+      case ANOMALY_CLASSIFICATIONS.LARGE_TRANSACTION:
+        text = vendor ? `Large purchase at ${vendor}` : 'Unusual purchase size';
+        break;
+      case ANOMALY_CLASSIFICATIONS.NEW_SPENDING_TIER:
+        text = vendor ? `New spending level at ${vendor}` : 'New spending level';
+        break;
+      case ANOMALY_CLASSIFICATIONS.CATEGORY_SPENDING_SPIKE:
+        text = category ? `${category} spending spike` : 'Category spending spike';
+        break;
+      case ANOMALY_CLASSIFICATIONS.FREQUENCY_SPIKE:
+        text = vendor ? `Frequent visits to ${vendor}` : `${category} frequency up`;
+        break;
+      case ANOMALY_CLASSIFICATIONS.RECURRING_EXPENSE_INCREASE:
+        text = vendor ? `${vendor} cost changed` : 'Subscription price increased';
+        break;
+      case ANOMALY_CLASSIFICATIONS.EMERGING_BEHAVIOR_TREND:
+        text = category ? `${category} spending trend shift` : 'Spending trend shift';
+        break;
+      case ANOMALY_CLASSIFICATIONS.SEASONAL_DEVIATION:
+        text = category ? `${category} seasonal change` : 'Seasonal spending change';
+        break;
+      case ANOMALY_CLASSIFICATIONS.NEW_MERCHANT:
+        text = vendor ? `New merchant: ${vendor}` : 'New merchant detected';
+        break;
+      default:
+        text = 'Unusual activity detected';
+    }
+
+    if (text.length > maxLen) {
+      text = text.slice(0, maxLen - 1) + '\u2026';
+    }
+    return text;
+  }
+
+  /**
+   * Generate a jargon-free explanation (≤120 chars) for the anomaly.
+   * References typical spending without standard deviations, percentiles, or z-scores.
+   * @param {Object} anomaly - Enriched anomaly object
+   * @param {Object} baseline - Category baseline from calculateCategoryBaseline
+   * @returns {string} Explanation text, max 120 characters
+   * @private
+   */
+  _buildExplanationText(anomaly, baseline) {
+    const maxLen = ALERT_TEXT_LIMITS.EXPLANATION_MAX_LENGTH;
+    const vendor = anomaly.place || 'this merchant';
+    const category = anomaly.category || 'this category';
+    let text = '';
+
+    // Retrieve vendor baseline for vendor-specific explanations
+    const vendorKey = (anomaly.place || '').toLowerCase();
+    const vendorBaseline = this._vendorBaselineCache && vendorKey
+      ? this._vendorBaselineCache.get(vendorKey)
+      : null;
+
+    switch (anomaly.classification) {
+      case ANOMALY_CLASSIFICATIONS.LARGE_TRANSACTION: {
+        if (vendorBaseline && vendorBaseline.transactionCount >= 2) {
+          const min = Math.round(vendorBaseline.p25);
+          const max = Math.round(vendorBaseline.p75);
+          text = `Your typical ${vendor} transactions are $${min}\u2013$${max}.`;
+        } else {
+          text = `This purchase is higher than usual for ${category}.`;
+        }
+        break;
+      }
+      case ANOMALY_CLASSIFICATIONS.CATEGORY_SPENDING_SPIKE: {
+        const avg = baseline && baseline.mean ? Math.round(baseline.mean) : null;
+        text = avg
+          ? `You usually spend around $${avg}/mo on ${category}.`
+          : `${category} spending is higher than usual this month.`;
+        break;
+      }
+      case ANOMALY_CLASSIFICATIONS.RECURRING_EXPENSE_INCREASE: {
+        const prevAmount = anomaly.categoryAverage;
+        text = prevAmount
+          ? `This was $${Number(prevAmount).toFixed(2)} last month.`
+          : `${vendor} charges have increased recently.`;
+        break;
+      }
+      case ANOMALY_CLASSIFICATIONS.EMERGING_BEHAVIOR_TREND: {
+        text = `Your ${category} spending has been gradually increasing.`;
+        break;
+      }
+      case ANOMALY_CLASSIFICATIONS.NEW_SPENDING_TIER: {
+        if (vendorBaseline) {
+          const ratio = anomaly.amount / vendorBaseline.maxAmount;
+          text = ratio > 1
+            ? `This is ${ratio.toFixed(1)}\u00d7 more than your usual max at ${vendor}.`
+            : `New spending level detected at ${vendor}.`;
+        } else {
+          text = `New spending level detected at ${vendor}.`;
+        }
+        break;
+      }
+      case ANOMALY_CLASSIFICATIONS.FREQUENCY_SPIKE: {
+        if (vendorBaseline && vendorBaseline.avgDaysBetweenTransactions) {
+          const days = Math.round(vendorBaseline.avgDaysBetweenTransactions);
+          text = `You usually visit ${vendor} about once every ${days} days.`;
+        } else {
+          text = `You've been visiting ${vendor} more often than usual.`;
+        }
+        break;
+      }
+      case ANOMALY_CLASSIFICATIONS.SEASONAL_DEVIATION: {
+        text = `This month's ${category} spending differs from last year.`;
+        break;
+      }
+      case ANOMALY_CLASSIFICATIONS.NEW_MERCHANT: {
+        text = `First purchase at ${vendor}.`;
+        break;
+      }
+      default:
+        text = '';
+    }
+
+    if (text.length > maxLen) {
+      text = text.slice(0, maxLen - 1) + '\u2026';
+    }
+    return text;
+  }
+
+  /**
+   * Generate a human-readable typical range string, or null.
+   * Returns a range for Large_Transaction, Frequency_Spike,
+   * Recurring_Expense_Increase, New_Spending_Tier.
+   * Returns null for Emerging_Behavior_Trend, Category_Spending_Spike,
+   * Seasonal_Deviation, New_Merchant.
+   * @param {Object} anomaly - Enriched anomaly object
+   * @returns {string|null} Range string like "Typical purchase: $5–$59" or null
+   * @private
+   */
+  _buildTypicalRange(anomaly) {
+    const vendorKey = (anomaly.place || '').toLowerCase();
+    const vendorBaseline = this._vendorBaselineCache && vendorKey
+      ? this._vendorBaselineCache.get(vendorKey)
+      : null;
+
+    switch (anomaly.classification) {
+      case ANOMALY_CLASSIFICATIONS.LARGE_TRANSACTION:
+      case ANOMALY_CLASSIFICATIONS.NEW_SPENDING_TIER: {
+        if (vendorBaseline && vendorBaseline.transactionCount >= 2) {
+          const min = Math.round(vendorBaseline.p25);
+          const max = Math.round(vendorBaseline.p75);
+          return `Typical purchase: $${min}\u2013$${max}`;
+        }
+        return null;
+      }
+      case ANOMALY_CLASSIFICATIONS.FREQUENCY_SPIKE: {
+        if (vendorBaseline && vendorBaseline.avgDaysBetweenTransactions) {
+          const days = Math.round(vendorBaseline.avgDaysBetweenTransactions);
+          return `Typical frequency: every ${days} days`;
+        }
+        return null;
+      }
+      case ANOMALY_CLASSIFICATIONS.RECURRING_EXPENSE_INCREASE: {
+        const prevAmount = anomaly.categoryAverage;
+        if (prevAmount) {
+          return `Previous amount: $${Number(prevAmount).toFixed(2)}`;
+        }
+        return null;
+      }
+      case ANOMALY_CLASSIFICATIONS.EMERGING_BEHAVIOR_TREND:
+      case ANOMALY_CLASSIFICATIONS.CATEGORY_SPENDING_SPIKE:
+      case ANOMALY_CLASSIFICATIONS.SEASONAL_DEVIATION:
+      case ANOMALY_CLASSIFICATIONS.NEW_MERCHANT:
+      default:
+        return null;
+    }
+  }
+
+  // ─── Filtering Pipeline Methods ──────────────────────────────────────
+
   /**
    * Aggregate anomalies into cluster alerts when 3+ anomalous transactions
    * fall within a 7-day window and share a common category theme.
@@ -2300,8 +2547,8 @@ class AnomalyDetectionService {
       // Step 3: Enforce per-category cap (MAX_ALERTS_PER_CATEGORY_PER_MONTH)
       result = this._enforcePerCategoryCap(result);
 
-      // Step 4: Enforce global monthly cap (MAX_ALERTS_PER_MONTH)
-      result = this._enforceGlobalMonthlyCap(result);
+      // Step 4: Enforce alert limits (type-priority ordering, per-vendor + global caps)
+      result = this._enforceAlertLimits(result);
 
       return result;
     } catch (error) {
@@ -2505,13 +2752,24 @@ class AnomalyDetectionService {
 
   /**
    * Enforce a global monthly alert cap across all categories.
-   * Filters anomalies to the current calendar month, caps at MAX_ALERTS_PER_MONTH,
-   * keeping the highest severity (date desc tiebreaker). Prior-month anomalies pass through.
-   * @param {Array} anomalies
-   * @returns {Array}
+  // ─── Alert_Prioritizer ────────────────────────────────────────────────
+  // Type-priority ordering with deduplication, per-vendor cap, and global cap.
+
+  /**
+   * Enforce alert limits using type-priority ordering.
+   * Three steps:
+   *   1. Deduplicate same vendor+category+classification in current month
+   *   2. Per-vendor cap: max 1 alert per vendor per calendar month
+   *   3. Global cap: max 3 alerts per calendar month
+   *
+   * Prior-month anomalies pass through unaffected by all caps.
+   * Selection keeps highest type-priority, then severity, then most recent date.
+   *
+   * @param {Array} anomalies - Array of anomaly objects
+   * @returns {Array} Filtered anomaly array
    * @private
    */
-  _enforceGlobalMonthlyCap(anomalies) {
+  _enforceAlertLimits(anomalies) {
     if (!anomalies || anomalies.length === 0) {
       return anomalies || [];
     }
@@ -2535,26 +2793,84 @@ class AnomalyDetectionService {
       }
     }
 
-    // If current month is within cap, return all
-    if (currentMonth.length <= maxPerMonth) {
-      return [...currentMonth, ...priorMonths];
-    }
-
-    // Sort current-month by severity desc, then date desc
-    currentMonth.sort((a, b) => {
+    // Comparator: type-priority desc → severity desc → date desc (most recent first)
+    const compare = (a, b) => {
+      const typeDiff = (ALERT_TYPE_PRIORITY[b.classification] || 0) - (ALERT_TYPE_PRIORITY[a.classification] || 0);
+      if (typeDiff !== 0) { return typeDiff; }
       const sevDiff = (severityOrder[b.severity] || 0) - (severityOrder[a.severity] || 0);
       if (sevDiff !== 0) { return sevDiff; }
       return new Date(b.date) - new Date(a.date);
-    });
+    };
 
-    const kept = currentMonth.slice(0, maxPerMonth);
-    const dropped = currentMonth.slice(maxPerMonth);
+    // Step 1: Deduplicate same vendor+category+classification in current month
+    const dedupeGroups = {};
+    for (const anomaly of currentMonth) {
+      const vendor = (anomaly.place || '').toLowerCase();
+      const key = vendor + '::' + (anomaly.category || '') + '::' + (anomaly.classification || '');
+      if (!dedupeGroups[key]) { dedupeGroups[key] = []; }
+      dedupeGroups[key].push(anomaly);
+    }
+
+    let deduped = [];
+    for (const group of Object.values(dedupeGroups)) {
+      if (group.length <= 1) {
+        deduped.push(...group);
+        continue;
+      }
+      group.sort(compare);
+      deduped.push(group[0]);
+      for (let i = 1; i < group.length; i++) {
+        logger.debug('Deduplicated alert (same vendor+category+classification):', {
+          place: group[i].place,
+          category: group[i].category,
+          classification: group[i].classification,
+          date: group[i].date
+        });
+      }
+    }
+
+    // Step 2: Per-vendor cap — max 1 alert per vendor per calendar month
+    const vendorGroups = {};
+    for (const anomaly of deduped) {
+      const vendor = (anomaly.place || '').toLowerCase();
+      if (!vendorGroups[vendor]) { vendorGroups[vendor] = []; }
+      vendorGroups[vendor].push(anomaly);
+    }
+
+    let vendorCapped = [];
+    for (const group of Object.values(vendorGroups)) {
+      if (group.length <= 1) {
+        vendorCapped.push(...group);
+        continue;
+      }
+      group.sort(compare);
+      vendorCapped.push(group[0]);
+      for (let i = 1; i < group.length; i++) {
+        logger.debug('Dropped alert due to per-vendor monthly cap:', {
+          place: group[i].place,
+          category: group[i].category,
+          classification: group[i].classification,
+          date: group[i].date
+        });
+      }
+    }
+
+    // Step 3: Global cap — max 3 alerts per calendar month
+    if (vendorCapped.length <= maxPerMonth) {
+      return [...vendorCapped, ...priorMonths];
+    }
+
+    vendorCapped.sort(compare);
+    const kept = vendorCapped.slice(0, maxPerMonth);
+    const dropped = vendorCapped.slice(maxPerMonth);
 
     for (const d of dropped) {
-      logger.debug('Dropped alert due to global monthly cap:', {
+      logger.debug('Dropped alert due to global monthly cap (type-priority):', {
+        place: d.place,
         category: d.category,
-        date: d.date,
-        severity: d.severity
+        classification: d.classification,
+        severity: d.severity,
+        date: d.date
       });
     }
 

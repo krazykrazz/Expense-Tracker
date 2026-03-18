@@ -156,6 +156,37 @@ const CLUSTER_LABELS = {
 // Cluster gap multiplier for amount-based clustering (replaces hardcoded 1.8)
 const CLUSTER_GAP_MULTIPLIER = 1.8;
 
+// Alert type priority for Alert_Prioritizer (Req 8)
+// Higher number = higher priority when selecting which alerts to retain
+const ALERT_TYPE_PRIORITY = {
+  'New_Spending_Tier': 6,
+  'Category_Spending_Spike': 5,
+  'Emerging_Behavior_Trend': 4,
+  'Recurring_Expense_Increase': 3,
+  'Frequency_Spike': 2,
+  'Large_Transaction': 1,
+  'Seasonal_Deviation': 1,
+  'New_Merchant': 1
+};
+
+// Event grouping configuration (Req 10)
+const EVENT_GROUPING_CONFIG = {
+  WINDOW_HOURS: 48,
+  MIN_GROUP_SIZE: 2,
+  THEMES: {
+    TRAVEL: { label: 'Travel_Event', categories: ['Transportation', 'Accommodation', 'Dining', 'Gas', 'Parking'] },
+    MOVING: { label: 'Moving_Event', categories: ['Furniture', 'Home', 'Utilities', 'Moving'] },
+    HOME_PURCHASE: { label: 'Home_Purchase', categories: ['Home Improvement', 'Furniture', 'Appliances'] },
+    HOLIDAY: { label: 'Holiday_Spending', categories: ['Gifts', 'Dining', 'Entertainment'], monthConstraint: 12 }
+  }
+};
+
+// Alert text length limits (Req 2, 3)
+const ALERT_TEXT_LIMITS = {
+  SUMMARY_MAX_LENGTH: 40,
+  EXPLANATION_MAX_LENGTH: 120
+};
+
 module.exports = {
   ANALYTICS_CONFIG,
   PATTERN_FREQUENCIES,
@@ -169,5 +200,8 @@ module.exports = {
   SUPPRESSION_CONFIG,
   THROTTLE_CONFIG,
   CLUSTER_LABELS,
-  CLUSTER_GAP_MULTIPLIER
+  CLUSTER_GAP_MULTIPLIER,
+  ALERT_TYPE_PRIORITY,
+  EVENT_GROUPING_CONFIG,
+  ALERT_TEXT_LIMITS
 };

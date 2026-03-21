@@ -175,18 +175,9 @@ async function getSeasonalAnalysis(req, res) {
  */
 async function getMonthPrediction(req, res) {
   try {
-    const { year, month } = req.params;
-    
-    // Validate year and month
-    const yearInt = parseInt(year);
-    const monthInt = parseInt(month);
-    
-    if (isNaN(yearInt) || yearInt < 2000 || yearInt > 2100) {
-      return res.status(400).json({ error: 'Invalid year. Must be between 2000 and 2100' });
-    }
-    if (isNaN(monthInt) || monthInt < 1 || monthInt > 12) {
-      return res.status(400).json({ error: 'Invalid month. Must be between 1 and 12' });
-    }
+    const parsed = _parseYearMonth(req, res);
+    if (!parsed) return;
+    const { yearInt, monthInt } = parsed;
     
     const prediction = await predictionService.getMonthEndPrediction(yearInt, monthInt);
     
@@ -212,18 +203,9 @@ async function getMonthPrediction(req, res) {
  */
 async function getHistoricalComparison(req, res) {
   try {
-    const { year, month } = req.params;
-    
-    // Validate year and month
-    const yearInt = parseInt(year);
-    const monthInt = parseInt(month);
-    
-    if (isNaN(yearInt) || yearInt < 2000 || yearInt > 2100) {
-      return res.status(400).json({ error: 'Invalid year. Must be between 2000 and 2100' });
-    }
-    if (isNaN(monthInt) || monthInt < 1 || monthInt > 12) {
-      return res.status(400).json({ error: 'Invalid month. Must be between 1 and 12' });
-    }
+    const parsed = _parseYearMonth(req, res);
+    if (!parsed) return;
+    const { yearInt, monthInt } = parsed;
     
     const comparison = await predictionService.compareToHistorical(yearInt, monthInt);
     
@@ -337,17 +319,9 @@ async function dismissAnomaly(req, res) {
  */
 async function getMonthlySummary(req, res) {
   try {
-    const { year, month } = req.params;
-
-    const yearInt = parseInt(year);
-    const monthInt = parseInt(month);
-
-    if (isNaN(yearInt) || yearInt < 2000 || yearInt > 2100) {
-      return res.status(400).json({ error: 'Invalid year. Must be between 2000 and 2100' });
-    }
-    if (isNaN(monthInt) || monthInt < 1 || monthInt > 12) {
-      return res.status(400).json({ error: 'Invalid month. Must be between 1 and 12' });
-    }
+    const parsed = _parseYearMonth(req, res);
+    if (!parsed) return;
+    const { yearInt, monthInt } = parsed;
 
     const summary = await monthlySummaryService.getMonthlySummary(yearInt, monthInt);
     res.json(summary);
@@ -363,17 +337,9 @@ async function getMonthlySummary(req, res) {
  */
 async function getTrends(req, res) {
   try {
-    const { year, month } = req.params;
-
-    const yearInt = parseInt(year);
-    const monthInt = parseInt(month);
-
-    if (isNaN(yearInt) || yearInt < 2000 || yearInt > 2100) {
-      return res.status(400).json({ error: 'Invalid year. Must be between 2000 and 2100' });
-    }
-    if (isNaN(monthInt) || monthInt < 1 || monthInt > 12) {
-      return res.status(400).json({ error: 'Invalid month. Must be between 1 and 12' });
-    }
+    const parsed = _parseYearMonth(req, res);
+    if (!parsed) return;
+    const { yearInt, monthInt } = parsed;
 
     const trends = await trendsService.getTrends(yearInt, monthInt);
     res.json(trends);
@@ -389,17 +355,9 @@ async function getTrends(req, res) {
  */
 async function getActivityInsights(req, res) {
   try {
-    const { year, month } = req.params;
-
-    const yearInt = parseInt(year);
-    const monthInt = parseInt(month);
-
-    if (isNaN(yearInt) || yearInt < 2000 || yearInt > 2100) {
-      return res.status(400).json({ error: 'Invalid year. Must be between 2000 and 2100' });
-    }
-    if (isNaN(monthInt) || monthInt < 1 || monthInt > 12) {
-      return res.status(400).json({ error: 'Invalid month. Must be between 1 and 12' });
-    }
+    const parsed = _parseYearMonth(req, res);
+    if (!parsed) return;
+    const { yearInt, monthInt } = parsed;
 
     const insights = await activityInsightsService.getActivityInsights(yearInt, monthInt);
     res.json(insights);
@@ -481,6 +439,28 @@ async function deleteSuppressionRule(req, res) {
 }
 
 // Helper functions
+
+/**
+ * Parse and validate year/month route params.
+ * Returns { yearInt, monthInt } on success, or sends a 400 response and returns null.
+ * @param {object} req - Express request
+ * @param {object} res - Express response
+ * @returns {{ yearInt: number, monthInt: number } | null}
+ */
+function _parseYearMonth(req, res) {
+  const yearInt = parseInt(req.params.year);
+  const monthInt = parseInt(req.params.month);
+
+  if (isNaN(yearInt) || yearInt < 2000 || yearInt > 2100) {
+    res.status(400).json({ error: 'Invalid year. Must be between 2000 and 2100' });
+    return null;
+  }
+  if (isNaN(monthInt) || monthInt < 1 || monthInt > 12) {
+    res.status(400).json({ error: 'Invalid month. Must be between 1 and 12' });
+    return null;
+  }
+  return { yearInt, monthInt };
+}
 
 /**
  * Validate date string format (YYYY-MM-DD)

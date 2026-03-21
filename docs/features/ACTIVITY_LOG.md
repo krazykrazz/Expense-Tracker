@@ -181,6 +181,7 @@ Update events include detailed change tracking showing old → new values for mo
 | `anomaly_dismissed` | anomaly | Anomaly dismissed by user (includes anomaly_type, classification) |
 | `anomaly_marked_expected` | anomaly | Anomaly marked as expected, suppression rule created (includes anomaly_type, classification, suppression_rule_id) |
 | `suppression_rule_deleted` | anomaly | Anomaly suppression rule deleted (includes rule_type, merchant_name) |
+| `event_group_detected` | anomaly | Life-event group detected during anomaly detection (includes event_theme, transaction_count, total_amount, date_range) |
 | `backup_created` | system | Database backup created |
 | `backup_restored` | system | Database backup restored |
 | `version_upgraded` | system | Application version upgrade detected on startup (includes old_version, new_version) |
@@ -315,6 +316,7 @@ Activity log events include rich metadata to provide complete audit context:
 - `anomaly_dismissed`: `{ anomaly_type: "amount"|"new_merchant"|"daily_total", classification: "Large_Transaction"|"Category_Spending_Spike"|"New_Merchant"|"Frequency_Spike"|"Recurring_Expense_Increase"|"Seasonal_Deviation"|"Emerging_Behavior_Trend", expense_id: number, merchant: string, amount: number }`
 - `anomaly_marked_expected`: `{ anomaly_type: "amount"|"new_merchant"|"daily_total", classification: "Large_Transaction"|"Category_Spending_Spike"|"New_Merchant"|"Frequency_Spike"|"Recurring_Expense_Increase"|"Seasonal_Deviation"|"Emerging_Behavior_Trend", expense_id: number, merchant: string, amount: number, suppression_rule_id: number }`
 - `suppression_rule_deleted`: `{ rule_id: number, rule_type: "merchant_amount"|"merchant_category"|"specific_date", merchant_name: string }`
+- `event_group_detected`: `{ event_theme: "Travel_Event"|"Moving_Event"|"Home_Purchase_Event"|"Holiday_Spending", transaction_count: number, total_amount: number, date_range: { start: string, end: string } }`
 - The `anomaly_type` field is the legacy type (`amount`, `new_merchant`, `daily_total`) preserved for backward compatibility
 - The `classification` field is the expanded classification from `ANOMALY_CLASSIFICATIONS`:
   - `Large_Transaction` — single expense exceeds 3 standard deviations above category average

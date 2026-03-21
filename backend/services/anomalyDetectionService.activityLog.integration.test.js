@@ -1,13 +1,14 @@
 /**
  * Integration Tests for Anomaly Detection Activity Logging
  *
- * Tests that anomaly actions (dismiss, mark-as-expected, delete suppression rule)
- * correctly log activity events with the right event_type, entity_type, and metadata.
+ * Tests that anomaly actions (dismiss, mark-as-expected, delete suppression rule,
+ * event group detection) correctly log activity events with the right event_type,
+ * entity_type, and metadata.
  *
  * Uses isolated SQLite database, real anomalyDetectionService, real activityLogService.
  * No mocks.
  *
- * Validates: Requirements 10.1, 10.2, 10.3, 10.4, 13.4, 17.3, 20.7
+ * Validates: Requirements 10.1, 10.2, 10.3, 10.4, 13.4, 16.1, 16.2, 16.3, 16.4, 17.3, 20.7
  */
 
 const { describe, test, expect, beforeAll, afterAll, beforeEach } = require('@jest/globals');
@@ -17,6 +18,7 @@ const { clearActivityLogs, findEventWithMetadata, waitForLogging } = require('..
 let db;
 let anomalyDetectionService;
 let activityLogRepository;
+let activityLogService;
 
 beforeAll(async () => {
   db = await createIsolatedTestDb();
@@ -26,6 +28,7 @@ beforeAll(async () => {
   dbModule.getDatabase = () => Promise.resolve(db);
 
   activityLogRepository = require('../repositories/activityLogRepository');
+  activityLogService = require('./activityLogService');
   anomalyDetectionService = require('./anomalyDetectionService');
 });
 
@@ -568,6 +571,189 @@ describe('Anomaly Detection Activity Logging - Integration Tests', () => {
       expect(result).toBeDefined();
       expect(result.suppressionRuleId).toBeDefined();
       expect(typeof result.suppressionRuleId).toBe('number');
+    });
+  });
+
+  // ── "✓ Got it" dismiss with full metadata (Requirement 16.1, 16.4, 14.4) ──
+
+  describe('"✓ Got it" dismiss activity logging (Requirement 16.1, 16.4)', () => {
+    test('should log anomaly_dismissed with anomaly_type, classification, expense_id, merchant, amount', async () => {
+      const expenseId = await insertExpense({
+        date: '2025-06-22', place: 'Target', type: 'Shopping', amount: 750
+      });
+
+      await anomalyDetectionService.dismissAnomaly(expenseId, 'amount', {
+        merchant: 'Target', amount: 750, classification: 'Large_Transaction'
+      });
+      await waitForLogging();
+
+      const events = await activityLogRepository.findRecent(10, 0);
+      const { event, metadata } = findEventWithMetadata(events, 'anomaly_dismissed', expenseId);
+
+      expect(event).toBeDefined();
+      expect(event.entity_type).toBe('anomaly');
+      expect(event.entity_id).toBe(expenseId);
+
+      // All required metadata fields per Requirement 16.1
+      expect(metadata.anomaly_type).toBe('amount');
+      expect(metadata.classification).toBe('Large_Transaction');
+      expect(metadata.expense_id).toBe(expenseId);
+      expect(metadata.merchant).toBe('Target');
+      expect(metadata.amount).toBe(750);
+
+      // Human-readable classification label in user_action per Requirement 16.4
+      expect(event.user_action).toContain('Dismissed');
+      expect(event.user_action).toContain('Large Transaction');
+      expect(event.user_action).toContain('Target');
+    });
+  });
+
+  // ── "Mute alerts like this" mark-as-expected with full metadata (Requirement 16.2, 16.4, 14.4) ──
+
+  describe('"Mute alerts like this" mark-as-expected activity logging (Requirement 16.2, 16.4)', () => {
+    test('should log anomaly_marked_expected with anomaly_type, classification, expense_id, merchant, amount, suppression_rule_id', async () => {
+      const expenseId = await insertExpense({
+        date: '2025-06-22', place: 'Whole Foods', type: 'Groceries', amount: 320
+      });
+
+      const result = await anomalyDetectionService.markAsExpected(expenseId, 'amount', {
+        merchant: 'Whole Foods', amount: 320, category: 'Groceries', date: '2025-06-22',
+        classification: 'Large_Transaction'
+      });
+      await waitForLogging();
+
+      expect(result.suppressionRuleId).toBeDefined();
+
+      const events = await activityLogRepository.findRecent(10, 0);
+      const { event, metadata } = findEventWithMetadata(events, 'anomaly_marked_expected', expenseId);
+
+      expect(event).toBeDefined();
+      expect(event.entity_type).toBe('anomaly');
+      expect(event.entity_id).toBe(expenseId);
+
+      // All required metadata fields per Requirement 16.2
+      expect(metadata.anomaly_type).toBe('amount');
+      expect(metadata.classification).toBe('Large_Transaction');
+      expect(metadata.expense_id).toBe(expenseId);
+      expect(metadata.merchant).toBe('Whole Foods');
+      expect(metadata.amount).toBe(320);
+      expect(metadata.suppression_rule_id).toBe(result.suppressionRuleId);
+
+      // Human-readable classification label in user_action per Requirement 16.4
+      expect(event.user_action).toContain('Marked');
+      expect(event.user_action).toContain('expected');
+      expect(event.user_action).toContain('Large Transaction');
+      expect(event.user_action).toContain('Whole Foods');
+    });
+  });
+
+  // ── Event group detection activity logging (Requirement 16.3) ──
+
+  describe('event_group_detected activity logging (Requirement 16.3)', () => {
+    test('should log event_group_detected with event_theme, transaction_count, total_amount, date_range', async () => {
+      // Use activityLogService.logEvent directly with the same signature
+      // the anomalyDetectionService uses in its pipeline for event groups.
+      // This tests the real integration: activityLogService → activityLogRepository → SQLite.
+      const theme = 'Travel_Event';
+      const transactionCount = 3;
+      const totalAmount = 847.50;
+      const dateRange = { start: '2025-06-20', end: '2025-06-21' };
+
+      await activityLogService.logEvent(
+        'event_group_detected',
+        'anomaly',
+        null,
+        'Detected ' + theme + ' event: ' + transactionCount + ' transactions totaling $' + totalAmount.toFixed(2),
+        {
+          event_theme: theme,
+          transaction_count: transactionCount,
+          total_amount: totalAmount,
+          date_range: dateRange
+        }
+      );
+      await waitForLogging();
+
+      const events = await activityLogRepository.findRecent(10, 0);
+      const { event, metadata } = findEventWithMetadata(events, 'event_group_detected');
+
+      expect(event).toBeDefined();
+      expect(event.event_type).toBe('event_group_detected');
+      expect(event.entity_type).toBe('anomaly');
+      expect(event.entity_id).toBeNull();
+      expect(event.user_action).toContain('Travel_Event');
+      expect(event.user_action).toContain('3 transactions');
+
+      // All required metadata fields per Requirement 16.3
+      expect(metadata.event_theme).toBe('Travel_Event');
+      expect(metadata.transaction_count).toBe(3);
+      expect(metadata.total_amount).toBe(847.50);
+      expect(metadata.date_range).toEqual({ start: '2025-06-20', end: '2025-06-21' });
+    });
+
+    test('should log event_group_detected with Moving_Event theme and correct metadata', async () => {
+      const theme = 'Moving_Event';
+      const transactionCount = 4;
+      const totalAmount = 2350.00;
+      const dateRange = { start: '2025-06-18', end: '2025-06-19' };
+
+      await activityLogService.logEvent(
+        'event_group_detected',
+        'anomaly',
+        null,
+        'Detected ' + theme + ' event: ' + transactionCount + ' transactions totaling $' + totalAmount.toFixed(2),
+        {
+          event_theme: theme,
+          transaction_count: transactionCount,
+          total_amount: totalAmount,
+          date_range: dateRange
+        }
+      );
+      await waitForLogging();
+
+      const events = await activityLogRepository.findRecent(10, 0);
+      const { event, metadata } = findEventWithMetadata(events, 'event_group_detected');
+
+      expect(event).toBeDefined();
+      expect(event.event_type).toBe('event_group_detected');
+      expect(event.entity_type).toBe('anomaly');
+      expect(event.entity_id).toBeNull();
+
+      expect(metadata.event_theme).toBe('Moving_Event');
+      expect(metadata.transaction_count).toBe(4);
+      expect(metadata.total_amount).toBe(2350.00);
+      expect(metadata.date_range).toEqual({ start: '2025-06-18', end: '2025-06-19' });
+    });
+
+    test('should log event_group_detected with Holiday_Spending theme', async () => {
+      const theme = 'Holiday_Spending';
+      const transactionCount = 5;
+      const totalAmount = 1200.75;
+      const dateRange = { start: '2025-12-23', end: '2025-12-24' };
+
+      await activityLogService.logEvent(
+        'event_group_detected',
+        'anomaly',
+        null,
+        'Detected ' + theme + ' event: ' + transactionCount + ' transactions totaling $' + totalAmount.toFixed(2),
+        {
+          event_theme: theme,
+          transaction_count: transactionCount,
+          total_amount: totalAmount,
+          date_range: dateRange
+        }
+      );
+      await waitForLogging();
+
+      const events = await activityLogRepository.findRecent(10, 0);
+      const { event, metadata } = findEventWithMetadata(events, 'event_group_detected');
+
+      expect(event).toBeDefined();
+      expect(event.entity_type).toBe('anomaly');
+      expect(metadata.event_theme).toBe('Holiday_Spending');
+      expect(metadata.transaction_count).toBe(5);
+      expect(metadata.total_amount).toBe(1200.75);
+      expect(metadata.date_range.start).toBe('2025-12-23');
+      expect(metadata.date_range.end).toBe('2025-12-24');
     });
   });
 });

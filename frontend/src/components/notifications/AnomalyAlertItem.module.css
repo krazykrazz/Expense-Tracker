@@ -1,9 +1,9 @@
 /**
  * AnomalyAlertItem CSS Module
- * Enhanced anomaly alert card with structured sections
- * Migrated from AnomalyAlertItem.css to CSS Module format
- * Uses CSS variables from variables.css for consistency
- * _Requirements: 18.1, 12.4_
+ * Simplified anomaly alert card with severity border, badges, details toggle,
+ * and "Got it" / "Mute" actions. Supports legacy layout for backward compat.
+ * Uses CSS variables from variables.css for consistency.
+ * _Requirements: 4.1–4.8, 5.1–5.5, 11.3, 11.5, 15.6, 17.1–17.3_
  */
 
 /* ============================================
@@ -141,45 +141,6 @@
 }
 
 /* ============================================
-   CLASSIFICATION BADGE COLORS (7 anomaly types)
-   ============================================ */
-
-.classLargeTransaction {
-  background-color: rgba(239, 68, 68, 0.15);
-  color: #dc2626;
-}
-
-.classCategorySpendingSpike {
-  background-color: rgba(249, 115, 22, 0.15);
-  color: #ea580c;
-}
-
-.classNewMerchant {
-  background-color: rgba(14, 165, 233, 0.15);
-  color: #0284c7;
-}
-
-.classFrequencySpike {
-  background-color: rgba(168, 85, 247, 0.15);
-  color: #9333ea;
-}
-
-.classRecurringExpenseIncrease {
-  background-color: rgba(20, 184, 166, 0.15);
-  color: #0d9488;
-}
-
-.classSeasonalDeviation {
-  background-color: rgba(34, 197, 94, 0.15);
-  color: #16a34a;
-}
-
-.classEmergingBehaviorTrend {
-  background-color: rgba(99, 102, 241, 0.15);
-  color: #4f46e5;
-}
-
-/* ============================================
    AMOUNT
    ============================================ */
 
@@ -199,69 +160,6 @@
   font-size: var(--caption-text-lg, 13px);
   color: var(--text-secondary, #475569);
   line-height: var(--body-line-height, 1.5);
-}
-
-/* ============================================
-   SECTION STYLES (explanation, historical, impact, footer)
-   ============================================ */
-
-.explanationSection {
-  margin-top: var(--spacing-2, 8px);
-  padding: var(--spacing-2, 8px) var(--spacing-3, 12px);
-  background: rgba(245, 158, 11, 0.06);
-  border-radius: var(--radius-sm, 6px);
-  border-left: 3px solid var(--color-warning, #f59e0b);
-  font-size: var(--caption-text-lg, 13px);
-  line-height: var(--body-line-height, 1.5);
-  color: var(--text-secondary, #475569);
-}
-
-.historicalSection {
-  margin-top: var(--spacing-2, 8px);
-  padding: var(--spacing-2, 8px) var(--spacing-3, 12px);
-  background: rgba(14, 165, 233, 0.05);
-  border-radius: var(--radius-sm, 6px);
-  font-size: var(--caption-text-lg, 13px);
-  line-height: var(--body-line-height, 1.5);
-  color: var(--text-secondary, #475569);
-}
-
-.impactSection {
-  margin-top: var(--spacing-2, 8px);
-  padding: var(--spacing-2, 8px) var(--spacing-3, 12px);
-  background: rgba(239, 68, 68, 0.05);
-  border-radius: var(--radius-sm, 6px);
-  font-size: var(--caption-text-lg, 13px);
-  line-height: var(--body-line-height, 1.5);
-  color: var(--text-secondary, #475569);
-}
-
-.footerSection {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--element-gap, 8px);
-  margin-top: var(--spacing-2, 8px);
-  padding-top: var(--spacing-2, 8px);
-  border-top: 1px solid rgba(245, 158, 11, 0.2);
-  flex-wrap: wrap;
-}
-
-.sectionLabel {
-  display: block;
-  font-size: var(--caption-text, 12px);
-  font-weight: var(--font-semibold, 600);
-  color: var(--text-tertiary, #64748b);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  margin-bottom: var(--spacing-1, 4px);
-}
-
-.sectionValue {
-  font-size: var(--caption-text-lg, 13px);
-  color: var(--text-primary, #0f172a);
-  font-family: var(--font-tabular);
-  font-feature-settings: var(--font-feature-tabular);
 }
 
 /* ============================================
@@ -311,175 +209,162 @@
 }
 
 /* ============================================
-   CLUSTER ALERT STYLES
+   DETAILS PANEL & SEVERITY TEXT
    ============================================ */
 
-.clusterAlert {
-  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-  border-color: var(--color-primary, #0ea5e9);
-}
-
-.clusterAlert:hover {
-  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.2);
-}
-
-.clusterHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--element-gap, 8px);
-  width: 100%;
-}
-
-.clusterToggle {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spacing-1, 4px);
-  padding: var(--spacing-1, 4px) var(--spacing-2, 8px);
-  border: 1px solid var(--border-default, #e2e8f0);
-  border-radius: var(--radius-sm, 6px);
-  background: var(--bg-card, #ffffff);
-  color: var(--text-secondary, #475569);
+.severityText {
   font-size: var(--caption-text, 12px);
   font-weight: var(--font-medium, 500);
+  color: var(--text-tertiary, #64748b);
+  margin-top: var(--spacing-1, 4px);
+}
+
+.detailsToggle {
+  font-size: var(--caption-text, 12px);
+  color: var(--text-tertiary, #64748b);
   cursor: pointer;
-  transition: var(--transition-button);
+  background: none;
+  border: none;
+  padding: var(--spacing-1, 4px) 0;
+  text-align: left;
 }
 
-.clusterToggle:hover {
+.detailsToggle:hover {
+  color: var(--text-secondary, #475569);
+}
+
+.detailsToggle:focus-visible {
+  outline: 2px solid var(--color-primary, #0ea5e9);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm, 6px);
+}
+
+.detailsPanel {
+  padding: var(--spacing-2, 8px) var(--spacing-3, 12px);
   background: var(--bg-muted, #f1f5f9);
-  border-color: var(--border-strong, #cbd5e1);
-}
-
-.clusterTransactions {
-  margin-top: var(--spacing-2, 8px);
-  padding: var(--spacing-2, 8px) 0;
-  border-top: 1px solid rgba(14, 165, 233, 0.15);
+  border-radius: var(--radius-sm, 6px);
+  font-size: var(--caption-text, 12px);
+  color: var(--text-secondary, #475569);
+  margin-top: var(--spacing-1, 4px);
   display: flex;
   flex-direction: column;
   gap: var(--spacing-1, 4px);
 }
 
-.clusterTransaction {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--spacing-1, 4px) var(--spacing-2, 8px);
+/* ============================================
+   SIMPLIFIED CARD ACTION BUTTONS
+   ============================================ */
+
+.gotItBtn {
+  background: var(--color-primary, #0ea5e9);
+  color: #ffffff;
+  border: none;
+  padding: var(--spacing-1, 4px) var(--spacing-4, 16px);
   border-radius: var(--radius-sm, 6px);
-  background: rgba(255, 255, 255, 0.6);
-  font-size: var(--caption-text-lg, 13px);
-  color: var(--text-secondary, #475569);
-}
-
-/* ============================================
-   CONFIDENCE INDICATOR
-   ============================================ */
-
-.confidenceIndicator {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spacing-1, 4px);
-  font-size: var(--caption-text, 12px);
   font-weight: var(--font-medium, 500);
+  font-size: var(--caption-text-lg, 13px);
+  cursor: pointer;
+  transition: var(--transition-button);
+}
+
+.gotItBtn:hover:not(:disabled) {
+  background: var(--color-primary-hover, #0284c7);
+}
+
+.gotItBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.gotItBtn:focus-visible {
+  outline: 2px solid var(--color-primary, #0ea5e9);
+  outline-offset: 2px;
+}
+
+.muteLink {
+  font-size: var(--caption-text, 12px);
   color: var(--text-tertiary, #64748b);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: var(--spacing-1, 4px) 0;
 }
 
-.confidenceHigh {
-  color: var(--color-positive-dark, #16a34a);
+.muteLink:hover:not(:disabled) {
+  color: var(--text-secondary, #475569);
 }
 
-.confidenceHigh::before {
-  content: '';
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  border-radius: var(--radius-full, 9999px);
-  background-color: var(--color-positive, #22c55e);
+.muteLink:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
-.confidenceMedium {
-  color: var(--color-warning-dark, #d97706);
-}
-
-.confidenceMedium::before {
-  content: '';
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  border-radius: var(--radius-full, 9999px);
-  background-color: var(--color-warning, #f59e0b);
-}
-
-.confidenceLow {
-  color: var(--text-tertiary, #64748b);
-}
-
-.confidenceLow::before {
-  content: '';
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  border-radius: var(--radius-full, 9999px);
-  background-color: var(--text-muted, #94a3b8);
+.muteLink:focus-visible {
+  outline: 2px solid var(--color-primary, #0ea5e9);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm, 6px);
 }
 
 /* ============================================
-   DRIFT ALERT STYLES
+   SEVERITY BORDER ACCENT
    ============================================ */
 
-.driftAlert {
-  background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
-  border-color: #6366f1;
+.severityLow {
+  border-left: 4px solid var(--text-muted, #94a3b8);
 }
 
-.driftAlert:hover {
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+.severityMedium {
+  border-left: 4px solid var(--color-warning, #f59e0b);
 }
 
-.driftPeriods {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-3, 12px);
-  margin-top: var(--spacing-1, 4px);
+.severityHigh {
+  border-left: 4px solid var(--color-negative, #ef4444);
+}
+
+/* ============================================
+   SIMPLIFIED CARD TEXT STYLES
+   ============================================ */
+
+.summaryText {
+  font-weight: var(--font-semibold, 600);
+  font-size: var(--body-text, 14px);
+  color: var(--text-primary, #0f172a);
+}
+
+.explanationText {
   font-size: var(--caption-text-lg, 13px);
   color: var(--text-secondary, #475569);
+  line-height: var(--body-line-height, 1.5);
+}
+
+.typicalRange {
+  font-size: var(--caption-text, 12px);
+  color: var(--text-tertiary, #64748b);
   font-family: var(--font-tabular);
   font-feature-settings: var(--font-feature-tabular);
 }
 
 /* ============================================
-   BUDGET SUGGESTION STYLES
+   BADGE ROW (classification + confidence)
    ============================================ */
 
-.budgetSuggestion {
-  margin-top: var(--spacing-2, 8px);
-  padding: var(--spacing-2, 8px) var(--spacing-3, 12px);
-  background: rgba(99, 102, 241, 0.08);
-  border-radius: var(--radius-sm, 6px);
-  border: 1px dashed rgba(99, 102, 241, 0.3);
-  font-size: var(--caption-text-lg, 13px);
-  line-height: var(--body-line-height, 1.5);
-  color: var(--text-secondary, #475569);
+.badgeRow {
+  display: flex;
+  align-items: center;
+  gap: var(--element-gap, 8px);
+  margin-top: var(--spacing-1, 4px);
 }
 
-.budgetSuggestionAction {
+.badge {
   display: inline-flex;
   align-items: center;
-  gap: var(--spacing-1, 4px);
-  margin-top: var(--spacing-1, 4px);
-  padding: var(--spacing-1, 4px) var(--spacing-2, 8px);
-  border-radius: var(--radius-sm, 6px);
-  background: #6366f1;
-  color: #ffffff;
-  font-size: var(--caption-text, 12px);
+  padding: 2px 6px;
+  border-radius: var(--radius-full, 9999px);
+  font-size: var(--caption-text-sm, 11px);
   font-weight: var(--font-medium, 500);
-  border: none;
-  cursor: pointer;
-  transition: var(--transition-button);
-}
-
-.budgetSuggestionAction:hover {
-  background: #4f46e5;
+  background: var(--bg-muted, #f1f5f9);
+  color: var(--text-tertiary, #64748b);
 }
 
 /* ============================================
@@ -513,58 +398,67 @@
   background: rgba(255, 255, 255, 0.1);
 }
 
-:global(.theme-dark) .explanationSection {
-  background: rgba(245, 158, 11, 0.1);
-  color: #fde68a;
-}
-
-:global(.theme-dark) .historicalSection {
-  background: rgba(14, 165, 233, 0.1);
-  color: #bae6fd;
-}
-
-:global(.theme-dark) .impactSection {
-  background: rgba(239, 68, 68, 0.1);
-  color: #fecaca;
-}
-
-:global(.theme-dark) .footerSection {
-  border-top-color: rgba(245, 158, 11, 0.3);
-}
-
-:global(.theme-dark) .sectionLabel {
+:global(.theme-dark) .severityText {
   color: #94a3b8;
 }
 
-:global(.theme-dark) .sectionValue {
+:global(.theme-dark) .detailsToggle {
+  color: #94a3b8;
+}
+
+:global(.theme-dark) .detailsToggle:hover {
+  color: #bae6fd;
+}
+
+:global(.theme-dark) .detailsPanel {
+  background: rgba(255, 255, 255, 0.06);
+  color: #bae6fd;
+}
+
+:global(.theme-dark) .gotItBtn {
+  background: var(--color-primary, #0ea5e9);
+  color: #ffffff;
+}
+
+:global(.theme-dark) .gotItBtn:hover:not(:disabled) {
+  background: var(--color-primary-hover, #0284c7);
+}
+
+:global(.theme-dark) .muteLink {
+  color: #94a3b8;
+}
+
+:global(.theme-dark) .muteLink:hover:not(:disabled) {
+  color: #bae6fd;
+}
+
+:global(.theme-dark) .summaryText {
   color: #fef3c7;
 }
 
-:global(.theme-dark) .clusterAlert {
-  background: linear-gradient(135deg, #1e3a5f 0%, #172554 100%);
-  border-color: var(--color-primary, #0ea5e9);
+:global(.theme-dark) .explanationText {
+  color: #fde68a;
 }
 
-:global(.theme-dark) .clusterTransaction {
+:global(.theme-dark) .typicalRange {
+  color: #94a3b8;
+}
+
+:global(.theme-dark) .badge {
   background: rgba(255, 255, 255, 0.08);
-  color: #bae6fd;
+  color: #94a3b8;
 }
 
-:global(.theme-dark) .clusterToggle {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.15);
-  color: #bae6fd;
+:global(.theme-dark) .severityLow {
+  border-left-color: #64748b;
 }
 
-:global(.theme-dark) .driftAlert {
-  background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
-  border-color: #818cf8;
+:global(.theme-dark) .severityMedium {
+  border-left-color: #d97706;
 }
 
-:global(.theme-dark) .budgetSuggestion {
-  background: rgba(99, 102, 241, 0.15);
-  border-color: rgba(99, 102, 241, 0.4);
-  color: #c7d2fe;
+:global(.theme-dark) .severityHigh {
+  border-left-color: #dc2626;
 }
 
 /* ============================================
@@ -599,58 +493,67 @@
     background: rgba(255, 255, 255, 0.1);
   }
 
-  .explanationSection {
-    background: rgba(245, 158, 11, 0.1);
-    color: #fde68a;
-  }
-
-  .historicalSection {
-    background: rgba(14, 165, 233, 0.1);
-    color: #bae6fd;
-  }
-
-  .impactSection {
-    background: rgba(239, 68, 68, 0.1);
-    color: #fecaca;
-  }
-
-  .footerSection {
-    border-top-color: rgba(245, 158, 11, 0.3);
-  }
-
-  .sectionLabel {
+  .severityText {
     color: #94a3b8;
   }
 
-  .sectionValue {
+  .detailsToggle {
+    color: #94a3b8;
+  }
+
+  .detailsToggle:hover {
+    color: #bae6fd;
+  }
+
+  .detailsPanel {
+    background: rgba(255, 255, 255, 0.06);
+    color: #bae6fd;
+  }
+
+  .gotItBtn {
+    background: var(--color-primary, #0ea5e9);
+    color: #ffffff;
+  }
+
+  .gotItBtn:hover:not(:disabled) {
+    background: var(--color-primary-hover, #0284c7);
+  }
+
+  .muteLink {
+    color: #94a3b8;
+  }
+
+  .muteLink:hover:not(:disabled) {
+    color: #bae6fd;
+  }
+
+  .summaryText {
     color: #fef3c7;
   }
 
-  .clusterAlert {
-    background: linear-gradient(135deg, #1e3a5f 0%, #172554 100%);
-    border-color: var(--color-primary, #0ea5e9);
+  .explanationText {
+    color: #fde68a;
   }
 
-  .clusterTransaction {
+  .typicalRange {
+    color: #94a3b8;
+  }
+
+  .badge {
     background: rgba(255, 255, 255, 0.08);
-    color: #bae6fd;
+    color: #94a3b8;
   }
 
-  .clusterToggle {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(255, 255, 255, 0.15);
-    color: #bae6fd;
+  .severityLow {
+    border-left-color: #64748b;
   }
 
-  .driftAlert {
-    background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
-    border-color: #818cf8;
+  .severityMedium {
+    border-left-color: #d97706;
   }
 
-  .budgetSuggestion {
-    background: rgba(99, 102, 241, 0.15);
-    border-color: rgba(99, 102, 241, 0.4);
-    color: #c7d2fe;
+  .severityHigh {
+    border-left-color: #dc2626;
   }
 }
 
@@ -661,8 +564,9 @@
 @media (prefers-reduced-motion: reduce) {
   .alertItem,
   .actionBtn,
-  .clusterToggle,
-  .budgetSuggestionAction {
+  .detailsToggle,
+  .gotItBtn,
+  .muteLink {
     transition: none;
   }
 
@@ -689,21 +593,5 @@
   .actionBtn {
     width: 100%;
     text-align: center;
-  }
-
-  .footerSection {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .clusterHeader {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .driftPeriods {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--spacing-1, 4px);
   }
 }

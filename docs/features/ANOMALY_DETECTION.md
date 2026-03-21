@@ -127,7 +127,7 @@ To prevent alert fatigue, the system enforces several frequency limits:
 - **Per-category cap**: Maximum 3 alerts per category per calendar month
 - **Repeat suppression**: Same category + classification within a 30-day window keeps only the most recent occurrence
 - **Related alert merging**: Anomalies sharing the same category within a 7-day window (not part of a cluster) are merged into a single consolidated alert
-- **Global monthly alert cap**: After all other frequency controls, a hard limit of 3 anomaly alerts per calendar month across all categories combined (`MAX_ALERTS_PER_MONTH`). When the cap is exceeded, the system retains the highest-severity alerts, using the most recent date as a tiebreaker among equal severity. Prior-month anomalies pass through unaffected by the cap.
+- **Alert_Prioritizer (global monthly cap)**: After all other frequency controls, `_enforceAlertLimits` replaces the previous `_enforceGlobalMonthlyCap`. It enforces three steps in order: (1) deduplication of same vendor+category+classification in the current month, (2) per-vendor cap of 1 alert per vendor per calendar month keeping the highest type-priority (severity tiebreaker, then most recent date), (3) global cap of 3 alerts per calendar month keeping the highest type-priority. Type priority is defined by `ALERT_TYPE_PRIORITY` in `analyticsConstants.js`: New_Spending_Tier (6) > Category_Spending_Spike (5) > Emerging_Behavior_Trend (4) > Recurring_Expense_Increase (3) > Frequency_Spike (2) > Large_Transaction / Seasonal_Deviation / New_Merchant (1). Prior-month anomalies pass through unaffected by all caps.
 
 Frequency controls are applied as the final filtering step, after all detection, enrichment, clustering, and suppression. The global monthly cap is the last step within frequency controls, operating on the already-reduced set.
 
@@ -168,40 +168,58 @@ Behavioral drift alerts can include actionable budget suggestions:
 
 Budget data is fetched once per detection cycle and cached for all anomalies in that run. If the budget API call fails, the pipeline continues without budget integration data.
 
-## Enriched Alert Card Layout
+## Simplified Alert Card Layout
 
-The `AnomalyAlertItem` component renders each anomaly in a structured card layout:
+The `AnomalyAlertItem` component renders each anomaly as a compact, scannable card with a severity-colored left border:
 
 ```
-┌─────────────────────────────────────────────┐
-│ [Classification Badge]  Merchant    $Amount  │  ← Header
-│ Date · Category                              │
-├─────────────────────────────────────────────┤
-│ Explanation                                  │
-│ Observed: $X  Expected: $Y–$Z  (+N%)        │
-│ Compared to: last 12 months                 │
-├─────────────────────────────────────────────┤
-│ Historical Context                           │
-│ 3rd largest purchase · 95th percentile       │
-│ ~once every 9 months                         │
-├─────────────────────────────────────────────┤
-│ Impact Estimate                              │
-│ Annualized: +$X/yr · Savings rate: -N%       │
-│ Budget: At this pace, exceeds $500 by $220   │
-├─────────────────────────────────────────────┤
-│ [One-Time Event] [Confidence: High]          │  ← Footer
-│ [Dismiss]  [Mark as Expected]                │
-└─────────────────────────────────────────────┘
+┌──┬──────────────────────────────────────────┐
+│  │ Merchant                         $Amount  │  ← Header
+│  │ Plain-language summary                    │
+│S │ Explanation (jargon-free, ≤120 chars)     │
+│E │ Typical purchase: $X–$Y                   │
+│V │ [One-time event] [High confidence]        │  ← Badges
+│  │ ▾ Details                                 │  ← Toggle (collapsed)
+│  │ [✓ Got it]   Mute alerts like this        │  ← Actions
+└──┴──────────────────────────────────────────┘
 ```
 
-**Section behavior:**
-- Sections with no data are omitted entirely (e.g., no savings rate when income data is unavailable, no budget impact when no budget exists)
-- Cluster alerts show the cluster label, total amount, transaction count, and date range with a collapsible list of individual transactions
-- Drift alerts show both period averages, percentage increase, and any budget suggestion as an actionable prompt
-- Classification badges use distinct colors for each of the 8 types
-- Confidence level is displayed as a visual indicator alongside the behavior pattern
-- Existing Dismiss and Mark as Expected action buttons are preserved with the same API integration
+**Severity border** (4px left border):
+- Red — high severity
+- Amber — medium severity
+- Gray — low severity
+
+**Alert_Builder** generates three plain-language fields for each anomaly:
+- `summary` — ≤40 characters, maps each classification type to a human-readable template (e.g., "Unusual purchase size", "Spending spike in Dining")
+- `explanationText` — ≤120 characters, jargon-free (no "standard deviation", "percentile", "z-score"), references typical spending (e.g., "Your typical Costco purchases are $5–$59")
+- `typicalRange` — shown for Large_Transaction, Frequency_Spike, Recurring_Expense_Increase, New_Spending_Tier; null for other types
+
+**Details panel** (collapsed by default, toggled via "▾ Details" / "▴ Details"):
+- When expanded, shows enriched data: observed value, expected range, deviation %, comparison period, sample size, historical context, impact estimates
+- Shows "No additional details available" when enriched fields are absent
+- `aria-expanded` attribute reflects toggle state
+
+**Actions:**
+- "✓ Got it" — primary button, calls existing dismiss API (logs `anomaly_dismissed`)
+- "Mute alerts like this" — secondary text link, calls existing mark-as-expected API (logs `anomaly_marked_expected`, creates suppression rule)
+- Both disabled during loading state
+
+**Badges:**
+- Classification: "One-time event", "Emerging pattern", "Recurring change" (from `simplifiedClassification`)
+- Confidence: "Low confidence", "Medium confidence", "High confidence"
+
+**Backward compatibility:**
+- Reads simplified fields first (`summary`, `explanationText`, `typicalRange`), falls back to enriched fields (`classification` label, `reason`)
+- Legacy anomalies without `classification` render with the original layout (type badge + reason)
 - Click-to-navigate behavior scrolls to the associated expense in the expense list
+
+**Accessibility:**
+- ARIA labels on "✓ Got it" and "Mute alerts like this" include vendor/category context
+- `aria-expanded` on details toggle
+- All interactive elements are `<button>` for keyboard navigation
+- Severity available as text in details panel and ARIA label on card root
+- Dark mode support via `:global(.theme-dark)` overrides
+- Reduced motion support via `@media (prefers-reduced-motion: reduce)`
 
 ## Detection Pipeline
 
@@ -241,15 +259,34 @@ For each raw anomaly:
 
 Each enrichment step is wrapped in try/catch per anomaly. On failure, default/null values are used and the anomaly is still included.
 
+### Phase 2.5: Alert_Builder
+After enrichment, before filtering, the Alert_Builder attaches plain-language fields to each anomaly:
+1. `summary` — ≤40 chars, mapped from classification type
+2. `explanationText` — ≤120 chars, jargon-free, references typical spending
+3. `typicalRange` — conditional on classification type (non-null for 4 types)
+4. `simplifiedClassification` — maps behaviorPattern to "one_time_event", "recurring_change", or "emerging_pattern"
+
+Each anomaly is wrapped in try/catch with safe defaults on failure.
+
+### Phase 2.6: Event_Grouping_Detector
+After cluster aggregation, before benign suppression, the standalone `eventGroupingDetector.js` module detects life-event groups:
+1. Sort anomalies by date ascending
+2. For each anomaly, find others within a 48-hour window
+3. Match candidate groups (≥2 anomalies) against event themes: Travel (transportation + dining + accommodation), Moving (furniture + home + utilities), Home_Purchase (home improvement + furniture + appliances), Holiday (gifts + dining, December only)
+4. First-match-wins: each anomaly belongs to at most one group
+5. Generate event-level alert for each group with theme, totalAmount, transactionCount, dateRange, transactions list
+6. Log `event_group_detected` activity event with theme, transaction_count, total_amount, date_range
+
 ### Phase 3: Filtering
 Applied in order:
 1. **Cluster aggregation** — group related anomalies into cluster alerts
-2. **Benign pattern suppression** — remove rare-category and seasonal alerts
-3. **Data-driven suppression** — remove alerts for vendors with insufficient history (<10 transactions) and categories with low annual frequency (<2/year)
-4. **Budget-aware suppression** — remove redundant Category_Spending_Spike alerts
-5. **Alert frequency controls** — enforce per-category caps, repeat suppression, merging
-6. **Global monthly alert cap** — limit current-month anomalies to 3, keeping highest severity (date desc tiebreaker); prior-month anomalies pass through
-7. **Dismissed/suppression rule filtering** — apply user dismissals and suppression rules
+2. **Event grouping** — detect life-event groups via Event_Grouping_Detector (48h window, theme matching)
+3. **Benign pattern suppression** — remove rare-category and seasonal alerts
+4. **Data-driven suppression** — remove alerts for vendors with insufficient history (<10 transactions) and categories with low annual frequency (<2/year)
+5. **Budget-aware suppression** — remove redundant Category_Spending_Spike alerts
+6. **Alert frequency controls** — enforce per-category caps, repeat suppression, merging
+7. **Alert_Prioritizer** — deduplicate, per-vendor cap (1/vendor/month), global cap (3/month) using type-priority ordering; prior-month anomalies pass through
+8. **Dismissed/suppression rule filtering** — apply user dismissals and suppression rules
 
 ## Technical Implementation
 
@@ -313,3 +350,4 @@ Anomaly dismiss and mark-as-expected actions log activity events with both the l
 
 - **v5.13.0**: Enhanced anomaly detection system with 7 classification types, structured explanations, historical context, financial impact estimates, behavior patterns, confidence scoring, transaction clustering, behavioral drift detection, alert frequency controls, budget integration, low-value alert suppression, and enriched alert card layout
 - **v5.14.0**: Anomaly detection refinements — vendor-level baselines with per-vendor percentile computation, vendor-percentile large transaction detection with cluster exclusion, New_Spending_Tier anomaly type (>3× vendor max with severity tiers), interval-based vendor frequency spike detection, data-driven suppression rules (insufficient vendor history, low category frequency), global monthly alert cap (3 alerts/month with severity-based retention), and extracted cluster computation utility
+- **v5.15.0**: Anomaly Alert UX Simplification — Alert_Builder (plain-language summary ≤40 chars, jargon-free explanation ≤120 chars, conditional typical range), Alert_Prioritizer replacing global cap with type-priority ordering (ALERT_TYPE_PRIORITY), Event_Grouping_Detector (48h window, 4 life-event themes), simplified card layout with severity border + details toggle + "✓ Got it" / "Mute alerts like this" actions, dark mode and reduced motion support, backward-compatible field coexistence

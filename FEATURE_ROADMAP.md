@@ -134,6 +134,36 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ---
 
+### 🟡 2c. Anomaly Alert UX Simplification
+**Status**: In Progress  
+**Priority**: Medium  
+**Effort**: Medium  
+**Spec**: `.kiro/specs/anomaly-alert-ux/`  
+**Documentation**: `docs/features/ANOMALY_DETECTION.md`  
+**Description**: Transforms the anomaly alert experience from a dense multi-section card into a compact, scannable card with plain-language summaries. Backend gains Alert_Builder, Alert_Prioritizer (type-priority ordering), and Event_Grouping_Detector. Frontend AnomalyAlertItem refactored to simplified card with severity border, details toggle, and "Got it" / "Mute" actions.
+
+**Features Delivered**:
+- **Alert_Builder**: Generates plain-language summary (≤40 chars), jargon-free explanation (≤120 chars), and conditional typical range for each anomaly
+- **Alert_Prioritizer**: Replaces global cap with type-priority ordering via ALERT_TYPE_PRIORITY map, per-vendor cap (1/vendor/month), deduplication
+- **Event_Grouping_Detector**: Standalone module detecting life-event groups (Travel, Moving, Home_Purchase, Holiday) within 48-hour windows
+- **Simplified Card Layout**: Severity-colored left border (red/amber/gray), summary + explanation + typical range, classification and confidence badges
+- **Details Toggle**: Collapsible panel showing enriched data (observed value, expected range, historical context, impact estimates)
+- **Simplified Actions**: "✓ Got it" primary button + "Mute alerts like this" secondary link replacing Dismiss/Mark as Expected
+- **Dark Mode & Reduced Motion**: CSS overrides for `.theme-dark` and `@media (prefers-reduced-motion: reduce)`
+- **Backward Compatibility**: Field coexistence — simplified fields alongside enriched fields, legacy anomalies render with original layout
+- **Activity Log Integration**: `event_group_detected` event type with theme, transaction count, total amount, date range
+
+**Benefits**:
+- Scannable alerts with plain-language summaries instead of dense statistical data
+- Reduced cognitive load with progressive disclosure via details toggle
+- Smarter alert prioritization based on anomaly type importance
+- Life-event grouping reduces noise from related transactions
+- Accessible design with ARIA labels, keyboard navigation, dark mode, reduced motion
+
+**Dependencies**: Extends Anomaly Detection Refinements (#2b)
+
+---
+
 ### ⚪ 3. Financial Goals Dashboard
 **Status**: Proposed  
 **Priority**: Medium  

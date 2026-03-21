@@ -74,6 +74,7 @@ const AnomalyAlertItem = ({ anomaly, onDismiss, onMarkExpected }) => {
   if (!anomaly) return null;
 
   const { place, amount, anomalyType, reason, date, category } = anomaly;
+  const detailsPanelId = `anomaly-details-panel-${anomaly.id}`;
   const isEnriched = !!anomaly.classification;
 
   // Determine if we have simplified fields (from Alert_Builder)
@@ -176,7 +177,7 @@ const AnomalyAlertItem = ({ anomaly, onDismiss, onMarkExpected }) => {
               {category && <span className={styles.category}>{category}</span>}
             </div>
             <div className={styles.amount} data-testid="anomaly-amount">
-              {formatCurrency(amount)}
+              {amount != null ? formatCurrency(amount) : '—'}
             </div>
             {reason && (
               <div className={styles.reason} data-testid="anomaly-reason">{reason}</div>
@@ -225,7 +226,7 @@ const AnomalyAlertItem = ({ anomaly, onDismiss, onMarkExpected }) => {
           <div className={styles.headerRow}>
             <span className={styles.merchant}>{place || category || 'Unknown'}</span>
             <span className={styles.amount} data-testid="anomaly-amount">
-              {formatCurrency(amount)}
+              {amount != null ? formatCurrency(amount) : '—'}
             </span>
           </div>
 
@@ -267,7 +268,7 @@ const AnomalyAlertItem = ({ anomaly, onDismiss, onMarkExpected }) => {
             className={styles.detailsToggle}
             onClick={handleDetailsToggle}
             aria-expanded={detailsExpanded}
-            aria-controls="anomaly-details-panel"
+            aria-controls={detailsPanelId}
             data-testid="anomaly-details-toggle"
           >
             {detailsExpanded ? '▴ Details' : '▾ Details'}
@@ -275,7 +276,7 @@ const AnomalyAlertItem = ({ anomaly, onDismiss, onMarkExpected }) => {
 
           {/* Details panel (collapsed by default) */}
           {detailsExpanded && (
-            <div className={styles.detailsPanel} id="anomaly-details-panel" role="region" aria-label="Alert details" data-testid="anomaly-details-panel">
+            <div className={styles.detailsPanel} id={detailsPanelId} role="region" aria-label="Alert details" data-testid="anomaly-details-panel">
               {severity && (
                 <div className={styles.severityText} data-testid="anomaly-severity-text">
                   Severity: {capitalize(severity)}
@@ -298,7 +299,7 @@ const AnomalyAlertItem = ({ anomaly, onDismiss, onMarkExpected }) => {
                         <div>Sample size: {explanation.sampleSize}</div>
                       )}
                       {explanation.deviationPercent != null && (
-                        <div>Deviation: {explanation.deviationPercent > 0 ? '+' : ''}{explanation.deviationPercent.toFixed(1)}%</div>
+                        <div>Deviation: {Number(explanation.deviationPercent) > 0 ? '+' : ''}{Number(explanation.deviationPercent).toFixed(1)}%</div>
                       )}
                     </div>
                   )}
@@ -311,7 +312,7 @@ const AnomalyAlertItem = ({ anomaly, onDismiss, onMarkExpected }) => {
                         <div>{historicalContext.percentile}th percentile</div>
                       )}
                       {historicalContext.deviationFromAverage != null && (
-                        <div>{historicalContext.deviationFromAverage > 0 ? '+' : ''}{historicalContext.deviationFromAverage.toFixed(1)}% from average</div>
+                        <div>{Number(historicalContext.deviationFromAverage) > 0 ? '+' : ''}{Number(historicalContext.deviationFromAverage).toFixed(1)}% from average</div>
                       )}
                     </div>
                   )}
@@ -319,7 +320,7 @@ const AnomalyAlertItem = ({ anomaly, onDismiss, onMarkExpected }) => {
                     <div data-testid="anomaly-detail-impact">
                       <div>Annualized: {impactEstimate.annualizedChange > 0 ? '+' : ''}{formatCurrency(impactEstimate.annualizedChange)}/yr</div>
                       {impactEstimate.savingsRateChange != null && (
-                        <div>Savings rate: {impactEstimate.savingsRateChange > 0 ? '+' : ''}{impactEstimate.savingsRateChange.toFixed(1)}%</div>
+                        <div>Savings rate: {Number(impactEstimate.savingsRateChange) > 0 ? '+' : ''}{Number(impactEstimate.savingsRateChange).toFixed(1)}%</div>
                       )}
                     </div>
                   )}

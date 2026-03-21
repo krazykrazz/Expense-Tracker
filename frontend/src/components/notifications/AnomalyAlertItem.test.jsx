@@ -9,6 +9,7 @@ import AnomalyAlertItem from './AnomalyAlertItem';
 
 describe('AnomalyAlertItem', () => {
   const baseAnomaly = {
+    id: 1,
     expenseId: 42,
     place: 'Expensive Store',
     amount: 999.99,
@@ -194,6 +195,7 @@ describe('AnomalyAlertItem — Simplified card layout', () => {
   let onMarkExpected;
 
   const enrichedAnomaly = {
+    id: 10,
     expenseId: 42,
     place: 'Expensive Store',
     amount: 999.99,
@@ -372,6 +374,7 @@ describe('AnomalyAlertItem — Details panel', () => {
   let onMarkExpected;
 
   const enrichedAnomaly = {
+    id: 20,
     expenseId: 42,
     place: 'Expensive Store',
     amount: 999.99,
@@ -482,6 +485,7 @@ describe('AnomalyAlertItem — Accessibility', () => {
   let onMarkExpected;
 
   const enrichedAnomaly = {
+    id: 30,
     expenseId: 42,
     place: 'Walmart',
     amount: 247.83,
@@ -543,7 +547,7 @@ describe('AnomalyAlertItem — Accessibility', () => {
   it('should have aria-controls on details toggle (Req 15.3)', () => {
     render(<AnomalyAlertItem anomaly={enrichedAnomaly} onDismiss={onDismiss} onMarkExpected={onMarkExpected} />);
     const toggle = screen.getByTestId('anomaly-details-toggle');
-    expect(toggle).toHaveAttribute('aria-controls', 'anomaly-details-panel');
+    expect(toggle).toHaveAttribute('aria-controls', `anomaly-details-panel-${enrichedAnomaly.id}`);
   });
 
   it('should have all interactive elements as focusable buttons for keyboard nav (Req 15.4)', () => {
@@ -619,6 +623,7 @@ describe('AnomalyAlertItem — Fallback rendering', () => {
 
   it('should fall back to classification label when summary is absent', () => {
     const anomaly = {
+      id: 70,
       expenseId: 1,
       place: 'Store',
       amount: 100,
@@ -636,6 +641,7 @@ describe('AnomalyAlertItem — Fallback rendering', () => {
 
   it('should fall back to reason as explanation when explanationText is absent', () => {
     const anomaly = {
+      id: 71,
       expenseId: 1,
       place: 'Store',
       amount: 100,
@@ -654,6 +660,7 @@ describe('AnomalyAlertItem — Fallback rendering', () => {
 
   it('should use "Unusual activity detected" when no summary or classification available', () => {
     const anomaly = {
+      id: 72,
       expenseId: 1,
       place: 'Store',
       amount: 100,
@@ -677,6 +684,7 @@ describe('AnomalyAlertItem — CSS Module class scoping', () => {
   let onMarkExpected;
 
   const enrichedAnomaly = {
+    id: 40,
     expenseId: 42,
     place: 'Store',
     amount: 100,
@@ -718,6 +726,7 @@ describe('AnomalyAlertItem — Backward compatibility', () => {
   let onMarkExpected;
 
   const legacyAnomaly = {
+    id: 100,
     expenseId: 10,
     place: 'Old Store',
     amount: 200,
@@ -754,6 +763,7 @@ describe('AnomalyAlertItem — Backward compatibility', () => {
 
   it('should render enriched anomaly with reason as explanation fallback when no explanationText', () => {
     const enrichedWithReason = {
+      id: 101,
       expenseId: 42,
       place: 'Store',
       amount: 500,
@@ -784,6 +794,7 @@ describe('AnomalyAlertItem — Dark mode', () => {
   let onMarkExpected;
 
   const enrichedAnomaly = {
+    id: 50,
     expenseId: 42,
     place: 'Walmart',
     amount: 247.83,
@@ -870,6 +881,7 @@ describe('AnomalyAlertItem — Reduced motion', () => {
   let originalMatchMedia;
 
   const enrichedAnomaly = {
+    id: 60,
     expenseId: 42,
     place: 'Walmart',
     amount: 247.83,

@@ -276,8 +276,9 @@ async function downloadStatement(req, res) {
       });
     }
 
-    // Set appropriate headers for PDF download
-    res.setHeader('Content-Type', 'application/pdf');
+    // Set appropriate headers for file download
+    const contentType = statementData.mimeType || 'application/pdf';
+    res.setHeader('Content-Type', contentType);
     res.setHeader('Content-Disposition', `inline; filename="${statementData.originalFilename}"`);
     res.setHeader('Cache-Control', 'private, max-age=3600');
     res.setHeader('X-Content-Type-Options', 'nosniff');

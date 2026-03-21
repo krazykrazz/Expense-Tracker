@@ -209,9 +209,12 @@ class AnomalyDetectionService {
       if (recentExpenses.length === 0) { return []; }
 
       // ─── Budget Data Fetch ──────────────────────────────────────────────
-      // Clear cache and fetch once at start of detection cycle
+      // Clear all caches at start of detection cycle (including dismissed caches
+      // so multi-device dismissals are picked up on next detection)
       this._budgetDataCache = undefined;
       this._vendorBaselineCache = null;
+      this._dismissedExpenseIdsCache = null;
+      this._dismissedAnomalyTypesCache = null;
       let budgetData = null;
       try {
         budgetData = await this._fetchBudgetData();

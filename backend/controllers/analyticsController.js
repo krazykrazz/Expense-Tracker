@@ -497,8 +497,14 @@ function _isValidDate(dateStr) {
     return false;
   }
   
-  const date = new Date(dateStr);
-  return date instanceof Date && !isNaN(date);
+  const [yearStr, monthStr, dayStr] = dateStr.split('-');
+  const year = parseInt(yearStr, 10);
+  const month = parseInt(monthStr, 10);
+  const day = parseInt(dayStr, 10);
+  
+  // Construct date and verify components match (catches rollover like Feb 30 → Mar 2)
+  const date = new Date(year, month - 1, day);
+  return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
 }
 
 /**

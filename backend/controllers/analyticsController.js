@@ -305,7 +305,7 @@ async function getAnomalies(req, res) {
 async function dismissAnomaly(req, res) {
   try {
     const { expenseId } = req.params;
-    const { anomalyType } = req.body || {};
+    const { anomalyType, expenseDetails } = req.body || {};
     
     // Validate expenseId
     const expenseIdInt = parseInt(expenseId);
@@ -313,7 +313,7 @@ async function dismissAnomaly(req, res) {
       return res.status(400).json({ error: 'Invalid expenseId. Must be a positive number' });
     }
     
-    await anomalyDetectionService.dismissAnomaly(expenseIdInt, anomalyType);
+    await anomalyDetectionService.dismissAnomaly(expenseIdInt, anomalyType, expenseDetails);
     
     res.json({ 
       success: true, 

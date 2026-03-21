@@ -463,9 +463,14 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
    * _Requirements: 8.5, 8.6_
    */
   const handleDismissAnomaly = useCallback(async (anomaly) => {
-    await dismissAnomaly(anomaly.expenseId, anomaly.anomalyType);
+    const anomalyTypeValue = anomaly.anomalyType || anomaly.classification;
+    await dismissAnomaly(anomaly.expenseId, anomalyTypeValue, {
+      merchant: anomaly.place,
+      amount: anomaly.amount,
+      classification: anomaly.classification
+    });
     setAnomalies(prev => prev.filter(a =>
-      !(a.expenseId === anomaly.expenseId && a.anomalyType === anomaly.anomalyType)
+      !(a.expenseId === anomaly.expenseId && (a.anomalyType || a.classification) === (anomaly.anomalyType || anomaly.classification))
     ));
   }, []);
 
@@ -474,14 +479,16 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
    * _Requirements: 8.7_
    */
   const handleMarkAnomalyExpected = useCallback(async (anomaly) => {
-    await markAnomalyAsExpected(anomaly.expenseId, anomaly.anomalyType, {
+    const anomalyTypeValue = anomaly.anomalyType || anomaly.classification;
+    await markAnomalyAsExpected(anomaly.expenseId, anomalyTypeValue, {
       merchant: anomaly.place,
       amount: anomaly.amount,
       date: anomaly.date,
-      category: anomaly.category
+      category: anomaly.category,
+      classification: anomaly.classification
     });
     setAnomalies(prev => prev.filter(a =>
-      !(a.expenseId === anomaly.expenseId && a.anomalyType === anomaly.anomalyType)
+      !(a.expenseId === anomaly.expenseId && (a.anomalyType || a.classification) === (anomaly.anomalyType || anomaly.classification))
     ));
   }, []);
 

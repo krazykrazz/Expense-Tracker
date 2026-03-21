@@ -464,14 +464,16 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
    */
   const handleDismissAnomaly = useCallback(async (anomaly) => {
     const anomalyTypeValue = anomaly.anomalyType || anomaly.classification;
-    await dismissAnomaly(anomaly.expenseId, anomalyTypeValue, {
-      merchant: anomaly.place,
-      amount: anomaly.amount,
-      classification: anomaly.classification
-    });
-    setAnomalies(prev => prev.filter(a =>
-      !(a.expenseId === anomaly.expenseId && (a.anomalyType || a.classification) === (anomaly.anomalyType || anomaly.classification))
-    ));
+    // Category-level anomalies (e.g. Category_Spending_Spike) have no expenseId —
+    // dismiss locally only since the backend can't persist null expense IDs
+    if (anomaly.expenseId) {
+      await dismissAnomaly(anomaly.expenseId, anomalyTypeValue, {
+        merchant: anomaly.place,
+        amount: anomaly.amount,
+        classification: anomaly.classification
+      });
+    }
+    setAnomalies(prev => prev.filter(a => a.id !== anomaly.id));
   }, []);
 
   /**
@@ -480,16 +482,17 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
    */
   const handleMarkAnomalyExpected = useCallback(async (anomaly) => {
     const anomalyTypeValue = anomaly.anomalyType || anomaly.classification;
-    await markAnomalyAsExpected(anomaly.expenseId, anomalyTypeValue, {
-      merchant: anomaly.place,
-      amount: anomaly.amount,
-      date: anomaly.date,
-      category: anomaly.category,
-      classification: anomaly.classification
-    });
-    setAnomalies(prev => prev.filter(a =>
-      !(a.expenseId === anomaly.expenseId && (a.anomalyType || a.classification) === (anomaly.anomalyType || anomaly.classification))
-    ));
+    // Category-level anomalies have no expenseId — dismiss locally only
+    if (anomaly.expenseId) {
+      await markAnomalyAsExpected(anomaly.expenseId, anomalyTypeValue, {
+        merchant: anomaly.place,
+        amount: anomaly.amount,
+        date: anomaly.date,
+        category: anomaly.category,
+        classification: anomaly.classification
+      });
+    }
+    setAnomalies(prev => prev.filter(a => a.id !== anomaly.id));
   }, []);
 
   /**

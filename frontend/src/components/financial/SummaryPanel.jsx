@@ -766,7 +766,7 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
         {/* Anomaly Alerts - Requirements: 8.1, 8.2, 8.4 */}
         {anomalies.map(anomaly => (
           <AnomalyAlertItem
-            key={`${anomaly.expenseId}-${anomaly.anomalyType}`}
+            key={anomaly.id}
             anomaly={anomaly}
             onDismiss={handleDismissAnomaly}
             onMarkExpected={handleMarkAnomalyExpected}

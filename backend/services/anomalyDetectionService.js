@@ -295,6 +295,15 @@ class AnomalyDetectionService {
         logger.error('Vendor frequency spike detector failed:', err);
       }
 
+      // ─── ID Assignment Phase ──────────────────────────────────────────
+      // Assign globally unique IDs after all detectors have run.
+      // Individual detectors use local counters (anomalies.length + 1) or
+      // Date.now()-based IDs which can collide once merged.  Overwrite with
+      // a simple monotonic sequence so every anomaly has a distinct integer.
+      for (let i = 0; i < anomalies.length; i++) {
+        anomalies[i].id = i + 1;
+      }
+
       // ─── Enrichment Phase ───────────────────────────────────────────────
       // Build category baseline cache for enrichment
       const baselineCache = {};
@@ -479,6 +488,13 @@ class AnomalyDetectionService {
 
       // Sort by date descending
       filteredAnomalies.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+      // Re-assign unique IDs after filtering/consolidation (cluster aggregation
+      // and event grouping create new objects with potentially colliding IDs)
+      for (let i = 0; i < filteredAnomalies.length; i++) {
+        filteredAnomalies[i].id = i + 1;
+      }
+
       return filteredAnomalies;
     } catch (error) {
       logger.error('Error detecting anomalies:', error);

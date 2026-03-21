@@ -105,19 +105,26 @@ describe('Anomaly Actions & Suppression Rules API', () => {
       expect(rows[0].action).toBe('dismiss');
     });
 
-    test('should return 400 for invalid expenseId', async () => {
+    test('should return 400 for invalid expenseId without anomalyType', async () => {
       const res = await request(app)
         .post('/api/analytics/anomalies/abc/dismiss')
-        .send({ anomalyType: 'amount' })
+        .send({})
         .expect(400);
 
       expect(res.body.error).toBeDefined();
     });
 
-    test('should return 400 for negative expenseId', async () => {
+    test('should succeed for invalid expenseId with anomalyType (category-level dismiss)', async () => {
+      await request(app)
+        .post('/api/analytics/anomalies/null/dismiss')
+        .send({ anomalyType: 'category_spending_spike' })
+        .expect(200);
+    });
+
+    test('should return 400 for negative expenseId without anomalyType', async () => {
       const res = await request(app)
         .post('/api/analytics/anomalies/-1/dismiss')
-        .send({ anomalyType: 'amount' })
+        .send({})
         .expect(400);
 
       expect(res.body.error).toBeDefined();
@@ -208,13 +215,20 @@ describe('Anomaly Actions & Suppression Rules API', () => {
       expect(res.body.error).toMatch(/anomalyType/i);
     });
 
-    test('should return 400 for invalid expenseId', async () => {
+    test('should return 400 for invalid expenseId without anomalyType', async () => {
       const res = await request(app)
         .post('/api/analytics/anomalies/abc/mark-expected')
-        .send({ anomalyType: 'amount', expenseDetails: {} })
+        .send({ expenseDetails: {} })
         .expect(400);
 
       expect(res.body.error).toBeDefined();
+    });
+
+    test('should succeed for null expenseId with anomalyType (category-level mark-expected)', async () => {
+      await request(app)
+        .post('/api/analytics/anomalies/null/mark-expected')
+        .send({ anomalyType: 'category_spending_spike', expenseDetails: { category: 'Groceries' } })
+        .expect(200);
     });
 
     test('should record dismissal with mark_as_expected action', async () => {

@@ -307,17 +307,23 @@ async function dismissAnomaly(req, res) {
     const { expenseId } = req.params;
     const { anomalyType, expenseDetails } = req.body || {};
     
-    // Validate expenseId
-    const expenseIdInt = parseInt(expenseId);
+    // Support category-level anomalies with no expenseId (param will be 'null' or 'undefined')
+    let expenseIdInt = parseInt(expenseId);
     if (isNaN(expenseIdInt) || expenseIdInt < 1) {
-      return res.status(400).json({ error: 'Invalid expenseId. Must be a positive number' });
+      // Category-level anomaly — anomalyType is required instead
+      if (!anomalyType) {
+        return res.status(400).json({ error: 'Either a valid expenseId or anomalyType is required' });
+      }
+      expenseIdInt = null;
     }
     
     await anomalyDetectionService.dismissAnomaly(expenseIdInt, anomalyType, expenseDetails);
     
     res.json({ 
       success: true, 
-      message: `Anomaly for expense ${expenseIdInt} dismissed successfully` 
+      message: expenseIdInt
+        ? `Anomaly for expense ${expenseIdInt} dismissed successfully`
+        : `Category anomaly ${anomalyType} dismissed successfully`
     });
   } catch (error) {
     logger.error('Error dismissing anomaly:', error);
@@ -412,9 +418,10 @@ async function markAnomalyAsExpected(req, res) {
     const { expenseId } = req.params;
     const { anomalyType, expenseDetails } = req.body || {};
 
-    const expenseIdInt = parseInt(expenseId);
+    // Support category-level anomalies with no expenseId
+    let expenseIdInt = parseInt(expenseId);
     if (isNaN(expenseIdInt) || expenseIdInt < 1) {
-      return res.status(400).json({ error: 'Expense ID is required' });
+      expenseIdInt = null;
     }
     if (!anomalyType) {
       return res.status(400).json({ error: 'anomalyType is required' });
@@ -423,7 +430,9 @@ async function markAnomalyAsExpected(req, res) {
     const result = await anomalyDetectionService.markAsExpected(expenseIdInt, anomalyType, expenseDetails);
     res.json({
       success: true,
-      message: `Anomaly for expense ${expenseIdInt} marked as expected`,
+      message: expenseIdInt
+        ? `Anomaly for expense ${expenseIdInt} marked as expected`
+        : `Category anomaly ${anomalyType} marked as expected`,
       suppressionRuleId: result.suppressionRuleId,
     });
   } catch (error) {

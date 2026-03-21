@@ -228,13 +228,14 @@ const TABLE_STATEMENTS = [
   )`,
 
   // dismissed_anomalies — persisted anomaly dismissals
+  // expense_id is nullable to support category-level anomalies (e.g. Category_Spending_Spike)
   `CREATE TABLE IF NOT EXISTS dismissed_anomalies (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    expense_id INTEGER NOT NULL,
+    expense_id INTEGER,
     anomaly_type TEXT,
     action TEXT DEFAULT 'dismiss' CHECK(action IN ('dismiss', 'mark_as_expected')),
     dismissed_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(expense_id),
+    UNIQUE(expense_id, anomaly_type),
     FOREIGN KEY (expense_id) REFERENCES expenses(id) ON DELETE CASCADE
   )`,
 

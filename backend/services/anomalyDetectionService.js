@@ -38,6 +38,8 @@ class AnomalyDetectionService {
   constructor() {
     // Cache for dismissed expense IDs (loaded from database on first use)
     this._dismissedExpenseIdsCache = null;
+    // Cache for dismissed anomaly types (category-level, null expenseId)
+    this._dismissedAnomalyTypesCache = null;
     // Cache for vendor baselines (computed per detection cycle)
     this._vendorBaselineCache = null;
   }
@@ -100,12 +102,19 @@ class AnomalyDetectionService {
     }
 
     try {
-      const rows = await dbHelper.queryAll('SELECT expense_id FROM dismissed_anomalies');
-      this._dismissedExpenseIdsCache = new Set(rows.map(r => r.expense_id));
-      logger.debug('Loaded ' + this._dismissedExpenseIdsCache.size + ' dismissed anomalies from database');
+      const rows = await dbHelper.queryAll('SELECT expense_id, anomaly_type FROM dismissed_anomalies');
+      this._dismissedExpenseIdsCache = new Set(
+        rows.filter(r => r.expense_id != null).map(r => r.expense_id)
+      );
+      // Cache category-level dismissals (null expense_id) keyed by anomaly_type
+      this._dismissedAnomalyTypesCache = new Set(
+        rows.filter(r => r.expense_id == null && r.anomaly_type).map(r => r.anomaly_type)
+      );
+      logger.debug('Loaded ' + this._dismissedExpenseIdsCache.size + ' dismissed anomalies and ' + this._dismissedAnomalyTypesCache.size + ' dismissed anomaly types from database');
     } catch (err) {
       logger.error('Error loading dismissed anomalies:', err);
       this._dismissedExpenseIdsCache = new Set();
+      this._dismissedAnomalyTypesCache = new Set();
     }
 
     return this._dismissedExpenseIdsCache;
@@ -448,7 +457,15 @@ class AnomalyDetectionService {
 
       // Step 5: Filter out dismissed anomalies
       const dismissedExpenseIds = await this._loadDismissedExpenseIds();
-      filteredAnomalies = filteredAnomalies.filter(a => !dismissedExpenseIds.has(a.expenseId));
+      const dismissedAnomalyTypes = this._dismissedAnomalyTypesCache || new Set();
+      filteredAnomalies = filteredAnomalies.filter(a => {
+        // Category-level anomalies (null expenseId): filter by anomaly_type
+        if (a.expenseId == null) {
+          return !dismissedAnomalyTypes.has(a.anomalyType);
+        }
+        // Transaction-level anomalies: filter by expenseId
+        return !dismissedExpenseIds.has(a.expenseId);
+      });
 
       // Step 6: Apply suppression rules to filter out matching anomalies
       try {
@@ -2917,14 +2934,22 @@ class AnomalyDetectionService {
     if (!this._dismissedExpenseIdsCache) {
       this._dismissedExpenseIdsCache = new Set();
     }
-    this._dismissedExpenseIdsCache.add(expenseId);
+    if (!this._dismissedAnomalyTypesCache) {
+      this._dismissedAnomalyTypesCache = new Set();
+    }
+
+    if (expenseId != null) {
+      this._dismissedExpenseIdsCache.add(expenseId);
+    } else {
+      this._dismissedAnomalyTypesCache.add(anomalyType);
+    }
 
     await dbHelper.execute(
       "INSERT OR IGNORE INTO dismissed_anomalies (expense_id, anomaly_type, action) VALUES (?, ?, 'dismiss')",
-      [expenseId, anomalyType || null]
+      [expenseId || null, anomalyType || null]
     );
 
-    logger.debug('Dismissed anomaly for expense:', { expenseId, anomalyType });
+    logger.debug('Dismissed anomaly:', { expenseId, anomalyType });
 
     // Activity log — fire-and-forget
     var details = expenseDetails || {};
@@ -2935,9 +2960,9 @@ class AnomalyDetectionService {
     this._logActivity(
       'anomaly_dismissed',
       'anomaly',
-      expenseId,
+      expenseId || null,
       'Dismissed ' + classLabel + ' anomaly for ' + merchant + ' (' + amount + ')',
-      { anomaly_type: anomalyType, classification: classification, expense_id: expenseId, merchant: merchant, amount: amount }
+      { anomaly_type: anomalyType, classification: classification, expense_id: expenseId || null, merchant: merchant, amount: amount }
     );
   }
 
@@ -2955,11 +2980,19 @@ class AnomalyDetectionService {
     if (!this._dismissedExpenseIdsCache) {
       this._dismissedExpenseIdsCache = new Set();
     }
-    this._dismissedExpenseIdsCache.add(expenseId);
+    if (!this._dismissedAnomalyTypesCache) {
+      this._dismissedAnomalyTypesCache = new Set();
+    }
+
+    if (expenseId != null) {
+      this._dismissedExpenseIdsCache.add(expenseId);
+    } else {
+      this._dismissedAnomalyTypesCache.add(anomalyType);
+    }
 
     await dbHelper.execute(
       "INSERT OR IGNORE INTO dismissed_anomalies (expense_id, anomaly_type, action) VALUES (?, ?, 'mark_as_expected')",
-      [expenseId, anomalyType || null]
+      [expenseId || null, anomalyType || null]
     );
 
     var details = expenseDetails || {};
@@ -2975,12 +3008,12 @@ class AnomalyDetectionService {
     this._logActivity(
       'anomaly_marked_expected',
       'anomaly',
-      expenseId,
+      expenseId || null,
       'Marked ' + classLabel + ' anomaly as expected for ' + merchant + ' (' + amount + ')',
       {
         anomaly_type: anomalyType,
         classification: classification,
-        expense_id: expenseId,
+        expense_id: expenseId || null,
         merchant: merchant,
         amount: amount,
         suppression_rule_id: suppressionRuleId
@@ -3147,6 +3180,7 @@ class AnomalyDetectionService {
    */
   async clearDismissedAnomalies() {
     this._dismissedExpenseIdsCache = new Set();
+    this._dismissedAnomalyTypesCache = new Set();
     if (process.env.NODE_ENV === 'test') {
       try {
         await dbHelper.execute('DELETE FROM dismissed_anomalies');

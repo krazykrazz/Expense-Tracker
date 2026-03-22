@@ -85,6 +85,55 @@ const MIGRATIONS = [
     }
   },
   {
+    name: 'dismissed_anomalies_nullable_expense_id_v1',
+    async apply(db) {
+      // Recreate dismissed_anomalies with nullable expense_id and composite unique constraint
+      // to support category-level anomalies (e.g. Category_Spending_Spike) that have no expenseId.
+      //
+      // The old table may or may not have anomaly_type/action columns depending on whether
+      // analytics_hub_revamp_v1 ran first. Detect existing columns and adapt the INSERT.
+      await runSql(db, `CREATE TABLE IF NOT EXISTS dismissed_anomalies_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        expense_id INTEGER,
+        anomaly_type TEXT,
+        action TEXT DEFAULT 'dismiss' CHECK(action IN ('dismiss', 'mark_as_expected')),
+        dismissed_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(expense_id, anomaly_type),
+        FOREIGN KEY (expense_id) REFERENCES expenses(id) ON DELETE CASCADE
+      )`);
+
+      // Detect which columns exist in the old table
+      const columns = await new Promise((resolve, reject) => {
+        db.all('PRAGMA table_info(dismissed_anomalies)', (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows.map(r => r.name));
+        });
+      });
+
+      const hasAnomalyType = columns.includes('anomaly_type');
+      const hasAction = columns.includes('action');
+
+      const selectCols = [
+        'id',
+        'expense_id',
+        hasAnomalyType ? 'anomaly_type' : "NULL AS anomaly_type",
+        hasAction ? 'action' : "'dismiss' AS action",
+        'dismissed_at'
+      ].join(', ');
+
+      await runSql(db, `INSERT OR IGNORE INTO dismissed_anomalies_new (id, expense_id, anomaly_type, action, dismissed_at)
+        SELECT ${selectCols} FROM dismissed_anomalies`);
+      await runSql(db, 'DROP TABLE dismissed_anomalies');
+      await runSql(db, 'ALTER TABLE dismissed_anomalies_new RENAME TO dismissed_anomalies');
+      await runSql(db, 'CREATE INDEX IF NOT EXISTS idx_dismissed_anomalies_expense_id ON dismissed_anomalies(expense_id)');
+      await runSql(db, 'CREATE INDEX IF NOT EXISTS idx_dismissed_anomalies_anomaly_type ON dismissed_anomalies(anomaly_type)');
+      logger.info('Migrated dismissed_anomalies to support nullable expense_id', {
+        hadAnomalyType: hasAnomalyType,
+        hadAction: hasAction
+      });
+    }
+  },
+  {
     name: 'analytics_hub_revamp_v1',
     async apply(db) {
       // Add columns to dismissed_anomalies (idempotent — columns may already exist from schema.js on fresh DBs)

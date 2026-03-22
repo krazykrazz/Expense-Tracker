@@ -175,18 +175,9 @@ async function getSeasonalAnalysis(req, res) {
  */
 async function getMonthPrediction(req, res) {
   try {
-    const { year, month } = req.params;
-    
-    // Validate year and month
-    const yearInt = parseInt(year);
-    const monthInt = parseInt(month);
-    
-    if (isNaN(yearInt) || yearInt < 2000 || yearInt > 2100) {
-      return res.status(400).json({ error: 'Invalid year. Must be between 2000 and 2100' });
-    }
-    if (isNaN(monthInt) || monthInt < 1 || monthInt > 12) {
-      return res.status(400).json({ error: 'Invalid month. Must be between 1 and 12' });
-    }
+    const parsed = _parseYearMonth(req, res);
+    if (!parsed) return;
+    const { yearInt, monthInt } = parsed;
     
     const prediction = await predictionService.getMonthEndPrediction(yearInt, monthInt);
     
@@ -212,18 +203,9 @@ async function getMonthPrediction(req, res) {
  */
 async function getHistoricalComparison(req, res) {
   try {
-    const { year, month } = req.params;
-    
-    // Validate year and month
-    const yearInt = parseInt(year);
-    const monthInt = parseInt(month);
-    
-    if (isNaN(yearInt) || yearInt < 2000 || yearInt > 2100) {
-      return res.status(400).json({ error: 'Invalid year. Must be between 2000 and 2100' });
-    }
-    if (isNaN(monthInt) || monthInt < 1 || monthInt > 12) {
-      return res.status(400).json({ error: 'Invalid month. Must be between 1 and 12' });
-    }
+    const parsed = _parseYearMonth(req, res);
+    if (!parsed) return;
+    const { yearInt, monthInt } = parsed;
     
     const comparison = await predictionService.compareToHistorical(yearInt, monthInt);
     
@@ -305,19 +287,25 @@ async function getAnomalies(req, res) {
 async function dismissAnomaly(req, res) {
   try {
     const { expenseId } = req.params;
-    const { anomalyType } = req.body || {};
+    const { anomalyType, expenseDetails } = req.body || {};
     
-    // Validate expenseId
-    const expenseIdInt = parseInt(expenseId);
+    // Support category-level anomalies with no expenseId (param will be 'null' or 'undefined')
+    let expenseIdInt = parseInt(expenseId);
     if (isNaN(expenseIdInt) || expenseIdInt < 1) {
-      return res.status(400).json({ error: 'Invalid expenseId. Must be a positive number' });
+      // Category-level anomaly — anomalyType is required instead
+      if (!anomalyType) {
+        return res.status(400).json({ error: 'Either a valid expenseId or anomalyType is required' });
+      }
+      expenseIdInt = null;
     }
     
-    await anomalyDetectionService.dismissAnomaly(expenseIdInt, anomalyType);
+    await anomalyDetectionService.dismissAnomaly(expenseIdInt, anomalyType, expenseDetails);
     
     res.json({ 
       success: true, 
-      message: `Anomaly for expense ${expenseIdInt} dismissed successfully` 
+      message: expenseIdInt
+        ? `Anomaly for expense ${expenseIdInt} dismissed successfully`
+        : `Category anomaly ${anomalyType} dismissed successfully`
     });
   } catch (error) {
     logger.error('Error dismissing anomaly:', error);
@@ -331,17 +319,9 @@ async function dismissAnomaly(req, res) {
  */
 async function getMonthlySummary(req, res) {
   try {
-    const { year, month } = req.params;
-
-    const yearInt = parseInt(year);
-    const monthInt = parseInt(month);
-
-    if (isNaN(yearInt) || yearInt < 2000 || yearInt > 2100) {
-      return res.status(400).json({ error: 'Invalid year. Must be between 2000 and 2100' });
-    }
-    if (isNaN(monthInt) || monthInt < 1 || monthInt > 12) {
-      return res.status(400).json({ error: 'Invalid month. Must be between 1 and 12' });
-    }
+    const parsed = _parseYearMonth(req, res);
+    if (!parsed) return;
+    const { yearInt, monthInt } = parsed;
 
     const summary = await monthlySummaryService.getMonthlySummary(yearInt, monthInt);
     res.json(summary);
@@ -357,17 +337,9 @@ async function getMonthlySummary(req, res) {
  */
 async function getTrends(req, res) {
   try {
-    const { year, month } = req.params;
-
-    const yearInt = parseInt(year);
-    const monthInt = parseInt(month);
-
-    if (isNaN(yearInt) || yearInt < 2000 || yearInt > 2100) {
-      return res.status(400).json({ error: 'Invalid year. Must be between 2000 and 2100' });
-    }
-    if (isNaN(monthInt) || monthInt < 1 || monthInt > 12) {
-      return res.status(400).json({ error: 'Invalid month. Must be between 1 and 12' });
-    }
+    const parsed = _parseYearMonth(req, res);
+    if (!parsed) return;
+    const { yearInt, monthInt } = parsed;
 
     const trends = await trendsService.getTrends(yearInt, monthInt);
     res.json(trends);
@@ -383,17 +355,9 @@ async function getTrends(req, res) {
  */
 async function getActivityInsights(req, res) {
   try {
-    const { year, month } = req.params;
-
-    const yearInt = parseInt(year);
-    const monthInt = parseInt(month);
-
-    if (isNaN(yearInt) || yearInt < 2000 || yearInt > 2100) {
-      return res.status(400).json({ error: 'Invalid year. Must be between 2000 and 2100' });
-    }
-    if (isNaN(monthInt) || monthInt < 1 || monthInt > 12) {
-      return res.status(400).json({ error: 'Invalid month. Must be between 1 and 12' });
-    }
+    const parsed = _parseYearMonth(req, res);
+    if (!parsed) return;
+    const { yearInt, monthInt } = parsed;
 
     const insights = await activityInsightsService.getActivityInsights(yearInt, monthInt);
     res.json(insights);
@@ -412,9 +376,10 @@ async function markAnomalyAsExpected(req, res) {
     const { expenseId } = req.params;
     const { anomalyType, expenseDetails } = req.body || {};
 
-    const expenseIdInt = parseInt(expenseId);
+    // Support category-level anomalies with no expenseId
+    let expenseIdInt = parseInt(expenseId);
     if (isNaN(expenseIdInt) || expenseIdInt < 1) {
-      return res.status(400).json({ error: 'Expense ID is required' });
+      expenseIdInt = null;
     }
     if (!anomalyType) {
       return res.status(400).json({ error: 'anomalyType is required' });
@@ -423,7 +388,9 @@ async function markAnomalyAsExpected(req, res) {
     const result = await anomalyDetectionService.markAsExpected(expenseIdInt, anomalyType, expenseDetails);
     res.json({
       success: true,
-      message: `Anomaly for expense ${expenseIdInt} marked as expected`,
+      message: expenseIdInt
+        ? `Anomaly for expense ${expenseIdInt} marked as expected`
+        : `Category anomaly ${anomalyType} marked as expected`,
       suppressionRuleId: result.suppressionRuleId,
     });
   } catch (error) {
@@ -474,6 +441,28 @@ async function deleteSuppressionRule(req, res) {
 // Helper functions
 
 /**
+ * Parse and validate year/month route params.
+ * Returns { yearInt, monthInt } on success, or sends a 400 response and returns null.
+ * @param {object} req - Express request
+ * @param {object} res - Express response
+ * @returns {{ yearInt: number, monthInt: number } | null}
+ */
+function _parseYearMonth(req, res) {
+  const yearInt = parseInt(req.params.year);
+  const monthInt = parseInt(req.params.month);
+
+  if (isNaN(yearInt) || yearInt < 2000 || yearInt > 2100) {
+    res.status(400).json({ error: 'Invalid year. Must be between 2000 and 2100' });
+    return null;
+  }
+  if (isNaN(monthInt) || monthInt < 1 || monthInt > 12) {
+    res.status(400).json({ error: 'Invalid month. Must be between 1 and 12' });
+    return null;
+  }
+  return { yearInt, monthInt };
+}
+
+/**
  * Validate date string format (YYYY-MM-DD)
  * @param {string} dateStr - Date string to validate
  * @returns {boolean} True if valid
@@ -488,8 +477,14 @@ function _isValidDate(dateStr) {
     return false;
   }
   
-  const date = new Date(dateStr);
-  return date instanceof Date && !isNaN(date);
+  const [yearStr, monthStr, dayStr] = dateStr.split('-');
+  const year = parseInt(yearStr, 10);
+  const month = parseInt(monthStr, 10);
+  const day = parseInt(dayStr, 10);
+  
+  // Construct date and verify components match (catches rollover like Feb 30 → Mar 2)
+  const date = new Date(year, month - 1, day);
+  return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
 }
 
 /**

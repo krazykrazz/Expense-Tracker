@@ -346,11 +346,16 @@ describe('InvoiceService - CRUD Operations Property Tests', () => {
         fc.string({ minLength: 1, maxLength: 50 }).map(name => name + '.pdf'),
         safeDateObject(),
         (expenseId, filename, date) => {
+          // Use a single timestamp so all fields are consistent
+          const ts = Date.now();
+          const yearStr = date.getFullYear().toString();
+          const monthStr = String(date.getMonth() + 1).padStart(2, '0');
+          const generatedFilename = `${expenseId}_${ts}_${filename}`;
           const mockPaths = {
-            filename: `${expenseId}_${Date.now()}_${filename}`,
-            relativePath: `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, '0')}/${expenseId}_${Date.now()}_${filename}`,
-            fullPath: `/config/invoices/${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, '0')}/${expenseId}_${Date.now()}_${filename}`,
-            directoryPath: `/config/invoices/${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, '0')}`
+            filename: generatedFilename,
+            relativePath: `${yearStr}/${monthStr}/${generatedFilename}`,
+            fullPath: `/config/invoices/${yearStr}/${monthStr}/${generatedFilename}`,
+            directoryPath: `/config/invoices/${yearStr}/${monthStr}`
           };
           
           fileStorage.generateFilePath.mockReturnValue(mockPaths);
@@ -358,12 +363,12 @@ describe('InvoiceService - CRUD Operations Property Tests', () => {
           
           expect(result.filename).toContain(expenseId.toString());
           expect(result.filename).toContain('.pdf');
-          expect(result.relativePath).toContain(date.getFullYear().toString());
-          expect(result.relativePath).toContain(String(date.getMonth() + 1).padStart(2, '0'));
+          expect(result.relativePath).toContain(yearStr);
+          expect(result.relativePath).toContain(monthStr);
           const normalizedFullPath = result.fullPath.replace(/\\/g, '/');
           const normalizedRelativePath = result.relativePath.replace(/\\/g, '/');
           expect(normalizedFullPath).toContain(normalizedRelativePath);
-          expect(result.directoryPath).toContain(date.getFullYear().toString());
+          expect(result.directoryPath).toContain(yearStr);
         }
       ),
       dbPbtOptions()

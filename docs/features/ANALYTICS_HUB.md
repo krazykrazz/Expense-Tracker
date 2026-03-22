@@ -41,13 +41,33 @@ Compares spending across time periods to identify seasonal trends.
 
 ### 4. Anomaly Detection Tab
 
-Flags unusual spending for review.
+Flags unusual spending for review using an enhanced 7-type classification system with structured explanations, historical context, and financial impact estimates.
 
-**Key Features**:
-- **Amount Anomalies**: Expenses >3 standard deviations from category average
-- **Daily Spikes**: Days with spending >2x daily average
-- **New Merchant Alerts**: First-time visits with unusually high amounts
-- **Dismissible Alerts**: Mark anomalies as reviewed to exclude from future detection
+**Classification Types** (expanded from original 3):
+- **Large Transaction**: Single expense >3 standard deviations from category average
+- **Category Spending Spike**: Monthly category total >50% above historical average
+- **New Merchant**: First-time merchant visits with unusually high amounts
+- **Frequency Spike**: Transaction count >100% above historical monthly average
+- **Recurring Expense Increase**: Recurring pattern with >20% amount increase
+- **Seasonal Deviation**: >25% deviation from same month prior year (requires 12+ months data)
+- **Emerging Behavior Trend**: Gradual spending drift detected across multiple months
+
+**Enriched Alert Cards**:
+- Structured explanations with observed value, expected range, and deviation percentage
+- Historical context (purchase rank, category percentile, frequency comparison)
+- Financial impact estimates with annualized projections and budget impact
+- Behavior pattern labels (One-Time Event, Recurring Change, Emerging Trend)
+- Confidence scoring (low/medium/high) based on data availability
+- Transaction clustering for related spending events (travel, moving, holidays)
+- Budget integration with create/adjust suggestions on drift alerts
+
+**Smart Filtering**:
+- Benign pattern suppression (rare categories, seasonal spikes)
+- Budget-aware suppression (avoids redundant alerts when budget alerts are active)
+- Alert frequency controls (max 3 per category/month, repeat suppression, merging)
+- Dismissible alerts with Mark as Expected option
+
+> See [`docs/features/ANOMALY_DETECTION.md`](ANOMALY_DETECTION.md) for full details on the enhanced anomaly detection system.
 
 ### 5. Merchants Tab
 

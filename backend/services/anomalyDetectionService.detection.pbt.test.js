@@ -137,11 +137,20 @@ describe('AnomalyDetectionService - Amount Anomaly Detection Property Tests', ()
             place: 'Anomaly Store'
           });
 
-          // Detect anomalies
-          const anomalies = await anomalyDetectionService.detectAnomalies({ lookbackDays: 30 });
+          // Test detection directly, bypassing the suppression/filtering pipeline
+          // which has its own dedicated PBT tests. This test validates detection thresholds.
+          const allExpenses = await new Promise((resolve, reject) => {
+            db.all('SELECT * FROM expenses', (err, rows) => err ? reject(err) : resolve(rows));
+          });
+          const lookbackDate = new Date();
+          lookbackDate.setDate(lookbackDate.getDate() - 30);
+          const lookbackDateStr = lookbackDate.toISOString().split('T')[0];
+          const recentExpenses = allExpenses.filter(e => e.date >= lookbackDateStr);
 
-          // Property: The anomalous expense should be flagged
-          const amountAnomalies = anomalies.filter(a => a.anomalyType === ANOMALY_TYPES.AMOUNT);
+          // Initialize vendor baseline cache (required by _detectAmountAnomalies)
+          anomalyDetectionService._vendorBaselineCache = anomalyDetectionService._buildVendorBaselines(allExpenses);
+
+          const amountAnomalies = await anomalyDetectionService._detectAmountAnomalies(recentExpenses, allExpenses);
           
           // Should have at least one amount anomaly
           expect(amountAnomalies.length).toBeGreaterThanOrEqual(1);
@@ -214,7 +223,7 @@ describe('AnomalyDetectionService - Amount Anomaly Detection Property Tests', ()
     });
     anomalyDetectionService.clearDismissedAnomalies();
 
-    const category = 'Entertainment';
+    const category = 'Groceries';
     const baseAmount = 50;
 
     // Insert many normal expenses with consistent amounts
@@ -223,9 +232,9 @@ describe('AnomalyDetectionService - Amount Anomaly Detection Property Tests', ()
         date: generateRecentDate(60 + i), // Historical
         amount: baseAmount + (i % 3), // Small variation
         type: category,
-        method: 'VISA',
+        method: 'Cash',
         week: 1,
-        place: 'Cinema'
+        place: 'Regular Store'
       });
     }
 
@@ -234,14 +243,23 @@ describe('AnomalyDetectionService - Amount Anomaly Detection Property Tests', ()
       date: generateRecentDate(1),
       amount: baseAmount * 50,
       type: category,
-      method: 'VISA',
+      method: 'Cash',
       week: 1,
-      place: 'Concert Venue'
+      place: 'Anomaly Store'
     });
 
-    // Detect anomalies
-    const anomalies = await anomalyDetectionService.detectAnomalies({ lookbackDays: 30 });
-    const amountAnomalies = anomalies.filter(a => a.anomalyType === ANOMALY_TYPES.AMOUNT);
+    // Test detection directly, bypassing the suppression/filtering pipeline
+    const allExpenses = await new Promise((resolve, reject) => {
+      db.all('SELECT * FROM expenses', (err, rows) => err ? reject(err) : resolve(rows));
+    });
+    const lookbackDate = new Date();
+    lookbackDate.setDate(lookbackDate.getDate() - 30);
+    const lookbackDateStr = lookbackDate.toISOString().split('T')[0];
+    const recentExpenses = allExpenses.filter(e => e.date >= lookbackDateStr);
+
+    anomalyDetectionService._vendorBaselineCache = anomalyDetectionService._buildVendorBaselines(allExpenses);
+
+    const amountAnomalies = await anomalyDetectionService._detectAmountAnomalies(recentExpenses, allExpenses);
 
     expect(amountAnomalies.length).toBeGreaterThanOrEqual(1);
     
@@ -383,17 +401,22 @@ describe('AnomalyDetectionService - Daily Total Anomaly Detection Property Tests
           await insertExpense({
             date: anomalyDate,
             amount: anomalyDayTotal * 0.4,
-            type: 'Dining Out',
-            method: 'Debit',
+            type: 'Groceries',
+            method: 'Cash',
             week: 1,
-            place: 'Restaurant'
+            place: 'Another Store'
           });
 
-          // Detect anomalies with larger lookback to include all historical data
-          const anomalies = await anomalyDetectionService.detectAnomalies({ lookbackDays: 60 });
+          // Test detection directly, bypassing the suppression/filtering pipeline
+          const allExpenses = await new Promise((resolve, reject) => {
+            db.all('SELECT * FROM expenses', (err, rows) => err ? reject(err) : resolve(rows));
+          });
+          const lookbackDate = new Date();
+          lookbackDate.setDate(lookbackDate.getDate() - 60);
+          const lookbackDateStr = lookbackDate.toISOString().split('T')[0];
+          const recentExpenses = allExpenses.filter(e => e.date >= lookbackDateStr);
 
-          // Property: The anomalous day should be flagged
-          const dailyAnomalies = anomalies.filter(a => a.anomalyType === ANOMALY_TYPES.DAILY_TOTAL);
+          const dailyAnomalies = await anomalyDetectionService._detectDailyTotalAnomalies(recentExpenses, allExpenses);
           
           // Should have at least one daily anomaly
           expect(dailyAnomalies.length).toBeGreaterThanOrEqual(1);
@@ -474,20 +497,35 @@ describe('AnomalyDetectionService - Daily Total Anomaly Detection Property Tests
       });
     }
 
-    // Create anomalous day (5x normal)
+    // Create anomalous day (5x normal) with two expenses for "Multiple" category
     const anomalyDate = generateDate(5);
     await insertExpense({
       date: anomalyDate,
-      amount: dailyAmount * 5,
-      type: 'Entertainment',
-      method: 'VISA',
+      amount: dailyAmount * 3,
+      type: 'Groceries',
+      method: 'Cash',
       week: 1,
-      place: 'Concert'
+      place: 'Big Store'
+    });
+    await insertExpense({
+      date: anomalyDate,
+      amount: dailyAmount * 2,
+      type: 'Dining Out',
+      method: 'Cash',
+      week: 1,
+      place: 'Restaurant'
     });
 
-    // Detect anomalies
-    const anomalies = await anomalyDetectionService.detectAnomalies({ lookbackDays: 30 });
-    const dailyAnomalies = anomalies.filter(a => a.anomalyType === ANOMALY_TYPES.DAILY_TOTAL);
+    // Test detection directly, bypassing the suppression/filtering pipeline
+    const allExpenses = await new Promise((resolve, reject) => {
+      db.all('SELECT * FROM expenses', (err, rows) => err ? reject(err) : resolve(rows));
+    });
+    const lookbackDate = new Date();
+    lookbackDate.setDate(lookbackDate.getDate() - 30);
+    const lookbackDateStr = lookbackDate.toISOString().split('T')[0];
+    const recentExpenses = allExpenses.filter(e => e.date >= lookbackDateStr);
+
+    const dailyAnomalies = await anomalyDetectionService._detectDailyTotalAnomalies(recentExpenses, allExpenses);
 
     expect(dailyAnomalies.length).toBeGreaterThanOrEqual(1);
     
@@ -618,17 +656,22 @@ describe('AnomalyDetectionService - New Merchant Anomaly Detection Property Test
           await insertExpense({
             date: generateDate(5), // Recent - within lookback
             amount: anomalyAmount,
-            type: 'Entertainment',
-            method: 'VISA',
+            type: 'Groceries',
+            method: 'Cash',
             week: 1,
             place: 'Brand New Expensive Place'
           });
 
-          // Detect anomalies - use 30-day lookback so historical merchants are excluded
-          const anomalies = await anomalyDetectionService.detectAnomalies({ lookbackDays: 30 });
+          // Test detection directly, bypassing the suppression/filtering pipeline
+          const allExpenses = await new Promise((resolve, reject) => {
+            db.all('SELECT * FROM expenses', (err, rows) => err ? reject(err) : resolve(rows));
+          });
+          const lookbackDate = new Date();
+          lookbackDate.setDate(lookbackDate.getDate() - 30);
+          const lookbackDateStr = lookbackDate.toISOString().split('T')[0];
+          const recentExpenses = allExpenses.filter(e => e.date >= lookbackDateStr);
 
-          // Property: The new merchant with high amount should be flagged
-          const merchantAnomalies = anomalies.filter(a => a.anomalyType === ANOMALY_TYPES.NEW_MERCHANT);
+          const merchantAnomalies = await anomalyDetectionService._detectNewMerchantAnomalies(recentExpenses, allExpenses);
           
           // The anomaly should be for the new merchant if it exceeds threshold
           // Note: The threshold is mean + 2*stdDev of first-visit amounts
@@ -786,15 +829,22 @@ describe('AnomalyDetectionService - New Merchant Anomaly Detection Property Test
     await insertExpense({
       date: generateDate(5),
       amount: typicalAmount * 10,
-      type: 'Entertainment',
-      method: 'VISA',
+      type: 'Groceries',
+      method: 'Cash',
       week: 1,
       place: 'Expensive New Place'
     });
 
-    // Detect anomalies
-    const anomalies = await anomalyDetectionService.detectAnomalies({ lookbackDays: 30 });
-    const merchantAnomalies = anomalies.filter(a => a.anomalyType === ANOMALY_TYPES.NEW_MERCHANT);
+    // Test detection directly, bypassing the suppression/filtering pipeline
+    const allExpenses = await new Promise((resolve, reject) => {
+      db.all('SELECT * FROM expenses', (err, rows) => err ? reject(err) : resolve(rows));
+    });
+    const lookbackDate = new Date();
+    lookbackDate.setDate(lookbackDate.getDate() - 30);
+    const lookbackDateStr = lookbackDate.toISOString().split('T')[0];
+    const recentExpenses = allExpenses.filter(e => e.date >= lookbackDateStr);
+
+    const merchantAnomalies = await anomalyDetectionService._detectNewMerchantAnomalies(recentExpenses, allExpenses);
 
     expect(merchantAnomalies.length).toBeGreaterThanOrEqual(1);
     

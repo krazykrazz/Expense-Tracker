@@ -178,9 +178,10 @@ Update events include detailed change tracking showing old → new values for mo
 | `auto_payment_logged` | loan_payment | Payment automatically logged from fixed expense |
 | `settings_updated` | settings | System settings changed (shows old → new values) |
 | `insurance_status_changed` | expense | Medical expense insurance status changed |
-| `anomaly_dismissed` | anomaly | Anomaly dismissed by user (includes anomaly_type) |
-| `anomaly_marked_expected` | anomaly | Anomaly marked as expected, suppression rule created (includes anomaly_type, suppression_rule_id) |
+| `anomaly_dismissed` | anomaly | Anomaly dismissed by user (includes anomaly_type, classification) |
+| `anomaly_marked_expected` | anomaly | Anomaly marked as expected, suppression rule created (includes anomaly_type, classification, suppression_rule_id) |
 | `suppression_rule_deleted` | anomaly | Anomaly suppression rule deleted (includes rule_type, merchant_name) |
+| `event_group_detected` | anomaly | Life-event group detected during anomaly detection (includes event_theme, transaction_count, total_amount, date_range) |
 | `backup_created` | system | Database backup created |
 | `backup_restored` | system | Database backup restored |
 | `version_upgraded` | system | Application version upgrade detected on startup (includes old_version, new_version) |
@@ -312,9 +313,24 @@ Activity log events include rich metadata to provide complete audit context:
 - Person link updates include `oldPersonId` and `newPersonId`
 
 **Anomaly Events**:
-- `anomaly_dismissed`: `{ anomaly_type: "amount"|"new_merchant"|"daily_total", expense_id: number }`
-- `anomaly_marked_expected`: `{ anomaly_type: "amount"|"new_merchant"|"daily_total", expense_id: number, suppression_rule_id: number }`
+- `anomaly_dismissed`: `{ anomaly_type: "amount"|"new_merchant"|"daily_total", classification: "Large_Transaction"|"Category_Spending_Spike"|"New_Merchant"|"Frequency_Spike"|"Recurring_Expense_Increase"|"Seasonal_Deviation"|"Emerging_Behavior_Trend", expense_id: number, merchant: string, amount: number }`
+- `anomaly_marked_expected`: `{ anomaly_type: "amount"|"new_merchant"|"daily_total", classification: "Large_Transaction"|"Category_Spending_Spike"|"New_Merchant"|"Frequency_Spike"|"Recurring_Expense_Increase"|"Seasonal_Deviation"|"Emerging_Behavior_Trend", expense_id: number, merchant: string, amount: number, suppression_rule_id: number }`
 - `suppression_rule_deleted`: `{ rule_id: number, rule_type: "merchant_amount"|"merchant_category"|"specific_date", merchant_name: string }`
+- `event_group_detected`: `{ event_theme: "Travel_Event"|"Moving_Event"|"Home_Purchase_Event"|"Holiday_Spending", transaction_count: number, total_amount: number, date_range: { start: string, end: string } }`
+- The `anomaly_type` field is the legacy type (`amount`, `new_merchant`, `daily_total`) preserved for backward compatibility
+- The `classification` field is the expanded classification from `ANOMALY_CLASSIFICATIONS`:
+  - `Large_Transaction` — single expense exceeds 3 standard deviations above category average
+  - `Category_Spending_Spike` — monthly category total exceeds historical average by >50%
+  - `New_Merchant` — expense at an unseen merchant exceeding first-visit threshold
+  - `Frequency_Spike` — monthly transaction count exceeds historical average by >100%
+  - `Recurring_Expense_Increase` — recurring expense amount increased >20% over last 3 occurrences
+  - `Seasonal_Deviation` — spending deviates >25% from same month prior year
+  - `Emerging_Behavior_Trend` — gradual spending drift detected across multiple months
+- Legacy type to classification mapping (`LEGACY_TYPE_MAP`):
+  - `amount` → `Large_Transaction`
+  - `new_merchant` → `New_Merchant`
+  - `daily_total` → `Large_Transaction`
+- The `user_action` string uses human-readable classification labels (e.g., "Dismissed Large Transaction anomaly for Costco ($500)", "Marked Recurring Expense Increase anomaly as expected for Netflix ($25)")
 
 **Update Events**:
 - All update operations include a `changes` array showing field-level diffs

@@ -43,13 +43,14 @@ export const getAnomalies = async (options = {}) => {
  * Dismiss an anomaly (mark as expected behavior)
  * @param {number} expenseId - ID of the expense to dismiss
  * @param {string} anomalyType - Type of anomaly being dismissed
+ * @param {Object} [expenseDetails] - Details for activity log (merchant, amount, classification)
  * @returns {Promise<void>}
  */
-export const dismissAnomaly = async (expenseId, anomalyType) => {
+export const dismissAnomaly = async (expenseId, anomalyType, expenseDetails) => {
   try {
     return await apiPost(
       API_ENDPOINTS.ANALYTICS_ANOMALY_DISMISS(expenseId),
-      { anomalyType },
+      { anomalyType, expenseDetails },
       'dismiss anomaly'
     );
   } catch (error) {

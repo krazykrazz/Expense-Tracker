@@ -460,30 +460,49 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
 
   /**
    * Handle dismissing an anomaly alert
+   * Uses optimistic removal with rollback on API failure
    * _Requirements: 8.5, 8.6_
    */
   const handleDismissAnomaly = useCallback(async (anomaly) => {
-    await dismissAnomaly(anomaly.expenseId, anomaly.anomalyType);
-    setAnomalies(prev => prev.filter(a =>
-      !(a.expenseId === anomaly.expenseId && a.anomalyType === anomaly.anomalyType)
-    ));
-  }, []);
+    const anomalyTypeValue = anomaly.anomalyType || anomaly.classification;
+    // Optimistic removal
+    setAnomalies(prev => prev.filter(a => a.id !== anomaly.id));
+    try {
+      await dismissAnomaly(anomaly.expenseId, anomalyTypeValue, {
+        merchant: anomaly.place,
+        amount: anomaly.amount,
+        classification: anomaly.classification
+      });
+    } catch (err) {
+      console.error('Failed to dismiss anomaly:', err);
+      // Rollback — re-fetch to restore accurate state
+      fetchAnomalies();
+    }
+  }, [fetchAnomalies]);
 
   /**
    * Handle marking an anomaly as expected
+   * Uses optimistic removal with rollback on API failure
    * _Requirements: 8.7_
    */
   const handleMarkAnomalyExpected = useCallback(async (anomaly) => {
-    await markAnomalyAsExpected(anomaly.expenseId, anomaly.anomalyType, {
-      merchant: anomaly.place,
-      amount: anomaly.amount,
-      date: anomaly.date,
-      category: anomaly.category
-    });
-    setAnomalies(prev => prev.filter(a =>
-      !(a.expenseId === anomaly.expenseId && a.anomalyType === anomaly.anomalyType)
-    ));
-  }, []);
+    const anomalyTypeValue = anomaly.anomalyType || anomaly.classification;
+    // Optimistic removal
+    setAnomalies(prev => prev.filter(a => a.id !== anomaly.id));
+    try {
+      await markAnomalyAsExpected(anomaly.expenseId, anomalyTypeValue, {
+        merchant: anomaly.place,
+        amount: anomaly.amount,
+        date: anomaly.date,
+        category: anomaly.category,
+        classification: anomaly.classification
+      });
+    } catch (err) {
+      console.error('Failed to mark anomaly as expected:', err);
+      // Rollback — re-fetch to restore accurate state
+      fetchAnomalies();
+    }
+  }, [fetchAnomalies]);
 
   /**
    * Handle auto-log payment confirmation
@@ -763,7 +782,7 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
         {/* Anomaly Alerts - Requirements: 8.1, 8.2, 8.4 */}
         {anomalies.map(anomaly => (
           <AnomalyAlertItem
-            key={`${anomaly.expenseId}-${anomaly.anomalyType}`}
+            key={anomaly.id}
             anomaly={anomaly}
             onDismiss={handleDismissAnomaly}
             onMarkExpected={handleMarkAnomalyExpected}

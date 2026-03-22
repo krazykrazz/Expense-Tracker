@@ -3193,7 +3193,163 @@ HTTP/1.1 400 Bad Request
 
 ---
 
-### 4. Mark Anomaly as Expected
+### 4. Get Anomalies
+
+Detect and return enriched spending anomalies for the current user. Each anomaly includes a classification, structured explanation, historical context, financial impact estimate, behavior pattern, confidence score, and optional cluster or budget suggestion data.
+
+**Endpoint:** `GET /api/analytics/anomalies`
+
+**Success Response:**
+```json
+HTTP/1.1 200 OK
+{
+  "anomalies": [
+    {
+      "expenseId": 456,
+      "date": "2025-01-15",
+      "place": "Costco",
+      "amount": 450.00,
+      "category": "Groceries",
+      "anomalyType": "amount",
+      "severity": "high",
+      "classification": "Large_Transaction",
+      "explanation": {
+        "typeLabel": "Large Transaction",
+        "observedValue": 450.00,
+        "expectedRange": {
+          "min": 35.00,
+          "max": 120.00
+        },
+        "deviationPercent": 275.0,
+        "comparisonPeriod": "last 12 months"
+      },
+      "historicalContext": {
+        "purchaseRank": 3,
+        "purchaseRankTotal": 48,
+        "percentile": null,
+        "deviationFromAverage": 478.5,
+        "frequency": "approximately once every 9 months"
+      },
+      "impactEstimate": {
+        "annualizedChange": 3960.00,
+        "savingsRateChange": -2.1,
+        "budgetImpact": {
+          "budgetLimit": 500.00,
+          "currentSpent": 380.00,
+          "projectedMonthEnd": 620.00,
+          "projectedOverage": 120.00
+        }
+      },
+      "behaviorPattern": "One_Time_Event",
+      "confidence": "high",
+      "cluster": null,
+      "budgetSuggestion": null
+    }
+  ],
+  "metadata": {
+    "totalCount": 1,
+    "dismissedCount": 0
+  }
+}
+```
+
+**Response Fields — Anomaly Object:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| expenseId | number | ID of the flagged expense (null for drift/cluster alerts) |
+| date | string | Date of the expense (`YYYY-MM-DD`) |
+| place | string | Merchant or place name |
+| amount | number | Transaction amount |
+| category | string | Expense category |
+| anomalyType | string | Legacy type: `amount`, `daily_total`, or `new_merchant` (preserved for backward compatibility) |
+| severity | string | Alert severity: `low`, `medium`, or `high` |
+| classification | string | Expanded classification (see below) |
+| explanation | object | Structured explanation of the anomaly |
+| historicalContext | object | Historical spending comparisons |
+| impactEstimate | object | Projected financial impact |
+| behaviorPattern | string | `One_Time_Event`, `Recurring_Change`, or `Emerging_Trend` |
+| confidence | string | Data reliability indicator: `low`, `medium`, or `high` |
+| cluster | object \| null | Cluster data when anomaly is part of a transaction cluster |
+| budgetSuggestion | object \| null | Budget recommendation for drift alerts |
+
+**Classification Values:**
+
+| Value | Description |
+|-------|-------------|
+| `Large_Transaction` | Single expense exceeds 3 standard deviations above category average |
+| `Category_Spending_Spike` | Monthly category total exceeds historical average by >50% |
+| `New_Merchant` | First purchase at an unseen merchant with amount above threshold |
+| `Frequency_Spike` | Monthly transaction count exceeds historical average by >100% |
+| `Recurring_Expense_Increase` | Recurring expense amount increased >20% over last 3 occurrences |
+| `Seasonal_Deviation` | Spending deviates >25% from same month prior year (requires 12+ months data) |
+| `Emerging_Behavior_Trend` | Gradual spending drift detected across multiple months |
+
+**Explanation Object:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| typeLabel | string | Human-readable classification label |
+| observedValue | number | The flagged value |
+| expectedRange | object | `{ min: number, max: number }` — computed from mean ± stdDev |
+| deviationPercent | number | Percentage above the expected range upper bound |
+| comparisonPeriod | string | Time window used (e.g., `"last 12 months"`, `"all available data (8 months)"`) |
+
+**Historical Context Object:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| purchaseRank | number \| null | Rank among category purchases (e.g., 3 = 3rd largest). Null for category-level anomalies |
+| purchaseRankTotal | number \| null | Total purchases in the ranking pool |
+| percentile | number \| null | 0–100 percentile for category-level anomalies. Null for transaction-level anomalies |
+| deviationFromAverage | number | Percentage deviation from historical average |
+| frequency | string \| null | Average purchase interval (e.g., `"approximately once every 9 months"`). Null when fewer than 2 purchases |
+
+**Impact Estimate Object:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| annualizedChange | number | Projected yearly dollar change if behavior continues |
+| savingsRateChange | number \| null | Projected savings rate percentage change. Null when no income data available |
+| budgetImpact | object \| null | Budget projection when a budget exists for the category |
+
+**Budget Impact Object** (within impactEstimate):
+
+| Field | Type | Description |
+|-------|------|-------------|
+| budgetLimit | number | The category's budget limit |
+| currentSpent | number | Amount spent so far this month |
+| projectedMonthEnd | number | Projected total at current daily rate |
+| projectedOverage | number | Projected amount over (positive) or under (negative) budget |
+
+**Cluster Object** (non-null when anomaly is part of a transaction cluster):
+
+| Field | Type | Description |
+|-------|------|-------------|
+| label | string | Cluster label: `Travel_Event`, `Moving_Event`, `Home_Renovation`, or `Holiday_Spending` |
+| totalAmount | number | Sum of all clustered transaction amounts |
+| transactionCount | number | Number of transactions in the cluster |
+| dateRange | object | `{ start: string, end: string }` — date range in `YYYY-MM-DD` format |
+| transactions | array | Constituent transactions: `[{ expenseId, place, amount, date }]` |
+
+**Budget Suggestion Object** (non-null on drift alerts with budget recommendations):
+
+| Field | Type | Description |
+|-------|------|-------------|
+| action | string | `create_budget` (no budget exists) or `adjust_budget` (budget exceeded) |
+| category | string | The category for the budget suggestion |
+| suggestedLimit | number | Recommended budget limit (recent 3-month avg rounded up to nearest $50) |
+| currentLimit | number \| null | Current budget limit. Null for `create_budget` actions |
+
+**Error Responses:**
+```json
+HTTP/1.1 500 Internal Server Error
+{ "error": "Internal server error" }
+```
+
+---
+
+### 5. Mark Anomaly as Expected
 
 Dismiss an anomaly and create a suppression rule to prevent similar anomalies from being flagged in the future.
 
@@ -3250,7 +3406,7 @@ HTTP/1.1 400 Bad Request
 
 ---
 
-### 5. Get Suppression Rules
+### 6. Get Suppression Rules
 
 Get all active anomaly suppression rules.
 
@@ -3287,7 +3443,7 @@ HTTP/1.1 200 OK
 
 ---
 
-### 6. Delete Suppression Rule
+### 7. Delete Suppression Rule
 
 Remove a suppression rule, re-enabling anomaly detection for that pattern.
 
@@ -3320,7 +3476,7 @@ HTTP/1.1 400 Bad Request
 
 ---
 
-### 7. Dismiss Anomaly (Updated)
+### 8. Dismiss Anomaly (Updated)
 
 Dismiss a specific anomaly. Now accepts an optional `anomalyType` in the request body for more precise tracking.
 
@@ -3354,6 +3510,10 @@ HTTP/1.1 200 OK
 ---
 
 ## Changelog - Analytics Hub
+
+### Actionable Anomaly Alerts (v5.14.0)
+- Updated `GET /api/analytics/anomalies` — enriched response with classification, explanation, historicalContext, impactEstimate, behaviorPattern, confidence, cluster, and budgetSuggestion fields
+- Legacy `anomalyType` field preserved for backward compatibility
 
 ### Analytics Hub Revamp (v5.13.0)
 - Added `GET /api/analytics/monthly-summary/:year/:month` — monthly spending report card

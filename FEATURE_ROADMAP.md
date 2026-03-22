@@ -1,6 +1,6 @@
 # Expense Tracker - Feature Roadmap
 
-**Last Updated**: February 26, 2026  
+**Last Updated**: March 2026  
 **Current Version**: 1.0.0
 
 This document tracks potential features and enhancements for the Expense Tracker application. Features are categorized by priority and implementation status.
@@ -68,6 +68,99 @@ This document tracks potential features and enhancements for the Expense Tracker
 - Better user experience with relevant alerts only
 
 **Dependencies**: Extends existing anomaly detection service (v4.17.0)
+
+---
+
+### 🟢 2a. Actionable Anomaly Alerts
+**Status**: Completed  
+**Priority**: Medium  
+**Effort**: High  
+**Spec**: `.kiro/specs/actionable-anomaly-alerts/`  
+**Documentation**: `docs/features/ANOMALY_DETECTION.md`  
+**Description**: Enhanced anomaly detection transforming raw statistical deviations into actionable financial insights with 7-type classification, structured explanations, historical context, financial impact estimates, behavioral drift detection, transaction clustering, budget integration, alert frequency controls, and enriched alert card layout.
+
+**Features Delivered**:
+- **7-Type Classification**: Expanded from 3 types to Large_Transaction, Category_Spending_Spike, New_Merchant, Frequency_Spike, Recurring_Expense_Increase, Seasonal_Deviation, Emerging_Behavior_Trend
+- **Structured Explanations**: Each anomaly includes observed value, expected range, deviation percentage, and comparison period
+- **Historical Context**: Purchase rank, category percentile, deviation from average, and frequency comparison
+- **Financial Impact Estimates**: Annualized spending change, savings rate impact, and budget impact projections
+- **Behavioral Drift Detection**: Detects gradual spending increases across 3-month periods with budget suggestions
+- **Transaction Clustering**: Groups related anomalous transactions (travel, moving, renovation, holiday) into single cluster alerts
+- **Budget Integration**: Suppresses redundant category spikes when budget alerts are active, enriches impact estimates with budget projections, suggests budget creation or adjustment on drift alerts
+- **Behavior Pattern Detection**: Classifies anomalies as One-Time Event, Recurring Change, or Emerging Trend
+- **Confidence Scoring**: Low/medium/high confidence based on historical data quantity
+- **Alert Frequency Controls**: Per-category caps (3/month), repeat suppression (30-day window), related alert merging (7-day window)
+- **Low-Value Alert Suppression**: Suppresses rare-category purchases, seasonal spikes, and clustered transactions
+- **Enriched Alert Card Layout**: Restructured AnomalyAlertItem with classification badges, explanation section, historical context, impact estimates, cluster expand/collapse, drift alerts with budget suggestions
+- **CSS Module Migration**: AnomalyAlertItem migrated from global CSS to CSS Module
+- **Activity Log Integration**: Expanded classification types in dismiss and mark-as-expected event metadata
+
+**Benefits**:
+- Actionable insights instead of raw statistical flags
+- Reduced alert fatigue through smart suppression and frequency controls
+- Budget-aware anomaly detection eliminates redundant notifications
+- Gradual spending drift detection catches slow behavioral changes
+- Transaction clustering provides meaningful event-level insights
+
+**Dependencies**: Extends Adaptive Anomaly Detection (#2) and Budget Alert Notifications
+
+---
+
+### 🟢 2b. Anomaly Detection Refinements
+**Status**: Completed  
+**Priority**: Medium  
+**Effort**: Medium  
+**Spec**: `.kiro/specs/anomaly-refinements/`  
+**Documentation**: `docs/features/ANOMALY_DETECTION.md`  
+**Description**: Closes six gaps between the anomaly detection implementation and the original specification by introducing vendor-level baselines, vendor-percentile detection, a new anomaly type, interval-based frequency spikes, data-driven suppression, and a global monthly alert cap. All changes are backend-only.
+
+**Features Delivered**:
+- **Vendor-Level Baselines**: Per-vendor statistical profiles (p25, median, p75, p95, max, avg interval) computed in-memory each detection cycle
+- **Vendor-Percentile Large Transaction Detection**: Flags transactions exceeding vendor p95 with cluster exclusion — falls back to category-level stdDev for vendors with < 10 transactions
+- **New_Spending_Tier Anomaly Type**: Detects transactions exceeding 3× the vendor's historical max with severity tiers (low/medium/high based on ratio)
+- **Interval-Based Vendor Frequency Spikes**: Flags visits occurring in less than half the vendor's average interval between transactions
+- **Data-Driven Suppression Rules**: Suppresses anomalies for vendors with insufficient history (< 10 transactions) and categories with low annual frequency (< 2/year)
+- **Global Monthly Alert Cap**: Limits alerts to 3 per calendar month with severity-based retention; prior-month anomalies pass through unaffected
+- **Extracted Cluster Computation Utility**: Gap-based clustering algorithm extracted from `_findRecurringPattern` into reusable `_computeAmountClusters` method with configurable `CLUSTER_GAP_MULTIPLIER`
+
+**Benefits**:
+- More precise anomaly detection calibrated to per-vendor spending patterns
+- Reduced false positives through cluster exclusion and data-driven suppression
+- Catches dramatic vendor-level spending escalations via New_Spending_Tier
+- Prevents alert fatigue with a hard global monthly cap
+- Cleaner codebase with shared cluster computation utility
+
+**Dependencies**: Extends Actionable Anomaly Alerts (#2a)
+
+---
+
+### 🟡 2c. Anomaly Alert UX Simplification
+**Status**: In Progress  
+**Priority**: Medium  
+**Effort**: Medium  
+**Spec**: `.kiro/specs/anomaly-alert-ux/`  
+**Documentation**: `docs/features/ANOMALY_DETECTION.md`  
+**Description**: Transforms the anomaly alert experience from a dense multi-section card into a compact, scannable card with plain-language summaries. Backend gains Alert_Builder, Alert_Prioritizer (type-priority ordering), and Event_Grouping_Detector. Frontend AnomalyAlertItem refactored to simplified card with severity border, details toggle, and "Got it" / "Mute" actions.
+
+**Features Delivered**:
+- **Alert_Builder**: Generates plain-language summary (≤40 chars), jargon-free explanation (≤120 chars), and conditional typical range for each anomaly
+- **Alert_Prioritizer**: Replaces global cap with type-priority ordering via ALERT_TYPE_PRIORITY map, per-vendor cap (1/vendor/month), deduplication
+- **Event_Grouping_Detector**: Standalone module detecting life-event groups (Travel, Moving, Home_Purchase, Holiday) within 48-hour windows
+- **Simplified Card Layout**: Severity-colored left border (red/amber/gray), summary + explanation + typical range, classification and confidence badges
+- **Details Toggle**: Collapsible panel showing enriched data (observed value, expected range, historical context, impact estimates)
+- **Simplified Actions**: "✓ Got it" primary button + "Mute alerts like this" secondary link replacing Dismiss/Mark as Expected
+- **Dark Mode & Reduced Motion**: CSS overrides for `.theme-dark` and `@media (prefers-reduced-motion: reduce)`
+- **Backward Compatibility**: Field coexistence — simplified fields alongside enriched fields, legacy anomalies render with original layout
+- **Activity Log Integration**: `event_group_detected` event type with theme, transaction count, total amount, date range
+
+**Benefits**:
+- Scannable alerts with plain-language summaries instead of dense statistical data
+- Reduced cognitive load with progressive disclosure via details toggle
+- Smarter alert prioritization based on anomaly type importance
+- Life-event grouping reduces noise from related transactions
+- Accessible design with ARIA labels, keyboard navigation, dark mode, reduced motion
+
+**Dependencies**: Extends Anomaly Detection Refinements (#2b)
 
 ---
 
@@ -1678,6 +1771,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 ---
 
 **Version History**:
+- v3.9 (2026-03): Added Actionable Anomaly Alerts (#2a) as completed in Analytics & Insights section
 - v3.8 (2026-03-14): Marked Adaptive Anomaly Detection as completed (Analytics Hub Revamp spec), updated Analytics Hub description in product.md
 - v3.7 (2026-02-26): Added Fetch Infrastructure Consolidation (#35) as 🟡 In Progress in Code Quality & Optimization section
 - v3.6 (2026-02-26): Added Auth Infrastructure (Phase 1) as 🟡 In Progress in new Security & Authentication section

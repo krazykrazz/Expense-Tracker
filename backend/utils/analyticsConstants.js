@@ -58,7 +58,11 @@ const PATTERN_FREQUENCIES = {
   MONTHLY: 'monthly'
 };
 
-// Anomaly types
+/**
+ * @deprecated Legacy anomaly types — retained as aliases for backward compatibility.
+ * Use ANOMALY_CLASSIFICATIONS for the expanded 7-type classification system.
+ * See LEGACY_TYPE_MAP for the mapping from these values to ANOMALY_CLASSIFICATIONS.
+ */
 const ANOMALY_TYPES = {
   AMOUNT: 'amount',
   DAILY_TOTAL: 'daily_total',
@@ -79,10 +83,125 @@ const SEVERITY_LEVELS = {
   HIGH: 'high'
 };
 
+// Expanded anomaly classification types (Req 3, 14)
+const ANOMALY_CLASSIFICATIONS = {
+  LARGE_TRANSACTION: 'Large_Transaction',
+  CATEGORY_SPENDING_SPIKE: 'Category_Spending_Spike',
+  NEW_MERCHANT: 'New_Merchant',
+  FREQUENCY_SPIKE: 'Frequency_Spike',
+  RECURRING_EXPENSE_INCREASE: 'Recurring_Expense_Increase',
+  SEASONAL_DEVIATION: 'Seasonal_Deviation',
+  EMERGING_BEHAVIOR_TREND: 'Emerging_Behavior_Trend',
+  NEW_SPENDING_TIER: 'New_Spending_Tier'
+};
+
+// Backward-compatible mapping: legacy type → new classification
+const LEGACY_TYPE_MAP = {
+  [ANOMALY_TYPES.AMOUNT]: ANOMALY_CLASSIFICATIONS.LARGE_TRANSACTION,
+  [ANOMALY_TYPES.NEW_MERCHANT]: ANOMALY_CLASSIFICATIONS.NEW_MERCHANT,
+  [ANOMALY_TYPES.DAILY_TOTAL]: ANOMALY_CLASSIFICATIONS.LARGE_TRANSACTION
+};
+
+// Behavior patterns (Req 5)
+const BEHAVIOR_PATTERNS = {
+  ONE_TIME_EVENT: 'One_Time_Event',
+  RECURRING_CHANGE: 'Recurring_Change',
+  EMERGING_TREND: 'Emerging_Trend'
+};
+
+// Detection thresholds (Req 3, 8, 14)
+const DETECTION_THRESHOLDS = {
+  CATEGORY_SPIKE_THRESHOLD: 0.50,
+  FREQUENCY_SPIKE_THRESHOLD: 1.0,
+  RECURRING_INCREASE_THRESHOLD: 0.20,
+  DRIFT_THRESHOLD: 0.25,
+  SEASONAL_VARIANCE_THRESHOLD: 0.25,
+  MIN_MONTHS_FOR_DRIFT: 6,
+  DRIFT_PERIOD_MONTHS: 3,
+  MIN_MONTHS_FOR_SEASONAL: 12,
+  VENDOR_PERCENTILE_THRESHOLD: 95,
+  NEW_SPENDING_TIER_MULTIPLIER: 3,
+  VENDOR_FREQUENCY_SPIKE_RATIO: 0.5,
+  MIN_VENDOR_TRANSACTIONS: 10,
+  MIN_VENDOR_TRANSACTIONS_FOR_FREQUENCY: 3
+};
+
+// Suppression configuration (Req 6, 14)
+const SUPPRESSION_CONFIG = {
+  RARE_PURCHASE_CATEGORIES: ['Electronics', 'Furniture', 'Appliances'],
+  SEASONAL_SPIKE_MONTHS: { 'Gifts': 12, 'Entertainment': 12 },
+  MIN_TRANSACTIONS_FOR_RARE: 4,
+  MIN_VENDOR_TRANSACTIONS_FOR_DETECTION: 10,
+  MIN_CATEGORY_ANNUAL_FREQUENCY: 2
+};
+
+// Throttle configuration (Req 10, 14)
+const THROTTLE_CONFIG = {
+  MAX_ALERTS_PER_CATEGORY_PER_MONTH: 3,
+  REPEAT_ALERT_SUPPRESSION_DAYS: 30,
+  RELATED_ALERT_MERGE_WINDOW_DAYS: 7,
+  CLUSTER_WINDOW_DAYS: 7,
+  MIN_CLUSTER_SIZE: 3,
+  MAX_ALERTS_PER_MONTH: 3
+};
+
+// Cluster labels (Req 7)
+const CLUSTER_LABELS = {
+  TRAVEL_EVENT: 'Travel_Event',
+  MOVING_EVENT: 'Moving_Event',
+  HOME_RENOVATION: 'Home_Renovation',
+  HOLIDAY_SPENDING: 'Holiday_Spending'
+};
+
+// Cluster gap multiplier for amount-based clustering (replaces hardcoded 1.8)
+const CLUSTER_GAP_MULTIPLIER = 1.8;
+
+// Alert type priority for Alert_Prioritizer (Req 8)
+// Higher number = higher priority when selecting which alerts to retain
+const ALERT_TYPE_PRIORITY = {
+  'New_Spending_Tier': 6,
+  'Category_Spending_Spike': 5,
+  'Emerging_Behavior_Trend': 4,
+  'Recurring_Expense_Increase': 3,
+  'Frequency_Spike': 2,
+  'Large_Transaction': 1,
+  'Seasonal_Deviation': 1,
+  'New_Merchant': 1
+};
+
+// Event grouping configuration (Req 10)
+const EVENT_GROUPING_CONFIG = {
+  WINDOW_HOURS: 48,
+  MIN_GROUP_SIZE: 2,
+  THEMES: {
+    TRAVEL: { label: 'Travel_Event', categories: ['Transportation', 'Accommodation', 'Dining', 'Gas', 'Parking'] },
+    MOVING: { label: 'Moving_Event', categories: ['Furniture', 'Home', 'Utilities', 'Moving'] },
+    HOME_PURCHASE: { label: 'Home_Purchase', categories: ['Home Improvement', 'Furniture', 'Appliances'] },
+    HOLIDAY: { label: 'Holiday_Spending', categories: ['Gifts', 'Dining', 'Entertainment'], monthConstraint: 12 }
+  }
+};
+
+// Alert text length limits (Req 2, 3)
+const ALERT_TEXT_LIMITS = {
+  SUMMARY_MAX_LENGTH: 40,
+  EXPLANATION_MAX_LENGTH: 120
+};
+
 module.exports = {
   ANALYTICS_CONFIG,
   PATTERN_FREQUENCIES,
   ANOMALY_TYPES,
   CONFIDENCE_LEVELS,
-  SEVERITY_LEVELS
+  SEVERITY_LEVELS,
+  ANOMALY_CLASSIFICATIONS,
+  LEGACY_TYPE_MAP,
+  BEHAVIOR_PATTERNS,
+  DETECTION_THRESHOLDS,
+  SUPPRESSION_CONFIG,
+  THROTTLE_CONFIG,
+  CLUSTER_LABELS,
+  CLUSTER_GAP_MULTIPLIER,
+  ALERT_TYPE_PRIORITY,
+  EVENT_GROUPING_CONFIG,
+  ALERT_TEXT_LIMITS
 };

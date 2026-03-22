@@ -33,6 +33,10 @@ async function createExpense(req, res) {
     // Parse futureMonths (default to 0 if not provided)
     const parsedFutureMonths = futureMonths !== undefined ? parseInt(futureMonths, 10) : 0;
     
+    if (isNaN(parsedFutureMonths)) {
+      return res.status(400).json({ error: 'futureMonths must be a valid number' });
+    }
+    
     let result;
     if (peopleAllocations && peopleAllocations.length > 0) {
       // Create expense with people allocations
@@ -71,11 +75,19 @@ async function getExpenses(req, res) {
     const filters = {};
     
     if (year) {
-      filters.year = parseInt(year);
+      const parsed = parseInt(year);
+      if (isNaN(parsed)) {
+        return res.status(400).json({ error: 'Year must be a valid number' });
+      }
+      filters.year = parsed;
     }
     
     if (month) {
-      filters.month = parseInt(month);
+      const parsed = parseInt(month);
+      if (isNaN(parsed)) {
+        return res.status(400).json({ error: 'Month must be a valid number' });
+      }
+      filters.month = parsed;
     }
     
     const expenses = await expenseService.getExpenses(filters);

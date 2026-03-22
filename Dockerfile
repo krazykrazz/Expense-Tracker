@@ -30,7 +30,7 @@ WORKDIR /build/backend
 COPY backend/package*.json ./
 
 # Install production dependencies only
-RUN npm ci --only=production
+RUN npm ci --omit=dev
 
 # Stage 3: Final Runtime
 FROM node:20-alpine

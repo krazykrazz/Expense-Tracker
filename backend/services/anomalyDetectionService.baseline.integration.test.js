@@ -96,11 +96,19 @@ describe('AnomalyDetectionService - calculateCategoryBaseline extended fields', 
     expect(baseline).toHaveProperty('category', 'Groceries');
     expect(baseline).toHaveProperty('mean');
     expect(baseline).toHaveProperty('stdDev');
+    expect(baseline).toHaveProperty('transactionMean');
+    expect(baseline).toHaveProperty('transactionStdDev');
     expect(baseline).toHaveProperty('count', 3);
     expect(baseline).toHaveProperty('monthsWithData', 3);
     expect(baseline).toHaveProperty('hasValidBaseline');
     expect(baseline).toHaveProperty('monthlyAverages');
     expect(baseline).toHaveProperty('transactionCounts');
+
+    // mean/stdDev are now monthly-based (each month has 1 expense here)
+    // Monthly totals: [100, 200, 150], mean = 150
+    expect(baseline.mean).toBe(150);
+    // transactionMean is per-transaction: (100+200+150)/3 = 150
+    expect(baseline.transactionMean).toBe(150);
   });
 
   test('monthlyAverages values are rounded to 2 decimal places', async () => {

@@ -20,6 +20,11 @@
 
 
 
+
+
+## [1.5.0] - 2026-03-21
+
+### Actionable anomaly alerts with enriched detection, suppression pipeline, alert prioritization, and redesigned UX
 ## [1.4.0] - 2026-03-14
 
 ### Frontend component domain grouping

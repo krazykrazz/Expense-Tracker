@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.5.0',
+    date: 'March 21, 2026',
+    added: [],
+    changed: ['Actionable anomaly alerts with enriched detection, suppression pipeline, alert prioritization, and redesigned UX'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.4.0',
     date: 'March 14, 2026',
     added: [],

@@ -467,6 +467,8 @@ const arbCategoryBaseline = (options = {}) => {
     category: options.category ? fc.constant(options.category) : fc.constantFrom(...categories),
     mean: fc.float({ min: Math.fround(0), max: Math.fround(2000), noNaN: true }).filter(n => isFinite(n) && n >= 0),
     stdDev: fc.float({ min: Math.fround(0), max: Math.fround(500), noNaN: true }).filter(n => isFinite(n) && n >= 0),
+    transactionMean: fc.float({ min: Math.fround(0), max: Math.fround(500), noNaN: true }).filter(n => isFinite(n) && n >= 0),
+    transactionStdDev: fc.float({ min: Math.fround(0), max: Math.fround(200), noNaN: true }).filter(n => isFinite(n) && n >= 0),
     count: fc.integer({ min: minCount, max: maxCount }),
     monthsWithData: fc.integer({ min: minMonths, max: maxMonths })
   }).chain(base => {

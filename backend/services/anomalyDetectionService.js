@@ -141,27 +141,45 @@ class AnomalyDetectionService {
 
       const expensesByMonth = this._groupExpensesByMonth(categoryExpenses);
       const monthsWithData = Object.keys(expensesByMonth).length;
-      const amounts = categoryExpenses.map(e => e.amount);
-      const mean = amounts.reduce((sum, a) => sum + a, 0) / amounts.length;
-      const squaredDiffs = amounts.map(a => Math.pow(a - mean, 2));
-      const variance = squaredDiffs.reduce((sum, d) => sum + d, 0) / amounts.length;
-      const stdDev = Math.sqrt(variance);
 
-      // Compute monthly totals and transaction counts for new detectors
+      // Compute monthly totals and transaction counts
       const monthlyAverages = {};
       const transactionCounts = {};
+      const monthlyTotals = [];
       for (const [monthKey, monthExpenses] of Object.entries(expensesByMonth)) {
-        monthlyAverages[monthKey] = parseFloat(monthExpenses.reduce((sum, e) => sum + e.amount, 0).toFixed(2));
+        const monthTotal = parseFloat(monthExpenses.reduce((sum, e) => sum + e.amount, 0).toFixed(2));
+        monthlyAverages[monthKey] = monthTotal;
         transactionCounts[monthKey] = monthExpenses.length;
+        monthlyTotals.push(monthTotal);
       }
+
+      // mean/stdDev are computed from monthly totals (not per-transaction amounts)
+      // so that "You usually spend $X/mo" messages are accurate
+      const mean = monthlyTotals.length > 0
+        ? monthlyTotals.reduce((sum, t) => sum + t, 0) / monthlyTotals.length
+        : 0;
+      const squaredDiffs = monthlyTotals.map(t => Math.pow(t - mean, 2));
+      const variance = squaredDiffs.length > 0
+        ? squaredDiffs.reduce((sum, d) => sum + d, 0) / squaredDiffs.length
+        : 0;
+      const stdDev = Math.sqrt(variance);
+
+      // Per-transaction stats for amount-level anomaly detection
+      const transactionAmounts = categoryExpenses.map(e => e.amount);
+      const transactionMean = transactionAmounts.reduce((sum, a) => sum + a, 0) / transactionAmounts.length;
+      const txSquaredDiffs = transactionAmounts.map(a => Math.pow(a - transactionMean, 2));
+      const txVariance = txSquaredDiffs.reduce((sum, d) => sum + d, 0) / transactionAmounts.length;
+      const transactionStdDev = Math.sqrt(txVariance);
 
       return {
         category,
         mean: parseFloat(mean.toFixed(2)),
         stdDev: parseFloat(stdDev.toFixed(2)),
-        count: amounts.length,
+        transactionMean: parseFloat(transactionMean.toFixed(2)),
+        transactionStdDev: parseFloat(transactionStdDev.toFixed(2)),
+        count: transactionAmounts.length,
         monthsWithData,
-        hasValidBaseline: amounts.length >= ANALYTICS_CONFIG.MIN_OCCURRENCES_FOR_PATTERN,
+        hasValidBaseline: transactionAmounts.length >= ANALYTICS_CONFIG.MIN_OCCURRENCES_FOR_PATTERN,
         monthlyAverages,
         transactionCounts
       };
@@ -551,9 +569,12 @@ class AnomalyDetectionService {
         categoryBaselines[expense.type] = await this.calculateCategoryBaseline(expense.type);
       }
       const baseline = categoryBaselines[expense.type];
-      if (!baseline.hasValidBaseline || baseline.stdDev === 0) { continue; }
+      // Use per-transaction stats for amount-level anomaly detection
+      const txMean = baseline.transactionMean != null ? baseline.transactionMean : baseline.mean;
+      const txStdDev = baseline.transactionStdDev != null ? baseline.transactionStdDev : baseline.stdDev;
+      if (!baseline.hasValidBaseline || txStdDev === 0) { continue; }
 
-      const deviations = (expense.amount - baseline.mean) / baseline.stdDev;
+      const deviations = (expense.amount - txMean) / txStdDev;
 
       if (deviations > ANALYTICS_CONFIG.ANOMALY_STD_DEVIATIONS) {
         const severity = this._calculateSeverity(deviations);
@@ -565,7 +586,7 @@ class AnomalyDetectionService {
           amount: expense.amount,
           category: expense.type,
           anomalyType: ANOMALY_TYPES.AMOUNT,
-          reason: 'Amount ' + expense.amount.toFixed(2) + ' is ' + deviations.toFixed(1) + ' standard deviations above the category average of ' + baseline.mean.toFixed(2),
+          reason: 'Amount ' + expense.amount.toFixed(2) + ' is ' + deviations.toFixed(1) + ' standard deviations above the category average of ' + txMean.toFixed(2),
           severity,
           categoryAverage: baseline.mean,
           standardDeviations: parseFloat(deviations.toFixed(2)),

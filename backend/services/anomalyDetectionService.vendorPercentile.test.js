@@ -104,8 +104,10 @@ describe('AnomalyDetectionService._detectAmountAnomalies (vendor-percentile)', (
       const originalCalc = service.calculateCategoryBaseline.bind(service);
       service.calculateCategoryBaseline = jest.fn().mockResolvedValue({
         category: 'Dining',
-        mean: 12,
-        stdDev: 1.5,
+        mean: 72,
+        stdDev: 10,
+        transactionMean: 12,
+        transactionStdDev: 1.5,
         count: 11,
         monthsWithData: 6,
         hasValidBaseline: true,

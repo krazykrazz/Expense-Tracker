@@ -126,11 +126,13 @@ describe('AnomalyDetectionService - Gap Exclusion Property Tests', () => {
           // Calculate baseline
           const baseline = await anomalyDetectionService.calculateCategoryBaseline(category);
 
-          // Property: Mean should be calculated from actual amounts only
-          const expectedMean = amounts.reduce((sum, a) => sum + a, 0) / amounts.length;
-          
-          // Allow small floating point tolerance
-          expect(Math.abs(baseline.mean - expectedMean)).toBeLessThan(0.01);
+          // Property: transactionMean should be calculated from actual amounts only
+          const expectedTxMean = amounts.reduce((sum, a) => sum + a, 0) / amounts.length;
+          expect(Math.abs(baseline.transactionMean - expectedTxMean)).toBeLessThan(0.01);
+
+          // Property: mean is monthly-based (one expense per month here, so same as tx mean)
+          // Each month has exactly one expense, so monthly totals equal individual amounts
+          expect(Math.abs(baseline.mean - expectedTxMean)).toBeLessThan(0.01);
           
           // Property: Count should match number of expenses, not total months
           expect(baseline.count).toBe(amounts.length);
@@ -178,12 +180,15 @@ describe('AnomalyDetectionService - Gap Exclusion Property Tests', () => {
           // Calculate baseline
           const baseline = await anomalyDetectionService.calculateCategoryBaseline(category);
 
-          // Calculate expected standard deviation
+          // Calculate expected per-transaction standard deviation
           const mean = amounts.reduce((sum, a) => sum + a, 0) / amounts.length;
           const variance = amounts.reduce((sum, a) => sum + Math.pow(a - mean, 2), 0) / amounts.length;
           const expectedStdDev = Math.sqrt(variance);
 
-          // Property: Standard deviation should be based only on actual expenses
+          // Property: transactionStdDev should be based only on actual expenses
+          expect(Math.abs(baseline.transactionStdDev - expectedStdDev)).toBeLessThan(0.1);
+
+          // With one expense per month, monthly stdDev equals transaction stdDev
           expect(Math.abs(baseline.stdDev - expectedStdDev)).toBeLessThan(0.1);
         }
       ),

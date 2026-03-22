@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.5.1',
+    date: 'March 22, 2026',
+    added: [],
+    changed: ['Fix anomaly baseline to use monthly totals'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.5.0',
     date: 'March 21, 2026',
     added: [],

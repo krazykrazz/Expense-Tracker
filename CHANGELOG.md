@@ -22,6 +22,11 @@
 
 
 
+
+
+## [1.5.1] - 2026-03-22
+
+### Fix anomaly baseline to use monthly totals
 ## [1.5.0] - 2026-03-21
 
 ### Actionable anomaly alerts with enriched detection, suppression pipeline, alert prioritization, and redesigned UX

@@ -136,14 +136,29 @@ class ArchiveUtils {
     // Count files before extraction
     let filesExtracted = 0;
 
-    // Extract the archive
-    await tar.extract({
-      file: archivePath,
-      cwd: destPath,
-      onentry: () => {
-        filesExtracted++;
+    // Extract the archive with retry for transient ZlibError on Windows (tar 7.5.13+)
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        filesExtracted = 0;
+        await tar.extract({
+          file: archivePath,
+          cwd: destPath,
+          onentry: () => {
+            filesExtracted++;
+          }
+        });
+        break; // Success
+      } catch (err) {
+        if (err.code === 'Z_DATA_ERROR' || (err.message && err.message.includes('zlib')) || err.name === 'ZlibError') {
+          if (attempt < 3) {
+            logger.debug(`Archive extraction ZlibError (attempt ${attempt}/3), retrying:`, err.message);
+            await new Promise(resolve => setTimeout(resolve, 200 * attempt));
+            continue;
+          }
+        }
+        throw err;
       }
-    });
+    }
 
     logger.debug('Archive extracted successfully:', {
       archivePath,
@@ -182,16 +197,32 @@ class ArchiveUtils {
 
     const contents = [];
 
-    await tar.list({
-      file: archivePath,
-      onentry: (entry) => {
-        contents.push({
-          name: entry.path,
-          size: entry.size,
-          type: entry.type
+    // List archive contents with retry for transient ZlibError on Windows (tar 7.5.13+)
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        contents.length = 0;
+        await tar.list({
+          file: archivePath,
+          onentry: (entry) => {
+            contents.push({
+              name: entry.path,
+              size: entry.size,
+              type: entry.type
+            });
+          }
         });
+        break; // Success
+      } catch (err) {
+        if (err.code === 'Z_DATA_ERROR' || (err.message && err.message.includes('zlib')) || err.name === 'ZlibError') {
+          if (attempt < 3) {
+            logger.debug(`Archive listing ZlibError (attempt ${attempt}/3), retrying:`, err.message);
+            await new Promise(resolve => setTimeout(resolve, 200 * attempt));
+            continue;
+          }
+        }
+        throw err;
       }
-    });
+    }
 
     logger.debug('Archive contents listed:', {
       archivePath,

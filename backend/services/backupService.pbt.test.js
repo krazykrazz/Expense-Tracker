@@ -46,10 +46,20 @@ describe('BackupService - Property-Based Tests', () => {
     }
   });
 
-  afterAll(() => {
-    // Clean up test backup directory (recursive handles nested dirs on Windows)
-    if (fs.existsSync(testBackupPath)) {
-      fs.rmSync(testBackupPath, { recursive: true, force: true });
+  afterAll(async () => {
+    // Clean up test backup directory with retry for Windows file-handle delays (tar 7.x)
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        if (fs.existsSync(testBackupPath)) {
+          await fs.promises.rm(testBackupPath, { recursive: true, force: true });
+        }
+        break;
+      } catch (err) {
+        if (attempt < 2) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+        // Ignore final cleanup errors
+      }
     }
   });
 
@@ -1095,9 +1105,19 @@ describe('Medical Insurance Tracking - Backup/Restore', () => {
   });
 
   afterAll(async () => {
-    // Clean up test backup directory (recursive handles nested dirs on Windows)
-    if (fs.existsSync(testBackupPath)) {
-      fs.rmSync(testBackupPath, { recursive: true, force: true });
+    // Clean up test backup directory with retry for Windows file-handle delays (tar 7.x)
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        if (fs.existsSync(testBackupPath)) {
+          await fs.promises.rm(testBackupPath, { recursive: true, force: true });
+        }
+        break;
+      } catch (err) {
+        if (attempt < 2) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+        // Ignore final cleanup errors
+      }
     }
   });
 

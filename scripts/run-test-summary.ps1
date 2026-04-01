@@ -19,12 +19,18 @@
 .PARAMETER FastPBT
     Use reduced PBT iterations for faster execution during development.
 
+.PARAMETER Parallel
+    Run backend and frontend tests simultaneously using PowerShell jobs.
+    Cuts wall-clock time roughly in half. Ignored if SkipBackend or SkipFrontend is set.
+
 .PARAMETER OutputDir
     Directory for output files. Defaults to project root.
 
 .EXAMPLE
     .\scripts\run-test-summary.ps1
+    .\scripts\run-test-summary.ps1 -Parallel
     .\scripts\run-test-summary.ps1 -FastPBT
+    .\scripts\run-test-summary.ps1 -Parallel -FastPBT
     .\scripts\run-test-summary.ps1 -SkipFrontend
     .\scripts\run-test-summary.ps1 -SkipBackend -SkipFrontend  # (no-op, but valid)
 #>
@@ -33,6 +39,7 @@ param(
     [switch]$SkipBackend,
     [switch]$SkipFrontend,
     [switch]$FastPBT,
+    [switch]$Parallel,
     [string]$OutputDir = ""
 )
 
@@ -397,6 +404,7 @@ $report.Add("  TEST FAILURE SUMMARY")
 $report.Add("  Branch: $branch")
 $report.Add("  Date:   $timestamp")
 if ($FastPBT) { $report.Add("  Mode:   FastPBT (reduced iterations)") }
+if ($Parallel -and -not $SkipBackend -and -not $SkipFrontend) { $report.Add("  Mode:   Parallel execution") }
 $report.Add($separator)
 $report.Add("")
 
@@ -408,9 +416,134 @@ $allFailureDetails = [System.Collections.Generic.List[hashtable]]::new()
 $backendDuration = 0
 $frontendDuration = 0
 
-# ── Backend Tests ────────────────────────────────────────
+# ── Parallel Execution ───────────────────────────────────
 
-if (-not $SkipBackend) {
+$runParallel = $Parallel -and -not $SkipBackend -and -not $SkipFrontend
+
+if ($runParallel) {
+    Write-Host "`n[1/1] Running backend + frontend tests in parallel..." -ForegroundColor Cyan
+
+    $backendRawPath = Join-Path $OutputDir "test-backend-raw.txt"
+    $frontendRawPath = Join-Path $OutputDir "test-frontend-raw.txt"
+    $backendDir = Join-Path $projectRoot "backend"
+    $frontendDir = Join-Path $projectRoot "frontend"
+
+    $backendJob = Start-Job -ScriptBlock {
+        param($dir, $outPath, $fastPbt)
+        $start = Get-Date
+        Set-Location $dir
+        if ($fastPbt) { $env:FAST_PBT = "true" }
+        $raw = & npx jest --no-coverage --forceExit 2>&1
+        $output = $raw | Out-String
+        $output | Out-File -FilePath $outPath -Encoding UTF8
+        $duration = [math]::Round(((Get-Date) - $start).TotalSeconds, 1)
+        return @{ Output = $output; Duration = $duration }
+    } -ArgumentList $backendDir, $backendRawPath, $FastPBT.IsPresent
+
+    $frontendJob = Start-Job -ScriptBlock {
+        param($dir, $outPath)
+        $start = Get-Date
+        Set-Location $dir
+        $raw = & npx vitest --run 2>&1
+        $output = $raw | Out-String
+        $output | Out-File -FilePath $outPath -Encoding UTF8
+        $duration = [math]::Round(((Get-Date) - $start).TotalSeconds, 1)
+        return @{ Output = $output; Duration = $duration }
+    } -ArgumentList $frontendDir, $frontendRawPath
+
+    # Wait for both jobs
+    $null = Wait-Job $backendJob, $frontendJob
+
+    # Collect backend results
+    $beResult = Receive-Job $backendJob
+    Remove-Job $backendJob
+    $backendOutput = $beResult.Output
+    $backendLines = $backendOutput -split "`n"
+    $backendDuration = $beResult.Duration
+
+    # Collect frontend results
+    $feResult = Receive-Job $frontendJob
+    Remove-Job $frontendJob
+    $frontendOutput = $feResult.Output
+    $frontendLines = $frontendOutput -split "`n"
+    $frontendDuration = $feResult.Duration
+
+    # ── Process backend results ──
+    $report.Add(($subSeparator -f "BACKEND (Jest)", ("-" * 30)))
+    $report.Add("")
+
+    $be = Parse-JestOutput $backendLines
+
+    $totalSuites += $be.Suites
+    $totalPassed += $be.Passed
+    $totalFailed += $be.Failed
+    foreach ($s in $be.FailedSuiteNames) { $allFailedSuites.Add($s) }
+
+    $report.Add("Suites: $($be.SuitesPassed) passed, $($be.SuitesFailed) failed, $($be.Suites) total")
+    $report.Add("Tests:  $($be.Passed) passed, $($be.Failed) failed, $($be.Tests) total")
+    $report.Add("Time:   ${backendDuration}s")
+
+    if ($be.FailedSuiteNames.Count -gt 0) {
+        $report.Add("")
+        $report.Add("Failed suites:")
+        foreach ($s in $be.FailedSuiteNames) { $report.Add("  FAIL  $s") }
+        $beFailures = Extract-JestFailureDetails $backendLines
+        $beDetails = Format-FailureDetails $beFailures "Jest"
+        foreach ($line in $beDetails) { $report.Add($line) }
+        foreach ($f in $beFailures) { $allFailureDetails.Add($f) }
+        $report.Add("(Full output: test-backend-raw.txt)")
+    } else {
+        $report.Add("")
+        $report.Add("All backend tests passed.")
+    }
+    $report.Add("")
+
+    if ($be.SuitesFailed -gt 0) {
+        Write-Host "  Backend: $($be.Passed) passed, $($be.Failed) failed (${backendDuration}s)" -ForegroundColor Red
+    } else {
+        Write-Host "  Backend: $($be.Passed) passed, 0 failed (${backendDuration}s)" -ForegroundColor Green
+    }
+
+    # ── Process frontend results ──
+    $report.Add(($subSeparator -f "FRONTEND (Vitest)", ("-" * 28)))
+    $report.Add("")
+
+    $fe = Parse-VitestOutput $frontendLines
+
+    $totalSuites += $fe.Suites
+    $totalPassed += $fe.Passed
+    $totalFailed += $fe.Failed
+    foreach ($s in $fe.FailedSuiteNames) { $allFailedSuites.Add($s) }
+
+    $report.Add("Suites: $($fe.SuitesPassed) passed, $($fe.SuitesFailed) failed, $($fe.Suites) total")
+    $report.Add("Tests:  $($fe.Passed) passed, $($fe.Failed) failed, $($fe.Tests) total")
+    $report.Add("Time:   ${frontendDuration}s")
+
+    if ($fe.FailedSuiteNames.Count -gt 0) {
+        $report.Add("")
+        $report.Add("Failed suites:")
+        foreach ($s in $fe.FailedSuiteNames) { $report.Add("  FAIL  $s") }
+        $feFailures = Extract-VitestFailureDetails $frontendLines
+        $feDetails = Format-FailureDetails $feFailures "Vitest"
+        foreach ($line in $feDetails) { $report.Add($line) }
+        foreach ($f in $feFailures) { $allFailureDetails.Add($f) }
+        $report.Add("(Full output: test-frontend-raw.txt)")
+    } else {
+        $report.Add("")
+        $report.Add("All frontend tests passed.")
+    }
+    $report.Add("")
+
+    if ($fe.SuitesFailed -gt 0) {
+        Write-Host "  Frontend: $($fe.Passed) passed, $($fe.Failed) failed (${frontendDuration}s)" -ForegroundColor Red
+    } else {
+        Write-Host "  Frontend: $($fe.Passed) passed, 0 failed (${frontendDuration}s)" -ForegroundColor Green
+    }
+}
+
+# ── Sequential Backend Tests ─────────────────────────────
+
+if (-not $runParallel -and -not $SkipBackend) {
     $report.Add(($subSeparator -f "BACKEND (Jest)", ("-" * 30)))
     $report.Add("")
 
@@ -474,9 +607,9 @@ if (-not $SkipBackend) {
     }
 }
 
-# ── Frontend Tests ───────────────────────────────────────
+# ── Sequential Frontend Tests ────────────────────────────
 
-if (-not $SkipFrontend) {
+if (-not $runParallel -and -not $SkipFrontend) {
     $report.Add(($subSeparator -f "FRONTEND (Vitest)", ("-" * 28)))
     $report.Add("")
 

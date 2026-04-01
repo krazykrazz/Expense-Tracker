@@ -7,7 +7,7 @@ WORKDIR /build/frontend
 COPY frontend/package*.json ./
 
 # Install frontend dependencies
-RUN npm ci
+RUN npm install
 
 # Rebuild esbuild to fix version mismatch
 RUN npm rebuild esbuild
@@ -30,7 +30,7 @@ WORKDIR /build/backend
 COPY backend/package*.json ./
 
 # Install production dependencies only
-RUN npm ci --omit=dev
+RUN npm install --omit=dev
 
 # Stage 3: Final Runtime
 FROM node:20-alpine

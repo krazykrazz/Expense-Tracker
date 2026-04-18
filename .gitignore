@@ -148,3 +148,6 @@ frontend/.vitest-cache/
 # Archive (internal development history)
 archive/
 frontend/vitest-output.txt
+
+# Test extraction artifacts from backup PBT tests
+test-extract/config/

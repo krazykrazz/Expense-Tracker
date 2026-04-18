@@ -385,6 +385,11 @@ function PaymentsPanel({
       {/* Requirement 7.3 — Payment history */}
       <LoanPaymentHistory
         payments={payments}
+        initialBalance={
+          calculatedBalanceData?.hasDiscrepancy && calculatedBalanceData?.actualBalance != null
+            ? calculatedBalanceData.actualBalance + (calculatedBalanceData.totalPayments || 0)
+            : loanData?.initial_balance
+        }
         loading={loadingPayments}
         onEdit={onEditPaymentEntry}
         onDelete={onDeletePayment}

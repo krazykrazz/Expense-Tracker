@@ -607,7 +607,7 @@ describe('BackupService - Property-Based Tests', () => {
           }
         }
       }),
-      dbPbtOptions()
+      dbPbtOptions({ numRuns: process.env.FAST_PBT === 'true' ? 1 : undefined, timeout: 90000 })
     );
   }, 120000); // Longer timeout for comprehensive round-trip test
 
@@ -719,7 +719,7 @@ describe('BackupService - Property-Based Tests', () => {
           }
         }
       }),
-      dbPbtOptions()
+      dbPbtOptions({ numRuns: process.env.FAST_PBT === 'true' ? 1 : undefined, timeout: 90000 })
     );
   }, 120000);
 

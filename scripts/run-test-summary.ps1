@@ -433,7 +433,7 @@ if ($runParallel) {
         $start = Get-Date
         Set-Location $dir
         if ($fastPbt) { $env:FAST_PBT = "true" }
-        $raw = & npx jest --no-coverage --forceExit --maxWorkers=2 2>&1
+        $raw = & npx jest --no-coverage --forceExit --runInBand 2>&1
         $output = $raw | Out-String
         $output | Out-File -FilePath $outPath -Encoding UTF8
         $duration = [math]::Round(((Get-Date) - $start).TotalSeconds, 1)
@@ -557,7 +557,7 @@ if (-not $runParallel -and -not $SkipBackend) {
     $backendRawPath = Join-Path $OutputDir "test-backend-raw.txt"
     Push-Location (Join-Path $projectRoot "backend")
     try {
-        $backendRaw = & npx jest --no-coverage --forceExit --maxWorkers=2 2>&1
+        $backendRaw = & npx jest --no-coverage --forceExit --runInBand 2>&1
     } finally {
         Pop-Location
     }

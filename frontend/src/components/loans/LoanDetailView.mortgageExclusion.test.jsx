@@ -27,12 +27,29 @@ vi.mock('../../services/fixedExpenseApi', () => ({
   getFixedExpensesByLoan: vi.fn()
 }));
 
+// Required by LoanDetailView for mortgage insights fetching
+vi.mock('../../utils/fetchProvider', () => ({
+  authAwareFetch: vi.fn().mockResolvedValue({
+    ok: true,
+    json: vi.fn().mockResolvedValue({ currentStatus: {}, projections: {}, dataStatus: {} })
+  })
+}));
+
+vi.mock('../../config', () => ({
+  API_ENDPOINTS: {
+    LOAN_INSIGHTS: (id) => `/api/loans/${id}/insights`,
+    LOAN_PAYMENT: (id, pid) => `/api/loans/${id}/payments/${pid}`,
+    LOAN_RATE: (id) => `/api/loans/${id}/rate`,
+    LOAN_SCENARIO: (id) => `/api/loans/${id}/insights/scenario`
+  }
+}));
+
 /**
  * Tests for LoanPaymentHistory rendering and section ordering.
  *
  * Requirements: 3.4, 3.5, 3.6, 4.1
  * - 3.4: LoanPaymentHistory SHALL render for all loan types including mortgage
- * - 3.5: Mortgage section order: MortgageDetailSection → MortgageInsightsPanel
+ * - 3.5: Mortgage section order: MortgageDetailSection → MortgageTabbedContent (Overview tab active)
  * - 3.6: LoanPaymentHistory SHALL retain heading "Payment History" for non-mortgage loans
  * - 4.1: LoanPaymentHistory continues for non-mortgage loans with existing calculation
  */
@@ -87,10 +104,12 @@ describe('LoanDetailView — LoanPaymentHistory rendering', () => {
   });
 
   /**
-   * Requirement 3.4: LoanPaymentHistory renders for all loan types including mortgage
+   * Requirement 3.4: LoanPaymentHistory renders for all loan types including mortgage.
+   * For mortgages, payment history lives inside MortgageTabbedContent (Payments tab).
+   * We verify the new two-zone layout renders (KPI strip + tab bar).
    */
   it('should render LoanPaymentHistory when loan type is mortgage', async () => {
-    const { container } = render(
+    render(
       <LoanDetailView
         loan={baseMortgage}
         isOpen={true}
@@ -99,17 +118,18 @@ describe('LoanDetailView — LoanPaymentHistory rendering', () => {
       />
     );
 
+    // Wait for the new mortgage layout to render (tab bar replaces "Loan Summary")
     await waitFor(() => {
-      expect(screen.getByText('Loan Summary')).toBeInTheDocument();
+      expect(screen.getByRole('tablist')).toBeInTheDocument();
     });
 
-    // LoanPaymentHistory renders a container with class "loan-payment-history-container"
-    const paymentHistoryContainer = container.querySelector('.loan-payment-history-container');
-    expect(paymentHistoryContainer).toBeInTheDocument();
+    // The Payments tab should exist in the tab bar
+    expect(screen.getByRole('tab', { name: 'Payments' })).toBeInTheDocument();
   });
 
   /**
-   * Requirements 3.6, 4.1: LoanPaymentHistory still renders for non-mortgage loans
+   * Requirements 3.6, 4.1: LoanPaymentHistory still renders for non-mortgage loans.
+   * Non-mortgage loans keep the old layout with "Loan Summary".
    */
   it('should render LoanPaymentHistory when loan type is loan', async () => {
     loanPaymentApi.getCalculatedBalance.mockResolvedValue({
@@ -130,6 +150,7 @@ describe('LoanDetailView — LoanPaymentHistory rendering', () => {
       />
     );
 
+    // Non-mortgage loans still show "Loan Summary"
     await waitFor(() => {
       expect(screen.getByText('Loan Summary')).toBeInTheDocument();
     });
@@ -148,9 +169,8 @@ describe('LoanDetailView — LoanPaymentHistory rendering', () => {
 
   /**
    * Requirement 3.5: Mortgage section order —
-   * MortgageDetailSection → MortgageInsightsPanel
-   *
-   * We verify the top-level order: MortgageDetailSection appears before MortgageInsightsPanel.
+   * MortgageKpiStrip + MortgageTabbedContent with Overview tab active by default.
+   * MortgageDetailSection is rendered inside the Overview tab panel.
    */
   it('should render mortgage sections in correct order: MortgageDetailSection → MortgageInsightsPanel', async () => {
     const { container } = render(
@@ -162,30 +182,26 @@ describe('LoanDetailView — LoanPaymentHistory rendering', () => {
       />
     );
 
+    // Wait for the tab bar to render
     await waitFor(() => {
-      expect(screen.getByText('Loan Summary')).toBeInTheDocument();
+      expect(screen.getByRole('tablist')).toBeInTheDocument();
     });
 
-    // MortgageDetailSection renders with class "mortgage-detail-section"
+    // Overview tab is active by default — MortgageDetailSection should be visible
     const mortgageDetailSection = container.querySelector('.mortgage-detail-section');
-    // MortgageInsightsPanel renders with class "mortgage-insights-panel"
-    const mortgageInsightsPanel = container.querySelector('.mortgage-insights-panel');
-
     expect(mortgageDetailSection).toBeInTheDocument();
-    expect(mortgageInsightsPanel).toBeInTheDocument();
 
-    // Verify order: MortgageDetailSection comes before MortgageInsightsPanel in the DOM
-    const allElements = container.querySelectorAll('.mortgage-detail-section, .mortgage-insights-panel');
-    expect(allElements.length).toBeGreaterThanOrEqual(2);
-    expect(allElements[0].classList.contains('mortgage-detail-section')).toBe(true);
-    expect(allElements[1].classList.contains('mortgage-insights-panel')).toBe(true);
+    // Overview is the first tab
+    const tabs = screen.getAllByRole('tab');
+    expect(tabs[0]).toHaveTextContent('Overview');
   });
 
   /**
-   * Requirement 3.4: Mortgage should show Payment Tracking section with LoanPaymentHistory
+   * Requirement 3.4: Mortgage payment tracking is now in the Payments tab of MortgageTabbedContent.
+   * Verify the Payments tab button exists in the tab bar.
    */
   it('should show Payment Tracking section for mortgage with LoanPaymentHistory', async () => {
-    const { container } = render(
+    render(
       <LoanDetailView
         loan={baseMortgage}
         isOpen={true}
@@ -194,17 +210,13 @@ describe('LoanDetailView — LoanPaymentHistory rendering', () => {
       />
     );
 
+    // Wait for the tab bar to render
     await waitFor(() => {
-      expect(screen.getByText('Loan Summary')).toBeInTheDocument();
+      expect(screen.getByRole('tablist')).toBeInTheDocument();
     });
 
-    // Payment Tracking section should be visible
-    const paymentTrackingSection = container.querySelector('.loan-payment-tracking-section');
-    expect(paymentTrackingSection).toBeInTheDocument();
-
-    // LoanPaymentHistory container should be inside it
-    const paymentHistoryInTracking = paymentTrackingSection?.querySelector('.loan-payment-history-container');
-    expect(paymentHistoryInTracking).toBeInTheDocument();
+    // Payments tab exists in the tab bar (replaces .loan-payment-tracking-section)
+    expect(screen.getByRole('tab', { name: 'Payments' })).toBeInTheDocument();
   });
 
   /**
@@ -239,10 +251,10 @@ describe('LoanDetailView — LoanPaymentHistory rendering', () => {
   });
 
   /**
-   * Requirement 3.5: MortgageInsightsPanel renders for mortgages
+   * Requirement 3.5: Projections tab replaces MortgageInsightsPanel for mortgages.
    */
   it('should render MortgageInsightsPanel for mortgages', async () => {
-    const { container } = render(
+    render(
       <LoanDetailView
         loan={baseMortgage}
         isOpen={true}
@@ -251,12 +263,12 @@ describe('LoanDetailView — LoanPaymentHistory rendering', () => {
       />
     );
 
+    // Wait for the tab bar to render
     await waitFor(() => {
-      expect(screen.getByText('Loan Summary')).toBeInTheDocument();
+      expect(screen.getByRole('tablist')).toBeInTheDocument();
     });
 
-    // MortgageInsightsPanel should contain a section toggle for Payment History
-    const insightsPanel = container.querySelector('.mortgage-insights-panel');
-    expect(insightsPanel).toBeInTheDocument();
+    // Projections tab exists (replaces MortgageInsightsPanel)
+    expect(screen.getByRole('tab', { name: 'Projections' })).toBeInTheDocument();
   });
 });

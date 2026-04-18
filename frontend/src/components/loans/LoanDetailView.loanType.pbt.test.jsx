@@ -44,6 +44,23 @@ vi.mock('../../services/fixedExpenseApi', () => ({
   getFixedExpensesByLoan: vi.fn()
 }));
 
+// Required by LoanDetailView for mortgage insights fetching
+vi.mock('../../utils/fetchProvider', () => ({
+  authAwareFetch: vi.fn().mockResolvedValue({
+    ok: true,
+    json: vi.fn().mockResolvedValue({ currentStatus: {}, projections: {}, dataStatus: {} })
+  })
+}));
+
+vi.mock('../../config', () => ({
+  API_ENDPOINTS: {
+    LOAN_INSIGHTS: (id) => `/api/loans/${id}/insights`,
+    LOAN_PAYMENT: (id, pid) => `/api/loans/${id}/payments/${pid}`,
+    LOAN_RATE: (id) => `/api/loans/${id}/rate`,
+    LOAN_SCENARIO: (id) => `/api/loans/${id}/insights/scenario`
+  }
+}));
+
 describe('Property 13: Loan Type Determines Tracking Method', () => {
   const mockOnClose = vi.fn();
   const mockOnUpdate = vi.fn();
@@ -98,7 +115,6 @@ describe('Property 13: Loan Type Determines Tracking Method', () => {
       fc.asyncProperty(
         loanArbitrary.filter(loan => loan.loan_type === 'loan' || loan.loan_type === 'mortgage'),
         async (loan) => {
-          // Update mock to return appropriate calculated balance
           loanPaymentApi.getCalculatedBalance.mockResolvedValue({
             loanId: loan.id,
             initialBalance: loan.initial_balance,
@@ -117,23 +133,34 @@ describe('Property 13: Loan Type Determines Tracking Method', () => {
             />
           );
 
-          // Wait for component to render
-          await waitFor(() => {
-            expect(screen.getByText('Loan Summary')).toBeInTheDocument();
-          }, { timeout: 2000 });
+          if (loan.loan_type === 'mortgage') {
+            // Mortgage path: new two-zone layout — tab bar replaces "Loan Summary"
+            await waitFor(() => {
+              expect(screen.getByRole('tablist')).toBeInTheDocument();
+            }, { timeout: 2000 });
 
-          // Payment Tracking section should be visible
-          const paymentTrackingSection = container.querySelector('.loan-payment-tracking-section');
-          expect(paymentTrackingSection).toBeInTheDocument();
+            // Payments tab should exist in the tab bar
+            expect(screen.getByRole('tab', { name: 'Payments' })).toBeInTheDocument();
 
-          // "Log Payment" button should be visible
-          const logPaymentButton = container.querySelector('.loan-log-payment-button');
-          expect(logPaymentButton).toBeInTheDocument();
-          expect(logPaymentButton.textContent).toContain('Log Payment');
+            // Balance History section should NOT be visible
+            const balanceHistorySection = container.querySelector('.loan-balance-history-section');
+            expect(balanceHistorySection).not.toBeInTheDocument();
+          } else {
+            // Non-mortgage loan path: old layout with "Loan Summary"
+            await waitFor(() => {
+              expect(screen.getByText('Loan Summary')).toBeInTheDocument();
+            }, { timeout: 2000 });
 
-          // Balance History section should NOT be visible (only for lines of credit)
-          const balanceHistorySection = container.querySelector('.loan-balance-history-section');
-          expect(balanceHistorySection).not.toBeInTheDocument();
+            const paymentTrackingSection = container.querySelector('.loan-payment-tracking-section');
+            expect(paymentTrackingSection).toBeInTheDocument();
+
+            const logPaymentButton = container.querySelector('.loan-log-payment-button');
+            expect(logPaymentButton).toBeInTheDocument();
+            expect(logPaymentButton.textContent).toContain('Log Payment');
+
+            const balanceHistorySection = container.querySelector('.loan-balance-history-section');
+            expect(balanceHistorySection).not.toBeInTheDocument();
+          }
 
           unmount();
         }
@@ -198,7 +225,6 @@ describe('Property 13: Loan Type Determines Tracking Method', () => {
       fc.asyncProperty(
         loanArbitrary,
         async (loan) => {
-          // Update mock for payment-tracked loans
           if (loan.loan_type !== 'line_of_credit') {
             loanPaymentApi.getCalculatedBalance.mockResolvedValue({
               loanId: loan.id,
@@ -219,28 +245,38 @@ describe('Property 13: Loan Type Determines Tracking Method', () => {
             />
           );
 
-          // Wait for component to render
-          await waitFor(() => {
-            expect(screen.getByText('Loan Summary')).toBeInTheDocument();
-          }, { timeout: 2000 });
+          if (loan.loan_type === 'mortgage') {
+            // Mortgage: new two-zone layout — tab bar, no "Loan Summary"
+            await waitFor(() => {
+              expect(screen.getByRole('tablist')).toBeInTheDocument();
+            }, { timeout: 2000 });
 
-          const paymentTrackingSection = container.querySelector('.loan-payment-tracking-section');
-          const balanceHistorySection = container.querySelector('.loan-balance-history-section');
-
-          // Exactly one of the sections should be visible
-          const hasPaymentTracking = paymentTrackingSection !== null;
-          const hasBalanceHistory = balanceHistorySection !== null;
-
-          // XOR: exactly one should be true
-          expect(hasPaymentTracking !== hasBalanceHistory).toBe(true);
-
-          // Verify the correct section is shown based on loan type
-          if (loan.loan_type === 'loan' || loan.loan_type === 'mortgage') {
-            expect(hasPaymentTracking).toBe(true);
-            expect(hasBalanceHistory).toBe(false);
+            // No old-style sections
+            expect(container.querySelector('.loan-payment-tracking-section')).not.toBeInTheDocument();
+            expect(container.querySelector('.loan-balance-history-section')).not.toBeInTheDocument();
+            // Payments tab exists
+            expect(screen.getByRole('tab', { name: 'Payments' })).toBeInTheDocument();
           } else {
-            expect(hasPaymentTracking).toBe(false);
-            expect(hasBalanceHistory).toBe(true);
+            await waitFor(() => {
+              expect(screen.getByText('Loan Summary')).toBeInTheDocument();
+            }, { timeout: 2000 });
+
+            const paymentTrackingSection = container.querySelector('.loan-payment-tracking-section');
+            const balanceHistorySection = container.querySelector('.loan-balance-history-section');
+
+            const hasPaymentTracking = paymentTrackingSection !== null;
+            const hasBalanceHistory = balanceHistorySection !== null;
+
+            // XOR: exactly one should be true for non-mortgage loans
+            expect(hasPaymentTracking !== hasBalanceHistory).toBe(true);
+
+            if (loan.loan_type === 'loan') {
+              expect(hasPaymentTracking).toBe(true);
+              expect(hasBalanceHistory).toBe(false);
+            } else {
+              expect(hasPaymentTracking).toBe(false);
+              expect(hasBalanceHistory).toBe(true);
+            }
           }
 
           unmount();
@@ -262,7 +298,6 @@ describe('Property 13: Loan Type Determines Tracking Method', () => {
       fc.asyncProperty(
         loanArbitrary,
         async (loan) => {
-          // Update mock for payment-tracked loans
           if (loan.loan_type !== 'line_of_credit') {
             loanPaymentApi.getCalculatedBalance.mockResolvedValue({
               loanId: loan.id,
@@ -283,19 +318,26 @@ describe('Property 13: Loan Type Determines Tracking Method', () => {
             />
           );
 
-          // Wait for component to render
-          await waitFor(() => {
-            expect(screen.getByText('Loan Summary')).toBeInTheDocument();
-          }, { timeout: 2000 });
+          if (loan.loan_type === 'mortgage') {
+            // Mortgage: new layout — verify tab bar renders (no "Loan Summary")
+            await waitFor(() => {
+              expect(screen.getByRole('tablist')).toBeInTheDocument();
+            }, { timeout: 2000 });
+            // Overview tab shows "Payment Summary" section with "Total Payments" label
+            // (inside the tab panel, not the old summary card)
+            expect(screen.getByRole('tab', { name: 'Overview' })).toBeInTheDocument();
+          } else {
+            await waitFor(() => {
+              expect(screen.getByText('Loan Summary')).toBeInTheDocument();
+            }, { timeout: 2000 });
 
-          const summaryLabels = container.querySelectorAll('.loan-summary-label');
-          const labelTexts = Array.from(summaryLabels).map(l => l.textContent);
+            const summaryLabels = container.querySelectorAll('.loan-summary-label');
+            const labelTexts = Array.from(summaryLabels).map(l => l.textContent);
 
-          if (loan.loan_type === 'loan' || loan.loan_type === 'mortgage') {
-            // Payment-tracked loans should show "Total Payments:"
-            expect(labelTexts.some(t => t.includes('Total Payments'))).toBe(true);
+            if (loan.loan_type === 'loan') {
+              expect(labelTexts.some(t => t.includes('Total Payments'))).toBe(true);
+            }
           }
-          // Lines of credit don't show "Total Paid Down" in the summary
 
           unmount();
         }

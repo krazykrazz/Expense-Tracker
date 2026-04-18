@@ -349,3 +349,20 @@ Component-specific color modifiers are applied alongside: `.warning`/`.danger`/`
 11. ~~**Close button standardization**~~ — Documented as intentional. Gradient-header modals use `rgba(255,255,255,0.2)` (white overlay on gradient), neutral-header modals use `background: none` or `var(--bg-muted)`. Style matches header type.
 12. ~~**CollapsibleSection color tokens**~~ — Badge hover colors now use `var(--color-primary-light)` and `var(--color-primary)` tokens.
 13. ~~**Banner color tokens**~~ — Documented as intentional. Status colors (warning amber, danger orange, critical red for budget; due-soon teal, overdue purple for loan) are semantic modifier colors specific to each banner's severity system. These are not candidates for shared design tokens.
+
+---
+
+## 10. CSS Modules Adoption
+
+The project is incrementally adopting CSS Modules for new components alongside the existing global CSS approach.
+
+### Components Using CSS Modules
+
+| Component | CSS Module File | Notes |
+|---|---|---|
+| `MortgageKpiStrip` | `MortgageKpiStrip.module.css` | New component (mortgage detail view redesign, April 2026) |
+| `MortgageTabbedContent` | `MortgageTabbedContent.module.css` | New component (mortgage detail view redesign, April 2026) |
+
+`LoanDetailView` (mortgage path) now uses CSS Modules for its two new child components (`MortgageKpiStrip` and `MortgageTabbedContent`) as part of the incremental CSS Modules adoption. Both modules use CSS custom properties from `variables.css` for all colors, spacing, and typography to maintain dark mode compatibility.
+
+Existing components in the `loans/` directory continue to use global CSS files (e.g., `LoanDetailView.css`, `MortgageDetailSection.css`) and are not affected by this change.

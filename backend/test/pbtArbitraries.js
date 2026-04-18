@@ -249,9 +249,13 @@ const dbPbtOptions = (options = {}) => {
     ? parseInt(process.env.FAST_CHECK_NUM_RUNS, 10) 
     : null;
   
+  // FAST_PBT=true reduces iterations for I/O-heavy tests
+  const fastPbt = process.env.FAST_PBT === 'true';
+  const defaultNumRuns = fastPbt ? 3 : (isCI ? 10 : 15);
+
   return pbtOptions({
     timeout: isCI ? 90000 : 60000,  // Increased from 60s/30s to 90s/60s
-    numRuns: envNumRuns || (isCI ? 10 : 15),
+    numRuns: envNumRuns || defaultNumRuns,
     ...options
   });
 };

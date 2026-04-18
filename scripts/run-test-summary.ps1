@@ -433,8 +433,11 @@ if ($runParallel) {
         $start = Get-Date
         Set-Location $dir
         if ($fastPbt) { $env:FAST_PBT = "true" }
-        $raw = & npx jest --no-coverage --forceExit --runInBand 2>&1
-        $output = $raw | Out-String
+        # Run most tests in parallel, but exclude backup tests that use the real SQLite DB
+        $raw1 = & npx jest --no-coverage --forceExit --maxWorkers=75% --testPathIgnorePatterns="backupService" 2>&1
+        # Run backup tests serially to avoid SQLite corruption
+        $raw2 = & npx jest --no-coverage --forceExit --runInBand "backupService" 2>&1
+        $output = ($raw1 | Out-String) + "`n" + ($raw2 | Out-String)
         $output | Out-File -FilePath $outPath -Encoding UTF8
         $duration = [math]::Round(((Get-Date) - $start).TotalSeconds, 1)
         return @{ Output = $output; Duration = $duration }
@@ -557,7 +560,11 @@ if (-not $runParallel -and -not $SkipBackend) {
     $backendRawPath = Join-Path $OutputDir "test-backend-raw.txt"
     Push-Location (Join-Path $projectRoot "backend")
     try {
-        $backendRaw = & npx jest --no-coverage --forceExit --runInBand 2>&1
+        # Run most tests in parallel, exclude backup tests that use the real SQLite DB
+        $backendRaw1 = & npx jest --no-coverage --forceExit --maxWorkers=75% --testPathIgnorePatterns="backupService" 2>&1
+        # Run backup tests serially to avoid SQLite corruption
+        $backendRaw2 = & npx jest --no-coverage --forceExit --runInBand "backupService" 2>&1
+        $backendRaw = $backendRaw1 + $backendRaw2
     } finally {
         Pop-Location
     }

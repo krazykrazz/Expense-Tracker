@@ -153,6 +153,8 @@ function MortgageTabbedContent({
             loanData={loanData}
             payments={payments}
             balanceHistory={balanceHistory}
+            currentBalance={currentBalance}
+            currentRate={currentRate}
           />
         )}
         {activeTab === 'projections' && (
@@ -266,20 +268,32 @@ function OverviewPanel({
 
 // ─── Charts Tab ──────────────────────────────────────────────────────────────
 
-function ChartsPanel({ loanData, payments, balanceHistory }) {
+function ChartsPanel({ loanData, payments, balanceHistory, currentBalance, currentRate }) {
   return (
     <div className={styles.chartsPanel}>
       {/* Requirement 5.1 — EquityChart when property value is set */}
       {loanData?.estimated_property_value > 0 && (
-        <EquityChart loanData={loanData} />
+        <EquityChart
+          loanId={loanData.id}
+          estimatedPropertyValue={loanData.estimated_property_value}
+          currentBalance={currentBalance}
+        />
       )}
 
       {/* Requirement 5.2 — AmortizationChart always */}
-      <AmortizationChart loanData={loanData} />
+      <AmortizationChart
+        loanId={loanData?.id}
+        currentBalance={currentBalance}
+        currentRate={currentRate}
+      />
 
       {/* Requirement 5.3 — PaymentBalanceChart when payments exist */}
       {payments?.length > 0 && (
-        <PaymentBalanceChart loanData={loanData} payments={payments} />
+        <PaymentBalanceChart
+          payments={payments}
+          initialBalance={currentBalance}
+          loanName={loanData?.name}
+        />
       )}
 
       {/* Requirement 5.4 — Rate History Chart for variable rate with balance history */}

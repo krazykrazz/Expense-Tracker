@@ -1,11 +1,6 @@
 import styles from './MortgageKpiStrip.module.css';
 import { formatCurrency } from '../../utils/formatters';
 
-/**
- * Calculate next payment date from day-of-month.
- * @param {number} dueDay - Day of month (1-31)
- * @returns {Date}
- */
 function calculateNextPaymentDate(dueDay) {
   const now = new Date();
   const year = now.getFullYear();
@@ -17,11 +12,6 @@ function calculateNextPaymentDate(dueDay) {
   return candidate;
 }
 
-/**
- * Classify urgency of a payment date.
- * @param {Date} date
- * @returns {'urgent'|'warning'|null}
- */
 function classifyPaymentUrgency(date) {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -33,22 +23,23 @@ function classifyPaymentUrgency(date) {
 }
 
 /**
+ * Format a number as currency with dollar sign.
+ * Uses formatCurrency (which returns "1,234.56") and prepends "$".
+ */
+function fmt(value) {
+  return '$' + formatCurrency(value);
+}
+
+/**
  * MortgageKpiStrip — compact always-visible strip of 7 key mortgage metrics.
- *
- * Props:
- * @param {Object} loanData - Full loan object
- * @param {Object|null} calculatedBalanceData - From getCalculatedBalance
- * @param {Object|null} insights - Mortgage_Insights_Data from getMortgageInsights
- * @param {boolean} insightsLoading - Whether insights are still loading
- * @param {number|null} paymentDueDay - Day of month from linked fixed expenses
  */
 function MortgageKpiStrip({ loanData, calculatedBalanceData, insights, insightsLoading, paymentDueDay }) {
   // 1. Current Balance
   const rawBalance = calculatedBalanceData?.currentBalance ?? loanData?.initial_balance ?? null;
-  const currentBalanceDisplay = rawBalance != null ? '$' + formatCurrency(rawBalance) : '\u2014';
+  const currentBalanceDisplay = rawBalance != null ? fmt(rawBalance) : '—';
 
   // 2. Interest Rate
-  const rateDisplay = loanData?.currentRate != null ? loanData.currentRate + '%' : '\u2014';
+  const rateDisplay = loanData?.currentRate != null ? loanData.currentRate + '%' : '—';
   const rateType = loanData?.rate_type;
   const rateBadgeLabel = rateType === 'variable' ? 'Variable' : rateType === 'fixed' ? 'Fixed' : null;
 
@@ -56,23 +47,19 @@ function MortgageKpiStrip({ loanData, calculatedBalanceData, insights, insightsL
   const dailyInterestRaw = (!insightsLoading && insights)
     ? insights?.currentStatus?.interestBreakdown?.daily
     : null;
-  const dailyInterestDisplay = dailyInterestRaw != null
-    ? '$' + formatCurrency(dailyInterestRaw)
-    : '\u2014';
+  const dailyInterestDisplay = dailyInterestRaw != null ? fmt(dailyInterestRaw) : '—';
 
   // 4. Monthly Payment (insight-dependent)
   const monthlyPaymentRaw = (!insightsLoading && insights)
     ? insights?.currentStatus?.currentPayment
     : null;
-  const monthlyPaymentDisplay = monthlyPaymentRaw != null
-    ? '$' + formatCurrency(monthlyPaymentRaw)
-    : '\u2014';
+  const monthlyPaymentDisplay = monthlyPaymentRaw != null ? fmt(monthlyPaymentRaw) : '—';
   const paymentSource = (!insightsLoading && insights)
     ? (insights?.currentStatus?.paymentSource || null)
     : null;
 
   // 5. Next Payment Date
-  let nextPaymentDisplay = '\u2014';
+  let nextPaymentDisplay = '—';
   let urgencyClass = null;
   if (paymentDueDay != null) {
     const nextDate = calculateNextPaymentDate(paymentDueDay);
@@ -87,14 +74,14 @@ function MortgageKpiStrip({ loanData, calculatedBalanceData, insights, insightsL
   // 6. Equity %
   const propertyValue = loanData?.estimated_property_value;
   const balanceForEquity = calculatedBalanceData?.currentBalance ?? loanData?.initial_balance;
-  let equityDisplay = '\u2014';
+  let equityDisplay = '—';
   if (propertyValue && propertyValue > 0 && balanceForEquity != null) {
     const equityPct = ((propertyValue - balanceForEquity) / propertyValue) * 100;
     equityDisplay = equityPct.toFixed(1) + '%';
   }
 
   // 7. Payoff Date (insight-dependent)
-  let payoffDisplay = '\u2014';
+  let payoffDisplay = '—';
   if (!insightsLoading && insights) {
     const payoffDate = insights?.projections?.currentScenario?.payoffDate;
     if (payoffDate) {
@@ -139,7 +126,7 @@ function MortgageKpiStrip({ loanData, calculatedBalanceData, insights, insightsL
 
       <div className={styles.metric}>
         <dt className={styles.label}>Next Payment</dt>
-        <dd className={styles.value + (urgencyClass ? ' ' + styles[urgencyClass] : '')}>
+        <dd className={`${styles.value}${urgencyClass ? ' ' + styles[urgencyClass] : ''}`}>
           {nextPaymentDisplay}
         </dd>
       </div>

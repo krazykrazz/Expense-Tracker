@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.6.0',
+    date: 'April 18, 2026',
+    added: [],
+    changed: ['Mortgage detail view redesign: KPI strip and tabbed layout'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.5.1',
     date: 'March 22, 2026',
     added: [],

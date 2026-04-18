@@ -24,6 +24,11 @@
 
 
 
+
+
+## [1.6.0] - 2026-04-18
+
+### Mortgage detail view redesign: KPI strip and tabbed layout
 ## [1.5.1] - 2026-03-22
 
 ### Fix anomaly baseline to use monthly totals

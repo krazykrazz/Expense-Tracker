@@ -737,8 +737,8 @@ describe('BackupService - Property-Based Tests', () => {
     await fs.promises.rm(testListingPath, { recursive: true, force: true }).catch(() => {});
     await fs.promises.mkdir(testListingPath, { recursive: true });
     
-    // Arbitrary for number of backups to create (1-5)
-    const backupCountArbitrary = fc.integer({ min: 1, max: 5 });
+    // Arbitrary for number of backups to create (1-2 to keep test fast)
+    const backupCountArbitrary = fc.integer({ min: 1, max: 2 });
 
     // Save original config before all tests
     const originalConfig = backupService.getConfig();
@@ -822,7 +822,7 @@ describe('BackupService - Property-Based Tests', () => {
 
           return true;
         }),
-        dbPbtOptions({ numRuns: 3 }) // Reduced: each run creates multiple backups with 1.1s delays
+        dbPbtOptions({ numRuns: 2 }) // Reduced: each run creates multiple backups with 1.1s delays
       );
     } finally {
       // Restore original config

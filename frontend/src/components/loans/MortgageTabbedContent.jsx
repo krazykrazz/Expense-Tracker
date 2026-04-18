@@ -144,6 +144,7 @@ function MortgageTabbedContent({
             loanData={loanData}
             calculatedBalanceData={calculatedBalanceData}
             linkedFixedExpenses={linkedFixedExpenses}
+            loading={loading}
             onEditLoanDetails={onEditLoanDetails}
             onMarkPaidOff={onMarkPaidOff}
           />
@@ -196,6 +197,7 @@ function OverviewPanel({
   loanData,
   calculatedBalanceData,
   linkedFixedExpenses,
+  loading,
   onEditLoanDetails,
   onMarkPaidOff,
 }) {
@@ -255,10 +257,10 @@ function OverviewPanel({
 
       {/* Requirement 4.5 — Action buttons */}
       <div className={styles.actions}>
-        <button className={styles.actionBtn} onClick={onEditLoanDetails}>
+        <button className={styles.actionBtn} onClick={onEditLoanDetails} disabled={loading}>
           Edit Loan Details
         </button>
-        <button className={`${styles.actionBtn} ${styles.actionBtnDanger}`} onClick={onMarkPaidOff}>
+        <button className={`${styles.actionBtn} ${styles.actionBtnDanger}`} onClick={onMarkPaidOff} disabled={loading}>
           Mark Paid Off
         </button>
       </div>
@@ -379,6 +381,7 @@ function PaymentsPanel({
           editingPayment={editingPayment}
           onPaymentRecorded={onPaymentRecorded}
           onCancel={onCancelPaymentForm}
+          disabled={loadingPayments}
         />
       )}
 
@@ -393,6 +396,7 @@ function PaymentsPanel({
         loading={loadingPayments}
         onEdit={onEditPaymentEntry}
         onDelete={onDeletePayment}
+        disabled={loadingPayments}
       />
 
       {/* Requirement 7.4 — Migration prompt */}
@@ -411,6 +415,7 @@ function PaymentsPanel({
               loanName={loanData?.name}
               onMigrationComplete={onMigrationComplete}
               onClose={onCloseMigrationUtility}
+              disabled={loadingPayments}
             />
           )}
         </div>

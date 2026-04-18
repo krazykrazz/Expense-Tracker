@@ -495,7 +495,31 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ---
 
-## 🔒 Security & Authentication
+### 🟢 16b. Mortgage Detail View Redesign
+**Status**: Completed  
+**Completed**: April 2026  
+**Priority**: Medium  
+**Effort**: Medium  
+**Spec**: `.kiro/specs/mortgage-detail-view-redesign/`  
+**Description**: Reorganized the mortgage detail view from a single scrolling column into a two-zone layout: a compact KPI strip (always visible) and a tabbed content area (Overview, Charts, Projections, Payments). Frontend-only change — no backend modifications.
+
+**Features Delivered**:
+- **MortgageKpiStrip**: Compact always-visible horizontal strip showing 7 key metrics (Current Balance, Interest Rate, Daily Interest, Monthly Payment, Next Payment Date, Equity %, Payoff Date) with urgency coloring for payment due dates
+- **MortgageTabbedContent**: ARIA-compliant four-tab container (Overview, Charts, Projections, Payments) with keyboard navigation (ArrowRight/Left/Home/End/Enter/Space) and per-mortgage tab state persistence via `useTabState`
+- **Data Lifting**: Mortgage insights fetch moved from `MortgageInsightsPanel` up to `LoanDetailView` so both the KPI strip and tabbed content share a single data source without duplicate API calls
+- **Responsive Layout**: KPI strip collapses to 2-column at 768px and 1-column at 480px; tab bar becomes horizontally scrollable on mobile
+- **Accessibility**: Semantic `<dl>/<dt>/<dd>` for KPI metrics, full ARIA tab pattern (`role="tablist"`, `role="tab"`, `role="tabpanel"`), `prefers-reduced-motion` support
+- **Non-Mortgage Preservation**: Loans and lines of credit retain their existing single-column layout unchanged
+
+**Benefits**:
+- At-a-glance mortgage status without scrolling
+- Logical content organization reduces cognitive load
+- Consistent with WAI-ARIA Tabs pattern for keyboard users
+- CSS Modules adoption for new components (incremental migration)
+
+**Dependencies**: Extends mortgage tracking (v4.18.0) and mortgage balance interest tracking
+
+---
 
 ### 🟡 35. Auth Infrastructure (Phase 1)
 **Status**: In Progress  

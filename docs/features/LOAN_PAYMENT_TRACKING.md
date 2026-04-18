@@ -291,6 +291,8 @@ Response:
 - `PaymentBalanceChart.jsx` - Visual payment/balance chart
 - `LoanPaymentReminderBanner.jsx` - Reminder banner for due payments
 - `AutoLogPrompt.jsx` - Auto-log confirmation dialog
+- `MortgageKpiStrip.jsx` - Compact always-visible strip of 7 key mortgage metrics (Current Balance, Interest Rate, Daily Interest, Monthly Payment, Next Payment Date, Equity %, Payoff Date); renders at the top of the mortgage detail view
+- `MortgageTabbedContent.jsx` - Four-tab container (Overview, Charts, Projections, Payments) that organizes all mortgage detail content; replaces the previous single-column scroll layout for mortgage-type loans
 
 ### Backend
 - `loanPaymentService.js` - Payment CRUD, validation, and balance override processing

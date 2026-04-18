@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import './LoanDetailView.css';
 import { updateLoan, markPaidOff } from '../../services/loanApi';
 import { getBalanceHistory, createOrUpdateBalance, deleteBalance } from '../../services/loanBalanceApi';
@@ -7,10 +7,10 @@ import { getFixedExpensesByLoan } from '../../services/fixedExpenseApi';
 import { validateName, validateAmount } from '../../utils/validation';
 import { formatCurrency, formatDate, formatMonthYear } from '../../utils/formatters';
 import { createLogger } from '../../utils/logger';
-import MortgageDetailSection from './MortgageDetailSection';
-import MortgageInsightsPanel from './MortgageInsightsPanel';
-import EquityChart from './EquityChart';
-import AmortizationChart from './AmortizationChart';
+import { authAwareFetch } from '../../utils/fetchProvider';
+import { API_ENDPOINTS } from '../../config';
+import MortgageKpiStrip from './MortgageKpiStrip';
+import MortgageTabbedContent from './MortgageTabbedContent';
 import LoanPaymentForm from './LoanPaymentForm';
 import LoanPaymentHistory from './LoanPaymentHistory';
 import PaymentBalanceChart from './PaymentBalanceChart';
@@ -62,6 +62,11 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
   // Linked fixed expenses state
   const [linkedFixedExpenses, setLinkedFixedExpenses] = useState([]);
   const [loadingFixedExpenses, setLoadingFixedExpenses] = useState(false);
+
+  // Mortgage insights state - Requirements 2.1, 2.3
+  const [mortgageInsights, setMortgageInsights] = useState(null);
+  const [insightsLoading, setInsightsLoading] = useState(false);
+  const [insightsError, setInsightsError] = useState(null);
 
   // Derive paymentDueDay from linked fixed expenses (Requirements 1.1, 1.2)
   const paymentDueDay = linkedFixedExpenses.length > 0 
@@ -181,6 +186,84 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
       setLoadingFixedExpenses(false);
     }
   };
+
+  // Fetch mortgage insights - Requirement 2.1
+  // Uses authAwareFetch directly (lifted from MortgageInsightsPanel)
+  const fetchMortgageInsights = useCallback(async () => {
+    if (!loanData?.id) return;
+
+    setInsightsLoading(true);
+    setInsightsError(null);
+
+    try {
+      const response = await authAwareFetch(API_ENDPOINTS.LOAN_INSIGHTS(loanData.id));
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || 'Failed to load mortgage insights');
+      }
+      const data = await response.json();
+      setMortgageInsights(data);
+    } catch (err) {
+      logger.error('Error fetching mortgage insights:', err);
+      setInsightsError(err.message || 'Failed to load mortgage insights');
+    } finally {
+      setInsightsLoading(false);
+    }
+  }, [loanData?.id]);
+
+  // Fetch mortgage insights when modal opens for a mortgage - Requirement 2.1
+  useEffect(() => {
+    if (isOpen && loanData?.loan_type === 'mortgage') {
+      fetchMortgageInsights();
+    }
+  }, [isOpen, loanData?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Handle mortgage payment edit - calls PUT /api/loans/:id/payments/:paymentId then re-fetches insights
+  // Requirement 2.4, 2.5 — named handleMortgageEditPayment to avoid collision with existing handleEditPayment
+  const handleMortgageEditPayment = useCallback(async (paymentId, paymentData) => {
+    const response = await authAwareFetch(API_ENDPOINTS.LOAN_PAYMENT(loanData.id, paymentId), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(paymentData)
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || 'Failed to update payment');
+    }
+    await fetchMortgageInsights();
+  }, [loanData?.id, fetchMortgageInsights]);
+
+  // Handle mortgage rate update - calls PUT /api/loans/:id/rate then re-fetches insights
+  // Requirement 2.4, 2.5
+  const handleEditRate = useCallback(async (newRate) => {
+    const response = await authAwareFetch(API_ENDPOINTS.LOAN_RATE(loanData.id), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rate: newRate })
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || 'Failed to update rate');
+    }
+    await fetchMortgageInsights();
+  }, [loanData?.id, fetchMortgageInsights]);
+
+  // Handle mortgage scenario calculation - calls POST /api/loans/:id/insights/scenario then re-fetches insights
+  // Requirement 2.4, 2.5
+  const handleCalculateScenario = useCallback(async (extraPayment) => {
+    const response = await authAwareFetch(API_ENDPOINTS.LOAN_SCENARIO(loanData.id), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ extra_payment: extraPayment })
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || 'Failed to calculate scenario');
+    }
+    const result = await response.json();
+    await fetchMortgageInsights();
+    return result;
+  }, [loanData?.id, fetchMortgageInsights]);
 
   // Calculate derived values
   // For payment-tracked loans, use calculated balance from payments
@@ -646,6 +729,49 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
         )}
 
         <div className="loan-detail-content">
+          {loanData.loan_type === 'mortgage' ? (
+            <>
+              <MortgageKpiStrip
+                loanData={loanData}
+                calculatedBalanceData={calculatedBalanceData}
+                insights={mortgageInsights}
+                insightsLoading={insightsLoading}
+                paymentDueDay={paymentDueDay}
+              />
+              <MortgageTabbedContent
+                loanData={loanData}
+                calculatedBalanceData={calculatedBalanceData}
+                insights={mortgageInsights}
+                insightsLoading={insightsLoading}
+                payments={payments}
+                balanceHistory={balanceHistory}
+                linkedFixedExpenses={linkedFixedExpenses}
+                totalPayments={totalPayments}
+                currentBalance={currentBalance}
+                currentRate={currentRate}
+                paymentDueDay={paymentDueDay}
+                loading={loading}
+                loadingPayments={loadingPayments}
+                showPaymentForm={showPaymentForm}
+                editingPayment={editingPayment}
+                showMigrationUtility={showMigrationUtility}
+                onEditPayment={handleMortgageEditPayment}
+                onEditRate={handleEditRate}
+                onCalculateScenario={handleCalculateScenario}
+                onShowPaymentForm={handleShowPaymentForm}
+                onCancelPaymentForm={handleCancelPaymentForm}
+                onPaymentRecorded={handlePaymentRecorded}
+                onEditPaymentEntry={handleEditPayment}
+                onDeletePayment={handleDeletePayment}
+                onEditLoanDetails={handleEditLoanDetails}
+                onMarkPaidOff={handleMarkPaidOff}
+                onShowMigrationUtility={handleShowMigrationUtility}
+                onMigrationComplete={handleMigrationComplete}
+                onCloseMigrationUtility={handleCloseMigrationUtility}
+              />
+            </>
+          ) : (
+            <>
           {/* Loan Summary Card */}
           <div className="loan-summary-card">
             <h3>Loan Summary</h3>
@@ -1031,15 +1157,8 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
             </div>
           )}
 
-          {/* Mortgage Detail Section - Requirements 8.1, 8.2, 8.5, 7.1 */}
-          {loanData.loan_type === 'mortgage' && (
-            <MortgageDetailSection mortgage={loanData} />
-          )}
-
-          {/* Payment Tracking Section - For loans and mortgages only */}
-          {/* Requirements: 5.1, 5.2, 5.3, 6.1, 6.4, 6.5 */}
-          {/* Placed here so mortgages get: Summary → Details → Payment History → Insights */}
-          {usesPaymentTracking && (
+          {/* Payment Tracking Section - For loans only (not mortgages, not line_of_credit) */}
+          {loanData.loan_type === 'loan' && (
             <div className="loan-payment-tracking-section">
               <div className="loan-payment-tracking-header">
                 <h3>Payment Tracking</h3>
@@ -1173,150 +1292,6 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
                 />
               )}
             </div>
-          )}
-
-          {/* Mortgage Insights & Charts - After Payment Tracking */}
-          {loanData.loan_type === 'mortgage' && (
-            <>
-              {/* Mortgage Insights Panel - Requirements 6.1, 6.2, 6.3, 6.4, 6.5, 8.1 */}
-              <MortgageInsightsPanel 
-                mortgageId={loanData.id}
-                mortgageData={loanData}
-                paymentDueDay={paymentDueDay}
-              />
-
-              {/* Equity Chart - Requirements 4.2, 4.3, 8.3 */}
-              {loanData.estimated_property_value && (
-                <EquityChart 
-                  loanId={loanData.id}
-                  estimatedPropertyValue={loanData.estimated_property_value}
-                  currentBalance={currentBalance}
-                />
-              )}
-
-              {/* Amortization Chart - Requirements 5.5, 6.3, 8.4 */}
-              <AmortizationChart 
-                loanId={loanData.id}
-                currentBalance={currentBalance}
-                currentRate={currentRate}
-              />
-
-              {/* Rate History Chart for Variable Rate Mortgages - Requirement 3.3 */}
-              {loanData.rate_type === 'variable' && balanceHistory.length > 0 && (
-                <div className="loan-balance-chart-section">
-                  <div className="loan-balance-chart-header">
-                    <div className="loan-balance-chart-label">
-                      Interest Rate History
-                    </div>
-                    <div className="loan-balance-chart-legend">
-                      <span className="legend-item">
-                        <span className="legend-color" style={{ backgroundColor: '#dc3545' }}></span>
-                        Interest Rate
-                      </span>
-                    </div>
-                  </div>
-                  <div className="loan-balance-line-chart">
-                    {(() => {
-                      const chartData = [...balanceHistory].reverse();
-                      const maxRate = Math.max(...chartData.map(entry => entry.rate), 1);
-                      const minRate = Math.min(...chartData.map(entry => entry.rate), 0);
-                      const rateRange = maxRate - minRate || 1;
-                      
-                      const chartWidth = 600;
-                      const chartHeight = 180;
-                      const padding = { top: 20, right: 50, bottom: 40, left: 50 };
-                      const graphWidth = chartWidth - padding.left - padding.right;
-                      const graphHeight = chartHeight - padding.top - padding.bottom;
-                      
-                      const ratePoints = chartData.map((entry, index) => {
-                        const x = padding.left + (index / (chartData.length - 1 || 1)) * graphWidth;
-                        const y = padding.top + graphHeight - ((entry.rate - minRate) / rateRange) * graphHeight;
-                        return { x, y, entry };
-                      });
-                      
-                      const rateLinePath = ratePoints.map((point, index) => 
-                        `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`
-                      ).join(' ');
-                      
-                      return (
-                        <svg width="100%" height={chartHeight} viewBox={`0 0 ${chartWidth} ${chartHeight}`} preserveAspectRatio="xMidYMid meet">
-                          {[0, 0.25, 0.5, 0.75, 1].map((ratio) => {
-                            const y = padding.top + graphHeight * (1 - ratio);
-                            const value = minRate + rateRange * ratio;
-                            return (
-                              <g key={`rate-grid-${ratio}`}>
-                                <line
-                                  x1={padding.left}
-                                  y1={y}
-                                  x2={chartWidth - padding.right}
-                                  y2={y}
-                                  stroke="#e0e0e0"
-                                  strokeWidth="1"
-                                  strokeDasharray="4,4"
-                                />
-                                <text
-                                  x={padding.left - 10}
-                                  y={y + 4}
-                                  textAnchor="end"
-                                  fontSize="11"
-                                  fill="#dc3545"
-                                >
-                                  {value.toFixed(2)}%
-                                </text>
-                              </g>
-                            );
-                          })}
-                          
-                          <path
-                            d={rateLinePath}
-                            fill="none"
-                            stroke="#dc3545"
-                            strokeWidth="3"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                          
-                          {ratePoints.map((point, index) => (
-                            <circle
-                              key={`rate-point-${index}`}
-                              cx={point.x}
-                              cy={point.y}
-                              r="5"
-                              fill="#dc3545"
-                              stroke="white"
-                              strokeWidth="2"
-                              style={{ cursor: 'pointer' }}
-                            >
-                              <title>
-                                {formatMonthYear(point.entry.year, point.entry.month)}: {point.entry.rate}%
-                              </title>
-                            </circle>
-                          ))}
-                          
-                          {ratePoints.map((point, index) => {
-                            if (chartData.length <= 6 || index % 2 === 0) {
-                              return (
-                                <text
-                                  key={`rate-label-${index}`}
-                                  x={point.x}
-                                  y={chartHeight - padding.bottom + 20}
-                                  textAnchor="middle"
-                                  fontSize="11"
-                                  fill="#666"
-                                >
-                                  {new Date(point.entry.year, point.entry.month - 1).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })}
-                                </text>
-                              );
-                            }
-                            return null;
-                          })}
-                        </svg>
-                      );
-                    })()}
-                  </div>
-                </div>
-              )}
-            </>
           )}
 
           {/* Balance History Section - For lines of credit only */}
@@ -1596,6 +1571,8 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
               </div>
             )}
           </div>
+          )}
+            </>
           )}
         </div>
       </div>

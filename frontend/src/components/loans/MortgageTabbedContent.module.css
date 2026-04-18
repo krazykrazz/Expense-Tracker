@@ -1,0 +1,270 @@
+/* MortgageTabbedContent.module.css
+ * Styles for the four-tab mortgage detail content area.
+ * Uses CSS custom properties from variables.css for dark mode compatibility.
+ * Requirements: 8.2, 8.4, 9.3
+ */
+
+/* ── Outer wrapper ─────────────────────────────────────────────────────────── */
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+/* ── Tab bar ───────────────────────────────────────────────────────────────── */
+.tabBar {
+  display: flex;
+  flex-direction: row;
+  border-bottom: 1px solid var(--border-default);
+  background: var(--bg-subtle);
+  overflow-x: auto;
+  /* Smooth scrolling on mobile */
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; /* Firefox */
+}
+
+.tabBar::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
+}
+
+/* ── Individual tab button ─────────────────────────────────────────────────── */
+.tab {
+  flex-shrink: 0;
+  padding: var(--spacing-3) var(--spacing-5);
+  font-size: var(--text-base);
+  font-weight: var(--font-medium);
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: var(--transition-colors), border-color var(--transition-fast);
+  white-space: nowrap;
+  outline: none;
+}
+
+.tab:hover {
+  color: var(--text-primary);
+  background: var(--hover-overlay);
+}
+
+.tab:focus-visible {
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+}
+
+/* Active tab indicator — bottom border highlight */
+.tabActive {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+  font-weight: var(--font-semibold);
+}
+
+/* ── Content panel ─────────────────────────────────────────────────────────── */
+.panel {
+  padding: var(--spacing-5);
+  overflow-y: auto;
+  min-height: 200px;
+}
+
+/* ── Overview panel ────────────────────────────────────────────────────────── */
+.overviewPanel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-5);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+}
+
+.sectionHeading {
+  font-size: var(--heading-4);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  margin: 0;
+}
+
+/* Linked expenses list */
+.expenseList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.expenseItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-2) var(--spacing-3);
+  background: var(--bg-muted);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-base);
+}
+
+.expenseName {
+  color: var(--text-primary);
+}
+
+.expenseAmount {
+  color: var(--text-secondary);
+  font-weight: var(--font-medium);
+}
+
+/* Payment summary grid */
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--spacing-3);
+  margin: 0;
+}
+
+.summaryItem {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+  padding: var(--spacing-3);
+  background: var(--bg-muted);
+  border-radius: var(--radius-sm);
+}
+
+.summaryItem dt {
+  font-size: var(--caption-text);
+  color: var(--text-tertiary);
+  font-weight: var(--font-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.summaryItem dd {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  margin: 0;
+}
+
+/* Action buttons */
+.actions {
+  display: flex;
+  gap: var(--spacing-3);
+  flex-wrap: wrap;
+}
+
+.actionBtn {
+  padding: var(--spacing-2) var(--spacing-4);
+  font-size: var(--text-base);
+  font-weight: var(--font-medium);
+  color: var(--text-inverse);
+  background: var(--color-primary);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: var(--transition-button);
+}
+
+.actionBtn:hover {
+  background: var(--color-primary-hover);
+}
+
+.actionBtn:focus-visible {
+  box-shadow: var(--focus-ring);
+}
+
+.actionBtnDanger {
+  background: var(--color-negative);
+}
+
+.actionBtnDanger:hover {
+  background: var(--color-negative-dark);
+}
+
+/* ── Charts panel ──────────────────────────────────────────────────────────── */
+.chartsPanel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-6);
+}
+
+.chartPlaceholder {
+  padding: var(--spacing-5);
+  background: var(--bg-muted);
+  border-radius: var(--radius-md);
+  color: var(--text-tertiary);
+  font-size: var(--text-base);
+  text-align: center;
+}
+
+/* ── Projections panel ─────────────────────────────────────────────────────── */
+.projectionsPanel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-5);
+}
+
+/* ── Payments panel ────────────────────────────────────────────────────────── */
+.paymentsPanel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-5);
+}
+
+.paymentActions {
+  display: flex;
+  gap: var(--spacing-3);
+}
+
+.migrationSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+  padding: var(--spacing-4);
+  background: var(--bg-muted);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-default);
+}
+
+.migrationPrompt {
+  font-size: var(--text-base);
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+/* ── Responsive: 768px — tab bar scrollable (already set), summary 1-col ──── */
+@media (max-width: 768px) {
+  .summaryGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .actions {
+    flex-direction: column;
+  }
+
+  .actionBtn {
+    width: 100%;
+    text-align: center;
+  }
+
+  .panel {
+    padding: var(--spacing-4);
+  }
+}
+
+/* ── Reduced motion ────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .tab {
+    transition: none;
+  }
+
+  .actionBtn {
+    transition: none;
+  }
+}

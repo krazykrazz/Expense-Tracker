@@ -26,6 +26,11 @@
 
 
 
+
+
+## [1.6.1] - 2026-05-02
+
+### Fix LOC payment suppression, budget alert overflow, project cleanup
 ## [1.6.0] - 2026-04-18
 
 ### Mortgage detail view redesign: KPI strip and tabbed layout

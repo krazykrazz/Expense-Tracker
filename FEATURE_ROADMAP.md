@@ -1,7 +1,7 @@
 # Expense Tracker - Feature Roadmap
 
-**Last Updated**: March 2026  
-**Current Version**: 1.0.0
+**Last Updated**: April 2026  
+**Current Version**: 1.6.0
 
 This document tracks potential features and enhancements for the Expense Tracker application. Features are categorized by priority and implementation status.
 
@@ -134,8 +134,8 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ---
 
-### 🟡 2c. Anomaly Alert UX Simplification
-**Status**: In Progress  
+### 🟢 2c. Anomaly Alert UX Simplification
+**Status**: Completed  
 **Priority**: Medium  
 **Effort**: Medium  
 **Spec**: `.kiro/specs/anomaly-alert-ux/`  
@@ -521,8 +521,8 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ---
 
-### 🟡 35. Auth Infrastructure (Phase 1)
-**Status**: In Progress  
+### 🟢 35. Auth Infrastructure (Phase 1)
+**Status**: Completed (v1.2.0)  
 **Priority**: High  
 **Effort**: High  
 **Spec**: `.kiro/specs/auth-infrastructure/`  

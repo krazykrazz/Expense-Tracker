@@ -139,6 +139,11 @@ class AutoPaymentLoggerService {
         return false;
       }
       
+      // Skip lines of credit — they use balance-based tracking, not payment-based
+      if (expense.loan_type === 'line_of_credit') {
+        return false;
+      }
+      
       // Skip if payment already exists for this month
       if (paymentStatusMap.get(expense.loan_id)) {
         return false;

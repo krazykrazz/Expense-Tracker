@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.6.1',
+    date: 'May 2, 2026',
+    added: [],
+    changed: ['Fix LOC payment suppression, budget alert overflow, project cleanup'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.6.0',
     date: 'April 18, 2026',
     added: [],

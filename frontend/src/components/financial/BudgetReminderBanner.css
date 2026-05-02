@@ -47,6 +47,7 @@
   align-items: flex-start;
   gap: 10px;
   flex: 1;
+  min-width: 0;
 }
 
 .budget-reminder-banner .reminder-icon {
@@ -60,6 +61,7 @@
   flex-direction: column;
   gap: 4px;
   flex: 1;
+  min-width: 0;
 }
 
 .budget-reminder-banner .reminder-message {
@@ -172,6 +174,7 @@
   gap: 4px;
   margin-top: 8px;
   padding-top: 8px;
+  padding-bottom: 4px;
   border-top: 1px solid rgba(0, 0, 0, 0.1);
 }
 
@@ -184,6 +187,7 @@
   border-radius: 4px;
   cursor: pointer;
   transition: background-color 0.2s ease;
+  min-width: 0;
 }
 
 .budget-reminder-banner .reminder-alert-item:hover {
@@ -193,19 +197,22 @@
 .budget-reminder-banner .reminder-alert-category {
   flex: 1;
   font-weight: var(--font-medium);
+  min-width: 0;
 }
 
 .budget-reminder-banner .reminder-alert-progress {
   font-weight: var(--font-semibold);
-  min-width: 40px;
+  min-width: 36px;
   text-align: right;
+  flex-shrink: 0;
 }
 
 .budget-reminder-banner .reminder-alert-amounts {
   font-size: var(--text-sm);
   opacity: 0.85;
-  min-width: 120px;
   text-align: right;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .budget-reminder-banner .reminder-dismiss-btn {

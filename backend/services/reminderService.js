@@ -346,12 +346,13 @@ class ReminderService {
       
       // Filter to only reminders that need attention (overdue or due soon)
       // and don't have a payment this month
+      // Exclude lines of credit — they use balance-based tracking, not payment-based
       // _Requirements: 3.4_
       const overduePayments = reminders.filter(r => 
-        r.isOverdue && !r.hasPaymentThisMonth && !r.isLoanPaidOff
+        r.isOverdue && !r.hasPaymentThisMonth && !r.isLoanPaidOff && r.loanType !== 'line_of_credit'
       );
       const dueSoonPayments = reminders.filter(r => 
-        r.isDueSoon && !r.hasPaymentThisMonth && !r.isLoanPaidOff
+        r.isDueSoon && !r.hasPaymentThisMonth && !r.isLoanPaidOff && r.loanType !== 'line_of_credit'
       );
       
       return {

@@ -10,7 +10,6 @@
   margin-bottom: var(--section-gap, 16px);
   box-shadow: var(--shadow-sm, 0 1px 3px rgba(0, 0, 0, 0.1));
   border: 1px solid var(--border-muted, #e5e7eb);
-  overflow: hidden;
   transition: box-shadow 0.2s ease;
 }
 
@@ -26,6 +25,7 @@
   padding: var(--spacing-3, 12px) var(--spacing-4, 16px);
   background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
   border-bottom: 1px solid var(--border-muted, #e5e7eb);
+  border-radius: var(--radius-lg, 12px) var(--radius-lg, 12px) 0 0;
   cursor: pointer;
   user-select: none;
   transition: background-color 0.2s ease;
@@ -100,6 +100,7 @@
 .notifications-content {
   padding: var(--spacing-3, 12px);
   background: var(--bg-subtle, #f9fafb);
+  border-radius: 0 0 var(--radius-lg, 12px) var(--radius-lg, 12px);
   animation: slideDown 0.2s ease-out;
 }
 

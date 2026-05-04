@@ -33,9 +33,9 @@
     "@testing-library/user-event": "^14.6.1",
     "@vitejs/plugin-react": "^6.0.1",
     "@vitest/ui": "^4.1.5",
-    "baseline-browser-mapping": "^2.10.24",
+    "baseline-browser-mapping": "^2.10.27",
     "fast-check": "^4.7.0",
-    "jsdom": "^29.1.0",
+    "jsdom": "^29.1.1",
     "vite": "^8.0.10",
     "vitest": "^4.0.10"
   }

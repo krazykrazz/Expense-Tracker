@@ -210,6 +210,149 @@
   gap: var(--spacing-5);
 }
 
+.paymentMismatchNote {
+  padding: var(--spacing-3) var(--spacing-4);
+  background: var(--bg-warning, #fff8e1);
+  border: 1px solid var(--border-warning, #ffe082);
+  border-radius: var(--radius-md);
+  font-size: var(--text-base);
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+/* ── Rate editing (Overview panel) ─────────────────────────────────────────── */
+.rateDisplayRow {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+}
+
+.rateValue {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+.rateEditBtn {
+  padding: var(--spacing-1) var(--spacing-3);
+  font-size: var(--caption-text);
+  font-weight: var(--font-medium);
+  color: var(--color-primary);
+  background: transparent;
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: var(--transition-button);
+}
+
+.rateEditBtn:hover {
+  background: var(--color-primary);
+  color: var(--text-inverse);
+}
+
+.rateEditRow {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  flex-wrap: wrap;
+}
+
+.rateInput {
+  width: 80px;
+  padding: var(--spacing-2);
+  font-size: var(--text-base);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: var(--bg-input, var(--bg-card));
+  color: var(--text-primary);
+}
+
+.rateInput:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: var(--focus-ring);
+}
+
+.rateInputSuffix {
+  font-size: var(--text-base);
+  color: var(--text-secondary);
+}
+
+.rateBtn {
+  padding: var(--spacing-1) var(--spacing-2);
+  font-size: var(--text-base);
+  color: var(--text-inverse);
+  background: var(--color-positive);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  min-width: 28px;
+}
+
+.rateBtnCancel {
+  padding: var(--spacing-1) var(--spacing-2);
+  font-size: var(--text-base);
+  color: var(--text-secondary);
+  background: var(--bg-muted);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  min-width: 28px;
+}
+
+.rateError {
+  font-size: var(--caption-text);
+  color: var(--color-negative);
+  width: 100%;
+}
+
+/* Rate history */
+.rateHistorySection {
+  margin-top: var(--spacing-2);
+}
+
+.rateHistoryToggle {
+  padding: var(--spacing-1) 0;
+  font-size: var(--caption-text);
+  font-weight: var(--font-medium);
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.rateHistoryToggle:hover {
+  color: var(--text-primary);
+}
+
+.rateHistoryList {
+  list-style: none;
+  margin: var(--spacing-2) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+.rateHistoryItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-1) var(--spacing-3);
+  background: var(--bg-muted);
+  border-radius: var(--radius-sm);
+  font-size: var(--caption-text);
+}
+
+.rateHistoryDate {
+  color: var(--text-secondary);
+}
+
+.rateHistoryValue {
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
 /* ── Payments panel ────────────────────────────────────────────────────────── */
 .paymentsPanel {
   display: flex;

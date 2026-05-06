@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import useTabState from '../../hooks/useTabState';
 import styles from './MortgageTabbedContent.module.css';
 
@@ -144,8 +144,11 @@ function MortgageTabbedContent({
             loanData={loanData}
             calculatedBalanceData={calculatedBalanceData}
             linkedFixedExpenses={linkedFixedExpenses}
+            currentRate={currentRate}
+            balanceHistory={balanceHistory}
             loading={loading}
             onEditLoanDetails={onEditLoanDetails}
+            onEditRate={onEditRate}
             onMarkPaidOff={onMarkPaidOff}
           />
         )}
@@ -162,6 +165,7 @@ function MortgageTabbedContent({
           <ProjectionsPanel
             insights={insights}
             insightsLoading={insightsLoading}
+            linkedFixedExpenses={linkedFixedExpenses}
             onCalculateScenario={onCalculateScenario}
           />
         )}
@@ -197,14 +201,136 @@ function OverviewPanel({
   loanData,
   calculatedBalanceData,
   linkedFixedExpenses,
+  currentRate,
+  balanceHistory,
   loading,
   onEditLoanDetails,
+  onEditRate,
   onMarkPaidOff,
 }) {
+  const [isEditingRate, setIsEditingRate] = useState(false);
+  const [rateInput, setRateInput] = useState('');
+  const [rateError, setRateError] = useState(null);
+  const [rateSaving, setRateSaving] = useState(false);
+  const [showRateHistory, setShowRateHistory] = useState(false);
+
+  const handleStartEditRate = () => {
+    setRateInput(currentRate ? currentRate.toString() : '');
+    setRateError(null);
+    setIsEditingRate(true);
+  };
+
+  const handleSaveRate = async () => {
+    const parsed = parseFloat(rateInput);
+    if (isNaN(parsed) || parsed < 0 || parsed > 100) {
+      setRateError('Rate must be between 0 and 100');
+      return;
+    }
+    setRateSaving(true);
+    setRateError(null);
+    try {
+      await onEditRate(parsed);
+      setIsEditingRate(false);
+    } catch (err) {
+      setRateError(err.message || 'Failed to update rate');
+    } finally {
+      setRateSaving(false);
+    }
+  };
+
+  const handleCancelEditRate = () => {
+    setIsEditingRate(false);
+    setRateError(null);
+  };
+
+  // Build rate history from balance entries (unique rate changes)
+  const rateHistory = [];
+  if (balanceHistory?.length > 0) {
+    let lastRate = null;
+    // balanceHistory is sorted DESC (newest first), iterate in reverse for chronological order
+    const sorted = [...balanceHistory].sort((a, b) => {
+      if (a.year !== b.year) return a.year - b.year;
+      return a.month - b.month;
+    });
+    for (const entry of sorted) {
+      if (entry.rate !== lastRate) {
+        rateHistory.push({ year: entry.year, month: entry.month, rate: entry.rate });
+        lastRate = entry.rate;
+      }
+    }
+  }
+
   return (
     <div className={styles.overviewPanel}>
       {/* Requirement 4.1, 4.2 — MortgageDetailSection handles renewal banner internally */}
       <MortgageDetailSection mortgage={loanData} />
+
+      {/* Interest Rate section with inline edit */}
+      <div className={styles.section}>
+        <h4 className={styles.sectionHeading}>Interest Rate</h4>
+        {isEditingRate ? (
+          <div className={styles.rateEditRow}>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              max="100"
+              value={rateInput}
+              onChange={(e) => setRateInput(e.target.value)}
+              className={styles.rateInput}
+              disabled={rateSaving}
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleSaveRate();
+                if (e.key === 'Escape') handleCancelEditRate();
+              }}
+            />
+            <span className={styles.rateInputSuffix}>%</span>
+            <button className={styles.rateBtn} onClick={handleSaveRate} disabled={rateSaving}>
+              {rateSaving ? '…' : '✓'}
+            </button>
+            <button className={styles.rateBtnCancel} onClick={handleCancelEditRate} disabled={rateSaving}>
+              ✕
+            </button>
+            {rateError && <span className={styles.rateError}>{rateError}</span>}
+          </div>
+        ) : (
+          <div className={styles.rateDisplayRow}>
+            <span className={styles.rateValue}>
+              {currentRate > 0 ? `${currentRate}%` : 'Not set'}
+            </span>
+            {loanData?.rate_type === 'variable' && (
+              <button className={styles.rateEditBtn} onClick={handleStartEditRate} disabled={loading}>
+                ✎ Update
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Rate history toggle */}
+        {rateHistory.length > 1 && (
+          <div className={styles.rateHistorySection}>
+            <button
+              className={styles.rateHistoryToggle}
+              onClick={() => setShowRateHistory(!showRateHistory)}
+            >
+              {showRateHistory ? '▾' : '▸'} Rate History ({rateHistory.length} changes)
+            </button>
+            {showRateHistory && (
+              <ul className={styles.rateHistoryList}>
+                {[...rateHistory].reverse().map((entry, idx) => (
+                  <li key={idx} className={styles.rateHistoryItem}>
+                    <span className={styles.rateHistoryDate}>
+                      {String(entry.month).padStart(2, '0')}/{entry.year}
+                    </span>
+                    <span className={styles.rateHistoryValue}>{entry.rate}%</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* Requirement 4.3 — Linked fixed expenses */}
       {linkedFixedExpenses?.length > 0 && (
@@ -310,7 +436,7 @@ function ChartsPanel({ loanData, payments, balanceHistory, currentBalance, curre
 
 // ─── Projections Tab ─────────────────────────────────────────────────────────
 
-function ProjectionsPanel({ insights, insightsLoading, onCalculateScenario }) {
+function ProjectionsPanel({ insights, insightsLoading, linkedFixedExpenses, onCalculateScenario }) {
   // Requirement 6.4 — insufficient balance data message
   if (insights?.dataStatus?.hasBalanceData === false) {
     return (
@@ -320,8 +446,22 @@ function ProjectionsPanel({ insights, insightsLoading, onCalculateScenario }) {
     );
   }
 
+  // Show note if linked fixed expense amount differs from projection payment
+  const linkedPaymentAmount = linkedFixedExpenses?.length > 0 ? linkedFixedExpenses[0].amount : null;
+  const projectionPayment = insights?.currentStatus?.currentPayment;
+  const hasMismatch = linkedPaymentAmount != null && projectionPayment != null
+    && Math.abs(linkedPaymentAmount - projectionPayment) > 0.01;
+
   return (
     <div className={styles.projectionsPanel}>
+      {/* Payment source note */}
+      {hasMismatch && (
+        <div className={styles.paymentMismatchNote}>
+          <strong>Note:</strong> Your linked fixed expense is {formatCurrency(linkedPaymentAmount)}/mo 
+          but projections use {formatCurrency(projectionPayment)}/mo 
+          (from payment records). Update your mortgage payment record to align projections with your actual payment.
+        </div>
+      )}
       {/* Requirement 6.1 */}
       <PayoffProjectionInsights
         projections={insights?.projections}

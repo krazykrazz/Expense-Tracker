@@ -28,6 +28,11 @@
 
 
 
+
+
+## [1.7.0] - 2026-05-06
+
+### Mortgage rate edit, rate history, projection payment fix
 ## [1.6.1] - 2026-05-02
 
 ### Fix LOC payment suppression, budget alert overflow, project cleanup

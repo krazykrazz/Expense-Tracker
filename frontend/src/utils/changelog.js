@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.7.0',
+    date: 'May 6, 2026',
+    added: [],
+    changed: ['Mortgage rate edit, rate history, projection payment fix'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.6.1',
     date: 'May 2, 2026',
     added: [],

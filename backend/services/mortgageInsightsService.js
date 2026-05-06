@@ -7,6 +7,7 @@
 
 const loanRepository = require('../repositories/loanRepository');
 const loanBalanceRepository = require('../repositories/loanBalanceRepository');
+const fixedExpenseRepository = require('../repositories/fixedExpenseRepository');
 const mortgagePaymentService = require('./mortgagePaymentService');
 const mortgageService = require('./mortgageService');
 const { calculateMonthlyInterest } = require('../utils/interestCalculation');
@@ -372,10 +373,23 @@ class MortgageInsightsService {
       paymentFrequency: mortgage.payment_frequency || 'monthly'
     });
 
-    // Use current payment if set, otherwise use minimum payment as default
-    const currentPayment = currentPaymentEntry 
-      ? currentPaymentEntry.payment_amount 
-      : minimumPayment;
+    // Use current payment if set, otherwise check linked fixed expense, then fall back to minimum
+    let currentPayment;
+    let paymentSource = 'calculated';
+    if (currentPaymentEntry) {
+      currentPayment = currentPaymentEntry.payment_amount;
+      paymentSource = 'mortgage_payment';
+    } else {
+      // Check for linked fixed expense amount as a better fallback than calculated minimum
+      const linkedExpenses = await fixedExpenseRepository.getFixedExpensesByLoanId(mortgageId);
+      if (linkedExpenses && linkedExpenses.length > 0) {
+        currentPayment = linkedExpenses[0].amount;
+        paymentSource = 'linked_fixed_expense';
+      } else {
+        currentPayment = minimumPayment;
+        paymentSource = 'calculated';
+      }
+    }
 
     // Calculate interest breakdown
     const interestBreakdown = this.calculateInterestBreakdown(balance, rate);
@@ -396,12 +410,13 @@ class MortgageInsightsService {
     const dataStatus = {
       hasBalanceData: balanceHistory.length > 0,
       hasPaymentData: currentPaymentEntry !== null,
+      paymentSource,
       lastUpdated: currentBalanceEntry 
         ? `${currentBalanceEntry.year}-${String(currentBalanceEntry.month).padStart(2, '0')}`
         : null
     };
 
-    logger.debug('Generated mortgage insights:', { mortgageId, balance, rate, currentPayment });
+    logger.debug('Generated mortgage insights:', { mortgageId, balance, rate, currentPayment, paymentSource });
 
     return {
       mortgageId,

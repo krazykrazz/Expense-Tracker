@@ -8,6 +8,7 @@ import InvoiceIndicator from '../tax/InvoiceIndicator';
 import InsuranceStatusIndicator from './InsuranceStatusIndicator';
 import QuickStatusUpdate from './QuickStatusUpdate';
 import ReimbursementIndicator from './ReimbursementIndicator';
+import PostedIndicator from './PostedIndicator';
 import ExpenseForm from './ExpenseForm';
 import FilterChip from './FilterChip';
 import './ExpenseList.css';
@@ -965,6 +966,8 @@ const ExpenseList = memo(({
                           size="small"
                         />
                       )}
+                      {/* Posted Indicator for credit card transactions with posted_date */}
+                      <PostedIndicator postedDate={expense.posted_date} size="small" />
                     </div>
                   </div>
                 </td>

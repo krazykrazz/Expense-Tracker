@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.7.1',
+    date: 'May 7, 2026',
+    added: [],
+    changed: ['Add posted indicator icon on expense rows'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.7.0',
     date: 'May 6, 2026',
     added: [],

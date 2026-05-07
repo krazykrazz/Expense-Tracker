@@ -30,6 +30,11 @@
 
 
 
+
+
+## [1.7.1] - 2026-05-07
+
+### Add posted indicator icon on expense rows
 ## [1.7.0] - 2026-05-06
 
 ### Mortgage rate edit, rate history, projection payment fix

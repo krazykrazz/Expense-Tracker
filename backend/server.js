@@ -121,6 +121,12 @@ app.use('/api/sync', sseAuthMiddleware, syncRoutes);
 app.use('/api', generalLimiter);
 
 // CORS — restricted to configured origin or same-origin (no explicit origin header)
+if (!process.env.CORS_ORIGIN && process.env.NODE_ENV === 'production') {
+  logger.warn(
+    'CORS_ORIGIN is not set in production. Cross-origin requests will be rejected ' +
+    '(same-origin only). Set CORS_ORIGIN explicitly if browsers on other origins must connect.'
+  );
+}
 const corsOptions = {
   origin: process.env.CORS_ORIGIN || false,
   credentials: true,

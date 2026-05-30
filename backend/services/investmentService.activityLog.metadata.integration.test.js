@@ -18,7 +18,9 @@ describe('Investment Service Metadata Improvements - Integration Tests', () => {
   let db;
 
   async function resetTestState() {
-    await clearActivityLogs(db, 'entity_type', ENTITY_TYPE);
+    // Clear ALL activity logs to prevent other entity types' events from pushing
+    // investment events out of findRecent(10) results during parallel test execution
+    await runSql(db, 'DELETE FROM activity_logs');
     await runSql(db, `DELETE FROM investments WHERE name LIKE 'MetaTest%'`);
   }
 

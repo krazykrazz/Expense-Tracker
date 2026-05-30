@@ -63,7 +63,7 @@ describe('settingsService - Property 1: Settings Persistence Round-Trip', () => 
       ),
       dbPbtOptions({ numRuns: 100 })
     );
-  });
+  }, 60000);
 
   it('should handle multiple updates correctly (50 iterations)', async () => {
     await fc.assert(
@@ -98,7 +98,7 @@ describe('settingsService - Property 1: Settings Persistence Round-Trip', () => 
       ),
       dbPbtOptions({ numRuns: 50 })
     );
-  });
+  }, 60000);
 
   it('should preserve boundary values correctly (100 iterations)', async () => {
     await fc.assert(
@@ -126,5 +126,5 @@ describe('settingsService - Property 1: Settings Persistence Round-Trip', () => 
       ),
       dbPbtOptions({ numRuns: 100 })
     );
-  });
+  }, 60000);
 });

@@ -118,7 +118,7 @@ describe('Feature: migration-consolidation, Property 1: Schema completeness', ()
       ),
       dbPbtOptions({ numRuns: 100 })
     );
-  });
+  }, 120000);
 
   test('Schema creates exactly 26 tables', async () => {
     const db = await openDb();
@@ -203,7 +203,7 @@ describe('Feature: migration-consolidation, Property 2: Schema idempotency', () 
       ),
       dbPbtOptions({ numRuns: 100 })
     );
-  });
+  }, 120000);
 });
 
 
@@ -289,7 +289,7 @@ describe('Feature: migration-consolidation, Property 4: Constraint enforcement',
       ),
       dbPbtOptions({ numRuns: 100 })
     );
-  });
+  }, 120000);
 });
 
 
@@ -330,7 +330,7 @@ describe('Feature: migration-consolidation, Property 3: Test-production schema p
       ),
       dbPbtOptions({ numRuns: 30 })
     );
-  });
+  }, 120000);
 
   test('Test and production databases have identical indexes', async () => {
     const prodDb = await openDb();

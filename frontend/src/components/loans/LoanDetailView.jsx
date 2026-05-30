@@ -15,6 +15,7 @@ import LoanPaymentForm from './LoanPaymentForm';
 import LoanPaymentHistory from './LoanPaymentHistory';
 import PaymentBalanceChart from './PaymentBalanceChart';
 import MigrationUtility from './MigrationUtility';
+import ConfirmDialog from '../shared/ConfirmDialog';
 
 const logger = createLogger('LoanDetailView');
 
@@ -24,6 +25,7 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
+  const [confirmState, setConfirmState] = useState({ open: false, title: '', message: '', onConfirm: null });
   
   // Edit states
   const [isEditingLoan, setIsEditingLoan] = useState(false);
@@ -358,41 +360,39 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
     clearMessages();
   };
 
-  const handleMarkPaidOff = async () => {
+  const handleMarkPaidOff = () => {
     const newPaidOffStatus = !loanData.is_paid_off;
     const confirmMessage = newPaidOffStatus
       ? 'Are you sure you want to mark this loan as paid off?'
       : 'Are you sure you want to reactivate this loan?';
     
-    if (!window.confirm(confirmMessage)) {
-      return;
-    }
-
-    clearMessages();
-    setLoading(true);
-
-    try {
-      await markPaidOff(loanData.id, newPaidOffStatus);
-      
-      // Update local state
-      setLoanData({
-        ...loanData,
-        is_paid_off: newPaidOffStatus ? 1 : 0
-      });
-      
-      showSuccess(newPaidOffStatus ? 'Loan marked as paid off' : 'Loan reactivated');
-      
-      // Notify parent to refresh
-      if (onUpdate) {
-        onUpdate();
-      }
-    } catch (err) {
-      const errorMessage = err.message || 'Failed to update paid-off status';
-      setError(errorMessage);
-      logger.error('Error updating paid-off status:', err);
-    } finally {
-      setLoading(false);
-    }
+    setConfirmState({
+      open: true,
+      title: newPaidOffStatus ? 'Mark as Paid Off' : 'Reactivate Loan',
+      message: confirmMessage,
+      onConfirm: async () => {
+        setConfirmState(prev => ({ ...prev, open: false }));
+        clearMessages();
+        setLoading(true);
+        try {
+          await markPaidOff(loanData.id, newPaidOffStatus);
+          setLoanData({
+            ...loanData,
+            is_paid_off: newPaidOffStatus ? 1 : 0
+          });
+          showSuccess(newPaidOffStatus ? 'Loan marked as paid off' : 'Loan reactivated');
+          if (onUpdate) {
+            onUpdate();
+          }
+        } catch (err) {
+          const errorMessage = err.message || 'Failed to update paid-off status';
+          setError(errorMessage);
+          logger.error('Error updating paid-off status:', err);
+        } finally {
+          setLoading(false);
+        }
+      },
+    });
   };
 
   const handleEditBalance = (balanceEntry) => {
@@ -470,33 +470,31 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
     clearMessages();
   };
 
-  const handleDeleteBalance = async (balanceId) => {
-    if (!window.confirm('Are you sure you want to delete this balance entry?')) {
-      return;
-    }
-
-    clearMessages();
-    setLoading(true);
-
-    try {
-      await deleteBalance(balanceId);
-      
-      // Refresh balance history
-      await fetchBalanceHistory();
-      
-      showSuccess('Balance entry deleted successfully');
-      
-      // Notify parent to refresh
-      if (onUpdate) {
-        onUpdate();
-      }
-    } catch (err) {
-      const errorMessage = err.message || 'Failed to delete balance entry';
-      setError(errorMessage);
-      logger.error('Error deleting balance:', err);
-    } finally {
-      setLoading(false);
-    }
+  const handleDeleteBalance = (balanceId) => {
+    setConfirmState({
+      open: true,
+      title: 'Delete Balance Entry',
+      message: 'Are you sure you want to delete this balance entry?',
+      onConfirm: async () => {
+        setConfirmState(prev => ({ ...prev, open: false }));
+        clearMessages();
+        setLoading(true);
+        try {
+          await deleteBalance(balanceId);
+          await fetchBalanceHistory();
+          showSuccess('Balance entry deleted successfully');
+          if (onUpdate) {
+            onUpdate();
+          }
+        } catch (err) {
+          const errorMessage = err.message || 'Failed to delete balance entry';
+          setError(errorMessage);
+          logger.error('Error deleting balance:', err);
+        } finally {
+          setLoading(false);
+        }
+      },
+    });
   };
 
   const handleShowAddBalanceForm = () => {
@@ -1576,6 +1574,15 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
           )}
         </div>
       </div>
+      <ConfirmDialog
+        isOpen={confirmState.open}
+        title={confirmState.title}
+        message={confirmState.message}
+        variant="danger"
+        confirmLabel="Confirm"
+        onConfirm={confirmState.onConfirm}
+        onCancel={() => setConfirmState(prev => ({ ...prev, open: false }))}
+      />
     </div>
   );
 };

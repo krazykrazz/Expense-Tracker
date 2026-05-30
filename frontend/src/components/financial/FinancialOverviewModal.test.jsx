@@ -521,9 +521,6 @@ describe('FinancialOverviewModal', () => {
       
       paymentMethodApi.getPaymentMethods.mockResolvedValue([inactiveMethod]);
       paymentMethodApi.setPaymentMethodActive.mockRejectedValue(new Error('Network error'));
-      
-      // Mock window.alert
-      const alertMock = vi.spyOn(window, 'alert').mockImplementation(() => {});
 
       render(<FinancialOverviewModal {...defaultProps} />);
       
@@ -539,12 +536,10 @@ describe('FinancialOverviewModal', () => {
         fireEvent.click(reactivateButton);
       });
 
-      // Should show error alert
+      // Should show inline error message
       await waitFor(() => {
-        expect(alertMock).toHaveBeenCalledWith('Failed to reactivate payment method. Please try again.');
+        expect(screen.getByText('Failed to reactivate payment method. Please try again.')).toBeInTheDocument();
       });
-
-      alertMock.mockRestore();
     });
 
     it('should disable Reactivate button while reactivation is in progress', async () => {

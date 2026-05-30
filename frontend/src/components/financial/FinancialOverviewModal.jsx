@@ -18,6 +18,7 @@ import InvestmentDetailView from '../loans/InvestmentDetailView';
 import PaymentMethodForm from '../credit-cards/PaymentMethodForm';
 import CreditCardDetailView from '../credit-cards/CreditCardDetailView';
 import LoanPaymentForm from '../loans/LoanPaymentForm';
+import ConfirmDialog from '../shared/ConfirmDialog';
 import './FinancialOverviewModal.css';
 
 const logger = createLogger('FinancialOverviewModal');
@@ -166,6 +167,7 @@ const PaymentMethodsSection = ({ paymentMethods, loading, onPaymentRecorded, onV
   const [cardLoading, setCardLoading] = useState(true);
   const [payingCardId, setPayingCardId] = useState(null);
   const [reactivating, setReactivating] = useState(null);
+  const [reactivateError, setReactivateError] = useState(null);
 
   const allMethods = (paymentMethods || []).filter(m => activeTab === 'active' ? m.is_active : !m.is_active);
   const creditCards = allMethods.filter(m => m.type === 'credit_card');
@@ -224,13 +226,13 @@ const PaymentMethodsSection = ({ paymentMethods, loading, onPaymentRecorded, onV
 
   const handleReactivate = async (methodId) => {
     setReactivating(methodId);
+    setReactivateError(null);
     try {
       await setPaymentMethodActive(methodId, true);
-      // Trigger refresh by calling onPaymentRecorded which should refresh the parent
       if (onPaymentRecorded) onPaymentRecorded();
     } catch (error) {
       logger.error('Failed to reactivate payment method:', error);
-      alert('Failed to reactivate payment method. Please try again.');
+      setReactivateError('Failed to reactivate payment method. Please try again.');
     } finally {
       setReactivating(null);
     }
@@ -240,6 +242,7 @@ const PaymentMethodsSection = ({ paymentMethods, loading, onPaymentRecorded, onV
 
   return (
     <div className="financial-section" data-testid="payment-methods-section">
+      {reactivateError && <div className="error-message" role="alert">{reactivateError}</div>}
       <div className="financial-section-header">
         <div className="financial-section-header-left">
           <span className="financial-section-icon">💳</span>
@@ -385,6 +388,7 @@ const LoansSection = ({ year, month, onUpdate, highlightIds = [], onTotalDebtCha
   const [showTotalDebt, setShowTotalDebt] = useState(false);
   const [loanFixedExpenseCounts, setLoanFixedExpenseCounts] = useState({});
   const [payingLoan, setPayingLoan] = useState(null);
+  const [confirmState, setConfirmState] = useState({ open: false, title: '', message: '', onConfirm: null });
 
   const [formData, setFormData] = useState({
     name: '', initial_balance: '', start_date: '', loan_type: 'loan', notes: '',
@@ -520,19 +524,26 @@ const LoansSection = ({ year, month, onUpdate, highlightIds = [], onTotalDebtCha
     }
   };
 
-  const handleDeleteLoan = async (loan) => {
-    if (!window.confirm('Delete this loan? This will also delete all balance entries.')) return;
-    setLoading(true);
-    setError(null);
-    try {
-      await deleteLoan(loan.id);
-      await fetchLoans();
-    } catch (err) {
-      setError(err.message || 'Unable to delete loan.');
-      logger.error('Error deleting loan:', err);
-    } finally {
-      setLoading(false);
-    }
+  const handleDeleteLoan = (loan) => {
+    setConfirmState({
+      open: true,
+      title: 'Delete Loan',
+      message: 'Delete this loan? This will also delete all balance entries.',
+      onConfirm: async () => {
+        setConfirmState(prev => ({ ...prev, open: false }));
+        setLoading(true);
+        setError(null);
+        try {
+          await deleteLoan(loan.id);
+          await fetchLoans();
+        } catch (err) {
+          setError(err.message || 'Unable to delete loan.');
+          logger.error('Error deleting loan:', err);
+        } finally {
+          setLoading(false);
+        }
+      },
+    });
   };
 
   const handleEditLoan = (loan) => {
@@ -713,6 +724,15 @@ const LoansSection = ({ year, month, onUpdate, highlightIds = [], onTotalDebtCha
           </>
         )}
       </div>
+      <ConfirmDialog
+        isOpen={confirmState.open}
+        title={confirmState.title}
+        message={confirmState.message}
+        variant="danger"
+        confirmLabel="Delete"
+        onConfirm={confirmState.onConfirm}
+        onCancel={() => setConfirmState(prev => ({ ...prev, open: false }))}
+      />
     </div>
   );
 };
@@ -728,6 +748,7 @@ const InvestmentsSection = ({ onUpdate, highlightIds = [], onTotalInvestmentsCha
   const [selectedInvestmentId, setSelectedInvestmentId] = useState(null);
   const [formData, setFormData] = useState({ name: '', type: 'TFSA', initial_value: '' });
   const [validationErrors, setValidationErrors] = useState({});
+  const [confirmState, setConfirmState] = useState({ open: false, title: '', message: '', onConfirm: null });
 
   const fetchInvestments = useCallback(async () => {
     setLoading(true);
@@ -801,19 +822,26 @@ const InvestmentsSection = ({ onUpdate, highlightIds = [], onTotalInvestmentsCha
     }
   };
 
-  const handleDelete = async (investment) => {
-    if (!window.confirm('Delete this investment? This will also delete all value entries.')) return;
-    setLoading(true);
-    setError(null);
-    try {
-      await deleteInvestment(investment.id);
-      await fetchInvestments();
-    } catch (err) {
-      setError(err.message || 'Unable to delete investment.');
-      logger.error('Error deleting investment:', err);
-    } finally {
-      setLoading(false);
-    }
+  const handleDelete = (investment) => {
+    setConfirmState({
+      open: true,
+      title: 'Delete Investment',
+      message: 'Delete this investment? This will also delete all value entries.',
+      onConfirm: async () => {
+        setConfirmState(prev => ({ ...prev, open: false }));
+        setLoading(true);
+        setError(null);
+        try {
+          await deleteInvestment(investment.id);
+          await fetchInvestments();
+        } catch (err) {
+          setError(err.message || 'Unable to delete investment.');
+          logger.error('Error deleting investment:', err);
+        } finally {
+          setLoading(false);
+        }
+      },
+    });
   };
 
   const handleEditInvestment = (investment) => {
@@ -924,6 +952,15 @@ const InvestmentsSection = ({ onUpdate, highlightIds = [], onTotalInvestmentsCha
           </>
         )}
       </div>
+      <ConfirmDialog
+        isOpen={confirmState.open}
+        title={confirmState.title}
+        message={confirmState.message}
+        variant="danger"
+        confirmLabel="Delete"
+        onConfirm={confirmState.onConfirm}
+        onCancel={() => setConfirmState(prev => ({ ...prev, open: false }))}
+      />
     </div>
   );
 };

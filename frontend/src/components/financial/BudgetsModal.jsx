@@ -16,6 +16,7 @@ import { getMonthNameLong, getMonthNameShort, formatCAD } from '../../utils/form
 import { createLogger } from '../../utils/logger';
 import BudgetCard from './BudgetCard';
 import BudgetProgressBar from './BudgetProgressBar';
+import ConfirmDialog from '../shared/ConfirmDialog';
 import './BudgetsModal.css';
 
 const logger = createLogger('BudgetsModal');
@@ -34,6 +35,7 @@ const ManageTabContent = ({ year, month, onBudgetUpdated, focusedCategory }) => 
   const [isCopying, setIsCopying] = useState(false);
   const [suggestion, setSuggestion] = useState(null);
   const [loadingSuggestion, setLoadingSuggestion] = useState(false);
+  const [confirmState, setConfirmState] = useState({ open: false, title: '', message: '', onConfirm: null, variant: 'danger' });
 
   useEffect(() => {
     const fetchCategoriesData = async () => {
@@ -155,42 +157,72 @@ const ManageTabContent = ({ year, month, onBudgetUpdated, focusedCategory }) => 
   const handleDeleteBudget = async (category) => {
     const budget = getBudgetForCategory(category);
     if (!budget) return;
-    if (!window.confirm(`Are you sure you want to remove the budget for ${category}?`)) return;
-    setLoading(true);
-    setError(null);
-    try {
-      await deleteBudget(budget.id);
-      setBudgets(budgets.filter(b => b.id !== budget.id));
-      if (onBudgetUpdated) onBudgetUpdated();
-    } catch (err) {
-      setError(err.message || 'Network error. Unable to delete budget.');
-      logger.error('Error deleting budget:', err);
-    } finally {
-      setLoading(false);
-    }
+    setConfirmState({
+      open: true,
+      title: 'Remove Budget',
+      message: `Are you sure you want to remove the budget for ${category}?`,
+      variant: 'danger',
+      onConfirm: async () => {
+        setConfirmState(prev => ({ ...prev, open: false }));
+        setLoading(true);
+        setError(null);
+        try {
+          await deleteBudget(budget.id);
+          setBudgets(budgets.filter(b => b.id !== budget.id));
+          if (onBudgetUpdated) onBudgetUpdated();
+        } catch (err) {
+          setError(err.message || 'Network error. Unable to delete budget.');
+          logger.error('Error deleting budget:', err);
+        } finally {
+          setLoading(false);
+        }
+      },
+    });
   };
 
   const handleCopyFromPreviousMonth = async () => {
     const prevMonth = month === 1 ? 12 : month - 1;
     const prevYear = month === 1 ? year - 1 : year;
-    if (budgets.length > 0) {
-      if (!window.confirm('This month already has budgets. Copy from previous month will overwrite them. Continue?')) return;
-    }
-    setIsCopying(true);
-    setError(null);
-    try {
-      const result = await copyBudgets(prevYear, prevMonth, year, month, true);
-      if (result.copied === 0 && result.overwritten === 0) {
-        alert(`No budgets found in ${getMonthNameLong(prevMonth)} ${prevYear} to copy.`);
-      } else {
-        await fetchBudgets();
-        if (onBudgetUpdated) onBudgetUpdated();
+
+    const doCopy = async () => {
+      setIsCopying(true);
+      setError(null);
+      try {
+        const result = await copyBudgets(prevYear, prevMonth, year, month, true);
+        if (result.copied === 0 && result.overwritten === 0) {
+          setConfirmState({
+            open: true,
+            title: 'No Budgets Found',
+            message: `No budgets found in ${getMonthNameLong(prevMonth)} ${prevYear} to copy.`,
+            variant: 'info',
+            alertOnly: true,
+            onConfirm: () => setConfirmState(prev => ({ ...prev, open: false })),
+          });
+        } else {
+          await fetchBudgets();
+          if (onBudgetUpdated) onBudgetUpdated();
+        }
+      } catch (err) {
+        setError(err.message || 'Network error. Unable to copy budgets.');
+        logger.error('Error copying budgets:', err);
+      } finally {
+        setIsCopying(false);
       }
-    } catch (err) {
-      setError(err.message || 'Network error. Unable to copy budgets.');
-      logger.error('Error copying budgets:', err);
-    } finally {
-      setIsCopying(false);
+    };
+
+    if (budgets.length > 0) {
+      setConfirmState({
+        open: true,
+        title: 'Overwrite Budgets',
+        message: 'This month already has budgets. Copy from previous month will overwrite them. Continue?',
+        variant: 'warning',
+        onConfirm: () => {
+          setConfirmState(prev => ({ ...prev, open: false }));
+          doCopy();
+        },
+      });
+    } else {
+      doCopy();
     }
   };
 
@@ -387,6 +419,16 @@ const ManageTabContent = ({ year, month, onBudgetUpdated, focusedCategory }) => 
           </>
         )}
       </div>
+      <ConfirmDialog
+        isOpen={confirmState.open}
+        title={confirmState.title}
+        message={confirmState.message}
+        variant={confirmState.variant}
+        alertOnly={confirmState.alertOnly}
+        confirmLabel={confirmState.variant === 'danger' ? 'Delete' : 'Continue'}
+        onConfirm={confirmState.onConfirm}
+        onCancel={() => setConfirmState(prev => ({ ...prev, open: false }))}
+      />
     </div>
   );
 };

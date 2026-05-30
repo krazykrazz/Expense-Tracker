@@ -176,6 +176,7 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
 
   // Future months state for recurring expense creation (Requirements 1.1, 1.2, 1.7, 2.1, 2.2)
   const [futureMonths, setFutureMonths] = useState(0);
+  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
 
   // Refs for focus management and form state
   const placeInputRef = useRef(null);
@@ -386,6 +387,7 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
       }
       // Use hook's filterPlaces method
       filterPlaces(value);
+      setActiveSuggestionIndex(-1);
     }
 
     // Validate insurance amounts when amount changes (Requirement 3.5)
@@ -637,6 +639,7 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
   // Handle place selection from dropdown (Requirements 1.3, 2.1, 3.1)
   // Wrapper to pass additional dependencies to hook function
   const handlePlaceSelect = async (place) => {
+    setActiveSuggestionIndex(-1);
     await hookHandlePlaceSelect(place, setShowSuggestions, (places) => {
       // The hook expects setFilteredPlaces but we don't expose it from usePlaceAutocomplete
       // Instead, we can just hide suggestions which is the main goal
@@ -647,6 +650,36 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
   // Wrapper to pass additional dependencies to hook function
   const handlePlaceBlur = async () => {
     await hookHandlePlaceBlur(formData.place, setShowSuggestions);
+    setActiveSuggestionIndex(-1);
+  };
+
+  // Keyboard navigation for place autocomplete suggestions
+  const handlePlaceKeyDown = (e) => {
+    if (!showSuggestions || filteredPlaces.length === 0) return;
+    const maxIndex = Math.min(filteredPlaces.length, 10) - 1;
+
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        setActiveSuggestionIndex(prev => (prev < maxIndex ? prev + 1 : 0));
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        setActiveSuggestionIndex(prev => (prev > 0 ? prev - 1 : maxIndex));
+        break;
+      case 'Enter':
+        if (activeSuggestionIndex >= 0) {
+          e.preventDefault();
+          handlePlaceSelect(filteredPlaces[activeSuggestionIndex]);
+        }
+        break;
+      case 'Escape':
+        setShowSuggestions(false);
+        setActiveSuggestionIndex(-1);
+        break;
+      default:
+        break;
+    }
   };
 
   const validateForm = () => {
@@ -835,6 +868,7 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
     <div className="expense-form-container">
       <h2>{isEditing ? 'Edit Expense' : 'Add New Expense'}</h2>
       <form onSubmit={handleSubmit} className="expense-form">
+        <fieldset disabled={isSubmitting} className="expense-form-fieldset">
         {/* Row 1: Date and Place - Place has initial focus (Requirements 1.1, 3.2) */}
         <div className="form-row">
           <div className="form-group">
@@ -864,17 +898,25 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
                 }
               }}
               onBlur={handlePlaceBlur}
+              onKeyDown={handlePlaceKeyDown}
               maxLength="200"
               placeholder="Where was this expense?"
               autoComplete="off"
+              role="combobox"
+              aria-expanded={showSuggestions && filteredPlaces.length > 0}
+              aria-controls="place-suggestions"
+              aria-activedescendant={activeSuggestionIndex >= 0 ? `place-option-${activeSuggestionIndex}` : undefined}
             />
             {showSuggestions && filteredPlaces.length > 0 && (
-              <ul className="autocomplete-suggestions">
+              <ul className="autocomplete-suggestions" id="place-suggestions" role="listbox">
                 {filteredPlaces.slice(0, 10).map((place, index) => (
                   <li
                     key={index}
+                    id={`place-option-${index}`}
+                    role="option"
+                    aria-selected={index === activeSuggestionIndex}
                     onClick={() => handlePlaceSelect(place)}
-                    className="autocomplete-item"
+                    className={`autocomplete-item${index === activeSuggestionIndex ? ' active' : ''}`}
                   >
                     {place}
                   </li>
@@ -1514,6 +1556,7 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
         <button type="submit" disabled={isSubmitting} className="submit-button">
           {isSubmitting ? (isEditing ? 'Updating...' : 'Adding...') : (isEditing ? 'Update Expense' : 'Add Expense')}
         </button>
+        </fieldset>
       </form>
 
       {/* Person Allocation Modal */}

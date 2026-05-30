@@ -13,6 +13,7 @@ import { validateName, validateAmount } from '../../utils/validation';
 import { getMonthNameLong } from '../../utils/formatters';
 import { CATEGORIES } from '../../utils/constants';
 import { createLogger } from '../../utils/logger';
+import ConfirmDialog from '../shared/ConfirmDialog';
 
 const logger = createLogger('FixedExpensesModal');
 
@@ -109,6 +110,7 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
   const [loading, setLoading] = useState(false);
   const [isCarryingForward, setIsCarryingForward] = useState(false);
   const [error, setError] = useState(null);
+  const [confirmState, setConfirmState] = useState({ open: false, title: '', message: '', onConfirm: null, variant: 'danger' });
   
   // Payment methods state - fetched from API (Requirements 5.1)
   const [paymentMethods, setPaymentMethods] = useState([]);
@@ -450,57 +452,72 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
     clearValidationErrors();
   };
 
-  const handleDeleteExpense = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this fixed expense?')) {
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      await deleteFixedExpense(id);
-
-      // Update local state
-      const updatedExpenses = fixedExpenses.filter(expense => expense.id !== id);
-      setFixedExpenses(updatedExpenses);
-      setTotalFixed(calculateTotal(updatedExpenses));
-    } catch (err) {
-      const errorMessage = err.message || 'Network error. Unable to delete fixed expense. Please check your connection and try again.';
-      setError(errorMessage);
-      logger.error('Error deleting fixed expense:', err);
-    } finally {
-      setLoading(false);
-    }
+  const handleDeleteExpense = (id) => {
+    setConfirmState({
+      open: true,
+      title: 'Delete Fixed Expense',
+      message: 'Are you sure you want to delete this fixed expense?',
+      variant: 'danger',
+      onConfirm: async () => {
+        setConfirmState(prev => ({ ...prev, open: false }));
+        setLoading(true);
+        setError(null);
+        try {
+          await deleteFixedExpense(id);
+          const updatedExpenses = fixedExpenses.filter(expense => expense.id !== id);
+          setFixedExpenses(updatedExpenses);
+          setTotalFixed(calculateTotal(updatedExpenses));
+        } catch (err) {
+          const errorMessage = err.message || 'Network error. Unable to delete fixed expense. Please check your connection and try again.';
+          setError(errorMessage);
+          logger.error('Error deleting fixed expense:', err);
+        } finally {
+          setLoading(false);
+        }
+      },
+    });
   };
 
-  const handleCarryForward = async () => {
-    // Show confirmation if current month already has items
+  const handleCarryForward = () => {
+    const doCarryForward = async () => {
+      setIsCarryingForward(true);
+      setError(null);
+      try {
+        const data = await carryForwardFixedExpenses(year, month);
+        if (data.count === 0) {
+          setConfirmState({
+            open: true,
+            title: 'No Expenses Found',
+            message: 'No fixed expenses found in previous month to carry forward.',
+            variant: 'info',
+            alertOnly: true,
+            onConfirm: () => setConfirmState(prev => ({ ...prev, open: false })),
+          });
+        } else {
+          await fetchFixedExpenses();
+        }
+      } catch (err) {
+        const errorMessage = err.message || 'Network error. Unable to carry forward fixed expenses. Please check your connection and try again.';
+        setError(errorMessage);
+        logger.error('Error carrying forward fixed expenses:', err);
+      } finally {
+        setIsCarryingForward(false);
+      }
+    };
+
     if (fixedExpenses.length > 0) {
-      if (!window.confirm('This month already has fixed expenses. Carry forward from previous month will add more items. Continue?')) {
-        return;
-      }
-    }
-
-    setIsCarryingForward(true);
-    setError(null);
-
-    try {
-      const data = await carryForwardFixedExpenses(year, month);
-      
-      // Display message if previous month has no items
-      if (data.count === 0) {
-        alert('No fixed expenses found in previous month to carry forward.');
-      } else {
-        // Refresh the fixed expenses list
-        await fetchFixedExpenses();
-      }
-    } catch (err) {
-      const errorMessage = err.message || 'Network error. Unable to carry forward fixed expenses. Please check your connection and try again.';
-      setError(errorMessage);
-      logger.error('Error carrying forward fixed expenses:', err);
-    } finally {
-      setIsCarryingForward(false);
+      setConfirmState({
+        open: true,
+        title: 'Carry Forward',
+        message: 'This month already has fixed expenses. Carry forward from previous month will add more items. Continue?',
+        variant: 'warning',
+        onConfirm: () => {
+          setConfirmState(prev => ({ ...prev, open: false }));
+          doCarryForward();
+        },
+      });
+    } else {
+      doCarryForward();
     }
   };
 
@@ -962,6 +979,16 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
           )}
         </div>
       </div>
+      <ConfirmDialog
+        isOpen={confirmState.open}
+        title={confirmState.title}
+        message={confirmState.message}
+        variant={confirmState.variant}
+        alertOnly={confirmState.alertOnly}
+        confirmLabel={confirmState.variant === 'danger' ? 'Delete' : 'Continue'}
+        onConfirm={confirmState.onConfirm}
+        onCancel={() => setConfirmState(prev => ({ ...prev, open: false }))}
+      />
     </div>
   );
 };

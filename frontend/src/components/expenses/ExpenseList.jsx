@@ -240,6 +240,7 @@ const ExpenseList = memo(({
   onInsuranceFilterChange
 }) => {
   const [deletingId, setDeletingId] = useState(null);
+  const [deleteError, setDeleteError] = useState(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [expenseToDelete, setExpenseToDelete] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -414,6 +415,7 @@ const ExpenseList = memo(({
 
     setDeletingId(expenseToDelete.id);
     setShowConfirmDialog(false);
+    setDeleteError(null);
 
     try {
       await deleteExpenseApi(expenseToDelete.id);
@@ -424,7 +426,7 @@ const ExpenseList = memo(({
       }
     } catch (error) {
       logger.error('Error deleting expense:', error);
-      alert('Failed to delete expense. Please try again.');
+      setDeleteError('Failed to delete expense. Please try again.');
     } finally {
       setDeletingId(null);
       setExpenseToDelete(null);
@@ -872,6 +874,13 @@ const ExpenseList = memo(({
       {filterStatusMessage && filteredExpenses.length > 0 && (
         <div className="filter-status-message">
           {filterStatusMessage}
+        </div>
+      )}
+
+      {deleteError && (
+        <div className="error-message" role="alert">
+          {deleteError}
+          <button className="retry-button" onClick={() => setDeleteError(null)}>Dismiss</button>
         </div>
       )}
 

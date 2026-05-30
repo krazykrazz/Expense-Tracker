@@ -127,7 +127,7 @@ For official version releases, use the automated deployment script:
 
 This handles version bumping, changelog updates, building, tagging, and deployment automatically. Version numbering starts from 1.0.0 following the migration consolidation rebase.
 
-See [Version Management](../../.kiro/steering/versioning.md) for details.
+See [Version Management](../steering/versioning.md) for details.
 
 ## Troubleshooting
 
@@ -242,7 +242,7 @@ npm test
 
 ### Run Specific Test Suites
 
-See [Testing Conventions](../../.kiro/steering/testing.md) for detailed test commands and patterns.
+See [Testing Conventions](../steering/testing.md) for detailed test commands and patterns.
 
 ## Additional Resources
 

@@ -86,6 +86,7 @@ For a complete feature list, see **[Feature Documentation](./docs/features/)**.
 ### Development
 - **[Development Setup](./docs/development/)** - Local development environment setup
 - **[Testing Guidelines](./docs/development/FRONTEND_TESTING_GUIDELINES.md)** - Testing conventions and patterns
+- **[Project Steering](./docs/steering/README.md)** - Workflow rules, CI guardrails, and release conventions
 - **[Deployment Workflow](./docs/deployment/DEPLOYMENT_WORKFLOW.md)** - Production deployment process
 
 ### Reference
@@ -138,6 +139,7 @@ expense-tracker/
 ├── backend/          # Node.js/Express API server
 ├── frontend/         # React application
 ├── docs/             # Documentation
+├── specs/            # Active and archived feature specs
 └── scripts/          # Deployment and utility scripts
 ```
 

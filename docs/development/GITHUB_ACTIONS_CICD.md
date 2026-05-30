@@ -175,7 +175,7 @@ These can be set when manually triggering the workflow from the Actions tab.
 
 > **Note**: Feature branches do **not** trigger CI via direct pushes. CI runs on feature branches through the `pull_request` event when a PR is opened against `main`. This matches the branch protection model where all changes go through PRs.
 
-Both `push` and `pull_request` triggers use `paths-ignore` to skip CI for documentation-only changes (`docs/**`, `*.md`, `.kiro/steering/**`, `CHANGELOG.md`).
+Both `push` and `pull_request` triggers use `paths-ignore` to skip CI for documentation-only changes (`docs/**`, `*.md`, `CHANGELOG.md`).
 
 ### Jobs
 
@@ -638,5 +638,5 @@ Individual test timeouts:
 - [CI Optimization Roadmap](./CI_OPTIMIZATION_ROADMAP.md) - Planned and completed CI improvements
 - [CI/CD Troubleshooting Guide](./CI_TROUBLESHOOTING.md) - Common issues and debugging steps
 - [Feature Branch Workflow](./FEATURE_BRANCH_WORKFLOW.md) - Branch strategy and promotion process
-- [Pre-deployment Checklist](../../.kiro/steering/pre-deployment.md) - Steps before deploying
+- [Pre-deployment Checklist](../steering/pre-deployment.md) - Steps before deploying
 - [Docker Documentation](../guides/DOCKER.md) - Docker setup and usage

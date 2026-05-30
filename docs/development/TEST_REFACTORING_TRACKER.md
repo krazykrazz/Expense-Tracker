@@ -196,7 +196,7 @@ When writing new tests, follow these guidelines from the start:
 
 ## Resources
 
-- **Spec:** `.kiro/specs/frontend-test-refactoring/`
+- **Spec:** `specs/frontend-test-refactoring/`
 - **Testing Guidelines:** `docs/development/FRONTEND_TESTING_GUIDELINES.md`
 - **Test Utilities:** `frontend/src/test-utils/`
 - **Performance Script:** `scripts/measure-test-performance.js`

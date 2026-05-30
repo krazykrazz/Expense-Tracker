@@ -276,7 +276,7 @@ Timestamps are displayed in human-readable format:
 
 For developers working with the activity log system:
 
-- **Spec Location**: `.kiro/specs/activity-log/` and `.kiro/specs/activity-log-coverage/`
+- **Spec Location**: `specs/activity-log/` and `specs/activity-log-coverage/`
 - **Requirements**: See spec directories for detailed requirements
 - **Design**: See spec directories for design documentation
 - **Tasks**: See spec directories for implementation tasks

@@ -164,5 +164,5 @@ Potential improvements for future versions:
 ## Related Documentation
 
 - [Budget Management Guide](../guides/BUDGET_MANAGEMENT_GUIDE.md)
-- [Budget Tracking & Alerts Specification](../../.kiro/specs/budget-tracking-alerts/)
+- [Budget Tracking & Alerts Specification](../../specs/budget-tracking-alerts/)
 - [API Documentation](../../README.md#api-endpoints)

@@ -224,7 +224,7 @@ This is a **gradual refactoring effort**. Don't block new features to refactor o
 
 ## Resources
 
-- **Spec:** `.kiro/specs/frontend-test-refactoring/`
+- **Spec:** `specs/frontend-test-refactoring/`
 - **Testing Guidelines:** `docs/development/FRONTEND_TESTING_GUIDELINES.md`
 - **Refactoring Tracker:** `docs/development/TEST_REFACTORING_TRACKER.md`
 - **Test Utilities:** `frontend/src/test-utils/`

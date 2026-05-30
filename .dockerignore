@@ -10,7 +10,6 @@ package-lock.json
 .gitignore
 .env*
 .vscode
-.kiro
 
 # Build artifacts
 dist

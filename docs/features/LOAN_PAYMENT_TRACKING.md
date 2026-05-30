@@ -2,7 +2,7 @@
 
 **Version**: 5.x  
 **Status**: Completed  
-**Spec**: `.kiro/specs/loan-payment-tracking/`, `.kiro/specs/fixed-expense-loan-linkage/`, and `.kiro/specs/mortgage-balance-interest-tracking/`
+**Spec**: `specs/loan-payment-tracking/`, `specs/fixed-expense-loan-linkage/`, and `specs/mortgage-balance-interest-tracking/`
 
 ## Overview
 

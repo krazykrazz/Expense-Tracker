@@ -2,7 +2,7 @@
 
 **Version**: 4.11.0  
 **Implementation Date**: December 31, 2025  
-**Spec Location**: `.kiro/specs/sticky-summary-scrolling/`
+**Spec Location**: `specs/sticky-summary-scrolling/`
 
 ## Overview
 
@@ -215,6 +215,6 @@ The Sticky Summary Scrolling feature successfully addresses the identified usabi
 ---
 
 **Related Documentation**:
-- [Requirements](.kiro/specs/sticky-summary-scrolling/requirements.md)
-- [Design Document](.kiro/specs/sticky-summary-scrolling/design.md)
-- [Implementation Tasks](.kiro/specs/sticky-summary-scrolling/tasks.md)
+- [Requirements](specs/sticky-summary-scrolling/requirements.md)
+- [Design Document](specs/sticky-summary-scrolling/design.md)
+- [Implementation Tasks](specs/sticky-summary-scrolling/tasks.md)

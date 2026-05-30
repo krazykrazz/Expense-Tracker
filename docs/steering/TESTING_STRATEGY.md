@@ -2,7 +2,7 @@
 
 This document defines when to use each test type, what anti-patterns to avoid, and how to write high-value property-based tests. It is the canonical reference for test type decisions in this project.
 
-For runner-specific commands and configuration, see [.kiro/steering/testing.md](.kiro/steering/testing.md).
+For runner-specific commands and configuration, see [testing.md](testing.md).
 
 ## Test Type Decision Matrix
 

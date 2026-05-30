@@ -2,7 +2,7 @@
 
 **Version**: 5.4.0  
 **Status**: Implemented  
-**Spec**: `.kiro/specs/credit-card-billing-cycle-history/`, `.kiro/specs/unified-billing-cycles/`, `.kiro/specs/billing-cycle-automation/`, `.kiro/specs/credit-card-billing-fixes/`, `.kiro/specs/billing-cycle-payment-deduction/`
+**Spec**: `specs/credit-card-billing-cycle-history/`, `specs/unified-billing-cycles/`, `specs/billing-cycle-automation/`, `specs/credit-card-billing-fixes/`, `specs/billing-cycle-payment-deduction/`
 
 ## Overview
 

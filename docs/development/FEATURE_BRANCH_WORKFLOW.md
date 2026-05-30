@@ -387,7 +387,7 @@ The existing Docker build and push process targets GHCR:
 
 Before promoting any feature, run through the existing pre-deployment checklist:
 
-1. **Specification Review**: Check `.kiro/specs/` for completeness
+1. **Specification Review**: Check `specs/` for completeness
 2. **Design Document Review**: Ensure implementation matches design
 3. **Code Quality**: Check for TODO/FIXME comments
 4. **Documentation**: Update README, feature docs
@@ -540,7 +540,7 @@ git config branch.main.merge refs/heads/main
 ## Feature Branch Lifecycle
 
 ### 1. Planning Phase
-- Create spec in `.kiro/specs/[feature-name]/`
+- Create spec in `specs/[feature-name]/`
 - Review requirements, design, and tasks
 - Estimate effort and timeline
 
@@ -671,7 +671,7 @@ git pull origin main
 git checkout -b feature/budget-alert-notifications
 git push -u origin feature/budget-alert-notifications
 
-# 2. Implement tasks from .kiro/specs/budget-alert-notifications/tasks.md
+# 2. Implement tasks from specs/budget-alert-notifications/tasks.md
 # ... development work ...
 
 # 3. Regular commits

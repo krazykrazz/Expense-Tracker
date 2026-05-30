@@ -251,4 +251,4 @@ db.run(`CREATE INDEX idx_expenses_posted_date ON expenses(posted_date)`);
 
 **Documentation Version:** 1.0  
 **Feature Status:** Production Ready  
-**Spec Location:** `archive/specs/credit-card-posted-date/`
+**Spec Location:** `specs/archive/credit-card-posted-date/`

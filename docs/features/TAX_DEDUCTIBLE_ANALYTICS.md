@@ -2,7 +2,7 @@
 
 **Version**: 4.18.0  
 **Completed**: January 2026  
-**Spec**: `archive/specs/tax-deductible-analytics/`
+**Spec**: `specs/archive/tax-deductible-analytics/`
 
 ## Overview
 

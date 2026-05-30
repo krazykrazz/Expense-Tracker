@@ -2,7 +2,7 @@
 
 **Version**: 4.4.0  
 **Completed**: November 30, 2025  
-**Spec**: `.kiro/specs/investment-tracking/`
+**Spec**: `specs/investment-tracking/`
 
 ## Overview
 
@@ -261,12 +261,12 @@ No migration required for existing users - investment tracking is a new feature 
 ## Documentation
 
 ### Specification Documents
-- **Requirements**: `.kiro/specs/investment-tracking/requirements.md`
-- **Design**: `.kiro/specs/investment-tracking/design.md`
-- **Tasks**: `.kiro/specs/investment-tracking/tasks.md`
+- **Requirements**: `specs/investment-tracking/requirements.md`
+- **Design**: `specs/investment-tracking/design.md`
+- **Tasks**: `specs/investment-tracking/tasks.md`
 
 ### Test Documentation
-- **Integration Test Summary**: `.kiro/specs/investment-tracking/INTEGRATION_TEST_SUMMARY.md`
+- **Integration Test Summary**: `specs/investment-tracking/INTEGRATION_TEST_SUMMARY.md`
 - **Task Summaries**: Multiple TASK_*_IMPLEMENTATION_SUMMARY.md files
 
 ### Code Documentation

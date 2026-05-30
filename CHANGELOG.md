@@ -32,6 +32,11 @@
 
 
 
+
+
+## [1.8.0] - 2026-05-30
+
+### UI/UX improvements: code splitting, accessible confirm dialogs, keyboard autocomplete
 ## [1.7.1] - 2026-05-07
 
 ### Add posted indicator icon on expense rows

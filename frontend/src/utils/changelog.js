@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.8.0',
+    date: 'May 30, 2026',
+    added: [],
+    changed: ['UI/UX improvements: code splitting, accessible confirm dialogs, keyboard autocomplete'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.7.1',
     date: 'May 7, 2026',
     added: [],

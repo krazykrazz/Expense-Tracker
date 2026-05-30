@@ -2,7 +2,7 @@
 
 **Version**: 4.9.0  
 **Release Date**: December 20, 2025  
-**Spec**: `.kiro/specs/merchant-analytics/`
+**Spec**: `specs/merchant-analytics/`
 
 ## Overview
 
@@ -265,7 +265,7 @@ Each property is tested with 100+ iterations using the `fast-check` library to e
 
 For issues or questions about Merchant Analytics:
 1. Check the main application documentation
-2. Review the spec file at `.kiro/specs/merchant-analytics/`
+2. Review the spec file at `specs/merchant-analytics/`
 3. Examine test files for expected behavior examples
 4. Check the CHANGELOG.md for recent updates and fixes
 

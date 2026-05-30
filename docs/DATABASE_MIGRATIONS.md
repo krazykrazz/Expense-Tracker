@@ -110,7 +110,7 @@ await disableForeignKeys(db);
 await enableForeignKeys(db);
 ```
 
-See `.kiro/steering/database-migrations.md` for the full template.
+See [docs/steering/database-migrations.md](steering/database-migrations.md) for the full template.
 
 Example:
 

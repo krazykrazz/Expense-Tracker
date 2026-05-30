@@ -491,4 +491,4 @@ ORDER BY count DESC;
 
 **Documentation Version:** 1.0  
 **Feature Status:** Production Ready  
-**Spec Location:** `archive/specs/place-name-standardization/`
+**Spec Location:** `specs/archive/place-name-standardization/`

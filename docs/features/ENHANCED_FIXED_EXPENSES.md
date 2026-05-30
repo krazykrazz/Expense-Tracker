@@ -141,11 +141,11 @@ The migration handles existing data gracefully:
 
 ## Related Specifications
 
-- Requirements: `.kiro/specs/enhanced-fixed-expenses/requirements.md`
-- Design: `.kiro/specs/enhanced-fixed-expenses/design.md`
-- Tasks: `.kiro/specs/enhanced-fixed-expenses/tasks.md`
-- Spec Updates: `.kiro/specs/enhanced-fixed-expenses/SPEC_UPDATES_COMPLETE.md`
-- Impact Analysis: `.kiro/specs/enhanced-fixed-expenses/SPEC_IMPACT_ANALYSIS.md`
+- Requirements: `specs/enhanced-fixed-expenses/requirements.md`
+- Design: `specs/enhanced-fixed-expenses/design.md`
+- Tasks: `specs/enhanced-fixed-expenses/tasks.md`
+- Spec Updates: `specs/enhanced-fixed-expenses/SPEC_UPDATES_COMPLETE.md`
+- Impact Analysis: `specs/enhanced-fixed-expenses/SPEC_IMPACT_ANALYSIS.md`
 
 ## Future Enhancements
 
@@ -195,6 +195,6 @@ This feature was deployed as part of version 4.2.0 (MINOR version bump).
 ## Support
 
 For issues or questions about this feature, refer to:
-- Spec documents in `.kiro/specs/enhanced-fixed-expenses/`
+- Spec documents in `specs/enhanced-fixed-expenses/`
 - Test files for usage examples
 - Migration script for database changes

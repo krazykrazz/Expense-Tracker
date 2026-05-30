@@ -49,6 +49,7 @@ describe('AnomalyDetectionService - _detectCategorySpendingSpikes', () => {
   // Helper to build a past month date string (monthsAgo = 1 means last month)
   const pastMonthDate = (monthsAgo, day) => {
     const now = new Date();
+    now.setDate(1); // Avoid overflow when subtracting months (e.g. May 31 → Feb 31 rolls to Mar)
     now.setMonth(now.getMonth() - monthsAgo);
     const y = now.getFullYear();
     const m = (now.getMonth() + 1).toString().padStart(2, '0');

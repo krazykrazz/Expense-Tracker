@@ -2,7 +2,7 @@
 
 **Version**: 5.4.1  
 **Status**: Implemented  
-**Spec**: `.kiro/specs/configurable-payment-methods/`, `.kiro/specs/credit-card-statement-balance/`, `.kiro/specs/unified-billing-cycles/`
+**Spec**: `specs/configurable-payment-methods/`, `specs/credit-card-statement-balance/`, `specs/unified-billing-cycles/`
 
 ## Overview
 

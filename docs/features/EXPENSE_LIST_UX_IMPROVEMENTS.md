@@ -2,7 +2,7 @@
 
 **Version**: 5.4.0  
 **Completed**: February 2026  
-**Spec**: `.kiro/specs/expense-list-ux-improvements/`
+**Spec**: `specs/expense-list-ux-improvements/`
 
 ## Overview
 

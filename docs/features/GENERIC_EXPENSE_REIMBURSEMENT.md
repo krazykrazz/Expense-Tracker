@@ -2,7 +2,7 @@
 
 **Version**: 5.3.0  
 **Completed**: February 2026  
-**Spec**: `archive/specs/generic-expense-reimbursement/`
+**Spec**: `specs/archive/generic-expense-reimbursement/`
 
 ## Overview
 

@@ -325,7 +325,7 @@ describe('Feature: ci-path-based-test-filtering', () => {
       fc.assert(
         fc.property(
           fc.array(
-            fc.string({ minLength: 1 }).map(s => `.kiro/steering/${s}`),
+            fc.string({ minLength: 1 }).map(s => `docs/steering/${s}`),
             { minLength: 1 }
           ),
           (changedFiles) => {
@@ -346,7 +346,7 @@ describe('Feature: ci-path-based-test-filtering', () => {
       const ignoredFiles = [
         'docs/README.md',
         'CONTRIBUTING.md',
-        '.kiro/steering/testing.md',
+        'docs/steering/testing.md',
         'CHANGELOG.md'
       ];
       

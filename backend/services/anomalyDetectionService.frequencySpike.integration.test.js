@@ -48,6 +48,7 @@ describe('AnomalyDetectionService - _detectFrequencySpikes', () => {
 
   const pastMonthDate = (monthsAgo, day) => {
     const now = new Date();
+    now.setDate(1); // Avoid overflow when subtracting months (e.g. May 30 → Feb 30 rolls to Mar)
     now.setMonth(now.getMonth() - monthsAgo);
     const y = now.getFullYear();
     const m = (now.getMonth() + 1).toString().padStart(2, '0');

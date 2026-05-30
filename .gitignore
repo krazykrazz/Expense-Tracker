@@ -91,7 +91,6 @@ test-pbt-insurance-backup/
 # Preview environment data (feature branch testing)
 /preview-data/
 
-test-pbt-backups/
 test-pbt-payment-methods-backups/
 
 # Backend config database backups (runtime only)
@@ -141,9 +140,6 @@ backend/scripts/archive/
 # Test runner caches
 backend/.jest-cache/
 frontend/.vitest-cache/
-
-# Kiro IDE (internal development tooling)
-.kiro/
 
 # Archive (internal development history)
 archive/

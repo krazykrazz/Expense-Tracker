@@ -308,6 +308,6 @@ docker inspect expense-tracker | Select-String "Image"
 
 ## See Also
 
-- [Pre-Deployment Checklist](../../.kiro/steering/pre-deployment.md)
-- [Version Management](../../.kiro/steering/versioning.md)
-- [Git Commit Control](../../.kiro/steering/git-commits.md)
+- [Pre-Deployment Checklist](../steering/pre-deployment.md)
+- [Version Management](../steering/versioning.md)
+- [Git Commit Control](../steering/git-commits.md)

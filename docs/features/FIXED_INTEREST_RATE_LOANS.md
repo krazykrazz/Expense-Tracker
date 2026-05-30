@@ -2,7 +2,7 @@
 
 **Version**: 5.1.0  
 **Completed**: February 2026  
-**Spec**: `archive/specs/fixed-interest-rate-loans/`
+**Spec**: `specs/archive/fixed-interest-rate-loans/`
 
 ## Overview
 

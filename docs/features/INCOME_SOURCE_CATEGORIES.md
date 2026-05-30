@@ -223,7 +223,7 @@ For issues or questions about income source categories:
 
 ## Documentation
 
-- [Requirements](.kiro/specs/income-source-categories/requirements.md)
-- [Design](.kiro/specs/income-source-categories/design.md)
-- [Tasks](.kiro/specs/income-source-categories/tasks.md)
-- [Migration Implementation](.kiro/specs/income-source-categories/MIGRATION_IMPLEMENTATION_COMPLETE.md)
+- [Requirements](specs/income-source-categories/requirements.md)
+- [Design](specs/income-source-categories/design.md)
+- [Tasks](specs/income-source-categories/tasks.md)
+- [Migration Implementation](specs/income-source-categories/MIGRATION_IMPLEMENTATION_COMPLETE.md)

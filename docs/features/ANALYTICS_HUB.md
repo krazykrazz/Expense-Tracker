@@ -2,7 +2,7 @@
 
 **Version**: 4.17.0  
 **Completed**: January 2026  
-**Spec**: `archive/specs/spending-patterns-predictions/`
+**Spec**: `specs/archive/spending-patterns-predictions/`
 
 ## Overview
 

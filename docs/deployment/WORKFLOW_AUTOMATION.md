@@ -252,4 +252,4 @@ on:
 
 - [Complete Deployment Workflow](DEPLOYMENT_WORKFLOW.md)
 - [SHA-Based Containers](SHA_BASED_CONTAINERS.md)
-- [Pre-Deployment Checklist](../../.kiro/steering/pre-deployment.md)
+- [Pre-Deployment Checklist](../steering/pre-deployment.md)

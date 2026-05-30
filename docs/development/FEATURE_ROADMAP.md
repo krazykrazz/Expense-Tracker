@@ -23,7 +23,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 **Status**: Completed (v4.17.0)  
 **Priority**: High  
 **Effort**: High  
-**Spec**: `.kiro/specs/spending-patterns-predictions/`  
+**Spec**: `specs/spending-patterns-predictions/`  
 **Description**: Comprehensive analytics hub analyzing spending patterns and predicting future expenses based on historical data.
 
 **Features Delivered**:
@@ -51,7 +51,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 **Status**: Completed  
 **Priority**: Medium  
 **Effort**: Medium  
-**Spec**: `.kiro/specs/analytics-hub-revamp/`  
+**Spec**: `specs/analytics-hub-revamp/`  
 **Description**: Two-action anomaly response (dismiss vs mark-as-expected) with automatic suppression rule creation. Part of the Analytics Hub Revamp.
 
 **Features Delivered**:
@@ -75,7 +75,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 **Status**: Completed  
 **Priority**: Medium  
 **Effort**: High  
-**Spec**: `.kiro/specs/actionable-anomaly-alerts/`  
+**Spec**: `specs/actionable-anomaly-alerts/`  
 **Documentation**: `docs/features/ANOMALY_DETECTION.md`  
 **Description**: Enhanced anomaly detection transforming raw statistical deviations into actionable financial insights with 7-type classification, structured explanations, historical context, financial impact estimates, behavioral drift detection, transaction clustering, budget integration, alert frequency controls, and enriched alert card layout.
 
@@ -110,7 +110,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 **Status**: Completed  
 **Priority**: Medium  
 **Effort**: Medium  
-**Spec**: `.kiro/specs/anomaly-refinements/`  
+**Spec**: `specs/anomaly-refinements/`  
 **Documentation**: `docs/features/ANOMALY_DETECTION.md`  
 **Description**: Closes six gaps between the anomaly detection implementation and the original specification by introducing vendor-level baselines, vendor-percentile detection, a new anomaly type, interval-based frequency spikes, data-driven suppression, and a global monthly alert cap. All changes are backend-only.
 
@@ -138,7 +138,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 **Status**: Completed  
 **Priority**: Medium  
 **Effort**: Medium  
-**Spec**: `.kiro/specs/anomaly-alert-ux/`  
+**Spec**: `specs/anomaly-alert-ux/`  
 **Documentation**: `docs/features/ANOMALY_DETECTION.md`  
 **Description**: Transforms the anomaly alert experience from a dense multi-section card into a compact, scannable card with plain-language summaries. Backend gains Alert_Builder, Alert_Prioritizer (type-priority ordering), and Event_Grouping_Detector. Frontend AnomalyAlertItem refactored to simplified card with severity border, details toggle, and "Got it" / "Mute" actions.
 
@@ -440,7 +440,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 **Completed**: January 2026  
 **Priority**: Medium  
 **Effort**: Medium  
-**Spec**: `.kiro/specs/mortgage-tracking/` and `.kiro/specs/mortgage-insights/`  
+**Spec**: `specs/mortgage-tracking/` and `specs/mortgage-insights/`  
 **Description**: Dedicated mortgage loan type with enhanced tracking for amortization, equity, variable rate support, and comprehensive insights panel.
 
 **Features Delivered**:
@@ -471,7 +471,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 **Completed**: February 2026  
 **Priority**: Medium  
 **Effort**: Medium  
-**Spec**: `.kiro/specs/mortgage-balance-interest-tracking/`  
+**Spec**: `specs/mortgage-balance-interest-tracking/`  
 **Description**: Interest-aware mortgage balance calculation, balance override mechanism, UI label improvements, and formula consolidation.
 
 **Features Delivered**:
@@ -500,7 +500,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 **Completed**: April 2026  
 **Priority**: Medium  
 **Effort**: Medium  
-**Spec**: `.kiro/specs/mortgage-detail-view-redesign/`  
+**Spec**: `specs/mortgage-detail-view-redesign/`  
 **Description**: Reorganized the mortgage detail view from a single scrolling column into a two-zone layout: a compact KPI strip (always visible) and a tabbed content area (Overview, Charts, Projections, Payments). Frontend-only change — no backend modifications.
 
 **Features Delivered**:
@@ -525,7 +525,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 **Status**: Completed (v1.2.0)  
 **Priority**: High  
 **Effort**: High  
-**Spec**: `.kiro/specs/auth-infrastructure/`  
+**Spec**: `specs/auth-infrastructure/`  
 **Description**: Optional authentication infrastructure for the Expense Tracker. Adds a single default admin user with optional password protection, JWT-based session management, API endpoint protection, CORS restriction, SSE authentication, and security hardening fixes from the security audit.
 
 **Key Features**:
@@ -619,7 +619,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 **Priority**: Medium  
 **Effort**: Medium  
 **Completed**: February 2026  
-**Spec**: `.kiro/specs/expense-form-simplification/`  
+**Spec**: `specs/expense-form-simplification/`  
 **Description**: Reorganized the ExpenseForm using progressive disclosure, collapsible sections, and contextual help to reduce complexity while maintaining all existing functionality.
 
 **Features Delivered**:
@@ -711,7 +711,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 **Status**: Complete (v5.11.0 Budget modals; Financial Overview modals complete)  
 **Priority**: Low  
 **Effort**: High  
-**Spec**: `.kiro/specs/budget-modal-consolidation/`, `.kiro/specs/financial-overview-modal/`  
+**Spec**: `specs/budget-modal-consolidation/`, `specs/financial-overview-modal/`  
 **Description**: Reduce modal fatigue by grouping related features. The budget modals (Manage Budgets + Budget History) have been consolidated into a single tabbed BudgetsModal. The financial modals (Loans, Investments, Payment Methods) have been consolidated into a single tabbed FinancialOverviewModal.
 
 **Completed**:
@@ -762,7 +762,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ### 🟢 Frontend Component Domain Grouping
 **Completed**: March 2026  
-**Spec**: `.kiro/specs/frontend-component-domain-grouping/`  
+**Spec**: `specs/frontend-component-domain-grouping/`  
 **Description**: Reorganized the flat `frontend/src/components/` directory (~80 JSX + ~65 CSS files) into 9 domain-based subdirectories with barrel exports.
 
 **Features Delivered**:
@@ -779,7 +779,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ### 🟢 Container Update Detection (v1.0.0)
 **Completed**: February 2026  
-**Spec**: `.kiro/specs/container-update-refresh/`  
+**Spec**: `specs/container-update-refresh/`  
 **Documentation**: `docs/features/REAL_TIME_SYNC.md`  
 **Description**: Automatic detection of Docker container restarts with a user-facing refresh banner, leveraging the existing SSE reconnection lifecycle.
 
@@ -800,7 +800,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ### 🟢 Version Upgrade Tracking (v1.0.0)
 **Completed**: February 2026  
-**Spec**: `.kiro/specs/version-upgrade-tracking/`  
+**Spec**: `specs/version-upgrade-tracking/`  
 **Description**: Tracks application version upgrades with a changelog modal, activity log integration, and remote update availability checking via GitHub Releases API.
 
 **Features Delivered**:
@@ -821,7 +821,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ### 🟢 SSE Visibility Optimization (v5.10.x)
 **Completed**: February 2026  
-**Spec**: `archive/specs/sse-visibility-optimization/`  
+**Spec**: `specs/archive/sse-visibility-optimization/`  
 **Description**: Fixed an infinite re-render loop in the real-time sync system and added Page Visibility API integration to eliminate idle CPU usage when the browser tab is hidden.
 
 **Features Delivered**:
@@ -843,7 +843,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ### 🟢 Settings & System Modal Split (v5.11.0)
 **Completed**: February 2026  
-**Spec**: `archive/specs/settings-system-split/`  
+**Spec**: `specs/archive/settings-system-split/`  
 **Description**: Split the monolithic BackupSettings component (1219 lines) into two separate top-level modals: Settings (user configuration) and System (system information and management).
 
 **Features Delivered**:
@@ -866,7 +866,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ### 🟢 Real-Time Data Sync (v4.15.0)
 **Completed**: January 2026  
-**Spec**: `archive/specs/real-time-data-sync/`  
+**Spec**: `specs/archive/real-time-data-sync/`  
 **Documentation**: `docs/features/REAL_TIME_SYNC.md`  
 **Description**: Server-Sent Events (SSE) based real-time synchronization enabling multi-device access with automatic data refresh when changes occur on another device.
 
@@ -889,7 +889,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ### 🟢 Activity Log (v4.16.0)
 **Completed**: January 2026  
-**Spec**: `archive/specs/activity-log/`, `archive/specs/activity-log-coverage/`, `archive/specs/activity-log-retention-config/`  
+**Spec**: `specs/archive/activity-log/`, `specs/archive/activity-log-coverage/`, `specs/archive/activity-log-retention-config/`  
 **Documentation**: `docs/features/ACTIVITY_LOG.md`  
 **Description**: Comprehensive event tracking system capturing all user actions and system events with configurable retention policy and automatic cleanup.
 
@@ -911,7 +911,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ### 🟢 Insurance Claim Reminders (v4.18.0)
 **Completed**: January 2026  
-**Spec**: `archive/specs/insurance-claim-reminders/`  
+**Spec**: `specs/archive/insurance-claim-reminders/`  
 **Documentation**: `docs/features/INSURANCE_CLAIM_REMINDERS.md`  
 **Description**: Automated reminder system for pending medical insurance claims that have been outstanding for more than 30 days.
 
@@ -932,7 +932,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ### 🟢 Medical Insurance Tracking (v4.14.0)
 **Completed**: January 2026  
-**Spec**: `archive/specs/medical-insurance-tracking/`  
+**Spec**: `specs/archive/medical-insurance-tracking/`  
 **Documentation**: `docs/features/MEDICAL_INSURANCE_TRACKING.md`  
 **Description**: Track insurance eligibility and claim status for medical expenses with original cost vs out-of-pocket tracking.
 
@@ -953,7 +953,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ### 🟢 Generic Expense Reimbursement (v5.3.0)
 **Completed**: February 2026  
-**Spec**: `archive/specs/generic-expense-reimbursement/`  
+**Spec**: `specs/archive/generic-expense-reimbursement/`  
 **Documentation**: `docs/features/GENERIC_EXPENSE_REIMBURSEMENT.md`  
 **Description**: Track reimbursements for any expense type (not just medical) with automatic net amount calculation.
 
@@ -974,7 +974,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ### 🟢 Credit Card Billing Cycle History (v5.4.0)
 **Completed**: February 2026  
-**Spec**: `archive/specs/credit-card-billing-cycle-history/`, `archive/specs/unified-billing-cycles/`, `archive/specs/billing-cycle-automation/`, `archive/specs/billing-cycle-payment-deduction/`  
+**Spec**: `specs/archive/credit-card-billing-cycle-history/`, `specs/archive/unified-billing-cycles/`, `specs/archive/billing-cycle-automation/`, `specs/archive/billing-cycle-payment-deduction/`  
 **Documentation**: `docs/features/CREDIT_CARD_BILLING_CYCLES.md`  
 **Description**: Comprehensive billing cycle tracking with automatic cycle generation, statement balance entry, trend analysis, and transaction counting.
 
@@ -1000,7 +1000,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ### 🟢 Tax Deductible Analytics (v4.18.0)
 **Completed**: January 2026  
-**Spec**: `archive/specs/tax-deductible-analytics/`  
+**Spec**: `specs/archive/tax-deductible-analytics/`  
 **Documentation**: `docs/features/TAX_DEDUCTIBLE_ANALYTICS.md`  
 **Description**: Year-over-year comparison and tax credit calculator for tax-deductible expenses.
 
@@ -1021,7 +1021,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ### 🟢 ExpenseForm Simplification (v5.8.0)
 **Completed**: February 2026  
-**Spec**: `.kiro/specs/expense-form-simplification/`  
+**Spec**: `specs/expense-form-simplification/`  
 **Description**: Reorganized the ExpenseForm using progressive disclosure, collapsible sections, and contextual help to reduce complexity while maintaining all existing functionality.
 
 **Features Delivered**:
@@ -1038,7 +1038,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ### 🟢 Fixed Expense Loan Linkage (v5.5.0)
 **Completed**: February 2026  
-**Spec**: `.kiro/specs/fixed-expense-loan-linkage/` (archived)  
+**Spec**: `specs/fixed-expense-loan-linkage/` (archived)  
 **Description**: Enhanced fixed expenses with loan payment tracking, due date reminders, and automatic payment logging for linked loan payments.
 
 **Features Delivered**:
@@ -1063,7 +1063,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ### 🟢 Loan Payment Tracking (v5.5.0)
 **Completed**: February 2026  
-**Spec**: `.kiro/specs/loan-payment-tracking/` (archived)  
+**Spec**: `specs/loan-payment-tracking/` (archived)  
 **Description**: Converted loan and mortgage tracking from balance-based to payment-based system with payment history, balance calculations, and migration utilities.
 
 **Features Delivered**:
@@ -1091,7 +1091,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ### 🟢 Expense List UX Improvements (v5.4.0)
 **Completed**: February 2026  
-**Spec**: `.kiro/specs/expense-list-ux-improvements/`  
+**Spec**: `specs/expense-list-ux-improvements/`  
 **Description**: Frontend-only enhancements to the ExpenseList filter experience with smarter filtering, collapsible advanced filters, visual filter indicators, and improved global view navigation.
 
 **Features Delivered**:
@@ -1113,7 +1113,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ### 🟢 Credit Card Statement Balance (v5.3.1)
 **Completed**: February 2026  
-**Spec**: `.kiro/specs/credit-card-statement-balance/`  
+**Spec**: `specs/credit-card-statement-balance/`  
 **Description**: Automatic statement balance calculation based on billing cycles with smart payment alert suppression when statements are paid in full.
 
 **Features Delivered**:
@@ -1131,7 +1131,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ### 🟢 Configurable Payment Methods (v4.20.0)
 **Completed**: January 30, 2026  
-**Spec**: `.kiro/specs/configurable-payment-methods/`  
+**Spec**: `specs/configurable-payment-methods/`  
 **Description**: Database-driven payment method management with full credit card tracking including balance management, payment history, and statement uploads.
 
 **Features Delivered**:
@@ -1150,7 +1150,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ### 🟢 UI Modernization (v4.14.0)
 **Completed**: January 18, 2026  
-**Spec**: `.kiro/specs/ui-modernization/` (archived)  
+**Spec**: `specs/ui-modernization/` (archived)  
 **Description**: Comprehensive design system overhaul with modern styling, improved accessibility, and consistent visual language across all components.
 
 **Features Delivered**:
@@ -1171,7 +1171,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ### 🟢 Spending Patterns & Predictions / Analytics Hub (v4.17.0)
 **Completed**: January 26, 2026  
-**Spec**: `archive/specs/spending-patterns-predictions/`  
+**Spec**: `specs/archive/spending-patterns-predictions/`  
 **Documentation**: `docs/features/ANALYTICS_HUB.md`  
 **Description**: Comprehensive analytics hub providing spending pattern analysis, predictions, seasonal trends, anomaly detection, and merchant analytics in a unified interface.
 
@@ -1193,7 +1193,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ### 🟢 Multi-Invoice Support & Donation Invoices (v4.13.0 - v4.13.2)
 **Completed**: January 17, 2026  
-**Spec**: `.kiro/specs/multi-invoice-support/` (archived)  
+**Spec**: `specs/multi-invoice-support/` (archived)  
 **Description**: Enhanced invoice management with multi-file upload, person linking per invoice, and extended support for donation expenses.
 
 **Features Delivered**:
@@ -1209,7 +1209,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ### 🟢 Medical Expense Invoice Attachments (v4.12.0)
 **Completed**: January 15, 2026  
-**Spec**: `.kiro/specs/medical-expense-invoices/`  
+**Spec**: `specs/medical-expense-invoices/`  
 **Description**: Comprehensive invoice management for medical expenses, enabling users to attach PDF invoices for better record keeping, tax preparation, and insurance claims.
 
 **Features Delivered**:
@@ -1231,7 +1231,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ### 🟢 Sticky Summary Scrolling (v4.11.0)
 **Completed**: December 31, 2025  
-**Spec**: `.kiro/specs/sticky-summary-scrolling/`  
+**Spec**: `specs/sticky-summary-scrolling/`  
 **Description**: Enhanced UI with independent summary panel scrolling and floating action button for improved usability when working with long expense lists.
 
 **Features Delivered**:
@@ -1250,7 +1250,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ### 🟢 Budget Alert Notifications (v4.10.0)
 **Completed**: December 23, 2025  
-**Spec**: `.kiro/specs/budget-alert-notifications/`  
+**Spec**: `specs/budget-alert-notifications/`  
 **Description**: Proactive notification banners that appear at the top of the interface when users approach or exceed their budget limits, enhancing the existing Budget Tracking & Alerts system.
 
 **Features Delivered**:
@@ -1271,7 +1271,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ### 🟢 Merchant Analytics (v4.7.0 - v4.9.0, consolidated in v4.17.0)
 **Completed**: December 16, 2025 (v4.7.0), December 20, 2025 (v4.9.0), January 2026 (consolidated into Analytics Hub)  
-**Spec**: `.kiro/specs/merchant-analytics/`  
+**Spec**: `specs/merchant-analytics/`  
 **Description**: Comprehensive merchant spending analytics providing insights into spending patterns by location with detailed statistics and trend analysis. Enhanced in v4.9.0 with fixed expenses integration for complete spending analysis. **Consolidated into Analytics Hub in v4.17.0** - now accessed via "📈 Analytics" button → "Merchants" tab.
 
 **Features Delivered**:
@@ -1295,7 +1295,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ### 🟢 Medical Expense People Tracking (v4.6.0)
 **Completed**: December 14, 2025  
-**Spec**: `.kiro/specs/medical-expense-people-tracking/`  
+**Spec**: `specs/medical-expense-people-tracking/`  
 **Description**: Associate medical expenses with specific family members for detailed tax reporting and expense tracking.
 
 **Features Delivered**:
@@ -1317,7 +1317,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ### 🟢 Monthly Data Reminders (v4.5.0)
 **Completed**: December 6, 2025  
-**Spec**: `.kiro/specs/monthly-data-reminders/`  
+**Spec**: `specs/monthly-data-reminders/`  
 **Description**: Visual reminder banners that prompt users to update investment values and loan balances for the current month.
 
 **Features Delivered**:
@@ -1337,7 +1337,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ### 🟢 Net Worth Card (v4.5.0)
 **Completed**: December 6, 2025  
-**Spec**: `.kiro/specs/net-worth-card/`  
+**Spec**: `specs/net-worth-card/`  
 **Description**: Display net worth calculation on annual and monthly summaries showing total assets (investments) minus total liabilities (loans).
 
 **Features Delivered**:
@@ -1357,7 +1357,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ### 🟢 Investment Tracking (v4.4.0)
 **Completed**: November 30, 2025  
-**Spec**: `.kiro/specs/investment-tracking/`  
+**Spec**: `specs/investment-tracking/`  
 **Description**: Track investment portfolio performance with TFSA and RRSP accounts, monthly value tracking, and visual performance indicators.
 
 **Features Delivered**:
@@ -1379,7 +1379,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ### 🟢 Income Source Categories (v4.3.1)
 **Completed**: November 29, 2025  
-**Spec**: `.kiro/specs/income-source-categories/`  
+**Spec**: `specs/income-source-categories/`  
 **Description**: Enhanced income tracking with categorization by type (Salary, Government, Gifts, Other).
 
 **Features Delivered**:
@@ -1396,7 +1396,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 
 ### 🟢 Smart Expense Entry (v4.3.0)
 **Completed**: November 27, 2025  
-**Spec**: `.kiro/specs/smart-expense-entry/`  
+**Spec**: `specs/smart-expense-entry/`  
 **Description**: Intelligent expense entry with category suggestions and payment method memory.
 
 **Features Delivered**:
@@ -1504,7 +1504,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 **Completed**: February 2026  
 **Priority**: High  
 **Effort**: Medium  
-**Spec**: `archive/specs/expense-service-refactor/`  
+**Spec**: `specs/archive/expense-service-refactor/`  
 **Description**: Refactored the monolithic expenseService.js (2,391 lines) into 6 focused sub-services with a slim facade preserving the existing API surface.
 
 **Features Delivered**:
@@ -1532,7 +1532,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 **Status**: Completed  
 **Priority**: High  
 **Effort**: Medium  
-**Spec**: `archive/specs/frontend-state-management/` (archived)  
+**Spec**: `specs/archive/frontend-state-management/` (archived)  
 **Description**: Extract filter and view mode state from App.jsx into a dedicated React Context to reduce component complexity.
 
 **Key Features**:
@@ -1555,7 +1555,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 **Status**: Completed  
 **Priority**: High  
 **Effort**: Medium  
-**Spec**: `.kiro/specs/expense-context/`  
+**Spec**: `specs/expense-context/`  
 **Description**: Extract expense data state and handlers from App.jsx into a dedicated ExpenseContext, building on the FilterContext pattern from Phase 1.
 
 **Features Delivered**:
@@ -1584,7 +1584,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 **Completed**: February 2026  
 **Priority**: Medium  
 **Effort**: Low  
-**Spec**: `archive/specs/modal-context/`  
+**Spec**: `specs/archive/modal-context/`  
 **Description**: Extract modal visibility state from App.jsx into a dedicated ModalContext.
 
 **Features Delivered**:
@@ -1612,7 +1612,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 **Completed**: February 2026  
 **Priority**: Medium  
 **Effort**: Medium  
-**Spec**: `archive/specs/shared-data-context/`  
+**Spec**: `specs/archive/shared-data-context/`  
 **Description**: Extract shared data fetching (payment methods, people, budgets) and the showPaymentMethods modal state into a dedicated context, completing the App.jsx refactoring.
 
 **Features Delivered**:
@@ -1641,7 +1641,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 **Completed**: February 2026  
 **Priority**: High  
 **Effort**: Medium  
-**Spec**: `archive/specs/frontend-custom-hooks/`  
+**Spec**: `specs/archive/frontend-custom-hooks/`  
 **Description**: Extracted shared logic from oversized components (ExpenseForm, TaxDeductible, ExpenseList) into six reusable custom hooks.
 
 **Hooks Delivered**:
@@ -1721,7 +1721,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 **Status**: In Progress  
 **Priority**: Medium  
 **Effort**: Low  
-**Spec**: `.kiro/specs/fetch-infrastructure-consolidation/`  
+**Spec**: `specs/fetch-infrastructure-consolidation/`  
 **Description**: Consolidated duplicated fetch logic across three frontend service files (`paymentMethodApi.js`, `creditCardApi.js`, `invoiceApi.js`) into shared utilities, eliminating code duplication and ensuring consistent error handling, retry behavior, and header injection.
 
 **Changes Delivered**:
@@ -1779,7 +1779,7 @@ This document tracks potential features and enhancements for the Expense Tracker
 ## How to Use This Document
 
 1. **Proposing a Feature**: Add it to the appropriate category with ⚪ status
-2. **Starting Development**: Change status to 🟡 and create a spec in `.kiro/specs/`
+2. **Starting Development**: Change status to 🟡 and create a spec in `specs/`
 3. **Completing a Feature**: Move to "Completed Features" section with 🟢 status and version number
 4. **Blocking a Feature**: Change status to 🔴 and document the blocker
 

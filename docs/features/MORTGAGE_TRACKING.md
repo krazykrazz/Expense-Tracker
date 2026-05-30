@@ -2,7 +2,7 @@
 
 **Version**: 4.18.0  
 **Status**: Completed  
-**Spec**: `.kiro/specs/mortgage-tracking/` and `.kiro/specs/mortgage-insights/`
+**Spec**: `specs/mortgage-tracking/` and `specs/mortgage-insights/`
 
 ## Overview
 

@@ -26,6 +26,19 @@ function getLogLevelConfig() {
 }
 
 /**
+ * Redact sensitive values (e.g. auth tokens passed as query params) from a
+ * string before it is written to a log sink. Defense in depth: the SSE endpoint
+ * accepts a `?token=<jwt>` query param because the EventSource API cannot send
+ * headers, so ensure such tokens never leak into logs.
+ * @param {*} value
+ * @returns {*} Redacted string, or the original value if not a string.
+ */
+function redactSensitive(value) {
+  if (typeof value !== 'string') return value;
+  return value.replace(/([?&](?:token|access_token|refresh_token)=)[^&\s"']+/gi, '$1[REDACTED]');
+}
+
+/**
  * Format log message with timestamp and level
  * @param {string} level - Log level
  * @param {string} message - Log message
@@ -33,7 +46,7 @@ function getLogLevelConfig() {
  */
 function formatMessage(level, message) {
   const timestamp = new Date().toISOString();
-  return `[${timestamp}] [${level.toUpperCase()}] ${message}`;
+  return `[${timestamp}] [${level.toUpperCase()}] ${redactSensitive(message)}`;
 }
 
 /**
@@ -48,19 +61,20 @@ function log(level, message, ...args) {
   
   if (levelValue >= currentLogLevel) {
     const formattedMessage = formatMessage(level, message);
+    const safeArgs = args.map(redactSensitive);
     
     // Use appropriate console method based on level
     switch (level) {
       case 'error':
-        console.error(formattedMessage, ...args);
+        console.error(formattedMessage, ...safeArgs);
         break;
       case 'warn':
-        console.warn(formattedMessage, ...args);
+        console.warn(formattedMessage, ...safeArgs);
         break;
       case 'debug':
       case 'info':
       default:
-        console.log(formattedMessage, ...args);
+        console.log(formattedMessage, ...safeArgs);
         break;
     }
   }

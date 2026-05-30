@@ -31,11 +31,25 @@ export function ExpenseProvider({ children }) {
   // View-parameter changes show a loading spinner; background refreshes don't.
   const prevViewParamsRef = useRef(null);
 
+  // Build the expenses endpoint URL for the current view parameters.
+  const buildExpensesUrl = useCallback(() => {
+    if (isGlobalView) {
+      return filterYear
+        ? `${API_ENDPOINTS.EXPENSES}?year=${filterYear}`
+        : API_ENDPOINTS.EXPENSES;
+    }
+    return `${API_ENDPOINTS.EXPENSES}?year=${selectedYear}&month=${selectedMonth}`;
+  }, [isGlobalView, filterYear, selectedYear, selectedMonth]);
+
   // --- Expense Fetching ---
   useEffect(() => {
     const currentViewParams = `${selectedYear}-${selectedMonth}-${isGlobalView}-${filterYear}`;
     const isViewChange = prevViewParamsRef.current !== currentViewParams;
     prevViewParamsRef.current = currentViewParams;
+
+    // Cancel any in-flight request when params change or the component unmounts,
+    // preventing out-of-order responses from clobbering newer state.
+    const controller = new AbortController();
 
     const fetchExpenses = async () => {
       // Only show loading spinner on initial load or view-parameter changes,
@@ -46,15 +60,7 @@ export function ExpenseProvider({ children }) {
       }
       setError(null);
       try {
-        let url;
-        if (isGlobalView) {
-          url = filterYear
-            ? `${API_ENDPOINTS.EXPENSES}?year=${filterYear}`
-            : API_ENDPOINTS.EXPENSES;
-        } else {
-          url = `${API_ENDPOINTS.EXPENSES}?year=${selectedYear}&month=${selectedMonth}`;
-        }
-        const response = await authAwareFetch(url);
+        const response = await authAwareFetch(buildExpensesUrl(), { signal: controller.signal });
         if (!response.ok) {
           const errorText = await response.text();
           let errorMessage = 'Unable to load expenses. Please try again.';
@@ -67,6 +73,7 @@ export function ExpenseProvider({ children }) {
         const data = await response.json();
         setExpenses(data);
       } catch (err) {
+        if (err.name === 'AbortError') return; // superseded request — ignore
         let userMessage = err.message;
         if (err.message.includes('fetch') || err.message.includes('NetworkError') || err.message.includes('Failed to fetch')) {
           userMessage = 'Unable to connect to the server. Please check your connection and try again.';
@@ -75,42 +82,27 @@ export function ExpenseProvider({ children }) {
         console.error('Error fetching expenses:', err);
         // Keep existing expenses if we have them
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
       }
     };
     fetchExpenses();
-  }, [selectedYear, selectedMonth, isGlobalView, filterYear, refreshTrigger]);
+    return () => controller.abort();
+  }, [buildExpensesUrl, selectedYear, selectedMonth, isGlobalView, filterYear, refreshTrigger]);
 
   // --- expensesUpdated Event Listener ---
+  // Bump the refresh triggers; the fetch effect above re-runs off refreshTrigger
+  // and performs the (spinner-less) background refresh. Keeping the fetch in one
+  // place avoids the duplicated request the previous inline refetch caused.
   useEffect(() => {
     const handleExpensesUpdated = () => {
       setRefreshTrigger(prev => prev + 1);
       setBudgetAlertRefreshTrigger(prev => prev + 1);
-      // Re-fetch expenses
-      const refetch = async () => {
-        try {
-          let url;
-          if (isGlobalView) {
-            url = filterYear
-              ? `${API_ENDPOINTS.EXPENSES}?year=${filterYear}`
-              : API_ENDPOINTS.EXPENSES;
-          } else {
-            url = `${API_ENDPOINTS.EXPENSES}?year=${selectedYear}&month=${selectedMonth}`;
-          }
-          const response = await authAwareFetch(url);
-          if (response.ok) {
-            const data = await response.json();
-            setExpenses(data);
-          }
-        } catch (err) {
-          console.error('Error refreshing expenses:', err);
-        }
-      };
-      refetch();
     };
     window.addEventListener('expensesUpdated', handleExpensesUpdated);
     return () => window.removeEventListener('expensesUpdated', handleExpensesUpdated);
-  }, [selectedYear, selectedMonth, isGlobalView, filterYear]);
+  }, []);
 
   // --- Current Month Expense Count ---
   useEffect(() => {

@@ -22,6 +22,20 @@ function generateFutureExpensesMessage(futureCount, lastDate) {
 }
 
 /**
+ * Resolve the HTTP status code for an error thrown during create/update.
+ * Validation errors default to 400; genuine server/database errors (carrying an
+ * explicit statusCode or a SQLite error code) are surfaced as 500 so callers are
+ * not misled into treating a server failure as a bad request.
+ * @param {Error} error
+ * @returns {number}
+ */
+function resolveErrorStatus(error) {
+  if (error.statusCode) return error.statusCode;
+  if (typeof error.code === 'string' && error.code.startsWith('SQLITE_')) return 500;
+  return 400;
+}
+
+/**
  * Create a new expense
  * POST /api/expenses
  */
@@ -61,7 +75,7 @@ async function createExpense(req, res) {
       res.status(201).json(result);
     }
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    res.status(resolveErrorStatus(error)).json({ error: error.message });
   }
 }
 
@@ -79,6 +93,9 @@ async function getExpenses(req, res) {
       if (isNaN(parsed)) {
         return res.status(400).json({ error: 'Year must be a valid number' });
       }
+      if (parsed < 1900 || parsed > 2100) {
+        return res.status(400).json({ error: 'Year must be between 1900 and 2100' });
+      }
       filters.year = parsed;
     }
     
@@ -86,6 +103,9 @@ async function getExpenses(req, res) {
       const parsed = parseInt(month);
       if (isNaN(parsed)) {
         return res.status(400).json({ error: 'Month must be a valid number' });
+      }
+      if (parsed < 1 || parsed > 12) {
+        return res.status(400).json({ error: 'Month must be between 1 and 12' });
       }
       filters.month = parsed;
     }
@@ -167,7 +187,7 @@ async function updateExpense(req, res) {
       res.status(200).json(result);
     }
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    res.status(resolveErrorStatus(error)).json({ error: error.message });
   }
 }
 

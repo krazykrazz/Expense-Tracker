@@ -382,7 +382,7 @@ class ExpenseService {
           logger.error('Error during rollback cleanup:', deleteError);
         }
       }
-      throw new Error('Failed to create future expenses. Please try again.');
+      throw Object.assign(new Error('Failed to create future expenses. Please try again.'), { statusCode: 500 });
     }
 
     return {
@@ -622,7 +622,7 @@ class ExpenseService {
           logger.error('Error during rollback cleanup:', deleteError);
         }
       }
-      throw new Error('Failed to create future expenses. Please try again.');
+      throw Object.assign(new Error('Failed to create future expenses. Please try again.'), { statusCode: 500 });
     }
 
     return {

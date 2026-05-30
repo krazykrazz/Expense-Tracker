@@ -164,16 +164,18 @@ async function getStorageStats(req, res) {
 async function restoreFromArchive(req, res) {
   const { filename } = req.body;
 
-  if (!filename) {
+  if (!filename || typeof filename !== 'string') {
     return res.status(400).json({ error: 'Backup filename is required' });
   }
 
-  // Validate filename format to prevent path traversal
-  if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+  // Reject path separators, traversal sequences, null bytes, and any character
+  // outside a strict whitelist. This is more robust than substring `..` checks,
+  // which can be bypassed via encoding or platform-specific separators.
+  if (filename.includes('\0') || !/^[A-Za-z0-9._-]+$/.test(filename)) {
     return res.status(400).json({ error: 'Invalid backup filename' });
   }
 
-  // Verify it's a tar.gz file
+  // Verify it's a tar.gz archive
   if (!filename.endsWith('.tar.gz')) {
     return res.status(400).json({ error: 'Invalid backup file format. Expected .tar.gz archive' });
   }
@@ -181,7 +183,13 @@ async function restoreFromArchive(req, res) {
   try {
     // Get the backup path from config
     const backupPath = backupService.getConfig().targetPath || require('../config/paths').getBackupPath();
-    const fullPath = path.join(backupPath, filename);
+    const resolvedBase = path.resolve(backupPath);
+    const fullPath = path.resolve(resolvedBase, filename);
+
+    // Defense in depth: ensure the resolved path stays within the backup directory.
+    if (fullPath !== resolvedBase && !fullPath.startsWith(resolvedBase + path.sep)) {
+      return res.status(400).json({ error: 'Invalid backup filename' });
+    }
 
     // Verify the file exists
     if (!fs.existsSync(fullPath)) {

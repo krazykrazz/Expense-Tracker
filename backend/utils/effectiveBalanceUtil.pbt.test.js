@@ -22,8 +22,10 @@ const arbBillingCycleRecord = fc.record({
   id: fc.integer({ min: 1, max: 10000 }),
   payment_method_id: fc.integer({ min: 1, max: 100 }),
   cycle_start_date: fc.date({ min: new Date('2020-01-01'), max: new Date('2025-12-31') })
+    .filter(d => !isNaN(d.getTime()))
     .map(d => d.toISOString().split('T')[0]),
   cycle_end_date: fc.date({ min: new Date('2020-01-01'), max: new Date('2025-12-31') })
+    .filter(d => !isNaN(d.getTime()))
     .map(d => d.toISOString().split('T')[0]),
   actual_statement_balance: fc.oneof(
     fc.constant(0),

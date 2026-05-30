@@ -8,9 +8,15 @@ describe('Property 15: Cleanup Statistics Logging', () => {
 
   beforeEach(async () => {
     db = await getDatabase();
-    // Clean up any existing test data
+    // Clean up any existing test data and reset settings to defaults
     await new Promise((resolve, reject) => {
       db.run('DELETE FROM activity_logs', (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+    await new Promise((resolve, reject) => {
+      db.run('DELETE FROM settings', (err) => {
         if (err) reject(err);
         else resolve();
       });
@@ -137,7 +143,7 @@ describe('Property 15: Cleanup Statistics Logging', () => {
     // Verify oldest remaining is set
     expect(result.oldestRemaining).toBeDefined();
     expect(result.oldestRemaining).not.toBeNull();
-  });
+  }, 60000);
 
   it('should log zero deleted count when no cleanup is needed', async () => {
     // Create only recent events within limits

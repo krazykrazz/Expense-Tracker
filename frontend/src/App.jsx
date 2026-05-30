@@ -1,24 +1,26 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import './App.css';
 import ExpenseForm from './components/expenses/ExpenseForm';
 import MonthSelector from './components/shared/MonthSelector';
 import ExpenseList from './components/expenses/ExpenseList';
 import SearchBar from './components/expenses/SearchBar';
 import SummaryPanel from './components/financial/SummaryPanel';
-import SettingsModal from './components/system/SettingsModal';
-import SystemModal from './components/system/SystemModal';
-import AnnualSummary from './components/financial/AnnualSummary';
-import TaxDeductible from './components/tax/TaxDeductible';
-import BudgetsModal from './components/financial/BudgetsModal';
-import PeopleManagementModal from './components/tax/PeopleManagementModal';
-import AnalyticsHubModal from './components/analytics/AnalyticsHubModal';
-import FinancialOverviewModal from './components/financial/FinancialOverviewModal';
-import CreditCardDetailView from './components/credit-cards/CreditCardDetailView';
 import FloatingAddButton from './components/shared/FloatingAddButton';
 import EnvironmentBanner from './components/shared/EnvironmentBanner';
 import UpdateBanner from './components/system/UpdateBanner';
 import SyncToast from './components/shared/SyncToast';
 import VersionUpgradeModal from './components/system/VersionUpgradeModal';
+
+// Lazy-loaded modals — only fetched when opened
+const SettingsModal = lazy(() => import('./components/system/SettingsModal'));
+const SystemModal = lazy(() => import('./components/system/SystemModal'));
+const AnnualSummary = lazy(() => import('./components/financial/AnnualSummary'));
+const TaxDeductible = lazy(() => import('./components/tax/TaxDeductible'));
+const BudgetsModal = lazy(() => import('./components/financial/BudgetsModal'));
+const PeopleManagementModal = lazy(() => import('./components/tax/PeopleManagementModal'));
+const AnalyticsHubModal = lazy(() => import('./components/analytics/AnalyticsHubModal'));
+const FinancialOverviewModal = lazy(() => import('./components/financial/FinancialOverviewModal'));
+const CreditCardDetailView = lazy(() => import('./components/credit-cards/CreditCardDetailView'));
 import { useDataSync } from './hooks/useDataSync';
 import { useContainerUpdateCheck } from './hooks/useContainerUpdateCheck';
 import useVersionUpgradeCheck from './hooks/useVersionUpgradeCheck';
@@ -530,11 +532,12 @@ function AppContent({ onPaymentMethodsUpdate }) {
         </div>
       )}
 
-      {showSettingsModal && <SettingsModal />}
+      {showSettingsModal && <Suspense fallback={null}><SettingsModal /></Suspense>}
 
-      {showSystemModal && <SystemModal />}
+      {showSystemModal && <Suspense fallback={null}><SystemModal /></Suspense>}
 
       {showAnnualSummary && (
+        <Suspense fallback={null}>
         <div className="modal-overlay" onClick={closeAnnualSummary}>
           <div className="modal-content modal-content-large" onClick={(e) => e.stopPropagation()}>
             <button 
@@ -547,9 +550,11 @@ function AppContent({ onPaymentMethodsUpdate }) {
             <AnnualSummary year={selectedYear} />
           </div>
         </div>
+        </Suspense>
       )}
 
       {showTaxDeductible && (
+        <Suspense fallback={null}>
         <div className="modal-overlay" onClick={closeTaxDeductible}>
           <div className="modal-content modal-content-large" onClick={(e) => e.stopPropagation()}>
             <button 
@@ -562,9 +567,11 @@ function AppContent({ onPaymentMethodsUpdate }) {
             <TaxDeductible year={selectedYear} refreshTrigger={refreshTrigger} />
           </div>
         </div>
+        </Suspense>
       )}
 
       {showBudgets && (
+        <Suspense fallback={null}>
         <BudgetsModal
           isOpen={showBudgets}
           year={selectedYear}
@@ -573,17 +580,21 @@ function AppContent({ onPaymentMethodsUpdate }) {
           onBudgetUpdated={handleBudgetUpdated}
           focusedCategory={budgetManagementFocusCategory}
         />
+        </Suspense>
       )}
 
       {showPeopleManagement && (
+        <Suspense fallback={null}>
         <PeopleManagementModal
           isOpen={showPeopleManagement}
           onClose={closePeopleManagement}
           onPeopleUpdated={handlePeopleUpdated}
         />
+        </Suspense>
       )}
 
       {showAnalyticsHub && (
+        <Suspense fallback={null}>
         <AnalyticsHubModal
           isOpen={showAnalyticsHub}
           onClose={closeAnalyticsHub}
@@ -593,9 +604,11 @@ function AppContent({ onPaymentMethodsUpdate }) {
           budgetAlerts={budgetAlerts}
           onViewExpenses={handleViewExpensesFromAnalytics}
         />
+        </Suspense>
       )}
 
       {showFinancialOverview && (
+        <Suspense fallback={null}>
         <FinancialOverviewModal
           isOpen={showFinancialOverview}
           onClose={() => {
@@ -607,10 +620,12 @@ function AppContent({ onPaymentMethodsUpdate }) {
           onPaymentMethodsUpdate={onPaymentMethodsUpdate}
           initialTab={financialOverviewInitialTab}
         />
+        </Suspense>
       )}
 
       {/* Standalone CreditCardDetailView - opened from notification banners */}
       {creditCardDetailState.show && (
+        <Suspense fallback={null}>
         <CreditCardDetailView
           paymentMethodId={creditCardDetailState.paymentMethodId}
           isOpen={creditCardDetailState.show}
@@ -619,6 +634,7 @@ function AppContent({ onPaymentMethodsUpdate }) {
           initialAction={creditCardDetailState.initialAction}
           reminderData={creditCardDetailState.reminderData}
         />
+        </Suspense>
       )}
 
       {/* Floating Add Button */}

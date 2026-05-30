@@ -235,7 +235,6 @@ describe('FixedExpensesModal', () => {
 
   describe('Delete Fixed Expense', () => {
     it('deletes fixed expense when confirmed', async () => {
-      window.confirm = vi.fn(() => true);
       fixedExpenseApi.deleteFixedExpense.mockResolvedValue({});
       
       render(<FixedExpensesModal {...defaultProps} />);
@@ -246,6 +245,12 @@ describe('FixedExpensesModal', () => {
       
       const deleteButtons = screen.getAllByTitle('Delete');
       fireEvent.click(deleteButtons[0]);
+
+      // Confirm via styled dialog
+      await waitFor(() => {
+        expect(screen.getByRole('alertdialog')).toBeInTheDocument();
+      });
+      fireEvent.click(screen.getByText('Delete'));
       
       await waitFor(() => {
         expect(fixedExpenseApi.deleteFixedExpense).toHaveBeenCalledWith(1);
@@ -253,8 +258,6 @@ describe('FixedExpensesModal', () => {
     });
 
     it('does not delete when cancelled', async () => {
-      window.confirm = vi.fn(() => false);
-      
       render(<FixedExpensesModal {...defaultProps} />);
       
       await waitFor(() => {
@@ -263,6 +266,12 @@ describe('FixedExpensesModal', () => {
       
       const deleteButtons = screen.getAllByTitle('Delete');
       fireEvent.click(deleteButtons[0]);
+
+      // Cancel via styled dialog
+      await waitFor(() => {
+        expect(screen.getByRole('alertdialog')).toBeInTheDocument();
+      });
+      fireEvent.click(screen.getByText('Cancel'));
       
       expect(fixedExpenseApi.deleteFixedExpense).not.toHaveBeenCalled();
     });
@@ -278,7 +287,6 @@ describe('FixedExpensesModal', () => {
     });
 
     it('calls carryForward API when button is clicked', async () => {
-      window.confirm = vi.fn(() => true);
       fixedExpenseApi.carryForwardFixedExpenses.mockResolvedValue({ count: 2 });
       
       render(<FixedExpensesModal {...defaultProps} />);
@@ -288,6 +296,12 @@ describe('FixedExpensesModal', () => {
       });
       
       fireEvent.click(screen.getByText(/Carry Forward from Previous Month/));
+
+      // Confirm via styled dialog (has existing items)
+      await waitFor(() => {
+        expect(screen.getByRole('alertdialog')).toBeInTheDocument();
+      });
+      fireEvent.click(screen.getByText('Continue'));
       
       await waitFor(() => {
         expect(fixedExpenseApi.carryForwardFixedExpenses).toHaveBeenCalled();

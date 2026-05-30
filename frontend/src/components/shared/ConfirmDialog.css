@@ -1,0 +1,68 @@
+.confirm-dialog-overlay {
+  z-index: var(--z-modal, 1000);
+}
+
+.confirm-dialog {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-5);
+  max-width: 400px;
+  width: 90%;
+  box-shadow: var(--shadow-xl);
+}
+
+.confirm-dialog h3 {
+  margin-top: 0;
+  margin-bottom: var(--spacing-3);
+  color: var(--text-primary);
+  font-size: var(--heading-3);
+  font-weight: var(--font-semibold);
+  line-height: var(--leading-snug);
+}
+
+.confirm-dialog p {
+  margin-bottom: var(--spacing-3);
+  color: var(--text-secondary);
+  font-size: var(--body-text);
+  line-height: var(--body-line-height);
+}
+
+.confirm-dialog-details {
+  background-color: var(--bg-muted);
+  padding: var(--spacing-3);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-4);
+}
+
+.confirm-dialog-details p {
+  margin: var(--spacing-1) 0;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.confirm-button--danger {
+  background-color: var(--color-danger, #e53e3e);
+  color: white;
+}
+
+.confirm-button--danger:hover {
+  background-color: var(--color-danger-hover, #c53030);
+}
+
+.confirm-button--warning {
+  background-color: var(--color-warning, #dd6b20);
+  color: white;
+}
+
+.confirm-button--warning:hover {
+  background-color: var(--color-warning-hover, #c05621);
+}
+
+.confirm-button--info {
+  background-color: var(--color-primary);
+  color: white;
+}
+
+.confirm-button--info:hover {
+  background-color: var(--color-primary-hover, #2563eb);
+}

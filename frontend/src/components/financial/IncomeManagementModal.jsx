@@ -10,6 +10,7 @@ import {
 import { validateName, validateAmount } from '../../utils/validation';
 import { getMonthNameLong } from '../../utils/formatters';
 import { createLogger } from '../../utils/logger';
+import ConfirmDialog from '../shared/ConfirmDialog';
 
 const logger = createLogger('IncomeManagementModal');
 
@@ -33,6 +34,7 @@ const IncomeManagementModal = ({ isOpen, onClose, year, month, onUpdate }) => {
     editName: '',
     editAmount: ''
   });
+  const [confirmState, setConfirmState] = useState({ open: false, title: '', message: '', onConfirm: null, variant: 'danger' });
 
   // Fetch income sources when modal opens or year/month changes
   useEffect(() => {
@@ -207,48 +209,52 @@ const IncomeManagementModal = ({ isOpen, onClose, year, month, onUpdate }) => {
     clearValidationErrors();
   };
 
-  const handleDeleteSource = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this income source?')) {
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      await deleteIncomeSource(id);
-
-      // Refresh to get updated data including category breakdown
-      await fetchIncomeSources();
-    } catch (err) {
-      const errorMessage = err.message || 'Network error. Unable to delete income source. Please check your connection and try again.';
-      setError(errorMessage);
-      logger.error('Error deleting income source:', err);
-    } finally {
-      setLoading(false);
-    }
+  const handleDeleteSource = (id) => {
+    setConfirmState({
+      open: true,
+      title: 'Delete Income Source',
+      message: 'Are you sure you want to delete this income source?',
+      variant: 'danger',
+      onConfirm: async () => {
+        setConfirmState(prev => ({ ...prev, open: false }));
+        setLoading(true);
+        setError(null);
+        try {
+          await deleteIncomeSource(id);
+          await fetchIncomeSources();
+        } catch (err) {
+          const errorMessage = err.message || 'Network error. Unable to delete income source. Please check your connection and try again.';
+          setError(errorMessage);
+          logger.error('Error deleting income source:', err);
+        } finally {
+          setLoading(false);
+        }
+      },
+    });
   };
 
-  const handleCopyFromPreviousMonth = async () => {
-    if (!window.confirm('Copy all income sources from the previous month? This will add them to the current month.')) {
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const data = await carryForwardIncomeSources(year, month);
-      
-      // Refresh the income sources list
-      await fetchIncomeSources();
-    } catch (err) {
-      const errorMessage = err.message || 'Network error. Unable to copy income sources. Please check your connection and try again.';
-      setError(errorMessage);
-      logger.error('Error copying income sources:', err);
-    } finally {
-      setLoading(false);
-    }
+  const handleCopyFromPreviousMonth = () => {
+    setConfirmState({
+      open: true,
+      title: 'Copy Income Sources',
+      message: 'Copy all income sources from the previous month? This will add them to the current month.',
+      variant: 'warning',
+      onConfirm: async () => {
+        setConfirmState(prev => ({ ...prev, open: false }));
+        setLoading(true);
+        setError(null);
+        try {
+          await carryForwardIncomeSources(year, month);
+          await fetchIncomeSources();
+        } catch (err) {
+          const errorMessage = err.message || 'Network error. Unable to copy income sources. Please check your connection and try again.';
+          setError(errorMessage);
+          logger.error('Error copying income sources:', err);
+        } finally {
+          setLoading(false);
+        }
+      },
+    });
   };
 
   const handleClose = () => {
@@ -523,6 +529,15 @@ const IncomeManagementModal = ({ isOpen, onClose, year, month, onUpdate }) => {
           )}
         </div>
       </div>
+      <ConfirmDialog
+        isOpen={confirmState.open}
+        title={confirmState.title}
+        message={confirmState.message}
+        variant={confirmState.variant}
+        confirmLabel={confirmState.variant === 'danger' ? 'Delete' : 'Continue'}
+        onConfirm={confirmState.onConfirm}
+        onCancel={() => setConfirmState(prev => ({ ...prev, open: false }))}
+      />
     </div>
   );
 };

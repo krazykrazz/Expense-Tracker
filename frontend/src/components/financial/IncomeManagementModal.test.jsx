@@ -223,7 +223,6 @@ describe('IncomeManagementModal', () => {
 
   describe('Delete Income Source', () => {
     it('deletes income source when confirmed', async () => {
-      window.confirm = vi.fn(() => true);
       incomeApi.deleteIncomeSource.mockResolvedValue({});
       
       render(<IncomeManagementModal {...defaultProps} />);
@@ -234,6 +233,12 @@ describe('IncomeManagementModal', () => {
       
       const deleteButtons = screen.getAllByTitle('Delete');
       fireEvent.click(deleteButtons[0]);
+
+      // Confirm via styled dialog
+      await waitFor(() => {
+        expect(screen.getByRole('alertdialog')).toBeInTheDocument();
+      });
+      fireEvent.click(screen.getByText('Delete'));
       
       await waitFor(() => {
         expect(incomeApi.deleteIncomeSource).toHaveBeenCalledWith(1);
@@ -241,8 +246,6 @@ describe('IncomeManagementModal', () => {
     });
 
     it('does not delete when cancelled', async () => {
-      window.confirm = vi.fn(() => false);
-      
       render(<IncomeManagementModal {...defaultProps} />);
       
       await waitFor(() => {
@@ -251,6 +254,12 @@ describe('IncomeManagementModal', () => {
       
       const deleteButtons = screen.getAllByTitle('Delete');
       fireEvent.click(deleteButtons[0]);
+
+      // Cancel via styled dialog
+      await waitFor(() => {
+        expect(screen.getByRole('alertdialog')).toBeInTheDocument();
+      });
+      fireEvent.click(screen.getByText('Cancel'));
       
       expect(incomeApi.deleteIncomeSource).not.toHaveBeenCalled();
     });
@@ -269,7 +278,6 @@ describe('IncomeManagementModal', () => {
 
     it('calls carryForward API when button is clicked', async () => {
       incomeApi.getMonthlyIncomeSources.mockResolvedValue({ sources: [], total: 0, byCategory: {} });
-      window.confirm = vi.fn(() => true);
       incomeApi.carryForwardIncomeSources.mockResolvedValue({ count: 2 });
       
       render(<IncomeManagementModal {...defaultProps} />);
@@ -279,6 +287,12 @@ describe('IncomeManagementModal', () => {
       });
       
       fireEvent.click(screen.getByText(/Copy from Previous Month/));
+
+      // Confirm via styled dialog
+      await waitFor(() => {
+        expect(screen.getByRole('alertdialog')).toBeInTheDocument();
+      });
+      fireEvent.click(screen.getByText('Continue'));
       
       await waitFor(() => {
         expect(incomeApi.carryForwardIncomeSources).toHaveBeenCalled();

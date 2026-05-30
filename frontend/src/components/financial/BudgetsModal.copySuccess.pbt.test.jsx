@@ -78,8 +78,6 @@ const failureCopyResultArb = () =>
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 describe('BudgetsModal Copy Success Condition PBT', () => {
-  let alertSpy;
-
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
@@ -89,7 +87,6 @@ describe('BudgetsModal Copy Success Condition PBT', () => {
       totalBudgeted: 0, totalSpent: 0, remaining: 0,
       budgetsOnTrack: 0, totalBudgets: 0,
     });
-    alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
   });
 
   /**
@@ -113,7 +110,6 @@ describe('BudgetsModal Copy Success Condition PBT', () => {
               totalBudgeted: 0, totalSpent: 0, remaining: 0,
               budgetsOnTrack: 0, totalBudgets: 0,
             });
-            alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
             mockCopyBudgets.mockResolvedValue(result);
 
             const onBudgetUpdated = vi.fn();
@@ -122,17 +118,17 @@ describe('BudgetsModal Copy Success Condition PBT', () => {
             );
 
             await waitFor(() => {
-              expect(screen.getByText(/Copy from Previous Month/)).toBeInTheDocument();
+              expect(screen.getByRole('button', { name: /Copy from Previous Month/ })).toBeInTheDocument();
             });
 
-            fireEvent.click(screen.getByText(/Copy from Previous Month/));
+            fireEvent.click(screen.getByRole('button', { name: /Copy from Previous Month/ }));
 
             await waitFor(() => {
               expect(mockCopyBudgets).toHaveBeenCalled();
             });
 
-            // Success path: no alert shown
-            expect(alertSpy).not.toHaveBeenCalled();
+            // Success path: no alert dialog shown
+            expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
 
             unmount();
           }
@@ -152,7 +148,6 @@ describe('BudgetsModal Copy Success Condition PBT', () => {
               totalBudgeted: 0, totalSpent: 0, remaining: 0,
               budgetsOnTrack: 0, totalBudgets: 0,
             });
-            alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
             mockCopyBudgets.mockResolvedValue(result);
 
             const onBudgetUpdated = vi.fn();
@@ -161,20 +156,20 @@ describe('BudgetsModal Copy Success Condition PBT', () => {
             );
 
             await waitFor(() => {
-              expect(screen.getByText(/Copy from Previous Month/)).toBeInTheDocument();
+              expect(screen.getByRole('button', { name: /Copy from Previous Month/ })).toBeInTheDocument();
             });
 
-            fireEvent.click(screen.getByText(/Copy from Previous Month/));
+            fireEvent.click(screen.getByRole('button', { name: /Copy from Previous Month/ }));
 
             await waitFor(() => {
               expect(mockCopyBudgets).toHaveBeenCalled();
             });
 
-            // Failure path: alert shown with "No budgets found"
+            // Failure path: ConfirmDialog shown with "No budgets found"
             await waitFor(() => {
-              expect(alertSpy).toHaveBeenCalledWith(
-                expect.stringContaining('No budgets found')
-              );
+              const dialog = screen.getByRole('alertdialog');
+              expect(dialog).toBeInTheDocument();
+              expect(dialog).toHaveTextContent(/No budgets found/);
             });
 
             // onBudgetUpdated should NOT be called on failure
@@ -196,16 +191,16 @@ describe('BudgetsModal Copy Success Condition PBT', () => {
       render(<BudgetsModal {...defaultProps} onBudgetUpdated={onBudgetUpdated} />);
 
       await waitFor(() => {
-        expect(screen.getByText(/Copy from Previous Month/)).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /Copy from Previous Month/ })).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getByText(/Copy from Previous Month/));
+      fireEvent.click(screen.getByRole('button', { name: /Copy from Previous Month/ }));
 
       await waitFor(() => {
         expect(mockCopyBudgets).toHaveBeenCalled();
       });
 
-      expect(alertSpy).not.toHaveBeenCalled();
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
       await waitFor(() => {
         expect(onBudgetUpdated).toHaveBeenCalled();
       });
@@ -218,16 +213,16 @@ describe('BudgetsModal Copy Success Condition PBT', () => {
       render(<BudgetsModal {...defaultProps} onBudgetUpdated={onBudgetUpdated} />);
 
       await waitFor(() => {
-        expect(screen.getByText(/Copy from Previous Month/)).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /Copy from Previous Month/ })).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getByText(/Copy from Previous Month/));
+      fireEvent.click(screen.getByRole('button', { name: /Copy from Previous Month/ }));
 
       await waitFor(() => {
         expect(mockCopyBudgets).toHaveBeenCalled();
       });
 
-      expect(alertSpy).not.toHaveBeenCalled();
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
       await waitFor(() => {
         expect(onBudgetUpdated).toHaveBeenCalled();
       });
@@ -240,16 +235,16 @@ describe('BudgetsModal Copy Success Condition PBT', () => {
       render(<BudgetsModal {...defaultProps} onBudgetUpdated={onBudgetUpdated} />);
 
       await waitFor(() => {
-        expect(screen.getByText(/Copy from Previous Month/)).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /Copy from Previous Month/ })).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getByText(/Copy from Previous Month/));
+      fireEvent.click(screen.getByRole('button', { name: /Copy from Previous Month/ }));
 
       await waitFor(() => {
         expect(mockCopyBudgets).toHaveBeenCalled();
       });
 
-      expect(alertSpy).not.toHaveBeenCalled();
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
       await waitFor(() => {
         expect(onBudgetUpdated).toHaveBeenCalled();
       });
@@ -262,15 +257,14 @@ describe('BudgetsModal Copy Success Condition PBT', () => {
       render(<BudgetsModal {...defaultProps} onBudgetUpdated={onBudgetUpdated} />);
 
       await waitFor(() => {
-        expect(screen.getByText(/Copy from Previous Month/)).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /Copy from Previous Month/ })).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getByText(/Copy from Previous Month/));
+      fireEvent.click(screen.getByRole('button', { name: /Copy from Previous Month/ }));
 
       await waitFor(() => {
-        expect(alertSpy).toHaveBeenCalledWith(
-          expect.stringContaining('No budgets found')
-        );
+        const dialog = screen.getByRole('alertdialog');
+        expect(dialog).toHaveTextContent(/No budgets found/);
       });
 
       expect(onBudgetUpdated).not.toHaveBeenCalled();
@@ -283,13 +277,13 @@ describe('BudgetsModal Copy Success Condition PBT', () => {
       render(<BudgetsModal {...defaultProps} onBudgetUpdated={onBudgetUpdated} />);
 
       await waitFor(() => {
-        expect(screen.getByText(/Copy from Previous Month/)).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /Copy from Previous Month/ })).toBeInTheDocument();
       });
 
       // getBudgets is called once on mount
       const initialCallCount = mockGetBudgets.mock.calls.length;
 
-      fireEvent.click(screen.getByText(/Copy from Previous Month/));
+      fireEvent.click(screen.getByRole('button', { name: /Copy from Previous Month/ }));
 
       await waitFor(() => {
         expect(mockCopyBudgets).toHaveBeenCalled();

@@ -359,3 +359,19 @@ escape-to-close, and scroll-lock behave consistently.
 - Phase 2 PRs: full-suite validation via `scripts/run-test-summary.ps1`.
 - All new shared components require unit tests; `Modal` must additionally pass the
   existing UX-consistency PBT guardrails listed in Requirement 9.
+
+---
+
+## Progress
+
+| Requirement | Status | Branch / PR | Notes |
+|-------------|--------|-------------|-------|
+| Req 1: Inline posted date | ✅ Done | `feature/expense-form-ux-phase1` | Moved posted date inline after Payment Method; removed from Advanced Options |
+| Req 4: Configured-state strip | ✅ Done | `feature/expense-form-ux-phase1` | Shows people/insurance/invoice/repeat/posted badges below Amount |
+| Req 5: Single repeat control | ✅ Done | `feature/expense-form-ux-phase1` | Replaced checkbox+dropdown with single `<select>` defaulting to "Off" |
+| Req 6: Actual/Calculated tooltips | ✅ Done | `feature/expense-form-ux-phase1` | Added HelpTooltip to both badges in CreditCardDetailView |
+| Req 2: Chip people picker | Not started | — | Phase 2 |
+| Req 3: Inline statement entry | Not started | — | Phase 2 |
+| Req 7: Split ExpenseForm | Not started | — | Phase 2 |
+| Req 8: Shared input primitives | Not started | — | Phase 2 |
+| Req 9: Shared Modal | Not started | — | Phase 2 |

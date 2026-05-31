@@ -1,0 +1,17 @@
+{
+  "overridePattern": "\\[skip-budget\\]",
+  "budgets": {
+    "backend-unit-tests": {
+      "maxSeconds": 90,
+      "description": "Backend unit + backup integration tests"
+    },
+    "backend-pbt-shard": {
+      "maxSeconds": 90,
+      "description": "Backend PBT shard (FAST_CHECK_NUM_RUNS=15)"
+    },
+    "frontend-tests": {
+      "maxSeconds": 360,
+      "description": "Frontend Vitest suite (parallel forks)"
+    }
+  }
+}

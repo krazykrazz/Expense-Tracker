@@ -79,13 +79,19 @@ class AutoPaymentLoggerService {
       fixedExpenseName: fixedExpenseName
     });
 
-    // Log activity event for auto-payment
+    // Log activity event for auto-payment.
+    // Include fixedExpenseId only when the caller supplies it (e.g. the
+    // suggestion flow) so the metadata identifies the source fixed expense.
+    const eventMetadata = { loanId: fixedExpense.linked_loan_id, amount: fixedExpense.amount, fixedExpenseName, paymentDate };
+    if (fixedExpense.fixed_expense_id !== undefined && fixedExpense.fixed_expense_id !== null) {
+      eventMetadata.fixedExpenseId = fixedExpense.fixed_expense_id;
+    }
     activityLogService.logEvent(
       'auto_payment_logged',
       'loan_payment',
       payment.id,
       `Auto-logged payment of $${fixedExpense.amount.toFixed(2)} for ${fixedExpenseName}`,
-      { loanId: fixedExpense.linked_loan_id, amount: fixedExpense.amount, fixedExpenseName, paymentDate }
+      eventMetadata
     );
     
     return payment;
@@ -221,7 +227,8 @@ class AutoPaymentLoggerService {
     const payment = await this.createPaymentFromFixedExpense({
       linked_loan_id: expense.loan_id,
       amount: expense.amount,
-      name: expense.fixed_expense_name
+      name: expense.fixed_expense_name,
+      fixed_expense_id: fixedExpenseId
     }, paymentDate);
 
     return payment;

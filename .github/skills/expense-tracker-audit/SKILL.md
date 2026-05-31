@@ -13,7 +13,8 @@ code smells, and refactor opportunities. Optimized for this repo's conventions
 ## When to Use
 - "Review/audit the code for bugs and code smells"
 - Pre-release quality pass, tech-debt assessment, or PR review
-- Targeted review of a subsystem (expenses, invoices, backups, analytics, billing cycle)
+- Targeted review of a subsystem (expenses, invoices, backups, analytics, billing cycle, loans/LOC)
+- After removing feature-gates or type-exclusions (loan type changes, LOC handling)
 
 ## Procedure
 
@@ -33,6 +34,22 @@ Past false positives on THIS repo:
   present in `ExpenseContext.jsx`. Verify the real `[...]` array.
 - "Missing asyncHandler → server will crash" — controllers actually wrap bodies
   in `try/catch`. The real issue is a *smell* (see backend checklist), not a crash.
+- "LoanPaymentHistory conditional columns break table" — React renders nothing for
+  `{false && <th>}`, and both thead/tbody exclude the column consistently. Valid.
+
+Past confirmed-true patterns on THIS repo:
+- Dead error-message branches left in catch blocks after feature-gate removal.
+  When a `throw` is removed from a service, the matching `if (error.message === '...')`
+  in the controller becomes unreachable. Always audit controller catch blocks
+  after modifying service-layer throws.
+- `parseFloat(null)` → NaN when destructuring optional body params. Always guard
+  with `!= null && !== ''` before parseFloat.
+- Invalid date construction: `"${year}-${month}-${day}"` without clamping day to
+  month length (e.g. day 31 in Feb → `"2024-02-31"`). Any code building date
+  strings from a user-configured `due_day` must clamp.
+- Duplicate activity log events when a helper already logs and the caller logs again.
+- `editingPayment`/form state not reset in useEffect when the underlying entity
+  (loan, expense) changes — stale form data from a previous entity persists.
 
 Downgrade or drop any finding you cannot reproduce by reading the source.
 

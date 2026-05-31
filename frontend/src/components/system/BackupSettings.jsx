@@ -1215,6 +1215,13 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v1.9.0</div>
+                <div className="changelog-date">May 31, 2026</div>
+                <ul className="changelog-items">
+                  <li>Phase 1 UX improvements, CI optimizations, event dedup fix, LOC payment tracking</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v1.8.0</div>
                 <div className="changelog-date">May 30, 2026</div>
                 <ul className="changelog-items">

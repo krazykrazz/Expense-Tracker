@@ -56,21 +56,17 @@ function calculateDaysUntilDue(paymentDueDay, referenceDate = new Date()) {
   const currentMonth = today.getUTCMonth();
   const currentYear = today.getUTCFullYear();
 
-  let dueDate;
+  // Determine the intended target month (this month if the due day hasn't
+  // passed, otherwise next month). Date.UTC normalizes Dec + 1 into next year.
+  const targetMonthIndex = currentDay <= paymentDueDay ? currentMonth : currentMonth + 1;
 
-  if (currentDay <= paymentDueDay) {
-    // Due date is this month
-    dueDate = new Date(Date.UTC(currentYear, currentMonth, paymentDueDay));
-  } else {
-    // Due date is next month
-    dueDate = new Date(Date.UTC(currentYear, currentMonth + 1, paymentDueDay));
-  }
-
-  // Handle months with fewer days — use last day of target month if needed
-  const lastDayOfMonth = new Date(Date.UTC(dueDate.getUTCFullYear(), dueDate.getUTCMonth() + 1, 0)).getUTCDate();
-  if (paymentDueDay > lastDayOfMonth) {
-    dueDate = new Date(Date.UTC(dueDate.getUTCFullYear(), dueDate.getUTCMonth(), lastDayOfMonth));
-  }
+  // Clamp the due day to the target month's length BEFORE constructing the
+  // date. Building the date first (e.g. Date.UTC(year, 1, 31) => Mar 3) would
+  // overflow into a later month, after which the month length can no longer be
+  // measured correctly.
+  const lastDayOfMonth = new Date(Date.UTC(currentYear, targetMonthIndex + 1, 0)).getUTCDate();
+  const clampedDay = Math.min(paymentDueDay, lastDayOfMonth);
+  const dueDate = new Date(Date.UTC(currentYear, targetMonthIndex, clampedDay));
 
   const diffTime = dueDate.getTime() - today.getTime();
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));

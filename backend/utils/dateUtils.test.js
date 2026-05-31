@@ -101,17 +101,17 @@ describe('dateUtils', () => {
     it('should handle months with fewer days (Feb 30 -> Feb 28/29)', () => {
       const referenceDate = new Date('2024-01-31T00:00:00');
       const daysUntil = calculateDaysUntilDue(30, referenceDate);
-      // Due day 30 in Feb becomes Feb 29 (2024 is leap year)
-      // Jan 31 to Feb 29 = 29 days, but since we're past day 30 in Jan, it goes to next month
-      expect(daysUntil).toBe(30); // Feb 29 is 30 days from Jan 31 (inclusive)
+      // Due day 30 in Feb is clamped to Feb 29 (2024 is a leap year).
+      // Jan 31 -> Feb 29 = 29 days.
+      expect(daysUntil).toBe(29);
     });
 
     it('should handle months with fewer days (non-leap year)', () => {
       const referenceDate = new Date('2023-01-31T00:00:00');
       const daysUntil = calculateDaysUntilDue(30, referenceDate);
-      // Due day 30 in Feb becomes Feb 28 (2023 is not leap year)
-      // Jan 31 to Feb 28 = 28 days
-      expect(daysUntil).toBe(30); // Feb 28 is 30 days from Jan 31 (counting method)
+      // Due day 30 in Feb is clamped to Feb 28 (2023 is not a leap year).
+      // Jan 31 -> Feb 28 = 28 days.
+      expect(daysUntil).toBe(28);
     });
 
     it('should handle year boundaries', () => {

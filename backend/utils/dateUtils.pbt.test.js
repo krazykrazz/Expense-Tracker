@@ -113,6 +113,37 @@ describe('Property 9: calculateDaysUntilDue backward compatibility', () => {
     );
   });
 
+  it('clamps the due day to the last day of the target month (month-end overflow)', () => {
+    // Regression: previously the due date was constructed before clamping,
+    // so e.g. Date.UTC(2025, 1, 31) overflowed to Mar 3 and the clamp (which
+    // then measured March's length) never fired. Cover due days 29-31 and
+    // references near month-end where the next month is shorter.
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 29, max: 31 }),
+        fc.integer({ min: 2020, max: 2025 }),
+        fc.integer({ min: 1, max: 12 }),
+        fc.integer({ min: 1, max: 28 }),
+        (dueDay, year, month, day) => {
+          const ref = utcDate(year, month, day);
+          const result = calculateDaysUntilDue(dueDay, ref);
+
+          // Recompute the expected clamped due date independently.
+          const targetMonth = day <= dueDay ? month : month + 1; // 1-based; daysInMonth handles >12
+          const lastDay = daysInMonth(year, targetMonth);
+          const clampedDay = Math.min(dueDay, lastDay);
+          const dueDate = new Date(Date.UTC(year, targetMonth - 1, clampedDay));
+          const expected = Math.ceil((dueDate.getTime() - ref.getTime()) / (1000 * 60 * 60 * 24));
+
+          expect(result).toBe(expected);
+          expect(result).toBeGreaterThanOrEqual(0);
+          expect(result).toBeLessThanOrEqual(31);
+        }
+      ),
+      pbtOptions()
+    );
+  });
+
   it('result is consistent regardless of local time-of-day on the reference date', () => {
     fc.assert(
       fc.property(

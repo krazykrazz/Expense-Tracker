@@ -84,6 +84,8 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
   useEffect(() => {
     if (isOpen && loan) {
       setLoanData(loan);
+      setEditingPayment(null);
+      setShowPaymentForm(false);
       setLoanFormData({
         name: loan.name,
         notes: loan.notes || ''
@@ -92,6 +94,7 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
       // Fetch appropriate data based on loan type
       if (loan.loan_type === 'line_of_credit') {
         fetchBalanceHistory();
+        fetchPaymentData();
       } else {
         // For loans and mortgages, fetch payment data
         fetchPaymentData();
@@ -832,7 +835,7 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
                     </span>
                   </div>
                   
-                  {/* Only show "Total Paid Down" for traditional loans */}
+                  {/* Show total payments for all loan types that have payment tracking */}
                   {loanData.loan_type !== 'line_of_credit' && (
                     <div className="loan-summary-item">
                       <span className="loan-summary-label">
@@ -845,6 +848,17 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
                             ({paymentCount} payment{paymentCount !== 1 ? 's' : ''})
                           </span>
                         )}
+                      </span>
+                    </div>
+                  )}
+                  {loanData.loan_type === 'line_of_credit' && payments.length > 0 && (
+                    <div className="loan-summary-item">
+                      <span className="loan-summary-label">Total Payments:</span>
+                      <span className="loan-summary-value loan-paid-down">
+                        {formatCurrency(payments.reduce((sum, p) => sum + (p.amount || 0), 0))}
+                        <span className="payment-count-badge">
+                          ({payments.length} payment{payments.length !== 1 ? 's' : ''})
+                        </span>
                       </span>
                     </div>
                   )}
@@ -1289,6 +1303,49 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
                   disabled={loading || loadingPayments}
                 />
               )}
+            </div>
+          )}
+
+          {/* Payment Tracking Section - For lines of credit */}
+          {loanData.loan_type === 'line_of_credit' && (
+            <div className="loan-payment-tracking-section">
+              <div className="loan-payment-tracking-header">
+                <h3>Payment Tracking</h3>
+                {!showPaymentForm && (
+                  <button
+                    className="loan-log-payment-button"
+                    onClick={handleShowPaymentForm}
+                    disabled={loading || loadingPayments}
+                  >
+                    + Log Payment
+                  </button>
+                )}
+              </div>
+
+              {/* Payment Form */}
+              {showPaymentForm && (
+                <LoanPaymentForm
+                  loanId={loanData.id}
+                  loanName={loanData.name}
+                  loanType={loanData.loan_type}
+                  currentBalance={currentBalance}
+                  editingPayment={editingPayment}
+                  onPaymentRecorded={handlePaymentRecorded}
+                  onCancel={handleCancelPaymentForm}
+                  disabled={loading || loadingPayments}
+                />
+              )}
+
+              {/* Payment History */}
+              <LoanPaymentHistory
+                payments={payments}
+                initialBalance={loanData.initial_balance}
+                loading={loadingPayments}
+                onEdit={handleEditPayment}
+                onDelete={handleDeletePayment}
+                disabled={loading || loadingPayments}
+                hideRunningBalance={true}
+              />
             </div>
           )}
 

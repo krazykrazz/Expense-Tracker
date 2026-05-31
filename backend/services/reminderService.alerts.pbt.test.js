@@ -550,6 +550,7 @@ describe('Reminder Service - Alert Show Logic Property Tests', () => {
             let targetDay = card.payment_due_day - targetDaysUntilDue;
             if (targetDay < 1) {
               // Need to go to previous month
+              referenceDate.setDate(1); // avoid month-length overflow before subtracting
               referenceDate.setMonth(referenceDate.getMonth() - 1);
               const daysInPrevMonth = new Date(referenceDate.getFullYear(), referenceDate.getMonth() + 1, 0).getDate();
               targetDay = daysInPrevMonth + targetDay;

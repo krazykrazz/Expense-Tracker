@@ -40,6 +40,25 @@ Layer-specific, high-signal checks. Confirm each finding against source before r
       + future months + balance updates + logging) → extract private helpers.
 - [ ] Magic numbers (sizes, expiries, rates) → centralize constants.
 - [ ] Inline validation duplicated instead of using `backend/utils/validators.js`.
+- [ ] Dead catch branches: after removing a `throw` from a service, the matching
+      `if (error.message === '...')` in the controller is unreachable. Audit
+      controller catch blocks whenever service throws change.
+- [ ] Duplicate activity log events: if a helper (e.g. `createPaymentFromFixedExpense`)
+      already calls `activityLogService.logEvent`, the caller must NOT log again.
+      Check for double-fire patterns on `'auto_payment_logged'`, `'expense_created'`, etc.
+
+### Loan / LOC subsystem
+- [ ] After removing loan-type exclusions (e.g. `loan_type !== 'line_of_credit'`),
+      ensure ALL downstream paths are cleared: controller, service, reminders,
+      auto-payment-logger, fixed-expense modal, frontend detail views, tests.
+- [ ] `balanceOverride` from request body: guard `parseFloat` with `!= null`
+      check — `parseFloat(null)` → NaN triggers spurious validation errors.
+- [ ] Date construction from `payment_due_day`: MUST clamp to month length with
+      `Math.min(dueDay, new Date(year, month, 0).getDate())`. Without this,
+      day 29/30/31 produces invalid dates in short months.
+- [ ] LOC `currentBalance` is a snapshot from `loan_balances` table, NOT derived
+      from payments. Any overpayment validation using this value would be incorrect
+      for LOC — document/comment this semantic gap at the prop-passing site.
 
 ## Frontend (React / Vite)
 
@@ -52,6 +71,13 @@ Layer-specific, high-signal checks. Confirm each finding against source before r
 - [ ] Duplicated fetch logic (e.g. main effect + an `expensesUpdated` listener that
       re-implements the same fetch) → extract a shared fetch function/hook.
 - [ ] No state mutation; correct, stable list `key`s.
+- [ ] Form/editing state reset when the underlying entity changes: if a detail
+      modal (e.g. `LoanDetailView`) shows an entity-scoped form, the `useEffect`
+      that loads new entity data must also clear editing state (e.g.
+      `setEditingPayment(null)`, `setShowForm(false)`). Otherwise stale form data
+      from a previously-viewed entity persists.
+- [ ] Redundant/dead conditions: when removing a feature-gate branch, verify that
+      surrounding boolean logic is simplified (common: `(A || B) && A` → just `A`).
 
 ### Data layer
 - [ ] All requests via `authAwareFetch`/`apiClient` (per `config.js`), not raw `fetch`.
@@ -82,6 +108,11 @@ Layer-specific, high-signal checks. Confirm each finding against source before r
       local-time pattern is used wherever a date string is turned into a Date.
 - [ ] Month arithmetic stays in 1–12; billing-cycle / future-month logic guarded.
 - [ ] Timezone handling via `backend/config/timezone.js` where applicable.
+- [ ] Date string construction from configurable day-of-month (`payment_due_day`,
+      billing cycle day, etc.) must clamp to last day of month:
+      `Math.min(configDay, new Date(year, month, 0).getDate())`.
+      Without clamping, day 29/30/31 in short months produces invalid dates like
+      `"2024-02-31"`. Check `autoPaymentLoggerService`, billing cycle generators.
 
 ## Severity guide
 - **Critical**: exploitable security hole, data loss/corruption, crash on normal input.

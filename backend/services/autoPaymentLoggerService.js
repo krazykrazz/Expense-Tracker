@@ -79,13 +79,19 @@ class AutoPaymentLoggerService {
       fixedExpenseName: fixedExpenseName
     });
 
-    // Log activity event for auto-payment
+    // Log activity event for auto-payment.
+    // Include fixedExpenseId only when the caller supplies it (e.g. the
+    // suggestion flow) so the metadata identifies the source fixed expense.
+    const eventMetadata = { loanId: fixedExpense.linked_loan_id, amount: fixedExpense.amount, fixedExpenseName, paymentDate };
+    if (fixedExpense.fixed_expense_id !== undefined && fixedExpense.fixed_expense_id !== null) {
+      eventMetadata.fixedExpenseId = fixedExpense.fixed_expense_id;
+    }
     activityLogService.logEvent(
       'auto_payment_logged',
       'loan_payment',
       payment.id,
       `Auto-logged payment of $${fixedExpense.amount.toFixed(2)} for ${fixedExpenseName}`,
-      { loanId: fixedExpense.linked_loan_id, amount: fixedExpense.amount, fixedExpenseName, paymentDate }
+      eventMetadata
     );
     
     return payment;
@@ -139,11 +145,6 @@ class AutoPaymentLoggerService {
         return false;
       }
       
-      // Skip lines of credit — they use balance-based tracking, not payment-based
-      if (expense.loan_type === 'line_of_credit') {
-        return false;
-      }
-      
       // Skip if payment already exists for this month
       if (paymentStatusMap.get(expense.loan_id)) {
         return false;
@@ -160,10 +161,12 @@ class AutoPaymentLoggerService {
     
     // Build suggestion objects with payment date
     return eligibleExpenses.map(expense => {
-      // Calculate the payment date (year-month-due_day)
+      // Calculate the payment date (year-month-due_day), clamped to last day of month
       // _Requirements: 4.3_
       const monthStr = String(month).padStart(2, '0');
-      const dayStr = String(expense.payment_due_day).padStart(2, '0');
+      const lastDay = new Date(year, month, 0).getDate();
+      const clampedDay = Math.min(expense.payment_due_day, lastDay);
+      const dayStr = String(clampedDay).padStart(2, '0');
       const paymentDate = `${year}-${monthStr}-${dayStr}`;
       
       return {
@@ -213,26 +216,20 @@ class AutoPaymentLoggerService {
       throw new Error('A payment already exists for this loan this month');
     }
     
-    // Calculate the payment date
+    // Calculate the payment date, clamped to last day of month
     const monthStr = String(month).padStart(2, '0');
-    const dayStr = String(expense.payment_due_day).padStart(2, '0');
+    const lastDay = new Date(year, month, 0).getDate();
+    const clampedDay = Math.min(expense.payment_due_day, lastDay);
+    const dayStr = String(clampedDay).padStart(2, '0');
     const paymentDate = `${year}-${monthStr}-${dayStr}`;
     
-    // Create the payment
+    // Create the payment (createPaymentFromFixedExpense already logs the activity event)
     const payment = await this.createPaymentFromFixedExpense({
       linked_loan_id: expense.loan_id,
       amount: expense.amount,
-      name: expense.fixed_expense_name
+      name: expense.fixed_expense_name,
+      fixed_expense_id: fixedExpenseId
     }, paymentDate);
-
-    // Log activity event for auto-payment from suggestion
-    activityLogService.logEvent(
-      'auto_payment_logged',
-      'loan_payment',
-      payment.id,
-      `Auto-logged payment of $${expense.amount.toFixed(2)} from suggestion for fixed expense "${expense.fixed_expense_name}"`,
-      { fixedExpenseId, loanId: expense.loan_id, amount: expense.amount }
-    );
 
     return payment;
   }

@@ -20,7 +20,8 @@ const LoanPaymentHistory = ({
   loading = false,
   onEdit = () => {},
   onDelete = () => {},
-  disabled = false
+  disabled = false,
+  hideRunningBalance = false
 }) => {
   const [deletingId, setDeletingId] = useState(null);
 
@@ -105,10 +106,12 @@ const LoanPaymentHistory = ({
             <span className="summary-label">Total Payments:</span>
             <span className="summary-value positive">{formatCurrency(totalPayments)}</span>
           </span>
+          {!hideRunningBalance && (
           <span className="summary-item">
             <span className="summary-label">Current Balance:</span>
             <span className="summary-value">{formatCurrency(currentBalance)}</span>
           </span>
+          )}
         </div>
       </div>
 
@@ -124,7 +127,7 @@ const LoanPaymentHistory = ({
               <tr>
                 <th>Date</th>
                 <th className="amount-col">Amount</th>
-                <th className="balance-col">Balance After</th>
+                {!hideRunningBalance && <th className="balance-col">Balance After</th>}
                 <th className="notes-col">Notes</th>
                 <th className="actions-col">Actions</th>
               </tr>
@@ -146,11 +149,13 @@ const LoanPaymentHistory = ({
                         -{formatCurrency(payment.amount)}
                       </span>
                     </td>
+                    {!hideRunningBalance && (
                     <td className="balance-cell">
                       <span className="running-balance">
                         {formatCurrency(payment.runningBalance)}
                       </span>
                     </td>
+                    )}
                     <td className="notes-cell">
                       {payment.notes ? (
                         <span className="payment-notes" title={payment.notes}>

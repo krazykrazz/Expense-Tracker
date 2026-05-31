@@ -177,9 +177,8 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
     setLoansLoading(true);
     try {
       const allLoans = await getAllLoans();
-      // Filter to only active loans (is_paid_off = 0) that support payments for the dropdown (Requirements 2.2)
-      // Lines of credit use balance-based tracking, not payment-based — exclude from linkage
-      const activeLoans = (allLoans || []).filter(loan => !loan.is_paid_off && loan.loan_type !== 'line_of_credit');
+      // Filter to only active loans (is_paid_off = 0) for the dropdown
+      const activeLoans = (allLoans || []).filter(loan => !loan.is_paid_off);
       setLoans(activeLoans);
       
       // Build a map for quick lookup (include all loans for display purposes)
@@ -730,14 +729,6 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
                                 <optgroup label="Paid Off">
                                   <option value={editLinkedLoan}>
                                     {loansMap[editLinkedLoan].name} (paid off)
-                                  </option>
-                                </optgroup>
-                              )}
-                              {/* Show LOC loan if editing expense already linked to one (LOCs excluded from new linkages) */}
-                              {editLinkedLoan && loansMap[editLinkedLoan] && loansMap[editLinkedLoan].loan_type === 'line_of_credit' && !loansMap[editLinkedLoan].is_paid_off && (
-                                <optgroup label="Line of Credit (no payment tracking)">
-                                  <option value={editLinkedLoan}>
-                                    {loansMap[editLinkedLoan].name}
                                   </option>
                                 </optgroup>
                               )}

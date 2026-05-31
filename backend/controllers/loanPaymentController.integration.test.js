@@ -150,13 +150,15 @@ describe('Loan Payment API Integration Tests', () => {
       expect(response.body.error).toBe('Loan not found');
     });
 
-    it('should return 400 for line of credit', async () => {
+    it('should allow payments for line of credit', async () => {
       const response = await request(app)
         .post(`/api/loans/${testLineOfCreditId}/loan-payments`)
         .send({ amount: 500, payment_date: '2024-06-15' })
-        .expect(400);
+        .expect(201);
 
-      expect(response.body.error).toBe('Payment tracking is only available for loans and mortgages');
+      expect(response.body).toHaveProperty('id');
+      expect(response.body.loan_id).toBe(testLineOfCreditId);
+      expect(response.body.amount).toBe(500);
     });
 
     it('should return 400 for negative amount', async () => {
@@ -277,12 +279,12 @@ describe('Loan Payment API Integration Tests', () => {
       expect(response.body.error).toBe('Loan not found');
     });
 
-    it('should return 400 for line of credit', async () => {
+    it('should return payments for line of credit', async () => {
       const response = await request(app)
         .get(`/api/loans/${testLineOfCreditId}/loan-payments`)
-        .expect(400);
+        .expect(200);
 
-      expect(response.body.error).toBe('Payment tracking is only available for loans and mortgages');
+      expect(Array.isArray(response.body)).toBe(true);
     });
   });
 

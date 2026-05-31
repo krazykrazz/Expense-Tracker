@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import * as fc from 'fast-check';
 import BudgetsModal from './BudgetsModal';
 
@@ -113,22 +113,23 @@ describe('BudgetsModal Copy Success Condition PBT', () => {
             mockCopyBudgets.mockResolvedValue(result);
 
             const onBudgetUpdated = vi.fn();
-            const { unmount } = render(
+            const { unmount, container } = render(
               <BudgetsModal {...defaultProps} onBudgetUpdated={onBudgetUpdated} />
             );
+            const view = within(container);
 
             await waitFor(() => {
-              expect(screen.getByRole('button', { name: /Copy from Previous Month/ })).toBeInTheDocument();
+              expect(view.getByRole('button', { name: /Copy from Previous Month/ })).toBeInTheDocument();
             });
 
-            fireEvent.click(screen.getByRole('button', { name: /Copy from Previous Month/ }));
+            fireEvent.click(view.getByRole('button', { name: /Copy from Previous Month/ }));
 
             await waitFor(() => {
               expect(mockCopyBudgets).toHaveBeenCalled();
             });
 
             // Success path: no alert dialog shown
-            expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+            expect(view.queryByRole('alertdialog')).not.toBeInTheDocument();
 
             unmount();
           }
@@ -151,15 +152,16 @@ describe('BudgetsModal Copy Success Condition PBT', () => {
             mockCopyBudgets.mockResolvedValue(result);
 
             const onBudgetUpdated = vi.fn();
-            const { unmount } = render(
+            const { unmount, container } = render(
               <BudgetsModal {...defaultProps} onBudgetUpdated={onBudgetUpdated} />
             );
+            const view = within(container);
 
             await waitFor(() => {
-              expect(screen.getByRole('button', { name: /Copy from Previous Month/ })).toBeInTheDocument();
+              expect(view.getByRole('button', { name: /Copy from Previous Month/ })).toBeInTheDocument();
             });
 
-            fireEvent.click(screen.getByRole('button', { name: /Copy from Previous Month/ }));
+            fireEvent.click(view.getByRole('button', { name: /Copy from Previous Month/ }));
 
             await waitFor(() => {
               expect(mockCopyBudgets).toHaveBeenCalled();

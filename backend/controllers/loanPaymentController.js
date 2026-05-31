@@ -35,7 +35,7 @@ async function createPayment(req, res) {
       amount,
       payment_date,
       notes,
-      balanceOverride: balanceOverride !== undefined ? parseFloat(balanceOverride) : undefined
+      balanceOverride: balanceOverride != null && balanceOverride !== '' ? parseFloat(balanceOverride) : undefined
     });
     
     res.status(201).json(payment);
@@ -44,8 +44,7 @@ async function createPayment(req, res) {
     if (error.message === 'Loan not found') {
       return res.status(404).json({ error: error.message });
     }
-    if (error.message === 'Payment tracking is only available for loans and mortgages' ||
-        error.message.includes('Payment amount') ||
+    if (error.message.includes('Payment amount') ||
         error.message.includes('Payment date') ||
         error.message.includes('Balance override')) {
       return res.status(400).json({ error: error.message });
@@ -73,9 +72,6 @@ async function getPayments(req, res) {
   } catch (error) {
     if (error.message === 'Loan not found') {
       return res.status(404).json({ error: error.message });
-    }
-    if (error.message === 'Payment tracking is only available for loans and mortgages') {
-      return res.status(400).json({ error: error.message });
     }
     res.status(500).json({ error: error.message });
   }
@@ -163,8 +159,7 @@ async function updatePayment(req, res) {
     if (error.message === 'Loan not found') {
       return res.status(404).json({ error: error.message });
     }
-    if (error.message === 'Payment tracking is only available for loans and mortgages' ||
-        error.message.includes('Payment amount') ||
+    if (error.message.includes('Payment amount') ||
         error.message.includes('Payment date') ||
         error.message.includes('Balance override')) {
       return res.status(400).json({ error: error.message });
@@ -210,9 +205,6 @@ async function deletePayment(req, res) {
   } catch (error) {
     if (error.message === 'Loan not found') {
       return res.status(404).json({ error: error.message });
-    }
-    if (error.message === 'Payment tracking is only available for loans and mortgages') {
-      return res.status(400).json({ error: error.message });
     }
     res.status(500).json({ error: error.message });
   }

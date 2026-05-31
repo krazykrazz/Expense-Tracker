@@ -170,8 +170,8 @@ describe('Property 13: Loan Type Determines Tracking Method', () => {
   });
 
   /**
-   * Property: For any loan with type 'line_of_credit', the Balance History
-   * section should be displayed instead of Payment Tracking.
+   * Property: For any loan with type 'line_of_credit', both the Balance History
+   * section and Payment Tracking section should be displayed.
    * 
    * **Validates: Requirements 5.2**
    */
@@ -203,9 +203,9 @@ describe('Property 13: Loan Type Determines Tracking Method', () => {
           expect(addBalanceButton).toBeInTheDocument();
           expect(addBalanceButton.textContent).toContain('Add Balance Entry');
 
-          // Payment Tracking section should NOT be visible
+          // Payment Tracking section should also be visible (LOC supports both)
           const paymentTrackingSection = container.querySelector('.loan-payment-tracking-section');
-          expect(paymentTrackingSection).not.toBeInTheDocument();
+          expect(paymentTrackingSection).toBeInTheDocument();
 
           unmount();
         }
@@ -267,14 +267,13 @@ describe('Property 13: Loan Type Determines Tracking Method', () => {
             const hasPaymentTracking = paymentTrackingSection !== null;
             const hasBalanceHistory = balanceHistorySection !== null;
 
-            // XOR: exactly one should be true for non-mortgage loans
-            expect(hasPaymentTracking !== hasBalanceHistory).toBe(true);
-
             if (loan.loan_type === 'loan') {
+              // Regular loans: payment tracking only
               expect(hasPaymentTracking).toBe(true);
               expect(hasBalanceHistory).toBe(false);
             } else {
-              expect(hasPaymentTracking).toBe(false);
+              // Lines of credit: both payment tracking and balance history
+              expect(hasPaymentTracking).toBe(true);
               expect(hasBalanceHistory).toBe(true);
             }
           }

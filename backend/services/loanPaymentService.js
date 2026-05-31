@@ -63,20 +63,15 @@ class LoanPaymentService {
 
   /**
    * Verify loan exists and is eligible for payment tracking
-   * Payment tracking is only available for loans and mortgages, not lines of credit (Requirement 5.1)
    * @param {number} loanId - Loan ID
    * @returns {Promise<Object>} The loan object
-   * @throws {Error} If loan not found or is a line of credit
+   * @throws {Error} If loan not found
    */
   async verifyLoanEligibility(loanId) {
     const loan = await loanRepository.findById(loanId);
     
     if (!loan) {
       throw new Error('Loan not found');
-    }
-    
-    if (loan.loan_type === 'line_of_credit') {
-      throw new Error('Payment tracking is only available for loans and mortgages');
     }
     
     return loan;

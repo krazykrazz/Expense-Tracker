@@ -1,6 +1,8 @@
 # Stage 1: Frontend Builder
 FROM node:20-alpine AS frontend-builder
 
+RUN apk upgrade --no-cache
+
 WORKDIR /build/frontend
 
 # Copy frontend package files
@@ -22,7 +24,8 @@ RUN npm run build
 FROM node:20-alpine AS backend-deps
 
 # Install build dependencies for native modules (sqlite3)
-RUN apk add --no-cache python3 make g++
+RUN apk upgrade --no-cache && \
+    apk add --no-cache python3 make g++
 
 WORKDIR /build/backend
 
@@ -40,8 +43,9 @@ ARG IMAGE_TAG=unknown
 ARG BUILD_DATE=unknown
 ARG GIT_COMMIT=unknown
 
-# Install tzdata for timezone support
-RUN apk add --no-cache tzdata wget
+# Upgrade all system packages to fix known vulnerabilities, then install extras
+RUN apk upgrade --no-cache && \
+    apk add --no-cache tzdata wget
 
 # Set working directory
 WORKDIR /app

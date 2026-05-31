@@ -46,6 +46,7 @@ function currentMonthDate(day) {
 
 function priorMonthDate(day, monthsBack = 1) {
   const now = new Date();
+  now.setDate(1); // avoid month-length overflow (e.g. May 31 → "April 31" rolls to May)
   now.setMonth(now.getMonth() - monthsBack);
   const y = now.getFullYear();
   const m = (now.getMonth() + 1).toString().padStart(2, '0');
@@ -196,6 +197,7 @@ describe('Property 6: Alert_Prioritizer global monthly cap', () => {
         // All prior-month anomalies should be in the output
         const priorMonthPrefix = (() => {
           const now = new Date();
+          now.setDate(1); // avoid month-length overflow (e.g. May 31 → "April 31" rolls to May)
           now.setMonth(now.getMonth() - 1);
           const y = now.getFullYear();
           const m = (now.getMonth() + 1).toString().padStart(2, '0');

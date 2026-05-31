@@ -180,9 +180,9 @@ describe('ExpenseForm - Advanced Options Section', () => {
     });
 
     // With MockCollapsibleSection, content is always rendered
-    // Verify future months checkbox is visible
-    const futureMonthsCheckbox = screen.getByText(/Add to Future Months/i);
-    expect(futureMonthsCheckbox).toBeInTheDocument();
+    // Verify future months select is visible
+    const futureMonthsSelect = screen.getByLabelText(/Repeat for Future Months/i);
+    expect(futureMonthsSelect).toBeInTheDocument();
   });
 
   /**
@@ -201,23 +201,9 @@ describe('ExpenseForm - Advanced Options Section', () => {
     const advancedOptionsHeader = container.querySelector('[data-testid="collapsible-header-advanced-options"]');
     expect(advancedOptionsHeader).toBeInTheDocument();
 
-    // Wait for the content to be visible
-    await waitFor(() => {
-      const futureMonthsLabel = screen.queryByText(/Add to Future Months/i);
-      expect(futureMonthsLabel).toBeInTheDocument();
-    });
-
-    // Check the future months checkbox
-    const futureMonthsCheckbox = container.querySelector('input[type="checkbox"]');
-    await user.click(futureMonthsCheckbox);
-
-    await waitFor(() => {
-      const futureMonthsSelect = container.querySelector('select[name="futureMonths"]');
-      expect(futureMonthsSelect).toBeInTheDocument();
-    });
-
-    // Set future months to 3
+    // Set future months to 3 via the single select control
     const futureMonthsSelect = container.querySelector('select[name="futureMonths"]');
+    expect(futureMonthsSelect).toBeInTheDocument();
     await user.selectOptions(futureMonthsSelect, '3');
 
     await waitFor(() => {
@@ -332,22 +318,9 @@ describe('ExpenseForm - Advanced Options Section', () => {
     // Get the header element
     const advancedOptionsHeader = container.querySelector('[data-testid="collapsible-header-advanced-options"]');
 
-    // Wait for content to be visible
-    await waitFor(() => {
-      const futureMonthsLabel = screen.queryByText(/Add to Future Months/i);
-      expect(futureMonthsLabel).toBeInTheDocument();
-    });
-
-    // Set future months
-    const futureMonthsCheckbox = container.querySelector('input[type="checkbox"]');
-    await user.click(futureMonthsCheckbox);
-
-    await waitFor(() => {
-      const futureMonthsSelect = container.querySelector('select[name="futureMonths"]');
-      expect(futureMonthsSelect).toBeInTheDocument();
-    });
-
+    // Set future months to 2 via the single select control
     const futureMonthsSelect = container.querySelector('select[name="futureMonths"]');
+    expect(futureMonthsSelect).toBeInTheDocument();
     await user.selectOptions(futureMonthsSelect, '2');
 
     // Wait for posted date field to be visible
@@ -961,12 +934,12 @@ describe('ExpenseForm - Help Tooltips', () => {
 
     // With MockCollapsibleSection, content is always visible
     await waitFor(() => {
-      const futureMonthsLabel = screen.getByText(/Add to Future Months/i);
+      const futureMonthsLabel = screen.getByText(/Repeat for Future Months/i);
       expect(futureMonthsLabel).toBeInTheDocument();
     });
 
     // Find the help tooltip icon
-    const futureMonthsLabel = screen.getByText(/Add to Future Months/i);
+    const futureMonthsLabel = screen.getByText(/Repeat for Future Months/i);
     const helpIcon = futureMonthsLabel.parentElement.querySelector('.help-tooltip-icon');
     
     expect(helpIcon).toBeInTheDocument();

@@ -4,9 +4,9 @@
  * Tests for the Future Months feature in ExpenseForm component.
  * 
  * This file contains tests for:
- * - Future months checkbox rendering and behavior
+ * - Future months select rendering and behavior
  * - Date range preview display
- * - Future months dropdown selection
+ * - Future months selection
  * - API parameter passing (futureMonths)
  * - Success messages with future expense count
  * - Form reset after submission
@@ -142,10 +142,10 @@ describe('ExpenseForm - Future Months Feature', () => {
   });
 
   /**
-   * Test future months checkbox renders
+   * Test future months select renders
    * Requirements: 1.1, 1.2
    */
-  it('should render future months checkbox', async () => {
+  it('should render future months select', async () => {
     render(<ExpenseForm onExpenseAdded={() => {}} />);
 
     // Wait for component to load
@@ -162,15 +162,18 @@ describe('ExpenseForm - Future Months Feature', () => {
       expect(advancedOptionsHeader.getAttribute('aria-expanded')).toBe('true');
     });
 
-    // Find the future months checkbox by its label text
-    expect(screen.getByText(/add to future months/i)).toBeInTheDocument();
+    // Find the future months select by its label
+    const select = screen.getByLabelText(/repeat for future months/i);
+    expect(select).toBeInTheDocument();
+    expect(select.value).toBe('0');
+    expect(select.options[0].text).toBe('Off');
   });
 
   /**
-   * Test default value is unchecked (0 months)
+   * Test default value is Off (0 months)
    * Requirements: 1.7
    */
-  it('should have future months checkbox unchecked by default', async () => {
+  it('should have future months set to Off by default', async () => {
     render(<ExpenseForm onExpenseAdded={() => {}} />);
 
     // Wait for component to load
@@ -187,17 +190,16 @@ describe('ExpenseForm - Future Months Feature', () => {
       expect(advancedOptionsHeader.getAttribute('aria-expanded')).toBe('true');
     });
 
-    // Find the checkbox in the future-months-section
-    const futureMonthsSection = document.querySelector('.future-months-section');
-    const checkbox = futureMonthsSection.querySelector('input[type="checkbox"]');
-    expect(checkbox.checked).toBe(false);
+    // Find the select and assert default value is 0 (Off)
+    const select = screen.getByLabelText(/repeat for future months/i);
+    expect(select.value).toBe('0');
   });
 
   /**
    * Test date range preview display when future months > 0
    * Requirements: 1.1, 1.2
    */
-  it('should show date range preview when future months checkbox is checked', async () => {
+  it('should show date range preview when future months is selected', async () => {
     render(<ExpenseForm onExpenseAdded={() => {}} />);
 
     // Wait for component to load
@@ -217,12 +219,11 @@ describe('ExpenseForm - Future Months Feature', () => {
     // Initially, no preview should be shown
     expect(screen.queryByText(/will create/i)).not.toBeInTheDocument();
 
-    // Check the future months checkbox
-    const futureMonthsSection = document.querySelector('.future-months-section');
-    const checkbox = futureMonthsSection.querySelector('input[type="checkbox"]');
-    fireEvent.click(checkbox);
+    // Select 1 month from the future months select
+    const select = screen.getByLabelText(/repeat for future months/i);
+    fireEvent.change(select, { target: { value: '1' } });
 
-    // Preview should now be shown (default is 1 month when checked)
+    // Preview should now be shown
     await waitFor(() => {
       expect(screen.getByText(/will create 1 additional expense/i)).toBeInTheDocument();
     });
@@ -268,17 +269,9 @@ describe('ExpenseForm - Future Months Feature', () => {
       expect(advancedOptionsHeader.getAttribute('aria-expanded')).toBe('true');
     });
 
-    // Check the future months checkbox and select 2 months
-    const futureMonthsSection = document.querySelector('.future-months-section');
-    const checkbox = futureMonthsSection.querySelector('input[type="checkbox"]');
-    fireEvent.click(checkbox);
-
-    // Wait for dropdown to appear and select 2 months
-    await waitFor(() => {
-      const dropdown = futureMonthsSection.querySelector('select');
-      expect(dropdown).toBeInTheDocument();
-      fireEvent.change(dropdown, { target: { value: '2' } });
-    });
+    // Select 2 months from the future months select
+    const select = screen.getByLabelText(/repeat for future months/i);
+    fireEvent.change(select, { target: { value: '2' } });
 
     // Submit the form
     fireEvent.submit(screen.getByRole('button', { name: /add expense/i }));
@@ -289,7 +282,7 @@ describe('ExpenseForm - Future Months Feature', () => {
     });
 
     // After form reset, Advanced Options section should collapse
-    // We need to expand it again to check the checkbox state
+    // We need to expand it again to check the select state
     await waitFor(() => {
       const advancedOptionsHeaderAfterReset = screen.getByRole('button', { name: /Advanced Options/i });
       expect(advancedOptionsHeaderAfterReset.getAttribute('aria-expanded')).toBe('false');
@@ -304,11 +297,10 @@ describe('ExpenseForm - Future Months Feature', () => {
       expect(advancedOptionsHeaderAfterReset.getAttribute('aria-expanded')).toBe('true');
     });
 
-    // Future months checkbox should be unchecked after reset
+    // Future months select should be reset to 0 (Off)
     await waitFor(() => {
-      const futureMonthsSectionAfterReset = document.querySelector('.future-months-section');
-      const checkboxAfterReset = futureMonthsSectionAfterReset.querySelector('input[type="checkbox"]');
-      expect(checkboxAfterReset.checked).toBe(false);
+      const selectAfterReset = screen.getByLabelText(/repeat for future months/i);
+      expect(selectAfterReset.value).toBe('0');
     });
   });
 
@@ -348,17 +340,9 @@ describe('ExpenseForm - Future Months Feature', () => {
       expect(advancedOptionsHeader.getAttribute('aria-expanded')).toBe('true');
     });
 
-    // Check the future months checkbox and select 3 months
-    const futureMonthsSection = document.querySelector('.future-months-section');
-    const checkbox = futureMonthsSection.querySelector('input[type="checkbox"]');
-    fireEvent.click(checkbox);
-
-    // Wait for dropdown to appear and select 3 months
-    await waitFor(() => {
-      const dropdown = futureMonthsSection.querySelector('select');
-      expect(dropdown).toBeInTheDocument();
-      fireEvent.change(dropdown, { target: { value: '3' } });
-    });
+    // Select 3 months from the future months select
+    const select = screen.getByLabelText(/repeat for future months/i);
+    fireEvent.change(select, { target: { value: '3' } });
 
     // Submit the form
     fireEvent.submit(screen.getByRole('button', { name: /add expense/i }));
@@ -415,17 +399,9 @@ describe('ExpenseForm - Future Months Feature', () => {
       expect(advancedOptionsHeader.getAttribute('aria-expanded')).toBe('true');
     });
 
-    // Check the future months checkbox and select 3 months
-    const futureMonthsSection = document.querySelector('.future-months-section');
-    const checkbox = futureMonthsSection.querySelector('input[type="checkbox"]');
-    fireEvent.click(checkbox);
-
-    // Wait for dropdown to appear and select 3 months
-    await waitFor(() => {
-      const dropdown = futureMonthsSection.querySelector('select');
-      expect(dropdown).toBeInTheDocument();
-      fireEvent.change(dropdown, { target: { value: '3' } });
-    });
+    // Select 3 months from the future months select
+    const select = screen.getByLabelText(/repeat for future months/i);
+    fireEvent.change(select, { target: { value: '3' } });
 
     // Submit the form
     fireEvent.submit(screen.getByRole('button', { name: /add expense/i }));
@@ -437,10 +413,10 @@ describe('ExpenseForm - Future Months Feature', () => {
   });
 
   /**
-   * Test no preview shown when future months checkbox is unchecked
+   * Test no preview shown when future months is Off
    * Requirements: 1.7
    */
-  it('should not show preview when future months checkbox is unchecked', async () => {
+  it('should not show preview when future months is Off', async () => {
     render(<ExpenseForm onExpenseAdded={() => {}} />);
 
     // Wait for component to load
@@ -457,21 +433,20 @@ describe('ExpenseForm - Future Months Feature', () => {
       expect(advancedOptionsHeader.getAttribute('aria-expanded')).toBe('true');
     });
 
-    // Verify no preview is shown with default unchecked state
+    // Verify no preview is shown with default Off state
     expect(screen.queryByText(/will create/i)).not.toBeInTheDocument();
 
-    // Check the future months checkbox
-    const futureMonthsSection = document.querySelector('.future-months-section');
-    const checkbox = futureMonthsSection.querySelector('input[type="checkbox"]');
-    fireEvent.click(checkbox);
+    // Select 1 month to show preview
+    const select = screen.getByLabelText(/repeat for future months/i);
+    fireEvent.change(select, { target: { value: '1' } });
 
     // Preview should be shown
     await waitFor(() => {
       expect(screen.getByText(/will create/i)).toBeInTheDocument();
     });
 
-    // Uncheck the checkbox
-    fireEvent.click(checkbox);
+    // Set back to Off
+    fireEvent.change(select, { target: { value: '0' } });
 
     // Preview should be hidden again
     await waitFor(() => {

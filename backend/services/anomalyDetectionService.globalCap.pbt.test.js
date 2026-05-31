@@ -46,6 +46,7 @@ function currentMonthDate(day) {
 /** Build a YYYY-MM-DD string for a prior month (monthsBack >= 1). */
 function priorMonthDate(day, monthsBack = 1) {
   const now = new Date();
+  now.setDate(1); // avoid month-length overflow (e.g. May 31 → "April 31" rolls to May)
   now.setMonth(now.getMonth() - monthsBack);
   const y = now.getFullYear();
   const m = (now.getMonth() + 1).toString().padStart(2, '0');

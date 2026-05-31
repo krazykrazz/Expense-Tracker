@@ -49,6 +49,7 @@ function currentMonthDate(day) {
 // Get prior month date string (stay safely in month to avoid timezone issues)
 function priorMonthDate(day) {
   const now = new Date();
+  now.setDate(1); // avoid month-length overflow (e.g. May 31 → "April 31" rolls to May)
   now.setMonth(now.getMonth() - 1);
   const y = now.getFullYear();
   const m = (now.getMonth() + 1).toString().padStart(2, '0');
@@ -228,6 +229,7 @@ describe('AnomalyDetectionService._enforceAlertLimits', () => {
       const priorResults = result.filter(a => {
         const d = new Date(a.date);
         const now = new Date();
+        now.setDate(1); // avoid month-length overflow
         now.setMonth(now.getMonth() - 1);
         return d.getMonth() === now.getMonth();
       });

@@ -34,6 +34,11 @@
 
 
 
+
+
+## [1.9.0] - 2026-05-31
+
+### Phase 1 UX improvements, CI optimizations, event dedup fix, LOC payment tracking
 ## [1.8.0] - 2026-05-30
 
 ### UI/UX improvements: code splitting, accessible confirm dialogs, keyboard autocomplete

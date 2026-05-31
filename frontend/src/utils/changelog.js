@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.9.0',
+    date: 'May 31, 2026',
+    added: [],
+    changed: ['Phase 1 UX improvements, CI optimizations, event dedup fix, LOC payment tracking'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.8.0',
     date: 'May 30, 2026',
     added: [],

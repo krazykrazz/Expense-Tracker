@@ -446,7 +446,7 @@ describe('CreditCardDetailView - Billing Cycle Integration', () => {
       await waitFor(() => {
         const actualBadge = container.querySelector('.actual-badge');
         expect(actualBadge).toBeTruthy();
-        expect(actualBadge.textContent).toBe('Actual');
+        expect(actualBadge.textContent).toContain('Actual');
       });
     });
 
@@ -471,7 +471,7 @@ describe('CreditCardDetailView - Billing Cycle Integration', () => {
       await waitFor(() => {
         const calculatedBadge = container.querySelector('.calculated-badge');
         expect(calculatedBadge).toBeTruthy();
-        expect(calculatedBadge.textContent).toBe('Calculated');
+        expect(calculatedBadge.textContent).toContain('Calculated');
       });
     });
 

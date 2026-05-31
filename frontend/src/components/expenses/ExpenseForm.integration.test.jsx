@@ -411,17 +411,11 @@ describe('ExpenseForm Integration Tests', () => {
         fireEvent.change(container.querySelector('#payment_method_id'), { target: { value: '3' } });
       });
 
-      // Expand Advanced Options, enter posted date
-      const advHeader = findSectionHeader(container, 'Advanced Options');
-      await act(async () => { fireEvent.click(advHeader); });
+      // Posted date is now inline (not in Advanced Options) for credit card payments
       await waitFor(() => { expect(container.querySelector('#posted_date')).toBeInTheDocument(); });
       await act(async () => {
         fireEvent.change(container.querySelector('#posted_date'), { target: { value: '2025-04-03' } });
       });
-
-      // Collapse the section
-      await act(async () => { fireEvent.click(advHeader); });
-      await waitFor(() => { expect(container.querySelector('#posted_date')).not.toBeInTheDocument(); });
 
       // Expand Reimbursement, enter data
       const reimbHeader = findSectionHeader(container, 'Reimbursement');
@@ -470,26 +464,20 @@ describe('ExpenseForm Integration Tests', () => {
         fireEvent.change(container.querySelector('#payment_method_id'), { target: { value: '3' } }); // credit card
       });
 
-      // Expand Advanced Options and enter invalid posted date (before expense date)
-      const advHeader = findSectionHeader(container, 'Advanced Options');
-      await act(async () => { fireEvent.click(advHeader); });
+      // Posted date is now inline — enter an invalid posted date (before expense date)
       await waitFor(() => { expect(container.querySelector('#posted_date')).toBeInTheDocument(); });
       await act(async () => {
         fireEvent.change(container.querySelector('#posted_date'), { target: { value: '2025-04-01' } });
       });
 
-      // Collapse the section
-      await act(async () => { fireEvent.click(advHeader); });
-      await waitFor(() => { expect(advHeader.getAttribute('aria-expanded')).toBe('false'); });
-
-      // Submit - should trigger validation error and auto-expand
+      // Submit - should trigger validation error
       await act(async () => {
         fireEvent.submit(container.querySelector('form'));
       });
 
-      // The section should auto-expand due to validation error
+      // Should show a validation error for posted date being before expense date
       await waitFor(() => {
-        expect(advHeader.getAttribute('aria-expanded')).toBe('true');
+        expect(container.querySelector('.error-message, .validation-error, [class*="error"]')).toBeInTheDocument();
       });
     });
   });

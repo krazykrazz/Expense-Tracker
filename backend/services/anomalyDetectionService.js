@@ -42,6 +42,8 @@ class AnomalyDetectionService {
     this._dismissedAnomalyTypesCache = null;
     // Cache for vendor baselines (computed per detection cycle)
     this._vendorBaselineCache = null;
+    // Track logged event groups to avoid duplicate activity log spam
+    this._loggedEventGroupKeys = new Set();
   }
 
   /**
@@ -433,8 +435,11 @@ class AnomalyDetectionService {
         const { eventGroups, ungrouped } = detectEventGroups(filteredAnomalies);
         filteredAnomalies = [...ungrouped, ...eventGroups.map(g => g.alert)];
 
-        // Log activity for each detected event group
+        // Log activity for each detected event group (deduplicated)
         for (const group of eventGroups) {
+          const groupKey = `${group.theme}|${group.dateRange.start}|${group.dateRange.end}`;
+          if (this._loggedEventGroupKeys.has(groupKey)) continue;
+          this._loggedEventGroupKeys.add(groupKey);
           try {
             this._logActivity(
               'event_group_detected',

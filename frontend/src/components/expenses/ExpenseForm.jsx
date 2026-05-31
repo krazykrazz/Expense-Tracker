@@ -968,6 +968,26 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
           </div>
         </div>
 
+        {/* Configured-State Summary Strip (shows non-default optional state) */}
+        {(() => {
+          const parts = [];
+          if (isMedicalExpense) parts.push('Medical');
+          const peopleBadge = calculatePeopleBadge(selectedPeople);
+          if (peopleBadge) parts.push(peopleBadge);
+          const insuranceBadge = calculateInsuranceBadge(insuranceEligible, claimStatus);
+          if (insuranceBadge) parts.push(insuranceBadge);
+          const invoiceBadge = calculateInvoiceBadge(invoices);
+          if (invoiceBadge) parts.push(invoiceBadge);
+          if (futureMonths > 0) parts.push(`Repeats ${futureMonths}mo`);
+          if (isCreditCard && postedDate) parts.push('Posted date set');
+          if (parts.length === 0) return null;
+          return (
+            <div className="configured-state-strip">
+              {parts.join(' · ')}
+            </div>
+          );
+        })()}
+
         {/* Row 3: Payment Method (Requirements 3.2, 4.1, 4.2, 4.5) */}
         <div className="form-group">
           <label htmlFor="payment_method_id">
@@ -1041,6 +1061,50 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
             </select>
           )}
         </div>
+
+        {/* Inline Posted Date for Credit Card Expenses (Requirements 4.1, 4.2) */}
+        {isCreditCard && (
+          <div className="form-group posted-date-inline">
+            <label htmlFor="posted_date">
+              Posted Date (optional)
+              <HelpTooltip content={HELP_TEXT.postedDate} position="right" />
+            </label>
+            <div className="posted-date-input-wrapper">
+              <input
+                type="date"
+                id="posted_date"
+                name="posted_date"
+                value={postedDate}
+                onChange={handlePostedDateChange}
+                disabled={isSubmitting}
+                className={postedDateError ? 'input-error' : ''}
+              />
+              {postedDate && (
+                <button
+                  type="button"
+                  className="clear-posted-date-btn"
+                  onClick={() => {
+                    setPostedDate('');
+                    setPostedDateError('');
+                  }}
+                  disabled={isSubmitting}
+                  title="Clear posted date"
+                  aria-label="Clear posted date"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+            <small className="form-hint">
+              Leave empty to use transaction date
+            </small>
+            {postedDateError && (
+              <div className="posted-date-error">
+                {postedDateError}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* People Assignment Section for Medical Expenses (Requirements 7.1, 7.2, 7.4) */}
         {isMedicalExpense && (
@@ -1447,80 +1511,27 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
           badge={calculateAdvancedOptionsBadge(futureMonths, isCreditCard ? postedDate : '')}
           hasError={sectionHasError('advancedOptions')}
         >
-          {/* Posted Date Field for Credit Card Expenses (Requirements 4.1, 4.2) */}
-          {isCreditCard && (
-            <div className="form-group posted-date-section">
-              <label htmlFor="posted_date">
-                Posted Date (optional)
-                <HelpTooltip content={HELP_TEXT.postedDate} position="right" />
-              </label>
-              <div className="posted-date-input-wrapper">
-                <input
-                  type="date"
-                  id="posted_date"
-                  name="posted_date"
-                  value={postedDate}
-                  onChange={handlePostedDateChange}
-                  disabled={isSubmitting}
-                  className={postedDateError ? 'input-error' : ''}
-                />
-                {postedDate && (
-                  <button
-                    type="button"
-                    className="clear-posted-date-btn"
-                    onClick={() => {
-                      setPostedDate('');
-                      setPostedDateError('');
-                    }}
-                    disabled={isSubmitting}
-                    title="Clear posted date"
-                    aria-label="Clear posted date"
-                  >
-                    ✕
-                  </button>
-                )}
-              </div>
-              <small className="form-hint">
-                Leave empty to use transaction date, or set when this posts to your statement
-              </small>
-              {postedDateError && (
-                <div className="posted-date-error">
-                  {postedDateError}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Future Months checkbox + dropdown (Requirements 1.1, 1.2, 1.7, 2.1, 2.2) */}
+          {/* Future Months single control (Requirements 1.1, 1.2, 1.7, 2.1, 2.2) */}
           <div className="form-group future-months-section">
             <div className="future-months-row">
-              <label className="checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={futureMonths > 0}
-                  onChange={(e) => setFutureMonths(e.target.checked ? 1 : 0)}
-                />
-                <span>Add to Future Months</span>
+              <label htmlFor="futureMonths">
+                Repeat for Future Months
                 <HelpTooltip content={HELP_TEXT.futureMonths} position="right" />
               </label>
-              {futureMonths > 0 && (
-                <div className="future-months-count">
-                  <select
-                    id="futureMonths"
-                    name="futureMonths"
-                    value={futureMonths}
-                    onChange={(e) => setFutureMonths(parseInt(e.target.value, 10))}
-                    className="future-months-select"
-                  >
-                    {FUTURE_MONTHS_OPTIONS.map(option => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                  <span className="months-label">month{futureMonths > 1 ? 's' : ''}</span>
-                </div>
-              )}
+              <select
+                id="futureMonths"
+                name="futureMonths"
+                value={futureMonths}
+                onChange={(e) => setFutureMonths(parseInt(e.target.value, 10))}
+                className="future-months-select"
+              >
+                <option value={0}>Off</option>
+                {FUTURE_MONTHS_OPTIONS.map(option => (
+                  <option key={option.value} value={option.value}>
+                    {option.label} month{option.value > 1 ? 's' : ''}
+                  </option>
+                ))}
+              </select>
             </div>
             {futureMonths > 0 && formData.date && (
               <div className="future-months-preview">

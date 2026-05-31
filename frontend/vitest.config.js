@@ -19,10 +19,9 @@ export default defineConfig({
     pool: 'forks',
     poolOptions: {
       forks: {
-        // Single fork in CI for stability, parallel in local dev
-        singleFork: isCI,
-        // Use 75% of CPU cores for parallel execution (local dev only)
-        maxForks: isCI ? 1 : undefined
+        // Use 2 forks in CI for speed (retry handles flakiness), full parallel locally
+        singleFork: false,
+        maxForks: isCI ? 2 : undefined
       }
     },
     // Better error reporting

@@ -6,6 +6,7 @@ import { createLogger } from '../../utils/logger';
 import CreditCardPaymentForm from './CreditCardPaymentForm';
 import BillingCycleHistoryForm from './BillingCycleHistoryForm';
 import UnifiedBillingCycleList from './UnifiedBillingCycleList';
+import HelpTooltip from '../shared/HelpTooltip';
 import './CreditCardDetailView.css';
 import '../financial/FinancialOverviewModal.css';
 
@@ -371,10 +372,16 @@ const CreditCardDetailView = ({
                       <span className="paid-badge">✓ Paid</span>
                     )}
                     {currentCycleStatus?.hasActualBalance && !statementBalanceInfo?.isPaid && (
-                      <span className="actual-badge" title="User-provided actual balance">Actual</span>
+                      <span className="actual-badge">
+                        Actual
+                        <HelpTooltip content="The statement balance you entered from your credit card statement." position="top" />
+                      </span>
                     )}
                     {!currentCycleStatus?.hasActualBalance && !statementBalanceInfo?.isPaid && (
-                      <span className="calculated-badge" title="Calculated from tracked expenses">Calculated</span>
+                      <span className="calculated-badge">
+                        Calculated
+                        <HelpTooltip content="Sum of recorded transactions for this billing cycle. Enter your actual statement balance for a more accurate figure." position="top" />
+                      </span>
                     )}
                   </div>
                   <div className="overview-value balance-value">

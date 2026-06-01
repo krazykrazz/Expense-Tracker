@@ -271,5 +271,12 @@ For issues or questions about Merchant Analytics:
 
 ---
 
-**Last Updated**: December 20, 2025  
-**Feature Status**: ✅ Complete and Deployed (v4.9.0 with Fixed Expenses Integration)
+**Last Reviewed**: June 2026  
+**Feature Status**: ✅ Complete and Deployed (originally introduced in v4.9.0; now part of the current 1.x release line)
+## Versioning Context
+
+Historical version references in this document (for example `v4.x` or `v5.x`) describe pre-1.0 release history.
+Current release numbering uses the `1.x` scheme.
+
+**Last Reviewed:** June 1, 2026
+

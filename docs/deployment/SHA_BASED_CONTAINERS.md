@@ -136,7 +136,7 @@ Deployed to: expense-tracker
 | `-BuildOnly` | Build SHA image but don't tag for environment | False |
 | `-SkipDeploy` | Skip container deployment | False |
 | `-SkipAuth` | Skip registry authentication check | False |
-| `-ComposeFile` | Path to docker-compose file | `G:\My Drive\Media Related\docker\media-applications.yml` |
+| `-ComposeFile` | Path to docker-compose file | `docker-compose.yml` |
 
 ## Image Tags
 
@@ -175,7 +175,7 @@ docker tag ghcr.io/krazykrazz/expense-tracker:def5678 ghcr.io/krazykrazz/expense
 docker push ghcr.io/krazykrazz/expense-tracker:latest
 
 # Restart container
-docker-compose -f "G:\My Drive\Media Related\docker\media-applications.yml" up -d expense-tracker
+docker compose -f docker-compose.yml up -d expense-tracker
 ```
 
 ## Environment Mapping
@@ -184,6 +184,14 @@ docker-compose -f "G:\My Drive\Media Related\docker\media-applications.yml" up -
 |-------------|------------------------|----------------|------------|
 | `staging` | `expense-tracker-test` | expense-tracker-test | `staging` |
 | `latest` | `expense-tracker` | expense-tracker | `latest` |
+
+## Compose Files
+
+- `docker-compose.yml`: canonical local production/staging compose file used by the repo.
+- `docker-compose.preview.yml`: feature preview environment.
+- `docker-compose.ghcr.yml`: minimal example for deploying GHCR images without the full repo compose setup.
+
+Use `docker-compose.yml` as the default target for `build-and-push.ps1` unless you explicitly need a different compose file.
 
 ## Best Practices
 

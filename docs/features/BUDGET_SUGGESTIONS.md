@@ -166,3 +166,10 @@ Potential improvements for future versions:
 - [Budget Management Guide](../guides/BUDGET_MANAGEMENT_GUIDE.md)
 - [Budget Tracking & Alerts Specification](../../specs/budget-tracking-alerts/)
 - [API Documentation](../../README.md#api-endpoints)
+## Versioning Context
+
+Historical version references in this document (for example `v4.x` or `v5.x`) describe pre-1.0 release history.
+Current release numbering uses the `1.x` scheme.
+
+**Last Reviewed:** June 1, 2026
+

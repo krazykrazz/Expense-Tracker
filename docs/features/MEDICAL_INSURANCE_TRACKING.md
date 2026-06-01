@@ -220,3 +220,10 @@ The feature includes comprehensive property-based tests validating:
 
 **Version:** 4.14.0  
 **Last Updated:** January 21, 2026
+## Versioning Context
+
+Historical version references in this document (for example `v4.x` or `v5.x`) describe pre-1.0 release history.
+Current release numbering uses the `1.x` scheme.
+
+**Last Reviewed:** June 1, 2026
+

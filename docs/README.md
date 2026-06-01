@@ -16,7 +16,7 @@ Getting started and using the application:
 Contributing and developing:
 
 ### Getting Started
-- [Development Setup](development/SETUP.md) - Local development environment
+- [Startup Guide](guides/STARTUP_GUIDE.md) - Local development and Docker startup
 - [Feature Branch Workflow](development/FEATURE_BRANCH_WORKFLOW.md) - Git workflow and branching
 - [GitHub Actions CI/CD](development/GITHUB_ACTIONS_CICD.md) - Continuous integration
 
@@ -29,6 +29,7 @@ Contributing and developing:
 - [Deployment Workflow](deployment/DEPLOYMENT_WORKFLOW.md) - Internal deployment process
 - [SHA-Based Containers](deployment/SHA_BASED_CONTAINERS.md) - Container workflow
 - [Workflow Automation](deployment/WORKFLOW_AUTOMATION.md) - Automated deployments
+- [Quick Build Guide](deployment/QUICK_BUILD_GUIDE.md) - Fast GHCR build/promote reference
 
 ### Project Steering
 - [Steering Index](steering/README.md) - Repository-tracked development rules and conventions
@@ -54,7 +55,7 @@ docs/
 │   ├── USER_GUIDE.md
 │   └── STARTUP_GUIDE.md
 ├── development/         # Developer guides
-│   ├── SETUP.md
+│   ├── VALIDATION_UTILITIES_GUIDE.md
 │   ├── FEATURE_BRANCH_WORKFLOW.md
 │   └── FRONTEND_TESTING_GUIDELINES.md
 ├── steering/            # Project steering and workflow rules
@@ -75,7 +76,7 @@ docs/
 ## Quick Links
 
 - **I want to use the app**: Start with [Docker Deployment Guide](guides/DOCKER_DEPLOYMENT.md)
-- **I want to contribute**: Start with [Development Setup](development/SETUP.md)
+- **I want to contribute**: Start with [Startup Guide](guides/STARTUP_GUIDE.md)
 - **I want coding workflow rules**: Start with [Steering Index](steering/README.md)
 - **I want to understand a feature**: Check [Feature Documentation](features/)
 - **I want spec artifacts**: See `../specs/` for active specs and `../specs/archive/` for completed specs
@@ -86,4 +87,4 @@ docs/
 
 - Check the [User Guide](guides/USER_GUIDE.md) for feature questions
 - Review [GitHub Issues](https://github.com/krazykrazz/expense-tracker/issues) for known issues
-- See [Development Setup](development/SETUP.md) for development questions
+- See [Startup Guide](guides/STARTUP_GUIDE.md) for development questions

@@ -227,3 +227,10 @@ For issues or questions about income source categories:
 - [Design](specs/income-source-categories/design.md)
 - [Tasks](specs/income-source-categories/tasks.md)
 - [Migration Implementation](specs/income-source-categories/MIGRATION_IMPLEMENTATION_COMPLETE.md)
+## Versioning Context
+
+Historical version references in this document (for example `v4.x` or `v5.x`) describe pre-1.0 release history.
+Current release numbering uses the `1.x` scheme.
+
+**Last Reviewed:** June 1, 2026
+

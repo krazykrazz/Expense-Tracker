@@ -116,3 +116,12 @@ Key classes:
 - **v4.16.2**: Fixed YoY comparison layout (2 columns instead of 4)
 - **v4.16.3**: Added Daily Spend and Tax Deductible cards
 - **v4.16.4**: Fixed Income by Category to display all 4 categories on one row
+
+**Last Reviewed:** June 2026
+## Versioning Context
+
+Historical version references in this document (for example `v4.x` or `v5.x`) describe pre-1.0 release history.
+Current release numbering uses the `1.x` scheme.
+
+**Last Reviewed:** June 1, 2026
+

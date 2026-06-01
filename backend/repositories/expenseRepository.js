@@ -68,16 +68,19 @@ class ExpenseRepository {
       `;
       const params = [];
       
-      // Add filtering by year and month if provided
+      // Add filtering by year and month if provided.
+      // Use date range comparisons (not strftime) so idx_date can be used.
       if (filters.year && filters.month) {
-        sql += ' WHERE strftime("%Y", e.date) = ? AND strftime("%m", e.date) = ?';
-        params.push(
-          filters.year.toString(),
-          filters.month.toString().padStart(2, '0')
-        );
+        const yr = parseInt(filters.year);
+        const mo = parseInt(filters.month);
+        const start = `${yr}-${mo.toString().padStart(2, '0')}-01`;
+        const end = mo === 12 ? `${yr + 1}-01-01` : `${yr}-${(mo + 1).toString().padStart(2, '0')}-01`;
+        sql += ' WHERE e.date >= ? AND e.date < ?';
+        params.push(start, end);
       } else if (filters.year) {
-        sql += ' WHERE strftime("%Y", e.date) = ?';
-        params.push(filters.year.toString());
+        const yr = parseInt(filters.year);
+        sql += ' WHERE e.date >= ? AND e.date < ?';
+        params.push(`${yr}-01-01`, `${yr + 1}-01-01`);
       } else if (filters.month) {
         sql += ' WHERE strftime("%m", e.date) = ?';
         params.push(filters.month.toString().padStart(2, '0'));
@@ -275,12 +278,12 @@ class ExpenseRepository {
           e.insurance_eligible, e.claim_status, e.original_cost,
           (SELECT COUNT(*) FROM expense_invoices WHERE expense_id = e.id) as invoice_count
         FROM expenses e
-        WHERE strftime('%Y', e.date) = ?
+        WHERE e.date >= ? AND e.date < ?
           AND e.type IN ('Tax - Medical', 'Tax - Donation')
         ORDER BY e.date ASC
       `;
       
-      const params = [year.toString()];
+      const params = [`${year}-01-01`, `${year + 1}-01-01`];
       
       db.all(expenseSql, params, async (err, expenseRows) => {
         if (err) {
@@ -877,12 +880,17 @@ class ExpenseRepository {
     
     const yearStr = year.toString();
     const monthStr = month.toString().padStart(2, '0');
-    
+    // Date range params for index-friendly queries (avoids strftime full-table-scan)
+    const rangeStart = `${yearStr}-${monthStr}-01`;
+    const rangeEnd = month === 12
+      ? `${year + 1}-01-01`
+      : `${yearStr}-${(month + 1).toString().padStart(2, '0')}-01`;
+
     // Query for weekly totals
     const weeklySQL = `
       SELECT week, SUM(amount) as total
       FROM expenses
-      WHERE strftime("%Y", date) = ? AND strftime("%m", date) = ?
+      WHERE date >= ? AND date < ?
       GROUP BY week
     `;
     
@@ -890,7 +898,7 @@ class ExpenseRepository {
     const methodSQL = `
       SELECT method, SUM(amount) as total
       FROM expenses
-      WHERE strftime("%Y", date) = ? AND strftime("%m", date) = ?
+      WHERE date >= ? AND date < ?
       GROUP BY method
     `;
     
@@ -898,7 +906,7 @@ class ExpenseRepository {
     const typeSQL = `
       SELECT type, SUM(amount) as total
       FROM expenses
-      WHERE strftime("%Y", date) = ? AND strftime("%m", date) = ?
+      WHERE date >= ? AND date < ?
       GROUP BY type
     `;
     
@@ -906,7 +914,7 @@ class ExpenseRepository {
     const totalSQL = `
       SELECT SUM(amount) as total
       FROM expenses
-      WHERE strftime("%Y", date) = ? AND strftime("%m", date) = ?
+      WHERE date >= ? AND date < ?
     `;
     
     // Query for all payment method display names (for initialization)
@@ -932,10 +940,10 @@ class ExpenseRepository {
     
     // Execute all queries in parallel
     const [weeklyRows, methodRows, typeRows, totalRow, paymentMethods] = await Promise.all([
-      dbAll(weeklySQL, [yearStr, monthStr]),
-      dbAll(methodSQL, [yearStr, monthStr]),
-      dbAll(typeSQL, [yearStr, monthStr]),
-      dbGet(totalSQL, [yearStr, monthStr]),
+      dbAll(weeklySQL, [rangeStart, rangeEnd]),
+      dbAll(methodSQL, [rangeStart, rangeEnd]),
+      dbAll(typeSQL, [rangeStart, rangeEnd]),
+      dbGet(totalSQL, [rangeStart, rangeEnd]),
       dbAll(paymentMethodsSQL, [])
     ]);
     
@@ -1082,14 +1090,14 @@ class ExpenseRepository {
           e.insurance_eligible, e.claim_status, e.original_cost,
           (SELECT COUNT(*) FROM expense_invoices WHERE expense_id = e.id) as invoice_count
         FROM expenses e
-        WHERE strftime('%Y', e.date) = ?
+        WHERE e.date >= ? AND e.date < ?
           AND e.type = 'Tax - Medical'
           AND e.insurance_eligible = 1
           AND e.claim_status = ?
         ORDER BY e.date ASC
       `;
       
-      db.all(sql, [year.toString(), status], (err, rows) => {
+      db.all(sql, [`${year}-01-01`, `${year + 1}-01-01`, status], (err, rows) => {
         if (err) {
           reject(err);
           return;

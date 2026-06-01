@@ -1,9 +1,12 @@
 import './MonthSelector.css';
 
 const MonthSelector = ({ selectedYear, selectedMonth, onMonthChange, onViewAnnualSummary, onViewTaxDeductible, onOpenBudgets, onOpenAnalyticsHub, onOpenFinancialOverview }) => {
-  // Generate year range from 2020 to 2030
+  // Generate a broad year range that supports imported legacy history.
+  const currentYear = new Date().getFullYear();
+  const minYear = 2000;
+  const maxYear = Math.max(currentYear + 2, selectedYear);
   const years = [];
-  for (let year = 2020; year <= 2030; year++) {
+  for (let year = minYear; year <= maxYear; year++) {
     years.push(year);
   }
 

@@ -188,11 +188,13 @@ const SearchBar = memo(({
   // Check if any filter is active
   const hasActiveFilters = searchText.trim().length > 0 || filterType || filterMethod || filterYear;
 
-  // Generate year options (current year and past 10 years)
+  // Generate a broad year range for legacy imports, newest first.
   const currentYear = new Date().getFullYear();
+  const minYear = 2000;
+  const maxYear = currentYear + 2;
   const yearOptions = [];
-  for (let i = 0; i < 10; i++) {
-    yearOptions.push(currentYear - i);
+  for (let year = maxYear; year >= minYear; year -= 1) {
+    yearOptions.push(year);
   }
 
   return (

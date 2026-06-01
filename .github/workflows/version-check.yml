@@ -7,8 +7,9 @@ on:
       - 'frontend/package.json'
       - 'backend/package.json'
       - 'frontend/src/App.jsx'
-      - 'frontend/src/components/BackupSettings.jsx'
-      - 'frontend/src/components/SystemModal.jsx'
+      - 'frontend/src/components/system/BackupSettings.jsx'
+      - 'frontend/src/components/system/SystemModal.jsx'
+      - 'frontend/src/utils/changelog.js'
       - 'CHANGELOG.md'
 
 jobs:
@@ -30,9 +31,9 @@ jobs:
           
           # Check if any version files changed
           VERSION_CHANGED=false
-          for file in frontend/package.json backend/package.json frontend/src/App.jsx frontend/src/components/BackupSettings.jsx frontend/src/components/SystemModal.jsx; do
+          for file in frontend/package.json backend/package.json frontend/src/App.jsx frontend/src/components/system/BackupSettings.jsx frontend/src/components/system/SystemModal.jsx frontend/src/utils/changelog.js; do
             if echo "$CHANGED_FILES" | grep -q "^$file$"; then
-              if git diff origin/main...HEAD "$file" | grep -E '^\+.*"version":|^\+.*v[0-9]+\.[0-9]+\.[0-9]+'; then
+              if git diff origin/main...HEAD "$file" | grep -E "^\+.*\"version\":|^\+.*v[0-9]+\.[0-9]+\.[0-9]+|^\+.*version:[[:space:]]*'?[0-9]+\.[0-9]+\.[0-9]+'?"; then
                 VERSION_CHANGED=true
                 echo "Version change detected in: $file"
               fi

@@ -639,4 +639,4 @@ Individual test timeouts:
 - [CI/CD Troubleshooting Guide](./CI_TROUBLESHOOTING.md) - Common issues and debugging steps
 - [Feature Branch Workflow](./FEATURE_BRANCH_WORKFLOW.md) - Branch strategy and promotion process
 - [Pre-deployment Checklist](../steering/pre-deployment.md) - Steps before deploying
-- [Docker Documentation](../guides/DOCKER.md) - Docker setup and usage
+- [Docker Deployment Guide](../guides/DOCKER_DEPLOYMENT.md) - Docker setup and usage

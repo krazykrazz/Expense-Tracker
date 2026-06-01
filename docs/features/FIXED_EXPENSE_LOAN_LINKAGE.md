@@ -487,3 +487,10 @@ db.run(`ALTER TABLE fixed_expenses_new RENAME TO fixed_expenses`);
 **Documentation Version:** 1.0  
 **Feature Status:** Production Ready  
 **Spec Location:** `specs/archive/fixed-expense-loan-linkage/`
+## Versioning Context
+
+Historical version references in this document (for example `v4.x` or `v5.x`) describe pre-1.0 release history.
+Current release numbering uses the `1.x` scheme.
+
+**Last Reviewed:** June 1, 2026
+

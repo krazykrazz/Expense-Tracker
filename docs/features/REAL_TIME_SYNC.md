@@ -131,3 +131,10 @@ Each broadcast to one or more connected clients is recorded in the activity log 
 | `frontend/src/components/SyncToast.css` | Toast styles with reduced-motion support |
 | `frontend/src/hooks/useContainerUpdateCheck.js` | Hook that uses `onReconnect` to detect container restarts |
 | `frontend/src/components/UpdateBanner.jsx` | Banner shown when container update is detected |
+## Versioning Context
+
+Historical version references in this document (for example `v4.x` or `v5.x`) describe pre-1.0 release history.
+Current release numbering uses the `1.x` scheme.
+
+**Last Reviewed:** June 1, 2026
+

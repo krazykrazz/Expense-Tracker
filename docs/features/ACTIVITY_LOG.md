@@ -360,3 +360,10 @@ The logging call should be:
 1. **After** the main operation succeeds
 2. **Wrapped** in try-catch (or use the service's built-in error handling)
 3. **Non-blocking** - don't await if you want fire-and-forget behavior
+## Versioning Context
+
+Historical version references in this document (for example `v4.x` or `v5.x`) describe pre-1.0 release history.
+Current release numbering uses the `1.x` scheme.
+
+**Last Reviewed:** June 1, 2026
+

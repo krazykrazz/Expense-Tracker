@@ -53,7 +53,7 @@ Use the deployment script to handle everything automatically:
 1. Verifies you're on main branch with clean working directory
 2. Calculates new version number
 3. Creates `release/vX.Y.Z` branch from main
-4. Updates all 5 version locations
+4. Updates all 7 release-tracked version locations
 5. Builds frontend
 6. Commits version bump on release branch
 7. Pushes branch and creates PR via `gh` CLI
@@ -101,8 +101,10 @@ If you prefer manual control, follow the documented workflow in `DEPLOYMENT_WORK
 **What it does:**
 - Runs before every commit
 - Checks if you're on a feature or hotfix branch
-- Scans staged files for version changes
+- Scans the most commonly edited version-tracked files for version changes
 - Blocks commit if version bump detected on non-main branch
+
+**Note:** The hook intentionally checks a subset of the release-managed files for fast client-side enforcement. The full release workflow and deployment script still update all 7 release-tracked locations.
 
 **Applies to branches:**
 - `feature/*` - Feature branches

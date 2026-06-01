@@ -222,3 +222,10 @@ The migration automatically:
 - [Credit Card Billing Cycles](./CREDIT_CARD_BILLING_CYCLES.md) - Billing cycle history feature
 - [API Documentation](../API_DOCUMENTATION.md) - Full API reference
 - [Database Migrations](../DATABASE_MIGRATIONS.md) - Migration details
+## Versioning Context
+
+Historical version references in this document (for example `v4.x` or `v5.x`) describe pre-1.0 release history.
+Current release numbering uses the `1.x` scheme.
+
+**Last Reviewed:** June 1, 2026
+

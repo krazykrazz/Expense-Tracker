@@ -76,7 +76,7 @@ For a complete feature list, see **[Feature Documentation](./docs/features/)**.
 
 ### Getting Started
 - **[Docker Deployment Guide](./docs/guides/DOCKER_DEPLOYMENT.md)** - Complete Docker setup and configuration
-- **[Quick Build Guide](./docs/guides/QUICK_BUILD_GUIDE.md)** - Building and publishing Docker images
+- **[Quick Build Guide](./docs/deployment/QUICK_BUILD_GUIDE.md)** - Building and publishing Docker images
 - **[Startup Guide](./docs/guides/STARTUP_GUIDE.md)** - First-time setup and configuration
 
 ### Features

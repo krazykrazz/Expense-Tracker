@@ -289,3 +289,10 @@ See [Anomaly Detection](ANOMALY_DETECTION.md) for full details on the anomaly de
   - Real-time updates and quick budget management
   - Comprehensive testing and performance optimization
   - Full integration with existing budget tracking system
+## Versioning Context
+
+Historical version references in this document (for example `v4.x` or `v5.x`) describe pre-1.0 release history.
+Current release numbering uses the `1.x` scheme.
+
+**Last Reviewed:** June 1, 2026
+

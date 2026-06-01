@@ -145,3 +145,4 @@ frontend/vitest-output.txt
 # Test extraction artifacts from backup PBT tests
 test-extract/config/
 test-extract/database/
+backend/reports/

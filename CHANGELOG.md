@@ -38,6 +38,11 @@
 
 
 
+
+
+## [1.9.2] - 2026-06-01
+
+### Optimizations to support historical data import
 ## [1.9.1] - 2026-05-31
 
 ### Fix loan historical-balance discrepancy and mortgage auto-payment balance drift

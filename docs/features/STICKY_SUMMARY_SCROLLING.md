@@ -218,3 +218,10 @@ The Sticky Summary Scrolling feature successfully addresses the identified usabi
 - [Requirements](specs/sticky-summary-scrolling/requirements.md)
 - [Design Document](specs/sticky-summary-scrolling/design.md)
 - [Implementation Tasks](specs/sticky-summary-scrolling/tasks.md)
+## Versioning Context
+
+Historical version references in this document (for example `v4.x` or `v5.x`) describe pre-1.0 release history.
+Current release numbering uses the `1.x` scheme.
+
+**Last Reviewed:** June 1, 2026
+

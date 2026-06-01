@@ -351,3 +351,10 @@ Anomaly dismiss and mark-as-expected actions log activity events with both the l
 - **v5.13.0**: Enhanced anomaly detection system with 7 classification types, structured explanations, historical context, financial impact estimates, behavior patterns, confidence scoring, transaction clustering, behavioral drift detection, alert frequency controls, budget integration, low-value alert suppression, and enriched alert card layout
 - **v5.14.0**: Anomaly detection refinements — vendor-level baselines with per-vendor percentile computation, vendor-percentile large transaction detection with cluster exclusion, New_Spending_Tier anomaly type (>3× vendor max with severity tiers), interval-based vendor frequency spike detection, data-driven suppression rules (insufficient vendor history, low category frequency), global monthly alert cap (3 alerts/month with severity-based retention), and extracted cluster computation utility
 - **v5.15.0**: Anomaly Alert UX Simplification — Alert_Builder (plain-language summary ≤40 chars, jargon-free explanation ≤120 chars, conditional typical range), Alert_Prioritizer replacing global cap with type-priority ordering (ALERT_TYPE_PRIORITY), Event_Grouping_Detector (48h window, 4 life-event themes), simplified card layout with severity border + details toggle + "✓ Got it" / "Mute alerts like this" actions, dark mode and reduced motion support, backward-compatible field coexistence
+## Versioning Context
+
+Historical version references in this document (for example `v4.x` or `v5.x`) describe pre-1.0 release history.
+Current release numbering uses the `1.x` scheme.
+
+**Last Reviewed:** June 1, 2026
+

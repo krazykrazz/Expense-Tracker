@@ -18,7 +18,7 @@ This document outlines the feature branch promotion workflow for the Expense Tra
 
 - **Feature branches**: `feature/budget-alert-notifications`
 - **Hotfix branches**: `hotfix/fix-merchant-analytics-calculation`
-- **Release branches**: `release/v4.10.0` (if used)
+- **Release branches**: `release/v1.9.1` (if used)
 
 ## Feature Development Workflow
 
@@ -60,8 +60,9 @@ Before promoting to main, ensure:
 - [ ] All tests passing (unit, property-based, integration)
 - [ ] Code reviewed (self-review minimum)
 - [ ] Documentation updated
-- [ ] Version numbers updated
 - [ ] CHANGELOG.md updated
+
+Note: version bumping is handled in the release workflow on `main`/`release` branches, not on feature branches.
 
 ### 4. Promotion to Main (via PR)
 

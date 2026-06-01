@@ -417,3 +417,10 @@ Both formulas floor at zero to prevent negative balances. The billing cycle form
 **Documentation Version:** 1.0  
 **Feature Status:** Production Ready  
 **Spec Location:** `specs/archive/credit-card-statement-balance/`
+## Versioning Context
+
+Historical version references in this document (for example `v4.x` or `v5.x`) describe pre-1.0 release history.
+Current release numbering uses the `1.x` scheme.
+
+**Last Reviewed:** June 1, 2026
+

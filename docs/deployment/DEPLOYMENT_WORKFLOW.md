@@ -94,6 +94,8 @@ Branch protection on `main` blocks direct pushes. Version bumps go through a rel
 
 14. **Wait for CI** to build and push the Docker image to GHCR
 
+   CI also runs image security scanning and deployment health validation as part of the release pipeline.
+
 15. **Pull and promote to staging**:
     ```powershell
     .\scripts\build-and-push.ps1 -Environment staging
@@ -217,7 +219,7 @@ Always wait for CI to build the image before promoting. The script will error if
 
 3. **Restart production container**:
    ```powershell
-   docker-compose -f "G:\My Drive\Media Related\docker\media-applications.yml" up -d expense-tracker
+   docker compose -f docker-compose.yml up -d expense-tracker
    ```
 
 ## See Also

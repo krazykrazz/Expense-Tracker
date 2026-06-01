@@ -120,3 +120,10 @@ The feature is optimized for large datasets:
 - **Place Name Standardization**: Helps ensure consistent place names for better search results
 - **Tax Deductible View**: Filter and view tax-deductible expenses
 - **Annual Summary**: View aggregated data across the entire year
+## Versioning Context
+
+Historical version references in this document (for example `v4.x` or `v5.x`) describe pre-1.0 release history.
+Current release numbering uses the `1.x` scheme.
+
+**Last Reviewed:** June 1, 2026
+

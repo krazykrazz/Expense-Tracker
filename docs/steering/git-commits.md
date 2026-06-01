@@ -80,5 +80,5 @@ The script handles the full flow:
 
 Manual steps (if script times out or needs intervention):
 - Merge PR via GitHub web UI when CI passes
-- Tag on main: `git tag -a "v5.X.Y" -m "Release v5.X.Y: description"` then `git push origin v5.X.Y`
+- Tag on main: `git tag -a "vX.Y.Z" -m "Release vX.Y.Z: description"` then `git push origin vX.Y.Z`
 - Promote: `.\scripts\build-and-push.ps1 -Environment staging` then `-Environment latest`

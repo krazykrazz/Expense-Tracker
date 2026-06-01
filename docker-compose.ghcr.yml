@@ -6,7 +6,7 @@ version: '3.8'
 services:
   expense-tracker:
     # Image from GitHub Container Registry
-    # Replace {version} with desired version (e.g., v5.10.0, latest, or specific SHA like 74438c9)
+    # Replace {version} with desired version (e.g., v1.9.1, latest, or a specific SHA)
     image: ghcr.io/krazykrazz/expense-tracker:latest
     container_name: expense-tracker
     ports:
@@ -22,12 +22,12 @@ services:
 # Example usage:
 # 1. Choose your version tag:
 #    - latest: Most recent build from main branch
-#    - v5.10.0: Specific version release
+#    - v1.9.1: Specific version release
 #    - 74438c9: Specific commit SHA
 # 2. Run: docker-compose -f docker-compose.ghcr.yml up -d
 #
 # Example with specific version:
-#   image: ghcr.io/krazykrazz/expense-tracker:v5.10.0
+#   image: ghcr.io/krazykrazz/expense-tracker:v1.9.1
 #
 # Example with specific SHA:
 #   image: ghcr.io/krazykrazz/expense-tracker:74438c9

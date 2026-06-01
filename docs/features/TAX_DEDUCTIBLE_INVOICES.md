@@ -608,3 +608,10 @@ node backend/scripts/archiveOldInvoices.js --years 2
 **Last Updated:** January 17, 2026  
 **Version:** 4.13.0  
 **Status:** Active
+## Versioning Context
+
+Historical version references in this document (for example `v4.x` or `v5.x`) describe pre-1.0 release history.
+Current release numbering uses the `1.x` scheme.
+
+**Last Reviewed:** June 1, 2026
+

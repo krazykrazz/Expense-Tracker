@@ -6,6 +6,7 @@ param(
     [Parameter(Mandatory=$true)]
     [string]$Title,
     [string]$Description = "",
+    [switch]$ResetMainToOrigin,
     [switch]$CreateIssue,
     [ValidateSet('bug', 'enhancement', 'chore')]
     [string]$IssueLabel = 'bug'
@@ -158,14 +159,27 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-Host "[OK] Branch pushed to origin" -ForegroundColor Green
 
-# Reset main to origin/main (remove the local commits from main)
+# Return to main and optionally reset to origin/main
 Write-Host ""
-Write-Host "[..] Resetting main to origin/main..." -ForegroundColor Yellow
+Write-Host "[..] Returning to main branch..." -ForegroundColor Yellow
 git checkout main
-git reset --hard origin/main
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "[!] Warning: Failed to reset main branch" -ForegroundColor Yellow
-    Write-Host "You may need to manually reset main after the PR is merged" -ForegroundColor Yellow
+
+if ($ResetMainToOrigin) {
+    Write-Host "[!] Hard reset requested for local main" -ForegroundColor Yellow
+    $confirmReset = Read-Host "Type RESET to confirm 'git reset --hard origin/main'"
+    if ($confirmReset -eq 'RESET') {
+        Write-Host "[..] Resetting main to origin/main..." -ForegroundColor Yellow
+        git reset --hard origin/main
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "[!] Warning: Failed to reset main branch" -ForegroundColor Yellow
+            Write-Host "You may need to manually reset main after the PR is merged" -ForegroundColor Yellow
+        }
+    } else {
+        Write-Host "[!] Reset cancelled. Local main left unchanged." -ForegroundColor Yellow
+    }
+} else {
+    Write-Host "[!] Skipping hard reset of local main (safe default)." -ForegroundColor Yellow
+    Write-Host "    Use -ResetMainToOrigin if you explicitly want to reset local main." -ForegroundColor Gray
 }
 
 

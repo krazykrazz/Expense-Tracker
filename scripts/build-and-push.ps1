@@ -28,7 +28,7 @@ param(
     [switch]$MultiPlatform,
     
     [Parameter(Mandatory=$false)]
-    [string]$ComposeFile = "G:\My Drive\Media Related\docker\media-applications.yml"
+    [string]$ComposeFile = "docker-compose.yml"
 )
 
 # Color output functions
@@ -77,24 +77,31 @@ Write-Info "  SHA Image: $shaImage"
 # Authenticate to GHCR
 function Ensure-GhcrAuth {
     Write-Info "Checking GHCR authentication..."
-    $authCheck = docker login ghcr.io --get-login 2>$null
+    $ghAvailable = Get-Command gh -ErrorAction SilentlyContinue
+    if (-not $ghAvailable) {
+        Write-Warning "gh CLI not found. Assuming Docker is already authenticated to GHCR."
+        Write-Info "If pull/push fails, run: docker login ghcr.io"
+        return
+    }
+
+    gh auth status 2>$null | Out-Null
     if ($LASTEXITCODE -ne 0) {
-        Write-Warning "Not authenticated to GHCR. Attempting login via gh CLI..."
-        $ghToken = gh auth token 2>$null
-        if ($LASTEXITCODE -eq 0 -and $ghToken) {
-            $ghToken | docker login ghcr.io -u krazykrazz --password-stdin 2>$null
-            if ($LASTEXITCODE -eq 0) {
-                Write-Success "Authenticated to GHCR via gh CLI"
-            } else {
-                Write-Error "Failed to authenticate to GHCR. Run: gh auth login"
-                exit 1
-            }
+        Write-Error "GitHub CLI is not authenticated. Run: gh auth login"
+        exit 1
+    }
+
+    $ghToken = gh auth token 2>$null
+    if ($LASTEXITCODE -eq 0 -and $ghToken) {
+        $ghToken | docker login ghcr.io -u krazykrazz --password-stdin 2>$null
+        if ($LASTEXITCODE -eq 0) {
+            Write-Success "Authenticated to GHCR via gh CLI"
         } else {
-            Write-Error "Not authenticated. Run: gh auth login  OR  docker login ghcr.io"
+            Write-Error "Failed to authenticate to GHCR. Run: gh auth login"
             exit 1
         }
     } else {
-        Write-Success "Authenticated to GHCR"
+        Write-Error "Failed to obtain GitHub token. Run: gh auth login"
+        exit 1
     }
 }
 

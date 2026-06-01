@@ -1,28 +1,19 @@
 # Docker Deployment Guide
 
-This guide covers deploying the Expense Tracker using pre-built Docker images from GitHub Container Registry (GHCR).
-
-## Prerequisites
-
-- Docker installed and running
-- Internet connection to pull images from GHCR
+This guide covers running the Expense Tracker with pre-built images from GitHub Container Registry.
 
 ## Quick Start
 
-### Pull and Run
-
-Pull the latest stable release:
+Pull the latest image and run it with a bind mount for persistent data:
 
 ```bash
 docker pull ghcr.io/krazykrazz/expense-tracker:latest
-docker run -d -p 2424:2424 -v expense-data:/app/backend/database ghcr.io/krazykrazz/expense-tracker:latest
+docker run -d -p 2424:2424 -v ./config:/config ghcr.io/krazykrazz/expense-tracker:latest
 ```
 
-Access the application at http://localhost:2424
+The app is available at `http://localhost:2424`.
 
-### Using Docker Compose
-
-Create a `docker-compose.yml` file:
+## Recommended Compose Setup
 
 ```yaml
 version: '3.8'
@@ -34,171 +25,150 @@ services:
     ports:
       - "2424:2424"
     volumes:
-      - expense-data:/app/backend/database
+      - ./config:/config
+    environment:
+      - NODE_ENV=production
+      - LOG_LEVEL=info
+      - TZ=Etc/UTC
     restart: unless-stopped
-
-volumes:
-  expense-data:
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:2424/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 ```
 
-Start the application:
+Start it with:
 
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
+
+The repo also includes [docker-compose.ghcr.yml](../../docker-compose.ghcr.yml) as a minimal GHCR deployment example.
 
 ## Available Tags
 
-Images are available with the following tags:
+- `latest`: current production tag
+- `staging`: pre-production validation tag
+- `vX.Y.Z`: release tags, for example `v1.9.1`
+- `<git-sha>`: immutable commit-tagged images used by the promotion workflow
 
-- `latest` - Latest stable release (recommended for production)
-- `v1.0.0` - Specific version tags (e.g., v1.0.0)
-- `staging` - Pre-release testing builds
+For production, prefer a specific release tag when you want a fixed version.
 
-### Using Specific Versions
+## Persistent Data Layout
 
-For production deployments, it's recommended to use specific version tags:
+All persistent data lives under `/config` inside the container.
 
-```bash
-docker pull ghcr.io/krazykrazz/expense-tracker:v1.0.0
-docker run -d -p 2424:2424 -v expense-data:/app/backend/database ghcr.io/krazykrazz/expense-tracker:v1.0.0
+Typical structure:
+
+```text
+/config
+├── backups/
+├── config/
+├── database/
+│   └── expenses.db
+├── invoices/
+└── statements/
 ```
 
-Or in docker-compose.yml:
-
-```yaml
-services:
-  expense-tracker:
-    image: ghcr.io/krazykrazz/expense-tracker:v1.0.0
-    # ... rest of configuration
-```
-
-## Data Persistence
-
-The application stores data in an SQLite database. To persist data across container restarts:
-
-### Using Named Volumes (Recommended)
+That means the correct host mount is:
 
 ```bash
-docker run -d \
-  -p 2424:2424 \
-  -v expense-data:/app/backend/database \
-  ghcr.io/krazykrazz/expense-tracker:latest
+-v ./config:/config
 ```
 
-### Using Bind Mounts
+Do not mount only `/app/backend/database`; the application persists more than the SQLite file.
+
+## Authentication Behavior
+
+The container can run in either:
+
+- **Open mode**: no password is configured.
+- **Password gate**: a password has already been configured and users must log in.
+
+From a deployment perspective there is no extra startup flag required for normal use. If password protection is already enabled, the login screen appears automatically.
+
+## Updating the Container
+
+### Docker Compose
 
 ```bash
-docker run -d \
-  -p 2424:2424 \
-  -v /path/on/host:/app/backend/database \
-  ghcr.io/krazykrazz/expense-tracker:latest
+docker compose pull
+docker compose up -d
 ```
 
-## Network Access
-
-By default, the application is accessible on:
-- Local machine: http://localhost:2424
-- Local network: http://YOUR_IP:2424
-
-To restrict access to localhost only:
+### Docker CLI
 
 ```bash
-docker run -d -p 127.0.0.1:2424:2424 -v expense-data:/app/backend/database ghcr.io/krazykrazz/expense-tracker:latest
-```
-
-## Updating to New Versions
-
-1. Pull the new version:
-   ```bash
-   docker pull ghcr.io/krazykrazz/expense-tracker:latest
-   ```
-
-2. Stop and remove the old container:
-   ```bash
-   docker stop expense-tracker
-   docker rm expense-tracker
-   ```
-
-3. Start a new container with the updated image:
-   ```bash
-   docker run -d -p 2424:2424 -v expense-data:/app/backend/database ghcr.io/krazykrazz/expense-tracker:latest
-   ```
-
-With docker-compose:
-
-```bash
-docker-compose pull
-docker-compose up -d
+docker pull ghcr.io/krazykrazz/expense-tracker:latest
+docker stop expense-tracker
+docker rm expense-tracker
+docker run -d -p 2424:2424 -v ./config:/config ghcr.io/krazykrazz/expense-tracker:latest
 ```
 
 ## Backup and Restore
 
-### Backup
+### Application-level backup
 
-The application includes built-in backup functionality accessible through the Settings page. Backups are stored in the database volume.
+Use the built-in backup and restore features from the UI.
 
-To manually backup the database:
+### Manual backup
+
+To copy the live database from the running container:
 
 ```bash
-docker cp expense-tracker:/app/backend/database/expenses.db ./backup-$(date +%Y%m%d).db
+docker cp expense-tracker:/config/database/expenses.db ./backup-$(date +%Y%m%d).db
 ```
 
-### Restore
+To back up the entire persisted data set, copy the host `config/` directory.
 
-To restore from a backup:
+### Manual restore
 
 ```bash
-docker cp ./backup-20260209.db expense-tracker:/app/backend/database/expenses.db
+docker cp ./backup-20260209.db expense-tracker:/config/database/expenses.db
 docker restart expense-tracker
 ```
 
+For full restore workflows, see [Restore Backup Guide](RESTORE_BACKUP_GUIDE.md).
+
 ## Troubleshooting
 
-### Container Won't Start
+### Container will not start
 
-Check container logs:
 ```bash
 docker logs expense-tracker
 ```
 
-### Port Already in Use
+### Port 2424 already in use
 
-If port 2424 is already in use, map to a different port:
+Map a different host port:
+
 ```bash
-docker run -d -p 3000:2424 -v expense-data:/app/backend/database ghcr.io/krazykrazz/expense-tracker:latest
+docker run -d -p 3000:2424 -v ./config:/config ghcr.io/krazykrazz/expense-tracker:latest
 ```
 
-### Database Permissions
+### Permissions issues with bind mounts
 
-If you encounter permission issues with bind mounts, ensure the directory is writable:
+Make sure the host `config/` directory is writable by a container running as UID `1000`.
+
+### Health checks failing
+
 ```bash
-chmod 755 /path/on/host
+docker inspect expense-tracker | grep -A 10 Health
+docker logs expense-tracker
 ```
 
-## Multi-Platform Support
+## Security Notes
 
-Images are available for multiple architectures:
-- linux/amd64 (x86_64)
-- linux/arm64 (ARM64)
+- The container listens on port `2424` by default.
+- Helmet, rate limiting, and the application auth system are enabled in the app itself.
+- If you expose the app beyond a trusted local network, put it behind TLS and appropriate network controls.
+- Keep images updated and prefer fixed version tags in production.
 
-Docker automatically pulls the correct image for your platform.
+## Related Docs
 
-## Security Considerations
-
-- The application runs on port 2424 by default
-- No authentication is built-in - use network-level security (firewall, VPN)
-- Keep the Docker image updated to receive security patches
-- Use specific version tags in production for stability
-
-## Getting Help
-
-- Check the [User Guide](USER_GUIDE.md) for feature documentation
-- Review [Database Schema](../DATABASE_SCHEMA.md) for data structure
-- See [GitHub Issues](https://github.com/krazykrazz/expense-tracker/issues) for known issues
-
-## For Developers
-
-If you want to build images locally or contribute to development, see:
-- [Startup Guide](./STARTUP_GUIDE.md) - Development setup and troubleshooting
-- [Deployment Workflow](../deployment/DEPLOYMENT_WORKFLOW.md) - SHA-based deployment process
+- [Startup Guide](STARTUP_GUIDE.md)
+- [Restore Backup Guide](RESTORE_BACKUP_GUIDE.md)
+- [Deployment Workflow](../deployment/DEPLOYMENT_WORKFLOW.md)
+- [SHA-Based Container Deployment](../deployment/SHA_BASED_CONTAINERS.md)

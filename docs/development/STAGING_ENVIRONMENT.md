@@ -68,7 +68,7 @@ tar -xzf "path\to\backup.tar.gz" -C staging-data\
 
 2. **Check migration logs:**
    ```powershell
-   docker logs expense-tracker-staging
+   docker logs expense-tracker-test
    ```
    Look for:
    - Migration success messages
@@ -110,11 +110,11 @@ When testing migrations, verify:
 | Action | Command |
 |--------|---------|
 | Build staging image | `.\scripts\build-and-push.ps1 -Tag staging` |
-| Start staging | `docker-compose --profile staging up -d expense-tracker-staging` |
+| Start staging | `docker-compose --profile staging up -d expense-tracker-test` |
 | Stop staging | `docker-compose --profile staging down` |
-| View logs | `docker logs -f expense-tracker-staging` |
-| Shell into container | `docker exec -it expense-tracker-staging sh` |
-| Check database | `docker exec -it expense-tracker-staging sqlite3 /config/database/expenses.db ".tables"` |
+| View logs | `docker logs -f expense-tracker-test` |
+| Shell into container | `docker exec -it expense-tracker-test sh` |
+| Check database | `docker exec -it expense-tracker-test sqlite3 /config/database/expenses.db ".tables"` |
 
 ## Troubleshooting
 
@@ -127,7 +127,7 @@ netstat -ano | findstr 2627
 
 ### Migration failed in staging
 
-1. Check logs: `docker logs expense-tracker-staging`
+1. Check logs: `docker logs expense-tracker-test`
 2. The staging data is isolated - production is safe
 3. Fix the migration code
 4. Rebuild image and try again

@@ -149,3 +149,10 @@ Improved banner when viewing expenses across all time periods.
 ---
 
 **Last Updated**: February 2, 2026
+## Versioning Context
+
+Historical version references in this document (for example `v4.x` or `v5.x`) describe pre-1.0 release history.
+Current release numbering uses the `1.x` scheme.
+
+**Last Reviewed:** June 1, 2026
+

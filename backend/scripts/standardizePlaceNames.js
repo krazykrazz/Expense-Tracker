@@ -135,6 +135,10 @@ const TRAILING_DESCRIPTOR_RE = /\s+(gas|gas bar|centre|center|online|pharmacy|po
 function isSafeMerge(canonical, variant) {
   if (canonical === variant) return true; // same name — trivially safe
 
+  // Check explicit blocklist of pairs
+  const pairKey = `${variant.toLowerCase()}->${canonical.toLowerCase()}`;
+  if (SKIP_PAIRS.has(pairKey)) return false;
+
   const nc = normalizeForCompare(canonical);
   const nv = normalizeForCompare(variant);
 
@@ -178,6 +182,11 @@ function isSafeMerge(canonical, variant) {
 // Groups to skip even if rules say "safe" (known false positives)
 const SKIP_GROUPS = new Set([
   'Run 4 Health 2021', // Different annual events (2020 vs 2021)
+]);
+
+// Specific variant→canonical pairs to never merge (different businesses)
+const SKIP_PAIRS = new Set([
+  "wendt's->wendy's",  // Wendt's is a different place than Wendy's
 ]);
 
 /**

@@ -12,9 +12,9 @@ import { apiGet, apiPost, apiPut, apiDelete, logApiError } from '../utils/apiCli
  * @param {number} month - Month (1-12)
  * @returns {Promise<Object>} { sources: Array, total: number, byCategory: Object }
  */
-export const getMonthlyIncomeSources = async (year, month) => {
+export const getMonthlyIncomeSources = async (year, month, options = {}) => {
   try {
-    const data = await apiGet(API_ENDPOINTS.INCOME_BY_MONTH(year, month), 'fetch income sources');
+    const data = await apiGet(API_ENDPOINTS.INCOME_BY_MONTH(year, month), 'fetch income sources', options);
     
     // Parse byCategory from response (Requirement 2.5)
     return {
@@ -23,6 +23,7 @@ export const getMonthlyIncomeSources = async (year, month) => {
       byCategory: data.byCategory || {}
     };
   } catch (error) {
+    if (error.name === 'AbortError') throw error;
     logApiError('fetching monthly income sources', error);
     throw error;
   }

@@ -71,16 +71,16 @@ export function SharedDataProvider({ children, selectedYear, selectedMonth }) {
 
   // --- Budgets Fetching ---
   useEffect(() => {
-    let isMounted = true;
+    const controller = new AbortController();
 
     const fetchBudgetsData = async () => {
       try {
-        const budgetResponse = await getBudgets(selectedYear, selectedMonth);
-        if (isMounted) {
+        const budgetResponse = await getBudgets(selectedYear, selectedMonth, { signal: controller.signal });
+        if (!controller.signal.aborted) {
           setBudgets(budgetResponse?.budgets || []);
         }
       } catch (err) {
-        if (isMounted) {
+        if (!controller.signal.aborted) {
           console.error('Error fetching budgets:', err);
         }
       }
@@ -88,7 +88,7 @@ export function SharedDataProvider({ children, selectedYear, selectedMonth }) {
 
     fetchBudgetsData();
 
-    return () => { isMounted = false; };
+    return () => { controller.abort(); };
   }, [selectedYear, selectedMonth, budgetRefreshTrigger]);
 
   // --- Window Event Listeners ---

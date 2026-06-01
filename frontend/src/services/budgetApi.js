@@ -12,10 +12,11 @@ import { apiGet, apiPost, apiPut, apiDelete, logApiError } from '../utils/apiCli
  * @param {number} month - Month (1-12)
  * @returns {Promise<Object>} { budgets: Array }
  */
-export const getBudgets = async (year, month) => {
+export const getBudgets = async (year, month, options = {}) => {
   try {
-    return await apiGet(`${API_ENDPOINTS.BUDGETS}?year=${year}&month=${month}`, 'fetch budgets');
+    return await apiGet(`${API_ENDPOINTS.BUDGETS}?year=${year}&month=${month}`, 'fetch budgets', options);
   } catch (error) {
+    if (error.name === 'AbortError') throw error;
     logApiError('fetching budgets', error);
     throw error;
   }

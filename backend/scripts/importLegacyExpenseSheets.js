@@ -1617,6 +1617,52 @@ async function main() {
         await dbRun(db, 'COMMIT', []);
         console.log(`  Standardized ${standardized} pre-existing expense row(s) to 2025+ canonical names.`);
       }
+
+      // Post-import: resolve "Other" categories using 2025+ dominant category per place
+      console.log('\nPost-import: resolving "Other" categories using 2025+ category data...');
+      const CATEGORY_DOMINANCE_THRESHOLD = 0.75;
+      const modernCategories = await new Promise((resolve, reject) => {
+        db.all(
+          `SELECT place, type, COUNT(*) as cnt
+           FROM expenses
+           WHERE date >= '2025-01-01' AND type != 'Other'
+           GROUP BY place, type
+           ORDER BY place, cnt DESC`,
+          [], (err, rows) => { if (err) reject(err); else resolve(rows || []); }
+        );
+      });
+
+      // Build map: place -> dominant category (if >= threshold)
+      const categoryByPlace = new Map();
+      const byPlace = {};
+      for (const row of modernCategories) {
+        if (!byPlace[row.place]) byPlace[row.place] = [];
+        byPlace[row.place].push({ type: row.type, cnt: row.cnt });
+      }
+      for (const [place, cats] of Object.entries(byPlace)) {
+        const total = cats.reduce((s, c) => s + c.cnt, 0);
+        if (cats[0].cnt / total >= CATEGORY_DOMINANCE_THRESHOLD) {
+          categoryByPlace.set(place, cats[0].type);
+        }
+      }
+
+      let categoriesResolved = 0;
+      if (categoryByPlace.size > 0) {
+        await dbRun(db, 'BEGIN TRANSACTION', []);
+        for (const [place, category] of categoryByPlace) {
+          const changes = await new Promise((resolve, reject) => {
+            db.run(
+              `UPDATE expenses SET type = ? WHERE place = ? AND type = 'Other' AND date < '2025-01-01'`,
+              [category, place],
+              function (err) { if (err) reject(err); else resolve(this.changes); }
+            );
+          });
+          categoriesResolved += changes;
+        }
+        await dbRun(db, 'COMMIT', []);
+      }
+      console.log(`  Resolved ${categoriesResolved} "Other" expense row(s) to 2025+ dominant category (threshold: ${CATEGORY_DOMINANCE_THRESHOLD * 100}%).`);
+      console.log(`  Places with dominant category: ${categoryByPlace.size}`);
     }
   } catch (error) {
     if (db && !options.dryRun) {

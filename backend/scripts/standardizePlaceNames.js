@@ -104,7 +104,8 @@ function normalizeForCompare(s) {
     .trim()
     .replace(/\s+/g, ' ')
     .replace(/[''`]/g, "'")   // curly/backtick apostrophes → straight
-    .replace(/\./g, '');      // remove periods (for abbreviations)
+    .replace(/\./g, '')       // remove periods (for abbreviations)
+    .replace(/[-–—]/g, '');   // remove hyphens/dashes (Wal-Mart vs Walmart)
 }
 
 function levenshtein(a, b) {
@@ -128,8 +129,8 @@ function levenshtein(a, b) {
 // --------------------------------------------------------------------------
 const ARTICLE_PREFIX_RE = /^(the|a|an)\s+/i;
 const WEB_SUFFIX_RE = /\.(ca|com|net|org)$/i;
-// Descriptor words that may safely be appended to a canonical name
-const TRAILING_DESCRIPTOR_RE = /\s+(gas|gas bar|centre|center|online|pharmacy|portrait studio|photo studio|photo|garden centre|cafeteria|food court|concessions|concession stand|canteen|parking|parking garage|food|liquor|resto|restaurant)\s*$/i;
+// Descriptor words that may safely be appended/removed from a canonical name
+const TRAILING_DESCRIPTOR_RE = /\s+(gas|gas bar|centre|center|online|pharmacy|portrait studio|photo studio|photo|garden centre|cafeteria|food court|concessions|concession stand|canteen|parking|parking garage|food|liquor|resto|restaurant|bar|pub|grill|diner|bistro|cafe|café|resort|inn|motel|hotel|spa|salon|studio|shop|store|market|arena|rink|theatre|theater|cinema|lounge|pizzeria|bakery|butcher|dental|clinic|chiropractic|optometry)\s*$/i;
 
 function isSafeMerge(canonical, variant) {
   if (canonical === variant) return true; // same name — trivially safe
@@ -155,8 +156,9 @@ function isSafeMerge(canonical, variant) {
   // 4. Plural suffix ("-s" only, not "-es" — too risky)
   if (nc + 's' === nv || nv + 's' === nc) return true;
 
-  // 5. Single-char typo on short names (≤ 12 chars normalized)
-  if (nc.length <= 12 && nv.length <= 12 && levenshtein(nc, nv) <= 1) return true;
+  // 5. Single-char typo — Levenshtein ≤ 1 on strings where both are ≥ 4 chars
+  //    (minimum length avoids false positives like "Bar" vs "Car")
+  if (nc.length >= 4 && nv.length >= 4 && levenshtein(nc, nv) <= 1) return true;
 
   // 6. Trailing descriptor — variant has canonical as full prefix + descriptor suffix
   //    e.g. "Canadian Tire Gas Bar" when canonical is "Canadian Tire"
@@ -173,26 +175,38 @@ function isSafeMerge(canonical, variant) {
   return false;
 }
 
+// Groups to skip even if rules say "safe" (known false positives)
+const SKIP_GROUPS = new Set([
+  'Run 4 Health 2021', // Different annual events (2020 vs 2021)
+]);
+
 /**
  * Given a variation group, determine whether it is safe to auto-merge.
  * Returns { safe: true, updates } or { safe: false, reason }.
+ * If only SOME variants are safe, merges only the safe subset.
  */
 function evaluateGroup(group) {
   const canonical = group.suggestedCanonical;
+
+  if (SKIP_GROUPS.has(canonical)) {
+    return { safe: false, reason: 'manually blocklisted' };
+  }
+
   const variants = group.variations.map((v) => v.name).filter((n) => n !== canonical);
 
   if (variants.length === 0) return { safe: false, reason: 'no variants to merge' };
 
+  const safeVariants = variants.filter((v) => isSafeMerge(canonical, v));
   const unsafeVariants = variants.filter((v) => !isSafeMerge(canonical, v));
 
-  if (unsafeVariants.length > 0) {
+  if (safeVariants.length === 0) {
     return {
       safe: false,
       reason: `unsafe variants: ${unsafeVariants.slice(0, 3).map((v) => `"${v}"`).join(', ')}${unsafeVariants.length > 3 ? ` (+${unsafeVariants.length - 3} more)` : ''}`,
     };
   }
 
-  return { safe: true, updates: { from: variants, to: canonical } };
+  return { safe: true, updates: { from: safeVariants, to: canonical } };
 }
 
 // --------------------------------------------------------------------------

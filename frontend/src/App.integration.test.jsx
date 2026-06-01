@@ -213,7 +213,8 @@ describe('App Integration Tests - Global Expense Filtering', () => {
     // Wait for initial load (monthly view for current month)
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('/api/expenses?year=')
+        expect.stringContaining('/api/expenses?year='),
+        expect.anything()
       );
     });
 
@@ -303,7 +304,8 @@ describe('App Integration Tests - Global Expense Filtering', () => {
     // Verify we're in global view
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringMatching(/\/api\/expenses(?!\?year=)/)
+        expect.stringMatching(/\/api\/expenses(?!\?year=)/),
+        expect.anything()
       );
     });
 
@@ -493,7 +495,8 @@ describe('App Integration Tests - Global Expense Filtering', () => {
 
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringMatching(/\/api\/expenses(?!\?year=)/)
+        expect.stringMatching(/\/api\/expenses(?!\?year=)/),
+        expect.anything()
       );
     });
 
@@ -570,7 +573,8 @@ describe('App Integration Tests - Global Expense Filtering', () => {
 
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringMatching(/\/api\/expenses(?!\?year=)/)
+        expect.stringMatching(/\/api\/expenses(?!\?year=)/),
+        expect.anything()
       );
     });
 
@@ -582,7 +586,8 @@ describe('App Integration Tests - Global Expense Filtering', () => {
 
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringMatching(/\/api\/expenses(?!\?year=)/)
+        expect.stringMatching(/\/api\/expenses(?!\?year=)/),
+        expect.anything()
       );
     });
 
@@ -594,7 +599,8 @@ describe('App Integration Tests - Global Expense Filtering', () => {
 
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringMatching(/\/api\/expenses(?!\?year=)/)
+        expect.stringMatching(/\/api\/expenses(?!\?year=)/),
+        expect.anything()
       );
     }, { timeout: 1000 });
   });
@@ -646,7 +652,8 @@ describe('App Integration Tests - Global Expense Filtering', () => {
     // Verify we switched to global view (API call without year/month params)
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringMatching(/\/api\/expenses(?!\?year=)/)
+        expect.stringMatching(/\/api\/expenses(?!\?year=)/),
+        expect.anything()
       );
     });
 

@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.9.1',
+    date: 'May 31, 2026',
+    added: [],
+    changed: ['Fix loan historical-balance discrepancy and mortgage auto-payment balance drift'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.9.0',
     date: 'May 31, 2026',
     added: [],

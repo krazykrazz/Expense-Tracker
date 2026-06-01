@@ -36,6 +36,11 @@
 
 
 
+
+
+## [1.9.1] - 2026-05-31
+
+### Fix loan historical-balance discrepancy and mortgage auto-payment balance drift
 ## [1.9.0] - 2026-05-31
 
 ### Phase 1 UX improvements, CI optimizations, event dedup fix, LOC payment tracking

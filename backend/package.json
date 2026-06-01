@@ -21,7 +21,9 @@
     "test:pbt:ci": "cross-env NODE_ENV=test CI=true FAST_CHECK_NUM_RUNS=15 jest --bail --testPathPatterns=pbt",
     "test:backup": "cross-env NODE_ENV=test jest --runInBand --testPathPatterns=\"backup.*\\.(integration|pbt)\\.test\"",
     "test:backup:ci": "cross-env NODE_ENV=test CI=true FAST_CHECK_NUM_RUNS=15 jest --bail --runInBand --testPathPatterns=\"backup.*\\.(integration|pbt)\\.test\"",
-    "test:ci": "cross-env NODE_ENV=test CI=true FAST_CHECK_NUM_RUNS=15 jest --bail"
+    "test:ci": "cross-env NODE_ENV=test CI=true FAST_CHECK_NUM_RUNS=15 jest --bail",
+    "import:legacy": "node scripts/importLegacyExpenseSheets.js",
+    "standardize:places": "node scripts/standardizePlaceNames.js"
   },
   "jest": {
     "testTimeout": 30000,
@@ -46,7 +48,8 @@
     "multer": "^2.1.1",
     "node-cron": "^4.2.1",
     "sqlite3": "^6.0.1",
-    "tar": "^7.5.15"
+    "tar": "^7.5.15",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",

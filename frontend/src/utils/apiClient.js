@@ -49,13 +49,17 @@ async function handleResponse(response, operation) {
  * Make a GET request
  * @param {string} url - API endpoint URL
  * @param {string} operation - Description of operation for error messages
+ * @param {Object} [options] - Additional fetch options (e.g. { signal })
  * @returns {Promise<any>} Response data
  */
-export async function apiGet(url, operation = 'fetch data') {
+export async function apiGet(url, operation = 'fetch data', options = {}) {
   try {
-    const response = await getFetchFn()(url);
+    const response = await getFetchFn()(url, options);
     return await handleResponse(response, operation);
   } catch (error) {
+    if (error.name === 'AbortError') {
+      throw error;
+    }
     if (error instanceof ApiError) {
       throw error;
     }

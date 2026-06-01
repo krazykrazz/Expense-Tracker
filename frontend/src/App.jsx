@@ -267,20 +267,20 @@ function AppContent({ onPaymentMethodsUpdate }) {
 
   // Fetch monthly income and budget alerts for Analytics Hub integration (Requirement 7.4)
   useEffect(() => {
-    let isMounted = true;
+    const controller = new AbortController();
 
     const fetchAnalyticsData = async () => {
       try {
         // Fetch monthly income
-        const incomeData = await getMonthlyIncomeSources(selectedYear, selectedMonth);
-        if (isMounted) {
+        const incomeData = await getMonthlyIncomeSources(selectedYear, selectedMonth, { signal: controller.signal });
+        if (!controller.signal.aborted) {
           setMonthlyIncome(incomeData.total || 0);
         }
 
         // Fetch budget alerts
-        const budgetResponse = await getBudgets(selectedYear, selectedMonth);
+        const budgetResponse = await getBudgets(selectedYear, selectedMonth, { signal: controller.signal });
         const budgets = budgetResponse?.budgets || [];
-        if (isMounted && budgets.length > 0) {
+        if (!controller.signal.aborted && budgets.length > 0) {
           const alerts = calculateAlerts(budgets);
           const formattedAlerts = alerts.map(alert => ({
             category: alert.category,
@@ -290,7 +290,7 @@ function AppContent({ onPaymentMethodsUpdate }) {
           setBudgetAlerts(formattedAlerts);
         }
       } catch (err) {
-        if (isMounted) {
+        if (!controller.signal.aborted) {
           console.error('Error fetching analytics data:', err);
         }
       }
@@ -299,7 +299,7 @@ function AppContent({ onPaymentMethodsUpdate }) {
     fetchAnalyticsData();
 
     return () => {
-      isMounted = false;
+      controller.abort();
     };
   }, [selectedYear, selectedMonth, budgetAlertRefreshTrigger]);
 

@@ -134,7 +134,7 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
    * Fetch reminder status from API
    * Only fetch for current or past months - future months don't need reminders
    */
-  const fetchReminderStatus = useCallback(async () => {
+  const fetchReminderStatus = useCallback(async (signal) => {
     // Skip fetching reminders for future months
     if (!isCurrentOrPastMonth()) {
       setReminderStatus({
@@ -177,7 +177,7 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
     }
     
     try {
-      const response = await authAwareFetch(API_ENDPOINTS.REMINDER_STATUS(selectedYear, selectedMonth));
+      const response = await authAwareFetch(API_ENDPOINTS.REMINDER_STATUS(selectedYear, selectedMonth), { signal });
       
       if (!response.ok) {
         // Fail silently - don't block summary panel loading
@@ -223,6 +223,7 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
         }
       });
     } catch (err) {
+      if (err.name === 'AbortError') return;
       // Fail silently - don't block summary panel loading
       console.error('Error fetching reminder status:', err);
     }
@@ -233,7 +234,7 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
    * Only fetch for current or past months - future months don't need auto-log prompts
    * _Requirements: 4.1, 4.4, 4.5_
    */
-  const fetchAutoLogSuggestions = useCallback(async () => {
+  const fetchAutoLogSuggestions = useCallback(async (signal) => {
     // Skip fetching auto-log suggestions for future months
     if (!isCurrentOrPastMonth()) {
       setAutoLogSuggestions([]);
@@ -241,7 +242,7 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
     }
     
     try {
-      const response = await authAwareFetch(API_ENDPOINTS.AUTO_LOG_SUGGESTIONS(selectedYear, selectedMonth));
+      const response = await authAwareFetch(API_ENDPOINTS.AUTO_LOG_SUGGESTIONS(selectedYear, selectedMonth), { signal });
       
       if (!response.ok) {
         // Fail silently - don't block summary panel loading
@@ -252,6 +253,7 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
       const data = await response.json();
       setAutoLogSuggestions(data || []);
     } catch (err) {
+      if (err.name === 'AbortError') return;
       // Fail silently - don't block summary panel loading
       console.error('Error fetching auto-log suggestions:', err);
     }
@@ -261,11 +263,12 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
    * Fetch anomalies from analytics API
    * _Requirements: 8.1, 8.2, 8.3_
    */
-  const fetchAnomalies = useCallback(async () => {
+  const fetchAnomalies = useCallback(async (signal) => {
     try {
-      const data = await getAnomalies();
+      const data = await getAnomalies({ signal });
       setAnomalies(data || []);
     } catch (err) {
+      if (err.name === 'AbortError') return;
       // Fail silently - don't block summary panel loading
       console.error('Error fetching anomalies:', err);
     }
@@ -275,13 +278,14 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
    * Fetch summary data from API
    * Reusable function to avoid code duplication
    */
-  const fetchSummaryData = useCallback(async () => {
+  const fetchSummaryData = useCallback(async (signal) => {
     setLoading(true);
     setError(null);
 
     try {
       const response = await authAwareFetch(
-        `${API_ENDPOINTS.SUMMARY}?year=${selectedYear}&month=${selectedMonth}&includePrevious=true`
+        `${API_ENDPOINTS.SUMMARY}?year=${selectedYear}&month=${selectedMonth}&includePrevious=true`,
+        { signal }
       );
 
       if (!response.ok) {
@@ -291,20 +295,25 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
       const data = await response.json();
       processSummaryData(data);
     } catch (err) {
+      if (err.name === 'AbortError') return;
       setError(err.message);
       console.error('Error fetching summary:', err);
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) {
+        setLoading(false);
+      }
     }
   }, [selectedYear, selectedMonth, processSummaryData]);
 
   // Fetch summary when dependencies change
   // Budget alerts are now managed by BudgetAlertManager component
   useEffect(() => {
-    fetchSummaryData();
-    fetchReminderStatus();
-    fetchAutoLogSuggestions();
-    fetchAnomalies();
+    const controller = new AbortController();
+    fetchSummaryData(controller.signal);
+    fetchReminderStatus(controller.signal);
+    fetchAutoLogSuggestions(controller.signal);
+    fetchAnomalies(controller.signal);
+    return () => controller.abort();
   }, [fetchSummaryData, fetchReminderStatus, fetchAutoLogSuggestions, fetchAnomalies, refreshTrigger]);
 
   // Reset dismissed reminders only when month/year changes (not on every refresh)

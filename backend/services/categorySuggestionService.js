@@ -5,6 +5,18 @@ const expenseRepository = require('../repositories/expenseRepository');
  * Provides intelligent category suggestions based on historical expense data
  */
 class CategorySuggestionService {
+  _preferSpecificOverOther(frequencyData) {
+    if (frequencyData.length <= 1) return frequencyData;
+    const specific = frequencyData.filter((item) => item.category !== 'Other');
+    if (specific.length === 0) return frequencyData;
+    // Only exclude "Other" if a specific category has a strictly higher count
+    const otherEntry = frequencyData.find((item) => item.category === 'Other');
+    if (!otherEntry) return frequencyData;
+    const topSpecificCount = Math.max(...specific.map((s) => s.count));
+    if (topSpecificCount > otherEntry.count) return specific;
+    return frequencyData;
+  }
+
   /**
    * Get suggested category for a place based on historical data
    * @param {string} place - The place name to get suggestion for
@@ -22,15 +34,17 @@ class CategorySuggestionService {
       return null;
     }
 
-    // Calculate total count for confidence score
+    const suggestionPool = this._preferSpecificOverOther(frequencyData);
+
+    // Calculate total count for confidence score (use ALL entries including Other)
     const totalCount = frequencyData.reduce((sum, item) => sum + item.count, 0);
     
-    // Find the most frequent category
+    // Find the most frequent category from the filtered pool
     // If there's a tie, getCategoryFrequencyByPlace already orders by last_used DESC
-    const topCategory = frequencyData[0];
+    const topCategory = suggestionPool[0];
     
     // Check for ties - categories with the same count as the top one
-    const tiedCategories = frequencyData.filter(item => item.count === topCategory.count);
+    const tiedCategories = suggestionPool.filter(item => item.count === topCategory.count);
     
     // If there are ties, use the most recently used category
     let selectedCategory = topCategory;

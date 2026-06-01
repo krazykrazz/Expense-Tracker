@@ -82,12 +82,12 @@ app.use(helmet({
 }));
 
 // Rate limiting configuration
-// General API rate limit: 500 requests per minute per IP
-// Note: The app fires ~13 parallel requests on page load/month change,
+// General API rate limit: 1000 requests per minute per IP
+// Note: The app fires ~8 parallel requests on page load/month change,
 // so rapid navigation needs headroom. This is a local network app.
 const generalLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
-  max: 500,
+  max: 1000,
   message: { error: 'Too many requests, please try again later' },
   standardHeaders: true,
   legacyHeaders: false,

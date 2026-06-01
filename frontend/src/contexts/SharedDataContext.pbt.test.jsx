@@ -289,7 +289,7 @@ describe('Property 3: Budget Fetching Responds to Year/Month Changes', () => {
           });
 
           // Verify initial call was made with correct args
-          expect(getBudgets).toHaveBeenCalledWith(initialYear, initialMonth);
+          expect(getBudgets).toHaveBeenCalledWith(initialYear, initialMonth, expect.objectContaining({ signal: expect.any(AbortSignal) }));
 
           // Re-render with each subsequent (year, month) pair
           for (let i = 1; i < pairs.length; i++) {
@@ -305,7 +305,7 @@ describe('Property 3: Budget Fetching Responds to Year/Month Changes', () => {
             });
 
             // Verify the latest call used the correct year/month
-            expect(getBudgets).toHaveBeenLastCalledWith(year, month);
+            expect(getBudgets).toHaveBeenLastCalledWith(year, month, expect.objectContaining({ signal: expect.any(AbortSignal) }));
           }
 
           // Total calls should equal the number of distinct pairs
@@ -355,7 +355,7 @@ describe('Property 3: Budget Fetching Responds to Year/Month Changes', () => {
               expect(getBudgets).toHaveBeenCalledTimes(i + 1);
             });
 
-            expect(getBudgets).toHaveBeenLastCalledWith(years[i], fixedMonth);
+            expect(getBudgets).toHaveBeenLastCalledWith(years[i], fixedMonth, expect.objectContaining({ signal: expect.any(AbortSignal) }));
           }
 
           expect(getBudgets).toHaveBeenCalledTimes(years.length);
@@ -404,7 +404,7 @@ describe('Property 3: Budget Fetching Responds to Year/Month Changes', () => {
               expect(getBudgets).toHaveBeenCalledTimes(i + 1);
             });
 
-            expect(getBudgets).toHaveBeenLastCalledWith(fixedYear, months[i]);
+            expect(getBudgets).toHaveBeenLastCalledWith(fixedYear, months[i], expect.objectContaining({ signal: expect.any(AbortSignal) }));
           }
 
           expect(getBudgets).toHaveBeenCalledTimes(months.length);

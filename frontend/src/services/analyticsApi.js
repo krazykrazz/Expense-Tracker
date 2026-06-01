@@ -30,7 +30,8 @@ export const getAnomalies = async (options = {}) => {
       ? `${API_ENDPOINTS.ANALYTICS_ANOMALIES}?${queryString}`
       : API_ENDPOINTS.ANALYTICS_ANOMALIES;
     
-    const response = await apiGet(url, 'fetch anomalies');
+    const fetchOpts = options.signal ? { signal: options.signal } : {};
+    const response = await apiGet(url, 'fetch anomalies', fetchOpts);
     // API returns { anomalies: [], metadata: {...} }, extract anomalies array
     return response?.anomalies || [];
   } catch (error) {

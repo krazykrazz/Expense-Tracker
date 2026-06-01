@@ -6,9 +6,15 @@ const expenseRepository = require('../repositories/expenseRepository');
  */
 class CategorySuggestionService {
   _preferSpecificOverOther(frequencyData) {
-    const hasSpecific = frequencyData.some((item) => item.category !== 'Other');
-    if (!hasSpecific) return frequencyData;
-    return frequencyData.filter((item) => item.category !== 'Other');
+    if (frequencyData.length <= 1) return frequencyData;
+    const specific = frequencyData.filter((item) => item.category !== 'Other');
+    if (specific.length === 0) return frequencyData;
+    // Only exclude "Other" if a specific category has a strictly higher count
+    const otherEntry = frequencyData.find((item) => item.category === 'Other');
+    if (!otherEntry) return frequencyData;
+    const topSpecificCount = Math.max(...specific.map((s) => s.count));
+    if (topSpecificCount > otherEntry.count) return specific;
+    return frequencyData;
   }
 
   /**

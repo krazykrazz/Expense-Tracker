@@ -529,8 +529,8 @@ function PaymentsPanel({
       <LoanPaymentHistory
         payments={payments}
         initialBalance={
-          calculatedBalanceData?.hasDiscrepancy && calculatedBalanceData?.actualBalance != null
-            ? calculatedBalanceData.actualBalance + (calculatedBalanceData.totalPayments || 0)
+          calculatedBalanceData?.hasDiscrepancy
+            ? currentBalance + (calculatedBalanceData.totalPayments || 0)
             : loanData?.initial_balance
         }
         loading={loadingPayments}

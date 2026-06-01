@@ -221,7 +221,7 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
     if (isOpen && loanData?.loan_type === 'mortgage') {
       fetchMortgageInsights();
     }
-  }, [isOpen, loanData?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isOpen, loanData?.id, loanData?.loan_type, fetchMortgageInsights]);
 
   // Handle mortgage payment edit - calls PUT /api/loans/:id/payments/:paymentId then re-fetches insights
   // Requirement 2.4, 2.5 — named handleMortgageEditPayment to avoid collision with existing handleEditPayment
@@ -1249,8 +1249,8 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
               <LoanPaymentHistory
                 payments={payments}
                 initialBalance={
-                  calculatedBalanceData?.hasDiscrepancy && calculatedBalanceData?.actualBalance != null
-                    ? calculatedBalanceData.actualBalance + totalPayments
+                  calculatedBalanceData?.hasDiscrepancy
+                    ? currentBalance + totalPayments
                     : loanData.initial_balance
                 }
                 loading={loadingPayments}
@@ -1264,8 +1264,8 @@ const LoanDetailView = ({ loan, isOpen, onClose, onUpdate }) => {
                 <PaymentBalanceChart
                   payments={payments}
                   initialBalance={
-                    calculatedBalanceData?.hasDiscrepancy && calculatedBalanceData?.actualBalance != null
-                      ? calculatedBalanceData.actualBalance + totalPayments
+                    calculatedBalanceData?.hasDiscrepancy
+                      ? currentBalance + totalPayments
                       : loanData.initial_balance
                   }
                   loanName={loanData.name}

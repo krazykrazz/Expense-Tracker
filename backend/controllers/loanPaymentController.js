@@ -147,7 +147,7 @@ async function updatePayment(req, res) {
       amount,
       payment_date,
       notes,
-      balanceOverride: balanceOverride !== undefined ? parseFloat(balanceOverride) : undefined
+      balanceOverride: balanceOverride != null && balanceOverride !== '' ? parseFloat(balanceOverride) : undefined
     });
     
     if (!updatedPayment) {

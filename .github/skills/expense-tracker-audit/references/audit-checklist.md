@@ -59,6 +59,15 @@ Layer-specific, high-signal checks. Confirm each finding against source before r
 - [ ] LOC `currentBalance` is a snapshot from `loan_balances` table, NOT derived
       from payments. Any overpayment validation using this value would be incorrect
       for LOC — document/comment this semantic gap at the prop-passing site.
+- [ ] Auto-logging linked fixed-expense payments must go through
+      `loanPaymentService.createPayment` (not `loanPaymentRepository.create` directly).
+      The service performs the mortgage auto-snapshot + shared validation; bypassing it
+      leaves stale `loan_balances` anchors and causes historical-balance discrepancies
+      for mortgages. Check `autoPaymentLoggerService.createPaymentFromFixedExpense`.
+- [ ] Compare sibling controller actions (create vs update) for guard drift on the
+      same optional body field (e.g. `balanceOverride`): create may guard
+      `!= null && !== ''` while update only checks `!== undefined`, letting explicit
+      `null` reach `parseFloat(null) → NaN`.
 
 ## Frontend (React / Vite)
 

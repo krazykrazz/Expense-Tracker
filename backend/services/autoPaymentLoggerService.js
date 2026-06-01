@@ -12,6 +12,7 @@ const loanPaymentRepository = require('../repositories/loanPaymentRepository');
 const fixedExpenseRepository = require('../repositories/fixedExpenseRepository');
 const loanRepository = require('../repositories/loanRepository');
 const activityLogService = require('./activityLogService');
+const loanPaymentService = require('./loanPaymentService');
 const logger = require('../config/logger');
 
 /**
@@ -70,7 +71,12 @@ class AutoPaymentLoggerService {
       payment_date: paymentDate,
       notes: note
     });
-    
+
+    // Keep the mortgage interest-aware engine anchored to fresh data, matching the
+    // behavior of manually-logged payments (loanPaymentService.createPayment).
+    // Best-effort: never blocks the payment. No-op for non-mortgage loans.
+    await loanPaymentService.autoSnapshotMortgageBalance(loan, paymentDate);
+
     logger.info('Auto-logged loan payment from fixed expense:', {
       paymentId: payment.id,
       loanId: fixedExpense.linked_loan_id,
@@ -86,7 +92,7 @@ class AutoPaymentLoggerService {
     if (fixedExpense.fixed_expense_id !== undefined && fixedExpense.fixed_expense_id !== null) {
       eventMetadata.fixedExpenseId = fixedExpense.fixed_expense_id;
     }
-    activityLogService.logEvent(
+    await activityLogService.logEvent(
       'auto_payment_logged',
       'loan_payment',
       payment.id,

@@ -36,6 +36,20 @@ Past false positives on THIS repo:
   in `try/catch`. The real issue is a *smell* (see backend checklist), not a crash.
 - "LoanPaymentHistory conditional columns break table" — React renders nothing for
   `{false && <th>}`, and both thead/tbody exclude the column consistently. Valid.
+- "Unreachable controller catch branches for `Payment amount`/`Payment date`/
+  `Balance override`" — `loanPaymentService.validatePayment` DOES throw those exact
+  message prefixes, so the `error.message.includes(...)` branches in
+  `loanPaymentController` are reachable. Confirm the service's actual `throw` strings
+  before calling a branch dead.
+- "`autoPaymentLoggerService` builds dates without clamping the due day" — it DOES
+  clamp via `Math.min(dueDay, new Date(year, month, 0).getDate())`. Read the map()
+  body before flagging.
+- "`hasPaymentForMonth` uses `${year}-${month}-31` → invalid-date bug" — that's a
+  lexicographic STRING comparison upper bound against `YYYY-MM-DD` text columns
+  (`'2024-02-29' <= '2024-02-31'` holds), so it is correct, not a bug. Date-string
+  clamping only matters when the string is parsed into a `Date` or persisted.
+- "`LoanDetailView` doesn't reset form state on loan switch" — it DOES, in the
+  `isOpen && loan` effect (`setEditingPayment(null)`, `setShowPaymentForm(false)`).
 
 Past confirmed-true patterns on THIS repo:
 - Dead error-message branches left in catch blocks after feature-gate removal.
@@ -50,6 +64,21 @@ Past confirmed-true patterns on THIS repo:
 - Duplicate activity log events when a helper already logs and the caller logs again.
 - `editingPayment`/form state not reset in useEffect when the underlying entity
   (loan, expense) changes — stale form data from a previous entity persists.
+- Auto-log path bypasses the service layer: `autoPaymentLoggerService`.
+  `createPaymentFromFixedExpense` writes directly via `loanPaymentRepository.create()`
+  instead of `loanPaymentService.createPayment()`, so it SKIPS the mortgage
+  auto-snapshot step and the shared amount/date validation. This causes stale
+  `loan_balances` anchors → historical-balance discrepancies for mortgages linked to
+  fixed expenses. When auditing linked payments or balance drift, check whether the
+  write goes through the service or straight to the repository.
+- `parseFloat` guard drift between sibling controller actions: `createPayment` guards
+  `balanceOverride != null && !== ''` but `updatePayment` only checks `!== undefined`,
+  so an explicit `null` becomes `parseFloat(null)=NaN` and trips validation. Compare
+  create vs update handlers for the same optional field.
+- Inconsistent fire-and-forget `activityLogService.logEvent(...)`: some calls are
+  `await`ed, siblings are not and lack `.catch()` (e.g. `balance_override_applied`,
+  `auto_payment_logged`). Un-awaited + uncaught = unhandled rejection risk. Flag the
+  inconsistency, pick one convention.
 
 Downgrade or drop any finding you cannot reproduce by reading the source.
 

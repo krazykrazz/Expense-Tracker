@@ -78,6 +78,63 @@ class LoanPaymentService {
   }
 
   /**
+   * Create an auto-snapshot of a mortgage's balance after a payment so the
+   * interest-aware engine stays anchored to fresh data. No-op for non-mortgages
+   * and when the calculation is not interest-aware. Best-effort: failures are
+   * logged and swallowed so they never block payment creation.
+   *
+   * Shared by createPayment and the auto-payment logger so that payments created
+   * from linked fixed expenses get the same fresh anchor as manual payments.
+   * @param {Object} loan - Loan record (must include id, loan_type, fixed_interest_rate)
+   * @param {string} paymentDate - Payment date in YYYY-MM-DD format
+   */
+  async autoSnapshotMortgageBalance(loan, paymentDate) {
+    if (!loan || loan.loan_type !== 'mortgage') {
+      return;
+    }
+
+    try {
+      const calcResult = await balanceCalculationService.calculateBalance(loan.id, {
+        targetDate: paymentDate
+      });
+      if (calcResult.interestAware && calcResult.currentBalance != null) {
+        const date = new Date(paymentDate + 'T00:00:00Z');
+        const year = date.getUTCFullYear();
+        const month = date.getUTCMonth() + 1;
+
+        const snapshots = await loanBalanceRepository.getBalanceHistory(loan.id);
+        let rate = balanceCalculationService.resolveRateAtDate(snapshots, year, month);
+        if (rate == null && loan.fixed_interest_rate) {
+          rate = loan.fixed_interest_rate;
+        }
+        if (rate == null) {
+          rate = 0;
+        }
+
+        await loanBalanceService.createOrUpdateBalance({
+          loan_id: loan.id,
+          year,
+          month,
+          remaining_balance: calcResult.currentBalance,
+          rate
+        });
+
+        logger.debug('Auto-snapshot created after payment', {
+          loanId: loan.id,
+          balance: calcResult.currentBalance,
+          year,
+          month
+        });
+      }
+    } catch (err) {
+      logger.warn('Failed to auto-snapshot balance after payment', {
+        loanId: loan && loan.id,
+        error: err.message
+      });
+    }
+  }
+
+  /**
    * Create a new payment entry (Requirement 1.1)
    * @param {number} loanId - Loan ID
    * @param {Object} paymentData - { amount, payment_date, notes }
@@ -141,7 +198,7 @@ class LoanPaymentService {
       });
 
       // Log balance override event
-      activityLogService.logEvent(
+      await activityLogService.logEvent(
         'balance_override_applied',
         'loan_balance',
         loanId,
@@ -157,42 +214,7 @@ class LoanPaymentService {
     } else if (loan.loan_type === 'mortgage') {
       // Auto-snapshot: when no override is provided, calculate the balance at the
       // payment month and create a snapshot so the engine stays anchored to fresh data
-      try {
-        const calcResult = await balanceCalculationService.calculateBalance(loanId, {
-          targetDate: paymentData.payment_date
-        });
-        if (calcResult.interestAware && calcResult.currentBalance != null) {
-          const date = new Date(paymentData.payment_date + 'T00:00:00Z');
-          const year = date.getUTCFullYear();
-          const month = date.getUTCMonth() + 1;
-
-          const snapshots = await loanBalanceRepository.getBalanceHistory(loanId);
-          let rate = balanceCalculationService.resolveRateAtDate(snapshots, year, month);
-          if (rate == null && loan.fixed_interest_rate) {
-            rate = loan.fixed_interest_rate;
-          }
-          if (rate == null) {
-            rate = 0;
-          }
-
-          await loanBalanceService.createOrUpdateBalance({
-            loan_id: loanId,
-            year,
-            month,
-            remaining_balance: calcResult.currentBalance,
-            rate
-          });
-
-          logger.debug('Auto-snapshot created after payment', {
-            loanId,
-            balance: calcResult.currentBalance,
-            year,
-            month
-          });
-        }
-      } catch (err) {
-        logger.warn('Failed to auto-snapshot balance after payment', { loanId, error: err.message });
-      }
+      await this.autoSnapshotMortgageBalance(loan, paymentData.payment_date);
     }
     
     // Log the payment creation event

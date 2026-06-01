@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react';
 import './TotalDebtView.css';
 import { getTotalDebtOverTime } from '../../services/loanBalanceApi';
 import { formatCurrency, formatMonth } from '../../utils/formatters';
+import { createLogger } from '../../utils/logger';
+
+const logger = createLogger('TotalDebtView');
 
 const TotalDebtView = ({ isOpen, onClose }) => {
   const [debtHistory, setDebtHistory] = useState([]);
@@ -23,7 +26,7 @@ const TotalDebtView = ({ isOpen, onClose }) => {
       setDebtHistory(data || []);
     } catch (err) {
       setError(err.message || 'Failed to load total debt history');
-      console.error('Error fetching total debt history:', err);
+      logger.error('Error fetching total debt history:', err);
     } finally {
       setLoading(false);
     }

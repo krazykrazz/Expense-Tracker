@@ -49,13 +49,15 @@ describe('MonthSelector', () => {
       expect(screen.getByText('December')).toBeInTheDocument();
     });
 
-    it('renders years from 2020 to 2030', () => {
+    it('renders years from 2000 to currentYear+2', () => {
       render(<MonthSelector {...defaultProps} />);
       
       const yearSelect = screen.getByLabelText('Year:');
-      expect(yearSelect.options.length).toBe(11);
-      expect(screen.getByText('2020')).toBeInTheDocument();
-      expect(screen.getByText('2030')).toBeInTheDocument();
+      const currentYear = new Date().getFullYear();
+      const expectedCount = (currentYear + 2) - 2000 + 1;
+      expect(yearSelect.options.length).toBe(expectedCount);
+      expect(screen.getByText('2000')).toBeInTheDocument();
+      expect(screen.getByText(String(currentYear + 2))).toBeInTheDocument();
     });
 
     it('renders Annual Summary button', () => {

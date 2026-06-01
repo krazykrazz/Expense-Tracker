@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.9.2',
+    date: 'June 1, 2026',
+    added: [],
+    changed: ['Optimizations to support historical data import'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.9.1',
     date: 'May 31, 2026',
     added: [],

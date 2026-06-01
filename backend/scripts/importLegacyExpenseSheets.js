@@ -481,6 +481,17 @@ function normalizePlaceForMatch(place) {
     .trim();
 }
 
+/**
+ * Aggressive normalization that also strips spaces —
+ * used as a secondary lookup key for cases like "Wal-Mart" vs "WalMart"
+ */
+function normalizePlaceCompact(place) {
+  return String(place || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '')
+    .trim();
+}
+
 function chooseMostFrequentVariant(countMap) {
   const items = Array.from(countMap.entries());
   if (!items.length) return null;
@@ -707,9 +718,20 @@ function rowToExpense(row, context) {
   let place = placeCell || LEGACY_UNKNOWN_PLACE;
 
   if (context.placeCanonicalMap) {
-    const canonical = context.placeCanonicalMap.get(normalizePlaceForMatch(place));
-    if (canonical) {
-      place = canonical;
+    const { canonical, compact } = context.placeCanonicalMap;
+    const compactKey = normalizePlaceCompact(place);
+    const normalizedKey = normalizePlaceForMatch(place);
+
+    // Priority 1: modern (2025+) compact match — source of truth
+    const compactResolved = compact ? compact.get(compactKey) : null;
+    if (compactResolved) {
+      place = compactResolved;
+    } else {
+      // Priority 2: normal key lookup (may come from historical or legacy)
+      const resolved = canonical.get(normalizedKey);
+      if (resolved) {
+        place = resolved;
+      }
     }
   }
 
@@ -965,36 +987,70 @@ async function loadHistoricalPlaceCategoryStats(db) {
 }
 
 async function loadProductionPlaceStats(db) {
-  const rows = await new Promise((resolve, reject) => {
+  // Load 2025+ place names as the canonical "truth" source
+  const modernRows = await new Promise((resolve, reject) => {
     db.all(
       `
         SELECT place, COUNT(*) AS cnt
         FROM expenses
         WHERE place IS NOT NULL AND TRIM(place) <> ''
+          AND date >= '2025-01-01'
         GROUP BY place
       `,
       [],
       (err, resultRows) => {
-        if (err) {
-          reject(err);
-          return;
-        }
+        if (err) { reject(err); return; }
         resolve(resultRows || []);
       }
     );
   });
 
-  const byNormalized = new Map();
-  for (const row of rows) {
+  // Also load all historical entries as fallback (for places not seen in 2025+)
+  const allRows = await new Promise((resolve, reject) => {
+    db.all(
+      `
+        SELECT place, COUNT(*) AS cnt
+        FROM expenses
+        WHERE place IS NOT NULL AND TRIM(place) <> ''
+          AND date < '2025-01-01'
+        GROUP BY place
+      `,
+      [],
+      (err, resultRows) => {
+        if (err) { reject(err); return; }
+        resolve(resultRows || []);
+      }
+    );
+  });
+
+  // Build modern (2025+) map — these take priority
+  const modernByNormalized = new Map();
+  const modernByCompact = new Map();
+  for (const row of modernRows) {
+    const rawPlace = String(row.place || '').trim();
+    const normalized = normalizePlaceForMatch(rawPlace);
+    const compact = normalizePlaceCompact(rawPlace);
+    if (!normalized) continue;
+    if (!modernByNormalized.has(normalized)) modernByNormalized.set(normalized, new Map());
+    modernByNormalized.get(normalized).set(rawPlace, (modernByNormalized.get(normalized).get(rawPlace) || 0) + row.cnt);
+    if (compact) {
+      if (!modernByCompact.has(compact)) modernByCompact.set(compact, new Map());
+      modernByCompact.get(compact).set(rawPlace, (modernByCompact.get(compact).get(rawPlace) || 0) + row.cnt);
+    }
+  }
+
+  // Build historical fallback map (pre-2025)
+  const historicalByNormalized = new Map();
+  for (const row of allRows) {
     const rawPlace = String(row.place || '').trim();
     const normalized = normalizePlaceForMatch(rawPlace);
     if (!normalized) continue;
-    if (!byNormalized.has(normalized)) byNormalized.set(normalized, new Map());
-    const countMap = byNormalized.get(normalized);
+    if (!historicalByNormalized.has(normalized)) historicalByNormalized.set(normalized, new Map());
+    const countMap = historicalByNormalized.get(normalized);
     countMap.set(rawPlace, (countMap.get(rawPlace) || 0) + row.cnt);
   }
 
-  return byNormalized;
+  return { modern: modernByNormalized, modernByCompact, historical: historicalByNormalized };
 }
 
 function scanLegacyPlaceUsage(workbookFiles) {
@@ -1038,23 +1094,39 @@ function scanLegacyPlaceUsage(workbookFiles) {
 }
 
 function buildCanonicalPlaceMap(prodPlaceStats, legacyPlaceStats) {
+  const { modern, modernByCompact, historical } = prodPlaceStats;
   const canonicalMap = new Map();
-  const allKeys = new Set([...prodPlaceStats.keys(), ...legacyPlaceStats.keys()]);
+  const compactCanonicalMap = new Map();
+  const allKeys = new Set([...modern.keys(), ...historical.keys(), ...legacyPlaceStats.keys()]);
 
   for (const key of allKeys) {
-    const prodVariants = prodPlaceStats.get(key);
-    if (prodVariants && prodVariants.size > 0) {
-      canonicalMap.set(key, chooseMostFrequentVariant(prodVariants));
+    // Priority 1: 2025+ modern usage (source of truth)
+    const modernVariants = modern.get(key);
+    if (modernVariants && modernVariants.size > 0) {
+      canonicalMap.set(key, chooseMostFrequentVariant(modernVariants));
       continue;
     }
 
+    // Priority 2: pre-2025 production data (historical DB entries)
+    const historicalVariants = historical.get(key);
+    if (historicalVariants && historicalVariants.size > 0) {
+      canonicalMap.set(key, chooseMostFrequentVariant(historicalVariants));
+      continue;
+    }
+
+    // Priority 3: legacy spreadsheet usage
     const legacyVariants = legacyPlaceStats.get(key);
     if (legacyVariants && legacyVariants.size > 0) {
       canonicalMap.set(key, chooseMostFrequentVariant(legacyVariants));
     }
   }
 
-  return canonicalMap;
+  // Build compact-key lookup from modern 2025+ data for secondary matching
+  for (const [compactKey, variantsMap] of modernByCompact.entries()) {
+    compactCanonicalMap.set(compactKey, chooseMostFrequentVariant(variantsMap));
+  }
+
+  return { canonical: canonicalMap, compact: compactCanonicalMap };
 }
 
 async function loadPaymentMethodMaps(db) {
@@ -1497,7 +1569,7 @@ async function main() {
 
     console.log(`Historical place signatures loaded: ${options.placeCategoryStats.size}`);
     console.log(`Payment methods loaded: ${options.paymentMethodMaps.total}`);
-    console.log(`Canonical place keys loaded: ${options.placeCanonicalMap.size}`);
+    console.log(`Canonical place keys loaded: ${options.placeCanonicalMap.canonical.size} (+ ${options.placeCanonicalMap.compact.size} compact)`);
 
     if (!options.dryRun) {
       await dbRun(db, 'BEGIN TRANSACTION', []);
@@ -1513,6 +1585,38 @@ async function main() {
 
     if (!options.dryRun) {
       await dbRun(db, 'COMMIT', []);
+
+      // Post-import: standardize pre-existing DB entries using 2025+ canonical names
+      const { compact } = options.placeCanonicalMap;
+      if (compact && compact.size > 0) {
+        console.log('\nPost-import: standardizing pre-existing place names to match 2025+ canonical...');
+        const existingPlaces = await new Promise((resolve, reject) => {
+          db.all(
+            `SELECT DISTINCT place FROM expenses WHERE place IS NOT NULL AND TRIM(place) <> '' AND date < '2025-01-01'`,
+            [], (err, rows) => { if (err) reject(err); else resolve(rows || []); }
+          );
+        });
+
+        let standardized = 0;
+        await dbRun(db, 'BEGIN TRANSACTION', []);
+        for (const row of existingPlaces) {
+          const currentPlace = row.place;
+          const compactKey = normalizePlaceCompact(currentPlace);
+          const modernCanonical = compact.get(compactKey);
+          if (modernCanonical && modernCanonical !== currentPlace) {
+            const changes = await new Promise((resolve, reject) => {
+              db.run(
+                'UPDATE expenses SET place = ? WHERE place = ? AND date < ?',
+                [modernCanonical, currentPlace, '2025-01-01'],
+                function (err) { if (err) reject(err); else resolve(this.changes); }
+              );
+            });
+            standardized += changes;
+          }
+        }
+        await dbRun(db, 'COMMIT', []);
+        console.log(`  Standardized ${standardized} pre-existing expense row(s) to 2025+ canonical names.`);
+      }
     }
   } catch (error) {
     if (db && !options.dryRun) {

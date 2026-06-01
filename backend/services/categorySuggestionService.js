@@ -30,10 +30,10 @@ class CategorySuggestionService {
 
     const suggestionPool = this._preferSpecificOverOther(frequencyData);
 
-    // Calculate total count for confidence score
-    const totalCount = suggestionPool.reduce((sum, item) => sum + item.count, 0);
+    // Calculate total count for confidence score (use ALL entries including Other)
+    const totalCount = frequencyData.reduce((sum, item) => sum + item.count, 0);
     
-    // Find the most frequent category
+    // Find the most frequent category from the filtered pool
     // If there's a tie, getCategoryFrequencyByPlace already orders by last_used DESC
     const topCategory = suggestionPool[0];
     

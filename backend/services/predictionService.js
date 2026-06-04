@@ -9,6 +9,7 @@
 
 const expenseRepository = require('../repositories/expenseRepository');
 const incomeRepository = require('../repositories/incomeRepository');
+const dbHelper = require('../utils/dbHelper');
 const logger = require('../config/logger');
 const { 
   ANALYTICS_CONFIG, 
@@ -156,42 +157,30 @@ class PredictionService {
 
   /**
    * Get historical monthly average (excluding current month)
+   * Uses a single SQL aggregation instead of loading all rows into memory.
    * @private
    */
   async _getHistoricalMonthlyAverage(currentYear, currentMonth) {
     try {
-      const allExpenses = await expenseRepository.findAll();
-      
-      if (!allExpenses || allExpenses.length === 0) {
-        return 0;
-      }
-      
-      // Group expenses by month, excluding current month
-      const monthlyTotals = {};
-      
-      for (const expense of allExpenses) {
-        const date = new Date(expense.date);
-        const expYear = date.getUTCFullYear();
-        const expMonth = date.getUTCMonth() + 1;
-        
-        // Skip current month
-        if (expYear === currentYear && expMonth === currentMonth) {
-          continue;
-        }
-        
-        const key = `${expYear}-${expMonth}`;
-        if (!monthlyTotals[key]) {
-          monthlyTotals[key] = 0;
-        }
-        monthlyTotals[key] += expense.amount;
-      }
-      
-      const totals = Object.values(monthlyTotals);
-      if (totals.length === 0) {
-        return 0;
-      }
-      
-      return totals.reduce((a, b) => a + b, 0) / totals.length;
+      // Exclude the current month using date range bounds
+      const currentMonthStart = `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`;
+      const currentMonthEnd = currentMonth === 12
+        ? `${currentYear + 1}-01-01`
+        : `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-01`;
+
+      // Get average of monthly totals (excluding current month) via subquery
+      const row = await dbHelper.queryOne(
+        `SELECT AVG(monthly_total) AS avg_monthly
+         FROM (
+           SELECT SUM(amount) AS monthly_total
+           FROM expenses
+           WHERE NOT (date >= ? AND date < ?)
+           GROUP BY strftime('%Y-%m', date)
+         )`,
+        [currentMonthStart, currentMonthEnd]
+      );
+
+      return row && row.avg_monthly ? row.avg_monthly : 0;
     } catch (error) {
       logger.error('Error calculating historical average:', error);
       return 0;
@@ -201,36 +190,27 @@ class PredictionService {
   /**
    * Calculate confidence level based on months of available data
    * High (12+ months), Medium (6-11 months), Low (<6 months)
+   * Uses COUNT(DISTINCT) in SQL instead of loading all rows.
    * @param {number} year - Year
    * @param {number} month - Month
    * @returns {Promise<'low'|'medium'|'high'>}
    */
   async calculateConfidenceLevel(year, month) {
     try {
-      const allExpenses = await expenseRepository.findAll();
-      
-      if (!allExpenses || allExpenses.length === 0) {
-        return CONFIDENCE_LEVELS.LOW;
-      }
-      
-      // Count unique months with data (excluding current month)
-      const uniqueMonths = new Set();
-      
-      for (const expense of allExpenses) {
-        const date = new Date(expense.date);
-        const expYear = date.getUTCFullYear();
-        const expMonth = date.getUTCMonth() + 1;
-        
-        // Skip current month
-        if (expYear === year && expMonth === month) {
-          continue;
-        }
-        
-        uniqueMonths.add(`${expYear}-${expMonth}`);
-      }
-      
-      const monthsOfData = uniqueMonths.size;
-      
+      const currentMonthStart = `${year}-${String(month).padStart(2, '0')}-01`;
+      const currentMonthEnd = month === 12
+        ? `${year + 1}-01-01`
+        : `${year}-${String(month + 1).padStart(2, '0')}-01`;
+
+      const row = await dbHelper.queryOne(
+        `SELECT COUNT(DISTINCT strftime('%Y-%m', date)) AS month_count
+         FROM expenses
+         WHERE NOT (date >= ? AND date < ?)`,
+        [currentMonthStart, currentMonthEnd]
+      );
+
+      const monthsOfData = row ? row.month_count : 0;
+
       if (monthsOfData >= ANALYTICS_CONFIG.CONFIDENCE_HIGH_MONTHS) {
         return CONFIDENCE_LEVELS.HIGH;
       } else if (monthsOfData >= ANALYTICS_CONFIG.CONFIDENCE_MEDIUM_MONTHS) {

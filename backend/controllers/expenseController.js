@@ -1,5 +1,7 @@
 const expenseService = require('../services/expenseService');
+const expenseRepository = require('../repositories/expenseRepository');
 const categorySuggestionService = require('../services/categorySuggestionService');
+const { analyticsCache } = require('../middleware/analyticsCache');
 const logger = require('../config/logger');
 
 /**
@@ -65,6 +67,7 @@ async function createExpense(req, res) {
       const lastFutureExpense = result.futureExpenses[result.futureExpenses.length - 1];
       const message = generateFutureExpensesMessage(result.futureExpenses.length, lastFutureExpense.date);
       
+      analyticsCache.invalidate();
       res.status(201).json({
         expense: result.expense,
         futureExpenses: result.futureExpenses,
@@ -72,6 +75,7 @@ async function createExpense(req, res) {
       });
     } else {
       // Backward compatible response for single expense creation
+      analyticsCache.invalidate();
       res.status(201).json(result);
     }
   } catch (error) {
@@ -80,12 +84,12 @@ async function createExpense(req, res) {
 }
 
 /**
- * Get all expenses with optional year/month filtering
- * GET /api/expenses?year=2024&month=11
+ * Get all expenses with optional year/month filtering and pagination
+ * GET /api/expenses?year=2024&month=11&limit=100&offset=0
  */
 async function getExpenses(req, res) {
   try {
-    const { year, month } = req.query;
+    const { year, month, limit, offset } = req.query;
     const filters = {};
     
     if (year) {
@@ -97,6 +101,22 @@ async function getExpenses(req, res) {
         return res.status(400).json({ error: 'Year must be between 1900 and 2100' });
       }
       filters.year = parsed;
+    }
+
+    if (limit) {
+      const parsedLimit = parseInt(limit);
+      if (isNaN(parsedLimit) || parsedLimit < 1) {
+        return res.status(400).json({ error: 'Limit must be a positive number' });
+      }
+      filters.limit = Math.min(parsedLimit, 5000); // Cap at 5000
+    }
+
+    if (offset) {
+      const parsedOffset = parseInt(offset);
+      if (isNaN(parsedOffset) || parsedOffset < 0) {
+        return res.status(400).json({ error: 'Offset must be a non-negative number' });
+      }
+      filters.offset = parsedOffset;
     }
     
     if (month) {
@@ -112,6 +132,38 @@ async function getExpenses(req, res) {
     
     const expenses = await expenseService.getExpenses(filters);
     res.status(200).json(expenses);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+}
+
+/**
+ * Get expense count (lightweight, no full data transfer)
+ * GET /api/expenses/count?year=2024&month=11
+ */
+async function getExpenseCount(req, res) {
+  try {
+    const { year, month } = req.query;
+    const filters = {};
+
+    if (year) {
+      const parsed = parseInt(year);
+      if (isNaN(parsed) || parsed < 1900 || parsed > 2100) {
+        return res.status(400).json({ error: 'Year must be a valid number between 1900 and 2100' });
+      }
+      filters.year = parsed;
+    }
+
+    if (month) {
+      const parsed = parseInt(month);
+      if (isNaN(parsed) || parsed < 1 || parsed > 12) {
+        return res.status(400).json({ error: 'Month must be between 1 and 12' });
+      }
+      filters.month = parsed;
+    }
+
+    const count = await expenseRepository.getCount(filters);
+    res.status(200).json({ count });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -177,6 +229,7 @@ async function updateExpense(req, res) {
       const lastFutureExpense = result.futureExpenses[result.futureExpenses.length - 1];
       const message = generateFutureExpensesMessage(result.futureExpenses.length, lastFutureExpense.date);
       
+      analyticsCache.invalidate();
       res.status(200).json({
         expense: result.expense,
         futureExpenses: result.futureExpenses,
@@ -184,6 +237,7 @@ async function updateExpense(req, res) {
       });
     } else {
       // Backward compatible response for single expense update
+      analyticsCache.invalidate();
       res.status(200).json(result);
     }
   } catch (error) {
@@ -210,6 +264,7 @@ async function deleteExpense(req, res) {
       return res.status(404).json({ error: 'Expense not found' });
     }
     
+    analyticsCache.invalidate();
     res.status(200).json({ message: 'Expense deleted successfully' });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -454,6 +509,7 @@ async function updateInsuranceStatus(req, res) {
 module.exports = {
   createExpense,
   getExpenses,
+  getExpenseCount,
   getExpenseWithPeople,
   updateExpense,
   deleteExpense,

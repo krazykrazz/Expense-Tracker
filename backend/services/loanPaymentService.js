@@ -315,7 +315,7 @@ class LoanPaymentService {
       });
 
       // Log balance override event
-      activityLogService.logEvent(
+      await activityLogService.logEvent(
         'balance_override_applied',
         'loan_balance',
         existingPayment.loan_id,

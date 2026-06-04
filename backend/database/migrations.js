@@ -134,6 +134,18 @@ const MIGRATIONS = [
     }
   },
   {
+    name: 'performance_compound_indexes_v1',
+    async apply(db) {
+      await runSql(db, 'CREATE INDEX IF NOT EXISTS idx_expenses_date_type ON expenses(date, type)');
+      await runSql(db, 'CREATE INDEX IF NOT EXISTS idx_expenses_date_method ON expenses(date, method)');
+      await runSql(db, 'CREATE INDEX IF NOT EXISTS idx_expenses_week ON expenses(week)');
+      await runSql(db, 'CREATE INDEX IF NOT EXISTS idx_expenses_place_type ON expenses(place, type)');
+      await runSql(db, 'CREATE INDEX IF NOT EXISTS idx_expenses_date_place ON expenses(date, place)');
+      await runSql(db, 'CREATE INDEX IF NOT EXISTS idx_activity_logs_timestamp ON activity_logs(timestamp)');
+      logger.info('Performance compound indexes created');
+    }
+  },
+  {
     name: 'analytics_hub_revamp_v1',
     async apply(db) {
       // Add columns to dismissed_anomalies (idempotent — columns may already exist from schema.js on fresh DBs)

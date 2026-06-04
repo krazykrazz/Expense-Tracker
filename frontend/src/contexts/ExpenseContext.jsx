@@ -110,11 +110,11 @@ export function ExpenseProvider({ children }) {
     const fetchCount = async () => {
       try {
         const now = new Date();
-        const url = `${API_ENDPOINTS.EXPENSES}?year=${now.getFullYear()}&month=${now.getMonth() + 1}`;
+        const url = `${API_ENDPOINTS.EXPENSES}/count?year=${now.getFullYear()}&month=${now.getMonth() + 1}`;
         const response = await authAwareFetch(url);
         if (response.ok && isMounted) {
           const data = await response.json();
-          setCurrentMonthExpenseCount(data.length);
+          setCurrentMonthExpenseCount(typeof data.count === 'number' ? data.count : (Array.isArray(data) ? data.length : 0));
         }
       } catch (err) {
         if (isMounted) console.error('Error fetching current month expense count:', err);

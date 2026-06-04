@@ -24,10 +24,10 @@ function classifyPaymentUrgency(date) {
 
 /**
  * Format a number as currency with dollar sign.
- * Uses formatCurrency (which returns "1,234.56") and prepends "$".
+ * formatCurrency already returns "$1,234.56".
  */
 function fmt(value) {
-  return '$' + formatCurrency(value);
+  return formatCurrency(value);
 }
 
 /**

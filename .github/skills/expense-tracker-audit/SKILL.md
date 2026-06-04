@@ -66,21 +66,75 @@ Past confirmed-true patterns on THIS repo:
   (loan, expense) changes — stale form data from a previous entity persists.
 - Auto-log path bypasses the service layer: `autoPaymentLoggerService`.
   `createPaymentFromFixedExpense` writes directly via `loanPaymentRepository.create()`
-  instead of `loanPaymentService.createPayment()`, so it SKIPS the mortgage
-  auto-snapshot step and the shared amount/date validation. This causes stale
-  `loan_balances` anchors → historical-balance discrepancies for mortgages linked to
-  fixed expenses. When auditing linked payments or balance drift, check whether the
-  write goes through the service or straight to the repository.
-- `parseFloat` guard drift between sibling controller actions: `createPayment` guards
-  `balanceOverride != null && !== ''` but `updatePayment` only checks `!== undefined`,
-  so an explicit `null` becomes `parseFloat(null)=NaN` and trips validation. Compare
-  create vs update handlers for the same optional field.
+  instead of `loanPaymentService.createPayment()`, so it SKIPS the shared
+  amount/date validation. Note: it DOES call `autoSnapshotMortgageBalance()` after
+  the create (line ~80), so snapshot anchoring is NOT skipped — only validation is.
 - Inconsistent fire-and-forget `activityLogService.logEvent(...)`: some calls are
-  `await`ed, siblings are not and lack `.catch()` (e.g. `balance_override_applied`,
-  `auto_payment_logged`). Un-awaited + uncaught = unhandled rejection risk. Flag the
-  inconsistency, pick one convention.
+  `await`ed, siblings are not and lack `.catch()` (e.g. `balance_override_applied`
+  in `loanPaymentService.updatePayment` line ~318). Un-awaited + uncaught =
+  unhandled rejection risk. Flag the inconsistency, pick one convention.
+- `_getMortgageBalanceHistory` multi-payment-in-month bug: when 2+ payments occur
+  in the same month, each payment's `interestAccrued` is set to the full month's
+  interest (line ~512), double-counting interest for display. First payment should
+  absorb the interest, subsequent ones should show `interestAccrued: 0`.
+- Duplicate `findById()` method in `loanBalanceRepository.js` (lines 9 and 67) —
+  identical, one should be removed.
+- Dead frontend API: `loanPaymentApi.getBalanceHistory` is exported and the
+  `/api/loans/:id/payment-balance-history` endpoint exists and returns
+  `interestAccrued`/`principalPaid` per payment, BUT no component imports it.
+  `LoanPaymentHistory.jsx` computes its own naive running balances from raw payments.
+  The per-payment interest/principal breakdown is never shown to the user.
+- `totalInterestAccrued` in the Payment Summary is always 0 when mortgage is paid
+  monthly (snapshot created each payment anchors to current month → zero months to
+  walk → zero interest). Field was removed from `MortgageTabbedContent.jsx`.
+- `formatCurrency()` already includes `$`. Any wrapper that prepends `$` causes
+  double-`$$` display (was in `MortgageKpiStrip.jsx fmt()` function, now fixed).
+
+Past confirmed-false patterns (subagent hallucinations on THIS repo):
+- "Duplicate `findById()` in `loanPaymentRepository.js`" — FALSE, there is only
+  one `findById()` (line 98). The two methods at lines 47/68 are `findByLoan` and
+  `findByLoanOrdered` (different methods). Always verify method names.
+- "`mortgageInsights` state never fetched in LoanDetailView" — FALSE, the fetch is
+  at line 197 (`fetchMortgageInsights` callback) and called in a useEffect at line
+  222. The subagent only read lines 1-150 and missed it. Always read the full file.
+- "`parseFloat` without NaN guard in controller is a bug" — DOWNGRADE to smell.
+  `loanPaymentService.createPayment` validates `balanceOverride` at line 151 with
+  `typeof !== 'number' || isNaN(...)`. NaN from `parseFloat("abc")` IS caught by
+  the service. The controller guard is redundant but not a bypass.
+- "`createPayment` vs `updatePayment` guard drift on `balanceOverride`" — FALSE
+  for current code. Both now use identical `!= null && !== ''` guards (lines 38
+  and 150 in the controller). Was true historically but since fixed.
 
 Downgrade or drop any finding you cannot reproduce by reading the source.
+
+### 2b. Performance-specific audit patterns
+When auditing for performance issues, check these verified patterns:
+
+**Confirmed performance issues (fixed in this repo):**
+- `strftime()` in WHERE clauses prevents SQLite from using indexes — always use
+  `date >= ? AND date < ?` range comparisons instead.
+- Services calling `expenseRepository.findAll()` without date bounds load ALL rows
+  (21k+) into memory. Use `findByDateRange(start, end)` with a bounded window.
+- `predictionService._getHistoricalMonthlyAverage()` and `calculateConfidenceLevel()`
+  were loading all expenses into JS and iterating — replaced with SQL aggregations.
+- `trendsService._fetchMonthlyHistory()` was making 6 separate strftime queries in a
+  loop — replaced with single GROUP BY query with date range bounds.
+- `spendingPatternsService.checkDataSufficiency()` loaded all expenses to get
+  min/max/count — replaced with `SELECT MIN(date), MAX(date), COUNT(*)`.
+- Missing WAL mode on production database — only test DB had it enabled.
+- Missing compound indexes on expenses (date+type, date+method, week, place+type).
+- Missing index on `activity_logs(timestamp)`.
+- Frontend `ExpenseContext` fetched all current-month expenses just to get `.length`
+  — replaced with lightweight `/api/expenses/count` endpoint.
+- Frontend `ExpenseList` payment method filter used `.find()` inside `.filter()` loop
+  (O(n×m)) — replaced with pre-built Map for O(1) lookup.
+
+**Performance anti-patterns to flag:**
+- Any `findAll()` call without year/month/date filters in analytics services
+- `strftime('%Y', date)` or `strftime('%m', date)` in WHERE clauses
+- N+1 query patterns (loops making DB calls per iteration)
+- Services that call `findAll()` multiple times in the same request path
+- Missing WAL mode (`PRAGMA journal_mode = WAL`) in database initialization
 
 ### 3. Apply the checklists
 Work through [the audit checklist](./references/audit-checklist.md). It encodes

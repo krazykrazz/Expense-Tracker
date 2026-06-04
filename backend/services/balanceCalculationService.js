@@ -509,8 +509,11 @@ class BalanceCalculationService {
       // Process payments in this month
       const monthPayments = paymentsByMonth[monthKey];
       if (monthPayments) {
+        let interestRemainingThisMonth = Math.round(monthlyInterest * 100) / 100;
         for (const payment of monthPayments) {
-          const interestAccrued = Math.round(monthlyInterest * 100) / 100;
+          // First payment absorbs the month's interest; subsequent payments are all principal
+          const interestAccrued = interestRemainingThisMonth;
+          interestRemainingThisMonth = 0;
           const principalPaid = Math.round(Math.max(0, payment.amount - interestAccrued) * 100) / 100;
 
           balance -= payment.amount;

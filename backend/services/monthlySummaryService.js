@@ -3,22 +3,33 @@ const logger = require('../config/logger');
 
 class MonthlySummaryService {
   /**
+   * Compute date range bounds for a given year/month (index-friendly)
+   * @private
+   */
+  _dateRange(year, month) {
+    const yr = parseInt(year);
+    const mo = parseInt(month);
+    const start = `${yr}-${String(mo).padStart(2, '0')}-01`;
+    const end = mo === 12 ? `${yr + 1}-01-01` : `${yr}-${String(mo + 1).padStart(2, '0')}-01`;
+    return { start, end };
+  }
+
+  /**
    * Get complete monthly summary for a given year/month.
    * @param {number} year
    * @param {number} month - 1-12
    * @returns {Promise<Object>} MonthlySummaryResponse
    */
   async getMonthlySummary(year, month) {
-    const yearStr = String(year);
-    const monthStr = String(month).padStart(2, '0');
+    const range = this._dateRange(year, month);
 
     const [totalSpending, topCategories, topMerchants, monthOverMonth, budgetSummary] =
       await Promise.all([
-        this._getTotalSpending(yearStr, monthStr),
-        this._getTopCategories(yearStr, monthStr),
-        this._getTopMerchants(yearStr, monthStr),
+        this._getTotalSpending(range),
+        this._getTopCategories(range),
+        this._getTopMerchants(range),
         this._getMonthOverMonth(year, month),
-        this._getBudgetSummary(year, month, yearStr, monthStr),
+        this._getBudgetSummary(year, month, range),
       ]);
 
     return {
@@ -33,12 +44,12 @@ class MonthlySummaryService {
   /**
    * @returns {Promise<number>} total spending for the month
    */
-  async _getTotalSpending(yearStr, monthStr) {
+  async _getTotalSpending(range) {
     const row = await dbHelper.queryOne(
       `SELECT COALESCE(SUM(amount), 0) AS total
        FROM expenses
-       WHERE strftime('%Y', date) = ? AND strftime('%m', date) = ?`,
-      [yearStr, monthStr]
+       WHERE date >= ? AND date < ?`,
+      [range.start, range.end]
     );
     return row.total;
   }
@@ -46,15 +57,15 @@ class MonthlySummaryService {
   /**
    * @returns {Promise<Array<{category: string, total: number}>>} top 5 categories
    */
-  async _getTopCategories(yearStr, monthStr) {
+  async _getTopCategories(range) {
     const rows = await dbHelper.queryAll(
       `SELECT type AS category, SUM(amount) AS total
        FROM expenses
-       WHERE strftime('%Y', date) = ? AND strftime('%m', date) = ?
+       WHERE date >= ? AND date < ?
        GROUP BY type
        ORDER BY total DESC
        LIMIT 5`,
-      [yearStr, monthStr]
+      [range.start, range.end]
     );
     return rows.map(r => ({
       category: r.category,
@@ -65,16 +76,16 @@ class MonthlySummaryService {
   /**
    * @returns {Promise<Array<{merchant: string, total: number}>>} top 5 merchants
    */
-  async _getTopMerchants(yearStr, monthStr) {
+  async _getTopMerchants(range) {
     const rows = await dbHelper.queryAll(
       `SELECT place AS merchant, SUM(amount) AS total
        FROM expenses
-       WHERE strftime('%Y', date) = ? AND strftime('%m', date) = ?
+       WHERE date >= ? AND date < ?
          AND place IS NOT NULL AND place != ''
        GROUP BY place
        ORDER BY total DESC
        LIMIT 5`,
-      [yearStr, monthStr]
+      [range.start, range.end]
     );
     return rows.map(r => ({
       merchant: r.merchant,
@@ -94,14 +105,14 @@ class MonthlySummaryService {
       prevYear = year - 1;
     }
 
-    const prevYearStr = String(prevYear);
-    const prevMonthStr = String(prevMonth).padStart(2, '0');
+    const prevRange = this._dateRange(prevYear, prevMonth);
+    const currRange = this._dateRange(year, month);
 
     const prevRow = await dbHelper.queryOne(
       `SELECT COALESCE(SUM(amount), 0) AS total, COUNT(*) AS cnt
        FROM expenses
-       WHERE strftime('%Y', date) = ? AND strftime('%m', date) = ?`,
-      [prevYearStr, prevMonthStr]
+       WHERE date >= ? AND date < ?`,
+      [prevRange.start, prevRange.end]
     );
 
     // No expenses in previous month → null
@@ -111,14 +122,11 @@ class MonthlySummaryService {
 
     const previousTotal = prevRow.total;
 
-    // Get current month total
-    const currYearStr = String(year);
-    const currMonthStr = String(month).padStart(2, '0');
     const currRow = await dbHelper.queryOne(
       `SELECT COALESCE(SUM(amount), 0) AS total
        FROM expenses
-       WHERE strftime('%Y', date) = ? AND strftime('%m', date) = ?`,
-      [currYearStr, currMonthStr]
+       WHERE date >= ? AND date < ?`,
+      [currRange.start, currRange.end]
     );
     const currentTotal = currRow.total;
 
@@ -137,7 +145,7 @@ class MonthlySummaryService {
   /**
    * @returns {Promise<Object|null>} budget summary or null when no budgets exist
    */
-  async _getBudgetSummary(year, month, yearStr, monthStr) {
+  async _getBudgetSummary(year, month, range) {
     // Get all budgets for this month
     const budgets = await dbHelper.queryAll(
       `SELECT category, "limit" AS budget_limit
@@ -158,10 +166,10 @@ class MonthlySummaryService {
     const spendingRows = await dbHelper.queryAll(
       `SELECT type AS category, SUM(amount) AS total
        FROM expenses
-       WHERE strftime('%Y', date) = ? AND strftime('%m', date) = ?
+       WHERE date >= ? AND date < ?
          AND type IN (${placeholders})
        GROUP BY type`,
-      [yearStr, monthStr, ...categories]
+      [range.start, range.end, ...categories]
     );
 
     const spendingMap = {};

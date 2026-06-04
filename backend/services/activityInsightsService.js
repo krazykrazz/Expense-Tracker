@@ -8,21 +8,32 @@ const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frid
 
 class ActivityInsightsService {
   /**
+   * Compute date range bounds for activity_logs timestamp queries (index-friendly)
+   * @private
+   */
+  _timestampRange(year, month) {
+    const mo = parseInt(month);
+    const yr = parseInt(year);
+    const start = `${yr}-${String(mo).padStart(2, '0')}-01`;
+    const end = mo === 12 ? `${yr + 1}-01-01` : `${yr}-${String(mo + 1).padStart(2, '0')}-01`;
+    return { start, end };
+  }
+
+  /**
    * Get activity insights for a given year/month.
    * @param {number} year
    * @param {number} month - 1-12
    * @returns {Promise<Object>} ActivityInsightsResponse
    */
   async getActivityInsights(year, month) {
-    const yearStr = String(year);
-    const monthStr = String(month).padStart(2, '0');
+    const range = this._timestampRange(year, month);
 
     const [entryVelocity, entityBreakdown, recentChanges, dayOfWeekPatterns] =
       await Promise.all([
-        this._getEntryVelocity(year, month, yearStr, monthStr),
-        this._getEntityBreakdown(yearStr, monthStr),
-        this._getRecentChanges(yearStr, monthStr),
-        this._getDayOfWeekPatterns(yearStr, monthStr),
+        this._getEntryVelocity(year, month, range),
+        this._getEntityBreakdown(range),
+        this._getRecentChanges(range),
+        this._getDayOfWeekPatterns(range),
       ]);
 
     return {
@@ -37,13 +48,13 @@ class ActivityInsightsService {
    * Compute entry velocity: current month count vs previous month count.
    * @returns {Promise<Object>} { currentMonth, previousMonth, difference }
    */
-  async _getEntryVelocity(year, month, yearStr, monthStr) {
+  async _getEntryVelocity(year, month, range) {
     // Current month count
     const currRow = await dbHelper.queryOne(
       `SELECT COUNT(*) AS cnt
        FROM activity_logs
-       WHERE strftime('%Y', timestamp) = ? AND strftime('%m', timestamp) = ?`,
-      [yearStr, monthStr]
+       WHERE timestamp >= ? AND timestamp < ?`,
+      [range.start, range.end]
     );
     const currentMonth = currRow ? currRow.cnt : 0;
 
@@ -54,14 +65,13 @@ class ActivityInsightsService {
       prevMonth = 12;
       prevYear = year - 1;
     }
-    const prevYearStr = String(prevYear);
-    const prevMonthStr = String(prevMonth).padStart(2, '0');
+    const prevRange = this._timestampRange(prevYear, prevMonth);
 
     const prevRow = await dbHelper.queryOne(
       `SELECT COUNT(*) AS cnt
        FROM activity_logs
-       WHERE strftime('%Y', timestamp) = ? AND strftime('%m', timestamp) = ?`,
-      [prevYearStr, prevMonthStr]
+       WHERE timestamp >= ? AND timestamp < ?`,
+      [prevRange.start, prevRange.end]
     );
     const previousMonth = prevRow ? prevRow.cnt : 0;
 
@@ -76,14 +86,14 @@ class ActivityInsightsService {
    * Group activity logs by entity_type for the given month, sorted by count desc.
    * @returns {Promise<Array<{entityType: string, count: number}>>}
    */
-  async _getEntityBreakdown(yearStr, monthStr) {
+  async _getEntityBreakdown(range) {
     const rows = await dbHelper.queryAll(
       `SELECT entity_type, COUNT(*) AS cnt
        FROM activity_logs
-       WHERE strftime('%Y', timestamp) = ? AND strftime('%m', timestamp) = ?
+       WHERE timestamp >= ? AND timestamp < ?
        GROUP BY entity_type
        ORDER BY cnt DESC`,
-      [yearStr, monthStr]
+      [range.start, range.end]
     );
     return rows.map(r => ({
       entityType: r.entity_type,
@@ -96,14 +106,14 @@ class ActivityInsightsService {
    * with parsed metadata.
    * @returns {Promise<Array>}
    */
-  async _getRecentChanges(yearStr, monthStr) {
+  async _getRecentChanges(range) {
     const rows = await dbHelper.queryAll(
       `SELECT id, timestamp, entity_type, user_action, metadata
        FROM activity_logs
-       WHERE strftime('%Y', timestamp) = ? AND strftime('%m', timestamp) = ?
+       WHERE timestamp >= ? AND timestamp < ?
        ORDER BY timestamp DESC
        LIMIT 10`,
-      [yearStr, monthStr]
+      [range.start, range.end]
     );
     return rows.map(r => ({
       id: r.id,
@@ -118,14 +128,14 @@ class ActivityInsightsService {
    * Compute day-of-week activity patterns for the given month.
    * @returns {Promise<Array<{day: string, count: number}>>}
    */
-  async _getDayOfWeekPatterns(yearStr, monthStr) {
+  async _getDayOfWeekPatterns(range) {
     const rows = await dbHelper.queryAll(
       `SELECT strftime('%w', timestamp) AS dow, COUNT(*) AS cnt
        FROM activity_logs
-       WHERE strftime('%Y', timestamp) = ? AND strftime('%m', timestamp) = ?
+       WHERE timestamp >= ? AND timestamp < ?
        GROUP BY dow
        ORDER BY cnt DESC`,
-      [yearStr, monthStr]
+      [range.start, range.end]
     );
     return rows.map(r => ({
       day: DAY_NAMES[parseInt(r.dow, 10)],

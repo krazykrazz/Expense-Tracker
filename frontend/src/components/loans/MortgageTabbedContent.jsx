@@ -367,13 +367,7 @@ function OverviewPanel({
               : '—'}
             </dd>
           </div>
-          <div className={styles.summaryItem}>
-            <dt>Interest Accrued</dt>
-            <dd>{calculatedBalanceData?.totalInterestAccrued != null
-              ? formatCurrency(calculatedBalanceData.totalInterestAccrued)
-              : '—'}
-            </dd>
-          </div>
+
           <div className={styles.summaryItem}>
             <dt>Last Payment</dt>
             <dd>{calculatedBalanceData?.lastPaymentDate ?? '—'}</dd>

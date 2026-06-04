@@ -82,40 +82,36 @@ class TrendsService {
   async _fetchMonthlyHistory(year, month) {
     try {
       // Build the 6-month window ending at the requested year/month
-      const months = [];
-      let y = year;
-      let m = month;
-      for (let i = 0; i < 6; i++) {
-        months.push({ year: y, month: m });
-        m--;
-        if (m < 1) {
-          m = 12;
-          y--;
-        }
+      // Compute the earliest month's start date and the end date
+      let startY = year;
+      let startM = month - 5;
+      if (startM < 1) {
+        startY--;
+        startM += 12;
       }
+      const rangeStart = `${startY}-${String(startM).padStart(2, '0')}-01`;
+      const endM = month === 12 ? 1 : month + 1;
+      const endY = month === 12 ? year + 1 : year;
+      const rangeEnd = `${endY}-${String(endM).padStart(2, '0')}-01`;
 
-      // Query totals for each month
-      const history = [];
-      for (const { year: yr, month: mo } of months) {
-        const yearStr = String(yr);
-        const monthStr = String(mo).padStart(2, '0');
-        const row = await dbHelper.queryOne(
-          `SELECT COALESCE(SUM(amount), 0) AS total, COUNT(*) AS cnt
-           FROM expenses
-           WHERE strftime('%Y', date) = ? AND strftime('%m', date) = ?`,
-          [yearStr, monthStr]
-        );
-        if (row && row.cnt > 0) {
-          history.push({
-            year: yr,
-            month: mo,
-            total: parseFloat(row.total.toFixed(2)),
-          });
-        }
-      }
+      // Single query with GROUP BY instead of 6 separate strftime queries
+      const rows = await dbHelper.queryAll(
+        `SELECT 
+           CAST(strftime('%Y', date) AS INTEGER) AS year,
+           CAST(strftime('%m', date) AS INTEGER) AS month,
+           SUM(amount) AS total
+         FROM expenses
+         WHERE date >= ? AND date < ?
+         GROUP BY strftime('%Y-%m', date)
+         ORDER BY date`,
+        [rangeStart, rangeEnd]
+      );
 
-      // Sort chronologically (oldest first)
-      history.sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month);
+      const history = rows.map(r => ({
+        year: r.year,
+        month: r.month,
+        total: parseFloat(r.total.toFixed(2)),
+      }));
 
       return history;
     } catch (error) {

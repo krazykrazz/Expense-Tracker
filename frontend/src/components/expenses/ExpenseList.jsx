@@ -489,6 +489,13 @@ const ExpenseList = memo(({
     setCurrentPage(1);
   }, [localFilterType, localFilterMethod, localFilterInvoice, localFilterInsurance]);
 
+  // Pre-build payment method lookup map for O(1) access in filters
+  const paymentMethodMap = useMemo(() => {
+    const map = new Map();
+    paymentMethods.forEach(pm => map.set(pm.display_name, pm));
+    return map;
+  }, [paymentMethods]);
+
   // Filter expenses based on local filters (for current month only)
   const filteredExpenses = useMemo(() => {
     return expenses.filter(expense => {
@@ -506,7 +513,7 @@ const ExpenseList = memo(({
           }
         } else if (mode === 'type') {
           // Filter by payment method type
-          const paymentMethod = paymentMethods.find(pm => pm.display_name === expense.method);
+          const paymentMethod = paymentMethodMap.get(expense.method);
           if (filterValue === 'other') {
             // "Other" type means methods without a recognized type
             const typeOrder = ['cash', 'debit', 'cheque', 'credit_card'];
@@ -555,7 +562,7 @@ const ExpenseList = memo(({
       }
       return true;
     });
-  }, [expenses, localFilterType, localFilterMethod, localFilterInvoice, localFilterInsurance, invoiceData, paymentMethods]);
+  }, [expenses, localFilterType, localFilterMethod, localFilterInvoice, localFilterInsurance, invoiceData, paymentMethodMap]);
 
   // Calculate pagination values
   const totalPages = Math.ceil(filteredExpenses.length / pageSize);

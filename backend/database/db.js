@@ -195,30 +195,23 @@ function createTestDatabase() {
           return;
         }
         
-        // Enable WAL mode for better concurrency
-        db.run('PRAGMA journal_mode = WAL', (err) => {
-          if (err) {
-            logger.debug('Could not enable WAL mode:', err.message);
+        // Execute all schema statements sequentially
+        let i = 0;
+        const executeNext = () => {
+          if (i >= ALL_STATEMENTS.length) {
+            resolve(db);
+            return;
           }
-          
-          // Execute all schema statements sequentially
-          let i = 0;
-          const executeNext = () => {
-            if (i >= ALL_STATEMENTS.length) {
-              resolve(db);
+          db.run(ALL_STATEMENTS[i], (err) => {
+            if (err) {
+              reject(err);
               return;
             }
-            db.run(ALL_STATEMENTS[i], (err) => {
-              if (err) {
-                reject(err);
-                return;
-              }
-              i++;
-              executeNext();
-            });
-          };
-          executeNext();
-        });
+            i++;
+            executeNext();
+          });
+        };
+        executeNext();
       });
     });
   });

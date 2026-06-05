@@ -217,7 +217,16 @@ class AnomalyDetectionService {
   async detectAnomalies(options = {}) {
     try {
       const lookbackDays = options.lookbackDays || 30;
-      const expenses = await expenseRepository.findAll();
+
+      // Use a 12-month baseline window instead of loading all expenses
+      // This bounds memory/CPU for large datasets while providing sufficient history
+      const baselineMonths = 12;
+      const baselineDate = new Date();
+      baselineDate.setMonth(baselineDate.getMonth() - baselineMonths);
+      const baselineDateStr = baselineDate.toISOString().split('T')[0];
+      const todayStr = new Date().toISOString().split('T')[0];
+
+      const expenses = await expenseRepository.findByDateRange(baselineDateStr, todayStr);
       
       if (!expenses || expenses.length === 0) { return []; }
 

@@ -293,7 +293,7 @@ describe('BalanceCalculationService.getBalanceHistory', () => {
       const history = await balanceCalculationService.getBalanceHistory(1);
 
       expect(history).toHaveLength(2);
-      // Both share the same month's interest (500)
+      // First payment absorbs the month's interest (500); second gets 0
       // First payment (id=1): balance = 100000 + 500 - 1000 = 99500
       // Second payment (id=2): balance = 99500 - 1500 = 98000
       const firstPayment = history.find(h => h.id === 1);
@@ -301,7 +301,7 @@ describe('BalanceCalculationService.getBalanceHistory', () => {
 
       expect(firstPayment.interestAccrued).toBe(500);
       expect(firstPayment.runningBalance).toBe(99500);
-      expect(secondPayment.interestAccrued).toBe(500);
+      expect(secondPayment.interestAccrued).toBe(0);
       expect(secondPayment.runningBalance).toBe(98000);
     });
 

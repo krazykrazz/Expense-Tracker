@@ -7,7 +7,7 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
 const cron = require('node-cron');
-const { initializeDatabase } = require('./database/db');
+const { initializeDatabase, getDatabase } = require('./database/db');
 const expenseRoutes = require('./routes/expenseRoutes');
 const backupRoutes = require('./routes/backupRoutes');
 const incomeRoutes = require('./routes/incomeRoutes');
@@ -240,7 +240,13 @@ app.use(errorHandler);
 
 // Initialize database and start server
 initializeDatabase()
-  .then(async () => {
+  .then(async (db) => {
+    // Enable WAL mode for better read concurrency in production
+    // (done here rather than in initializeDatabase to avoid interfering with backup/restore)
+    db.run('PRAGMA journal_mode = WAL', (err) => {
+      if (err) logger.warn('Could not enable WAL mode:', err);
+    });
+
     // Initialize default admin user for auth infrastructure
     try {
       await authService.initializeDefaultUser();

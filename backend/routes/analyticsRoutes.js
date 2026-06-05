@@ -8,27 +8,28 @@
 const express = require('express');
 const router = express.Router();
 const analyticsController = require('../controllers/analyticsController');
+const { cacheMiddleware } = require('../middleware/analyticsCache');
 
 // GET /api/analytics/data-sufficiency - Check data availability for analytics
-router.get('/data-sufficiency', analyticsController.getDataSufficiency);
+router.get('/data-sufficiency', cacheMiddleware(), analyticsController.getDataSufficiency);
 
 // GET /api/analytics/patterns - Get recurring spending patterns
-router.get('/patterns', analyticsController.getRecurringPatterns);
+router.get('/patterns', cacheMiddleware(), analyticsController.getRecurringPatterns);
 
 // GET /api/analytics/patterns/day-of-week - Get day-of-week spending analysis
-router.get('/patterns/day-of-week', analyticsController.getDayOfWeekPatterns);
+router.get('/patterns/day-of-week', cacheMiddleware(), analyticsController.getDayOfWeekPatterns);
 
 // GET /api/analytics/seasonal - Get seasonal spending analysis
-router.get('/seasonal', analyticsController.getSeasonalAnalysis);
+router.get('/seasonal', cacheMiddleware(), analyticsController.getSeasonalAnalysis);
 
 // GET /api/analytics/predictions/:year/:month - Get month-end prediction
-router.get('/predictions/:year/:month', analyticsController.getMonthPrediction);
+router.get('/predictions/:year/:month', cacheMiddleware(), analyticsController.getMonthPrediction);
 
 // GET /api/analytics/predictions/:year/:month/comparison - Get historical comparison
-router.get('/predictions/:year/:month/comparison', analyticsController.getHistoricalComparison);
+router.get('/predictions/:year/:month/comparison', cacheMiddleware(), analyticsController.getHistoricalComparison);
 
 // GET /api/analytics/anomalies - Get detected anomalies
-router.get('/anomalies', analyticsController.getAnomalies);
+router.get('/anomalies', cacheMiddleware(), analyticsController.getAnomalies);
 
 // POST /api/analytics/anomalies/:expenseId/dismiss - Dismiss an anomaly
 router.post('/anomalies/:expenseId/dismiss', analyticsController.dismissAnomaly);

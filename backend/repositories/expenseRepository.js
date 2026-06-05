@@ -87,8 +87,84 @@ class ExpenseRepository {
       }
       
       sql += ' ORDER BY e.date ASC';
+
+      // Support pagination via limit/offset
+      if (filters.limit) {
+        sql += ' LIMIT ?';
+        params.push(parseInt(filters.limit));
+        if (filters.offset) {
+          sql += ' OFFSET ?';
+          params.push(parseInt(filters.offset));
+        }
+      }
       
       db.all(sql, params, (err, rows) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        resolve(rows || []);
+      });
+    });
+  }
+
+  /**
+   * Get count of expenses matching filters (lightweight alternative to findAll)
+   * @param {Object} filters - Optional filters { year, month }
+   * @returns {Promise<number>} Count of matching expenses
+   */
+  async getCount(filters = {}) {
+    const db = await getDatabase();
+
+    return new Promise((resolve, reject) => {
+      let sql = 'SELECT COUNT(*) as count FROM expenses';
+      const params = [];
+
+      if (filters.year && filters.month) {
+        const yr = parseInt(filters.year);
+        const mo = parseInt(filters.month);
+        const start = `${yr}-${mo.toString().padStart(2, '0')}-01`;
+        const end = mo === 12 ? `${yr + 1}-01-01` : `${yr}-${(mo + 1).toString().padStart(2, '0')}-01`;
+        sql += ' WHERE date >= ? AND date < ?';
+        params.push(start, end);
+      } else if (filters.year) {
+        const yr = parseInt(filters.year);
+        sql += ' WHERE date >= ? AND date < ?';
+        params.push(`${yr}-01-01`, `${yr + 1}-01-01`);
+      } else if (filters.month) {
+        sql += ' WHERE strftime("%m", date) = ?';
+        params.push(filters.month.toString().padStart(2, '0'));
+      }
+
+      db.get(sql, params, (err, row) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        resolve(row ? row.count : 0);
+      });
+    });
+  }
+
+  /**
+   * Find expenses within a date range (lightweight, no JOINs)
+   * Used for analytics baselines where payment method info is not needed
+   * @param {string} startDate - Start date (YYYY-MM-DD, inclusive)
+   * @param {string} endDate - End date (YYYY-MM-DD, exclusive)
+   * @returns {Promise<Array>} Array of expense records
+   */
+  async findByDateRange(startDate, endDate) {
+    const db = await getDatabase();
+
+    return new Promise((resolve, reject) => {
+      const sql = `
+        SELECT id, date, place, amount, type, method, week
+        FROM expenses
+        WHERE date >= ? AND date < ?
+        ORDER BY date ASC
+      `;
+
+      db.all(sql, [startDate, endDate], (err, rows) => {
         if (err) {
           reject(err);
           return;

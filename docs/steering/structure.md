@@ -52,12 +52,13 @@ specs/
   archive/            # Completed specs and historical spec artifacts
 ```
 
-## Spec Location Policy
+## Spec Format & Location Policy
 
 - Canonical spec root: `specs/`
-- New specs must be created at `specs/<feature-name>/`
+- New specs must be created at `specs/<feature-name>/spec.md` (single file combining requirements, design, and tasks)
 - Completed specs must be moved to `specs/archive/`
 - Do not create or use alternate spec roots in docs or workflows
+- Do NOT split into separate `requirements.md`, `design.md`, `tasks.md` — use one `spec.md`
 
 **Frontend Architecture (v5.12.0):**
 - **AppShell**: Three-column layout (Sidebar + main content + SummaryPanel)

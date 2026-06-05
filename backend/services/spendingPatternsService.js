@@ -8,6 +8,7 @@
  */
 
 const expenseRepository = require('../repositories/expenseRepository');
+const dbHelper = require('../utils/dbHelper');
 const logger = require('../config/logger');
 const { 
   ANALYTICS_CONFIG, 
@@ -22,10 +23,14 @@ class SpendingPatternsService {
    */
   async checkDataSufficiency() {
     try {
-      // Get all expenses to analyze date range
-      const expenses = await expenseRepository.findAll();
-      
-      if (!expenses || expenses.length === 0) {
+      // Use SQL aggregation instead of loading all 21k+ rows into memory
+      const stats = await dbHelper.queryOne(
+        `SELECT COUNT(*) as total, MIN(date) as oldest, MAX(date) as newest,
+                COUNT(DISTINCT strftime('%Y-%m', date)) as months_with_data
+         FROM expenses`
+      );
+
+      if (!stats || stats.total === 0) {
         return {
           hasSufficientData: false,
           monthsOfData: 0,
@@ -44,19 +49,20 @@ class SpendingPatternsService {
         };
       }
 
-      // Sort expenses by date
-      const sortedExpenses = [...expenses].sort((a, b) => 
-        new Date(a.date) - new Date(b.date)
-      );
-
-      const oldestExpenseDate = sortedExpenses[0].date;
-      const newestExpenseDate = sortedExpenses[sortedExpenses.length - 1].date;
+      const oldestExpenseDate = stats.oldest;
+      const newestExpenseDate = stats.newest;
 
       // Calculate months of data
       const monthsOfData = this._calculateMonthsOfData(oldestExpenseDate, newestExpenseDate);
-      
-      // Calculate data quality score
-      const dataQualityScore = this._calculateDataQualityScore(expenses, oldestExpenseDate, newestExpenseDate);
+
+      // Compute data quality score using lightweight SQL stats
+      const totalMonthsInRange = monthsOfData;
+      const monthsWithData = stats.months_with_data;
+      const coverageScore = totalMonthsInRange > 0
+        ? (monthsWithData / totalMonthsInRange) * 100
+        : 0;
+      // Approximate quality score from coverage (skip full consistency calc for perf)
+      const dataQualityScore = Math.min(100, Math.max(0, Math.round(coverageScore)));
 
       // Determine available features based on data
       const availableFeatures = {
@@ -222,8 +228,12 @@ class SpendingPatternsService {
         return [];
       }
 
-      // Get all expenses
-      const expenses = await expenseRepository.findAll();
+      // Get expenses from last 36 months for pattern detection (bounded window)
+      const cutoffDate = new Date();
+      cutoffDate.setMonth(cutoffDate.getMonth() - 36);
+      const cutoffStr = cutoffDate.toISOString().split('T')[0];
+      const todayStr = new Date().toISOString().split('T')[0];
+      const expenses = await expenseRepository.findByDateRange(cutoffStr, todayStr);
       if (!expenses || expenses.length === 0) {
         return [];
       }
@@ -429,19 +439,23 @@ class SpendingPatternsService {
    */
   async getDayOfWeekPatterns(filters = {}) {
     try {
-      // Get all expenses (or filtered by date range)
-      let expenses = await expenseRepository.findAll();
+      // Use date-bounded query instead of loading all expenses
+      const startDate = filters.startDate || (() => {
+        const d = new Date();
+        d.setMonth(d.getMonth() - 36);
+        return d.toISOString().split('T')[0];
+      })();
+      const endDate = filters.endDate || new Date().toISOString().split('T')[0];
+      // findByDateRange uses exclusive end (date < end), so add one day for inclusive endDate
+      const endExclusive = (() => {
+        const d = new Date(endDate + 'T00:00:00');
+        d.setDate(d.getDate() + 1);
+        return d.toISOString().split('T')[0];
+      })();
+      let expenses = await expenseRepository.findByDateRange(startDate, endExclusive);
       
       if (!expenses || expenses.length === 0) {
         return this._emptyDayOfWeekAnalysis();
-      }
-
-      // Apply date filters
-      if (filters.startDate) {
-        expenses = expenses.filter(e => e.date >= filters.startDate);
-      }
-      if (filters.endDate) {
-        expenses = expenses.filter(e => e.date <= filters.endDate);
       }
 
       // Apply category filter
@@ -569,24 +583,19 @@ class SpendingPatternsService {
    */
   async getSeasonalAnalysis(months = 12) {
     try {
-      // Get all expenses
-      const expenses = await expenseRepository.findAll();
-      
-      if (!expenses || expenses.length === 0) {
-        return this._emptySeasonalAnalysis();
-      }
-
-      // Calculate date range for analysis
+      // Use date-bounded query for analysis period
       const endDate = new Date();
       const startDate = new Date();
       startDate.setUTCMonth(startDate.getUTCMonth() - months + 1);
       startDate.setUTCDate(1);
 
-      // Filter expenses to the analysis period
-      const filteredExpenses = expenses.filter(e => {
-        const expenseDate = new Date(e.date);
-        return expenseDate >= startDate && expenseDate <= endDate;
-      });
+      const startStr = startDate.toISOString().split('T')[0];
+      const endStr = endDate.toISOString().split('T')[0];
+      const filteredExpenses = await expenseRepository.findByDateRange(startStr, endStr);
+
+      if (!filteredExpenses || filteredExpenses.length === 0) {
+        return this._emptySeasonalAnalysis();
+      }
 
       if (filteredExpenses.length === 0) {
         return this._emptySeasonalAnalysis();

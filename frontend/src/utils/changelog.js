@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.9.4',
+    date: 'June 6, 2026',
+    added: [],
+    changed: ['Performance fixes'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.9.3',
     date: 'June 6, 2026',
     added: [],

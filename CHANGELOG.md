@@ -42,6 +42,11 @@
 
 
 
+
+
+## [1.9.4] - 2026-06-06
+
+### Performance fixes
 ## [1.9.3] - 2026-06-06
 
 ### Mortgage form bug fixes, audit cleanup, performance optimizations

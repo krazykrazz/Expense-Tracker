@@ -14,6 +14,7 @@ on:
 
 jobs:
   check-version-bump:
+    name: Guard Against PR Version Bumps
     runs-on: ubuntu-latest
     if: ${{ !startsWith(github.head_ref, 'release/') }}
     
@@ -52,13 +53,12 @@ jobs:
           echo "❌ ERROR: Version bump detected in Pull Request!"
           echo ""
           echo "Version bumps must NOT be included in feature/hotfix branch PRs."
-          echo "They should only happen on 'main' AFTER the PR is merged."
+          echo "They should only happen via the Release workflow or deploy script."
           echo ""
           echo "Correct workflow:"
           echo "  1. Merge this PR to main (without version changes)"
-          echo "  2. On main: Update version in all locations"
-          echo "  3. On main: Commit version bump"
-          echo "  4. Build and deploy from that commit"
+          echo "  2. Use Actions → Release workflow to create a release PR"
+          echo "  3. Or: .\scripts\deploy-to-production.ps1"
           echo ""
           echo "See: docs/deployment/DEPLOYMENT_WORKFLOW.md"
           exit 1
@@ -67,3 +67,67 @@ jobs:
         if: steps.version_check.outputs.version_changed == 'false'
         run: |
           echo "✅ No version changes detected in PR - correct!"
+
+  validate-version-consistency:
+    name: Validate Version Consistency
+    runs-on: ubuntu-latest
+    if: ${{ startsWith(github.head_ref, 'release/') }}
+    
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v6
+
+      - name: Check all version locations match
+        run: |
+          echo "## Version Consistency Check" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Extract versions from each source
+          BACKEND_VER=$(jq -r .version backend/package.json)
+          FRONTEND_VER=$(jq -r .version frontend/package.json)
+          CHANGELOG_JS_VER=$(grep -oP "version: '\K[0-9]+\.[0-9]+\.[0-9]+" frontend/src/utils/changelog.js | head -1)
+          
+          echo "| Location | Version |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|---------|" >> $GITHUB_STEP_SUMMARY
+          echo "| backend/package.json | $BACKEND_VER |" >> $GITHUB_STEP_SUMMARY
+          echo "| frontend/package.json | $FRONTEND_VER |" >> $GITHUB_STEP_SUMMARY
+          echo "| frontend/src/utils/changelog.js | $CHANGELOG_JS_VER |" >> $GITHUB_STEP_SUMMARY
+          
+          ERRORS=0
+
+          if [ "$BACKEND_VER" != "$FRONTEND_VER" ]; then
+            echo "::error::backend/package.json ($BACKEND_VER) != frontend/package.json ($FRONTEND_VER)"
+            ERRORS=$((ERRORS + 1))
+          fi
+
+          if [ "$BACKEND_VER" != "$CHANGELOG_JS_VER" ]; then
+            echo "::error::backend/package.json ($BACKEND_VER) != changelog.js ($CHANGELOG_JS_VER)"
+            ERRORS=$((ERRORS + 1))
+          fi
+
+          # Check CHANGELOG.md has an entry for this version
+          if ! grep -q "\[$BACKEND_VER\]" CHANGELOG.md; then
+            echo "::error::CHANGELOG.md missing entry for [$BACKEND_VER]"
+            ERRORS=$((ERRORS + 1))
+          fi
+
+          # Check BackupSettings.jsx has a changelog entry
+          if ! grep -q "v$BACKEND_VER" frontend/src/components/system/BackupSettings.jsx; then
+            echo "::error::BackupSettings.jsx missing changelog entry for v$BACKEND_VER"
+            ERRORS=$((ERRORS + 1))
+          fi
+
+          # Check SystemModal.jsx has a changelog entry
+          if ! grep -q "v$BACKEND_VER" frontend/src/components/system/SystemModal.jsx; then
+            echo "::error::SystemModal.jsx missing changelog entry for v$BACKEND_VER"
+            ERRORS=$((ERRORS + 1))
+          fi
+
+          if [ $ERRORS -gt 0 ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "❌ **$ERRORS version inconsistencies found**" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **All 5 version locations consistent: v$BACKEND_VER**" >> $GITHUB_STEP_SUMMARY

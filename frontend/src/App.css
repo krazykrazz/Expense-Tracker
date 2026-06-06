@@ -12,13 +12,14 @@
    Requirements: 10.1, 10.2, 10.3, 10.4
    ============================================ */
 .App-header {
-  background: linear-gradient(135deg, #1e293b 0%, #334155 50%, #475569 100%);
+  background: var(--header-bg);
   padding: var(--spacing-4) var(--spacing-6);
   color: var(--text-inverse);
   display: flex;
   justify-content: space-between;
   align-items: center;
   box-shadow: var(--shadow-md);
+  border-bottom: 1px solid var(--header-border);
   position: relative;
   z-index: var(--z-sticky);
 }
@@ -68,9 +69,9 @@
 
 .settings-button,
 .recurring-button {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: var(--header-button-bg);
   color: var(--text-inverse);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid var(--header-button-border);
   padding: var(--spacing-2) var(--spacing-4);
   font-size: var(--text-sm);
   font-weight: var(--font-medium);
@@ -83,8 +84,8 @@
 
 .settings-button:hover,
 .recurring-button:hover {
-  background-color: rgba(255, 255, 255, 0.2);
-  border-color: rgba(255, 255, 255, 0.3);
+  background-color: var(--header-button-bg-hover);
+  border-color: var(--header-button-border-hover);
   transform: translateY(-1px);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
@@ -100,6 +101,10 @@
 .recurring-button:focus-visible {
   outline: 2px solid rgba(255, 255, 255, 0.5);
   outline-offset: 2px;
+}
+
+.theme-toggle-button {
+  min-width: 96px;
 }
 
 /* Accessibility: Respect reduced motion preferences for header */

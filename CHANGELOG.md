@@ -40,6 +40,11 @@
 
 
 
+
+
+## [1.9.3] - 2026-06-06
+
+### Mortgage form bug fixes, audit cleanup, performance optimizations
 ## [1.9.2] - 2026-06-01
 
 ### Optimizations to support historical data import

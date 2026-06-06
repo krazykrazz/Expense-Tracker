@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.9.3',
+    date: 'June 6, 2026',
+    added: [],
+    changed: ['Mortgage form bug fixes, audit cleanup, performance optimizations'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.9.2',
     date: 'June 1, 2026',
     added: [],

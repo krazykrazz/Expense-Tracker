@@ -12,6 +12,7 @@ const anomalyDetectionService = require('../services/anomalyDetectionService');
 const monthlySummaryService = require('../services/monthlySummaryService');
 const trendsService = require('../services/trendsService');
 const activityInsightsService = require('../services/activityInsightsService');
+const { analyticsCache } = require('../middleware/analyticsCache');
 const logger = require('../config/logger');
 
 /**
@@ -300,6 +301,7 @@ async function dismissAnomaly(req, res) {
     }
     
     await anomalyDetectionService.dismissAnomaly(expenseIdInt, anomalyType, expenseDetails);
+    analyticsCache.invalidate();
     
     res.json({ 
       success: true, 
@@ -386,6 +388,7 @@ async function markAnomalyAsExpected(req, res) {
     }
 
     const result = await anomalyDetectionService.markAsExpected(expenseIdInt, anomalyType, expenseDetails);
+    analyticsCache.invalidate();
     res.json({
       success: true,
       message: expenseIdInt
@@ -431,6 +434,7 @@ async function deleteSuppressionRule(req, res) {
       return res.status(404).json({ error: 'Suppression rule not found' });
     }
 
+    analyticsCache.invalidate();
     res.json({ success: true, message: `Suppression rule ${idInt} deleted` });
   } catch (error) {
     logger.error('Error deleting suppression rule:', error);

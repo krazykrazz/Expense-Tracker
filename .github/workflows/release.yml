@@ -1,0 +1,178 @@
+name: Create Release PR
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump_type:
+        description: 'Version bump type'
+        required: true
+        type: choice
+        options:
+          - PATCH
+          - MINOR
+          - MAJOR
+      description:
+        description: 'Release description (shown in changelog)'
+        required: true
+        type: string
+      auto_merge:
+        description: 'Enable auto-merge when CI passes'
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  create-release-pr:
+    name: Bump Version & Create PR
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v6
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+
+      - name: Calculate new version
+        id: version
+        run: |
+          CURRENT=$(jq -r .version backend/package.json)
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+          
+          case "${{ inputs.bump_type }}" in
+            MAJOR) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
+            MINOR) MINOR=$((MINOR + 1)); PATCH=0 ;;
+            PATCH) PATCH=$((PATCH + 1)) ;;
+          esac
+          
+          NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+          echo "current=$CURRENT" >> $GITHUB_OUTPUT
+          echo "new=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "branch=release/v${NEW_VERSION}" >> $GITHUB_OUTPUT
+          echo "## Version Bump" >> $GITHUB_STEP_SUMMARY
+          echo "**$CURRENT** → **$NEW_VERSION** (${{ inputs.bump_type }})" >> $GITHUB_STEP_SUMMARY
+
+      - name: Create release branch
+        run: |
+          git checkout -b "${{ steps.version.outputs.branch }}"
+
+      - name: Bump version in package.json files
+        run: |
+          NEW_VERSION="${{ steps.version.outputs.new }}"
+          
+          # backend/package.json
+          jq --arg v "$NEW_VERSION" '.version = $v' backend/package.json > tmp.json && mv tmp.json backend/package.json
+          
+          # frontend/package.json
+          jq --arg v "$NEW_VERSION" '.version = $v' frontend/package.json > tmp.json && mv tmp.json frontend/package.json
+
+      - name: Update CHANGELOG.md
+        run: |
+          NEW_VERSION="${{ steps.version.outputs.new }}"
+          DATE=$(date +%Y-%m-%d)
+          DESCRIPTION="${{ inputs.description }}"
+          
+          # Insert new entry after "# Changelog" header
+          sed -i "s/^# Changelog$/# Changelog\n\n## [$NEW_VERSION] - $DATE\n\n### $DESCRIPTION/" CHANGELOG.md
+
+      - name: Update changelog.js
+        run: |
+          NEW_VERSION="${{ steps.version.outputs.new }}"
+          DATE=$(date +'%B %-d, %Y')
+          DESCRIPTION="${{ inputs.description }}"
+          
+          # Insert new entry at the top of changelogEntries array
+          sed -i "s/const changelogEntries = \[/const changelogEntries = [\n  {\n    version: '$NEW_VERSION',\n    date: '$DATE',\n    added: [],\n    changed: ['$DESCRIPTION'],\n    fixed: [],\n    removed: [],\n  },/" frontend/src/utils/changelog.js
+
+      - name: Update BackupSettings.jsx
+        run: |
+          NEW_VERSION="${{ steps.version.outputs.new }}"
+          DATE=$(date +'%B %-d, %Y')
+          DESCRIPTION="${{ inputs.description }}"
+          
+          NEW_ENTRY='              <div className="changelog-entry">\n                <div className="changelog-version">v'"$NEW_VERSION"'<\/div>\n                <div className="changelog-date">'"$DATE"'<\/div>\n                <ul className="changelog-items">\n                  <li>'"$DESCRIPTION"'<\/li>\n                <\/ul>\n              <\/div>'
+          
+          sed -i 's|<div className="changelog">|<div className="changelog">\n'"$NEW_ENTRY"'|' frontend/src/components/system/BackupSettings.jsx
+
+      - name: Update SystemModal.jsx
+        run: |
+          NEW_VERSION="${{ steps.version.outputs.new }}"
+          DATE=$(date +'%B %-d, %Y')
+          DESCRIPTION="${{ inputs.description }}"
+          
+          NEW_ENTRY='            <div className="changelog-entry">\n              <div className="changelog-version">\n                v'"$NEW_VERSION"'\n                {isCurrentVersion('"'"'v'"$NEW_VERSION"''"'"') \&\& <span className="current-version-badge">Current Version<\/span>}\n              <\/div>\n              <div className="changelog-date">'"$DATE"'<\/div>\n              <ul className="changelog-items">\n                <li>'"$DESCRIPTION"'<\/li>\n              <\/ul>\n            <\/div>'
+          
+          sed -i 's|<div className="changelog">|<div className="changelog">\n'"$NEW_ENTRY"'|' frontend/src/components/system/SystemModal.jsx
+
+      - name: Build frontend
+        run: |
+          cd frontend
+          npm ci
+          npm run build
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "v${{ steps.version.outputs.new }}: ${{ inputs.description }}"
+
+      - name: Push release branch
+        run: |
+          git push -u origin "${{ steps.version.outputs.branch }}"
+
+      - name: Create Pull Request
+        id: create_pr
+        run: |
+          NEW_VERSION="${{ steps.version.outputs.new }}"
+          DESCRIPTION="${{ inputs.description }}"
+          
+          PR_BODY="## Release v${NEW_VERSION}
+
+          ${DESCRIPTION}
+
+          ### Version Bump (${{ inputs.bump_type }})
+          - \`backend/package.json\`
+          - \`frontend/package.json\`
+          - \`CHANGELOG.md\`
+          - \`frontend/src/utils/changelog.js\`
+          - \`frontend/src/components/system/BackupSettings.jsx\`
+          - \`frontend/src/components/system/SystemModal.jsx\`
+          - Frontend rebuilt
+
+          ### Post-Merge
+          After merging, CI will build and push the Docker image to GHCR.
+          Then promote locally:
+          \`\`\`
+          .\scripts\build-and-push.ps1 -Environment staging
+          .\scripts\build-and-push.ps1 -Environment latest
+          \`\`\`"
+          
+          PR_URL=$(gh pr create \
+            --base main \
+            --head "${{ steps.version.outputs.branch }}" \
+            --title "Release v${NEW_VERSION}: ${DESCRIPTION}" \
+            --body "$PR_BODY")
+          
+          echo "pr_url=$PR_URL" >> $GITHUB_OUTPUT
+          echo "## Pull Request Created" >> $GITHUB_STEP_SUMMARY
+          echo "[$PR_URL]($PR_URL)" >> $GITHUB_STEP_SUMMARY
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Enable auto-merge
+        if: inputs.auto_merge
+        run: |
+          gh pr merge "${{ steps.version.outputs.branch }}" --auto --merge --delete-branch
+          echo "✅ Auto-merge enabled — PR will merge when CI passes" >> $GITHUB_STEP_SUMMARY
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

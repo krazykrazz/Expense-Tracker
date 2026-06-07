@@ -220,6 +220,9 @@ describe('App Integration Tests - Global Expense Filtering', () => {
 
     // Step 1: Apply payment method filter (Debit) - this triggers global view
     const paymentFilter = screen.getByLabelText(/filter by payment method/i);
+    await waitFor(() => {
+      expect(within(paymentFilter).getByRole('option', { name: 'Debit' })).toBeInTheDocument();
+    });
     await user.selectOptions(paymentFilter, 'Debit');
 
     // Should switch to global view and fetch all expenses

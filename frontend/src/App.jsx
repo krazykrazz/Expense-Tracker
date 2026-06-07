@@ -235,6 +235,22 @@ function AppContent({ onPaymentMethodsUpdate }) {
 
   const [versionInfo, setVersionInfo] = useState(null);
   const [mobileTab, setMobileTab] = useState('expenses'); // 'expenses' | 'summary'
+  const [theme, setTheme] = useState(() => {
+    if (typeof window === 'undefined') {
+      return 'light';
+    }
+
+    const savedTheme = window.localStorage.getItem('theme-preference');
+    if (savedTheme === 'light' || savedTheme === 'dark') {
+      return savedTheme;
+    }
+
+    if (typeof window.matchMedia === 'function') {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+
+    return 'light';
+  });
   
   // Budget alerts state for Analytics Hub integration (Requirement 7.4)
   const [budgetAlerts, setBudgetAlerts] = useState([]);
@@ -264,6 +280,12 @@ function AppContent({ onPaymentMethodsUpdate }) {
       isMounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    document.documentElement.style.colorScheme = theme;
+    window.localStorage.setItem('theme-preference', theme);
+  }, [theme]);
 
   // Fetch monthly income and budget alerts for Analytics Hub integration (Requirement 7.4)
   useEffect(() => {
@@ -362,6 +384,10 @@ function AppContent({ onPaymentMethodsUpdate }) {
     closeAnalyticsHub();
   }, [handleSearchChange, closeAnalyticsHub]);
 
+  const handleToggleTheme = useCallback(() => {
+    setTheme(prevTheme => (prevTheme === 'dark' ? 'light' : 'dark'));
+  }, []);
+
   return (
     <div className="App">
       <UpdateBanner
@@ -377,6 +403,14 @@ function AppContent({ onPaymentMethodsUpdate }) {
           <h1>Expense Tracker</h1>
         </div>
         <div className="header-buttons">
+          <button
+            className="settings-button theme-toggle-button"
+            onClick={handleToggleTheme}
+            aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+            title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+          >
+            {theme === 'dark' ? '☀️' : '🌙'} <span className="btn-text">{theme === 'dark' ? 'Light' : 'Dark'}</span>
+          </button>
           <button 
             className="settings-button" 
             onClick={openSystemModal}

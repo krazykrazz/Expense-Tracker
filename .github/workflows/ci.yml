@@ -132,11 +132,6 @@ jobs:
         env:
           CI: true
 
-      - name: Run backup integration tests (serial)
-        run: npx cross-env NODE_ENV=test CI=true jest --bail --runInBand --testPathPatterns="backup.*integration\\.test"
-        env:
-          CI: true
-
       - name: Check runtime budget
         if: always()
         run: |

@@ -223,7 +223,7 @@ Use this template when spinning up any item below:
 
   Implementation status (2026-06-07):
   - ✅ PR 1 completed.
-  - ✅ PR 2 in progress (two high-risk expense flows migrated).
+  - ✅ PR 2 in progress (two high-risk expense flows migrated + backup-restore hardening slice).
   - Added transaction primitives in `backend/database/db.js`:
     - `beginTransaction(db)`
     - `commitTransaction(db)`
@@ -231,11 +231,14 @@ Use this template when spinning up any item below:
     - `withTransaction(db, operation)`
   - Migrated `expenseService.createExpense` future-month multi-write path to use `withTransaction` and removed manual delete-loop rollback cleanup.
   - Migrated `expenseService.updateExpense` future-month multi-write path to use `withTransaction` and removed manual delete-loop rollback cleanup.
+  - Hardened `backupService.restoreBackup` with pre-restore DB/config snapshots and best-effort rollback of DB/config if restore fails mid-operation.
+  - Added restore rollback observability in `backupService.restoreBackup` with structured rollback summary logging on failure.
   - Added focused tests in:
     - `backend/database/db.transaction.test.js` (transaction primitives)
     - `backend/services/expenseService.transaction.integration.test.js` (rollback of inserted expenses + credit-card balance on create-flow failure, and rollback of updated row + card balance on update-flow failure)
-  - Validation run: `cd backend && npm test -- db.transaction.test.js expenseService.transaction.integration.test.js`.
-  - Next step remains PR 3+: migrate backup/config-restore multi-write flow and expand transaction coverage to adjacent service paths.
+    - `backend/services/backupService.integration.test.js` (failure-injection coverage for config rollback on post-restore failure)
+  - Validation run: `cd backend && npm test -- db.transaction.test.js expenseService.transaction.integration.test.js services/backupService.integration.test.js -t "reverts backup config when post-restore step fails"`.
+  - Next step remains PR 3+: expand restore failure-injection coverage to DB/invoices/statements rollback edge cases and continue transaction coverage on adjacent service paths.
 
   Done when:
   - At least the most failure-sensitive multi-step operations are atomic.

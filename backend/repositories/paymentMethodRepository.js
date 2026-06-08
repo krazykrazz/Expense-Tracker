@@ -111,8 +111,8 @@ class PaymentMethodRepository {
    * @param {number} id - Payment method ID
    * @returns {Promise<Object|null>} Payment method or null if not found
    */
-  async findById(id) {
-    const db = await getDatabase();
+  async findById(id, dbConnection = null) {
+    const db = dbConnection || await getDatabase();
     
     return new Promise((resolve, reject) => {
       const sql = 'SELECT * FROM payment_methods WHERE id = ?';
@@ -134,8 +134,8 @@ class PaymentMethodRepository {
    * @param {string} displayName - Display name to search for
    * @returns {Promise<Object|null>} Payment method or null if not found
    */
-  async findByDisplayName(displayName) {
-    const db = await getDatabase();
+  async findByDisplayName(displayName, dbConnection = null) {
+    const db = dbConnection || await getDatabase();
     
     return new Promise((resolve, reject) => {
       const sql = 'SELECT * FROM payment_methods WHERE display_name = ?';
@@ -359,8 +359,8 @@ class PaymentMethodRepository {
    * @param {number} amount - Amount to add (positive) or subtract (negative)
    * @returns {Promise<Object|null>} Updated payment method or null if not found
    */
-  async updateBalance(id, amount) {
-    const db = await getDatabase();
+  async updateBalance(id, amount, dbConnection = null) {
+    const db = dbConnection || await getDatabase();
     
     return new Promise((resolve, reject) => {
       // First get current balance to ensure we don't go negative

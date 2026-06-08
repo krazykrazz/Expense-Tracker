@@ -13,6 +13,7 @@ const expenseTaxService = require('./expenseTaxService');
 const expenseAggregationService = require('./expenseAggregationService');
 const expenseCategoryService = require('./expenseCategoryService');
 const activityLogService = require('./activityLogService');
+const { getDatabase, withTransaction } = require('../database/db');
 
 /**
  * ExpenseService Facade
@@ -149,12 +150,12 @@ class ExpenseService {
    * @private
    */
   async _validatePeopleExist(personAllocations) {
-    for (const allocation of personAllocations) {
+    await Promise.all(personAllocations.map(async (allocation) => {
       const person = await peopleRepository.findById(allocation.personId);
       if (!person) {
         throw new Error(`Person with ID ${allocation.personId} does not exist. Please add people in the People Management section first.`);
       }
-    }
+    }));
   }
 
   /**
@@ -162,9 +163,9 @@ class ExpenseService {
    * Returns both the payment_method_id and display_name (method string).
    * @private
    */
-  async _resolvePaymentMethod(expenseData) {
+  async _resolvePaymentMethod(expenseData, dbConnection = null) {
     if (expenseData.payment_method_id) {
-      const paymentMethod = await paymentMethodRepository.findById(expenseData.payment_method_id);
+      const paymentMethod = await paymentMethodRepository.findById(expenseData.payment_method_id, dbConnection);
       if (!paymentMethod) {
         throw new Error(`Payment method with ID ${expenseData.payment_method_id} not found`);
       }
@@ -176,7 +177,7 @@ class ExpenseService {
     }
 
     if (expenseData.method) {
-      const paymentMethod = await paymentMethodRepository.findByDisplayName(expenseData.method);
+      const paymentMethod = await paymentMethodRepository.findByDisplayName(expenseData.method, dbConnection);
       if (paymentMethod) {
         return {
           payment_method_id: paymentMethod.id,
@@ -217,9 +218,9 @@ class ExpenseService {
    * Update credit card balance after expense creation.
    * @private
    */
-  async _updateCreditCardBalanceOnCreate(paymentMethod, amount, expenseDate) {
+  async _updateCreditCardBalanceOnCreate(paymentMethod, amount, expenseDate, dbConnection = null) {
     if (paymentMethod && paymentMethod.type === 'credit_card') {
-      await paymentMethodRepository.updateBalance(paymentMethod.id, amount);
+      await paymentMethodRepository.updateBalance(paymentMethod.id, amount, dbConnection);
       logger.debug('Updated credit card balance after expense creation:', {
         paymentMethodId: paymentMethod.id,
         displayName: paymentMethod.display_name,
@@ -287,7 +288,12 @@ class ExpenseService {
    * Create a single expense (internal helper).
    * @private
    */
-  async _createSingleExpense(expenseData, tabId = null) {
+  async _createSingleExpense(expenseData, tabId = null, options = {}) {
+    const {
+      dbConnection = null,
+      skipSideEffects = false
+    } = options;
+
     const processedData = this._applyInsuranceDefaults(expenseData);
     const reimbursementProcessedData = this._processReimbursement(processedData);
 
@@ -304,7 +310,7 @@ class ExpenseService {
       );
     }
 
-    const { payment_method_id, method, paymentMethod } = await this._resolvePaymentMethod(reimbursementProcessedData);
+    const { payment_method_id, method, paymentMethod } = await this._resolvePaymentMethod(reimbursementProcessedData, dbConnection);
     const week = calculateWeek(reimbursementProcessedData.date);
 
     const expense = {
@@ -324,10 +330,15 @@ class ExpenseService {
       original_cost: reimbursementProcessedData.original_cost !== undefined ? reimbursementProcessedData.original_cost : null
     };
 
-    const createdExpense = await expenseRepository.create(expense);
+    const createdExpense = await expenseRepository.create(expense, dbConnection);
 
     const chargedAmount = expense.original_cost !== null ? expense.original_cost : expense.amount;
-    await this._updateCreditCardBalanceOnCreate(paymentMethod, chargedAmount, expense.date);
+    await this._updateCreditCardBalanceOnCreate(paymentMethod, chargedAmount, expense.date, dbConnection);
+
+    if (skipSideEffects) {
+      return createdExpense;
+    }
+
     this._triggerBudgetRecalculation(expense.date, expense.type);
 
     // Log activity event
@@ -357,38 +368,72 @@ class ExpenseService {
     this._validateFutureMonths(futureMonths);
 
     const monthsToCreate = futureMonths || 0;
-    const sourceExpense = await this._createSingleExpense(expenseData, tabId);
 
     if (monthsToCreate === 0) {
-      return sourceExpense;
+      return this._createSingleExpense(expenseData, tabId);
     }
 
-    const futureExpenses = [];
-    const createdExpenseIds = [sourceExpense.id];
+    const db = await getDatabase();
+    const sideEffects = [];
 
     try {
-      for (let i = 1; i <= monthsToCreate; i++) {
-        const futureDate = this._calculateFutureDate(expenseData.date, i);
-        const futureExpenseData = { ...expenseData, date: futureDate };
-        const futureExpense = await this._createSingleExpense(futureExpenseData, tabId);
-        futureExpenses.push(futureExpense);
-        createdExpenseIds.push(futureExpense.id);
-      }
-    } catch (error) {
-      for (const expenseId of createdExpenseIds) {
-        try {
-          await expenseRepository.delete(expenseId);
-        } catch (deleteError) {
-          logger.error('Error during rollback cleanup:', deleteError);
+      const result = await withTransaction(db, async (txDb) => {
+        const sourceExpense = await this._createSingleExpense(expenseData, tabId, {
+          dbConnection: txDb,
+          skipSideEffects: true
+        });
+
+        sideEffects.push({
+          expense: sourceExpense,
+          method: sourceExpense.method,
+          tabId
+        });
+
+        const futureExpenses = [];
+        for (let i = 1; i <= monthsToCreate; i++) {
+          const futureDate = this._calculateFutureDate(expenseData.date, i);
+          const futureExpenseData = { ...expenseData, date: futureDate };
+          const futureExpense = await this._createSingleExpense(futureExpenseData, tabId, {
+            dbConnection: txDb,
+            skipSideEffects: true
+          });
+          futureExpenses.push(futureExpense);
+          sideEffects.push({
+            expense: futureExpense,
+            method: futureExpense.method,
+            tabId
+          });
         }
+
+        return {
+          expense: sourceExpense,
+          futureExpenses
+        };
+      });
+
+      for (const sideEffect of sideEffects) {
+        const { expense, method } = sideEffect;
+        this._triggerBudgetRecalculation(expense.date, expense.type);
+        await activityLogService.logEvent(
+          'expense_added',
+          'expense',
+          expense.id,
+          `Added expense: ${expense.place || 'Unknown'} - ${expense.amount.toFixed(2)} (${expense.date}, ${method})`,
+          {
+            amount: expense.amount,
+            category: expense.type,
+            date: expense.date,
+            place: expense.place,
+            method,
+            tabId
+          }
+        );
       }
+
+      return result;
+    } catch (error) {
       throw Object.assign(new Error('Failed to create future expenses. Please try again.'), { statusCode: 500 });
     }
-
-    return {
-      expense: sourceExpense,
-      futureExpenses: futureExpenses
-    };
   }
 
   /**

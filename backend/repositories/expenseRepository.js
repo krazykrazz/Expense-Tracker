@@ -8,8 +8,8 @@ class ExpenseRepository {
    * @param {Object} expense - Expense data
    * @returns {Promise<Object>} Created expense with ID
    */
-  async create(expense) {
-    const db = await getDatabase();
+  async create(expense, dbConnection = null) {
+    const db = dbConnection || await getDatabase();
     
     return new Promise((resolve, reject) => {
       const sql = `

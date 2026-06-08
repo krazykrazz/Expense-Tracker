@@ -221,6 +221,22 @@ Use this template when spinning up any item below:
   - PR 2: migrate one high-risk path (`expense` create/update or backup restore).
   - PR 3+: expand to other multi-write flows after proving test ergonomics.
 
+  Implementation status (2026-06-07):
+  - ✅ PR 1 completed.
+  - ✅ PR 2 in progress (two high-risk expense flows migrated).
+  - Added transaction primitives in `backend/database/db.js`:
+    - `beginTransaction(db)`
+    - `commitTransaction(db)`
+    - `rollbackTransaction(db)`
+    - `withTransaction(db, operation)`
+  - Migrated `expenseService.createExpense` future-month multi-write path to use `withTransaction` and removed manual delete-loop rollback cleanup.
+  - Migrated `expenseService.updateExpense` future-month multi-write path to use `withTransaction` and removed manual delete-loop rollback cleanup.
+  - Added focused tests in:
+    - `backend/database/db.transaction.test.js` (transaction primitives)
+    - `backend/services/expenseService.transaction.integration.test.js` (rollback of inserted expenses + credit-card balance on create-flow failure, and rollback of updated row + card balance on update-flow failure)
+  - Validation run: `cd backend && npm test -- db.transaction.test.js expenseService.transaction.integration.test.js`.
+  - Next step remains PR 3+: migrate backup/config-restore multi-write flow and expand transaction coverage to adjacent service paths.
+
   Done when:
   - At least the most failure-sensitive multi-step operations are atomic.
   - Rollback behavior is covered by focused tests.
@@ -261,6 +277,9 @@ Use this template when spinning up any item below:
   Suggested execution:
   - Treat as opportunistic work while refactoring touched services.
   - Favor readability over micro-optimization; only parallelize independent calls.
+
+  Implementation status (2026-06-07):
+  - ✅ Opportunistic slice completed for `expenseService._validatePeopleExist` using `Promise.all` while touching transaction-related service paths.
 
 - **Use `backend/utils/validators.js` consistently.** Controllers re-implement inline
   validation instead of the shared validators.

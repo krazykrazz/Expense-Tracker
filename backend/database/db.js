@@ -355,6 +355,74 @@ function closeTestDatabase() {
 }
 
 /**
+ * Promisified database run helper used by transaction primitives.
+ * @param {sqlite3.Database} db
+ * @param {string} sql
+ * @returns {Promise<void>}
+ */
+function runDbCommand(db, sql) {
+  return new Promise((resolve, reject) => {
+    db.run(sql, (err) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      resolve();
+    });
+  });
+}
+
+/**
+ * Begin a transaction on an existing database connection.
+ * Uses IMMEDIATE to acquire a write lock up front and fail fast under contention.
+ * @param {sqlite3.Database} db
+ */
+async function beginTransaction(db) {
+  await runDbCommand(db, 'BEGIN IMMEDIATE TRANSACTION');
+}
+
+/**
+ * Commit an open transaction.
+ * @param {sqlite3.Database} db
+ */
+async function commitTransaction(db) {
+  await runDbCommand(db, 'COMMIT');
+}
+
+/**
+ * Roll back an open transaction.
+ * @param {sqlite3.Database} db
+ */
+async function rollbackTransaction(db) {
+  await runDbCommand(db, 'ROLLBACK');
+}
+
+/**
+ * Execute a callback within a database transaction.
+ * Rolls back on any callback error, then rethrows the original error.
+ * @template T
+ * @param {sqlite3.Database} db
+ * @param {(db: sqlite3.Database) => Promise<T>} operation
+ * @returns {Promise<T>}
+ */
+async function withTransaction(db, operation) {
+  await beginTransaction(db);
+
+  try {
+    const result = await operation(db);
+    await commitTransaction(db);
+    return result;
+  } catch (error) {
+    try {
+      await rollbackTransaction(db);
+    } catch (rollbackError) {
+      logger.error('Transaction rollback failed:', rollbackError);
+    }
+    throw error;
+  }
+}
+
+/**
  * Force recreation of the test database
  * Useful when the database gets corrupted
  */
@@ -407,6 +475,10 @@ function isTestMode() {
 module.exports = {
   initializeDatabase,
   getDatabase,
+  beginTransaction,
+  commitTransaction,
+  rollbackTransaction,
+  withTransaction,
   closeDatabase,
   createTestDatabase,
   getTestDatabase,

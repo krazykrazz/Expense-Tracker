@@ -13,7 +13,7 @@ const path = require('path');
 const sqlite3 = require('sqlite3').verbose();
 const backupService = require('./backupService');
 const archiveUtils = require('../utils/archiveUtils');
-const { getInvoicesPath } = require('../config/paths');
+const { getInvoicesPath, getBackupConfigPath } = require('../config/paths');
 const { initializeDatabase } = require('../database/db');
 
 describe('BackupService - Archive Backup', () => {
@@ -334,6 +334,62 @@ describe('BackupService - Restore Functionality', () => {
     
     await expect(backupService.restoreBackup(''))
       .rejects.toThrow('Backup file path is required');
+  });
+
+  test('restoreBackup reverts backup config when post-restore step fails', async () => {
+    const configPath = getBackupConfigPath();
+    const originalConfig = backupService.getConfig();
+
+    const backupConfig = {
+      ...originalConfig,
+      enabled: false,
+      schedule: 'weekly',
+      time: '04:00',
+      keepLastN: 5,
+      targetPath: testBackupPath,
+      lastBackup: null
+    };
+
+    const liveConfigBeforeRestore = {
+      ...originalConfig,
+      enabled: true,
+      schedule: 'daily',
+      time: '07:30',
+      keepLastN: 11,
+      targetPath: testBackupPath,
+      lastBackup: null
+    };
+
+    backupService.config = backupConfig;
+    backupService.saveConfig();
+
+    const backupResult = await backupService.performBackup(testBackupPath);
+    expect(backupResult.success).toBe(true);
+
+    backupService.config = liveConfigBeforeRestore;
+    backupService.saveConfig();
+
+    const migrationSpy = jest.spyOn(backupService, '_checkAndRunPaymentMethodMigration')
+      .mockRejectedValue(new Error('Injected migration failure after config restore'));
+
+    try {
+      await expect(backupService.restoreBackup(backupResult.path))
+        .rejects.toThrow('Injected migration failure after config restore');
+
+      const configAfterFailure = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+      expect(configAfterFailure.keepLastN).toBe(liveConfigBeforeRestore.keepLastN);
+      expect(configAfterFailure.schedule).toBe(liveConfigBeforeRestore.schedule);
+      expect(configAfterFailure.time).toBe(liveConfigBeforeRestore.time);
+
+      const runtimeConfig = backupService.getConfig();
+      expect(runtimeConfig.keepLastN).toBe(liveConfigBeforeRestore.keepLastN);
+      expect(runtimeConfig.schedule).toBe(liveConfigBeforeRestore.schedule);
+      expect(runtimeConfig.time).toBe(liveConfigBeforeRestore.time);
+    } finally {
+      migrationSpy.mockRestore();
+      backupService.config = originalConfig;
+      backupService.saveConfig();
+    }
   });
 
   test('restoreBackup returns correct file count', async () => {

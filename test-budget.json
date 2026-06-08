@@ -3,7 +3,7 @@
   "budgets": {
     "backend-unit-tests": {
       "maxSeconds": 90,
-      "description": "Backend unit + backup integration tests"
+      "description": "Backend unit tests (backup suites run in backend-pbt shard 1)"
     },
     "backend-pbt-shard": {
       "maxSeconds": 90,

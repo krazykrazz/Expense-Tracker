@@ -483,6 +483,17 @@ class BackupService {
     try {
       // Create a temporary extraction directory
       const tempExtractPath = path.join(path.dirname(backupPath), `restore_temp_${Date.now()}`);
+      let dbWasOverwritten = false;
+      let configWasOverwritten = false;
+      let hadOriginalConfig = false;
+      const rollbackSummary = {
+        dbRollbackAttempted: false,
+        dbRollbackSucceeded: false,
+        configRollbackAttempted: false,
+        configRollbackSucceeded: false
+      };
+      const originalDbSnapshotPath = path.join(tempExtractPath, 'original', 'database', 'expenses.db');
+      const originalConfigSnapshotPath = path.join(tempExtractPath, 'original', 'config', 'backupConfig.json');
       
       try {
         // Extract the archive to temp directory
@@ -490,6 +501,25 @@ class BackupService {
         
         if (!extractResult.success) {
           throw new Error('Failed to extract backup archive');
+        }
+
+        // Snapshot current DB + config for rollback in case restore fails midway.
+        const originalDbDir = path.dirname(originalDbSnapshotPath);
+        if (!fs.existsSync(originalDbDir)) {
+          fs.mkdirSync(originalDbDir, { recursive: true });
+        }
+        if (fs.existsSync(DB_PATH)) {
+          fs.copyFileSync(DB_PATH, originalDbSnapshotPath);
+        }
+
+        const currentConfigPath = getBackupConfigPath();
+        if (fs.existsSync(currentConfigPath)) {
+          const originalConfigDir = path.dirname(originalConfigSnapshotPath);
+          if (!fs.existsSync(originalConfigDir)) {
+            fs.mkdirSync(originalConfigDir, { recursive: true });
+          }
+          fs.copyFileSync(currentConfigPath, originalConfigSnapshotPath);
+          hadOriginalConfig = true;
         }
 
         let filesRestored = 0;
@@ -515,6 +545,7 @@ class BackupService {
           }
           
           fs.copyFileSync(extractedDbPath, DB_PATH);
+          dbWasOverwritten = true;
           filesRestored++;
           logger.info('Database restored successfully');
         } else {
@@ -561,6 +592,7 @@ class BackupService {
             fs.mkdirSync(configDir, { recursive: true });
           }
           fs.copyFileSync(extractedConfigPath, configPath);
+          configWasOverwritten = true;
           filesRestored++;
           logger.info('Configuration restored successfully');
           
@@ -595,6 +627,65 @@ class BackupService {
           filesRestored,
           message: `Restore completed successfully. ${filesRestored} files restored.`
         };
+      } catch (restoreError) {
+        // Best-effort rollback of critical files to pre-restore state.
+        try {
+          if (dbWasOverwritten && fs.existsSync(originalDbSnapshotPath)) {
+            rollbackSummary.dbRollbackAttempted = true;
+            const { closeDatabase } = require('../database/db');
+            await closeDatabase();
+
+            const walPath = DB_PATH + '-wal';
+            const shmPath = DB_PATH + '-shm';
+            try {
+              if (fs.existsSync(walPath)) fs.unlinkSync(walPath);
+            } catch (walCleanupError) {
+              logger.warn('Could not remove WAL during rollback cleanup:', walCleanupError.message);
+            }
+            try {
+              if (fs.existsSync(shmPath)) fs.unlinkSync(shmPath);
+            } catch (shmCleanupError) {
+              logger.warn('Could not remove SHM during rollback cleanup:', shmCleanupError.message);
+            }
+
+            fs.copyFileSync(originalDbSnapshotPath, DB_PATH);
+            rollbackSummary.dbRollbackSucceeded = true;
+            logger.warn('Restore failed; reverted database file to pre-restore snapshot');
+          }
+        } catch (dbRollbackError) {
+          logger.error('Failed to rollback restored database file:', dbRollbackError);
+        }
+
+        try {
+          const configPath = getBackupConfigPath();
+          if (configWasOverwritten) {
+            rollbackSummary.configRollbackAttempted = true;
+            if (hadOriginalConfig && fs.existsSync(originalConfigSnapshotPath)) {
+              const configDir = path.dirname(configPath);
+              if (!fs.existsSync(configDir)) {
+                fs.mkdirSync(configDir, { recursive: true });
+              }
+              fs.copyFileSync(originalConfigSnapshotPath, configPath);
+              rollbackSummary.configRollbackSucceeded = true;
+              logger.warn('Restore failed; reverted backup config to pre-restore snapshot');
+            } else if (fs.existsSync(configPath)) {
+              fs.unlinkSync(configPath);
+              rollbackSummary.configRollbackSucceeded = true;
+              logger.warn('Restore failed; removed partially restored backup config');
+            }
+          }
+          this.loadConfig();
+        } catch (configRollbackError) {
+          logger.error('Failed to rollback restored backup config:', configRollbackError);
+        }
+
+        logger.warn('Restore rollback summary:', {
+          backupPath: path.basename(backupPath),
+          ...rollbackSummary,
+          restoreError: restoreError.message
+        });
+
+        throw restoreError;
       } finally {
         // Clean up temp extraction directory
         if (fs.existsSync(tempExtractPath)) {

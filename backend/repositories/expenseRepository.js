@@ -211,8 +211,8 @@ class ExpenseRepository {
    * @param {Object} expense - Updated expense data
    * @returns {Promise<Object|null>} Updated expense or null if not found
    */
-  async update(id, expense) {
-    const db = await getDatabase();
+  async update(id, expense, dbConnection = null) {
+    const db = dbConnection || await getDatabase();
     
     return new Promise((resolve, reject) => {
       const sql = `

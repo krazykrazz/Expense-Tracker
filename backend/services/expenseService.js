@@ -233,9 +233,9 @@ class ExpenseService {
    * Update credit card balance after expense deletion.
    * @private
    */
-  async _updateCreditCardBalanceOnDelete(paymentMethod, amount, expenseDate) {
+  async _updateCreditCardBalanceOnDelete(paymentMethod, amount, expenseDate, dbConnection = null) {
     if (paymentMethod && paymentMethod.type === 'credit_card') {
-      await paymentMethodRepository.updateBalance(paymentMethod.id, -amount);
+      await paymentMethodRepository.updateBalance(paymentMethod.id, -amount, dbConnection);
       logger.debug('Updated credit card balance after expense deletion:', {
         paymentMethodId: paymentMethod.id,
         displayName: paymentMethod.display_name,
@@ -494,75 +494,155 @@ class ExpenseService {
     }
 
     const monthsToCreate = futureMonths || 0;
-    const { payment_method_id, method, paymentMethod } = await this._resolvePaymentMethod(reimbursementProcessedData);
+    const applyPrimaryUpdate = async (dbConnection = null) => {
+      const { payment_method_id, method, paymentMethod } = await this._resolvePaymentMethod(reimbursementProcessedData, dbConnection);
 
-    let oldPaymentMethod = null;
-    if (oldExpense.payment_method_id) {
-      oldPaymentMethod = await paymentMethodRepository.findById(oldExpense.payment_method_id);
-    }
-
-    const week = calculateWeek(reimbursementProcessedData.date);
-
-    const expense = {
-      date: reimbursementProcessedData.date,
-      posted_date: reimbursementProcessedData.posted_date || null,
-      place: reimbursementProcessedData.place || null,
-      notes: reimbursementProcessedData.notes || null,
-      amount: parseFloat(reimbursementProcessedData.amount),
-      type: reimbursementProcessedData.type,
-      week: week,
-      method: method,
-      payment_method_id: payment_method_id,
-      insurance_eligible: reimbursementProcessedData.insurance_eligible ? 1 : 0,
-      claim_status: reimbursementProcessedData.claim_status || null,
-      original_cost: reimbursementProcessedData.original_cost !== undefined ? reimbursementProcessedData.original_cost : null
-    };
-
-    const updatedExpense = await expenseRepository.update(id, expense);
-
-    // Handle credit card balance updates for payment method changes
-    const oldChargedAmount = oldExpense.original_cost !== null ? oldExpense.original_cost : oldExpense.amount;
-    const newChargedAmount = expense.original_cost !== null ? expense.original_cost : expense.amount;
-    const paymentMethodChanged = oldExpense.payment_method_id !== payment_method_id;
-    const chargedAmountChanged = oldChargedAmount !== newChargedAmount;
-    const oldEffectiveDate = this._getEffectivePostingDate(oldExpense);
-    const newEffectiveDate = this._getEffectivePostingDate(expense);
-    const effectiveDateChanged = oldEffectiveDate !== newEffectiveDate;
-    const oldIsFuture = this._isFutureDate(oldEffectiveDate);
-    const newIsFuture = this._isFutureDate(newEffectiveDate);
-
-    if (paymentMethodChanged) {
-      if (oldPaymentMethod && oldPaymentMethod.type === 'credit_card') {
-        await this._updateCreditCardBalanceOnDelete(oldPaymentMethod, oldChargedAmount, oldEffectiveDate);
+      let oldPaymentMethod = null;
+      if (oldExpense.payment_method_id) {
+        oldPaymentMethod = await paymentMethodRepository.findById(oldExpense.payment_method_id, dbConnection);
       }
-      if (paymentMethod && paymentMethod.type === 'credit_card') {
-        await this._updateCreditCardBalanceOnCreate(paymentMethod, newChargedAmount, newEffectiveDate);
-      }
-    } else if (paymentMethod && paymentMethod.type === 'credit_card') {
-      if (effectiveDateChanged && oldIsFuture !== newIsFuture) {
-        if (oldIsFuture && !newIsFuture) {
-          await paymentMethodRepository.updateBalance(paymentMethod.id, newChargedAmount);
-          logger.debug('Added expense to credit card balance (moved from future to past):', {
+
+      const week = calculateWeek(reimbursementProcessedData.date);
+
+      const expense = {
+        date: reimbursementProcessedData.date,
+        posted_date: reimbursementProcessedData.posted_date || null,
+        place: reimbursementProcessedData.place || null,
+        notes: reimbursementProcessedData.notes || null,
+        amount: parseFloat(reimbursementProcessedData.amount),
+        type: reimbursementProcessedData.type,
+        week: week,
+        method: method,
+        payment_method_id: payment_method_id,
+        insurance_eligible: reimbursementProcessedData.insurance_eligible ? 1 : 0,
+        claim_status: reimbursementProcessedData.claim_status || null,
+        original_cost: reimbursementProcessedData.original_cost !== undefined ? reimbursementProcessedData.original_cost : null
+      };
+
+      const updatedExpense = await expenseRepository.update(id, expense, dbConnection);
+
+      // Handle credit card balance updates for payment method changes
+      const oldChargedAmount = oldExpense.original_cost !== null ? oldExpense.original_cost : oldExpense.amount;
+      const newChargedAmount = expense.original_cost !== null ? expense.original_cost : expense.amount;
+      const paymentMethodChanged = oldExpense.payment_method_id !== payment_method_id;
+      const chargedAmountChanged = oldChargedAmount !== newChargedAmount;
+      const oldEffectiveDate = this._getEffectivePostingDate(oldExpense);
+      const newEffectiveDate = this._getEffectivePostingDate(expense);
+      const effectiveDateChanged = oldEffectiveDate !== newEffectiveDate;
+      const oldIsFuture = this._isFutureDate(oldEffectiveDate);
+      const newIsFuture = this._isFutureDate(newEffectiveDate);
+
+      if (paymentMethodChanged) {
+        if (oldPaymentMethod && oldPaymentMethod.type === 'credit_card') {
+          await this._updateCreditCardBalanceOnDelete(oldPaymentMethod, oldChargedAmount, oldEffectiveDate, dbConnection);
+        }
+        if (paymentMethod && paymentMethod.type === 'credit_card') {
+          await this._updateCreditCardBalanceOnCreate(paymentMethod, newChargedAmount, newEffectiveDate, dbConnection);
+        }
+      } else if (paymentMethod && paymentMethod.type === 'credit_card') {
+        if (effectiveDateChanged && oldIsFuture !== newIsFuture) {
+          if (oldIsFuture && !newIsFuture) {
+            await paymentMethodRepository.updateBalance(paymentMethod.id, newChargedAmount, dbConnection);
+            logger.debug('Added expense to credit card balance (moved from future to past):', {
+              paymentMethodId: paymentMethod.id,
+              displayName: paymentMethod.display_name,
+              amount: newChargedAmount
+            });
+          } else if (!oldIsFuture && newIsFuture) {
+            await paymentMethodRepository.updateBalance(paymentMethod.id, -oldChargedAmount, dbConnection);
+            logger.debug('Removed expense from credit card balance (moved from past to future):', {
+              paymentMethodId: paymentMethod.id,
+              displayName: paymentMethod.display_name,
+              amount: oldChargedAmount
+            });
+          }
+        } else if (chargedAmountChanged && !oldIsFuture && !newIsFuture) {
+          const amountDiff = newChargedAmount - oldChargedAmount;
+          await paymentMethodRepository.updateBalance(paymentMethod.id, amountDiff, dbConnection);
+          logger.debug('Updated credit card balance after expense amount change:', {
             paymentMethodId: paymentMethod.id,
             displayName: paymentMethod.display_name,
-            amount: newChargedAmount
-          });
-        } else if (!oldIsFuture && newIsFuture) {
-          await paymentMethodRepository.updateBalance(paymentMethod.id, -oldChargedAmount);
-          logger.debug('Removed expense from credit card balance (moved from past to future):', {
-            paymentMethodId: paymentMethod.id,
-            displayName: paymentMethod.display_name,
-            amount: oldChargedAmount
+            amountDiff
           });
         }
-      } else if (chargedAmountChanged && !oldIsFuture && !newIsFuture) {
-        const amountDiff = newChargedAmount - oldChargedAmount;
-        await paymentMethodRepository.updateBalance(paymentMethod.id, amountDiff);
-        logger.debug('Updated credit card balance after expense amount change:', {
-          paymentMethodId: paymentMethod.id,
-          displayName: paymentMethod.display_name,
-          amountDiff
+      }
+
+      return { updatedExpense, expense, payment_method_id, method };
+    };
+
+    let updatedExpense;
+    let expense;
+    let method;
+    let payment_method_id;
+    let futureExpenses = [];
+
+    if (monthsToCreate === 0) {
+      const result = await applyPrimaryUpdate();
+      updatedExpense = result.updatedExpense;
+      expense = result.expense;
+      method = result.method;
+      payment_method_id = result.payment_method_id;
+    } else {
+      const db = await getDatabase();
+      const futureSideEffects = [];
+
+      try {
+        const txResult = await withTransaction(db, async (txDb) => {
+          const result = await applyPrimaryUpdate(txDb);
+          const createdFutureExpenses = [];
+
+          for (let i = 1; i <= monthsToCreate; i++) {
+            const futureDate = this._calculateFutureDate(reimbursementProcessedData.date, i);
+            const futureExpenseData = {
+              ...reimbursementProcessedData,
+              date: futureDate,
+              payment_method_id: result.payment_method_id,
+              method: result.method
+            };
+
+            const futureExpense = await this._createSingleExpense(futureExpenseData, tabId, {
+              dbConnection: txDb,
+              skipSideEffects: true
+            });
+
+            createdFutureExpenses.push(futureExpense);
+            futureSideEffects.push({
+              expense: futureExpense,
+              method: futureExpense.method
+            });
+          }
+
+          return {
+            ...result,
+            futureExpenses: createdFutureExpenses
+          };
         });
+
+        updatedExpense = txResult.updatedExpense;
+        expense = txResult.expense;
+        method = txResult.method;
+        payment_method_id = txResult.payment_method_id;
+        futureExpenses = txResult.futureExpenses;
+
+        for (const sideEffect of futureSideEffects) {
+          this._triggerBudgetRecalculation(sideEffect.expense.date, sideEffect.expense.type);
+          await activityLogService.logEvent(
+            'expense_added',
+            'expense',
+            sideEffect.expense.id,
+            `Added expense: ${sideEffect.expense.place || 'Unknown'} - ${sideEffect.expense.amount.toFixed(2)} (${sideEffect.expense.date}, ${sideEffect.method})`,
+            {
+              amount: sideEffect.expense.amount,
+              category: sideEffect.expense.type,
+              date: sideEffect.expense.date,
+              place: sideEffect.expense.place,
+              method: sideEffect.method,
+              tabId
+            }
+          );
+        }
+      } catch (error) {
+        throw Object.assign(new Error('Failed to create future expenses. Please try again.'), { statusCode: 500 });
       }
     }
 
@@ -642,37 +722,9 @@ class ExpenseService {
       return updatedExpense;
     }
 
-    // Create future expenses with updated values
-    const futureExpenses = [];
-    const createdExpenseIds = [];
-
-    try {
-      for (let i = 1; i <= monthsToCreate; i++) {
-        const futureDate = this._calculateFutureDate(reimbursementProcessedData.date, i);
-        const futureExpenseData = {
-          ...reimbursementProcessedData,
-          date: futureDate,
-          payment_method_id: payment_method_id,
-          method: method
-        };
-        const futureExpense = await this._createSingleExpense(futureExpenseData, tabId);
-        futureExpenses.push(futureExpense);
-        createdExpenseIds.push(futureExpense.id);
-      }
-    } catch (error) {
-      for (const expenseId of createdExpenseIds) {
-        try {
-          await expenseRepository.delete(expenseId);
-        } catch (deleteError) {
-          logger.error('Error during rollback cleanup:', deleteError);
-        }
-      }
-      throw Object.assign(new Error('Failed to create future expenses. Please try again.'), { statusCode: 500 });
-    }
-
     return {
       expense: updatedExpense,
-      futureExpenses: futureExpenses
+      futureExpenses
     };
   }
 

@@ -223,18 +223,19 @@ Use this template when spinning up any item below:
 
   Implementation status (2026-06-07):
   - ✅ PR 1 completed.
-  - ✅ PR 2 started (first high-risk flow migrated).
+  - ✅ PR 2 in progress (two high-risk expense flows migrated).
   - Added transaction primitives in `backend/database/db.js`:
     - `beginTransaction(db)`
     - `commitTransaction(db)`
     - `rollbackTransaction(db)`
     - `withTransaction(db, operation)`
   - Migrated `expenseService.createExpense` future-month multi-write path to use `withTransaction` and removed manual delete-loop rollback cleanup.
+  - Migrated `expenseService.updateExpense` future-month multi-write path to use `withTransaction` and removed manual delete-loop rollback cleanup.
   - Added focused tests in:
     - `backend/database/db.transaction.test.js` (transaction primitives)
-    - `backend/services/expenseService.transaction.integration.test.js` (rollback of inserted expenses + credit-card balance when mid-sequence failure is injected)
+    - `backend/services/expenseService.transaction.integration.test.js` (rollback of inserted expenses + credit-card balance on create-flow failure, and rollback of updated row + card balance on update-flow failure)
   - Validation run: `cd backend && npm test -- db.transaction.test.js expenseService.transaction.integration.test.js`.
-  - Next step remains PR 2 expansion: migrate a second high-risk multi-write flow (`expenseService.updateExpense` with future-month writes or backup restore).
+  - Next step remains PR 3+: migrate backup/config-restore multi-write flow and expand transaction coverage to adjacent service paths.
 
   Done when:
   - At least the most failure-sensitive multi-step operations are atomic.

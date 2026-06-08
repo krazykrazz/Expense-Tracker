@@ -221,6 +221,17 @@ Use this template when spinning up any item below:
   - PR 2: migrate one high-risk path (`expense` create/update or backup restore).
   - PR 3+: expand to other multi-write flows after proving test ergonomics.
 
+  Implementation status (2026-06-07):
+  - ✅ PR 1 completed.
+  - Added transaction primitives in `backend/database/db.js`:
+    - `beginTransaction(db)`
+    - `commitTransaction(db)`
+    - `rollbackTransaction(db)`
+    - `withTransaction(db, operation)`
+  - Added focused tests in `backend/database/db.transaction.test.js` for commit and rollback behavior.
+  - Validation run: `cd backend && npm test -- db.transaction.test.js`.
+  - Next step remains PR 2: migrate one high-risk multi-write flow to use `withTransaction`.
+
   Done when:
   - At least the most failure-sensitive multi-step operations are atomic.
   - Rollback behavior is covered by focused tests.

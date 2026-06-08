@@ -165,7 +165,9 @@ class ExpenseService {
    */
   async _resolvePaymentMethod(expenseData, dbConnection = null) {
     if (expenseData.payment_method_id) {
-      const paymentMethod = await paymentMethodRepository.findById(expenseData.payment_method_id, dbConnection);
+      const paymentMethod = dbConnection
+        ? await paymentMethodRepository.findById(expenseData.payment_method_id, dbConnection)
+        : await paymentMethodRepository.findById(expenseData.payment_method_id);
       if (!paymentMethod) {
         throw new Error(`Payment method with ID ${expenseData.payment_method_id} not found`);
       }
@@ -177,7 +179,9 @@ class ExpenseService {
     }
 
     if (expenseData.method) {
-      const paymentMethod = await paymentMethodRepository.findByDisplayName(expenseData.method, dbConnection);
+      const paymentMethod = dbConnection
+        ? await paymentMethodRepository.findByDisplayName(expenseData.method, dbConnection)
+        : await paymentMethodRepository.findByDisplayName(expenseData.method);
       if (paymentMethod) {
         return {
           payment_method_id: paymentMethod.id,
@@ -220,7 +224,11 @@ class ExpenseService {
    */
   async _updateCreditCardBalanceOnCreate(paymentMethod, amount, expenseDate, dbConnection = null) {
     if (paymentMethod && paymentMethod.type === 'credit_card') {
-      await paymentMethodRepository.updateBalance(paymentMethod.id, amount, dbConnection);
+      if (dbConnection) {
+        await paymentMethodRepository.updateBalance(paymentMethod.id, amount, dbConnection);
+      } else {
+        await paymentMethodRepository.updateBalance(paymentMethod.id, amount);
+      }
       logger.debug('Updated credit card balance after expense creation:', {
         paymentMethodId: paymentMethod.id,
         displayName: paymentMethod.display_name,
@@ -235,7 +243,11 @@ class ExpenseService {
    */
   async _updateCreditCardBalanceOnDelete(paymentMethod, amount, expenseDate, dbConnection = null) {
     if (paymentMethod && paymentMethod.type === 'credit_card') {
-      await paymentMethodRepository.updateBalance(paymentMethod.id, -amount, dbConnection);
+      if (dbConnection) {
+        await paymentMethodRepository.updateBalance(paymentMethod.id, -amount, dbConnection);
+      } else {
+        await paymentMethodRepository.updateBalance(paymentMethod.id, -amount);
+      }
       logger.debug('Updated credit card balance after expense deletion:', {
         paymentMethodId: paymentMethod.id,
         displayName: paymentMethod.display_name,
@@ -330,7 +342,9 @@ class ExpenseService {
       original_cost: reimbursementProcessedData.original_cost !== undefined ? reimbursementProcessedData.original_cost : null
     };
 
-    const createdExpense = await expenseRepository.create(expense, dbConnection);
+    const createdExpense = dbConnection
+      ? await expenseRepository.create(expense, dbConnection)
+      : await expenseRepository.create(expense);
 
     const chargedAmount = expense.original_cost !== null ? expense.original_cost : expense.amount;
     await this._updateCreditCardBalanceOnCreate(paymentMethod, chargedAmount, expense.date, dbConnection);
@@ -499,7 +513,9 @@ class ExpenseService {
 
       let oldPaymentMethod = null;
       if (oldExpense.payment_method_id) {
-        oldPaymentMethod = await paymentMethodRepository.findById(oldExpense.payment_method_id, dbConnection);
+        oldPaymentMethod = dbConnection
+          ? await paymentMethodRepository.findById(oldExpense.payment_method_id, dbConnection)
+          : await paymentMethodRepository.findById(oldExpense.payment_method_id);
       }
 
       const week = calculateWeek(reimbursementProcessedData.date);
@@ -519,7 +535,9 @@ class ExpenseService {
         original_cost: reimbursementProcessedData.original_cost !== undefined ? reimbursementProcessedData.original_cost : null
       };
 
-      const updatedExpense = await expenseRepository.update(id, expense, dbConnection);
+      const updatedExpense = dbConnection
+        ? await expenseRepository.update(id, expense, dbConnection)
+        : await expenseRepository.update(id, expense);
 
       // Handle credit card balance updates for payment method changes
       const oldChargedAmount = oldExpense.original_cost !== null ? oldExpense.original_cost : oldExpense.amount;
@@ -542,14 +560,22 @@ class ExpenseService {
       } else if (paymentMethod && paymentMethod.type === 'credit_card') {
         if (effectiveDateChanged && oldIsFuture !== newIsFuture) {
           if (oldIsFuture && !newIsFuture) {
-            await paymentMethodRepository.updateBalance(paymentMethod.id, newChargedAmount, dbConnection);
+            if (dbConnection) {
+              await paymentMethodRepository.updateBalance(paymentMethod.id, newChargedAmount, dbConnection);
+            } else {
+              await paymentMethodRepository.updateBalance(paymentMethod.id, newChargedAmount);
+            }
             logger.debug('Added expense to credit card balance (moved from future to past):', {
               paymentMethodId: paymentMethod.id,
               displayName: paymentMethod.display_name,
               amount: newChargedAmount
             });
           } else if (!oldIsFuture && newIsFuture) {
-            await paymentMethodRepository.updateBalance(paymentMethod.id, -oldChargedAmount, dbConnection);
+            if (dbConnection) {
+              await paymentMethodRepository.updateBalance(paymentMethod.id, -oldChargedAmount, dbConnection);
+            } else {
+              await paymentMethodRepository.updateBalance(paymentMethod.id, -oldChargedAmount);
+            }
             logger.debug('Removed expense from credit card balance (moved from past to future):', {
               paymentMethodId: paymentMethod.id,
               displayName: paymentMethod.display_name,
@@ -558,7 +584,11 @@ class ExpenseService {
           }
         } else if (chargedAmountChanged && !oldIsFuture && !newIsFuture) {
           const amountDiff = newChargedAmount - oldChargedAmount;
-          await paymentMethodRepository.updateBalance(paymentMethod.id, amountDiff, dbConnection);
+          if (dbConnection) {
+            await paymentMethodRepository.updateBalance(paymentMethod.id, amountDiff, dbConnection);
+          } else {
+            await paymentMethodRepository.updateBalance(paymentMethod.id, amountDiff);
+          }
           logger.debug('Updated credit card balance after expense amount change:', {
             paymentMethodId: paymentMethod.id,
             displayName: paymentMethod.display_name,

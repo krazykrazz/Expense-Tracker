@@ -304,7 +304,7 @@ class PaymentMethodService {
           let utilizationPercentage = null;
 
           if (pm.type === 'credit_card') {
-            currentBalance = Math.max(0, Math.round((pm.expense_total_to_date - pm.payment_total_to_date) * 100) / 100);
+            currentBalance = await this.calculateCurrentBalance(pm.id);
             utilizationPercentage = paymentMethodBalanceService.calculateUtilizationPercentage(currentBalance, pm.credit_limit);
           }
 

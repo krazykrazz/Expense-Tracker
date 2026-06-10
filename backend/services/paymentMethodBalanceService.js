@@ -1,4 +1,6 @@
 const paymentMethodRepository = require('../repositories/paymentMethodRepository');
+const billingCycleRepository = require('../repositories/billingCycleRepository');
+const { calculateEffectiveBalance } = require('../utils/effectiveBalanceUtil');
 const logger = require('../config/logger');
 const { getTodayString } = require('../utils/dateUtils');
 
@@ -78,37 +80,14 @@ class PaymentMethodBalanceService {
 
     const todayStr = getTodayString();
 
-    // Sum expenses where effective_date <= today
-    const expenseTotal = await new Promise((resolve, reject) => {
-      db.get(
-        'SELECT COALESCE(SUM(COALESCE(original_cost, amount)), 0) as total FROM expenses WHERE payment_method_id = ? AND COALESCE(posted_date, date) <= ?',
-        [paymentMethodId, todayStr],
-        (err, row) => {
-          if (err) return reject(err);
-          resolve(row?.total || 0);
-        }
-      );
-    });
-
-    // Sum payments where payment_date <= today
-    const paymentTotal = await new Promise((resolve, reject) => {
-      db.get(
-        'SELECT COALESCE(SUM(amount), 0) as total FROM credit_card_payments WHERE payment_method_id = ? AND payment_date <= ?',
-        [paymentMethodId, todayStr],
-        (err, row) => {
-          if (err) return reject(err);
-          resolve(row?.total || 0);
-        }
-      );
-    });
-
-    const balance = Math.max(0, Math.round((expenseTotal - paymentTotal) * 100) / 100);
+    // Prefer anchored current balance: latest closed-cycle effective balance
+    // plus net activity since cycle end. Fall back to all-time aggregation when
+    // no usable cycle anchor exists.
+    const balance = await this._calculateAnchoredCurrentBalance(db, paymentMethodId, todayStr);
 
     logger.debug('Calculated current balance:', {
       paymentMethodId,
       todayStr,
-      expenseTotal,
-      paymentTotal,
       balance
     });
 
@@ -297,30 +276,7 @@ class PaymentMethodBalanceService {
     const db = await getDatabase();
 
     const todayStr = getTodayString();
-
-    const expenseTotal = await new Promise((resolve, reject) => {
-      db.get(
-        'SELECT COALESCE(SUM(COALESCE(original_cost, amount)), 0) as total FROM expenses WHERE payment_method_id = ? AND COALESCE(posted_date, date) <= ?',
-        [id, todayStr],
-        (err, row) => {
-          if (err) return reject(err);
-          resolve(row?.total || 0);
-        }
-      );
-    });
-
-    const paymentTotal = await new Promise((resolve, reject) => {
-      db.get(
-        'SELECT COALESCE(SUM(amount), 0) as total FROM credit_card_payments WHERE payment_method_id = ?',
-        [id],
-        (err, row) => {
-          if (err) return reject(err);
-          resolve(row?.total || 0);
-        }
-      );
-    });
-
-    const newBalance = Math.max(0, Math.round((expenseTotal - paymentTotal) * 100) / 100);
+    const newBalance = await this._calculateAnchoredCurrentBalance(db, id, todayStr);
 
     await new Promise((resolve, reject) => {
       db.run(
@@ -336,13 +292,92 @@ class PaymentMethodBalanceService {
     logger.info('Recalculated credit card balance:', {
       paymentMethodId: id,
       displayName: paymentMethod.display_name,
-      expenseTotal,
-      paymentTotal,
       newBalance,
       todayStr
     });
 
     return paymentMethodRepository.findById(id);
+  }
+
+  async _calculateAnchoredCurrentBalance(db, paymentMethodId, todayStr) {
+    const latestCycle = await billingCycleRepository.findByPaymentMethod(paymentMethodId, { limit: 1 });
+    const anchorCycle = Array.isArray(latestCycle) && latestCycle.length > 0 ? latestCycle[0] : null;
+
+    // No anchor available: retain legacy all-time behavior.
+    if (!anchorCycle || !anchorCycle.cycle_end_date) {
+      return this._calculateLegacyCurrentBalance(db, paymentMethodId, todayStr);
+    }
+
+    const { effectiveBalance } = calculateEffectiveBalance(anchorCycle);
+
+    const expenseDelta = await new Promise((resolve, reject) => {
+      db.get(
+        `SELECT COALESCE(SUM(COALESCE(original_cost, amount)), 0) as total
+         FROM expenses
+         WHERE payment_method_id = ?
+           AND COALESCE(posted_date, date) > ?
+           AND COALESCE(posted_date, date) <= ?`,
+        [paymentMethodId, anchorCycle.cycle_end_date, todayStr],
+        (err, row) => {
+          if (err) return reject(err);
+          resolve(row?.total || 0);
+        }
+      );
+    });
+
+    const paymentDelta = await new Promise((resolve, reject) => {
+      db.get(
+        `SELECT COALESCE(SUM(amount), 0) as total
+         FROM credit_card_payments
+         WHERE payment_method_id = ?
+           AND payment_date > ?
+           AND payment_date <= ?`,
+        [paymentMethodId, anchorCycle.cycle_end_date, todayStr],
+        (err, row) => {
+          if (err) return reject(err);
+          resolve(row?.total || 0);
+        }
+      );
+    });
+
+    const anchored = Math.max(0, Math.round((effectiveBalance + expenseDelta - paymentDelta) * 100) / 100);
+
+    logger.debug('Calculated anchored current balance:', {
+      paymentMethodId,
+      anchorCycleEndDate: anchorCycle.cycle_end_date,
+      anchorEffectiveBalance: effectiveBalance,
+      expenseDelta,
+      paymentDelta,
+      anchored
+    });
+
+    return anchored;
+  }
+
+  async _calculateLegacyCurrentBalance(db, paymentMethodId, todayStr) {
+    const expenseTotal = await new Promise((resolve, reject) => {
+      db.get(
+        'SELECT COALESCE(SUM(COALESCE(original_cost, amount)), 0) as total FROM expenses WHERE payment_method_id = ? AND COALESCE(posted_date, date) <= ?',
+        [paymentMethodId, todayStr],
+        (err, row) => {
+          if (err) return reject(err);
+          resolve(row?.total || 0);
+        }
+      );
+    });
+
+    const paymentTotal = await new Promise((resolve, reject) => {
+      db.get(
+        'SELECT COALESCE(SUM(amount), 0) as total FROM credit_card_payments WHERE payment_method_id = ? AND payment_date <= ?',
+        [paymentMethodId, todayStr],
+        (err, row) => {
+          if (err) return reject(err);
+          resolve(row?.total || 0);
+        }
+      );
+    });
+
+    return Math.max(0, Math.round((expenseTotal - paymentTotal) * 100) / 100);
   }
 }
 

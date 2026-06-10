@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.9.6',
+    date: 'June 10, 2026',
+    added: [],
+    changed: ['Handle payments after balancing is anchored'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.9.5',
     date: 'June 10, 2026',
     added: [],

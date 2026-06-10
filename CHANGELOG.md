@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.9.5] - 2026-06-10
+
+### Anchor credit-card current balance to latest billing cycle to prevent historical drift
+
 
 
 

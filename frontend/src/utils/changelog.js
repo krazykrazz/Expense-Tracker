@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.9.5',
+    date: 'June 10, 2026',
+    added: [],
+    changed: ['Anchor credit-card current balance to latest billing cycle to prevent historical drift'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.9.4',
     date: 'June 6, 2026',
     added: [],

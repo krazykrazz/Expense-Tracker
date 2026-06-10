@@ -2,6 +2,8 @@ const creditCardPaymentRepository = require('../repositories/creditCardPaymentRe
 const paymentMethodRepository = require('../repositories/paymentMethodRepository');
 const activityLogService = require('./activityLogService');
 const { runInTransaction } = require('../utils/dbHelper');
+const { calculateEffectiveBalance } = require('../utils/effectiveBalanceUtil');
+const { getTodayString } = require('../utils/dateUtils');
 const logger = require('../config/logger');
 
 /**
@@ -9,6 +11,64 @@ const logger = require('../config/logger');
  * Handles validation, business logic, and orchestration for credit card payment operations
  */
 class CreditCardPaymentService {
+  async _calculateCurrentBalanceInTransaction(tx, paymentMethodId, todayStr) {
+    const anchorCycle = await tx.get(
+      `SELECT * FROM credit_card_billing_cycles
+       WHERE payment_method_id = ?
+       ORDER BY cycle_end_date DESC
+       LIMIT 1`,
+      [paymentMethodId]
+    );
+
+    if (!anchorCycle || !anchorCycle.cycle_end_date) {
+      const expenseTotalRow = await tx.get(
+        `SELECT COALESCE(SUM(COALESCE(original_cost, amount)), 0) as total
+         FROM expenses
+         WHERE payment_method_id = ?
+           AND COALESCE(posted_date, date) <= ?`,
+        [paymentMethodId, todayStr]
+      );
+
+      const paymentTotalRow = await tx.get(
+        `SELECT COALESCE(SUM(amount), 0) as total
+         FROM credit_card_payments
+         WHERE payment_method_id = ?
+           AND payment_date <= ?`,
+        [paymentMethodId, todayStr]
+      );
+
+      return Math.max(
+        0,
+        Math.round(((expenseTotalRow?.total || 0) - (paymentTotalRow?.total || 0)) * 100) / 100
+      );
+    }
+
+    const { effectiveBalance } = calculateEffectiveBalance(anchorCycle);
+
+    const expenseDeltaRow = await tx.get(
+      `SELECT COALESCE(SUM(COALESCE(original_cost, amount)), 0) as total
+       FROM expenses
+       WHERE payment_method_id = ?
+         AND COALESCE(posted_date, date) > ?
+         AND COALESCE(posted_date, date) <= ?`,
+      [paymentMethodId, anchorCycle.cycle_end_date, todayStr]
+    );
+
+    const paymentDeltaRow = await tx.get(
+      `SELECT COALESCE(SUM(amount), 0) as total
+       FROM credit_card_payments
+       WHERE payment_method_id = ?
+         AND payment_date > ?
+         AND payment_date <= ?`,
+      [paymentMethodId, anchorCycle.cycle_end_date, todayStr]
+    );
+
+    return Math.max(
+      0,
+      Math.round((effectiveBalance + (expenseDeltaRow?.total || 0) - (paymentDeltaRow?.total || 0)) * 100) / 100
+    );
+  }
+
   /**
    * Validate payment data
    * @param {Object} data - Payment data to validate
@@ -92,8 +152,12 @@ class CreditCardPaymentService {
         [data.payment_method_id, data.amount, data.payment_date, data.notes ? data.notes.trim() : null]
       );
 
-      const row = await tx.get('SELECT * FROM payment_methods WHERE id = ?', [data.payment_method_id]);
-      const newBalance = Math.max(0, (row.current_balance || 0) - data.amount);
+      const newBalance = await this._calculateCurrentBalanceInTransaction(
+        tx,
+        data.payment_method_id,
+        getTodayString()
+      );
+
       await tx.run(
         'UPDATE payment_methods SET current_balance = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
         [newBalance, data.payment_method_id]
@@ -256,8 +320,12 @@ class CreditCardPaymentService {
       const result = await tx.run('DELETE FROM credit_card_payments WHERE id = ?', [paymentId]);
       if (result.changes === 0) return false;
 
-      const row = await tx.get('SELECT * FROM payment_methods WHERE id = ?', [payment.payment_method_id]);
-      const newBalance = Math.max(0, (row.current_balance || 0) + payment.amount);
+      const newBalance = await this._calculateCurrentBalanceInTransaction(
+        tx,
+        payment.payment_method_id,
+        getTodayString()
+      );
+
       await tx.run(
         'UPDATE payment_methods SET current_balance = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
         [newBalance, payment.payment_method_id]

@@ -486,14 +486,24 @@ class BackupService {
       let dbWasOverwritten = false;
       let configWasOverwritten = false;
       let hadOriginalConfig = false;
+      let invoicesWasOverwritten = false;
+      let statementsWasOverwritten = false;
+      let hadOriginalInvoices = false;
+      let hadOriginalStatements = false;
       const rollbackSummary = {
         dbRollbackAttempted: false,
         dbRollbackSucceeded: false,
         configRollbackAttempted: false,
-        configRollbackSucceeded: false
+        configRollbackSucceeded: false,
+        invoicesRollbackAttempted: false,
+        invoicesRollbackSucceeded: false,
+        statementsRollbackAttempted: false,
+        statementsRollbackSucceeded: false
       };
       const originalDbSnapshotPath = path.join(tempExtractPath, 'original', 'database', 'expenses.db');
       const originalConfigSnapshotPath = path.join(tempExtractPath, 'original', 'config', 'backupConfig.json');
+      const originalInvoicesSnapshotPath = path.join(tempExtractPath, 'original', 'invoices');
+      const originalStatementsSnapshotPath = path.join(tempExtractPath, 'original', 'statements');
       
       try {
         // Extract the archive to temp directory
@@ -520,6 +530,20 @@ class BackupService {
           }
           fs.copyFileSync(currentConfigPath, originalConfigSnapshotPath);
           hadOriginalConfig = true;
+        }
+
+        // Snapshot current invoices + statements directories so partial overwrites
+        // can be reverted if a later restore step fails.
+        const currentInvoicesPath = getInvoicesPath();
+        if (fs.existsSync(currentInvoicesPath)) {
+          this._copyDirectorySnapshot(currentInvoicesPath, originalInvoicesSnapshotPath);
+          hadOriginalInvoices = true;
+        }
+
+        const currentStatementsPath = getStatementsPath();
+        if (fs.existsSync(currentStatementsPath)) {
+          this._copyDirectorySnapshot(currentStatementsPath, originalStatementsSnapshotPath);
+          hadOriginalStatements = true;
         }
 
         let filesRestored = 0;
@@ -560,11 +584,13 @@ class BackupService {
         
         if (fs.existsSync(extractedInvoicesPath)) {
           const invoiceFilesRestored = await this._restoreDirectory(extractedInvoicesPath, invoicesPath);
+          invoicesWasOverwritten = true;
           filesRestored += invoiceFilesRestored;
           logger.info(`Invoices restored: ${invoiceFilesRestored} files`);
         } else if (fs.existsSync(extractedUploadsPath)) {
           // Handle old backup format with 'uploads/' directory
           const invoiceFilesRestored = await this._restoreDirectory(extractedUploadsPath, invoicesPath);
+          invoicesWasOverwritten = true;
           filesRestored += invoiceFilesRestored;
           logger.info(`Invoices restored from legacy 'uploads/' path: ${invoiceFilesRestored} files`);
         } else {
@@ -577,6 +603,7 @@ class BackupService {
         
         if (fs.existsSync(extractedStatementsPath)) {
           const statementFilesRestored = await this._restoreDirectory(extractedStatementsPath, statementsPath);
+          statementsWasOverwritten = true;
           filesRestored += statementFilesRestored;
           logger.info(`Credit card statements restored: ${statementFilesRestored} files`);
         } else {
@@ -654,6 +681,40 @@ class BackupService {
           }
         } catch (dbRollbackError) {
           logger.error('Failed to rollback restored database file:', dbRollbackError);
+        }
+
+        try {
+          if (invoicesWasOverwritten) {
+            rollbackSummary.invoicesRollbackAttempted = true;
+            const invoicesPath = getInvoicesPath();
+            if (hadOriginalInvoices && fs.existsSync(originalInvoicesSnapshotPath)) {
+              this._restoreDirectorySnapshot(originalInvoicesSnapshotPath, invoicesPath);
+            } else if (fs.existsSync(invoicesPath)) {
+              // No pre-restore invoices existed; remove anything the restore added.
+              fs.rmSync(invoicesPath, { recursive: true, force: true });
+            }
+            rollbackSummary.invoicesRollbackSucceeded = true;
+            logger.warn('Restore failed; reverted invoices directory to pre-restore snapshot');
+          }
+        } catch (invoicesRollbackError) {
+          logger.error('Failed to rollback restored invoices directory:', invoicesRollbackError);
+        }
+
+        try {
+          if (statementsWasOverwritten) {
+            rollbackSummary.statementsRollbackAttempted = true;
+            const statementsPath = getStatementsPath();
+            if (hadOriginalStatements && fs.existsSync(originalStatementsSnapshotPath)) {
+              this._restoreDirectorySnapshot(originalStatementsSnapshotPath, statementsPath);
+            } else if (fs.existsSync(statementsPath)) {
+              // No pre-restore statements existed; remove anything the restore added.
+              fs.rmSync(statementsPath, { recursive: true, force: true });
+            }
+            rollbackSummary.statementsRollbackSucceeded = true;
+            logger.warn('Restore failed; reverted statements directory to pre-restore snapshot');
+          }
+        } catch (statementsRollbackError) {
+          logger.error('Failed to rollback restored statements directory:', statementsRollbackError);
         }
 
         try {
@@ -751,6 +812,46 @@ class BackupService {
     }
 
     return filesRestored;
+  }
+
+  /**
+   * Recursively copy a directory tree into a snapshot location.
+   * Used to capture pre-restore state so it can be reverted on failure.
+   * @param {string} srcDir - Source directory to snapshot
+   * @param {string} snapshotDir - Destination snapshot directory
+   * @private
+   */
+  _copyDirectorySnapshot(srcDir, snapshotDir) {
+    if (!fs.existsSync(snapshotDir)) {
+      fs.mkdirSync(snapshotDir, { recursive: true });
+    }
+
+    const entries = fs.readdirSync(srcDir, { withFileTypes: true });
+
+    for (const entry of entries) {
+      const srcPath = path.join(srcDir, entry.name);
+      const destPath = path.join(snapshotDir, entry.name);
+
+      if (entry.isDirectory()) {
+        this._copyDirectorySnapshot(srcPath, destPath);
+      } else {
+        fs.copyFileSync(srcPath, destPath);
+      }
+    }
+  }
+
+  /**
+   * Restore a directory to a previously captured snapshot, replacing current contents.
+   * Removes the live directory first so files added during a failed restore are discarded.
+   * @param {string} snapshotDir - Snapshot directory captured before restore
+   * @param {string} destDir - Live directory to revert
+   * @private
+   */
+  _restoreDirectorySnapshot(snapshotDir, destDir) {
+    if (fs.existsSync(destDir)) {
+      fs.rmSync(destDir, { recursive: true, force: true });
+    }
+    this._copyDirectorySnapshot(snapshotDir, destDir);
   }
 
   /**

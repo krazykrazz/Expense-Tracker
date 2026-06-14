@@ -14,6 +14,7 @@ const sqlite3 = require('sqlite3').verbose();
 const backupService = require('./backupService');
 const archiveUtils = require('../utils/archiveUtils');
 const { getInvoicesPath, getBackupConfigPath } = require('../config/paths');
+const { getStatementsPath } = require('../config/paths');
 const { initializeDatabase } = require('../database/db');
 
 describe('BackupService - Archive Backup', () => {
@@ -189,6 +190,7 @@ describe('BackupService - Archive Backup', () => {
 describe('BackupService - Restore Functionality', () => {
   const testBackupPath = path.join(__dirname, '../../test-restore-backups');
   const testInvoicesPath = getInvoicesPath();
+  const testStatementsPath = getStatementsPath();
   
   beforeAll(() => {
     if (!fs.existsSync(testBackupPath)) {
@@ -389,6 +391,92 @@ describe('BackupService - Restore Functionality', () => {
       migrationSpy.mockRestore();
       backupService.config = originalConfig;
       backupService.saveConfig();
+    }
+  });
+
+  test('restoreBackup reverts invoices directory when post-restore step fails', async () => {
+    const testYear = '2095';
+    const testMonth = '08';
+    const invoiceDir = path.join(testInvoicesPath, testYear, testMonth);
+    const invoiceFile = path.join(invoiceDir, 'rollback_invoice.pdf');
+    const backedUpContent = '%PDF-1.4 backed-up invoice content';
+    const preRestoreContent = '%PDF-1.4 pre-restore invoice content';
+
+    try {
+      // Seed invoice content that the backup will capture.
+      await fs.promises.mkdir(invoiceDir, { recursive: true });
+      await fs.promises.writeFile(invoiceFile, backedUpContent);
+
+      const backupResult = await backupService.performBackup(testBackupPath);
+      expect(backupResult.success).toBe(true);
+
+      // Mutate the live invoice to a different pre-restore state.
+      await fs.promises.writeFile(invoiceFile, preRestoreContent);
+
+      // Inject a failure after invoices/config have been overwritten.
+      const migrationSpy = jest.spyOn(backupService, '_checkAndRunPaymentMethodMigration')
+        .mockRejectedValue(new Error('Injected failure after invoices restore'));
+
+      try {
+        await expect(backupService.restoreBackup(backupResult.path))
+          .rejects.toThrow('Injected failure after invoices restore');
+
+        // Invoice must be reverted to the pre-restore content, not the backup content.
+        expect(fs.existsSync(invoiceFile)).toBe(true);
+        const contentAfterFailure = await fs.promises.readFile(invoiceFile, 'utf8');
+        expect(contentAfterFailure).toBe(preRestoreContent);
+      } finally {
+        migrationSpy.mockRestore();
+      }
+    } finally {
+      try {
+        await fs.promises.rm(path.join(testInvoicesPath, testYear), { recursive: true, force: true });
+      } catch (err) {
+        // Ignore cleanup errors
+      }
+    }
+  });
+
+  test('restoreBackup reverts statements directory when post-restore step fails', async () => {
+    const testYear = '2094';
+    const testMonth = '09';
+    const statementDir = path.join(testStatementsPath, testYear, testMonth);
+    const statementFile = path.join(statementDir, 'rollback_statement.pdf');
+    const backedUpContent = '%PDF-1.4 backed-up statement content';
+    const preRestoreContent = '%PDF-1.4 pre-restore statement content';
+
+    try {
+      // Seed statement content that the backup will capture.
+      await fs.promises.mkdir(statementDir, { recursive: true });
+      await fs.promises.writeFile(statementFile, backedUpContent);
+
+      const backupResult = await backupService.performBackup(testBackupPath);
+      expect(backupResult.success).toBe(true);
+
+      // Mutate the live statement to a different pre-restore state.
+      await fs.promises.writeFile(statementFile, preRestoreContent);
+
+      // Inject a failure after statements/config have been overwritten.
+      const migrationSpy = jest.spyOn(backupService, '_checkAndRunPaymentMethodMigration')
+        .mockRejectedValue(new Error('Injected failure after statements restore'));
+
+      try {
+        await expect(backupService.restoreBackup(backupResult.path))
+          .rejects.toThrow('Injected failure after statements restore');
+
+        // Statement must be reverted to the pre-restore content, not the backup content.
+        expect(fs.existsSync(statementFile)).toBe(true);
+        const contentAfterFailure = await fs.promises.readFile(statementFile, 'utf8');
+        expect(contentAfterFailure).toBe(preRestoreContent);
+      } finally {
+        migrationSpy.mockRestore();
+      }
+    } finally {
+      try {
+        await fs.promises.rm(path.join(testStatementsPath, testYear), { recursive: true, force: true });
+      } catch (err) {
+        // Ignore cleanup errors
+      }
     }
   });
 

@@ -89,6 +89,18 @@ Past confirmed-true patterns on THIS repo:
   walk → zero interest). Field was removed from `MortgageTabbedContent.jsx`.
 - `formatCurrency()` already includes `$`. Any wrapper that prepends `$` causes
   double-`$$` display (was in `MortgageKpiStrip.jsx fmt()` function, now fixed).
+- In-lieu holiday observance collision in `frontend/src/utils/businessDays.js`
+  `addObserved()`: the original two-branch form (weekday → `set.add` as-is;
+  weekend → roll forward skipping weekends AND already-taken days) loses the second
+  holiday when two fixed holidays are adjacent and the first lands on a weekday in
+  the other's in-lieu slot. Concrete case: when **Dec 25 is a Sunday** (2022, 2033),
+  Christmas rolls to Mon Dec 26, then Boxing Day (Mon Dec 26) hits the weekday branch
+  and re-adds Dec 26 — the intended Tue Dec 27 in-lieu day is never registered.
+  Fix is to unify both branches into one loop:
+  `let d = dateStr; while (isWeekend(d) || set.has(d)) d = addDays(d, 1); set.add(d);`
+  Tests covering only the Saturday-Christmas cascade (2027) miss this — always test
+  the Sunday-Christmas year too. The posted-date auto-suggestion is frontend-only and
+  user-overridable, so this is Medium, not High.
 
 Past confirmed-false patterns (subagent hallucinations on THIS repo):
 - "Duplicate `findById()` in `loanPaymentRepository.js`" — FALSE, there is only

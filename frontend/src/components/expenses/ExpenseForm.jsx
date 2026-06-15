@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useModalContext } from '../../contexts/ModalContext';
 import { API_ENDPOINTS } from '../../config';
 import { getTodayLocalDate } from '../../utils/formatters';
+import { isBusinessDay, nextBusinessDay } from '../../utils/businessDays';
 import { getCategories } from '../../services/categoriesApi';
 import { getPeople } from '../../services/peopleApi';
 import { createExpense, updateExpense, getExpenseWithPeople } from '../../services/expenseApi';
@@ -79,6 +80,12 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
   // Initialize from expense prop when editing
   const [postedDate, setPostedDate] = useState(expense?.posted_date || '');
 
+  // Whether the Posted Date is auto-managed (system suggests next business day
+  // for weekend/holiday credit-card charges). Becomes false once the user types
+  // or clears the field, so manual values are always respected. Disabled in edit
+  // mode so opening an existing expense never silently changes its posted date.
+  const [postedDateAutoManaged, setPostedDateAutoManaged] = useState(!isEditing);
+
   // Use extracted payment methods hook (Requirements 1.7, 7.1)
   const {
     paymentMethods,
@@ -102,6 +109,25 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
     filterPlaces,
     fetchPlaces
   } = usePlaceAutocomplete();
+
+  // Auto-manage the Posted Date for credit-card charges made on a weekend or
+  // Canadian bank holiday: suggest the next business day, and clear the
+  // suggestion when the transaction date moves to a business day or the payment
+  // method is no longer a credit card. Skips entirely once the user has taken
+  // manual control (postedDateAutoManaged === false).
+  useEffect(() => {
+    if (!postedDateAutoManaged) return;
+    const selectedMethod = paymentMethods.find(pm => pm.id === formData.payment_method_id)
+      || editingInactivePaymentMethod;
+    const creditCard = selectedMethod?.type === 'credit_card';
+    if (creditCard && formData.date && !isBusinessDay(formData.date)) {
+      const suggested = nextBusinessDay(formData.date);
+      setPostedDate(prev => (prev === suggested ? prev : suggested));
+    } else {
+      setPostedDate(prev => (prev === '' ? prev : ''));
+    }
+    setPostedDateError('');
+  }, [formData.date, formData.payment_method_id, postedDateAutoManaged, paymentMethods, editingInactivePaymentMethod]);
 
   // Section expansion state management (Requirements 1.3, 11.2, 11.5)
   // Calculate initial expansion states based on mode and existing data
@@ -370,6 +396,8 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
       if (!newPaymentMethod || newPaymentMethod.type !== 'credit_card') {
         setPostedDate('');
         setPostedDateError('');
+        // Resume auto-suggestion the next time a credit card is selected
+        setPostedDateAutoManaged(true);
       }
       return;
     }
@@ -526,7 +554,9 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
   const handlePostedDateChange = (e) => {
     const value = e.target.value;
     setPostedDate(value);
-    
+    // User is taking manual control: stop auto-suggesting the posted date
+    setPostedDateAutoManaged(false);
+
     // Clear validation error when value changes
     setPostedDateError('');
     
@@ -1086,6 +1116,8 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
                   onClick={() => {
                     setPostedDate('');
                     setPostedDateError('');
+                    // Explicit clear is a manual choice — keep it empty
+                    setPostedDateAutoManaged(false);
                   }}
                   disabled={isSubmitting}
                   title="Clear posted date"
@@ -1096,7 +1128,9 @@ const ExpenseForm = ({ onExpenseAdded, people: propPeople, expense = null }) => 
               )}
             </div>
             <small className="form-hint">
-              Leave empty to use transaction date
+              {postedDateAutoManaged && postedDate
+                ? 'Auto-set to the next business day (weekend/holiday charge). Edit or clear to override.'
+                : 'Leave empty to use transaction date'}
             </small>
             {postedDateError && (
               <div className="posted-date-error">

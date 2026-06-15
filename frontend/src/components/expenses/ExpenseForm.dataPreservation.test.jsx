@@ -80,10 +80,11 @@ describe('ExpenseForm - Data Preservation During Collapse', () => {
       expect(screen.getByLabelText(/^Date \*/i)).toBeInTheDocument();
     });
 
-    // Fill in core fields
+    // Fill in core fields (use a weekday so the credit-card posted date is not
+    // auto-suggested, keeping this test focused on payment-method clearing)
     const dateInput = screen.getByLabelText(/^Date \*/i);
     await user.clear(dateInput);
-    await user.type(dateInput, '2024-06-15');
+    await user.type(dateInput, '2024-06-17'); // Monday
     
     const placeInput = screen.getByLabelText(/Place/i);
     await user.type(placeInput, 'Test Place');
@@ -207,7 +208,7 @@ describe('ExpenseForm - Data Preservation During Collapse', () => {
     // Fill in core fields
     const dateInput = screen.getByLabelText(/^Date \*/i);
     await user.clear(dateInput);
-    await user.type(dateInput, '2024-06-15');
+    await user.type(dateInput, '2024-06-15'); // Saturday — triggers auto-suggested posted date
     
     const placeInput = screen.getByLabelText(/Place/i);
     await user.type(placeInput, 'Test Store');
@@ -223,11 +224,17 @@ describe('ExpenseForm - Data Preservation During Collapse', () => {
     await user.selectOptions(paymentMethodSelect, '2'); // Credit Card
 
     // Wait for posted date field and enter value
+    // Note: match the field label specifically — when a value is present the
+    // clear button (aria-label "Clear posted date") also matches /Posted Date/i.
     await waitFor(() => {
-      expect(screen.getByLabelText(/Posted Date/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/^Posted Date/i)).toBeInTheDocument();
     });
 
-    const postedDateInput = screen.getByLabelText(/Posted Date/i);
+    const postedDateInput = screen.getByLabelText(/^Posted Date/i);
+    // Weekend charge: posted date is auto-suggested to the next business day.
+    // A manual override must always win, even for a weekend transaction.
+    expect(postedDateInput.value).toBe('2024-06-17'); // Monday after Sat Jun 15
+    await user.clear(postedDateInput);
     await user.type(postedDateInput, '2024-06-20');
 
     // Submit the form

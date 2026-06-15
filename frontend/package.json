@@ -1,6 +1,6 @@
 {
   "name": "expense-tracker-frontend",
-  "version": "1.9.6",
+  "version": "1.9.7",
   "description": "Expense Tracker React Frontend",
   "type": "module",
   "private": true,

@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.9.7] - 2026-06-15
+
+### Security updates and smarter posting of credit card expenses
+
 ## [1.9.6] - 2026-06-10
 
 ### Handle payments after balancing is anchored

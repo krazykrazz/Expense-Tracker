@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.9.7',
+    date: 'June 15, 2026',
+    added: [],
+    changed: ['Security updates and smarter posting of credit card expenses'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.9.6',
     date: 'June 10, 2026',
     added: [],

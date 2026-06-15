@@ -122,6 +122,14 @@ Layer-specific, high-signal checks. Confirm each finding against source before r
       `Math.min(configDay, new Date(year, month, 0).getDate())`.
       Without clamping, day 29/30/31 in short months produces invalid dates like
       `"2024-02-31"`. Check `autoPaymentLoggerService`, billing cycle generators.
+- [ ] In-lieu holiday observance (`frontend/src/utils/businessDays.js`): when two
+      fixed-date holidays are adjacent (Christmas + Boxing Day), the "roll forward to
+      next free weekday" logic must skip days already taken by the prior holiday's
+      observance in BOTH the weekend and weekday paths. A weekday-only `set.add()`
+      branch silently drops the second holiday when the first lands in its slot
+      (Dec 25 on a Sunday → Boxing Day's Dec 27 lost). Prefer a single
+      `while (isWeekend(d) || set.has(d)) d = addDays(d, 1)` loop. Verify with a
+      Sunday-Christmas year (2022/2033), not just a Saturday one.
 
 ## Severity guide
 - **Critical**: exploitable security hole, data loss/corruption, crash on normal input.

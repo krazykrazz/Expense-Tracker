@@ -173,10 +173,15 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # Enable auto-merge with a PAT (not GITHUB_TOKEN). When auto-merge completes
+      # under GITHUB_TOKEN, the resulting push to main does NOT trigger downstream
+      # workflows (GitHub's recursion guard), so the GHCR build/push never runs.
+      # A PAT (secret RELEASE_PAT, repo scope) attributes the merge to a real user,
+      # so the merge push triggers the CI build-and-push-ghcr job.
       - name: Enable auto-merge
         if: inputs.auto_merge
         run: |
           gh pr merge "${{ steps.version.outputs.branch }}" --auto --merge --delete-branch
           echo "✅ Auto-merge enabled — PR will merge when CI passes" >> $GITHUB_STEP_SUMMARY
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.RELEASE_PAT }}

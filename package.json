@@ -19,7 +19,7 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "baseline-browser-mapping": "^2.10.37",
+    "baseline-browser-mapping": "^2.10.38",
     "fast-check": "^4.8.0"
   }
 }

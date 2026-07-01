@@ -650,15 +650,26 @@ describe('SpendingPatternsService - Pattern Detection Property Tests', () => {
       const currentYear = now.getFullYear();
       const currentMonth = now.getMonth() + 1;
 
-      let month1 = currentMonth - 1;
-      let year1 = currentYear;
-      if (month1 <= 0) {
-        month1 += 12;
-        year1 -= 1;
+      // Compare two fully-completed past months. getSeasonalAnalysis uses an
+      // end-exclusive date window (date < today), so the current month's data
+      // is incomplete (and empty when run on the 1st). Using the two prior
+      // months keeps this assertion deterministic regardless of the day.
+      let recentMonth = currentMonth - 1;
+      let recentYear = currentYear;
+      if (recentMonth <= 0) {
+        recentMonth += 12;
+        recentYear -= 1;
+      }
+
+      let olderMonth = recentMonth - 1;
+      let olderYear = recentYear;
+      if (olderMonth <= 0) {
+        olderMonth += 12;
+        olderYear -= 1;
       }
 
       await insertExpense({
-        date: getDateInMonth(year1, month1),
+        date: getDateInMonth(olderYear, olderMonth),
         place: 'TestMerchant',
         amount: 100,
         type: 'Groceries',
@@ -667,7 +678,7 @@ describe('SpendingPatternsService - Pattern Detection Property Tests', () => {
       });
 
       await insertExpense({
-        date: getDateInMonth(currentYear, currentMonth),
+        date: getDateInMonth(recentYear, recentMonth),
         place: 'TestMerchant',
         amount: 150,
         type: 'Groceries',
@@ -675,14 +686,14 @@ describe('SpendingPatternsService - Pattern Detection Property Tests', () => {
         week: 1
       });
 
-      const analysis = await spendingPatternsService.getSeasonalAnalysis(3);
+      const analysis = await spendingPatternsService.getSeasonalAnalysis(4);
 
-      const currentMonthData = analysis.monthlyData.find(
-        m => m.year === currentYear && m.month === currentMonth
+      const recentMonthData = analysis.monthlyData.find(
+        m => m.year === recentYear && m.month === recentMonth
       );
 
-      expect(currentMonthData).toBeDefined();
-      expect(currentMonthData.previousMonthChange).toBeCloseTo(50, 0);
+      expect(recentMonthData).toBeDefined();
+      expect(recentMonthData.previousMonthChange).toBeCloseTo(50, 0);
     });
 
     test('Quarterly data correctly aggregates monthly totals', async () => {

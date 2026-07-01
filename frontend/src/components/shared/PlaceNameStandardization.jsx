@@ -8,6 +8,7 @@ const PlaceNameStandardization = ({ onClose }) => {
   const [applying, setApplying] = useState(false);
   const [similarityGroups, setSimilarityGroups] = useState([]);
   const [selections, setSelections] = useState(new Map());
+  const [excludedVariations, setExcludedVariations] = useState(new Map());
   const [showPreview, setShowPreview] = useState(false);
   const [previewData, setPreviewData] = useState(null);
   const [message, setMessage] = useState({ text: '', type: '' });
@@ -54,6 +55,38 @@ const PlaceNameStandardization = ({ onClose }) => {
   };
 
   /**
+   * Include or exclude a single variation from a group's merge.
+   * Excluded variations are left untouched (useful when fuzzy matching
+   * groups unrelated names together). Excluding the currently selected
+   * canonical clears that group's selection.
+   */
+  const handleToggleVariation = (groupId, variationName) => {
+    setExcludedVariations(prev => {
+      const newExcluded = new Map(prev);
+      const groupExcluded = new Set(newExcluded.get(groupId) || []);
+
+      if (groupExcluded.has(variationName)) {
+        groupExcluded.delete(variationName);
+      } else {
+        groupExcluded.add(variationName);
+
+        // Clear the selection if the excluded variation was the canonical
+        setSelections(prevSelections => {
+          if (prevSelections.get(groupId) === variationName) {
+            const newSelections = new Map(prevSelections);
+            newSelections.delete(groupId);
+            return newSelections;
+          }
+          return prevSelections;
+        });
+      }
+
+      newExcluded.set(groupId, groupExcluded);
+      return newExcluded;
+    });
+  };
+
+  /**
    * Generate preview of changes
    */
   const handleShowPreview = () => {
@@ -62,16 +95,17 @@ const PlaceNameStandardization = ({ onClose }) => {
 
     similarityGroups.forEach(group => {
       const selectedCanonical = selections.get(group.id);
+      const groupExcluded = excludedVariations.get(group.id) || new Set();
       
       if (selectedCanonical) {
-        // Get all variations except the canonical one
-        const variationsToUpdate = group.variations
-          .filter(v => v.name !== selectedCanonical)
-          .map(v => v.name);
+        // Get all included variations except the canonical one.
+        // Excluded variations are left unchanged.
+        const mergeableVariations = group.variations
+          .filter(v => v.name !== selectedCanonical && !groupExcluded.has(v.name));
+        const variationsToUpdate = mergeableVariations.map(v => v.name);
         
         if (variationsToUpdate.length > 0) {
-          const affectedCount = group.variations
-            .filter(v => v.name !== selectedCanonical)
+          const affectedCount = mergeableVariations
             .reduce((sum, v) => sum + v.count, 0);
           
           updates.push({
@@ -138,6 +172,7 @@ const PlaceNameStandardization = ({ onClose }) => {
   const handleCancel = () => {
     setSimilarityGroups([]);
     setSelections(new Map());
+    setExcludedVariations(new Map());
     setShowPreview(false);
     setPreviewData(null);
     setMessage({ text: '', type: '' });
@@ -186,7 +221,7 @@ const PlaceNameStandardization = ({ onClose }) => {
       {!analyzing && !showPreview && similarityGroups.length > 0 && (
         <div className="standardization-groups">
           <div className="groups-header">
-            <p>Review the groups below and select a canonical name for each:</p>
+            <p>Review the groups below and select a canonical name for each. Uncheck any names that were grouped by mistake to leave them unchanged.</p>
           </div>
 
           <div className="groups-list">
@@ -195,7 +230,9 @@ const PlaceNameStandardization = ({ onClose }) => {
                 key={group.id}
                 group={group}
                 selectedCanonical={selections.get(group.id)}
+                excludedVariations={excludedVariations.get(group.id)}
                 onSelectCanonical={handleCanonicalSelection}
+                onToggleVariation={handleToggleVariation}
               />
             ))}
           </div>

@@ -47,8 +47,43 @@
   border-color: #4CAF50;
 }
 
+.variation-option.excluded {
+  opacity: 0.55;
+  background-color: #f5f5f5;
+  border-style: dashed;
+}
+
+.variation-option.excluded:hover {
+  background-color: #f0f0f0;
+  border-color: var(--border-light, #ddd);
+}
+
+.variation-option.excluded .variation-name {
+  text-decoration: line-through;
+}
+
+.variation-include {
+  cursor: pointer;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+}
+
+.variation-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  margin: 0;
+  cursor: pointer;
+}
+
 .variation-option input[type="radio"] {
   cursor: pointer;
+}
+
+.variation-option input[type="radio"]:disabled {
+  cursor: not-allowed;
 }
 
 .variation-name {

@@ -144,33 +144,38 @@ jobs:
           # so HEAD is the expected head OID for the branch on the remote.
           HEAD_OID=$(git rev-parse HEAD)
 
-          # Build fileChanges.additions (modified/added tracked files, base64).
-          ADDITIONS='[]'
+          # Build fileChanges as JSONL on disk. File contents are read by jq
+          # via --rawfile (from disk), never passed as CLI args, so large
+          # files can't trigger "Argument list too long".
+          ADD_FILE=$(mktemp)
+          DEL_FILE=$(mktemp)
+
+          # Additions: modified/added tracked files, base64-encoded contents.
           while IFS= read -r f; do
             [ -z "$f" ] && continue
-            B64=$(base64 -w0 "$f")
-            ADDITIONS=$(printf '%s' "$ADDITIONS" | jq --arg path "$f" --arg contents "$B64" '. + [{path: $path, contents: $contents}]')
+            jq -n --arg path "$f" --rawfile content "$f" \
+              '{path: $path, contents: ($content | @base64)}' >> "$ADD_FILE"
           done < <(git diff --name-only --no-renames --diff-filter=d HEAD)
 
-          # Build fileChanges.deletions (removed tracked files).
-          DELETIONS='[]'
+          # Deletions: removed tracked files.
           while IFS= read -r f; do
             [ -z "$f" ] && continue
-            DELETIONS=$(printf '%s' "$DELETIONS" | jq --arg path "$f" '. + [{path: $path}]')
+            jq -n --arg path "$f" '{path: $path}' >> "$DEL_FILE"
           done < <(git diff --name-only --no-renames --diff-filter=D HEAD)
 
-          if [ "$ADDITIONS" = '[]' ] && [ "$DELETIONS" = '[]' ]; then
+          if [ ! -s "$ADD_FILE" ] && [ ! -s "$DEL_FILE" ]; then
             echo "No file changes to commit" >&2
             exit 1
           fi
 
+          # --slurpfile reads each JSONL file into an array (empty file -> []).
           jq -n \
             --arg repo "$REPO" \
             --arg branch "$BRANCH" \
             --arg oid "$HEAD_OID" \
             --arg headline "$MESSAGE" \
-            --argjson additions "$ADDITIONS" \
-            --argjson deletions "$DELETIONS" \
+            --slurpfile additions "$ADD_FILE" \
+            --slurpfile deletions "$DEL_FILE" \
             '{
               query: "mutation($input: CreateCommitOnBranchInput!) { createCommitOnBranch(input: $input) { commit { oid } } }",
               variables: {

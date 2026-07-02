@@ -1215,6 +1215,13 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v1.10.0</div>
+                <div className="changelog-date">July 2, 2026</div>
+                <ul className="changelog-items">
+                  <li>Add ability to exclude fuzzy-matched names when standardizing place names; security dependency updates and removal of unused xlsx import.</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v1.9.7</div>
                 <div className="changelog-date">June 15, 2026</div>
                 <ul className="changelog-items">

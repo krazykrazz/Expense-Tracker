@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.10.0',
+    date: 'July 2, 2026',
+    added: [],
+    changed: ['Add ability to exclude fuzzy-matched names when standardizing place names; security dependency updates and removal of unused xlsx import.'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.9.7',
     date: 'June 15, 2026',
     added: [],

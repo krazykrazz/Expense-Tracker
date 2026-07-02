@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.10.0] - 2026-07-02
+
+### Add ability to exclude fuzzy-matched names when standardizing place names; security dependency updates and removal of unused xlsx import.
+
 ## [1.9.7] - 2026-06-15
 
 ### Security updates and smarter posting of credit card expenses

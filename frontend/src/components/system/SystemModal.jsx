@@ -452,6 +452,16 @@ const SystemModal = () => {
           <div className="changelog">
             <div className="changelog-entry">
               <div className="changelog-version">
+                v1.10.0
+                {isCurrentVersion('v1.10.0') && <span className="current-version-badge">Current Version</span>}
+              </div>
+              <div className="changelog-date">July 2, 2026</div>
+              <ul className="changelog-items">
+                <li>Add ability to exclude fuzzy-matched names when standardizing place names; security dependency updates and removal of unused xlsx import.</li>
+              </ul>
+            </div>
+            <div className="changelog-entry">
+              <div className="changelog-version">
                 v1.9.7
                 {isCurrentVersion('v1.9.7') && <span className="current-version-badge">Current Version</span>}
               </div>

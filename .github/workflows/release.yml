@@ -122,17 +122,64 @@ jobs:
           npm ci
           npm run build
 
-      # Commit & push via the GitHub API so the commit is signed by GitHub's
-      # key and shows as "Verified" (required by branch protection). A plain
-      # `git commit` / `git push` from CI produces unsigned, unverified commits.
+      # Commit via the GitHub API (GraphQL createCommitOnBranch) so the commit
+      # is signed by GitHub's key and shows as "Verified" (required by branch
+      # protection). A plain `git commit` / `git push` from CI produces
+      # unsigned, unverified commits. Using the built-in `gh` CLI avoids any
+      # third-party action (kept off the repo Actions allowlist).
       - name: Commit changes (verified)
-        uses: planetscale/ghcommit-action@v0.2.22
-        with:
-          commit_message: "v${{ steps.version.outputs.new }}: ${{ inputs.description }}"
-          repo: ${{ github.repository }}
-          branch: ${{ steps.version.outputs.branch }}
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          BRANCH: ${{ steps.version.outputs.branch }}
+          MESSAGE: "v${{ steps.version.outputs.new }}: ${{ inputs.description }}"
+        run: |
+          set -euo pipefail
+
+          # The release branch was pushed at main's tip and has not advanced,
+          # so HEAD is the expected head OID for the branch on the remote.
+          HEAD_OID=$(git rev-parse HEAD)
+
+          # Build fileChanges.additions (modified/added tracked files, base64).
+          ADDITIONS='[]'
+          while IFS= read -r f; do
+            [ -z "$f" ] && continue
+            B64=$(base64 -w0 "$f")
+            ADDITIONS=$(printf '%s' "$ADDITIONS" | jq --arg path "$f" --arg contents "$B64" '. + [{path: $path, contents: $contents}]')
+          done < <(git diff --name-only --no-renames --diff-filter=d HEAD)
+
+          # Build fileChanges.deletions (removed tracked files).
+          DELETIONS='[]'
+          while IFS= read -r f; do
+            [ -z "$f" ] && continue
+            DELETIONS=$(printf '%s' "$DELETIONS" | jq --arg path "$f" '. + [{path: $path}]')
+          done < <(git diff --name-only --no-renames --diff-filter=D HEAD)
+
+          if [ "$ADDITIONS" = '[]' ] && [ "$DELETIONS" = '[]' ]; then
+            echo "No file changes to commit" >&2
+            exit 1
+          fi
+
+          jq -n \
+            --arg repo "$REPO" \
+            --arg branch "$BRANCH" \
+            --arg oid "$HEAD_OID" \
+            --arg headline "$MESSAGE" \
+            --argjson additions "$ADDITIONS" \
+            --argjson deletions "$DELETIONS" \
+            '{
+              query: "mutation($input: CreateCommitOnBranchInput!) { createCommitOnBranch(input: $input) { commit { oid } } }",
+              variables: {
+                input: {
+                  branch: { repositoryNameWithOwner: $repo, branchName: $branch },
+                  message: { headline: $headline },
+                  expectedHeadOid: $oid,
+                  fileChanges: { additions: $additions, deletions: $deletions }
+                }
+              }
+            }' > /tmp/commit-payload.json
+
+          gh api graphql --input /tmp/commit-payload.json
 
       - name: Create Pull Request
         id: create_pr

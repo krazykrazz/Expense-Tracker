@@ -119,11 +119,7 @@ jobs:
       - name: Build frontend
         run: |
           cd frontend
-          # Use `npm install` (matching ci.yml) rather than `npm ci`: the
-          # committed lockfile can drift on cross-platform optional deps
-          # (e.g. @emnapi/*), which `npm ci` rejects. `--no-package-lock`
-          # keeps the build from mutating the lockfile into the release commit.
-          npm install --no-package-lock
+          npm ci
           npm run build
 
       # Commit via the GitHub API (GraphQL createCommitOnBranch) so the commit

@@ -91,6 +91,32 @@ jobs:
             echo "empty_pr=false" >> $GITHUB_OUTPUT
           fi
 
+  lockfile-integrity:
+    name: Lockfile Integrity
+    runs-on: ubuntu-latest
+    if: github.actor != 'dependabot[bot]'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+
+      # Guards against committed lockfiles drifting from package.json — e.g.
+      # cross-platform optional deps (@emnapi/*) get pruned when npm runs on
+      # Windows, producing a lockfile that `npm ci` rejects. Without this,
+      # such drift only surfaces in the release workflow's `npm ci` build.
+      - name: Verify lockfiles are npm ci-installable
+        run: |
+          set -e
+          for dir in . backend frontend; do
+            echo "::group::npm ci ($dir)"
+            (cd "$dir" && npm ci --ignore-scripts --no-audit --no-fund)
+            echo "::endgroup::"
+          done
+
   backend-unit-tests:
     name: Backend Unit Tests
     runs-on: ubuntu-latest

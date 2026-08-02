@@ -45,7 +45,9 @@ ARG GIT_COMMIT=unknown
 
 # Upgrade all system packages to fix known vulnerabilities, then install extras
 RUN apk upgrade --no-cache && \
-    apk add --no-cache tzdata wget
+    apk add --no-cache tzdata wget && \
+    # Remove global npm/npx: unused at runtime and its bundled tar carries CVEs
+    rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 
 # Set working directory
 WORKDIR /app

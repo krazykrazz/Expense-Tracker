@@ -153,10 +153,11 @@ Largest frontend source files:
 | R20 | Make frontend `test:fast*` scripts Windows-compatible | 0 | Tooling | Low | Low | Low | — |
 | R21 | Dependabot PRs bypass all CI checks | 0 | CI | Medium | Low | Low | — |
 | R22 | Backend PBT shards flake on shared test DB | 0 | CI/Tests | Medium | Medium | Medium | — |
+| R23 | Trivy outages reported as CRITICAL vulns | 0 | CI | Medium | Low | Low | — |
 
 > R18–R20 were **discovered by the linter added in R1**, not by the manual audit.
 > R21 was discovered while triaging the dependabot queue after the Phase 0 PR.
-> R22 was discovered while investigating the #343 CI failure that R21's workaround exposed.
+> R22 and R23 were discovered while investigating CI failures that R21's workaround exposed.
 
 **Recommended execution order:** R1 → R2/R3 → R21 → R20 → R19 → R6 → R4 → R5 → R8 → R9 →
 R10 → R11/R12/R13 → R7 → R14/R15/R18 → R16 → R17.
@@ -567,6 +568,27 @@ sharding *without* it — so the parallel path is materially less exercised than
    `process.env.JEST_WORKER_ID`), or PBT execution SHALL be serialised.
 3. THE backend PBT suite SHALL pass 5 consecutive sharded CI runs without a re-run.
 4. THE fix SHALL NOT materially increase total PBT wall time.
+5. THE `backend-pbt-shard` runtime budget SHALL be re-derived from observed timings once
+   the flakiness is fixed (see below) — a budget below the noise floor produces false reds.
+
+### Observed variance (same commit, three runs)
+
+`#343` shard 2/3, identical code each time:
+
+| Run | Result | Elapsed |
+|---|---|---|
+| 1 | ❌ 15 tests failed (`SQLITE_READONLY` / `CANTOPEN` / `no such table`) | 55s |
+| 2 | ❌ all 269 tests **passed**, failed the runtime budget | **113s** |
+| 3 | ✅ pass | 41s |
+
+Baseline on `main` (#346, jest 30.4.2) was 38s for the same shard. So shard 2 ranges
+**41s–113s**, while `test-budget.json` sets `backend-pbt-shard.maxSeconds = 90`. The budget
+sits *inside* the observed variance band, so it will keep producing false failures
+regardless of the SQLite race. Both need fixing.
+
+Note run 2 is a distinct failure mode worth calling out: **every test passed but the job
+went red**, and the log line was `Budget exceeded! 113s > 90s`. A reader skimming for test
+failures finds none.
 
 ### Design / Implementation Notes
 
@@ -582,6 +604,71 @@ sharding *without* it — so the parallel path is materially less exercised than
 
 - Reproduce locally with `jest --testPathPatterns=pbt --shard=1/3` (parallel, not `--runInBand`).
 - After the fix, run the sharded CI path repeatedly and confirm no flakes.
+
+---
+
+## R23: Trivy infrastructure failures are reported as CRITICAL vulnerabilities
+
+**User Story:** As a maintainer, I want a scanner outage to be distinguishable from a real
+vulnerability finding, so I don't chase a security alert that isn't one.
+
+> Discovered 2026-09-04 while investigating a red `main` after the Phase 0 merge.
+
+### Current Behavior
+
+[.github/workflows/ci.yml#L509](.github/workflows/ci.yml#L509):
+
+```bash
+docker run --rm ... aquasec/trivy:0.57.1 image --exit-code 1 --severity CRITICAL ... \
+  || { echo "::error::Trivy found CRITICAL vulnerabilities"; exit 1; }
+```
+
+The `||` branch treats **any** non-zero exit as a vulnerability finding. On the `main` run
+for `bdf7a38` (the #346 merge) Trivy actually failed to start:
+
+```
+FATAL Fatal error init error: DB error: failed to download vulnerability DB:
+  ... BLOB_UNKNOWN: Unknown blob sha256:7cff1295... (mirror.gcr.io/aquasec/trivy-db:2)
+```
+
+The image built and pushed successfully; only the scanner's DB fetch failed. CI nonetheless
+reported **"Trivy found CRITICAL vulnerabilities"** and turned `main` red. That is a false
+security alert caused by a transient upstream registry problem.
+
+A second, quieter defect: the informational scan at
+[L500](.github/workflows/ci.yml#L500) ends in `| tee trivy-results.txt`, and the step does
+not set `pipefail`. A fatal error there is masked by `tee`'s exit code, so the first scan
+silently produced an empty/garbage report.
+
+### Acceptance Criteria
+
+1. A Trivy **execution** failure (DB download, image pull, daemon error) SHALL be reported
+   distinctly from a Trivy **finding**, with an accurate message.
+2. THE vulnerability-DB download SHALL be retried before the step is failed.
+3. THE step SHALL set `pipefail` (or capture the exit code explicitly) so the piped
+   informational scan cannot mask a fatal error.
+4. THE workflow SHALL still fail on genuine CRITICAL OS/library findings — the gate is not
+   being weakened.
+5. THE behavior SHALL be verified by simulating both cases: a real CRITICAL finding, and an
+   unreachable DB repository.
+
+### Design / Implementation Notes
+
+- Prefer the maintained `aquasecurity/trivy-action`, which supports DB caching and retries,
+  over a hand-rolled `docker run`.
+- If keeping `docker run`, set `TRIVY_DB_REPOSITORY` to a fallback mirror (e.g.
+  `ghcr.io/aquasecurity/trivy-db`) and wrap the call in a small retry loop.
+- Trivy exits 1 for both findings and fatal errors, so exit code alone cannot disambiguate —
+  grep the output for `FATAL`/`init error`, or use `--format json` and check for a result set.
+- Consider caching the DB between runs to reduce exposure to upstream outages entirely.
+- `aquasec/trivy:0.57.1` is pinned and somewhat old; check whether a newer patch handles the
+  `BLOB_UNKNOWN` mirror case more gracefully.
+
+### Test Plan
+
+- Point `TRIVY_DB_REPOSITORY` at a nonexistent repo and confirm the step reports an
+  infrastructure error, not a vulnerability finding.
+- Confirm a genuine CRITICAL finding still fails the build with the correct message.
 
 ---
 
@@ -1545,7 +1632,8 @@ These were reported during the audit but **disproved** by reading the source:
 | R2 | Ignore generated test artifacts | ✅ No change needed | #346 | Already ignored & untracked; `test-budget.json` is a tracked *input* |
 | R3 | Sync root package version | ✅ Done | #346 | `version` removed + `private: true`; root is not one of the 7 locations |
 | R21 | Dependabot PRs bypass all CI checks | ☐ Not started | | 12 guarded jobs incl. both required checks; workaround = `gh pr update-branch` |
-| R22 | Backend PBT shards flake on shared test DB | ☐ Not started | | Suspect shared SQLite path across jest workers; CI shards without `--runInBand` |
+| R22 | Backend PBT shards flake on shared test DB | ☐ Not started | | Same commit: 55s fail / 113s fail / 41s pass. Budget (90s) sits inside the noise band |
+| R23 | Trivy outages reported as CRITICAL vulns | ☐ Not started | | DB `BLOB_UNKNOWN` turned `main` red with a false security alert |
 | R20 | Frontend `test:fast*` scripts | ✅ Done | | `cross-env` + wired `FAST_CHECK_NUM_RUNS` into `pbtOptions`; var was previously dead |
 | R19 | Conditional hooks in `InsuranceStatusIndicator` | ✅ Done | | Severity corrected High → Low; React tolerates all-or-nothing early returns. Rule now `error` |
 | R6 | Add `ErrorBoundary` | ☐ Not started | | |

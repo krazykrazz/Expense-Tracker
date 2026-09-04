@@ -1,14 +1,19 @@
 {
   "name": "expense-tracker",
-  "version": "1.6.0",
+  "private": true,
   "description": "Full-stack expense tracking application",
+  "//version": "Intentionally omitted. The release version lives in backend/package.json and frontend/package.json — see docs/steering/versioning.md.",
   "scripts": {
     "install-all": "npm install && cd frontend && npm install && cd ../backend && npm install",
     "build": "cd frontend && npm run build",
     "start": "cd backend && node server.js",
     "dev:frontend": "cd frontend && npm run dev",
     "dev:backend": "cd backend && node server.js",
-    "deploy": "npm run build && npm start"
+    "deploy": "npm run build && npm start",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "keywords": [
     "expense-tracker",
@@ -19,7 +24,15 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
     "baseline-browser-mapping": "^2.11.8",
-    "fast-check": "^4.9.0"
+    "eslint": "^9.39.5",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "fast-check": "^4.9.0",
+    "globals": "^17.12.0",
+    "prettier": "^3.9.6"
   }
 }

@@ -382,10 +382,10 @@ unaffected, and `scripts/__tests__/ci-consistency.test.js` compares `versioning.
 
 ---
 
-## R20: Make frontend `test:fast*` scripts Windows-compatible
+## R20: Fix the frontend `test:fast*` scripts
 
-**User Story:** As a Windows developer, I want the documented fast-test scripts to run, so
-I can use the same commands as CI and the docs describe.
+**User Story:** As a developer, I want the documented fast-test scripts to run *and* to
+actually be faster, so the command matches its name.
 
 ### Current Behavior
 
@@ -393,42 +393,63 @@ I can use the same commands as CI and the docs describe.
 
 ```json
 "test:fast": "FAST_CHECK_NUM_RUNS=10 vitest --run",
-"test:fast:parallel": "FAST_CHECK_NUM_RUNS=10 vitest --run --pool=forks --poolOptions.forks.maxForks=75%"
+"test:fast:parallel": "FAST_CHECK_NUM_RUNS=10 vitest --run --pool=forks --poolOptions.forks.maxForks=75%",
 ```
 
-The bare `VAR=value command` prefix is POSIX shell syntax. On Windows PowerShell/cmd this
-fails immediately with:
+**Two independent defects:**
 
-```
-'FAST_CHECK_NUM_RUNS' is not recognized as an internal or external command
-```
+1. **Broken on Windows.** The bare `VAR=value command` prefix is POSIX shell syntax and
+   fails immediately in PowerShell/cmd with
+   `'FAST_CHECK_NUM_RUNS' is not recognized as an internal or external command`.
+   `backend/package.json` already solves this — all 14 of its env-var scripts use
+   `cross-env`. The frontend never adopted it and has no `cross-env` dependency.
 
-`backend/package.json` already solves this correctly — every env-var script there is
-prefixed with `cross-env`. The frontend simply never adopted it.
+2. **The variable is dead code on *every* platform.** `FAST_CHECK_NUM_RUNS` appears
+   **only** in those two script lines — nothing in `frontend/` ever reads it. Frontend PBT
+   run counts are driven by `isCI` in
+   [pbtOptions](frontend/src/test/pbtArbitraries.js#L166), and the majority of PBT tests
+   bypass that helper entirely by passing `{ numRuns: 100 }` inline to `fc.assert`.
+   So even on Linux, `test:fast` is **identical to `test`** — it is not fast.
+
+Adding `cross-env` alone would produce a script that runs but silently does nothing,
+which is arguably worse than the current loud failure.
 
 ### Acceptance Criteria
 
 1. `frontend/package.json` SHALL use `cross-env` for every script that sets an environment
-   variable inline (`test:fast`, `test:fast:parallel`).
-2. `cross-env` SHALL be added to `frontend/devDependencies` (it is currently only a backend
-   dependency).
-3. BOTH scripts SHALL run successfully on Windows and Linux.
-4. `FAST_CHECK_NUM_RUNS` SHALL still be honoured by `fast-check` at runtime.
-5. `frontend/package-lock.json` SHALL be regenerated and remain `npm ci`-installable.
+   variable inline, and `cross-env` SHALL be added to `frontend/devDependencies`.
+2. `pbtOptions` in `frontend/src/test/pbtArbitraries.js` SHALL honour
+   `FAST_CHECK_NUM_RUNS` when set, taking precedence over the `isCI` default.
+3. THE precedence order SHALL be: explicit per-call `numRuns` > `FAST_CHECK_NUM_RUNS` >
+   `isCI` default.
+4. WHEN `FAST_CHECK_NUM_RUNS` is unset, behavior SHALL be byte-identical to today.
+5. BOTH scripts SHALL run successfully on Windows and Linux.
+6. `frontend/package-lock.json` SHALL be regenerated and remain `npm ci`-installable.
+7. THE spec SHALL record that most frontend PBT tests still hardcode `numRuns` inline, so
+   the env var affects only the subset using `pbtOptions` (see follow-up below).
 
 ### Design / Implementation Notes
 
 - Match the backend's exact form: `cross-env FAST_CHECK_NUM_RUNS=10 vitest --run`.
-- Check `frontend/vitest.setup.js` / `vitest.config.js` for how `FAST_CHECK_NUM_RUNS` is
-  read — if it is read via `process.env` in the setup file, no further change is needed.
-- Audit the remaining frontend scripts for the same pattern before closing.
+- `pbtOptions` currently reads `isCI` from a module-level constant; read the env var the
+  same way (`process.env.FAST_CHECK_NUM_RUNS`) and parse with a guard so a non-numeric
+  value falls back to the default rather than producing `NaN` runs.
+- Do **not** mass-migrate the inline `{ numRuns: 100 }` call sites in this PR — that is a
+  much larger change across ~19 test files and belongs in its own slice.
+
+### Follow-up (separate PR)
+
+Migrate frontend PBT tests from inline `fc.assert(..., { numRuns: 100 })` to
+`pbtOptions({ numRuns: 100 })` so the CI-aware and env-var tuning actually applies. ~19
+files. Note `scripts/validate-pbt-guardrails.js` may need updating alongside.
 
 ### Test Plan
 
 - `cd frontend; npm run test:fast` completes on Windows.
-- Confirm the reduced run count actually takes effect (compare wall time against
-  `npm run test`).
-- CI (Linux) still passes.
+- With `FAST_CHECK_NUM_RUNS=5`, a test using `pbtOptions` runs 5 cases (assert via a
+  temporary counter or fast-check's `verbose` output).
+- With the var unset, `pbtOptions()` returns the same object as before the change.
+- Full frontend suite passes.
 
 ---
 

@@ -152,9 +152,11 @@ Largest frontend source files:
 | R19 | Fix conditional hooks in `InsuranceStatusIndicator` | 1 | Frontend | ~~High~~ Low | Low | Low | R1 |
 | R20 | Make frontend `test:fast*` scripts Windows-compatible | 0 | Tooling | Low | Low | Low | — |
 | R21 | Dependabot PRs bypass all CI checks | 0 | CI | Medium | Low | Low | — |
+| R22 | Backend PBT shards flake on shared test DB | 0 | CI/Tests | Medium | Medium | Medium | — |
 
 > R18–R20 were **discovered by the linter added in R1**, not by the manual audit.
 > R21 was discovered while triaging the dependabot queue after the Phase 0 PR.
+> R22 was discovered while investigating the #343 CI failure that R21's workaround exposed.
 
 **Recommended execution order:** R1 → R2/R3 → R21 → R20 → R19 → R6 → R4 → R5 → R8 → R9 →
 R10 → R11/R12/R13 → R7 → R14/R15/R18 → R16 → R17.
@@ -514,15 +516,74 @@ Running `gh pr update-branch <n>` on a dependabot PR creates a merge commit auth
 **human**, which flips `github.actor` and causes the full CI to run. Confirmed on #344:
 checks went from 12 × `SKIPPED` to actually executing. Use this until the config is fixed.
 
-### This gap caught a real breakage within an hour
+### This gap hid a real test failure within an hour
 
 Applying the workaround to **#343** (`jest` 30.4.2 → 30.5.0) turned a `CLEAN` PR into a
 failing one: **all three Backend PBT shards failed**, 15 tests down, with
 `SQLITE_READONLY`, `SQLITE_CANTOPEN`, and `SQLITE_ERROR: no such table: activity_logs`.
-Backend *unit* tests passed, so the breakage is specific to the PBT setup/teardown path.
+Backend *unit* tests passed, so the breakage was specific to the PBT setup/teardown path.
 
-Without the branch update, #343 would have reported `mergeStateStatus=CLEAN` and merged
-straight into `main` with a broken test database. This is no longer a theoretical risk.
+> ⚠️ **Correction:** the failure is **flaky, not caused by the jest bump.** Re-running the
+> identical commit made shard 3/3 pass, and the failing suite
+> (`expenseService.insurance.pbt.test.js`) passes locally under jest 30.5.0 with
+> `--runInBand`. The underlying defect is pre-existing test-DB contention under parallel
+> sharding — logged separately as **R22**.
+
+The point stands regardless of root cause: **CI reported `CLEAN` for a PR whose test suite
+was red.** Whether the redness came from the dependency or from a latent flake, the
+required checks did not surface it.
+
+---
+
+## R22: Backend PBT shards flake on shared test database
+
+**User Story:** As a maintainer, I want sharded PBT runs to be deterministic, so a red
+build means a real defect and not a race.
+
+> Discovered 2026-09-04 while investigating the #343 failure.
+
+### Current Behavior
+
+CI runs backend PBT as three parallel shards
+(`jest --testPathPatterns=pbt --shard=N/3`, no `--runInBand`). On PR #343 all three shards
+failed with a mix of SQLite errors indicating the test database was missing, unwritable, or
+uninitialised:
+
+- `SQLITE_READONLY: attempt to write a readonly database`
+- `SQLITE_CANTOPEN: unable to open database file`
+- `SQLITE_ERROR: no such table: activity_logs`
+
+Re-running the **same commit** with no changes made shard 3/3 pass, confirming a race
+rather than a code defect. The same suite passes locally under `--runInBand`.
+
+Note `backend/package.json` runs `test` and `test:pbt` with `--runInBand`, while CI uses
+sharding *without* it — so the parallel path is materially less exercised than the local one.
+
+### Acceptance Criteria
+
+1. THE root cause SHALL be identified — most likely multiple jest workers sharing one
+   SQLite file path via `backend/jest.globalSetup.js` / `jest.setup.js`.
+2. EACH jest worker SHALL use an isolated database file (e.g. keyed on
+   `process.env.JEST_WORKER_ID`), or PBT execution SHALL be serialised.
+3. THE backend PBT suite SHALL pass 5 consecutive sharded CI runs without a re-run.
+4. THE fix SHALL NOT materially increase total PBT wall time.
+
+### Design / Implementation Notes
+
+- Inspect `backend/jest.globalSetup.js` and `jest.setup.js` for a fixed DB path. `globalSetup`
+  runs **once per shard process**, so shards racing on a shared file is the prime suspect.
+- The repo already creates `pre-test-backup.db`; check whether that copy/restore step is
+  itself racy across workers.
+- Confirm WAL mode is enabled on the test DB — it materially changes concurrent-writer behavior.
+- This may be long-standing and simply masked, since dependabot PRs never ran PBT (R21) and
+  re-runs are cheap enough that intermittent reds get retried away rather than investigated.
+
+### Test Plan
+
+- Reproduce locally with `jest --testPathPatterns=pbt --shard=1/3` (parallel, not `--runInBand`).
+- After the fix, run the sharded CI path repeatedly and confirm no flakes.
+
+---
 
 ### Acceptance Criteria
 
@@ -1484,6 +1545,7 @@ These were reported during the audit but **disproved** by reading the source:
 | R2 | Ignore generated test artifacts | ✅ No change needed | #346 | Already ignored & untracked; `test-budget.json` is a tracked *input* |
 | R3 | Sync root package version | ✅ Done | #346 | `version` removed + `private: true`; root is not one of the 7 locations |
 | R21 | Dependabot PRs bypass all CI checks | ☐ Not started | | 12 guarded jobs incl. both required checks; workaround = `gh pr update-branch` |
+| R22 | Backend PBT shards flake on shared test DB | ☐ Not started | | Suspect shared SQLite path across jest workers; CI shards without `--runInBand` |
 | R20 | Frontend `test:fast*` scripts | ✅ Done | | `cross-env` + wired `FAST_CHECK_NUM_RUNS` into `pbtOptions`; var was previously dead |
 | R19 | Conditional hooks in `InsuranceStatusIndicator` | ✅ Done | | Severity corrected High → Low; React tolerates all-or-nothing early returns. Rule now `error` |
 | R6 | Add `ErrorBoundary` | ☐ Not started | | |

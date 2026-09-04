@@ -151,11 +151,13 @@ Largest frontend source files:
 | R18 | Remove duplicate `findById` methods | 3 | Backend | Low | Low | Low | R1 |
 | R19 | Fix conditional hooks in `InsuranceStatusIndicator` | 1 | Frontend | High | Low | Low | R1 |
 | R20 | Make frontend `test:fast*` scripts Windows-compatible | 0 | Tooling | Low | Low | Low | — |
+| R21 | Dependabot PRs bypass all CI checks | 0 | CI | Medium | Low | Low | — |
 
 > R18–R20 were **discovered by the linter added in R1**, not by the manual audit.
+> R21 was discovered while triaging the dependabot queue after the Phase 0 PR.
 
-**Recommended execution order:** R1 → R2/R3 → R20 → R19 → R6 → R4 → R5 → R8 → R9 → R10 →
-R11/R12/R13 → R7 → R14/R15/R18 → R16 → R17.
+**Recommended execution order:** R1 → R2/R3 → R21 → R20 → R19 → R6 → R4 → R5 → R8 → R9 →
+R10 → R11/R12/R13 → R7 → R14/R15/R18 → R16 → R17.
 
 ---
 
@@ -172,6 +174,9 @@ changing any application code.
 | R2 | ✅ Already satisfied — no change required (see R2 findings) |
 | R3 | ✅ Done — root `version` removed, `private: true` added |
 | R20 | ☐ New — surfaced while validating R1 |
+| R21 | ☐ New — surfaced while triaging the dependabot queue |
+
+Shipped as **PR #346** (issue #345), merged 2026-09-04 with all 12 CI checks green.
 
 **Validation (2026-09-04):**
 
@@ -424,6 +429,74 @@ prefixed with `cross-env`. The frontend simply never adopted it.
 - Confirm the reduced run count actually takes effect (compare wall time against
   `npm run test`).
 - CI (Linux) still passes.
+
+---
+
+## R21: Dependabot PRs bypass all CI checks
+
+**User Story:** As a maintainer, I want dependency bumps to be tested before they reach
+`main`, so a bad upgrade cannot land unverified.
+
+> Discovered 2026-09-04 while triaging PRs #342–#344 after the Phase 0 merge.
+
+### Current Behavior
+
+[.github/workflows/ci.yml](.github/workflows/ci.yml) guards **12 jobs** with
+`github.actor != 'dependabot[bot]'`, including both required checks:
+
+| Job | Line |
+|---|---|
+| Detect Changed Paths | [39](.github/workflows/ci.yml#L39) |
+| Lockfile Integrity | [97](.github/workflows/ci.yml#L97) |
+| Backend Unit Tests | [125](.github/workflows/ci.yml#L125) |
+| Backend PBT Shard | [174](.github/workflows/ci.yml#L174) |
+| Backend PBT Tests | [231](.github/workflows/ci.yml#L231) |
+| **Backend Tests Status** (required) | [322](.github/workflows/ci.yml#L322) |
+| Frontend Tests | [274](.github/workflows/ci.yml#L274) |
+| **Frontend Tests Status** (required) | [414](.github/workflows/ci.yml#L414) |
+| Security Audit, Test Health Report, Build/Push GHCR, Deployment Health Check | 249, 344, 436, 616 |
+
+GitHub treats a **skipped** required check as satisfied, so every dependabot PR reports
+`mergeStateStatus=CLEAN` with zero tests having run. PRs #342–#344 all showed 12 × `SKIPPED`
+yet were reported mergeable.
+
+This is not theoretical: #343 bumps `jest` 30.4.2 → 30.5.0 and #344 bumps
+`@testing-library/react`, `@testing-library/user-event`, and `@vitejs/plugin-react` —
+precisely the packages whose behavior changes break suites.
+
+### Workaround (verified 2026-09-04)
+
+Running `gh pr update-branch <n>` on a dependabot PR creates a merge commit authored by a
+**human**, which flips `github.actor` and causes the full CI to run. Confirmed on #344:
+checks went from 12 × `SKIPPED` to actually executing. Use this until the config is fixed.
+
+### Acceptance Criteria
+
+1. THE two required checks (`Backend Tests Status`, `Frontend Tests Status`) and the jobs
+   they depend on SHALL run for `dependabot[bot]`-authored PRs.
+2. `Lockfile Integrity` SHALL run for dependabot PRs (it exists specifically to catch
+   lockfile drift, which is exactly what a dependency bump changes).
+3. THE `github.actor != 'dependabot[bot]'` guard MAY be retained on jobs where the cost
+   saving is real and the risk is nil: `Build and Push to GHCR` ([L436](.github/workflows/ci.yml#L436))
+   and `Deployment Health Check` ([L616](.github/workflows/ci.yml#L616)).
+4. A dependabot PR that breaks a test SHALL be reported as failing, not `CLEAN`.
+5. THE change SHALL be verified against a real dependabot PR before closing.
+
+### Design / Implementation Notes
+
+- Check whether the guards were added deliberately for CI-minutes cost. If so, a middle
+  path is to keep the PBT shards guarded (they are the expensive jobs) while enabling unit
+  tests + lockfile integrity, which catch the overwhelming majority of bad bumps.
+- Confirm `permissions:` and secret availability for `pull_request` events from dependabot —
+  dependabot PRs run with a read-only token by default, which is why some repos disable
+  these jobs. If a job needs secrets, use `pull_request_target` carefully or keep it guarded.
+- Consider enabling dependabot auto-merge only once tests actually gate it.
+
+### Test Plan
+
+- Open (or update) a dependabot PR and confirm `Backend Tests Status` and
+  `Frontend Tests Status` report `SUCCESS`/`FAILURE` rather than `SKIPPED`.
+- Deliberately verify a known-bad bump fails (can be done on a scratch branch).
 
 ---
 
@@ -1339,9 +1412,10 @@ These were reported during the audit but **disproved** by reading the source:
 
 | # | Requirement | Status | PR | Notes |
 |---|---|---|---|---|
-| R1 | ESLint + Prettier toolchain | ✅ Done | | ESLint **9** (plugins lack v10 peers); baseline 0 errors / 609 warnings |
-| R2 | Ignore generated test artifacts | ✅ No change needed | | Already ignored & untracked; `test-budget.json` is a tracked *input* |
-| R3 | Sync root package version | ✅ Done | | `version` removed + `private: true`; root is not one of the 7 locations |
+| R1 | ESLint + Prettier toolchain | ✅ Done | #346 | ESLint **9** (plugins lack v10 peers); baseline 0 errors / 609 warnings |
+| R2 | Ignore generated test artifacts | ✅ No change needed | #346 | Already ignored & untracked; `test-budget.json` is a tracked *input* |
+| R3 | Sync root package version | ✅ Done | #346 | `version` removed + `private: true`; root is not one of the 7 locations |
+| R21 | Dependabot PRs bypass all CI checks | ☐ Not started | | 12 guarded jobs incl. both required checks; workaround = `gh pr update-branch` |
 | R20 | Frontend `test:fast*` Windows compat | ☐ Not started | | Add `cross-env`; found while validating R1 |
 | R19 | Conditional hooks in `InsuranceStatusIndicator` | ☐ Not started | | 4 × `rules-of-hooks`; do before other Phase 1 work |
 | R6 | Add `ErrorBoundary` | ☐ Not started | | |

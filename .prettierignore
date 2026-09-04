@@ -1,0 +1,25 @@
+node_modules/
+dist/
+build/
+coverage/
+package-lock.json
+
+# Test caches
+backend/.jest-cache/
+frontend/.vitest-cache/
+
+# Runtime data directories (not source)
+config/
+preview-data/
+staging-data/
+backend/config/
+backend/backups/
+backend/test-backups/
+backend/uploads/
+backend/reports/
+test-pbt-*/
+archive/
+
+# Generated / vendored text output
+*.txt
+*.db

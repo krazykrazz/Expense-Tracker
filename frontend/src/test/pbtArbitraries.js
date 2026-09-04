@@ -28,6 +28,13 @@ export const isCI = import.meta.env?.CI === 'true' ||
 // Fixed seed for reproducible tests in CI
 export const CI_SEED = 12345;
 
+// Opt-in override for run counts; ignored unless it parses to a positive integer.
+const envNumRuns = (() => {
+  const raw = typeof process !== 'undefined' ? process.env?.FAST_CHECK_NUM_RUNS : undefined;
+  const parsed = Number.parseInt(raw, 10);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined;
+})();
+
 /**
  * Safe date arbitrary that handles invalid date edge cases
  * Returns date string in YYYY-MM-DD format
@@ -165,7 +172,7 @@ export const safeExpenseFormData = (options = {}) => fc.record({
  */
 export const pbtOptions = (options = {}) => {
   const defaults = {
-    numRuns: isCI ? (options.numRuns || 10) : (options.numRuns || 20),
+    numRuns: options.numRuns ?? envNumRuns ?? (isCI ? 10 : 20),
     timeout: isCI ? 30000 : 15000,
     // Use fixed seed in CI for reproducibility
     seed: isCI ? CI_SEED : undefined,

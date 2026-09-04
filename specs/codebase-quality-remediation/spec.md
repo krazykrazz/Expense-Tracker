@@ -173,7 +173,7 @@ changing any application code.
 | R1 | ✅ Done — ESLint 9 flat config + Prettier landed; **0 errors, 609 warnings**, exit 0 |
 | R2 | ✅ Already satisfied — no change required (see R2 findings) |
 | R3 | ✅ Done — root `version` removed, `private: true` added |
-| R20 | ☐ New — surfaced while validating R1 |
+| R20 | ✅ Done — `cross-env` added; `FAST_CHECK_NUM_RUNS` wired into `pbtOptions` (was dead code) |
 | R21 | ☐ New — surfaced while triaging the dependabot queue |
 
 Shipped as **PR #346** (issue #345), merged 2026-09-04 with all 12 CI checks green.
@@ -382,7 +382,7 @@ unaffected, and `scripts/__tests__/ci-consistency.test.js` compares `versioning.
 
 ---
 
-## R20: Fix the frontend `test:fast*` scripts
+## R20: Fix the frontend `test:fast*` scripts — ✅ DONE
 
 **User Story:** As a developer, I want the documented fast-test scripts to run *and* to
 actually be faster, so the command matches its name.
@@ -450,6 +450,29 @@ files. Note `scripts/validate-pbt-guardrails.js` may need updating alongside.
   temporary counter or fast-check's `verbose` output).
 - With the var unset, `pbtOptions()` returns the same object as before the change.
 - Full frontend suite passes.
+
+### Outcome (as landed)
+
+**Files changed:** `frontend/package.json` (2 scripts + `cross-env` devDependency),
+`frontend/package-lock.json`, `frontend/src/test/pbtArbitraries.js`.
+
+`pbtOptions` now resolves `numRuns` as `options.numRuns ?? envNumRuns ?? (isCI ? 10 : 20)`,
+with `envNumRuns` parsed defensively so a non-numeric or non-positive value is ignored.
+
+**Verified:**
+
+| Condition | `pbtOptions().numRuns` | `pbtOptions({numRuns:100}).numRuns` |
+|---|---|---|
+| unset | 20 (unchanged) | 100 |
+| `FAST_CHECK_NUM_RUNS=3` | **3** | 100 |
+| `FAST_CHECK_NUM_RUNS=abc` | 20 (fallback) | 100 |
+| `FAST_CHECK_NUM_RUNS=0` | 20 (fallback) | 100 |
+
+`npm run test:fast -- yoyComparison` now runs on Windows (2 files, 13 tests passed) where
+it previously failed before invoking vitest at all. `npm ci` in `frontend/` is clean.
+
+Note the `{ ...pbtOptions(), numRuns: 100 }` spread pattern used across the `useDataSync`
+PBT suites correctly keeps its explicit override — consistent with AC3.
 
 ---
 
@@ -1437,7 +1460,7 @@ These were reported during the audit but **disproved** by reading the source:
 | R2 | Ignore generated test artifacts | ✅ No change needed | #346 | Already ignored & untracked; `test-budget.json` is a tracked *input* |
 | R3 | Sync root package version | ✅ Done | #346 | `version` removed + `private: true`; root is not one of the 7 locations |
 | R21 | Dependabot PRs bypass all CI checks | ☐ Not started | | 12 guarded jobs incl. both required checks; workaround = `gh pr update-branch` |
-| R20 | Frontend `test:fast*` Windows compat | ☐ Not started | | Add `cross-env`; found while validating R1 |
+| R20 | Frontend `test:fast*` scripts | ✅ Done | | `cross-env` + wired `FAST_CHECK_NUM_RUNS` into `pbtOptions`; var was previously dead |
 | R19 | Conditional hooks in `InsuranceStatusIndicator` | ☐ Not started | | 4 × `rules-of-hooks`; do before other Phase 1 work |
 | R6 | Add `ErrorBoundary` | ☐ Not started | | |
 | R4 | Shared accessible `<Modal>` shell | ☐ Not started | | Must satisfy 3 UxConsistency PBT guardrails |

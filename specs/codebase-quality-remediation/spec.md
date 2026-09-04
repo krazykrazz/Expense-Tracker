@@ -149,7 +149,7 @@ Largest frontend source files:
 | R16 | Virtualize long lists | 3 | Frontend perf | Medium | Medium | Medium | — |
 | R17 | Decompose mega-components & mega-service | 4 | Both | Medium | High | Medium | R4, R7 |
 | R18 | Remove duplicate `findById` methods | 3 | Backend | Low | Low | Low | R1 |
-| R19 | Fix conditional hooks in `InsuranceStatusIndicator` | 1 | Frontend | High | Low | Low | R1 |
+| R19 | Fix conditional hooks in `InsuranceStatusIndicator` | 1 | Frontend | ~~High~~ Low | Low | Low | R1 |
 | R20 | Make frontend `test:fast*` scripts Windows-compatible | 0 | Tooling | Low | Low | Low | — |
 | R21 | Dependabot PRs bypass all CI checks | 0 | CI | Medium | Low | Low | — |
 
@@ -514,6 +514,16 @@ Running `gh pr update-branch <n>` on a dependabot PR creates a merge commit auth
 **human**, which flips `github.actor` and causes the full CI to run. Confirmed on #344:
 checks went from 12 × `SKIPPED` to actually executing. Use this until the config is fixed.
 
+### This gap caught a real breakage within an hour
+
+Applying the workaround to **#343** (`jest` 30.4.2 → 30.5.0) turned a `CLEAN` PR into a
+failing one: **all three Backend PBT shards failed**, 15 tests down, with
+`SQLITE_READONLY`, `SQLITE_CANTOPEN`, and `SQLITE_ERROR: no such table: activity_logs`.
+Backend *unit* tests passed, so the breakage is specific to the PBT setup/teardown path.
+
+Without the branch update, #343 would have reported `mergeStateStatus=CLEAN` and merged
+straight into `main` with a broken test database. This is no longer a theoretical risk.
+
 ### Acceptance Criteria
 
 1. THE two required checks (`Backend Tests Status`, `Frontend Tests Status`) and the jobs
@@ -549,60 +559,74 @@ checks went from 12 × `SKIPPED` to actually executing. Use this until the confi
 Goal: make the UI fail visibly and safely, and make every modal usable by keyboard and
 screen reader. This is the highest user-visible-value phase.
 
-## R19: Fix conditional hooks in `InsuranceStatusIndicator`
+## R19: Fix conditional hooks in `InsuranceStatusIndicator` — ✅ DONE
 
-**User Story:** As a user, I want the insurance status indicator to not corrupt React's
-hook state, so the component cannot crash or render stale data when its inputs change.
+**User Story:** As a maintainer, I want hooks called unconditionally, so that adding or
+moving a hook in this component cannot silently corrupt React's hook state.
 
-> **Discovered by the R1 linter, not the manual audit.** This is the highest-severity item
-> the lint pass produced and should be fixed before any other Phase 1 work.
+> **Discovered by the R1 linter, not the manual audit.**
+>
+> ⚠️ **Severity corrected from High to Low after verification.** The original write-up
+> claimed "latent hook-order corruption". A negative-control experiment disproved that —
+> see [Verification](#verification-severity-downgrade) below. The fix is still correct and
+> was landed, but it removes *fragility*, not a live defect.
 
-### Current Behavior
+### Current Behavior (before fix)
 
-`react-hooks/rules-of-hooks` reports four violations in
+`react-hooks/rules-of-hooks` reported four violations in
 [frontend/src/components/expenses/InsuranceStatusIndicator.jsx](frontend/src/components/expenses/InsuranceStatusIndicator.jsx):
+an early `if (!insuranceEligible) return null;` sat **above** all four `useCallback` calls
+(`getStatusConfig`, `handleClick`, `handleKeyDown`, `getTooltipText`).
 
-| Line | Message |
-|---|---|
-| 37 | React Hook `useCallback` is called conditionally |
-| 82 | React Hook `useCallback` is called conditionally |
-| 94 | React Hook `useCallback` is called conditionally |
-| 104 | React Hook `useCallback` is called conditionally |
+### Verification (severity downgrade)
 
-React requires hooks to be called in the same order on every render. A conditional
-`useCallback` means that when the guarding condition flips between renders, every
-subsequent hook in the component shifts position and receives another hook's state.
+A regression test was written to assert that toggling `insuranceEligible` on a mounted
+instance produces no React error. It was then run against the **unfixed** component as a
+negative control. **It passed against the buggy version**, proving the test could not
+detect the defect — because there was no runtime defect to detect.
+
+Mechanism: React selects the hooks dispatcher with
+`current === null || current.memoizedState === null ? MountDispatcher : UpdateDispatcher`.
+
+- **0 → 4 hooks:** the previous render called no hooks, so `memoizedState` is `null` and
+  React takes the **mount** path. The four hooks mount fresh; no error.
+- **4 → 0 hooks:** no hooks are called during the update, so `currentHook` stays `null` and
+  the `Rendered fewer hooks than expected` check never fires.
+
+An early return placed above **every** hook is an all-or-nothing transition that React
+tolerates. The component also has no `useState`, so the mount-path reset has no observable
+consequence.
+
+**The violation is still worth fixing**, because it is genuinely fragile: adding any hook
+*above* the early return, or any hook *below* it that the return skips only sometimes,
+creates a real partial mismatch that **does** throw. The lint rule is the guard against
+that, not a test.
 
 ### Acceptance Criteria
 
-1. ALL `useCallback` (and any other hook) calls in `InsuranceStatusIndicator` SHALL be
-   invoked unconditionally at the top level of the component.
-2. THE conditional logic SHALL move *inside* the callback bodies, or into the render
-   return, rather than gating the hook call itself.
-3. `npx eslint frontend/src/components/expenses/InsuranceStatusIndicator.jsx` SHALL report
-   zero `react-hooks/rules-of-hooks` violations.
-4. THE component's rendered output SHALL be unchanged for every existing input.
-5. AFTER this lands, `react-hooks/rules-of-hooks` SHALL be ratcheted from `warn` to
-   `error` in `eslint.config.js` (it will then have zero remaining violations —
-   the only other reports are in test files, which already disable the rule).
+1. ✅ ALL hook calls SHALL be invoked unconditionally at the top level of the component.
+2. ✅ THE conditional logic SHALL move below the hook calls rather than gating them.
+3. ✅ `npx eslint` on the file SHALL report zero `react-hooks/rules-of-hooks` violations.
+4. ✅ THE component's rendered output SHALL be unchanged for every existing input.
+5. ✅ `react-hooks/rules-of-hooks` SHALL be ratcheted from `warn` to `error`.
 
-### Design / Implementation Notes
+### Outcome (as landed)
 
-- Read the full component before editing. The typical cause is an early `return null` for
-  a non-insurance expense placed *above* the `useCallback` declarations — the fix is to
-  move the early return below all hook calls.
-- This is a **latent** bug: it only manifests when the guarding condition changes across
-  renders of the same mounted component instance. It may never have been observed in
-  practice, which is exactly why it survived a manual audit.
-- Existing tests may pass both before and after; do not treat a green suite as proof the
-  bug was absent.
+The `if (!insuranceEligible) return null;` guard moved from above `getStatusConfig` to
+immediately before the JSX return, with a comment stating why it must stay there.
+Repo-wide `react-hooks/rules-of-hooks` count went 4 → **0**, and the rule is now `error`
+in `eslint.config.js`.
 
-### Test Plan
+Added `InsuranceStatusIndicator.test.jsx` (11 tests). These are **characterization tests**,
+not a regression guard — the component previously had no test file at all, which is a large
+part of why the violation survived. They cover status-to-label mapping, the tooltip
+reimbursement breakdown, the not-eligible empty render, and prop-toggle stability.
 
-- Unit: render with the guard condition true, then re-render the *same instance* with it
-  false, and assert no React warning and correct output.
-- Unit: existing `InsuranceStatusIndicator` tests pass unchanged.
-- Lint: rule reports zero violations, then flip it to `error`.
+### Lesson
+
+A lint rule firing is evidence of a *rule violation*, not proof of a *runtime bug*. When
+promoting a lint finding to High severity, build the negative control first: revert the fix
+and confirm the test fails. If it passes, the severity claim is wrong.
 
 ---
 
@@ -1461,7 +1485,7 @@ These were reported during the audit but **disproved** by reading the source:
 | R3 | Sync root package version | ✅ Done | #346 | `version` removed + `private: true`; root is not one of the 7 locations |
 | R21 | Dependabot PRs bypass all CI checks | ☐ Not started | | 12 guarded jobs incl. both required checks; workaround = `gh pr update-branch` |
 | R20 | Frontend `test:fast*` scripts | ✅ Done | | `cross-env` + wired `FAST_CHECK_NUM_RUNS` into `pbtOptions`; var was previously dead |
-| R19 | Conditional hooks in `InsuranceStatusIndicator` | ☐ Not started | | 4 × `rules-of-hooks`; do before other Phase 1 work |
+| R19 | Conditional hooks in `InsuranceStatusIndicator` | ✅ Done | | Severity corrected High → Low; React tolerates all-or-nothing early returns. Rule now `error` |
 | R6 | Add `ErrorBoundary` | ☐ Not started | | |
 | R4 | Shared accessible `<Modal>` shell | ☐ Not started | | Must satisfy 3 UxConsistency PBT guardrails |
 | R5 | Migrate 25 modals to the shell | ☐ Not started | | 7 batches (5a–5g); clears ~198 a11y warnings |
@@ -1485,7 +1509,7 @@ Flip each to `error` as part of that requirement's PR.
 
 | Rule | Warnings | Clears with |
 |---|---|---|
-| `react-hooks/rules-of-hooks` | 4 | R19 |
+| ~~`react-hooks/rules-of-hooks`~~ | ~~4~~ → **0, now `error`** | ✅ R19 |
 | `no-dupe-class-members` | 2 | R18 |
 | `no-console` (frontend) | 70 | R7 |
 | `react/no-array-index-key` | 39 | R15 |

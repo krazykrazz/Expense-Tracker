@@ -149,13 +149,18 @@ Largest frontend source files:
 | R16 | Virtualize long lists | 3 | Frontend perf | Medium | Medium | Medium | — |
 | R17 | Decompose mega-components & mega-service | 4 | Both | Medium | High | Medium | R4, R7 |
 | R18 | Remove duplicate `findById` methods | 3 | Backend | Low | Low | Low | R1 |
-| R19 | Fix conditional hooks in `InsuranceStatusIndicator` | 1 | Frontend | High | Low | Low | R1 |
+| R19 | Fix conditional hooks in `InsuranceStatusIndicator` | 1 | Frontend | ~~High~~ Low | Low | Low | R1 |
 | R20 | Make frontend `test:fast*` scripts Windows-compatible | 0 | Tooling | Low | Low | Low | — |
+| R21 | Dependabot PRs bypass all CI checks | 0 | CI | Medium | Low | Low | — |
+| R22 | Backend PBT shards flake on shared test DB | 0 | CI/Tests | Medium | Medium | Medium | — |
+| R23 | Trivy outages reported as CRITICAL vulns | 0 | CI | Medium | Low | Low | — |
 
 > R18–R20 were **discovered by the linter added in R1**, not by the manual audit.
+> R21 was discovered while triaging the dependabot queue after the Phase 0 PR.
+> R22 and R23 were discovered while investigating CI failures that R21's workaround exposed.
 
-**Recommended execution order:** R1 → R2/R3 → R20 → R19 → R6 → R4 → R5 → R8 → R9 → R10 →
-R11/R12/R13 → R7 → R14/R15/R18 → R16 → R17.
+**Recommended execution order:** R1 → R2/R3 → R21 → R20 → R19 → R6 → R4 → R5 → R8 → R9 →
+R10 → R11/R12/R13 → R7 → R14/R15/R18 → R16 → R17.
 
 ---
 
@@ -171,7 +176,10 @@ changing any application code.
 | R1 | ✅ Done — ESLint 9 flat config + Prettier landed; **0 errors, 609 warnings**, exit 0 |
 | R2 | ✅ Already satisfied — no change required (see R2 findings) |
 | R3 | ✅ Done — root `version` removed, `private: true` added |
-| R20 | ☐ New — surfaced while validating R1 |
+| R20 | ✅ Done — `cross-env` added; `FAST_CHECK_NUM_RUNS` wired into `pbtOptions` (was dead code) |
+| R21 | ☐ New — surfaced while triaging the dependabot queue |
+
+Shipped as **PR #346** (issue #345), merged 2026-09-04 with all 12 CI checks green.
 
 **Validation (2026-09-04):**
 
@@ -377,10 +385,10 @@ unaffected, and `scripts/__tests__/ci-consistency.test.js` compares `versioning.
 
 ---
 
-## R20: Make frontend `test:fast*` scripts Windows-compatible
+## R20: Fix the frontend `test:fast*` scripts — ✅ DONE
 
-**User Story:** As a Windows developer, I want the documented fast-test scripts to run, so
-I can use the same commands as CI and the docs describe.
+**User Story:** As a developer, I want the documented fast-test scripts to run *and* to
+actually be faster, so the command matches its name.
 
 ### Current Behavior
 
@@ -388,42 +396,309 @@ I can use the same commands as CI and the docs describe.
 
 ```json
 "test:fast": "FAST_CHECK_NUM_RUNS=10 vitest --run",
-"test:fast:parallel": "FAST_CHECK_NUM_RUNS=10 vitest --run --pool=forks --poolOptions.forks.maxForks=75%"
+"test:fast:parallel": "FAST_CHECK_NUM_RUNS=10 vitest --run --pool=forks --poolOptions.forks.maxForks=75%",
 ```
 
-The bare `VAR=value command` prefix is POSIX shell syntax. On Windows PowerShell/cmd this
-fails immediately with:
+**Two independent defects:**
 
-```
-'FAST_CHECK_NUM_RUNS' is not recognized as an internal or external command
-```
+1. **Broken on Windows.** The bare `VAR=value command` prefix is POSIX shell syntax and
+   fails immediately in PowerShell/cmd with
+   `'FAST_CHECK_NUM_RUNS' is not recognized as an internal or external command`.
+   `backend/package.json` already solves this — all 14 of its env-var scripts use
+   `cross-env`. The frontend never adopted it and has no `cross-env` dependency.
 
-`backend/package.json` already solves this correctly — every env-var script there is
-prefixed with `cross-env`. The frontend simply never adopted it.
+2. **The variable is dead code on *every* platform.** `FAST_CHECK_NUM_RUNS` appears
+   **only** in those two script lines — nothing in `frontend/` ever reads it. Frontend PBT
+   run counts are driven by `isCI` in
+   [pbtOptions](frontend/src/test/pbtArbitraries.js#L166), and the majority of PBT tests
+   bypass that helper entirely by passing `{ numRuns: 100 }` inline to `fc.assert`.
+   So even on Linux, `test:fast` is **identical to `test`** — it is not fast.
+
+Adding `cross-env` alone would produce a script that runs but silently does nothing,
+which is arguably worse than the current loud failure.
 
 ### Acceptance Criteria
 
 1. `frontend/package.json` SHALL use `cross-env` for every script that sets an environment
-   variable inline (`test:fast`, `test:fast:parallel`).
-2. `cross-env` SHALL be added to `frontend/devDependencies` (it is currently only a backend
-   dependency).
-3. BOTH scripts SHALL run successfully on Windows and Linux.
-4. `FAST_CHECK_NUM_RUNS` SHALL still be honoured by `fast-check` at runtime.
-5. `frontend/package-lock.json` SHALL be regenerated and remain `npm ci`-installable.
+   variable inline, and `cross-env` SHALL be added to `frontend/devDependencies`.
+2. `pbtOptions` in `frontend/src/test/pbtArbitraries.js` SHALL honour
+   `FAST_CHECK_NUM_RUNS` when set, taking precedence over the `isCI` default.
+3. THE precedence order SHALL be: explicit per-call `numRuns` > `FAST_CHECK_NUM_RUNS` >
+   `isCI` default.
+4. WHEN `FAST_CHECK_NUM_RUNS` is unset, behavior SHALL be byte-identical to today.
+5. BOTH scripts SHALL run successfully on Windows and Linux.
+6. `frontend/package-lock.json` SHALL be regenerated and remain `npm ci`-installable.
+7. THE spec SHALL record that most frontend PBT tests still hardcode `numRuns` inline, so
+   the env var affects only the subset using `pbtOptions` (see follow-up below).
 
 ### Design / Implementation Notes
 
 - Match the backend's exact form: `cross-env FAST_CHECK_NUM_RUNS=10 vitest --run`.
-- Check `frontend/vitest.setup.js` / `vitest.config.js` for how `FAST_CHECK_NUM_RUNS` is
-  read — if it is read via `process.env` in the setup file, no further change is needed.
-- Audit the remaining frontend scripts for the same pattern before closing.
+- `pbtOptions` currently reads `isCI` from a module-level constant; read the env var the
+  same way (`process.env.FAST_CHECK_NUM_RUNS`) and parse with a guard so a non-numeric
+  value falls back to the default rather than producing `NaN` runs.
+- Do **not** mass-migrate the inline `{ numRuns: 100 }` call sites in this PR — that is a
+  much larger change across ~19 test files and belongs in its own slice.
+
+### Follow-up (separate PR)
+
+Migrate frontend PBT tests from inline `fc.assert(..., { numRuns: 100 })` to
+`pbtOptions({ numRuns: 100 })` so the CI-aware and env-var tuning actually applies. ~19
+files. Note `scripts/validate-pbt-guardrails.js` may need updating alongside.
 
 ### Test Plan
 
 - `cd frontend; npm run test:fast` completes on Windows.
-- Confirm the reduced run count actually takes effect (compare wall time against
-  `npm run test`).
-- CI (Linux) still passes.
+- With `FAST_CHECK_NUM_RUNS=5`, a test using `pbtOptions` runs 5 cases (assert via a
+  temporary counter or fast-check's `verbose` output).
+- With the var unset, `pbtOptions()` returns the same object as before the change.
+- Full frontend suite passes.
+
+### Outcome (as landed)
+
+**Files changed:** `frontend/package.json` (2 scripts + `cross-env` devDependency),
+`frontend/package-lock.json`, `frontend/src/test/pbtArbitraries.js`.
+
+`pbtOptions` now resolves `numRuns` as `options.numRuns ?? envNumRuns ?? (isCI ? 10 : 20)`,
+with `envNumRuns` parsed defensively so a non-numeric or non-positive value is ignored.
+
+**Verified:**
+
+| Condition | `pbtOptions().numRuns` | `pbtOptions({numRuns:100}).numRuns` |
+|---|---|---|
+| unset | 20 (unchanged) | 100 |
+| `FAST_CHECK_NUM_RUNS=3` | **3** | 100 |
+| `FAST_CHECK_NUM_RUNS=abc` | 20 (fallback) | 100 |
+| `FAST_CHECK_NUM_RUNS=0` | 20 (fallback) | 100 |
+
+`npm run test:fast -- yoyComparison` now runs on Windows (2 files, 13 tests passed) where
+it previously failed before invoking vitest at all. `npm ci` in `frontend/` is clean.
+
+Note the `{ ...pbtOptions(), numRuns: 100 }` spread pattern used across the `useDataSync`
+PBT suites correctly keeps its explicit override — consistent with AC3.
+
+---
+
+## R21: Dependabot PRs bypass all CI checks
+
+**User Story:** As a maintainer, I want dependency bumps to be tested before they reach
+`main`, so a bad upgrade cannot land unverified.
+
+> Discovered 2026-09-04 while triaging PRs #342–#344 after the Phase 0 merge.
+
+### Current Behavior
+
+[.github/workflows/ci.yml](.github/workflows/ci.yml) guards **12 jobs** with
+`github.actor != 'dependabot[bot]'`, including both required checks:
+
+| Job | Line |
+|---|---|
+| Detect Changed Paths | [39](.github/workflows/ci.yml#L39) |
+| Lockfile Integrity | [97](.github/workflows/ci.yml#L97) |
+| Backend Unit Tests | [125](.github/workflows/ci.yml#L125) |
+| Backend PBT Shard | [174](.github/workflows/ci.yml#L174) |
+| Backend PBT Tests | [231](.github/workflows/ci.yml#L231) |
+| **Backend Tests Status** (required) | [322](.github/workflows/ci.yml#L322) |
+| Frontend Tests | [274](.github/workflows/ci.yml#L274) |
+| **Frontend Tests Status** (required) | [414](.github/workflows/ci.yml#L414) |
+| Security Audit, Test Health Report, Build/Push GHCR, Deployment Health Check | 249, 344, 436, 616 |
+
+GitHub treats a **skipped** required check as satisfied, so every dependabot PR reports
+`mergeStateStatus=CLEAN` with zero tests having run. PRs #342–#344 all showed 12 × `SKIPPED`
+yet were reported mergeable.
+
+This is not theoretical: #343 bumps `jest` 30.4.2 → 30.5.0 and #344 bumps
+`@testing-library/react`, `@testing-library/user-event`, and `@vitejs/plugin-react` —
+precisely the packages whose behavior changes break suites.
+
+### Workaround (verified 2026-09-04)
+
+Running `gh pr update-branch <n>` on a dependabot PR creates a merge commit authored by a
+**human**, which flips `github.actor` and causes the full CI to run. Confirmed on #344:
+checks went from 12 × `SKIPPED` to actually executing. Use this until the config is fixed.
+
+### This gap hid a real test failure within an hour
+
+Applying the workaround to **#343** (`jest` 30.4.2 → 30.5.0) turned a `CLEAN` PR into a
+failing one: **all three Backend PBT shards failed**, 15 tests down, with
+`SQLITE_READONLY`, `SQLITE_CANTOPEN`, and `SQLITE_ERROR: no such table: activity_logs`.
+Backend *unit* tests passed, so the breakage was specific to the PBT setup/teardown path.
+
+> ⚠️ **Correction:** the failure is **flaky, not caused by the jest bump.** Re-running the
+> identical commit made shard 3/3 pass, and the failing suite
+> (`expenseService.insurance.pbt.test.js`) passes locally under jest 30.5.0 with
+> `--runInBand`. The underlying defect is pre-existing test-DB contention under parallel
+> sharding — logged separately as **R22**.
+
+The point stands regardless of root cause: **CI reported `CLEAN` for a PR whose test suite
+was red.** Whether the redness came from the dependency or from a latent flake, the
+required checks did not surface it.
+
+---
+
+## R22: Backend PBT shards flake on shared test database
+
+**User Story:** As a maintainer, I want sharded PBT runs to be deterministic, so a red
+build means a real defect and not a race.
+
+> Discovered 2026-09-04 while investigating the #343 failure.
+
+### Current Behavior
+
+CI runs backend PBT as three parallel shards
+(`jest --testPathPatterns=pbt --shard=N/3`, no `--runInBand`). On PR #343 all three shards
+failed with a mix of SQLite errors indicating the test database was missing, unwritable, or
+uninitialised:
+
+- `SQLITE_READONLY: attempt to write a readonly database`
+- `SQLITE_CANTOPEN: unable to open database file`
+- `SQLITE_ERROR: no such table: activity_logs`
+
+Re-running the **same commit** with no changes made shard 3/3 pass, confirming a race
+rather than a code defect. The same suite passes locally under `--runInBand`.
+
+Note `backend/package.json` runs `test` and `test:pbt` with `--runInBand`, while CI uses
+sharding *without* it — so the parallel path is materially less exercised than the local one.
+
+### Acceptance Criteria
+
+1. THE root cause SHALL be identified — most likely multiple jest workers sharing one
+   SQLite file path via `backend/jest.globalSetup.js` / `jest.setup.js`.
+2. EACH jest worker SHALL use an isolated database file (e.g. keyed on
+   `process.env.JEST_WORKER_ID`), or PBT execution SHALL be serialised.
+3. THE backend PBT suite SHALL pass 5 consecutive sharded CI runs without a re-run.
+4. THE fix SHALL NOT materially increase total PBT wall time.
+5. THE `backend-pbt-shard` runtime budget SHALL be re-derived from observed timings once
+   the flakiness is fixed (see below) — a budget below the noise floor produces false reds.
+
+### Observed variance (same commit, three runs)
+
+`#343` shard 2/3, identical code each time:
+
+| Run | Result | Elapsed |
+|---|---|---|
+| 1 | ❌ 15 tests failed (`SQLITE_READONLY` / `CANTOPEN` / `no such table`) | 55s |
+| 2 | ❌ all 269 tests **passed**, failed the runtime budget | **113s** |
+| 3 | ✅ pass | 41s |
+
+Baseline on `main` (#346, jest 30.4.2) was 38s for the same shard. So shard 2 ranges
+**41s–113s**, while `test-budget.json` sets `backend-pbt-shard.maxSeconds = 90`. The budget
+sits *inside* the observed variance band, so it will keep producing false failures
+regardless of the SQLite race. Both need fixing.
+
+Note run 2 is a distinct failure mode worth calling out: **every test passed but the job
+went red**, and the log line was `Budget exceeded! 113s > 90s`. A reader skimming for test
+failures finds none.
+
+### Design / Implementation Notes
+
+- Inspect `backend/jest.globalSetup.js` and `jest.setup.js` for a fixed DB path. `globalSetup`
+  runs **once per shard process**, so shards racing on a shared file is the prime suspect.
+- The repo already creates `pre-test-backup.db`; check whether that copy/restore step is
+  itself racy across workers.
+- Confirm WAL mode is enabled on the test DB — it materially changes concurrent-writer behavior.
+- This may be long-standing and simply masked, since dependabot PRs never ran PBT (R21) and
+  re-runs are cheap enough that intermittent reds get retried away rather than investigated.
+
+### Test Plan
+
+- Reproduce locally with `jest --testPathPatterns=pbt --shard=1/3` (parallel, not `--runInBand`).
+- After the fix, run the sharded CI path repeatedly and confirm no flakes.
+
+---
+
+## R23: Trivy infrastructure failures are reported as CRITICAL vulnerabilities
+
+**User Story:** As a maintainer, I want a scanner outage to be distinguishable from a real
+vulnerability finding, so I don't chase a security alert that isn't one.
+
+> Discovered 2026-09-04 while investigating a red `main` after the Phase 0 merge.
+
+### Current Behavior
+
+[.github/workflows/ci.yml#L509](.github/workflows/ci.yml#L509):
+
+```bash
+docker run --rm ... aquasec/trivy:0.57.1 image --exit-code 1 --severity CRITICAL ... \
+  || { echo "::error::Trivy found CRITICAL vulnerabilities"; exit 1; }
+```
+
+The `||` branch treats **any** non-zero exit as a vulnerability finding. On the `main` run
+for `bdf7a38` (the #346 merge) Trivy actually failed to start:
+
+```
+FATAL Fatal error init error: DB error: failed to download vulnerability DB:
+  ... BLOB_UNKNOWN: Unknown blob sha256:7cff1295... (mirror.gcr.io/aquasec/trivy-db:2)
+```
+
+The image built and pushed successfully; only the scanner's DB fetch failed. CI nonetheless
+reported **"Trivy found CRITICAL vulnerabilities"** and turned `main` red. That is a false
+security alert caused by a transient upstream registry problem.
+
+A second, quieter defect: the informational scan at
+[L500](.github/workflows/ci.yml#L500) ends in `| tee trivy-results.txt`, and the step does
+not set `pipefail`. A fatal error there is masked by `tee`'s exit code, so the first scan
+silently produced an empty/garbage report.
+
+### Acceptance Criteria
+
+1. A Trivy **execution** failure (DB download, image pull, daemon error) SHALL be reported
+   distinctly from a Trivy **finding**, with an accurate message.
+2. THE vulnerability-DB download SHALL be retried before the step is failed.
+3. THE step SHALL set `pipefail` (or capture the exit code explicitly) so the piped
+   informational scan cannot mask a fatal error.
+4. THE workflow SHALL still fail on genuine CRITICAL OS/library findings — the gate is not
+   being weakened.
+5. THE behavior SHALL be verified by simulating both cases: a real CRITICAL finding, and an
+   unreachable DB repository.
+
+### Design / Implementation Notes
+
+- Prefer the maintained `aquasecurity/trivy-action`, which supports DB caching and retries,
+  over a hand-rolled `docker run`.
+- If keeping `docker run`, set `TRIVY_DB_REPOSITORY` to a fallback mirror (e.g.
+  `ghcr.io/aquasecurity/trivy-db`) and wrap the call in a small retry loop.
+- Trivy exits 1 for both findings and fatal errors, so exit code alone cannot disambiguate —
+  grep the output for `FATAL`/`init error`, or use `--format json` and check for a result set.
+- Consider caching the DB between runs to reduce exposure to upstream outages entirely.
+- `aquasec/trivy:0.57.1` is pinned and somewhat old; check whether a newer patch handles the
+  `BLOB_UNKNOWN` mirror case more gracefully.
+
+### Test Plan
+
+- Point `TRIVY_DB_REPOSITORY` at a nonexistent repo and confirm the step reports an
+  infrastructure error, not a vulnerability finding.
+- Confirm a genuine CRITICAL finding still fails the build with the correct message.
+
+---
+
+### Acceptance Criteria
+
+1. THE two required checks (`Backend Tests Status`, `Frontend Tests Status`) and the jobs
+   they depend on SHALL run for `dependabot[bot]`-authored PRs.
+2. `Lockfile Integrity` SHALL run for dependabot PRs (it exists specifically to catch
+   lockfile drift, which is exactly what a dependency bump changes).
+3. THE `github.actor != 'dependabot[bot]'` guard MAY be retained on jobs where the cost
+   saving is real and the risk is nil: `Build and Push to GHCR` ([L436](.github/workflows/ci.yml#L436))
+   and `Deployment Health Check` ([L616](.github/workflows/ci.yml#L616)).
+4. A dependabot PR that breaks a test SHALL be reported as failing, not `CLEAN`.
+5. THE change SHALL be verified against a real dependabot PR before closing.
+
+### Design / Implementation Notes
+
+- Check whether the guards were added deliberately for CI-minutes cost. If so, a middle
+  path is to keep the PBT shards guarded (they are the expensive jobs) while enabling unit
+  tests + lockfile integrity, which catch the overwhelming majority of bad bumps.
+- Confirm `permissions:` and secret availability for `pull_request` events from dependabot —
+  dependabot PRs run with a read-only token by default, which is why some repos disable
+  these jobs. If a job needs secrets, use `pull_request_target` carefully or keep it guarded.
+- Consider enabling dependabot auto-merge only once tests actually gate it.
+
+### Test Plan
+
+- Open (or update) a dependabot PR and confirm `Backend Tests Status` and
+  `Frontend Tests Status` report `SUCCESS`/`FAILURE` rather than `SKIPPED`.
+- Deliberately verify a known-bad bump fails (can be done on a scratch branch).
 
 ---
 
@@ -432,60 +707,74 @@ prefixed with `cross-env`. The frontend simply never adopted it.
 Goal: make the UI fail visibly and safely, and make every modal usable by keyboard and
 screen reader. This is the highest user-visible-value phase.
 
-## R19: Fix conditional hooks in `InsuranceStatusIndicator`
+## R19: Fix conditional hooks in `InsuranceStatusIndicator` — ✅ DONE
 
-**User Story:** As a user, I want the insurance status indicator to not corrupt React's
-hook state, so the component cannot crash or render stale data when its inputs change.
+**User Story:** As a maintainer, I want hooks called unconditionally, so that adding or
+moving a hook in this component cannot silently corrupt React's hook state.
 
-> **Discovered by the R1 linter, not the manual audit.** This is the highest-severity item
-> the lint pass produced and should be fixed before any other Phase 1 work.
+> **Discovered by the R1 linter, not the manual audit.**
+>
+> ⚠️ **Severity corrected from High to Low after verification.** The original write-up
+> claimed "latent hook-order corruption". A negative-control experiment disproved that —
+> see [Verification](#verification-severity-downgrade) below. The fix is still correct and
+> was landed, but it removes *fragility*, not a live defect.
 
-### Current Behavior
+### Current Behavior (before fix)
 
-`react-hooks/rules-of-hooks` reports four violations in
+`react-hooks/rules-of-hooks` reported four violations in
 [frontend/src/components/expenses/InsuranceStatusIndicator.jsx](frontend/src/components/expenses/InsuranceStatusIndicator.jsx):
+an early `if (!insuranceEligible) return null;` sat **above** all four `useCallback` calls
+(`getStatusConfig`, `handleClick`, `handleKeyDown`, `getTooltipText`).
 
-| Line | Message |
-|---|---|
-| 37 | React Hook `useCallback` is called conditionally |
-| 82 | React Hook `useCallback` is called conditionally |
-| 94 | React Hook `useCallback` is called conditionally |
-| 104 | React Hook `useCallback` is called conditionally |
+### Verification (severity downgrade)
 
-React requires hooks to be called in the same order on every render. A conditional
-`useCallback` means that when the guarding condition flips between renders, every
-subsequent hook in the component shifts position and receives another hook's state.
+A regression test was written to assert that toggling `insuranceEligible` on a mounted
+instance produces no React error. It was then run against the **unfixed** component as a
+negative control. **It passed against the buggy version**, proving the test could not
+detect the defect — because there was no runtime defect to detect.
+
+Mechanism: React selects the hooks dispatcher with
+`current === null || current.memoizedState === null ? MountDispatcher : UpdateDispatcher`.
+
+- **0 → 4 hooks:** the previous render called no hooks, so `memoizedState` is `null` and
+  React takes the **mount** path. The four hooks mount fresh; no error.
+- **4 → 0 hooks:** no hooks are called during the update, so `currentHook` stays `null` and
+  the `Rendered fewer hooks than expected` check never fires.
+
+An early return placed above **every** hook is an all-or-nothing transition that React
+tolerates. The component also has no `useState`, so the mount-path reset has no observable
+consequence.
+
+**The violation is still worth fixing**, because it is genuinely fragile: adding any hook
+*above* the early return, or any hook *below* it that the return skips only sometimes,
+creates a real partial mismatch that **does** throw. The lint rule is the guard against
+that, not a test.
 
 ### Acceptance Criteria
 
-1. ALL `useCallback` (and any other hook) calls in `InsuranceStatusIndicator` SHALL be
-   invoked unconditionally at the top level of the component.
-2. THE conditional logic SHALL move *inside* the callback bodies, or into the render
-   return, rather than gating the hook call itself.
-3. `npx eslint frontend/src/components/expenses/InsuranceStatusIndicator.jsx` SHALL report
-   zero `react-hooks/rules-of-hooks` violations.
-4. THE component's rendered output SHALL be unchanged for every existing input.
-5. AFTER this lands, `react-hooks/rules-of-hooks` SHALL be ratcheted from `warn` to
-   `error` in `eslint.config.js` (it will then have zero remaining violations —
-   the only other reports are in test files, which already disable the rule).
+1. ✅ ALL hook calls SHALL be invoked unconditionally at the top level of the component.
+2. ✅ THE conditional logic SHALL move below the hook calls rather than gating them.
+3. ✅ `npx eslint` on the file SHALL report zero `react-hooks/rules-of-hooks` violations.
+4. ✅ THE component's rendered output SHALL be unchanged for every existing input.
+5. ✅ `react-hooks/rules-of-hooks` SHALL be ratcheted from `warn` to `error`.
 
-### Design / Implementation Notes
+### Outcome (as landed)
 
-- Read the full component before editing. The typical cause is an early `return null` for
-  a non-insurance expense placed *above* the `useCallback` declarations — the fix is to
-  move the early return below all hook calls.
-- This is a **latent** bug: it only manifests when the guarding condition changes across
-  renders of the same mounted component instance. It may never have been observed in
-  practice, which is exactly why it survived a manual audit.
-- Existing tests may pass both before and after; do not treat a green suite as proof the
-  bug was absent.
+The `if (!insuranceEligible) return null;` guard moved from above `getStatusConfig` to
+immediately before the JSX return, with a comment stating why it must stay there.
+Repo-wide `react-hooks/rules-of-hooks` count went 4 → **0**, and the rule is now `error`
+in `eslint.config.js`.
 
-### Test Plan
+Added `InsuranceStatusIndicator.test.jsx` (11 tests). These are **characterization tests**,
+not a regression guard — the component previously had no test file at all, which is a large
+part of why the violation survived. They cover status-to-label mapping, the tooltip
+reimbursement breakdown, the not-eligible empty render, and prop-toggle stability.
 
-- Unit: render with the guard condition true, then re-render the *same instance* with it
-  false, and assert no React warning and correct output.
-- Unit: existing `InsuranceStatusIndicator` tests pass unchanged.
-- Lint: rule reports zero violations, then flip it to `error`.
+### Lesson
+
+A lint rule firing is evidence of a *rule violation*, not proof of a *runtime bug*. When
+promoting a lint finding to High severity, build the negative control first: revert the fix
+and confirm the test fails. If it passes, the severity claim is wrong.
 
 ---
 
@@ -1339,11 +1628,14 @@ These were reported during the audit but **disproved** by reading the source:
 
 | # | Requirement | Status | PR | Notes |
 |---|---|---|---|---|
-| R1 | ESLint + Prettier toolchain | ✅ Done | | ESLint **9** (plugins lack v10 peers); baseline 0 errors / 609 warnings |
-| R2 | Ignore generated test artifacts | ✅ No change needed | | Already ignored & untracked; `test-budget.json` is a tracked *input* |
-| R3 | Sync root package version | ✅ Done | | `version` removed + `private: true`; root is not one of the 7 locations |
-| R20 | Frontend `test:fast*` Windows compat | ☐ Not started | | Add `cross-env`; found while validating R1 |
-| R19 | Conditional hooks in `InsuranceStatusIndicator` | ☐ Not started | | 4 × `rules-of-hooks`; do before other Phase 1 work |
+| R1 | ESLint + Prettier toolchain | ✅ Done | #346 | ESLint **9** (plugins lack v10 peers); baseline 0 errors / 609 warnings |
+| R2 | Ignore generated test artifacts | ✅ No change needed | #346 | Already ignored & untracked; `test-budget.json` is a tracked *input* |
+| R3 | Sync root package version | ✅ Done | #346 | `version` removed + `private: true`; root is not one of the 7 locations |
+| R21 | Dependabot PRs bypass all CI checks | ☐ Not started | | 12 guarded jobs incl. both required checks; workaround = `gh pr update-branch` |
+| R22 | Backend PBT shards flake on shared test DB | ☐ Not started | | Same commit: 55s fail / 113s fail / 41s pass. Budget (90s) sits inside the noise band |
+| R23 | Trivy outages reported as CRITICAL vulns | ☐ Not started | | DB `BLOB_UNKNOWN` turned `main` red with a false security alert |
+| R20 | Frontend `test:fast*` scripts | ✅ Done | | `cross-env` + wired `FAST_CHECK_NUM_RUNS` into `pbtOptions`; var was previously dead |
+| R19 | Conditional hooks in `InsuranceStatusIndicator` | ✅ Done | | Severity corrected High → Low; React tolerates all-or-nothing early returns. Rule now `error` |
 | R6 | Add `ErrorBoundary` | ☐ Not started | | |
 | R4 | Shared accessible `<Modal>` shell | ☐ Not started | | Must satisfy 3 UxConsistency PBT guardrails |
 | R5 | Migrate 25 modals to the shell | ☐ Not started | | 7 batches (5a–5g); clears ~198 a11y warnings |
@@ -1367,7 +1659,7 @@ Flip each to `error` as part of that requirement's PR.
 
 | Rule | Warnings | Clears with |
 |---|---|---|
-| `react-hooks/rules-of-hooks` | 4 | R19 |
+| ~~`react-hooks/rules-of-hooks`~~ | ~~4~~ → **0, now `error`** | ✅ R19 |
 | `no-dupe-class-members` | 2 | R18 |
 | `no-console` (frontend) | 70 | R7 |
 | `react/no-array-index-key` | 39 | R15 |

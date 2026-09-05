@@ -38,7 +38,6 @@ const PREEXISTING_HOOKS = {
   'react-hooks/preserve-manual-memoization': 'warn',
   'react-hooks/purity': 'warn',
   'react-hooks/refs': 'warn',
-  'react-hooks/rules-of-hooks': 'warn', // R19
   'react-hooks/set-state-in-effect': 'warn',
 };
 
@@ -157,6 +156,9 @@ module.exports = [
       // React 19 automatic JSX runtime — no React import required.
       'react/react-in-jsx-scope': 'off',
       'react/jsx-uses-react': 'off',
+
+      // Ratcheted to error by R19 — zero violations remain.
+      'react-hooks/rules-of-hooks': 'error',
 
       // The codebase does not use PropTypes consistently and has no requirement
       // to; enabling this produces ~915 warnings that drown out real signal.

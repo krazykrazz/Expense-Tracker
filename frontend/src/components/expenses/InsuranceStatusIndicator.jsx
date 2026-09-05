@@ -25,11 +25,6 @@ const InsuranceStatusIndicator = ({
   showText = false,
   className = ''
 }) => {
-  // Don't render anything if not insurance eligible (Requirement 7.3)
-  if (!insuranceEligible) {
-    return null;
-  }
-
   /**
    * Get status configuration based on claim status
    * Requirement 7.2: Distinct visual indicators for each status
@@ -124,6 +119,12 @@ const InsuranceStatusIndicator = ({
 
   const isClickable = !!onClick;
   const tooltipText = getTooltipText();
+
+  // Must stay below every hook call so hook order is stable when this prop flips.
+  // Don't render anything if not insurance eligible (Requirement 7.3)
+  if (!insuranceEligible) {
+    return null;
+  }
 
   return (
     <span

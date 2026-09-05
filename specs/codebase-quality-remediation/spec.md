@@ -2,7 +2,8 @@
 
 > **Spec format:** Single-document spec (requirements + design + tasks combined). One file per feature.
 > **Source:** Full-codebase audit performed 2026-09-04 using the `expense-tracker-audit` skill.
-> **Status:** Phase 0 complete (R1–R3). Phase 1 not started.
+> **Status:** Phase 0 complete (R1–R3, PR #346). R19 + R20 merged (PR #348).
+> Remaining CI items R21–R23 open. Phase 1 proper (R4–R7) not started.
 
 ## Introduction
 
@@ -150,14 +151,17 @@ Largest frontend source files:
 | R17 | Decompose mega-components & mega-service | 4 | Both | Medium | High | Medium | R4, R7 |
 | R18 | Remove duplicate `findById` methods | 3 | Backend | Low | Low | Low | R1 |
 | R19 | Fix conditional hooks in `InsuranceStatusIndicator` | 1 | Frontend | ~~High~~ Low | Low | Low | R1 |
-| R20 | Make frontend `test:fast*` scripts Windows-compatible | 0 | Tooling | Low | Low | Low | — |
+| R20 | Fix the frontend `test:fast*` scripts | 0 | Tooling | Low | Low | Low | — |
 | R21 | Dependabot PRs bypass all CI checks | 0 | CI | Medium | Low | Low | — |
 | R22 | Backend PBT shards flake on shared test DB | 0 | CI/Tests | Medium | Medium | Medium | — |
 | R23 | Trivy outages reported as CRITICAL vulns | 0 | CI | Medium | Low | Low | — |
+| R24 | Backup suites run against the real dev database | 0 | Tests/Safety | **High** | Medium | Medium | — |
+| R25 | `backupService.pbt.test.js` fails locally, passes in CI | 0 | Tests | **High** | Medium | Medium | — |
 
 > R18–R20 were **discovered by the linter added in R1**, not by the manual audit.
 > R21 was discovered while triaging the dependabot queue after the Phase 0 PR.
 > R22 and R23 were discovered while investigating CI failures that R21's workaround exposed.
+> R24 and R25 were discovered while validating R22.
 
 **Recommended execution order:** R1 → R2/R3 → R21 → R20 → R19 → R6 → R4 → R5 → R8 → R9 →
 R10 → R11/R12/R13 → R7 → R14/R15/R18 → R16 → R17.
@@ -590,20 +594,104 @@ Note run 2 is a distinct failure mode worth calling out: **every test passed but
 went red**, and the log line was `Budget exceeded! 113s > 90s`. A reader skimming for test
 failures finds none.
 
-### Design / Implementation Notes
+### Root Cause (confirmed 2026-09-05)
 
-- Inspect `backend/jest.globalSetup.js` and `jest.setup.js` for a fixed DB path. `globalSetup`
-  runs **once per shard process**, so shards racing on a shared file is the prime suspect.
-- The repo already creates `pre-test-backup.db`; check whether that copy/restore step is
-  itself racy across workers.
-- Confirm WAL mode is enabled on the test DB — it materially changes concurrent-writer behavior.
-- This may be long-standing and simply masked, since dependabot PRs never ran PBT (R21) and
-  re-runs are cheap enough that intermittent reds get retried away rather than investigated.
+> Two earlier hypotheses were **wrong** and are recorded here so nobody re-treads them:
+>
+> 1. ❌ *"A fixed DB path not keyed on `JEST_WORKER_ID`."* Per-worker isolation already
+>    exists — `db.js#L163` produces `test-expenses-worker-<id>.db`, and
+>    `test/dbIsolation.js#L38` does the same.
+> 2. ❌ *"`SKIP_TEST_DB` suites racing a worker suite."* All three suites that set
+>    `SKIP_TEST_DB = 'true'` (`backupService.integration`, `backupService.pbt`,
+>    `backupController.integration`) contain "backup" in their filename, and CI's shard
+>    command excludes them via `--testPathIgnorePatterns="backup"`. Backup tests run only
+>    on shard 1, serially, via `npm run test:backup:ci` (`--runInBand`).
+>
+> Also note **shards cannot race each other** — each is a separate job on a separate
+> runner with its own filesystem. Any race is between jest **workers inside one shard**.
+
+The actual defect is in `closeTestDatabase()` (`backend/database/db.js#L328`):
+
+```js
+function closeTestDatabase() {          // declared sync...
+  testDbInstance.close();               // ...but sqlite3 close() is ASYNC, no callback
+  testDbInstance = null;
+  fs.unlinkSync(testDbPath);            // deletes the file while close() is still flushing
+}
+```
+
+and in its caller (`backend/jest.setup.js#L89`), which did not await it:
+
+```js
+afterAll(async () => {
+  closeTestDatabase();                  // returns before the close completes
+});
+```
+
+Jest resets the module registry per test **file**, so `testDbInstance` is fresh each file —
+but `getTestDbPath()` is constant per **worker**. So within a single worker:
+
+1. File A finishes → `afterAll` fires `close()` (async, still flushing) and immediately
+   `unlinkSync`s the database file.
+2. File B starts → `beforeAll` → `getTestDatabase()` → `createTestDatabase()` recreates a
+   database at **the same path**.
+3. File A's in-flight writes and WAL flush land on File B's brand-new database.
+
+That produces exactly the three observed signatures:
+
+| Symptom | Cause |
+|---|---|
+| `SQLITE_CANTOPEN: unable to open database file` | file unlinked between open and use |
+| `SQLITE_READONLY: attempt to write a readonly database` | handle whose file was unlinked/replaced |
+| `SQLITE_ERROR: no such table: activity_logs` | writes hitting a database recreated mid-flight |
+
+The un-awaited fire-and-forget `activityLogService.logEvent()` calls tracked in **R13**
+make this materially worse: those writes routinely outlive the test that triggered them,
+so they are the most likely writers to land after teardown. R13 and R22 are related — fixing
+R13 reduces the exposure window, but R22 is the actual defect.
+
+### Reproduction
+
+The CI shard command alone does **not** reproduce it (passed locally, 42 suites / 380
+tests). What matters is maximising per-worker *file churn*, since the race is per
+file-transition. Constraining workers does that:
+
+```
+npx cross-env NODE_ENV=test CI=true FAST_CHECK_NUM_RUNS=5 \
+  jest --testPathPatterns=pbt --testPathIgnorePatterns="backup" --maxWorkers=2
+```
+
+Pre-fix this failed 1 run in 2 (`Test Suites: 1 failed, 125 passed`;
+`Tests: 1 failed, 1002 passed`). It is intermittent, so a single green run proves nothing —
+always run it several times.
+
+Note `jest.setup.js#L33` sets `jest.retryTimes(2)` in CI, which masks a proportion of these
+failures. Consider whether that retry is hiding other real flakes.
+
+### Fix
+
+- `closeTestDatabase()` is now `async` and awaits `db.close(cb)` **before** unlinking the
+  file and its `-wal`/`-shm` sidecars.
+- `jest.setup.js` `afterAll` now `await`s it, so the next file in the worker cannot start
+  until teardown is complete.
+- `recreateTestDatabase()` now awaits it too.
+- The two existing callers (`schemaConsistency.test.js#L22`,
+  `billingCycleRepository.consolidated.pbt.test.js#L485`) already used `await`, so their
+  intent is now actually honoured rather than silently ignored.
+
+### Remaining work (not covered by the fix)
+
+The runtime budget is a **separate** defect and still needs attention:
+`backend-pbt-shard.maxSeconds = 90` sits inside the observed 41s–113s band, so it will keep
+producing false reds even with the race fixed. Re-derive it from post-fix timings with
+headroom, or measure only the jest invocation rather than the whole step.
 
 ### Test Plan
 
-- Reproduce locally with `jest --testPathPatterns=pbt --shard=1/3` (parallel, not `--runInBand`).
-- After the fix, run the sharded CI path repeatedly and confirm no flakes.
+- Run the `--maxWorkers=2` reproduction above at least 3 times; expect zero failures.
+- Run the exact CI shard command (`--shard=N/3`) for all three shards.
+- Confirm `npm run test:backup:ci` still passes (it uses `SKIP_TEST_DB` and the real DB).
+- Watch the first few CI runs post-merge for shard timing and stability.
 
 ---
 
@@ -699,6 +787,177 @@ silently produced an empty/garbage report.
 - Open (or update) a dependabot PR and confirm `Backend Tests Status` and
   `Frontend Tests Status` report `SUCCESS`/`FAILURE` rather than `SKIPPED`.
 - Deliberately verify a known-bad bump fails (can be done on a scratch branch).
+
+---
+
+## R24: Backup test suites run against the developer's real database
+
+**User Story:** As a developer, I want running the documented test suite to be safe, so it
+cannot corrupt or destroy my local data.
+
+> Discovered 2026-09-05 while validating R22.
+
+### Current Behavior
+
+Three suites deliberately set `SKIP_TEST_DB = 'true'` so they can exercise real file I/O:
+`backupService.integration.test.js#L9`, `backupService.pbt.test.js#L12`,
+`backupController.integration.test.js#L9`. That flag makes `getDatabase()`
+(`db.js#L131`) bypass the per-worker test database and return the **real**
+`backend/config/database/expenses.db`.
+
+So `npm run test:backup:ci` — a documented script — reads and writes the developer's
+actual database. Two consequences:
+
+1. **The dev database can be corrupted.** After a local run, `PRAGMA integrity_check` on
+   `backend/config/database/expenses.db` reports widespread
+   `btreeInitPage() returns error code 11` across ~100 pages. A file named
+   `expenses.db.corrupted` dated 2026-01-21 already sits in that directory, so this has
+   happened at least once before.
+2. **The safety backup is destroyed by the safety mechanism.**
+   `jest.globalSetup.js#L39` copies the current database over a **fixed** filename,
+   `config/backups/pre-test-backup.db` ("Use a fixed name for the pre-test backup
+   (overwrites previous)"). It performs no integrity check first, so once the database is
+   corrupt the next test run overwrites the last good backup with a copy of the corrupt
+   file. Both files now carry the identical corruption signature.
+
+CI is unaffected because runners start with no `expenses.db` at all — which is precisely
+why this has stayed invisible.
+
+### Why this went unnoticed for months
+
+All real testing in this project happens through **staging/preview Docker containers**; the
+local Node environment is never actually run as an application. So
+`backend/config/database/expenses.db` is a stale artifact that nobody reads — it exists
+only because the backup suites keep recreating and writing to it. Corruption there produces
+no visible symptom until someone runs `npm run test:backup:ci` locally, which is rare.
+
+That also means the file has no value: **the correct local state is CI's state — no
+database at all.** Restoring a copy of production into it would be actively worse, putting
+real financial data on a developer machine for no benefit and handing the backup suites a
+populated database to write to.
+
+Local remedy (applied 2026-09-05): quarantine the corrupt files rather than deleting them —
+
+```powershell
+# from backend/
+Rename-Item config/database/expenses.db      expenses.db.corrupt-<stamp>
+Rename-Item config/backups/pre-test-backup.db pre-test-backup.db.corrupt-<stamp>
+# ...plus the -wal / -shm sidecars
+```
+
+The suites then recreate a clean database exactly as they do on a CI runner.
+
+> ⚠️ **Quarantining the corrupt database did NOT make the backup suites pass.**
+> `backupService.pbt.test.js` still failed from a clean state. The corruption is therefore
+> a *symptom*, not the cause — see **R25**, which is a separate, pre-existing failure.
+> The most likely relationship is that R25's failing restore paths are what corrupted the
+> database in the first place.
+
+### Acceptance Criteria
+
+1. Backup suites SHALL operate on a disposable fixture database, not
+   `backend/config/database/expenses.db`.
+2. IF operating on the real path is genuinely required, THE suite SHALL copy it to a temp
+   location, run there, and never write to the original.
+3. `jest.globalSetup.js` SHALL run `PRAGMA integrity_check` before overwriting
+   `pre-test-backup.db`, and SHALL refuse to overwrite a good backup with a corrupt source.
+4. THE pre-test backup SHALL be timestamped or rotated (keep N) rather than a single fixed
+   filename, so one bad run cannot destroy the only copy.
+5. Running the full backend suite locally SHALL leave `expenses.db` byte-identical.
+
+### Design / Implementation Notes
+
+- AC5 is the real acceptance test: hash the database before and after a full run.
+- Check `backupService`'s restore path — restore overwrites the DB file wholesale, which is
+  the most likely corruption vector when another connection holds it open.
+- Relates to R22: the same "unlink/replace a database file other connections still hold"
+  pattern is the root cause in both. Fixing R22's `closeTestDatabase` does **not** fix this,
+  because these suites bypass that code path entirely.
+- Consider making `SKIP_TEST_DB` point at a dedicated fixture path rather than at
+  production, which would fix the class of problem rather than one instance.
+
+### Test Plan
+
+- Record `Get-FileHash` of `expenses.db`, run `npm run test:backup:ci`, confirm unchanged.
+- Corrupt a scratch database deliberately and confirm `globalSetup` refuses to overwrite a
+  known-good `pre-test-backup.db` with it.
+
+---
+
+## R25: `backupService.pbt.test.js` fails locally but passes in CI
+
+**User Story:** As a developer, I want the documented backup test script to pass on my
+machine, so I can validate backup changes before pushing.
+
+> Discovered 2026-09-05 while validating R22.
+
+### Current Behavior
+
+`npm run test:backup:ci` fails locally (Windows) and has evidently done so for some time:
+
+| Code under test | `FAST_CHECK_NUM_RUNS` | Result |
+|---|---|---|
+| `main` (unmodified) | 3 | **8 failed**, 6 passed, 14 total |
+| R22 branch | 15 | **3 failed**, 11 passed, 14 total |
+
+The same suite **passes in CI** — #343's `Backend PBT Shard 1/3` job is green at 1m22s, and
+that job includes the `Run backup tests (serial, shard 1 only)` step.
+
+Failure signatures are assertion-level, not crashes:
+
+```
+expect(received).toBe(expected)   Expected: 2   Received: 0
+expect(received).not.toBeNull()   Received: null
+```
+
+i.e. backups that the test created were not found afterwards.
+
+**This is explicitly NOT caused by R22.** Reverting `db.js` and `jest.setup.js` to their
+`main` versions reproduces the failure (worse), and these suites set `SKIP_TEST_DB = 'true'`
+so `jest.setup.js#L83` returns early and never calls the function R22 changed.
+
+The suite is also extremely slow locally — a single run took **1019s–1562s**, versus
+seconds in CI. `jest.retryTimes(2)` (`jest.setup.js#L33`, CI-only) multiplies each failure
+by three, which accounts for some but not all of that.
+
+### Leading hypothesis: platform
+
+CI is `ubuntu-24.04`; local is Windows. The backup service produces `.tar.gz` archives and
+performs file moves/deletes on an open SQLite database — all areas where Windows semantics
+differ sharply from Linux:
+
+- Windows refuses to delete or rename a file with an open handle; POSIX permits it.
+- `tar`/gzip handling and path separators differ.
+- `Expected: 2, Received: 0` is consistent with archive creation silently failing, or
+  listing not seeing files written under a different path convention.
+
+### Acceptance Criteria
+
+1. THE root cause SHALL be identified and recorded (platform-specific behaviour vs. genuine
+   product bug in `backupService`).
+2. IF it is a genuine bug in backup/restore, it SHALL be fixed — backup integrity is a
+   data-safety feature and a Linux-only guarantee is not sufficient assurance.
+3. IF it is purely a test-harness platform assumption, the suite SHALL either be made
+   platform-agnostic or be explicitly skipped on Windows with a clear message, so it does
+   not silently rot.
+4. THE suite's local runtime SHALL be brought into a sane range (target: under 2 minutes).
+5. `npm run test:backup:ci` SHALL pass on both Windows and Linux, or skip loudly on Windows.
+
+### Design / Implementation Notes
+
+- Start by running a *single* property with `FAST_CHECK_NUM_RUNS=1` and reading the full
+  assertion context; the aggregate output is dominated by retry noise.
+- Check whether `backupService` unlinks/renames the database while a connection is open —
+  that is the R22 defect class again, and it would fail on Windows while succeeding on Linux.
+- Investigate the 1000s+ runtime separately; it may be a timeout-and-retry loop rather than
+  real work, which would also point at a blocked file operation on Windows.
+- Relates to **R24**: these failing restore paths are the most likely cause of the observed
+  dev-database corruption.
+
+### Test Plan
+
+- Run on Windows and on Linux (or a container) and compare.
+- Once fixed, confirm `Get-FileHash` of `expenses.db` is unchanged by a full run (R24 AC5).
 
 ---
 
@@ -1631,11 +1890,13 @@ These were reported during the audit but **disproved** by reading the source:
 | R1 | ESLint + Prettier toolchain | ✅ Done | #346 | ESLint **9** (plugins lack v10 peers); baseline 0 errors / 609 warnings |
 | R2 | Ignore generated test artifacts | ✅ No change needed | #346 | Already ignored & untracked; `test-budget.json` is a tracked *input* |
 | R3 | Sync root package version | ✅ Done | #346 | `version` removed + `private: true`; root is not one of the 7 locations |
-| R21 | Dependabot PRs bypass all CI checks | ☐ Not started | | 12 guarded jobs incl. both required checks; workaround = `gh pr update-branch` |
-| R22 | Backend PBT shards flake on shared test DB | ☐ Not started | | Same commit: 55s fail / 113s fail / 41s pass. Budget (90s) sits inside the noise band |
+| R21 | Dependabot PRs bypass all CI checks | ☐ Not started | | 12 guarded jobs incl. both required checks; workaround = `gh pr update-branch`. **Do R22 first** |
+| R22 | Backend PBT shards flake on shared test DB | ✅ Done | | Root cause: `closeTestDatabase()` unlinked the file before the async `close()` finished |
 | R23 | Trivy outages reported as CRITICAL vulns | ☐ Not started | | DB `BLOB_UNKNOWN` turned `main` red with a false security alert |
-| R20 | Frontend `test:fast*` scripts | ✅ Done | | `cross-env` + wired `FAST_CHECK_NUM_RUNS` into `pbtOptions`; var was previously dead |
-| R19 | Conditional hooks in `InsuranceStatusIndicator` | ✅ Done | | Severity corrected High → Low; React tolerates all-or-nothing early returns. Rule now `error` |
+| R24 | Backup suites run against the real dev database | ☐ Not started | | **Corrupted the local dev DB; `pre-test-backup.db` overwritten with the corrupt copy** |
+| R25 | `backupService.pbt.test.js` fails locally, passes in CI | ☐ Not started | | Pre-existing (fails on `main` too); suspected Windows/Linux file-handling divergence |
+| R20 | Frontend `test:fast*` scripts | ✅ Done | #348 | `cross-env` + wired `FAST_CHECK_NUM_RUNS` into `pbtOptions`; var was previously dead |
+| R19 | Conditional hooks in `InsuranceStatusIndicator` | ✅ Done | #348 | Severity corrected High → Low; React tolerates all-or-nothing early returns. Rule now `error` |
 | R6 | Add `ErrorBoundary` | ☐ Not started | | |
 | R4 | Shared accessible `<Modal>` shell | ☐ Not started | | Must satisfy 3 UxConsistency PBT guardrails |
 | R5 | Migrate 25 modals to the shell | ☐ Not started | | 7 batches (5a–5g); clears ~198 a11y warnings |

@@ -84,10 +84,10 @@ afterAll(async () => {
     return;
   }
   
-  // Close the per-worker database connection and clean up the file
-  // Use the top-level import to avoid issues when jest.resetModules() replaces the module cache
+  // Close the per-worker database connection and clean up the file.
+  // Must be awaited: the next test file in this worker reuses the same path.
   if (typeof closeTestDatabase === 'function') {
-    closeTestDatabase();
+    await closeTestDatabase();
   }
   testDbInitialized = false;
 });

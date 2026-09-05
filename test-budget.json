@@ -6,8 +6,8 @@
       "description": "Backend unit tests (backup suites run in backend-pbt shard 1)"
     },
     "backend-pbt-shard": {
-      "maxSeconds": 90,
-      "description": "Backend PBT shard (FAST_CHECK_NUM_RUNS=15)"
+      "maxSeconds": 150,
+      "description": "Backend PBT shard (FAST_CHECK_NUM_RUNS=15). Shard 1 also runs the serial backup suites, so it is the slowest; observed 38-82s healthy on CI runners. Raised from 90s, which sat inside normal runner variance and failed green runs."
     },
     "frontend-tests": {
       "maxSeconds": 360,

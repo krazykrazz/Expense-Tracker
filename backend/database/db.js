@@ -325,32 +325,36 @@ async function resetTestDatabase() {
  * Close the test database connection and clear the singleton
  * Also removes the per-worker database file to avoid stale files
  */
-function closeTestDatabase() {
-  if (testDbInstance) {
-    try {
-      testDbInstance.close();
-    } catch (err) {
-      // Ignore close errors
-    }
-    testDbInstance = null;
-    testDbPromise = null;
+async function closeTestDatabase() {
+  const db = testDbInstance;
+
+  // sqlite3's close() is asynchronous. The file must not be unlinked until it
+  // resolves, or in-flight writes can land on a same-named database that the
+  // next test file has already recreated (SQLITE_READONLY / CANTOPEN /
+  // "no such table" under parallel workers).
+  if (db) {
+    await new Promise((resolve) => {
+      try {
+        db.close(() => resolve());
+      } catch {
+        resolve();
+      }
+    });
   }
-  
-  // Clean up the per-worker database file
+
+  testDbInstance = null;
+  testDbPromise = null;
+
+  // Clean up the per-worker database file, plus its WAL and SHM sidecars
   const testDbPath = getTestDbPath();
-  try {
-    if (fs.existsSync(testDbPath)) {
-      fs.unlinkSync(testDbPath);
+  for (const file of [testDbPath, `${testDbPath}-wal`, `${testDbPath}-shm`]) {
+    try {
+      if (fs.existsSync(file)) {
+        fs.unlinkSync(file);
+      }
+    } catch {
+      // Ignore cleanup errors
     }
-    // Also clean up WAL and SHM files
-    if (fs.existsSync(testDbPath + '-wal')) {
-      fs.unlinkSync(testDbPath + '-wal');
-    }
-    if (fs.existsSync(testDbPath + '-shm')) {
-      fs.unlinkSync(testDbPath + '-shm');
-    }
-  } catch (err) {
-    // Ignore cleanup errors
   }
 }
 
@@ -427,7 +431,7 @@ async function withTransaction(db, operation) {
  * Useful when the database gets corrupted
  */
 async function recreateTestDatabase() {
-  closeTestDatabase();
+  await closeTestDatabase();
   return getTestDatabase();
 }
 

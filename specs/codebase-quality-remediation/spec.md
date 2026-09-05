@@ -2,7 +2,8 @@
 
 > **Spec format:** Single-document spec (requirements + design + tasks combined). One file per feature.
 > **Source:** Full-codebase audit performed 2026-09-04 using the `expense-tracker-audit` skill.
-> **Status:** Phase 0 complete (R1–R3). Phase 1 not started.
+> **Status:** Phase 0 complete (R1–R3, PR #346). R19 + R20 merged (PR #348).
+> Remaining CI items R21–R23 open. Phase 1 proper (R4–R7) not started.
 
 ## Introduction
 
@@ -150,7 +151,7 @@ Largest frontend source files:
 | R17 | Decompose mega-components & mega-service | 4 | Both | Medium | High | Medium | R4, R7 |
 | R18 | Remove duplicate `findById` methods | 3 | Backend | Low | Low | Low | R1 |
 | R19 | Fix conditional hooks in `InsuranceStatusIndicator` | 1 | Frontend | ~~High~~ Low | Low | Low | R1 |
-| R20 | Make frontend `test:fast*` scripts Windows-compatible | 0 | Tooling | Low | Low | Low | — |
+| R20 | Fix the frontend `test:fast*` scripts | 0 | Tooling | Low | Low | Low | — |
 | R21 | Dependabot PRs bypass all CI checks | 0 | CI | Medium | Low | Low | — |
 | R22 | Backend PBT shards flake on shared test DB | 0 | CI/Tests | Medium | Medium | Medium | — |
 | R23 | Trivy outages reported as CRITICAL vulns | 0 | CI | Medium | Low | Low | — |
@@ -592,17 +593,47 @@ failures finds none.
 
 ### Design / Implementation Notes
 
-- Inspect `backend/jest.globalSetup.js` and `jest.setup.js` for a fixed DB path. `globalSetup`
-  runs **once per shard process**, so shards racing on a shared file is the prime suspect.
-- The repo already creates `pre-test-backup.db`; check whether that copy/restore step is
-  itself racy across workers.
-- Confirm WAL mode is enabled on the test DB — it materially changes concurrent-writer behavior.
-- This may be long-standing and simply masked, since dependabot PRs never ran PBT (R21) and
-  re-runs are cheap enough that intermittent reds get retried away rather than investigated.
+> ⚠️ **Corrected 2026-09-05.** An earlier draft of this item guessed the cause was "a fixed
+> DB path not keyed on `JEST_WORKER_ID`". **That is wrong — per-worker isolation already
+> exists.** Do not start there.
+
+Verified facts to build on:
+
+- `backend/database/db.js#L163` (`getTestDbPath`) already keys the test DB on
+  `process.env.JEST_WORKER_ID`, producing `test-expenses-worker-<id>.db`.
+  `backend/test/dbIsolation.js#L38` does the same for isolated fixtures.
+- `backend/jest.globalSetup.js#L18-L28` **deletes** every `test-expenses-worker-*` and
+  `isolated-test-*` file at startup. `globalSetup` runs once per jest process, before
+  workers spawn — so this should be safe, but confirm nothing re-enters it mid-run.
+- `getDatabase()` (`db.js#L125`) returns the per-worker test DB **only** when
+  `NODE_ENV === 'test'` **and** `SKIP_TEST_DB !== 'true'`.
+- Several suites deliberately set `SKIP_TEST_DB = 'true'` and therefore operate on the
+  **real** `config/database/expenses.db`: `backupService.integration.test.js#L9`,
+  `backupService.pbt.test.js#L12`, `backupController.integration.test.js#L9`.
+
+Leading hypotheses, in priority order:
+
+1. **`SKIP_TEST_DB` suites racing a worker suite.** Any suite touching the shared
+   production `expenses.db` while another worker is mid-test could produce
+   `SQLITE_READONLY` / `CANTOPEN`. CI's shard command uses
+   `--testPathIgnorePatterns="backup"`, which excludes the known offenders — verify that
+   exclusion actually covers every `SKIP_TEST_DB` suite, and that no *other* suite sets it.
+2. **A backup/restore test overwriting or unlinking the DB** another worker holds open.
+   `no such table: activity_logs` is the signature of a DB file replaced mid-run, not of a
+   permissions problem.
+3. **`NODE_ENV` not reaching a worker**, so `getDatabase()` falls through to the production
+   path. Note the existing `.trim()` guard on line 131 hints this has bitten before.
+4. Runner disk/IO contention — plausible given the wide 41s–113s spread, but should be the
+   last explanation considered, not the first.
+
+Also confirm WAL mode on the test DB; it materially changes concurrent-writer behaviour.
 
 ### Test Plan
 
-- Reproduce locally with `jest --testPathPatterns=pbt --shard=1/3` (parallel, not `--runInBand`).
+- Reproduce locally with `jest --testPathPatterns=pbt --shard=1/3` (parallel, **not**
+  `--runInBand`, which is what local scripts use and why this never reproduces by hand).
+- Instrument `getTestDbPath()` / `getDatabase()` to log the resolved path plus
+  `JEST_WORKER_ID` and `SKIP_TEST_DB`, then grep a failing run for two workers sharing a path.
 - After the fix, run the sharded CI path repeatedly and confirm no flakes.
 
 ---
@@ -1631,11 +1662,11 @@ These were reported during the audit but **disproved** by reading the source:
 | R1 | ESLint + Prettier toolchain | ✅ Done | #346 | ESLint **9** (plugins lack v10 peers); baseline 0 errors / 609 warnings |
 | R2 | Ignore generated test artifacts | ✅ No change needed | #346 | Already ignored & untracked; `test-budget.json` is a tracked *input* |
 | R3 | Sync root package version | ✅ Done | #346 | `version` removed + `private: true`; root is not one of the 7 locations |
-| R21 | Dependabot PRs bypass all CI checks | ☐ Not started | | 12 guarded jobs incl. both required checks; workaround = `gh pr update-branch` |
-| R22 | Backend PBT shards flake on shared test DB | ☐ Not started | | Same commit: 55s fail / 113s fail / 41s pass. Budget (90s) sits inside the noise band |
+| R21 | Dependabot PRs bypass all CI checks | ☐ Not started | | 12 guarded jobs incl. both required checks; workaround = `gh pr update-branch`. **Do R22 first** |
+| R22 | Backend PBT shards flake on shared test DB | ☐ Not started | | Same commit: 55s fail / 113s fail / 41s pass. Budget (90s) sits inside the noise band. Worker isolation already exists — see corrected notes |
 | R23 | Trivy outages reported as CRITICAL vulns | ☐ Not started | | DB `BLOB_UNKNOWN` turned `main` red with a false security alert |
-| R20 | Frontend `test:fast*` scripts | ✅ Done | | `cross-env` + wired `FAST_CHECK_NUM_RUNS` into `pbtOptions`; var was previously dead |
-| R19 | Conditional hooks in `InsuranceStatusIndicator` | ✅ Done | | Severity corrected High → Low; React tolerates all-or-nothing early returns. Rule now `error` |
+| R20 | Frontend `test:fast*` scripts | ✅ Done | #348 | `cross-env` + wired `FAST_CHECK_NUM_RUNS` into `pbtOptions`; var was previously dead |
+| R19 | Conditional hooks in `InsuranceStatusIndicator` | ✅ Done | #348 | Severity corrected High → Low; React tolerates all-or-nothing early returns. Rule now `error` |
 | R6 | Add `ErrorBoundary` | ☐ Not started | | |
 | R4 | Shared accessible `<Modal>` shell | ☐ Not started | | Must satisfy 3 UxConsistency PBT guardrails |
 | R5 | Migrate 25 modals to the shell | ☐ Not started | | 7 batches (5a–5g); clears ~198 a11y warnings |

@@ -1,7 +1,7 @@
 const sqlite3 = require('sqlite3').verbose();
 const fs = require('fs');
 const path = require('path');
-const { getDatabasePath, ensureDirectories } = require('../config/paths');
+const { getDatabasePath, getConfigDir, ensureDirectories } = require('../config/paths');
 const logger = require('../config/logger');
 const { initializeInvoiceStorage } = require('../scripts/initializeInvoiceStorage');
 const { ALL_STATEMENTS } = require('./schema');
@@ -186,7 +186,7 @@ function openProductionDatabase() {
  */
 function getTestDbPath() {
   const workerId = process.env.JEST_WORKER_ID || '1';
-  return path.join(__dirname, '..', 'config', 'database', `test-expenses-worker-${workerId}.db`);
+  return path.join(getConfigDir(), 'database', `test-expenses-worker-${workerId}.db`);
 }
 
 /**

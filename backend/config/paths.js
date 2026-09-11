@@ -10,8 +10,9 @@ const logger = require('./logger');
 // Check if /config directory exists (containerized environment)
 const isContainerized = fs.existsSync('/config');
 
-// Base configuration directory
-const CONFIG_DIR = isContainerized ? '/config' : path.join(__dirname, '..', 'config');
+// CONFIG_DIR lets tests redirect all file I/O away from the real data tree.
+const CONFIG_DIR =
+  process.env.CONFIG_DIR || (isContainerized ? '/config' : path.join(__dirname, '..', 'config'));
 
 // Log the detected environment on module load (helps debug path issues)
 logger.info('Environment detection:', { isContainerized, CONFIG_DIR });

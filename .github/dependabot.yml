@@ -56,6 +56,14 @@ updates:
       prefix: "deps(root):"
     labels:
       - "dependencies"
+    # eslint-plugin-react and eslint-plugin-jsx-a11y still cap their peer range at
+    # ESLint 9, so ESLint 10 fails to install (ERESOLVE). Remove once both ship v10
+    # support — see R1 in specs/codebase-quality-remediation/spec.md.
+    ignore:
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@eslint/js"
+        update-types: ["version-update:semver-major"]
     groups:
       minor-and-patch:
         patterns:

@@ -131,7 +131,32 @@ function getDatabase() {
   if (nodeEnv && nodeEnv.trim() === 'test' && skipTestDb !== 'true') {
     return getTestDatabase();
   }
-  
+
+  // Memoised so the process holds ONE connection. Previously every call opened a
+  // new handle that was never closed, which meant closeDatabase() could not
+  // release the file before a backup restore overwrote it.
+  if (dbInstance) {
+    return Promise.resolve(dbInstance);
+  }
+  if (dbPromise) {
+    return dbPromise;
+  }
+
+  dbPromise = openProductionDatabase()
+    .then((db) => {
+      dbInstance = db;
+      dbPromise = null;
+      return db;
+    })
+    .catch((err) => {
+      dbPromise = null;
+      throw err;
+    });
+
+  return dbPromise;
+}
+
+function openProductionDatabase() {
   return new Promise((resolve, reject) => {
     // Use dynamic path from config (supports /config directory)
     const db = new sqlite3.Database(DB_PATH, (err) => {
@@ -220,6 +245,11 @@ function createTestDatabase() {
 // Singleton for test database (reused across test files)
 let testDbInstance = null;
 let testDbPromise = null;
+
+// Single production connection for this process. Must be released before any
+// code overwrites the database file (backup restore) — see closeDatabase().
+let dbInstance = null;
+let dbPromise = null;
 
 /**
  * Get or create the test database instance
@@ -440,9 +470,34 @@ async function recreateTestDatabase() {
  * This flushes all WAL contents into the main DB file and releases file locks,
  * which is critical before overwriting the DB file during backup restore.
  * Without this, stale WAL data can replay on the next connection and undo the restore.
+ *
+ * Clears the singleton, so the next getDatabase() opens a fresh connection
+ * against whatever file is on disk by then.
  */
 function closeDatabase() {
-  return new Promise((resolve, reject) => {
+  const live = dbInstance;
+  dbInstance = null;
+  dbPromise = null;
+
+  if (live) {
+    return new Promise((resolve) => {
+      live.run('PRAGMA wal_checkpoint(TRUNCATE)', (checkpointErr) => {
+        if (checkpointErr) {
+          logger.warn('WAL checkpoint failed during closeDatabase:', checkpointErr.message);
+        }
+        live.close((closeErr) => {
+          if (closeErr) {
+            logger.warn('Error closing database:', closeErr.message);
+          }
+          resolve();
+        });
+      });
+    });
+  }
+
+  // No live connection in this process (e.g. fresh worker). Still checkpoint, so
+  // a WAL left behind by a previous process is flushed before the file is replaced.
+  return new Promise((resolve) => {
     const db = new sqlite3.Database(DB_PATH, (err) => {
       if (err) {
         logger.warn('Could not open database for WAL checkpoint:', err.message);

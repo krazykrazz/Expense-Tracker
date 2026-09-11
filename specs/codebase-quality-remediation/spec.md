@@ -593,15 +593,32 @@ These are recorded here because they are the practical output of R21's absence.
 
 ### Acceptance Criteria
 
-1. A dependabot PR SHALL run the same test jobs as any other PR — no `SKIPPED` required
-   checks.
-2. `Backend Tests Status` and `Frontend Tests Status` SHALL reflect real test results for
-   dependabot PRs.
-3. Jobs that genuinely cannot succeed under dependabot's read-only token SHALL keep their
-   guard, with the reason recorded inline.
-4. Path filtering SHALL still apply, so a frontend-only bump does not run backend suites.
+1. THE two required checks (`Backend Tests Status`, `Frontend Tests Status`) and the jobs
+   they depend on SHALL run for `dependabot[bot]`-authored PRs.
+2. `Lockfile Integrity` SHALL run for dependabot PRs (it exists specifically to catch
+   lockfile drift, which is exactly what a dependency bump changes).
+3. THE `github.actor != 'dependabot[bot]'` guard MAY be retained on jobs where the cost
+   saving is real and the risk is nil: `Build and Push to GHCR` and `Deployment Health Check`.
+4. A dependabot PR that breaks a test SHALL be reported as failing, not `CLEAN`.
+5. THE change SHALL be verified against a real dependabot PR before closing.
 
-### Resolution (2026-09-11)
+### Design / Implementation Notes
+
+- Check whether the guards were added deliberately for CI-minutes cost. If so, a middle
+  path is to keep the PBT shards guarded (they are the expensive jobs) while enabling unit
+  tests + lockfile integrity, which catch the overwhelming majority of bad bumps.
+- Confirm `permissions:` and secret availability for `pull_request` events from dependabot —
+  dependabot PRs run with a read-only token by default, which is why some repos disable
+  these jobs. If a job needs secrets, use `pull_request_target` carefully or keep it guarded.
+- Consider enabling dependabot auto-merge only once tests actually gate it.
+
+### Test Plan
+
+- Open (or update) a dependabot PR and confirm `Backend Tests Status` and
+  `Frontend Tests Status` report `SUCCESS`/`FAILURE` rather than `SKIPPED`.
+- Deliberately verify a known-bad bump fails (can be done on a scratch branch).
+
+### Resolution (2026-09-11, PR #365)
 
 Removed `github.actor != 'dependabot[bot]'` from all ten test and quality jobs in
 [.github/workflows/ci.yml](.github/workflows/ci.yml): `path-filter`, `lockfile-integrity`,
@@ -609,15 +626,22 @@ Removed `github.actor != 'dependabot[bot]'` from all ten test and quality jobs i
 `frontend-tests`, `frontend-tests-status`, `security-audit`, `test-health-report`.
 
 None of them use secrets or need write scope, so dependabot's read-only `GITHUB_TOKEN` is
-sufficient. Removing the guard from `path-filter` is what makes AC4 hold — with it skipped,
-every downstream `needs.path-filter.outputs.*` was empty.
+sufficient — the middle path floated in the design notes (keeping the expensive PBT shards
+guarded) proved unnecessary.
 
-The two deploy jobs (`build-and-push-ghcr`, `deployment-health-check`) **keep** the guard.
-They request `contents: write` / `packages: write`, which dependabot events are not granted,
-so a run there could only fail. Both are also gated on `refs/heads/main` + `push`, so a
-dependabot PR never reaches them. Reason recorded inline per AC3.
+Removing the guard from `path-filter` is the load-bearing part: while that job was skipped,
+every downstream `needs.path-filter.outputs.*` was empty, so path filtering could not have
+worked for dependabot even if the test jobs had run.
+
+Per AC3, `build-and-push-ghcr` and `deployment-health-check` **keep** the guard — they
+request `contents: write` / `packages: write`, which dependabot events are not granted, so a
+run there could only fail. Reason recorded inline in the workflow.
 
 The `gh pr update-branch` workaround is now obsolete.
+
+> ⚠️ **AC5 is still outstanding.** This cannot be verified until the next real dependabot
+> PR opens; that PR should show executed checks rather than `skipping 0`. Do not consider
+> R21 fully closed until that is observed.
 
 ---
 
@@ -838,36 +862,6 @@ silently produced an empty/garbage report.
 - Point `TRIVY_DB_REPOSITORY` at a nonexistent repo and confirm the step reports an
   infrastructure error, not a vulnerability finding.
 - Confirm a genuine CRITICAL finding still fails the build with the correct message.
-
----
-
-### Acceptance Criteria
-
-1. THE two required checks (`Backend Tests Status`, `Frontend Tests Status`) and the jobs
-   they depend on SHALL run for `dependabot[bot]`-authored PRs.
-2. `Lockfile Integrity` SHALL run for dependabot PRs (it exists specifically to catch
-   lockfile drift, which is exactly what a dependency bump changes).
-3. THE `github.actor != 'dependabot[bot]'` guard MAY be retained on jobs where the cost
-   saving is real and the risk is nil: `Build and Push to GHCR` ([L436](.github/workflows/ci.yml#L436))
-   and `Deployment Health Check` ([L616](.github/workflows/ci.yml#L616)).
-4. A dependabot PR that breaks a test SHALL be reported as failing, not `CLEAN`.
-5. THE change SHALL be verified against a real dependabot PR before closing.
-
-### Design / Implementation Notes
-
-- Check whether the guards were added deliberately for CI-minutes cost. If so, a middle
-  path is to keep the PBT shards guarded (they are the expensive jobs) while enabling unit
-  tests + lockfile integrity, which catch the overwhelming majority of bad bumps.
-- Confirm `permissions:` and secret availability for `pull_request` events from dependabot —
-  dependabot PRs run with a read-only token by default, which is why some repos disable
-  these jobs. If a job needs secrets, use `pull_request_target` carefully or keep it guarded.
-- Consider enabling dependabot auto-merge only once tests actually gate it.
-
-### Test Plan
-
-- Open (or update) a dependabot PR and confirm `Backend Tests Status` and
-  `Frontend Tests Status` report `SUCCESS`/`FAILURE` rather than `SKIPPED`.
-- Deliberately verify a known-bad bump fails (can be done on a scratch branch).
 
 ---
 
@@ -2231,7 +2225,7 @@ These were reported during the audit but **disproved** by reading the source:
 | R1 | ESLint + Prettier toolchain | ✅ Done | #346 | ESLint **9** (plugins lack v10 peers); baseline 0 errors / 609 warnings |
 | R2 | Ignore generated test artifacts | ✅ No change needed | #346 | Already ignored & untracked; `test-budget.json` is a tracked *input* |
 | R3 | Sync root package version | ✅ Done | #346 | `version` removed + `private: true`; root is not one of the 7 locations |
-| R21 | Dependabot PRs bypass all CI checks | ✅ Done | | Guard removed from 10 test/quality jobs; kept on the 2 deploy jobs that need write scope. `gh pr update-branch` workaround now obsolete |
+| R21 | Dependabot PRs bypass all CI checks | ✅ Done (PR #365) | | Guard removed from 10 test/quality jobs; kept on the 2 deploy jobs that need write scope. **AC5 pending** — needs observing on the next real dependabot PR |
 | R22 | Backend PBT shards flake on shared test DB | ✅ Done | #350 | Root cause: `closeTestDatabase()` unlinked the file before the async `close()` finished. Budget also raised 90s → 150s |
 | R23 | Trivy outages reported as CRITICAL vulns | ☐ Not started | | DB `BLOB_UNKNOWN` turned `main` red with a false security alert |
 | R24 | Backup suites run against the real dev database | ✅ Done | | `CONFIG_DIR` now env-overridable; tests run against a wiped `.test-config` tree. Dev DB mtime and real invoice count unchanged by a full run |

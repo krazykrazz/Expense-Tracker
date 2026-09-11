@@ -156,12 +156,13 @@ Largest frontend source files:
 | R22 | Backend PBT shards flake on shared test DB | 0 | CI/Tests | Medium | Medium | Medium | — |
 | R23 | Trivy outages reported as CRITICAL vulns | 0 | CI | Medium | Low | Low | — |
 | R24 | Backup suites run against the real dev database | 0 | Tests/Safety | **High** | Medium | Medium | — |
-| R25 | `backupService.pbt.test.js` fails locally, passes in CI | 0 | Tests | **High** | Medium | Medium | — |
+| R25 | `backupService.pbt.test.js` fails locally, passes in CI | 0 | Tests | **High** | Medium | Medium | R26 |
+| R26 | `getDatabase()` leaks a connection on every call | 0 | Backend/Safety | **Critical** | Medium | High | — |
 
 > R18–R20 were **discovered by the linter added in R1**, not by the manual audit.
 > R21 was discovered while triaging the dependabot queue after the Phase 0 PR.
 > R22 and R23 were discovered while investigating CI failures that R21's workaround exposed.
-> R24 and R25 were discovered while validating R22.
+> R24 and R25 were discovered while validating R22; R26 while investigating R25.
 
 **Recommended execution order:** R1 → R2/R3 → R21 → R20 → R19 → R6 → R4 → R5 → R8 → R9 →
 R10 → R11/R12/R13 → R7 → R14/R15/R18 → R16 → R17.
@@ -931,6 +932,42 @@ differ sharply from Linux:
 - `Expected: 2, Received: 0` is consistent with archive creation silently failing, or
   listing not seeing files written under a different path convention.
 
+### Root cause (confirmed 2026-09-05) — see R26
+
+Investigation traced this to **leaked database connections**, not to archive handling.
+See **R26**, which is the underlying defect; R25 is its most visible symptom.
+
+Hypotheses eliminated along the way (do not re-tread):
+
+- ❌ **Illegal filenames on Windows.** The generator is constrained by
+  `isSafeFilename = /^[a-zA-Z0-9]+$/` (`backupService.pbt.test.js#L34`), so no
+  Windows-reserved characters can be produced.
+- ❌ **Missing Windows retry logic.** `_restoreDirectory` (`backupService.js#L793`) already
+  retries `EBUSY`/`EPERM` three times, and `archiveUtils.extractArchive#L139` already
+  retries `ZlibError`. Windows was considered by the original author.
+- ❌ **`closeDatabase()` is async-unsafe like R22's `closeTestDatabase()`.** It is actually
+  correct — it opens a connection, runs `PRAGMA wal_checkpoint(TRUNCATE)`, and closes with a
+  callback. The problem is *which* connection it closes (see R26).
+
+### Clean-state measurements
+
+Baseline matters here: starting from an already-corrupt database, **all 14** tests fail.
+Starting from a genuinely clean state (no `expenses.db`), only **3** fail:
+
+| Starting state | Result |
+|---|---|
+| Corrupt `expenses.db` present | 14 failed, 0 passed |
+| Clean (no `expenses.db`) | **3 failed, 11 passed** |
+
+The three genuine failures are all restore/listing properties:
+
+- Property 3 — Backup/Restore Round-Trip (`backupService.pbt.test.js#L446`)
+- Property 4 — Backup Listing Accuracy
+- Property 6 — Restore File Count Accuracy (`#L621`), `Expected: 2, Received: 0`
+
+Always clear `config/database/expenses.db` before measuring, or the cascade will hide the
+real signal.
+
 ### Acceptance Criteria
 
 1. THE root cause SHALL be identified and recorded (platform-specific behaviour vs. genuine
@@ -958,6 +995,106 @@ differ sharply from Linux:
 
 - Run on Windows and on Linux (or a container) and compare.
 - Once fixed, confirm `Get-FileHash` of `expenses.db` is unchanged by a full run (R24 AC5).
+
+---
+
+## R26: `getDatabase()` leaks a new SQLite connection on every call
+
+**User Story:** As a user restoring a backup, I want the restore to replace my database
+safely, so it cannot corrupt the file it is restoring into.
+
+> Discovered 2026-09-05 while investigating R25. **This is a production data-safety issue,
+> not just a test problem.**
+
+### Current Behavior
+
+For the production path, `getDatabase()` (`backend/database/db.js#L125`) constructs a
+**brand-new** connection on every call and never closes it:
+
+```js
+return new Promise((resolve, reject) => {
+  const db = new sqlite3.Database(DB_PATH, (err) => { ... resolve(db); });
+});
+```
+
+Contrast the test path, which correctly memoises a singleton in `testDbInstance`.
+
+Measured across `backend/repositories/**` and `backend/services/**` (excluding tests):
+
+| Metric | Count |
+|---|---|
+| `await getDatabase()` call sites | **212** |
+| Call sites that ever call `db.close()` | **0** |
+
+So every repository operation opens an OS file handle to `expenses.db` that is never
+released.
+
+### Why this corrupts the database during restore
+
+`restoreBackup()` (`backupService.js#L552-571`) does the right-looking thing:
+
+```js
+const { closeDatabase } = require('../database/db');
+await closeDatabase();              // checkpoint WAL + close
+if (fs.existsSync(walPath)) fs.unlinkSync(walPath);
+if (fs.existsSync(shmPath)) fs.unlinkSync(shmPath);
+fs.copyFileSync(extractedDbPath, DB_PATH);   // overwrite
+```
+
+But `closeDatabase()` (`db.js#L444`) opens **its own new connection**, checkpoints, and
+closes **that one**. It has no reference to — and cannot close — the connections leaked by
+the other 212 call sites. So `copyFileSync` overwrites `expenses.db` while an arbitrary
+number of live connections still hold it open, each with its own page cache and WAL state.
+
+This is the same defect class as R22 (replacing a file other connections still hold), one
+layer up.
+
+### Why it fails on Windows but passes in CI
+
+- **Linux:** `copyFileSync` writes through to the same inode. Existing handles see the new
+  bytes; SQLite often survives because the WAL was truncated first. CI is also short-lived
+  and low-concurrency, so few connections are outstanding.
+- **Windows:** file handles are far less forgiving, and cached pages from the pre-overwrite
+  database get flushed back over the new file, producing precisely the observed
+  `SQLITE_CORRUPT: database disk image is malformed`.
+
+This also explains **R24**: the corruption of the dev database is caused by the restore
+path itself, and `jest.globalSetup.js` then copies the corrupt file over the only backup.
+
+### Acceptance Criteria
+
+1. `getDatabase()` SHALL NOT open an unbounded number of connections. It SHALL return a
+   memoised connection (or a bounded pool) for the production path, mirroring the existing
+   `testDbInstance` pattern.
+2. `closeDatabase()` SHALL close **the connection(s) actually in use**, not a throwaway one.
+3. `restoreBackup()` SHALL NOT overwrite `DB_PATH` while any connection to it is open.
+4. AFTER a restore, subsequent queries SHALL transparently obtain a fresh connection.
+5. `PRAGMA integrity_check` on `expenses.db` SHALL return `ok` after a full local run of
+   `npm run test:backup:ci` on Windows.
+6. THE change SHALL NOT alter observable API behaviour.
+
+### Design / Implementation Notes
+
+- The minimal fix is contained to `db.js`: memoise the production connection exactly as
+  `getTestDatabase()` already does, and have `closeDatabase()` close and null that
+  singleton. The 212 call sites need no changes — they just receive the shared connection.
+- **Verify SQLite concurrency assumptions before landing.** A single shared connection
+  serialises writes, which is usually desirable for SQLite, but confirm no code depends on
+  independent connections (e.g. concurrent transactions — see `withTransaction` in R11).
+- Enable WAL mode on the shared connection; the repo already does this for production.
+- Restore must invalidate the singleton so post-restore queries reopen against the new file.
+- This interacts with **R11** (transaction helper consolidation) — do R26 first, since a
+  shared connection changes what a "transaction" means.
+- Consider whether the leak has been causing a slow file-descriptor climb in the production
+  container; worth checking `lsof`/handle counts on a long-running instance.
+
+### Test Plan
+
+- Unit: two `getDatabase()` calls return the same instance in production mode.
+- Integration: full backup → restore → `PRAGMA integrity_check` returns `ok` on Windows.
+- Integration: queries succeed immediately after a restore.
+- Regression: `npm run test:backup:ci` passes on Windows **and** in CI.
+- Soak: issue N API calls and confirm the open-handle count stays flat.
 
 ---
 
@@ -1894,7 +2031,8 @@ These were reported during the audit but **disproved** by reading the source:
 | R22 | Backend PBT shards flake on shared test DB | ✅ Done | | Root cause: `closeTestDatabase()` unlinked the file before the async `close()` finished |
 | R23 | Trivy outages reported as CRITICAL vulns | ☐ Not started | | DB `BLOB_UNKNOWN` turned `main` red with a false security alert |
 | R24 | Backup suites run against the real dev database | ☐ Not started | | **Corrupted the local dev DB; `pre-test-backup.db` overwritten with the corrupt copy** |
-| R25 | `backupService.pbt.test.js` fails locally, passes in CI | ☐ Not started | | Pre-existing (fails on `main` too); suspected Windows/Linux file-handling divergence |
+| R25 | `backupService.pbt.test.js` fails locally, passes in CI | ⏸ Blocked on R26 | | Clean-state baseline: 3 failed / 11 passed. Root cause is R26 |
+| R26 | `getDatabase()` leaks a connection on every call | ☐ Not started | | **212 call sites, 0 closes.** Restore overwrites the DB while connections are open — production data-safety issue |
 | R20 | Frontend `test:fast*` scripts | ✅ Done | #348 | `cross-env` + wired `FAST_CHECK_NUM_RUNS` into `pbtOptions`; var was previously dead |
 | R19 | Conditional hooks in `InsuranceStatusIndicator` | ✅ Done | #348 | Severity corrected High → Low; React tolerates all-or-nothing early returns. Rule now `error` |
 | R6 | Add `ErrorBoundary` | ☐ Not started | | |

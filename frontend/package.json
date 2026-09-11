@@ -30,10 +30,10 @@
   "devDependencies": {
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
-    "@testing-library/user-event": "^14.6.6",
+    "@testing-library/user-event": "^14.6.7",
     "@vitejs/plugin-react": "^6.1.1",
     "@vitest/ui": "^5.0.0",
-    "baseline-browser-mapping": "^2.11.20",
+    "baseline-browser-mapping": "^2.11.21",
     "cross-env": "^10.1.0",
     "fast-check": "^4.9.0",
     "jsdom": "^30.0.1",

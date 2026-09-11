@@ -38,6 +38,12 @@ updates:
       - "frontend"
     # Group minor and patch updates to reduce PR noise
     groups:
+      # @vitest/ui pins an exact peer on vitest, so these must move together or
+      # neither PR can install (ERESOLVE). Covers majors too, unlike the group below.
+      vitest:
+        patterns:
+          - "vitest"
+          - "@vitest/*"
       minor-and-patch:
         patterns:
           - "*"

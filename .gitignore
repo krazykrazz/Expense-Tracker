@@ -33,6 +33,9 @@ config/backups/
 backend/config/config/
 config/config/
 
+# Isolated config tree created by jest.globalSetup.js
+backend/.test-config/
+
 # Uploads directory (runtime user data)
 backend/uploads/
 

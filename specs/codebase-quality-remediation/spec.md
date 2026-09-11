@@ -3,8 +3,10 @@
 > **Spec format:** Single-document spec (requirements + design + tasks combined). One file per feature.
 > **Source:** Full-codebase audit performed 2026-09-04 using the `expense-tracker-audit` skill.
 > **Status (2026-09-11):** Phase 0 complete (R1–R3, PR #346). R19 + R20 merged (PR #348).
-> R22 merged (PR #350). R25 investigated → root cause recorded as R26 (PR #358).
-> **Next up: R26** (Critical, blocks R25), then R21.
+> R22 merged (PR #350). R26 merged (PR #363). R24 + R25 fixed together by isolating the
+> test config tree; R27's original root-cause hypothesis was **disproved** and the item
+> rewritten as defensive hardening.
+> **Next up: R21**, then R23.
 > Phase 1 proper (R4–R7) not started.
 
 ## Introduction
@@ -160,7 +162,7 @@ Largest frontend source files:
 | R24 | Backup suites run against the real dev database | 0 | Tests/Safety | **High** | Medium | Medium | — |
 | R25 | `backupService.pbt.test.js` fails locally, passes in CI | 0 | Tests | **High** | Medium | Medium | R26 |
 | R26 | `getDatabase()` leaks a connection on every call | 0 | Backend/Safety | **Critical** | Medium | High | — |
-| R27 | Backup reported successful yet unrestorable | 0 | Backend/Safety | **Critical** | Medium | Medium | — |
+| R27 | Archive creation is verified by a 2-byte header check | 0 | Backend/Safety | ~~Critical~~ Medium | Low | Medium | — |
 
 > R18–R20 were **discovered by the linter added in R1**, not by the manual audit.
 > R21 was discovered while triaging the dependabot queue after the Phase 0 PR.
@@ -169,11 +171,12 @@ Largest frontend source files:
 > R27 while validating R26.
 
 **Recommended execution order** (updated 2026-09-11 — ✅ = landed):
-✅ R1 → ✅ R2/R3 → ✅ R20 → ✅ R19 → ✅ R22 → **R26** → R25 → R21 → R23/R24 →
+✅ R1 → ✅ R2/R3 → ✅ R20 → ✅ R19 → ✅ R22 → ✅ R26 → ✅ R24/R25 → R21 → R23 → R27 →
 R6 → R4 → R5 → R8 → R9 → R10 → R11/R12/R13 → R7 → R14/R15/R18 → R16 → R17.
 
-R26 moved ahead of R21: it is a live production data-corruption path, and it blocks R25.
+R26 moved ahead of R21: it is a live production data-corruption path, and it blocked R25.
 R11 must follow R26, since a shared connection changes what a transaction means.
+R27 dropped down the order once it was shown **not** to be the cause of the R25 failures.
 
 ---
 
@@ -841,7 +844,7 @@ silently produced an empty/garbage report.
 
 ---
 
-## R24: Backup test suites run against the developer's real database
+## R24: Backup test suites run against the developer's real database — ✅ DONE
 
 **User Story:** As a developer, I want running the documented test suite to be safe, so it
 cannot corrupt or destroy my local data.
@@ -933,9 +936,29 @@ The suites then recreate a clean database exactly as they do on a CI runner.
 - Corrupt a scratch database deliberately and confirm `globalSetup` refuses to overwrite a
   known-good `pre-test-backup.db` with it.
 
+### Resolution (2026-09-11)
+
+Fixed by isolation rather than by hardening the pre-test backup. `CONFIG_DIR` in
+`backend/config/paths.js` was a module-level constant with no override, so tests had no
+supported way to redirect file I/O — which is why they wrote to the real tree in the first
+place. It now honours `process.env.CONFIG_DIR`, and `jest.globalSetup.js` points that at a
+throwaway `backend/.test-config/` tree which it wipes at the start of every run.
+
+`getTestDbPath()` (`db.js`) and `ensureTestDirectories()` (`jest.setup.js`) were also
+routed through `getConfigDir()` so no test path resolves against `backend/config` any more.
+
+ACs 3 and 4 (integrity-check and rotate `pre-test-backup.db`) were **dropped as obsolete**:
+the pre-test backup existed only to protect the real database from the test suite, and the
+suite no longer touches it. `process.env.PRE_TEST_BACKUP_PATH` had no readers anywhere in
+the repo, so nothing consumed it. That whole block was removed.
+
+Verified: dev `expenses.db` mtime identical before and after a full PBT run, and the real
+`config/invoices` + `config/statements` file count unchanged (1029 → 1029) across a backup
+run — AC5 satisfied.
+
 ---
 
-## R25: `backupService.pbt.test.js` fails locally but passes in CI
+## R25: `backupService.pbt.test.js` fails locally but passes in CI — ✅ DONE
 
 **User Story:** As a developer, I want the documented backup test script to pass on my
 machine, so I can validate backup changes before pushing.
@@ -1046,6 +1069,37 @@ real signal.
 - Run on Windows and on Linux (or a container) and compare.
 - Once fixed, confirm `Get-FileHash` of `expenses.db` is unchanged by a full run (R24 AC5).
 
+### Resolution (2026-09-11) — second root cause: file accumulation
+
+R26 fixed the SQLite corruption and one of the three failures. The remaining two had a
+separate cause, and it was **not** platform semantics and **not** archive corruption.
+
+The backup PBT suites write invoice and statement files into the real
+`backend/config/invoices` tree and delete them in a `finally`. A run that times out or
+crashes skips that cleanup. Every leaked file is then copied by *every* subsequent
+`performBackup()` — once to stage, once to archive — so the cost compounds:
+
+| | With ~1000 leaked files | Clean tree |
+|---|---|---|
+| `performBackup()` | 1,143 ms | **15 ms** |
+| Backup suite | 2 failed / 12 passed | **50/50 passed** |
+
+That is a ~75× slowdown, which pushed the suite past its timeout, which skipped more
+cleanup, which leaked more files. A self-reinforcing spiral, and it explains the 1000s+
+local runtimes. **CI never sees it because runners start with an empty tree**, and a clean
+run leaks zero files — so the divergence was never about Windows at all.
+
+Fixed by the same isolation change as R24: tests now run against a `.test-config` tree that
+is wiped before every run, so accumulation is impossible by construction.
+
+A prefix-matching purge (`invoice_`, `roundtrip_`, …) was tried first and **rejected**: it
+cleared 693 of 1022 strays, but the remaining 329 were written through the real upload path
+as `{expenseId}_{timestamp}_{name}.pdf` and are indistinguishable from genuine user data.
+The suite still failed. Pattern-matching cannot solve this safely; isolation can.
+
+Outcome: `npm run test:backup:ci` **50/50 passed in 56s** (was 3 failed / 637s), full unit
+suite 2229 passed, full PBT suite 1022 passed. AC4's "under 2 minutes" target met.
+
 ---
 
 ## R26: `getDatabase()` leaks a new SQLite connection on every call
@@ -1148,87 +1202,76 @@ path itself, and `jest.globalSetup.js` then copies the corrupt file over the onl
 
 ---
 
-## R27: A backup can be reported successful yet be unrestorable
+## R27: Archive creation is verified only by a 2-byte header check
 
 **User Story:** As a user, I want a backup that reports success to be guaranteed restorable,
 so my recovery plan is not silently broken.
 
-> Discovered 2026-09-11 while validating R26. **Product defect, not a test defect.**
+> Discovered 2026-09-11 while validating R26. **Severity corrected Critical → Medium on
+> 2026-09-11** — see "Correction" below.
 
-### Current Behavior
+### Correction: the original root-cause hypothesis was wrong
 
-After R26 fixed the database corruption, two `backupService.pbt.test.js` properties still
-fail — Property 3 (round-trip) and Property 6 (restore file count). The failures are no
-longer SQLite errors. They are archive errors raised during **restore**:
+R27 was originally filed as *"a backup can be reported successful yet be unrestorable"*,
+based on `ZlibError` failures in Properties 3 and 6. That framing inferred a defect in
+`createArchive` from a symptom, and it did not survive investigation.
 
-```
-ZlibError: zlib: invalid block type
-ZlibError: zlib: invalid stored block lengths
-ZlibError: zlib: invalid code lengths set
-```
+The real cause of those failures was **test-file accumulation** (see R25's resolution):
+~1000 leaked invoice files made every `performBackup()` ~75× slower, and the ZlibErrors were
+downstream of archives being written and read under heavy timeout pressure. With an isolated
+config tree the suite passes 50/50 with no archive verification changes at all.
 
-The archive on disk is not fully readable, yet `performBackup()` already returned
-`{ success: true }`.
+Hypotheses eliminated — do not re-tread:
 
-Nothing in the creation path verifies the archive is readable:
+- ❌ **`tar.create` resolves before the file handle is flushed.** No evidence; archives are
+  read back successfully once the tree is clean.
+- ❌ **`tar` library bug on Windows.** The retry loop in `extractArchive#L139` was a
+  reasonable defensive measure by the original author, but it is not covering a real
+  library defect here.
+- ❌ **Archive verification would have fixed the backup suite.** It would not have. Shipping
+  it as "the fix" would have looked conclusive while leaving the actual cause in place.
+
+### What remains genuinely worth fixing
+
+The original observation about weak verification is still **correct on its own merits**,
+just not causal:
 
 - `createArchive()` (`archiveUtils.js#L77-97`) calls `tar.create(...)`, then only
   `fs.promises.stat()`s the result for a size. A non-zero size proves nothing.
-- `_isValidGzipFile()` (`archiveUtils.js#L241`) reads **two bytes** and checks for the
-  gzip magic `0x1f 0x8b`. A truncated or partially-flushed archive passes this trivially —
-  the magic bytes are the first thing written.
+- `_isValidGzipFile()` (`archiveUtils.js#L241`) reads **two bytes** and checks for the gzip
+  magic `0x1f 0x8b`. A truncated archive passes trivially — the magic bytes are the first
+  thing written.
 
-So the only integrity signal is a 2-byte header check, and the failure is not discovered
-until someone tries to restore, which is exactly the worst moment.
-
-### Root cause — open question
-
-Two candidates, not yet distinguished:
-
-1. **The archive is written incompletely.** If `tar.create` resolves before the underlying
-   file handle is flushed and closed, a subsequent read sees a truncated stream.
-2. **A `tar` library bug on Windows.** `extractArchive` (`archiveUtils.js#L139`) already
-   carries a retry loop commented *"transient ZlibError on Windows (tar 7.5.13+)"*, so the
-   original author hit this too and treated it as a library-level flake.
-
-The existing retry masks the symptom intermittently but cannot help if the bytes on disk
-are genuinely wrong. Determining which applies is the first task.
-
-### Why this matters more than the test failures
-
-Backup/restore is the product's data-safety feature. A backup that reports success but
-cannot be restored is worse than a backup that fails loudly. The tests are currently the
-*only* thing surfacing this, and only on Windows.
+So if an archive ever *is* written badly (disk full, interrupted write, failing storage),
+nothing detects it until a restore is attempted, which is the worst possible moment. This is
+defence in depth for a data-safety feature, not a known live bug.
 
 ### Acceptance Criteria
 
-1. `performBackup()` SHALL NOT report success unless the archive has been verified
-   readable end-to-end (e.g. a full `tar.list` / inflate pass over the finished file).
+1. `performBackup()` SHALL NOT report success unless the archive has been verified readable
+   end-to-end (e.g. a full `tar.list` / inflate pass over the finished file).
 2. Verification SHALL detect truncation, not just a valid gzip header — the 2-byte check
    SHALL be replaced or supplemented.
-3. IF creation is racing a flush, the write SHALL be fully flushed and closed before
-   `createArchive` resolves.
-4. A failed verification SHALL surface as a failed backup with an actionable message.
-5. `backupService.pbt.test.js` Properties 3 and 6 SHALL pass on Windows and Linux.
-6. THE fix SHALL NOT rely solely on retrying, since a corrupt file will not fix itself.
+3. A failed verification SHALL surface as a failed backup with an actionable message.
+4. THE verification cost SHALL be measured and recorded; it SHALL NOT regress the backup
+   suite runtime materially.
 
 ### Design / Implementation Notes
 
-- Cheapest correct verification is to run `tar.list({ file: outputPath })` (or inflate to a
-  null sink) after creation and fail the backup if it throws. Cost is one extra read per
-  backup, which is acceptable for a data-safety guarantee.
-- Check whether `tar.create`'s returned promise actually awaits the file close on this
-  version; if not, that alone explains the truncation.
+- Cheapest correct verification is `tar.list({ file: outputPath })` (or inflate to a null
+  sink) after creation, failing the backup if it throws. One extra read per backup.
+- AC4 matters more than it looks: R25 showed this suite is sensitive to per-backup cost.
+  Verify against the clean-tree 15ms baseline, not the old degraded numbers.
 - Consider recording a checksum alongside each archive so restore can detect a bad file
   before it starts mutating anything.
-- Relates to **R24**: if a restore aborts midway on a ZlibError, confirm the rollback path
+- Relates to **R24**: if a restore aborts midway on a read error, confirm the rollback path
   leaves the original database intact.
 
 ### Test Plan
 
-- Reproduce with `npm run test:backup:ci` on Windows; Properties 3 and 6 fail with `ZlibError`.
 - Deliberately truncate an archive and confirm verification rejects it.
 - Confirm a verified-good archive still restores successfully.
+- Re-measure `performBackup()` against the clean-tree baseline to satisfy AC4.
 
 ---
 
@@ -2164,10 +2207,10 @@ These were reported during the audit but **disproved** by reading the source:
 | R21 | Dependabot PRs bypass all CI checks | ☐ Not started | | **Unblocked** — R22 is done. 4 concrete saves logged; see R21 evidence log |
 | R22 | Backend PBT shards flake on shared test DB | ✅ Done | #350 | Root cause: `closeTestDatabase()` unlinked the file before the async `close()` finished. Budget also raised 90s → 150s |
 | R23 | Trivy outages reported as CRITICAL vulns | ☐ Not started | | DB `BLOB_UNKNOWN` turned `main` red with a false security alert |
-| R24 | Backup suites run against the real dev database | ☐ Not started | | **Corrupted the local dev DB; `pre-test-backup.db` overwritten with the corrupt copy** |
-| R25 | `backupService.pbt.test.js` fails locally, passes in CI | ⏸ Blocked on R27 | #358 | R26 cleared the SQLite corruption and 1 test. Remaining 2 failures are `ZlibError` — now tracked as R27 |
-| R26 | `getDatabase()` leaks a connection on every call | ✅ Done | | 212 call sites → 1 memoised connection. `integrity_check` now returns **`ok`** after the backup suite (was ~100 corrupt pages) |
-| R27 | Backup reported successful yet unrestorable | ☐ Not started | | `_isValidGzipFile` checks only 2 magic bytes; restore fails with `ZlibError`. **Data-safety defect** |
+| R24 | Backup suites run against the real dev database | ✅ Done | | `CONFIG_DIR` now env-overridable; tests run against a wiped `.test-config` tree. Dev DB mtime and real invoice count unchanged by a full run |
+| R25 | `backupService.pbt.test.js` fails locally, passes in CI | ✅ Done | | Second root cause: ~1000 leaked invoice files made every backup ~75× slower. **50/50 passing in 56s** (was 3 failed / 637s) |
+| R26 | `getDatabase()` leaks a connection on every call | ✅ Done | #363 | 212 call sites → 1 memoised connection. `integrity_check` now returns **`ok`** after the backup suite (was ~100 corrupt pages) |
+| R27 | Archive creation verified only by a 2-byte header check | ☐ Not started | | **Original root-cause hypothesis disproved** — was not the cause of R25. Retained as defence in depth; severity Critical → Medium |
 | R20 | Frontend `test:fast*` scripts | ✅ Done | #348 | `cross-env` + wired `FAST_CHECK_NUM_RUNS` into `pbtOptions`; var was previously dead |
 | R19 | Conditional hooks in `InsuranceStatusIndicator` | ✅ Done | #348 | Severity corrected High → Low; React tolerates all-or-nothing early returns. Rule now `error` |
 | R6 | Add `ErrorBoundary` | ☐ Not started | | |

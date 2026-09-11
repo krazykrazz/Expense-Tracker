@@ -20,6 +20,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { getConfigDir } = require('./config/paths');
 const { getTestDatabase, closeTestDatabase } = require('./database/db');
 
 // Detect CI environment
@@ -36,7 +37,7 @@ if (isCI) {
 
 // Ensure required directories exist for file-based tests
 const ensureTestDirectories = () => {
-  const configDir = path.join(__dirname, 'config');
+  const configDir = getConfigDir();
   const directories = [
     path.join(configDir, 'database'),
     path.join(configDir, 'backups'),

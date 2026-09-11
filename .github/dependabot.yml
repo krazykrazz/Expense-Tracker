@@ -38,6 +38,12 @@ updates:
       - "frontend"
     # Group minor and patch updates to reduce PR noise
     groups:
+      # @vitest/ui pins an exact peer on vitest, so these must move together or
+      # neither PR can install (ERESOLVE). Covers majors too, unlike the group below.
+      vitest:
+        patterns:
+          - "vitest"
+          - "@vitest/*"
       minor-and-patch:
         patterns:
           - "*"
@@ -56,6 +62,14 @@ updates:
       prefix: "deps(root):"
     labels:
       - "dependencies"
+    # eslint-plugin-react and eslint-plugin-jsx-a11y still cap their peer range at
+    # ESLint 9, so ESLint 10 fails to install (ERESOLVE). Remove once both ship v10
+    # support — see R1 in specs/codebase-quality-remediation/spec.md.
+    ignore:
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@eslint/js"
+        update-types: ["version-update:semver-major"]
     groups:
       minor-and-patch:
         patterns:

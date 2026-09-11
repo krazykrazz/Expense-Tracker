@@ -2,8 +2,10 @@
 
 > **Spec format:** Single-document spec (requirements + design + tasks combined). One file per feature.
 > **Source:** Full-codebase audit performed 2026-09-04 using the `expense-tracker-audit` skill.
-> **Status:** Phase 0 complete (R1–R3, PR #346). R19 + R20 merged (PR #348).
-> Remaining CI items R21–R23 open. Phase 1 proper (R4–R7) not started.
+> **Status (2026-09-11):** Phase 0 complete (R1–R3, PR #346). R19 + R20 merged (PR #348).
+> R22 merged (PR #350). R25 investigated → root cause recorded as R26 (PR #358).
+> **Next up: R26** (Critical, blocks R25), then R21.
+> Phase 1 proper (R4–R7) not started.
 
 ## Introduction
 
@@ -164,8 +166,12 @@ Largest frontend source files:
 > R22 and R23 were discovered while investigating CI failures that R21's workaround exposed.
 > R24 and R25 were discovered while validating R22; R26 while investigating R25.
 
-**Recommended execution order:** R1 → R2/R3 → R21 → R20 → R19 → R6 → R4 → R5 → R8 → R9 →
-R10 → R11/R12/R13 → R7 → R14/R15/R18 → R16 → R17.
+**Recommended execution order** (updated 2026-09-11 — ✅ = landed):
+✅ R1 → ✅ R2/R3 → ✅ R20 → ✅ R19 → ✅ R22 → **R26** → R25 → R21 → R23/R24 →
+R6 → R4 → R5 → R8 → R9 → R10 → R11/R12/R13 → R7 → R14/R15/R18 → R16 → R17.
+
+R26 moved ahead of R21: it is a live production data-corruption path, and it blocks R25.
+R11 must follow R26, since a shared connection changes what a transaction means.
 
 ---
 
@@ -539,6 +545,48 @@ The point stands regardless of root cause: **CI reported `CLEAN` for a PR whose 
 was red.** Whether the redness came from the dependency or from a latent flake, the
 required checks did not surface it.
 
+### Evidence log
+
+Every entry below reported `mergeStateStatus=CLEAN` with all test jobs at `skipping 0`.
+Forcing a real run with `gh pr update-branch` is the only reason any of it was caught.
+
+| Date | PR | Bump | What real CI revealed |
+|---|---|---|---|
+| 2026-09-04 | #343 | `jest` 30.4.2 → 30.5.0 | 3 PBT shards red (later traced to the R22 flake, not the bump) |
+| 2026-09-11 | #352 / #353 | `eslint` 9 → 10 | **Unbuildable.** `ERESOLVE` — plugins cap at ESLint 9. Closed. |
+| 2026-09-11 | #355 / #356 | `vitest` 4 → 5 | **Mutually blocking.** `@vitest/ui` pins an exact peer, so neither installs alone. Failed in 9s / 15s. Closed, superseded by #360. |
+| 2026-09-11 | #360 | `vitest` 4 → 5 (combined) | A genuine vitest 5 breaking change in 3 test files (see below) |
+
+Of six dependabot PRs open on 2026-09-11, **four were not mergeable as-is** — two
+structurally impossible, two requiring a code fix. All six showed `CLEAN`.
+
+This also reframes the cost argument for R21: the guards were presumably added to save CI
+minutes, but the manual `update-branch` dance costs a full CI run *anyway*, plus human
+triage time, and only happens when someone remembers.
+
+### Known dependency constraints (discovered via this workaround)
+
+These are recorded here because they are the practical output of R21's absence.
+
+- **ESLint is pinned to 9.** `eslint-plugin-react` (peer `^9.7`) and
+  `eslint-plugin-jsx-a11y` (peer `^9`) have no v10 support; `npm i eslint@10` fails with
+  `ERESOLVE`. `.github/dependabot.yml` now ignores **major** bumps for `eslint` and
+  `@eslint/js` (PR #359). `eslint-plugin-react-hooks@7` already supports v10 — remove the
+  ignore rule once the other two publish.
+- **`vitest` and `@vitest/*` must move together.** `@vitest/ui` declares an *exact* peer on
+  `vitest` (e.g. `vitest@"4.1.11"`), so a split bump can never install. `.github/dependabot.yml`
+  now groups them with no `update-types` filter, so majors arrive as one PR (PR #359).
+- **vitest 5 breaking change:** jsdom exposes `sessionStorage`/`localStorage` as
+  getter-only, so `global.sessionStorage = mock` throws
+  `TypeError: Cannot set property ... which has only a getter`. Use
+  `vi.stubGlobal('sessionStorage', mock)` + `vi.unstubAllGlobals()`. Fixed in three
+  `BudgetAlert*.integration.test.jsx` files (PR #360).
+
+> **Validation note:** frontend suites must be run locally with `CI=true`
+> (`npx cross-env CI=true npx vitest --run`). `vitest.setup.js` and `pbtOptions` branch on
+> `isCI`, so a run without it takes different code paths. The vitest 5 breakage passed
+> locally without `CI=true` and only failed in CI.
+
 ---
 
 ## R22: Backend PBT shards flake on shared test database
@@ -680,12 +728,12 @@ failures. Consider whether that retry is hiding other real flakes.
   `billingCycleRepository.consolidated.pbt.test.js#L485`) already used `await`, so their
   intent is now actually honoured rather than silently ignored.
 
-### Remaining work (not covered by the fix)
+### Remaining work (not covered by the fix) — ✅ done in #350
 
-The runtime budget is a **separate** defect and still needs attention:
-`backend-pbt-shard.maxSeconds = 90` sits inside the observed 41s–113s band, so it will keep
-producing false reds even with the race fixed. Re-derive it from post-fix timings with
-headroom, or measure only the jest invocation rather than the whole step.
+The runtime budget was a **separate** defect: `backend-pbt-shard.maxSeconds = 90` sat inside
+the observed 41s–113s band, so it produced false reds even with the race fixed. Raised to
+**150s** in PR #350, with the rationale recorded in `test-budget.json`. Re-tighten once
+post-fix CI timings have settled.
 
 ### Test Plan
 
@@ -2027,12 +2075,12 @@ These were reported during the audit but **disproved** by reading the source:
 | R1 | ESLint + Prettier toolchain | ✅ Done | #346 | ESLint **9** (plugins lack v10 peers); baseline 0 errors / 609 warnings |
 | R2 | Ignore generated test artifacts | ✅ No change needed | #346 | Already ignored & untracked; `test-budget.json` is a tracked *input* |
 | R3 | Sync root package version | ✅ Done | #346 | `version` removed + `private: true`; root is not one of the 7 locations |
-| R21 | Dependabot PRs bypass all CI checks | ☐ Not started | | 12 guarded jobs incl. both required checks; workaround = `gh pr update-branch`. **Do R22 first** |
-| R22 | Backend PBT shards flake on shared test DB | ✅ Done | | Root cause: `closeTestDatabase()` unlinked the file before the async `close()` finished |
+| R21 | Dependabot PRs bypass all CI checks | ☐ Not started | | **Unblocked** — R22 is done. 4 concrete saves logged; see R21 evidence log |
+| R22 | Backend PBT shards flake on shared test DB | ✅ Done | #350 | Root cause: `closeTestDatabase()` unlinked the file before the async `close()` finished. Budget also raised 90s → 150s |
 | R23 | Trivy outages reported as CRITICAL vulns | ☐ Not started | | DB `BLOB_UNKNOWN` turned `main` red with a false security alert |
 | R24 | Backup suites run against the real dev database | ☐ Not started | | **Corrupted the local dev DB; `pre-test-backup.db` overwritten with the corrupt copy** |
-| R25 | `backupService.pbt.test.js` fails locally, passes in CI | ⏸ Blocked on R26 | | Clean-state baseline: 3 failed / 11 passed. Root cause is R26 |
-| R26 | `getDatabase()` leaks a connection on every call | ☐ Not started | | **212 call sites, 0 closes.** Restore overwrites the DB while connections are open — production data-safety issue |
+| R25 | `backupService.pbt.test.js` fails locally, passes in CI | ⏸ Blocked on R26 | #358 | Clean-state baseline: 3 failed / 11 passed. Root cause is R26 |
+| R26 | `getDatabase()` leaks a connection on every call | ☐ Not started | #358 (spec) | **212 call sites, 0 closes.** Restore overwrites the DB while connections are open — production data-safety issue |
 | R20 | Frontend `test:fast*` scripts | ✅ Done | #348 | `cross-env` + wired `FAST_CHECK_NUM_RUNS` into `pbtOptions`; var was previously dead |
 | R19 | Conditional hooks in `InsuranceStatusIndicator` | ✅ Done | #348 | Severity corrected High → Low; React tolerates all-or-nothing early returns. Rule now `error` |
 | R6 | Add `ErrorBoundary` | ☐ Not started | | |

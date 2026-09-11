@@ -32,13 +32,11 @@ vi.mock('../../services/budgetApi');
  */
 
 describe('Budget Alert Real-time Updates - Integration Test', () => {
-  let originalSessionStorage;
-
   beforeEach(() => {
     vi.clearAllMocks();
-    
-    // Mock sessionStorage
-    originalSessionStorage = global.sessionStorage;
+
+    // jsdom exposes sessionStorage as a getter-only property, so it must be
+    // stubbed rather than assigned.
     const mockStorage = {
       store: {},
       getItem: vi.fn((key) => mockStorage.store[key] || null),
@@ -46,11 +44,11 @@ describe('Budget Alert Real-time Updates - Integration Test', () => {
       removeItem: vi.fn((key) => { delete mockStorage.store[key]; }),
       clear: vi.fn(() => { mockStorage.store = {}; })
     };
-    global.sessionStorage = mockStorage;
+    vi.stubGlobal('sessionStorage', mockStorage);
   });
 
   afterEach(() => {
-    global.sessionStorage = originalSessionStorage;
+    vi.unstubAllGlobals();
   });
 
   it('should update alerts in real-time when expenses change', async () => {

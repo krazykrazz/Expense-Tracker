@@ -5,9 +5,8 @@
 > **Status (2026-09-11):** Phase 0 complete (R1–R3, PR #346). R19 + R20 merged (PR #348).
 > R22 merged (PR #350). R26 merged (PR #363). R24 + R25 fixed together by isolating the
 > test config tree; R27's original root-cause hypothesis was **disproved** and the item
-> rewritten as defensive hardening.
-> **Next up: R21**, then R23.
-> Phase 1 proper (R4–R7) not started.
+> rewritten as defensive hardening. R21 fixed — dependabot PRs now run real CI.
+> **Next up: R23**, then Phase 1 proper (R4–R7).
 
 ## Introduction
 
@@ -171,7 +170,7 @@ Largest frontend source files:
 > R27 while validating R26.
 
 **Recommended execution order** (updated 2026-09-11 — ✅ = landed):
-✅ R1 → ✅ R2/R3 → ✅ R20 → ✅ R19 → ✅ R22 → ✅ R26 → ✅ R24/R25 → R21 → R23 → R27 →
+✅ R1 → ✅ R2/R3 → ✅ R20 → ✅ R19 → ✅ R22 → ✅ R26 → ✅ R24/R25 → ✅ R21 → R23 → R27 →
 R6 → R4 → R5 → R8 → R9 → R10 → R11/R12/R13 → R7 → R14/R15/R18 → R16 → R17.
 
 R26 moved ahead of R21: it is a live production data-corruption path, and it blocked R25.
@@ -193,7 +192,7 @@ changing any application code.
 | R2 | ✅ Already satisfied — no change required (see R2 findings) |
 | R3 | ✅ Done — root `version` removed, `private: true` added |
 | R20 | ✅ Done — `cross-env` added; `FAST_CHECK_NUM_RUNS` wired into `pbtOptions` (was dead code) |
-| R21 | ☐ New — surfaced while triaging the dependabot queue |
+| R21 | ✅ Fixed — guard removed from test jobs, kept on deploy jobs |
 
 Shipped as **PR #346** (issue #345), merged 2026-09-04 with all 12 CI checks green.
 
@@ -495,7 +494,7 @@ PBT suites correctly keeps its explicit override — consistent with AC3.
 
 ---
 
-## R21: Dependabot PRs bypass all CI checks
+## R21: Dependabot PRs bypass all CI checks — ✅ DONE
 
 **User Story:** As a maintainer, I want dependency bumps to be tested before they reach
 `main`, so a bad upgrade cannot land unverified.
@@ -591,6 +590,34 @@ These are recorded here because they are the practical output of R21's absence.
 > (`npx cross-env CI=true npx vitest --run`). `vitest.setup.js` and `pbtOptions` branch on
 > `isCI`, so a run without it takes different code paths. The vitest 5 breakage passed
 > locally without `CI=true` and only failed in CI.
+
+### Acceptance Criteria
+
+1. A dependabot PR SHALL run the same test jobs as any other PR — no `SKIPPED` required
+   checks.
+2. `Backend Tests Status` and `Frontend Tests Status` SHALL reflect real test results for
+   dependabot PRs.
+3. Jobs that genuinely cannot succeed under dependabot's read-only token SHALL keep their
+   guard, with the reason recorded inline.
+4. Path filtering SHALL still apply, so a frontend-only bump does not run backend suites.
+
+### Resolution (2026-09-11)
+
+Removed `github.actor != 'dependabot[bot]'` from all ten test and quality jobs in
+[.github/workflows/ci.yml](.github/workflows/ci.yml): `path-filter`, `lockfile-integrity`,
+`backend-unit-tests`, `backend-pbt-shards`, `backend-pbt-tests`, `backend-tests-status`,
+`frontend-tests`, `frontend-tests-status`, `security-audit`, `test-health-report`.
+
+None of them use secrets or need write scope, so dependabot's read-only `GITHUB_TOKEN` is
+sufficient. Removing the guard from `path-filter` is what makes AC4 hold — with it skipped,
+every downstream `needs.path-filter.outputs.*` was empty.
+
+The two deploy jobs (`build-and-push-ghcr`, `deployment-health-check`) **keep** the guard.
+They request `contents: write` / `packages: write`, which dependabot events are not granted,
+so a run there could only fail. Both are also gated on `refs/heads/main` + `push`, so a
+dependabot PR never reaches them. Reason recorded inline per AC3.
+
+The `gh pr update-branch` workaround is now obsolete.
 
 ---
 
@@ -2204,7 +2231,7 @@ These were reported during the audit but **disproved** by reading the source:
 | R1 | ESLint + Prettier toolchain | ✅ Done | #346 | ESLint **9** (plugins lack v10 peers); baseline 0 errors / 609 warnings |
 | R2 | Ignore generated test artifacts | ✅ No change needed | #346 | Already ignored & untracked; `test-budget.json` is a tracked *input* |
 | R3 | Sync root package version | ✅ Done | #346 | `version` removed + `private: true`; root is not one of the 7 locations |
-| R21 | Dependabot PRs bypass all CI checks | ☐ Not started | | **Unblocked** — R22 is done. 4 concrete saves logged; see R21 evidence log |
+| R21 | Dependabot PRs bypass all CI checks | ✅ Done | | Guard removed from 10 test/quality jobs; kept on the 2 deploy jobs that need write scope. `gh pr update-branch` workaround now obsolete |
 | R22 | Backend PBT shards flake on shared test DB | ✅ Done | #350 | Root cause: `closeTestDatabase()` unlinked the file before the async `close()` finished. Budget also raised 90s → 150s |
 | R23 | Trivy outages reported as CRITICAL vulns | ☐ Not started | | DB `BLOB_UNKNOWN` turned `main` red with a false security alert |
 | R24 | Backup suites run against the real dev database | ✅ Done | | `CONFIG_DIR` now env-overridable; tests run against a wiped `.test-config` tree. Dev DB mtime and real invoice count unchanged by a full run |

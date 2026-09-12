@@ -2,11 +2,12 @@
 
 > **Spec format:** Single-document spec (requirements + design + tasks combined). One file per feature.
 > **Source:** Full-codebase audit performed 2026-09-04 using the `expense-tracker-audit` skill.
-> **Status (2026-09-11):** Phase 0 complete (R1–R3, PR #346). R19 + R20 merged (PR #348).
+> **Status (2026-09-12):** Phase 0 complete (R1–R3, PR #346). R19 + R20 merged (PR #348).
 > R22 merged (PR #350). R26 merged (PR #363). R24 + R25 fixed together by isolating the
-> test config tree; R27's original root-cause hypothesis was **disproved** and the item
-> rewritten as defensive hardening. R21 fixed — dependabot PRs now run real CI.
-> **Next up: R23**, then Phase 1 proper (R4–R7).
+> test config tree (PR #364); R27's original root-cause hypothesis was **disproved** and the
+> item rewritten as defensive hardening. R21 fixed (PR #365) — dependabot PRs now run real
+> CI. R23 fixed — scanner outages no longer report as vulnerabilities.
+> **Phase 0 is now complete. Next up: Phase 1, starting with R6.**
 
 ## Introduction
 
@@ -169,8 +170,8 @@ Largest frontend source files:
 > R24 and R25 were discovered while validating R22; R26 while investigating R25;
 > R27 while validating R26.
 
-**Recommended execution order** (updated 2026-09-11 — ✅ = landed):
-✅ R1 → ✅ R2/R3 → ✅ R20 → ✅ R19 → ✅ R22 → ✅ R26 → ✅ R24/R25 → ✅ R21 → R23 → R27 →
+**Recommended execution order** (updated 2026-09-12 — ✅ = landed):
+✅ R1 → ✅ R2/R3 → ✅ R20 → ✅ R19 → ✅ R22 → ✅ R26 → ✅ R24/R25 → ✅ R21 → ✅ R23 → R27 →
 R6 → R4 → R5 → R8 → R9 → R10 → R11/R12/R13 → R7 → R14/R15/R18 → R16 → R17.
 
 R26 moved ahead of R21: it is a live production data-corruption path, and it blocked R25.
@@ -800,7 +801,7 @@ post-fix CI timings have settled.
 
 ---
 
-## R23: Trivy infrastructure failures are reported as CRITICAL vulnerabilities
+## R23: Trivy infrastructure failures are reported as CRITICAL vulnerabilities — ✅ DONE
 
 **User Story:** As a maintainer, I want a scanner outage to be distinguishable from a real
 vulnerability finding, so I don't chase a security alert that isn't one.
@@ -862,6 +863,45 @@ silently produced an empty/garbage report.
 - Point `TRIVY_DB_REPOSITORY` at a nonexistent repo and confirm the step reports an
   infrastructure error, not a vulnerability finding.
 - Confirm a genuine CRITICAL finding still fails the build with the correct message.
+
+### Resolution (2026-09-12)
+
+Restructured the step so the scan and the gate are separate concerns. Trivy now runs **once**
+with `--format json --exit-code 0`, and the pass/fail decision is made afterwards by querying
+the JSON with `jq`. Because the scan no longer uses `--exit-code 1`, a non-zero exit can only
+mean "Trivy failed to run" — which is reported with an explicitly different message stating
+the image was **not assessed** (AC1).
+
+The DB download is retried 3 times across two mirrors, `ghcr.io/aquasecurity/trivy-db:2` and
+`mirror.gcr.io/aquasec/trivy-db:2` — the latter being the one that returned `BLOB_UNKNOWN`
+and turned `main` red (AC2). `set -euo pipefail` is now set, and the informational report is
+produced by `trivy convert` from the JSON rather than by a `tee` pipeline, so there is no
+pipe left to mask a fatal error (AC3). The CRITICAL gate still fails the build (AC4).
+
+Collapsing two full scans into one also halves the exposure to a DB outage and removes a
+duplicate image pull.
+
+**Additional defect found and fixed while restructuring:** the summary counted severities
+with `grep -c "CRITICAL" trivy-results.txt`, which counts *lines containing the word* —
+including the table header, the severity legend and any package whose name contains the
+string. Every severity count in every previous build summary was inflated. Counts are now
+derived per-vulnerability from the JSON.
+
+### Verification (AC5)
+
+AC5 asks for both cases to be simulated. Since neither can be triggered on demand in CI, the
+real step script is extracted from `ci.yml` by a YAML parser and executed against a stubbed
+`docker`, so the assertions run against the shipped code rather than a copy:
+
+| Scenario | Expected | Result |
+|---|---|---|
+| Vulnerability DB unreachable | exit 1, infrastructure message, **no** vulnerability claim | ✅ |
+| Genuine CRITICAL finding | exit 1, `found 1 CRITICAL vulnerabilities` | ✅ |
+| Clean image (HIGH/MEDIUM only) | exit 0, accurate per-severity counts | ✅ |
+| First DB mirror fails, fallback works | exit 0, scan completes | ✅ |
+
+> The harness is a throwaway — it is not committed, since it depends on stubbing `docker`
+> and adds a maintenance surface disproportionate to a single CI step.
 
 ---
 
@@ -2227,7 +2267,7 @@ These were reported during the audit but **disproved** by reading the source:
 | R3 | Sync root package version | ✅ Done | #346 | `version` removed + `private: true`; root is not one of the 7 locations |
 | R21 | Dependabot PRs bypass all CI checks | ✅ Done (PR #365) | | Guard removed from 10 test/quality jobs; kept on the 2 deploy jobs that need write scope. **AC5 pending** — needs observing on the next real dependabot PR |
 | R22 | Backend PBT shards flake on shared test DB | ✅ Done | #350 | Root cause: `closeTestDatabase()` unlinked the file before the async `close()` finished. Budget also raised 90s → 150s |
-| R23 | Trivy outages reported as CRITICAL vulns | ☐ Not started | | DB `BLOB_UNKNOWN` turned `main` red with a false security alert |
+| R23 | Trivy outages reported as CRITICAL vulns | ✅ Done | | Single JSON scan + `jq` gate, retries across 2 DB mirrors. Also fixed inflated severity counts in the build summary (`grep -c` counted matching lines) |
 | R24 | Backup suites run against the real dev database | ✅ Done | | `CONFIG_DIR` now env-overridable; tests run against a wiped `.test-config` tree. Dev DB mtime and real invoice count unchanged by a full run |
 | R25 | `backupService.pbt.test.js` fails locally, passes in CI | ✅ Done | | Second root cause: ~1000 leaked invoice files made every backup ~75× slower. **50/50 passing in 56s** (was 3 failed / 637s) |
 | R26 | `getDatabase()` leaks a connection on every call | ✅ Done | #363 | 212 call sites → 1 memoised connection. `integrity_check` now returns **`ok`** after the backup suite (was ~100 corrupt pages) |

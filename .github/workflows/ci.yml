@@ -36,7 +36,6 @@ jobs:
   path-filter:
     name: Detect Changed Paths
     runs-on: ubuntu-latest
-    if: github.actor != 'dependabot[bot]'
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
       frontend: ${{ steps.filter.outputs.frontend }}
@@ -94,7 +93,6 @@ jobs:
   lockfile-integrity:
     name: Lockfile Integrity
     runs-on: ubuntu-latest
-    if: github.actor != 'dependabot[bot]'
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -122,12 +120,10 @@ jobs:
     runs-on: ubuntu-latest
     needs: path-filter
     if: |
-      github.actor != 'dependabot[bot]' && (
-        needs.path-filter.outputs.backend == 'true' ||
-        needs.path-filter.outputs.shared == 'true' ||
-        needs.path-filter.outputs.empty_pr == 'true' ||
-        needs.path-filter.result == 'failure'
-      )
+      needs.path-filter.outputs.backend == 'true' ||
+      needs.path-filter.outputs.shared == 'true' ||
+      needs.path-filter.outputs.empty_pr == 'true' ||
+      needs.path-filter.result == 'failure'
     defaults:
       run:
         working-directory: backend
@@ -171,12 +167,10 @@ jobs:
     runs-on: ubuntu-latest
     needs: path-filter
     if: |
-      github.actor != 'dependabot[bot]' && (
-        needs.path-filter.outputs.backend == 'true' ||
-        needs.path-filter.outputs.shared == 'true' ||
-        needs.path-filter.outputs.empty_pr == 'true' ||
-        needs.path-filter.result == 'failure'
-      )
+      needs.path-filter.outputs.backend == 'true' ||
+      needs.path-filter.outputs.shared == 'true' ||
+      needs.path-filter.outputs.empty_pr == 'true' ||
+      needs.path-filter.result == 'failure'
     strategy:
       fail-fast: true
       matrix:
@@ -227,8 +221,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [path-filter, backend-pbt-shards]
     if: |
-      always() && 
-      github.actor != 'dependabot[bot]' && (
+      always() && (
         needs.path-filter.outputs.backend == 'true' ||
         needs.path-filter.outputs.shared == 'true' ||
         needs.path-filter.outputs.empty_pr == 'true' ||
@@ -246,7 +239,7 @@ jobs:
   backend-tests-status:
     name: Backend Tests Status
     runs-on: ubuntu-latest
-    if: always() && github.actor != 'dependabot[bot]'
+    if: always()
     needs: [path-filter, backend-unit-tests, backend-pbt-tests]
     steps:
       - name: Check backend test results
@@ -271,12 +264,10 @@ jobs:
     runs-on: ubuntu-latest
     needs: path-filter
     if: |
-      github.actor != 'dependabot[bot]' && (
-        needs.path-filter.outputs.frontend == 'true' ||
-        needs.path-filter.outputs.shared == 'true' ||
-        needs.path-filter.outputs.empty_pr == 'true' ||
-        needs.path-filter.result == 'failure'
-      )
+      needs.path-filter.outputs.frontend == 'true' ||
+      needs.path-filter.outputs.shared == 'true' ||
+      needs.path-filter.outputs.empty_pr == 'true' ||
+      needs.path-filter.result == 'failure'
     defaults:
       run:
         working-directory: frontend
@@ -319,7 +310,7 @@ jobs:
   frontend-tests-status:
     name: Frontend Tests Status
     runs-on: ubuntu-latest
-    if: always() && github.actor != 'dependabot[bot]'
+    if: always()
     needs: [path-filter, frontend-tests]
     steps:
       - name: Check frontend test results
@@ -341,7 +332,6 @@ jobs:
   security-audit:
     name: Security Audit
     runs-on: ubuntu-latest
-    if: github.actor != 'dependabot[bot]'
 
     steps:
       - name: Checkout code
@@ -411,7 +401,7 @@ jobs:
   test-health-report:
     name: Test Health Report
     runs-on: ubuntu-latest
-    if: always() && github.actor != 'dependabot[bot]'
+    if: always()
     needs: [backend-unit-tests, backend-pbt-tests, frontend-tests]
     steps:
       - name: Checkout code
@@ -431,6 +421,8 @@ jobs:
     name: Build and Push to GHCR
     runs-on: ubuntu-latest
     needs: [backend-tests-status, frontend-tests-status]
+    # Deploy jobs keep the dependabot guard: their GITHUB_TOKEN is read-only on
+    # dependabot events, so a run here could only fail. Test jobs need no write scope.
     if: |
       github.ref == 'refs/heads/main' && 
       github.actor != 'dependabot[bot]' &&

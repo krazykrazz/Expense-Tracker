@@ -2,12 +2,13 @@
 
 > **Spec format:** Single-document spec (requirements + design + tasks combined). One file per feature.
 > **Source:** Full-codebase audit performed 2026-09-04 using the `expense-tracker-audit` skill.
-> **Status (2026-09-12):** Phase 0 complete (R1–R3, PR #346). R19 + R20 merged (PR #348).
+> **Status (2026-09-13):** Phase 0 complete (R1–R3, PR #346). R19 + R20 merged (PR #348).
 > R22 merged (PR #350). R26 merged (PR #363). R24 + R25 fixed together by isolating the
 > test config tree (PR #364); R27's original root-cause hypothesis was **disproved** and the
 > item rewritten as defensive hardening. R21 fixed (PR #365) — dependabot PRs now run real
-> CI. R23 fixed — scanner outages no longer report as vulnerabilities.
-> **Phase 0 is now complete. Next up: Phase 1, starting with R6.**
+> CI. R23 fixed (PR #366) — scanner outages no longer report as vulnerabilities. R27 fixed —
+> archives are now verified end-to-end before a backup reports success.
+> **Phase 0 is now fully complete. Next up: Phase 1, starting with R6.**
 
 ## Introduction
 
@@ -170,8 +171,8 @@ Largest frontend source files:
 > R24 and R25 were discovered while validating R22; R26 while investigating R25;
 > R27 while validating R26.
 
-**Recommended execution order** (updated 2026-09-12 — ✅ = landed):
-✅ R1 → ✅ R2/R3 → ✅ R20 → ✅ R19 → ✅ R22 → ✅ R26 → ✅ R24/R25 → ✅ R21 → ✅ R23 → R27 →
+**Recommended execution order** (updated 2026-09-13 — ✅ = landed):
+✅ R1 → ✅ R2/R3 → ✅ R20 → ✅ R19 → ✅ R22 → ✅ R26 → ✅ R24/R25 → ✅ R21 → ✅ R23 → ✅ R27 →
 R6 → R4 → R5 → R8 → R9 → R10 → R11/R12/R13 → R7 → R14/R15/R18 → R16 → R17.
 
 R26 moved ahead of R21: it is a live production data-corruption path, and it blocked R25.
@@ -209,6 +210,46 @@ Shipped as **PR #346** (issue #345), merged 2026-09-04 with all 12 CI checks gre
 
 The linter immediately produced value: it found **three defects the manual audit missed**
 (R18, R19) and one broken npm script (R20).
+
+### Phase 0 retrospective — what actually reached production (audited 2026-09-13)
+
+Phase 0 was scoped as four tooling items and grew to eleven, because each fix uncovered the
+next: R22 → R24 → R25 → R26 → R27. Worth recording honestly, since the phase consumed nine
+days and the spec's own "highest user-visible-value phase" (Phase 1) has not started.
+
+Of the seven merged PRs, **exactly one changed production runtime behaviour**:
+
+| PR | Items | Production runtime impact |
+|---|---|---|
+| #346 | R1/R2/R3 | None — zero source changes by design (R1 AC10) |
+| #348 | R19/R20 | None — R19 was proven behaviour-neutral by its own negative control |
+| #350 | R22 | None — `closeTestDatabase()` is a test-only function |
+| **#363** | **R26** | **Yes — `getDatabase()` / `closeDatabase()` on the production path** |
+| #364 | R24/R25 | None — the `CONFIG_DIR` override is env-gated and inert unless set |
+| #365 | R21 | None — CI only |
+| #366 | R23 | None — CI only |
+
+And R26 has **not shipped**: the latest tag is `v1.10.0` (2026-07-02), predating Phase 0, and
+no release has been cut since.
+
+Two caveats on R26's value that should not be overstated:
+
+- **The file-descriptor leak was never measured.** R26's own design notes called for checking
+  `lsof`/handle counts on a long-running instance; that was not done. The leak is real and
+  platform-independent, but its production magnitude is unquantified.
+- **The observed corruption was Windows-only.** Production runs `node:22-alpine`, where
+  `copyFileSync` writes through the same inode and SQLite usually survives the overwrite. The
+  restore path is genuinely unsafe, but real-world exposure is lower than the dev evidence
+  implies.
+
+The rest of Phase 0 delivered **engineering** value, not user value: the backup suite went
+from 3 failed / 637s to 50/50 / 56s, dependabot bumps are now actually tested (which caught
+4 of 6 open PRs as unmergeable), dev databases stopped being corrupted by the test suite, and
+CI stopped raising false CRITICAL security alerts. All worth having; none of it visible to a
+user.
+
+**Recommendation:** cut a release containing R26 + R27 so the one real fix reaches production,
+then start R6 — the first item in this spec a user would actually notice.
 
 ## R1: ESLint + Prettier toolchain — ✅ DONE
 
@@ -1263,7 +1304,7 @@ path itself, and `jest.globalSetup.js` then copies the corrupt file over the onl
 
 ---
 
-## R27: Archive creation is verified only by a 2-byte header check
+## R27: Archive creation is verified only by a 2-byte header check — ✅ DONE
 
 **User Story:** As a user, I want a backup that reports success to be guaranteed restorable,
 so my recovery plan is not silently broken.
@@ -1333,6 +1374,67 @@ defence in depth for a data-safety feature, not a known live bug.
 - Deliberately truncate an archive and confirm verification rejects it.
 - Confirm a verified-good archive still restores successfully.
 - Re-measure `performBackup()` against the clean-tree baseline to satisfy AC4.
+
+### Resolution (2026-09-13)
+
+`archiveUtils.verifyArchive(archivePath)` now inflates the entire stream via the existing
+`listArchiveContents()` (which brings the ZlibError retry loop with it), and `createArchive()`
+calls it before reporting success. A failed verification **deletes** the archive and throws —
+leaving it on disk would list an unrestorable file as a valid backup.
+
+The 2-byte `_isValidGzipFile()` check was **supplemented, not replaced**: its two callers
+(`extractArchive`, `listArchiveContents`) immediately read the whole file anyway, so
+upgrading it there would have doubled the work for no gain. It is now documented as a cheap
+pre-flight, and it remains the only check that catches a zero-byte file (see below).
+
+### Verification behaviour (measured, not assumed)
+
+A throwaway probe established what `tar.list` actually detects before any code was written:
+
+| Archive state | `tar.list` | 2-byte magic check |
+|---|---|---|
+| Well-formed | no throw, 20 entries | passes |
+| Truncated to 50% | `ZlibError/Z_BUF_ERROR` after 10 entries | **passes (bad)** |
+| Truncated to 99% | `ZlibError/Z_BUF_ERROR` after **all 20** entries | **passes (bad)** |
+| Byte flipped mid-stream | `ZlibError/Z_DATA_ERROR` after 0 entries | **passes (bad)** |
+| Zero-byte file | **no throw, 0 entries** | fails |
+
+Two findings the original write-up did not anticipate:
+
+1. **An empty file inflates cleanly.** "Did `tar.list` throw?" is therefore *not* a
+   sufficient verification — `verifyArchive` also asserts `entryCount > 0`.
+2. **Entry count is not a truncation signal.** A 99%-truncated archive still yields every
+   entry before throwing, so the throw is the only reliable truncation signal. Verification
+   needs *both* conditions; neither alone is enough.
+
+### Cost (AC4)
+
+Measured against a semi-compressible payload shaped like a SQLite file:
+
+| Payload | Archive | `createArchive` total | Verification | Overhead |
+|---|---|---|---|---|
+| 1 MB | 0.04 MB | 28.3 ms | 5.8 ms | 20.4% |
+| 5 MB | 0.20 MB | 41.3 ms | 7.0 ms | 17.0% |
+| 20 MB | 0.79 MB | 123.3 ms | 19.1 ms | 15.5% |
+| 50 MB | 1.97 MB | 277.1 ms | 44.6 ms | 16.1% |
+
+One extra read per backup, ~16% of creation cost and sub-linear in payload size.
+`npm run test:backup:ci`: **50/50 passed in 60.7s** vs. R25's 56s clean-tree baseline — a
+~5s increase across 50 backup-creating tests, consistent with the per-archive measurement.
+AC4 satisfied.
+
+### Validation
+
+| Check | Result |
+|---|---|
+| `backend/utils/archiveUtils.test.js` | 22 passed (10 new) |
+| `npm run test:backup:ci` | 50/50 passed, 60.7s |
+| `npm run test:unit:parallel` | 138 suites, 2236 passed |
+| `npm run lint` | 0 errors, 604 warnings |
+
+The truncation test carries its own negative control: it asserts
+`_isValidGzipFile(truncatedArchive) === true` before asserting `verifyArchive` rejects it,
+so the test demonstrates the gap it closes rather than merely exercising new code.
 
 ---
 
@@ -2267,11 +2369,11 @@ These were reported during the audit but **disproved** by reading the source:
 | R3 | Sync root package version | ✅ Done | #346 | `version` removed + `private: true`; root is not one of the 7 locations |
 | R21 | Dependabot PRs bypass all CI checks | ✅ Done (PR #365) | | Guard removed from 10 test/quality jobs; kept on the 2 deploy jobs that need write scope. **AC5 pending** — needs observing on the next real dependabot PR |
 | R22 | Backend PBT shards flake on shared test DB | ✅ Done | #350 | Root cause: `closeTestDatabase()` unlinked the file before the async `close()` finished. Budget also raised 90s → 150s |
-| R23 | Trivy outages reported as CRITICAL vulns | ✅ Done | | Single JSON scan + `jq` gate, retries across 2 DB mirrors. Also fixed inflated severity counts in the build summary (`grep -c` counted matching lines) |
+| R23 | Trivy outages reported as CRITICAL vulns | ✅ Done | #366 | Single JSON scan + `jq` gate, retries across 2 DB mirrors. Also fixed inflated severity counts in the build summary (`grep -c` counted matching lines) |
 | R24 | Backup suites run against the real dev database | ✅ Done | | `CONFIG_DIR` now env-overridable; tests run against a wiped `.test-config` tree. Dev DB mtime and real invoice count unchanged by a full run |
 | R25 | `backupService.pbt.test.js` fails locally, passes in CI | ✅ Done | | Second root cause: ~1000 leaked invoice files made every backup ~75× slower. **50/50 passing in 56s** (was 3 failed / 637s) |
 | R26 | `getDatabase()` leaks a connection on every call | ✅ Done | #363 | 212 call sites → 1 memoised connection. `integrity_check` now returns **`ok`** after the backup suite (was ~100 corrupt pages) |
-| R27 | Archive creation verified only by a 2-byte header check | ☐ Not started | | **Original root-cause hypothesis disproved** — was not the cause of R25. Retained as defence in depth; severity Critical → Medium |
+| R27 | Archive creation verified only by a 2-byte header check | ✅ Done | | **Original root-cause hypothesis disproved** — was not the cause of R25. Landed as defence in depth: `verifyArchive()` inflates the full stream **and** asserts `entryCount > 0`, since an empty file inflates cleanly. ~16% added cost per archive |
 | R20 | Frontend `test:fast*` scripts | ✅ Done | #348 | `cross-env` + wired `FAST_CHECK_NUM_RUNS` into `pbtOptions`; var was previously dead |
 | R19 | Conditional hooks in `InsuranceStatusIndicator` | ✅ Done | #348 | Severity corrected High → Low; React tolerates all-or-nothing early returns. Rule now `error` |
 | R6 | Add `ErrorBoundary` | ☐ Not started | | |

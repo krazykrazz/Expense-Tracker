@@ -1375,7 +1375,7 @@ defence in depth for a data-safety feature, not a known live bug.
 - Confirm a verified-good archive still restores successfully.
 - Re-measure `performBackup()` against the clean-tree baseline to satisfy AC4.
 
-### Resolution (2026-09-13)
+### Resolution (2026-09-13) — PR #367
 
 `archiveUtils.verifyArchive(archivePath)` now inflates the entire stream via the existing
 `listArchiveContents()` (which brings the ZlibError retry loop with it), and `createArchive()`
@@ -2373,7 +2373,7 @@ These were reported during the audit but **disproved** by reading the source:
 | R24 | Backup suites run against the real dev database | ✅ Done | | `CONFIG_DIR` now env-overridable; tests run against a wiped `.test-config` tree. Dev DB mtime and real invoice count unchanged by a full run |
 | R25 | `backupService.pbt.test.js` fails locally, passes in CI | ✅ Done | | Second root cause: ~1000 leaked invoice files made every backup ~75× slower. **50/50 passing in 56s** (was 3 failed / 637s) |
 | R26 | `getDatabase()` leaks a connection on every call | ✅ Done | #363 | 212 call sites → 1 memoised connection. `integrity_check` now returns **`ok`** after the backup suite (was ~100 corrupt pages) |
-| R27 | Archive creation verified only by a 2-byte header check | ✅ Done | | **Original root-cause hypothesis disproved** — was not the cause of R25. Landed as defence in depth: `verifyArchive()` inflates the full stream **and** asserts `entryCount > 0`, since an empty file inflates cleanly. ~16% added cost per archive |
+| R27 | Archive creation verified only by a 2-byte header check | ✅ Done | #367 | **Original root-cause hypothesis disproved** — was not the cause of R25. Landed as defence in depth: `verifyArchive()` inflates the full stream **and** asserts `entryCount > 0`, since an empty file inflates cleanly. ~16% added cost per archive |
 | R20 | Frontend `test:fast*` scripts | ✅ Done | #348 | `cross-env` + wired `FAST_CHECK_NUM_RUNS` into `pbtOptions`; var was previously dead |
 | R19 | Conditional hooks in `InsuranceStatusIndicator` | ✅ Done | #348 | Severity corrected High → Low; React tolerates all-or-nothing early returns. Rule now `error` |
 | R6 | Add `ErrorBoundary` | ☐ Not started | | |

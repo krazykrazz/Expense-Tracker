@@ -2241,7 +2241,7 @@ Escape, click-outside, and keyboard focus are predictable everywhere.
 
 ---
 
-## R6: Add an ErrorBoundary
+## R6: Add an ErrorBoundary — ✅ DONE
 
 **User Story:** As a user, I want a failed screen to show a recoverable error instead of a
 blank page, so one bad component doesn't take down the whole app.
@@ -2281,6 +2281,54 @@ white screen with no recovery path.
 - Unit: `resetKey` change clears the error.
 - Unit: stack details are hidden when `DEV` is false.
 - Unit: `logger.error` is called once per caught error.
+
+### Resolution (2026-09-14)
+
+`frontend/src/components/shared/ErrorBoundary.jsx` + `.css`, wired into **10 places** in
+`App.jsx`: the app shell plus all 9 lazy-loaded modals.
+
+#### One deliberate deviation from the design notes
+
+The notes say to place the boundary inside `Suspense`. Done — but for the two modals where
+**`App.jsx` owns the modal chrome** (`AnnualSummary`, `TaxDeductible`), the boundary wraps
+only the lazy *content*, not the overlay.
+
+That matters: wrapping the whole overlay would destroy the close button along with the
+crashed content, leaving the user staring at an error card with no way to dismiss it. Wrapping
+just the content keeps the modal chrome alive, so the user can still close the modal. The
+remaining 7 modals render their own overlay, so the component itself is wrapped.
+
+#### Outcome by AC
+
+| AC | Outcome |
+|---|---|
+| 1 | Class component with `getDerivedStateFromError` + `componentDidCatch` |
+| 2 | Reports via `createLogger('ErrorBoundary')`, never `console` |
+| 3 | Fallback shows a plain-language message and a working "Try again" |
+| 4 | Error message and component stack render **only** under `import.meta.env.DEV` |
+| 5 | `fallback` accepts a node **or** a `({ error, reset }) => node` render prop; `onReset` supported |
+| 6 | App shell + all 9 `Suspense`-wrapped lazy modals |
+| 7 | `resetKey` change clears a tripped boundary via `getDerivedStateFromProps` |
+
+#### Tests
+
+12 unit tests in `ErrorBoundary.test.jsx`, including the four the test plan named plus:
+fallback node vs render prop, `onReset` ordering, `resetKey` **not** clearing when unchanged,
+and sibling isolation (one boundary trips, its sibling keeps rendering).
+
+`DEV` is controlled with `vi.stubEnv('DEV', ...)`, so the production-hiding behaviour in AC4
+is genuinely asserted rather than assumed from the build config.
+
+| Check | Result |
+|---|---|
+| `ErrorBoundary.test.jsx` | 12 passed |
+| `src/App*` integration tests | 9 files, 53 passed |
+| `npm run build` | succeeds |
+| `npx eslint` | 0 errors |
+
+> Note the modals are conditionally rendered (`{showX && ...}`), so closing one already
+> unmounts its boundary and reopening gets a fresh one. `resetKey` is therefore not needed at
+> these call sites — it exists for consumers whose boundary outlives the error.
 
 ---
 
@@ -3016,7 +3064,7 @@ These read ground truth that the source tree cannot provide. Replace `expense-tr
 | **R29** | **Container resource limits declared but not applied** | ✅ Done | | Two original claims **disproved by measurement**: `deploy.resources.limits` does apply under `docker compose up` (v5.1.4), and one unbounded `findAll()` costs only **+18.5 MB** — so R8 is *not* an OOM risk. Real fix was the heap cap: `--max-old-space-size=384` takes V8's ceiling 2096 MB → 387 MB. Staging now hardened + limited. **Production compose still needs the same three settings by hand** |
 | R20 | Frontend `test:fast*` scripts | ✅ Done | #348 | `cross-env` + wired `FAST_CHECK_NUM_RUNS` into `pbtOptions`; var was previously dead |
 | R19 | Conditional hooks in `InsuranceStatusIndicator` | ✅ Done | #348 | Severity corrected High → Low; React tolerates all-or-nothing early returns. Rule now `error` |
-| R6 | Add `ErrorBoundary` | ☐ Not started | | |
+| R6 | Add `ErrorBoundary` | ✅ Done | | Shell + all 9 lazy modals (10 boundaries). For the 2 modals whose chrome lives in `App.jsx`, only the lazy content is wrapped so the **close button survives a crash**. 12 tests; `DEV` gating asserted via `vi.stubEnv` |
 | R4 | Shared accessible `<Modal>` shell | ☐ Not started | | Must satisfy 3 UxConsistency PBT guardrails |
 | R5 | Migrate 25 modals to the shell | ☐ Not started | | 7 batches (5a–5g); clears ~198 a11y warnings |
 | R8 | Bound analytics queries | ☐ Not started | | Characterization tests required first. **Severity no longer conditional on R29** — measured at only +18.5 MB per unbounded load, so this is a latency problem (291 ms each), not a memory one |

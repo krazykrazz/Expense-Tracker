@@ -9,6 +9,7 @@ import FloatingAddButton from './components/shared/FloatingAddButton';
 import EnvironmentBanner from './components/shared/EnvironmentBanner';
 import UpdateBanner from './components/system/UpdateBanner';
 import SyncToast from './components/shared/SyncToast';
+import ErrorBoundary from './components/shared/ErrorBoundary';
 import VersionUpgradeModal from './components/system/VersionUpgradeModal';
 
 // Lazy-loaded modals — only fetched when opened
@@ -71,21 +72,23 @@ function App() {
   }, [paymentMethodsRefreshTrigger]);
 
   return (
-    <AuthProvider>
-      <AuthGate>
-        <FilterProvider paymentMethods={paymentMethods}>
-          <ExpenseProvider>
-            <ModalProvider>
-              <SharedDataBridge
-                onPaymentMethodsUpdate={() => {
-                  setPaymentMethodsRefreshTrigger(prev => prev + 1);
-                }}
-              />
-            </ModalProvider>
-          </ExpenseProvider>
-        </FilterProvider>
-      </AuthGate>
-    </AuthProvider>
+    <ErrorBoundary name="AppShell">
+      <AuthProvider>
+        <AuthGate>
+          <FilterProvider paymentMethods={paymentMethods}>
+            <ExpenseProvider>
+              <ModalProvider>
+                <SharedDataBridge
+                  onPaymentMethodsUpdate={() => {
+                    setPaymentMethodsRefreshTrigger(prev => prev + 1);
+                  }}
+                />
+              </ModalProvider>
+            </ExpenseProvider>
+          </FilterProvider>
+        </AuthGate>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
 
@@ -566,9 +569,9 @@ function AppContent({ onPaymentMethodsUpdate }) {
         </div>
       )}
 
-      {showSettingsModal && <Suspense fallback={null}><SettingsModal /></Suspense>}
+      {showSettingsModal && <Suspense fallback={null}><ErrorBoundary name="SettingsModal"><SettingsModal /></ErrorBoundary></Suspense>}
 
-      {showSystemModal && <Suspense fallback={null}><SystemModal /></Suspense>}
+      {showSystemModal && <Suspense fallback={null}><ErrorBoundary name="SystemModal"><SystemModal /></ErrorBoundary></Suspense>}
 
       {showAnnualSummary && (
         <Suspense fallback={null}>
@@ -581,7 +584,9 @@ function AppContent({ onPaymentMethodsUpdate }) {
             >
               ×
             </button>
-            <AnnualSummary year={selectedYear} />
+            <ErrorBoundary name="AnnualSummary">
+              <AnnualSummary year={selectedYear} />
+            </ErrorBoundary>
           </div>
         </div>
         </Suspense>
@@ -598,7 +603,9 @@ function AppContent({ onPaymentMethodsUpdate }) {
             >
               ×
             </button>
-            <TaxDeductible year={selectedYear} refreshTrigger={refreshTrigger} />
+            <ErrorBoundary name="TaxDeductible">
+              <TaxDeductible year={selectedYear} refreshTrigger={refreshTrigger} />
+            </ErrorBoundary>
           </div>
         </div>
         </Suspense>
@@ -606,6 +613,7 @@ function AppContent({ onPaymentMethodsUpdate }) {
 
       {showBudgets && (
         <Suspense fallback={null}>
+        <ErrorBoundary name="BudgetsModal">
         <BudgetsModal
           isOpen={showBudgets}
           year={selectedYear}
@@ -614,21 +622,25 @@ function AppContent({ onPaymentMethodsUpdate }) {
           onBudgetUpdated={handleBudgetUpdated}
           focusedCategory={budgetManagementFocusCategory}
         />
+        </ErrorBoundary>
         </Suspense>
       )}
 
       {showPeopleManagement && (
         <Suspense fallback={null}>
+        <ErrorBoundary name="PeopleManagementModal">
         <PeopleManagementModal
           isOpen={showPeopleManagement}
           onClose={closePeopleManagement}
           onPeopleUpdated={handlePeopleUpdated}
         />
+        </ErrorBoundary>
         </Suspense>
       )}
 
       {showAnalyticsHub && (
         <Suspense fallback={null}>
+        <ErrorBoundary name="AnalyticsHubModal">
         <AnalyticsHubModal
           isOpen={showAnalyticsHub}
           onClose={closeAnalyticsHub}
@@ -638,11 +650,13 @@ function AppContent({ onPaymentMethodsUpdate }) {
           budgetAlerts={budgetAlerts}
           onViewExpenses={handleViewExpensesFromAnalytics}
         />
+        </ErrorBoundary>
         </Suspense>
       )}
 
       {showFinancialOverview && (
         <Suspense fallback={null}>
+        <ErrorBoundary name="FinancialOverviewModal">
         <FinancialOverviewModal
           isOpen={showFinancialOverview}
           onClose={() => {
@@ -654,12 +668,14 @@ function AppContent({ onPaymentMethodsUpdate }) {
           onPaymentMethodsUpdate={onPaymentMethodsUpdate}
           initialTab={financialOverviewInitialTab}
         />
+        </ErrorBoundary>
         </Suspense>
       )}
 
       {/* Standalone CreditCardDetailView - opened from notification banners */}
       {creditCardDetailState.show && (
         <Suspense fallback={null}>
+        <ErrorBoundary name="CreditCardDetailView">
         <CreditCardDetailView
           paymentMethodId={creditCardDetailState.paymentMethodId}
           isOpen={creditCardDetailState.show}
@@ -668,6 +684,7 @@ function AppContent({ onPaymentMethodsUpdate }) {
           initialAction={creditCardDetailState.initialAction}
           reminderData={creditCardDetailState.reminderData}
         />
+        </ErrorBoundary>
         </Suspense>
       )}
 

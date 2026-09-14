@@ -198,7 +198,7 @@ and do not let a Windows-only symptom drive a severity rating again.
 | R25 | `backupService.pbt.test.js` fails locally, passes in CI | 0 | Tests | **High** | Medium | Medium | R26 |
 | R26 | `getDatabase()` leaks a connection on every call | 0 | Backend/Safety | **Critical** | Medium | High | — |
 | R27 | Archive creation is verified by a 2-byte header check | 0 | Backend/Safety | ~~Critical~~ Medium | Low | Medium | — |
-| **R28** | **No graceful shutdown — WAL never checkpointed on stop** | **0.5** | **Backend/Safety** | **High** | Low | Medium | R26 |
+| **R28** | **No graceful shutdown — WAL never checkpointed on stop** | **0.5** | **Backend** | ~~High~~ **Low** | Low | Medium | R26 |
 | **R29** | **Container resource limits are declared but not applied** | **0.5** | **Deployment** | **Medium** | Low | Low | — |
 | **R30** | **Release the Phase 0 backlog to production** | **0.5** | **Deployment** | **High** | Low | Medium | R26, R27 |
 
@@ -212,7 +212,7 @@ and do not let a Windows-only symptom drive a severity rating again.
 
 **Recommended execution order** (updated 2026-09-13 — ✅ = landed):
 ✅ R1 → ✅ R2/R3 → ✅ R20 → ✅ R19 → ✅ R22 → ✅ R26 → ✅ R24/R25 → ✅ R21 → ✅ R23 → ✅ R27 →
-**R30 → R28 → R29** → R6 → R4 → R5 → R8 → R9 → R10 → R11/R12/R13 → R7 → R14/R15/R18 →
+**R30 → R29 → R28** → R6 → R4 → R5 → R8 → R9 → R10 → R11/R12/R13 → R7 → R14/R15/R18 →
 R16 → R17.
 
 R26 moved ahead of R21: it is a live production data-corruption path, and it blocked R25.
@@ -222,9 +222,12 @@ R27 dropped down the order once it was shown **not** to be the cause of the R25 
 **R30 is now first.** Nine days of Phase 0 produced exactly one production-behaviour change
 (R26, PR #363) and it is still unreleased — prod runs a 2026-07-02 build. Shipping it is the
 only action in this backlog that converts completed work into delivered value, and it is
-cheap. R28 follows because it is the other confirmed live defect, and it is only tractable
-now that R26 gave us a single connection to close. R29 is bundled with them because it is
-the same deployment slice and gates whether R8 is dangerous.
+cheap. R29 follows because it gates whether R8 is a performance item or a stability one.
+
+**R28 was moved after R29 and downgraded High → Low on 2026-09-14.** It was originally
+ordered second on the belief that an ungraceful stop endangered the database; measuring the
+live settings (`journal_mode=wal`, `synchronous=FULL`) disproved that. It is hygiene, and it
+does **not** gate R30.
 
 ---
 
@@ -1568,9 +1571,9 @@ file descriptors point at `expenses.db*`.
 - AC3 is the field verification R26's own design notes asked for and never got. Capture the
   before figure (287) and the after figure in the release notes.
 - Consider whether R28 should ship in the same release — the restart required to deploy is
-  itself an ungraceful kill, so landing R28 first would make *this* deployment safer. That
-  is a judgement call; the counter-argument is that R30 is already overdue and R28 adds
-  scope.
+  itself an ungraceful kill. **Resolved 2026-09-14: it should not block.** The live database
+  runs `journal_mode=wal` + `synchronous=FULL`, so an ungraceful stop cannot corrupt it or
+  lose a committed transaction. R28 was downgraded to Low and is **not** a prerequisite.
 
 ### Test Plan
 
@@ -1581,11 +1584,46 @@ file descriptors point at `expenses.db*`.
 
 ## R28: No graceful shutdown — the WAL is never checkpointed on stop
 
-**User Story:** As a user, I want stopping or upgrading the container to leave my database
-in a clean state, so a routine restart cannot cost me data.
+**User Story:** As a user, I want stopping or upgrading the container to shut down cleanly,
+so in-flight requests are not dropped and the database is left tidy.
 
 > Discovered 2026-09-13 by inspecting the live production container. **Not visible from the
 > source tree** — the defect is the *absence* of code plus a container setting.
+>
+> ⚠️ **Severity corrected High → Low on 2026-09-14.** The original write-up implied an
+> ungraceful stop endangers the database. **It does not** — see
+> [Verification](#verification-severity-downgrade-2026-09-14) below. This is hygiene, not
+> data safety, and it is **not** a prerequisite for deploying (R30).
+
+### Verification (severity downgrade, 2026-09-14)
+
+Measured on the live production database:
+
+```
+journal_mode: wal
+synchronous:  2   (FULL)
+```
+
+With WAL journalling and `synchronous=FULL`, SQLite guarantees a committed transaction
+survives **power loss** — a SIGKILL is strictly less severe, because the OS page cache is
+still flushed. A WAL left on disk at shutdown is **recovered on the next open**; that is
+normal WAL operation, not damage.
+
+The `closeDatabase()` docstring warning about "stale WAL data replaying and undoing a
+restore" is real, but it applies to the **restore** path, where the database file is
+*replaced* underneath an existing WAL. It does not apply to an ordinary stop, where the file
+and its WAL stay consistent with each other. Conflating the two is what produced the wrong
+severity.
+
+**What genuinely remains wrong**, and why this is still worth fixing:
+
+- In-flight HTTP requests are dropped mid-response on stop.
+- The WAL is never truncated, so it grows unbounded between backups (107 KB today — not a
+  problem, but unbounded by design).
+- Shutdown intent is undocumented in code, so a future contributor adding work that *does*
+  need ordered teardown has no hook to attach it to.
+
+None of that justifies blocking a release.
 
 ### Current Behavior
 
@@ -2692,7 +2730,7 @@ These read ground truth that the source tree cannot provide. Replace `expense-tr
 | R1 | ESLint + Prettier toolchain | ✅ Done | #346 | ESLint **9** (plugins lack v10 peers); baseline 0 errors / 609 warnings |
 | R2 | Ignore generated test artifacts | ✅ No change needed | #346 | Already ignored & untracked; `test-budget.json` is a tracked *input* |
 | R3 | Sync root package version | ✅ Done | #346 | `version` removed + `private: true`; root is not one of the 7 locations |
-| R21 | Dependabot PRs bypass all CI checks | ✅ Done (PR #365) | | Guard removed from 10 test/quality jobs; kept on the 2 deploy jobs that need write scope. **AC5 pending** — needs observing on the next real dependabot PR |
+| R21 | Dependabot PRs bypass all CI checks | ✅ Done | #365 | Guard removed from 10 test/quality jobs; kept on the 2 deploy jobs that need write scope. **AC5 verified 2026-09-14** on PRs #368–#371 — they ran full backend + frontend CI instead of reporting `CLEAN` with everything skipped |
 | R22 | Backend PBT shards flake on shared test DB | ✅ Done | #350 | Root cause: `closeTestDatabase()` unlinked the file before the async `close()` finished. Budget also raised 90s → 150s |
 | R23 | Trivy outages reported as CRITICAL vulns | ✅ Done | #366 | Single JSON scan + `jq` gate, retries across 2 DB mirrors. Also fixed inflated severity counts in the build summary (`grep -c` counted matching lines) |
 | R24 | Backup suites run against the real dev database | ✅ Done | | `CONFIG_DIR` now env-overridable; tests run against a wiped `.test-config` tree. Dev DB mtime and real invoice count unchanged by a full run |
@@ -2700,7 +2738,7 @@ These read ground truth that the source tree cannot provide. Replace `expense-tr
 | R26 | `getDatabase()` leaks a connection on every call | ✅ Done | #363 | 212 call sites → 1 memoised connection. `integrity_check` now returns **`ok`** after the backup suite (was ~100 corrupt pages) |
 | R27 | Archive creation verified only by a 2-byte header check | ✅ Done | #367 | **Original root-cause hypothesis disproved** — was not the cause of R25. Landed as defence in depth: `verifyArchive()` inflates the full stream **and** asserts `entryCount > 0`, since an empty file inflates cleanly. ~16% added cost per archive |
 | **R30** | **Release the Phase 0 backlog to production** | ☐ Not started | | **Do this first.** Prod runs `bb59542` (2026-07-02); R26 is merged but unreleased. AC3 is the field check R26 never got |
-| **R28** | **No graceful shutdown — WAL never checkpointed on stop** | ☐ Not started | | No `SIGTERM` handler anywhere in `backend/`; `StopTimeout: 1s`; 107 KB WAL active. Tractable only because R26 created a closable singleton. Needs a compose change too, not just code |
+| **R28** | **No graceful shutdown — WAL never checkpointed on stop** | ☐ Not started | | **Severity corrected High → Low (2026-09-14).** Live DB is `wal` + `synchronous=FULL`, so an ungraceful stop cannot corrupt it or lose a committed transaction. Real costs are dropped in-flight requests and an untruncated WAL. Does **not** gate R30 |
 | **R29** | **Container resource limits declared but not applied** | ☐ Not started | | `Memory: 0` in prod vs `512M` declared in repo compose. V8 heap ceiling 2096 MB with no `--max-old-space-size` — enforcing the limit as-is would cause OOM-kills. Gates R8's severity |
 | R20 | Frontend `test:fast*` scripts | ✅ Done | #348 | `cross-env` + wired `FAST_CHECK_NUM_RUNS` into `pbtOptions`; var was previously dead |
 | R19 | Conditional hooks in `InsuranceStatusIndicator` | ✅ Done | #348 | Severity corrected High → Low; React tolerates all-or-nothing early returns. Rule now `error` |

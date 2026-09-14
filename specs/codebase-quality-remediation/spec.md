@@ -212,7 +212,7 @@ and do not let a Windows-only symptom drive a severity rating again.
 
 **Recommended execution order** (updated 2026-09-14 — ✅ = landed):
 ✅ R1 → ✅ R2/R3 → ✅ R20 → ✅ R19 → ✅ R22 → ✅ R26 → ✅ R24/R25 → ✅ R21 → ✅ R23 → ✅ R27 →
-✅ R30 (+ ✅ R31) → **R29 → R28** → R6 → R4 → R5 → R8 → R9 → R10 → R11/R12/R13 → R7 →
+✅ R30 (+ ✅ R31) → ✅ R29 → **R28** → R6 → R4 → R5 → R8 → R9 → R10 → R11/R12/R13 → R7 →
 R14/R15/R18 → R16 → R17.
 
 R26 moved ahead of R21: it is a live production data-corruption path, and it blocked R25.
@@ -1829,12 +1829,15 @@ shutdown hook can now close the real thing. R28 is the payoff R26 enabled.
 
 ---
 
-## R29: Container resource limits are declared but not applied
+## R29: Container resource limits are declared but not applied — ✅ DONE
 
 **User Story:** As the operator, I want the declared resource limits to be real, so capacity
 planning reflects what actually happens.
 
 > Discovered 2026-09-13 alongside R28.
+>
+> ⚠️ **Two claims in the original write-up were wrong.** Both were asserted from plausible
+> mechanisms without measuring. See [Corrections](#corrections-measured-2026-09-14).
 
 ### Current Behavior
 
@@ -1855,18 +1858,39 @@ docker inspect  ->  Memory: 0   NanoCpus: 0
 docker stats    ->  85.6MiB / 15.39GiB (0.54%)
 ```
 
-Two separate reasons:
+The reason is singular: **production does not use the repo compose file.** It is deployed
+from `G:\My Drive\Media Related\docker\media-applications.yml`, which sets no limits.
 
-1. Production does not use the repo compose file at all — it is deployed from
-   `G:\My Drive\Media Related\docker\media-applications.yml`, which sets no limits.
-2. `deploy:` is Swarm-scoped; its support under plain `docker compose up` is version
-   dependent and should not be relied upon.
+### Corrections (measured 2026-09-14)
 
-There is also a latent trap. V8's heap ceiling inside the container is **2096 MB**, sized
-from host RAM rather than any cgroup limit, and `NODE_OPTIONS` / `--max-old-space-size` are
-not set. **If the 512 MB limit were ever actually applied, the container would be
-OOM-killed before V8 felt enough pressure to collect.** The declared limit is therefore not
-merely inert — switching it on without also capping the heap would make things worse.
+**❌ "`deploy:` is Swarm-scoped; its support under plain `docker compose up` is version
+dependent and should not be relied upon."** Disproved. A throwaway two-service compose was
+started on Compose **v5.1.4** / Engine **29.5.3**, one service using `deploy.resources.limits`
+and one using `mem_limit`:
+
+| Service | `HostConfig.Memory` | `HostConfig.NanoCpus` |
+|---|---|---|
+| `deploy.resources.limits` | 536870912 | 1000000000 |
+| `mem_limit` / `cpus` | 536870912 | 1000000000 |
+
+Identical. The declaration was never broken and needed no rewrite — reason 2 did not exist.
+
+**❌ "If the 512 MB limit were applied, the container would be OOM-killed" (and R8 becomes a
+stability risk).** Overstated. Measured directly against the real 21,507-row dataset:
+
+| Measurement | Value |
+|---|---|
+| Steady state, full production data | ~88 MiB |
+| One unbounded `expenseRepository.findAll()` | **+18.5 MB RSS**, 8.8 MB heap, 291 ms |
+| 10 consecutive unbounded loads | peak **100.5 MB** |
+
+At ~18 MB per load against a 512 MiB limit, R8 is a **latency** problem, not a memory one.
+The spec's claim that enforcing the limit would "trade a non-issue for OOM-kills" was wrong
+and is withdrawn — R8's severity is *not* conditional on R29.
+
+**✅ The heap-ceiling concern was real and is the part worth keeping.** V8 sized its heap from
+host RAM: `heap_size_limit` was **2096 MB** against a 512 MiB cgroup. That remains the reason
+`--max-old-space-size` is mandatory alongside any limit.
 
 ### Acceptance Criteria
 
@@ -1879,6 +1903,46 @@ merely inert — switching it on without also capping the heap would make things
 4. THE staging service SHALL carry the same `security_opt` / `cap_drop` hardening as
    production, which it currently lacks.
 5. THE decision and its rationale SHALL be recorded in `docs/deployment/`.
+
+### Resolution (2026-09-14)
+
+| AC | Outcome |
+|---|---|
+| 1 | No rewrite needed — `deploy.resources.limits` proven to apply. Kept as-is |
+| 2 | `NODE_OPTIONS=--max-old-space-size=384` added to **both** services (~75% of 512) |
+| 3 | Sized against measured 88 MiB steady / 100.5 MB peak → 512 MiB is ~5× headroom |
+| 4 | Staging now carries `security_opt: no-new-privileges` and `cap_drop: ALL` |
+| 5 | Recorded in [DEPLOYMENT_WORKFLOW.md](docs/deployment/DEPLOYMENT_WORKFLOW.md) |
+
+**Verified on the running staging container** after recreation:
+
+```
+HostConfig.Memory   = 536870912      (was 0)
+HostConfig.NanoCpus = 1000000000     (was 0)
+SecurityOpt         = [no-new-privileges:true]
+CapDrop             = [ALL]
+PID 1 env           = NODE_OPTIONS=--max-old-space-size=384
+v8 heap_size_limit  = 387 MB         (was 2096 MB)
+cgroup memory.max   = 536870912
+docker stats        = 24.16MiB / 512MiB (4.72%)
+```
+
+Ten consecutive unbounded `findAll()` calls under the enforced limit peaked at 100.5 MB and
+the container stayed healthy.
+
+> ⚠️ **Production is not covered by this change.** The repo compose governs staging only.
+> The same three settings must be mirrored by hand into
+> `G:\My Drive\Media Related\docker\media-applications.yml`. Until then production continues
+> to run unlimited — which, given 85.6 MiB steady state, is not urgent.
+> Confirm with `docker inspect expense-tracker --format '{{.HostConfig.Memory}}'`; `0` means
+> no limit regardless of what any file declares.
+
+### Lesson
+
+Both wrong claims came from reasoning about a plausible mechanism ("`deploy:` is a Swarm key",
+"loading a whole table in a loop must be memory-heavy") instead of running a two-minute
+experiment. Both experiments were cheap and available the whole time. This is the same
+pattern as R19, R27 and R28.
 
 ### Design / Implementation Notes
 
@@ -2228,6 +2292,11 @@ still **one full table load per distinct category**.
 does the same to build same-month year-over-year totals.
 
 ### Severity is conditional on R29
+
+> **Superseded 2026-09-14.** Measured under R29: one unbounded `findAll()` of 21,507 rows
+> costs **+18.5 MB RSS / 8.8 MB heap in 291 ms**, and ten consecutive loads peak at 100.5 MB
+> against a 512 MiB limit. **This is a latency problem, not a memory one.** The claim below
+> that enforcing a limit turns R8 into an OOM risk is withdrawn.
 
 Measured 2026-09-13: production sits at **85.6 MiB** steady state with **no memory limit
 applied**, so today this is a latency and GC-pressure problem, not a stability one.
@@ -2867,13 +2936,13 @@ These read ground truth that the source tree cannot provide. Replace `expense-tr
 | **R30** | **Release the Phase 0 backlog to production** | ✅ Done | #374, #376 | Shipped **v1.10.2** (`d1dc76d`). Prod FDs on `expenses.db*`: **287 → 4**; `integrity_check` **ok**. Staging restore of a real prod backup succeeded with 0 deleted-file handles |
 | **R31** | **Health route closed the shared connection** | ✅ Done | #375 | R26 regression; v1.10.1 was unhealthy on first health probe. Caught by CI's Deployment Health Check **before** promotion. R26's "0 call sites close" count never scanned `backend/routes/**` |
 | **R28** | **No graceful shutdown — WAL never checkpointed on stop** | ☐ Not started | | **Severity corrected High → Low (2026-09-14).** Live DB is `wal` + `synchronous=FULL`, so an ungraceful stop cannot corrupt it or lose a committed transaction. Real costs are dropped in-flight requests and an untruncated WAL. Does **not** gate R30 |
-| **R29** | **Container resource limits declared but not applied** | ☐ Not started | | `Memory: 0` in prod vs `512M` declared in repo compose. V8 heap ceiling 2096 MB with no `--max-old-space-size` — enforcing the limit as-is would cause OOM-kills. Gates R8's severity |
+| **R29** | **Container resource limits declared but not applied** | ✅ Done | | Two original claims **disproved by measurement**: `deploy.resources.limits` does apply under `docker compose up` (v5.1.4), and one unbounded `findAll()` costs only **+18.5 MB** — so R8 is *not* an OOM risk. Real fix was the heap cap: `--max-old-space-size=384` takes V8's ceiling 2096 MB → 387 MB. Staging now hardened + limited. **Production compose still needs the same three settings by hand** |
 | R20 | Frontend `test:fast*` scripts | ✅ Done | #348 | `cross-env` + wired `FAST_CHECK_NUM_RUNS` into `pbtOptions`; var was previously dead |
 | R19 | Conditional hooks in `InsuranceStatusIndicator` | ✅ Done | #348 | Severity corrected High → Low; React tolerates all-or-nothing early returns. Rule now `error` |
 | R6 | Add `ErrorBoundary` | ☐ Not started | | |
 | R4 | Shared accessible `<Modal>` shell | ☐ Not started | | Must satisfy 3 UxConsistency PBT guardrails |
 | R5 | Migrate 25 modals to the shell | ☐ Not started | | 7 batches (5a–5g); clears ~198 a11y warnings |
-| R8 | Bound analytics queries | ☐ Not started | | Characterization tests required first; **severity depends on R29** — perf issue today, OOM-kill risk if a memory limit is enforced |
+| R8 | Bound analytics queries | ☐ Not started | | Characterization tests required first. **Severity no longer conditional on R29** — measured at only +18.5 MB per unbounded load, so this is a latency problem (291 ms each), not a memory one |
 | R9 | Adopt `asyncHandler` in controllers | ☐ Not started | | 24 PRs, smallest controller first |
 | R10 | Stop leaking `error.message` | ☐ Not started | | Land after R9 starts |
 | R11 | Consolidate transaction helpers | ☐ Not started | | Recommend keeping `withTransaction` |

@@ -1,17 +1,18 @@
 {
   "overridePattern": "\\[skip-budget\\]",
+  "//": "Budgets catch a suite getting materially slower, not slow runners. Each is ~2x the observed median so a real regression trips it while normal runner variance does not. Derived 2026-09-14 from job durations across 15 successful CI runs.",
   "budgets": {
     "backend-unit-tests": {
-      "maxSeconds": 90,
-      "description": "Backend unit tests (backup suites run in backend-pbt shard 1)"
+      "maxSeconds": 180,
+      "description": "Backend unit tests (backup suites run in backend-pbt shard 1). Observed 2026-09-14 across 15 successful runs: min 72s, median 81s, max 99s. The previous 90s budget sat BELOW the observed successful range; one run took 166s on a slow runner with all 2215 tests passing."
     },
     "backend-pbt-shard": {
-      "maxSeconds": 150,
-      "description": "Backend PBT shard (FAST_CHECK_NUM_RUNS=15). Shard 1 also runs the serial backup suites, so it is the slowest; observed 38-82s healthy on CI runners. Raised from 90s, which sat inside normal runner variance and failed green runs."
+      "maxSeconds": 210,
+      "description": "Backend PBT shard (FAST_CHECK_NUM_RUNS=15). Shard 1 also runs the serial backup suites and dominates: observed 2026-09-14 min 64s, median 75s, max 122s, plus a 200s failure on a slow runner with all 404 tests passing. Shards 2/3 median 38s/46s. Raised 150s -> 210s."
     },
     "frontend-tests": {
-      "maxSeconds": 360,
-      "description": "Frontend Vitest suite (parallel forks)"
+      "maxSeconds": 480,
+      "description": "Frontend Vitest suite (parallel forks). Observed 2026-09-14: min 288s, median 327s, max 335s. The previous 360s budget left only 7% headroom over the observed max."
     }
   }
 }

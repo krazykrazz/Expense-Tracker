@@ -174,6 +174,117 @@ describe('ArchiveUtils', () => {
     });
   });
 
+  describe('verifyArchive', () => {
+    // Large enough that truncation removes real deflate data rather than padding.
+    async function createLargeArchive(name) {
+      const bigFile = path.join(testSourceDir, `${name}-big.txt`);
+      await fs.promises.writeFile(bigFile, 'verification payload '.repeat(5000));
+
+      const archivePath = path.join(testDir, `${name}.tar.gz`);
+      await archiveUtils.createArchive(archivePath, [
+        { source: bigFile, archivePath: 'data/big.txt' }
+      ]);
+
+      return archivePath;
+    }
+
+    test('reports a well-formed archive as valid', async () => {
+      const archivePath = await createLargeArchive('verify-good');
+
+      const result = await archiveUtils.verifyArchive(archivePath);
+
+      expect(result.valid).toBe(true);
+      expect(result.entryCount).toBeGreaterThan(0);
+      expect(result.error).toBeNull();
+    });
+
+    test('detects a truncated archive that the gzip header check accepts', async () => {
+      const archivePath = await createLargeArchive('verify-truncated');
+      const original = await fs.promises.readFile(archivePath);
+      const truncatedPath = path.join(testDir, 'verify-truncated-cut.tar.gz');
+      await fs.promises.writeFile(truncatedPath, original.subarray(0, Math.floor(original.length * 0.6)));
+
+      // The 2-byte magic check passes — this is exactly the gap R27 closes.
+      expect(await archiveUtils._isValidGzipFile(truncatedPath)).toBe(true);
+
+      const result = await archiveUtils.verifyArchive(truncatedPath);
+
+      expect(result.valid).toBe(false);
+      expect(result.error).toBeTruthy();
+    });
+
+    test('detects mid-stream corruption', async () => {
+      const archivePath = await createLargeArchive('verify-corrupt');
+      const buffer = await fs.promises.readFile(archivePath);
+      buffer[Math.floor(buffer.length / 2)] ^= 0xff;
+      const corruptPath = path.join(testDir, 'verify-corrupt-flipped.tar.gz');
+      await fs.promises.writeFile(corruptPath, buffer);
+
+      const result = await archiveUtils.verifyArchive(corruptPath);
+
+      expect(result.valid).toBe(false);
+      expect(result.error).toBeTruthy();
+    });
+
+    test('rejects an empty file, which inflates without error', async () => {
+      const emptyPath = path.join(testDir, 'verify-empty.tar.gz');
+      await fs.promises.writeFile(emptyPath, '');
+
+      const result = await archiveUtils.verifyArchive(emptyPath);
+
+      expect(result.valid).toBe(false);
+      expect(result.entryCount).toBe(0);
+    });
+
+    test('reports a missing archive as invalid rather than throwing', async () => {
+      const result = await archiveUtils.verifyArchive(path.join(testDir, 'verify-absent.tar.gz'));
+
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain('not found');
+    });
+  });
+
+  describe('createArchive verification', () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    test('fails the backup and discards the archive when verification fails', async () => {
+      const sourceFile = path.join(testSourceDir, 'unverifiable.txt');
+      await fs.promises.writeFile(sourceFile, 'content');
+      const archivePath = path.join(testDir, 'unverifiable.tar.gz');
+
+      jest.spyOn(archiveUtils, 'verifyArchive').mockResolvedValue({
+        valid: false,
+        entryCount: 0,
+        error: 'zlib: unexpected end of file'
+      });
+
+      await expect(
+        archiveUtils.createArchive(archivePath, [
+          { source: sourceFile, archivePath: 'data/unverifiable.txt' }
+        ])
+      ).rejects.toThrow('Archive verification failed');
+
+      expect(fs.existsSync(archivePath)).toBe(false);
+    });
+
+    test('verifies every archive it reports as successful', async () => {
+      const sourceFile = path.join(testSourceDir, 'verified.txt');
+      await fs.promises.writeFile(sourceFile, 'content');
+      const archivePath = path.join(testDir, 'verified.tar.gz');
+
+      const verifySpy = jest.spyOn(archiveUtils, 'verifyArchive');
+
+      const result = await archiveUtils.createArchive(archivePath, [
+        { source: sourceFile, archivePath: 'data/verified.txt' }
+      ]);
+
+      expect(result.success).toBe(true);
+      expect(verifySpy).toHaveBeenCalledWith(archivePath);
+    });
+  });
+
   describe('round-trip integrity', () => {
     test('archive and extract preserves file content', async () => {
       // Create test file with specific content

@@ -86,10 +86,22 @@ class ArchiveUtils {
       // Get archive size
       const archiveStats = await fs.promises.stat(outputPath);
 
-      logger.debug('Archive created successfully:', {
+      // A non-zero size proves nothing; only a full inflate pass detects truncation.
+      const verification = await this.verifyArchive(outputPath);
+      if (!verification.valid) {
+        await this._removeFile(outputPath);
+        throw new Error(
+          `Archive verification failed: ${verification.error}. ` +
+            'The archive was discarded because it could not be read back. ' +
+            'Check available disk space and try again.'
+        );
+      }
+
+      logger.debug('Archive created and verified successfully:', {
         path: outputPath,
         size: archiveStats.size,
-        entries: validEntries.length
+        entries: validEntries.length,
+        verifiedEntries: verification.entryCount
       });
 
       return {
@@ -233,7 +245,36 @@ class ArchiveUtils {
   }
 
   /**
-   * Check if a file is a valid gzip file by checking magic bytes
+   * Verify an archive is readable end-to-end.
+   *
+   * Inflates the entire stream rather than sampling it, because a truncated
+   * archive keeps a valid gzip header and a plausible size. Note that an
+   * empty file inflates without error, so the entry count is also asserted.
+   *
+   * @param {string} archivePath - Path to the archive
+   * @returns {Promise<{valid: boolean, entryCount: number, error: string|null}>}
+   */
+  async verifyArchive(archivePath) {
+    try {
+      const contents = await this.listArchiveContents(archivePath);
+
+      if (contents.length === 0) {
+        return { valid: false, entryCount: 0, error: 'Archive contains no entries' };
+      }
+
+      return { valid: true, entryCount: contents.length, error: null };
+    } catch (error) {
+      return { valid: false, entryCount: 0, error: error.message };
+    }
+  }
+
+  /**
+   * Check if a file starts with the gzip magic bytes.
+   *
+   * Cheap pre-flight only — it reads two bytes, so it detects an empty or
+   * non-gzip file but never truncation or corruption. Use verifyArchive()
+   * when the archive must be proven readable.
+   *
    * @param {string} filePath - Path to the file
    * @returns {Promise<boolean>}
    * @private
@@ -316,6 +357,19 @@ class ArchiveUtils {
       await fs.promises.rm(dirPath, { recursive: true, force: true });
     } catch (error) {
       logger.warn('Failed to remove temp directory:', error.message);
+    }
+  }
+
+  /**
+   * Remove a file, logging rather than throwing on failure
+   * @param {string} filePath - File to remove
+   * @private
+   */
+  async _removeFile(filePath) {
+    try {
+      await fs.promises.rm(filePath, { force: true });
+    } catch (error) {
+      logger.warn(`Failed to remove unverifiable archive ${filePath}:`, error.message);
     }
   }
 }

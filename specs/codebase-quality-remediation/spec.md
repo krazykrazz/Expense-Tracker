@@ -1641,8 +1641,21 @@ production data, and it came out clean.
 - **The PBT shard budget is drifting into false-failure territory again.** Shard 1 failed at
   **200s > 150s** with all 404 tests passing, then passed at **122s** on re-run of identical
   code. `test-budget.json`'s own rationale says "observed 38-82s healthy"; observed today was
-  97–122s routinely. Same pattern R22 documented — a budget inside the variance band. Needs
-  re-deriving.
+  97–122s routinely. Same pattern R22 documented — a budget inside the variance band.
+  > **Fixed 2026-09-14.** It caused three false failures in one day (shard 1 twice, then
+  > backend-unit at 166s > 90s with all 2215 tests passing). Budgets were re-derived from job
+  > durations across 15 successful runs rather than estimated:
+  >
+  > | Job | min | median | max | old | new |
+  > |---|---|---|---|---|---|
+  > | backend-unit-tests | 72s | 81s | **99s** | 90s | **180s** |
+  > | backend-pbt-shard (shard 1) | 64s | 75s | 122s | 150s | **210s** |
+  > | frontend-tests | 288s | 327s | **335s** | 360s | **480s** |
+  >
+  > The unit budget sat **below** the observed successful range, and frontend had 7% headroom
+  > over its observed max. Each is now ~2× the median, so a genuine regression still trips it
+  > while the ~2× runner variance does not. Observed maxima are recorded in each description
+  > so the next re-derivation starts from data.
 - **A `chmod` EPERM on `/config/invoices` appears in staging but not production.** Staging's
   bind mount rejects `chmod`; the hardening in `fileStorage.js` logs it as non-critical and
   continues. Production logs `Invoice storage initialization completed successfully`, so the

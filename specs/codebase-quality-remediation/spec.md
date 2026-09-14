@@ -2115,7 +2115,7 @@ and confirm the test fails. If it passes, the severity claim is wrong.
 
 ---
 
-## R4: Shared accessible `<Modal>` shell
+## R4: Shared accessible `<Modal>` shell — ✅ DONE
 
 **User Story:** As a keyboard or screen-reader user, I want modals to announce themselves,
 trap focus, close on Escape, and prevent the page behind from scrolling, so I can operate
@@ -2181,6 +2181,58 @@ click-outside handler. Only 4 declare `role="dialog"` + `aria-modal`. Six handle
 - Unit: Tab from the last focusable element wraps to the first; Shift+Tab wraps backward.
 - Unit: two stacked Modals — Escape closes only the inner one; scroll stays locked.
 - PBT: the three existing UxConsistency modal guardrails pass.
+
+### Resolution (2026-09-14)
+
+`frontend/src/components/shared/Modal.jsx` + `.css`, with behaviour split into
+`frontend/src/hooks/useModalBehavior.js` as the design notes asked, so modals that cannot
+adopt the full shell (e.g. `InvoicePDFViewer`) can take the behaviour alone. **No existing
+modal was migrated** (AC11) — that is R5.
+
+#### ⚠️ Mount order is NOT stacking order — read this before doing R5
+
+The design note says to "register the Escape listener only for the top of the stack". The
+obvious implementation — a push/pop stack where the last entry is topmost — **is wrong for
+nested modals**, and the nesting test caught it:
+
+> **React runs child effects before parent effects.** A nested inner modal therefore
+> registers on the stack *before* the modal containing it, so "last pushed" identifies the
+> **outer** modal as topmost — exactly backwards. Escape then closed the wrong dialog.
+
+Topmost is now decided by **DOM containment**: a modal that contains another open modal is
+not on top. Among modals that contain nothing (true siblings), the most recently opened
+wins, which keeps push order as the tie-breaker where it is actually meaningful.
+
+This matters for R5's `CreditCardDetailView` → `BillingCycleHistoryForm` nesting, which the
+migration plan explicitly calls out for manual verification.
+
+#### Other implementation notes
+
+- **Overlay dismissal compares `event.target` to `event.currentTarget`** rather than putting
+  a `stopPropagation` handler on the dialog. Same behaviour, one less handler, and it
+  removed two `jsx-a11y` warnings the stopPropagation version triggered — a non-interactive
+  element with a click listener is exactly what those rules exist to flag.
+- **Scroll lock is reference-counted** via the shared stack, and restores the value captured
+  when the *first* modal opened — not a hardcoded `''`. A test sets `overflow: scroll`
+  beforehand to prove it.
+- The dialog carries `tabIndex={-1}` so focus has somewhere to land when a modal contains
+  nothing focusable.
+
+#### On AC10 (UxConsistency guardrails)
+
+All three guardrails scan **explicit, named lists** of existing components and CSS files, not
+globs — so a new `Modal.css` is not scanned and cannot fail them. Satisfying AC10 in substance
+meant complying with the conventions they enforce: the shell reuses `.modal-overlay` and
+`.modal-content`, sizes map to `var(--modal-width-sm|md|lg|xl)`, and there are no hardcoded
+`z-index` values. All 9 UxConsistency suites still pass.
+
+#### Validation
+
+| Check | Result |
+|---|---|
+| `Modal.test.jsx` | **27 passed** |
+| UxConsistency PBT (9 suites) | 10 passed |
+| `npx eslint` on new files | 0 errors, **0 warnings** |
 
 ---
 
@@ -3065,7 +3117,7 @@ These read ground truth that the source tree cannot provide. Replace `expense-tr
 | R20 | Frontend `test:fast*` scripts | ✅ Done | #348 | `cross-env` + wired `FAST_CHECK_NUM_RUNS` into `pbtOptions`; var was previously dead |
 | R19 | Conditional hooks in `InsuranceStatusIndicator` | ✅ Done | #348 | Severity corrected High → Low; React tolerates all-or-nothing early returns. Rule now `error` |
 | R6 | Add `ErrorBoundary` | ✅ Done | | Shell + all 9 lazy modals (10 boundaries). For the 2 modals whose chrome lives in `App.jsx`, only the lazy content is wrapped so the **close button survives a crash**. 12 tests; `DEV` gating asserted via `vi.stubEnv` |
-| R4 | Shared accessible `<Modal>` shell | ☐ Not started | | Must satisfy 3 UxConsistency PBT guardrails |
+| R4 | Shared accessible `<Modal>` shell | ✅ Done | | Behaviour split into `useModalBehavior` per the design notes. **Found that React runs child effects before parent effects, so push order made the OUTER nested modal look topmost** — topmost is now decided by DOM containment. 27 tests; all 9 UxConsistency guardrails still pass |
 | R5 | Migrate 25 modals to the shell | ☐ Not started | | 7 batches (5a–5g); clears ~198 a11y warnings |
 | R8 | Bound analytics queries | ☐ Not started | | Characterization tests required first. **Severity no longer conditional on R29** — measured at only +18.5 MB per unbounded load, so this is a latency problem (291 ms each), not a memory one |
 | R9 | Adopt `asyncHandler` in controllers | ☐ Not started | | 24 PRs, smallest controller first |

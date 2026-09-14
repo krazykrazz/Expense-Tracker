@@ -1,0 +1,34 @@
+/* Width variants map to the shared modal width tokens, matching the convention the
+   UxConsistency modal-width guardrail enforces on the existing modals. */
+.modal-content--sm {
+  max-width: var(--modal-width-sm);
+}
+
+.modal-content--md {
+  max-width: var(--modal-width-md);
+}
+
+.modal-content--lg {
+  max-width: var(--modal-width-lg);
+}
+
+.modal-content--xl {
+  max-width: var(--modal-width-xl);
+}
+
+.modal-content:focus {
+  outline: none;
+}
+
+.modal-content:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.modal-title {
+  margin: 0;
+  padding: var(--spacing-5) var(--spacing-6) var(--spacing-3);
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}

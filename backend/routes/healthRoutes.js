@@ -40,7 +40,7 @@ router.get('/health', async (req, res) => {
   try {
     // Test database connectivity with a simple query
     const db = await getDatabase();
-    
+
     await new Promise((resolve, reject) => {
       db.get('SELECT 1 as test', (err, row) => {
         if (err) {
@@ -52,13 +52,9 @@ router.get('/health', async (req, res) => {
           reject(new Error('Database query returned unexpected result'));
         }
       });
-      
-      // Close the connection after the query
-      db.close((err) => {
-        if (err) {
-          logger.error('Error closing database connection:', err.message);
-        }
-      });
+
+      // Do NOT close: getDatabase() returns a process-wide shared connection, so
+      // closing here breaks every later query with SQLITE_MISUSE.
     });
 
     // Return HTTP 200 for healthy state

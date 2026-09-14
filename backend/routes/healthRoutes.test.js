@@ -82,6 +82,65 @@ describe('GET /api/health — sseConnections field', () => {
   });
 });
 
+describe('GET /api/health — shared connection lifetime', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    sseService.getConnectionCount.mockReturnValue(0);
+  });
+
+  // Mimics real sqlite3: once closed, every later query fails with SQLITE_MISUSE.
+  function createSharedConnection() {
+    let closed = false;
+    return {
+      closeCalls: 0,
+      get(sql, cb) {
+        if (closed) {
+          cb(new Error('SQLITE_MISUSE: Database is closed'));
+        } else {
+          cb(null, { test: 1 });
+        }
+      },
+      close(cb) {
+        this.closeCalls++;
+        closed = true;
+        if (cb) cb(null);
+      }
+    };
+  }
+
+  it('leaves the shared connection usable, so repeated health checks stay healthy', async () => {
+    const shared = createSharedConnection();
+    const { getDatabase } = require('../database/db');
+    getDatabase.mockResolvedValue(shared);
+
+    const app = buildApp();
+
+    const first = await request(app).get('/api/health');
+    expect(first.status).toBe(200);
+    expect(first.body.database).toBe('connected');
+
+    // Before this fix the first request closed the process-wide connection and
+    // this second one reported SQLITE_MISUSE: Database is closed.
+    const second = await request(app).get('/api/health');
+    expect(second.status).toBe(200);
+    expect(second.body.database).toBe('connected');
+
+    const third = await request(app).get('/api/health');
+    expect(third.status).toBe(200);
+    expect(third.body.database).toBe('connected');
+  });
+
+  it('never closes the connection returned by getDatabase()', async () => {
+    const shared = createSharedConnection();
+    const { getDatabase } = require('../database/db');
+    getDatabase.mockResolvedValue(shared);
+
+    await request(buildApp()).get('/api/health');
+
+    expect(shared.closeCalls).toBe(0);
+  });
+});
+
 describe('GET /api/version/check-update', () => {
   beforeEach(() => {
     jest.clearAllMocks();

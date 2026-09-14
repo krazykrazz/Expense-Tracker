@@ -452,6 +452,16 @@ const SystemModal = () => {
           <div className="changelog">
             <div className="changelog-entry">
               <div className="changelog-version">
+                v1.10.3
+                {isCurrentVersion('v1.10.3') && <span className="current-version-badge">Current Version</span>}
+              </div>
+              <div className="changelog-date">September 14, 2026</div>
+              <ul className="changelog-items">
+                <li>Show a recoverable error instead of a blank page when part of the app fails, and shut down cleanly on restart</li>
+              </ul>
+            </div>
+            <div className="changelog-entry">
+              <div className="changelog-version">
                 v1.10.2
                 {isCurrentVersion('v1.10.2') && <span className="current-version-badge">Current Version</span>}
               </div>

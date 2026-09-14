@@ -2,15 +2,17 @@
 
 > **Spec format:** Single-document spec (requirements + design + tasks combined). One file per feature.
 > **Source:** Full-codebase audit performed 2026-09-04 using the `expense-tracker-audit` skill.
-> **Status (2026-09-14):** Phase 0 complete. **Phase 0.5: R30 shipped — production now runs
-> v1.10.2 (`d1dc76d`), up from a 2026-07-02 build.** The R26 connection leak is verified fixed
-> in the field: FDs on `expenses.db*` went **287 → 4**, `integrity_check` returns `ok`.
+> **Status (2026-09-14):** Phase 0 and **Phase 0.5 are complete.** Production runs **v1.10.2**
+> (`d1dc76d`), up from a 2026-07-02 build. The R26 connection leak is verified fixed in the
+> field: FDs on `expenses.db*` went **287 → 4**, `integrity_check` returns `ok`. Resource
+> limits, the V8 heap cap and container hardening are applied to production (R29), and the
+> app now shuts down gracefully with a checkpointed WAL (R28).
 >
 > The release took two attempts. v1.10.1 was built and **caught by CI's Deployment Health
 > Check before promotion** — R26 had a regression in `healthRoutes.js` that closed the shared
 > connection (logged as **R31**, fixed in PR #375). v1.10.2 carries the fix.
 >
-> **Remaining in Phase 0.5: R29, then R28. Then Phase 1, starting with R6.**
+> **Next: Phase 1, starting with R6 — the first item in this spec a user would notice.**
 
 ## Introduction
 
@@ -212,7 +214,7 @@ and do not let a Windows-only symptom drive a severity rating again.
 
 **Recommended execution order** (updated 2026-09-14 — ✅ = landed):
 ✅ R1 → ✅ R2/R3 → ✅ R20 → ✅ R19 → ✅ R22 → ✅ R26 → ✅ R24/R25 → ✅ R21 → ✅ R23 → ✅ R27 →
-✅ R30 (+ ✅ R31) → ✅ R29 → **R28** → R6 → R4 → R5 → R8 → R9 → R10 → R11/R12/R13 → R7 →
+✅ R30 (+ ✅ R31) → ✅ R29 → ✅ R28 → **R6** → R4 → R5 → R8 → R9 → R10 → R11/R12/R13 → R7 →
 R14/R15/R18 → R16 → R17.
 
 R26 moved ahead of R21: it is a live production data-corruption path, and it blocked R25.
@@ -1709,7 +1711,7 @@ regression and production. **Do not treat a failure there as flaky.**
 
 ---
 
-## R28: No graceful shutdown — the WAL is never checkpointed on stop
+## R28: No graceful shutdown — the WAL is never checkpointed on stop — ✅ DONE
 
 **User Story:** As a user, I want stopping or upgrading the container to shut down cleanly,
 so in-flight requests are not dropped and the database is left tidy.
@@ -1826,6 +1828,68 @@ shutdown hook can now close the real thing. R28 is the payoff R26 enabled.
 - Integration (container): `docker stop` the staging container, then confirm the WAL is
   0 bytes / absent and `PRAGMA integrity_check` returns `ok`.
 - Integration: issue a slow request, `docker stop` mid-flight, confirm the response completes.
+
+### Resolution (2026-09-14)
+
+The handler lives in [gracefulShutdown.js](backend/utils/gracefulShutdown.js) rather than
+inline in `server.js`, so the ordering, idempotency and timeout behaviour can be unit tested
+without booting a server. `server.js` captures `httpServer`, the `cron` task handles and the
+initial billing-cycle timer, then registers `SIGTERM` / `SIGINT`.
+
+**Teardown order, and why:**
+
+1. `backupService.stopScheduler()` and `task.stop()` on each cron job — no new work can start
+2. `sseService.closeAll()` — **see below**
+3. `httpServer.close()` — in-flight requests finish (AC8)
+4. `await closeDatabase()` — WAL checkpoint + close, last so no request can hit
+   `SQLITE_MISUSE` on the shared connection
+
+#### Two things the original notes missed
+
+**SSE streams would have hung the shutdown forever.** `server.close()` waits for open
+connections, and an SSE response never ends on its own. `sseService` had no way to close its
+clients, so a single connected browser tab would have stalled every shutdown until the
+force-exit timeout. Added `sseService.closeAll()`, called before `server.close()`.
+
+**Idle keep-alive connections do *not* stall shutdown on Node 22.** This was checked rather
+than assumed — historically `server.close()` hangs on idle keep-alive sockets, which would
+have argued for `server.closeIdleConnections()`. A probe holding an idle keep-alive socket
+open across `docker stop` completed in **621 ms with exit 0**, so Node 22 already closes them
+and no extra call was added.
+
+#### Verified against a real container
+
+Built the image locally and stopped it with a 20 s grace period:
+
+| Check | Result |
+|---|---|
+| `docker stop` duration | **652 ms** — not the grace period, so it exited on SIGTERM |
+| Exit code | **0** (a SIGKILL would be 137) |
+| Log sequence | `Received SIGTERM` → `HTTP server closed` → `Database connection closed, WAL checkpointed` → `Shutdown complete` |
+| WAL before stop | `expenses.db-wal` 8,272 B, `-shm` 32,768 B |
+| **WAL after stop (AC6)** | **both files absent** — fully checkpointed into `expenses.db` |
+| With idle keep-alive held | 621 ms, exit 0 |
+
+#### Outcome by AC
+
+| AC | Outcome |
+|---|---|
+| 1 | `SIGTERM` + `SIGINT` registered in `server.js` |
+| 2 | Order verified by unit test and by container log sequence |
+| 3 | Idempotent — concurrent signals produce exactly one teardown (unit test) |
+| 4 | 10 s force-exit, `unref`'d; below the 15 s grace period |
+| 5 | `stop_grace_period: 15s` in the repo compose **and** the production compose |
+| 6 | **WAL and SHM absent after a clean stop** |
+| 7 | Start and completion logged via `config/logger.js` |
+| 8 | `httpServer.close()` awaited before `closeDatabase()`; ordering unit tested |
+
+**Tests:** 8 new unit tests in `gracefulShutdown.test.js` covering ordering, idempotency,
+force-exit timeout, SSE-before-HTTP, error paths, signal-during-startup, and one bad cron
+task not aborting the rest. Full backend suite: **139 suites, 2,246 tests passing**.
+
+> Note AC5 is a deployment change, not code. The production container must be recreated for
+> `stop_grace_period` to take effect; until then Docker still SIGKILLs after 1 s and the
+> handler gets no chance to run.
 
 ---
 
@@ -2935,7 +2999,7 @@ These read ground truth that the source tree cannot provide. Replace `expense-tr
 | R27 | Archive creation verified only by a 2-byte header check | ✅ Done | #367 | **Original root-cause hypothesis disproved** — was not the cause of R25. Landed as defence in depth: `verifyArchive()` inflates the full stream **and** asserts `entryCount > 0`, since an empty file inflates cleanly. ~16% added cost per archive |
 | **R30** | **Release the Phase 0 backlog to production** | ✅ Done | #374, #376 | Shipped **v1.10.2** (`d1dc76d`). Prod FDs on `expenses.db*`: **287 → 4**; `integrity_check` **ok**. Staging restore of a real prod backup succeeded with 0 deleted-file handles |
 | **R31** | **Health route closed the shared connection** | ✅ Done | #375 | R26 regression; v1.10.1 was unhealthy on first health probe. Caught by CI's Deployment Health Check **before** promotion. R26's "0 call sites close" count never scanned `backend/routes/**` |
-| **R28** | **No graceful shutdown — WAL never checkpointed on stop** | ☐ Not started | | **Severity corrected High → Low (2026-09-14).** Live DB is `wal` + `synchronous=FULL`, so an ungraceful stop cannot corrupt it or lose a committed transaction. Real costs are dropped in-flight requests and an untruncated WAL. Does **not** gate R30 |
+| **R28** | **No graceful shutdown — WAL never checkpointed on stop** | ✅ Done | | Severity was corrected High → Low first. Handler extracted to `utils/gracefulShutdown.js` for testability. **SSE streams would have hung shutdown forever** — `sseService.closeAll()` added. Verified on a real container: 652 ms, exit 0, **WAL + SHM absent** after stop. `stop_grace_period: 15s` in both compose files |
 | **R29** | **Container resource limits declared but not applied** | ✅ Done | | Two original claims **disproved by measurement**: `deploy.resources.limits` does apply under `docker compose up` (v5.1.4), and one unbounded `findAll()` costs only **+18.5 MB** — so R8 is *not* an OOM risk. Real fix was the heap cap: `--max-old-space-size=384` takes V8's ceiling 2096 MB → 387 MB. Staging now hardened + limited. **Production compose still needs the same three settings by hand** |
 | R20 | Frontend `test:fast*` scripts | ✅ Done | #348 | `cross-env` + wired `FAST_CHECK_NUM_RUNS` into `pbtOptions`; var was previously dead |
 | R19 | Conditional hooks in `InsuranceStatusIndicator` | ✅ Done | #348 | Severity corrected High → Low; React tolerates all-or-nothing early returns. Rule now `error` |

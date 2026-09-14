@@ -6,9 +6,14 @@
 > R22 merged (PR #350). R26 merged (PR #363). R24 + R25 fixed together by isolating the
 > test config tree (PR #364); R27's original root-cause hypothesis was **disproved** and the
 > item rewritten as defensive hardening. R21 fixed (PR #365) — dependabot PRs now run real
-> CI. R23 fixed (PR #366) — scanner outages no longer report as vulnerabilities. R27 fixed —
-> archives are now verified end-to-end before a backup reports success.
-> **Phase 0 is now fully complete. Next up: Phase 1, starting with R6.**
+> CI. R23 fixed (PR #366) — scanner outages no longer report as vulnerabilities. R27 fixed
+> (PR #367) — archives are now verified end-to-end before a backup reports success.
+>
+> **Phase 0 is complete, but none of it has shipped** — production runs a 2026-07-02 build.
+> Inspecting the live container on 2026-09-13 confirmed R26's leak in the field (287 of 306
+> FDs) and surfaced three new items: **R28** (no graceful shutdown), **R29** (resource limits
+> declared but not applied) and **R30** (release the backlog). These form **Phase 0.5**.
+> **Next up: R30 → R28 → R29, then Phase 1 starting with R6.**
 
 ## Introduction
 
@@ -131,6 +136,35 @@ Largest frontend source files:
 | Version drift | root `1.6.0` vs frontend `1.10.0` vs backend `1.10.0` |
 | Untracked-worthy artifacts committed | `test-backend-raw.txt`, `test-frontend-raw.txt`, `test-failure-summary.txt`, `frontend/test-results*.txt`, `frontend/vitest-output.txt`, `backend/test-results-backend.txt` |
 
+### Deployment & runtime ground truth (measured 2026-09-13)
+
+The original audit reasoned about the codebase in isolation. **Production and staging both
+run as Docker containers**, which changes the severity of several items. All figures below
+were read from the live production container, not inferred.
+
+| Fact | Value | Consequence |
+|---|---|---|
+| Running image | `bb59542`, built **2026-07-02** | Prod predates **all** of Phase 0 |
+| PID 1 | `node server.js` (no init shim) | Node owns signal handling |
+| Open FDs held by PID 1 | **306**, of which **287** are `expenses.db*` | R26 leak confirmed live (~95 connections in 36 h) |
+| `nofile` limit | **1,048,576** | FD exhaustion is ~15 years away — **not** a real risk |
+| `/config/database/pre-restore-backup-2025-11-19_*.db` | present | **Restore has been run in production** |
+| Active WAL at rest | `expenses.db-wal` 107 KB, `-shm` 32 KB | Un-checkpointed data is normally in flight |
+| `SIGTERM`/`SIGINT` handlers | **none anywhere in `backend/`** | No WAL checkpoint or connection close on stop → **R28** |
+| `StopTimeout` | **1 second** | Docker SIGKILLs almost immediately → **R28** |
+| Applied memory limit | `HostConfig.Memory: 0` — **none** | The repo compose's `512M` is not in effect → **R29** |
+| V8 heap ceiling in container | **2096 MB** | Would be OOM-killed if a 512 MB limit were applied → **R29** |
+| Compose file actually used | `G:\My Drive\Media Related\docker\media-applications.yml` | The repo's `docker-compose.yml` does **not** describe prod |
+| Base image | `node:22-alpine` (Linux) | Windows-specific hardening never executes in prod |
+| Backup destination | `/config/backups`, same bind mount as the database | A full host disk truncates backups → raises R27's value |
+| Memory in steady state | 85.6 MiB | R8 is not causing memory pressure **today** |
+
+**Implication for Windows-specific work.** R24/R25 invested heavily in Windows file-locking
+semantics, and `archiveUtils` carries EBUSY/EPERM and ZlibError retry loops that **never
+execute in production**. That code is harmless and should stay, but Windows-only failures
+are a developer-ergonomics concern, not a product one. Do not spend further effort there,
+and do not let a Windows-only symptom drive a severity rating again.
+
 ---
 
 ## Prioritized Backlog
@@ -164,20 +198,33 @@ Largest frontend source files:
 | R25 | `backupService.pbt.test.js` fails locally, passes in CI | 0 | Tests | **High** | Medium | Medium | R26 |
 | R26 | `getDatabase()` leaks a connection on every call | 0 | Backend/Safety | **Critical** | Medium | High | — |
 | R27 | Archive creation is verified by a 2-byte header check | 0 | Backend/Safety | ~~Critical~~ Medium | Low | Medium | — |
+| **R28** | **No graceful shutdown — WAL never checkpointed on stop** | **0.5** | **Backend/Safety** | **High** | Low | Medium | R26 |
+| **R29** | **Container resource limits are declared but not applied** | **0.5** | **Deployment** | **Medium** | Low | Low | — |
+| **R30** | **Release the Phase 0 backlog to production** | **0.5** | **Deployment** | **High** | Low | Medium | R26, R27 |
 
 > R18–R20 were **discovered by the linter added in R1**, not by the manual audit.
 > R21 was discovered while triaging the dependabot queue after the Phase 0 PR.
 > R22 and R23 were discovered while investigating CI failures that R21's workaround exposed.
 > R24 and R25 were discovered while validating R22; R26 while investigating R25;
 > R27 while validating R26.
+> **R28, R29 and R30 were discovered on 2026-09-13 by inspecting the live production
+> container** — none of them are visible from the source tree alone.
 
 **Recommended execution order** (updated 2026-09-13 — ✅ = landed):
 ✅ R1 → ✅ R2/R3 → ✅ R20 → ✅ R19 → ✅ R22 → ✅ R26 → ✅ R24/R25 → ✅ R21 → ✅ R23 → ✅ R27 →
-R6 → R4 → R5 → R8 → R9 → R10 → R11/R12/R13 → R7 → R14/R15/R18 → R16 → R17.
+**R30 → R28 → R29** → R6 → R4 → R5 → R8 → R9 → R10 → R11/R12/R13 → R7 → R14/R15/R18 →
+R16 → R17.
 
 R26 moved ahead of R21: it is a live production data-corruption path, and it blocked R25.
 R11 must follow R26, since a shared connection changes what a transaction means.
 R27 dropped down the order once it was shown **not** to be the cause of the R25 failures.
+
+**R30 is now first.** Nine days of Phase 0 produced exactly one production-behaviour change
+(R26, PR #363) and it is still unreleased — prod runs a 2026-07-02 build. Shipping it is the
+only action in this backlog that converts completed work into delivered value, and it is
+cheap. R28 follows because it is the other confirmed live defect, and it is only tractable
+now that R26 gave us a single connection to close. R29 is bundled with them because it is
+the same deployment slice and gates whether R8 is dangerous.
 
 ---
 
@@ -248,8 +295,15 @@ from 3 failed / 637s to 50/50 / 56s, dependabot bumps are now actually tested (w
 CI stopped raising false CRITICAL security alerts. All worth having; none of it visible to a
 user.
 
-**Recommendation:** cut a release containing R26 + R27 so the one real fix reaches production,
-then start R6 — the first item in this spec a user would actually notice.
+**Recommendation:** cut a release containing R26 + R27 so the one real fix reaches production
+(**R30**), then close the two defects that only the running container revealed (**R28**,
+**R29**), then start R6 — the first item in this spec a user would actually notice.
+
+> Follow-up: inspecting the live container on 2026-09-13 both **confirmed** R26's leak in the
+> field (287 of 306 FDs) and **downgraded** the FD-exhaustion concern to a non-issue. It also
+> proved a restore has genuinely been run in production. Lesson: the container is a source of
+> ground truth the source tree cannot provide, and it should have been checked in the
+> original audit rather than nine days in.
 
 ## R1: ESLint + Prettier toolchain — ✅ DONE
 
@@ -1235,6 +1289,32 @@ Measured across `backend/repositories/**` and `backend/services/**` (excluding t
 So every repository operation opens an OS file handle to `expenses.db` that is never
 released.
 
+### Field measurement (2026-09-13) — confirms the leak, corrects the risk
+
+The original write-up speculated about "a slow file-descriptor climb in the production
+container" and never checked. Measured on the live container (uptime 36 h, running the
+pre-fix build `bb59542`):
+
+| Metric | Value |
+|---|---|
+| Total FDs held by PID 1 | 306 |
+| FDs pointing at `expenses.db*` | **287** (~95 connections × db + `-wal` + `-shm`) |
+| `nofile` limit | **1,048,576** |
+
+**The leak is real and confirmed.** But at ~2.6 connections per hour, FD exhaustion is
+roughly *fifteen years* away, so **file-descriptor exhaustion is not a credible risk** and
+this spec should stop implying it is.
+
+The risk that matters is the restore path — and that is not hypothetical either:
+
+```
+/config/database/pre-restore-backup-2025-11-19_14-33-23-764Z.db
+```
+
+**A restore has actually been performed in production.** So the overwrite-while-open path
+below is a used feature that executes with ~95 stale handles on the file being replaced, not
+a theoretical concern. That, not the FD count, is why R26 is Critical.
+
 ### Why this corrupts the database during restore
 
 `restoreBackup()` (`backupService.js#L552-571`) does the right-looking thing:
@@ -1348,6 +1428,12 @@ So if an archive ever *is* written badly (disk full, interrupted write, failing 
 nothing detects it until a restore is attempted, which is the worst possible moment. This is
 defence in depth for a data-safety feature, not a known live bug.
 
+**Container context raises this above a purely theoretical concern.** Backups are written to
+`/config/backups`, the *same* bind-mounted volume as `expenses.db`. A full host disk
+therefore truncates a backup at exactly the moment the user most needs one, and the
+pre-R27 code would have reported that backup as successful. Disk-full is the most plausible
+real-world trigger, and it is now caught.
+
 ### Acceptance Criteria
 
 1. `performBackup()` SHALL NOT report success unless the archive has been verified readable
@@ -1435,6 +1521,215 @@ AC4 satisfied.
 The truncation test carries its own negative control: it asserts
 `_isValidGzipFile(truncatedArchive) === true` before asserting `verifyArchive` rejects it,
 so the test demonstrates the gap it closes rather than merely exercising new code.
+
+---
+
+# Phase 0.5 — Runtime & Deployment Safety
+
+Goal: get the work already completed into production, and close the two defects that are
+only visible from the running container rather than the source tree.
+
+> Added 2026-09-13 after inspecting the live production container. See
+> [Deployment & runtime ground truth](#deployment--runtime-ground-truth-measured-2026-09-13).
+
+## R30: Release the Phase 0 backlog to production
+
+**User Story:** As the operator, I want completed fixes to actually be running, so the work
+produces value instead of sitting on `main`.
+
+### Current Behavior
+
+Production runs image `bb59542`, built **2026-07-02**. The latest tag is `v1.10.0`, dated
+the same day. Every Phase 0 item merged between 2026-09-04 and 2026-09-13 is unreleased,
+including **R26** — the only one of them that changes production behaviour.
+
+Concretely, the running container is still leaking database connections: 287 of its 306 open
+file descriptors point at `expenses.db*`.
+
+### Acceptance Criteria
+
+1. A release SHALL be cut that includes at minimum R26 (PR #363) and R27 (PR #367).
+2. THE release SHALL follow the documented 7-location versioning rule
+   (`docs/steering/versioning.md`) and add a `CHANGELOG.md` entry.
+3. AFTER deployment, `ls -l /proc/1/fd | grep -c expenses.db` inside the container SHALL
+   remain in single digits after at least an hour of normal use, confirming R26 in the field.
+4. AFTER deployment, `PRAGMA integrity_check` on the production database SHALL return `ok`.
+5. A backup SHALL be taken **before** the upgrade, and its restorability verified with the
+   new `verifyArchive()` path.
+6. THE staging container (`expense-tracker-test`, port 2627) SHALL be exercised with a copy
+   of production data before promoting to `latest`.
+
+### Design / Implementation Notes
+
+- Promotion is manual and user-specific: `scripts/build-and-push.ps1 -Environment latest
+  -SkipDeploy` pushes the tag, then deployment happens from
+  `G:\My Drive\Media Related\docker\media-applications.yml`. Do **not** let the script
+  deploy using the repo's `docker-compose.yml`.
+- AC3 is the field verification R26's own design notes asked for and never got. Capture the
+  before figure (287) and the after figure in the release notes.
+- Consider whether R28 should ship in the same release — the restart required to deploy is
+  itself an ungraceful kill, so landing R28 first would make *this* deployment safer. That
+  is a judgement call; the counter-argument is that R30 is already overdue and R28 adds
+  scope.
+
+### Test Plan
+
+- Staging smoke test against a production data copy.
+- Post-deploy: FD count, `integrity_check`, health endpoint, and one backup+restore cycle.
+
+---
+
+## R28: No graceful shutdown — the WAL is never checkpointed on stop
+
+**User Story:** As a user, I want stopping or upgrading the container to leave my database
+in a clean state, so a routine restart cannot cost me data.
+
+> Discovered 2026-09-13 by inspecting the live production container. **Not visible from the
+> source tree** — the defect is the *absence* of code plus a container setting.
+
+### Current Behavior
+
+There is **no `SIGTERM` or `SIGINT` handler anywhere in `backend/`** — a repo-wide grep for
+`SIGTERM|SIGINT|gracefulShutdown` returns zero matches. `backend/server.js` starts the
+listener and never registers a shutdown path.
+
+Meanwhile, in production:
+
+| Fact | Value |
+|---|---|
+| `HostConfig.StopTimeout` | **1 second** |
+| `RestartPolicy` | `unless-stopped` |
+| Healthcheck | every 30 s, 3 retries |
+| WAL at rest | `expenses.db-wal` 107 KB, `-shm` 32 KB |
+| Open DB connections | ~95 (287 FDs) |
+
+So every `docker stop`, restart, and redeploy tears down ~95 open connections and an active
+WAL with **no `PRAGMA wal_checkpoint`**, and Docker escalates to `SIGKILL` after one second.
+
+The codebase already knows this is dangerous. `closeDatabase()` in
+[db.js](backend/database/db.js) documents exactly this hazard:
+
+> *"This flushes all WAL contents into the main DB file and releases file locks, which is
+> critical before overwriting the DB file during backup restore. Without this, stale WAL
+> data can replay on the next connection and undo the restore."*
+
+That function exists, is correct, and is **never called on shutdown**.
+
+### Why this is now tractable
+
+Before R26, `closeDatabase()` could not close the connections the app was actually using —
+it opened its own throwaway handle. R26 made the production connection a singleton, so a
+shutdown hook can now close the real thing. R28 is the payoff R26 enabled.
+
+### Acceptance Criteria
+
+1. `backend/server.js` SHALL register handlers for `SIGTERM` and `SIGINT`.
+2. ON signal, THE server SHALL stop accepting new connections (`server.close()`), then
+   `await closeDatabase()`, then exit with code 0.
+3. THE shutdown SHALL be idempotent — a second signal during shutdown SHALL NOT start a
+   second teardown.
+4. THE shutdown SHALL be bounded by a timeout shorter than the container's stop grace
+   period, after which it exits anyway rather than hanging.
+5. `Config.StopTimeout` / compose `stop_grace_period` SHALL be raised from **1 s** to a
+   value that allows a checkpoint to complete (suggest 15 s), in the repo compose **and** in
+   the user's production compose file.
+6. AFTER a clean stop, `expenses.db-wal` SHALL be 0 bytes or absent.
+7. THE handler SHALL log shutdown start and completion via `backend/config/logger.js`.
+8. NO in-flight HTTP request SHALL be dropped mid-response during a graceful stop.
+
+### Design / Implementation Notes
+
+- AC5 is load-bearing and is **not** a code change. A perfect handler is useless if Docker
+  kills the process after one second. Verify where `StopTimeout: 1` originates — it is
+  likely `stop_grace_period: 1s` in `media-applications.yml`.
+- Node installs its own default `SIGTERM` handler, so PID 1 does terminate today; the
+  problem is that it terminates *immediately*, not that it hangs. Do not describe this as a
+  "container won't stop" bug — that would be wrong.
+- Keep the handler small and dependency-free. Do not add a process manager or `tini`; the
+  signal reaches Node correctly already.
+- `closeDatabase()` already checkpoints with `TRUNCATE` and tolerates a missing connection,
+  so the handler is mostly wiring.
+- `backupService` holds a `setTimeout` in `this.scheduledJob` and already exposes
+  `stopScheduler()` (`backupService.js#L452`). Call it during shutdown so a scheduled backup
+  cannot start while the database is closing.
+
+### Test Plan
+
+- Unit: a simulated `SIGTERM` calls `server.close()` then `closeDatabase()`, in that order.
+- Unit: two rapid signals produce exactly one teardown.
+- Unit: a `closeDatabase()` that hangs still exits within the timeout.
+- Integration (container): `docker stop` the staging container, then confirm the WAL is
+  0 bytes / absent and `PRAGMA integrity_check` returns `ok`.
+- Integration: issue a slow request, `docker stop` mid-flight, confirm the response completes.
+
+---
+
+## R29: Container resource limits are declared but not applied
+
+**User Story:** As the operator, I want the declared resource limits to be real, so capacity
+planning reflects what actually happens.
+
+> Discovered 2026-09-13 alongside R28.
+
+### Current Behavior
+
+The repo's [docker-compose.yml](docker-compose.yml) declares:
+
+```yaml
+deploy:
+  resources:
+    limits:
+      memory: 512M
+      cpus: '1.0'
+```
+
+The running container has **no limit at all**:
+
+```
+docker inspect  ->  Memory: 0   NanoCpus: 0
+docker stats    ->  85.6MiB / 15.39GiB (0.54%)
+```
+
+Two separate reasons:
+
+1. Production does not use the repo compose file at all — it is deployed from
+   `G:\My Drive\Media Related\docker\media-applications.yml`, which sets no limits.
+2. `deploy:` is Swarm-scoped; its support under plain `docker compose up` is version
+   dependent and should not be relied upon.
+
+There is also a latent trap. V8's heap ceiling inside the container is **2096 MB**, sized
+from host RAM rather than any cgroup limit, and `NODE_OPTIONS` / `--max-old-space-size` are
+not set. **If the 512 MB limit were ever actually applied, the container would be
+OOM-killed before V8 felt enough pressure to collect.** The declared limit is therefore not
+merely inert — switching it on without also capping the heap would make things worse.
+
+### Acceptance Criteria
+
+1. THE repo compose SHALL express memory and CPU limits using keys that take effect for the
+   deployment method actually in use, or the declaration SHALL be removed as misleading.
+2. IF a memory limit is enforced, `--max-old-space-size` SHALL be set to roughly 75% of it
+   so V8 collects before the cgroup OOM-killer fires.
+3. THE chosen limit SHALL be justified against observed usage (85.6 MiB steady state) plus
+   headroom for the analytics paths described in R8.
+4. THE staging service SHALL carry the same `security_opt` / `cap_drop` hardening as
+   production, which it currently lacks.
+5. THE decision and its rationale SHALL be recorded in `docs/deployment/`.
+
+### Design / Implementation Notes
+
+- The honest options are (a) make the limit real and cap the heap, or (b) delete the
+  declaration. Leaving a limit that looks enforced and isn't is the worst of the three.
+- This gates **R8**: with no memory limit, unbounded `findAll()` over 21k rows is a latency
+  and GC-pressure problem. With a 512 MB limit and a 2 GB heap ceiling, it becomes an
+  OOM-kill (exit 137) that presents as a mysterious restart. Decide R29 before sizing R8.
+- The repo compose is still the reference for staging, so it should be correct regardless of
+  what production uses.
+
+### Test Plan
+
+- `docker inspect` confirms the intended `Memory` / `NanoCpus` are non-zero when intended.
+- With the limit applied, load the heaviest analytics endpoint and confirm no exit 137.
+- `v8.getHeapStatistics().heap_size_limit` reflects the configured cap.
 
 ---
 
@@ -1766,6 +2061,17 @@ still **one full table load per distinct category**.
 
 `predictionService.compareToHistorical()` (`backend/services/predictionService.js#L308`)
 does the same to build same-month year-over-year totals.
+
+### Severity is conditional on R29
+
+Measured 2026-09-13: production sits at **85.6 MiB** steady state with **no memory limit
+applied**, so today this is a latency and GC-pressure problem, not a stability one.
+
+But the repo compose declares a **512 MB** limit, and V8's heap ceiling in the container is
+**2096 MB** with no `--max-old-space-size`. If that limit is ever made real without capping
+the heap, loading the full `expenses` table in a loop becomes an OOM-kill (exit 137) that
+presents as an unexplained container restart. **Settle R29 before sizing this work** — it
+determines whether R8 is a performance item or a stability item.
 
 ### Acceptance Criteria
 
@@ -2358,6 +2664,25 @@ These were reported during the audit but **disproved** by reading the source:
 | PBT guardrails | `node scripts/validate-pbt-guardrails.js` |
 | Branch state | `git status --branch --short` |
 
+### Container diagnostics (Phase 0.5)
+
+These read ground truth that the source tree cannot provide. Replace `expense-tracker` with
+`expense-tracker-test` for staging.
+
+| Purpose | Command |
+|---|---|
+| Which build is running | `docker exec expense-tracker sh -c 'echo $GIT_COMMIT $BUILD_DATE'` |
+| Leaked DB connections (R26/R30 AC3) | `docker exec expense-tracker sh -c 'ls -l /proc/1/fd \| grep -c expenses.db'` |
+| FD limit | `docker exec expense-tracker sh -c 'grep "open files" /proc/1/limits'` |
+| WAL state (R28 AC6) | `docker exec expense-tracker ls -la /config/database/` |
+| Applied limits (R29) | `docker inspect expense-tracker --format 'Mem:{{.HostConfig.Memory}} Cpu:{{.HostConfig.NanoCpus}} Stop:{{.Config.StopTimeout}}'` |
+| V8 heap ceiling (R29 AC2) | `docker exec expense-tracker node -e "console.log(require('v8').getHeapStatistics().heap_size_limit/1048576)"` |
+| Live memory vs limit | `docker stats expense-tracker --no-stream` |
+| Integrity (R30 AC4) | `docker exec expense-tracker node -e "...PRAGMA integrity_check..."` |
+
+> Note `docker inspect` is authoritative for limits; the repo's `docker-compose.yml` is
+> **not** what production runs.
+
 ---
 
 ## Progress Tracking
@@ -2374,12 +2699,15 @@ These were reported during the audit but **disproved** by reading the source:
 | R25 | `backupService.pbt.test.js` fails locally, passes in CI | ✅ Done | | Second root cause: ~1000 leaked invoice files made every backup ~75× slower. **50/50 passing in 56s** (was 3 failed / 637s) |
 | R26 | `getDatabase()` leaks a connection on every call | ✅ Done | #363 | 212 call sites → 1 memoised connection. `integrity_check` now returns **`ok`** after the backup suite (was ~100 corrupt pages) |
 | R27 | Archive creation verified only by a 2-byte header check | ✅ Done | #367 | **Original root-cause hypothesis disproved** — was not the cause of R25. Landed as defence in depth: `verifyArchive()` inflates the full stream **and** asserts `entryCount > 0`, since an empty file inflates cleanly. ~16% added cost per archive |
+| **R30** | **Release the Phase 0 backlog to production** | ☐ Not started | | **Do this first.** Prod runs `bb59542` (2026-07-02); R26 is merged but unreleased. AC3 is the field check R26 never got |
+| **R28** | **No graceful shutdown — WAL never checkpointed on stop** | ☐ Not started | | No `SIGTERM` handler anywhere in `backend/`; `StopTimeout: 1s`; 107 KB WAL active. Tractable only because R26 created a closable singleton. Needs a compose change too, not just code |
+| **R29** | **Container resource limits declared but not applied** | ☐ Not started | | `Memory: 0` in prod vs `512M` declared in repo compose. V8 heap ceiling 2096 MB with no `--max-old-space-size` — enforcing the limit as-is would cause OOM-kills. Gates R8's severity |
 | R20 | Frontend `test:fast*` scripts | ✅ Done | #348 | `cross-env` + wired `FAST_CHECK_NUM_RUNS` into `pbtOptions`; var was previously dead |
 | R19 | Conditional hooks in `InsuranceStatusIndicator` | ✅ Done | #348 | Severity corrected High → Low; React tolerates all-or-nothing early returns. Rule now `error` |
 | R6 | Add `ErrorBoundary` | ☐ Not started | | |
 | R4 | Shared accessible `<Modal>` shell | ☐ Not started | | Must satisfy 3 UxConsistency PBT guardrails |
 | R5 | Migrate 25 modals to the shell | ☐ Not started | | 7 batches (5a–5g); clears ~198 a11y warnings |
-| R8 | Bound analytics queries | ☐ Not started | | Characterization tests required first |
+| R8 | Bound analytics queries | ☐ Not started | | Characterization tests required first; **severity depends on R29** — perf issue today, OOM-kill risk if a memory limit is enforced |
 | R9 | Adopt `asyncHandler` in controllers | ☐ Not started | | 24 PRs, smallest controller first |
 | R10 | Stop leaking `error.message` | ☐ Not started | | Land after R9 starts |
 | R11 | Consolidate transaction helpers | ☐ Not started | | Recommend keeping `withTransaction` |

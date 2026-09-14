@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.10.2] - 2026-09-14
+
+### Fix a regression where the health check could close the database connection after startup
+
 ## [1.10.1] - 2026-09-14
 
 ### Fix a database connection leak and verify backup archives are restorable before reporting success

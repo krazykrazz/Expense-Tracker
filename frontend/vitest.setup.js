@@ -1,6 +1,5 @@
 import '@testing-library/jest-dom';
 import { vi, afterEach, beforeAll, afterAll } from 'vitest';
-import React from 'react';
 
 // Detect CI environment
 const isCI = import.meta.env?.CI === 'true' || 
@@ -13,33 +12,6 @@ globalThis.isCI = isCI;
 
 // import.meta.env is automatically provided by Vite/Vitest
 // The VITE_API_BASE_URL is set in vitest.config.js test.env
-
-// Mock react-pdf for testing environment
-vi.mock('react-pdf', () => ({
-  Document: ({ children, onLoadSuccess, onLoadError, loading, error }) => {
-    // Simulate successful PDF load for tests
-    setTimeout(() => {
-      if (onLoadSuccess) {
-        onLoadSuccess({ numPages: 2 });
-      }
-    }, 0);
-    
-    return children || loading || null;
-  },
-  Page: ({ pageNumber, scale, className }) => 
-    React.createElement('div', {
-      className: className,
-      'data-testid': 'pdf-page',
-      'data-page': pageNumber,
-      'data-scale': scale
-    }, `PDF Page ${pageNumber}`),
-  pdfjs: {
-    GlobalWorkerOptions: {
-      workerSrc: ''
-    },
-    version: '3.0.0'
-  }
-}));
 
 // Mock EventSource — jsdom does not provide it
 // Tests that need fine-grained control can override this with vi.stubGlobal('EventSource', ...)

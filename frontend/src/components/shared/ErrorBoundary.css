@@ -1,0 +1,51 @@
+.error-boundary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-6);
+  min-height: 200px;
+}
+
+.error-boundary-content {
+  max-width: 480px;
+  width: 100%;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-left: 4px solid var(--color-negative);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-6);
+  text-align: left;
+}
+
+.error-boundary-title {
+  margin: 0 0 var(--spacing-3) 0;
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+.error-boundary-message {
+  margin: 0 0 var(--spacing-4) 0;
+  color: var(--text-secondary);
+}
+
+.error-boundary-details {
+  margin-bottom: var(--spacing-4);
+  color: var(--text-muted);
+}
+
+.error-boundary-details summary {
+  cursor: pointer;
+  margin-bottom: var(--spacing-2);
+}
+
+.error-boundary-stack {
+  background-color: var(--bg-muted);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-3);
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: var(--text-xs);
+  margin: 0 0 var(--spacing-2) 0;
+}

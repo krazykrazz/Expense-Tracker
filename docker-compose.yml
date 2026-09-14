@@ -16,6 +16,8 @@ services:
       # would grow past 512M and be OOM-killed before ever collecting. ~75% of the limit.
       - NODE_OPTIONS=--max-old-space-size=384
     restart: unless-stopped
+    # Must exceed the app's 10s shutdown timeout, or Docker SIGKILLs mid-checkpoint.
+    stop_grace_period: 15s
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -54,6 +56,7 @@ services:
       - NODE_OPTIONS=--max-old-space-size=384
     profiles:
       - staging
+    stop_grace_period: 15s
     # Mirrors production: staging cannot surface a resource or permission problem
     # it is not also subject to.
     security_opt:

@@ -98,4 +98,27 @@ function getConnectionCount() {
   return clients.size;
 }
 
-module.exports = { addClient, removeClient, broadcast, getConnectionCount };
+/**
+ * End every open SSE stream.
+ *
+ * Required before server.close() during shutdown: SSE responses never finish on
+ * their own, so an open stream would keep the HTTP server alive indefinitely.
+ *
+ * @returns {number} How many clients were closed
+ */
+function closeAll() {
+  const count = clients.size;
+
+  for (const [clientId, res] of clients) {
+    try {
+      res.end();
+    } catch (error) {
+      logger.debug('SSE: Error closing client during shutdown', { clientId, error: error.message });
+    }
+  }
+
+  clients.clear();
+  return count;
+}
+
+module.exports = { addClient, removeClient, broadcast, getConnectionCount, closeAll };

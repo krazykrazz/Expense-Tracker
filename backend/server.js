@@ -7,7 +7,7 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
 const cron = require('node-cron');
-const { initializeDatabase, getDatabase } = require('./database/db');
+const { initializeDatabase, getDatabase, closeDatabase } = require('./database/db');
 const expenseRoutes = require('./routes/expenseRoutes');
 const backupRoutes = require('./routes/backupRoutes');
 const incomeRoutes = require('./routes/incomeRoutes');
@@ -40,6 +40,7 @@ const billingCycleSchedulerService = require('./services/billingCycleSchedulerSe
 const versionCheckService = require('./services/versionCheckService');
 const logger = require('./config/logger');
 const { errorHandler } = require('./middleware/errorHandler');
+const { createGracefulShutdown } = require('./utils/gracefulShutdown');
 const { authMiddleware, sseAuthMiddleware } = require('./middleware/authMiddleware');
 
 // Wire SSE service into activityLogService (avoids circular dependency)
@@ -238,6 +239,12 @@ app.get('/{*splat}', (req, res) => {
 // Error handling middleware (must be last)
 app.use(errorHandler);
 
+// Captured at startup so the shutdown handler can stop them. Anything registered
+// here keeps the event loop alive and must be torn down before the process exits.
+let httpServer = null;
+const scheduledTasks = [];
+let initialBillingCycleTimer = null;
+
 // Initialize database and start server
 initializeDatabase()
   .then(async (db) => {
@@ -261,7 +268,7 @@ initializeDatabase()
       logger.error('Version check failed during startup (non-blocking):', error);
     }
 
-    app.listen(PORT, '0.0.0.0', () => {
+    httpServer = app.listen(PORT, '0.0.0.0', () => {
       logger.info('=== Expense Tracker Server Started ===');
       logger.info(`Environment Configuration:`);
       logger.info(`  - LOG_LEVEL: ${logger.getLogLevel()}`);
@@ -294,27 +301,27 @@ initializeDatabase()
       
       // Start activity log cleanup scheduler
       // Runs daily at 2:00 AM UTC (equivalent to 9:00 PM EST / 10:00 PM EDT)
-      cron.schedule('0 2 * * *', async () => {
+      scheduledTasks.push(cron.schedule('0 2 * * *', async () => {
         try {
           logger.debug('Starting scheduled activity log cleanup...');
           await activityLogService.cleanupOldEvents();
         } catch (error) {
           logger.error('Activity log cleanup failed:', error);
         }
-      }, { timezone: 'Etc/UTC' });
+      }, { timezone: 'Etc/UTC' }));
       logger.info('');
       logger.info('Activity log cleanup scheduled (daily at 2:00 AM UTC)');
       
       // Start billing cycle auto-generation scheduler
       // Runs hourly at :00 UTC — date-driven model checks business date transitions
-      cron.schedule('0 * * * *', async () => {
+      scheduledTasks.push(cron.schedule('0 * * * *', async () => {
         await billingCycleSchedulerService.runAutoGeneration();
-      }, { timezone: 'Etc/UTC' });
+      }, { timezone: 'Etc/UTC' }));
       logger.info('');
       logger.info('Billing cycle auto-generation scheduled (hourly UTC)');
       
       // Initial run after startup to catch missed cycles during downtime (Req 5.3)
-      setTimeout(async () => {
+      initialBillingCycleTimer = setTimeout(async () => {
         logger.info('Running initial billing cycle auto-generation check...');
         await billingCycleSchedulerService.runAutoGeneration();
       }, 60000);
@@ -324,5 +331,19 @@ initializeDatabase()
     logger.error('Failed to initialize database:', err);
     process.exit(1);
   });
+
+const shutdown = createGracefulShutdown({ logger, closeDatabase, sseService, backupService });
+
+// Resources are read at signal time, not registration time — they are assigned once
+// the database has initialised and the listener is up.
+const onSignal = (signal) =>
+  shutdown(signal, {
+    httpServer,
+    scheduledTasks,
+    timers: [initialBillingCycleTimer]
+  });
+
+process.on('SIGTERM', () => onSignal('SIGTERM'));
+process.on('SIGINT', () => onSignal('SIGINT'));
 
 module.exports = app;

@@ -24,8 +24,7 @@
   "dependencies": {
     "prop-types": "^15.8.1",
     "react": "^19.3.0",
-    "react-dom": "^19.3.0",
-    "react-pdf": "^10.5.0"
+    "react-dom": "^19.3.0"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^7.0.1",

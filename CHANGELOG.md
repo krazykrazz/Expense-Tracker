@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.10.3] - 2026-09-14
+
+### Show a recoverable error instead of a blank page when part of the app fails, and shut down cleanly on restart
+
 ## [1.10.2] - 2026-09-14
 
 ### Fix a regression where the health check could close the database connection after startup

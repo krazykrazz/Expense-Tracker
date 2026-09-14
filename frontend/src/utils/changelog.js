@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.10.3',
+    date: 'September 14, 2026',
+    added: [],
+    changed: [],
+    fixed: ['Show a recoverable error instead of a blank page when part of the app fails, and shut down cleanly on restart'],
+    removed: [],
+  },
+  {
     version: '1.10.2',
     date: 'September 14, 2026',
     added: [],

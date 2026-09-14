@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.10.2',
+    date: 'September 14, 2026',
+    added: [],
+    changed: ['Fix a regression where the health check could close the database connection after startup'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.10.1',
     date: 'September 14, 2026',
     added: [],

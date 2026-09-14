@@ -452,6 +452,16 @@ const SystemModal = () => {
           <div className="changelog">
             <div className="changelog-entry">
               <div className="changelog-version">
+                v1.10.2
+                {isCurrentVersion('v1.10.2') && <span className="current-version-badge">Current Version</span>}
+              </div>
+              <div className="changelog-date">September 14, 2026</div>
+              <ul className="changelog-items">
+                <li>Fix a regression where the health check could close the database connection after startup</li>
+              </ul>
+            </div>
+            <div className="changelog-entry">
+              <div className="changelog-version">
                 v1.10.1
                 {isCurrentVersion('v1.10.1') && <span className="current-version-badge">Current Version</span>}
               </div>

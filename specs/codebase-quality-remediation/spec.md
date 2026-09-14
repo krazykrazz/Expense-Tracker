@@ -2,18 +2,15 @@
 
 > **Spec format:** Single-document spec (requirements + design + tasks combined). One file per feature.
 > **Source:** Full-codebase audit performed 2026-09-04 using the `expense-tracker-audit` skill.
-> **Status (2026-09-13):** Phase 0 complete (R1–R3, PR #346). R19 + R20 merged (PR #348).
-> R22 merged (PR #350). R26 merged (PR #363). R24 + R25 fixed together by isolating the
-> test config tree (PR #364); R27's original root-cause hypothesis was **disproved** and the
-> item rewritten as defensive hardening. R21 fixed (PR #365) — dependabot PRs now run real
-> CI. R23 fixed (PR #366) — scanner outages no longer report as vulnerabilities. R27 fixed
-> (PR #367) — archives are now verified end-to-end before a backup reports success.
+> **Status (2026-09-14):** Phase 0 complete. **Phase 0.5: R30 shipped — production now runs
+> v1.10.2 (`d1dc76d`), up from a 2026-07-02 build.** The R26 connection leak is verified fixed
+> in the field: FDs on `expenses.db*` went **287 → 4**, `integrity_check` returns `ok`.
 >
-> **Phase 0 is complete, but none of it has shipped** — production runs a 2026-07-02 build.
-> Inspecting the live container on 2026-09-13 confirmed R26's leak in the field (287 of 306
-> FDs) and surfaced three new items: **R28** (no graceful shutdown), **R29** (resource limits
-> declared but not applied) and **R30** (release the backlog). These form **Phase 0.5**.
-> **Next up: R30 → R28 → R29, then Phase 1 starting with R6.**
+> The release took two attempts. v1.10.1 was built and **caught by CI's Deployment Health
+> Check before promotion** — R26 had a regression in `healthRoutes.js` that closed the shared
+> connection (logged as **R31**, fixed in PR #375). v1.10.2 carries the fix.
+>
+> **Remaining in Phase 0.5: R29, then R28. Then Phase 1, starting with R6.**
 
 ## Introduction
 
@@ -201,6 +198,7 @@ and do not let a Windows-only symptom drive a severity rating again.
 | **R28** | **No graceful shutdown — WAL never checkpointed on stop** | **0.5** | **Backend** | ~~High~~ **Low** | Low | Medium | R26 |
 | **R29** | **Container resource limits are declared but not applied** | **0.5** | **Deployment** | **Medium** | Low | Low | — |
 | **R30** | **Release the Phase 0 backlog to production** | **0.5** | **Deployment** | **High** | Low | Medium | R26, R27 |
+| **R31** | **Health route closed the shared connection** | **0.5** | **Backend/Safety** | **Critical** | Low | Low | R26 |
 
 > R18–R20 were **discovered by the linter added in R1**, not by the manual audit.
 > R21 was discovered while triaging the dependabot queue after the Phase 0 PR.
@@ -209,11 +207,13 @@ and do not let a Windows-only symptom drive a severity rating again.
 > R27 while validating R26.
 > **R28, R29 and R30 were discovered on 2026-09-13 by inspecting the live production
 > container** — none of them are visible from the source tree alone.
+> **R31 was discovered on 2026-09-14 by CI's Deployment Health Check**, which boots the real
+> built image — the only check that exercises the artifact rather than the test harness.
 
-**Recommended execution order** (updated 2026-09-13 — ✅ = landed):
+**Recommended execution order** (updated 2026-09-14 — ✅ = landed):
 ✅ R1 → ✅ R2/R3 → ✅ R20 → ✅ R19 → ✅ R22 → ✅ R26 → ✅ R24/R25 → ✅ R21 → ✅ R23 → ✅ R27 →
-**R30 → R29 → R28** → R6 → R4 → R5 → R8 → R9 → R10 → R11/R12/R13 → R7 → R14/R15/R18 →
-R16 → R17.
+✅ R30 (+ ✅ R31) → **R29 → R28** → R6 → R4 → R5 → R8 → R9 → R10 → R11/R12/R13 → R7 →
+R14/R15/R18 → R16 → R17.
 
 R26 moved ahead of R21: it is a live production data-corruption path, and it blocked R25.
 R11 must follow R26, since a shared connection changes what a transaction means.
@@ -1535,7 +1535,7 @@ only visible from the running container rather than the source tree.
 > Added 2026-09-13 after inspecting the live production container. See
 > [Deployment & runtime ground truth](#deployment--runtime-ground-truth-measured-2026-09-13).
 
-## R30: Release the Phase 0 backlog to production
+## R30: Release the Phase 0 backlog to production — ✅ DONE
 
 **User Story:** As the operator, I want completed fixes to actually be running, so the work
 produces value instead of sitting on `main`.
@@ -1579,6 +1579,133 @@ file descriptors point at `expenses.db*`.
 
 - Staging smoke test against a production data copy.
 - Post-deploy: FD count, `integrity_check`, health endpoint, and one backup+restore cycle.
+
+### Resolution (2026-09-14) — shipped as v1.10.2
+
+Production moved from `bb59542` (2026-07-02) to **`d1dc76d`** / **v1.10.2**.
+
+**The release took two attempts.** v1.10.1 was cut, built, and **caught by CI's Deployment
+Health Check before promotion** — see [R31](#r31-health-route-closed-the-shared-connection--done).
+v1.10.2 contains the fix. The broken `b619c99` image is published but was never deployed.
+
+#### Measured outcome
+
+| Check | Before (`bb59542`) | After (`d1dc76d`) |
+|---|---|---|
+| Version | 1.10.0 | **1.10.2** |
+| FDs on `expenses.db*` | **287** (~95 connections, 36 h uptime) | **4** — one connection, flat across probes |
+| Handles on deleted files | — | **0** |
+| `PRAGMA integrity_check` | — | **`ok`** |
+| `journal_mode` | `wal` | `wal` |
+| `/api/health` | — | `status: ok`, `database: connected` |
+
+**287 → 4 is AC3 satisfied** — the field verification R26's design notes asked for and never
+got. AC4 satisfied. ACs 1, 2 and 6 satisfied.
+
+#### Staging validation (AC5, AC6)
+
+Staging ran `d1dc76d` against a copy of production data, and a **real restore** of the
+2026-09-14 production backup was performed through the UI:
+
+| Check | Result |
+|---|---|
+| Restore | DB + **72 invoices** + **20 statements** + config; 13 payment methods verified |
+| `SQLITE_MISUSE` during restore | none |
+| `integrity_check` after restore | **`ok`** |
+| FDs after restore | 5, stable across 90 requests |
+| Handles on deleted files | **0** — the exact signature that caused the original corruption |
+| Queries after restore (R26 AC4) | `database: connected` |
+
+The restore is the load-bearing result: it is the path R26 exists to fix, it ran against real
+production data, and it came out clean.
+
+#### Incidental findings
+
+- **`secrets.RELEASE_PAT` had expired** (last rotated ~3 months prior). `release.yml`'s
+  auto-merge step failed with `401 Bad credentials`. Everything before it succeeded, so the
+  release PR was valid — only auto-merge was lost. Rotated 2026-09-14. Both releases were
+  run with `auto_merge=false` and merged manually.
+  > Worth noting: auto-merge would have shipped the **broken v1.10.1** unattended while the
+  > health check was still running. The expired credential is the only reason a human was in
+  > the loop. Consider deleting the auto-merge step rather than maintaining a token that
+  > silently expires every 90 days.
+- **`release.yml` categorises every entry under `changed:`** in `changelog.js`. Both releases
+  here were fixes; corrected by hand each time. The category is user-visible in
+  `VersionUpgradeModal`.
+- **The 7-location versioning rule is really 6.** `docs/steering/versioning.md` lists
+  `frontend/src/App.jsx` as location 3, but it reads the version from `API_ENDPOINTS.VERSION`
+  at runtime (`App.jsx#L713`) and hardcodes nothing. `release.yml` correctly updates only 6.
+  The steering doc should be corrected.
+- **The PBT shard budget is drifting into false-failure territory again.** Shard 1 failed at
+  **200s > 150s** with all 404 tests passing, then passed at **122s** on re-run of identical
+  code. `test-budget.json`'s own rationale says "observed 38-82s healthy"; observed today was
+  97–122s routinely. Same pattern R22 documented — a budget inside the variance band. Needs
+  re-deriving.
+- **A `chmod` EPERM on `/config/invoices` appears in staging but not production.** Staging's
+  bind mount rejects `chmod`; the hardening in `fileStorage.js` logs it as non-critical and
+  continues. Production logs `Invoice storage initialization completed successfully`, so the
+  hardening is **not** inert in production. Staging-only artifact; no action.
+
+---
+
+## R31: Health route closed the shared connection — ✅ DONE
+
+**User Story:** As a user, I want the app to keep working after its health endpoint is
+polled, so a routine liveness probe cannot take the service down.
+
+> Discovered 2026-09-14 by CI's Deployment Health Check on the v1.10.1 build. **A regression
+> introduced by R26.**
+
+### Current Behavior (before fix)
+
+`backend/routes/healthRoutes.js` closed the connection returned by `getDatabase()` after its
+`SELECT 1` probe. Under the pre-R26 design that was **correct** — `getDatabase()` returned a
+brand-new connection per call, and this was in fact the *only* call site that cleaned up
+after itself. R26 made it a process-wide singleton, so the first health check closed the
+app's only connection:
+
+```json
+{ "status": "unhealthy", "version": "1.10.1", "database": "disconnected",
+  "error": "SQLITE_MISUSE: Database is closed" }
+```
+
+The container passed Docker's healthcheck once, then went **permanently unhealthy**. Docker's
+`restart: unless-stopped` plus a 30 s healthcheck interval would have produced a restart loop
+in production.
+
+### Why R26's audit missed it
+
+R26 reported **"212 `getDatabase()` call sites, 0 that call `db.close()`"**, and that count
+was the entire basis for its claim that "the 212 call sites need no changes". The measurement
+covered `backend/repositories/**` and `backend/services/**` only. **`backend/routes/**` was
+never scanned** — and held the single closer.
+
+> **Lesson:** when a refactor's safety argument rests on a count, verify the count's *scope*
+> before trusting it. A repo-wide grep now confirms `healthRoutes.js` was the only closer in
+> production code.
+
+### Why the tests missed it
+
+`healthRoutes.test.js` mocked the connection with `close: jest.fn((cb) => cb && cb(null))`.
+A no-op close cannot invalidate a later query, so the mock made the bug unobservable.
+
+> **Lesson:** mocks of resource lifecycle must model invalidation — closed means later
+> operations fail. A lifecycle mock that no-ops hides exactly the class of bug it should catch.
+
+### Resolution (PR #375)
+
+Removed the `db.close()` call with a comment stating why it must not return. Added two
+regression tests using a mock that behaves like real `sqlite3` (once closed, later queries
+fail): repeated health checks stay `200 / connected`, and `getDatabase()`'s connection is
+never closed. **Negative control performed** — reverting only `healthRoutes.js` fails exactly
+those two tests.
+
+### What caught it
+
+The CI **Deployment Health Check** job, which boots the freshly built image against an empty
+`/config` and polls `/api/health`. It is the only check in the pipeline that exercises the
+real artifact rather than the test harness, and it was the only thing standing between this
+regression and production. **Do not treat a failure there as flaky.**
 
 ---
 
@@ -2737,7 +2864,8 @@ These read ground truth that the source tree cannot provide. Replace `expense-tr
 | R25 | `backupService.pbt.test.js` fails locally, passes in CI | ✅ Done | | Second root cause: ~1000 leaked invoice files made every backup ~75× slower. **50/50 passing in 56s** (was 3 failed / 637s) |
 | R26 | `getDatabase()` leaks a connection on every call | ✅ Done | #363 | 212 call sites → 1 memoised connection. `integrity_check` now returns **`ok`** after the backup suite (was ~100 corrupt pages) |
 | R27 | Archive creation verified only by a 2-byte header check | ✅ Done | #367 | **Original root-cause hypothesis disproved** — was not the cause of R25. Landed as defence in depth: `verifyArchive()` inflates the full stream **and** asserts `entryCount > 0`, since an empty file inflates cleanly. ~16% added cost per archive |
-| **R30** | **Release the Phase 0 backlog to production** | ☐ Not started | | **Do this first.** Prod runs `bb59542` (2026-07-02); R26 is merged but unreleased. AC3 is the field check R26 never got |
+| **R30** | **Release the Phase 0 backlog to production** | ✅ Done | #374, #376 | Shipped **v1.10.2** (`d1dc76d`). Prod FDs on `expenses.db*`: **287 → 4**; `integrity_check` **ok**. Staging restore of a real prod backup succeeded with 0 deleted-file handles |
+| **R31** | **Health route closed the shared connection** | ✅ Done | #375 | R26 regression; v1.10.1 was unhealthy on first health probe. Caught by CI's Deployment Health Check **before** promotion. R26's "0 call sites close" count never scanned `backend/routes/**` |
 | **R28** | **No graceful shutdown — WAL never checkpointed on stop** | ☐ Not started | | **Severity corrected High → Low (2026-09-14).** Live DB is `wal` + `synchronous=FULL`, so an ungraceful stop cannot corrupt it or lose a committed transaction. Real costs are dropped in-flight requests and an untruncated WAL. Does **not** gate R30 |
 | **R29** | **Container resource limits declared but not applied** | ☐ Not started | | `Memory: 0` in prod vs `512M` declared in repo compose. V8 heap ceiling 2096 MB with no `--max-old-space-size` — enforcing the limit as-is would cause OOM-kills. Gates R8's severity |
 | R20 | Frontend `test:fast*` scripts | ✅ Done | #348 | `cross-env` + wired `FAST_CHECK_NUM_RUNS` into `pbtOptions`; var was previously dead |

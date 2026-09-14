@@ -222,6 +222,74 @@ Always wait for CI to build the image before promoting. The script will error if
    docker compose -f docker-compose.yml up -d expense-tracker
    ```
 
+## Container Resource Limits
+
+> Decision recorded 2026-09-14 (spec R29). All figures measured against a real 21,507-expense
+> production dataset, not estimated.
+
+### The limits
+
+Both services in `docker-compose.yml` set:
+
+```yaml
+environment:
+  - NODE_OPTIONS=--max-old-space-size=384
+deploy:
+  resources:
+    limits:
+      memory: 512M
+      cpus: '1.0'
+```
+
+### Why 512 MiB
+
+| Measurement | Value |
+|---|---|
+| Steady state, full production data | ~88 MiB |
+| One unbounded `expenseRepository.findAll()` (21,507 rows) | +18.5 MB RSS, 291 ms |
+| 10 consecutive unbounded loads | peak 100.5 MB |
+
+512 MiB leaves roughly 5× headroom over the worst path currently in the codebase. Verified:
+the container runs healthy under the enforced limit at ~5% utilisation.
+
+### Why `--max-old-space-size` is mandatory alongside it
+
+**V8 sizes its heap from host RAM, not from the cgroup limit.** Without the flag, the
+container measured a `heap_size_limit` of **2096 MB** against a 512 MiB cgroup — meaning V8
+would let the heap grow roughly 4× past the point where the kernel OOM-kills the process,
+and would never feel enough pressure to collect first. The result is an exit 137 that
+presents as an unexplained restart.
+
+With the flag, `heap_size_limit` reports **387 MB**, comfortably inside the limit. The 384
+figure is ~75% of 512, leaving room for native allocations (sqlite3, buffers, stacks) that
+live outside the V8 heap.
+
+**If you change the memory limit, change this flag with it.** A limit without a matching heap
+cap is worse than no limit at all.
+
+### `deploy.resources.limits` does apply under `docker compose up`
+
+This was verified empirically on Compose v5.1.4 / Engine 29.5.3 — a probe container using
+`deploy.resources.limits` and one using `mem_limit` both produced
+`HostConfig.Memory=536870912`. The `deploy:` key is **not** Swarm-only here, so no rewrite to
+`mem_limit` is needed.
+
+### Production uses a different compose file
+
+Production is deployed from a personal compose file, **not** the repo's `docker-compose.yml`.
+The repo file is the reference and governs staging. Limits set here therefore do **not**
+reach production automatically — the same three settings (`memory`, `cpus`, `NODE_OPTIONS`)
+must be mirrored into the production compose file by hand.
+
+To confirm what production is actually running:
+
+```powershell
+docker inspect expense-tracker --format 'Memory={{.HostConfig.Memory}} NanoCpus={{.HostConfig.NanoCpus}}'
+docker exec expense-tracker sh -c "tr '\0' '\n' < /proc/1/environ | grep NODE_OPTIONS"
+```
+
+`Memory=0` means no limit is in effect regardless of what any compose file declares.
+
 ## See Also
 
 - [SHA-Based Containers](SHA_BASED_CONTAINERS.md) - Detailed SHA workflow documentation

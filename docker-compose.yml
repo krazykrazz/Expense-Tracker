@@ -12,6 +12,9 @@ services:
       - LOG_LEVEL=info
       - TZ=Etc/UTC
       - NODE_ENV=production
+      # V8 sizes its heap from host RAM, not the cgroup limit, so without this it
+      # would grow past 512M and be OOM-killed before ever collecting. ~75% of the limit.
+      - NODE_OPTIONS=--max-old-space-size=384
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
@@ -48,8 +51,20 @@ services:
       - LOG_LEVEL=debug
       - TZ=Etc/UTC
       - NODE_ENV=staging
+      - NODE_OPTIONS=--max-old-space-size=384
     profiles:
       - staging
+    # Mirrors production: staging cannot surface a resource or permission problem
+    # it is not also subject to.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:2424/api/health"]
       interval: 30s

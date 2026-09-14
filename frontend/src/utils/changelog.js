@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.10.1',
+    date: 'September 14, 2026',
+    added: [],
+    changed: ['Fix a database connection leak and verify backup archives are restorable before reporting success'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.10.0',
     date: 'July 2, 2026',
     added: [],

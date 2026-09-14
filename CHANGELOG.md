@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.10.1] - 2026-09-14
+
+### Fix a database connection leak and verify backup archives are restorable before reporting success
+
 ## [1.10.0] - 2026-07-02
 
 ### Add ability to exclude fuzzy-matched names when standardizing place names; security dependency updates and removal of unused xlsx import.

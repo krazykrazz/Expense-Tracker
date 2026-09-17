@@ -2,17 +2,31 @@
 
 > **Spec format:** Single-document spec (requirements + design + tasks combined). One file per feature.
 > **Source:** Full-codebase audit performed 2026-09-04 using the `expense-tracker-audit` skill.
-> **Status (2026-09-14):** Phase 0 and **Phase 0.5 are complete.** Production runs **v1.10.2**
-> (`d1dc76d`), up from a 2026-07-02 build. The R26 connection leak is verified fixed in the
-> field: FDs on `expenses.db*` went **287 → 4**, `integrity_check` returns `ok`. Resource
-> limits, the V8 heap cap and container hardening are applied to production (R29), and the
-> app now shuts down gracefully with a checkpointed WAL (R28).
+> **Status (2026-09-14):** Phase 0, **Phase 0.5**, and the first two Phase 1 items are
+> complete. Production runs **v1.10.3** (`d2cb442`), up from a 2026-07-02 build.
 >
-> The release took two attempts. v1.10.1 was built and **caught by CI's Deployment Health
-> Check before promotion** — R26 had a regression in `healthRoutes.js` that closed the shared
-> connection (logged as **R31**, fixed in PR #375). v1.10.2 carries the fix.
+> Verified in the field on production:
 >
-> **Next: Phase 1, starting with R6 — the first item in this spec a user would notice.**
+> | Check | Before | Now |
+> | --- | --- | --- |
+> | FDs on `expenses.db*` (R26) | 287 | **4** |
+> | Deleted-file handles | — | **0** |
+> | `integrity_check` | — | **ok** |
+> | V8 heap cap (R29) | 2096 MB | **387 MB** |
+> | `CapDrop` / `no-new-privileges` (R29) | none | **`[ALL]`** / **on** |
+> | `StopTimeout` (R28) | 1s | **15s** |
+>
+> R28's graceful shutdown was validated on staging against a restored production database:
+> SIGTERM → scheduler stopped → HTTP closed → **WAL checkpointed (107,152 bytes → 0)** →
+> exit 0 in 625 ms, with `integrity_check` still `ok` after restart. Production carries
+> `StopTimeout=15` as of the v1.10.3 recreate, so the handler is armed from its next stop.
+>
+> The Phase 0 release took two attempts. v1.10.1 was built and **caught by CI's Deployment
+> Health Check before promotion** — R26 had a regression in `healthRoutes.js` that closed the
+> shared connection (logged as **R31**, fixed in PR #375). v1.10.2 carried the fix; v1.10.3
+> adds the first user-visible work (R6 error boundaries, R4 shared modal shell).
+>
+> **Next: R5 — migrate all 25 modals onto the R4 shell, in 7 batches.**
 
 ## Introduction
 
@@ -214,8 +228,8 @@ and do not let a Windows-only symptom drive a severity rating again.
 
 **Recommended execution order** (updated 2026-09-14 — ✅ = landed):
 ✅ R1 → ✅ R2/R3 → ✅ R20 → ✅ R19 → ✅ R22 → ✅ R26 → ✅ R24/R25 → ✅ R21 → ✅ R23 → ✅ R27 →
-✅ R30 (+ ✅ R31) → ✅ R29 → ✅ R28 → **R6** → R4 → R5 → R8 → R9 → R10 → R11/R12/R13 → R7 →
-R14/R15/R18 → R16 → R17.
+✅ R30 (+ ✅ R31) → ✅ R29 → ✅ R28 → ✅ R6 → ✅ R4 → **R5** → R8 → R9 → R10 → R11/R12/R13 →
+R7 → R14/R15/R18 → R16 → R17.
 
 R26 moved ahead of R21: it is a live production data-corruption path, and it blocked R25.
 R11 must follow R26, since a shared connection changes what a transaction means.
@@ -2007,12 +2021,14 @@ docker stats        = 24.16MiB / 512MiB (4.72%)
 Ten consecutive unbounded `findAll()` calls under the enforced limit peaked at 100.5 MB and
 the container stayed healthy.
 
-> ⚠️ **Production is not covered by this change.** The repo compose governs staging only.
-> The same three settings must be mirrored by hand into
-> `G:\My Drive\Media Related\docker\media-applications.yml`. Until then production continues
-> to run unlimited — which, given 85.6 MiB steady state, is not urgent.
-> Confirm with `docker inspect expense-tracker --format '{{.HostConfig.Memory}}'`; `0` means
-> no limit regardless of what any file declares.
+> ✅ **Production covered as of v1.10.3 (2026-09-14).** The repo compose governs staging only,
+> so the same settings were mirrored by hand into
+> `G:\My Drive\Media Related\docker\media-applications.yml` (backup kept alongside it).
+> Measured on the live production container after the recreate:
+> `Mem=536870912`, `CapDrop=[ALL]`, `SecurityOpt=[no-new-privileges:true]`,
+> `StopTimeout=15`, v8 `heap_size_limit` **387 MB**.
+> `docker inspect` is authoritative; `0` for `.HostConfig.Memory` means no limit regardless
+> of what any file declares.
 
 ### Lesson
 
@@ -3112,12 +3128,12 @@ These read ground truth that the source tree cannot provide. Replace `expense-tr
 | R27 | Archive creation verified only by a 2-byte header check | ✅ Done | #367 | **Original root-cause hypothesis disproved** — was not the cause of R25. Landed as defence in depth: `verifyArchive()` inflates the full stream **and** asserts `entryCount > 0`, since an empty file inflates cleanly. ~16% added cost per archive |
 | **R30** | **Release the Phase 0 backlog to production** | ✅ Done | #374, #376 | Shipped **v1.10.2** (`d1dc76d`). Prod FDs on `expenses.db*`: **287 → 4**; `integrity_check` **ok**. Staging restore of a real prod backup succeeded with 0 deleted-file handles |
 | **R31** | **Health route closed the shared connection** | ✅ Done | #375 | R26 regression; v1.10.1 was unhealthy on first health probe. Caught by CI's Deployment Health Check **before** promotion. R26's "0 call sites close" count never scanned `backend/routes/**` |
-| **R28** | **No graceful shutdown — WAL never checkpointed on stop** | ✅ Done | | Severity was corrected High → Low first. Handler extracted to `utils/gracefulShutdown.js` for testability. **SSE streams would have hung shutdown forever** — `sseService.closeAll()` added. Verified on a real container: 652 ms, exit 0, **WAL + SHM absent** after stop. `stop_grace_period: 15s` in both compose files |
-| **R29** | **Container resource limits declared but not applied** | ✅ Done | | Two original claims **disproved by measurement**: `deploy.resources.limits` does apply under `docker compose up` (v5.1.4), and one unbounded `findAll()` costs only **+18.5 MB** — so R8 is *not* an OOM risk. Real fix was the heap cap: `--max-old-space-size=384` takes V8's ceiling 2096 MB → 387 MB. Staging now hardened + limited. **Production compose still needs the same three settings by hand** |
+| **R28** | **No graceful shutdown — WAL never checkpointed on stop** | ✅ Done | #379 | Severity was corrected High → Low first. Handler extracted to `utils/gracefulShutdown.js` for testability. **SSE streams would have hung shutdown forever** — `sseService.closeAll()` added. **Validated on staging against a restored production DB: 625 ms, exit 0, WAL 107,152 B → checkpointed and removed, `integrity_check` `ok` after restart.** Production carries `StopTimeout=15` as of the v1.10.3 recreate |
+| **R29** | **Container resource limits declared but not applied** | ✅ Done | #378 | Two original claims **disproved by measurement**: `deploy.resources.limits` does apply under `docker compose up` (v5.1.4), and one unbounded `findAll()` costs only **+18.5 MB** — so R8 is *not* an OOM risk. Real fix was the heap cap: `--max-old-space-size=384` takes V8's ceiling 2096 MB → 387 MB. **Live on production:** `Mem=536870912`, `CapDrop=[ALL]`, `no-new-privileges`, heap **387 MB** |
 | R20 | Frontend `test:fast*` scripts | ✅ Done | #348 | `cross-env` + wired `FAST_CHECK_NUM_RUNS` into `pbtOptions`; var was previously dead |
 | R19 | Conditional hooks in `InsuranceStatusIndicator` | ✅ Done | #348 | Severity corrected High → Low; React tolerates all-or-nothing early returns. Rule now `error` |
-| R6 | Add `ErrorBoundary` | ✅ Done | | Shell + all 9 lazy modals (10 boundaries). For the 2 modals whose chrome lives in `App.jsx`, only the lazy content is wrapped so the **close button survives a crash**. 12 tests; `DEV` gating asserted via `vi.stubEnv` |
-| R4 | Shared accessible `<Modal>` shell | ✅ Done | | Behaviour split into `useModalBehavior` per the design notes. **Found that React runs child effects before parent effects, so push order made the OUTER nested modal look topmost** — topmost is now decided by DOM containment. 27 tests; all 9 UxConsistency guardrails still pass |
+| R6 | Add `ErrorBoundary` | ✅ Done | #381 | Shell + all 9 lazy modals (10 boundaries). For the 2 modals whose chrome lives in `App.jsx`, only the lazy content is wrapped so the **close button survives a crash**. 12 tests; `DEV` gating asserted via `vi.stubEnv`. **Live on production in v1.10.3** |
+| R4 | Shared accessible `<Modal>` shell | ✅ Done | #382 | Behaviour split into `useModalBehavior` per the design notes. **Found that React runs child effects before parent effects, so push order made the OUTER nested modal look topmost** — topmost is now decided by DOM containment. 27 tests; all 9 UxConsistency guardrails still pass |
 | R5 | Migrate 25 modals to the shell | ☐ Not started | | 7 batches (5a–5g); clears ~198 a11y warnings |
 | R8 | Bound analytics queries | ☐ Not started | | Characterization tests required first. **Severity no longer conditional on R29** — measured at only +18.5 MB per unbounded load, so this is a latency problem (291 ms each), not a memory one |
 | R9 | Adopt `asyncHandler` in controllers | ☐ Not started | | 24 PRs, smallest controller first |

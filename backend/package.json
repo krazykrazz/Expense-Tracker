@@ -44,16 +44,16 @@
     "express-rate-limit": "^8.7.0",
     "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.3",
-    "multer": "^2.3.0",
+    "multer": "^2.4.0",
     "node-cron": "^4.6.0",
     "sqlite3": "^6.0.1",
     "tar": "^7.5.22"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",
-    "baseline-browser-mapping": "^2.11.22",
+    "baseline-browser-mapping": "^2.11.25",
     "cross-env": "^10.1.0",
-    "fast-check": "^4.10.0",
+    "fast-check": "^4.10.1",
     "jest": "^30.5.1",
     "nodemon": "^3.1.14",
     "supertest": "^7.2.2"

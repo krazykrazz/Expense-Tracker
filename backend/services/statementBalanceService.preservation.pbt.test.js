@@ -508,7 +508,9 @@ describe('StatementBalanceService - Preservation Properties (Property 2)', () =>
           );
 
           // ASSERTIONS: Payment after statement date should be subtracted correctly
-          const expectedBalance = Math.max(0, expenseAmount - paymentAmount);
+          // Round like the service does, or a sub-cent difference reports isPaid=true
+          // here while the unrounded oracle still expects a positive balance.
+          const expectedBalance = Math.max(0, Math.round((expenseAmount - paymentAmount) * 100) / 100);
           expect(result.statementBalance).toBeCloseTo(expectedBalance, 2);
           expect(result.totalPayments).toBeCloseTo(paymentAmount, 2);
           expect(result.isPaid).toBe(expectedBalance <= 0);

@@ -133,7 +133,12 @@
 
 .quick-view-count.attention {
   background: var(--color-warning-light);
-  color: var(--color-warning-dark);
+  color: #92400e;
+}
+
+:root[data-theme='dark'] .quick-view-count.attention {
+  background: rgba(245, 158, 11, 0.18);
+  color: var(--color-warning);
 }
 
 .list-summary-line {
@@ -150,13 +155,22 @@
   font-weight: var(--font-semibold);
 }
 
+:root[data-theme='dark'] .list-summary-total {
+  color: #f87171;
+}
+
 .list-summary-review {
   padding: 0;
   border: none;
   background: none;
-  color: var(--color-warning-dark);
+  color: #b45309;
   font: inherit;
+  font-weight: var(--font-medium);
   cursor: pointer;
+}
+
+:root[data-theme='dark'] .list-summary-review {
+  color: var(--color-warning);
 }
 
 .list-summary-review:hover {
@@ -373,6 +387,26 @@
 @media (min-width: 769px) {
   .expense-table tbody.date-group tr:not(.date-group-row) td:first-child {
     padding-left: var(--spacing-8);
+  }
+}
+
+/* Card layout: date header becomes a plain label above the day's cards.
+   Lives here (not mobile.css) because this file loads after mobile.css. */
+@media (max-width: 768px) {
+  .expense-table tbody tr.date-group-row,
+  .expense-table tbody tr.date-group-row:hover {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0 var(--spacing-1);
+  }
+
+  .expense-table tr.date-group-row th {
+    display: block;
+    width: 100%;
+    padding: 0;
+    background: transparent;
+    border: none;
   }
 }
 

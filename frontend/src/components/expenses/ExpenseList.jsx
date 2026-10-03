@@ -827,6 +827,9 @@ const ExpenseList = memo(({
       if (localFilterInsurance) {
         activeFilters.push(getInsuranceFilterText(localFilterInsurance));
       }
+      if (quickView !== 'all') {
+        activeFilters.push(QUICK_VIEWS.find(v => v.id === quickView).label.toLowerCase());
+      }
       
       const expenseWord = filteredExpenses.length === 1 ? 'expense' : 'expenses';
       return `Showing ${filteredExpenses.length} ${expenseWord} matching: ${activeFilters.join(', ')}`;
@@ -975,7 +978,7 @@ const ExpenseList = memo(({
               <>
                 <span className="list-summary-sep" aria-hidden="true">·</span>
                 <button type="button" className="list-summary-review" onClick={() => setQuickView('review')}>
-                  {quickViewCounts.review} need review
+                  {quickViewCounts.review} {quickViewCounts.review === 1 ? 'needs' : 'need'} review
                 </button>
               </>
             )}

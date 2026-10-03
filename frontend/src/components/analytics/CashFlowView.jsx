@@ -52,7 +52,7 @@ const CashFlowView = ({ data }) => {
         </div>
         <div className="period-stat-card">
           <span className="period-stat-label">Savings rate</span>
-          <span className={`period-stat-value ${netPositive ? 'positive' : 'negative'}`}>
+          <span className={`period-stat-value ${totals.savingsRate == null ? '' : netPositive ? 'positive' : 'negative'}`}>
             {formatPct(totals.savingsRate)}
           </span>
           {!hasIncome && <span className="period-stat-sub">No income recorded</span>}

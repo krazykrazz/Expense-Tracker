@@ -49,7 +49,7 @@ describe('ExpenseList - quick views and summary line', () => {
     fetch.mockReset();
     fetch.mockImplementation((url) => {
       if (url.includes('/api/categories')) {
-        return Promise.resolve({ ok: true, json: async () => ({ categories: ['Groceries'] }) });
+        return Promise.resolve({ ok: true, json: async () => ({ categories: ['Groceries', 'Subscriptions'] }) });
       }
       if (url.includes('/api/payment-methods')) {
         return Promise.resolve({ ok: true, json: async () => ({ paymentMethods: [] }) });
@@ -77,7 +77,7 @@ describe('ExpenseList - quick views and summary line', () => {
     const summary = screen.getByTestId('list-summary-line');
     expect(summary).toHaveTextContent('4 expenses');
     expect(summary).toHaveTextContent('$250.50');
-    expect(within(summary).getByRole('button', { name: '1 need review' })).toBeInTheDocument();
+    expect(within(summary).getByRole('button', { name: '1 needs review' })).toBeInTheDocument();
   });
 
   it('filters to items needing review', () => {
@@ -102,9 +102,18 @@ describe('ExpenseList - quick views and summary line', () => {
     expect(screen.queryByText('Clinic')).not.toBeInTheDocument();
   });
 
+  it('includes the active quick view in the filter status message', async () => {
+    renderList();
+    const typeFilter = screen.getByTitle('Filter by type (current month only)');
+    await within(typeFilter).findByRole('option', { name: 'Subscriptions' });
+    fireEvent.change(typeFilter, { target: { value: 'Subscriptions' } });
+    fireEvent.click(screen.getByRole('button', { name: /Recurring/ }));
+    expect(screen.getByText('Showing 1 expense matching: Subscriptions, recurring')).toBeInTheDocument();
+  });
+
   it('jumps to the review view from the summary line', () => {
     renderList();
-    fireEvent.click(screen.getByRole('button', { name: '1 need review' }));
+    fireEvent.click(screen.getByRole('button', { name: '1 needs review' }));
     expect(screen.getByRole('button', { name: /Needs review/ })).toHaveAttribute('aria-pressed', 'true');
   });
 

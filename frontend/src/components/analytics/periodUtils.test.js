@@ -19,6 +19,11 @@ describe('periodUtils', () => {
     expect(computePeriodRange('last12', 2026, 12)).toEqual({ start: { year: 2026, month: 1 }, end: { year: 2026, month: 12 } });
   });
 
+  it('clamps ranges to the supported 2000-2100 window', () => {
+    expect(computePeriodRange('last12', 2000, 5)).toEqual({ start: { year: 2000, month: 1 }, end: { year: 2000, month: 5 } });
+    expect(computePeriodRange('month', 2101, 2)).toEqual({ start: { year: 2100, month: 12 }, end: { year: 2100, month: 12 } });
+  });
+
   it('shifts months across years', () => {
     expect(shiftMonth(2026, 1, -1)).toEqual({ year: 2025, month: 12 });
     expect(shiftMonth(2025, 12, 1)).toEqual({ year: 2026, month: 1 });

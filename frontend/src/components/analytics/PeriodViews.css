@@ -37,9 +37,14 @@
   transition: var(--transition-colors);
 }
 
-.period-nav-btn:hover {
+.period-nav-btn:hover:not(:disabled) {
   border-color: var(--border-strong);
   background: var(--bg-muted);
+}
+
+.period-nav-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .period-range-label {
@@ -108,6 +113,12 @@
 
 .period-error p {
   color: var(--color-negative);
+}
+
+.period-refreshing {
+  opacity: 0.55;
+  pointer-events: none;
+  transition: opacity var(--transition-fast);
 }
 
 .period-spinner {
@@ -184,12 +195,22 @@
 
 .period-stat-value.positive,
 .pl-amount.positive {
-  color: var(--color-positive-dark);
+  color: #15803d;
 }
 
 .period-stat-value.negative,
 .pl-amount.negative {
   color: var(--color-negative-dark);
+}
+
+:root[data-theme='dark'] .period-stat-value.positive,
+:root[data-theme='dark'] .pl-amount.positive {
+  color: var(--color-positive);
+}
+
+:root[data-theme='dark'] .period-stat-value.negative,
+:root[data-theme='dark'] .pl-amount.negative {
+  color: #f87171;
 }
 
 .period-stat-sub {
@@ -278,15 +299,24 @@
 }
 
 .period-ranked-name {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: var(--spacing-2);
   min-width: 0;
+  overflow: hidden;
   color: var(--text-primary);
   font-weight: var(--font-medium);
 }
 
+.period-ranked-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .period-ranked-meta {
+  flex-shrink: 0;
   color: var(--text-tertiary);
   font-weight: var(--font-normal);
   white-space: nowrap;
@@ -410,4 +440,5 @@
 @media (prefers-reduced-motion: reduce) {
   .period-spinner { animation: none; }
   .pl-chevron { transition: none; }
+  .period-refreshing { transition: none; }
 }

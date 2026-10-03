@@ -106,6 +106,24 @@ describe('PeriodAnalyticsPanel', () => {
     expect(screen.getByText('Net shortfall')).toBeInTheDocument();
   });
 
+  it('disables previous at the earliest supported period', async () => {
+    render(<Harness view="spending" initial={{ preset: 'year', year: 2000, month: 6 }} />);
+    await screen.findByTestId('spending-view');
+    expect(screen.getByRole('button', { name: 'Previous period' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Next period' })).toBeEnabled();
+  });
+
+  it('keeps the previous data visible while a new range loads', async () => {
+    render(<Harness view="spending" />);
+    await screen.findByTestId('spending-view');
+
+    getPeriodSummary.mockReturnValueOnce(new Promise(() => {}));
+    fireEvent.click(screen.getByRole('button', { name: 'Last 12 months' }));
+
+    expect(screen.getByTestId('spending-view')).toBeInTheDocument();
+    expect(screen.getByTestId('spending-view').parentElement).toHaveAttribute('aria-busy', 'true');
+  });
+
   it('shows an error with retry', async () => {
     getPeriodSummary.mockRejectedValueOnce(new Error('boom'));
     render(<Harness view="spending" />);

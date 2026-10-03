@@ -2,9 +2,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { getPeriodSummary } from '../../services/analyticsApi';
 import { createLogger } from '../../utils/logger';
 import {
+  MAX_PERIOD,
+  MIN_PERIOD,
   PERIOD_PRESETS,
   computePeriodRange,
   formatPeriodLabel,
+  isSameMonth,
   presetStep,
   shiftMonth,
   toYearMonthString,
@@ -22,12 +25,15 @@ const PeriodSelector = ({ period, range, onChange }) => {
     onChange({ ...period, ...next });
   };
 
+  const atStart = isSameMonth(range.start, MIN_PERIOD);
+  const atEnd = isSameMonth(range.end, MAX_PERIOD);
+
   return (
     <div className="period-selector">
       <div className="period-nav">
-        <button type="button" className="period-nav-btn" onClick={() => shift(-1)} aria-label="Previous period">‹</button>
-        <span className="period-range-label" data-testid="period-range-label">{formatPeriodLabel(range)}</span>
-        <button type="button" className="period-nav-btn" onClick={() => shift(1)} aria-label="Next period">›</button>
+        <button type="button" className="period-nav-btn" onClick={() => shift(-1)} disabled={atStart} aria-label="Previous period">‹</button>
+        <span className="period-range-label" data-testid="period-range-label" aria-live="polite">{formatPeriodLabel(range)}</span>
+        <button type="button" className="period-nav-btn" onClick={() => shift(1)} disabled={atEnd} aria-label="Next period">›</button>
       </div>
       <div className="period-presets" role="group" aria-label="Period">
         {PERIOD_PRESETS.map(p => (
@@ -83,14 +89,14 @@ const PeriodAnalyticsPanel = ({ view, period, onPeriodChange }) => {
   const { data, error } = result;
 
   let content;
-  if (loading) {
+  if (loading && !data) {
     content = (
       <div className="period-loading">
         <div className="period-spinner" />
         <p>Loading…</p>
       </div>
     );
-  } else if (error) {
+  } else if (error && !loading) {
     content = (
       <div className="period-error" role="alert">
         <p>{error}</p>
@@ -100,7 +106,12 @@ const PeriodAnalyticsPanel = ({ view, period, onPeriodChange }) => {
       </div>
     );
   } else if (data) {
-    content = view === 'cash-flow' ? <CashFlowView data={data} /> : <SpendingView data={data} />;
+    // Keep the previous range visible (dimmed) while the new one loads, to avoid layout jumps
+    content = (
+      <div className={loading ? 'period-refreshing' : undefined} aria-busy={loading}>
+        {view === 'cash-flow' ? <CashFlowView data={data} /> : <SpendingView data={data} />}
+      </div>
+    );
   }
 
   return (

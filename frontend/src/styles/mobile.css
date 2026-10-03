@@ -294,23 +294,6 @@
     margin-top: var(--spacing-3);
   }
 
-  /* Date group header: plain label above the day's cards */
-  .expense-table tbody tr.date-group-row,
-  .expense-table tbody tr.date-group-row:hover {
-    background: transparent;
-    border: none;
-    box-shadow: none;
-    padding: 0 var(--spacing-1);
-  }
-
-  .expense-table tr.date-group-row th {
-    display: block;
-    width: 100%;
-    padding: 0;
-    background: transparent;
-    border: none;
-  }
-
   /* Each row = compact 2-line card */
   .expense-table tbody tr {
     display: flex;

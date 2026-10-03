@@ -57,6 +57,7 @@
 /* Prev/next month + jump to current month */
 .month-step-button,
 .month-today-button {
+  flex-shrink: 0;
   height: 34px;
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);

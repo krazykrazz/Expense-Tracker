@@ -17,6 +17,7 @@ const DonutChart = ({ slices, total }) => {
     acc.push({ ...slice, length, offset });
     return acc;
   }, []);
+  const centerLabel = formatCurrency(Math.round(total)).replace(/\.00$/, '');
   return (
     <svg
       className="period-donut"
@@ -42,8 +43,14 @@ const DonutChart = ({ slices, total }) => {
         ))}
       </g>
       <text x="80" y="74" textAnchor="middle" className="period-donut-label">Total</text>
-      <text x="80" y="94" textAnchor="middle" className="period-donut-value">
-        {formatCurrency(Math.round(total)).replace(/\.00$/, '')}
+      <text
+        x="80"
+        y="94"
+        textAnchor="middle"
+        className="period-donut-value"
+        style={{ fontSize: centerLabel.length > 9 ? 13 : 17 }}
+      >
+        {centerLabel}
       </text>
     </svg>
   );
@@ -80,7 +87,7 @@ const SpendingView = ({ data }) => {
         </div>
         <div className="period-stat-card">
           <span className="period-stat-label">Largest category</span>
-          <span className="period-stat-value period-stat-text">{largest.category}</span>
+          <span className="period-stat-value period-stat-text" title={largest.category}>{largest.category}</span>
           <span className="period-stat-sub">{largest.percentOfExpenses.toFixed(1)}% of spending</span>
         </div>
         <div className="period-stat-card">
@@ -101,7 +108,7 @@ const SpendingView = ({ data }) => {
                 <div className="period-ranked-row">
                   <span className="period-ranked-name">
                     <span className="period-dot" style={{ backgroundColor: slice.color }} />
-                    {slice.category}
+                    <span className="period-ranked-label" title={slice.category}>{slice.category}</span>
                     {slice.fixed > 0 && (
                       <span className="period-ranked-meta">
                         {slice.variable > 0 ? `· ${formatCurrency(slice.fixed)} fixed` : '· fixed'}

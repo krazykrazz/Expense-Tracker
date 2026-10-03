@@ -336,7 +336,7 @@
 /* Date group header row */
 .expense-table tbody tr.date-group-row,
 .expense-table tbody tr.date-group-row:hover {
-  background: var(--bg-subtle);
+  background: var(--bg-muted);
   box-shadow: none;
 }
 
@@ -344,10 +344,11 @@
   position: static;
   padding: var(--spacing-2) var(--spacing-3);
   border-radius: 0;
-  border-bottom: 1px solid var(--border-muted);
-  text-transform: none;
-  letter-spacing: normal;
-  font-size: var(--caption-text-lg);
+  border-top: 1px solid var(--border-default);
+  border-bottom: 1px solid var(--border-default);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: var(--text-xs);
 }
 
 .date-group-header {
@@ -358,14 +359,21 @@
 }
 
 .date-group-label {
-  color: var(--text-secondary);
-  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  font-weight: var(--font-bold);
 }
 
 .date-group-total {
-  color: var(--text-tertiary);
-  font-weight: var(--font-medium);
+  color: var(--text-secondary);
+  font-weight: var(--font-semibold);
   font-feature-settings: var(--font-feature-tabular);
+}
+
+/* Indent a day's transactions under its date header (desktop table only) */
+@media (min-width: 769px) {
+  .expense-table tbody.date-group tr:not(.date-group-row) td:first-child {
+    padding-left: var(--spacing-8);
+  }
 }
 
 /* Tax-deductible row styling - Modern approach */

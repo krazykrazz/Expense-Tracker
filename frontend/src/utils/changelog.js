@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.11.0',
+    date: 'October 3, 2026',
+    added: [],
+    changed: ['Spending and Cash Flow analytics, date-grouped expense list with quick views, custom date range filter, month stepping'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.10.3',
     date: 'September 14, 2026',
     added: [],

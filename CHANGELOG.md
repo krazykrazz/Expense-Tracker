@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.11.0] - 2026-10-03
+
+### Spending and Cash Flow analytics, date-grouped expense list with quick views, custom date range filter, month stepping
+
 ## [1.10.3] - 2026-09-14
 
 ### Show a recoverable error instead of a blank page when part of the app fails, and shut down cleanly on restart

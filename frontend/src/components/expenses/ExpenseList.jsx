@@ -628,6 +628,17 @@ const ExpenseList = memo(({
   const endIndex = startIndex + pageSize;
   const paginatedExpenses = filteredExpenses.slice(startIndex, endIndex);
 
+  const dateGroups = [];
+  for (const expense of paginatedExpenses) {
+    const last = dateGroups[dateGroups.length - 1];
+    if (last && last.date === expense.date) {
+      last.expenses.push(expense);
+      last.total += parseFloat(expense.amount) || 0;
+    } else {
+      dateGroups.push({ date: expense.date, expenses: [expense], total: parseFloat(expense.amount) || 0 });
+    }
+  }
+
   // Handle page change
   const handlePageChange = useCallback((newPage) => {
     setCurrentPage(newPage);
@@ -996,7 +1007,6 @@ const ExpenseList = memo(({
         <table className="expense-table">
           <thead>
             <tr>
-              <th>Date</th>
               <th>Place</th>
               <th>Notes</th>
               <th>Amount</th>
@@ -1006,8 +1016,17 @@ const ExpenseList = memo(({
               <th>Actions</th>
             </tr>
           </thead>
-          <tbody>
-            {paginatedExpenses.map((expense) => (
+          {dateGroups.map((group, groupIndex) => (
+          <tbody key={`${group.date}-${groupIndex}`} className="date-group">
+            <tr className="date-group-row">
+              <th colSpan={7} scope="rowgroup">
+                <div className="date-group-header">
+                  <span className="date-group-label">{formatDate(group.date)}</span>
+                  <span className="date-group-total">${formatAmount(group.total)}</span>
+                </div>
+              </th>
+            </tr>
+            {group.expenses.map((expense) => (
               <tr 
                 key={expense.id}
                 className={
@@ -1015,7 +1034,6 @@ const ExpenseList = memo(({
                   expense.type === 'Tax - Donation' ? 'tax-donation-row' : ''
                 }
               >
-                <td>{formatDate(expense.date)}</td>
                 <td>
                   <div className="place-cell">
                     {expense.is_generated ? (
@@ -1127,6 +1145,7 @@ const ExpenseList = memo(({
               </tr>
             ))}
           </tbody>
+          ))}
         </table>
       </div>
       )}

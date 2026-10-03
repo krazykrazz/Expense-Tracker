@@ -121,4 +121,35 @@ describe('ExpenseList - quick views and summary line', () => {
     fireEvent.click(screen.getByRole('button', { name: /Needs review/ }));
     expect(screen.getByText(/Nothing needs review/)).toBeInTheDocument();
   });
+
+  it('groups rows under one header per date with the day total and no Date column', () => {
+    const sameDay = [
+      { id: 10, date: '2025-02-03', place: 'Cafe', amount: 4.25, type: 'Dining Out', method: 'Cash', week: 1 },
+      { id: 11, date: '2025-02-03', place: 'Bakery', amount: 10, type: 'Groceries', method: 'Cash', week: 1 },
+      { id: 12, date: '2025-02-01', place: 'Hardware', amount: 30, type: 'Other', method: 'Cash', week: 1 },
+    ];
+    render(
+      <ExpenseList
+        expenses={sameDay}
+        people={[]}
+        onExpenseDeleted={vi.fn()}
+        onExpenseUpdated={vi.fn()}
+        onAddExpense={vi.fn()}
+      />
+    );
+
+    expect(screen.queryByRole('columnheader', { name: 'Date' })).not.toBeInTheDocument();
+
+    const headers = screen.getAllByRole('rowheader');
+    expect(headers).toHaveLength(2);
+    expect(headers[0]).toHaveTextContent('Feb 3, 2025');
+    expect(headers[0]).toHaveTextContent('$14.25');
+    expect(headers[1]).toHaveTextContent('Feb 1, 2025');
+    expect(headers[1]).toHaveTextContent('$30.00');
+
+    const firstGroup = headers[0].closest('tbody');
+    expect(within(firstGroup).getByText('Cafe')).toBeInTheDocument();
+    expect(within(firstGroup).getByText('Bakery')).toBeInTheDocument();
+    expect(within(firstGroup).queryByText('Hardware')).not.toBeInTheDocument();
+  });
 });

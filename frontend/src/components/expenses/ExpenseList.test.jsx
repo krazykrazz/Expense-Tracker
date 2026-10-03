@@ -118,9 +118,8 @@ describe('ExpenseList Local Filter Tests', () => {
     // Wait for filter to apply
     await waitFor(() => {
       // Should show only Groceries expenses
-      const rows = screen.getAllByRole('row');
-      // Header row + 1 data row (only Groceries)
-      expect(rows.length).toBe(2);
+      const rows = screen.getAllByRole('row').filter(row => row.querySelector('td'));
+      expect(rows.length).toBe(1);
     });
   });
 

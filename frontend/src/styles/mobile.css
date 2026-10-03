@@ -290,6 +290,27 @@
     gap: var(--spacing-2);
   }
 
+  .expense-table tbody + tbody {
+    margin-top: var(--spacing-3);
+  }
+
+  /* Date group header: plain label above the day's cards */
+  .expense-table tbody tr.date-group-row,
+  .expense-table tbody tr.date-group-row:hover {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0 var(--spacing-1);
+  }
+
+  .expense-table tr.date-group-row th {
+    display: block;
+    width: 100%;
+    padding: 0;
+    background: transparent;
+    border: none;
+  }
+
   /* Each row = compact 2-line card */
   .expense-table tbody tr {
     display: flex;
@@ -321,10 +342,18 @@
     display: none;
   }
 
+  /* Forces Type · Method onto their own line below Place/Amount */
+  .expense-table tbody tr:not(.date-group-row)::before {
+    content: '';
+    order: 10;
+    flex-basis: 100%;
+    height: 0;
+  }
+
   /* ── Line 1: Place (left) + Amount (right) ── */
 
   /* Place — takes remaining width */
-  .expense-table td:nth-child(2) {
+  .expense-table td:nth-child(1) {
     display: block;
     flex: 1 1 0;
     min-width: 0;
@@ -339,7 +368,7 @@
   }
 
   /* Keep indicators inline and compact */
-  .expense-table td:nth-child(2) .place-cell {
+  .expense-table td:nth-child(1) .place-cell {
     flex-direction: row;
     align-items: center;
     gap: var(--spacing-1);
@@ -347,12 +376,12 @@
     overflow: hidden;
   }
 
-  .expense-table td:nth-child(2) .expense-indicators {
+  .expense-table td:nth-child(1) .expense-indicators {
     flex-shrink: 0;
   }
 
   /* Amount — right-aligned, bold */
-  .expense-table td:nth-child(4) {
+  .expense-table td:nth-child(3) {
     display: block;
     flex: 0 0 auto;
     text-align: right;
@@ -361,25 +390,10 @@
     line-height: 1.4;
   }
 
-  /* ── Line 2: Date · Type · Method (secondary info) ── */
-
-  /* Date — shown as first meta item */
-  .expense-table td:nth-child(1) {
-    display: block;
-    width: 100%;
-    font-size: var(--text-xs);
-    color: var(--text-tertiary);
-    padding-top: 2px;
-    /* Use flex trick: show date + type + method on one line */
-    /* We achieve this by making date, type, method all inline-block
-       and wrapping them in a shared line via order */
-    order: 10;
-    flex: 0 0 auto;
-    white-space: nowrap;
-  }
+  /* ── Line 2: Type · Method (date is in the group header) ── */
 
   /* Type */
-  .expense-table td:nth-child(5) {
+  .expense-table td:nth-child(4) {
     display: block;
     order: 11;
     flex: 0 0 auto;
@@ -390,7 +404,7 @@
   }
 
   /* Method */
-  .expense-table td:nth-child(7) {
+  .expense-table td:nth-child(6) {
     display: block;
     order: 12;
     flex: 0 0 auto;
@@ -400,25 +414,24 @@
     white-space: nowrap;
   }
 
-  /* Separator dots between meta items */
-  .expense-table td:nth-child(5)::before,
-  .expense-table td:nth-child(7)::before {
+  .expense-table td:nth-child(6)::before {
+    display: inline;
     content: ' · ';
     color: var(--text-muted);
   }
 
   /* Week — hidden (low value on mobile) */
-  .expense-table td:nth-child(6) {
+  .expense-table td:nth-child(5) {
     display: none;
   }
 
   /* Notes — hidden on mobile */
-  .expense-table td:nth-child(3) {
+  .expense-table td:nth-child(2) {
     display: none;
   }
 
   /* ── Line 3: Actions ── */
-  .expense-table td:nth-child(8) {
+  .expense-table td:nth-child(7) {
     display: block;
     order: 20;
     width: 100%;
@@ -427,14 +440,14 @@
     border-top: 1px solid var(--border-muted);
   }
 
-  .expense-table td:nth-child(8) .action-buttons {
+  .expense-table td:nth-child(7) .action-buttons {
     flex-direction: row;
     justify-content: flex-end;
     gap: var(--spacing-2);
   }
 
-  .expense-table td:nth-child(8) .edit-button,
-  .expense-table td:nth-child(8) .delete-button {
+  .expense-table td:nth-child(7) .edit-button,
+  .expense-table td:nth-child(7) .delete-button {
     flex: 0 0 auto;
     padding: var(--spacing-1) var(--spacing-3);
     font-size: var(--text-xs);
@@ -451,8 +464,8 @@
   }
 
   /* Remove last-child border-radius overrides from base CSS */
-  .expense-table tbody tr:last-child td:first-child,
-  .expense-table tbody tr:last-child td:last-child {
+  .expense-table tbody:last-of-type tr:last-child td:first-child,
+  .expense-table tbody:last-of-type tr:last-child td:last-child {
     border-radius: 0;
   }
 }

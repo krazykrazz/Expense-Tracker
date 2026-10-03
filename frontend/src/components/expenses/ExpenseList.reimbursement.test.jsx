@@ -205,7 +205,7 @@ describe('ExpenseList Reimbursement Display Tests', () => {
     });
 
     // Check that the net amount is displayed (not the original cost)
-    expect(screen.getByText('$75.00')).toBeTruthy();
+    expect(document.querySelector('td.amount')).toHaveTextContent('$75.00');
     // The original cost should NOT be displayed as the primary amount
     expect(screen.queryByText('$100.00')).toBeNull();
   });

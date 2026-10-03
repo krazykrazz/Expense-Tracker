@@ -126,7 +126,7 @@ describe('ExpenseList - Invoice Integration', () => {
     expect(invoiceFilter.title).toBe('Filter medical expenses by invoice status');
 
     // Initially, all 3 expenses should be visible
-    let rows = container.querySelectorAll('tbody tr');
+    let rows = container.querySelectorAll('tbody tr:not(.date-group-row)');
     expect(rows.length).toBe(3);
 
     // Apply "With Invoice" filter
@@ -134,7 +134,7 @@ describe('ExpenseList - Invoice Integration', () => {
 
     // Wait for filter to apply - should show only medical expenses with invoices
     await waitFor(() => {
-      rows = container.querySelectorAll('tbody tr');
+      rows = container.querySelectorAll('tbody tr:not(.date-group-row)');
       expect(rows.length).toBe(1); // Only expense 1 has an invoice
     });
 
@@ -148,7 +148,7 @@ describe('ExpenseList - Invoice Integration', () => {
 
     // Wait for filter to apply - should show only medical expenses without invoices
     await waitFor(() => {
-      rows = container.querySelectorAll('tbody tr');
+      rows = container.querySelectorAll('tbody tr:not(.date-group-row)');
       expect(rows.length).toBe(1); // Only expense 2 doesn't have an invoice
     });
 
@@ -199,7 +199,7 @@ describe('ExpenseList - Invoice Integration', () => {
     expect(invoiceIndicators.length).toBe(2); // Two medical expenses
 
     // Check that non-medical expenses don't have invoice indicators
-    const expenseRows = document.querySelectorAll('tbody tr');
+    const expenseRows = document.querySelectorAll('tbody tr:not(.date-group-row)');
     const groceryRow = Array.from(expenseRows).find(row => 
       row.textContent.includes('Grocery Store')
     );
@@ -255,7 +255,7 @@ describe('ExpenseList - Invoice Integration', () => {
     });
 
     // All expenses should be visible again
-    const rows = container.querySelectorAll('tbody tr');
+    const rows = container.querySelectorAll('tbody tr:not(.date-group-row)');
     expect(rows.length).toBe(3);
   });
 });

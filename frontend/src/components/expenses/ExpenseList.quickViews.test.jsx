@@ -135,6 +135,20 @@ describe('ExpenseList - quick views and summary line', () => {
     expect(screen.getByText(/Nothing needs review/)).toBeInTheDocument();
   });
 
+  it('shows days and daily average in the summary line for a bounded date range', () => {
+    render(
+      <ExpenseList
+        expenses={expenses}
+        people={[]}
+        onExpenseDeleted={vi.fn()}
+        onExpenseUpdated={vi.fn()}
+        onAddExpense={vi.fn()}
+        dateRange={{ start: '2025-01-01', end: '2025-01-10' }}
+      />
+    );
+    expect(screen.getByTestId('list-summary-range')).toHaveTextContent('10 days · $25.05/day');
+  });
+
   it('groups rows under one header per date with the day total and no Date column', () => {
     const sameDay = [
       { id: 10, date: '2025-02-03', place: 'Cafe', amount: 4.25, type: 'Dining Out', method: 'Cash', week: 1 },

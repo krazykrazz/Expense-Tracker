@@ -138,6 +138,8 @@ function AppContent({ onPaymentMethodsUpdate }) {
     filterMethod,
     filterYear,
     filterInsurance,
+    filterStartDate,
+    filterEndDate,
     selectedYear,
     selectedMonth,
     isGlobalView,
@@ -147,6 +149,7 @@ function AppContent({ onPaymentMethodsUpdate }) {
     handleFilterTypeChange,
     handleFilterMethodChange,
     handleFilterYearChange,
+    handleDateRangeChange,
     handleMonthChange,
     handleClearFilters,
     handleReturnToMonthlyView,
@@ -470,6 +473,7 @@ function AppContent({ onPaymentMethodsUpdate }) {
                 onAddExpense={openExpenseForm}
                 initialInsuranceFilter={filterInsurance}
                 onInsuranceFilterChange={setFilterInsurance}
+                dateRange={filterStartDate || filterEndDate ? { start: filterStartDate, end: filterEndDate } : null}
               />
             </div>
             <div 
@@ -483,11 +487,14 @@ function AppContent({ onPaymentMethodsUpdate }) {
                 onFilterTypeChange={handleFilterTypeChange}
                 onFilterMethodChange={handleFilterMethodChange}
                 onFilterYearChange={handleFilterYearChange}
+                onDateRangeChange={handleDateRangeChange}
                 onClearFilters={handleClearFilters}
                 searchText={searchText}
                 filterType={filterType}
                 filterMethod={filterMethod}
                 filterYear={filterYear}
+                filterStartDate={filterStartDate}
+                filterEndDate={filterEndDate}
                 categories={CATEGORIES}
                 paymentMethods={paymentMethods}
                 loading={loading}

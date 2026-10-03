@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useMemo, useCallback, u
 import { API_ENDPOINTS } from '../config';
 import { useFilterContext } from './FilterContext';
 import { authAwareFetch } from '../utils/fetchProvider';
+import { getTodayLocalDate } from '../utils/formatters';
 
 const ExpenseContext = createContext(null);
 
@@ -12,7 +13,7 @@ const ExpenseContext = createContext(null);
  */
 export function ExpenseProvider({ children }) {
   const {
-    searchText, filterType, filterMethod, filterYear,
+    searchText, filterType, filterMethod, filterYear, filterStartDate, filterEndDate,
     selectedYear, selectedMonth, isGlobalView,
   } = useFilterContext();
 
@@ -34,16 +35,22 @@ export function ExpenseProvider({ children }) {
   // Build the expenses endpoint URL for the current view parameters.
   const buildExpensesUrl = useCallback(() => {
     if (isGlobalView) {
-      return filterYear
-        ? `${API_ENDPOINTS.EXPENSES}?year=${filterYear}`
-        : API_ENDPOINTS.EXPENSES;
+      const params = new URLSearchParams();
+      if (filterYear) params.set('year', filterYear);
+      if (filterStartDate) params.set('startDate', filterStartDate);
+      // Open end means "through today" (unless the start itself is in the future)
+      const today = getTodayLocalDate();
+      const endDate = filterEndDate || (filterStartDate && filterStartDate <= today ? today : '');
+      if (endDate) params.set('endDate', endDate);
+      const query = params.toString();
+      return query ? `${API_ENDPOINTS.EXPENSES}?${query}` : API_ENDPOINTS.EXPENSES;
     }
     return `${API_ENDPOINTS.EXPENSES}?year=${selectedYear}&month=${selectedMonth}`;
-  }, [isGlobalView, filterYear, selectedYear, selectedMonth]);
+  }, [isGlobalView, filterYear, filterStartDate, filterEndDate, selectedYear, selectedMonth]);
 
   // --- Expense Fetching ---
   useEffect(() => {
-    const currentViewParams = `${selectedYear}-${selectedMonth}-${isGlobalView}-${filterYear}`;
+    const currentViewParams = `${selectedYear}-${selectedMonth}-${isGlobalView}-${filterYear}-${filterStartDate}-${filterEndDate}`;
     const isViewChange = prevViewParamsRef.current !== currentViewParams;
     prevViewParamsRef.current = currentViewParams;
 
@@ -89,7 +96,7 @@ export function ExpenseProvider({ children }) {
     };
     fetchExpenses();
     return () => controller.abort();
-  }, [buildExpensesUrl, selectedYear, selectedMonth, isGlobalView, filterYear, refreshTrigger]);
+  }, [buildExpensesUrl, selectedYear, selectedMonth, isGlobalView, filterYear, filterStartDate, filterEndDate, refreshTrigger]);
 
   // --- expensesUpdated Event Listener ---
   // Bump the refresh triggers; the fetch effect above re-runs off refreshTrigger

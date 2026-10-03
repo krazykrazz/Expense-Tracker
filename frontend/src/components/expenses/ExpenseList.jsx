@@ -12,7 +12,7 @@ import PostedIndicator from './PostedIndicator';
 import ExpenseForm from './ExpenseForm';
 import FilterChip from './FilterChip';
 import './ExpenseList.css';
-import { formatAmount, formatLocalDate } from '../../utils/formatters';
+import { formatAmount, formatLocalDate, getTodayLocalDate } from '../../utils/formatters';
 import useInsuranceStatus from '../../hooks/useInsuranceStatus';
 import useInvoiceManagement from '../../hooks/useInvoiceManagement';
 
@@ -259,7 +259,8 @@ const ExpenseList = memo(({
   onAddExpense, 
   people: propPeople, 
   initialInsuranceFilter = '',
-  onInsuranceFilterChange
+  onInsuranceFilterChange,
+  dateRange = null
 }) => {
   const [deletingId, setDeletingId] = useState(null);
   const [deleteError, setDeleteError] = useState(null);
@@ -620,6 +621,15 @@ const ExpenseList = memo(({
 
   const quickViewLabel = QUICK_VIEWS.find(v => v.id === quickView).label.toLowerCase();
 
+  // Inclusive day count for a bounded range (an open end means today)
+  const rangeDays = (() => {
+    if (!dateRange?.start) return null;
+    const end = dateRange.end || getTodayLocalDate();
+    const toUtc = (s) => Date.UTC(Number(s.slice(0, 4)), Number(s.slice(5, 7)) - 1, Number(s.slice(8, 10)));
+    const days = Math.round((toUtc(end) - toUtc(dateRange.start)) / 86400000) + 1;
+    return days > 0 ? days : null;
+  })();
+
   // Calculate pagination values
   const totalPages = Math.ceil(filteredExpenses.length / pageSize);
   const startIndex = (currentPage - 1) * pageSize;
@@ -972,6 +982,14 @@ const ExpenseList = memo(({
             <span>{filteredExpenses.length} {filteredExpenses.length === 1 ? 'expense' : 'expenses'}</span>
             <span className="list-summary-sep" aria-hidden="true">·</span>
             <span className="list-summary-total">${formatAmount(filteredTotal)} total</span>
+            {rangeDays && (
+              <>
+                <span className="list-summary-sep" aria-hidden="true">·</span>
+                <span data-testid="list-summary-range">
+                  {rangeDays} {rangeDays === 1 ? 'day' : 'days'} · ${formatAmount(filteredTotal / rangeDays)}/day
+                </span>
+              </>
+            )}
             {quickViewCounts.review > 0 && quickView !== 'review' && (
               <>
                 <span className="list-summary-sep" aria-hidden="true">·</span>

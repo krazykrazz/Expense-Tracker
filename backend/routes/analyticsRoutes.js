@@ -43,6 +43,9 @@ router.get('/trends/:year/:month', analyticsController.getTrends);
 // GET /api/analytics/activity-insights/:year/:month - Get activity insights
 router.get('/activity-insights/:year/:month', analyticsController.getActivityInsights);
 
+// GET /api/analytics/period-summary?start=YYYY-MM&end=YYYY-MM - Income/spending breakdown over a month range
+router.get('/period-summary', analyticsController.getPeriodSummary);
+
 // POST /api/analytics/anomalies/:expenseId/mark-expected - Mark anomaly as expected
 router.post('/anomalies/:expenseId/mark-expected', analyticsController.markAnomalyAsExpected);
 

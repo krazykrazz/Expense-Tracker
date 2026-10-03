@@ -92,6 +92,7 @@ export const API_ENDPOINTS = {
   ANALYTICS_MONTHLY_SUMMARY: (year, month) => `${API_BASE_URL}/api/analytics/monthly-summary/${year}/${month}`,
   ANALYTICS_TRENDS: (year, month) => `${API_BASE_URL}/api/analytics/trends/${year}/${month}`,
   ANALYTICS_ACTIVITY_INSIGHTS: (year, month) => `${API_BASE_URL}/api/analytics/activity-insights/${year}/${month}`,
+  ANALYTICS_PERIOD_SUMMARY: (start, end) => `${API_BASE_URL}/api/analytics/period-summary?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`,
   ANALYTICS_ANOMALY_MARK_EXPECTED: (expenseId) => `${API_BASE_URL}/api/analytics/anomalies/${expenseId}/mark-expected`,
   ANALYTICS_SUPPRESSION_RULES: `${API_BASE_URL}/api/analytics/anomaly-suppression-rules`,
   ANALYTICS_SUPPRESSION_RULE_BY_ID: (id) => `${API_BASE_URL}/api/analytics/anomaly-suppression-rules/${id}`,

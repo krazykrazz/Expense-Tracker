@@ -12,6 +12,7 @@ const anomalyDetectionService = require('../services/anomalyDetectionService');
 const monthlySummaryService = require('../services/monthlySummaryService');
 const trendsService = require('../services/trendsService');
 const activityInsightsService = require('../services/activityInsightsService');
+const periodSummaryService = require('../services/periodSummaryService');
 const { analyticsCache } = require('../middleware/analyticsCache');
 const logger = require('../config/logger');
 
@@ -351,6 +352,35 @@ async function getTrends(req, res) {
   }
 }
 
+const MAX_PERIOD_MONTHS = 120;
+
+/**
+ * Get income/spending breakdown over an inclusive month range
+ * GET /api/analytics/period-summary?start=YYYY-MM&end=YYYY-MM
+ */
+async function getPeriodSummary(req, res) {
+  try {
+    const start = _parseYearMonthString(req.query.start);
+    const end = _parseYearMonthString(req.query.end);
+    if (!start || !end) {
+      return res.status(400).json({ error: 'start and end are required in YYYY-MM format (years 2000-2100)' });
+    }
+    const span = (end.year * 12 + end.month) - (start.year * 12 + start.month) + 1;
+    if (span < 1) {
+      return res.status(400).json({ error: 'start must not be after end' });
+    }
+    if (span > MAX_PERIOD_MONTHS) {
+      return res.status(400).json({ error: `Range cannot exceed ${MAX_PERIOD_MONTHS} months` });
+    }
+
+    const summary = await periodSummaryService.getPeriodSummary(start, end);
+    res.json(summary);
+  } catch (error) {
+    logger.error('Error getting period summary:', error);
+    res.status(500).json({ error: 'Failed to fetch period summary' });
+  }
+}
+
 /**
  * Get activity insights
  * GET /api/analytics/activity-insights/:year/:month
@@ -467,6 +497,22 @@ function _parseYearMonth(req, res) {
 }
 
 /**
+ * Parse a YYYY-MM string into { year, month }, or null if invalid.
+ * @param {string} value
+ * @returns {{ year: number, month: number } | null}
+ */
+function _parseYearMonthString(value) {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}$/.test(value)) {
+    return null;
+  }
+  const [year, month] = value.split('-').map(Number);
+  if (year < 2000 || year > 2100 || month < 1 || month > 12) {
+    return null;
+  }
+  return { year, month };
+}
+
+/**
  * Validate date string format (YYYY-MM-DD)
  * @param {string} dateStr - Date string to validate
  * @returns {boolean} True if valid
@@ -529,6 +575,7 @@ module.exports = {
   getMonthlySummary,
   getTrends,
   getActivityInsights,
+  getPeriodSummary,
   markAnomalyAsExpected,
   getSuppressionRules,
   deleteSuppressionRule

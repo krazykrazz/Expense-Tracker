@@ -54,6 +54,49 @@
   box-shadow: var(--focus-ring);
 }
 
+/* Prev/next month + jump to current month */
+.month-step-button,
+.month-today-button {
+  height: 34px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: var(--transition-input);
+}
+
+.month-step-button {
+  width: 34px;
+  font-size: var(--text-xl);
+  line-height: 1;
+}
+
+.month-today-button {
+  padding: 0 var(--spacing-3);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  white-space: nowrap;
+}
+
+.month-step-button:hover:not(:disabled),
+.month-today-button:hover {
+  border-color: var(--border-strong);
+  background: var(--bg-muted);
+}
+
+.month-step-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.month-step-button:focus-visible,
+.month-today-button:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
 /* ============================================
    NAV BUTTONS - Unified pill style
    ============================================ */

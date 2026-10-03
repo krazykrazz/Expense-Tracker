@@ -1,0 +1,413 @@
+/* Period analytics (Spending / Cash flow) */
+
+.period-analytics {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+}
+
+/* ---------- Period selector ---------- */
+.period-selector {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+}
+
+.period-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+
+.period-nav-btn {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: var(--text-xl);
+  line-height: 1;
+  cursor: pointer;
+  transition: var(--transition-colors);
+}
+
+.period-nav-btn:hover {
+  border-color: var(--border-strong);
+  background: var(--bg-muted);
+}
+
+.period-range-label {
+  min-width: 170px;
+  text-align: center;
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+.period-presets {
+  display: inline-flex;
+  padding: 3px;
+  gap: 2px;
+  background: var(--bg-muted);
+  border-radius: var(--radius-md);
+}
+
+.period-preset {
+  padding: var(--spacing-1) var(--spacing-3);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-family: var(--font-sans);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  transition: var(--transition-colors);
+}
+
+.period-preset:hover {
+  color: var(--text-primary);
+}
+
+.period-preset.active {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.period-nav-btn:focus-visible,
+.period-preset:focus-visible,
+.pl-toggle:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* ---------- States ---------- */
+.period-loading,
+.period-error,
+.period-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--spacing-10);
+  color: var(--text-tertiary);
+  text-align: center;
+}
+
+.period-empty {
+  background: var(--bg-subtle);
+  border: 1px dashed var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-8);
+}
+
+.period-error p {
+  color: var(--color-negative);
+}
+
+.period-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--border-default);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: periodSpin 1s linear infinite;
+  margin-bottom: var(--spacing-3);
+}
+
+@keyframes periodSpin {
+  to { transform: rotate(360deg); }
+}
+
+.period-retry-btn {
+  padding: var(--spacing-2) var(--spacing-4);
+  background-color: var(--color-primary);
+  color: var(--text-inverse);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+}
+
+/* ---------- Layout ---------- */
+.period-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+}
+
+.period-stat-cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--spacing-3);
+}
+
+.period-stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+  padding: var(--spacing-4);
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+}
+
+.period-stat-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.period-stat-value {
+  font-size: var(--text-3xl);
+  font-weight: var(--font-bold);
+  color: var(--text-primary);
+  font-feature-settings: var(--font-feature-tabular);
+  line-height: var(--leading-tight);
+}
+
+.period-stat-value.period-stat-text {
+  font-size: var(--text-2xl);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.period-stat-value.positive,
+.pl-amount.positive {
+  color: var(--color-positive-dark);
+}
+
+.period-stat-value.negative,
+.pl-amount.negative {
+  color: var(--color-negative-dark);
+}
+
+.period-stat-sub {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+.period-dot {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+.period-dot.positive { background: var(--color-positive); }
+.period-dot.negative { background: var(--color-negative); }
+
+.period-card {
+  padding: var(--spacing-4) var(--spacing-5);
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+}
+
+.period-card-title {
+  margin: 0 0 var(--spacing-4);
+  font-size: var(--heading-4);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+/* ---------- Spending breakdown ---------- */
+.period-breakdown {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: var(--spacing-6);
+  align-items: start;
+}
+
+.period-breakdown-chart {
+  display: flex;
+  justify-content: center;
+}
+
+.period-donut {
+  width: 200px;
+  height: 200px;
+}
+
+.period-donut circle {
+  transition: opacity var(--transition-fast);
+}
+
+.period-donut circle:hover {
+  opacity: 0.8;
+}
+
+.period-donut-label {
+  font-size: 11px;
+  fill: var(--text-tertiary);
+}
+
+.period-donut-value {
+  font-size: 17px;
+  font-weight: var(--font-bold);
+  fill: var(--text-primary);
+}
+
+.period-ranked-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+}
+
+.period-ranked-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 56px;
+  gap: var(--spacing-3);
+  align-items: baseline;
+  font-size: var(--text-sm);
+}
+
+.period-ranked-name {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  min-width: 0;
+  color: var(--text-primary);
+  font-weight: var(--font-medium);
+}
+
+.period-ranked-meta {
+  color: var(--text-tertiary);
+  font-weight: var(--font-normal);
+  white-space: nowrap;
+}
+
+.period-ranked-amount {
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  font-feature-settings: var(--font-feature-tabular);
+}
+
+.period-ranked-pct {
+  text-align: right;
+  color: var(--text-tertiary);
+  font-feature-settings: var(--font-feature-tabular);
+}
+
+.period-ranked-track {
+  margin-top: var(--spacing-1);
+  height: 4px;
+  background: var(--bg-muted);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.period-ranked-bar {
+  height: 100%;
+  border-radius: var(--radius-full);
+}
+
+/* ---------- Profit & loss table ---------- */
+.pl-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.pl-table th,
+.pl-table td {
+  padding: var(--spacing-2) var(--spacing-3);
+  border-bottom: 1px solid var(--border-muted);
+  text-align: left;
+  font-weight: var(--font-normal);
+  color: var(--text-primary);
+}
+
+.pl-table thead th {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  font-weight: var(--font-medium);
+}
+
+.pl-table .pl-pct,
+.pl-table .pl-amount {
+  text-align: right;
+  white-space: nowrap;
+  font-feature-settings: var(--font-feature-tabular);
+}
+
+.pl-table .pl-pct {
+  color: var(--text-tertiary);
+  width: 110px;
+}
+
+.pl-table .pl-amount {
+  width: 140px;
+}
+
+.pl-section-row th,
+.pl-section-row td {
+  background: var(--bg-subtle);
+  font-weight: var(--font-semibold);
+}
+
+.pl-item-row th {
+  padding-left: var(--spacing-8);
+  color: var(--text-secondary);
+}
+
+.pl-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: var(--font-semibold);
+  cursor: pointer;
+}
+
+.pl-chevron {
+  display: inline-block;
+  width: 12px;
+  transition: var(--transition-transform);
+}
+
+.pl-chevron.expanded {
+  transform: rotate(90deg);
+}
+
+.pl-net-row th,
+.pl-net-row td {
+  font-weight: var(--font-bold);
+  border-top: 2px solid var(--border-default);
+  border-bottom: none;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 900px) {
+  .period-stat-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .period-breakdown {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .period-spinner { animation: none; }
+  .pl-chevron { transition: none; }
+}

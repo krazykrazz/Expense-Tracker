@@ -3193,6 +3193,63 @@ HTTP/1.1 400 Bad Request
 
 ---
 
+### 3a. Get Period Summary
+
+Income and spending breakdown over an inclusive month range. Powers the Analytics Hub **Spending** and **Cash Flow** tabs. Spending = variable expenses + fixed expenses (same model as the annual summary).
+
+**Endpoint:** `GET /api/analytics/period-summary?start=YYYY-MM&end=YYYY-MM`
+
+**Query Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| start | string | Yes | First month, `YYYY-MM` (2000-2100) |
+| end | string | Yes | Last month (inclusive), `YYYY-MM`. Range may not exceed 120 months |
+
+**Success Response:**
+```json
+HTTP/1.1 200 OK
+{
+  "range": { "startYear": 2026, "startMonth": 1, "endYear": 2026, "endMonth": 9, "monthCount": 9 },
+  "totals": {
+    "income": 10000,
+    "expenses": 7500,
+    "variableExpenses": 4500,
+    "fixedExpenses": 3000,
+    "net": 2500,
+    "savingsRate": 25,
+    "averageMonthlyExpenses": 833.33,
+    "transactionCount": 120
+  },
+  "incomeByCategory": [
+    { "category": "Salary", "total": 9500, "percentOfIncome": 95 }
+  ],
+  "expensesByCategory": [
+    {
+      "category": "Housing",
+      "total": 3000,
+      "variable": 0,
+      "fixed": 3000,
+      "transactionCount": 0,
+      "percentOfExpenses": 40,
+      "percentOfIncome": 30
+    }
+  ]
+}
+```
+
+**Notes:**
+- Category lists are sorted by total descending; zero-total categories are omitted.
+- `savingsRate` is `null` when no income is recorded in the range.
+- `transactionCount` counts variable expenses only.
+
+**Error Responses:**
+```json
+HTTP/1.1 400 Bad Request
+{ "error": "start and end are required in YYYY-MM format (years 2000-2100)" }
+```
+
+---
+
 ### 4. Get Anomalies
 
 Detect and return enriched spending anomalies for the current user. Each anomaly includes a classification, structured explanation, historical context, financial impact estimate, behavior pattern, confidence score, and optional cluster or budget suggestion data.
@@ -3510,6 +3567,9 @@ HTTP/1.1 200 OK
 ---
 
 ## Changelog - Analytics Hub
+
+### Spending & Cash Flow views (Unreleased)
+- Added `GET /api/analytics/period-summary?start=YYYY-MM&end=YYYY-MM` — income/spending breakdown over a month range
 
 ### Actionable Anomaly Alerts (v5.14.0)
 - Updated `GET /api/analytics/anomalies` — enriched response with classification, explanation, historicalContext, impactEstimate, behaviorPattern, confidence, cluster, and budgetSuggestion fields

@@ -2,7 +2,9 @@ import './MonthSelector.css';
 
 const MonthSelector = ({ selectedYear, selectedMonth, onMonthChange, onViewAnnualSummary, onViewTaxDeductible, onOpenBudgets, onOpenAnalyticsHub, onOpenFinancialOverview }) => {
   // Generate a broad year range that supports imported legacy history.
-  const currentYear = new Date().getFullYear();
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
   const minYear = 2000;
   const maxYear = Math.max(currentYear + 2, selectedYear);
   const years = [];
@@ -35,6 +37,15 @@ const MonthSelector = ({ selectedYear, selectedMonth, onMonthChange, onViewAnnua
     const month = parseInt(e.target.value, 10);
     onMonthChange(selectedYear, month);
   };
+
+  const shiftMonth = (delta) => {
+    const idx = selectedYear * 12 + (selectedMonth - 1) + delta;
+    onMonthChange(Math.floor(idx / 12), (idx % 12) + 1);
+  };
+
+  const isFirstMonth = selectedYear <= minYear && selectedMonth === 1;
+  const isLastMonth = selectedYear >= maxYear && selectedMonth === 12;
+  const isCurrentMonth = selectedYear === currentYear && selectedMonth === currentMonth;
 
   return (
     <div className="month-selector">
@@ -78,6 +89,17 @@ const MonthSelector = ({ selectedYear, selectedMonth, onMonthChange, onViewAnnua
         💼 Financial
       </button>
 
+      <button
+        type="button"
+        className="month-step-button"
+        onClick={() => shiftMonth(-1)}
+        disabled={isFirstMonth}
+        aria-label="Previous month"
+        title="Previous month"
+      >
+        ‹
+      </button>
+
       <div className="selector-group">
         <label htmlFor="year-select">Year:</label>
         <select 
@@ -107,6 +129,28 @@ const MonthSelector = ({ selectedYear, selectedMonth, onMonthChange, onViewAnnua
           ))}
         </select>
       </div>
+
+      <button
+        type="button"
+        className="month-step-button"
+        onClick={() => shiftMonth(1)}
+        disabled={isLastMonth}
+        aria-label="Next month"
+        title="Next month"
+      >
+        ›
+      </button>
+
+      {!isCurrentMonth && (
+        <button
+          type="button"
+          className="month-today-button"
+          onClick={() => onMonthChange(currentYear, currentMonth)}
+          title="Jump to the current month"
+        >
+          This month
+        </button>
+      )}
     </div>
   );
 };

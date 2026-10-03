@@ -106,6 +106,23 @@ export const getActivityInsights = async (year, month) => {
 };
 
 /**
+ * Get income/spending breakdown over an inclusive month range
+ * @param {string} start - YYYY-MM
+ * @param {string} end - YYYY-MM
+ * @param {Object} [options] - { signal }
+ * @returns {Promise<Object>} Period summary data
+ */
+export const getPeriodSummary = async (start, end, options = {}) => {
+  try {
+    const fetchOpts = options.signal ? { signal: options.signal } : {};
+    return await apiGet(API_ENDPOINTS.ANALYTICS_PERIOD_SUMMARY(start, end), 'fetch period summary', fetchOpts);
+  } catch (error) {
+    logApiError('fetching period summary', error);
+    throw error;
+  }
+};
+
+/**
  * Mark an anomaly as expected (dismiss + create suppression rule)
  * @param {number} expenseId - ID of the expense
  * @param {string} anomalyType - Type of anomaly

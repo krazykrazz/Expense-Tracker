@@ -18,6 +18,34 @@ import useInvoiceManagement from '../../hooks/useInvoiceManagement';
 
 const logger = createLogger('ExpenseList');
 
+const TAX_TYPES = ['Tax - Medical', 'Tax - Donation'];
+
+export const QUICK_VIEWS = [
+  { id: 'all', label: 'All' },
+  { id: 'review', label: 'Needs review' },
+  { id: 'tax', label: 'Tax-deductible' },
+  { id: 'recurring', label: 'Recurring' },
+];
+
+/**
+ * Reasons a tax-deductible expense still needs attention before tax time.
+ * @param {Object} expense
+ * @param {boolean} hasInvoice
+ * @returns {string[]} empty when nothing is outstanding
+ */
+export const getReviewReasons = (expense, hasInvoice) => {
+  if (!TAX_TYPES.includes(expense.type)) return [];
+  const reasons = [];
+  if (!hasInvoice) reasons.push('No invoice');
+  if (expense.type === 'Tax - Medical') {
+    if (!expense.people || expense.people.length === 0) reasons.push('Unassigned');
+    if (expense.insurance_eligible && (expense.claim_status === 'not_claimed' || expense.claim_status === 'in_progress')) {
+      reasons.push('Claim pending');
+    }
+  }
+  return reasons;
+};
+
 /**
  * Generates grouped filter options for the smart method filter
  * Groups payment methods by type (cash, debit, cheque, credit_card)
@@ -253,6 +281,7 @@ const ExpenseList = memo(({
   const [localFilterMethod, setLocalFilterMethod] = useState(''); // Smart method filter with encoded values (type: or method:)
   const [localFilterInvoice, setLocalFilterInvoice] = useState(''); // New invoice filter
   const [localFilterInsurance, setLocalFilterInsurance] = useState(initialInsuranceFilter); // Insurance status filter (Requirement 7.4)
+  const [quickView, setQuickView] = useState('all');
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(() => {
@@ -487,7 +516,7 @@ const ExpenseList = memo(({
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [localFilterType, localFilterMethod, localFilterInvoice, localFilterInsurance]);
+  }, [localFilterType, localFilterMethod, localFilterInvoice, localFilterInsurance, quickView]);
 
   // Pre-build payment method lookup map for O(1) access in filters
   const paymentMethodMap = useMemo(() => {
@@ -496,8 +525,13 @@ const ExpenseList = memo(({
     return map;
   }, [paymentMethods]);
 
+  const expenseHasInvoice = useCallback((expense) => {
+    const invoices = invoiceData.get(expense.id) || [];
+    return invoices.length > 0 || expense.hasInvoice === true || (expense.invoiceCount && expense.invoiceCount > 0);
+  }, [invoiceData]);
+
   // Filter expenses based on local filters (for current month only)
-  const filteredExpenses = useMemo(() => {
+  const dropdownFilteredExpenses = useMemo(() => {
     return expenses.filter(expense => {
       // Apply local type filter
       if (localFilterType && expense.type !== localFilterType) {
@@ -534,8 +568,7 @@ const ExpenseList = memo(({
           return false;
         }
         
-        const invoices = invoiceData.get(expense.id) || [];
-        const hasInvoice = invoices.length > 0 || expense.hasInvoice === true || (expense.invoiceCount && expense.invoiceCount > 0);
+        const hasInvoice = expenseHasInvoice(expense);
         if (localFilterInvoice === 'with-invoice' && !hasInvoice) {
           return false;
         }
@@ -562,7 +595,32 @@ const ExpenseList = memo(({
       }
       return true;
     });
-  }, [expenses, localFilterType, localFilterMethod, localFilterInvoice, localFilterInsurance, invoiceData, paymentMethodMap]);
+  }, [expenses, localFilterType, localFilterMethod, localFilterInvoice, localFilterInsurance, expenseHasInvoice, paymentMethodMap]);
+
+  const quickViewMatchers = useMemo(() => ({
+    all: () => true,
+    review: (e) => getReviewReasons(e, expenseHasInvoice(e)).length > 0,
+    tax: (e) => TAX_TYPES.includes(e.type),
+    recurring: (e) => Boolean(e.is_generated),
+  }), [expenseHasInvoice]);
+
+  const quickViewCounts = useMemo(() => {
+    const counts = {};
+    QUICK_VIEWS.forEach(({ id }) => {
+      counts[id] = dropdownFilteredExpenses.filter(quickViewMatchers[id]).length;
+    });
+    return counts;
+  }, [dropdownFilteredExpenses, quickViewMatchers]);
+
+  const filteredExpenses = useMemo(
+    () => dropdownFilteredExpenses.filter(quickViewMatchers[quickView]),
+    [dropdownFilteredExpenses, quickViewMatchers, quickView]
+  );
+
+  const filteredTotal = useMemo(
+    () => filteredExpenses.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0),
+    [filteredExpenses]
+  );
 
   // Calculate pagination values
   const totalPages = Math.ceil(filteredExpenses.length / pageSize);
@@ -719,6 +777,12 @@ const ExpenseList = memo(({
       return filterValue;
     };
 
+    if (filteredExpenses.length === 0 && dropdownFilteredExpenses.length > 0) {
+      return quickView === 'review'
+        ? 'Nothing needs review — all caught up.'
+        : `No ${QUICK_VIEWS.find(v => v.id === quickView).label.toLowerCase()} expenses in this view.`;
+    }
+
     if (filteredExpenses.length === 0 && expenses.length > 0) {
       // Expenses exist but all filtered out by local filters
       const activeFilters = [];
@@ -869,6 +933,42 @@ const ExpenseList = memo(({
               onRemove={filter.onClear}
             />
           ))}
+        </div>
+      )}
+
+      {expenses.length > 0 && (
+        <div className="quick-view-bar">
+          <div className="quick-view-tabs" role="group" aria-label="Quick views">
+            {QUICK_VIEWS.map(view => (
+              <button
+                key={view.id}
+                type="button"
+                className={`quick-view-tab ${quickView === view.id ? 'active' : ''}`}
+                aria-pressed={quickView === view.id}
+                onClick={() => setQuickView(view.id)}
+              >
+                {view.label}
+                {view.id !== 'all' && quickViewCounts[view.id] > 0 && (
+                  <span className={`quick-view-count ${view.id === 'review' ? 'attention' : ''}`}>
+                    {quickViewCounts[view.id]}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+          <div className="list-summary-line" data-testid="list-summary-line">
+            <span>{filteredExpenses.length} {filteredExpenses.length === 1 ? 'expense' : 'expenses'}</span>
+            <span className="list-summary-sep" aria-hidden="true">·</span>
+            <span className="list-summary-total">${formatAmount(filteredTotal)} total</span>
+            {quickViewCounts.review > 0 && quickView !== 'review' && (
+              <>
+                <span className="list-summary-sep" aria-hidden="true">·</span>
+                <button type="button" className="list-summary-review" onClick={() => setQuickView('review')}>
+                  {quickViewCounts.review} need review
+                </button>
+              </>
+            )}
+          </div>
         </div>
       )}
 

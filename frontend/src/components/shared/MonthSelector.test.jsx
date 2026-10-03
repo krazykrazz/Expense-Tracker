@@ -196,6 +196,35 @@ describe('MonthSelector', () => {
     });
   });
 
+  describe('Month stepping', () => {
+    it('steps to the previous month across a year boundary', () => {
+      render(<MonthSelector {...defaultProps} selectedYear={2025} selectedMonth={1} />);
+      fireEvent.click(screen.getByRole('button', { name: 'Previous month' }));
+      expect(mockOnMonthChange).toHaveBeenCalledWith(2024, 12);
+    });
+
+    it('steps to the next month across a year boundary', () => {
+      render(<MonthSelector {...defaultProps} selectedYear={2024} selectedMonth={12} />);
+      fireEvent.click(screen.getByRole('button', { name: 'Next month' }));
+      expect(mockOnMonthChange).toHaveBeenCalledWith(2025, 1);
+    });
+
+    it('disables previous at the first supported month', () => {
+      render(<MonthSelector {...defaultProps} selectedYear={2000} selectedMonth={1} />);
+      expect(screen.getByRole('button', { name: 'Previous month' })).toBeDisabled();
+    });
+
+    it('jumps to the current month and hides the button when already there', () => {
+      const now = new Date();
+      const { rerender } = render(<MonthSelector {...defaultProps} selectedYear={2000} selectedMonth={5} />);
+      fireEvent.click(screen.getByRole('button', { name: 'This month' }));
+      expect(mockOnMonthChange).toHaveBeenCalledWith(now.getFullYear(), now.getMonth() + 1);
+
+      rerender(<MonthSelector {...defaultProps} selectedYear={now.getFullYear()} selectedMonth={now.getMonth() + 1} />);
+      expect(screen.queryByRole('button', { name: 'This month' })).not.toBeInTheDocument();
+    });
+  });
+
   describe('Edge cases', () => {
     it('handles January correctly', () => {
       render(<MonthSelector {...defaultProps} selectedMonth={1} />);
@@ -216,6 +245,35 @@ describe('MonthSelector', () => {
       
       const yearSelect = screen.getByLabelText('Year:');
       expect(yearSelect.value).toBe('2030');
+    });
+  });
+
+  describe('Prev/next navigation', () => {
+    it('steps to the next month across a year boundary', () => {
+      render(<MonthSelector {...defaultProps} selectedYear={2024} selectedMonth={12} />);
+      fireEvent.click(screen.getByRole('button', { name: 'Next month' }));
+      expect(mockOnMonthChange).toHaveBeenCalledWith(2025, 1);
+    });
+
+    it('steps to the previous month across a year boundary', () => {
+      render(<MonthSelector {...defaultProps} selectedYear={2024} selectedMonth={1} />);
+      fireEvent.click(screen.getByRole('button', { name: 'Previous month' }));
+      expect(mockOnMonthChange).toHaveBeenCalledWith(2023, 12);
+    });
+
+    it('disables previous at January 2000', () => {
+      render(<MonthSelector {...defaultProps} selectedYear={2000} selectedMonth={1} />);
+      expect(screen.getByRole('button', { name: 'Previous month' })).toBeDisabled();
+    });
+
+    it('jumps to the current month and hides the button when already there', () => {
+      const now = new Date();
+      const { rerender } = render(<MonthSelector {...defaultProps} selectedYear={2020} selectedMonth={5} />);
+      fireEvent.click(screen.getByRole('button', { name: 'This month' }));
+      expect(mockOnMonthChange).toHaveBeenCalledWith(now.getFullYear(), now.getMonth() + 1);
+
+      rerender(<MonthSelector {...defaultProps} selectedYear={now.getFullYear()} selectedMonth={now.getMonth() + 1} />);
+      expect(screen.queryByRole('button', { name: 'This month' })).not.toBeInTheDocument();
     });
   });
 });

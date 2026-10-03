@@ -69,6 +69,100 @@
   padding: var(--spacing-2) 0;
 }
 
+/* Quick views + summary line */
+.quick-view-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-2) var(--spacing-4);
+  margin-bottom: var(--element-gap-lg);
+}
+
+.quick-view-tabs {
+  display: inline-flex;
+  flex-wrap: wrap;
+  padding: 3px;
+  gap: 2px;
+  background: var(--bg-muted);
+  border-radius: var(--radius-md);
+}
+
+.quick-view-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  padding: var(--spacing-1) var(--spacing-3);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-family: var(--font-sans);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  transition: var(--transition-colors);
+}
+
+.quick-view-tab:hover {
+  color: var(--text-primary);
+}
+
+.quick-view-tab.active {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.quick-view-tab:focus-visible,
+.list-summary-review:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.quick-view-count {
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: var(--radius-full);
+  background: var(--border-default);
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  line-height: 18px;
+  text-align: center;
+}
+
+.quick-view-count.attention {
+  background: var(--color-warning-light);
+  color: var(--color-warning-dark);
+}
+
+.list-summary-line {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+  font-feature-settings: var(--font-feature-tabular);
+}
+
+.list-summary-total {
+  color: var(--color-negative-dark);
+  font-weight: var(--font-semibold);
+}
+
+.list-summary-review {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--color-warning-dark);
+  font: inherit;
+  cursor: pointer;
+}
+
+.list-summary-review:hover {
+  text-decoration: underline;
+}
+
 .filter-select {
   padding: var(--spacing-2) var(--spacing-3);
   border: 1px solid var(--border-default);

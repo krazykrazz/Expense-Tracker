@@ -1,5 +1,5 @@
-# Dependencies
-node_modules
+# Dependencies (bare `node_modules` only matches the root; host installs must never overlay the container's)
+**/node_modules
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

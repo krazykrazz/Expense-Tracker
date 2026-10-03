@@ -170,7 +170,7 @@ describe('ExpenseList - Local Filtering (Monthly View)', () => {
     });
 
     // Initially, all 4 expenses should be visible
-    let rows = container.querySelectorAll('tbody tr');
+    let rows = container.querySelectorAll('tbody tr:not(.date-group-row)');
     expect(rows.length).toBe(4);
 
     // Apply category filter for "Dining Out"
@@ -179,7 +179,7 @@ describe('ExpenseList - Local Filtering (Monthly View)', () => {
 
     // Wait for filter to apply
     await waitFor(() => {
-      rows = container.querySelectorAll('tbody tr');
+      rows = container.querySelectorAll('tbody tr:not(.date-group-row)');
       // Should show only 2 "Dining Out" expenses
       expect(rows.length).toBe(2);
     });
@@ -217,7 +217,7 @@ describe('ExpenseList - Local Filtering (Monthly View)', () => {
     });
 
     // Initially, all 4 expenses should be visible
-    let rows = container.querySelectorAll('tbody tr');
+    let rows = container.querySelectorAll('tbody tr:not(.date-group-row)');
     expect(rows.length).toBe(4);
 
     // Apply payment method filter for "Debit" using smart filter encoding
@@ -226,7 +226,7 @@ describe('ExpenseList - Local Filtering (Monthly View)', () => {
 
     // Wait for filter to apply
     await waitFor(() => {
-      rows = container.querySelectorAll('tbody tr');
+      rows = container.querySelectorAll('tbody tr:not(.date-group-row)');
       // Should show only 2 "Debit" expenses
       expect(rows.length).toBe(2);
     });
@@ -273,7 +273,7 @@ describe('ExpenseList - Local Filtering (Monthly View)', () => {
 
     // Wait for filters to apply
     await waitFor(() => {
-      const rows = container.querySelectorAll('tbody tr');
+      const rows = container.querySelectorAll('tbody tr:not(.date-group-row)');
       // Should show only 1 expense (Dining Out + VISA = Restaurant)
       expect(rows.length).toBe(1);
     });
@@ -334,7 +334,7 @@ describe('ExpenseList - Local Filtering (Monthly View)', () => {
     });
 
     // All expenses should be visible again
-    const rows = container.querySelectorAll('tbody tr');
+    const rows = container.querySelectorAll('tbody tr:not(.date-group-row)');
     expect(rows.length).toBe(4);
   });
 
@@ -426,7 +426,7 @@ describe('ExpenseList - Local Filtering (Monthly View)', () => {
 
     // Verify filter is applied
     await waitFor(() => {
-      const rows = container.querySelectorAll('tbody tr');
+      const rows = container.querySelectorAll('tbody tr:not(.date-group-row)');
       expect(rows.length).toBe(1);
     });
 
@@ -456,7 +456,7 @@ describe('ExpenseList - Local Filtering (Monthly View)', () => {
 
     // Filter should still be active and show 2 Groceries expenses
     await waitFor(() => {
-      const rows = container.querySelectorAll('tbody tr');
+      const rows = container.querySelectorAll('tbody tr:not(.date-group-row)');
       expect(rows.length).toBe(2);
       expect(categorySelect.value).toBe('Groceries');
     });

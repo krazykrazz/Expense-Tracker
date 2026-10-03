@@ -24,6 +24,18 @@ function generateFutureExpensesMessage(futureCount, lastDate) {
 }
 
 /**
+ * True for a real calendar date in YYYY-MM-DD form (rejects e.g. 2026-02-30).
+ * @param {string} value
+ * @returns {boolean}
+ */
+function isIsoDate(value) {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [y, m, d] = value.split('-').map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d));
+  return date.getUTCFullYear() === y && date.getUTCMonth() === m - 1 && date.getUTCDate() === d;
+}
+
+/**
  * Resolve the HTTP status code for an error thrown during create/update.
  * Validation errors default to 400; genuine server/database errors (carrying an
  * explicit statusCode or a SQLite error code) are surfaced as 500 so callers are
@@ -84,13 +96,30 @@ async function createExpense(req, res) {
 }
 
 /**
- * Get all expenses with optional year/month filtering and pagination
+ * Get all expenses with optional year/month or date-range filtering and pagination
  * GET /api/expenses?year=2024&month=11&limit=100&offset=0
+ * GET /api/expenses?startDate=2026-09-14&endDate=2026-10-03 (inclusive)
  */
 async function getExpenses(req, res) {
   try {
-    const { year, month, limit, offset } = req.query;
+    const { year, month, limit, offset, startDate, endDate } = req.query;
     const filters = {};
+
+    if (startDate !== undefined) {
+      if (!isIsoDate(startDate)) {
+        return res.status(400).json({ error: 'startDate must be a valid date in YYYY-MM-DD format' });
+      }
+      filters.startDate = startDate;
+    }
+    if (endDate !== undefined) {
+      if (!isIsoDate(endDate)) {
+        return res.status(400).json({ error: 'endDate must be a valid date in YYYY-MM-DD format' });
+      }
+      filters.endDate = endDate;
+    }
+    if (filters.startDate && filters.endDate && filters.startDate > filters.endDate) {
+      return res.status(400).json({ error: 'startDate must not be after endDate' });
+    }
     
     if (year) {
       const parsed = parseInt(year);

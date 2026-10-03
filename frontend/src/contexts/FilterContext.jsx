@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useMemo, useCallback } from 'react';
 import { CATEGORIES } from '../utils/constants';
+import { formatLocalDate } from '../utils/formatters';
 
 const FilterContext = createContext(null);
 
@@ -17,6 +18,9 @@ export function FilterProvider({ children, paymentMethods = [] }) {
   const [filterMethod, setFilterMethod] = useState('');
   const [filterYear, setFilterYear] = useState('');
   const [filterInsurance, setFilterInsurance] = useState('');
+  // Inclusive YYYY-MM-DD bounds; an empty end means "through today"
+  const [filterStartDate, setFilterStartDate] = useState('');
+  const [filterEndDate, setFilterEndDate] = useState('');
 
   // View state
   const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear());
@@ -28,8 +32,10 @@ export function FilterProvider({ children, paymentMethods = [] }) {
            filterType !== '' ||
            filterMethod !== '' ||
            filterYear !== '' ||
-           filterInsurance !== '';
-  }, [searchText, filterType, filterMethod, filterYear, filterInsurance]);
+           filterInsurance !== '' ||
+           filterStartDate !== '' ||
+           filterEndDate !== '';
+  }, [searchText, filterType, filterMethod, filterYear, filterInsurance, filterStartDate, filterEndDate]);
 
   // Derived state: globalViewTriggers
   const globalViewTriggers = useMemo(() => {
@@ -39,8 +45,13 @@ export function FilterProvider({ children, paymentMethods = [] }) {
     if (filterMethod) triggers.push('Payment Method');
     if (filterYear) triggers.push('Year');
     if (filterInsurance) triggers.push('Insurance Status');
+    if (filterStartDate || filterEndDate) {
+      const from = filterStartDate ? formatLocalDate(filterStartDate) : 'earliest';
+      const to = filterEndDate ? formatLocalDate(filterEndDate) : 'today';
+      triggers.push(`Date Range (${from} – ${to})`);
+    }
     return triggers;
-  }, [searchText, filterType, filterMethod, filterYear, filterInsurance]);
+  }, [searchText, filterType, filterMethod, filterYear, filterInsurance, filterStartDate, filterEndDate]);
 
   // Handler: searchText change
   const handleSearchChange = useCallback((text) => {
@@ -72,6 +83,12 @@ export function FilterProvider({ children, paymentMethods = [] }) {
     setFilterYear(year);
   }, []);
 
+  // Handler: date range change (either bound may be '')
+  const handleDateRangeChange = useCallback((startDate, endDate) => {
+    setFilterStartDate(startDate);
+    setFilterEndDate(endDate);
+  }, []);
+
   // Handler: month change
   const handleMonthChange = useCallback((year, month) => {
     setSelectedYear(year);
@@ -85,6 +102,8 @@ export function FilterProvider({ children, paymentMethods = [] }) {
     setFilterMethod('');
     setFilterYear('');
     setFilterInsurance('');
+    setFilterStartDate('');
+    setFilterEndDate('');
   }, []);
 
   // Handler: return to monthly view (clear only global-triggering filters)
@@ -94,6 +113,8 @@ export function FilterProvider({ children, paymentMethods = [] }) {
     setFilterMethod('');
     setFilterYear('');
     setFilterInsurance('');
+    setFilterStartDate('');
+    setFilterEndDate('');
   }, []);
 
   const value = useMemo(() => ({
@@ -103,6 +124,8 @@ export function FilterProvider({ children, paymentMethods = [] }) {
     filterMethod,
     filterYear,
     filterInsurance,
+    filterStartDate,
+    filterEndDate,
 
     // View state
     selectedYear,
@@ -120,15 +143,17 @@ export function FilterProvider({ children, paymentMethods = [] }) {
     handleFilterTypeChange,
     handleFilterMethodChange,
     handleFilterYearChange,
+    handleDateRangeChange,
     handleMonthChange,
     handleClearFilters,
     handleReturnToMonthlyView,
   }), [
     searchText, filterType, filterMethod, filterYear, filterInsurance,
+    filterStartDate, filterEndDate,
     selectedYear, selectedMonth,
     isGlobalView, globalViewTriggers,
     handleSearchChange, handleFilterTypeChange, handleFilterMethodChange,
-    handleFilterYearChange, handleMonthChange, handleClearFilters,
+    handleFilterYearChange, handleDateRangeChange, handleMonthChange, handleClearFilters,
     handleReturnToMonthlyView,
   ]);
 

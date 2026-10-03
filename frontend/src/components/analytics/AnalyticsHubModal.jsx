@@ -11,9 +11,12 @@ import MonthlySummaryView from './MonthlySummaryView';
 import MerchantAnalyticsModal from './MerchantAnalyticsModal';
 import ActivityInsightsView from './ActivityInsightsView';
 import TrendsView from './TrendsView';
+import PeriodAnalyticsPanel from './PeriodAnalyticsPanel';
 
 const TABS = [
   { id: 'monthly-summary', label: 'Monthly Summary', icon: '📋' },
+  { id: 'spending', label: 'Spending', icon: '🍩' },
+  { id: 'cash-flow', label: 'Cash Flow', icon: '💸' },
   { id: 'merchants', label: 'Merchants', icon: '🏪' },
   { id: 'activity', label: 'Activity Insights', icon: '📈' },
   { id: 'trends', label: 'Trends', icon: '📊' }
@@ -25,11 +28,11 @@ const AnalyticsHubModal = ({
   initialTab = 'monthly-summary',
   currentYear,
   currentMonth,
-  monthlyIncome,
-  budgetAlerts,
   onViewExpenses
 }) => {
   const [activeTab, setActiveTab] = useState(initialTab);
+  // Shared by the Spending and Cash Flow tabs so switching between them keeps the range
+  const [period, setPeriod] = useState({ preset: 'ytd', year: currentYear, month: currentMonth });
 
   useEffect(() => {
     if (isOpen) {
@@ -53,6 +56,16 @@ const AnalyticsHubModal = ({
           <MonthlySummaryView
             year={currentYear}
             month={currentMonth}
+          />
+        );
+
+      case 'spending':
+      case 'cash-flow':
+        return (
+          <PeriodAnalyticsPanel
+            view={activeTab}
+            period={period}
+            onPeriodChange={setPeriod}
           />
         );
 

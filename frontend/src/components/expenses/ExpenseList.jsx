@@ -12,11 +12,34 @@ import PostedIndicator from './PostedIndicator';
 import ExpenseForm from './ExpenseForm';
 import FilterChip from './FilterChip';
 import './ExpenseList.css';
-import { formatAmount, formatLocalDate } from '../../utils/formatters';
+import { formatAmount, formatLocalDate, getTodayLocalDate } from '../../utils/formatters';
 import useInsuranceStatus from '../../hooks/useInsuranceStatus';
 import useInvoiceManagement from '../../hooks/useInvoiceManagement';
 
 const logger = createLogger('ExpenseList');
+
+const TAX_TYPES = ['Tax - Medical', 'Tax - Donation'];
+
+const QUICK_VIEWS = [
+  { id: 'all', label: 'All' },
+  { id: 'review', label: 'Needs review' },
+  { id: 'tax', label: 'Tax-deductible' },
+  { id: 'recurring', label: 'Recurring' },
+];
+
+/**
+ * Whether a tax-deductible expense still needs attention before tax time:
+ * no invoice, or (medical) no person assigned / insurance claim still open.
+ */
+export const needsReview = (expense, hasInvoice) => {
+  if (!TAX_TYPES.includes(expense.type)) return false;
+  if (!hasInvoice) return true;
+  if (expense.type !== 'Tax - Medical') return false;
+  const unassigned = !expense.people || expense.people.length === 0;
+  const claimOpen = Boolean(expense.insurance_eligible) &&
+    (expense.claim_status === 'not_claimed' || expense.claim_status === 'in_progress');
+  return unassigned || claimOpen;
+};
 
 /**
  * Generates grouped filter options for the smart method filter
@@ -235,9 +258,9 @@ const ExpenseList = memo(({
   onExpenseUpdated, 
   onAddExpense, 
   people: propPeople, 
-  currentMonthExpenseCount = 0,
   initialInsuranceFilter = '',
-  onInsuranceFilterChange
+  onInsuranceFilterChange,
+  dateRange = null
 }) => {
   const [deletingId, setDeletingId] = useState(null);
   const [deleteError, setDeleteError] = useState(null);
@@ -253,6 +276,7 @@ const ExpenseList = memo(({
   const [localFilterMethod, setLocalFilterMethod] = useState(''); // Smart method filter with encoded values (type: or method:)
   const [localFilterInvoice, setLocalFilterInvoice] = useState(''); // New invoice filter
   const [localFilterInsurance, setLocalFilterInsurance] = useState(initialInsuranceFilter); // Insurance status filter (Requirement 7.4)
+  const [quickView, setQuickView] = useState('all');
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(() => {
@@ -272,7 +296,6 @@ const ExpenseList = memo(({
     loadingInvoices,
     handleInvoiceUpdated,
     handleInvoiceDeleted,
-    handlePersonLinkUpdated,
   } = useInvoiceManagement({ expenses });
   // Insurance quick status update via hook (Requirements 5.1, 5.2, 5.3, 5.4)
   const {
@@ -484,10 +507,13 @@ const ExpenseList = memo(({
 
   const formatDate = formatLocalDate;
 
-  // Reset to page 1 when filters change
-  useEffect(() => {
+  // Reset to page 1 when filters change (adjusted during render to avoid an extra effect pass)
+  const filterKey = `${localFilterType}|${localFilterMethod}|${localFilterInvoice}|${localFilterInsurance}|${quickView}`;
+  const [pageFilterKey, setPageFilterKey] = useState(filterKey);
+  if (pageFilterKey !== filterKey) {
+    setPageFilterKey(filterKey);
     setCurrentPage(1);
-  }, [localFilterType, localFilterMethod, localFilterInvoice, localFilterInsurance]);
+  }
 
   // Pre-build payment method lookup map for O(1) access in filters
   const paymentMethodMap = useMemo(() => {
@@ -496,8 +522,13 @@ const ExpenseList = memo(({
     return map;
   }, [paymentMethods]);
 
+  const expenseHasInvoice = useCallback((expense) => {
+    const invoices = invoiceData.get(expense.id) || [];
+    return invoices.length > 0 || expense.hasInvoice === true || expense.invoiceCount > 0;
+  }, [invoiceData]);
+
   // Filter expenses based on local filters (for current month only)
-  const filteredExpenses = useMemo(() => {
+  const dropdownFilteredExpenses = useMemo(() => {
     return expenses.filter(expense => {
       // Apply local type filter
       if (localFilterType && expense.type !== localFilterType) {
@@ -530,12 +561,11 @@ const ExpenseList = memo(({
       // Apply local invoice filter (only for medical expenses)
       if (localFilterInvoice) {
         // If invoice filter is active, only show tax-deductible expenses (medical and donations)
-        if (expense.type !== 'Tax - Medical' && expense.type !== 'Tax - Donation') {
+        if (!TAX_TYPES.includes(expense.type)) {
           return false;
         }
         
-        const invoices = invoiceData.get(expense.id) || [];
-        const hasInvoice = invoices.length > 0 || expense.hasInvoice === true || (expense.invoiceCount && expense.invoiceCount > 0);
+        const hasInvoice = expenseHasInvoice(expense);
         if (localFilterInvoice === 'with-invoice' && !hasInvoice) {
           return false;
         }
@@ -562,13 +592,60 @@ const ExpenseList = memo(({
       }
       return true;
     });
-  }, [expenses, localFilterType, localFilterMethod, localFilterInvoice, localFilterInsurance, invoiceData, paymentMethodMap]);
+  }, [expenses, localFilterType, localFilterMethod, localFilterInvoice, localFilterInsurance, expenseHasInvoice, paymentMethodMap]);
+
+  const quickViewMatchers = useMemo(() => ({
+    all: () => true,
+    review: (e) => needsReview(e, expenseHasInvoice(e)),
+    tax: (e) => TAX_TYPES.includes(e.type),
+    recurring: (e) => Boolean(e.is_generated),
+  }), [expenseHasInvoice]);
+
+  const quickViewCounts = useMemo(() => {
+    const counts = {};
+    QUICK_VIEWS.forEach(({ id }) => {
+      counts[id] = dropdownFilteredExpenses.filter(quickViewMatchers[id]).length;
+    });
+    return counts;
+  }, [dropdownFilteredExpenses, quickViewMatchers]);
+
+  const filteredExpenses = useMemo(
+    () => dropdownFilteredExpenses.filter(quickViewMatchers[quickView]),
+    [dropdownFilteredExpenses, quickViewMatchers, quickView]
+  );
+
+  const filteredTotal = useMemo(
+    () => filteredExpenses.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0),
+    [filteredExpenses]
+  );
+
+  const quickViewLabel = QUICK_VIEWS.find(v => v.id === quickView).label.toLowerCase();
+
+  // Inclusive day count for a bounded range (an open end means today)
+  const rangeDays = (() => {
+    if (!dateRange?.start) return null;
+    const end = dateRange.end || getTodayLocalDate();
+    const toUtc = (s) => Date.UTC(Number(s.slice(0, 4)), Number(s.slice(5, 7)) - 1, Number(s.slice(8, 10)));
+    const days = Math.round((toUtc(end) - toUtc(dateRange.start)) / 86400000) + 1;
+    return days > 0 ? days : null;
+  })();
 
   // Calculate pagination values
   const totalPages = Math.ceil(filteredExpenses.length / pageSize);
   const startIndex = (currentPage - 1) * pageSize;
   const endIndex = startIndex + pageSize;
   const paginatedExpenses = filteredExpenses.slice(startIndex, endIndex);
+
+  const dateGroups = [];
+  for (const expense of paginatedExpenses) {
+    const last = dateGroups[dateGroups.length - 1];
+    if (last && last.date === expense.date) {
+      last.expenses.push(expense);
+      last.total += parseFloat(expense.amount) || 0;
+    } else {
+      dateGroups.push({ date: expense.date, expenses: [expense], total: parseFloat(expense.amount) || 0 });
+    }
+  }
 
   // Handle page change
   const handlePageChange = useCallback((newPage) => {
@@ -584,7 +661,7 @@ const ExpenseList = memo(({
     try {
       localStorage.setItem('expenseListPageSize', newSize.toString());
     } catch (error) {
-      console.error('Failed to save page size:', error);
+      logger.error('Failed to save page size:', error);
     }
   }, []);
 
@@ -719,6 +796,12 @@ const ExpenseList = memo(({
       return filterValue;
     };
 
+    if (filteredExpenses.length === 0 && dropdownFilteredExpenses.length > 0) {
+      return quickView === 'review'
+        ? 'Nothing needs review — all caught up.'
+        : `No ${quickViewLabel} expenses in this view.`;
+    }
+
     if (filteredExpenses.length === 0 && expenses.length > 0) {
       // Expenses exist but all filtered out by local filters
       const activeFilters = [];
@@ -751,6 +834,9 @@ const ExpenseList = memo(({
       }
       if (localFilterInsurance) {
         activeFilters.push(getInsuranceFilterText(localFilterInsurance));
+      }
+      if (quickView !== 'all') {
+        activeFilters.push(quickViewLabel);
       }
       
       const expenseWord = filteredExpenses.length === 1 ? 'expense' : 'expenses';
@@ -872,6 +958,50 @@ const ExpenseList = memo(({
         </div>
       )}
 
+      {expenses.length > 0 && (
+        <div className="quick-view-bar">
+          <div className="quick-view-tabs" role="group" aria-label="Quick views">
+            {QUICK_VIEWS.map(view => (
+              <button
+                key={view.id}
+                type="button"
+                className={`quick-view-tab ${quickView === view.id ? 'active' : ''}`}
+                aria-pressed={quickView === view.id}
+                onClick={() => setQuickView(view.id)}
+              >
+                {view.label}
+                {view.id !== 'all' && quickViewCounts[view.id] > 0 && (
+                  <span className={`quick-view-count ${view.id === 'review' ? 'attention' : ''}`}>
+                    {quickViewCounts[view.id]}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+          <div className="list-summary-line" data-testid="list-summary-line">
+            <span>{filteredExpenses.length} {filteredExpenses.length === 1 ? 'expense' : 'expenses'}</span>
+            <span className="list-summary-sep" aria-hidden="true">·</span>
+            <span className="list-summary-total">${formatAmount(filteredTotal)} total</span>
+            {rangeDays && (
+              <>
+                <span className="list-summary-sep" aria-hidden="true">·</span>
+                <span data-testid="list-summary-range">
+                  {rangeDays} {rangeDays === 1 ? 'day' : 'days'} · ${formatAmount(filteredTotal / rangeDays)}/day
+                </span>
+              </>
+            )}
+            {quickViewCounts.review > 0 && quickView !== 'review' && (
+              <>
+                <span className="list-summary-sep" aria-hidden="true">·</span>
+                <button type="button" className="list-summary-review" onClick={() => setQuickView('review')}>
+                  {quickViewCounts.review} {quickViewCounts.review === 1 ? 'needs' : 'need'} review
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       {noExpensesMessage && (
         <div className="no-expenses-message">
           {noExpensesMessage}
@@ -896,7 +1026,6 @@ const ExpenseList = memo(({
         <table className="expense-table">
           <thead>
             <tr>
-              <th>Date</th>
               <th>Place</th>
               <th>Notes</th>
               <th>Amount</th>
@@ -906,8 +1035,19 @@ const ExpenseList = memo(({
               <th>Actions</th>
             </tr>
           </thead>
-          <tbody>
-            {paginatedExpenses.map((expense) => (
+          {dateGroups.map((group) => (
+          <tbody key={`${group.date}-${group.expenses[0].id}`} className="date-group">
+            <tr className="date-group-row">
+              <th colSpan={7} scope="rowgroup">
+                <div className="date-group-header">
+                  <span className="date-group-label">{formatDate(group.date)}</span>
+                  <span className="date-group-total">${formatAmount(group.total)}</span>
+                </div>
+              </th>
+            </tr>
+            {group.expenses.map((expense) => {
+              const invoices = invoiceData.get(expense.id) || [];
+              return (
               <tr 
                 key={expense.id}
                 className={
@@ -915,7 +1055,6 @@ const ExpenseList = memo(({
                   expense.type === 'Tax - Donation' ? 'tax-donation-row' : ''
                 }
               >
-                <td>{formatDate(expense.date)}</td>
                 <td>
                   <div className="place-cell">
                     {expense.is_generated ? (
@@ -940,21 +1079,12 @@ const ExpenseList = memo(({
                     )}
                     <div className="expense-indicators">
                       <PeopleIndicator expense={expense} />
-                      {(expense.type === 'Tax - Medical' || expense.type === 'Tax - Donation') && (
+                      {TAX_TYPES.includes(expense.type) && (
                         <InvoiceIndicator
-                          hasInvoice={(() => {
-                            const invoices = invoiceData.get(expense.id) || [];
-                            return invoices.length > 0 || expense.hasInvoice === true || (expense.invoiceCount && expense.invoiceCount > 0);
-                          })()}
-                          invoiceCount={(() => {
-                            const invoices = invoiceData.get(expense.id) || [];
-                            return invoices.length > 0 ? invoices.length : (expense.invoiceCount || 0);
-                          })()}
-                          invoices={invoiceData.get(expense.id) || []}
-                          invoiceInfo={(() => {
-                            const invoices = invoiceData.get(expense.id) || [];
-                            return invoices.length > 0 ? invoices[0] : expense.invoice;
-                          })()}
+                          hasInvoice={expenseHasInvoice(expense)}
+                          invoiceCount={invoices.length > 0 ? invoices.length : (expense.invoiceCount || 0)}
+                          invoices={invoices}
+                          invoiceInfo={invoices.length > 0 ? invoices[0] : expense.invoice}
                           expenseId={expense.id}
                           size="small"
                           alwaysShow={true}
@@ -1025,8 +1155,10 @@ const ExpenseList = memo(({
                   </div>
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
+          ))}
         </table>
       </div>
       )}

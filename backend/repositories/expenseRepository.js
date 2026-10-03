@@ -66,6 +66,7 @@ class ExpenseRepository {
         FROM expenses e
         LEFT JOIN payment_methods pm ON e.payment_method_id = pm.id
       `;
+      const conditions = [];
       const params = [];
       
       // Add filtering by year and month if provided.
@@ -75,15 +76,29 @@ class ExpenseRepository {
         const mo = parseInt(filters.month);
         const start = `${yr}-${mo.toString().padStart(2, '0')}-01`;
         const end = mo === 12 ? `${yr + 1}-01-01` : `${yr}-${(mo + 1).toString().padStart(2, '0')}-01`;
-        sql += ' WHERE e.date >= ? AND e.date < ?';
+        conditions.push('e.date >= ? AND e.date < ?');
         params.push(start, end);
       } else if (filters.year) {
         const yr = parseInt(filters.year);
-        sql += ' WHERE e.date >= ? AND e.date < ?';
+        conditions.push('e.date >= ? AND e.date < ?');
         params.push(`${yr}-01-01`, `${yr + 1}-01-01`);
       } else if (filters.month) {
-        sql += ' WHERE strftime("%m", e.date) = ?';
+        conditions.push('strftime("%m", e.date) = ?');
         params.push(filters.month.toString().padStart(2, '0'));
+      }
+
+      // Inclusive YYYY-MM-DD bounds; combine with year/month as an intersection
+      if (filters.startDate) {
+        conditions.push('e.date >= ?');
+        params.push(filters.startDate);
+      }
+      if (filters.endDate) {
+        conditions.push('e.date <= ?');
+        params.push(filters.endDate);
+      }
+
+      if (conditions.length > 0) {
+        sql += ` WHERE ${conditions.join(' AND ')}`;
       }
       
       sql += ' ORDER BY e.date ASC';

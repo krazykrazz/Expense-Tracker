@@ -85,4 +85,25 @@ describe('FilterContext Unit Tests', () => {
 
     expect(result.current.isGlobalView).toBe(false);
   });
+
+  it('date range triggers global view with a readable trigger label and clears with other filters', () => {
+    const { result } = renderHook(() => useFilterContext(), {
+      wrapper: ({ children }) => <FilterProvider>{children}</FilterProvider>,
+    });
+
+    act(() => {
+      result.current.handleDateRangeChange('2026-09-14', '');
+    });
+
+    expect(result.current.isGlobalView).toBe(true);
+    expect(result.current.globalViewTriggers).toEqual(['Date Range (Sep 14, 2026 – today)']);
+
+    act(() => {
+      result.current.handleReturnToMonthlyView();
+    });
+
+    expect(result.current.filterStartDate).toBe('');
+    expect(result.current.filterEndDate).toBe('');
+    expect(result.current.isGlobalView).toBe(false);
+  });
 });

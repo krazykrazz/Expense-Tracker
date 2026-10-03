@@ -30,9 +30,6 @@ import { authAwareFetch } from './utils/fetchProvider';
 import { changelogEntries } from './utils/changelog';
 import { CATEGORIES } from './utils/constants';
 import { getPaymentMethods } from './services/paymentMethodApi';
-import { getMonthlyIncomeSources } from './services/incomeApi';
-import { getBudgets } from './services/budgetApi';
-import { calculateAlerts } from './utils/budgetAlerts';
 import { FilterProvider, useFilterContext } from './contexts/FilterContext';
 import { ExpenseProvider, useExpenseContext } from './contexts/ExpenseContext';
 import { ModalProvider, useModalContext } from './contexts/ModalContext';
@@ -141,6 +138,8 @@ function AppContent({ onPaymentMethodsUpdate }) {
     filterMethod,
     filterYear,
     filterInsurance,
+    filterStartDate,
+    filterEndDate,
     selectedYear,
     selectedMonth,
     isGlobalView,
@@ -150,6 +149,7 @@ function AppContent({ onPaymentMethodsUpdate }) {
     handleFilterTypeChange,
     handleFilterMethodChange,
     handleFilterYearChange,
+    handleDateRangeChange,
     handleMonthChange,
     handleClearFilters,
     handleReturnToMonthlyView,
@@ -161,7 +161,6 @@ function AppContent({ onPaymentMethodsUpdate }) {
     loading,
     error,
     refreshTrigger,
-    budgetAlertRefreshTrigger,
     currentMonthExpenseCount,
     handleExpenseAdded: contextHandleExpenseAdded,
     handleExpenseDeleted,
@@ -187,16 +186,13 @@ function AppContent({ onPaymentMethodsUpdate }) {
     openExpenseForm,
     closeExpenseForm,
     openSettingsModal,
-    closeSettingsModal,
     openSystemModal,
-    closeSystemModal,
     openAnnualSummary,
     closeAnnualSummary,
     openTaxDeductible,
     closeTaxDeductible,
     openBudgets,
     closeBudgets,
-    openPeopleManagement,
     closePeopleManagement,
     openAnalyticsHub,
     closeAnalyticsHub,
@@ -254,10 +250,6 @@ function AppContent({ onPaymentMethodsUpdate }) {
 
     return 'light';
   });
-  
-  // Budget alerts state for Analytics Hub integration (Requirement 7.4)
-  const [budgetAlerts, setBudgetAlerts] = useState([]);
-  const [monthlyIncome, setMonthlyIncome] = useState(null);
 
   // Fetch version info on mount
   useEffect(() => {
@@ -289,44 +281,6 @@ function AppContent({ onPaymentMethodsUpdate }) {
     document.documentElement.style.colorScheme = theme;
     window.localStorage.setItem('theme-preference', theme);
   }, [theme]);
-
-  // Fetch monthly income and budget alerts for Analytics Hub integration (Requirement 7.4)
-  useEffect(() => {
-    const controller = new AbortController();
-
-    const fetchAnalyticsData = async () => {
-      try {
-        // Fetch monthly income
-        const incomeData = await getMonthlyIncomeSources(selectedYear, selectedMonth, { signal: controller.signal });
-        if (!controller.signal.aborted) {
-          setMonthlyIncome(incomeData.total || 0);
-        }
-
-        // Fetch budget alerts
-        const budgetResponse = await getBudgets(selectedYear, selectedMonth, { signal: controller.signal });
-        const budgets = budgetResponse?.budgets || [];
-        if (!controller.signal.aborted && budgets.length > 0) {
-          const alerts = calculateAlerts(budgets);
-          const formattedAlerts = alerts.map(alert => ({
-            category: alert.category,
-            percentUsed: Math.round(alert.progress),
-            status: alert.severity
-          }));
-          setBudgetAlerts(formattedAlerts);
-        }
-      } catch (err) {
-        if (!controller.signal.aborted) {
-          console.error('Error fetching analytics data:', err);
-        }
-      }
-    };
-
-    fetchAnalyticsData();
-
-    return () => {
-      controller.abort();
-    };
-  }, [selectedYear, selectedMonth, budgetAlertRefreshTrigger]);
 
   // Listen for navigateToExpenseList event (e.g., from BudgetReminderBanner)
   // Only closes overlays — the category filter is applied as a local (monthly) filter
@@ -517,9 +471,9 @@ function AppContent({ onPaymentMethodsUpdate }) {
                 onExpenseDeleted={handleExpenseDeleted}
                 onExpenseUpdated={handleExpenseUpdated}
                 onAddExpense={openExpenseForm}
-                currentMonthExpenseCount={currentMonthExpenseCount}
                 initialInsuranceFilter={filterInsurance}
                 onInsuranceFilterChange={setFilterInsurance}
+                dateRange={filterStartDate || filterEndDate ? { start: filterStartDate, end: filterEndDate } : null}
               />
             </div>
             <div 
@@ -533,11 +487,14 @@ function AppContent({ onPaymentMethodsUpdate }) {
                 onFilterTypeChange={handleFilterTypeChange}
                 onFilterMethodChange={handleFilterMethodChange}
                 onFilterYearChange={handleFilterYearChange}
+                onDateRangeChange={handleDateRangeChange}
                 onClearFilters={handleClearFilters}
                 searchText={searchText}
                 filterType={filterType}
                 filterMethod={filterMethod}
                 filterYear={filterYear}
+                filterStartDate={filterStartDate}
+                filterEndDate={filterEndDate}
                 categories={CATEGORIES}
                 paymentMethods={paymentMethods}
                 loading={loading}
@@ -646,8 +603,6 @@ function AppContent({ onPaymentMethodsUpdate }) {
           onClose={closeAnalyticsHub}
           currentYear={selectedYear}
           currentMonth={selectedMonth}
-          monthlyIncome={monthlyIncome}
-          budgetAlerts={budgetAlerts}
           onViewExpenses={handleViewExpensesFromAnalytics}
         />
         </ErrorBoundary>

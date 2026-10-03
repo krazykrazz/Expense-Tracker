@@ -242,6 +242,39 @@ describe('ExpenseContext Unit Tests', () => {
   });
 
   /**
+   * Date range: open end is sent as today; explicit bounds are sent as-is
+   */
+  it('fetches with startDate/endDate in global view with a date range', async () => {
+    const { result } = renderHook(() => useBothContexts(), { wrapper: createWrapper() });
+
+    await waitFor(() => {
+      expect(result.current.expense.loading).toBe(false);
+    });
+
+    globalThis.fetch.mockClear();
+    act(() => {
+      result.current.filter.handleDateRangeChange('2026-01-05', '2026-02-10');
+    });
+    await waitFor(() => {
+      expect(globalThis.fetch.mock.calls.some(
+        (call) => call[0].includes('startDate=2026-01-05&endDate=2026-02-10') && !call[0].includes('month=')
+      )).toBe(true);
+    });
+
+    globalThis.fetch.mockClear();
+    act(() => {
+      result.current.filter.handleDateRangeChange('2000-01-01', '');
+    });
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    await waitFor(() => {
+      expect(globalThis.fetch.mock.calls.some(
+        (call) => call[0].includes(`startDate=2000-01-01&endDate=${todayStr}`)
+      )).toBe(true);
+    });
+  });
+
+  /**
    * Requirement 3.7: Network error produces user-friendly message
    */
   it('sets user-friendly error message on network failure', async () => {

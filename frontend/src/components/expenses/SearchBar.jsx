@@ -1,6 +1,14 @@
 import { useState, useEffect, useRef, memo } from 'react';
 import './SearchBar.css';
 
+const MIN_DATE_YEAR = 2000;
+
+const isCompleteDate = (value) => value === '' || Number(value.slice(0, 4)) >= MIN_DATE_YEAR;
+
+/** Only send a range the API accepts: complete dates, start not after end. */
+export const isCommittableRange = (start, end) =>
+  isCompleteDate(start) && isCompleteDate(end) && !(start && end && start > end);
+
 /**
  * SearchBar Component
  * 
@@ -36,11 +44,14 @@ const SearchBar = memo(({
   onFilterTypeChange, 
   onFilterMethodChange,
   onFilterYearChange,
+  onDateRangeChange,
   onClearFilters,
   searchText: externalSearchText = '',
   filterType = '', 
   filterMethod = '',
   filterYear = '',
+  filterStartDate = '',
+  filterEndDate = '',
   categories = [], 
   paymentMethods = [],
   loading = false,
@@ -50,6 +61,16 @@ const SearchBar = memo(({
 }) => {
   const [searchText, setSearchText] = useState(externalSearchText);
   const [announcement, setAnnouncement] = useState('');
+  // Drafts let the user type a date (year digits arrive one at a time) without each
+  // partial value refetching the list and remounting this component
+  const [draftStartDate, setDraftStartDate] = useState(filterStartDate);
+  const [draftEndDate, setDraftEndDate] = useState(filterEndDate);
+  const [syncedRange, setSyncedRange] = useState(`${filterStartDate}|${filterEndDate}`);
+  if (syncedRange !== `${filterStartDate}|${filterEndDate}`) {
+    setSyncedRange(`${filterStartDate}|${filterEndDate}`);
+    setDraftStartDate(filterStartDate);
+    setDraftEndDate(filterEndDate);
+  }
   const searchInputRef = useRef(null);
   const debounceTimerRef = useRef(null);
 
@@ -143,6 +164,24 @@ const SearchBar = memo(({
     }
   };
 
+  const handleStartDateChange = (e) => {
+    const value = e.target.value;
+    setDraftStartDate(value);
+    if (isCommittableRange(value, draftEndDate)) {
+      onDateRangeChange?.(value, draftEndDate);
+      setAnnouncement(value ? `Showing expenses from ${value}` : 'Start date cleared');
+    }
+  };
+
+  const handleEndDateChange = (e) => {
+    const value = e.target.value;
+    setDraftEndDate(value);
+    if (isCommittableRange(draftStartDate, value)) {
+      onDateRangeChange?.(draftStartDate, value);
+      setAnnouncement(value ? `Showing expenses through ${value}` : 'End date cleared');
+    }
+  };
+
   /**
    * Clears all filters and returns to monthly view
    * 
@@ -186,7 +225,7 @@ const SearchBar = memo(({
   }, [announcement]);
 
   // Check if any filter is active
-  const hasActiveFilters = searchText.trim().length > 0 || filterType || filterMethod || filterYear;
+  const hasActiveFilters = searchText.trim().length > 0 || filterType || filterMethod || filterYear || filterStartDate || filterEndDate;
 
   // Generate a broad year range for legacy imports, newest first.
   const currentYear = new Date().getFullYear();
@@ -321,6 +360,30 @@ const SearchBar = memo(({
                 Select a year to scope global search
               </span>
             </div>
+
+            {onDateRangeChange && (
+              <div className="date-range-filter" role="group" aria-label="Date range">
+                <label htmlFor="date-range-start" className="date-range-label">From</label>
+                <input
+                  id="date-range-start"
+                  type="date"
+                  className={`filter-dropdown date-range-input ${filterStartDate ? 'active-filter' : ''}`}
+                  value={draftStartDate}
+                  max={draftEndDate || undefined}
+                  onChange={handleStartDateChange}
+                />
+                <label htmlFor="date-range-end" className="date-range-label">To</label>
+                <input
+                  id="date-range-end"
+                  type="date"
+                  className={`filter-dropdown date-range-input ${filterEndDate ? 'active-filter' : ''}`}
+                  value={draftEndDate}
+                  min={draftStartDate || undefined}
+                  onChange={handleEndDateChange}
+                  title="Leave empty for today"
+                />
+              </div>
+            )}
 
             {hasActiveFilters && (
               <button 

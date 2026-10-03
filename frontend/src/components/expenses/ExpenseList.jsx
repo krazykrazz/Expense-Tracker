@@ -20,7 +20,7 @@ const logger = createLogger('ExpenseList');
 
 const TAX_TYPES = ['Tax - Medical', 'Tax - Donation'];
 
-export const QUICK_VIEWS = [
+const QUICK_VIEWS = [
   { id: 'all', label: 'All' },
   { id: 'review', label: 'Needs review' },
   { id: 'tax', label: 'Tax-deductible' },
@@ -28,22 +28,17 @@ export const QUICK_VIEWS = [
 ];
 
 /**
- * Reasons a tax-deductible expense still needs attention before tax time.
- * @param {Object} expense
- * @param {boolean} hasInvoice
- * @returns {string[]} empty when nothing is outstanding
+ * Whether a tax-deductible expense still needs attention before tax time:
+ * no invoice, or (medical) no person assigned / insurance claim still open.
  */
-export const getReviewReasons = (expense, hasInvoice) => {
-  if (!TAX_TYPES.includes(expense.type)) return [];
-  const reasons = [];
-  if (!hasInvoice) reasons.push('No invoice');
-  if (expense.type === 'Tax - Medical') {
-    if (!expense.people || expense.people.length === 0) reasons.push('Unassigned');
-    if (expense.insurance_eligible && (expense.claim_status === 'not_claimed' || expense.claim_status === 'in_progress')) {
-      reasons.push('Claim pending');
-    }
-  }
-  return reasons;
+export const needsReview = (expense, hasInvoice) => {
+  if (!TAX_TYPES.includes(expense.type)) return false;
+  if (!hasInvoice) return true;
+  if (expense.type !== 'Tax - Medical') return false;
+  const unassigned = !expense.people || expense.people.length === 0;
+  const claimOpen = Boolean(expense.insurance_eligible) &&
+    (expense.claim_status === 'not_claimed' || expense.claim_status === 'in_progress');
+  return unassigned || claimOpen;
 };
 
 /**
@@ -263,7 +258,6 @@ const ExpenseList = memo(({
   onExpenseUpdated, 
   onAddExpense, 
   people: propPeople, 
-  currentMonthExpenseCount = 0,
   initialInsuranceFilter = '',
   onInsuranceFilterChange
 }) => {
@@ -301,7 +295,6 @@ const ExpenseList = memo(({
     loadingInvoices,
     handleInvoiceUpdated,
     handleInvoiceDeleted,
-    handlePersonLinkUpdated,
   } = useInvoiceManagement({ expenses });
   // Insurance quick status update via hook (Requirements 5.1, 5.2, 5.3, 5.4)
   const {
@@ -513,10 +506,13 @@ const ExpenseList = memo(({
 
   const formatDate = formatLocalDate;
 
-  // Reset to page 1 when filters change
-  useEffect(() => {
+  // Reset to page 1 when filters change (adjusted during render to avoid an extra effect pass)
+  const filterKey = `${localFilterType}|${localFilterMethod}|${localFilterInvoice}|${localFilterInsurance}|${quickView}`;
+  const [pageFilterKey, setPageFilterKey] = useState(filterKey);
+  if (pageFilterKey !== filterKey) {
+    setPageFilterKey(filterKey);
     setCurrentPage(1);
-  }, [localFilterType, localFilterMethod, localFilterInvoice, localFilterInsurance, quickView]);
+  }
 
   // Pre-build payment method lookup map for O(1) access in filters
   const paymentMethodMap = useMemo(() => {
@@ -527,7 +523,7 @@ const ExpenseList = memo(({
 
   const expenseHasInvoice = useCallback((expense) => {
     const invoices = invoiceData.get(expense.id) || [];
-    return invoices.length > 0 || expense.hasInvoice === true || (expense.invoiceCount && expense.invoiceCount > 0);
+    return invoices.length > 0 || expense.hasInvoice === true || expense.invoiceCount > 0;
   }, [invoiceData]);
 
   // Filter expenses based on local filters (for current month only)
@@ -564,7 +560,7 @@ const ExpenseList = memo(({
       // Apply local invoice filter (only for medical expenses)
       if (localFilterInvoice) {
         // If invoice filter is active, only show tax-deductible expenses (medical and donations)
-        if (expense.type !== 'Tax - Medical' && expense.type !== 'Tax - Donation') {
+        if (!TAX_TYPES.includes(expense.type)) {
           return false;
         }
         
@@ -599,7 +595,7 @@ const ExpenseList = memo(({
 
   const quickViewMatchers = useMemo(() => ({
     all: () => true,
-    review: (e) => getReviewReasons(e, expenseHasInvoice(e)).length > 0,
+    review: (e) => needsReview(e, expenseHasInvoice(e)),
     tax: (e) => TAX_TYPES.includes(e.type),
     recurring: (e) => Boolean(e.is_generated),
   }), [expenseHasInvoice]);
@@ -621,6 +617,8 @@ const ExpenseList = memo(({
     () => filteredExpenses.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0),
     [filteredExpenses]
   );
+
+  const quickViewLabel = QUICK_VIEWS.find(v => v.id === quickView).label.toLowerCase();
 
   // Calculate pagination values
   const totalPages = Math.ceil(filteredExpenses.length / pageSize);
@@ -653,7 +651,7 @@ const ExpenseList = memo(({
     try {
       localStorage.setItem('expenseListPageSize', newSize.toString());
     } catch (error) {
-      console.error('Failed to save page size:', error);
+      logger.error('Failed to save page size:', error);
     }
   }, []);
 
@@ -791,7 +789,7 @@ const ExpenseList = memo(({
     if (filteredExpenses.length === 0 && dropdownFilteredExpenses.length > 0) {
       return quickView === 'review'
         ? 'Nothing needs review — all caught up.'
-        : `No ${QUICK_VIEWS.find(v => v.id === quickView).label.toLowerCase()} expenses in this view.`;
+        : `No ${quickViewLabel} expenses in this view.`;
     }
 
     if (filteredExpenses.length === 0 && expenses.length > 0) {
@@ -828,7 +826,7 @@ const ExpenseList = memo(({
         activeFilters.push(getInsuranceFilterText(localFilterInsurance));
       }
       if (quickView !== 'all') {
-        activeFilters.push(QUICK_VIEWS.find(v => v.id === quickView).label.toLowerCase());
+        activeFilters.push(quickViewLabel);
       }
       
       const expenseWord = filteredExpenses.length === 1 ? 'expense' : 'expenses';
@@ -1019,8 +1017,8 @@ const ExpenseList = memo(({
               <th>Actions</th>
             </tr>
           </thead>
-          {dateGroups.map((group, groupIndex) => (
-          <tbody key={`${group.date}-${groupIndex}`} className="date-group">
+          {dateGroups.map((group) => (
+          <tbody key={`${group.date}-${group.expenses[0].id}`} className="date-group">
             <tr className="date-group-row">
               <th colSpan={7} scope="rowgroup">
                 <div className="date-group-header">
@@ -1029,7 +1027,9 @@ const ExpenseList = memo(({
                 </div>
               </th>
             </tr>
-            {group.expenses.map((expense) => (
+            {group.expenses.map((expense) => {
+              const invoices = invoiceData.get(expense.id) || [];
+              return (
               <tr 
                 key={expense.id}
                 className={
@@ -1061,21 +1061,12 @@ const ExpenseList = memo(({
                     )}
                     <div className="expense-indicators">
                       <PeopleIndicator expense={expense} />
-                      {(expense.type === 'Tax - Medical' || expense.type === 'Tax - Donation') && (
+                      {TAX_TYPES.includes(expense.type) && (
                         <InvoiceIndicator
-                          hasInvoice={(() => {
-                            const invoices = invoiceData.get(expense.id) || [];
-                            return invoices.length > 0 || expense.hasInvoice === true || (expense.invoiceCount && expense.invoiceCount > 0);
-                          })()}
-                          invoiceCount={(() => {
-                            const invoices = invoiceData.get(expense.id) || [];
-                            return invoices.length > 0 ? invoices.length : (expense.invoiceCount || 0);
-                          })()}
-                          invoices={invoiceData.get(expense.id) || []}
-                          invoiceInfo={(() => {
-                            const invoices = invoiceData.get(expense.id) || [];
-                            return invoices.length > 0 ? invoices[0] : expense.invoice;
-                          })()}
+                          hasInvoice={expenseHasInvoice(expense)}
+                          invoiceCount={invoices.length > 0 ? invoices.length : (expense.invoiceCount || 0)}
+                          invoices={invoices}
+                          invoiceInfo={invoices.length > 0 ? invoices[0] : expense.invoice}
                           expenseId={expense.id}
                           size="small"
                           alwaysShow={true}
@@ -1146,7 +1137,8 @@ const ExpenseList = memo(({
                   </div>
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
           ))}
         </table>

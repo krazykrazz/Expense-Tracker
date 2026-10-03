@@ -117,17 +117,12 @@
     display: none;
   }
 
-  /* Buttons stay compact — don't stretch full width */
+  /* Buttons stay compact */
   .annual-summary-button,
   .tax-deductible-button,
-  .manage-budgets-button,
   .budgets-button,
-  .budget-history-button,
-  .merchant-analytics-button,
   .analytics-hub-button,
-  .financial-overview-button,
-  .month-selector .payment-methods-button {
-    width: auto !important;
+  .financial-overview-button {
     flex-shrink: 0;
     font-size: 12px !important;
     padding: var(--spacing-2) var(--spacing-3) !important;

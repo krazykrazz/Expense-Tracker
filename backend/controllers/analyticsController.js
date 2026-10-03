@@ -16,6 +16,8 @@ const periodSummaryService = require('../services/periodSummaryService');
 const { analyticsCache } = require('../middleware/analyticsCache');
 const logger = require('../config/logger');
 
+const MAX_PERIOD_MONTHS = 120;
+
 /**
  * Get data sufficiency information
  * GET /api/analytics/data-sufficiency
@@ -351,8 +353,6 @@ async function getTrends(req, res) {
     res.status(500).json({ error: 'Failed to fetch trends' });
   }
 }
-
-const MAX_PERIOD_MONTHS = 120;
 
 /**
  * Get income/spending breakdown over an inclusive month range

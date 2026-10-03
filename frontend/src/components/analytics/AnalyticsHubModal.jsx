@@ -28,8 +28,6 @@ const AnalyticsHubModal = ({
   initialTab = 'monthly-summary',
   currentYear,
   currentMonth,
-  monthlyIncome,
-  budgetAlerts,
   onViewExpenses
 }) => {
   const [activeTab, setActiveTab] = useState(initialTab);

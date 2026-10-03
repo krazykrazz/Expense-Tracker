@@ -3,9 +3,9 @@ import {
   computePeriodRange,
   formatPeriodLabel,
   presetStep,
-  shiftMonth,
   toYearMonthString,
 } from './periodUtils';
+import { shiftMonth } from '../../utils/yearMonth';
 
 describe('periodUtils', () => {
   it('resolves presets anchored at a month', () => {

@@ -9,9 +9,9 @@ import {
   formatPeriodLabel,
   isSameMonth,
   presetStep,
-  shiftMonth,
   toYearMonthString,
 } from './periodUtils';
+import { shiftMonth } from '../../utils/yearMonth';
 import SpendingView from './SpendingView';
 import CashFlowView from './CashFlowView';
 import './PeriodViews.css';

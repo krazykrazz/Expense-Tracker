@@ -103,10 +103,7 @@
    ============================================ */
 .annual-summary-button,
 .tax-deductible-button,
-.manage-budgets-button,
 .budgets-button,
-.budget-history-button,
-.merchant-analytics-button,
 .analytics-hub-button,
 .financial-overview-button {
   padding: var(--spacing-2) var(--spacing-3);
@@ -125,10 +122,7 @@
 
 .annual-summary-button:hover,
 .tax-deductible-button:hover,
-.manage-budgets-button:hover,
 .budgets-button:hover,
-.budget-history-button:hover,
-.merchant-analytics-button:hover,
 .analytics-hub-button:hover,
 .financial-overview-button:hover {
   background: var(--color-primary-light);
@@ -140,10 +134,7 @@
 
 .annual-summary-button:active,
 .tax-deductible-button:active,
-.manage-budgets-button:active,
 .budgets-button:active,
-.budget-history-button:active,
-.merchant-analytics-button:active,
 .analytics-hub-button:active,
 .financial-overview-button:active {
   transform: translateY(0) scale(0.98);
@@ -152,87 +143,14 @@
 
 .annual-summary-button:focus-visible,
 .tax-deductible-button:focus-visible,
-.manage-budgets-button:focus-visible,
 .budgets-button:focus-visible,
-.budget-history-button:focus-visible,
-.merchant-analytics-button:focus-visible,
 .analytics-hub-button:focus-visible,
 .financial-overview-button:focus-visible {
   outline: none;
   box-shadow: var(--focus-ring);
 }
 
-/* Payment Methods button */
-.month-selector .payment-methods-button {
-  margin-left: auto;
-  padding: var(--spacing-2) var(--spacing-3);
-  background: var(--bg-muted);
-  color: var(--text-secondary);
-  border: 1px solid transparent;
-  border-radius: var(--radius-full);
-  font-size: var(--text-sm);
-  font-weight: var(--font-medium);
-  font-family: var(--font-sans);
-  cursor: pointer;
-  transition: var(--transition-button);
-  white-space: nowrap;
-  box-shadow: none;
-}
-
-.month-selector .payment-methods-button:hover {
-  background: var(--color-primary-light);
-  color: var(--color-primary-active);
-  border-color: var(--color-primary);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-sm);
-}
-
-.month-selector .payment-methods-button:active {
-  transform: translateY(0) scale(0.98);
-  box-shadow: none;
-}
-
-.month-selector .payment-methods-button:focus-visible {
-  outline: none;
-  box-shadow: var(--focus-ring);
-}
-
-/* ============================================
-   RESPONSIVE
-   ============================================ */
-@media (max-width: 768px) {
-  .month-selector {
-    flex-direction: column;
-    gap: var(--spacing-3);
-    align-items: stretch;
-  }
-
-  .selector-group {
-    flex-direction: column;
-    align-items: stretch;
-    gap: var(--spacing-1);
-  }
-
-  .selector-group select {
-    width: 100%;
-  }
-
-  .annual-summary-button,
-  .tax-deductible-button,
-  .manage-budgets-button,
-  .budgets-button,
-  .budget-history-button,
-  .merchant-analytics-button,
-  .analytics-hub-button,
-  .financial-overview-button,
-  .month-selector .payment-methods-button {
-    width: 100%;
-  }
-
-  .month-selector .payment-methods-button {
-    margin-left: 0;
-  }
-}
+/* Responsive layout (≤768px) lives in styles/mobile.css as a horizontal scroll bar */
 
 /* ============================================
    REDUCED MOTION
@@ -240,39 +158,26 @@
 @media (prefers-reduced-motion: reduce) {
   .month-selector,
   .selector-group select,
+  .month-step-button,
+  .month-today-button,
   .annual-summary-button,
   .tax-deductible-button,
-  .manage-budgets-button,
   .budgets-button,
-  .budget-history-button,
-  .merchant-analytics-button,
   .analytics-hub-button,
-  .financial-overview-button,
-  .month-selector .payment-methods-button {
+  .financial-overview-button {
     transition: none;
   }
 
   .annual-summary-button:hover,
   .tax-deductible-button:hover,
-  .manage-budgets-button:hover,
   .budgets-button:hover,
-  .budget-history-button:hover,
-  .merchant-analytics-button:hover,
   .analytics-hub-button:hover,
   .financial-overview-button:hover,
-  .month-selector .payment-methods-button:hover {
-    transform: none;
-  }
-
   .annual-summary-button:active,
   .tax-deductible-button:active,
-  .manage-budgets-button:active,
   .budgets-button:active,
-  .budget-history-button:active,
-  .merchant-analytics-button:active,
   .analytics-hub-button:active,
-  .financial-overview-button:active,
-  .month-selector .payment-methods-button:active {
+  .financial-overview-button:active {
     transform: none;
   }
 }

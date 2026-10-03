@@ -1,3 +1,5 @@
+import { fromMonthIndex, shiftMonth, toMonthIndex } from '../../utils/yearMonth';
+
 export const PERIOD_PRESETS = [
   { id: 'month', label: 'Month' },
   { id: 'ytd', label: 'Year to date' },
@@ -5,19 +7,15 @@ export const PERIOD_PRESETS = [
   { id: 'year', label: 'Full year' },
 ];
 
-const toIdx = (year, month) => year * 12 + (month - 1);
-const fromIdx = (idx) => ({ year: Math.floor(idx / 12), month: (idx % 12) + 1 });
-
 // Mirrors the backend's accepted year range for /period-summary
 export const MIN_PERIOD = { year: 2000, month: 1 };
 export const MAX_PERIOD = { year: 2100, month: 12 };
 
-const clamp = (ym) => {
-  const idx = Math.min(Math.max(toIdx(ym.year, ym.month), toIdx(MIN_PERIOD.year, MIN_PERIOD.month)), toIdx(MAX_PERIOD.year, MAX_PERIOD.month));
-  return fromIdx(idx);
-};
+const MIN_IDX = toMonthIndex(MIN_PERIOD.year, MIN_PERIOD.month);
+const MAX_IDX = toMonthIndex(MAX_PERIOD.year, MAX_PERIOD.month);
 
-export const shiftMonth = (year, month, delta) => fromIdx(toIdx(year, month) + delta);
+const clamp = ({ year, month }) =>
+  fromMonthIndex(Math.min(Math.max(toMonthIndex(year, month), MIN_IDX), MAX_IDX));
 
 export const isSameMonth = (a, b) => a.year === b.year && a.month === b.month;
 
@@ -53,6 +51,6 @@ const shortLabel = ({ year, month }) =>
   new Date(year, month - 1).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
 
 export const formatPeriodLabel = ({ start, end }) =>
-  start.year === end.year && start.month === end.month
+  isSameMonth(start, end)
     ? shortLabel(start)
     : `${shortLabel(start)} – ${shortLabel(end)}`;

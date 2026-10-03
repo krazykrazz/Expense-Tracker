@@ -10,7 +10,7 @@ vi.mock('../../utils/fetchProvider', async () => {
 });
 
 import { render, screen, fireEvent, within } from '@testing-library/react';
-import ExpenseList, { getReviewReasons } from './ExpenseList';
+import ExpenseList, { needsReview } from './ExpenseList';
 
 global.fetch = vi.fn();
 
@@ -23,24 +23,28 @@ const expenses = [
   { id: 4, date: '2025-01-13', place: 'Charity', amount: 50, type: 'Tax - Donation', method: 'Cash', week: 2, hasInvoice: true },
 ];
 
-describe('getReviewReasons', () => {
+describe('needsReview', () => {
+  const documented = { type: 'Tax - Medical', people: [{ id: 1, name: 'A' }], insurance_eligible: 1, claim_status: 'paid' };
+
   it('ignores non tax-deductible expenses', () => {
-    expect(getReviewReasons({ type: 'Groceries' }, false)).toEqual([]);
+    expect(needsReview({ type: 'Groceries' }, false)).toBe(false);
   });
 
-  it('flags medical expenses missing invoice, people, or with a pending claim', () => {
-    const expense = { type: 'Tax - Medical', people: [], insurance_eligible: 1, claim_status: 'in_progress' };
-    expect(getReviewReasons(expense, false)).toEqual(['No invoice', 'Unassigned', 'Claim pending']);
+  it('flags medical expenses missing an invoice, a person, or with an open claim', () => {
+    expect(needsReview(documented, false)).toBe(true);
+    expect(needsReview({ ...documented, people: [] }, true)).toBe(true);
+    expect(needsReview({ ...documented, claim_status: 'not_claimed' }, true)).toBe(true);
+    expect(needsReview({ ...documented, claim_status: 'in_progress' }, true)).toBe(true);
   });
 
   it('clears a medical expense that is fully documented and settled', () => {
-    const expense = { type: 'Tax - Medical', people: [{ id: 1, name: 'A' }], insurance_eligible: 1, claim_status: 'paid' };
-    expect(getReviewReasons(expense, true)).toEqual([]);
+    expect(needsReview(documented, true)).toBe(false);
+    expect(needsReview({ ...documented, insurance_eligible: 0, claim_status: null }, true)).toBe(false);
   });
 
   it('flags donations only for a missing invoice', () => {
-    expect(getReviewReasons({ type: 'Tax - Donation' }, false)).toEqual(['No invoice']);
-    expect(getReviewReasons({ type: 'Tax - Donation' }, true)).toEqual([]);
+    expect(needsReview({ type: 'Tax - Donation' }, false)).toBe(true);
+    expect(needsReview({ type: 'Tax - Donation' }, true)).toBe(false);
   });
 });
 

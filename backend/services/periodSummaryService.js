@@ -20,7 +20,9 @@ class PeriodSummaryService {
     const afterEndMonth = end.month === 12 ? 1 : end.month + 1;
     const endDateExclusive = `${afterEndYear}-${String(afterEndMonth).padStart(2, '0')}-01`;
 
-    const ymIdx = '(year * 12 + month - 1) BETWEEN ? AND ?';
+    // The year prefilter lets SQLite use the (year, month) indexes; the expression trims partial years
+    const monthRangeSql = 'year BETWEEN ? AND ? AND (year * 12 + month - 1) BETWEEN ? AND ?';
+    const monthRangeParams = [start.year, end.year, startIdx, endIdx];
 
     const [variableRows, fixedRows, incomeRows] = await Promise.all([
       dbHelper.queryAll(
@@ -30,13 +32,13 @@ class PeriodSummaryService {
       ),
       dbHelper.queryAll(
         `SELECT COALESCE(category, 'Other') AS category, SUM(amount) AS total
-         FROM fixed_expenses WHERE ${ymIdx} GROUP BY COALESCE(category, 'Other')`,
-        [startIdx, endIdx]
+         FROM fixed_expenses WHERE ${monthRangeSql} GROUP BY COALESCE(category, 'Other')`,
+        monthRangeParams
       ),
       dbHelper.queryAll(
         `SELECT COALESCE(category, 'Other') AS category, SUM(amount) AS total
-         FROM income_sources WHERE ${ymIdx} GROUP BY COALESCE(category, 'Other')`,
-        [startIdx, endIdx]
+         FROM income_sources WHERE ${monthRangeSql} GROUP BY COALESCE(category, 'Other')`,
+        monthRangeParams
       ),
     ]);
 
@@ -80,11 +82,10 @@ class PeriodSummaryService {
       .sort((a, b) => b.total - a.total);
 
     const incomeByCategory = incomeRows
-      .map(r => ({
-        category: r.category,
-        total: round2(r.total),
-        percentOfIncome: pct(r.total, incomeTotal),
-      }))
+      .map(r => {
+        const total = round2(r.total);
+        return { category: r.category, total, percentOfIncome: pct(total, incomeTotal) };
+      })
       .filter(r => r.total > 0)
       .sort((a, b) => b.total - a.total);
 

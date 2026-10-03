@@ -449,15 +449,6 @@
   font-weight: var(--font-bold);
 }
 
-.tax-checkbox-cell {
-  text-align: center;
-}
-
-.tax-checkbox-cell input[type="checkbox"] {
-  cursor: pointer;
-  transform: scale(1.2);
-}
-
 .expense-table .amount {
   font-weight: var(--font-semibold);
   color: var(--color-primary);
@@ -1278,20 +1269,9 @@
   accent-color: var(--color-primary);
 }
 
-.edit-form .future-months-count {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-2);
-}
-
 .future-months-select {
   width: auto;
   min-width: 60px;
-}
-
-.edit-form .months-label {
-  font-size: var(--text-sm);
-  color: var(--text-secondary);
 }
 
 .future-months-preview {

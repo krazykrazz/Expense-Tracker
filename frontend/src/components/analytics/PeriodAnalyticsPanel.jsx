@@ -9,6 +9,7 @@ import {
   formatPeriodLabel,
   isSameMonth,
   presetStep,
+  rangeToDateBounds,
   toYearMonthString,
 } from './periodUtils';
 import { shiftMonth } from '../../utils/yearMonth';
@@ -56,8 +57,9 @@ const PeriodSelector = ({ period, range, onChange }) => {
  * Period-based analytics (Spending / Cash flow) with a shared range selector.
  * @param {'spending'|'cash-flow'} view
  * @param {{preset:string, year:number, month:number}} period - preset anchored at year/month
+ * @param {(category:string, startDate:string, endDate:string) => void} [onViewCategory]
  */
-const PeriodAnalyticsPanel = ({ view, period, onPeriodChange }) => {
+const PeriodAnalyticsPanel = ({ view, period, onPeriodChange, onViewCategory }) => {
   const range = useMemo(
     () => computePeriodRange(period.preset, period.year, period.month),
     [period.preset, period.year, period.month]
@@ -106,10 +108,18 @@ const PeriodAnalyticsPanel = ({ view, period, onPeriodChange }) => {
       </div>
     );
   } else if (data) {
+    const handleCategorySelect = onViewCategory
+      ? (category) => {
+        const { startDate, endDate } = rangeToDateBounds(range);
+        onViewCategory(category, startDate, endDate);
+      }
+      : undefined;
     // Keep the previous range visible (dimmed) while the new one loads, to avoid layout jumps
     content = (
       <div className={loading ? 'period-refreshing' : undefined} aria-busy={loading}>
-        {view === 'cash-flow' ? <CashFlowView data={data} /> : <SpendingView data={data} />}
+        {view === 'cash-flow'
+          ? <CashFlowView data={data} />
+          : <SpendingView data={data} onCategorySelect={handleCategorySelect} />}
       </div>
     );
   }

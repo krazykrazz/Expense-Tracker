@@ -1,7 +1,16 @@
 import { useState, useEffect, useRef, memo } from 'react';
+import { dateToLocalString } from '../../utils/formatters';
 import './SearchBar.css';
 
 const MIN_DATE_YEAR = 2000;
+
+// Each preset returns a start date; the end is left open (= today)
+export const DATE_PRESETS = [
+  { id: '7d', label: '7 days', start: (t) => new Date(t.getFullYear(), t.getMonth(), t.getDate() - 6) },
+  { id: '30d', label: '30 days', start: (t) => new Date(t.getFullYear(), t.getMonth(), t.getDate() - 29) },
+  { id: 'month', label: 'This month', start: (t) => new Date(t.getFullYear(), t.getMonth(), 1) },
+  { id: 'ytd', label: 'YTD', start: (t) => new Date(t.getFullYear(), 0, 1) },
+];
 
 const isCompleteDate = (value) => value === '' || Number(value.slice(0, 4)) >= MIN_DATE_YEAR;
 
@@ -182,6 +191,16 @@ const SearchBar = memo(({
     }
   };
 
+  const handleDatePreset = (preset) => {
+    const start = dateToLocalString(preset.start(new Date()));
+    onDateRangeChange?.(start, '');
+    setAnnouncement(`Date range set: ${preset.label}`);
+  };
+
+  const activePresetId = !filterEndDate
+    ? DATE_PRESETS.find(p => dateToLocalString(p.start(new Date())) === filterStartDate)?.id
+    : undefined;
+
   /**
    * Clears all filters and returns to monthly view
    * 
@@ -248,7 +267,7 @@ const SearchBar = memo(({
         {announcement}
       </div>
 
-      <div className="search-filters-wrapper">
+      <div className={`search-filters-wrapper ${showOnlyFilters ? 'filters-only' : ''}`}>
         {!showOnlyFilters && (
           <>
             <div className="search-input-wrapper">
@@ -362,26 +381,45 @@ const SearchBar = memo(({
             </div>
 
             {onDateRangeChange && (
-              <div className="date-range-filter" role="group" aria-label="Date range">
-                <label htmlFor="date-range-start" className="date-range-label">From</label>
-                <input
-                  id="date-range-start"
-                  type="date"
-                  className={`filter-dropdown date-range-input ${filterStartDate ? 'active-filter' : ''}`}
-                  value={draftStartDate}
-                  max={draftEndDate || undefined}
-                  onChange={handleStartDateChange}
-                />
-                <label htmlFor="date-range-end" className="date-range-label">To</label>
-                <input
-                  id="date-range-end"
-                  type="date"
-                  className={`filter-dropdown date-range-input ${filterEndDate ? 'active-filter' : ''}`}
-                  value={draftEndDate}
-                  min={draftStartDate || undefined}
-                  onChange={handleEndDateChange}
-                  title="Leave empty for today"
-                />
+              <div className="date-range-filter" role="group" aria-labelledby="date-range-title">
+                <div className="date-range-header">
+                  <span id="date-range-title" className="date-range-title">Date range</span>
+                  <div className="date-range-presets" role="group" aria-label="Quick date ranges">
+                    {DATE_PRESETS.map(preset => (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        className={`date-range-preset ${activePresetId === preset.id ? 'active' : ''}`}
+                        aria-pressed={activePresetId === preset.id}
+                        onClick={() => handleDatePreset(preset)}
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="date-range-inputs">
+                  <label htmlFor="date-range-start" className="sr-only">From</label>
+                  <input
+                    id="date-range-start"
+                    type="date"
+                    className={`filter-dropdown date-range-input ${filterStartDate ? 'active-filter' : ''}`}
+                    value={draftStartDate}
+                    max={draftEndDate || undefined}
+                    onChange={handleStartDateChange}
+                  />
+                  <span className="date-range-sep" aria-hidden="true">–</span>
+                  <label htmlFor="date-range-end" className="sr-only">To</label>
+                  <input
+                    id="date-range-end"
+                    type="date"
+                    className={`filter-dropdown date-range-input ${filterEndDate ? 'active-filter' : ''}`}
+                    value={draftEndDate}
+                    min={draftStartDate || undefined}
+                    onChange={handleEndDateChange}
+                    title="Leave empty for today"
+                  />
+                </div>
               </div>
             )}
 

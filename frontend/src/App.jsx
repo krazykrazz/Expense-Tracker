@@ -159,6 +159,7 @@ function AppContent({ onPaymentMethodsUpdate }) {
   const {
     filteredExpenses,
     loading,
+    hasLoaded,
     error,
     refreshTrigger,
     currentMonthExpenseCount,
@@ -341,6 +342,13 @@ function AppContent({ onPaymentMethodsUpdate }) {
     closeAnalyticsHub();
   }, [handleSearchChange, closeAnalyticsHub]);
 
+  const handleViewCategoryFromAnalytics = useCallback((category, startDate, endDate) => {
+    handleClearFilters();
+    handleFilterTypeChange(category);
+    handleDateRangeChange(startDate, endDate);
+    closeAnalyticsHub();
+  }, [handleClearFilters, handleFilterTypeChange, handleDateRangeChange, closeAnalyticsHub]);
+
   const handleToggleTheme = useCallback(() => {
     setTheme(prevTheme => (prevTheme === 'dark' ? 'light' : 'dark'));
   }, []);
@@ -432,7 +440,8 @@ function AppContent({ onPaymentMethodsUpdate }) {
           />
         </div>
         
-        {loading && <div className="loading-message">Loading expenses...</div>}
+        {/* Content stays mounted through reloads (dimmed) so inputs keep focus and the page doesn't flash */}
+        {!hasLoaded && !error && <div className="loading-message">Loading expenses...</div>}
         {error && (
           <div className="error-message">
             <div className="error-text">Error: {error}</div>
@@ -447,9 +456,9 @@ function AppContent({ onPaymentMethodsUpdate }) {
             </button>
           </div>
         )}
-        {!loading && !error && (
+        {!error && (
           <div className="content-layout" data-mobile-tab={mobileTab}>
-            <div className="content-left">
+            <div className={`content-left ${loading ? 'is-refreshing' : ''}`} aria-busy={loading}>
               <SearchBar 
                 onSearchChange={handleSearchChange}
                 onFilterTypeChange={handleFilterTypeChange}
@@ -474,6 +483,7 @@ function AppContent({ onPaymentMethodsUpdate }) {
                 initialInsuranceFilter={filterInsurance}
                 onInsuranceFilterChange={setFilterInsurance}
                 dateRange={filterStartDate || filterEndDate ? { start: filterStartDate, end: filterEndDate } : null}
+                awaitingFirstLoad={!hasLoaded}
               />
             </div>
             <div 
@@ -604,6 +614,7 @@ function AppContent({ onPaymentMethodsUpdate }) {
           currentYear={selectedYear}
           currentMonth={selectedMonth}
           onViewExpenses={handleViewExpensesFromAnalytics}
+          onViewCategory={handleViewCategoryFromAnalytics}
         />
         </ErrorBoundary>
         </Suspense>

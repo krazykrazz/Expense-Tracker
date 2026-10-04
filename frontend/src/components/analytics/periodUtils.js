@@ -47,6 +47,15 @@ export const presetStep = (preset) => (preset === 'month' ? 1 : 12);
 
 export const toYearMonthString = ({ year, month }) => `${year}-${String(month).padStart(2, '0')}`;
 
+/** Inclusive YYYY-MM-DD bounds covering every day of a month range. */
+export const rangeToDateBounds = ({ start, end }) => {
+  const lastDay = new Date(end.year, end.month, 0).getDate();
+  return {
+    startDate: `${toYearMonthString(start)}-01`,
+    endDate: `${toYearMonthString(end)}-${String(lastDay).padStart(2, '0')}`,
+  };
+};
+
 const shortLabel = ({ year, month }) =>
   new Date(year, month - 1).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
 

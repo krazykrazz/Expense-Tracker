@@ -20,6 +20,8 @@ export function ExpenseProvider({ children }) {
   // Core expense state
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(false);
+  // True once the first fetch has settled (success or error)
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [error, setError] = useState(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [currentMonthExpenseCount, setCurrentMonthExpenseCount] = useState(0);
@@ -91,6 +93,7 @@ export function ExpenseProvider({ children }) {
       } finally {
         if (!controller.signal.aborted) {
           setLoading(false);
+          setHasLoaded(true);
         }
       }
     };
@@ -193,6 +196,7 @@ export function ExpenseProvider({ children }) {
     expenses,
     filteredExpenses,
     loading,
+    hasLoaded,
     error,
     refreshTrigger,
     budgetAlertRefreshTrigger,
@@ -204,7 +208,7 @@ export function ExpenseProvider({ children }) {
     refreshExpenses,
     clearError,
   }), [
-    expenses, filteredExpenses, loading, error,
+    expenses, filteredExpenses, loading, hasLoaded, error,
     refreshTrigger, budgetAlertRefreshTrigger, currentMonthExpenseCount,
     handleExpenseAdded, handleExpenseDeleted, handleExpenseUpdated,
     triggerRefresh, refreshExpenses, clearError,

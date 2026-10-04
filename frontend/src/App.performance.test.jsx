@@ -233,12 +233,8 @@ describe('App Performance Tests', () => {
     
     render(<App />);
     
-    // Wait for initial load
-    await waitFor(() => {
-      expect(screen.queryByText('Loading expenses...')).not.toBeInTheDocument();
-    });
-    
-    const searchInput = screen.getByPlaceholderText(/search by place or notes/i);
+    // Content mounts once the first expense fetch settles
+    const searchInput = await screen.findByPlaceholderText(/search by place or notes/i);
     
     // Track fetch calls
     const fetchCallsBefore = global.fetch.mock.calls.length;

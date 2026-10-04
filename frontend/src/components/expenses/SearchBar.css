@@ -105,24 +105,106 @@
   border-color: var(--color-primary-hover, #0284c7);
 }
 
-/* From/To date range: own row so both inputs stay readable in the narrow sidebar */
-.date-range-filter {
-  flex: 1 1 100%;
+/* Sidebar filter layout: two selects per row, date range on its own full-width block */
+.search-filters-wrapper.filters-only {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--spacing-2, 8px);
+}
+
+.search-filters-wrapper.filters-only .filter-dropdown {
+  padding: var(--spacing-2, 8px) var(--spacing-3, 12px);
+  font-size: var(--text-sm, 13px);
+}
+
+.search-filters-wrapper.filters-only .filter-dropdown.active-filter {
+  padding: calc(var(--spacing-2, 8px) - 1px) calc(var(--spacing-3, 12px) - 1px);
+}
+
+.search-filters-wrapper.filters-only .clear-filters-button {
+  padding: var(--spacing-2, 8px) var(--spacing-3, 12px);
+  font-size: var(--text-sm, 13px);
+  transform: none;
+}
+
+.date-range-filter {
+  grid-column: 1 / -1;
+  order: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2, 8px);
+  padding-top: var(--spacing-2, 8px);
+  border-top: 1px solid var(--border-muted);
+}
+
+.date-range-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-2, 8px);
+  flex-wrap: wrap;
+}
+
+.date-range-title {
+  font-size: var(--text-xs, 12px);
+  font-weight: var(--font-semibold, 600);
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.date-range-inputs {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   gap: var(--spacing-2, 8px);
 }
 
-.date-range-label {
-  font-size: var(--text-sm, 13px);
-  font-weight: var(--font-medium, 500);
-  color: var(--text-secondary);
+.date-range-sep {
+  color: var(--text-muted);
 }
 
 .date-range-input {
   min-width: 0;
   cursor: text;
+}
+
+/* Segmented control, matching the expense list's quick-view tabs */
+.date-range-presets {
+  display: inline-flex;
+  padding: 2px;
+  gap: 2px;
+  background: var(--bg-muted);
+  border-radius: var(--radius-md, 8px);
+}
+
+.date-range-preset {
+  padding: 3px var(--spacing-2, 8px);
+  border: none;
+  border-radius: var(--radius-sm, 6px);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--text-xs, 12px);
+  font-family: var(--font-sans);
+  font-weight: var(--font-medium, 500);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: var(--transition-colors);
+}
+
+.date-range-preset:hover {
+  color: var(--text-primary);
+}
+
+.date-range-preset.active {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.date-range-preset:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 .clear-filters-button {

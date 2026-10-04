@@ -28,7 +28,8 @@ const AnalyticsHubModal = ({
   initialTab = 'monthly-summary',
   currentYear,
   currentMonth,
-  onViewExpenses
+  onViewExpenses,
+  onViewCategory
 }) => {
   const [activeTab, setActiveTab] = useState(initialTab);
   // Shared by the Spending and Cash Flow tabs so switching between them keeps the range
@@ -66,6 +67,7 @@ const AnalyticsHubModal = ({
             view={activeTab}
             period={period}
             onPeriodChange={setPeriod}
+            onViewCategory={onViewCategory}
           />
         );
 

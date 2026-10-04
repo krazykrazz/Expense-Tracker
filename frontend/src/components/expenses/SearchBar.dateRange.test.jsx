@@ -43,6 +43,25 @@ describe('SearchBar date range', () => {
     expect(onDateRangeChange).not.toHaveBeenCalled();
   });
 
+  it('applies a preset as an open-ended range and marks it active', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 9, 3, 12));
+    try {
+      const { onDateRangeChange, rerender } = renderBar();
+      fireEvent.click(screen.getByRole('button', { name: '7 days' }));
+      expect(onDateRangeChange).toHaveBeenCalledWith('2026-09-27', '');
+
+      fireEvent.click(screen.getByRole('button', { name: 'YTD' }));
+      expect(onDateRangeChange).toHaveBeenLastCalledWith('2026-01-01', '');
+
+      rerender(<SearchBar showOnlyFilters onDateRangeChange={vi.fn()} categories={[]} paymentMethods={[]} filterStartDate="2026-10-01" />);
+      expect(screen.getByRole('button', { name: 'This month' })).toHaveAttribute('aria-pressed', 'true');
+      expect(screen.getByRole('button', { name: '7 days' })).toHaveAttribute('aria-pressed', 'false');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('resyncs drafts when filters are cleared externally', () => {
     const { rerender } = renderBar({ filterStartDate: '2026-09-14' });
     expect(screen.getByLabelText('From')).toHaveValue('2026-09-14');

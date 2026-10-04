@@ -149,6 +149,28 @@ describe('ExpenseList - quick views and summary line', () => {
     expect(screen.getByTestId('list-summary-range')).toHaveTextContent('10 days · $25.05/day');
   });
 
+  it('falls back to the last page when the list shrinks (e.g. a shorter month)', () => {
+    // jsdom has no scrollIntoView; page changes call it
+    const originalScroll = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = vi.fn();
+    try {
+      const many = Array.from({ length: 30 }, (_, i) => ({
+        id: 100 + i, date: '2025-03-01', place: `Shop ${i}`, amount: 1, type: 'Groceries', method: 'Cash', week: 1,
+      }));
+      const props = { people: [], onExpenseDeleted: vi.fn(), onExpenseUpdated: vi.fn(), onAddExpense: vi.fn() };
+      const { rerender } = render(<ExpenseList expenses={many} {...props} />);
+      fireEvent.change(screen.getByLabelText('Per page:'), { target: { value: '25' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Next page' }));
+      expect(screen.getByText('Shop 29')).toBeInTheDocument();
+
+      rerender(<ExpenseList expenses={many.slice(0, 5)} {...props} />);
+      expect(screen.getByText('Shop 0')).toBeInTheDocument();
+      expect(screen.getByText(/Showing 1-5 of 5 expenses/)).toBeInTheDocument();
+    } finally {
+      Element.prototype.scrollIntoView = originalScroll;
+    }
+  });
+
   it('groups rows under one header per date with the day total and no Date column', () => {
     const sameDay = [
       { id: 10, date: '2025-02-03', place: 'Cafe', amount: 4.25, type: 'Dining Out', method: 'Cash', week: 1 },

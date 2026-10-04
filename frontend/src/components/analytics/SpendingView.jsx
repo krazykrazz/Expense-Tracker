@@ -56,7 +56,7 @@ const DonutChart = ({ slices, total }) => {
   );
 };
 
-const SpendingView = ({ data }) => {
+const SpendingView = ({ data, onCategorySelect }) => {
   const { totals, expensesByCategory } = data;
 
   const slices = useMemo(
@@ -103,29 +103,47 @@ const SpendingView = ({ data }) => {
             <DonutChart slices={slices} total={totals.expenses} />
           </div>
           <ul className="period-ranked-list" aria-label="Spending by category">
-            {slices.map(slice => (
-              <li key={slice.category} className="period-ranked-item">
-                <div className="period-ranked-row">
-                  <span className="period-ranked-name">
-                    <span className="period-dot" style={{ backgroundColor: slice.color }} />
-                    <span className="period-ranked-label" title={slice.category}>{slice.category}</span>
-                    {slice.fixed > 0 && (
-                      <span className="period-ranked-meta">
-                        {slice.variable > 0 ? `· ${formatCurrency(slice.fixed)} fixed` : '· fixed'}
-                      </span>
-                    )}
-                  </span>
-                  <span className="period-ranked-amount">{formatCurrency(slice.total)}</span>
-                  <span className="period-ranked-pct">{slice.percentOfExpenses.toFixed(1)}%</span>
-                </div>
-                <div className="period-ranked-track">
-                  <div
-                    className="period-ranked-bar"
-                    style={{ width: `${(slice.total / maxTotal) * 100}%`, backgroundColor: slice.color }}
-                  />
-                </div>
-              </li>
-            ))}
+            {slices.map(slice => {
+              const row = (
+                <>
+                  <div className="period-ranked-row">
+                    <span className="period-ranked-name">
+                      <span className="period-dot" style={{ backgroundColor: slice.color }} />
+                      <span className="period-ranked-label" title={slice.category}>{slice.category}</span>
+                      {slice.fixed > 0 && (
+                        <span className="period-ranked-meta">
+                          {slice.variable > 0 ? `· ${formatCurrency(slice.fixed)} fixed` : '· fixed'}
+                        </span>
+                      )}
+                    </span>
+                    <span className="period-ranked-amount">{formatCurrency(slice.total)}</span>
+                    <span className="period-ranked-pct">{slice.percentOfExpenses.toFixed(1)}%</span>
+                  </div>
+                  <div className="period-ranked-track">
+                    <div
+                      className="period-ranked-bar"
+                      style={{ width: `${(slice.total / maxTotal) * 100}%`, backgroundColor: slice.color }}
+                    />
+                  </div>
+                </>
+              );
+              // Fixed-only categories have no transactions to list
+              const clickable = onCategorySelect && slice.variable > 0;
+              return (
+                <li key={slice.category} className="period-ranked-item">
+                  {clickable ? (
+                    <button
+                      type="button"
+                      className="period-ranked-button"
+                      onClick={() => onCategorySelect(slice.category)}
+                      title={`View ${slice.category} transactions`}
+                    >
+                      {row}
+                    </button>
+                  ) : <div className="period-ranked-static">{row}</div>}
+                </li>
+              );
+            })}
           </ul>
         </div>
       </section>

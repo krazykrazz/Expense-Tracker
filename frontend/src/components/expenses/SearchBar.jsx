@@ -267,7 +267,7 @@ const SearchBar = memo(({
         {announcement}
       </div>
 
-      <div className="search-filters-wrapper">
+      <div className={`search-filters-wrapper ${showOnlyFilters ? 'filters-only' : ''}`}>
         {!showOnlyFilters && (
           <>
             <div className="search-input-wrapper">
@@ -381,38 +381,44 @@ const SearchBar = memo(({
             </div>
 
             {onDateRangeChange && (
-              <div className="date-range-filter" role="group" aria-label="Date range">
-                <label htmlFor="date-range-start" className="date-range-label">From</label>
-                <input
-                  id="date-range-start"
-                  type="date"
-                  className={`filter-dropdown date-range-input ${filterStartDate ? 'active-filter' : ''}`}
-                  value={draftStartDate}
-                  max={draftEndDate || undefined}
-                  onChange={handleStartDateChange}
-                />
-                <label htmlFor="date-range-end" className="date-range-label">To</label>
-                <input
-                  id="date-range-end"
-                  type="date"
-                  className={`filter-dropdown date-range-input ${filterEndDate ? 'active-filter' : ''}`}
-                  value={draftEndDate}
-                  min={draftStartDate || undefined}
-                  onChange={handleEndDateChange}
-                  title="Leave empty for today"
-                />
-                <div className="date-range-presets" role="group" aria-label="Quick date ranges">
-                  {DATE_PRESETS.map(preset => (
-                    <button
-                      key={preset.id}
-                      type="button"
-                      className={`date-range-preset ${activePresetId === preset.id ? 'active' : ''}`}
-                      aria-pressed={activePresetId === preset.id}
-                      onClick={() => handleDatePreset(preset)}
-                    >
-                      {preset.label}
-                    </button>
-                  ))}
+              <div className="date-range-filter" role="group" aria-labelledby="date-range-title">
+                <div className="date-range-header">
+                  <span id="date-range-title" className="date-range-title">Date range</span>
+                  <div className="date-range-presets" role="group" aria-label="Quick date ranges">
+                    {DATE_PRESETS.map(preset => (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        className={`date-range-preset ${activePresetId === preset.id ? 'active' : ''}`}
+                        aria-pressed={activePresetId === preset.id}
+                        onClick={() => handleDatePreset(preset)}
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="date-range-inputs">
+                  <label htmlFor="date-range-start" className="sr-only">From</label>
+                  <input
+                    id="date-range-start"
+                    type="date"
+                    className={`filter-dropdown date-range-input ${filterStartDate ? 'active-filter' : ''}`}
+                    value={draftStartDate}
+                    max={draftEndDate || undefined}
+                    onChange={handleStartDateChange}
+                  />
+                  <span className="date-range-sep" aria-hidden="true">–</span>
+                  <label htmlFor="date-range-end" className="sr-only">To</label>
+                  <input
+                    id="date-range-end"
+                    type="date"
+                    className={`filter-dropdown date-range-input ${filterEndDate ? 'active-filter' : ''}`}
+                    value={draftEndDate}
+                    min={draftStartDate || undefined}
+                    onChange={handleEndDateChange}
+                    title="Leave empty for today"
+                  />
                 </div>
               </div>
             )}

@@ -260,7 +260,8 @@ const ExpenseList = memo(({
   people: propPeople, 
   initialInsuranceFilter = '',
   onInsuranceFilterChange,
-  dateRange = null
+  dateRange = null,
+  awaitingFirstLoad = false
 }) => {
   const [deletingId, setDeletingId] = useState(null);
   const [deleteError, setDeleteError] = useState(null);
@@ -278,7 +279,7 @@ const ExpenseList = memo(({
   const [localFilterInsurance, setLocalFilterInsurance] = useState(initialInsuranceFilter); // Insurance status filter (Requirement 7.4)
   const [quickView, setQuickView] = useState('all');
   // Pagination state
-  const [currentPage, setCurrentPage] = useState(1);
+  const [requestedPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(() => {
     try {
       const stored = localStorage.getItem('expenseListPageSize');
@@ -632,6 +633,8 @@ const ExpenseList = memo(({
 
   // Calculate pagination values
   const totalPages = Math.ceil(filteredExpenses.length / pageSize);
+  // The list survives month changes, so a page past the end of a shorter month falls back to the last page
+  const currentPage = Math.min(requestedPage, Math.max(totalPages, 1));
   const startIndex = (currentPage - 1) * pageSize;
   const endIndex = startIndex + pageSize;
   const paginatedExpenses = filteredExpenses.slice(startIndex, endIndex);
@@ -819,8 +822,8 @@ const ExpenseList = memo(({
     }
     
     if (expenses.length === 0) {
-      // No expenses at all for this month
-      return 'No expenses have been recorded for this period.';
+      // No expenses at all for this month (suppressed until the first fetch settles)
+      return awaitingFirstLoad ? null : 'No expenses have been recorded for this period.';
     }
     
     // Show result count when local filters are active

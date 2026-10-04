@@ -150,6 +150,20 @@
   z-index: 0;
 }
 
+.content-left .expense-list-container {
+  transition: opacity 150ms ease;
+}
+
+.content-left.is-refreshing .expense-list-container {
+  opacity: 0.55;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .content-left .expense-list-container {
+    transition: none;
+  }
+}
+
 .content-right {
   position: sticky;
   top: var(--spacing-4);

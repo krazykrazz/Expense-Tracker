@@ -32,9 +32,9 @@ const summary = {
   ],
 };
 
-const Harness = ({ view, initial = { preset: 'ytd', year: 2026, month: 9 } }) => {
+const Harness = ({ view, initial = { preset: 'ytd', year: 2026, month: 9 }, onViewCategory }) => {
   const [period, setPeriod] = useState(initial);
-  return <PeriodAnalyticsPanel view={view} period={period} onPeriodChange={setPeriod} />;
+  return <PeriodAnalyticsPanel view={view} period={period} onPeriodChange={setPeriod} onViewCategory={onViewCategory} />;
 };
 
 describe('PeriodAnalyticsPanel', () => {
@@ -104,6 +104,17 @@ describe('PeriodAnalyticsPanel', () => {
     await screen.findByTestId('cash-flow-view');
     expect(screen.getByText('Overspent')).toBeInTheDocument();
     expect(screen.getByText('Net shortfall')).toBeInTheDocument();
+  });
+
+  it('opens a category\'s transactions for the period, but not for fixed-only categories', async () => {
+    const onViewCategory = vi.fn();
+    render(<Harness view="spending" onViewCategory={onViewCategory} />);
+    await screen.findByTestId('spending-view');
+
+    fireEvent.click(screen.getByRole('button', { name: /Groceries/ }));
+    expect(onViewCategory).toHaveBeenCalledWith('Groceries', '2026-01-01', '2026-09-30');
+
+    expect(screen.queryByRole('button', { name: /Housing/ })).not.toBeInTheDocument();
   });
 
   it('disables previous at the earliest supported period', async () => {

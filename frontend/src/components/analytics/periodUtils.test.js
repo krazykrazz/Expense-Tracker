@@ -3,6 +3,7 @@ import {
   computePeriodRange,
   formatPeriodLabel,
   presetStep,
+  rangeToDateBounds,
   toYearMonthString,
 } from './periodUtils';
 import { shiftMonth } from '../../utils/yearMonth';
@@ -22,6 +23,11 @@ describe('periodUtils', () => {
   it('clamps ranges to the supported 2000-2100 window', () => {
     expect(computePeriodRange('last12', 2000, 5)).toEqual({ start: { year: 2000, month: 1 }, end: { year: 2000, month: 5 } });
     expect(computePeriodRange('month', 2101, 2)).toEqual({ start: { year: 2100, month: 12 }, end: { year: 2100, month: 12 } });
+  });
+
+  it('converts a month range to inclusive day bounds', () => {
+    expect(rangeToDateBounds(computePeriodRange('ytd', 2024, 2))).toEqual({ startDate: '2024-01-01', endDate: '2024-02-29' });
+    expect(rangeToDateBounds(computePeriodRange('last12', 2026, 1))).toEqual({ startDate: '2025-02-01', endDate: '2026-01-31' });
   });
 
   it('shifts months across years', () => {

@@ -100,7 +100,7 @@ describe('App.jsx FilterContext Integration', () => {
     });
 
     // Type in search - this goes through context's handleSearchChange
-    const searchInput = screen.getByPlaceholderText(/search by place or notes/i);
+    const searchInput = await screen.findByPlaceholderText(/search by place or notes/i);
     await user.type(searchInput, 'Walmart');
 
     // Verify the search value is reflected (state flowed through context)
@@ -125,7 +125,7 @@ describe('App.jsx FilterContext Integration', () => {
     expect(screen.getByText(/monthly view/i)).toBeInTheDocument();
 
     // Wait for payment methods to load into the dropdown
-    const paymentFilter = screen.getByLabelText(/filter by payment method/i);
+    const paymentFilter = await screen.findByLabelText(/filter by payment method/i);
     await waitFor(() => {
       const options = Array.from(paymentFilter.options).map(o => o.text);
       expect(options).toContain('Debit');
@@ -155,7 +155,7 @@ describe('App.jsx FilterContext Integration', () => {
     });
 
     // Trigger global view with payment method filter
-    const paymentFilter = screen.getByLabelText(/filter by payment method/i);
+    const paymentFilter = await screen.findByLabelText(/filter by payment method/i);
     await waitFor(() => {
       const options = Array.from(paymentFilter.options).map(o => o.text);
       expect(options).toContain('Debit');
@@ -194,7 +194,7 @@ describe('App.jsx FilterContext Integration', () => {
     });
 
     // Apply only category filter
-    const categoryFilter = screen.getByLabelText(/filter by expense category/i);
+    const categoryFilter = await screen.findByLabelText(/filter by expense category/i);
     await user.selectOptions(categoryFilter, 'Groceries');
 
     // Should trigger global view (category is a global filter)

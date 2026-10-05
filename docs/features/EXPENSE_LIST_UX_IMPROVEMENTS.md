@@ -1,158 +1,86 @@
-# Expense List UX Improvements
-
-**Version**: 5.4.0  
-**Completed**: February 2026  
-**Spec**: `specs/expense-list-ux-improvements/`
+# Expense List
 
 ## Overview
 
-This feature enhances the ExpenseList filter user experience with smarter filtering options, collapsible advanced filters, visual filter indicators, and improved global view navigation. All changes are frontend-only with no backend modifications required.
+`ExpenseList` (`frontend/src/components/expenses/ExpenseList.jsx`) renders the expenses passed in by `App.jsx` — `filteredExpenses` from `ExpenseContext`, i.e. the selected month or the global-view result. On that set it applies local filters, quick views, date grouping and client-side pagination. All of this is frontend-only.
 
-## Features
+Local filters only narrow the already-loaded list and never trigger global view. Global filters (search, category, payment method, year, date range) are covered in [Global Expense Filtering](./GLOBAL_EXPENSE_FILTERING.md).
 
-### 1. Smart Method Filter
+## Local Filters
 
-Combines the previous separate "Method" and "Method Type" dropdowns into a single intelligent filter.
+Four dropdowns in the list header:
 
-**Key Features**:
-- Single dropdown with grouped options by payment type (Cash, Debit, Cheque, Credit Card)
-- Type headers allow filtering all methods of a type (e.g., "All Credit Cards")
-- Individual method selection for specific payment methods
-- Cleaner UI with fewer filter controls
+| Filter | Options | Notes |
+|--------|---------|-------|
+| Type | All Types + each category | |
+| Method (smart) | All Methods, grouped by payment type | See below |
+| Invoice | All Invoices, With Invoice, Without Invoice | Limits the list to `Tax - Medical` / `Tax - Donation` |
+| Insurance | All Insurance, Insurance Eligible, Not Eligible, Not Claimed, In Progress, Paid, Denied | Limits the list to `Tax - Medical`; seeded from `FilterContext.filterInsurance` via `initialInsuranceFilter`; clearing it calls `onInsuranceFilterChange('')` |
 
-**Usage**:
-- Select a type header (e.g., "Credit Card") to filter all credit card expenses
-- Select a specific method (e.g., "Visa") to filter only that payment method
+A ✕ button clears all four. Budget alerts dispatch a `navigateToExpenseList` window event with `detail.categoryFilter`, which sets the local Type filter (staying in monthly view).
 
-### 2. Advanced Filters Section
+### Smart Method Filter
 
-Collapsible section for less frequently used filters (Invoice and Insurance status).
+`generateGroupedMethodOptions(paymentMethods)` builds one dropdown from all payment methods, including inactive ones (suffixed "(inactive)"):
 
-**Key Features**:
-- "Advanced" toggle button with badge showing active filter count
-- Collapsed by default to reduce visual clutter
-- Contains Invoice filter (All, Has Invoice, No Invoice)
-- Contains Insurance filter (All, Not Claimed, In Progress, Paid, Denied)
-- Badge updates in real-time as filters are applied
+- Types are ordered Cash, Debit, Cheque, Credit Card, then Other (unrecognised type).
+- A type with several methods, or a single method whose name differs from the type label, gets a selectable type header (`type:<type>`) followed by indented methods (`method:<display_name>`).
+- A type with one method named the same as the type shows just that method.
 
-### 3. Filter Count Badge
+`parseSmartMethodFilter` decodes the value: type mode matches the method's `type`; method mode matches `expense.method`.
 
-Visual indicator showing total number of active filters.
+### Filter Count Badge and Chips
 
-**Key Features**:
-- Badge appears near filter controls when filters are active
-- Shows count of all active filters (category, method, invoice, insurance, etc.)
-- Hidden when no filters are active
-- Helps users understand current filter state at a glance
+- A badge beside the dropdowns shows the number of active local filters (hidden at 0).
+- `FilterChip` renders one "Label: Value" pill per active filter (Type, Method, Invoice, Insurance); its × clears only that filter. Type-mode method chips read e.g. "Credit Card (all)".
 
-### 4. Filter Chips
+## Quick Views
 
-Visual representation of active filters with one-click removal.
+A tab bar (shown when the list has expenses) narrows the locally filtered set further:
 
-**Key Features**:
-- Pill-shaped chips showing "{Label}: {Value}" format
-- Remove button (×) on each chip for quick filter clearing
-- Chips appear in a row below filter controls
-- Long values are truncated with ellipsis
-- Removing a chip clears only that specific filter
+| Tab | Matches |
+|-----|---------|
+| All | Everything |
+| Needs review | Tax-deductible expenses without an invoice, or medical expenses with no person assigned or an eligible claim still `not_claimed` / `in_progress` (`needsReview`) |
+| Tax-deductible | `Tax - Medical`, `Tax - Donation` |
+| Recurring | Generated from a recurring template (`is_generated`) |
 
-### 5. Enhanced Global View Indicator
+Tabs other than All show a count when non-zero (Needs review is highlighted).
 
-Improved banner when viewing expenses across all time periods.
+## Summary Line
 
-**Key Features**:
-- Shows which filters triggered global view (search, method, year)
-- "Return to Monthly View" button to clear global-triggering filters
-- Enhanced "Clear All" button styling in global view mode
-- Clear visual distinction when in global view vs monthly view
+Under the tabs: `N expenses · $X total`, plus:
+- `D days · $Y/day` when a global date range is active (`dateRange` prop; an empty end counts through today).
+- A "N need(s) review" button that jumps to the Needs review tab.
 
-## Components
+When filters or a quick view hide everything, a contextual message replaces the table (e.g. "Nothing needs review — all caught up.").
 
-### New Components
+## Date Grouping
 
-| Component | File | Description |
-|-----------|------|-------------|
-| FilterChip | `FilterChip.jsx` | Individual filter chip with remove button |
-| AdvancedFilters | `AdvancedFilters.jsx` | Collapsible advanced filters section |
+Rows are grouped by date in API order (ascending). Each group is a `<tbody>` with a header row showing the formatted date and that day's total. Grouping runs on the current page, so a day split across pages shows a partial total on each.
 
-### Modified Components
+## Pagination
 
-| Component | Changes |
-|-----------|---------|
-| ExpenseList.jsx | Smart method filter, filter chips row, filter count badge, advanced filters integration |
-| App.jsx | Enhanced global view banner with trigger info and return button |
+- Page sizes: 25, 50 (default), 100, All; the choice is persisted in `localStorage` (`expenseListPageSize`).
+- Controls (shown whenever the filtered list is non-empty): "Showing X-Y of Z expenses", ← Previous / Next →, page buttons (first, previous, current, next, last, with ellipses) and a "Per page:" selector.
+- Resets to page 1 when a local filter, the quick view, or the page size changes. If the list shrinks below the current page (e.g. after a reload or delete), the page is clamped to the last page.
+- Changing page smooth-scrolls to the top of the list.
 
-## CSS Files
+## Loading Behaviour
 
-- `FilterChip.css` - Chip styling with hover states
-- `AdvancedFilters.css` - Collapsible section styling
-- `ExpenseList.css` - Filter count badge and chips row styling
-- `App.css` - Enhanced global view banner styling
+Only the very first load shows the "Loading expenses..." message (`ExpenseContext.hasLoaded`). Later reloads keep the current list mounted, dimmed and marked `aria-busy`, until the new data arrives. The empty-state message is suppressed until the first load completes (`awaitingFirstLoad`).
 
-## Testing
+## Files
 
-### Property-Based Tests
-
-| Test File | Properties Tested |
-|-----------|-------------------|
-| `AdvancedFilters.pbt.test.jsx` | Badge count accuracy |
-| `ExpenseList.smartMethodFilter.pbt.test.jsx` | Type filtering, specific method filtering |
-| `ExpenseList.filterUI.pbt.test.jsx` | Filter count badge, chips generation, chip removal independence |
-| `App.globalView.pbt.test.jsx` | Return to monthly view, trigger identification |
-
-### Unit Tests
-
-| Test File | Coverage |
-|-----------|----------|
-| `FilterChip.test.jsx` | Rendering, remove callback |
-| `AdvancedFilters.test.jsx` | Collapse/expand, badge display |
-
-## User Guide
-
-### Filtering Expenses
-
-1. **By Payment Type**: Use the Method dropdown and select a type header (e.g., "Credit Card")
-2. **By Specific Method**: Use the Method dropdown and select a specific method under a type
-3. **By Category**: Use the Category dropdown
-4. **By Invoice Status**: Click "Advanced" and use the Invoice dropdown
-5. **By Insurance Status**: Click "Advanced" and use the Insurance dropdown
-
-### Clearing Filters
-
-- **Single Filter**: Click the × on the filter chip
-- **All Filters**: Click "Clear All" button
-- **Return to Monthly View**: Click "Return to Monthly View" in the global view banner
-
-### Understanding Filter State
-
-- **Filter Count Badge**: Shows total active filters
-- **Advanced Badge**: Shows count of active advanced filters
-- **Filter Chips**: Visual list of all active filters
-- **Global View Banner**: Indicates when viewing all time periods
-
-## Requirements Traceability
-
-| Requirement | Implementation |
-|-------------|----------------|
-| 1.1-1.5 Smart Method Filter | `ExpenseList.jsx` smart filter dropdown |
-| 2.1-2.5 Advanced Filters | `AdvancedFilters.jsx` component |
-| 3.1-3.3 Filter Count Badge | `ExpenseList.jsx` badge rendering |
-| 4.1-4.5 Filter Chips | `FilterChip.jsx` and `ExpenseList.jsx` integration |
-| 5.1-5.5 Global View Indicator | `App.jsx` enhanced banner |
-| 6.1-6.4 Clear Filters Button | `App.jsx` enhanced styling |
+- `frontend/src/components/expenses/ExpenseList.jsx`, `ExpenseList.css`
+- `frontend/src/components/expenses/FilterChip.jsx`, `FilterChip.css`
 
 ## Related Documentation
 
-- [Global Expense Filtering](./GLOBAL_EXPENSE_FILTERING.md) - Original global filtering feature
-- [Configurable Payment Methods](./CONFIGURABLE_PAYMENT_METHODS.md) - Payment method management
+- [Global Expense Filtering](./GLOBAL_EXPENSE_FILTERING.md)
+- [Configurable Payment Methods](./CONFIGURABLE_PAYMENT_METHODS.md)
 
 ---
 
-**Last Updated**: February 2, 2026
-## Versioning Context
-
-Historical version references in this document (for example `v4.x` or `v5.x`) describe pre-1.0 release history.
-Current release numbering uses the `1.x` scheme.
-
-**Last Reviewed:** June 1, 2026
+**Last Updated**: 2026-10-04
 

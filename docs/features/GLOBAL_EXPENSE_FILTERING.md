@@ -2,128 +2,61 @@
 
 ## Overview
 
-The Global Expense Filtering feature allows you to filter expenses by category, payment method, and year across all time periods, not just the currently selected month. This makes it easy to find and analyze specific types of expenses throughout your entire expense history.
+Global filters search expenses across all time instead of only the selected month. State lives in `FilterContext` (`frontend/src/contexts/FilterContext.jsx`); fetching and client-side filtering live in `ExpenseContext`; the controls are `SearchBar` (`frontend/src/components/expenses/SearchBar.jsx`), rendered twice by `App.jsx`.
 
-## Features
+## Filter Controls
 
-### Filter Controls
+- **Text search** (left column, above the expense list): matches place or notes (case-insensitive substring). Debounced 300 ms.
+- **Filter column** (right column, above the summary panel):
+  - **Category**: All Categories + each category (validated against `CATEGORIES`)
+  - **Payment Method**: All Payment Methods + each method name
+  - **Year**: All Years + every year from current year + 2 down to 2000
+  - **Date range**: From / To date inputs (inclusive). Leave To empty for "through today". Quick presets **7 days**, **30 days**, **This month** and **YTD** set the start date and leave the end open (through today); the matching preset is highlighted while active.
 
-The application provides four types of filters in the search bar:
+These are separate from the expense list's own local dropdowns (Type, Method, Invoice, Insurance), which only narrow the loaded list — see [Expense List](./EXPENSE_LIST_UX_IMPROVEMENTS.md).
 
-1. **Text Search**: Search for expenses by place name or notes
-2. **Category Filter**: Filter by expense type (Groceries, Dining Out, Gas, etc.)
-3. **Payment Method Filter**: Filter by payment method (Credit Card, Debit Card, Cash, etc.)
-4. **Year Filter**: Scope search to a specific year (current year and past 10 years available)
+## How It Works
 
-### How It Works
+### Monthly View (Default)
 
-#### Monthly View (Default)
-- By default, the application shows expenses for the currently selected month
-- Use the month selector to navigate between different months
+Shows the month chosen in the month selector (`GET /api/expenses?year=Y&month=M`). The selector has previous/next month buttons and a jump-to-current-month button.
 
-#### Global View (Automatic)
-- When you apply ANY filter (text search, category, payment method, or year), the application automatically switches to global view
-- Global view displays expenses from ALL time periods that match your filters (or from the selected year if year filter is active)
-- You can use filters independently or combine them
+### Global View
 
-### Filter Combinations
+`isGlobalView` is true when any of these is set: search text, category, payment method, year, insurance status, start date, or end date. Insurance status is set only by the `filterByInsuranceStatus` window event (insurance notification click-through).
 
-All filters work together using AND logic:
+In global view:
+- A "🔍 Global View" banner lists the active triggers ("Triggered by: Search, Category, Date Range (…)") with a **📅 Return to Monthly View** button.
+- The month selector is dimmed and non-interactive.
+- Expenses are fetched with `GET /api/expenses` plus `year`, `startDate`, `endDate` when set. With no year or dates, all expenses are fetched.
+- Search, category and payment method are then applied client-side (AND logic).
 
-- **Single Filter**: Apply just one filter to see all matching expenses across all time
-  - Example: Select "Groceries" to see all grocery expenses ever recorded
-  - Example: Select "2024" to see all expenses from 2024
-  
-- **Multiple Filters**: Combine filters to narrow down results
-  - Example: Select "Groceries" + "Credit Card" to see only grocery expenses paid with credit card
-  - Example: Select "2024" + "Groceries" to see only grocery expenses from 2024
-  
-- **Text + Filters**: Add text search to filter combinations
-  - Example: Search "Walmart" + "Groceries" + "2024" to find all Walmart grocery purchases in 2024
+### Date Range
 
-### Year Scoping
+- Bounds are inclusive `YYYY-MM-DD`. An empty end date is sent as today, unless the start date is in the future.
+- Combined with Year as an intersection.
+- A range is only applied once both dates are complete (year ≥ 2000) and start ≤ end; partial input is kept as a draft. The backend also rejects invalid dates or start > end with 400.
+- The expense list summary line shows the range length and average per day.
+- Clicking a category in the Analytics Hub **Spending** breakdown clears existing filters, then sets that category plus the selected period as the date range (see [Analytics Hub](./ANALYTICS_HUB.md)).
 
-The year filter allows you to scope your global search to a specific year:
+## Clearing Filters
 
-- **All Years** (default): Shows expenses from all time periods
-- **Specific Year**: Shows only expenses from the selected year (e.g., 2024, 2023, etc.)
-- **Available Years**: Current year and past 10 years are available in the dropdown
-- **Combines with Other Filters**: Year filter works alongside category, payment method, and text search
-
-### Clearing Filters
-
-- Click the **"Clear Filters"** button to remove all active filters
-- Clearing filters returns you to monthly view, showing only the current month's expenses
-- The clear button only appears when at least one filter is active
-
-### Filter Synchronization
-
-- Filters in the search bar and expense list header are synchronized
-- Changing a filter in either location updates both
-- This provides flexibility - filter from wherever is most convenient
-
-## Usage Examples
-
-### Example 1: Find All Gas Expenses
-1. Select "Gas" from the category dropdown
-2. View all gas expenses across all time periods
-3. See total count of matching expenses
-
-### Example 2: Track Credit Card Spending in 2024
-1. Select "2024" from the year dropdown
-2. Select "Credit Card" from the payment method dropdown
-3. View all credit card expenses from 2024
-4. Optionally add a category filter to narrow down further
-
-### Example 3: Find Specific Store Purchases
-1. Type store name in the search box (e.g., "Target")
-2. Optionally add year filter (e.g., "2024")
-3. Optionally add category filter (e.g., "Groceries")
-4. View all matching expenses
-
-### Example 4: Analyze Previous Year Spending
-1. Select "2023" from the year dropdown
-2. Optionally add category or payment method filters
-3. Review all expenses from the previous year
-
-### Example 5: Return to Monthly View
-1. Click "Clear Filters" button
-2. Application returns to showing current month only
-3. All filters are reset
+- **Clear Filters** (labelled **🗑️ Clear All** in global view) appears in the filter column when a search, category, method, year or date filter is active.
+- **Clear Search** appears next to the search box when text is entered.
+- Both buttons, and **Return to Monthly View**, clear all global filters (including insurance status) and return to monthly view.
 
 ## Accessibility
 
-The filtering feature is fully accessible:
-
-- **Keyboard Navigation**: Tab through all filter controls
-- **Screen Reader Support**: All controls have descriptive labels
-- **Announcements**: Filter changes are announced to screen readers
-- **Focus Management**: Clear button returns focus to search input
-
-## Performance
-
-The feature is optimized for large datasets:
-
-- **Debounced Search**: Text search waits 300ms before filtering to avoid excessive updates
-- **Memoized Results**: Filtered results are cached to prevent unnecessary recalculation
-- **Efficient Rendering**: Components use React.memo to minimize re-renders
-
-## Tips
-
-- Use category filters to analyze spending patterns by type
-- Combine filters to find very specific expenses quickly
-- The filter status message shows how many expenses match your criteria
-- Filters persist when switching between global and monthly views (until cleared)
+- Every control has a label or `aria-label`; the date inputs sit in a group labelled "Date range".
+- Filter changes are announced via a polite live region.
+- **Clear Search** returns focus to the search input.
 
 ## Related Features
 
-- **Place Name Standardization**: Helps ensure consistent place names for better search results
-- **Tax Deductible View**: Filter and view tax-deductible expenses
-- **Annual Summary**: View aggregated data across the entire year
-## Versioning Context
+- [Expense List](./EXPENSE_LIST_UX_IMPROVEMENTS.md) — local filters, quick views, pagination
+- [Place Name Standardization](./PLACE_NAME_STANDARDIZATION.md) — consistent place names improve search
 
-Historical version references in this document (for example `v4.x` or `v5.x`) describe pre-1.0 release history.
-Current release numbering uses the `1.x` scheme.
+---
 
-**Last Reviewed:** June 1, 2026
+**Last Updated**: 2026-10-04
 

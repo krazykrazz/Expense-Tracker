@@ -2,126 +2,94 @@
 
 ## Overview
 
-The Annual Summary provides a comprehensive yearly financial overview accessible via the "📊 Annual Summary" button in the month selector. It displays key financial metrics, year-over-year comparisons, income breakdowns, and visual charts to help users understand their annual financial performance.
+The Annual Summary is a yearly financial overview opened from the "📊 Annual Summary" button in the month selector. It shows summary cards, a year-over-year comparison, income by category, and monthly charts for the selected year.
 
 ## Features
 
-### Summary Cards (4 per row)
+### Summary Cards
 
-The Annual Summary displays 13 summary cards in a 4-column grid:
+Up to 13 cards in a 4-column grid:
 
-1. **Total Income** - Sum of all income sources for the year (green card)
-2. **Fixed Expenses** - Total monthly recurring costs
+1. **Total Income** - Sum of all income for the year
+2. **Fixed Expenses** - Total fixed (monthly recurring) costs
 3. **Variable Expenses** - Total day-to-day spending
-4. **Balance** - Net income (surplus/deficit) with color coding
-5. **Net Worth** - Year-end position showing assets minus liabilities
-6. **Average Monthly** - Average monthly expense amount
-7. **Highest Month** - Month with highest expenses
-8. **Lowest Month** - Month with lowest expenses
-9. **Savings Rate** - Percentage of income saved (green/red/neutral)
-10. **Transactions** - Count of variable expense transactions with average
-11. **Top Category** - Highest spending category with amount and percentage
-12. **Daily Spend** - Average daily variable spending
-13. **Tax Deductible** - Combined Medical + Donation totals
+4. **Balance** - Income minus expenses, labelled Surplus / Deficit / Break Even
+5. **Net Worth** - Year-end investments minus loan balances, with an Assets / Liabilities breakdown
+6. **Average Monthly** - Total expenses ÷ months that have expenses
+7. **Highest Month** - Month with the highest expenses (N/A if none)
+8. **Lowest Month** - Month with the lowest non-zero expenses (N/A if none)
+9. **Savings Rate** - Balance ÷ income (N/A when no income)
+10. **Transactions** - Count of the year's (variable) expenses, with average amount
+11. **Top Category** - Highest spending category with amount and % of total expenses (hidden when there are no category totals)
+12. **Daily Spend** - Variable expenses ÷ days elapsed this year (current year) or 365 (other years)
+13. **Tax Deductible** - `Tax - Medical` + `Tax - Donation` totals
 
 ### Year-over-Year (YoY) Comparison
 
-A collapsible section comparing current year to previous year:
+Collapsible section (expanded by default), shown only when the previous year has income or expenses:
 
-- **Income**: Shows previous → current with % change and absolute difference
-- **Expenses**: Shows previous → current with % change (green if decreased)
-- **Savings Rate**: Shows percentage point change
-- **Net Worth**: Shows absolute change in net worth
+- **Income** and **Expenses**: previous → current, % change and absolute difference (a decrease in expenses is shown as positive)
+- **Savings Rate**: percentage-point change
+- **Net Worth**: absolute change
 
-#### YTD (Year-to-Date) Logic
-
-For the **current year**, the comparison uses YTD logic:
-- Only compares months 1 through the current month for both years
-- Prevents misleading comparisons when future income is pre-logged
-- Header shows "YTD Comparison" with a badge indicating the month range (e.g., "Jan-Jan")
-
-For **past years**, the comparison uses full 12-month data.
+For the **current year** the comparison is year-to-date: both years are summed for January through the current month, the header reads "YTD Comparison" and a badge shows the range (e.g. "Jan-Oct"). Other years compare all 12 months.
 
 ### Income by Category
 
-Visual breakdown of income sources displayed in a 4-column grid:
-- **Salary** 💼
-- **Government** 🏛️
-- **Gifts** 🎁
-- **Other** 💰
-
-Each card shows the total amount and percentage of total income.
+Shown when income category data exists: one card per category returned by the API (icons: Salary 💼, Government 🏛️, Gifts 🎁, Other 💰) with total and % of total income.
 
 ### Monthly Breakdown Chart
 
-Horizontal bar chart showing:
-- **Fixed Expenses** (blue segment)
-- **Variable Expenses** (purple segment)
-- **Income** (green bar below expenses)
+Horizontal bars per month:
+- Expenses bar stacked as **Fixed** and **Variable** segments
+- **Income** bar below (when income > 0)
 
-All bars scale proportionally to the maximum value across all months.
+Bars scale to the larger of the highest monthly expense total and the highest monthly income.
 
 ### Monthly Net Balance Graph
 
-SVG line graph showing:
-- Monthly surplus (green) or deficit (red) throughout the year
-- Zero line reference
-- Month labels with exact values below
+SVG line graph of monthly income minus expenses, with surplus/deficit colouring, a zero line, and month labels with values.
 
 ### Collapsible Sections
 
-- **By Category**: Expense breakdown by category (collapsed by default)
-- **By Payment Method**: Expense breakdown by payment method (collapsed by default)
-- **YoY Comparison**: Year-over-year comparison (expanded by default)
+- **By Category** and **By Payment Method** expense breakdowns (collapsed by default)
 
 ## Technical Details
 
-### API Endpoint
+### API Endpoints
 
 ```
 GET /api/expenses/annual-summary?year={year}
+GET /api/income/annual/{year}/by-category
 ```
 
-Returns:
-- `totalIncome`, `totalExpenses`, `totalFixedExpenses`, `totalVariableExpenses`
-- `netIncome`, `netWorth`, `totalAssets`, `totalLiabilities`
+`annual-summary` returns:
+- `year`, `totalExpenses`, `totalFixedExpenses`, `totalVariableExpenses`, `totalIncome`, `netIncome`
+- `netWorth`, `totalAssets`, `totalLiabilities`
 - `averageMonthly`, `highestMonth`, `lowestMonth`
-- `transactionCount` - Count of variable expense transactions
-- `monthlyTotals` - Array of monthly breakdowns
-- `byCategory`, `byMethod` - Expense breakdowns
+- `transactionCount`
+- `monthlyTotals` - 12 entries of `{ month, total, fixedExpenses, variableExpenses, income }`
+- `byCategory`, `byMethod` - expense totals keyed by category / method
+
+Built by `getAnnualSummary` in `backend/services/expenseAggregationService.js`.
 
 ### Frontend Component
 
-`frontend/src/components/AnnualSummary.jsx`
+`frontend/src/components/financial/AnnualSummary.jsx`
 
-Key features:
-- Fetches current and previous year data in parallel
-- Uses `useMemo` for expensive calculations (chartData, netBalanceData, topCategory, yoyComparison)
-- Responsive grid layout (4 columns → 2 columns on mobile)
+- Fetches the selected and previous year's summaries in parallel (previous year is optional), then income by category
+- Derived values (`chartData`, `netBalanceData`, `topCategory`, `yoyComparison`) are memoized
 
 ### CSS
 
-`frontend/src/components/AnnualSummary.css`
+`frontend/src/components/financial/AnnualSummary.css`
 
-Key classes:
-- `.summary-grid` - 4-column grid for summary cards
-- `.yoy-grid` - 2-column grid for YoY comparison cards
-- `.income-category-grid` - Fixed 4-column grid for income categories
-- `.collapsible-section` - Sections with expand/collapse toggle
+- `.summary-grid` - 4 columns (2 at ≤ 768px)
+- `.yoy-grid` - 2 columns (1 at ≤ 640px)
+- `.income-category-grid` - 4 columns (1 at ≤ 768px)
+- `.collapsible-section` - expand/collapse sections
 
-## Version History
+---
 
-- **v4.16.0**: Initial YoY comparison, Savings Rate, Transaction Count, Top Category cards, collapsible sections
-- **v4.16.1**: YTD comparison logic for current year
-- **v4.16.2**: Fixed YoY comparison layout (2 columns instead of 4)
-- **v4.16.3**: Added Daily Spend and Tax Deductible cards
-- **v4.16.4**: Fixed Income by Category to display all 4 categories on one row
-
-**Last Reviewed:** June 2026
-## Versioning Context
-
-Historical version references in this document (for example `v4.x` or `v5.x`) describe pre-1.0 release history.
-Current release numbering uses the `1.x` scheme.
-
-**Last Reviewed:** June 1, 2026
+**Last Updated**: 2026-10-04
 

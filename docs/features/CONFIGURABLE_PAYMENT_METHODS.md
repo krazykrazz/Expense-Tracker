@@ -1,85 +1,62 @@
 # Configurable Payment Methods
 
-**Version**: 5.4.1  
-**Status**: Implemented  
-**Spec**: `specs/configurable-payment-methods/`, `specs/credit-card-statement-balance/`, `specs/unified-billing-cycles/`
+**Status**: Active  
+**Last Updated**: 2026-10-04
 
 ## Overview
 
-The Configurable Payment Methods feature transforms the payment method system from a hardcoded enum to a database-driven configurable system. Users can now manage payment methods, track credit card balances, record payments, and upload statements.
+Payment methods are stored in the `payment_methods` table rather than a hardcoded list. Users can create, edit and deactivate payment methods, and credit cards get balance tracking, payment logging, billing cycles and statement PDFs.
+
+Backend: `backend/routes/paymentMethodRoutes.js`, `backend/services/paymentMethodService.js` (facade over `paymentMethodBalanceService.js`, `paymentMethodBillingCycleService.js`, `paymentMethodValidationService.js`), `creditCardPaymentService.js`, `creditCardStatementService.js`.
+Frontend: `frontend/src/components/financial/FinancialOverviewModal.jsx`, `frontend/src/components/credit-cards/` (`PaymentMethodForm`, `CreditCardDetailView`, `CreditCardPaymentForm`, `UnifiedBillingCycleList`).
 
 ## Features
 
 ### Payment Method Types
 
-Four payment method types are supported:
+| Type | Fields |
+|------|--------|
+| `cash` | Display name |
+| `cheque`, `debit` | Display name, optional account details |
+| `credit_card` | Display name, full name (required), account details, credit limit, initial balance (create only), payment due day (required), statement closing day (`billing_cycle_day`, required), optional legacy billing cycle start/end days |
 
-1. **Cash** - Simple cash payments
-2. **Cheque** - Cheque payments
-3. **Debit** - Debit card payments
-4. **Credit Card** - Full credit card tracking with:
-   - Credit limit and current balance
-   - Utilization percentage calculation
-   - Payment due date tracking
-   - Billing cycle management
-   - Payment history
-   - Statement uploads
+`billing_cycle_day` and `payment_due_day` are required for new credit cards and cannot be cleared once set (`paymentMethodValidationService`). The type cannot be changed after creation.
 
 ### Payment Method Management
 
-Access via the "💳 Payment Methods" button in the main navigation:
+Open the **💼 Financial** button in the month selector; payment methods appear in the **Payment Methods** section of the Financial Overview modal:
 
-- **View all payment methods** grouped by type
-- **Create new payment methods** with type-specific fields
-- **Edit existing payment methods** (name, details, limits)
-- **Activate/deactivate** payment methods (inactive methods hidden from dropdowns but preserved for historical data)
-- **Delete** payment methods with zero associated expenses
+- **Active / Inactive tabs**; credit cards are listed in a summary grid (Card, Current, Statement, Cycle) with **View** and **Pay** buttons, followed by **Other Payment Methods**
+- **+ Add** opens `PaymentMethodForm` (Add/Edit Payment Method)
+- **Deactivate / Activate** from the edit form, or **Deactivate** in the credit card detail view; inactive cards can be **Reactivated** from the Inactive tab. The last active payment method cannot be deactivated
+- Inactive methods are hidden from new-expense dropdowns; when editing an expense that uses one, it is shown under an "Inactive" group with an "(inactive)" suffix
+- **Delete** is API-only (`DELETE /api/payment-methods/:id`) and is rejected if the method has any expenses or is the last active method
 
 ### Credit Card Features
 
-For credit card type payment methods:
+- **Current Balance** ("What you owe today") – anchored to the latest billing cycle (see [Balance Calculation](#credit-card-balance-calculation))
+- **Statement Balance** – amount due from the most recently closed cycle; see [Credit Card Statement Balance](./CREDIT_CARD_STATEMENT_BALANCE.md)
+- **Projected Balance** – shown only when it differs from the current balance (future-dated / not-yet-posted expenses)
+- **Utilization** – `current_balance / credit_limit`; bar is green below 30%, warning at ≥ 30%, danger at ≥ 70%
+- **Payment Due** card – days until `payment_due_day`; highlighted when ≤ 7 days and the statement isn't paid
+- **💳 Log Payment** and a **Payments** tab with history and delete
+- **Billing Cycles** tab – see [Credit Card Billing Cycles](./CREDIT_CARD_BILLING_CYCLES.md)
+- **Payment reminders** – see [Credit Card Statement Balance](./CREDIT_CARD_STATEMENT_BALANCE.md#payment-reminders)
+- **Posted date** on credit card expenses – see [Credit Card Posted Date](./CREDIT_CARD_POSTED_DATE.md)
 
-- **Balance Tracking**: Automatic balance updates when expenses are added/deleted
-- **Statement Balance Calculation**: Automatic calculation of statement balance based on billing cycle dates
-- **Billing Cycle History**: Full historical view of all billing cycles with actual vs calculated balances (v5.4.0)
-- **Trend Indicators**: Visual comparison to previous billing cycle (higher/lower/same)
-- **Transaction Counting**: Number of expenses per billing cycle
-- **Smart Payment Alerts**: Payment reminders show required payment amount and suppress when statement is paid
-- **Utilization Indicator**: Color-coded display (green < 30%, yellow 30-70%, red > 70%)
-- **Payment Recording**: Log payments to reduce balance
-- **Payment History**: View all recorded payments with dates and notes
-- **Statement Uploads**: Attach PDF statements with period dates
-- **Due Date Reminders**: Alerts when payment due within 7 days (suppressed when statement paid)
+### Credit Card Balance Calculation
 
-### Credit Card Posted Date
+Implemented in `backend/services/paymentMethodBalanceService.js`. All expense sums use `COALESCE(original_cost, amount)` (full charge before insurance reimbursement) and the effective date `COALESCE(posted_date, date)`. All results are rounded to cents and floored at 0.
 
-For credit card expenses, an optional "Posted Date" field allows distinguishing between:
+| Balance | Calculation |
+|---------|-------------|
+| Current | **Anchored**: take the most recent `credit_card_billing_cycles` record (by `cycle_end_date`) and its effective balance (actual if user-entered, else calculated), then add expenses with effective date in `(cycle_end_date, today]` and subtract payments with `payment_date` in `(cycle_end_date, today]`. If the card has no billing cycle record, falls back to all expenses with effective date ≤ today minus all payments ≤ today. |
+| Projected | All expenses minus all payments, with no date filter. |
+| Statement | `statementBalanceService.calculateStatementBalance()` when `billing_cycle_day` is set; otherwise a legacy calculation from `billing_cycle_start`/`billing_cycle_end`, or `null`. |
 
-- **Transaction Date**: When the purchase was made
-- **Posted Date**: When the charge appeared on the credit card
+Anchoring means a user-entered statement balance resets the running total, so older untracked charges or credits don't keep skewing the current balance.
 
-This affects balance calculations - expenses are counted toward the balance based on their posted date (or transaction date if no posted date is set).
-
-### Statement Balance Calculation (v4.21.0)
-
-The system automatically calculates statement balance based on billing cycles:
-
-- **Billing Cycle Day**: The day of the month when your statement closes (e.g., 15th)
-- **Statement Balance**: Sum of expenses posted during the previous billing cycle minus payments made
-- **Smart Alert Suppression**: Payment reminders are suppressed when statement balance is zero or negative
-
-**How it works:**
-1. Configure `billing_cycle_day` when creating/editing a credit card (required for new cards)
-2. The system calculates the previous billing cycle period automatically
-3. Statement balance = expenses in previous cycle - payments since statement date
-4. If statement balance ≤ 0, payment reminders are suppressed
-5. If statement balance > 0 and due within 7 days, reminder shows required payment amount
-
-**Example:**
-- Billing cycle day: 15
-- Today: February 2
-- Previous cycle: December 16 - January 15
-- Statement balance: Sum of expenses posted Dec 16 - Jan 15, minus payments made since Jan 15
+Balances are computed on read (`GET /api/payment-methods`, `/:id/credit-card-detail`). The stored `payment_methods.current_balance` column is adjusted incrementally on expense create/update/delete, and reset to the anchored value when a payment is recorded or deleted and by `POST /api/payment-methods/:id/recalculate-balance`.
 
 ## Database Schema
 
@@ -89,33 +66,37 @@ The system automatically calculates statement balance based on billing cycles:
 |--------|------|-------------|
 | id | INTEGER | Primary key |
 | type | TEXT | 'cash', 'cheque', 'debit', 'credit_card' |
-| display_name | TEXT | Short name shown in dropdowns |
+| display_name | TEXT | Short name shown in dropdowns (unique) |
 | full_name | TEXT | Full descriptive name |
 | account_details | TEXT | Optional account details |
-| credit_limit | REAL | Credit limit (credit cards only) |
-| current_balance | REAL | Current balance (credit cards only) |
-| payment_due_day | INTEGER | Day of month payment is due |
+| credit_limit | REAL | Credit limit (credit cards only, > 0) |
+| current_balance | REAL | Stored balance (credit cards only, ≥ 0); see above |
+| payment_due_day | INTEGER | Day of month payment is due (1-31) |
 | billing_cycle_day | INTEGER | Day of month statement closes (1-31) |
-| billing_cycle_start | INTEGER | Day billing cycle starts (deprecated) |
-| billing_cycle_end | INTEGER | Day billing cycle ends (deprecated) |
+| billing_cycle_start | INTEGER | Legacy cycle start day (optional) |
+| billing_cycle_end | INTEGER | Legacy cycle end day (optional) |
 | is_active | INTEGER | 1 = active, 0 = inactive |
+| created_at / updated_at | TEXT | Timestamps |
 
 ### credit_card_payments Table
 
 | Column | Type | Description |
 |--------|------|-------------|
 | id | INTEGER | Primary key |
-| payment_method_id | INTEGER | FK to payment_methods |
-| amount | REAL | Payment amount |
+| payment_method_id | INTEGER | FK to payment_methods (cascade delete) |
+| amount | REAL | Payment amount (> 0) |
 | payment_date | TEXT | Date of payment |
 | notes | TEXT | Optional notes |
+| created_at | TEXT | Timestamp |
 
 ### credit_card_statements Table
+
+Stores standalone statement uploads (API only; the UI attaches statement PDFs to billing cycle records instead).
 
 | Column | Type | Description |
 |--------|------|-------------|
 | id | INTEGER | Primary key |
-| payment_method_id | INTEGER | FK to payment_methods |
+| payment_method_id | INTEGER | FK to payment_methods (cascade delete) |
 | statement_date | TEXT | Statement date |
 | statement_period_start | TEXT | Period start date |
 | statement_period_end | TEXT | Period end date |
@@ -123,109 +104,81 @@ The system automatically calculates statement balance based on billing cycles:
 | original_filename | TEXT | Original upload filename |
 | file_path | TEXT | Path to file |
 | file_size | INTEGER | File size in bytes |
-| mime_type | TEXT | MIME type |
+| mime_type | TEXT | MIME type (default `application/pdf`) |
 
-### expenses Table Updates
+Billing cycle records live in `credit_card_billing_cycles` — see [Credit Card Billing Cycles](./CREDIT_CARD_BILLING_CYCLES.md#database-schema).
 
-- Added `payment_method_id` column (FK to payment_methods)
-- Added `posted_date` column for credit card posted date tracking
+### expenses / fixed_expenses
+
+- `payment_method_id` (FK to payment_methods); the `method` text column still holds the display name
+- `expenses.posted_date` – see [Credit Card Posted Date](./CREDIT_CARD_POSTED_DATE.md)
+
+Expenses can be submitted with either `payment_method_id` or `method` (display name); the service resolves one from the other.
 
 ## API Endpoints
+
+All routes are under `/api/payment-methods`.
 
 ### Payment Methods
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/payment-methods` | Get all payment methods |
-| GET | `/api/payment-methods/:id` | Get payment method by ID |
-| POST | `/api/payment-methods` | Create payment method |
-| PUT | `/api/payment-methods/:id` | Update payment method |
-| DELETE | `/api/payment-methods/:id` | Delete payment method |
-| GET | `/api/payment-methods/display-names` | Get active method names for dropdowns |
-| PATCH | `/api/payment-methods/:id/active` | Toggle active status |
+| GET | `/` | All payment methods (credit card balances computed on read) |
+| GET | `/active` | Active methods for dropdowns |
+| GET | `/display-names` | All display names (uniqueness validation) |
+| GET | `/:id` | Payment method by ID |
+| POST | `/` | Create payment method |
+| PUT | `/:id` | Update payment method |
+| DELETE | `/:id` | Delete (only if no expenses and not the last active method) |
+| PATCH | `/:id/active` | Set active/inactive |
+| POST | `/:id/recalculate-balance` | Recompute and store anchored current balance |
+| GET | `/:id/statement-balance` | Statement balance details |
+| GET | `/:id/billing-cycles` | Legacy billing cycle details |
+| GET | `/:id/credit-card-detail` | Combined detail payload (card, payments, statement balance, current cycle status, billing cycles) |
 
 ### Credit Card Payments
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/payment-methods/:id/payments` | Get payment history |
-| POST | `/api/payment-methods/:id/payments` | Record a payment |
-| DELETE | `/api/payment-methods/:id/payments/:paymentId` | Delete a payment |
+| GET | `/:id/payments` | Payment history |
+| GET | `/:id/payments/total` | Total payments in a date range |
+| POST | `/:id/payments` | Record a payment |
+| DELETE | `/:id/payments/:paymentId` | Delete a payment |
 
 ### Credit Card Statements
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/payment-methods/:id/statements` | Get statements list |
-| POST | `/api/payment-methods/:id/statements` | Upload statement |
-| GET | `/api/payment-methods/:id/statements/:statementId` | Download statement |
-| DELETE | `/api/payment-methods/:id/statements/:statementId` | Delete statement |
+| GET | `/:id/statements` | Statements list |
+| POST | `/:id/statements` | Upload statement (multipart field `statement`) |
+| GET | `/:id/statements/:statementId` | Download statement |
+| DELETE | `/:id/statements/:statementId` | Delete statement |
 
-## Migration
+Billing cycle endpoints are documented in [Credit Card Billing Cycles](./CREDIT_CARD_BILLING_CYCLES.md#api-endpoints).
 
-The migration automatically:
+## Default Payment Methods
 
-1. Creates the new tables (payment_methods, credit_card_payments, credit_card_statements)
-2. Populates payment_methods with existing payment method values from expenses
-3. Adds payment_method_id to expenses and fixed_expenses tables
-4. Links existing expenses to their corresponding payment method records
-
-### Default Payment Methods Created
-
-| ID | Display Name | Full Name | Type |
-|----|--------------|-----------|------|
-| 1 | Cash | Cash | cash |
-| 2 | Debit | Debit | debit |
-| 3 | Cheque | Cheque | cheque |
-| 4 | CIBC MC | CIBC Mastercard | credit_card |
-| 5 | PCF MC | PCF Mastercard | credit_card |
-| 6 | WS VISA | WealthSimple VISA | credit_card |
-| 7 | RBC VISA | RBC VISA | credit_card |
-
-## Backward Compatibility
-
-- Existing expenses retain their payment method associations
-- The `method` string column is preserved for display purposes
-- Inactive payment methods are hidden from dropdowns but visible in filters for historical data
-- Expenses with inactive payment methods show an "(inactive)" indicator
+A new database is seeded (`backend/database/schema.js`) with: Cash (`cash`), Debit (`debit`, full name "Debit Card"), Cheque (`cheque`), and Credit Card (`credit_card`).
 
 ## User Guide
 
 ### Creating a Payment Method
 
-1. Click "💳 Payment Methods" in the navigation
-2. Click "+ Add Payment Method"
-3. Select the type (Cash, Cheque, Debit, or Credit Card)
-4. Fill in the required fields:
-   - Display Name (shown in dropdowns)
-   - Full Name (descriptive name)
-   - For Credit Cards: Credit Limit, Payment Due Day, Billing Cycle dates
-5. Click "Save"
+1. Click **💼 Financial** in the month selector
+2. In the Payment Methods section, click **+ Add**
+3. Select the type and fill in Display Name; for credit cards also Full Name, Payment Due Day and Statement Closing Day (Credit Limit and Initial Balance are optional)
+4. Click **Create**
 
-### Recording a Credit Card Payment
+### Logging a Credit Card Payment
 
-1. Open Payment Methods modal
-2. Click on a credit card to view details
-3. Click "Record Payment"
-4. Enter amount, date, and optional notes
-5. Click "Save" - balance is automatically reduced
-
-### Using Posted Date
-
-1. When adding/editing an expense with a credit card payment method
-2. The "Posted Date" field appears below the transaction date
-3. Enter the date the charge posted to your credit card (optional)
-4. If left blank, the transaction date is used for balance calculations
+1. In the Payment Methods section, click **Pay** on a card (or **View** → **💳 Log Payment**)
+2. Enter amount, date and optional notes
+3. Click **Record Payment**
 
 ## Related Documentation
 
-- [Credit Card Billing Cycles](./CREDIT_CARD_BILLING_CYCLES.md) - Billing cycle history feature
-- [API Documentation](../API_DOCUMENTATION.md) - Full API reference
-- [Database Migrations](../DATABASE_MIGRATIONS.md) - Migration details
-## Versioning Context
-
-Historical version references in this document (for example `v4.x` or `v5.x`) describe pre-1.0 release history.
-Current release numbering uses the `1.x` scheme.
-
-**Last Reviewed:** June 1, 2026
-
+- [Credit Card Billing Cycles](./CREDIT_CARD_BILLING_CYCLES.md)
+- [Credit Card Statement Balance](./CREDIT_CARD_STATEMENT_BALANCE.md)
+- [Credit Card Posted Date](./CREDIT_CARD_POSTED_DATE.md)
+- [API Documentation](../API_DOCUMENTATION.md)
+- [Database Schema](../DATABASE_SCHEMA.md)

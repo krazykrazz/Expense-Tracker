@@ -1,46 +1,6 @@
-# Changelog
+# Changelog (pre-1.0 history)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+Historical release notes for versions 1.0.0–5.17.5, before the version was rebased to 1.0.0 on 2026-02-23. Current releases are in [CHANGELOG.md](CHANGELOG.md).
 
 ## [5.17.5] - 2026-02-23
 

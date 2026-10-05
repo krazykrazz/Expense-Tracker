@@ -1,16 +1,249 @@
-# API Documentation - Invoice Endpoints
+# API Documentation
 
-## Invoice Management API
+REST API served by the Express backend (`backend/server.js`, routes in `backend/routes/`). The frontend calls it through `API_ENDPOINTS` in `frontend/src/config.js`.
+
+## General
 
 ### Base URL
+
 ```
-http://localhost:2424/api
+http://<host>:2424/api     # Docker image (PORT=2424)
+http://localhost:2626/api  # Local backend (default PORT); the Vite dev server proxies /api here
 ```
 
 ### Authentication
-All invoice endpoints require a valid session. Include session cookie in requests.
+
+Authentication is optional (see [Authentication API](#authentication-api)).
+
+- **Open mode** (no password set): every endpoint is accessible without credentials.
+- **Password gate** (password set): every `/api` endpoint requires `Authorization: Bearer <accessToken>`, except `GET /api/health`, `GET /api/auth/status`, `POST /api/auth/login` and `POST /api/auth/refresh`. The access token comes from login/refresh; the refresh token is an HTTP-only cookie. The SSE stream (`/api/sync/events`) takes the token as a `?token=` query parameter.
+
+### Rate Limiting
+
+| Scope | Limit | Window |
+|-------|-------|--------|
+| All `/api` routes (except `GET /api/health` and `/api/sync`) | 1000 requests | 1 minute |
+| `POST /api/invoices/upload`, `POST /api/payment-methods/:id/statements` | 30 requests | 15 minutes |
+| `POST /api/backup/manual`, `/api/backup/restore`, `/api/backup/restore-archive` | 5 requests | 1 hour |
+
+Rate-limited requests get `429` with `{ "error": "Too many requests, please try again later" }` (message varies by limiter) and standard `RateLimit-*` headers.
+
+### Errors
+
+Errors are JSON: `{ "error": "<message>" }`. Most controllers map validation errors to `400`, missing resources to `404`, conflicts to `409`, and unexpected errors to `500`.
+
+### File Uploads
+
+Invoices, statements and billing-cycle PDFs are `multipart/form-data`, PDF only, max 10 MB per file. Files are validated by content (PDF signature/structure), not just extension.
+
+## Endpoint Reference
+
+Complete list of mounted endpoints. Paths are relative to the server root. Detailed request/response documentation for selected areas follows below.
+
+### Expenses — `expenseRoutes.js`, `placeNameRoutes.js`
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/expenses` | List expenses. Filters: `year`, `month`, `startDate`/`endDate` (inclusive `YYYY-MM-DD`), `limit`/`offset` |
+| POST | `/api/expenses` | Create an expense (optional `peopleAllocations`, `futureMonths`) |
+| GET | `/api/expenses/:id` | Get an expense with its people allocations |
+| PUT | `/api/expenses/:id` | Update an expense |
+| DELETE | `/api/expenses/:id` | Delete an expense |
+| PATCH | `/api/expenses/:id/insurance-status` | Quick insurance claim status update |
+| GET | `/api/expenses/count` | Lightweight expense count |
+| GET | `/api/expenses/places` | Distinct place names |
+| GET | `/api/expenses/suggest-category` | Suggested category for a place |
+| GET | `/api/expenses/summary` | Monthly summary data |
+| GET | `/api/expenses/annual-summary` | Annual summary data |
+| GET | `/api/expenses/tax-deductible` | Tax-deductible expenses summary |
+| GET | `/api/expenses/tax-deductible/summary` | Lightweight tax-deductible summary (year-over-year) |
+| GET | `/api/expenses/place-names/analyze` | Group similar place names |
+| POST | `/api/expenses/place-names/standardize` | Apply place-name standardization |
+| GET | `/api/monthly-gross` | Get monthly gross income |
+| POST | `/api/monthly-gross` | Set monthly gross income |
+| GET | `/api/categories` | Valid expense categories |
+
+### Income, Fixed Expenses, Budgets
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/income/:year/:month` | Income sources for a month |
+| GET | `/api/income/annual/:year/by-category` | Annual income by category |
+| POST | `/api/income` | Create an income source |
+| POST | `/api/income/:year/:month/copy-previous` | Copy income sources from the previous month |
+| PUT | `/api/income/:id` | Update an income source |
+| DELETE | `/api/income/:id` | Delete an income source |
+| GET | `/api/fixed-expenses/:year/:month` | Fixed expenses for a month |
+| GET | `/api/fixed-expenses/by-loan/:loanId` | Fixed expenses linked to a loan |
+| POST | `/api/fixed-expenses` | Create a fixed expense |
+| POST | `/api/fixed-expenses/carry-forward` | Carry forward fixed expenses from the previous month |
+| PUT | `/api/fixed-expenses/:id` | Update a fixed expense |
+| DELETE | `/api/fixed-expenses/:id` | Delete a fixed expense |
+| GET | `/api/budgets` | Budgets for a month |
+| GET | `/api/budgets/summary` | Budget summary |
+| GET | `/api/budgets/history` | Budget history |
+| GET | `/api/budgets/suggest` | Budget suggestion from historical spending |
+| POST | `/api/budgets` | Create a budget |
+| POST | `/api/budgets/copy` | Copy budgets between months |
+| PUT | `/api/budgets/:id` | Update a budget limit |
+| DELETE | `/api/budgets/:id` | Delete a budget |
+
+### Payment Methods, Credit Cards, Billing Cycles — `paymentMethodRoutes.js`, `billingCycleRoutes.js`
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/payment-methods` | All payment methods |
+| GET | `/api/payment-methods/active` | Active payment methods (dropdowns) |
+| GET | `/api/payment-methods/display-names` | All display names |
+| GET | `/api/payment-methods/:id` | One payment method |
+| POST | `/api/payment-methods` | Create a payment method |
+| PUT | `/api/payment-methods/:id` | Update a payment method |
+| DELETE | `/api/payment-methods/:id` | Delete a payment method |
+| PATCH | `/api/payment-methods/:id/active` | Activate/deactivate |
+| POST | `/api/payment-methods/:id/recalculate-balance` | Recalculate credit card balance |
+| GET | `/api/payment-methods/:id/statement-balance` | Calculated statement balance |
+| GET | `/api/payment-methods/:id/credit-card-detail` | Unified credit card detail |
+| GET | `/api/payment-methods/:id/payments` | Credit card payment history |
+| GET | `/api/payment-methods/:id/payments/total` | Total payments in a date range |
+| POST | `/api/payment-methods/:id/payments` | Record a credit card payment |
+| DELETE | `/api/payment-methods/:id/payments/:paymentId` | Delete a payment |
+| GET | `/api/payment-methods/:id/statements` | List uploaded statements |
+| POST | `/api/payment-methods/:id/statements` | Upload a statement (multipart) |
+| GET | `/api/payment-methods/:id/statements/:statementId` | Download a statement |
+| DELETE | `/api/payment-methods/:id/statements/:statementId` | Delete a statement |
+| GET | `/api/payment-methods/:id/billing-cycles` | Billing cycle history (payment method controller) |
+| GET | `/api/payment-methods/:id/billing-cycles/unified` | Unified billing cycles, auto-generating missing cycles |
+| GET | `/api/payment-methods/:id/billing-cycles/current` | Current cycle status |
+| GET | `/api/payment-methods/:id/billing-cycles/history` | Billing cycle history |
+| GET | `/api/payment-methods/:id/billing-cycles/recalculate` | Recalculate balance for a cycle period |
+| POST | `/api/payment-methods/:id/billing-cycles` | Create a billing cycle record (optional PDF) |
+| PUT | `/api/payment-methods/:id/billing-cycles/:cycleId` | Update a billing cycle record (optional PDF) |
+| DELETE | `/api/payment-methods/:id/billing-cycles/:cycleId` | Delete a billing cycle record |
+| GET | `/api/payment-methods/:id/billing-cycles/:cycleId/pdf` | Get a billing cycle statement PDF |
+| POST | `/api/payment-methods/billing-cycles/dismiss-auto-generated` | Dismiss auto-generated cycle notifications |
+
+### Loans, Mortgages, Investments
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/loans` | All loans with current balances |
+| POST | `/api/loans` | Create a loan |
+| PUT | `/api/loans/:id` | Update a loan |
+| DELETE | `/api/loans/:id` | Delete a loan |
+| PUT | `/api/loans/:id/paid-off` | Mark paid off / reactivate |
+| PUT | `/api/loans/:id/rate` | Update current rate (variable-rate mortgages) |
+| PUT | `/api/loans/:id/property-value` | Update estimated property value (mortgage) |
+| GET | `/api/loans/:id/amortization` | Amortization schedule (mortgage) |
+| GET | `/api/loans/:id/equity-history` | Equity history (mortgage) |
+| GET | `/api/loans/:id/insights` | Mortgage insights |
+| POST | `/api/loans/:id/insights/scenario` | What-if scenario |
+| GET | `/api/loans/:id/payments` | Mortgage payment history |
+| POST | `/api/loans/:id/payments` | Create a mortgage payment entry |
+| PUT | `/api/loans/:id/payments/:paymentId` | Update a mortgage payment entry |
+| DELETE | `/api/loans/:id/payments/:paymentId` | Delete a mortgage payment entry |
+| GET | `/api/loans/:loanId/loan-payments` | Loan payments |
+| GET | `/api/loans/:loanId/loan-payments/:paymentId` | One loan payment |
+| POST | `/api/loans/:loanId/loan-payments` | Create a loan payment |
+| POST | `/api/loans/:loanId/loan-payments/auto-log` | Auto-log a payment from a linked fixed expense |
+| PUT | `/api/loans/:loanId/loan-payments/:paymentId` | Update a loan payment |
+| DELETE | `/api/loans/:loanId/loan-payments/:paymentId` | Delete a loan payment |
+| GET | `/api/loans/:loanId/calculated-balance` | Calculated balance from payments |
+| GET | `/api/loans/:loanId/payment-balance-history` | Balance history with running totals |
+| GET | `/api/loans/:loanId/payment-suggestion` | Suggested payment amount |
+| GET | `/api/loans/:loanId/migrate-balances/preview` | Preview balance-entry → payment migration |
+| POST | `/api/loans/:loanId/migrate-balances` | Migrate balance entries to payments |
+| GET | `/api/loan-balances/:loanId` | Balance entry history |
+| GET | `/api/loan-balances/:loanId/:year/:month` | Balance entry for a month |
+| GET | `/api/loan-balances/total/history` | Total debt over time |
+| POST | `/api/loan-balances` | Create or update a balance entry |
+| PUT | `/api/loan-balances/:id` | Update a balance entry |
+| DELETE | `/api/loan-balances/:id` | Delete a balance entry |
+| GET | `/api/investments` | All investments with current values |
+| POST | `/api/investments` | Create an investment |
+| PUT | `/api/investments/:id` | Update an investment |
+| DELETE | `/api/investments/:id` | Delete an investment |
+| GET | `/api/investment-values/:investmentId` | Value history |
+| GET | `/api/investment-values/:investmentId/:year/:month` | Value for a month |
+| POST | `/api/investment-values` | Create or update a value entry |
+| PUT | `/api/investment-values/:id` | Update a value entry |
+| DELETE | `/api/investment-values/:id` | Delete a value entry |
+
+### People, Invoices, Reminders
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/people` | All people |
+| POST | `/api/people` | Create a person |
+| PUT | `/api/people/:id` | Update a person |
+| DELETE | `/api/people/:id` | Delete a person |
+| POST | `/api/invoices/upload` | Upload an invoice (multipart; optional `personId`) |
+| GET | `/api/invoices/:expenseId` | All invoices for an expense |
+| GET | `/api/invoices/:expenseId/:invoiceId` | Download a specific invoice |
+| GET | `/api/invoices/:expenseId/file` | Download the first invoice (legacy) |
+| GET | `/api/invoices/:expenseId/metadata` | Invoice metadata |
+| PUT | `/api/invoices/:expenseId` | Replace the existing invoice |
+| PATCH | `/api/invoices/:invoiceId` | Update the invoice's person link |
+| DELETE | `/api/invoices/:invoiceId` | Delete a specific invoice |
+| DELETE | `/api/invoices/expense/:expenseId` | Delete all invoices for an expense (legacy) |
+| GET | `/api/reminders/status/:year/:month` | Reminder status (investments, loans, credit cards, insurance) |
+| GET | `/api/reminders/auto-log-suggestions/:year/:month` | Pending loan auto-log suggestions |
+
+### Analytics — `analyticsRoutes.js`, `merchantAnalyticsRoutes.js`
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/analytics/monthly-summary/:year/:month` | Monthly summary (Analytics Hub) |
+| GET | `/api/analytics/trends/:year/:month` | Consolidated trends |
+| GET | `/api/analytics/activity-insights/:year/:month` | Activity insights |
+| GET | `/api/analytics/period-summary` | Income/spending breakdown over `start`..`end` (`YYYY-MM`) |
+| GET | `/api/analytics/data-sufficiency` | Data availability for analytics |
+| GET | `/api/analytics/patterns` | Recurring spending patterns |
+| GET | `/api/analytics/patterns/day-of-week` | Day-of-week analysis |
+| GET | `/api/analytics/seasonal` | Seasonal analysis |
+| GET | `/api/analytics/predictions/:year/:month` | Month-end prediction |
+| GET | `/api/analytics/predictions/:year/:month/comparison` | Historical comparison |
+| GET | `/api/analytics/anomalies` | Detected anomalies |
+| POST | `/api/analytics/anomalies/:expenseId/dismiss` | Dismiss an anomaly |
+| POST | `/api/analytics/anomalies/:expenseId/mark-expected` | Mark an anomaly as expected (creates a suppression rule) |
+| GET | `/api/analytics/anomaly-suppression-rules` | Suppression rules |
+| DELETE | `/api/analytics/anomaly-suppression-rules/:id` | Delete a suppression rule |
+| GET | `/api/analytics/merchants` | Top merchants |
+| GET | `/api/analytics/merchants/:name` | Merchant details |
+| GET | `/api/analytics/merchants/:name/trend` | Merchant monthly trend |
+| GET | `/api/analytics/merchants/:name/expenses` | Merchant expenses |
+
+### System — backup, activity log, settings, auth, health, sync
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/backup` | Download a backup (legacy) |
+| GET | `/api/backup/list` | List backups |
+| GET | `/api/backup/stats` | Backup storage statistics |
+| GET | `/api/backup/config` | Backup configuration |
+| PUT | `/api/backup/config` | Update backup configuration |
+| POST | `/api/backup/manual` | Run a backup now |
+| POST | `/api/backup/restore` | Restore from an uploaded backup file (multipart `backup`) |
+| POST | `/api/backup/restore-archive` | Restore from an existing backup by filename |
+| GET | `/api/activity-logs` | Recent activity events (paginated) |
+| GET | `/api/activity-logs/stats` | Cleanup statistics |
+| GET | `/api/activity-logs/settings` | Retention settings |
+| PUT | `/api/activity-logs/settings` | Update retention settings |
+| GET | `/api/settings/timezone` | Get timezone setting |
+| PUT | `/api/settings/timezone` | Update timezone setting |
+| GET | `/api/auth/status` | Auth mode and status (public) |
+| POST | `/api/auth/login` | Log in (public) |
+| POST | `/api/auth/refresh` | Refresh access token via cookie (public) |
+| POST | `/api/auth/logout` | Log out |
+| PUT | `/api/auth/password` | Set or change the password |
+| DELETE | `/api/auth/password` | Remove the password (back to open mode) |
+| GET | `/api/health` | Health check (public; 503 if the database is unreachable) |
+| GET | `/api/version` | Version, commit, build date, `startupId` |
+| GET | `/api/version/check-update` | Check GitHub Releases for a newer version |
+| GET | `/api/sync/events` | Server-Sent Events stream for real-time sync |
 
 ---
+
+# Invoice API
 
 ## Endpoints
 
@@ -596,305 +829,6 @@ Content-Type: application/json
   ]
 }
 ```
-
----
-
-## Error Handling
-
-### Standard Error Response Format
-
-All errors follow this format:
-
-```json
-{
-  "error": "Error message description"
-}
-```
-
-### HTTP Status Codes
-
-| Code | Meaning | Description |
-|------|---------|-------------|
-| 200 | OK | Request successful |
-| 400 | Bad Request | Invalid input or validation error |
-| 403 | Forbidden | Access denied (ownership check failed) |
-| 404 | Not Found | Resource not found |
-| 413 | Payload Too Large | File size exceeds limit |
-| 500 | Internal Server Error | Server error occurred |
-| 507 | Insufficient Storage | Storage space full |
-
-### Common Error Scenarios
-
-**File Validation Errors:**
-- Invalid file type (not PDF)
-- File too large (>10MB)
-- Corrupted PDF file
-- Invalid PDF structure
-
-**Access Control Errors:**
-- Expense not found
-- User doesn't own the expense
-- Invoice not found
-- Permission denied
-- Person not assigned to expense
-
-**Storage Errors:**
-- Insufficient storage space
-- File system error
-- Permission denied (file system)
-
----
-
-## Rate Limiting
-
-Rate limiting is implemented to prevent abuse and ensure fair usage:
-
-| Endpoint Type | Limit | Window |
-|--------------|-------|--------|
-| General API | 200 requests | 1 minute |
-| File Uploads | 10 requests | 15 minutes |
-| Backup/Restore | 5 requests | 1 hour |
-
-**Response when rate limited:**
-```json
-{
-  "error": "Too many requests, please try again later"
-}
-```
-
-**Headers returned:**
-- `RateLimit-Limit`: Maximum requests allowed
-- `RateLimit-Remaining`: Requests remaining in window
-- `RateLimit-Reset`: Time when the rate limit resets (Unix timestamp)
-
----
-
-## File Upload Best Practices
-
-### Client-Side
-
-1. **Validate Before Upload:**
-   ```javascript
-   function validateFile(file) {
-     if (file.type !== 'application/pdf') {
-       throw new Error('Only PDF files are allowed');
-     }
-     if (file.size > 10 * 1024 * 1024) {
-       throw new Error('File size must be less than 10MB');
-     }
-   }
-   ```
-
-2. **Show Progress:**
-   ```javascript
-   const xhr = new XMLHttpRequest();
-   xhr.upload.addEventListener('progress', (e) => {
-     if (e.lengthComputable) {
-       const percentComplete = (e.loaded / e.total) * 100;
-       updateProgressBar(percentComplete);
-     }
-   });
-   ```
-
-3. **Handle Errors:**
-   ```javascript
-   try {
-     const response = await uploadInvoice(file, expenseId, personId);
-     showSuccess('Invoice uploaded successfully');
-   } catch (error) {
-     showError(error.message);
-   }
-   ```
-
-### Server-Side
-
-1. **Validate File Type:**
-   - Check magic number (file signature)
-   - Don't rely on file extension alone
-   - Validate PDF structure
-
-2. **Sanitize Filenames:**
-   - Remove special characters
-   - Prevent path traversal
-   - Generate unique names
-
-3. **Atomic Operations:**
-   - Upload file first
-   - Create database record
-   - Rollback on failure
-
-4. **Person Validation:**
-   - Verify person is assigned to expense
-   - Return clear error if not assigned
-
----
-
-## Security Considerations
-
-### File Upload Security
-
-1. **File Type Validation:**
-   - Magic number checking
-   - PDF structure validation
-   - Reject non-PDF files
-
-2. **Size Limits:**
-   - 10MB maximum per file
-   - Prevent DoS attacks
-   - Monitor storage usage
-
-3. **Filename Sanitization:**
-   - Remove dangerous characters
-   - Prevent path traversal
-   - Generate unique names
-
-### Access Control
-
-1. **Expense Ownership:**
-   - Verify user owns expense
-   - Check before all operations
-   - Log access attempts
-
-2. **Person Validation:**
-   - Verify person is assigned to expense
-   - Prevent linking to unrelated people
-   - Clear error messages
-
-3. **Authentication:**
-   - Require valid session
-   - Check on every request
-   - Timeout inactive sessions
-
-4. **Path Traversal Prevention:**
-   - Sanitize all paths
-   - Use absolute paths
-   - Validate file locations
-
----
-
-## Performance Optimization
-
-### Upload Optimization
-
-1. **Streaming:**
-   - Use streaming for large files
-   - Reduce memory usage
-   - Improve responsiveness
-
-2. **Progress Tracking:**
-   - Provide feedback to users
-   - Show upload progress
-   - Estimate time remaining
-
-3. **Concurrent Uploads:**
-   - Support multiple uploads
-   - Queue management
-   - Resource limits
-
-### Download Optimization
-
-1. **Caching:**
-   - Cache frequently accessed files
-   - Set appropriate cache headers
-   - Reduce server load
-
-2. **Range Requests:**
-   - Support partial content
-   - Enable resume downloads
-   - Improve large file handling
-
-3. **Compression:**
-   - Consider gzip for metadata
-   - Don't compress PDFs (already compressed)
-   - Reduce bandwidth usage
-
----
-
-## Testing
-
-### Manual Testing
-
-**Upload Test:**
-```bash
-curl -X POST http://localhost:2424/api/invoices/upload \
-  -F "expenseId=123" \
-  -F "invoice=@receipt.pdf" \
-  -F "personId=5" \
-  --cookie "session=..."
-```
-
-**Get All Invoices Test:**
-```bash
-curl -X GET http://localhost:2424/api/invoices/123 \
-  --cookie "session=..."
-```
-
-**Get Specific Invoice Test:**
-```bash
-curl -X GET http://localhost:2424/api/invoices/123/1 \
-  --cookie "session=..." \
-  -o downloaded.pdf
-```
-
-**Delete Specific Invoice Test:**
-```bash
-curl -X DELETE http://localhost:2424/api/invoices/1 \
-  --cookie "session=..."
-```
-
-**Update Person Link Test:**
-```bash
-curl -X PATCH http://localhost:2424/api/invoices/1 \
-  -H "Content-Type: application/json" \
-  -d '{"personId": 5}' \
-  --cookie "session=..."
-```
-
-### Automated Testing
-
-See test files:
-- `backend/controllers/invoiceController.integration.test.js`
-- `backend/controllers/invoiceController.pbt.test.js`
-- `backend/services/invoiceService.test.js`
-- `backend/services/invoiceService.multiInvoice.pbt.test.js`
-- `backend/services/invoiceService.crudOperations.pbt.test.js`
-- `backend/repositories/invoiceRepository.pbt.test.js`
-- `backend/test/uploadIntegration.test.js`
-
----
-
-## Changelog
-
-### Version 4.14.0 (January 2026)
-- Added medical insurance tracking feature
-- Added `PATCH /expenses/:id/insurance-status` endpoint for quick claim status updates
-- Extended expense endpoints with insurance fields (insurance_eligible, claim_status, original_cost)
-- Added insurance summary to tax deductible endpoint
-- Added claim status filtering to tax deductible endpoint
-
-### Version 4.13.0 (January 2026)
-- Added multi-invoice support (multiple invoices per expense)
-- Added person-invoice linking (optional personId parameter)
-- Added `GET /invoices/:expenseId/:invoiceId` endpoint for specific invoice retrieval
-- Added `PATCH /invoices/:invoiceId` endpoint for updating person association
-- Modified `DELETE /invoices/:invoiceId` to delete specific invoice by ID
-- Added `DELETE /invoices/expense/:expenseId` for deleting all invoices (legacy)
-- Updated response format to return arrays of invoices
-- Added invoice count to expense and tax report endpoints
-- Added invoice status filtering to tax deductible endpoint
-
-### Version 4.12.0 (January 2026)
-- Initial release of invoice attachment feature
-- Added upload, download, delete endpoints
-- Enhanced expense endpoints with invoice data
-- Implemented file validation and security
-
----
-
-**Last Updated:** January 21, 2026  
-**API Version:** 1.2  
-**Status:** Active
-
 
 ---
 
@@ -1516,114 +1450,19 @@ Content-Type: application/json
 
 ---
 
-## Migration and Backward Compatibility
+## Expense Payment Method Fields
 
-### Automatic Migration
-
-When the application starts with existing expense data, the migration service automatically:
-
-1. Creates the `payment_methods` table with default payment methods
-2. Adds `payment_method_id` column to `expenses` and `fixed_expenses` tables
-3. Populates `payment_method_id` for all existing records based on the method string
-
-### Migration Mapping
-
-| Old Value | New Display Name | Full Name | Type | ID |
-|-----------|------------------|-----------|------|-----|
-| Cash | Cash | Cash | cash | 1 |
-| Debit | Debit | Debit | debit | 2 |
-| Cheque | Cheque | Cheque | cheque | 3 |
-| CIBC MC | CIBC MC | CIBC Mastercard | credit_card | 4 |
-| PCF MC | PCF MC | PCF Mastercard | credit_card | 5 |
-| WS VISA | WS VISA | WealthSimple VISA | credit_card | 6 |
-| VISA | RBC VISA | RBC VISA | credit_card | 7 |
-
-### Backward Compatibility
-
-The expense API accepts both:
-- `payment_method_id` (preferred) - Direct reference to payment method
-- `method` (string) - Legacy string-based lookup for backward compatibility
-
-**Example with payment_method_id (preferred):**
-```json
-{
-  "date": "2026-01-15",
-  "place": "Grocery Store",
-  "amount": 50.00,
-  "type": "Groceries",
-  "payment_method_id": 4
-}
-```
-
-**Example with method string (backward compatible):**
-```json
-{
-  "date": "2026-01-15",
-  "place": "Grocery Store",
-  "amount": 50.00,
-  "type": "Groceries",
-  "method": "CIBC MC"
-}
-```
+The expense API accepts either `payment_method_id` (preferred) or `method` (display name); the service resolves one from the other. The `method` column keeps the display name for UI display and filtering.
 
 ---
 
 ## Credit Card Balance Tracking
 
-### Automatic Balance Updates
+- **Current balance** is anchored to the latest billing cycle record: its effective balance (actual if entered, else calculated), plus expenses with effective date (`COALESCE(posted_date, date)`) after the cycle end up to today, minus payments in the same window. Without any billing cycle record it falls back to all expenses minus all payments up to today. Computed on read by `GET /api/payment-methods` and `/:id/credit-card-detail`; `POST /:id/recalculate-balance` stores the recomputed value.
+- **Utilization**: `current_balance / credit_limit × 100`; warning at ≥ 30%, danger at ≥ 70%.
+- **Due date**: `days_until_due` from `payment_due_day`; payment reminders appear when due within 7 days and the statement isn't paid.
 
-- **Expense Creation:** When an expense is created with a credit card payment method, the card's `current_balance` is automatically increased by the expense amount.
-- **Expense Deletion:** When an expense is deleted, the card's balance is automatically decreased.
-- **Payment Recording:** When a payment is recorded, the balance is decreased by the payment amount.
-
-### Utilization Calculation
-
-For credit cards with a `credit_limit` set:
-- `utilization_percentage = (current_balance / credit_limit) * 100`
-- Warning indicator shown when utilization > 30%
-- Danger indicator shown when utilization > 70%
-
-### Due Date Tracking
-
-For credit cards with `payment_due_day` set:
-- `days_until_due` is calculated based on the current date
-- Reminders appear in the monthly reminders system when payment is due within 7 days
-
----
-
-## Testing
-
-### Manual Testing
-
-**Create Payment Method:**
-```bash
-curl -X POST http://localhost:2424/api/payment-methods \
-  -H "Content-Type: application/json" \
-  -d '{"type": "credit_card", "display_name": "Test Card", "full_name": "Test Credit Card"}'
-```
-
-**Get All Payment Methods:**
-```bash
-curl -X GET http://localhost:2424/api/payment-methods
-```
-
-**Record Payment:**
-```bash
-curl -X POST http://localhost:2424/api/payment-methods/4/payments \
-  -H "Content-Type: application/json" \
-  -d '{"amount": 500.00, "payment_date": "2026-01-15", "notes": "Test payment"}'
-```
-
-### Automated Testing
-
-See test files:
-- `backend/repositories/paymentMethodRepository.pbt.test.js`
-- `backend/repositories/creditCardPaymentRepository.pbt.test.js`
-- `backend/services/paymentMethodService.validation.pbt.test.js`
-- `backend/services/paymentMethodService.uniqueness.pbt.test.js`
-- `backend/services/paymentMethodService.utilization.pbt.test.js`
-- `backend/services/creditCardPaymentService.pbt.test.js`
-- `backend/database/migrations.paymentMethods.pbt.test.js`
+See [Configurable Payment Methods](features/CONFIGURABLE_PAYMENT_METHODS.md#credit-card-balance-calculation) for details.
 
 ---
 
@@ -1686,7 +1525,7 @@ This allows pre-logging expenses that haven't posted yet without affecting the c
 
 ---
 
-## Billing Cycle History Endpoints (v5.4.0)
+## Billing Cycle History Endpoints
 
 ### Overview
 
@@ -1696,17 +1535,18 @@ The billing cycle history feature provides comprehensive tracking of credit card
 
 Retrieve all billing cycles (actual and auto-generated) for a credit card.
 
-**Endpoint:** `GET /api/billing-cycles/:paymentMethodId/unified`
+**Endpoint:** `GET /api/payment-methods/:id/billing-cycles/unified`
 
 **URL Parameters:**
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| paymentMethodId | number | Yes | Credit card payment method ID |
+| id | number | Yes | Credit card payment method ID |
 
 **Query Parameters:**
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| includeAutoGenerate | boolean | No | Whether to trigger auto-generation of missing billing cycles on request. Defaults to `true` for backward compatibility. The frontend passes `false` since auto-generation is now handled by the background billing cycle scheduler (see Billing Cycle Automation). |
+| limit | number | No | Maximum cycles to return (default 12) |
+| include_auto_generate | boolean | No | `true`/`false`/`1`/`0`. Whether to auto-generate missing cycles on request (default `true`). Missing cycles are also generated by the background billing cycle scheduler |
 
 **Success Response:**
 ```json
@@ -1714,7 +1554,8 @@ HTTP/1.1 200 OK
 Content-Type: application/json
 
 {
-  "cycles": [
+  "success": true,
+  "billingCycles": [
     {
       "id": 1,
       "payment_method_id": 4,
@@ -1733,36 +1574,17 @@ Content-Type: application/json
       },
       "minimum_payment": 25.00,
       "notes": "Statement received via email",
-      "statement_pdf_path": "/statements/2026-02.pdf"
-    },
-    {
-      "id": null,
-      "payment_method_id": 4,
-      "cycle_start_date": "2025-12-16",
-      "cycle_end_date": "2026-01-15",
-      "actual_statement_balance": null,
-      "calculated_statement_balance": 1089.23,
-      "effective_balance": 1089.23,
-      "balance_type": "calculated",
-      "transaction_count": 18,
-      "trend_indicator": {
-        "type": "lower",
-        "icon": "↓",
-        "amount": 210.77,
-        "cssClass": "trend-lower"
-      },
-      "minimum_payment": null,
-      "notes": null,
-      "statement_pdf_path": null
+      "statement_pdf_path": "4_2026-02-15_statement.pdf"
     }
-  ]
+  ],
+  "autoGeneratedCount": 0,
+  "totalCount": 1
 }
 ```
 
 **Response Fields:**
 | Field | Type | Description |
 |-------|------|-------------|
-| id | number/null | Database ID (null for auto-generated cycles) |
 | calculated_statement_balance | number | System-computed balance: `max(0, round(previousBalance + expenses − payments, 2))`. Includes carry-forward from the previous cycle's effective balance, expenses posted during the cycle, and credit card payments made during the cycle. Floored at zero. |
 | effective_balance | number | Balance to display (actual if entered, otherwise calculated) |
 | balance_type | string | "actual" or "calculated" |
@@ -1778,189 +1600,72 @@ Content-Type: application/json
 
 ---
 
-### 2. Create/Update Billing Cycle
+### 2. Create Billing Cycle Record
 
-Create or update a billing cycle record (upsert by payment_method_id + cycle_end_date).
+Record the statement balance for the card's most recently closed cycle. The cycle dates are determined by the server from the card's billing cycle day.
 
-**Endpoint:** `POST /api/billing-cycles`
+**Endpoint:** `POST /api/payment-methods/:id/billing-cycles`
 
-**Request Body:**
-```json
-{
-  "payment_method_id": 4,
-  "cycle_start_date": "2026-01-16",
-  "cycle_end_date": "2026-02-15",
-  "actual_statement_balance": 1234.56,
-  "minimum_payment": 25.00,
-  "notes": "Statement received via email"
-}
-```
+**Content-Type:** `application/json`, or `multipart/form-data` when attaching a PDF
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| payment_method_id | number | Yes | Credit card payment method ID |
-| cycle_start_date | string | Yes | Cycle start date (YYYY-MM-DD) |
-| cycle_end_date | string | Yes | Cycle end date (YYYY-MM-DD) |
-| actual_statement_balance | number | No | User-entered statement balance |
-| minimum_payment | number | No | Minimum payment due |
+| actual_statement_balance | number | Yes | Statement balance (≥ 0) |
+| minimum_payment | number | No | Minimum payment due (≥ 0) |
 | notes | string | No | User notes |
+| statement | File | No | Statement PDF (multipart only, max 10 MB) |
 
-**Success Response:**
-```json
-HTTP/1.1 201 Created
-Content-Type: application/json
+**Success Response:** `201 Created` with `{ "success": true, "billingCycle": { ... } }`
 
-{
-  "billingCycle": {
-    "id": 1,
-    "payment_method_id": 4,
-    "cycle_start_date": "2026-01-16",
-    "cycle_end_date": "2026-02-15",
-    "actual_statement_balance": 1234.56,
-    "calculated_statement_balance": 1189.23,
-    "minimum_payment": 25.00,
-    "notes": "Statement received via email"
-  }
-}
-```
+**Errors:** `400` validation, `404` payment method not found, `409` (`code: "DUPLICATE_ENTRY"`) a record already exists for that period.
 
 ---
 
-### 3. Update Billing Cycle
+### 3. Update Billing Cycle Record
 
-Update an existing billing cycle record.
+**Endpoint:** `PUT /api/payment-methods/:id/billing-cycles/:cycleId`
 
-**Endpoint:** `PUT /api/billing-cycles/:id`
+Same fields as create, all optional. A new `statement` PDF replaces (and deletes) the previous file. Accepts JSON when no file is attached.
 
-**URL Parameters:**
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| id | number | Yes | Billing cycle ID |
-
-**Request Body:** Same as POST endpoint
-
-**Success Response:**
-```json
-HTTP/1.1 200 OK
-Content-Type: application/json
-
-{
-  "billingCycle": {
-    "id": 1,
-    "payment_method_id": 4,
-    "cycle_start_date": "2026-01-16",
-    "cycle_end_date": "2026-02-15",
-    "actual_statement_balance": 1234.56,
-    "minimum_payment": 25.00,
-    "notes": "Updated notes"
-  }
-}
-```
+**Success Response:** `200 OK` with `{ "success": true, "billingCycle": { ... } }`
 
 ---
 
-### 4. Delete Billing Cycle
+### 4. Delete Billing Cycle Record
 
-Delete a billing cycle record.
+**Endpoint:** `DELETE /api/payment-methods/:id/billing-cycles/:cycleId`
 
-**Endpoint:** `DELETE /api/billing-cycles/:id`
-
-**URL Parameters:**
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| id | number | Yes | Billing cycle ID |
+Deletes the record and its statement PDF, if any.
 
 **Success Response:**
 ```json
-HTTP/1.1 200 OK
-Content-Type: application/json
-
 {
   "success": true,
-  "message": "Billing cycle deleted successfully"
+  "message": "Billing cycle record deleted successfully"
 }
 ```
 
 ---
 
-### 5. Upload Billing Cycle Statement PDF
+### 5. Get Billing Cycle Statement PDF
 
-Upload a PDF statement for a billing cycle.
+**Endpoint:** `GET /api/payment-methods/:id/billing-cycles/:cycleId/pdf`
 
-**Endpoint:** `POST /api/billing-cycles/:id/statement`
-
-**Content-Type:** `multipart/form-data`
-
-**URL Parameters:**
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| id | number | Yes | Billing cycle ID |
-
-**Request Body:**
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| statement | File | Yes | PDF file (max 10MB) |
-
-**Success Response:**
-```json
-HTTP/1.1 200 OK
-Content-Type: application/json
-
-{
-  "success": true,
-  "statement_pdf_path": "/statements/4_2026-02-15_statement.pdf"
-}
-```
+Returns the PDF (`Content-Type: application/pdf`), or `404` if the cycle has no PDF or the file is missing.
 
 ---
 
-### 6. Get Billing Cycle Statement PDF
+### Other Billing Cycle Endpoints
 
-Download the statement PDF for a billing cycle.
-
-**Endpoint:** `GET /api/billing-cycles/:id/statement`
-
-**URL Parameters:**
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| id | number | Yes | Billing cycle ID |
-
-**Success Response:**
-```
-HTTP/1.1 200 OK
-Content-Type: application/pdf
-Content-Disposition: inline; filename="statement.pdf"
-
-[PDF file binary data]
-```
+- `GET /api/payment-methods/:id/billing-cycles/current` — current cycle status
+- `GET /api/payment-methods/:id/billing-cycles/history` — history (`limit`, `startDate`, `endDate`)
+- `GET /api/payment-methods/:id/billing-cycles/recalculate` — recalculate the balance for a cycle period
+- `GET /api/payment-methods/:id/credit-card-detail` — unified detail: card, current cycle status, billing cycles, and an `errors` array for partial failures
+- `POST /api/payment-methods/billing-cycles/dismiss-auto-generated` — dismiss auto-generated cycle notifications
 
 ---
 
-### 7. Delete Billing Cycle Statement PDF
-
-Delete the statement PDF for a billing cycle.
-
-**Endpoint:** `DELETE /api/billing-cycles/:id/statement`
-
-**URL Parameters:**
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| id | number | Yes | Billing cycle ID |
-
-**Success Response:**
-```json
-HTTP/1.1 200 OK
-Content-Type: application/json
-
-{
-  "success": true,
-  "message": "Statement deleted successfully"
-}
-```
-
----
-
-## Credit Card Statement Balance (v4.21.0)
+## Credit Card Statement Balance
 
 ### Overview
 
@@ -1984,7 +1689,7 @@ The statement balance feature automatically calculates what amount is due from t
 
 The reminder endpoint now includes statement balance information:
 
-**Endpoint:** `GET /api/reminders`
+**Endpoint:** `GET /api/reminders/status/:year/:month`
 
 **Enhanced Response Fields for Credit Cards:**
 ```json
@@ -2051,73 +1756,15 @@ HTTP/1.1 400 Bad Request
 }
 ```
 
-### Database Schema Update
-
-The `payment_methods` table now includes:
-
-| Column | Type | Description |
-|--------|------|-------------|
-| billing_cycle_day | INTEGER | Day of month statement closes (1-31), CHECK constraint |
-
-Migration automatically copies `billing_cycle_end` to `billing_cycle_day` for existing credit cards.
-
 ---
 
-## Changelog - Payment Methods
-
-### Version 5.4.0 (February 2026)
-- Added billing cycle history feature with unified cycle list
-- Added automatic billing cycle generation based on transaction history
-- Added trend indicators comparing cycles to previous periods
-- Added transaction counting per billing cycle
-- Added `billing_cycle_history` table for storing cycle records
-- Added unified billing cycles endpoint (`GET /api/billing-cycles/:id/unified`)
-- Added billing cycle CRUD endpoints (POST, PUT, DELETE)
-- Added billing cycle statement PDF upload/download endpoints
-- Added effective balance logic (actual vs calculated)
-- Added balance type indicator ("Actual" vs "Calculated")
-
-### Version 5.4.1 (February 2026)
-- Fixed zero statement balance not being recognized as valid
-- Fixed UI consistency for action buttons (pencil/trash for all cycles)
-- Cleaned up unused refresh button code
-
-### Version 4.21.0 (February 2026)
-- Added `billing_cycle_day` column to payment_methods table
-- Added StatementBalanceService for automatic statement balance calculation
-- Added statement balance fields to reminder API response
-- Added smart payment alert suppression when statement is paid
-- Added required field validation for billing_cycle_day and payment_due_day
-- Added "Statement Paid" indicator in credit card detail view
-- Added billing cycle date display in credit card detail view
-- Migration automatically copies billing_cycle_end to billing_cycle_day
-
-### Version 4.20.0 (January 2026)
-- Added `posted_date` column to expenses table
-- Added posted date validation (must be >= transaction date)
-- Updated balance calculations to use COALESCE(posted_date, date)
-- Added posted date field to ExpenseForm (shown only for credit card expenses)
-
-### Version 4.15.0 (January 2026)
-- Added configurable payment methods feature
-- Added `payment_methods` table with type-specific attributes
-- Added `credit_card_payments` table for payment history
-- Added `credit_card_statements` table for statement storage
-- Added automatic migration from hardcoded payment methods
-- Added credit card balance tracking (auto-updates on expense/payment)
-- Added credit utilization calculation and indicators
-- Added payment due date tracking with reminders
-- Added statement upload and management
-- Deprecated hardcoded `PAYMENT_METHODS` constant
-- Added backward compatibility for string-based payment method submission
-
----
-
-# Loan Payment Tracking API (v4.19.0)
+# Loan Payment Tracking API
 
 ## Overview
 
 Payment-based tracking system for loans and mortgages. Records individual payments and calculates balance dynamically. Lines of credit continue to use balance-based tracking.
+
+Note the two payment resources: `/api/loans/:loanId/loan-payments` (documented here) and the mortgage payment-amount history at `/api/loans/:id/payments` (see the [Endpoint Reference](#loans-mortgages-investments)).
 
 ## Loan Payment Endpoints
 
@@ -2125,7 +1772,7 @@ Payment-based tracking system for loans and mortgages. Records individual paymen
 
 Record a new loan payment.
 
-**Endpoint:** `POST /api/loans/:loanId/payments`
+**Endpoint:** `POST /api/loans/:loanId/loan-payments`
 
 **URL Parameters:**
 | Parameter | Type | Required | Description |
@@ -2183,7 +1830,7 @@ HTTP/1.1 400 Bad Request
 
 Retrieve all payments for a loan.
 
-**Endpoint:** `GET /api/loans/:loanId/payments`
+**Endpoint:** `GET /api/loans/:loanId/loan-payments`
 
 **Success Response:**
 ```json
@@ -2218,7 +1865,7 @@ HTTP/1.1 200 OK
 
 Update an existing payment entry.
 
-**Endpoint:** `PUT /api/loans/:loanId/payments/:id`
+**Endpoint:** `PUT /api/loans/:loanId/loan-payments/:paymentId`
 
 **Request Body:**
 ```json
@@ -2257,7 +1904,7 @@ HTTP/1.1 200 OK
 
 Delete a payment entry.
 
-**Endpoint:** `DELETE /api/loans/:loanId/payments/:id`
+**Endpoint:** `DELETE /api/loans/:loanId/loan-payments/:paymentId`
 
 **Success Response:**
 ```json
@@ -2514,33 +2161,7 @@ HTTP/1.1 200 OK
 
 Notifications appear for billing cycles auto-generated by the background scheduler where `is_user_entered = 0` and `actual_statement_balance = 0`. Once the user enters an actual statement balance, the notification is dismissed.
 
----
-
-## Changelog - Loan Payment Tracking
-
-### Mortgage Balance Interest Tracking (February 2026)
-- Added `balanceOverride` optional field to `POST /api/loans/:loanId/payments` (mortgages only)
-- Updated `GET /api/loans/:loanId/calculated-balance` response with `totalInterestAccrued` and `interestAware` fields for mortgages
-- Updated `GET /api/loans/:loanId/balance-history` response with `interestAccrued` and `principalPaid` per entry for mortgages
-
-### Version 4.19.0 (February 2026)
-- Added `loan_payments` table for payment-based tracking
-- Added loan payment CRUD endpoints
-- Added calculated balance endpoint
-- Added payment suggestion endpoint
-- Added balance-to-payment migration endpoint
-- Added `payment_due_day` and `linked_loan_id` columns to fixed_expenses
-- Added loan payment reminders to reminder status API
-- Added auto-log payment endpoint
-- Added LoanPaymentReminderBanner component
-- Added AutoLogPrompt component
-
----
-
-**Last Updated:** February 4, 2026  
-**API Version:** 1.7  
-**Status:** Active
-
+For mortgages, `POST`/`PUT` on loan payments also accept an optional `balanceOverride`; `calculated-balance` adds `totalInterestAccrued` and `interestAware`, and `payment-balance-history` adds `interestAccrued` and `principalPaid` per entry.
 
 ---
 
@@ -2552,21 +2173,23 @@ The Activity Log API provides comprehensive tracking of all data changes in the 
 
 ### Event Types
 
-| Entity Type | Actions Tracked | Metadata Captured |
-|-------------|----------------|-------------------|
-| expense | create, update, delete | amount, type, place, method |
-| fixed_expense | create, update, delete | name, amount, category |
-| loan | create, update, delete | name, loan_type, initial_balance |
-| investment | create, update, delete | name, type, initial_value |
-| budget | create, update, delete | category, limit, year, month |
-| payment_method | create, update, delete | display_name, type, credit_limit |
-| loan_payment | create, delete | amount, payment_date |
-| backup | create, restore | filename, size |
+Each event has an `event_type`, an `entity_type`, an optional `entity_id`, a human-readable `user_action`, and optional JSON `metadata`. Event types follow `<entity>_<verb>`, for example:
+
+| Entity Type | Example Event Types |
+|-------------|---------------------|
+| expense | `expense_added`, `expense_updated`, `expense_deleted`, `insurance_status_changed` |
+| fixed_expense, income_source, budget, investment, person | `<entity>_added`, `_updated`, `_deleted` (plus `income_sources_copied`) |
+| loan | `loan_added`, `loan_updated`, `loan_deleted`, `loan_paid_off`, `loan_reactivated`, `loan_rate_updated` |
+| loan_payment, loan_balance, mortgage_payment | `loan_payment_added`/`_updated`/`_deleted`, `auto_payment_logged`, `balance_override_applied`, `mortgage_payment_set` |
+| payment_method, credit_card_payment, credit_card_statement, billing_cycle | `payment_method_deactivated`, `credit_card_payment_recorded`, `credit_card_statement_uploaded`, `billing_cycle_created`, `billing_cycle_auto_generated` |
+| invoice | `invoice_uploaded`, `invoice_deleted`, `invoice_person_link_updated` |
+| auth, settings | `auth_login`, `auth_login_failed`, `auth_password_gate_enabled`, `settings_updated` |
+| system | `backup_created`, `backup_restored`, `version_upgraded`, `billing_cycle_scheduler_run` |
 
 ### Retention Policy
 
 - Activity logs are automatically cleaned up based on configurable retention settings
-- Cleanup runs daily at **2:00 AM** via scheduled job
+- Cleanup runs daily at **02:00 UTC** via a `node-cron` job in `server.js`
 - Default: 90 days max age, 1000 max events
 - Retention settings are managed via the Settings API endpoints (see below)
 
@@ -2576,19 +2199,15 @@ The Activity Log API provides comprehensive tracking of all data changes in the 
 
 ### 1. Get Activity Logs
 
-Retrieve paginated activity logs with optional filtering.
+Retrieve recent activity events, newest first.
 
 **Endpoint:** `GET /api/activity-logs`
 
 **Query Parameters:**
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| page | number | No | Page number (default: 1) |
-| limit | number | No | Items per page (default: 50, max: 200) |
-| entityType | string | No | Filter by entity type |
-| action | string | No | Filter by action (create, update, delete) |
-| startDate | string | No | Filter start date (YYYY-MM-DD) |
-| endDate | string | No | Filter end date (YYYY-MM-DD) |
+| limit | number | No | Events to return (default: 50, 1–200) |
+| offset | number | No | Events to skip (default: 0) |
 
 **Success Response:**
 ```json
@@ -2596,90 +2215,35 @@ HTTP/1.1 200 OK
 Content-Type: application/json
 
 {
-  "logs": [
+  "events": [
     {
       "id": 1234,
+      "event_type": "expense_added",
       "entity_type": "expense",
       "entity_id": 567,
-      "action": "create",
-      "metadata": {
-        "amount": 150.00,
-        "type": "Groceries",
-        "place": "Supermarket",
-        "method": "Credit Card"
-      },
-      "timestamp": "2026-02-10T14:30:00.000Z"
-    },
-    {
-      "id": 1233,
-      "entity_type": "loan_payment",
-      "entity_id": 89,
-      "action": "create",
-      "metadata": {
-        "amount": 500.00,
-        "payment_date": "2026-02-10",
-        "loan_name": "Car Loan"
-      },
-      "timestamp": "2026-02-10T10:15:00.000Z"
+      "user_action": "Added expense: Supermarket - 150.00 (2026-02-10, CIBC MC)",
+      "metadata": { "amount": 150.00, "category": "Groceries", "date": "2026-02-10", "place": "Supermarket", "method": "CIBC MC", "tabId": null },
+      "timestamp": "2026-02-10T14:30:00.000Z",
+      "created_at": "2026-02-10 14:30:00"
     }
   ],
-  "pagination": {
-    "currentPage": 1,
-    "totalPages": 5,
-    "totalItems": 234,
-    "itemsPerPage": 50,
-    "hasNextPage": true,
-    "hasPreviousPage": false
-  }
+  "total": 234,
+  "limit": 50,
+  "offset": 0
 }
 ```
 
-**Error Responses:**
+`metadata` is parsed from its stored JSON (or `null`).
 
-```json
-HTTP/1.1 400 Bad Request
-{
-  "error": "Invalid page number"
-}
-```
-
-```json
-HTTP/1.1 400 Bad Request
-{
-  "error": "Limit must be between 1 and 200"
-}
-```
-
-**Example:**
-```javascript
-// Get first page with default limit (50)
-const response = await fetch('http://localhost:2424/api/activity-logs');
-
-// Get specific page with custom limit
-const response = await fetch('http://localhost:2424/api/activity-logs?page=2&limit=100');
-
-// Filter by entity type
-const response = await fetch('http://localhost:2424/api/activity-logs?entityType=expense');
-
-// Filter by date range
-const response = await fetch('http://localhost:2424/api/activity-logs?startDate=2026-02-01&endDate=2026-02-10');
-
-// Combine filters
-const response = await fetch('http://localhost:2424/api/activity-logs?entityType=loan&action=create&limit=25');
-```
+**Error Responses:** `400` with `"Invalid limit parameter. Must be between 1 and 200."` or `"Invalid offset parameter. Must be non-negative."`
 
 ---
 
 ### 2. Get Activity Log Statistics
 
-Retrieve summary statistics about activity logs.
+Retention settings and cleanup statistics.
 
 **Endpoint:** `GET /api/activity-logs/stats`
-
-**Query Parameters:**
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| days | number | No | Number of days to include (default: 30) |
 
 **Success Response:**
 ```json
@@ -2687,36 +2251,16 @@ HTTP/1.1 200 OK
 Content-Type: application/json
 
 {
-  "totalEvents": 1234,
-  "eventsByType": {
-    "expense": 567,
-    "fixed_expense": 123,
-    "loan": 45,
-    "investment": 34,
-    "budget": 89,
-    "payment_method": 12,
-    "loan_payment": 234,
-    "backup": 130
-  },
-  "eventsByAction": {
-    "create": 789,
-    "update": 345,
-    "delete": 100
-  },
-  "oldestEvent": "2025-11-12T08:00:00.000Z",
-  "newestEvent": "2026-02-10T14:30:00.000Z",
-  "retentionDays": 90
+  "retentionDays": 90,
+  "maxEntries": 1000,
+  "currentCount": 234,
+  "oldestEventTimestamp": "2025-11-12T08:00:00.000Z",
+  "lastCleanupRun": "2026-02-10T07:00:00.000Z",
+  "lastCleanupDeletedCount": 0
 }
 ```
 
-**Example:**
-```javascript
-// Get stats for last 30 days (default)
-const response = await fetch('http://localhost:2424/api/activity-logs/stats');
-
-// Get stats for last 7 days
-const response = await fetch('http://localhost:2424/api/activity-logs/stats?days=7');
-```
+`lastCleanupRun` / `lastCleanupDeletedCount` are kept in memory and are `null` until the cleanup job has run since startup.
 
 ---
 
@@ -2782,184 +2326,19 @@ HTTP/1.1 400 Bad Request
 
 ---
 
-## Event Metadata Structure
+## Logging Events (Backend)
 
-Each entity type captures specific metadata relevant to that entity:
+`activityLogService.logEvent(eventType, entityType, entityId, userAction, metadata)` validates the required fields, inserts the row (`timestamp` = ISO string), then broadcasts an SSE sync event for `entityType` (passing `metadata.tabId` so the originating tab can ignore it). It never throws: failures are logged and swallowed, so logging cannot break the calling operation. Metadata content is specific to each call site.
 
-### Expense Events
-```json
-{
-  "amount": 150.00,
-  "type": "Groceries",
-  "place": "Supermarket",
-  "method": "Credit Card",
-  "date": "2026-02-10"
-}
-```
-
-### Fixed Expense Events
-```json
-{
-  "name": "Rent",
-  "amount": 1500.00,
-  "category": "Housing",
-  "year": 2026,
-  "month": 2
-}
-```
-
-### Loan Events
-```json
-{
-  "name": "Car Loan",
-  "loan_type": "loan",
-  "initial_balance": 25000.00
-}
-```
-
-### Investment Events
-```json
-{
-  "name": "TFSA",
-  "type": "TFSA",
-  "initial_value": 10000.00
-}
-```
-
-### Budget Events
-```json
-{
-  "category": "Food",
-  "limit": 800.00,
-  "year": 2026,
-  "month": 2
-}
-```
-
-### Payment Method Events
-```json
-{
-  "display_name": "CIBC MC",
-  "type": "credit_card",
-  "credit_limit": 5000.00
-}
-```
-
-### Loan Payment Events
-```json
-{
-  "amount": 500.00,
-  "payment_date": "2026-02-10",
-  "loan_name": "Car Loan"
-}
-```
-
-### Backup Events
-```json
-{
-  "filename": "backup_20260210_143000.db",
-  "size": 2048576,
-  "operation": "create"
-}
-```
-
----
-
-## Error Handling
-
-### Standard Error Response Format
-
-All errors follow this format:
-
-```json
-{
-  "error": "Error message description"
-}
-```
-
-### HTTP Status Codes
-
-| Code | Meaning | Description |
-|------|---------|-------------|
-| 200 | OK | Request successful |
-| 400 | Bad Request | Invalid parameters or validation error |
-| 500 | Internal Server Error | Server error occurred |
-
----
-
-## Performance Considerations
-
-### Pagination
-
-- Default page size: 50 items
-- Maximum page size: 200 items
-- Use pagination for large result sets to avoid performance issues
-
-### Filtering
-
-- Filtering by entity type and action uses indexed queries
-- Date range filtering is optimized for common use cases
-- Combine filters to narrow results and improve performance
-
-### Automatic Cleanup
-
-- Logs older than 90 days are automatically deleted
-- Cleanup runs daily at 2:00 AM
-- Prevents database bloat and maintains performance
-
----
-
-## Fire-and-Forget Pattern
-
-Activity logging uses a fire-and-forget pattern to ensure reliability:
-
-1. **Non-blocking**: Logging operations don't block main functionality
-2. **Error isolation**: Logging failures don't cause main operations to fail
-3. **Async execution**: Logs are written asynchronously
-4. **Graceful degradation**: If logging fails, the application continues normally
-
-**Example from backend:**
 ```javascript
-// Fire-and-forget - don't await, don't block
-activityLogService.logEvent('expense', expenseId, 'create', metadata).catch(err => {
-  logger.error('Failed to log activity:', err);
-});
+await activityLogService.logEvent(
+  'expense_added',
+  'expense',
+  createdExpense.id,
+  `Added expense: ${expense.place || 'Unknown'} - ${expense.amount.toFixed(2)} (${expense.date}, ${method})`,
+  { amount: expense.amount, category: expense.type, date: expense.date, place: expense.place, method, tabId }
+);
 ```
-
----
-
-## Testing
-
-### Manual Testing
-
-**Get Activity Logs:**
-```bash
-curl -X GET http://localhost:2424/api/activity-logs \
-  --cookie "session=..."
-```
-
-**Get Activity Logs with Filters:**
-```bash
-curl -X GET "http://localhost:2424/api/activity-logs?entityType=expense&limit=25" \
-  --cookie "session=..."
-```
-
-**Get Statistics:**
-```bash
-curl -X GET http://localhost:2424/api/activity-logs/stats \
-  --cookie "session=..."
-```
-
-### Automated Testing
-
-See test files:
-- `backend/services/activityLogService.validation.pbt.test.js`
-- `backend/services/activityLogService.timestamp.pbt.test.js`
-- `backend/services/activityLogService.metadata.pbt.test.js`
-- `backend/services/activityLogService.resilience.pbt.test.js`
-- `backend/services/activityLogService.cleanup.test.js`
-- `backend/controllers/activityLogController.pagination.pbt.test.js`
-- `backend/services/*.activityLog.integration.test.js` (8 integration test suites)
 
 ---
 
@@ -2972,31 +2351,6 @@ Retention settings are managed via the API and UI rather than environment variab
 - **Defaults**: maxAgeDays: 90, maxCount: 1000
 
 Settings are stored in the `settings` database table and persist across restarts.
-
----
-
-## Changelog - Activity Log
-
-### Version 4.20.0 (February 2026)
-- Added activity log feature with comprehensive event tracking
-- Added `activity_logs` table with automatic cleanup
-- Added activity log API endpoints (GET /activity-logs, GET /activity-logs/stats)
-- Added fire-and-forget logging pattern for reliability
-- Added scheduled cleanup job (daily at 2:00 AM)
-- Added 90-day retention policy (configurable via Settings → General)
-- Added retention settings API endpoints (GET/PUT /api/activity-logs/settings)
-- Added settings table for persistent configuration
-- Added integration with 8 entity types (expenses, fixed expenses, loans, investments, budgets, payment methods, loan payments, backups)
-- Added ActivityLogView component in Settings→Misc tab
-- Added human-readable timestamp formatting
-- Added display limit selector (25, 50, 100, 200 events)
-- Added Load More functionality with event count display
-
----
-
-**Last Updated:** February 10, 2026  
-**API Version:** 1.8  
-**Status:** Active
 
 ---
 
@@ -3566,26 +2920,6 @@ HTTP/1.1 200 OK
 
 ---
 
-## Changelog - Analytics Hub
-
-### Spending & Cash Flow views (Unreleased)
-- Added `GET /api/analytics/period-summary?start=YYYY-MM&end=YYYY-MM` — income/spending breakdown over a month range
-
-### Actionable Anomaly Alerts (v5.14.0)
-- Updated `GET /api/analytics/anomalies` — enriched response with classification, explanation, historicalContext, impactEstimate, behaviorPattern, confidence, cluster, and budgetSuggestion fields
-- Legacy `anomalyType` field preserved for backward compatibility
-
-### Analytics Hub Revamp (v5.13.0)
-- Added `GET /api/analytics/monthly-summary/:year/:month` — monthly spending report card
-- Added `GET /api/analytics/trends/:year/:month` — consolidated trends with prediction, history, and patterns
-- Added `GET /api/analytics/activity-insights/:year/:month` — activity log analytics
-- Added `POST /api/analytics/anomalies/:expenseId/mark-expected` — mark anomaly as expected with suppression rule creation
-- Added `GET /api/analytics/anomaly-suppression-rules` — list active suppression rules
-- Added `DELETE /api/analytics/anomaly-suppression-rules/:id` — delete a suppression rule
-- Updated `POST /api/analytics/anomalies/:expenseId/dismiss` — now accepts optional `anomalyType` in body
-
----
-
 # Real-Time Sync API (SSE)
 
 ## Overview
@@ -3753,17 +3087,6 @@ Check if a newer version is available on GitHub Releases.
 | `error` | String\|undefined | Error message, only present when GitHub API is unreachable |
 
 Results are cached in memory for 24 hours (configurable via `UPDATE_CHECK_INTERVAL_SECONDS` env var). Cache resets on server restart.
-
----
-
-## Changelog - Real-Time Sync
-
-### Version 5.15.0 (February 2026)
-- Added `GET /api/sync/events` SSE endpoint for real-time cross-session data sync
-- Added `sseConnections` field to `GET /api/health` response
-- Added `X-Tab-ID` header support on all mutation endpoints for self-update suppression
-- Added `sync_broadcast` activity log entries when broadcasts are delivered
-- Added SSE connection count display in System Information → About tab
 
 ---
 
@@ -4003,18 +3326,4 @@ HTTP/1.1 401 Unauthorized
 
 ---
 
-## Changelog - Authentication
-
-### Version 1.0.0 (February 2026)
-- Added optional authentication infrastructure (Password_Gate / Open_Mode)
-- Added `GET /api/auth/status`, `POST /api/auth/login`, `POST /api/auth/refresh`, `POST /api/auth/logout`
-- Added `PUT /api/auth/password`, `DELETE /api/auth/password`
-- Added JWT-based endpoint protection with `AUTH_REQUIRED` and `TOKEN_EXPIRED` error codes
-- Added SSE connection authentication via `?token=<jwt>` query parameter
-- Restricted CORS to same-origin (configurable via `CORS_ORIGIN` env var)
-
----
-
-**Last Updated:** February 26, 2026
-**API Version:** 2.0
-**Status:** Active
+**Last Updated:** 2026-10-05

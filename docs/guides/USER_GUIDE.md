@@ -12,9 +12,11 @@ Complete guide to using the Expense Tracker application.
 - [Investment Tracking](#investment-tracking)
 - [Budget Tracking](#budget-tracking)
 - [Medical Expenses](#medical-expenses)
+- [Analytics](#analytics)
 - [Merchant Analytics](#merchant-analytics)
-- [Smart Insights](#smart-insights)
+- [Spending Alerts](#spending-alerts)
 - [Data Management](#data-management)
+- [Security](#security)
 - [Container Update Detection](#container-update-detection)
 - [Version Upgrade Notifications](#version-upgrade-notifications)
 
@@ -22,21 +24,28 @@ Complete guide to using the Expense Tracker application.
 
 After deploying the application via Docker, access it at http://localhost:2424 in your browser.
 
+### Screen Layout
+
+- **Header**: light/dark theme toggle, **🖥️ System** (system information, backups, activity log, tools), **⚙️ Settings** (retention, backup configuration, people, security), and the user menu (logout, when a password is set)
+- **Month selector**: **📊 Annual Summary**, **💰 Income Tax**, **💵 Budgets**, **📈 Analytics**, **💼 Financial**, plus previous/next month buttons, year and month dropdowns, and a jump-to-current-month button
+- **Left column**: the expense list for the selected month (or the global filter results)
+- **Right column**: global filters above the **Monthly Summary** panel (notifications, income, balance, fixed and variable expenses, weekly breakdown, payment methods, expense types)
+
 ### First-Time Setup
 
-1. **Add Payment Methods** - Configure your payment methods (Cash, Debit, Credit Cards)
-2. **Set Up Income Sources** - Add your monthly income sources
-3. **Configure Fixed Expenses** - Add recurring monthly expenses
-4. **Add Family Members** (Optional) - For medical expense tracking
+1. **Add Payment Methods** - **💼 Financial** → Payment Methods → **+ Add**
+2. **Set Up Income Sources** - **Manage Income** on the Monthly Income card
+3. **Configure Fixed Expenses** - **Manage Fixed** on the Fixed Expenses card
+4. **Add Family Members** (Optional) - **⚙️ Settings** → **👥 People**, for medical expense tracking
 
 ## Expense Management
 
 ### Adding Expenses
 
-1. Click the **"+ Add Expense"** button in the header
+1. Click **"+ Add Expense"** in the expense list header (or the floating **Add Expense** button)
 2. Enter the place name first - the system will suggest a category based on your history
 3. The form remembers your last used payment method
-4. For credit card expenses, optionally enter a "Posted Date" if different from transaction date
+4. For credit card expenses, optionally enter a **Posted Date** (under **Advanced Options**) if different from the transaction date
 
 ### Editing and Deleting
 
@@ -45,27 +54,34 @@ After deploying the application via Docker, access it at http://localhost:2424 i
 
 ### Global Filtering
 
-Use the search bar filters to find expenses across all time periods:
+Use the filters above the summary panel to find expenses across all time periods:
 
 - **Text Search**: Search by place or notes
 - **Category Filter**: Filter by expense type (Groceries, Gas, etc.)
-- **Payment Method Filter**: Filter by payment method (Credit Card, Cash, etc.)
-- **Year Filter**: Scope search to a specific year (current year and past 10 years available)
-- **Combine Filters**: Use multiple filters together for precise results
-- **Clear Filters**: Click "Clear Filters" to return to monthly view
+- **Payment Method Filter**: Filter by payment method
+- **Year Filter**: Scope results to a year (2000 through next year)
+- **Date Range**: Pick From / To dates (leave To empty for "through today"), or use the **7 days**, **30 days**, **This month** and **YTD** presets
+- **Combine Filters**: Filters combine with AND logic
+- **Clear Filters**: Click **Clear Filters** (or **Return to Monthly View** in the Global View banner) to go back to the monthly view
 
-### Monthly Filtering
+While any global filter is active, a "Global View" banner lists the active filters and the month selector is disabled.
 
-Use the dropdowns in the expense list to filter within the current month.
+### Expense List
 
-### Progressive Disclosure
+- Expenses are grouped by date, with a daily total on each date header
+- **Quick views**: **All**, **Needs review** (tax-deductible expenses missing an invoice, or medical expenses missing a person or with an open claim), **Tax-deductible**, **Recurring**
+- **Local filters**: Type, Method, Invoice and Insurance dropdowns narrow the current list without leaving the monthly view
+- **Pagination**: 25, 50 (default), 100 or All per page
+
+### Expense Form Sections
 
 The expense form uses collapsible sections to reduce clutter:
 
-- **Advanced Options** - Future months, reimbursement tracking
-- **Insurance** - Medical insurance claim tracking
-- **People** - Family member assignment for medical expenses
-- **Invoices** - PDF invoice attachments
+- **Reimbursement** - Original cost for non-medical expenses that were partly reimbursed
+- **Insurance Tracking** - Medical insurance claim tracking
+- **People Assignment** - Family member assignment for medical expenses
+- **Invoice Attachments** - PDF invoices for tax-deductible expenses
+- **Advanced Options** - Repeat the expense for future months, credit card posted date
 
 ### Contextual Help
 
@@ -73,15 +89,14 @@ Hover over the (?) icons to see tooltips explaining when and why to use each fie
 
 ### Reimbursement Tracking
 
-Track expected reimbursements from employers, insurance, or other sources on any non-medical expense:
+Track reimbursements from employers or other sources on any non-medical expense:
 
 1. Create or edit an expense
-2. Expand the **"Advanced Options"** section
-3. Enter the total amount charged as the expense amount
-4. Enter the expected reimbursement amount
-5. The form shows the net out-of-pocket amount automatically
+2. Enter what you paid out of pocket as the **Amount**
+3. Expand **Reimbursement** and enter the **Original Cost** (the full amount charged)
+4. The form previews Charged / Reimbursed / Net once both values are set
 
-Expenses with reimbursements show a 💰 indicator in the expense list. Hover over it to see the breakdown of Charged, Reimbursed, and Net amounts.
+Expenses with reimbursements show a 💰 indicator in the expense list. Hover over it to see the Charged, Reimbursed and Net breakdown.
 
 **Note**: Medical expenses use the dedicated Insurance Tracking section instead (see [Medical Expenses](#medical-expenses)).
 
@@ -98,35 +113,35 @@ The application supports multi-device access with automatic data synchronization
 
 ### Viewing Payment Methods
 
-Click the **"💼 Financial"** button in the navigation, then select the **"Payment Methods"** tab to see all configured payment methods.
+Click **"💼 Financial"** in the month selector. The Financial Overview shows Payment Methods, Loans and Investments sections, with net worth in the header. Payment methods are split into **Active** and **Inactive** tabs.
 
 ### Adding Payment Methods
 
-1. Click **"+ Add Payment Method"**
+1. Click **"+ Add"** in the Payment Methods section
 2. Select the type: Cash, Cheque, Debit, or Credit Card
 3. Enter the display name and full name
-4. For credit cards, enter credit limit and billing cycle details
+4. For credit cards, enter the credit limit, payment due day and statement closing day (both required)
 
 ### Credit Card Features
 
-For credit card payment methods:
+Click **View** on a credit card to open its detail view:
 
-- **View Balance**: See current balance and credit utilization
-- **Record Payments**: Log payments to reduce balance
+- **View Balance**: Current balance (anchored to the latest billing cycle) and credit utilization
+- **Log Payment**: Record payments that reduce the balance
 - **Payment History**: View all recorded payments with dates and notes
-- **Upload Statements**: Attach PDF statements with billing period dates
-- **Due Date Reminders**: Get alerts when payment is due within 7 days
-- **Billing Cycle Tracking**: Track statement balances and transaction counts
+- **Upload Statements**: Attach PDF statements
+- **Due Date Reminders**: Get alerts when payment is due within 7 days and the statement isn't paid
+- **Billing Cycle Tracking**: Enter actual statement balances (optionally with the statement PDF), and see calculated balances, transaction counts and trends
 - **Auto-Generated Billing Cycles**: The system automatically creates billing cycle records when a cycle ends (see below)
 
 ### Auto-Generated Billing Cycles
 
-The system automatically detects when a credit card billing cycle has ended and creates a billing cycle record in the background. You don't need to open the credit card detail view for this to happen — it runs on a daily schedule.
+The system automatically detects when a credit card billing cycle has ended and creates a billing cycle record in the background (checked hourly and at startup). You don't need to open the credit card detail view for this to happen.
 
 **How it works:**
 
 1. When a billing cycle ends, the system creates a record with a calculated balance based on your tracked expenses
-2. A notification banner appears at the top of the page: **"Auto-generated billing cycle created for {card name}"**
+2. A notification appears in the **Notifications** section of the Monthly Summary: **"Auto-generated billing cycle created for {card name}"**
 3. The notification shows the card name, cycle end date, and the calculated balance
 
 **Reviewing and entering the actual balance:**
@@ -141,55 +156,51 @@ This ensures your billing cycle records stay up to date even if you don't check 
 
 ### Activate/Deactivate
 
-Toggle payment methods active/inactive. Inactive methods are hidden from dropdowns but preserved for historical data.
+Toggle payment methods active/inactive. Inactive methods are hidden from the expense form dropdown but preserved for historical data, and can be reactivated from the **Inactive** tab.
 
 ### Deleting Payment Methods
 
-Remove payment methods with zero associated expenses. Methods with expenses cannot be deleted to preserve data integrity.
+Only payment methods that no expenses use can be deleted; deactivate the others instead.
 
 ## Income & Fixed Expenses
 
 ### Managing Income
 
-1. Click the **"👁️ View/Edit"** button next to Monthly Gross Income
+1. Click **Manage Income** on the Monthly Income card in the summary panel
 2. Add income sources with names, amounts, and categories (Salary, Government, Gifts, Other)
 3. Income is tracked monthly and appears in summaries
 
 ### Managing Fixed Expenses
 
-1. Click the **"👁️ View/Edit"** button next to Total Fixed Expenses
+1. Click **Manage Fixed** on the Fixed Expenses card in the summary panel
 2. Add fixed expenses with names, amounts, categories, and payment types
 3. Optionally link to loans for payment tracking
 4. Set payment due days for reminder generation
 
 ### Carry Forward
 
-Use the **"📋 Copy from Previous Month"** button to copy previous month's income or fixed expenses to the current month.
+Use **"📋 Copy from Previous Month"** in the income modal, or **"📋 Carry Forward from Previous Month"** in the fixed expenses modal, to copy the previous month's entries into the current month.
 
 ## Loans & Lines of Credit
 
 ### Viewing Loans
 
-Click the **"💼 Financial"** button in the toolbar and select the **"Loans"** tab to see all loans.
+Click **"💼 Financial"** in the month selector. The Loans section has **Active Loans** and **Paid Off** tabs, and a **📊 View Total Debt Trend** button.
 
 ### Adding Loans
 
-1. Click **"+ Add New Loan"**
+1. Click **"+ Add"** in the Loans section
 2. Select the loan type:
    - **Loan**: Traditional loans (car loans, student loans) with paydown progress tracking
    - **Line of Credit**: Revolving credit (HELOCs) with balance/rate visualization
-   - **Mortgage**: Dedicated mortgage tracking with amortization, equity, and payment insights
+   - **Mortgage**: Dedicated mortgage tracking with amortization, equity, rate history, and payment insights
 
 ### Recording Payments
 
-1. Click on any loan to view details
-2. Click **"Add Payment"** to record individual payments
-3. Enter payment amount, date, and optional notes
+1. Click **View** on a loan to open its detail view (or **Log Payment** directly on the loan row)
+2. Click **"Log Payment"** to record a payment
+3. Enter payment amount, date, and optional notes. When a suggested amount is available, it is pre-filled and labelled
 4. Balance is automatically calculated from payment history
-
-### Payment Suggestions
-
-Click **"Use Suggested Amount"** to get smart payment amount suggestions based on loan type and history.
 
 ### Balance Migration
 
@@ -197,33 +208,33 @@ Convert existing balance entries to payment format using the migration tool in t
 
 ### Fixed Expense Loan Linkage
 
-1. When editing a fixed expense, select a loan from the **"Linked Loan"** dropdown
+1. When editing a fixed expense, select a loan in the **Linked Loan** dropdown
 2. Set the payment due day (1-31) for reminder generation
-3. Loan payment reminders appear in the reminder banner when due dates approach
-4. Click **"Log Payment"** on reminder banners to automatically create loan payment entries
+3. Loan payment reminders appear in the Notifications section when due dates approach
+4. Click **"Log Payment"** on the reminder to create the loan payment entry automatically
 
 ## Investment Tracking
 
 ### Viewing Investments
 
-Click the **"💼 Financial"** button in the toolbar and select the **"Investments"** tab to see all investments.
+Click **"💼 Financial"** in the month selector and scroll to the Investments section.
 
 ### Adding Investments
 
-1. Click **"+ Add New Investment"**
+1. Click **"+ Add"** in the Investments section
 2. Select the type: TFSA or RRSP
 3. Enter the investment name and initial value
 
 ### Tracking Values
 
-1. Click **"View"** on any investment to see details
+1. Click **View** on any investment to see details
 2. Add monthly value entries to track performance over time
 3. View line graphs showing investment value changes
 4. See chronological list of all value entries with change indicators and percentages
 
 ### Portfolio Overview
 
-View total portfolio value and net worth (investments minus outstanding debt) in the Financial Overview modal header, accessible via the **"💼 Financial"** button.
+Net worth (investments minus outstanding debt) is shown in the Financial Overview header.
 
 ### Data Reminders
 
@@ -233,9 +244,9 @@ See reminder banners when investment values need updating for the current month.
 
 ### Managing Budgets
 
-1. Click the **"💵 Budgets"** button in the month selector
-2. Set budget limits for Food, Gas, and Other categories
-3. Budgets automatically carry forward from previous month
+1. Click **"💵 Budgets"** in the month selector
+2. On the **📋 Manage** tab, set limits for any budgetable category. A suggested amount based on recent spending is shown where available
+3. If a month has no budgets yet, the previous month's budgets are shown automatically; **📋 Copy from Previous Month** saves them for the current month
 
 ### Monitoring Progress
 
@@ -248,25 +259,17 @@ View real-time progress bars with color-coded status:
 
 ### Budget Alert Notifications
 
-Receive prominent banner alerts at the top of the interface when budgets need attention:
+Budget alerts appear in the **Notifications** section of the Monthly Summary:
 
-- **Warning Alerts (80-89%)**: Yellow banners with ⚡ icon when approaching budget limits
-- **Danger Alerts (90-99%)**: Orange banners with ! icon when nearing budget limits
-- **Critical Alerts (≥100%)**: Red banners with ⚠ icon when exceeding budget limits
+- **Warning (80-89%)**: ⚡ icon
+- **Danger (90-99%)**: ! icon
+- **Critical (≥100%)**: ⚠ icon
 
-### Dismissing Alerts
-
-Click the × button to temporarily hide alert banners during your current session.
-
-### Quick Budget Actions
-
-Use alert banner buttons to:
-- **Manage Budgets**: Open budget management modal directly from the alert
-- **View Details**: Navigate to budget summary section for detailed analysis
+Clicking an alert shows that category's expenses in the expense list. Dismissing hides the month's budget alerts for the rest of the browser session; changing month resets the dismissal.
 
 ### Budget History
 
-Click the **"💵 Budgets"** button and select the **History** tab to analyze budget performance over time (3, 6, or 12 months).
+Click **"💵 Budgets"** and select the **📊 History** tab to analyze budget performance over 3, 6, or 12 months, and export it to CSV.
 
 ## Medical Expenses
 
@@ -286,7 +289,7 @@ Click the **"💵 Budgets"** button and select the **History** tab to analyze bu
 
 ### Insurance Tracking
 
-1. Check **"Eligible for Insurance"** when creating/editing a medical expense
+1. Expand **Insurance Tracking** and check **"Eligible for Insurance Reimbursement"** on a medical expense
 2. Enter the **Original Cost** (full expense amount before reimbursement)
 3. The **Amount** field represents what you actually paid after reimbursement
 4. Set **Claim Status**: Not Claimed, In Progress, Paid, or Denied
@@ -294,30 +297,45 @@ Click the **"💵 Budgets"** button and select the **History** tab to analyze bu
 
 ### Invoice Attachments
 
-1. When creating or editing a medical expense, scroll to **"Invoice Attachment"** section
-2. Click **"Choose File"** or drag and drop a PDF file (max 10MB)
-3. Optionally select a family member to link the invoice to
-4. Click **"Add Invoice"** to attach additional invoices to the same expense
-5. Click the 📄 icon next to medical expenses to open the PDF viewer
+1. When creating or editing a tax-deductible expense (medical or donation), expand **Invoice Attachments**
+2. Drag & drop a PDF onto the drop zone or click it to choose a file (PDF only, max 10MB)
+3. If several people are assigned, optionally select the family member to link the invoice to
+4. Use **"Add Invoice"** to attach additional invoices to the same expense
+5. Click the invoice indicator next to an expense to open the PDF viewer
 
 ### Tax Reports
 
-1. Navigate to the Tax Deductible view
-2. Toggle **"Group by Person"** to see expenses organized by family member
-3. View per-person subtotals by medical provider for tax preparation
+1. Click **"💰 Income Tax"** in the month selector
+2. Review totals (medical, donations), the **📊 Year-over-Year Comparison** and the **🧮 Tax Credit Calculator** (enter your annual net income)
+3. Check **"Group Medical Expenses by Person"** to see medical expenses per family member, with per-provider subtotals
 4. Filter by claim status or invoice attachment status
+
+## Analytics
+
+### Analytics Hub
+
+Click **"📈 Analytics"** in the month selector. The hub has these tabs:
+
+- **Monthly Summary** - Totals, month-over-month change, top categories and merchants, and budget summary for the selected month
+- **Spending** - Spending over a period (Month, Year to date, Last 12 months, Full year; step with ‹ ›), with a category breakdown. Click a category to see its transactions for that period in the expense list
+- **Cash Flow** - Income vs spending over the same period, savings rate, and a profit & loss table
+- **Merchants**, **Activity Insights** and **Trends** - see below and [Analytics Hub](../features/ANALYTICS_HUB.md)
+
+### Annual Summary
+
+Click **"📊 Annual Summary"** in the month selector for a yearly overview with a year-over-year comparison.
 
 ## Merchant Analytics
 
 ### Viewing Merchant Analytics
 
-1. Click the **"📈 Analytics"** button in the main navigation
-2. Select the **"Merchants"** tab
+1. Click **"📈 Analytics"** in the month selector
+2. Select the **Merchants** tab
 
 ### Analyzing Top Merchants
 
 - View merchants ranked by total spending, visit frequency, or average spend per visit
-- Use the period dropdown to analyze different time ranges (All Time, This Year, This Month, Last 3 Months)
+- Use the period dropdown to analyze different time ranges (All Time, This Year, Previous Year, This Month, Last 3 Months)
 - Toggle between sorting by total spend, number of visits, or average spend per visit
 
 ### Merchant Details
@@ -338,90 +356,47 @@ Toggle the **"Include Fixed Expenses"** checkbox to combine variable and recurri
 
 Click **"View All Expenses"** to see the complete list of expenses at any merchant.
 
-## Smart Insights
+## Spending Alerts
 
-The Smart Insights panel appears in the right-hand summary area and highlights things that may need your attention — budget overages, upcoming bills, and unusual spending alerts. This section covers the anomaly alerts you may see and how to use them.
-
-### Types of Alerts
-
-The system watches your spending patterns and flags things that look unusual. Each alert has a colored badge indicating what type it is:
-
-- **Large Transaction** — A single purchase that's significantly higher than what you normally spend in that category
-- **Category Spike** — Your total spending in a category this month is much higher than your typical monthly average
-- **New Merchant** — A first-time purchase at an unfamiliar store with a notable amount
-- **Frequency Spike** — You're making purchases in a category much more often than usual this month
-- **Recurring Increase** — A regular expense (like a subscription or utility bill) went up in price compared to recent charges
-- **Seasonal Deviation** — Your spending in a category is significantly different from the same month last year
-- **Emerging Trend** — A gradual spending increase has been detected in a category over recent months
+Unusual-spending (anomaly) alerts appear in the **Notifications** section of the Monthly Summary, alongside budget alerts and data reminders.
 
 ### What Each Alert Shows
 
-Each alert card is organized into clear sections so you can quickly understand what happened and whether it matters:
+- The merchant (or category) and amount, a one-line summary and explanation, and the typical range where available
+- Badges for the alert's classification and its **confidence** (Low, Medium, High — how much history the system had to work with)
+- **▾ Details** expands the observed value, expected range, comparison period, deviation, how the purchase ranks historically, and the projected yearly impact
 
-**Header** — Shows the alert type badge, the merchant or category name, the amount, and the date.
-
-**Why It Was Flagged** — Explains what the system observed versus what it expected. For example, you might see "Observed: $320 · Expected: $80–$160 · +100% above typical" along with the time period used for comparison (e.g., "Compared to: last 12 months").
-
-**Historical Context** — Puts the alert in perspective by showing how this compares to your past spending. Depending on the alert type, you may see things like:
-- Where this ranks among your purchases in the category (e.g., "3rd largest purchase out of 45")
-- What percentile this month falls in compared to other months
-- How often you typically shop at this merchant or in this category
-
-**Financial Impact** — Shows what it would mean for your finances if this pattern continues:
-- Projected yearly cost change (e.g., "+$1,200/year")
-- Effect on your savings rate, when income data is available
-- Budget projection, when you have a budget set for the category (e.g., "At this pace, Dining will exceed its $500 budget by $220 this month")
-
-**Confidence Level** — Each alert includes a confidence indicator (Low, Medium, or High) that reflects how much historical data the system had to work with. Alerts based on a full year of data are marked High confidence, while alerts for newer categories with limited history are marked Low. This helps you weigh how seriously to take each alert.
-
-**Behavior Pattern** — Tells you whether the system thinks this is a one-time event, a recurring change, or part of an emerging trend, so you can decide whether action is needed.
-
-### Cluster Alerts
-
-Sometimes multiple related purchases represent a single real-world event — like a trip, a move, or holiday shopping. When the system detects a group of related unusual transactions within a short time window, it combines them into a single cluster alert instead of showing each one separately.
-
-Cluster alerts show the group label (e.g., "Travel Event" or "Holiday Spending"), the total amount, the number of transactions, and the date range. You can expand the cluster to see the individual transactions inside it.
-
-### Budget Suggestions
-
-When the system detects a gradual spending increase in a category, it may suggest creating or adjusting a budget:
-
-- **Create a budget** — If you don't have a budget for a category where spending is trending upward, the alert suggests a starting limit based on your recent average
-- **Adjust a budget** — If you have a budget that's been consistently exceeded, the alert suggests a new limit that better reflects your actual spending
-
-These suggestions appear directly on the alert card. You can use them as a starting point when managing your budgets.
+Clicking an alert scrolls to the associated expense in the expense list.
 
 ### Actions
 
-Each alert has two actions:
+- **✓ Got it** — Dismiss the alert after you've reviewed it
+- **Mute alerts like this** — Dismiss it and create a suppression rule so similar spending isn't flagged again (e.g., an annual membership renewal)
 
-- **Dismiss** — Hides the alert. You can dismiss alerts that you've already reviewed or that don't require action.
-- **Mark as Expected** — Hides the alert and tells the system not to flag similar spending in the future. Use this for purchases that look unusual statistically but are normal for you (e.g., an annual membership renewal).
-
-Clicking on an alert navigates to the associated expense in your expense list.
+See [Anomaly Detection](../features/ANOMALY_DETECTION.md) for how alerts are detected.
 
 ## Data Management
 
 ### Manual Backup
 
-Click the **"💾 Backup"** button to download your database.
+1. Click **"🖥️ System"** in the header
+2. On the **Backup Information** tab, click **"💾 Create Backup Now"** (saved on the server) or **"📥 Download Backup"** (downloads a `.tar.gz` archive including invoice PDFs)
 
 ### Automated Backups
 
-Configure scheduled backups in Settings:
-
 1. Click **"⚙️ Settings"** in the header
-2. Click **"Backup Configuration"** tab
-3. Enable automated backups
-4. Set backup frequency and retention period
+2. Open the **"💾 Backup Configuration"** tab
+3. Check **Enable automatic backups**
+4. Set the daily **Backup Time**, optional **Backup Location**, and **Keep Last N Backups** (default 7)
 
 ### Restoring from Backup
 
-1. Click **"ℹ️ System Information"** in the header
-2. Click **"Backup Information"** tab
-3. Click **"Restore from Backup"**
-4. Select your backup file
-5. Confirm the restore operation
+1. Click **"🖥️ System"** in the header
+2. On the **Backup Information** tab, under **Restore from Backup**, click **"🔄 Choose Backup File"**
+3. Select a `.tar.gz` archive (recommended, includes invoices) or a legacy `.db` file
+4. Confirm the restore — it replaces **all** current data
+
+See the [Restore Backup Guide](RESTORE_BACKUP_GUIDE.md) for details.
 
 ### Data Reminders
 
@@ -434,55 +409,51 @@ Receive visual reminders when monthly data needs updating:
 
 ### Activity Log
 
-View a comprehensive history of all data changes in the application:
+View a history of data changes in the application:
 
-1. Click **"ℹ️ System Information"** in the header
-2. Click **"Activity Log"** tab
+1. Click **"🖥️ System"** in the header
+2. Open the **Activity Log** tab
 3. View recent events with timestamps and details
 
 **Features:**
-- **Event Tracking**: See all creates, updates, and deletes across expenses, loans, investments, budgets, and more
-- **Change Details**: Update events show exactly what changed (e.g., "amount: $30.00 → $45.00, category: health → medical")
-- **Human-Readable Timestamps**: Events show as "2 hours ago", "Yesterday at 3:45 PM", etc.
-- **Display Limit**: Choose to show 25, 50, 100, or 200 events (preference saved automatically)
-- **Load More**: Load additional events with a running count ("Showing 50 of 234 events")
-- **Automatic Cleanup**: Events are automatically cleaned up based on configurable retention settings
+- **Event Tracking**: Creates, updates, and deletes across expenses, loans, investments, budgets, payment methods, and more, plus system events such as backups and version upgrades
+- **Display Limit**: Show 25, 50, 100, or 200 events
+- **Load More**: Load additional events
+- **Automatic Cleanup**: Events are cleaned up daily based on the retention settings
 
 **Configuring Retention:**
 1. Click **"⚙️ Settings"** in the header
-2. Go to the **"General"** tab
+2. Go to the **"⚙️ General"** tab
 3. Under **"Activity Log Retention Policy"**, set:
-   - **Maximum Age**: How many days to keep events (7–365, default: 90)
-   - **Maximum Count**: Maximum number of events to retain (100–10,000, default: 1,000)
-4. Click **Save** to apply
+   - **Maximum Age (days)**: 7–365, default 90
+   - **Maximum Count**: 100–10,000, default 1,000
+4. Save to apply
 
-**Use Cases:**
-- Track when expenses were added or modified
-- Review loan payment history
-- Audit budget changes
-- Monitor backup operations
-- Investigate data discrepancies
+### Data Cleanup Tools
+
+**🖥️ System** → **Misc** → **🏷️ Standardize Place Names** finds and merges inconsistent place names (e.g., "Walmart", "walmart", "Wal-Mart"). See [Place Name Standardization](../features/PLACE_NAME_STANDARDIZATION.md).
+
+## Security
+
+Password protection is optional and off by default.
+
+- **Enable**: **⚙️ Settings** → **🔒 Security** → set a password. After that, every browser must log in
+- **Change or remove**: from the same tab; removing the password returns the app to open access
+- **Log out**: from the user menu in the header (greyed out when no password is set)
 
 ## Container Update Detection
 
-When the application's Docker container is updated and restarted, a banner appears at the top of the page to let you know.
+When the application's Docker container is updated and restarted, a banner appears at the top of the page.
 
 ### How It Works
 
-- The app periodically checks whether the server has restarted (e.g., after a container update)
-- If a restart is detected, a blue banner appears: **"Application has been updated. Refresh to get the latest version."**
-- The banner also appears when a lost server connection is re-established
+- When the real-time sync connection reconnects (e.g. after the server restarts), the app compares the server's version and startup ID with the ones it loaded with
+- If they differ, a banner appears: **"A new version (vX.Y.Z) is available. Refresh to get the latest updates."**
 
 ### Actions
 
-- **Refresh**: Click the refresh button on the banner to reload the page and pick up the new version
-- **Dismiss**: Click the × button to hide the banner for the current session
-
-### Automatic Detection
-
-- Checks happen every 5 minutes in the background
-- If the browser tab is hidden and the connection drops, the banner appears automatically when you return to the tab
-- No manual action is needed — the app handles detection for you
+- **Refresh Now**: Reload the page to pick up the new version
+- **Dismiss** (×): Hide the banner
 
 ## Version Upgrade Notifications
 
@@ -490,15 +461,13 @@ After refreshing into a new version, the app shows you what changed.
 
 ### Changelog Modal
 
-- When the app detects that the version has changed since your last visit, a changelog modal automatically appears
-- The modal shows the new version number and a summary of changes (new features, fixes, improvements)
-- Click **"Got it"** to dismiss — you won't see it again until the next upgrade
+- When the app detects that the version has changed since your last visit, an **"🎉 Updated to vX.Y.Z"** modal appears with the changes for that release
+- Close it to dismiss — you won't see it again until the next upgrade
 
-### Update Availability Indicator
+### Update Availability
 
-- The System Information modal shows whether a newer version is available on GitHub
-- If an update is available, you'll see the latest version number and a link to the release
-- Update checks happen automatically (cached for 24 hours) and can be triggered manually with the **"Check Now"** button
+- **🖥️ System** → **Updates** checks GitHub Releases for a newer version (cached for 24 hours on the server) and shows a banner with the latest version if one is available
+- The **Updates** tab also lists recent release notes
 
 ### Activity Log
 
@@ -534,6 +503,6 @@ After refreshing into a new version, the app shows you what changed.
 ### Data Maintenance
 
 - Perform manual backups before major changes
-- Review and dismiss anomaly alerts to keep your Smart Insights panel focused on what matters
-- Use "Mark as Expected" on alerts for spending that's normal for you to reduce future noise
+- Review anomaly alerts with **✓ Got it** to keep the Notifications section focused on what matters
+- Use **Mute alerts like this** for spending that's normal for you to reduce future noise
 - Use merchant analytics to identify spending patterns and opportunities for savings

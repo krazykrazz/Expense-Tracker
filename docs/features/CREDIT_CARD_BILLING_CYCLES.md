@@ -165,75 +165,18 @@ Clicking delete shows a confirmation dialog with:
 
 ## API Endpoints
 
-### Get Unified Billing Cycles
+All under `/api/payment-methods/:id/billing-cycles` (`:id` = credit card payment method). See [API Documentation](../API_DOCUMENTATION.md#billing-cycle-history-endpoints) for request/response details.
 
-**Endpoint:** `GET /api/billing-cycles/:paymentMethodId/unified`
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/unified` | Actual + auto-generated cycles with effective balance, transaction count and trend (`limit`, `include_auto_generate`) |
+| GET | `/current`, `/history`, `/recalculate` | Current cycle status, history, recalculated balance for a period |
+| POST | `/` | Record the statement balance for the most recently closed cycle (`actual_statement_balance` required; optional `minimum_payment`, `notes`, `statement` PDF) |
+| PUT | `/:cycleId` | Update a record; a new PDF replaces the old one |
+| DELETE | `/:cycleId` | Delete a record and its PDF |
+| GET | `/:cycleId/pdf` | Download the statement PDF |
 
-Returns all billing cycles (actual and auto-generated) for a credit card.
-
-**Response:**
-```json
-{
-  "cycles": [
-    {
-      "id": 1,
-      "payment_method_id": 4,
-      "cycle_start_date": "2026-01-16",
-      "cycle_end_date": "2026-02-15",
-      "actual_statement_balance": 1234.56,
-      "calculated_statement_balance": 1189.23,
-      "effective_balance": 1234.56,
-      "balance_type": "actual",
-      "transaction_count": 23,
-      "trend_indicator": {
-        "type": "higher",
-        "icon": "↑",
-        "amount": 145.33,
-        "cssClass": "trend-higher"
-      },
-      "minimum_payment": 25.00,
-      "notes": "Statement received via email",
-      "statement_pdf_path": "/statements/2026-02.pdf"
-    }
-  ]
-}
-```
-
-### Create/Update Billing Cycle
-
-**Endpoint:** `POST /api/billing-cycles`
-
-Creates or updates a billing cycle record.
-
-**Request Body:**
-```json
-{
-  "payment_method_id": 4,
-  "cycle_start_date": "2026-01-16",
-  "cycle_end_date": "2026-02-15",
-  "actual_statement_balance": 1234.56,
-  "minimum_payment": 25.00,
-  "notes": "Statement received via email"
-}
-```
-
-### Delete Billing Cycle
-
-**Endpoint:** `DELETE /api/billing-cycles/:id`
-
-Deletes a billing cycle record.
-
-### Upload Statement PDF
-
-**Endpoint:** `POST /api/billing-cycles/:id/statement`
-
-Uploads a PDF statement for a billing cycle.
-
-### Get Statement PDF
-
-**Endpoint:** `GET /api/billing-cycles/:id/statement`
-
-Downloads the statement PDF for a billing cycle.
+`POST /api/payment-methods/billing-cycles/dismiss-auto-generated` dismisses auto-generated cycle notifications.
 
 ## Effective Balance Logic
 
@@ -312,10 +255,5 @@ The migration automatically:
 
 **Last Updated:** February 9, 2026  
 **Status:** Active
-## Versioning Context
 
-Historical version references in this document (for example `v4.x` or `v5.x`) describe pre-1.0 release history.
-Current release numbering uses the `1.x` scheme.
-
-**Last Reviewed:** June 1, 2026
 

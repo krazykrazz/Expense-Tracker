@@ -1,20 +1,16 @@
 # Merchant Analytics Feature
 
-**Version**: 4.9.0  
-**Release Date**: December 20, 2025  
-**Spec**: `specs/merchant-analytics/`
-
 ## Overview
 
-The Merchant Analytics feature provides comprehensive insights into spending patterns by merchant (place), helping users understand where their money goes and identify opportunities for savings. This feature analyzes expense data to show top spending locations, visit frequency, average spend per merchant, and spending trends over time. **New in v4.9.0**: Optional integration with fixed expenses to provide complete spending analysis including recurring costs like rent, utilities, and subscriptions.
+Merchant Analytics provides insights into spending by merchant (the expense `place` field): top spending locations, visit frequency, average spend per visit, and monthly trends. Fixed expenses (grouped by their `name`) can optionally be included for a combined view of variable and recurring costs.
 
 ## Key Features
 
 ### 🏪 Merchant Rankings
 - **Top Merchants List**: View merchants ranked by total spending, visit frequency, or average spend per visit
 - **Flexible Sorting**: Toggle between three sorting options to analyze spending from different perspectives
-- **Spending Statistics**: See total amount spent, number of visits, average spend per visit, and percentage of total expenses
-- **Time Period Filtering**: Analyze data for All Time, This Year, Previous Year, This Month, or Last 3 Months
+- **Spending Statistics**: See total amount spent, number of visits (distinct expense dates), average spend per visit, and percentage of total expenses
+- **Time Period Filtering**: Analyze data for All Time, This Year (default), Previous Year, This Month, or Last 3 Months
 - **Fixed Expenses Integration**: Optional "Include Fixed Expenses" checkbox to combine variable and recurring expenses for comprehensive analysis
 
 ### 📊 Detailed Analytics
@@ -25,44 +21,40 @@ The Merchant Analytics feature provides comprehensive insights into spending pat
 - **Date Range Tracking**: View first and last visit dates for complete shopping history
 
 ### 📈 Trend Analysis
-- **Monthly Spending Charts**: Line graphs showing spending patterns over the last 12 months
+- **Monthly Spending Charts**: Chart of spending over the last 12 months (ending with the current month)
 - **Month-over-Month Changes**: Percentage change indicators showing spending trend direction
 - **Gap Filling**: Charts display zero values for months with no spending to maintain timeline continuity
 - **Trend Visualization**: Clear visual representation of spending increases, decreases, and patterns
 
 ### 🔍 Drill-Down Capabilities
-- **Expense List Integration**: Click "View All Expenses" to see complete transaction history for any merchant
-- **Filtered Views**: Expense list automatically filters to show only transactions from the selected merchant
-- **Navigation Flow**: Seamless navigation between analytics view and detailed expense records
+- **View All Expenses**: Clicking "📋 View All Expenses" in the detail view closes the Analytics Hub and sets the expense list search text to the merchant name
 
 ## User Interface
 
 ### Main Navigation Access
-- **Entry Point**: Click the "📈 Analytics" button in the main navigation area, then select the "Merchants" tab
-- **Analytics Hub Integration**: Merchant Analytics is now part of the unified Analytics Hub (v4.17.0+), alongside Spending Patterns, Predictions, Seasonal Analysis, and Anomaly Detection
-- **Modal Interface**: Analytics open in a full-screen modal overlay for focused analysis
-- **Responsive Design**: Optimized for both desktop and mobile viewing
+- **Entry Point**: Click the "📈 Analytics" button in the month selector, then select the "🏪 Merchants" tab of the Analytics Hub
+- **Component**: `MerchantAnalyticsModal` is rendered embedded inside `AnalyticsHubModal`
 
 ### Merchant List View
 - **Ranking Display**: Merchants listed in descending order based on selected sort criteria
 - **Key Metrics**: Each merchant shows total spend, visit count, average spend, and percentage
 - **Visual Indicators**: Clear typography and spacing for easy scanning of merchant data
-- **Sort Toggle**: Easy switching between total spend, visits, and average spend sorting
-- **Fixed Expenses Toggle**: "Include Fixed Expenses" checkbox with visual indicator when enabled
+- **Sort Toggle**: Switch between Total Spend, Visit Count, and Average Spend
+- **Fixed Expenses Toggle**: "Include Fixed Expenses" checkbox
 
 ### Merchant Detail View
-- **Statistics Cards**: Key metrics displayed in organized card layout
-- **Category Breakdown**: Pie chart or list showing expense category distribution
-- **Payment Methods**: Visual breakdown of payment method usage patterns
-- **Trend Chart**: Line graph showing monthly spending over time with change indicators
+- **Spending Summary**: Total Spent, Total Visits, Average per Visit, % of Total Expenses, First/Last Visit, Avg Days Between Visits, Primary Payment Method
+- **Monthly Spending Trend**: Chart of monthly spending with change indicators
+- **Category Breakdown**: Expense category distribution
+- **Payment Method Breakdown**: Payment method usage
 
 ## Technical Implementation
 
 ### Backend Architecture
-- **Service Layer**: `merchantAnalyticsService.js` handles all business logic and data aggregation
-- **Controller Layer**: `merchantAnalyticsController.js` manages HTTP requests and responses
-- **Repository Layer**: Extended `expenseRepository.js` with analytics-specific query methods
-- **API Endpoints**: RESTful endpoints under `/api/analytics/merchants` namespace
+- **Routes**: `backend/routes/merchantAnalyticsRoutes.js` (mounted at `/api`)
+- **Controller**: `merchantAnalyticsController.js` validates query parameters
+- **Service**: `merchantAnalyticsService.js` computes date ranges, percentages, breakdowns and trend gap filling
+- **Repository**: `expenseRepository.js` (`getMerchantAnalytics`, `getCombinedMerchantAnalytics`, `getMerchantExpenses`, `getMerchantTrend`); merchant names are matched case-insensitively
 
 ### API Endpoints
 
@@ -70,24 +62,26 @@ The Merchant Analytics feature provides comprehensive insights into spending pat
 ```
 GET /api/analytics/merchants
 Query Parameters:
-- period: 'all' | 'year' | 'previousYear' | 'month' | '3months'
-- sortBy: 'total' | 'visits' | 'average'
+- period: 'all' | 'year' | 'previousYear' | 'month' | '3months' (default: 'year')
+- sortBy: 'total' | 'visits' | 'average' (default: 'total')
 - includeFixedExpenses: 'true' | 'false' (default: 'false')
+- year, month: optional reference year/month for 'year', 'previousYear' and 'month' (defaults to today)
 ```
 
 #### Get Merchant Details
 ```
 GET /api/analytics/merchants/:name
 Query Parameters:
-- period: 'all' | 'year' | 'previousYear' | 'month' | '3months'
+- period: 'all' | 'year' | 'previousYear' | 'month' | '3months' (default: 'year')
 - includeFixedExpenses: 'true' | 'false' (default: 'false')
+- year, month: optional
 ```
 
 #### Get Merchant Trend
 ```
 GET /api/analytics/merchants/:name/trend
 Query Parameters:
-- months: number (default 12)
+- months: number 1-60 (default 12)
 - includeFixedExpenses: 'true' | 'false' (default: 'false')
 ```
 
@@ -95,15 +89,14 @@ Query Parameters:
 ```
 GET /api/analytics/merchants/:name/expenses
 Query Parameters:
-- period: 'all' | 'year' | 'previousYear' | 'month' | '3months'
+- period: 'all' | 'year' | 'previousYear' | 'month' | '3months' (default: 'year')
 - includeFixedExpenses: 'true' | 'false' (default: 'false')
+- year, month: optional
 ```
 
 ### Frontend Architecture
-- **React Components**: `MerchantAnalyticsModal.jsx` and `MerchantDetailView.jsx`
-- **API Client**: `merchantAnalyticsApi.js` handles all backend communication
-- **State Management**: React hooks for local state management
-- **Styling**: Dedicated CSS files for component-specific styling
+- **Components**: `frontend/src/components/analytics/MerchantAnalyticsModal.jsx` and `MerchantDetailView.jsx`
+- **API Client**: `frontend/src/services/merchantAnalyticsApi.js`
 
 ### Data Models
 
@@ -112,11 +105,11 @@ Query Parameters:
 interface MerchantSummary {
   name: string;              // Merchant/place name
   totalSpend: number;        // Total amount spent
-  visitCount: number;        // Number of expense entries
+  visitCount: number;        // Number of distinct expense dates (fixed expenses: entries)
   averageSpend: number;      // totalSpend / visitCount
-  percentOfTotal: number;    // Percentage of all expenses
+  percentOfTotal: number;    // Percentage of all merchant spending in the period
+  firstVisit: string;        // Date of first expense
   lastVisit: string;         // Date of most recent expense
-  primaryCategory: string;   // Most common expense category
 }
 ```
 
@@ -130,9 +123,9 @@ interface MerchantDetail {
   percentOfTotal: number;
   firstVisit: string;        // Date of first expense
   lastVisit: string;         // Date of most recent expense
-  avgDaysBetweenVisits: number | null;  // null if only 1 visit
-  primaryCategory: string;
-  primaryPaymentMethod: string;
+  avgDaysBetweenVisits: number | null;  // (lastVisit - firstVisit) / (visitCount - 1); null if only 1 visit
+  primaryCategory: string;              // most frequent (by count)
+  primaryPaymentMethod: string;         // most frequent (by count)
   categoryBreakdown: Array<{
     category: string;
     amount: number;
@@ -155,38 +148,14 @@ interface MonthlyTrend {
   monthName: string;         // e.g., "Jan 2025"
   amount: number;            // Total spend that month
   visitCount: number;        // Number of visits that month
-  changePercent: number | null;  // Month-over-month change (null for first month)
+  changePercent: number | null;  // Month-over-month change (null for first month; 100 when previous month was 0)
 }
 ```
-
-## Quality Assurance
-
-### Property-Based Testing
-The feature includes comprehensive property-based testing with 10 correctness properties:
-
-1. **Merchant ranking by total spend is correctly sorted**
-2. **Merchant statistics are correctly calculated**
-3. **Date range filtering includes only expenses within the period**
-4. **First and last visit dates are correctly identified**
-5. **Primary category and payment method are most frequent**
-6. **Visit frequency sorting is correct**
-7. **Average days between visits is correctly calculated**
-8. **Trend data covers correct time range with gap filling**
-9. **Month-over-month change percentage is correctly calculated**
-10. **Merchant expense filter returns only matching expenses**
-
-Each property is tested with 100+ iterations using the `fast-check` library to ensure correctness across a wide range of input scenarios.
-
-### Integration Testing
-- **Full API Flow**: Tests cover complete request-response cycles
-- **Database Integration**: Tests verify correct data retrieval and aggregation
-- **Error Handling**: Tests ensure graceful handling of edge cases and errors
-- **Performance**: Tests validate response times for large datasets
 
 ## Usage Examples
 
 ### Analyzing Top Spending Locations
-1. Click "🏪 Merchant Analytics" in the main navigation
+1. Open "📈 Analytics" and select the "🏪 Merchants" tab
 2. View the default list sorted by total spending
 3. Use the period filter to focus on "This Year", "Previous Year", or "This Month"
 4. **Optional**: Check "Include Fixed Expenses" to see total spending including recurring costs
@@ -199,7 +168,7 @@ Each property is tested with 100+ iterations using the `fast-check` library to e
 4. Use combined view for accurate budget planning and spending analysis
 
 ### Understanding Shopping Habits
-1. Change sort to "Visits" to see most frequently visited places
+1. Change sort to "Visit Count" to see most frequently visited places
 2. Click on a merchant to view detailed statistics
 3. Check "Average days between visits" to understand shopping frequency
 4. Review category breakdown to see what you typically buy there
@@ -211,72 +180,15 @@ Each property is tested with 100+ iterations using the `fast-check` library to e
 4. Identify months with unusual spending patterns
 
 ### Expense Investigation
-1. From any merchant detail view, click "View All Expenses"
-2. Review the complete transaction history for that merchant
-3. Verify expense details and identify any discrepancies
-4. Use this for budgeting and spending analysis
-
-## Benefits
-
-### Financial Awareness
-- **Complete Spending Visibility**: Clear view of where money is being spent, including both variable and recurring expenses
-- **Pattern Recognition**: Identify recurring spending patterns and habits across all expense types
-- **Budget Planning**: Use comprehensive insights to create more accurate budgets that account for all spending
-
-### Decision Making
-- **Total Cost Analysis**: Compare complete spending (variable + fixed) across similar merchants
-- **Comprehensive Insights**: Understand full financial relationship with each merchant/service provider
-- **Category Awareness**: See what types of purchases dominate at each location, including recurring services
-
-### Savings Opportunities
-- **High-Spend Identification**: Focus cost-cutting efforts on top merchants
-- **Trend Analysis**: Spot increasing spending trends before they become problematic
-- **Habit Modification**: Use visit frequency data to modify shopping habits
-
-## Future Enhancements
-
-### Potential Improvements
-- **Merchant Grouping**: Group similar merchants (e.g., all grocery stores)
-- **Budget Integration**: Set spending limits per merchant
-- **Alerts**: Notifications when spending at a merchant exceeds thresholds
-- **Comparison Tools**: Compare spending across time periods
-- **Export Features**: Export merchant analytics to CSV or PDF
-
-### Advanced Analytics
-- **Seasonal Analysis**: Identify seasonal spending patterns
-- **Predictive Analytics**: Forecast future spending based on trends
-- **Anomaly Detection**: Alert on unusual spending patterns
-- **Goal Tracking**: Set and track merchant-specific spending goals
+1. From any merchant detail view, click "📋 View All Expenses"
+2. The expense list is searched for the merchant name
 
 ## Troubleshooting
 
 ### Common Issues
 - **No Data**: Ensure expenses have been entered with place names
-- **Missing Merchants**: Check that place names are consistent (case-sensitive)
+- **Split Merchants**: Names are grouped case-insensitively for details, but spelling variants appear separately; use [Place Name Standardization](PLACE_NAME_STANDARDIZATION.md) to merge them
 - **Incorrect Trends**: Verify date ranges and ensure sufficient historical data
-- **Performance**: Large datasets may take longer to load; consider using period filters
 
-### Data Quality
-- **Place Name Consistency**: Use consistent naming for the same merchant
-- **Date Accuracy**: Ensure expense dates are correct for accurate trend analysis
-- **Category Consistency**: Consistent categorization improves analytics accuracy
-
-## Support
-
-For issues or questions about Merchant Analytics:
-1. Check the main application documentation
-2. Review the spec file at `specs/merchant-analytics/`
-3. Examine test files for expected behavior examples
-4. Check the CHANGELOG.md for recent updates and fixes
-
----
-
-**Last Reviewed**: June 2026  
-**Feature Status**: ✅ Complete and Deployed (originally introduced in v4.9.0; now part of the current 1.x release line)
-## Versioning Context
-
-Historical version references in this document (for example `v4.x` or `v5.x`) describe pre-1.0 release history.
-Current release numbering uses the `1.x` scheme.
-
-**Last Reviewed:** June 1, 2026
+**Last Reviewed:** October 4, 2026
 

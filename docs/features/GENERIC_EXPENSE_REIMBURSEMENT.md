@@ -1,89 +1,48 @@
 # Generic Expense Reimbursement
 
-**Version**: 5.3.0  
-**Completed**: February 2026  
-**Spec**: `specs/archive/generic-expense-reimbursement/`
-
 ## Overview
 
-Track reimbursements for any expense type (not just medical). This feature allows users to record expected reimbursements from employers, insurance, or other sources, with automatic calculation of net out-of-pocket amounts.
+Track reimbursements for non-medical expenses (e.g. employer or third-party reimbursements). The expense **Amount** is what you paid out-of-pocket; an optional **Original Cost** records the full amount charged. The reimbursed amount is derived as `original_cost - amount`.
 
 ## Features
 
-### Reimbursement Tracking
-
-- **Reimbursement Field**: Add expected reimbursement amount to any expense
-- **Net Amount Calculation**: Automatically calculates out-of-pocket (amount - reimbursement)
-- **Visual Indicator**: 💰 icon shows which expenses have reimbursements
-- **Tooltip Breakdown**: Hover to see Charged, Reimbursed, and Net amounts
-
-### Form Integration
-
-- **Reimbursement Input**: Available for all non-medical expense types
-- **Medical Exclusion**: Medical expenses with insurance tracking use their specialized UI
-- **Preview Display**: Shows breakdown before saving
-- **Validation**: Ensures reimbursement doesn't exceed expense amount
-
-### Data Storage
-
-- **No Schema Changes**: Uses existing `original_cost` column
-- **Backward Compatible**: Existing expenses unaffected
-- **Credit Card Integration**: Balance calculations use original charged amount
+- **Reimbursement section** in the expense form (collapsible, shown for every type except `Tax - Medical`, which uses the insurance UI — see [Medical Insurance Tracking](./MEDICAL_INSURANCE_TRACKING.md))
+- **Original Cost $ (optional)** input with a clear (✕) button; the section header badge summarises the reimbursement
+- **Preview** of Charged / Reimbursed / Net (out-of-pocket) once Original Cost and Amount are both set
+- **Validation** (form and backend): Original Cost must be non-negative and Amount cannot exceed Original Cost
+- **List indicator**: 💰 icon on non-medical expenses where `original_cost` is set and differs from `amount`; tooltip shows Charged, Reimbursed and Net
 
 ## Usage
 
-### Adding a Reimbursement
-
-1. Create or edit an expense
-2. Enter the total amount charged
-3. Enter the expected reimbursement amount
-4. The form shows the net out-of-pocket amount
-5. Save the expense
-
-### Viewing Reimbursements
-
-- Look for the 💰 indicator in the expense list
-- Hover over the indicator to see the breakdown
-- The displayed amount is the net out-of-pocket
+1. Create or edit an expense.
+2. Enter the out-of-pocket amount in **Amount**.
+3. Expand **Reimbursement** and enter the full charged amount in **Original Cost**.
+4. Check the preview and save. Clearing Original Cost on an existing expense sets `original_cost` back to `NULL`.
 
 ## Technical Details
 
-### Data Transformation
+### Data Storage
 
-When saving an expense with reimbursement:
+Uses the `expenses.original_cost` column (shared with medical insurance tracking):
 - `original_cost` = total amount charged
-- `amount` = net out-of-pocket (original - reimbursement)
+- `amount` = net out-of-pocket
 
-When editing:
-- Reimbursement is calculated from `original_cost - amount`
+### Credit Card Balances
 
-### Credit Card Balance
-
-Credit card balance calculations use `COALESCE(original_cost, amount)` to reflect the actual charge to the card.
+Credit card balance, statement and billing-cycle calculations use `COALESCE(original_cost, amount)` so the full charge is counted against the card (e.g. `paymentMethodBalanceService`, `statementBalanceService`, `creditCardPaymentService`).
 
 ## Components
 
-| Component | Purpose |
-|-----------|---------|
-| `ReimbursementIndicator.jsx` | Visual indicator with tooltip |
-| `ExpenseForm.jsx` | Reimbursement input section |
-| `ExpenseList.jsx` | Indicator integration |
-
-## Testing
-
-Property-based tests validate:
-- Reimbursement validation (non-negative, ≤ amount)
-- Data storage consistency
-- Edit round-trip preservation
-- Indicator display logic
+| File | Purpose |
+|------|---------|
+| `frontend/src/components/expenses/ReimbursementIndicator.jsx` | 💰 indicator with tooltip |
+| `frontend/src/components/expenses/ExpenseForm.jsx` | Reimbursement section |
+| `frontend/src/hooks/useFormSubmission.js` | Adds/clears `original_cost` on submit |
+| `frontend/src/hooks/useExpenseFormValidation.js` | Client-side validation |
+| `frontend/src/components/expenses/ExpenseList.jsx` | Indicator placement |
+| `backend/services/expenseValidationService.js` | Server-side validation |
 
 ---
 
-**Last Updated**: February 2, 2026
-## Versioning Context
-
-Historical version references in this document (for example `v4.x` or `v5.x`) describe pre-1.0 release history.
-Current release numbering uses the `1.x` scheme.
-
-**Last Reviewed:** June 1, 2026
+**Last Updated**: 2026-10-04
 

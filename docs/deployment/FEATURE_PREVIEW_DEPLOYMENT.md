@@ -8,7 +8,7 @@ The feature preview deployment system allows you to test feature branches in Doc
 
 - **Isolated Testing**: Test feature branches in containers without affecting other environments
 - **Production-Like**: Same Docker environment as staging/production
-- **No Conflicts**: Runs on different ports (3001/2425) alongside other containers
+- **No Conflicts**: Runs on host port 3001 alongside staging (2627) and production (2424)
 - **Quick Iteration**: Build once, test, rebuild as needed
 - **Easy Cleanup**: Stop and remove preview containers with one command
 
@@ -36,13 +36,15 @@ git commit -m "feat: implement my feature"
 ```
 
 **What happens:**
-- Builds SHA-tagged Docker image from current commit
-- Tags image as `preview-<branch-name>` (e.g., `preview-feature-my-feature`)
-- Tags image locally for preview
-- Starts preview container on ports 3001/2425
-- Uses isolated `preview-data` volume
+- Refuses to run on `main`
+- Stops the preview container if it is already running
+- Runs `npm run build` in `frontend/` as a pre-check (the image builds its own frontend bundle)
+- Removes any existing local `expense-tracker:<sha>` image and rebuilds it from the working tree with `docker build`
+- Tags the image locally as `expense-tracker:preview-<branch-name>` (`/` replaced by `-`, e.g. `preview-feature-my-feature`). Nothing is pushed to a registry
+- Starts `expense-tracker-preview` from `docker-compose.preview.yml` on host port 3001
+- Uses the isolated `./preview-data` directory mounted at `/config`
 
-**Output:**
+**Output (abridged):**
 ```
 Preview deployment complete!
 Frontend: http://localhost:3001
@@ -50,6 +52,8 @@ Backend API: http://localhost:2425
 Branch: feature/my-feature
 SHA: abc1234
 ```
+
+> The script's "Backend API" line is wrong: `docker-compose.preview.yml` maps only `3001:2424`. The API is served from the same port: http://localhost:3001/api/health.
 
 **Note**: When run through automation tools, the script may not display console output, but it executes successfully. Verify deployment by:
 - Checking Docker images: `docker images | Select-String "preview"`
@@ -60,10 +64,10 @@ Full colored output is displayed when run directly in a PowerShell terminal.
 
 ### 3. Test Your Feature
 
-- **Frontend**: http://localhost:3001
-- **Backend API**: http://localhost:2425/api/health
+- **App**: http://localhost:3001
+- **API health**: http://localhost:3001/api/health
 
-The preview environment displays a **purple banner** at the top with the text "PREVIEW ENVIRONMENT - Testing feature branch before merge" and an eye icon (👁️). This visual indicator helps distinguish the preview environment from:
+The container runs with `NODE_ENV=production` and `APP_ENV=preview`; `APP_ENV` is what `/api/version` reports as the environment. The preview environment displays a **purple banner** at the top with the text "PREVIEW ENVIRONMENT - Testing feature branch before merge" and an eye icon (👁️). This visual indicator helps distinguish the preview environment from:
 - **Staging** (orange banner 🧪)
 - **Development** (blue banner 🔧)
 - **Production** (no banner)
@@ -94,7 +98,7 @@ When done testing:
 .\scripts\deploy-feature-preview.ps1 -Stop
 ```
 
-This stops and removes the preview container.
+This runs `docker-compose -f docker-compose.preview.yml down`, stopping and removing the preview container. The container uses `restart: unless-stopped`, so it otherwise comes back after a Docker restart.
 
 ### 6. Promote to Main
 
@@ -104,7 +108,7 @@ Once testing is complete, promote your feature branch:
 .\scripts\promote-feature.ps1 -FeatureName my-feature
 ```
 
-This creates a PR, runs CI, and prepares for merge to main.
+This merges the latest `main` into the branch, runs the frontend and backend tests locally (unless `-SkipTests`), pushes the branch and opens a PR. CI then runs on the PR.
 
 ## Command Reference
 
@@ -117,7 +121,7 @@ This creates a PR, runs CI, and prepares for merge to main.
 # Build only (no deploy)
 .\scripts\deploy-feature-preview.ps1 -SkipDeploy
 
-# Deploy existing image (no rebuild)
+# Deploy existing local image for the current commit (no rebuild)
 .\scripts\deploy-feature-preview.ps1 -SkipBuild
 
 # Stop and remove preview container
@@ -128,19 +132,19 @@ This creates a PR, runs CI, and prepares for merge to main.
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
-| `-SkipBuild` | Skip building image (use existing) | False |
+| `-SkipBuild` | Reuse the existing local `expense-tracker:<sha>` image (fails if it does not exist) | False |
 | `-SkipDeploy` | Build image but don't deploy container | False |
 | `-Stop` | Stop and remove preview container | False |
 
 ## Port Mapping
 
-| Environment | Frontend Port | Backend Port | Container Name |
-|-------------|---------------|--------------|----------------|
-| **Preview** | 3001 | 2425 | expense-tracker-preview |
-| Staging | 2627 | 2424 (internal) | expense-tracker-test |
-| Production | 2424 | 2424 (internal) | expense-tracker |
+| Environment | Host Port | Container Port | Container Name |
+|-------------|-----------|----------------|----------------|
+| **Preview** | 3001 | 2424 | expense-tracker-preview |
+| Staging | 2627 | 2424 | expense-tracker-test |
+| Production | 2424 | 2424 | expense-tracker |
 
-Preview uses different ports to avoid conflicts with staging and production.
+The app and API share one port in every environment. Preview uses a different host port to avoid conflicts with staging and production.
 
 ## Data Isolation
 
@@ -148,23 +152,27 @@ Each environment uses a separate data volume:
 
 - **Preview**: `./preview-data/` - Isolated test data
 - **Staging**: `./staging-data/` - Copy of production data for testing
-- **Production**: `./config/` - Real production data
+- **Production**: `./config/` - Real production data (when production runs from the repo `docker-compose.yml`)
 
-The preview environment starts with an empty database. You can:
+Each directory is mounted at `/config` and has the same layout (`database/expenses.db`, `backups/`, `config/`, `invoices/`, `statements/`).
+
+If `./preview-data` is empty, the preview starts with an empty database. You can:
 - Seed test data manually
 - Copy a backup from staging/production
 - Use the app to create test data
 
+`./preview-data` persists between preview runs.
+
 ## Image Tags
 
-Preview images are tagged locally with the branch name (no registry needed):
+Preview images exist only locally (no registry needed):
 
 ```
 expense-tracker:abc1234              # SHA tag (immutable)
 expense-tracker:preview-feature-my-feature  # Preview tag (floating)
 ```
 
-The preview tag is updated each time you deploy from that branch.
+The preview tag is updated each time you deploy from that branch. Because the image is built from the working tree, uncommitted changes are included.
 
 ## Complete Example Workflow
 
@@ -247,12 +255,9 @@ Check if ports are already in use:
 ```powershell
 # Check what's using port 3001
 netstat -ano | findstr :3001
-
-# Check what's using port 2425
-netstat -ano | findstr :2425
 ```
 
-If ports are in use, stop the conflicting service or modify `docker-compose.preview.yml` to use different ports.
+If the port is in use, stop the conflicting service or change the host port in `docker-compose.preview.yml`.
 
 ### Image Build Fails
 
@@ -314,8 +319,9 @@ Start with a clean database or copy a recent backup:
 # Option 1: Start fresh (empty database)
 # Just deploy - preview-data will be created empty
 
-# Option 2: Copy staging data
-Copy-Item -Path "staging-data\expenses.db" -Destination "preview-data\expenses.db"
+# Option 2: Copy staging data (stop the preview container first)
+New-Item -ItemType Directory -Force preview-data\database | Out-Null
+Copy-Item -Path "staging-data\database\expenses.db" -Destination "preview-data\database\expenses.db"
 ```
 
 ### 3. Stop Preview When Done
@@ -350,6 +356,6 @@ In your PR description, mention that you tested in preview:
 
 ## See Also
 
-- [SHA-Based Container Deployment](SHA_BASED_CONTAINERS.md)
-- [Feature Branch Workflow](../development/FEATURE_BRANCH_WORKFLOW.md)
 - [Deployment Workflow](DEPLOYMENT_WORKFLOW.md)
+- [Feature Branch Workflow](../development/FEATURE_BRANCH_WORKFLOW.md)
+- [Staging Environment](../development/STAGING_ENVIRONMENT.md)

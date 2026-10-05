@@ -1,9 +1,5 @@
 # Mortgage Tracking Feature
 
-**Version**: 4.18.0  
-**Status**: Completed  
-**Spec**: `specs/mortgage-tracking/` and `specs/mortgage-insights/`
-
 ## Overview
 
 Enhanced loan tracking with dedicated mortgage support including amortization schedules, equity tracking, payment insights, and variable rate management. Mortgages are a specialized loan type with additional fields and analytics.
@@ -169,10 +165,5 @@ CREATE TABLE mortgage_payments (
 ---
 
 **Last Updated**: January 2026
-## Versioning Context
 
-Historical version references in this document (for example `v4.x` or `v5.x`) describe pre-1.0 release history.
-Current release numbering uses the `1.x` scheme.
-
-**Last Reviewed:** June 1, 2026
 

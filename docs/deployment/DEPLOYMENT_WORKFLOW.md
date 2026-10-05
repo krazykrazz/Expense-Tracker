@@ -1,17 +1,56 @@
 # Complete Deployment Workflow
 
-This document describes the end-to-end workflow for deploying features to production using the pull-and-promote container model.
+This document describes the end-to-end workflow for building, releasing, and deploying the Expense Tracker using the pull-and-promote container model. It is the canonical maintainer reference for CI image builds, image tags, `build-and-push.ps1`, the Release workflow, staging/production promotion, version-bump guardrails, and rollback.
 
 ## Overview
 
 The deployment workflow ensures:
 - Feature branches never contain version bumps
-- Version bumps happen via release branch PRs merged to `main`
+- Version bumps happen only on `release/vX.Y.Z` branches, merged to `main` via PR
 - CI is the single source of truth for Docker image builds
-- Same binary artifact moves through staging → production
-- Full traceability via git SHA tags
+- The same image (identified by git SHA) moves staging → production by retagging, never rebuilding
+- Full traceability: the SHA tag maps to a git commit, and `GIT_COMMIT`, `IMAGE_TAG` and `BUILD_DATE` are baked into the image (reported by `GET /api/version` and `GET /api/health`)
 
-> **Note:** The application version was rebased from 5.17.5 to 1.0.0 as part of the migration consolidation. All version examples below use the post-rebase numbering scheme starting from 1.0.0.
+## How Images Are Built (CI)
+
+The `Build and Push to GHCR` job (`build-and-push-ghcr`) in `.github/workflows/ci.yml`:
+
+- Runs only on a push to `main` (or `workflow_dispatch` on `main`), after `Backend Tests Status` and `Frontend Tests Status` succeed. **Pull requests never build or push images.** Runs triggered by `dependabot[bot]` skip it.
+- Builds the root `Dockerfile` (linux/amd64) with build args `IMAGE_TAG` and `GIT_COMMIT` (both the short SHA) and `BUILD_DATE`.
+- Scans the image with Trivy; any CRITICAL finding fails the job before anything is pushed.
+- Pushes two tags: `:<short-sha>` and `:v<version>` (version read from `backend/package.json`).
+- Creates the GitHub Release `v<version>` (which also creates the git tag) if it does not exist yet, attaching a version-pinned `docker-compose-v<version>.yml`; if the release already exists, it re-uploads that asset.
+
+The follow-on `Deployment Health Check` job pulls the SHA image, runs it in a throwaway container on the CI runner and checks `/api/health` and `/`. It does not touch any real staging or production host.
+
+> CI ignores pushes that only change `docs/**` or root-level `*.md` files (`paths-ignore`). A docs-only commit on `main` therefore has **no** image — see [SHA image not found](#sha-image-not-found).
+
+`.github/workflows/ghcr-cleanup.yml` runs weekly (Sunday 00:00 UTC): it deletes untagged image versions, then keeps only the 20 most recent versions, never deleting `vX.Y.Z`, `latest` or `staging`. Older SHA-only images are eventually deleted.
+
+## Image Tags
+
+All images live at `ghcr.io/krazykrazz/expense-tracker`.
+
+| Tag | Pushed by | Meaning |
+|-----|-----------|---------|
+| `<short-sha>` (e.g. `789bf08`) | CI | Image built from exactly that commit. Never re-pushed, but subject to GHCR cleanup |
+| `vX.Y.Z` | CI | Pushed on **every** `main` build while `backend/package.json` is at X.Y.Z, so it points at the latest `main` build of that version, not necessarily the release merge commit |
+| `staging` | `build-and-push.ps1 -Environment staging` | The SHA last promoted to staging |
+| `latest` | `build-and-push.ps1 -Environment latest` | The SHA last promoted to production. CI never pushes `latest` |
+
+## Environments
+
+| Environment | `-Environment` | Compose service / container | Image | Host port | Data directory |
+|-------------|----------------|-----------------------------|-------|-----------|----------------|
+| Production | `latest` | `expense-tracker` | `:latest` | 2424 | `./config` |
+| Staging | `staging` | `expense-tracker-test` (compose profile `staging`) | `:staging` | 2627 | `./staging-data` |
+| Feature preview | n/a | `expense-tracker-preview` | local `expense-tracker:preview-<branch>` | 3001 | `./preview-data` |
+
+Compose files:
+
+- `docker-compose.yml`: reference compose file for production (`expense-tracker`) and staging (`expense-tracker-test`). Default target of `build-and-push.ps1`.
+- `docker-compose.preview.yml`: local feature preview — see [Feature Preview Deployment](FEATURE_PREVIEW_DEPLOYMENT.md).
+- `docker-compose.ghcr.yml`: minimal example for running a GHCR image without the rest of the repo. CI attaches a version-pinned copy to each GitHub Release.
 
 ## Complete Workflow
 
@@ -20,9 +59,10 @@ The deployment workflow ensures:
 1. **Create feature branch**:
    ```powershell
    git checkout -b feature/my-feature
+   # or: .\scripts\create-feature-branch.ps1 -FeatureName my-feature   (also pushes the branch)
    ```
 
-2. **Implement feature** (no version changes)
+2. **Implement feature** (no version changes). Optionally test it in a container with [Feature Preview Deployment](FEATURE_PREVIEW_DEPLOYMENT.md).
 
 3. **Commit feature work**:
    ```powershell
@@ -30,153 +70,178 @@ The deployment workflow ensures:
    git commit -m "feat: implement my-feature"
    ```
 
-### Phase 2: Feature Promotion
+### Phase 2: Pull Request
 
 4. **Create Pull Request**:
    ```powershell
    .\scripts\promote-feature.ps1 -FeatureName my-feature
    ```
+   The script merges the latest `main` into the feature branch, runs frontend and backend `npm run test:parallel` locally (skip with `-SkipTests`), pushes the branch and opens the PR with `gh`. Add `-CreateIssue` to open a linked tracking issue.
 
-5. **Wait for CI to pass** on the PR
+   For a quick fix already committed on local `main`, `.\scripts\create-pr-from-main.ps1 -Title "Fix: description"` creates a `hotfix/<timestamp>` branch from those unpushed commits, pushes it and opens the PR (also supports `-CreateIssue`; local `main` is only reset to `origin/main` with `-ResetMainToOrigin`). Hotfix branches follow the same no-version-bump rule.
 
-6. **Merge PR** via GitHub web UI
+5. **Wait for CI to pass**. The required checks are `Backend Tests Status` and `Frontend Tests Status`, and the branch must be up to date with `main`.
 
-7. **Switch to main and pull**:
+6. **Merge with a merge commit** (the only method the `main` ruleset allows):
+   ```powershell
+   gh pr merge <number> --merge --delete-branch
+   ```
+
+### Phase 3: Stage the Merged Code
+
+7. **Wait for CI on `main`** to finish `Build and Push to GHCR` for the merge commit:
+   ```powershell
+   gh run list --branch main --workflow CI --limit 3
+   ```
+
+8. **Switch to main and pull** (the script derives the SHA from your checkout):
    ```powershell
    git checkout main
    git pull origin main
    ```
 
-### Phase 3: Version Bump via Release Branch (PR-based)
-
-Branch protection on `main` blocks direct pushes. Version bumps go through a release branch + PR:
-
-8. **Create release branch**:
+9. **Pull and promote to staging**:
    ```powershell
-   git checkout -b release/v1.0.1
+   .\scripts\build-and-push.ps1 -Environment staging
    ```
 
-9. **Update version in all 7 locations**:
-   - `frontend/package.json`, `backend/package.json`
-   - `frontend/src/App.jsx` (footer)
-   - `CHANGELOG.md`
-   - `frontend/src/components/BackupSettings.jsx` (changelog)
-   - `frontend/src/components/SystemModal.jsx` (changelog)
-   - `frontend/src/utils/changelog.js` (centralized in-app changelog data for SystemModal Updates tab and BackupSettings About tab)
+10. **Test in staging** at http://localhost:2627 — see [Staging Environment](../development/STAGING_ENVIRONMENT.md).
 
-10. **Build frontend** with new version:
-    ```powershell
-    cd frontend; npm run build; cd ..
-    ```
+### Phase 4: Release (Version Bump)
 
-11. **Commit, push, and create PR**:
-    ```powershell
-    git add -A
-    git commit -m "v1.0.1: Feature description"
-    git push -u origin release/v1.0.1
-    gh pr create --base main --head release/v1.0.1 --title "Release v1.0.1: Feature description"
-    ```
+`main` is protected by a ruleset: no direct pushes, PRs required, merge commits only, required status checks, and **verified (signed) commits**. Version bumps are therefore made by the Release workflow (`.github/workflows/release.yml`, "Create Release PR"):
 
-12. **Wait for CI to pass** on the PR, then merge:
-    ```powershell
-    gh pr merge release/v1.0.1 --merge --delete-branch
-    ```
+```powershell
+gh workflow run release.yml -f bump_type=MINOR -f description="Short release summary" -f auto_merge=true
+```
 
-13. **Tag the merge commit on main**:
+`bump_type` is `PATCH`, `MINOR` or `MAJOR`. The workflow:
+
+1. Computes the new version from `backend/package.json` and pushes `release/vX.Y.Z` at `main`'s tip
+2. Updates the version locations listed in [release.instructions.md](../../.github/instructions/release.instructions.md): both `package.json` files, `CHANGELOG.md`, `frontend/src/utils/changelog.js`, `BackupSettings.jsx` and `SystemModal.jsx`. Each changelog entry contains only `description`.
+3. Runs a frontend build as a sanity check (`frontend/dist` is gitignored; the shipped bundle is built inside the Docker image)
+4. Commits through the GitHub API (`gh api graphql` → `createCommitOnBranch`), so the commit is signed by GitHub and shows as Verified
+5. Opens the PR `Release vX.Y.Z: <description>`
+6. With `auto_merge=true`, enables auto-merge using the `RELEASE_PAT` secret. A PAT is required: a merge performed under `GITHUB_TOKEN` would not trigger the `main` CI run, so no image would be built.
+
+When the release PR merges, the `main` CI run builds `:<sha>` and `:vX.Y.Z` and creates the GitHub Release and git tag `vX.Y.Z`. No manual tagging is needed.
+
+Notes:
+- Immediately after the PR is opened, `gh pr checks <number>` may report no checks because CI has not started yet; poll `gh pr view <number> --json state` instead.
+- A failed release run leaves `origin/release/vX.Y.Z` behind (the branch is pushed before the commit step). Delete it before re-running, otherwise the next run's branch push fails:
+  ```powershell
+  git push origin --delete release/vX.Y.Z
+  ```
+
+### Phase 5: Promote to Production
+
+11. **Wait for CI on `main`** to finish `Build and Push to GHCR` for the release merge commit.
+
+12. **Switch to main and pull**:
     ```powershell
     git checkout main
     git pull origin main
-    git tag -a "v1.0.1" -m "Release v1.0.1: Feature description"
-    git push origin v1.0.1
     ```
 
-### Phase 4: Pull and Deploy
-
-14. **Wait for CI** to build and push the Docker image to GHCR
-
-   CI also runs image security scanning and deployment health validation as part of the release pipeline.
-
-15. **Pull and promote to staging**:
-    ```powershell
-    .\scripts\build-and-push.ps1 -Environment staging
-    ```
-
-16. **Test in staging**:
-    - Verify version shows correctly in UI footer
-    - Test new features
-    - Check logs for errors
-
-17. **Promote to production** (same image, just retag):
+13. **Promote to production** (same image, just retagged):
     ```powershell
     .\scripts\build-and-push.ps1 -Environment latest
     ```
+    If production does not run from this repo's `docker-compose.yml` (different host or compose file), add `-SkipDeploy` to only push the `:latest` tag, then redeploy where production runs (`docker compose pull` + `docker compose up -d`).
 
-18. **Verify production**
-
-### Phase 5: Cleanup
-
-19. **Delete feature branch** (release branch is automatically cleaned up — remote branch deleted by PR merge, local branch deleted by the deploy script after switching back to main):
+14. **Verify production**:
     ```powershell
-    git branch -d feature/my-feature
-    git push origin --delete feature/my-feature
+    docker exec expense-tracker sh -c 'echo $GIT_COMMIT $BUILD_DATE'
+    curl http://localhost:2424/api/version
     ```
 
-## Automated Deployment
+### Phase 6: Cleanup
 
-Use `deploy-to-production.ps1` to automate the entire PR-based release workflow:
+15. **Delete the local feature branch** (the remote branch is deleted by `gh pr merge --delete-branch`; the repository does not auto-delete merged branches):
+    ```powershell
+    git branch -d feature/my-feature
+    ```
+
+## build-and-push.ps1 Reference
+
+`scripts/build-and-push.ps1` is a pull-and-promote script. It derives the SHA (`git rev-parse --short HEAD`) and version (`backend/package.json`) from the **current checkout**, so run it from `main` at a commit CI has built.
+
+Default behaviour:
+1. Authenticates to GHCR with `gh auth token` (if `gh` is installed; otherwise assumes `docker login ghcr.io` was done)
+2. Pulls `ghcr.io/krazykrazz/expense-tracker:<sha>`
+3. With `-Environment`: tags that image as `:staging` or `:latest` and pushes the tag
+4. Unless `-SkipDeploy`: runs `docker-compose -f <ComposeFile> pull <service>` and `docker-compose -f <ComposeFile> up -d <service>` (`staging` → `expense-tracker-test`, `latest` → `expense-tracker`)
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `-Environment` | `staging` or `latest`. Omit to only pull the SHA image | None |
+| `-Registry` | Registry/owner prefix | `ghcr.io/krazykrazz` |
+| `-LocalBuild` | Build the image locally instead of pulling it, then push `:<sha>` to GHCR. Escape hatch for testing Dockerfile changes — it overwrites any CI image for that SHA | Off |
+| `-MultiPlatform` | With `-LocalBuild`: build linux/amd64 + linux/arm64 with buildx and push directly | Off |
+| `-SkipDeploy` | Push the environment tag but do not touch any container | Off |
+| `-ComposeFile` | Compose file used for deploy | `docker-compose.yml` |
+
+## Alternative: Local Release Script
+
+`scripts/deploy-to-production.ps1` performs the release from your machine instead of GitHub Actions:
 
 ```powershell
-# PATCH version bump
 .\scripts\deploy-to-production.ps1 -BumpType PATCH -Description "Bug fixes"
-
-# MINOR version bump
-.\scripts\deploy-to-production.ps1 -BumpType MINOR -Description "New feature"
-
-# Dry run
+.\scripts\deploy-to-production.ps1 -BumpType MINOR -Description "New feature" -SkipStaging
 .\scripts\deploy-to-production.ps1 -BumpType PATCH -Description "Test" -DryRun
-
-# Skip staging (hotfix)
-.\scripts\deploy-to-production.ps1 -BumpType PATCH -Description "Hotfix" -SkipStaging
 ```
 
-The script handles: release branch → version bump → PR → CI → merge → tag → wait for Docker build → staging → production. Fully compatible with branch protection on `main`.
+It requires a clean `main` checkout and `gh`, then: creates `release/vX.Y.Z`, updates the version files, builds the frontend, commits and pushes, opens the PR, polls PR checks for up to `-CITimeout` seconds (default 600) and merges (or waits for you to merge), creates and pushes the `vX.Y.Z` git tag, polls GHCR for the merge-commit image, then calls `build-and-push.ps1 -Environment staging`, asks for confirmation, and calls `build-and-push.ps1 -Environment latest`.
+
+Caveats compared with the Release workflow:
+- The release commit is a local `git commit`, so it must be signed with a key GitHub recognises or the ruleset blocks the merge.
+- Both promotions deploy with the repo `docker-compose.yml`; there is no `-SkipDeploy` passthrough.
+- Its `frontend/src/App.jsx` step no longer matches anything (the footer reads the version from `/api/version`).
+
+Prefer the Release workflow.
+
+## Version-Bump Guardrails
+
+### Pre-commit hook
+
+Install once after cloning:
+
+```powershell
+.\scripts\install-git-hooks.ps1
+```
+
+This copies `scripts/git-hooks/pre-commit` to `.git/hooks/pre-commit`. On `feature/*` and `hotfix/*` branches it blocks a commit when the staged diff adds a version string to `frontend/package.json`, `backend/package.json`, `frontend/src/App.jsx`, `frontend/src/components/system/BackupSettings.jsx`, `frontend/src/components/system/SystemModal.jsx` or `frontend/src/utils/changelog.js`. It does not check `CHANGELOG.md`. Bypass with `git commit --no-verify` (not recommended). If the hook does not run, check `Test-Path .git/hooks/pre-commit` and re-run the installer (on Linux/macOS it also needs to be executable).
+
+### Version Consistency Check workflow
+
+`.github/workflows/version-check.yml` runs on PRs to `main` that touch those files or `CHANGELOG.md`:
+
+- **Non-`release/*` branches** — `Guard Against PR Version Bumps` fails if any added line in those files contains a version string (`"version":`, `vN.N.N`, or `version: 'N.N.N'`). Legitimate edits that mention a version can trip it.
+- **`release/*` branches** — `Validate Version Consistency` checks that both `package.json` versions and the first `changelog.js` entry match, and that `CHANGELOG.md`, `BackupSettings.jsx` and `SystemModal.jsx` mention the version.
+
+Neither job is a required status check, so a failure is visible on the PR but does not by itself block the merge.
 
 ## Quick Reference
 
 ```powershell
-# 1. Merge feature via PR (done via GitHub)
+# Feature → PR → merge
+.\scripts\promote-feature.ps1 -FeatureName my-feature
+gh pr merge <number> --merge --delete-branch
 
-# 2. Switch to main and pull
+# Stage merged main (after CI's "Build and Push to GHCR" succeeds)
 git checkout main; git pull origin main
-
-# 3. Create release branch
-git checkout -b release/v1.0.1
-
-# 4. Version bump (update all 7 files)
-
-# 5. Build frontend
-cd frontend; npm run build; cd ..
-
-# 6. Commit, push, create PR
-git add -A; git commit -m "v1.0.1: Description"
-git push -u origin release/v1.0.1
-gh pr create --base main --head release/v1.0.1 --title "Release v1.0.1"
-
-# 7. Wait for CI, merge PR
-gh pr merge release/v1.0.1 --merge --delete-branch
-
-# 8. Tag merge commit on main
-git checkout main; git pull origin main
-git tag -a "v1.0.1" -m "Release v1.0.1: Description"
-git push origin v1.0.1
-
-# 9. Wait for CI Docker build, then promote to staging
 .\scripts\build-and-push.ps1 -Environment staging
 
-# 10. Test in staging...
+# Release
+gh workflow run release.yml -f bump_type=PATCH -f description="Bug fixes" -f auto_merge=true
 
-# 11. Promote to production
-.\scripts\build-and-push.ps1 -Environment latest
+# Promote the release (after CI's "Build and Push to GHCR" succeeds for the release merge)
+git checkout main; git pull origin main
+.\scripts\build-and-push.ps1 -Environment latest            # add -SkipDeploy if production runs elsewhere
+
+# Verify
+curl http://localhost:2424/api/health
+docker image ls ghcr.io/krazykrazz/expense-tracker
 ```
 
 ## Common Mistakes to Avoid
@@ -193,22 +258,19 @@ docker build -t expense-tracker .  # Local build diverges from CI
 .\scripts\build-and-push.ps1 -Environment staging  # Pulls CI-built image
 ```
 
-CI is the single source of truth. Use `-LocalBuild` only for testing Dockerfile changes.
+CI is the single source of truth. Use `-LocalBuild` only for testing Dockerfile changes, and remember it pushes the result to GHCR under the commit's SHA.
 
 ### ❌ Version Bump on Feature Branch
 
-Version bumps go on a dedicated `release/vX.Y.Z` branch, never on feature branches. The release branch is merged to `main` via PR.
+Version bumps go on a dedicated `release/vX.Y.Z` branch created by the Release workflow, never on feature or hotfix branches.
 
-### ❌ Deploying Before CI Completes
+### ❌ Promoting from the Wrong Checkout
 
-Always wait for CI to build the image before promoting. The script will error if the SHA image isn't available in GHCR yet.
+`build-and-push.ps1` uses the SHA of your current `HEAD`. Running it on a feature branch, before CI has finished, or on a docs-only commit fails with `Failed to pull SHA image`.
 
 ## Rollback Procedure
 
-1. **Find previous working SHA** from git history:
-   ```powershell
-   git log --oneline
-   ```
+1. **Find the previous working image** from `git log --oneline main`, the GitHub Releases page, or `docker image ls ghcr.io/krazykrazz/expense-tracker`.
 
 2. **Pull and retag**:
    ```powershell
@@ -216,11 +278,46 @@ Always wait for CI to build the image before promoting. The script will error if
    docker tag ghcr.io/krazykrazz/expense-tracker:def5678 ghcr.io/krazykrazz/expense-tracker:latest
    docker push ghcr.io/krazykrazz/expense-tracker:latest
    ```
+   SHA-only images older than the 20 most recent versions may have been removed by GHCR cleanup; `vX.Y.Z` tags are always kept (but see [Image Tags](#image-tags) for what they point at).
 
 3. **Restart production container**:
    ```powershell
    docker compose -f docker-compose.yml up -d expense-tracker
    ```
+
+Rolling back the image does not undo database migrations that the newer version already applied. If the older version cannot run against the migrated schema, restore a backup taken before the upgrade (see [Restore Backup Guide](../guides/RESTORE_BACKUP_GUIDE.md)).
+
+## Troubleshooting
+
+### SHA image not found
+
+`Failed to pull SHA image` from `build-and-push.ps1` means GHCR has no image for your `HEAD`:
+
+- CI has not finished (or failed) for that commit — check `gh run list --branch main --workflow CI --limit 5`
+- `HEAD` is not a `main` commit (feature branch, unpushed commit)
+- `HEAD` is a docs-only commit, which CI skips. Check out the most recent commit that CI built (`git checkout <sha>`) and run the script from there
+- The image was removed by GHCR cleanup
+
+### Registry authentication
+
+```powershell
+gh auth status
+gh auth token | docker login ghcr.io -u krazykrazz --password-stdin
+```
+
+### Container won't start
+
+```powershell
+docker logs expense-tracker
+docker logs expense-tracker-test
+```
+
+### Which image is running
+
+```powershell
+docker inspect expense-tracker --format '{{.Config.Image}} {{index .Config.Labels "org.opencontainers.image.revision"}}'
+docker exec expense-tracker sh -c 'echo $GIT_COMMIT $BUILD_DATE'
+```
 
 ## Container Resource Limits
 
@@ -290,7 +387,16 @@ docker exec expense-tracker sh -c "tr '\0' '\n' < /proc/1/environ | grep NODE_OP
 
 `Memory=0` means no limit is in effect regardless of what any compose file declares.
 
+## Graceful Shutdown and Hardening
+
+The backend handles `SIGTERM`/`SIGINT` (`backend/utils/gracefulShutdown.js`): it stops the schedulers, closes SSE streams, lets in-flight HTTP requests finish, then closes the database (checkpointing the SQLite WAL) and exits, forcing exit after 10 seconds. Both services in `docker-compose.yml` set `stop_grace_period: 15s` so Docker does not `SIGKILL` the process mid-checkpoint (Docker's default is 10s). Mirror this in any other compose file used for production.
+
+Both services also set `security_opt: [no-new-privileges:true]` and `cap_drop: [ALL]`; the image runs as the non-root `node` user (UID 1000).
+
 ## See Also
 
-- [SHA-Based Containers](SHA_BASED_CONTAINERS.md) - Detailed SHA workflow documentation
-- [Workflow Automation](WORKFLOW_AUTOMATION.md) - Automated enforcement
+- [Feature Preview Deployment](FEATURE_PREVIEW_DEPLOYMENT.md) - Local container testing of feature branches
+- [Staging Environment](../development/STAGING_ENVIRONMENT.md) - Staging data setup and migration testing
+- [Docker Deployment Guide](../guides/DOCKER_DEPLOYMENT.md) - Running the published image
+- [Release Instructions](../../.github/instructions/release.instructions.md) - Version locations and release rules
+- [Feature Branch Workflow](../development/FEATURE_BRANCH_WORKFLOW.md) - Branching and merge rules

@@ -1,9 +1,5 @@
 # Loan Payment Tracking Feature
 
-**Version**: 5.x  
-**Status**: Completed  
-**Spec**: `specs/loan-payment-tracking/`, `specs/fixed-expense-loan-linkage/`, and `specs/mortgage-balance-interest-tracking/`
-
 ## Overview
 
 Payment-based tracking system for loans and mortgages, replacing the balance-entry approach for traditional loans. The system stores individual payment records and calculates the current balance dynamically. For mortgages, the balance calculation incorporates interest accrual using the formula `balance × (rate / 100) / 12` per month, producing accurate balances that reflect real-world mortgage amortization. This approach is more intuitive for users who make regular payments and want to track their debt reduction progress.
@@ -327,10 +323,5 @@ Note: For mortgages, the `LoanPaymentHistory` component renders the same as othe
 ---
 
 **Last Updated**: February 2026
-## Versioning Context
 
-Historical version references in this document (for example `v4.x` or `v5.x`) describe pre-1.0 release history.
-Current release numbering uses the `1.x` scheme.
-
-**Last Reviewed:** June 1, 2026
 

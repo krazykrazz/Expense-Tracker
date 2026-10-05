@@ -8,7 +8,7 @@ The easiest way to run the app is with the pre-built GHCR image:
 
 ```bash
 docker pull ghcr.io/krazykrazz/expense-tracker:latest
-docker run -d -p 2424:2424 -v ./config:/config ghcr.io/krazykrazz/expense-tracker:latest
+docker run -d --name expense-tracker -p 2424:2424 -v ./config:/config ghcr.io/krazykrazz/expense-tracker:latest
 ```
 
 Or with Docker Compose:
@@ -29,6 +29,7 @@ services:
       - LOG_LEVEL=info
       - TZ=Etc/UTC
     restart: unless-stopped
+    stop_grace_period: 15s
 ```
 
 Access the app at `http://localhost:2424`.
@@ -64,7 +65,7 @@ cd backend
 npm start
 ```
 
-The backend listens on `http://localhost:2626` by default in local development.
+The backend listens on `http://localhost:2626` by default in local development. Use `npm run dev` instead of `npm start` to restart automatically on changes (nodemon).
 
 Frontend dev server:
 
@@ -105,15 +106,15 @@ From a Docker or production user's perspective, nothing special is required at s
 .\scripts\build-and-push.ps1 -Environment latest
 ```
 
-See [SHA-Based Container Deployment](../deployment/SHA_BASED_CONTAINERS.md) for the full maintainer workflow.
+See [Deployment Workflow](../deployment/DEPLOYMENT_WORKFLOW.md) for the full maintainer workflow. The script pulls the CI-built image for the current `main` commit; it does not build locally.
 
 ### Run tests
 
-Backend:
+Backend (unit tests; the full `npm test` also runs every property-based test serially and is very slow):
 
 ```bash
 cd backend
-npm test
+npm run test:unit
 ```
 
 Frontend:
@@ -123,7 +124,7 @@ cd frontend
 npm test
 ```
 
-See [Testing Steering](../steering/testing.md) for the canonical test commands.
+See [testing.instructions.md](../../.github/instructions/testing.instructions.md) for the canonical test commands.
 
 ## Troubleshooting
 

@@ -142,8 +142,8 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Validate test naming conventions
-        run: node ../scripts/validate-test-naming.js
+      - name: Test CI enforcement scripts
+        run: npx jest --config ../scripts/jest.config.js
 
       - name: Record test start time
         id: test_start
@@ -285,9 +285,6 @@ jobs:
 
       - name: Install dependencies
         run: npm install
-
-      - name: Validate test naming conventions
-        run: node ../scripts/validate-test-naming.js
 
       - name: Validate no raw fetch() calls
         run: node ../scripts/validate-no-raw-fetch.js

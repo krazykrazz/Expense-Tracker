@@ -10,12 +10,16 @@ Full CI reference: `docs/development/GITHUB_ACTIONS_CICD.md`.
 
 | Script | Job(s) | Fails when |
 |---|---|---|
-| `validate-test-naming.js` | Backend Unit Tests, Frontend Tests | (reports naming counts; effectively never fails) |
 | `validate-no-raw-fetch.js` | Frontend Tests | bare `fetch(` in `frontend/src` source |
 | `validate-pbt-guardrails.js` | Backend PBT Shard 1/3 | missing invariant comment, PBT share > 48%, unit test importing `database/db` |
 | `check-test-budget.js <job> <seconds>` | every test job (last step) | elapsed > `budgets.<job>.maxSeconds` in `test-budget.json`, even if all tests passed |
+| `report-test-health.js` | Test Health Report | (never; writes test-file counts to the run summary) |
 
-New scripts: `process.exit(1)` on failure, export logic and guard with `if (require.main === module) main();`, add a step in `ci.yml`, add tests in `scripts/__tests__/`. Note `scripts/__tests__/` is not run in CI.
+Tests for these scripts live in `scripts/__tests__/` and run in Backend Unit Tests via `npx jest --config ../scripts/jest.config.js` (from `backend/`, which supplies jest and fast-check). Run the same command locally after changing a script.
+
+New scripts: `process.exit(1)` on failure, export logic and guard with `if (require.main === module) main();`, add a step in `ci.yml`, add tests in `scripts/__tests__/`.
+
+Other scripts: `health-check.sh` and `rollback.sh` (used by the Deployment Health Check job), `build-and-push.ps1`, `deploy-feature-preview.ps1`, `create-feature-branch.ps1`, `promote-feature.ps1`, `create-pr-from-main.ps1`, `run-test-summary.ps1`, `install-git-hooks.ps1` + `git-hooks/pre-commit`.
 
 ## Workflow Facts
 

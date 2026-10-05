@@ -181,25 +181,6 @@ Default behaviour:
 | `-SkipDeploy` | Push the environment tag but do not touch any container | Off |
 | `-ComposeFile` | Compose file used for deploy | `docker-compose.yml` |
 
-## Alternative: Local Release Script
-
-`scripts/deploy-to-production.ps1` performs the release from your machine instead of GitHub Actions:
-
-```powershell
-.\scripts\deploy-to-production.ps1 -BumpType PATCH -Description "Bug fixes"
-.\scripts\deploy-to-production.ps1 -BumpType MINOR -Description "New feature" -SkipStaging
-.\scripts\deploy-to-production.ps1 -BumpType PATCH -Description "Test" -DryRun
-```
-
-It requires a clean `main` checkout and `gh`, then: creates `release/vX.Y.Z`, updates the version files, builds the frontend, commits and pushes, opens the PR, polls PR checks for up to `-CITimeout` seconds (default 600) and merges (or waits for you to merge), creates and pushes the `vX.Y.Z` git tag, polls GHCR for the merge-commit image, then calls `build-and-push.ps1 -Environment staging`, asks for confirmation, and calls `build-and-push.ps1 -Environment latest`.
-
-Caveats compared with the Release workflow:
-- The release commit is a local `git commit`, so it must be signed with a key GitHub recognises or the ruleset blocks the merge.
-- Both promotions deploy with the repo `docker-compose.yml`; there is no `-SkipDeploy` passthrough.
-- Its `frontend/src/App.jsx` step no longer matches anything (the footer reads the version from `/api/version`).
-
-Prefer the Release workflow.
-
 ## Version-Bump Guardrails
 
 ### Pre-commit hook
@@ -210,7 +191,7 @@ Install once after cloning:
 .\scripts\install-git-hooks.ps1
 ```
 
-This copies `scripts/git-hooks/pre-commit` to `.git/hooks/pre-commit`. On `feature/*` and `hotfix/*` branches it blocks a commit when the staged diff adds a version string to `frontend/package.json`, `backend/package.json`, `frontend/src/App.jsx`, `frontend/src/components/system/BackupSettings.jsx`, `frontend/src/components/system/SystemModal.jsx` or `frontend/src/utils/changelog.js`. It does not check `CHANGELOG.md`. Bypass with `git commit --no-verify` (not recommended). If the hook does not run, check `Test-Path .git/hooks/pre-commit` and re-run the installer (on Linux/macOS it also needs to be executable).
+This copies `scripts/git-hooks/pre-commit` to `.git/hooks/pre-commit`. On `feature/*` and `hotfix/*` branches it blocks a commit when the staged diff adds a version string to `frontend/package.json`, `backend/package.json`, `frontend/src/components/system/BackupSettings.jsx`, `frontend/src/components/system/SystemModal.jsx` or `frontend/src/utils/changelog.js`. It does not check `CHANGELOG.md`. Bypass with `git commit --no-verify` (not recommended). If the hook does not run, check `Test-Path .git/hooks/pre-commit` and re-run the installer (on Linux/macOS it also needs to be executable).
 
 ### Version Consistency Check workflow
 

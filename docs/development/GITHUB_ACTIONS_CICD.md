@@ -163,16 +163,7 @@ Every run generates a metadata record uploaded as the `deployment-<sha>` artifac
 
 `status` is `success`, `rolled_back` (adds a `rollbackInfo` object) or `failed`.
 
-Docker images also include OCI labels for traceability (`org.opencontainers.image.version`, `org.opencontainers.image.revision`, etc.).
-
-To query deployment history, use `scripts/deployment-history.sh`:
-
-```bash
-# Get last 5 successful deployments
-./scripts/deployment-history.sh krazykrazz/Expense-Tracker 5
-```
-
-Requires `gh` CLI and `jq`.
+Docker images also include OCI labels for traceability (`org.opencontainers.image.version`, `org.opencontainers.image.revision`, etc.). The `deployment-<sha>` artifacts are kept for 30 days and can be downloaded from the workflow run.
 
 ## Workflow Configuration
 
@@ -270,7 +261,7 @@ backend-unit-tests:
 ```
 
 - **Node.js**: Version 22, npm cache, `npm install`
-- **Checks**: `node ../scripts/validate-test-naming.js`
+- **Checks**: `npx jest --config ../scripts/jest.config.js` (unit tests for the CI enforcement scripts in `scripts/__tests__/`)
 - **Test Command**: `npx cross-env NODE_ENV=test CI=true jest --bail --testPathIgnorePatterns=pbt --testPathIgnorePatterns="backup.*(integration|pbt)"` (backup suites run in PBT shard 1)
 - **Runtime budget**: `check-test-budget.js backend-unit-tests` (see [Runtime Budgets](#runtime-budgets))
 - **Conditional Execution**: Runs only if backend or shared files changed (or no filter matched, or path-filter failed)
@@ -320,7 +311,7 @@ frontend-tests:
 ```
 
 - **Node.js**: Version 22, npm cache, `npm install`
-- **Checks**: `node ../scripts/validate-test-naming.js`, `node ../scripts/validate-no-raw-fetch.js`
+- **Checks**: `node ../scripts/validate-no-raw-fetch.js`
 - **Test Command**: `npx vitest --run --exclude '**/App.performance.test.jsx'`
 - **CI settings** (`vitest.config.js` with `CI=true`): 2 forks, `retry: 2`, `bail: 1`, verbose reporter
 - **Runtime budget**: `check-test-budget.js frontend-tests`
@@ -567,7 +558,7 @@ After the merge, CI builds and pushes the image; promote it locally with `.\scri
 
 ## Version Consistency Check
 
-`.github/workflows/version-check.yml` runs on PRs to `main` that touch `frontend/package.json`, `backend/package.json`, `frontend/src/App.jsx`, `BackupSettings.jsx`, `SystemModal.jsx`, `frontend/src/utils/changelog.js` or `CHANGELOG.md`:
+`.github/workflows/version-check.yml` runs on PRs to `main` that touch `frontend/package.json`, `backend/package.json`, `BackupSettings.jsx`, `SystemModal.jsx`, `frontend/src/utils/changelog.js` or `CHANGELOG.md`:
 
 - **Non-`release/*` branches** — `Guard Against PR Version Bumps` fails if the diff adds a version string to any of those files except `CHANGELOG.md`. Version bumps belong in the Release workflow
 - **`release/*` branches** — `Validate Version Consistency` checks that `backend/package.json`, `frontend/package.json` and `changelog.js` agree, and that `CHANGELOG.md`, `BackupSettings.jsx` and `SystemModal.jsx` contain the version

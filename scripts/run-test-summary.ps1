@@ -432,6 +432,7 @@ if ($runParallel) {
         param($dir, $outPath, $fastPbt)
         $start = Get-Date
         Set-Location $dir
+        $env:NODE_ENV = 'test'
         if ($fastPbt) { $env:FAST_PBT = "true" }
         # Run unit tests (no DB writes) in parallel, exclude integration/backup tests that share SQLite DB
         $raw1 = & npx jest --no-coverage --forceExit --maxWorkers=75% --testPathIgnorePatterns="integration|backupService" 2>&1
@@ -559,6 +560,8 @@ if (-not $runParallel -and -not $SkipBackend) {
 
     $backendRawPath = Join-Path $OutputDir "test-backend-raw.txt"
     Push-Location (Join-Path $projectRoot "backend")
+    $previousNodeEnv = $env:NODE_ENV
+    $env:NODE_ENV = 'test'
     try {
         # Run unit tests (no DB writes) in parallel, exclude integration/backup tests that share SQLite DB
         $backendRaw1 = & npx jest --no-coverage --forceExit --maxWorkers=75% --testPathIgnorePatterns="integration|backupService" 2>&1
@@ -566,6 +569,7 @@ if (-not $runParallel -and -not $SkipBackend) {
         $backendRaw2 = & npx jest --no-coverage --forceExit --runInBand --testPathPatterns="integration|backupService" 2>&1
         $backendRaw = $backendRaw1 + $backendRaw2
     } finally {
+        $env:NODE_ENV = $previousNodeEnv
         Pop-Location
     }
 

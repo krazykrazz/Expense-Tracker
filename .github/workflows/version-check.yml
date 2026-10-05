@@ -6,7 +6,6 @@ on:
     paths:
       - 'frontend/package.json'
       - 'backend/package.json'
-      - 'frontend/src/App.jsx'
       - 'frontend/src/components/system/BackupSettings.jsx'
       - 'frontend/src/components/system/SystemModal.jsx'
       - 'frontend/src/utils/changelog.js'
@@ -32,7 +31,7 @@ jobs:
           
           # Check if any version files changed
           VERSION_CHANGED=false
-          for file in frontend/package.json backend/package.json frontend/src/App.jsx frontend/src/components/system/BackupSettings.jsx frontend/src/components/system/SystemModal.jsx frontend/src/utils/changelog.js; do
+          for file in frontend/package.json backend/package.json frontend/src/components/system/BackupSettings.jsx frontend/src/components/system/SystemModal.jsx frontend/src/utils/changelog.js; do
             if echo "$CHANGED_FILES" | grep -q "^$file$"; then
               if git diff origin/main...HEAD "$file" | grep -E "^\+.*\"version\":|^\+.*v[0-9]+\.[0-9]+\.[0-9]+|^\+.*version:[[:space:]]*'?[0-9]+\.[0-9]+\.[0-9]+'?"; then
                 VERSION_CHANGED=true
@@ -53,12 +52,11 @@ jobs:
           echo "❌ ERROR: Version bump detected in Pull Request!"
           echo ""
           echo "Version bumps must NOT be included in feature/hotfix branch PRs."
-          echo "They should only happen via the Release workflow or deploy script."
+          echo "They should only happen via the Release workflow."
           echo ""
           echo "Correct workflow:"
           echo "  1. Merge this PR to main (without version changes)"
           echo "  2. Use Actions → Release workflow to create a release PR"
-          echo "  3. Or: .\scripts\deploy-to-production.ps1"
           echo ""
           echo "See: docs/deployment/DEPLOYMENT_WORKFLOW.md"
           exit 1

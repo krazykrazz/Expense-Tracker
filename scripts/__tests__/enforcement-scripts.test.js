@@ -1,15 +1,15 @@
 /**
  * Unit tests for CI enforcement scripts:
- *   - validate-test-naming.js
  *   - validate-pbt-guardrails.js
  *   - report-test-health.js
+ *   - check-test-budget.js
+ *   - validate-no-raw-fetch.js
  */
 
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
 
-const { classifyTestFile, validateTestNaming } = require('../validate-test-naming');
 const { hasInvariantComment, hasDirectDbImport, isUnitTestFile, validatePbtGuardrails } = require('../validate-pbt-guardrails');
 const { classifyFile, generateReport, formatMarkdown, formatPlainText } = require('../report-test-health');
 const { checkBudget, loadBudget } = require('../check-test-budget');
@@ -29,68 +29,6 @@ function createTempTestDir(files) {
 function cleanupTempDir(dir) {
   fs.rmSync(dir, { recursive: true, force: true });
 }
-
-// ─── validate-test-naming.js ───
-
-describe('validate-test-naming', () => {
-  describe('classifyTestFile', () => {
-    test('classifies *.unit.test.js as unit', () => {
-      expect(classifyTestFile('services/foo.unit.test.js')).toBe('unit');
-    });
-
-    test('classifies *.integration.test.js as integration', () => {
-      expect(classifyTestFile('services/foo.integration.test.js')).toBe('integration');
-    });
-
-    test('classifies *.pbt.test.js as pbt', () => {
-      expect(classifyTestFile('services/foo.pbt.test.js')).toBe('pbt');
-    });
-
-    test('classifies *.pbt.test.jsx as pbt', () => {
-      expect(classifyTestFile('components/Bar.pbt.test.jsx')).toBe('pbt');
-    });
-
-    test('classifies plain *.test.js as transition', () => {
-      expect(classifyTestFile('services/foo.test.js')).toBe('transition');
-    });
-
-    test('classifies plain *.test.jsx as transition', () => {
-      expect(classifyTestFile('components/Bar.test.jsx')).toBe('transition');
-    });
-  });
-
-  describe('validateTestNaming (filesystem)', () => {
-    let tmpDir;
-
-    afterEach(() => {
-      if (tmpDir) cleanupTempDir(tmpDir);
-    });
-
-    test('finds no violations with valid filenames', () => {
-      tmpDir = createTempTestDir({
-        'backend/services/foo.pbt.test.js': '',
-        'backend/services/bar.test.js': '',
-        'frontend/src/utils/baz.integration.test.js': '',
-      });
-      const result = validateTestNaming(tmpDir);
-      expect(result.violations).toHaveLength(0);
-      expect(result.allFiles).toHaveLength(3);
-    });
-
-    test('counts categories correctly', () => {
-      tmpDir = createTempTestDir({
-        'backend/a.pbt.test.js': '',
-        'backend/b.pbt.test.js': '',
-        'backend/c.integration.test.js': '',
-        'frontend/src/d.test.jsx': '',
-      });
-      const result = validateTestNaming(tmpDir);
-      expect(result.classified.pbt).toHaveLength(2);
-      expect(result.classified.integration).toHaveLength(1);
-      expect(result.classified.transition).toHaveLength(1);
-    });
-  });
-});
 
 // ─── validate-pbt-guardrails.js ───
 
@@ -329,19 +267,23 @@ describe('report-test-health', () => {
 // ─── check-test-budget.js ───
 
 describe('check-test-budget', () => {
+  const budgets = loadBudget(path.resolve(__dirname, '../..')).budgets;
+  const unitMax = budgets['backend-unit-tests'].maxSeconds;
+  const shardMax = budgets['backend-pbt-shard'].maxSeconds;
+
   describe('checkBudget', () => {
     test('passes when elapsed time is within budget', () => {
-      const result = checkBudget('backend-unit-tests', 120, '');
+      const result = checkBudget('backend-unit-tests', unitMax, '');
       expect(result.passed).toBe(true);
       expect(result.skipped).toBe(false);
-      expect(result.elapsedSeconds).toBe(120);
+      expect(result.elapsedSeconds).toBe(unitMax);
     });
 
     test('fails when elapsed time exceeds budget', () => {
-      const result = checkBudget('backend-unit-tests', 500, '');
+      const result = checkBudget('backend-unit-tests', unitMax + 1, '');
       expect(result.passed).toBe(false);
-      expect(result.elapsedSeconds).toBe(500);
-      expect(result.maxSeconds).toBe(300);
+      expect(result.elapsedSeconds).toBe(unitMax + 1);
+      expect(result.maxSeconds).toBe(unitMax);
     });
 
     test('skips when commit message contains [skip-budget]', () => {
@@ -357,13 +299,13 @@ describe('check-test-budget', () => {
     });
 
     test('checks PBT shard budget correctly', () => {
-      const result = checkBudget('backend-pbt-shard', 500, '');
+      const result = checkBudget('backend-pbt-shard', shardMax, '');
       expect(result.passed).toBe(true);
-      expect(result.maxSeconds).toBe(600);
+      expect(result.maxSeconds).toBe(shardMax);
     });
 
     test('fails PBT shard when over budget', () => {
-      const result = checkBudget('backend-pbt-shard', 700, '');
+      const result = checkBudget('backend-pbt-shard', shardMax + 1, '');
       expect(result.passed).toBe(false);
     });
   });

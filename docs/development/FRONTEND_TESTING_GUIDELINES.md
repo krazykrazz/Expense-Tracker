@@ -60,7 +60,6 @@ npm run test:parallel             # forks pool, maxForks=75%
 npm run test:watch                # watch mode
 npm run test:changed              # only tests affected by uncommitted changes
 npm run test:core                 # also: test:sections, test:people, test:futureMonths, test:dataPreservation
-npm run test:perf                 # node ../scripts/measure-test-performance.js
 ```
 
 **Always validate with `CI=true` before pushing.** `vitest.config.js`, `vitest.setup.js` and `src/test/pbtArbitraries.js` all branch on CI detection, so a suite can pass locally and fail in CI:

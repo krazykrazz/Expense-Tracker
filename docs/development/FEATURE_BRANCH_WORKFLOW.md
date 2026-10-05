@@ -94,25 +94,6 @@ Steps:
 
 After the PR merges, `git pull origin main` brings local `main` up to date (a fast-forward, since the merge commit contains your commits).
 
-### git-helpers.ps1
-
-Dot-source it to load helper functions into the current session:
-
-```powershell
-. .\scripts\git-helpers.ps1
-```
-
-| Function | Action |
-|----------|--------|
-| `Show-Branches` | List local and remote branches |
-| `Show-Status` | `git status` plus the last 5 commits |
-| `Show-FeatureBranches` | Local `feature/*` branches with last-commit age |
-| `Sync-WithMain` | Pull `origin/main` into `main`, then merge `main` into the current branch |
-| `New-FeatureBranch [-Name]` | Calls `create-feature-branch.ps1` |
-| `Promote-Feature [-Name] [-SkipTests]` | Calls `promote-feature.ps1`; the name defaults to the current `feature/*` branch |
-| `Remove-FeatureBranch [-Name]` | Deletes `feature/<name>` locally (`git branch -d`) and on `origin` |
-| `Show-Help` | List the functions |
-
 ## Branch Protection Rules
 
 `main` is protected by a repository ruleset:

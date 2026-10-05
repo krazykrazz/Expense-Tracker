@@ -10,7 +10,6 @@ if [[ $BRANCH == feature/* ]] || [[ $BRANCH == hotfix/* ]]; then
     VERSION_FILES=(
         "frontend/package.json"
         "backend/package.json"
-        "frontend/src/App.jsx"
         "frontend/src/components/system/BackupSettings.jsx"
         "frontend/src/components/system/SystemModal.jsx"
         "frontend/src/utils/changelog.js"
@@ -22,7 +21,7 @@ if [[ $BRANCH == feature/* ]] || [[ $BRANCH == hotfix/* ]]; then
             if git diff --cached "$file" | grep -E "^\+.*\"version\":|^\+.*v[0-9]+\.[0-9]+\.[0-9]+|^\+.*version:[[:space:]]*'?[0-9]+\.[0-9]+\.[0-9]+'?"; then
                 echo "❌ ERROR: Version bump detected on feature/hotfix branch!"
                 echo ""
-                echo "Version bumps must only happen on 'main' branch after merge."
+                echo "Version bumps happen only on release/vX.Y.Z branches created by the Release workflow."
                 echo ""
                 echo "Current branch: $BRANCH"
                 echo "Modified file: $file"
@@ -30,7 +29,7 @@ if [[ $BRANCH == feature/* ]] || [[ $BRANCH == hotfix/* ]]; then
                 echo "To fix:"
                 echo "  1. Unstage version changes: git reset HEAD $file"
                 echo "  2. Commit other changes"
-                echo "  3. Merge to main first, then bump version"
+                echo "  3. After merging, release with: gh workflow run release.yml"
                 echo ""
                 exit 1
             fi

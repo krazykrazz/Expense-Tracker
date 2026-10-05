@@ -32,6 +32,6 @@ Write-Host ""
 Write-Host "Git hooks installed successfully!" -ForegroundColor Green
 Write-Host ""
 Write-Host "The pre-commit hook will now:" -ForegroundColor Cyan
-Write-Host "  • Block version bumps on feature branches" -ForegroundColor Gray
-Write-Host "  • Ensure version changes only happen on main" -ForegroundColor Gray
+Write-Host "  • Block version bumps on feature/hotfix branches" -ForegroundColor Gray
+Write-Host "  • Versions change only via the Release workflow" -ForegroundColor Gray
 Write-Host ""

@@ -50,7 +50,7 @@ Write-Host ""
 Write-Host "✅ Feature branch '$BranchName' created successfully!" -ForegroundColor Green
 Write-Host ""
 Write-Host "Next steps:" -ForegroundColor Cyan
-Write-Host "1. Start implementing tasks from .kiro/specs/$FeatureName/tasks.md" -ForegroundColor White
+Write-Host "1. Start implementing tasks from specs/$FeatureName/spec.md" -ForegroundColor White
 Write-Host "2. Commit changes regularly: git add . && git commit -m 'feat: description'" -ForegroundColor White
 Write-Host "3. Push changes: git push origin $BranchName" -ForegroundColor White
 Write-Host "4. When ready to promote: .\scripts\promote-feature.ps1 -FeatureName $FeatureName" -ForegroundColor White

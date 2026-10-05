@@ -1396,7 +1396,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Updated `backend/services/budgetService.js` to use logger
   - Updated `backend/services/backupService.js` to use logger (9 statements)
   - Added configurable log levels via `LOG_LEVEL` environment variable (debug, info, warn, error)
-  - Created logging best practices documentation in `.kiro/steering/logging-best-practices.md`
+  - Created logging best practices documentation
 - Income sources now include category in all CRUD operations
 - Income Management Modal enhanced with category selectors and breakdown display
 - Annual Summary enhanced with income category visualization

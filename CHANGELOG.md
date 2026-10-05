@@ -32,113 +32,90 @@
 
 ### Anchor credit-card current balance to latest billing cycle to prevent historical drift
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 ## [1.9.4] - 2026-06-06
 
 ### Performance fixes
+
 ## [1.9.3] - 2026-06-06
 
 ### Mortgage form bug fixes, audit cleanup, performance optimizations
+
 ## [1.9.2] - 2026-06-01
 
 ### Optimizations to support historical data import
+
 ## [1.9.1] - 2026-05-31
 
 ### Fix loan historical-balance discrepancy and mortgage auto-payment balance drift
+
 ## [1.9.0] - 2026-05-31
 
 ### Phase 1 UX improvements, CI optimizations, event dedup fix, LOC payment tracking
+
 ## [1.8.0] - 2026-05-30
 
 ### UI/UX improvements: code splitting, accessible confirm dialogs, keyboard autocomplete
+
 ## [1.7.1] - 2026-05-07
 
 ### Add posted indicator icon on expense rows
+
 ## [1.7.0] - 2026-05-06
 
 ### Mortgage rate edit, rate history, projection payment fix
+
 ## [1.6.1] - 2026-05-02
 
 ### Fix LOC payment suppression, budget alert overflow, project cleanup
+
 ## [1.6.0] - 2026-04-18
 
 ### Mortgage detail view redesign: KPI strip and tabbed layout
+
 ## [1.5.1] - 2026-03-22
 
 ### Fix anomaly baseline to use monthly totals
+
 ## [1.5.0] - 2026-03-21
 
 ### Actionable anomaly alerts with enriched detection, suppression pipeline, alert prioritization, and redesigned UX
+
 ## [1.4.0] - 2026-03-14
 
 ### Frontend component domain grouping
+
 ## [1.3.3] - 2026-03-02
 
 ### Fix statement balance payment calculation
+
 ## [1.3.2] - 2026-03-01
 
 ### Fix loan/mortgage reminder balance status check
+
 ## [1.3.1] - 2026-02-28
 
 ### Fix budget copy-from-previous-month bugs
+
 ## [1.3.0] - 2026-02-28
 
 ### Mortgage balance interest tracking, UI refresh fix
+
 ## [1.2.4] - 2026-02-28
 
 ### Anchor-based balance calculation fix for loans and financial overview
+
 ## [1.2.3] - 2026-02-28
 
 ### Fix: use calculated balance as source of truth, fix PBT test cleanup
+
 ## [1.2.2] - 2026-02-27
 
 ### CI pipeline hardening, health check fixes, script cleanup
+
 ## [1.2.1] - 2026-02-27
 
 ### Fix version upgrade modal stale bundle deferral
+
 ## [1.2.0] - 2026-02-27
 
 ### Added
@@ -159,9 +136,6 @@
 ## [1.1.1] - 2026-02-26
 
 ### Fix backup SQLITE_MISUSE and posted date PBT race condition
-> For release history prior to 1.0.0 (formerly v1.0.0–v5.17.5), see [CHANGELOG.pre-1.0.md](CHANGELOG.pre-1.0.md).
-
-## [Unreleased]
 
 ## [1.1.0] - 2026-02-25
 
@@ -189,3 +163,7 @@
 - Removed ~1744 auto-migration backup files
 - Removed backward-compatibility fallback patterns in billing cycle repository
 - Updated all product documentation to reflect consolidated schema
+
+---
+
+For release history prior to 1.0.0 (formerly v1.0.0–v5.17.5), see [CHANGELOG.pre-1.0.md](CHANGELOG.pre-1.0.md).

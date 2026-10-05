@@ -82,7 +82,6 @@ function shouldWorkflowTrigger(changedFiles) {
   const ignoredPatterns = [
     'docs/',
     '.md',
-    'docs/steering/',
     'CHANGELOG.md'
   ];
   

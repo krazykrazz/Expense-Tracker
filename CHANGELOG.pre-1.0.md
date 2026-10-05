@@ -1,46 +1,6 @@
-# Changelog
+# Changelog (pre-1.0 history)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+Historical release notes for versions 1.0.0–5.17.5, before the version was rebased to 1.0.0 on 2026-02-23. Current releases are in [CHANGELOG.md](CHANGELOG.md).
 
 ## [5.17.5] - 2026-02-23
 
@@ -1436,7 +1396,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Updated `backend/services/budgetService.js` to use logger
   - Updated `backend/services/backupService.js` to use logger (9 statements)
   - Added configurable log levels via `LOG_LEVEL` environment variable (debug, info, warn, error)
-  - Created logging best practices documentation in `.kiro/steering/logging-best-practices.md`
+  - Created logging best practices documentation
 - Income sources now include category in all CRUD operations
 - Income Management Modal enhanced with category selectors and breakdown display
 - Annual Summary enhanced with income category visualization

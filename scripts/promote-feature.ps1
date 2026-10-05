@@ -196,12 +196,13 @@ if (-not $SkipTests) {
 }
 
 # Check for spec completion (if spec exists)
-$specPath = ".kiro/specs/$FeatureName"
+$specPath = "specs/$FeatureName"
 if (Test-Path $specPath) {
     Write-Host "📋 Spec found at $specPath" -ForegroundColor Cyan
     
-    # Check if tasks.md exists and count completed tasks
-    $tasksPath = "$specPath/tasks.md"
+    # Single-file specs keep tasks in spec.md; older specs use a separate tasks.md
+    $tasksPath = "$specPath/spec.md"
+    if (-not (Test-Path $tasksPath)) { $tasksPath = "$specPath/tasks.md" }
     if (Test-Path $tasksPath) {
         $tasksContent = Get-Content $tasksPath -Raw
         $totalTasks = ([regex]::Matches($tasksContent, '- \[[ x]\]')).Count

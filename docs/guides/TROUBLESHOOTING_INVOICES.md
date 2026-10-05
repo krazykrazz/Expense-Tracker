@@ -668,8 +668,8 @@ tail -100 backend/logs/app.log
 curl -X POST http://localhost:2424/api/invoices/upload \
   -F "expenseId=123" \
   -F "invoice=@test.pdf" \
-  -F "personId=5" \
-  --cookie "session=your_session_cookie"
+  -F "personId=5"
+# If a password is set, add: -H "Authorization: Bearer <accessToken>"
 ```
 
 ### Check Invoice Count Per Expense (v4.13.0+)

@@ -2,7 +2,7 @@
   "name": "expense-tracker",
   "private": true,
   "description": "Full-stack expense tracking application",
-  "//version": "Intentionally omitted. The release version lives in backend/package.json and frontend/package.json — see docs/steering/versioning.md.",
+  "//version": "Intentionally omitted. The release version lives in backend/package.json and frontend/package.json — see .github/instructions/release.instructions.md.",
   "scripts": {
     "install-all": "npm install && cd frontend && npm install && cd ../backend && npm install",
     "build": "cd frontend && npm run build",
@@ -22,7 +22,7 @@
     "sqlite"
   ],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "devDependencies": {
     "@eslint/js": "^9.39.5",
     "baseline-browser-mapping": "^2.11.25",

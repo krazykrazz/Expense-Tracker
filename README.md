@@ -27,10 +27,10 @@ For detailed setup, version tags, and configuration options, see the **[Docker D
 # Install dependencies
 npm run install-all
 
-# Start backend (port 2424)
+# Start backend (port 2626 outside Docker)
 cd backend && npm start
 
-# Start frontend dev server (port 5173)
+# Start frontend dev server (port 5173, proxies /api to 2626)
 cd frontend && npm run dev
 ```
 
@@ -40,7 +40,8 @@ See **[Startup Guide](./docs/guides/STARTUP_GUIDE.md)** for detailed development
 
 ### Core Functionality
 - 📝 **Expense Management** - Add, edit, delete expenses with smart category suggestions and payment method memory
-- 🔍 **Global Filtering** - Search and filter expenses across all time periods by category, payment method, year
+- 🔍 **Global Filtering** - Search and filter expenses across all time periods by category, payment method, year, and custom date range (with quick presets)
+- 🗂️ **Expense List** - Date-grouped list with quick views (Needs review, Tax-deductible, Recurring), local filters, and pagination
 - 💳 **Payment Methods** - Configurable payment methods with credit card balance tracking and utilization indicators
 - 💰 **Income & Fixed Expenses** - Track multiple income sources and recurring expenses with categorization
 - 📊 **Budget Tracking** - Set budget limits with real-time alerts at 80%, 90%, and 100% thresholds
@@ -49,7 +50,8 @@ See **[Startup Guide](./docs/guides/STARTUP_GUIDE.md)** for detailed development
 - 💳 **Loans & Mortgages** - Track loans, lines of credit, and mortgages with payment history, interest-aware balance calculations, and balance override
 - 📈 **Investments** - Monitor TFSA and RRSP portfolios with value history and performance charts
 - 💎 **Net Worth** - Automatic calculation showing assets minus liabilities
-- 🏪 **Merchant Analytics** - Analyze spending patterns by merchant with trend charts and insights
+- 📊 **Analytics Hub** - Monthly summary, Spending and Cash Flow views over any period, merchant analytics, activity insights, and trends
+- 🚨 **Anomaly Alerts** - Actionable alerts for unusual spending, with dismiss and suppression rules
 
 ### Medical & Tax Features
 - 👨‍👩‍👧‍👦 **People Tracking** - Associate medical expenses with family members for tax preparation
@@ -62,7 +64,8 @@ See **[Startup Guide](./docs/guides/STARTUP_GUIDE.md)** for detailed development
 - 🔄 **Data Reminders** - Monthly reminders to update investments and loan balances
 - 📋 **Activity Log** - Comprehensive tracking of all data changes with automatic cleanup
 - ⚙️ **Settings & System** - Separate modals for user settings and system information
-- 🌐 **Multi-Device Access** - Access from any device on your local network
+- 🔒 **Optional Password** - Off by default; enable a password gate from Settings
+- 🌐 **Multi-Device Access** - Access from any device on your local network, kept in sync in real time
 
 For a complete feature list, see **[Feature Documentation](./docs/features/)**.
 
@@ -76,7 +79,6 @@ For a complete feature list, see **[Feature Documentation](./docs/features/)**.
 
 ### Getting Started
 - **[Docker Deployment Guide](./docs/guides/DOCKER_DEPLOYMENT.md)** - Complete Docker setup and configuration
-- **[Quick Build Guide](./docs/deployment/QUICK_BUILD_GUIDE.md)** - Building and publishing Docker images
 - **[Startup Guide](./docs/guides/STARTUP_GUIDE.md)** - First-time setup and configuration
 
 ### Features
@@ -84,10 +86,11 @@ For a complete feature list, see **[Feature Documentation](./docs/features/)**.
 - **[API Documentation](./docs/API_DOCUMENTATION.md)** - Complete API reference
 
 ### Development
-- **[Development Setup](./docs/development/)** - Local development environment setup
-- **[Testing Guidelines](./docs/development/FRONTEND_TESTING_GUIDELINES.md)** - Testing conventions and patterns
-- **[Project Steering](./docs/steering/README.md)** - Workflow rules, CI guardrails, and release conventions
-- **[Deployment Workflow](./docs/deployment/DEPLOYMENT_WORKFLOW.md)** - Production deployment process
+- **[Development Docs](./docs/development/)** - CI/CD, feature branch workflow, staging, validation utilities
+- **[Testing Rules](./.github/instructions/testing.instructions.md)** - How to run backend/frontend tests and CI guardrails
+- **[Frontend Testing Guidelines](./docs/development/FRONTEND_TESTING_GUIDELINES.md)** - Frontend test utilities and patterns
+- **[Project Conventions](./.github/copilot-instructions.md)** - Architecture, coding and git rules (also loaded by Copilot, with per-area rules in `.github/instructions/`)
+- **[Deployment Workflow](./docs/deployment/DEPLOYMENT_WORKFLOW.md)** - Image builds, releases, staging and production promotion
 
 ### Reference
 - **[CHANGELOG.md](./CHANGELOG.md)** - Version history and release notes
@@ -143,7 +146,7 @@ expense-tracker/
 └── scripts/          # Deployment and utility scripts
 ```
 
-For detailed architecture information, see **[Development Documentation](./docs/development/)**.
+For architecture and conventions, see **[Project Conventions](./.github/copilot-instructions.md)**.
 
 ## API Reference
 

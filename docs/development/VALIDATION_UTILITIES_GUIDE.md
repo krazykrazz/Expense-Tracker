@@ -36,34 +36,19 @@ Location: `backend/middleware/validateYearMonth.js`
 
 ### `validateYearMonth(source = 'query')`
 
-Validates year/month values from:
+Validates `year` (1900–2100) and `month` (1–12) from `req.query`, `req.params` or `req.body`, responding `400` on failure. On success it sets `req.validatedYear` and `req.validatedMonth`.
 
-- `query`
-- `params`
-- `body`
-
-Validated values are attached to the request object.
+No route currently mounts this middleware; services call the `validators.js` `validateYearMonth(year, month)` utility instead.
 
 ## Error Handling
 
-Location: `backend/middleware/errorHandler.js`
-
-### `errorHandler`
-
-Centralized Express error-handling middleware. It should remain the last middleware registered in the app.
-
-### `asyncHandler`
-
-Wrapper for async route handlers so thrown errors flow into the centralized error handler.
+Location: `backend/middleware/errorHandler.js` — `errorHandler` (registered last in `server.js`) and `asyncHandler`. See [backend.instructions.md](../../.github/instructions/backend.instructions.md) for current usage and the migration target.
 
 ## Current Recommendation
 
 Use these shared validators and middleware instead of re-implementing inline validation in new controllers and services.
 
-This is especially important while the backend continues migrating toward broader `asyncHandler` + centralized error handling usage.
-
 ## Related Docs
 
+- [Backend instructions](../../.github/instructions/backend.instructions.md)
 - [Tech Debt](../TECH-DEBT.md)
-- [Architecture Analysis](./ARCHITECTURE_ANALYSIS.md)
-- [Testing Steering](../steering/testing.md)

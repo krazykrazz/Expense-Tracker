@@ -1,573 +1,133 @@
-# Feature Branch Promotion Model
+# Feature Branch Workflow
 
-**Last Updated**: February 8, 2026  
-**Status**: Active
+Branch conventions and the local scripts that create branches and open PRs. Related documents:
 
-This document outlines the feature branch promotion workflow for the Expense Tracker application, ensuring clean development practices and stable main branch deployments.
+- [Deployment Workflow](../deployment/DEPLOYMENT_WORKFLOW.md) — the end-to-end process (PR → staging → release → production)
+- [Agent instructions](../../.github/copilot-instructions.md) — branch protection and merge rules (summary)
+- [GitHub Actions CI/CD](./GITHUB_ACTIONS_CICD.md) — the checks that run on a PR
 
-## Branch Strategy
+## Branches
 
-### Branch Types
+| Branch | Created by | Notes |
+|--------|------------|-------|
+| `main` | — | Protected: PRs only, required checks `Backend Tests Status` and `Frontend Tests Status`, branch must be up to date, signed commits, merge commits only |
+| `feature/<kebab-name>` | `create-feature-branch.ps1` or `git checkout -b` | Promoted with `promote-feature.ps1` |
+| `hotfix/<yyyyMMdd-HHmmss>` | `create-pr-from-main.ps1` | Temporary branch for commits made on local `main` |
+| `release/vX.Y.Z` | Release workflow (`release.yml`) | The only branches that may change version numbers |
 
-1. **main** - Production-ready code, always deployable
-2. **feature/[feature-name]** - Individual feature development
-3. **hotfix/[issue-description]** - Critical production fixes
-4. **release/[version]** - Release preparation (optional for small team)
+Other prefixes (e.g. `docs/...`) work with plain `git` and `gh pr create`; the scripts below only handle `feature/` and `hotfix/`.
 
-### Branch Naming Convention
+The pre-commit hook installed by `.\scripts\install-git-hooks.ps1` blocks staged version bumps on `feature/*` and `hotfix/*` branches, and the `Version Consistency Check` workflow flags them on any non-`release/*` PR. See [Version-Bump Guardrails](../deployment/DEPLOYMENT_WORKFLOW.md#version-bump-guardrails).
 
-- **Feature branches**: `feature/budget-alert-notifications`
-- **Hotfix branches**: `hotfix/fix-merchant-analytics-calculation`
-- **Release branches**: `release/v1.9.1` (if used)
+## Choosing a Path
 
-## Feature Development Workflow
+| Situation | Use |
+|-----------|-----|
+| New feature or multi-commit work | Feature branch + `promote-feature.ps1` |
+| Small fix already committed (or ready to commit) on local `main` | `create-pr-from-main.ps1` |
+| Version bump / release | Release workflow — see [Deployment Workflow](../deployment/DEPLOYMENT_WORKFLOW.md#phase-4-release-version-bump) |
 
-### 1. Starting a New Feature
+All paths end in a PR; nothing can be pushed to `main` directly.
 
-```bash
-# Ensure main is up to date
-git checkout main
-git pull origin main
+## Scripts
 
-# Create and switch to feature branch
-git checkout -b feature/budget-alert-notifications
+Run all scripts from the repository root in PowerShell. PR creation needs the [GitHub CLI](https://cli.github.com/) (`gh`); without it the scripts print a compare URL for creating the PR in the browser.
 
-# Push feature branch to remote
-git push -u origin feature/budget-alert-notifications
-```
-
-### 2. Development Process
-
-```bash
-# Make changes and commit regularly
-git add .
-git commit -m "feat: implement BudgetAlertBanner component"
-
-# Push changes to feature branch
-git push origin feature/budget-alert-notifications
-
-# Keep feature branch updated with main (recommended weekly)
-git checkout main
-git pull origin main
-git checkout feature/budget-alert-notifications
-git merge main
-```
-
-### 3. Feature Completion and Testing
-
-Before promoting to main, ensure:
-- [ ] All feature tasks completed
-- [ ] All tests passing (unit, property-based, integration)
-- [ ] Code reviewed (self-review minimum)
-- [ ] Documentation updated
-- [ ] CHANGELOG.md updated
-
-Note: version bumping is handled in the release workflow on `main`/`release` branches, not on feature branches.
-
-### 4. Promotion to Main (via PR)
-
-The default promotion method creates a Pull Request, allowing CI to run before merging:
+### create-feature-branch.ps1
 
 ```powershell
-# Run the promotion script (creates a PR by default)
-.\scripts\promote-feature.ps1 -FeatureName budget-alert-notifications
+.\scripts\create-feature-branch.ps1 -FeatureName my-feature
 ```
 
-The script will:
-1. Sync your feature branch with main
-2. Run local tests (unless `-SkipTests` is used)
-3. Push the feature branch to origin
-4. Create a PR via GitHub CLI (or provide web UI instructions)
+Checks out `main`, pulls `origin/main`, fails if `feature/my-feature` already exists locally, creates it and pushes it with upstream tracking. Its "next steps" output points at `specs/<name>/spec.md`.
 
-See [PR Workflow](#pr-workflow) below for details.
-
-## PR Workflow
-
-**Default behavior**: The promotion script creates a Pull Request instead of directly merging to main. This allows CI to run and verify the code before it reaches main.
-
-### Why Use PRs?
-
-- **CI Verification**: GitHub Actions runs automatically on PRs to main
-- **Visibility**: Clear place to see test status before merging
-- **Review**: Opportunity for code review (even self-review)
-- **History**: Clean merge commits in git history
-
-### Using the Promotion Script
+### promote-feature.ps1
 
 ```powershell
-# Create a PR for your feature (default behavior)
-.\scripts\promote-feature.ps1 -FeatureName your-feature
-
-# Skip local tests (CI will still run on the PR)
-.\scripts\promote-feature.ps1 -FeatureName your-feature -SkipTests
-
-# Force promotion even with incomplete tasks
-.\scripts\promote-feature.ps1 -FeatureName your-feature -Force
+.\scripts\promote-feature.ps1 -FeatureName my-feature
+.\scripts\promote-feature.ps1 -FeatureName my-feature -SkipTests
+.\scripts\promote-feature.ps1 -FeatureName my-feature -CreateIssue -IssueLabel enhancement
 ```
 
-### PR Creation Methods
+| Parameter | Description |
+|-----------|-------------|
+| `-FeatureName` | Required. Branch name without the `feature/` prefix |
+| `-SkipTests` | Skip the local test run (CI still runs on the PR) |
+| `-Force` | Proceed with uncommitted changes or incomplete spec tasks |
+| `-CreateIssue` | Create a GitHub issue first and add `Closes #N` to the PR body |
+| `-IssueLabel` | `bug` (default), `enhancement` or `chore` |
 
-#### Method 1: GitHub CLI (Recommended)
+Steps:
+1. Requires `feature/<name>` to exist locally and checks it out
+2. If any `backend/config/database/*.db-shm` / `*.db-wal` files are tracked, untracks them and commits the removal
+3. Stops on uncommitted changes unless `-Force`
+4. Pulls `origin/main` into local `main` and merges `main` into the feature branch; stops on conflicts
+5. Unless `-SkipTests`, runs `npm run test:parallel` in `frontend/` and then `backend/`, and stops if either fails
+6. If `specs/<name>/` exists, counts the task checkboxes in its `spec.md` (or `tasks.md` for older specs) and stops unless every task is checked or `-Force` is set
+7. Pushes the branch and runs `gh pr create --base main` with the title `feat: <Title Cased Name>`. If a PR already exists it prints its URL
 
-If you have the [GitHub CLI](https://cli.github.com/) installed, the script creates the PR automatically:
+The script never merges. Merge the PR once the required checks pass (`gh pr merge <number> --merge --delete-branch`).
 
-```
-🔗 Creating Pull Request via GitHub CLI...
+### create-pr-from-main.ps1
 
-🎉 Pull Request created successfully!
-
-PR URL: https://github.com/user/repo/pull/123
-
-Next steps:
-1. CI will run automatically on the PR
-2. Check CI status at the PR page
-3. When CI passes and ready to merge:
-   gh pr merge --merge --delete-branch
-   Or merge via the GitHub web UI
-```
-
-#### Method 2: Web UI Fallback
-
-If GitHub CLI is not installed, the script provides a URL for manual PR creation:
-
-```
-⚠️  GitHub CLI (gh) not found
-To install: https://cli.github.com/
-
-Create your PR manually via the GitHub web UI:
-
-Open this URL to create the PR:
-https://github.com/user/repo/compare/main...feature/your-feature?expand=1
-
-Suggested PR title: Your Feature
-```
-
-### After Creating the PR
-
-1. **CI runs automatically** - GitHub Actions tests run on the PR
-2. **Check status** - View results on the PR page or Actions tab
-3. **Merge when ready** - Use web UI or CLI:
-   ```bash
-   gh pr merge --merge --delete-branch
-   ```
-4. **Pull changes** - Update your local main:
-   ```bash
-   git checkout main
-   git pull origin main
-   ```
-
-### When to Use Direct Merge
-
-> **⚠️ Branch protection is active on `main`.** The `-DirectMerge` flag will be rejected by GitHub because direct pushes to `main` are blocked. All merges must go through a PR with passing status checks (`Backend Unit Tests`, `Backend PBT Shard 1/3`, `Backend PBT Shard 2/3`, `Backend PBT Shard 3/3`, `Frontend Tests`).
-
-The `-DirectMerge` flag is retained in the script for local-only development scenarios where GitHub branch protection does not apply, but it cannot be used for the production repository.
-
-**Note**: Direct merge still runs local tests and uses `--no-ff` for clean history.
-
-### Legacy Promotion (Manual)
-
-For reference, the manual promotion process (equivalent to `-DirectMerge`):
-
-```bash
-# Final sync with main
-git checkout main
-git pull origin main
-git checkout feature/budget-alert-notifications
-git merge main
-
-# Run final tests
-npm test
-
-# Switch to main and merge feature
-git checkout main
-git merge --no-ff feature/budget-alert-notifications
-
-# Push to main
-git push origin main
-
-# Clean up feature branch (optional)
-git branch -d feature/budget-alert-notifications
-git push origin --delete feature/budget-alert-notifications
-```
-
-## Hotfix Workflow
-
-For critical production issues:
-
-```bash
-# Create hotfix branch from main
-git checkout main
-git pull origin main
-git checkout -b hotfix/fix-critical-bug
-
-# Make fix and test
-# ... make changes ...
-git add .
-git commit -m "fix: resolve critical calculation error"
-
-# Merge back to main
-git checkout main
-git merge hotfix/fix-critical-bug
-git push origin main
-
-# Clean up
-git branch -d hotfix/fix-critical-bug
-git push origin --delete hotfix/fix-critical-bug
-```
-
-## Quick Fix PR Workflow
-
-For changes made directly on main that need CI verification before pushing, use the `create-pr-from-main.ps1` script.
-
-### When to Use Quick Fix PR
-
-Use this workflow when you've:
-- Made a quick bug fix directly on main
-- Updated version numbers or documentation on main
-- Made changes that should go through CI before pushing
-
-### Using the Script
+For commits made on local `main` (which cannot be pushed directly):
 
 ```powershell
-# Create a PR from changes on main
-.\scripts\create-pr-from-main.ps1 -Title "Fix calculation error in budget alerts"
-
-# With optional description
-.\scripts\create-pr-from-main.ps1 -Title "Update dependencies" -Description "Bump lodash to fix security vulnerability"
+.\scripts\create-pr-from-main.ps1 -Title "fix: correct budget rounding"
+.\scripts\create-pr-from-main.ps1 -Title "fix: correct budget rounding" -Description "Details" -CreateIssue
 ```
 
-### How It Works
+| Parameter | Description |
+|-----------|-------------|
+| `-Title` | Required. PR title, and the commit message if the script commits for you |
+| `-Description` | PR summary (defaults to the title) |
+| `-ResetMainToOrigin` | After pushing the branch, `git reset --hard origin/main` on local `main` (asks you to type `RESET`) |
+| `-CreateIssue` / `-IssueLabel` | As for `promote-feature.ps1` |
 
-1. **Verifies you're on main** - Script only works from main branch
-2. **Handles uncommitted changes** - Prompts to commit if needed
-3. **Creates temporary branch** - Named `hotfix/YYYYMMDD-HHMMSS`
-4. **Pushes branch to origin** - Makes it available for PR
-5. **Resets main** - Removes local commits from main
-6. **Creates PR** - Via GitHub CLI or provides web UI URL
+Steps:
+1. Requires the current branch to be `main`
+2. With uncommitted changes, offers to commit them with `-Title` as the message: staged changes only if anything is staged, otherwise everything (`git add -A`). Declining exits
+3. Fetches `origin/main` and stops if there are no commits in `origin/main..HEAD`
+4. Creates `hotfix/<yyyyMMdd-HHmmss>` at `HEAD`, pushes it and returns to `main`
+5. Leaves local `main` unchanged unless `-ResetMainToOrigin`
+6. Opens the PR with `gh pr create --base main`
 
-### Example Output
+After the PR merges, `git pull origin main` brings local `main` up to date (a fast-forward, since the merge commit contains your commits).
 
-```
-🔧 Creating PR from main branch changes
+### git-helpers.ps1
 
-✅ On main branch
-
-📝 Uncommitted changes detected:
- M backend/services/budgetService.js
-
-You have unstaged changes.
-Stage and commit all changes? (y/n) y
-💾 Staging and committing all changes...
-✅ Changes committed
-
-🔍 Checking for local commits...
-✅ Found local commits:
-   abc1234 Fix calculation error in budget alerts
-
-🌿 Creating temporary branch: hotfix/20260127-143022
-✅ Branch created
-📤 Pushing branch to origin...
-✅ Branch pushed to origin
-
-🔄 Resetting main to origin/main...
-
-🔗 Creating Pull Request via GitHub CLI...
-
-🎉 Pull Request created successfully!
-
-PR URL: https://github.com/user/repo/pull/124
-
-Next steps:
-1. CI will run automatically on the PR
-2. Check CI status at the PR page
-3. When CI passes, merge the PR:
-   gh pr merge hotfix/20260127-143022 --merge --delete-branch
-   Or merge via the GitHub web UI
-
-4. After merging, pull the changes:
-   git pull origin main
-
-📍 You are now on the main branch
-The hotfix branch 'hotfix/20260127-143022' is ready for PR review
-```
-
-### After Merging
-
-Once the PR is merged:
-
-```bash
-# Pull the merged changes back to main
-git pull origin main
-```
-
-### Quick Fix vs Feature Branch
-
-| Scenario | Use |
-|----------|-----|
-| New feature development | Feature branch + `promote-feature.ps1` |
-| Quick bug fix on main | `create-pr-from-main.ps1` |
-| Version bump on main | `create-pr-from-main.ps1` |
-| Documentation update | `create-pr-from-main.ps1` |
-| Emergency hotfix | `create-pr-from-main.ps1` |
-
-## Automated Scripts
-
-### Create Feature Branch Script
-
-The `scripts/create-feature-branch.ps1` script automates feature branch creation:
+Dot-source it to load helper functions into the current session:
 
 ```powershell
-# Create a new feature branch
-.\scripts\create-feature-branch.ps1 -FeatureName budget-alert-notifications
+. .\scripts\git-helpers.ps1
 ```
 
-This script:
-1. Ensures you're on an up-to-date main branch
-2. Creates the feature branch
-3. Pushes it to the remote
-
-### Promote Feature Script
-
-The `scripts/promote-feature.ps1` script handles feature promotion with PR support:
-
-```powershell
-# Create a PR (default behavior)
-.\scripts\promote-feature.ps1 -FeatureName budget-alert-notifications
-
-# Available parameters:
-#   -FeatureName    (required) Name of the feature (without 'feature/' prefix)
-#   -SkipTests      Skip running local tests before promotion
-#   -Force          Proceed even with incomplete tasks or uncommitted changes
-#   -DirectMerge    Bypass PR (blocked by branch protection on main)
-```
-
-**Default behavior (PR workflow)**:
-1. Verifies feature branch exists
-2. Checks for uncommitted changes
-3. Syncs with main (merges main into feature)
-4. Runs local tests (unless `-SkipTests`)
-5. Pushes feature branch to origin
-6. Creates PR via GitHub CLI (or provides web UI URL)
-
-**With `-DirectMerge` flag**:
-1. Steps 1-4 same as above
-2. Merges feature to main with `--no-ff`
-3. Pushes to origin/main
-4. Offers to delete feature branch
-
-## Integration with Existing Workflow
-
-### Version Management
-
-When promoting features, follow the existing version management rules:
-
-1. **Determine version bump type**:
-   - MAJOR: Breaking changes, database schema changes
-   - MINOR: New features (like budget-alert-notifications)
-   - PATCH: Bug fixes, small improvements
-
-2. **Update all version locations**:
-   - `frontend/package.json`
-   - `backend/package.json`
-   - `frontend/src/App.jsx` (footer)
-   - `frontend/src/components/SystemModal.jsx` (changelog)
-   - `frontend/src/utils/changelog.js` (centralized in-app changelog data)
-
-3. **Update CHANGELOG.md** with new version entry
-
-### Docker Integration
-
-The existing Docker build and push process targets GHCR:
-
-```powershell
-# After promoting to main - build and push to GHCR
-.\scripts\build-and-push.ps1
-```
-
-### Pre-deployment Checklist Integration
-
-Before promoting any feature, run through the existing pre-deployment checklist:
-
-1. **Specification Review**: Check `specs/` for completeness
-2. **Design Document Review**: Ensure implementation matches design
-3. **Code Quality**: Check for TODO/FIXME comments
-4. **Documentation**: Update README, feature docs
-5. **Testing**: All tests passing
-6. **Version Management**: Proper version bump applied
-
-## CI/CD Integration
-
-### GitHub Actions Workflows
-
-This project uses GitHub Actions for automated testing and Docker builds. The CI/CD integration works seamlessly with the feature branch model.
-
-### Automated Test Execution
-
-When you push to a feature branch or create a pull request, GitHub Actions automatically runs tests:
-
-| Event | Branches | What Runs |
-|-------|----------|-----------|
-| Push | `main`, `feature/**` | Backend + Frontend tests |
-| Pull Request | `main` | Backend + Frontend tests |
-| Merge to main | `main` | Docker build (optional) |
-
-### How CI/CD Interacts with Feature Branches
-
-1. **During Development**: Every push to your feature branch triggers the CI workflow
-2. **Pull Requests**: Opening a PR to main shows test status as a check
-3. **Before Promotion**: Ensure all CI checks pass before merging to main
-4. **After Merge**: Docker build workflow runs automatically on main
-
-### Viewing Workflow Results
-
-#### From GitHub UI
-1. Navigate to your repository on GitHub
-2. Click the **Actions** tab
-3. Select a workflow run to see details
-4. Click on individual jobs (Backend Tests, Frontend Tests) for logs
-
-#### From Pull Requests
-1. Open your pull request
-2. Scroll to the "Checks" section at the bottom
-3. Click "Details" next to any check to see logs
-4. All checks must pass (green) before merging
-
-#### Status Indicators
-- ✅ **Green checkmark**: All tests passed
-- ❌ **Red X**: Tests failed - click for details
-- 🟡 **Yellow dot**: Tests in progress
-- ⚪ **Gray circle**: Tests pending/queued
-
-### CI Workflow Details
-
-The CI workflow (`.github/workflows/ci.yml`) runs:
-
-**Backend Unit Tests** (Jest):
-- Runs in `backend/` directory
-- Uses Node.js 20
-- Parallel Jest workers with per-worker SQLite database isolation
-- Executes `npm run test:unit:ci`
-
-**Backend PBT Tests** (Jest, sharded):
-- 145 PBT test files split across 3 parallel shards
-- Each shard runs parallel Jest workers
-- Reduced iterations (`FAST_CHECK_NUM_RUNS=15`) for CI speed
-- Summary job aggregates results for branch protection
-
-**Frontend Tests** (Vitest):
-- Runs in `frontend/` directory
-- Uses Node.js 20
-- Excludes performance tests (`App.performance.test.jsx`)
-- Tests run in parallel for speed
-
-All jobs run simultaneously for fast feedback.
-
-### Docker Build Workflow
-
-The Docker build is integrated into the CI workflow (`ci.yml`). On merge to main, after all tests pass, the `build-and-push-ghcr` job:
-
-- Builds the Docker image
-- Pushes to GHCR with SHA, version, and `latest` tags
-- Creates GitHub releases
-
-For local deployment:
-```powershell
-.\scripts\build-and-push.ps1 -Environment latest
-```
-
-### Updated Promotion Checklist
-
-Before promoting a feature branch, verify:
-
-- [ ] All feature tasks completed
-- [ ] All tests passing locally
-- [ ] **CI workflow passing on GitHub** (after PR is created)
-- [ ] Code reviewed (self-review minimum)
-- [ ] Documentation updated
-- [ ] Version numbers updated
-- [ ] CHANGELOG.md updated
-
-### PR Merge Checklist
-
-After creating a PR:
-
-- [ ] CI checks pass (green checkmark on PR)
-- [ ] No merge conflicts
-- [ ] Ready to merge
-
-### Troubleshooting CI Failures
-
-**Tests pass locally but fail in CI:**
-- Check for environment-specific issues
-- Ensure all dependencies are in `package.json`
-- Look for timing-sensitive tests
-
-**CI is slow:**
-- Tests run in parallel by default
-- Performance tests are excluded
-- npm dependencies are cached
-
-**Docker build fails:**
-- Check Dockerfile syntax
-- Verify all required files are present
-- Review build logs in Actions tab
-
-See [GITHUB_ACTIONS_CICD.md](./GITHUB_ACTIONS_CICD.md) for detailed CI/CD documentation.
+| Function | Action |
+|----------|--------|
+| `Show-Branches` | List local and remote branches |
+| `Show-Status` | `git status` plus the last 5 commits |
+| `Show-FeatureBranches` | Local `feature/*` branches with last-commit age |
+| `Sync-WithMain` | Pull `origin/main` into `main`, then merge `main` into the current branch |
+| `New-FeatureBranch [-Name]` | Calls `create-feature-branch.ps1` |
+| `Promote-Feature [-Name] [-SkipTests]` | Calls `promote-feature.ps1`; the name defaults to the current `feature/*` branch |
+| `Remove-FeatureBranch [-Name]` | Deletes `feature/<name>` locally (`git branch -d`) and on `origin` |
+| `Show-Help` | List the functions |
 
 ## Branch Protection Rules
 
-Branch protection is **active** on the `main` branch with the following rules:
+`main` is protected by a repository ruleset:
 
-- **Require pull requests** — Direct pushes to `main` are blocked
-- **Required status checks**: `Backend Unit Tests`, `Backend PBT Shard 1/3`, `Backend PBT Shard 2/3`, `Backend PBT Shard 3/3`, `Frontend Tests`
-- **Require branches to be up to date** before merging
+- **Pull requests required** — direct pushes to `main` are rejected
+- **Required status checks**: `Backend Tests Status` and `Frontend Tests Status` (aggregate jobs; they pass as skipped when CI's path filter finds no relevant changes)
+- **Branches must be up to date** with `main` before merging
+- **Signed (verified) commits**
+- **Merge commits only** — squash and rebase are disabled. Keep a branch current by merging `main` into it, not rebasing
 
-### Impact on Workflow
+Emergency fixes also go through a PR — use `create-pr-from-main.ps1` for fast turnaround.
 
-- The `-DirectMerge` flag on `promote-feature.ps1` will be rejected by GitHub
-- All changes to `main` must go through a PR with passing CI
-- Emergency hotfixes still go through PRs — use `create-pr-from-main.ps1` for fast turnaround
+## Specs
 
-### Local Git Settings (Optional)
-
-```bash
-# Prevent accidental pushes to main
-git config branch.main.pushRemote no_push
-
-# Set up main branch to require explicit merge
-git config branch.main.merge refs/heads/main
-```
-
-## Feature Branch Lifecycle
-
-### 1. Planning Phase
-- Create spec in `specs/[feature-name]/`
-- Review requirements, design, and tasks
-- Estimate effort and timeline
-
-### 2. Development Phase
-- Create feature branch
-- Implement tasks incrementally
-- Commit frequently with descriptive messages
-- Push to feature branch regularly
-
-### 3. Testing Phase
-- Run all tests (unit, property-based, integration)
-- Manual testing of feature functionality
-- Cross-browser testing (if applicable)
-- Performance testing
-
-### 4. Review Phase
-- Self-review code changes
-- Update documentation
-- Verify all requirements met
-- Check integration with existing features
-
-### 5. Promotion Phase
-- Sync with main branch
-- Final testing
-- Merge to main
-- Deploy and monitor
+Feature work starts from `specs/<feature-name>/spec.md` (requirements, design and tasks in one file). Implement on `feature/<feature-name>`, tick the task checkboxes as you go (`promote-feature.ps1` checks them), and move the spec to `specs/archive/` once merged.
 
 ## Commit Message Convention
 
@@ -585,117 +145,38 @@ refactor(components): extract common alert logic
 
 Types: `feat`, `fix`, `docs`, `test`, `refactor`, `style`, `chore`
 
+Never bump versions on feature or hotfix branches; releases are cut by the Release workflow (see [Deployment Workflow](../deployment/DEPLOYMENT_WORKFLOW.md)).
+
 ## Rollback Strategy
 
-If issues are discovered after promotion:
+Revert through a PR, since `main` cannot be pushed to directly:
 
-### Quick Rollback
-```bash
-# Revert the merge commit
-git revert -m 1 <merge-commit-hash>
-git push origin main
+```powershell
+git fetch origin
+git checkout -b hotfix/revert-my-feature origin/main
+git revert -m 1 <merge-commit-sha>
+git push -u origin hotfix/revert-my-feature
+gh pr create --base main --title "revert: my-feature" --body "Reverts #<pr>"
 ```
 
-### Feature Branch Rollback
-```bash
-# Create hotfix branch to remove feature
-git checkout -b hotfix/rollback-feature-name
-# Remove feature code
-git commit -m "fix: rollback problematic feature"
-git checkout main
-git merge hotfix/rollback-feature-name
-git push origin main
-```
-
-## Best Practices
-
-### Do's
-- ✅ Keep feature branches focused on single features
-- ✅ Commit frequently with descriptive messages
-- ✅ Sync with main regularly to avoid conflicts
-- ✅ Run tests before promoting
-- ✅ Update documentation with features
-- ✅ Use descriptive branch names
-
-### Don'ts
-- ❌ Don't work directly on main branch
-- ❌ Don't create long-lived feature branches (>2 weeks)
-- ❌ Don't merge without testing
-- ❌ Don't skip version updates
-- ❌ Don't forget to update CHANGELOG.md
-- ❌ Don't leave feature branches undeleted
+To roll back a deployment without changing code, retag a known-good image — see [Rollback Procedure](../deployment/DEPLOYMENT_WORKFLOW.md#rollback-procedure).
 
 ## Troubleshooting
 
 ### Merge Conflicts
 ```bash
-# When conflicts occur during merge
-git status  # See conflicted files
-# Edit files to resolve conflicts
-git add .
-git commit -m "resolve merge conflicts"
+git merge main      # conflicts are reported here
+git status          # list conflicted files
+# resolve, then
+git add <files>
+git commit
 ```
 
 ### Lost Changes
 ```bash
-# Find lost commits
 git reflog
-git checkout <commit-hash>
-git checkout -b recovery-branch
+git checkout -b recovery-branch <commit-hash>
 ```
 
-### Accidental Main Push
-```bash
-# If you accidentally pushed to main
-git revert HEAD
-git push origin main
-```
-
-## Integration with Kiro Specs
-
-This workflow integrates seamlessly with the existing spec-driven development:
-
-1. **Spec Creation**: Create specs on main branch
-2. **Feature Development**: Implement spec tasks on feature branch
-3. **Task Tracking**: Use existing task status tools
-4. **Property Testing**: Run PBT tests on feature branch
-5. **Documentation**: Update docs before promotion
-
-## Example: Budget Alert Notifications
-
-Here's how the budget alert notifications feature would follow this workflow:
-
-```bash
-# 1. Create feature branch
-git checkout main
-git pull origin main
-git checkout -b feature/budget-alert-notifications
-git push -u origin feature/budget-alert-notifications
-
-# 2. Implement tasks from specs/budget-alert-notifications/tasks.md
-# ... development work ...
-
-# 3. Regular commits
-git add .
-git commit -m "feat(alerts): implement BudgetAlertBanner component"
-git push origin feature/budget-alert-notifications
-
-# 4. Before promotion
-git checkout main
-git pull origin main
-git checkout feature/budget-alert-notifications
-git merge main
-npm test
-
-# 5. Promote to main
-git checkout main
-git merge feature/budget-alert-notifications
-git push origin main
-
-# 6. Build and deploy
-.\scripts\build-and-push.ps1 -Tag latest
-```
-
----
-
-This feature branch model provides structure while maintaining the flexibility needed for rapid development and deployment.
+### Committed on Local `main` by Mistake
+Run `.\scripts\create-pr-from-main.ps1 -Title "..."` to move the commits onto a `hotfix/` branch and open a PR.

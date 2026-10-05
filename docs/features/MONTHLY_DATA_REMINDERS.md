@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Monthly Data Reminders feature provides visual notification banners in the monthly summary panel that prompt users to update their investment values and loan balances for the current month. This ensures users maintain accurate financial records and net worth calculations.
+Monthly Data Reminders show banners in the notifications section of the Monthly Summary panel prompting users to record investment values and loan updates for the selected month. This keeps net worth figures accurate.
 
 ## Purpose
 
@@ -11,63 +11,58 @@ Users often forget to update their investment values and loan balances each mont
 - Incomplete financial tracking
 - Missing data in historical reports
 
-The reminder system solves this by proactively notifying users when data is missing for the current month.
+The reminder system solves this by notifying users when data is missing for the selected month.
 
 ## Features
 
 ### Investment Value Reminders
-- Displays when one or more investments are missing values for the current month
-- Shows the count of investments needing updates
-- Includes the current month name in the message
-- Clickable banner opens the Investments modal for quick data entry
-- Dismissible for the current session
+- Displays when one or more investments have no `investment_values` entry for the month
+- Message: "Update N investment value(s) for <Month>"
+- Clicking the banner opens the Financial Overview modal on the Investments section, with investments needing updates highlighted
+- Dismissible (until the selected month changes or the page reloads)
 
-### Loan Balance Reminders
-- Displays when one or more active loans are missing balances for the current month
-- Shows the count of loans needing updates
-- Includes the current month name in the message
-- Clickable banner opens the Loans modal for quick data entry
-- Dismissible for the current session
+### Loan Update Reminders
+- Displays when one or more active loans are missing an update for the month:
+  - **Loans and mortgages** (payment-tracked): no `loan_payments` entry dated within the month
+  - **Lines of credit** (balance-tracked): no `loan_balances` entry for the month
+- Only loans that are not paid off and whose `start_date` is on or before the 1st of the month are considered
+- Message: "Update N loan balance(s) for <Month>"
+- Clicking the banner opens the Financial Overview modal on the Loans section, with loans needing updates highlighted
+- Dismissible (until the selected month changes or the page reloads)
 
 ### Visual Design
-- Subtle warning colors (light yellow/orange background)
-- Clear icons (💡 for investments, 💳 for loans)
-- Non-intrusive placement at the top of the summary panel
-- Multiple reminders stack vertically when both types are needed
-- Smooth fade-in animation
+- Icons: 💡 for investments, 💳 for loans
+- Rendered by `DataReminderBanner` inside `NotificationsSection`, after the credit card, billing cycle, loan payment and insurance claim reminders
 
 ## User Experience
 
 ### When Reminders Appear
-Reminders appear on the monthly summary panel when:
-1. The user is viewing the current month
-2. There are active investments without values for the current month, OR
-3. There are active loans without balances for the current month
+Reminders appear for the month selected in the Monthly Summary when:
+1. There are investments without a value for that month, OR
+2. There are active loans without a payment/balance for that month
 
 ### When Reminders Don't Appear
 Reminders are hidden when:
-- All investment values are up to date for the current month
-- All loan balances are up to date for the current month
-- There are no active investments or loans
-- The user has dismissed the reminder (session only)
+- All investment values and loan updates are recorded for the month
+- There are no investments or active loans
+- The user has dismissed the reminder
 
 ### Interaction
 Users can:
-1. **Click the banner** - Opens the relevant modal (Investments or Loans) to add missing data
-2. **Dismiss the banner** - Hides the reminder for the current session
+1. **Click the banner** - Opens the Financial Overview modal on the relevant section
+2. **Dismiss the banner** (×) - Hides the reminder
 3. **Ignore the banner** - Reminder persists until data is added or dismissed
 
-### Session Behavior
-- Dismissals are stored in React state (session only)
-- Reminders reappear on page refresh if data is still missing
-- This ensures users are consistently reminded without being annoying
+### Dismissal Behavior
+- Dismissals are stored in `SummaryPanel` React state
+- They reset when the selected month/year changes and on page reload
 
 ## Technical Implementation
 
 ### Backend API
-**Endpoint:** `GET /api/reminders/status/:year/:month`
+**Endpoint:** `GET /api/reminders/status/:year/:month` (`reminderService.getReminderStatus`, `reminderRepository.getInvestmentsWithValueStatus` / `getLoansWithBalanceStatus`)
 
-**Response:**
+**Response (data-reminder fields):**
 ```json
 {
   "missingInvestments": 2,
@@ -75,79 +70,41 @@ Users can:
   "hasActiveInvestments": true,
   "hasActiveLoans": true,
   "investments": [
-    { "id": 1, "name": "TFSA", "hasValue": false },
-    { "id": 2, "name": "RRSP", "hasValue": true }
+    { "id": 1, "name": "My TFSA", "type": "TFSA", "hasValue": false },
+    { "id": 2, "name": "My RRSP", "type": "RRSP", "hasValue": true }
   ],
   "loans": [
-    { "id": 1, "name": "Mortgage", "hasBalance": false }
+    { "id": 1, "name": "Mortgage", "loan_type": "mortgage", "hasBalance": false }
   ]
 }
 ```
 
+The same response also carries `creditCardReminders`, `billingCycleReminders`, `loanPaymentReminders`, `insuranceClaimReminders` and `autoGeneratedCycleNotifications`, which are covered by their own feature docs.
+
 ### Frontend Components
 
-**DataReminderBanner Component:**
-- Reusable banner for displaying reminders
-- Props: type, count, monthName, onDismiss, onClick
-- Handles both investment and loan reminder types
+**DataReminderBanner** (`frontend/src/components/notifications/DataReminderBanner.jsx`):
+- Props: `type` (`'investment'` | `'loan'`), `count`, `monthName`, `onDismiss`, `onClick`
 
-**SummaryPanel Enhancement:**
-- Fetches reminder status on component mount
-- Displays appropriate banners based on API response
-- Manages dismissal state
-- Opens relevant modals when banners are clicked
+**SummaryPanel** (`frontend/src/components/financial/SummaryPanel.jsx`):
+- Fetches reminder status whenever the selected month or refresh trigger changes
+- Renders banners and manages dismissal state
+- Calls `openFinancialOverview('investments' | 'loans')` from `ModalContext` on click
+
+**FinancialOverviewModal** fetches the same endpoint to highlight rows needing updates.
 
 ### Data Flow
-1. SummaryPanel loads for current month
+1. SummaryPanel loads for the selected month
 2. Frontend calls `/api/reminders/status/:year/:month`
-3. Backend checks for missing investment values and loan balances
-4. Frontend displays appropriate reminder banners
-5. User clicks banner to open relevant modal
-6. User can dismiss banner (stored in session state)
-
-## Benefits
-
-### For Users
-- Never forget to update monthly financial data
-- Maintain accurate net worth calculations
-- Complete historical tracking
-- Quick access to data entry modals
-
-### For Data Quality
-- Ensures consistent monthly data entry
-- Reduces gaps in financial records
-- Improves accuracy of reports and summaries
-- Supports better financial decision-making
-
-## Configuration
-
-No configuration required. The feature works automatically based on:
-- Active investments (not deleted)
-- Active loans (not paid off)
-- Current month data completeness
-
-## Future Enhancements
-
-Potential improvements:
-- Email/push notifications for reminders
-- Configurable reminder preferences
-- Reminder history tracking
-- Snooze functionality
-- Custom reminder messages
+3. Backend checks for missing investment values and loan payments/balances
+4. Frontend displays reminder banners
+5. User clicks a banner to open the Financial Overview modal, or dismisses it
 
 ## Related Features
 
 - [Investment Tracking](./INVESTMENT_TRACKING.md)
-- [Loans & Lines of Credit](../README.md#loans--lines-of-credit)
-- [Net Worth Tracking](../README.md#net-worth-tracking)
+- [Loan Payment Tracking](./LOAN_PAYMENT_TRACKING.md)
+- [Mortgage Tracking](./MORTGAGE_TRACKING.md)
 
-## Version History
-
-- **v4.5.0** - Initial release of Monthly Data Reminders feature
-## Versioning Context
-
-Historical version references in this document (for example `v4.x` or `v5.x`) describe pre-1.0 release history.
-Current release numbering uses the `1.x` scheme.
-
-**Last Reviewed:** June 1, 2026
+**Last Reviewed:** October 4, 2026
 

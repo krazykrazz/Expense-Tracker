@@ -65,7 +65,7 @@ cd backend
 npm start
 ```
 
-The backend listens on `http://localhost:2626` by default in local development. Use `npm run dev` instead of `npm start` to restart automatically on changes (nodemon).
+The backend listens on `http://localhost:2626` by default in local development. Use `npm run dev` instead of `npm start` to restart automatically on changes (`node --watch`).
 
 Frontend dev server:
 

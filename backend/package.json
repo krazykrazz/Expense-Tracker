@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js",
+    "dev": "node --watch server.js",
     "build": "cd client && npm install && npm run build",
     "db:check": "node scripts/checkDatabaseSchema.js",
     "db:migrate": "node scripts/addFixedExpensesTable.js",
@@ -55,11 +55,13 @@
     "cross-env": "^10.1.0",
     "fast-check": "^4.10.2",
     "jest": "^30.5.2",
-    "nodemon": "^3.1.14",
     "supertest": "^7.3.0"
   },
   "overrides": {
     "qs": "^6.15.2",
-    "brace-expansion@>=5.0.2 <5.0.6": "^5.0.6"
+    "brace-expansion@>=5.0.2 <5.0.6": "^5.0.6",
+    "@istanbuljs/load-nyc-config": {
+      "js-yaml": "^4.1.0"
+    }
   }
 }

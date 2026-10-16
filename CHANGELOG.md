@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.12.0] - 2026-10-16
+
+### Refreshed look: new logo and header, clearer monthly summary, colour-coded expense list, smoother dialogs; dependency and security updates
+
 ## [1.11.0] - 2026-10-03
 
 ### Spending and Cash Flow analytics, date-grouped expense list with quick views, custom date range filter, month stepping

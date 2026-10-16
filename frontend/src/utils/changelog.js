@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.12.0',
+    date: 'October 16, 2026',
+    added: [],
+    changed: ['Refreshed look: new logo and header, clearer monthly summary, colour-coded expense list, smoother dialogs; dependency and security updates'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.11.0',
     date: 'October 3, 2026',
     added: [],

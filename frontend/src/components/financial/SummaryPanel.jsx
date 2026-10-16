@@ -5,6 +5,7 @@ import { authAwareFetch } from '../../utils/fetchProvider';
 import IncomeManagementModal from './IncomeManagementModal';
 import FixedExpensesModal from './FixedExpensesModal';
 import TrendIndicator from '../shared/TrendIndicator';
+import Money from '../shared/Money';
 import DataReminderBanner from '../notifications/DataReminderBanner';
 import CreditCardReminderBanner from '../credit-cards/CreditCardReminderBanner';
 import BillingCycleReminderBanner from '../credit-cards/BillingCycleReminderBanner';
@@ -648,9 +649,15 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
 
   if (loading) {
     return (
-      <div className="summary-panel">
+      <div className="summary-panel" aria-busy="true">
         <h2>Monthly Summary</h2>
-        <div className="loading-message">Loading summary...</div>
+        <span className="loading-message sr-only" role="status">Loading summary...</span>
+        <div className="summary-skeleton" aria-hidden="true">
+          <span className="skeleton" />
+          <span className="skeleton" />
+          <span className="skeleton" />
+          <span className="skeleton" />
+        </div>
       </div>
     );
   }
@@ -667,6 +674,15 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
   if (!summary) {
     return null;
   }
+
+  const income = summary.monthlyGross || 0;
+  const fixedTotal = summary.totalFixedExpenses || 0;
+  const variableTotal = summary.total || 0;
+  const spent = fixedTotal + variableTotal;
+  const balance = income - spent;
+  const spentPct = income > 0 ? Math.round((spent / income) * 100) : null;
+  // Scale the meter to whichever is larger so overspending fills the bar
+  const meterScale = Math.max(income, spent) || 1;
 
   return (
     <div className="summary-panel">
@@ -803,51 +819,61 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
       {/* _Requirements: 7.1_ */}
       <h2>Monthly Summary</h2>
 
-      {/* Summary Cards Grid - Order: Income | Balance, Fixed | Variable */}
       <div className="summary-grid">
-        {/* Monthly Income Card */}
-        <div className="summary-card income-card">
-          <div className="card-header">
-            <span className="card-icon">🏠</span>
-            <span className="card-title">Monthly Income</span>
-          </div>
-          <div className="card-value positive">{formatCurrency(summary.monthlyGross || 0)}</div>
-          <button className="card-action-btn" onClick={handleOpenIncomeModal}>
-            Manage Income
-          </button>
-        </div>
-
-        {/* Balance Card */}
-        <div className="summary-card balance-card">
-          <div className="card-header">
-            <span className="card-icon">📊</span>
+        {/* Balance hero with income-vs-spending meter */}
+        <div className="summary-card balance-card full-width">
+          <div className="balance-header">
             <span className="card-title">Balance</span>
+            <span className={`balance-badge ${balance >= 0 ? 'positive' : 'negative'}`}>
+              {balance >= 0 ? 'Surplus' : 'Deficit'}
+            </span>
           </div>
-          <div className={`card-value ${(summary.monthlyGross - summary.total - summary.totalFixedExpenses) >= 0 ? 'positive' : 'negative'}`}>
-            {formatCurrency((summary.monthlyGross || 0) - (summary.total || 0) - (summary.totalFixedExpenses || 0))}
+          <div className="card-value balance-value">
+            <Money value={balance} />
           </div>
           <div className="card-subtitle">Income - All Expenses</div>
+          <div
+            className={`spend-meter ${spent > income ? 'over' : ''}`}
+            role="img"
+            aria-label={spentPct === null ? 'No income recorded this month' : `${spentPct}% of income spent`}
+          >
+            <span className="spend-meter-fixed" style={{ width: `${(fixedTotal / meterScale) * 100}%` }} />
+            <span className="spend-meter-variable" style={{ width: `${(variableTotal / meterScale) * 100}%` }} />
+          </div>
+          <div className="spend-meter-caption" aria-hidden="true">
+            {spentPct === null ? 'No income recorded this month' : `${spentPct}% of income spent`}
+          </div>
         </div>
 
-        {/* Fixed Expenses Card */}
-        <div className="summary-card">
-          <div className="card-header">
-            <span className="card-icon">📝</span>
-            <span className="card-title">Fixed Expenses</span>
+        {/* Income / Fixed / Variable breakdown */}
+        <div className="summary-card full-width summary-breakdown">
+          <div className="breakdown-row">
+            <span className="breakdown-dot income" aria-hidden="true" />
+            <div className="breakdown-label">
+              <span className="card-title">Monthly Income</span>
+              <button className="card-action-btn" onClick={handleOpenIncomeModal}>
+                Manage Income
+              </button>
+            </div>
+            <Money value={income} className="breakdown-value" />
           </div>
-          <div className="card-value expense-value">{formatCurrency(summary.totalFixedExpenses || 0)}</div>
-          <button className="card-action-btn" onClick={handleOpenFixedExpensesModal}>
-            Manage Fixed
-          </button>
-        </div>
-
-        {/* Variable Expenses Card */}
-        <div className="summary-card highlight-card">
-          <div className="card-header">
-            <span className="card-icon">💰</span>
-            <span className="card-title">Variable Expenses</span>
+          <div className="breakdown-row">
+            <span className="breakdown-dot fixed" aria-hidden="true" />
+            <div className="breakdown-label">
+              <span className="card-title">Fixed Expenses</span>
+              <button className="card-action-btn" onClick={handleOpenFixedExpensesModal}>
+                Manage Fixed
+              </button>
+            </div>
+            <Money value={fixedTotal} className="breakdown-value" />
           </div>
-          <div className="card-value expense-value">{formatCurrency(summary.total || 0)}</div>
+          <div className="breakdown-row">
+            <span className="breakdown-dot variable" aria-hidden="true" />
+            <div className="breakdown-label">
+              <span className="card-title">Variable Expenses</span>
+            </div>
+            <Money value={variableTotal} className="breakdown-value" />
+          </div>
         </div>
 
         {/* Collapsible: Weekly Breakdown */}

@@ -328,7 +328,7 @@
 }
 
 /* Dark Mode Support */
-@media (prefers-color-scheme: dark) {
+:root[data-theme='dark'] {
   .mortgage-insights-panel {
     background: var(--card-bg-dark, #1e1e1e);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);

@@ -26,7 +26,7 @@ After deploying the application via Docker, access it at http://localhost:2424 i
 
 ### Screen Layout
 
-- **Header**: light/dark theme toggle, **🖥️ System** (system information, backups, activity log, tools), **⚙️ Settings** (retention, backup configuration, people, security), and the user menu (logout, when a password is set)
+- **Header** (icon buttons, right side; hover for a tooltip): light/dark theme toggle (moon/sun), **System** (monitor icon: system information, backups, activity log, tools), **Settings** (sliders icon: retention, backup configuration, people, security), and the user menu (person icon: logout, when a password is set)
 - **Month selector**: **📊 Annual Summary**, **💰 Income Tax**, **💵 Budgets**, **📈 Analytics**, **💼 Financial**, plus previous/next month buttons, year and month dropdowns, and a jump-to-current-month button
 - **Left column**: the expense list for the selected month (or the global filter results)
 - **Right column**: global filters above the **Monthly Summary** panel (notifications, income, balance, fixed and variable expenses, weekly breakdown, payment methods, expense types)
@@ -275,7 +275,7 @@ Click **"💵 Budgets"** and select the **📊 History** tab to analyze budget p
 
 ### Managing People
 
-1. Click **"⚙️ Settings"** in the header
+1. Click the **Settings** icon (sliders) in the header
 2. Click **"People"** tab
 3. Add family members with names and optional dates of birth
 
@@ -379,19 +379,19 @@ See [Anomaly Detection](../features/ANOMALY_DETECTION.md) for how alerts are det
 
 ### Manual Backup
 
-1. Click **"🖥️ System"** in the header
+1. Click the **System** icon (monitor) in the header
 2. On the **Backup Information** tab, click **"💾 Create Backup Now"** (saved on the server) or **"📥 Download Backup"** (downloads a `.tar.gz` archive including invoice PDFs)
 
 ### Automated Backups
 
-1. Click **"⚙️ Settings"** in the header
+1. Click the **Settings** icon (sliders) in the header
 2. Open the **"💾 Backup Configuration"** tab
 3. Check **Enable automatic backups**
 4. Set the daily **Backup Time**, optional **Backup Location**, and **Keep Last N Backups** (default 7)
 
 ### Restoring from Backup
 
-1. Click **"🖥️ System"** in the header
+1. Click the **System** icon (monitor) in the header
 2. On the **Backup Information** tab, under **Restore from Backup**, click **"🔄 Choose Backup File"**
 3. Select a `.tar.gz` archive (recommended, includes invoices) or a legacy `.db` file
 4. Confirm the restore — it replaces **all** current data
@@ -411,7 +411,7 @@ Receive visual reminders when monthly data needs updating:
 
 View a history of data changes in the application:
 
-1. Click **"🖥️ System"** in the header
+1. Click the **System** icon (monitor) in the header
 2. Open the **Activity Log** tab
 3. View recent events with timestamps and details
 
@@ -422,7 +422,7 @@ View a history of data changes in the application:
 - **Automatic Cleanup**: Events are cleaned up daily based on the retention settings
 
 **Configuring Retention:**
-1. Click **"⚙️ Settings"** in the header
+1. Click the **Settings** icon (sliders) in the header
 2. Go to the **"⚙️ General"** tab
 3. Under **"Activity Log Retention Policy"**, set:
    - **Maximum Age (days)**: 7–365, default 90

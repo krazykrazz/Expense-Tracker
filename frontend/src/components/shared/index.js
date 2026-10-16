@@ -7,3 +7,5 @@ export { default as EnvironmentBanner } from './EnvironmentBanner';
 export { default as TrendIndicator } from './TrendIndicator';
 export { default as SimilarityGroup } from './SimilarityGroup';
 export { default as PlaceNameStandardization } from './PlaceNameStandardization';
+export { default as Icon } from './Icon';
+export { default as Money } from './Money';

@@ -35,7 +35,7 @@ The system automatically logs events for:
 
 ### User Interface
 
-**Location**: System (🖥️ header button) → Activity Log tab (`ActivityLogTable` component, data via `useActivityLog` hook)
+**Location**: System (monitor icon in the header) → Activity Log tab (`ActivityLogTable` component, data via `useActivityLog` hook)
 
 **Features**:
 - Human-readable timestamps ("2 hours ago", "Yesterday at 3:45 PM")

@@ -37,12 +37,18 @@
   text-transform: uppercase;
 }
 
-/* Push down the header when environment banner is visible */
+/* Push down the header when environment banner is visible; App.css reads
+   --env-banner-height to offset the sticky header and summary panel */
+.App:has(.environment-banner),
+.App.has-env-banner {
+  --env-banner-height: 40px;
+}
+
 .App:has(.environment-banner) .App-header {
-  margin-top: 40px;
+  margin-top: var(--env-banner-height);
 }
 
 /* Fallback for browsers that don't support :has() - use JS class */
 .App.has-env-banner .App-header {
-  margin-top: 40px;
+  margin-top: var(--env-banner-height);
 }

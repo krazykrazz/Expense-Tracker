@@ -177,7 +177,7 @@
 }
 
 /* Dark mode support */
-@media (prefers-color-scheme: dark) {
+:root[data-theme='dark'] {
   .insurance-claim-reminder-banner {
     background: linear-gradient(135deg, #1a3d24 0%, #1e4a2d 100%);
     border-color: #28a745;

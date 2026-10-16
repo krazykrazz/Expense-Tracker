@@ -5,7 +5,7 @@
  * Key changes:
  *  1. Bottom tab bar to switch between Expenses and Summary panels
  *  2. MonthSelector buttons scroll horizontally instead of stacking
- *  3. Header collapses to icon-only buttons
+ *  3. Header uses compact icon buttons (see App.css)
  *  4. Modals slide up from bottom with max-height cap
  *  5. View mode indicator compact variant
  *  6. Safe-area insets for notched phones
@@ -147,24 +147,6 @@
   .selector-group label {
     font-size: 12px;
     white-space: nowrap;
-  }
-}
-
-/* ─── Header: icon-only buttons on small screens ─────────────────────────── */
-
-@media (max-width: 480px) {
-  /* Hide button text, keep emoji icon */
-  .settings-button .btn-text,
-  .recurring-button .btn-text {
-    display: none;
-  }
-
-  .settings-button,
-  .recurring-button {
-    padding: var(--spacing-2) !important;
-    min-width: 36px;
-    justify-content: center;
-    font-size: 18px !important;
   }
 }
 

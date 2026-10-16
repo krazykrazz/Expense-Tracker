@@ -91,7 +91,7 @@
   font-weight: var(--font-bold, 700);
   color: var(--color-primary, #0ea5e9);
   margin-bottom: var(--spacing-1, 4px);
-  font-family: var(--font-mono);
+  font-family: var(--font-tabular);
   font-feature-settings: var(--font-feature-tabular);
   font-variant-numeric: tabular-nums lining-nums;
 }
@@ -262,7 +262,7 @@
   color: var(--color-positive-dark, #16a34a);
   text-align: right;
   white-space: nowrap;
-  font-family: var(--font-mono);
+  font-family: var(--font-tabular);
   font-feature-settings: var(--font-feature-tabular);
 }
 
@@ -459,7 +459,7 @@
   font-size: var(--text-xl, 18px);
   font-weight: var(--font-semibold, 600);
   color: var(--color-positive-dark, #16a34a);
-  font-family: var(--font-mono);
+  font-family: var(--font-tabular);
 }
 
 .stat-percentage {
@@ -511,7 +511,7 @@
   font-weight: var(--font-bold, 700);
   color: var(--color-positive-dark, #16a34a);
   margin-right: var(--spacing-4, 16px);
-  font-family: var(--font-mono);
+  font-family: var(--font-tabular);
   font-feature-settings: var(--font-feature-tabular);
 }
 
@@ -552,7 +552,7 @@
   font-size: var(--text-base, 14px);
   font-weight: var(--font-semibold, 600);
   color: var(--color-positive-dark, #16a34a);
-  font-family: var(--font-mono);
+  font-family: var(--font-tabular);
 }
 
 .provider-expenses {
@@ -602,7 +602,7 @@
   font-size: var(--text-base, 14px);
   font-weight: var(--font-bold, 700);
   color: var(--color-positive-dark, #16a34a);
-  font-family: var(--font-mono);
+  font-family: var(--font-tabular);
 }
 
 .donation-place-expenses {
@@ -649,7 +649,7 @@
   font-weight: var(--font-bold, 700);
   color: var(--color-warning-dark, #d97706);
   margin-right: var(--spacing-4, 16px);
-  font-family: var(--font-mono);
+  font-family: var(--font-tabular);
   font-feature-settings: var(--font-feature-tabular);
 }
 
@@ -1086,7 +1086,7 @@
   font-size: var(--text-lg, 16px);
   font-weight: var(--font-bold, 700);
   color: var(--color-positive-dark, #16a34a);
-  font-family: var(--font-mono);
+  font-family: var(--font-tabular);
 }
 
 .invoice-modal-empty {
@@ -1159,7 +1159,7 @@
   flex-direction: column;
   align-items: flex-end;
   min-width: 80px;
-  font-family: var(--font-mono);
+  font-family: var(--font-tabular);
 }
 
 .tax-expense-original-cost .cost-label {
@@ -1182,7 +1182,7 @@
   flex-direction: column;
   align-items: flex-end;
   min-width: 80px;
-  font-family: var(--font-mono);
+  font-family: var(--font-tabular);
   font-size: inherit;
   font-weight: inherit;
 }
@@ -1261,7 +1261,7 @@
   font-size: var(--text-xl, 18px);
   font-weight: var(--font-bold, 700);
   color: var(--color-primary, #0ea5e9);
-  font-family: var(--font-mono);
+  font-family: var(--font-tabular);
 }
 
 .insurance-summary-card.original-cost .summary-value {
@@ -1330,7 +1330,7 @@
 .status-breakdown-item .status-amount {
   font-size: var(--text-xs, 11px);
   color: var(--text-tertiary, #6b7280);
-  font-family: var(--font-mono);
+  font-family: var(--font-tabular);
 }
 
 /* Claim Status Filter */
@@ -1451,7 +1451,7 @@
   flex-direction: column;
   align-items: flex-end;
   min-width: 70px;
-  font-family: var(--font-mono);
+  font-family: var(--font-tabular);
 }
 
 .tax-expense-reimbursement .reimbursement-label {
@@ -1571,7 +1571,7 @@
   font-size: var(--text-lg, 16px);
   font-weight: var(--font-bold, 700);
   color: var(--color-positive-dark, #16a34a);
-  font-family: var(--font-mono);
+  font-family: var(--font-tabular);
   font-feature-settings: var(--font-feature-tabular);
 }
 
@@ -1595,7 +1595,7 @@
 
 .yoy-percentage {
   font-size: var(--text-base, 14px);
-  font-family: var(--font-mono);
+  font-family: var(--font-tabular);
 }
 
 /* Change direction colors */
@@ -1721,7 +1721,7 @@
   border: 1px solid var(--border-default, #d1d5db);
   border-radius: var(--radius-md, 8px);
   font-size: var(--text-base, 14px);
-  font-family: var(--font-mono);
+  font-family: var(--font-tabular);
   transition: var(--transition-input);
 }
 
@@ -1828,7 +1828,7 @@
   font-size: var(--text-xl, 18px);
   font-weight: var(--font-bold, 700);
   color: var(--color-primary, #0ea5e9);
-  font-family: var(--font-mono);
+  font-family: var(--font-tabular);
 }
 
 .threshold-note {
@@ -1904,7 +1904,7 @@
   font-size: var(--text-xl, 18px);
   font-weight: var(--font-bold, 700);
   color: #16a34a;
-  font-family: var(--font-mono);
+  font-family: var(--font-tabular);
 }
 
 .deductible-positive .deductible-note {
@@ -2001,7 +2001,7 @@
   font-size: var(--text-base, 14px);
   font-weight: var(--font-semibold, 600);
   color: var(--text-primary, #1f2937);
-  font-family: var(--font-mono);
+  font-family: var(--font-tabular);
 }
 
 .credit-line.credit-total {
@@ -2048,7 +2048,7 @@
 .savings-amount {
   font-size: var(--text-4xl, 32px);
   font-weight: var(--font-bold, 700);
-  font-family: var(--font-mono);
+  font-family: var(--font-tabular);
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
@@ -2073,7 +2073,7 @@
 
 .savings-line span:last-child {
   font-weight: var(--font-semibold, 600);
-  font-family: var(--font-mono);
+  font-family: var(--font-tabular);
 }
 
 /* Fallback Warning - Requirement 8.4 */

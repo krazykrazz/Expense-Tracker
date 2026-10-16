@@ -10,7 +10,7 @@ vi.mock('../../contexts/AuthContext', () => ({
 }));
 
 // Mock logo asset
-vi.mock('../../assets/tracker.png.png', () => ({ default: 'mock-logo.png' }));
+vi.mock('../../assets/logo-mark.svg', () => ({ default: 'mock-logo.svg' }));
 
 import LoginScreen from './LoginScreen';
 

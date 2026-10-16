@@ -11,8 +11,10 @@ import ReimbursementIndicator from './ReimbursementIndicator';
 import PostedIndicator from './PostedIndicator';
 import ExpenseForm from './ExpenseForm';
 import FilterChip from './FilterChip';
+import Icon from '../shared/Icon';
 import './ExpenseList.css';
 import { formatAmount, formatLocalDate, getTodayLocalDate } from '../../utils/formatters';
+import { getCategoryHue } from '../../utils/categoryColors';
 import useInsuranceStatus from '../../hooks/useInsuranceStatus';
 import useInvoiceManagement from '../../hooks/useInvoiceManagement';
 
@@ -1038,6 +1040,17 @@ const ExpenseList = memo(({
               <th>Actions</th>
             </tr>
           </thead>
+          {awaitingFirstLoad && expenses.length === 0 && (
+            <tbody aria-hidden="true">
+              {[0, 1, 2, 3, 4, 5].map((row) => (
+                <tr key={row} className="skeleton-row">
+                  {['70%', '50%', '60%', '55%', '30%', '45%', '40%'].map((width, col) => (
+                    <td key={col}><span className="skeleton" style={{ width }} /></td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          )}
           {dateGroups.map((group) => (
           <tbody key={`${group.date}-${group.expenses[0].id}`} className="date-group">
             <tr className="date-group-row">
@@ -1050,6 +1063,7 @@ const ExpenseList = memo(({
             </tr>
             {group.expenses.map((expense) => {
               const invoices = invoiceData.get(expense.id) || [];
+              const typeHue = getCategoryHue(expense.type);
               return (
               <tr 
                 key={expense.id}
@@ -1124,10 +1138,17 @@ const ExpenseList = memo(({
                 <td className={`amount ${expense.amount >= 350 ? 'high-amount' : ''}`}>
                   ${formatAmount(expense.amount)}
                 </td>
-                <td>{expense.type}</td>
+                <td>
+                  <span
+                    className={`type-pill${typeHue === null ? ' neutral' : ''}`}
+                    style={typeHue === null ? undefined : { '--pill-hue': typeHue }}
+                  >
+                    {expense.type}
+                  </span>
+                </td>
                 <td>{expense.week}</td>
                 <td>
-                  <span className={expense.payment_method_is_active === 0 ? 'inactive-payment-method' : ''}>
+                  <span className={`method-pill${expense.payment_method_is_active === 0 ? ' inactive-payment-method' : ''}`}>
                     {expense.method}
                     {expense.payment_method_is_active === 0 && (
                       <span 
@@ -1145,15 +1166,17 @@ const ExpenseList = memo(({
                       className="edit-button"
                       onClick={() => handleEditClick(expense)}
                       disabled={deletingId === expense.id}
+                      aria-label="Edit expense"
                     >
-                      ✏️ Edit
+                      <Icon name="pencil" size={14} /> Edit
                     </button>
                     <button
                       className="delete-button"
                       onClick={() => handleDeleteClick(expense)}
                       disabled={deletingId === expense.id}
+                      aria-label={deletingId === expense.id ? undefined : 'Delete expense'}
                     >
-                      {deletingId === expense.id ? 'Deleting...' : '🗑️ Delete'}
+                      {deletingId === expense.id ? 'Deleting...' : <><Icon name="trash" size={14} /> Delete</>}
                     </button>
                   </div>
                 </td>

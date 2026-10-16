@@ -33,7 +33,7 @@
 
 /* Modal */
 .auto-log-prompt-modal {
-  background: var(--card-bg, #ffffff);
+  background: var(--bg-card, #ffffff);
   border-radius: 12px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
   max-width: 450px;
@@ -95,7 +95,7 @@
 
 /* Details */
 .auto-log-prompt-details {
-  background: var(--bg-secondary, #f8f9fa);
+  background: var(--bg-muted, #f1f5f9);
   border-radius: 8px;
   padding: 16px;
   margin-bottom: 16px;
@@ -106,7 +106,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 8px 0;
-  border-bottom: 1px solid var(--border-color, #e9ecef);
+  border-bottom: 1px solid var(--border-default, #e2e8f0);
 }
 
 .auto-log-detail-row:last-child {
@@ -172,8 +172,8 @@
   display: flex;
   gap: 12px;
   padding: 16px 20px;
-  background: var(--bg-secondary, #f8f9fa);
-  border-top: 1px solid var(--border-color, #e9ecef);
+  background: var(--bg-muted, #f1f5f9);
+  border-top: 1px solid var(--border-default, #e2e8f0);
 }
 
 .auto-log-btn {
@@ -209,14 +209,14 @@
 
 .auto-log-btn-secondary {
   flex: 1;
-  background: white;
+  background: var(--bg-card, #ffffff);
   color: var(--text-primary, #333);
-  border: 1px solid var(--border-color, #ddd);
+  border: 1px solid var(--border-default, #e2e8f0);
 }
 
 .auto-log-btn-secondary:hover:not(:disabled) {
-  background: #f8f9fa;
-  border-color: #ccc;
+  background: var(--bg-muted, #f1f5f9);
+  border-color: var(--border-strong, #cbd5e1);
 }
 
 .auto-log-btn-tertiary {
@@ -226,7 +226,7 @@
 }
 
 .auto-log-btn-tertiary:hover:not(:disabled) {
-  background: rgba(0, 0, 0, 0.05);
+  background: var(--hover-overlay, rgba(0, 0, 0, 0.04));
   color: var(--text-primary, #333);
 }
 
@@ -266,27 +266,7 @@
 }
 
 /* Dark mode support */
-@media (prefers-color-scheme: dark) {
-  .auto-log-prompt-modal {
-    background: var(--card-bg-dark, #2d2d2d);
-  }
-
-  .auto-log-prompt-description {
-    color: var(--text-secondary-dark, #aaa);
-  }
-
-  .auto-log-prompt-details {
-    background: var(--bg-secondary-dark, #3d3d3d);
-  }
-
-  .auto-log-detail-row {
-    border-bottom-color: var(--border-color-dark, #4d4d4d);
-  }
-
-  .auto-log-detail-value {
-    color: var(--text-primary-dark, #eee);
-  }
-
+:root[data-theme='dark'] {
   .auto-log-loan-type-badge {
     background: rgba(74, 111, 165, 0.3);
     color: #8ab4f8;
@@ -294,31 +274,6 @@
 
   .auto-log-prompt-note {
     background: rgba(74, 111, 165, 0.15);
-    color: var(--text-secondary-dark, #aaa);
-  }
-
-  .auto-log-prompt-actions {
-    background: var(--bg-secondary-dark, #3d3d3d);
-    border-top-color: var(--border-color-dark, #4d4d4d);
-  }
-
-  .auto-log-btn-secondary {
-    background: var(--card-bg-dark, #2d2d2d);
-    color: var(--text-primary-dark, #eee);
-    border-color: var(--border-color-dark, #4d4d4d);
-  }
-
-  .auto-log-btn-secondary:hover:not(:disabled) {
-    background: var(--bg-secondary-dark, #3d3d3d);
-  }
-
-  .auto-log-btn-tertiary {
-    color: var(--text-secondary-dark, #aaa);
-  }
-
-  .auto-log-btn-tertiary:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.1);
-    color: var(--text-primary-dark, #eee);
   }
 }
 

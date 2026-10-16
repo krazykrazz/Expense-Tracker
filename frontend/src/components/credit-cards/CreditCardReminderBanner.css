@@ -244,7 +244,7 @@
 }
 
 /* Dark mode support */
-@media (prefers-color-scheme: dark) {
+:root[data-theme='dark'] {
   .credit-card-reminder-banner.due-soon {
     background: linear-gradient(135deg, #3d3a2e 0%, #4a4530 100%);
     border-color: #d4a106;

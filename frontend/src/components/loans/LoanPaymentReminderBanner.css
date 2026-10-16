@@ -203,7 +203,7 @@
 }
 
 /* Dark mode support */
-@media (prefers-color-scheme: dark) {
+:root[data-theme='dark'] {
   .loan-payment-reminder-banner.due-soon {
     background: linear-gradient(135deg, #1a3a40 0%, #1e4a52 100%);
     border-color: #17a2b8;

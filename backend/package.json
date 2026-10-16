@@ -40,8 +40,8 @@
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "csv-parser": "^3.2.1",
-    "express": "^5.2.1",
-    "express-rate-limit": "^8.7.0",
+    "express": "^5.3.0",
+    "express-rate-limit": "^8.7.1",
     "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.4.0",
@@ -51,11 +51,11 @@
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",
-    "baseline-browser-mapping": "^2.11.26",
+    "baseline-browser-mapping": "^2.11.28",
     "cross-env": "^10.1.0",
     "fast-check": "^4.10.2",
     "jest": "^30.5.2",
-    "supertest": "^7.3.0"
+    "supertest": "^7.3.1"
   },
   "overrides": {
     "qs": "^6.15.2",

@@ -420,7 +420,12 @@ jobs:
     needs: [backend-tests-status, frontend-tests-status]
     # Deploy jobs keep the dependabot guard: their GITHUB_TOKEN is read-only on
     # dependabot events, so a run here could only fail. Test jobs need no write scope.
+    # `!cancelled()` is required: without a status function GitHub applies an implicit
+    # success() that skips this job whenever any upstream test job was skipped by the
+    # path filter (e.g. backend tests on a frontend-only merge), even though both
+    # status aggregators passed.
     if: |
+      !cancelled() &&
       github.ref == 'refs/heads/main' && 
       github.actor != 'dependabot[bot]' &&
       (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
@@ -645,7 +650,14 @@ jobs:
     name: Deployment Health Check
     runs-on: ubuntu-latest
     needs: [build-and-push-ghcr]
-    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.actor != 'dependabot[bot]'
+    # Explicit result check: the implicit success() would also be false when a
+    # test job further up the chain was skipped by the path filter.
+    if: |
+      !cancelled() &&
+      needs.build-and-push-ghcr.result == 'success' &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      github.actor != 'dependabot[bot]'
     permissions:
       packages: read
 

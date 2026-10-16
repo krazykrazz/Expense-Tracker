@@ -23,7 +23,7 @@
   align-items: center;
   gap: var(--element-gap, 8px);
   padding: var(--spacing-3, 12px) var(--spacing-4, 16px);
-  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  background: linear-gradient(135deg, var(--bg-subtle, #f8fafc) 0%, var(--bg-muted, #f1f5f9) 100%);
   border-bottom: 1px solid var(--border-muted, #e5e7eb);
   border-radius: var(--radius-lg, 12px) var(--radius-lg, 12px) 0 0;
   cursor: pointer;
@@ -32,7 +32,7 @@
 }
 
 .notifications-header:hover {
-  background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
+  background: linear-gradient(135deg, var(--bg-muted, #f1f5f9) 0%, var(--border-default, #e2e8f0) 100%);
 }
 
 .notifications-header:focus {
@@ -118,35 +118,6 @@
 /* Ensure child banners have proper spacing */
 .notifications-content > *:last-child {
   margin-bottom: 0;
-}
-
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
-  .notifications-section {
-    background: var(--bg-card-dark, #1f2937);
-    border-color: var(--border-dark, #374151);
-  }
-
-  .notifications-header {
-    background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
-    border-bottom-color: var(--border-dark, #374151);
-  }
-
-  .notifications-header:hover {
-    background: linear-gradient(135deg, #4b5563 0%, #374151 100%);
-  }
-
-  .notifications-title {
-    color: var(--text-primary-dark, #f9fafb);
-  }
-
-  .notifications-toggle {
-    color: var(--text-tertiary-dark, #9ca3af);
-  }
-
-  .notifications-content {
-    background: var(--bg-subtle-dark, #111827);
-  }
 }
 
 /* Reduced motion support for accessibility */

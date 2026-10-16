@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAuthContext } from '../../contexts/AuthContext';
+import Icon from '../shared/Icon';
 import './UserMenu.css';
 
 /**
@@ -43,7 +44,7 @@ const UserMenu = () => {
   return (
     <div className="user-menu" ref={menuRef}>
       <button
-        className={`user-menu-button settings-button${!isActive ? ' user-menu-inactive' : ''}`}
+        className={`user-menu-button header-icon-button${!isActive ? ' user-menu-inactive' : ''}`}
         onClick={() => isActive && setIsOpen(!isOpen)}
         aria-label="User menu"
         aria-expanded={isActive ? isOpen : undefined}
@@ -51,7 +52,7 @@ const UserMenu = () => {
         aria-disabled={!isActive}
         title={isActive ? 'User menu' : 'Authentication not enabled'}
       >
-        👤
+        <Icon name="user" />
       </button>
       {isOpen && isActive && (
         <div className="user-menu-dropdown" role="menu">

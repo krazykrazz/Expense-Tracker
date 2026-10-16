@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import { useState, useEffect, useLayoutEffect, useCallback, lazy, Suspense } from 'react';
+import { flushSync } from 'react-dom';
 import './App.css';
 import ExpenseForm from './components/expenses/ExpenseForm';
 import MonthSelector from './components/shared/MonthSelector';
@@ -37,7 +38,11 @@ import { SharedDataProvider, useSharedDataContext } from './contexts/SharedDataC
 import { AuthProvider, useAuthContext } from './contexts/AuthContext';
 import LoginScreen from './components/system/LoginScreen';
 import UserMenu from './components/system/UserMenu';
-import logo from './assets/tracker.png.png';
+import Icon from './components/shared/Icon';
+import logo from './assets/logo-mark.svg';
+
+// Keep in sync with --header-bg (opaque equivalent) so the mobile browser chrome matches the header
+const THEME_COLORS = { light: '#ffffff', dark: '#020617' };
 
 function App() {
   // Payment methods state - needed as prop for FilterProvider
@@ -277,9 +282,10 @@ function AppContent({ onPaymentMethodsUpdate }) {
     };
   }, []);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
     document.documentElement.style.colorScheme = theme;
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', THEME_COLORS[theme] ?? THEME_COLORS.light);
     window.localStorage.setItem('theme-preference', theme);
   }, [theme]);
 
@@ -350,7 +356,13 @@ function AppContent({ onPaymentMethodsUpdate }) {
   }, [handleClearFilters, handleFilterTypeChange, handleDateRangeChange, closeAnalyticsHub]);
 
   const handleToggleTheme = useCallback(() => {
-    setTheme(prevTheme => (prevTheme === 'dark' ? 'light' : 'dark'));
+    const toggle = () => setTheme(prevTheme => (prevTheme === 'dark' ? 'light' : 'dark'));
+    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    if (typeof document.startViewTransition !== 'function' || reduceMotion) {
+      toggle();
+      return;
+    }
+    document.startViewTransition(() => flushSync(toggle));
   }, []);
 
   return (
@@ -364,34 +376,35 @@ function AppContent({ onPaymentMethodsUpdate }) {
       <EnvironmentBanner />
       <header className="App-header">
         <div className="header-title">
-          <img src={logo} alt="Expense Tracker Logo" className="app-logo" />
+          <img src={logo} alt="Expense Tracker Logo" className="app-logo" width="32" height="32" />
           <h1>Expense Tracker</h1>
         </div>
         <div className="header-buttons">
           <button
-            className="settings-button theme-toggle-button"
+            className="header-icon-button"
             onClick={handleToggleTheme}
             aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
             title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
           >
-            {theme === 'dark' ? '☀️' : '🌙'} <span className="btn-text">{theme === 'dark' ? 'Light' : 'Dark'}</span>
+            <Icon name={theme === 'dark' ? 'sun' : 'moon'} />
           </button>
-          <button 
-            className="settings-button" 
+          <button
+            className="header-icon-button"
             onClick={openSystemModal}
             aria-label="System"
             title="System information, activity log, and tools"
           >
-            🖥️ <span className="btn-text">System</span>
+            <Icon name="monitor" />
           </button>
-          <button 
-            className="settings-button" 
+          <button
+            className="header-icon-button"
             onClick={openSettingsModal}
             aria-label="Settings"
             title="Backup configuration and people management"
           >
-            ⚙️ <span className="btn-text">Settings</span>
+            <Icon name="sliders" />
           </button>
+          <span className="header-divider" aria-hidden="true" />
           <UserMenu />
         </div>
       </header>
@@ -441,7 +454,7 @@ function AppContent({ onPaymentMethodsUpdate }) {
         </div>
         
         {/* Content stays mounted through reloads (dimmed) so inputs keep focus and the page doesn't flash */}
-        {!hasLoaded && !error && <div className="loading-message">Loading expenses...</div>}
+        {!hasLoaded && !error && <div className="sr-only" role="status">Loading expenses...</div>}
         {error && (
           <div className="error-message">
             <div className="error-text">Error: {error}</div>

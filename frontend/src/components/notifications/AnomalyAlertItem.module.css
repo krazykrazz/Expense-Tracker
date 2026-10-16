@@ -462,10 +462,10 @@
 }
 
 /* ============================================
-   DARK MODE — media query fallback
+   DARK MODE — app theme toggle
    ============================================ */
 
-@media (prefers-color-scheme: dark) {
+:global(:root[data-theme='dark']) {
   .alertItem {
     background: linear-gradient(135deg, #422006 0%, #451a03 100%);
     border-color: var(--color-warning, #f59e0b);

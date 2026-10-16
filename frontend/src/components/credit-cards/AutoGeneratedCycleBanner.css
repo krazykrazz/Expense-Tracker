@@ -130,7 +130,7 @@
 }
 
 /* Dark mode support */
-@media (prefers-color-scheme: dark) {
+:root[data-theme='dark'] {
   .auto-generated-cycle-banner {
     background: linear-gradient(135deg, #1a3c3a 0%, #1e4a47 100%);
     border-color: #4db6ac;

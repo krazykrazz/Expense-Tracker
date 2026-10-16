@@ -102,7 +102,7 @@ copy "config\database\expenses.db" "config\backups\pre-restore-backup.db"
 You can also restore backups through the web interface:
 
 1. Open http://localhost:2424
-2. Click "⚙️ Settings" button
+2. Click the **Settings** icon (sliders) in the header
 3. Go to "Backup & Restore" tab
 4. Click "Choose File" under "Restore from Backup"
 5. Select your backup file

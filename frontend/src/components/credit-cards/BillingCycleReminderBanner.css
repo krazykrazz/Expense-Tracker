@@ -111,7 +111,7 @@
 }
 
 /* Dark mode support */
-@media (prefers-color-scheme: dark) {
+:root[data-theme='dark'] {
   .billing-cycle-reminder-banner {
     background: linear-gradient(135deg, #1a3a5c 0%, #1e4976 100%);
     border-color: #42a5f5;

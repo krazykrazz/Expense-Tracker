@@ -12,117 +12,83 @@
    Requirements: 10.1, 10.2, 10.3, 10.4
    ============================================ */
 .App-header {
-  background: var(--header-bg);
-  padding: var(--spacing-4) var(--spacing-6);
-  color: var(--text-inverse);
+  position: sticky;
+  top: var(--env-banner-height, 0px);
+  z-index: var(--z-sticky);
+  min-height: var(--header-height);
+  padding: 0 var(--spacing-6);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  box-shadow: var(--shadow-md);
+  gap: var(--spacing-4);
+  color: var(--text-primary);
+  background: var(--header-bg);
   border-bottom: 1px solid var(--header-border);
-  position: relative;
-  z-index: var(--z-sticky);
-}
-
-/* Subtle depth effect on header */
-.App-header::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  /* Unprefixed only: the build adds -webkit- itself and drops this if both are declared */
+  backdrop-filter: saturate(180%) blur(14px);
 }
 
 .header-title {
   display: flex;
   align-items: center;
-  gap: var(--element-gap-lg);
+  gap: var(--spacing-3);
+  min-width: 0;
 }
 
 .app-logo {
-  height: 44px;
-  width: auto;
-  object-fit: contain;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
-  transition: transform var(--transition-fast);
-}
-
-.app-logo:hover {
-  transform: scale(1.05);
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 9px;
+  box-shadow: 0 4px 12px -4px rgba(79, 70, 229, 0.5);
 }
 
 .App-header h1 {
-  font-size: var(--heading-2);
-  font-weight: var(--font-bold);
   margin: 0;
-  letter-spacing: -0.025em;
-  line-height: var(--leading-tight);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  letter-spacing: -0.02em;
+  line-height: 1;
+  color: var(--text-primary);
+  white-space: nowrap;
 }
 
 .header-buttons {
   display: flex;
-  gap: var(--element-gap);
+  align-items: center;
+  gap: var(--spacing-1);
 }
 
-.settings-button,
-.recurring-button {
-  background-color: var(--header-button-bg);
-  color: var(--text-inverse);
-  border: 1px solid var(--header-button-border);
-  padding: var(--spacing-2) var(--spacing-4);
-  font-size: var(--text-sm);
-  font-weight: var(--font-medium);
+.header-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: none;
   border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-secondary);
   cursor: pointer;
-  transition: all var(--transition-fast);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  transition: background-color var(--transition-fast), color var(--transition-fast);
 }
 
-.settings-button:hover,
-.recurring-button:hover {
-  background-color: var(--header-button-bg-hover);
-  border-color: var(--header-button-border-hover);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+.header-icon-button:hover {
+  background: var(--hover-overlay);
+  color: var(--text-primary);
 }
 
-.settings-button:active,
-.recurring-button:active {
-  transform: translateY(0) scale(0.98);
-  box-shadow: none;
-}
-
-/* Focus states for accessibility */
-.settings-button:focus-visible,
-.recurring-button:focus-visible {
-  outline: 2px solid rgba(255, 255, 255, 0.5);
+.header-icon-button:focus-visible {
+  outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
 
-.theme-toggle-button {
-  min-width: 96px;
-}
-
-/* Accessibility: Respect reduced motion preferences for header */
-@media (prefers-reduced-motion: reduce) {
-  .app-logo,
-  .settings-button,
-  .recurring-button {
-    transition: none;
-  }
-  
-  .app-logo:hover {
-    transform: none;
-  }
-  
-  .settings-button:hover,
-  .recurring-button:hover {
-    transform: none;
-  }
+.header-divider {
+  width: 1px;
+  height: 20px;
+  margin: 0 var(--spacing-2);
+  background: var(--border-default);
 }
 
 .App-main {
@@ -150,6 +116,12 @@
   z-index: 0;
 }
 
+/* Dialogs rendered inside the expense list are trapped in its stacking context,
+   so lift the whole column above the sticky header and summary panel while one is open */
+.content-left:has(.modal-overlay, .invoice-list-modal-overlay, .invoice-pdf-viewer-overlay, .people-delete-overlay) {
+  z-index: var(--z-modal);
+}
+
 .content-left .expense-list-container {
   transition: opacity 150ms ease;
 }
@@ -166,11 +138,11 @@
 
 .content-right {
   position: sticky;
-  top: var(--spacing-4);
-  max-height: calc(100vh - var(--spacing-4) * 2);
+  top: calc(var(--env-banner-height, 0px) + var(--header-height) + var(--spacing-4));
+  max-height: calc(100vh - var(--env-banner-height, 0px) - var(--header-height) - var(--spacing-4) * 2);
   overflow-y: auto;
   scrollbar-width: thin;
-  scrollbar-color: #cbd5e1 #f1f5f9;
+  scrollbar-color: var(--border-strong) transparent;
   /* Smooth scrolling behavior */
   scroll-behavior: smooth;
   /* Transition for responsive changes */
@@ -187,33 +159,32 @@
 }
 
 .content-right::-webkit-scrollbar-track {
-  background: #f1f5f9;
+  background: transparent;
   border-radius: 4px;
 }
 
 .content-right::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: var(--border-strong);
   border-radius: 4px;
   /* Hover effect for better visual feedback */
   transition: background-color 0.2s ease;
 }
 
 .content-right::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: var(--text-muted);
 }
 
 /* Enhanced hover feedback for summary panel */
 .content-right:hover {
-  scrollbar-color: #94a3b8 #e2e8f0;
+  scrollbar-color: var(--text-muted) transparent;
   /* Add subtle visual feedback for scrollable area */
   box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.1);
 }
 
 /* Focus styles for keyboard accessibility */
-.content-right:focus-within {
-  outline: 2px solid #0ea5e9;
+.content-right:focus-visible {
+  outline: 2px solid var(--color-primary);
   outline-offset: -2px;
-  scrollbar-color: #0ea5e9 #e2e8f0;
 }
 
 /* Keyboard navigation support */
@@ -550,20 +521,13 @@
   }
   
   .content-right {
-    max-height: calc(100vh - var(--spacing-3) * 2);
+    top: calc(var(--env-banner-height, 0px) + var(--header-height) + var(--spacing-3));
+    max-height: calc(100vh - var(--env-banner-height, 0px) - var(--header-height) - var(--spacing-3) * 2);
   }
   
   /* Header tablet adjustments */
   .App-header {
-    padding: var(--spacing-3) var(--spacing-5);
-  }
-  
-  .App-header h1 {
-    font-size: var(--text-xl);
-  }
-  
-  .app-logo {
-    height: 38px;
+    padding: 0 var(--spacing-5);
   }
 }
 
@@ -571,30 +535,10 @@
 @media (max-width: 768px) {
   /* Header mobile styles - Requirements: 10.5, 12.4 */
   .App-header {
-    padding: var(--spacing-3) var(--spacing-4);
-    flex-wrap: wrap;
+    padding: 0 var(--spacing-3) 0 var(--spacing-4);
     gap: var(--spacing-2);
   }
 
-  .header-title {
-    gap: var(--spacing-2);
-  }
-
-  .app-logo {
-    height: 32px;
-  }
-
-  .App-header h1 {
-    font-size: var(--text-lg);
-    letter-spacing: -0.02em;
-  }
-
-  .header-buttons {
-    gap: var(--spacing-1);
-  }
-
-  .settings-button,
-  .recurring-button,
   .import-button,
   .backup-button {
     font-size: var(--text-xs);
@@ -680,32 +624,19 @@
   
   /* Header small mobile adjustments */
   .App-header {
-    padding: var(--spacing-2) var(--spacing-3);
-  }
-  
-  .header-title {
-    flex: 1;
-    min-width: 0;
-  }
-  
-  .app-logo {
-    height: 28px;
+    padding: 0 var(--spacing-2) 0 var(--spacing-3);
   }
   
   .App-header h1 {
     font-size: var(--text-base);
-    white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  
-  .header-buttons {
-    flex-wrap: wrap;
-    justify-content: flex-end;
+
+  .header-divider {
+    display: none;
   }
   
-  .settings-button,
-  .recurring-button,
   .import-button,
   .backup-button {
     font-size: 11px;
@@ -728,31 +659,18 @@
 .App-footer {
   padding: var(--spacing-3) var(--spacing-6);
   text-align: center;
-  background: linear-gradient(135deg, #1e293b 0%, #334155 50%, #475569 100%);
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  position: relative;
-}
-
-/* Subtle top highlight */
-.App-footer::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  border-top: 1px solid var(--border-default);
 }
 
 .version {
   font-size: var(--text-xs);
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--text-muted);
   font-weight: var(--font-medium);
   letter-spacing: 0.025em;
 }
 
 .docker-tag {
-  color: rgba(59, 130, 246, 0.9);
+  color: var(--color-primary);
   font-weight: var(--font-semibold);
   margin-left: var(--spacing-1);
 }
@@ -763,9 +681,7 @@
   align-items: center;
   justify-content: center;
   margin: 12px 0;
-  padding: 8px 16px;
-  background-color: #f8fafc;
-  border-radius: 8px;
+  padding: 0 16px;
   font-size: 14px;
   font-weight: 500;
 }
@@ -782,15 +698,23 @@
 }
 
 .view-mode-badge.monthly {
-  background-color: #dcfce7;
-  color: #166534;
-  border: 1px solid #86efac;
+  background-color: color-mix(in srgb, var(--color-positive) 12%, transparent);
+  color: var(--color-positive-dark);
+  border: 1px solid color-mix(in srgb, var(--color-positive) 35%, transparent);
 }
 
 .view-mode-badge.global {
-  background-color: #fef3c7;
-  color: #92400e;
-  border: 1px solid #fcd34d;
+  background-color: color-mix(in srgb, var(--color-warning) 14%, transparent);
+  color: var(--color-warning-dark);
+  border: 1px solid color-mix(in srgb, var(--color-warning) 40%, transparent);
+}
+
+:root[data-theme='dark'] .view-mode-badge.monthly {
+  color: #4ade80;
+}
+
+:root[data-theme='dark'] .view-mode-badge.global {
+  color: #fbbf24;
 }
 
 .view-mode-icon {

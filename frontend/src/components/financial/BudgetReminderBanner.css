@@ -263,7 +263,7 @@
 }
 
 /* Dark mode support */
-@media (prefers-color-scheme: dark) {
+:root[data-theme='dark'] {
   .budget-reminder-banner.warning {
     background: linear-gradient(135deg, #3d3a2e 0%, #4a4530 100%);
     border-color: #f59e0b;

@@ -83,7 +83,7 @@
   font-weight: var(--font-bold, 700);
   color: var(--color-primary, #0ea5e9);
   margin-bottom: var(--spacing-1, 4px);
-  font-family: var(--font-mono);
+  font-family: var(--font-tabular);
   font-feature-settings: var(--font-feature-tabular);
   font-variant-numeric: tabular-nums lining-nums;
 }
@@ -229,7 +229,7 @@
   font-weight: var(--font-bold, 700);
   color: var(--color-primary, #0ea5e9);
   margin-bottom: var(--spacing-1, 4px);
-  font-family: var(--font-mono);
+  font-family: var(--font-tabular);
   font-feature-settings: var(--font-feature-tabular);
   font-variant-numeric: tabular-nums lining-nums;
 }
@@ -495,7 +495,7 @@
   color: var(--color-positive-dark, #16a34a);
   text-align: right;
   white-space: nowrap;
-  font-family: var(--font-mono);
+  font-family: var(--font-tabular);
   font-feature-settings: var(--font-feature-tabular);
 }
 
@@ -588,7 +588,7 @@
   top: -8px;
   font-size: var(--text-xs, 11px);
   color: var(--text-muted, #94a3b8);
-  font-family: var(--font-mono);
+  font-family: var(--font-tabular);
 }
 
 .line-graph {
@@ -644,7 +644,7 @@
 .chart-value {
   font-size: var(--text-xs, 11px);
   font-weight: var(--font-semibold, 600);
-  font-family: var(--font-mono);
+  font-family: var(--font-tabular);
   font-feature-settings: var(--font-feature-tabular);
 }
 
@@ -800,7 +800,7 @@
   justify-content: center;
   gap: var(--spacing-2, 8px);
   margin-bottom: var(--spacing-3, 12px);
-  font-family: var(--font-mono);
+  font-family: var(--font-tabular);
   font-feature-settings: var(--font-feature-tabular);
 }
 
@@ -829,7 +829,7 @@
   font-weight: var(--font-semibold, 600);
   padding: var(--spacing-2, 8px) var(--spacing-3, 12px);
   border-radius: var(--radius-full, 9999px);
-  font-family: var(--font-mono);
+  font-family: var(--font-tabular);
 }
 
 .yoy-change.positive {

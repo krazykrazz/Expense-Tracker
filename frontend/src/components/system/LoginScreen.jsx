@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuthContext } from '../../contexts/AuthContext';
-import logo from '../../assets/tracker.png.png';
+import logo from '../../assets/logo-mark.svg';
 import './LoginScreen.css';
 
 /**

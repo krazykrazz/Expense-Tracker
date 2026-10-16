@@ -45,11 +45,29 @@
 }
 
 .reminder-message {
-  color: #8B4513;
   font-size: var(--text-base, 14px);
   font-weight: var(--font-medium, 500);
   font-family: var(--font-sans);
   line-height: var(--leading-normal, 1.5);
+}
+
+/* Scoped so the brown text doesn't leak into other banners that share .reminder-message */
+.data-reminder-banner .reminder-message {
+  color: #8B4513;
+}
+
+:root[data-theme='dark'] .data-reminder-banner {
+  background-color: color-mix(in srgb, var(--color-warning) 12%, var(--bg-card));
+  border-color: color-mix(in srgb, var(--color-warning) 45%, transparent);
+}
+
+:root[data-theme='dark'] .data-reminder-banner:hover {
+  background-color: color-mix(in srgb, var(--color-warning) 18%, var(--bg-card));
+  border-color: var(--color-warning);
+}
+
+:root[data-theme='dark'] .data-reminder-banner .reminder-message {
+  color: #fcd34d;
 }
 
 .reminder-dismiss-btn {

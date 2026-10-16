@@ -1,0 +1,11 @@
+.money {
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums lining-nums;
+  white-space: nowrap;
+}
+
+.money-cents {
+  font-size: 0.62em;
+  font-weight: var(--font-medium);
+  opacity: 0.5;
+}

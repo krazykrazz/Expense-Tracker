@@ -32,8 +32,10 @@ The repository restricts which actions can run. Allowed: GitHub-owned actions (`
 | Frontend Tests | `frontend-tests` | Frontend or shared changes | Vitest, test-naming and raw-fetch checks, runtime budget |
 | Frontend Tests Status | `frontend-tests-status` | Every run | **Required check** — passes if frontend tests passed or were legitimately skipped |
 | Test Health Report | `test-health-report` | Every run | Writes test-file counts by category to the workflow summary |
-| Build and Push to GHCR | `build-and-push-ghcr` | Push / `workflow_dispatch` on `main` only | Build, Trivy scan, push to GHCR, GitHub release |
-| Deployment Health Check | `deployment-health-check` | After `build-and-push-ghcr` | Boots the image, health-checks it, rollback check, deployment record |
+| Build and Push to GHCR | `build-and-push-ghcr` | Push / `workflow_dispatch` on `main` only, when both status aggregators pass | Build, Trivy scan, push to GHCR, GitHub release |
+| Deployment Health Check | `deployment-health-check` | After `build-and-push-ghcr` succeeds | Boots the image, health-checks it, rollback check, deployment record |
+
+> **Note**: Both deploy jobs use `!cancelled()` plus explicit `needs.*.result == 'success'` checks. Without a status function GitHub applies an implicit `success()` that is false when any upstream job in the chain was skipped — so a frontend-only (or backend-only) merge to `main` would pass every check but never build an image.
 
 ### PR-Based CI Integration
 

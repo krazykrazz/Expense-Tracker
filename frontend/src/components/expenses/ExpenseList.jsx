@@ -15,6 +15,13 @@ import Icon from '../shared/Icon';
 import './ExpenseList.css';
 import { formatAmount, formatLocalDate, getTodayLocalDate } from '../../utils/formatters';
 import { getCategoryHue } from '../../utils/categoryColors';
+
+const PAYMENT_TYPE_ICONS = {
+  credit_card: 'creditCard',
+  debit: 'bank',
+  cash: 'banknote',
+  cheque: 'cheque',
+};
 import useInsuranceStatus from '../../hooks/useInsuranceStatus';
 import useInvoiceManagement from '../../hooks/useInvoiceManagement';
 
@@ -1064,6 +1071,7 @@ const ExpenseList = memo(({
             {group.expenses.map((expense) => {
               const invoices = invoiceData.get(expense.id) || [];
               const typeHue = getCategoryHue(expense.type);
+              const methodIcon = PAYMENT_TYPE_ICONS[expense.payment_method_type ?? paymentMethodMap.get(expense.method)?.type];
               return (
               <tr 
                 key={expense.id}
@@ -1149,6 +1157,7 @@ const ExpenseList = memo(({
                 <td>{expense.week}</td>
                 <td>
                   <span className={`method-pill${expense.payment_method_is_active === 0 ? ' inactive-payment-method' : ''}`}>
+                    {methodIcon && <Icon name={methodIcon} size={13} className="method-pill-icon" />}
                     {expense.method}
                     {expense.payment_method_is_active === 0 && (
                       <span 
@@ -1167,16 +1176,18 @@ const ExpenseList = memo(({
                       onClick={() => handleEditClick(expense)}
                       disabled={deletingId === expense.id}
                       aria-label="Edit expense"
+                      title="Edit expense"
                     >
-                      <Icon name="pencil" size={14} /> Edit
+                      <Icon name="pencil" size={14} /><span className="action-label">Edit</span>
                     </button>
                     <button
                       className="delete-button"
                       onClick={() => handleDeleteClick(expense)}
                       disabled={deletingId === expense.id}
                       aria-label={deletingId === expense.id ? undefined : 'Delete expense'}
+                      title={deletingId === expense.id ? undefined : 'Delete expense'}
                     >
-                      {deletingId === expense.id ? 'Deleting...' : <><Icon name="trash" size={14} /> Delete</>}
+                      {deletingId === expense.id ? 'Deleting...' : <><Icon name="trash" size={14} /><span className="action-label">Delete</span></>}
                     </button>
                   </div>
                 </td>

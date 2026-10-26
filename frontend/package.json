@@ -31,7 +31,7 @@
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.8",
     "@vitejs/plugin-react": "^6.1.2",
-    "@vitest/ui": "^5.0.4",
+    "@vitest/ui": "^5.0.5",
     "baseline-browser-mapping": "^2.11.31",
     "cross-env": "^10.1.0",
     "fast-check": "^4.10.2",

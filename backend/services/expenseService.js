@@ -3,8 +3,6 @@ const expensePeopleRepository = require('../repositories/expensePeopleRepository
 const peopleRepository = require('../repositories/peopleRepository');
 const paymentMethodRepository = require('../repositories/paymentMethodRepository');
 const { calculateWeek } = require('../utils/dateUtils');
-const { BUDGETABLE_CATEGORIES } = require('../utils/categories');
-const budgetEvents = require('../events/budgetEvents');
 const logger = require('../config/logger');
 const expenseValidationService = require('./expenseValidationService');
 const expenseInsuranceService = require('./expenseInsuranceService');
@@ -88,17 +86,6 @@ class ExpenseService {
   }
 
   // ─── Core CRUD Private Helpers ───────────────────────────────────────
-
-  /**
-   * Trigger budget recalculation for affected budgets.
-   * Uses event emitter to avoid circular dependency with budgetService.
-   * @private
-   */
-  _triggerBudgetRecalculation(date, category) {
-    if (BUDGETABLE_CATEGORIES.includes(category)) {
-      budgetEvents.emitBudgetRecalculation(date, category);
-    }
-  }
 
   /**
    * Calculate a future date by adding months to a source date.
@@ -353,8 +340,6 @@ class ExpenseService {
       return createdExpense;
     }
 
-    this._triggerBudgetRecalculation(expense.date, expense.type);
-
     // Log activity event
     await activityLogService.logEvent(
       'expense_added',
@@ -427,7 +412,6 @@ class ExpenseService {
 
       for (const sideEffect of sideEffects) {
         const { expense, method } = sideEffect;
-        this._triggerBudgetRecalculation(expense.date, expense.type);
         await activityLogService.logEvent(
           'expense_added',
           'expense',
@@ -655,7 +639,6 @@ class ExpenseService {
         futureExpenses = txResult.futureExpenses;
 
         for (const sideEffect of futureSideEffects) {
-          this._triggerBudgetRecalculation(sideEffect.expense.date, sideEffect.expense.type);
           await activityLogService.logEvent(
             'expense_added',
             'expense',
@@ -673,20 +656,6 @@ class ExpenseService {
         }
       } catch (error) {
         throw Object.assign(new Error('Failed to create future expenses. Please try again.'), { statusCode: 500 });
-      }
-    }
-
-    // Trigger budget recalculation for affected budgets
-    const amountChanged = oldExpense.amount !== expense.amount;
-    if (oldExpense) {
-      const categoryChanged = oldExpense.type !== expense.type;
-      const dateChanged = oldExpense.date !== expense.date;
-
-      if (categoryChanged || amountChanged || dateChanged) {
-        this._triggerBudgetRecalculation(oldExpense.date, oldExpense.type);
-        if (categoryChanged || dateChanged) {
-          this._triggerBudgetRecalculation(expense.date, expense.type);
-        }
       }
     }
 
@@ -780,8 +749,6 @@ class ExpenseService {
     }
 
     if (deleted && expense) {
-      this._triggerBudgetRecalculation(expense.date, expense.type);
-      
       // Log activity event
       await activityLogService.logEvent(
         'expense_deleted',
@@ -809,10 +776,6 @@ class ExpenseService {
 
   async _getMonthSummary(year, month) {
     return expenseAggregationService._getMonthSummary(year, month);
-  }
-
-  _calculatePreviousMonth(year, month) {
-    return expenseAggregationService._calculatePreviousMonth(year, month);
   }
 
   async getMonthlyGross(year, month) {

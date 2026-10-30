@@ -71,6 +71,7 @@ const EXPECTED_TABLES = {
   mortgage_payments: ['id', 'loan_id', 'payment_amount', 'effective_date', 'notes', 'created_at', 'updated_at'],
   loan_payments: ['id', 'loan_id', 'amount', 'payment_date', 'notes', 'created_at', 'updated_at'],
   budgets: ['id', 'year', 'month', 'category', 'limit', 'created_at', 'updated_at'],
+  budget_allocations: ['id', 'year', 'month', 'name', 'amount', 'investment_id', 'created_at', 'updated_at'],
   investments: ['id', 'name', 'type', 'initial_value', 'created_at', 'updated_at'],
   investment_values: ['id', 'investment_id', 'year', 'month', 'value', 'created_at', 'updated_at'],
   people: ['id', 'name', 'date_of_birth', 'created_at', 'updated_at'],
@@ -120,12 +121,12 @@ describe('Feature: migration-consolidation, Property 1: Schema completeness', ()
     );
   }, 120000);
 
-  test('Schema creates exactly 26 tables', async () => {
+  test('Schema creates exactly 27 tables', async () => {
     const db = await openDb();
     try {
       await applySchema(db);
       const tables = await all(db, "SELECT name FROM sqlite_master WHERE type='table' AND name != 'sqlite_sequence' ORDER BY name");
-      expect(tables.length).toBe(26);
+      expect(tables.length).toBe(27);
       const names = tables.map(t => t.name).sort();
       expect(names).toEqual(TABLE_NAMES.sort());
     } finally {

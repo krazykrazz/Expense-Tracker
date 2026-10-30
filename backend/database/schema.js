@@ -168,6 +168,20 @@ const TABLE_STATEMENTS = [
     UNIQUE(investment_id, year, month)
   )`,
 
+  // budget_allocations — planned monthly savings/investment amounts (not expenses)
+  `CREATE TABLE IF NOT EXISTS budget_allocations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    year INTEGER NOT NULL,
+    month INTEGER NOT NULL CHECK(month >= 1 AND month <= 12),
+    name TEXT NOT NULL,
+    amount REAL NOT NULL CHECK(amount > 0),
+    investment_id INTEGER,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (investment_id) REFERENCES investments(id) ON DELETE SET NULL,
+    UNIQUE(year, month, name)
+  )`,
+
   // people — family member records
   `CREATE TABLE IF NOT EXISTS people (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -356,6 +370,13 @@ const TRIGGER_STATEMENTS = [
      UPDATE budgets SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
    END`,
 
+  // Auto-update budget_allocations.updated_at on row update
+  `CREATE TRIGGER IF NOT EXISTS update_budget_allocations_timestamp
+   AFTER UPDATE ON budget_allocations
+   BEGIN
+     UPDATE budget_allocations SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+   END`,
+
   // Auto-update credit_card_billing_cycles.updated_at on row update
   `CREATE TRIGGER IF NOT EXISTS update_billing_cycles_timestamp
    AFTER UPDATE ON credit_card_billing_cycles
@@ -407,6 +428,9 @@ const INDEX_STATEMENTS = [
   // budgets indexes
   'CREATE INDEX IF NOT EXISTS idx_budgets_period ON budgets(year, month)',
   'CREATE INDEX IF NOT EXISTS idx_budgets_category ON budgets(category)',
+
+  // budget_allocations indexes
+  'CREATE INDEX IF NOT EXISTS idx_budget_allocations_period ON budget_allocations(year, month)',
 
   // investments indexes
   'CREATE INDEX IF NOT EXISTS idx_investments_type ON investments(type)',

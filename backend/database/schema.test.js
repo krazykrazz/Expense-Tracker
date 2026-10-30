@@ -50,21 +50,21 @@ describe('Consolidated Schema – Unit Tests', () => {
   const EXPECTED_TABLES = [
     'schema_migrations', 'expenses', 'monthly_gross', 'income_sources',
     'fixed_expenses', 'loans', 'loan_balances', 'mortgage_payments',
-    'loan_payments', 'budgets', 'investments', 'investment_values',
+    'loan_payments', 'budgets', 'budget_allocations', 'investments', 'investment_values',
     'people', 'expense_people', 'expense_invoices', 'place_names',
     'reminders', 'dismissed_anomalies', 'anomaly_suppression_rules',
     'payment_methods', 'credit_card_payments', 'credit_card_statements',
     'credit_card_billing_cycles', 'activity_logs', 'settings', 'users'
   ];
 
-  test('creates exactly 26 tables', async () => {
+  test('creates exactly 27 tables', async () => {
     const rows = await dbAll(
       db,
       "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
     );
     const tableNames = rows.map(r => r.name).sort();
     expect(tableNames).toEqual([...EXPECTED_TABLES].sort());
-    expect(tableNames).toHaveLength(26);
+    expect(tableNames).toHaveLength(27);
   });
 
   // ── Requirement 1.4: Default payment methods seeded ──

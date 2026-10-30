@@ -87,7 +87,14 @@ Complete list of mounted endpoints. Paths are relative to the server root. Detai
 | POST | `/api/budgets/copy` | Copy budgets between months |
 | PUT | `/api/budgets/:id` | Update a budget limit |
 | DELETE | `/api/budgets/:id` | Delete a budget |
+| GET | `/api/budgets/plan` | Monthly plan: income − fixed − budgets − allocations = unassigned |
+| GET | `/api/budgets/allocations` | Planned savings/investment allocations for a month |
+| POST | `/api/budgets/allocations` | Create an allocation |
+| POST | `/api/budgets/allocations/copy` | Copy allocations between months |
+| PUT | `/api/budgets/allocations/:id` | Update an allocation |
+| DELETE | `/api/budgets/allocations/:id` | Delete an allocation |
 
+Request/response details for the plan and allocation endpoints: [Budget Plan Endpoints](#budget-plan-endpoints).
 ### Payment Methods, Credit Cards, Billing Cycles — `paymentMethodRoutes.js`, `billingCycleRoutes.js`
 
 | Method | Path | Description |
@@ -2354,6 +2361,71 @@ Settings are stored in the `settings` database table and persist across restarts
 
 ---
 
+# Budget Plan API
+
+## Overview
+
+The monthly plan shows where a month's income goes: fixed expenses, category budgets, and planned savings/investment **allocations** (RRSP, TFSA, emergency fund, any named goal). Allocations are plans only. They are not expenses and never appear in spending, Cash Flow or "Saved".
+
+Income, fixed and variable figures come from the same calculation as Analytics → Cash Flow, so the plan always agrees with it. Like category budgets, a month with no allocations shows the previous month's allocations as transient rows (`carriedForward: true`, no `id`) without storing them; use `POST /api/budgets/allocations/copy` (or any create) to store them.
+
+All endpoints are prefixed with `/api/budgets`. Errors use `{ "error": "message" }` with the HTTP status set by the service (400 validation, 404 not found, 409 duplicate name).
+
+## Endpoints
+
+### GET /api/budgets/plan?year=2025&month=11
+
+```json
+{
+  "year": 2025,
+  "month": 11,
+  "income": 5000,
+  "fixedExpenses": 1500,
+  "budgeted": 600,
+  "allocated": 750,
+  "unassigned": 2150,
+  "variableExpenses": 500,
+  "balance": 3000,
+  "balanceAfterPlannedSavings": 2250,
+  "allocationRate": 15,
+  "allocations": [
+    { "id": 3, "year": 2025, "month": 11, "name": "TFSA", "amount": 500, "investmentId": 2 }
+  ]
+}
+```
+
+- `unassigned` = `income − fixedExpenses − budgeted − allocated` (negative means over-planned).
+- `balance` = income − fixed − variable spending (the main-screen Balance); `balanceAfterPlannedSavings` = `balance − allocated`.
+- `allocationRate` is `allocated / income` as a percentage, or `null` when no income is recorded.
+
+### GET /api/budgets/allocations?year=2025&month=11
+
+Returns `{ "allocations": [...] }` (with carry-forward, see above).
+
+### POST /api/budgets/allocations
+
+Body: `{ "year": 2025, "month": 11, "name": "RRSP", "amount": 300, "investmentId": 4 }`. `investmentId` is optional and must be an existing investment; when `name` is omitted the account's name is used. `amount` must be greater than zero. Returns `201` with the created allocation; `409` if the name already exists for that month.
+
+### PUT /api/budgets/allocations/:id
+
+Body: any of `name`, `amount`, `investmentId` (`null` unlinks). Returns the updated allocation, or `404`.
+
+### DELETE /api/budgets/allocations/:id
+
+Returns `204`, or `404`.
+
+### POST /api/budgets/allocations/copy
+
+Body: `{ "sourceYear", "sourceMonth", "targetYear", "targetMonth", "overwrite" }`. Copies the allocations the source month shows (including carried-forward ones). Existing target allocations are kept unless `overwrite` is `true`. Returns `{ "copied": 2, "skipped": 0, "overwritten": 0 }`.
+
+### Activity log and sync
+
+Mutations log `budget_allocation_added|updated|deleted` events with entity type `budget`, so other open tabs refresh through the existing budget sync.
+
+Monthly summary (`GET /api/expenses/summary`) includes `plannedAllocations` (total planned for the month, carry-forward aware); the main-screen Balance card uses it for the "After planned savings" line.
+
+---
+
 # Analytics Hub API
 
 ## Overview
@@ -2413,7 +2485,7 @@ HTTP/1.1 200 OK
 **Notes:**
 - `topCategories` and `topMerchants` are limited to 5 entries, sorted by total descending.
 - `monthOverMonth` is `null` when the previous month has no expense data.
-- `budgetSummary` is `null` when no budgets exist for the month.
+- `budgetSummary` is `null` when no budgets exist for the month and the previous month has none either. Totals come from the same calculation as `/api/budgets/summary`, so budgets carried forward from the previous month are included.
 
 **Error Responses:**
 ```json

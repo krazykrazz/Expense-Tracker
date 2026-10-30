@@ -1,37 +1,11 @@
 const budgetRepository = require('../repositories/budgetRepository');
 const { getDatabase } = require('../database/db');
 const { BUDGETABLE_CATEGORIES, normalizeCategory } = require('../utils/categories');
-const budgetEvents = require('../events/budgetEvents');
-const logger = require('../config/logger');
 const activityLogService = require('./activityLogService');
+const { parseYearMonth } = require('../utils/validators');
+const { loadWithCarryForward, copyRows, previousMonth } = require('../utils/monthlyRows');
 
 class BudgetService {
-  constructor() {
-    // Listen for budget recalculation events
-    budgetEvents.on('budgetRecalculation', this._handleBudgetRecalculation.bind(this));
-  }
-
-  /**
-   * Handle budget recalculation event
-   * @param {Object} data - Event data { date, category }
-   * @private
-   */
-  async _handleBudgetRecalculation({ date, category }) {
-    try {
-      // Extract year and month from date
-      const dateObj = new Date(date);
-      const year = dateObj.getFullYear();
-      const month = dateObj.getMonth() + 1;
-
-      // Trigger recalculation by fetching summary
-      await this.getBudgetSummary(year, month);
-    } catch (err) {
-      // Silently ignore if budgets table doesn't exist (e.g., in test environments)
-      if (!err.message || !err.message.includes('no such table: budgets')) {
-        logger.error('Budget recalculation failed:', err.message);
-      }
-    }
-  }
   // Budgetable categories (excludes tax-deductible categories)
   static BUDGETABLE_CATEGORIES = BUDGETABLE_CATEGORIES;
 
@@ -67,16 +41,7 @@ class BudgetService {
    * @throws {Error} If year or month is invalid
    */
   validateYearMonth(year, month) {
-    const yearNum = parseInt(year);
-    const monthNum = parseInt(month);
-
-    if (isNaN(yearNum) || yearNum < 2000 || yearNum > 2100) {
-      throw new Error('Invalid year specified');
-    }
-
-    if (isNaN(monthNum) || monthNum < 1 || monthNum > 12) {
-      throw new Error('Invalid year or month specified');
-    }
+    parseYearMonth(year, month);
   }
 
   /**
@@ -219,37 +184,13 @@ class BudgetService {
     const yearNum = parseInt(year);
     const monthNum = parseInt(month);
 
-    // Try to get budgets for the requested month
-    let budgets = await budgetRepository.findByYearMonth(yearNum, monthNum);
-
-    // If no budgets exist for this month, automatically carry forward from previous month
-    if (budgets.length === 0) {
-      // Calculate previous month
-      let prevYear = yearNum;
-      let prevMonth = monthNum - 1;
-
-      if (prevMonth < 1) {
-        prevMonth = 12;
-        prevYear = yearNum - 1;
-      }
-
-      // Get budgets from previous month
-      const prevBudgets = await budgetRepository.findForCopy(prevYear, prevMonth);
-
-      // If previous month has budgets, return them as transient carried-forward objects
-      // without persisting to the database (read-only carry-forward)
-      if (prevBudgets.length > 0) {
-        budgets = prevBudgets.map(prevBudget => ({
-          year: yearNum,
-          month: monthNum,
-          category: prevBudget.category,
-          limit: prevBudget.limit,
-          carriedForward: true
-        }));
-      }
-    }
-
-    return budgets;
+    // Read-only carry-forward: an empty month shows the previous month's budgets without persisting them
+    return loadWithCarryForward(
+      (y, m) => budgetRepository.findByYearMonth(y, m),
+      yearNum,
+      monthNum,
+      ({ category, limit }) => ({ category, limit })
+    );
   }
 
   /**
@@ -435,28 +376,12 @@ class BudgetService {
     const targetYear = parseInt(year);
     const targetMonth = parseInt(month);
 
-    // Calculate the range for historical data (6 months before target month)
-    const historicalMonths = [];
-    let currentYear = targetYear;
-    let currentMonth = targetMonth - 1;
-
-    // Go back up to 6 months
-    for (let i = 0; i < 6; i++) {
-      if (currentMonth < 1) {
-        currentMonth = 12;
-        currentYear -= 1;
-      }
-
-      historicalMonths.push({ year: currentYear, month: currentMonth });
-
-      currentMonth -= 1;
-    }
-
-    // Get spending for each historical month (including zero-spending months)
+    // Spending for the 6 months before the target month (including zero-spending months)
     const spendingData = [];
-    for (const monthInfo of historicalMonths) {
-      const spent = await this.getSpentAmount(monthInfo.year, monthInfo.month, category);
-      spendingData.push(spent); // Include all months, even with $0 spending
+    let monthInfo = { year: targetYear, month: targetMonth };
+    for (let i = 0; i < 6; i++) {
+      monthInfo = previousMonth(monthInfo.year, monthInfo.month);
+      spendingData.push(await this.getSpentAmount(monthInfo.year, monthInfo.month, category));
     }
 
     // Calculate average spending across all 6 months
@@ -524,56 +449,19 @@ class BudgetService {
       throw error;
     }
 
-    // Build a map of existing budgets by category for quick lookup
-    const existingByCategory = {};
-    existingBudgets.forEach(budget => {
-      existingByCategory[budget.category] = budget;
+    return copyRows({
+      sourceRows: sourceBudgets,
+      existingRows: existingBudgets,
+      keyOf: budget => budget.category,
+      create: source => budgetRepository.create({
+        year: tgtYear,
+        month: tgtMonth,
+        category: source.category,
+        limit: source.limit
+      }),
+      update: (existing, source) => budgetRepository.updateLimit(existing.id, source.limit),
+      overwrite
     });
-
-    // Perform copy operation
-    let copied = 0;
-    let skipped = 0;
-    let overwritten = 0;
-
-    for (const sourceBudget of sourceBudgets) {
-      const existingBudget = existingByCategory[sourceBudget.category];
-
-      if (existingBudget) {
-        if (overwrite) {
-          // Update existing budget with new limit
-          try {
-            await budgetRepository.updateLimit(existingBudget.id, sourceBudget.limit);
-            overwritten++;
-          } catch (err) {
-            // If update fails, skip this budget
-            skipped++;
-          }
-        } else {
-          // Should not happen due to earlier check, but handle it
-          skipped++;
-        }
-      } else {
-        // Create new budget in target month
-        try {
-          await budgetRepository.create({
-            year: tgtYear,
-            month: tgtMonth,
-            category: sourceBudget.category,
-            limit: sourceBudget.limit
-          });
-          copied++;
-        } catch (err) {
-          // If creation fails (e.g., duplicate), skip this budget
-          skipped++;
-        }
-      }
-    }
-
-    return {
-      copied,
-      skipped,
-      overwritten
-    };
   }
 
   /**

@@ -1,5 +1,6 @@
 const dbHelper = require('../utils/dbHelper');
 const logger = require('../config/logger');
+const { previousMonth: getPreviousMonth } = require('../utils/monthlyRows');
 
 /**
  * Day-of-week names indexed by SQLite strftime('%w') result (0 = Sunday).
@@ -58,13 +59,7 @@ class ActivityInsightsService {
     );
     const currentMonth = currRow ? currRow.cnt : 0;
 
-    // Previous month
-    let prevYear = year;
-    let prevMonth = month - 1;
-    if (prevMonth < 1) {
-      prevMonth = 12;
-      prevYear = year - 1;
-    }
+    const { year: prevYear, month: prevMonth } = getPreviousMonth(year, month);
     const prevRange = this._timestampRange(prevYear, prevMonth);
 
     const prevRow = await dbHelper.queryOne(

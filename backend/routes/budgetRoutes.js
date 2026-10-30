@@ -1,6 +1,17 @@
 const express = require('express');
 const router = express.Router();
 const budgetController = require('../controllers/budgetController');
+const budgetPlanController = require('../controllers/budgetPlanController');
+
+// GET /api/budgets/plan - Where a month's income goes (must be before /:id route)
+router.get('/plan', budgetPlanController.getBudgetPlan);
+
+// Planned savings/investment allocations (not expenses)
+router.post('/allocations/copy', budgetPlanController.copyAllocations);
+router.get('/allocations', budgetPlanController.getAllocations);
+router.post('/allocations', budgetPlanController.createAllocation);
+router.put('/allocations/:id', budgetPlanController.updateAllocation);
+router.delete('/allocations/:id', budgetPlanController.deleteAllocation);
 
 // GET /api/budgets/summary - Get budget summary (must be before /:id route)
 router.get('/summary', budgetController.getBudgetSummary);

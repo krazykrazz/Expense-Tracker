@@ -304,6 +304,7 @@ async function resetTestDatabase() {
     'fixed_expenses',
     'income_sources',
     'budgets',
+    'budget_allocations',
     'mortgage_payments',
     'loan_payments',
     'loan_balances',

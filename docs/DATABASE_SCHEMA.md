@@ -9,14 +9,14 @@ The application uses SQLite3 for data persistence. The database file lives at `<
 - `PRAGMA foreign_keys = ON` is issued on every connection (`backend/database/db.js`).
 - `PRAGMA journal_mode = WAL` is enabled once at server startup (`backend/server.js`). `synchronous` is not set explicitly, so the SQLite default (`FULL`) applies.
 - All `id` primary keys are `INTEGER PRIMARY KEY AUTOINCREMENT`. Timestamp columns default to `CURRENT_TIMESTAMP` (UTC).
-- `updated_at` is maintained by application code, except for `budgets` and `credit_card_billing_cycles`, which also have `AFTER UPDATE` triggers (see [Triggers](#triggers)).
+- `updated_at` is maintained by application code, except for `budgets`, `budget_allocations` and `credit_card_billing_cycles`, which also have `AFTER UPDATE` triggers (see [Triggers](#triggers)).
 
-The schema contains **26 tables**:
+The schema contains **27 tables**:
 
 | Group | Tables |
 |-------|--------|
 | Core | `expenses`, `monthly_gross`, `income_sources`, `fixed_expenses` |
-| Financial tracking | `loans`, `loan_balances`, `loan_payments`, `mortgage_payments`, `investments`, `investment_values`, `budgets` |
+| Financial tracking | `loans`, `loan_balances`, `loan_payments`, `mortgage_payments`, `investments`, `investment_values`, `budgets`, `budget_allocations` |
 | Medical & tax | `people`, `expense_people`, `expense_invoices` |
 | Payment methods | `payment_methods`, `credit_card_payments`, `credit_card_statements`, `credit_card_billing_cycles` |
 | Authentication | `users` |
@@ -257,6 +257,31 @@ Monthly budget limits per category.
 - UNIQUE(year, month, category)
 
 **Indexes**: `idx_budgets_period` (year, month), `idx_budgets_category` (category)
+
+### budget_allocations
+
+Planned monthly savings/investment amounts (RRSP, TFSA, emergency fund, any named goal). Plan only: allocations are not expenses and are never counted as spending.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| id | INTEGER PRIMARY KEY | Unique allocation identifier |
+| year | INTEGER NOT NULL | Year |
+| month | INTEGER NOT NULL | Month (CHECK 1-12) |
+| name | TEXT NOT NULL | Allocation name, unique within the month |
+| amount | REAL NOT NULL | Planned amount (CHECK > 0) |
+| investment_id | INTEGER | Optional link to an `investments` account |
+| created_at | TEXT NOT NULL | Creation timestamp |
+| updated_at | TEXT NOT NULL | Last update timestamp (also set by trigger `update_budget_allocations_timestamp`) |
+
+**Constraints**:
+- UNIQUE(year, month, name)
+
+**Foreign Keys**:
+- `investment_id` → `investments(id)` ON DELETE SET NULL
+
+**Indexes**: `idx_budget_allocations_period` (year, month)
+
+A month with no rows shows the previous month's allocations as unsaved (carried-forward) rows, the same way `budgets` behaves; they are stored when the user changes one or copies the month.
 
 ## Medical & Tax Tables
 
@@ -591,6 +616,7 @@ All indexes are listed per table above. `schema.js` (`INDEX_STATEMENTS`) creates
 | Trigger | Table | Behaviour |
 |---------|-------|-----------|
 | `update_budgets_timestamp` | budgets | AFTER UPDATE: sets `updated_at = CURRENT_TIMESTAMP` |
+| `update_budget_allocations_timestamp` | budget_allocations | AFTER UPDATE: sets `updated_at = CURRENT_TIMESTAMP` |
 | `update_billing_cycles_timestamp` | credit_card_billing_cycles | AFTER UPDATE: sets `updated_at = CURRENT_TIMESTAMP` |
 
 ## Foreign Key Constraints
@@ -607,6 +633,7 @@ Foreign keys are enforced (`PRAGMA foreign_keys = ON` per connection):
 
 - **SET NULL**: Foreign key is set to NULL when parent is deleted
   - fixed_expenses.linked_loan_id (when loan deleted)
+  - budget_allocations.investment_id (when investment deleted)
   - expense_invoices.person_id (when person deleted)
 
 - **No action (delete is rejected while referenced)**
@@ -621,6 +648,7 @@ Foreign keys are enforced (`PRAGMA foreign_keys = ON` per connection):
 - `loan_balances`: (loan_id, year, month)
 - `investment_values`: (investment_id, year, month)
 - `budgets`: (year, month, category)
+- `budget_allocations`: (year, month, name)
 - `people`: (name)
 - `expense_people`: (expense_id, person_id)
 - `place_names`: (original_name)
@@ -639,6 +667,7 @@ Foreign keys are enforced (`PRAGMA foreign_keys = ON` per connection):
 - `loan_balances.remaining_balance`, `loan_balances.rate` >= 0
 - `loan_payments.amount` > 0
 - `budgets.month` 1-12; `budgets."limit"` > 0
+- `budget_allocations.month` 1-12; `budget_allocations.amount` > 0
 - `investments.type` 'TFSA'/'RRSP'; `investments.initial_value`, `investment_values.value` >= 0
 - `reminders.type` 'investment_values'/'loan_balances'
 - `dismissed_anomalies.action` 'dismiss'/'mark_as_expected'

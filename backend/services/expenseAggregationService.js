@@ -2,8 +2,10 @@ const expenseRepository = require('../repositories/expenseRepository');
 const fixedExpenseRepository = require('../repositories/fixedExpenseRepository');
 const loanService = require('./loanService');
 const investmentService = require('./investmentService');
+const allocationService = require('./allocationService');
 const { getDatabase } = require('../database/db');
 const { validateYearMonth } = require('../utils/validators');
+const { previousMonth } = require('../utils/monthlyRows');
 const logger = require('../config/logger');
 
 class ExpenseAggregationService {
@@ -38,7 +40,7 @@ class ExpenseAggregationService {
     }
     
     // Calculate previous month and get its summary
-    const { prevYear, prevMonth } = this._calculatePreviousMonth(yearNum, monthNum);
+    const { year: prevYear, month: prevMonth } = previousMonth(yearNum, monthNum);
     const previous = await this._getMonthSummary(prevYear, prevMonth);
     
     // Return both current and previous month data
@@ -54,14 +56,15 @@ class ExpenseAggregationService {
    */
   async _getMonthSummary(year, month) {
     // Fetch all data in parallel for better performance
-    const [summary, monthlyGross, totalFixedExpenses, loans, fixedCategoryTotals, fixedPaymentTotals, investments] = await Promise.all([
+    const [summary, monthlyGross, totalFixedExpenses, loans, fixedCategoryTotals, fixedPaymentTotals, investments, plannedAllocations] = await Promise.all([
       expenseRepository.getSummary(year, month),
       expenseRepository.getMonthlyGross(year, month),
       fixedExpenseRepository.getTotalFixedExpenses(year, month),
       loanService.getLoansForMonth(year, month),
       fixedExpenseRepository.getCategoryTotals(year, month),
       fixedExpenseRepository.getPaymentTypeTotals(year, month),
-      investmentService.getAllInvestments()
+      investmentService.getAllInvestments(),
+      allocationService.getAllocationTotal(year, month)
     ]);
     
     // Calculate total outstanding debt from active loans
@@ -95,30 +98,12 @@ class ExpenseAggregationService {
       totalFixedExpenses: totalFixedExpenses || 0,
       totalExpenses: summary.total + (totalFixedExpenses || 0),
       netBalance: (monthlyGross || 0) - (summary.total + (totalFixedExpenses || 0)),
+      plannedAllocations,
       loans,
       totalOutstandingDebt,
       investments,
       totalInvestmentValue
     };
-  }
-
-  /**
-   * Calculate previous month with year rollover handling
-   * @param {number} year - Current year
-   * @param {number} month - Current month
-   * @returns {Object} Previous month { prevYear, prevMonth }
-   * @private
-   */
-  _calculatePreviousMonth(year, month) {
-    let prevYear = year;
-    let prevMonth = month - 1;
-    
-    if (prevMonth < 1) {
-      prevMonth = 12;
-      prevYear = year - 1;
-    }
-    
-    return { prevYear, prevMonth };
   }
 
   /**

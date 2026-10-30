@@ -6,6 +6,5 @@ export { default as FixedExpensesModal } from './FixedExpensesModal';
 export { default as BudgetsModal } from './BudgetsModal';
 export { default as BudgetCard } from './BudgetCard';
 export { default as BudgetProgressBar } from './BudgetProgressBar';
-export { default as BudgetSummaryPanel } from './BudgetSummaryPanel';
 export { default as BudgetAlertManager } from './BudgetAlertManager';
 export { default as BudgetReminderBanner } from './BudgetReminderBanner';

@@ -64,13 +64,11 @@ describe('ExpenseService - Validation Logic PBT', () => {
     ['_validateFutureMonths', 1],
     ['_isFutureDate', 1],
     ['_getEffectivePostingDate', 1],
-    ['_triggerBudgetRecalculation', 2],
     ['_validatePeopleExist', 1],
 
     // ─── Aggregation methods (delegated to expenseAggregationService) ───
     ['getSummary', 2],
     ['_getMonthSummary', 2],
-    ['_calculatePreviousMonth', 2],
     ['getMonthlyGross', 2],
     ['setMonthlyGross', 3],
     ['getAnnualSummary', 1],

@@ -246,7 +246,11 @@ See reminder banners when investment values need updating for the current month.
 
 1. Click **"💵 Budgets"** in the month selector
 2. On the **📋 Manage** tab, set limits for any budgetable category. A suggested amount based on recent spending is shown where available
-3. If a month has no budgets yet, the previous month's budgets are shown automatically; **📋 Copy from Previous Month** saves them for the current month
+3. If a month has no budgets yet, the previous month's budgets are shown (they are saved to the month when you change one); **📋 Copy from Previous Month** saves them in one step
+
+### Planning Savings and Investments
+
+On the **🧭 Plan** tab you can see where the month's income goes: fixed expenses, category budgets, and savings/investment allocations (RRSP, TFSA, emergency fund, any goal), leaving an **Unassigned** amount. Allocations are plans only and are not counted as spending. When a month has allocations, the Balance card on the main screen also shows **After planned savings**. See the [Budget Management Guide](BUDGET_MANAGEMENT_GUIDE.md#monthly-plan).
 
 ### Monitoring Progress
 

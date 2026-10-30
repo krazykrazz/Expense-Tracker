@@ -1,4 +1,5 @@
 const { getDatabase } = require('../database/db');
+const { previousMonth } = require('../utils/monthlyRows');
 
 class IncomeRepository {
   /**
@@ -286,14 +287,7 @@ class IncomeRepository {
   async copyFromPreviousMonth(year, month) {
     const db = await getDatabase();
     
-    // Calculate previous month
-    let prevYear = year;
-    let prevMonth = month - 1;
-    
-    if (prevMonth < 1) {
-      prevMonth = 12;
-      prevYear = year - 1;
-    }
+    const { year: prevYear, month: prevMonth } = previousMonth(year, month);
     
     return new Promise((resolve, reject) => {
       // First, get income sources from previous month

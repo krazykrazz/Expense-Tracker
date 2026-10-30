@@ -680,6 +680,8 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
   const variableTotal = summary.total || 0;
   const spent = fixedTotal + variableTotal;
   const balance = income - spent;
+  const plannedAllocations = summary.plannedAllocations || 0;
+  const balanceAfterPlan = balance - plannedAllocations;
   const spentPct = income > 0 ? Math.round((spent / income) * 100) : null;
   // Scale the meter to whichever is larger so overspending fills the bar
   const meterScale = Math.max(income, spent) || 1;
@@ -832,6 +834,12 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
             <Money value={balance} />
           </div>
           <div className="card-subtitle">Income - All Expenses</div>
+          {plannedAllocations > 0 && (
+            <div className="balance-after-plan">
+              <span>After planned savings ({formatCurrency(plannedAllocations)})</span>
+              <Money value={balanceAfterPlan} />
+            </div>
+          )}
           <div
             className={`spend-meter ${spent > income ? 'over' : ''}`}
             role="img"

@@ -27,6 +27,20 @@ class AllocationRepository {
   }
 
   /**
+   * Stored allocation totals per month over an inclusive range of month indexes (year * 12 + month - 1).
+   * @returns {Promise<Array<{year: number, month: number, total: number}>>}
+   */
+  async sumByMonthRange(startIdx, endIdx) {
+    // The year prefilter lets SQLite use the (year, month) index
+    return dbHelper.queryAll(
+      `SELECT year, month, SUM(amount) AS total FROM budget_allocations
+       WHERE year BETWEEN ? AND ? AND (year * 12 + month - 1) BETWEEN ? AND ?
+       GROUP BY year, month`,
+      [Math.floor(startIdx / 12), Math.floor(endIdx / 12), startIdx, endIdx]
+    );
+  }
+
+  /**
    * @returns {Promise<Object|null>} the updated allocation, or null when the id does not exist
    */
   async update(id, { name, amount, investmentId = null }) {

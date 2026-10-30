@@ -9,6 +9,7 @@ import {
 } from '../../services/fixedExpenseApi';
 import { getActivePaymentMethods, getPaymentMethod } from '../../services/paymentMethodApi';
 import { getAllLoans } from '../../services/loanApi';
+import { savePlannedSavingsFromPreviousMonth } from '../../services/budgetApi';
 import { validateName, validateAmount } from '../../utils/validation';
 import { getMonthNameLong } from '../../utils/formatters';
 import { CATEGORIES } from '../../utils/constants';
@@ -495,6 +496,8 @@ const FixedExpensesModal = ({ isOpen, onClose, year, month, onUpdate }) => {
         } else {
           await fetchFixedExpenses();
         }
+        await savePlannedSavingsFromPreviousMonth(year, month)
+          .catch(err => logger.warn('Fixed expenses carried forward, but planned savings were not saved:', err));
       } catch (err) {
         const errorMessage = err.message || 'Network error. Unable to carry forward fixed expenses. Please check your connection and try again.';
         setError(errorMessage);

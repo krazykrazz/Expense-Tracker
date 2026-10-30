@@ -2422,7 +2422,15 @@ Body: `{ "sourceYear", "sourceMonth", "targetYear", "targetMonth", "overwrite" }
 
 Mutations log `budget_allocation_added|updated|deleted` events with entity type `budget`, so other open tabs refresh through the existing budget sync.
 
-Monthly summary (`GET /api/expenses/summary`) includes `plannedAllocations` (total planned for the month, carry-forward aware); the main-screen Balance card uses it for the "After planned savings" line.
+Monthly summary (`GET /api/expenses/summary`) includes `plannedAllocations` (total planned for the month, carry-forward aware); the main-screen Balance card uses it for the "After planned savings" line. It also includes `plannedBudgets` (category budget total, carry-forward aware) and `plannedUnassigned` (`monthlyGross - totalFixedExpenses - plannedBudgets - plannedAllocations`, the same figure as the Plan tab's `unassigned`); a negative value with income recorded shows the "plan is over" notification.
+
+### Planned savings elsewhere
+
+Range views compare planned savings with what was actually saved (income − fixed − variable). They use the same carry-forward rule as the Plan tab, and months after the current month count as `0` because they have no actuals yet.
+
+- `GET /api/analytics/period-summary`: `totals.plannedSavings` and `totals.plannedSavingsRate` (see below).
+- `GET /api/expenses/annual-summary`: `totalPlannedSavings` and `monthlyTotals[].plannedSavings`.
+- `GET /api/budgets/history`: `plannedSavings` = `{ history: [{ year, month, planned, saved, met }], totalPlanned, totalSaved, successRate }`. `met` is `null` for months without a plan; the totals and `successRate` only cover planned months (`successRate` is `null` when none).
 
 ---
 
@@ -2643,6 +2651,8 @@ HTTP/1.1 200 OK
     "fixedExpenses": 3000,
     "net": 2500,
     "savingsRate": 25,
+    "plannedSavings": 3000,
+    "plannedSavingsRate": 30,
     "averageMonthlyExpenses": 833.33,
     "transactionCount": 120
   },
@@ -2666,6 +2676,7 @@ HTTP/1.1 200 OK
 **Notes:**
 - Category lists are sorted by total descending; zero-total categories are omitted.
 - `savingsRate` is `null` when no income is recorded in the range.
+- `plannedSavings` is the budget allocation total for the range (carry-forward aware; months after the current month count as 0). It is never counted in `expenses` or `net`. `plannedSavingsRate` is its percentage of income, or `null` without income.
 - `transactionCount` counts variable expenses only.
 
 **Error Responses:**

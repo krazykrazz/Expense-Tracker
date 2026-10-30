@@ -5,6 +5,7 @@
 
 import { API_ENDPOINTS } from '../config.js';
 import { apiGet, apiPost, apiPut, apiDelete, logApiError } from '../utils/apiClient.js';
+import { shiftMonth } from '../utils/yearMonth.js';
 
 /**
  * Get all budgets for a specific month
@@ -228,4 +229,18 @@ export const copyAllocations = async (sourceYear, sourceMonth, targetYear, targe
     logApiError('copying allocations', error);
     throw error;
   }
+};
+
+/**
+ * Store last month's planned savings in this month when it only shows them as carried forward.
+ * Months with their own allocations are left untouched.
+ * @returns {Promise<Object|null>} copy result, or null when nothing was carried forward
+ */
+export const savePlannedSavingsFromPreviousMonth = async (year, month) => {
+  const { allocations = [] } = await getAllocations(year, month);
+  if (!allocations.some(allocation => allocation.carriedForward)) {
+    return null;
+  }
+  const previous = shiftMonth(year, month, -1);
+  return copyAllocations(previous.year, previous.month, year, month, false);
 };

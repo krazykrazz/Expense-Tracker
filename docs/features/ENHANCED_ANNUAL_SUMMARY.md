@@ -8,7 +8,7 @@ The Annual Summary is a yearly financial overview opened from the "📊 Annual S
 
 ### Summary Cards
 
-Up to 13 cards in a 4-column grid:
+Up to 14 cards in a 4-column grid:
 
 1. **Total Income** - Sum of all income for the year
 2. **Fixed Expenses** - Total fixed (monthly recurring) costs
@@ -19,10 +19,11 @@ Up to 13 cards in a 4-column grid:
 7. **Highest Month** - Month with the highest expenses (N/A if none)
 8. **Lowest Month** - Month with the lowest non-zero expenses (N/A if none)
 9. **Savings Rate** - Balance ÷ income (N/A when no income)
-10. **Transactions** - Count of the year's (variable) expenses, with average amount
-11. **Top Category** - Highest spending category with amount and % of total expenses (hidden when there are no category totals)
-12. **Daily Spend** - Variable expenses ÷ days elapsed this year (current year) or 365 (other years)
-13. **Tax Deductible** - `Tax - Medical` + `Tax - Donation` totals
+10. **Planned Savings** - Total budget allocations for the year (months up to the current month), % of income, and how far the Balance is ahead of or short of it (hidden when nothing is planned)
+11. **Transactions** - Count of the year's (variable) expenses, with average amount
+12. **Top Category** - Highest spending category with amount and % of total expenses (hidden when there are no category totals)
+13. **Daily Spend** - Variable expenses ÷ days elapsed this year (current year) or 365 (other years)
+14. **Tax Deductible** - `Tax - Medical` + `Tax - Donation` totals
 
 ### Year-over-Year (YoY) Comparison
 
@@ -68,7 +69,8 @@ GET /api/income/annual/{year}/by-category
 - `netWorth`, `totalAssets`, `totalLiabilities`
 - `averageMonthly`, `highestMonth`, `lowestMonth`
 - `transactionCount`
-- `monthlyTotals` - 12 entries of `{ month, total, fixedExpenses, variableExpenses, income }`
+- `totalPlannedSavings` - budget allocations for the year, carry-forward aware; months after the current month count as 0
+- `monthlyTotals` - 12 entries of `{ month, total, fixedExpenses, variableExpenses, income, plannedSavings }`
 - `byCategory`, `byMethod` - expense totals keyed by category / method
 
 Built by `getAnnualSummary` in `backend/services/expenseAggregationService.js`.
@@ -91,5 +93,5 @@ Built by `getAnnualSummary` in `backend/services/expenseAggregationService.js`.
 
 ---
 
-**Last Updated**: 2026-10-04
+**Last Updated**: 2026-10-30
 

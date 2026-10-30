@@ -1,4 +1,5 @@
 const dbHelper = require('../utils/dbHelper');
+const allocationService = require('./allocationService');
 
 const round2 = (n) => Math.round((n || 0) * 100) / 100;
 const pct = (part, whole) => (whole > 0 ? Math.round((part / whole) * 1000) / 10 : 0);
@@ -7,6 +8,7 @@ class PeriodSummaryService {
   /**
    * Income vs. spending breakdown over an inclusive month range.
    * Spending = variable expenses + fixed expenses (same model as the annual summary).
+   * Planned savings (budget allocations) are reported alongside but never counted as spending.
    * @param {{year:number, month:number}} start
    * @param {{year:number, month:number}} end
    */
@@ -24,7 +26,7 @@ class PeriodSummaryService {
     const monthRangeSql = 'year BETWEEN ? AND ? AND (year * 12 + month - 1) BETWEEN ? AND ?';
     const monthRangeParams = [start.year, end.year, startIdx, endIdx];
 
-    const [variableRows, fixedRows, incomeRows] = await Promise.all([
+    const [variableRows, fixedRows, incomeRows, plannedByMonth] = await Promise.all([
       dbHelper.queryAll(
         `SELECT type AS category, SUM(amount) AS total, COUNT(*) AS cnt
          FROM expenses WHERE date >= ? AND date < ? GROUP BY type`,
@@ -40,6 +42,7 @@ class PeriodSummaryService {
          FROM income_sources WHERE ${monthRangeSql} GROUP BY COALESCE(category, 'Other')`,
         monthRangeParams
       ),
+      allocationService.getPlannedSavingsByMonth(start, end),
     ]);
 
     const categoryMap = new Map();
@@ -64,6 +67,7 @@ class PeriodSummaryService {
     const incomeTotal = round2(incomeRows.reduce((s, r) => s + r.total, 0));
     const transactionCount = variableRows.reduce((s, r) => s + r.cnt, 0);
     const net = round2(incomeTotal - expenseTotal);
+    const plannedSavings = round2(plannedByMonth.reduce((s, m) => s + m.planned, 0));
 
     const expensesByCategory = [...categoryMap.values()]
       .map(e => {
@@ -104,6 +108,8 @@ class PeriodSummaryService {
         fixedExpenses: fixedTotal,
         net,
         savingsRate: incomeTotal > 0 ? pct(net, incomeTotal) : null,
+        plannedSavings,
+        plannedSavingsRate: incomeTotal > 0 ? pct(plannedSavings, incomeTotal) : null,
         averageMonthlyExpenses: round2(expenseTotal / monthCount),
         transactionCount,
       },

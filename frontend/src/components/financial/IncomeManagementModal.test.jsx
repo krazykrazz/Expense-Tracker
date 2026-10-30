@@ -2,6 +2,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import IncomeManagementModal from './IncomeManagementModal';
 import * as incomeApi from '../../services/incomeApi';
+import { savePlannedSavingsFromPreviousMonth } from '../../services/budgetApi';
+
+vi.mock('../../services/budgetApi', () => ({
+  savePlannedSavingsFromPreviousMonth: vi.fn()
+}));
 
 // Mock the income API
 vi.mock('../../services/incomeApi', () => ({
@@ -39,6 +44,7 @@ describe('IncomeManagementModal', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     incomeApi.getMonthlyIncomeSources.mockResolvedValue(mockIncomeSources);
+    savePlannedSavingsFromPreviousMonth.mockResolvedValue(null);
   });
 
   describe('Rendering', () => {
@@ -297,6 +303,24 @@ describe('IncomeManagementModal', () => {
       await waitFor(() => {
         expect(incomeApi.carryForwardIncomeSources).toHaveBeenCalled();
       });
+      await waitFor(() => {
+        expect(savePlannedSavingsFromPreviousMonth).toHaveBeenCalledWith(2024, 12);
+      });
+    });
+
+    it('keeps the copied income when saving planned savings fails', async () => {
+      incomeApi.getMonthlyIncomeSources.mockResolvedValue({ sources: [], total: 0, byCategory: {} });
+      incomeApi.carryForwardIncomeSources.mockResolvedValue({ count: 2 });
+      savePlannedSavingsFromPreviousMonth.mockRejectedValue(new Error('offline'));
+
+      render(<IncomeManagementModal {...defaultProps} />);
+      fireEvent.click(await screen.findByText(/Copy from Previous Month/));
+      fireEvent.click(await screen.findByText('Continue'));
+
+      await waitFor(() => {
+        expect(savePlannedSavingsFromPreviousMonth).toHaveBeenCalled();
+      });
+      expect(screen.queryByText(/offline/)).not.toBeInTheDocument();
     });
   });
 

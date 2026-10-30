@@ -183,6 +183,7 @@ function AppContent({ onPaymentMethodsUpdate }) {
     showTaxDeductible,
     showBudgets,
     budgetManagementFocusCategory,
+    budgetsInitialTab,
     showPeopleManagement,
     showAnalyticsHub,
     showSettingsModal,
@@ -601,6 +602,7 @@ function AppContent({ onPaymentMethodsUpdate }) {
           onClose={handleCloseBudgets}
           onBudgetUpdated={handleBudgetUpdated}
           focusedCategory={budgetManagementFocusCategory}
+          initialTab={budgetsInitialTab}
         />
         </ErrorBoundary>
         </Suspense>

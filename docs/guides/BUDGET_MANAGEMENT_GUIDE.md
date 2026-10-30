@@ -18,11 +18,12 @@ The Budget Tracking & Alerts feature helps you control spending by setting month
 
 | Where | The question it answers |
 |-------|-------------------------|
-| **Main screen → Monthly Summary** | How is this month going? Balance (income − fixed − variable spending), plus *After planned savings* when you have allocations |
+| **Main screen → Monthly Summary** | How is this month going? Balance (income − fixed − variable spending), plus *After planned savings* when you have allocations. A notification appears when the plan is over income |
 | **💵 Budgets → 📋 Manage** | What may I spend per category? |
 | **💵 Budgets → 🧭 Plan** | Where does this month's income go? Fixed expenses, category budgets, savings and investments, and what is left **Unassigned** |
-| **💵 Budgets → 📊 History** | How did I do against my category budgets? |
-| **📈 Analytics → Cash Flow / Monthly Summary** | What actually happened? Actuals only; planned savings are not spending |
+| **💵 Budgets → 📊 History** | How did I do against my category budgets and planned savings? |
+| **📈 Analytics → Cash Flow / Monthly Summary** | What actually happened? Actuals only; planned savings are not spending. Cash Flow compares what you saved with what you planned |
+| **📊 Annual Summary** | The year's planned savings next to the actual Balance |
 | **💼 Financial** | The TFSA/RRSP accounts themselves |
 
 ## Getting Started
@@ -140,8 +141,22 @@ Below that, **So far this month** shows your **Balance** (the same figure as the
 
 - Click **➕ Add allocation**, enter a name and an amount, and optionally link one of your TFSA/RRSP accounts from **💼 Financial** (picking an account fills in the name).
 - Allocations are a **plan only**. They are not expenses, don't count as spending, and nothing is recorded as contributed.
-- Like budgets, a month with no allocations shows last month's, and they are saved to the month when you change one.
+- Like budgets, a month with no allocations shows last month's, and they are saved to the month when you change one. Copying income (**Manage Income → Copy from Previous Month**) or fixed expenses (**Carry Forward from Previous Month**) also saves them, so the month keeps its plan even if you later change last month's. A month that already has its own allocations is left alone.
 - If no income is recorded for the month, the Plan tab asks you to add it with **Manage Income** on the main screen instead of showing a misleading remainder.
+
+### Plan Is Over Income
+
+When income is recorded and category budgets plus planned savings add up to more than income minus fixed expenses, the main screen shows a **🧭 plan is over** notification with the amount. Click it to open the Plan tab, or dismiss it for the month.
+
+### Planned vs Actual Savings
+
+Other screens compare your plan with what you actually saved (income − fixed − variable, the main-screen Balance):
+
+- **Analytics → Cash Flow**: the Saved card says how far ahead of or short of the plan you are, and the profit & loss table adds **Planned savings** (with % of income) and **Ahead of plan / Short of plan** rows.
+- **Annual Summary**: a **Planned Savings** card with the year's total, its share of income, and the gap to the actual Balance.
+- **Budgets → History**: a **Planned savings** table (see below).
+
+These use the same carry-forward rule as the Plan tab. Months after the current month are not counted, because nothing has happened in them yet. Planned savings are never added to spending.
 
 ## Historical Budget Analysis
 
@@ -179,6 +194,14 @@ Displays each month with:
 - **Spent**: What you actually spent
 - **Status**: ✅ Met budget or ❌ Exceeded budget
 - **Variance**: How much over or under budget
+
+#### Planned Savings
+
+When any month in the period has planned savings, **Monthly Details** starts with a **Planned savings** table: planned amount, amount actually saved, the difference, and **✓ Met** / **✗ Short** (met when saved ≥ planned). The note above it gives the share of planned months where the plan was met.
+
+#### CSV Export
+
+**📥 Export to CSV** writes one row per category and month (`Category, Month, Year, Budgeted, Spent, Variance, Met Budget`). Months without a budget leave Budgeted, Variance and Met Budget empty. Months with planned savings add a `Planned savings` row where Budgeted is the planned amount, Spent is the amount saved, and Variance is saved − planned.
 
 ## Real-Time Budget Updates
 

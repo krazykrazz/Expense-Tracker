@@ -1,12 +1,14 @@
 const allocationRepository = require('../repositories/allocationRepository');
 const investmentRepository = require('../repositories/investmentRepository');
 const activityLogService = require('./activityLogService');
+const timeBoundaryService = require('./timeBoundaryService');
 const { parseYearMonth } = require('../utils/validators');
 const { loadWithCarryForward, copyRows } = require('../utils/monthlyRows');
 
 const MAX_NAME_LENGTH = 100;
 
 const round2 = (n) => Math.round(n * 100) / 100;
+const monthIndex = ({ year, month }) => year * 12 + month - 1;
 const fail = (message, statusCode) => Object.assign(new Error(message), { statusCode });
 const formatAmount = (amount) => `$${amount.toFixed(2)}`;
 
@@ -77,6 +79,33 @@ class AllocationService {
   async getAllocationTotal(year, month) {
     const allocations = await this.getAllocations(year, month);
     return round2(allocations.reduce((sum, allocation) => sum + allocation.amount, 0));
+  }
+
+  /**
+   * Planned savings per month over an inclusive range, carry-forward aware like getAllocations.
+   * Months after the current business month count as 0: they have no actuals to compare against yet.
+   * @param {{year: number, month: number}} start
+   * @param {{year: number, month: number}} end
+   * @returns {Promise<Array<{year: number, month: number, planned: number}>>}
+   */
+  async getPlannedSavingsByMonth(start, end) {
+    const startIdx = monthIndex(start);
+    const endIdx = monthIndex(end);
+
+    const [rows, timezone] = await Promise.all([
+      allocationRepository.sumByMonthRange(startIdx - 1, endIdx),
+      timeBoundaryService.getBusinessTimezone()
+    ]);
+    const [currentYear, currentMonth] = timeBoundaryService.getBusinessDate(new Date(), timezone).split('-').map(Number);
+    const currentIdx = monthIndex({ year: currentYear, month: currentMonth });
+    const stored = new Map(rows.map(row => [monthIndex(row), row.total]));
+
+    const result = [];
+    for (let idx = startIdx; idx <= endIdx; idx++) {
+      const total = idx > currentIdx ? 0 : (stored.get(idx) ?? stored.get(idx - 1) ?? 0);
+      result.push({ year: Math.floor(idx / 12), month: (idx % 12) + 1, planned: round2(total) });
+    }
+    return result;
   }
 
   async createAllocation(year, month, data, tabId = null) {

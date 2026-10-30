@@ -32,6 +32,9 @@ const CashFlowView = ({ data }) => {
 
   const hasIncome = totals.income > 0;
   const netPositive = totals.net >= 0;
+  const plannedSavings = totals.plannedSavings || 0;
+  const hasPlan = plannedSavings > 0;
+  const vsPlan = Math.round((totals.net - plannedSavings) * 100) / 100;
 
   return (
     <div className="period-view" data-testid="cash-flow-view">
@@ -49,6 +52,11 @@ const CashFlowView = ({ data }) => {
           <span className={`period-stat-value ${netPositive ? 'positive' : 'negative'}`}>
             {formatCurrency(Math.abs(totals.net))}
           </span>
+          {hasPlan && (
+            <span className="period-stat-sub" data-testid="cash-flow-vs-plan">
+              {formatCurrency(Math.abs(vsPlan))} {vsPlan >= 0 ? 'ahead of' : 'short of'} {formatCurrency(plannedSavings)} planned
+            </span>
+          )}
         </div>
         <div className="period-stat-card">
           <span className="period-stat-label">Savings rate</span>
@@ -110,6 +118,22 @@ const CashFlowView = ({ data }) => {
                 {netPositive ? '' : '-'}{formatCurrency(Math.abs(totals.net))}
               </td>
             </tr>
+            {hasPlan && (
+              <>
+                <tr className="pl-item-row">
+                  <th scope="row">Planned savings</th>
+                  <td className="pl-pct">{formatPct(totals.plannedSavingsRate)}</td>
+                  <td className="pl-amount">{formatCurrency(plannedSavings)}</td>
+                </tr>
+                <tr className="pl-item-row">
+                  <th scope="row">{vsPlan >= 0 ? 'Ahead of plan' : 'Short of plan'}</th>
+                  <td className="pl-pct" />
+                  <td className={`pl-amount ${vsPlan >= 0 ? 'positive' : 'negative'}`}>
+                    {vsPlan >= 0 ? '' : '-'}{formatCurrency(Math.abs(vsPlan))}
+                  </td>
+                </tr>
+              </>
+            )}
           </tfoot>
         </table>
       </section>

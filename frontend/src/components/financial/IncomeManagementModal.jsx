@@ -8,6 +8,7 @@ import {
   carryForwardIncomeSources
 } from '../../services/incomeApi';
 import { validateName, validateAmount } from '../../utils/validation';
+import { savePlannedSavingsFromPreviousMonth } from '../../services/budgetApi';
 import { getMonthNameLong } from '../../utils/formatters';
 import { createLogger } from '../../utils/logger';
 import ConfirmDialog from '../shared/ConfirmDialog';
@@ -237,7 +238,7 @@ const IncomeManagementModal = ({ isOpen, onClose, year, month, onUpdate }) => {
     setConfirmState({
       open: true,
       title: 'Copy Income Sources',
-      message: 'Copy all income sources from the previous month? This will add them to the current month.',
+      message: 'Copy all income sources from the previous month? This will add them to the current month. Planned savings carried over from last month are saved to this month too.',
       variant: 'warning',
       onConfirm: async () => {
         setConfirmState(prev => ({ ...prev, open: false }));
@@ -246,6 +247,8 @@ const IncomeManagementModal = ({ isOpen, onClose, year, month, onUpdate }) => {
         try {
           await carryForwardIncomeSources(year, month);
           await fetchIncomeSources();
+          await savePlannedSavingsFromPreviousMonth(year, month)
+            .catch(err => logger.warn('Income copied, but planned savings were not saved:', err));
         } catch (err) {
           const errorMessage = err.message || 'Network error. Unable to copy income sources. Please check your connection and try again.';
           setError(errorMessage);

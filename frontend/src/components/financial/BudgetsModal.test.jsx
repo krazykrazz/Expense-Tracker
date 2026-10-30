@@ -1,6 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import BudgetsModal from './BudgetsModal';
+import { getBudgetHistory } from '../../services/budgetApi';
 
 // ── Mock dependencies ──────────────────────────────────────────────────────────
 
@@ -176,6 +177,89 @@ describe('BudgetsModal', () => {
       const { focusedCategory, ...propsWithoutFocus } = defaultProps;
       render(<BudgetsModal {...propsWithoutFocus} />);
       expect(mockSetActiveTab).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('initialTab', () => {
+    it('switches to the requested tab when opened with one', () => {
+      render(<BudgetsModal {...defaultProps} initialTab="plan" />);
+      expect(mockSetActiveTab).toHaveBeenCalledWith('plan');
+    });
+  });
+
+  describe('History planned savings', () => {
+    const history = {
+      period: { start: '2024-01-01', end: '2024-03-01', months: 3 },
+      categories: {
+        Groceries: {
+          history: [
+            { year: 2024, month: 2, budgeted: null, spent: 120, met: null },
+            { year: 2024, month: 3, budgeted: 500, spent: 450, met: true }
+          ],
+          successRate: 100,
+          averageSpent: 285,
+          averageBudgeted: 500
+        }
+      },
+      plannedSavings: {
+        history: [
+          { year: 2024, month: 2, planned: 0, saved: 900, met: null },
+          { year: 2024, month: 3, planned: 1000, saved: 750, met: false }
+        ],
+        totalPlanned: 1000,
+        totalSaved: 750,
+        successRate: 0
+      }
+    };
+
+    let csv;
+    beforeEach(() => {
+      mockActiveTab = 'history';
+      csv = null;
+      vi.stubGlobal('Blob', class { constructor(parts) { csv = parts.join(''); } });
+      URL.createObjectURL = vi.fn(() => 'blob:test');
+      URL.revokeObjectURL = vi.fn();
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+      delete URL.createObjectURL;
+      delete URL.revokeObjectURL;
+    });
+
+    it('lists planned vs saved per month', async () => {
+      getBudgetHistory.mockResolvedValueOnce(history);
+      render(<BudgetsModal {...defaultProps} />);
+
+      const section = await screen.findByTestId('history-planned-savings');
+      expect(section).toHaveTextContent('Plan met in 0.0% of planned months.');
+      const rows = within(section).getAllByRole('row').slice(1);
+      expect(rows[0]).toHaveTextContent('No plan');
+      expect(rows[1]).toHaveTextContent('$1,000.00');
+      expect(rows[1]).toHaveTextContent('$750.00');
+      expect(rows[1]).toHaveTextContent('✗ Short');
+    });
+
+    it('is hidden when nothing was planned', async () => {
+      getBudgetHistory.mockResolvedValueOnce({ ...history, plannedSavings: { ...history.plannedSavings, totalPlanned: 0 } });
+      render(<BudgetsModal {...defaultProps} />);
+
+      await screen.findByText('📥 Export to CSV');
+      expect(screen.queryByTestId('history-planned-savings')).not.toBeInTheDocument();
+    });
+
+    it('exports months without a budget and planned savings rows to CSV', async () => {
+      getBudgetHistory.mockResolvedValueOnce(history);
+      render(<BudgetsModal {...defaultProps} />);
+
+      fireEvent.click(await screen.findByText('📥 Export to CSV'));
+
+      expect(csv.split('\n')).toEqual([
+        'Category,Month,Year,Budgeted,Spent,Variance,Met Budget',
+        'Groceries,2,2024,,120.00,,',
+        'Groceries,3,2024,500.00,450.00,50.00,Yes',
+        'Planned savings,3,2024,1000.00,750.00,-250.00,No'
+      ]);
     });
   });
 

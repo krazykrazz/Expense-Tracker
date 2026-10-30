@@ -86,7 +86,7 @@ Sections are hidden individually when there is insufficient data; if none are av
 
 Used by the hub:
 - `GET /api/analytics/monthly-summary/:year/:month`
-- `GET /api/analytics/period-summary?start=YYYY-MM&end=YYYY-MM` — max range 120 months; returns `totals` (`income`, `expenses`, `fixedExpenses`, `net`, `savingsRate`, `averageMonthlyExpenses`, `transactionCount`), `expensesByCategory`, `incomeByCategory`
+- `GET /api/analytics/period-summary?start=YYYY-MM&end=YYYY-MM` — max range 120 months; returns `totals` (`income`, `expenses`, `fixedExpenses`, `net`, `savingsRate`, `plannedSavings`, `plannedSavingsRate`, `averageMonthlyExpenses`, `transactionCount`), `expensesByCategory`, `incomeByCategory`. Cash Flow shows planned savings (budget allocations) next to the net when the range has any; they are never counted as spending
 - `GET /api/analytics/activity-insights/:year/:month`
 - `GET /api/analytics/trends/:year/:month`
 - `GET /api/analytics/merchants` (plus `/merchants/:name`, `/merchants/:name/trend`, `/merchants/:name/expenses`)
@@ -95,5 +95,5 @@ Also available (not called directly by the hub UI): `GET /api/analytics/data-suf
 
 ---
 
-**Last Updated**: 2026-10-04
+**Last Updated**: 2026-10-30
 

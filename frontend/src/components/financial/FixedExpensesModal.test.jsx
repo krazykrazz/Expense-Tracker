@@ -4,6 +4,11 @@ import FixedExpensesModal from './FixedExpensesModal';
 import * as fixedExpenseApi from '../../services/fixedExpenseApi';
 import * as paymentMethodApi from '../../services/paymentMethodApi';
 import * as loanApi from '../../services/loanApi';
+import { savePlannedSavingsFromPreviousMonth } from '../../services/budgetApi';
+
+vi.mock('../../services/budgetApi', () => ({
+  savePlannedSavingsFromPreviousMonth: vi.fn()
+}));
 
 // Mock the fixed expense API
 vi.mock('../../services/fixedExpenseApi', () => ({
@@ -68,6 +73,7 @@ describe('FixedExpensesModal', () => {
     paymentMethodApi.getActivePaymentMethods.mockResolvedValue(mockPaymentMethods);
     paymentMethodApi.getPaymentMethod.mockResolvedValue(null);
     loanApi.getAllLoans.mockResolvedValue(mockLoans);
+    savePlannedSavingsFromPreviousMonth.mockResolvedValue(null);
   });
 
   describe('Rendering', () => {
@@ -305,6 +311,9 @@ describe('FixedExpensesModal', () => {
       
       await waitFor(() => {
         expect(fixedExpenseApi.carryForwardFixedExpenses).toHaveBeenCalled();
+      });
+      await waitFor(() => {
+        expect(savePlannedSavingsFromPreviousMonth).toHaveBeenCalledWith(2024, 12);
       });
     });
   });

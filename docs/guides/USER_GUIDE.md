@@ -250,7 +250,7 @@ See reminder banners when investment values need updating for the current month.
 
 ### Planning Savings and Investments
 
-On the **🧭 Plan** tab you can see where the month's income goes: fixed expenses, category budgets, and savings/investment allocations (RRSP, TFSA, emergency fund, any goal), leaving an **Unassigned** amount. Allocations are plans only and are not counted as spending. When a month has allocations, the Balance card on the main screen also shows **After planned savings**. See the [Budget Management Guide](BUDGET_MANAGEMENT_GUIDE.md#monthly-plan).
+On the **🧭 Plan** tab you can see where the month's income goes: fixed expenses, category budgets, and savings/investment allocations (RRSP, TFSA, emergency fund, any goal), leaving an **Unassigned** amount. Allocations are plans only and are not counted as spending. When a month has allocations, the Balance card on the main screen also shows **After planned savings**. Analytics → Cash Flow, the Annual Summary and Budgets → History compare planned savings with what you actually saved, and a notification appears when budgets plus planned savings exceed income. See the [Budget Management Guide](BUDGET_MANAGEMENT_GUIDE.md#monthly-plan).
 
 ### Monitoring Progress
 

@@ -2136,6 +2136,50 @@ describe('AnnualSummary - Net Worth Card Rendering', () => {
   });
 });
 
+describe('AnnualSummary - Planned Savings Card', () => {
+  const baseData = {
+    totalExpenses: 40000,
+    totalFixedExpenses: 24000,
+    totalVariableExpenses: 16000,
+    totalIncome: 60000,
+    netIncome: 20000,
+    averageMonthly: 3333.33,
+    highestMonth: null,
+    lowestMonth: null,
+    monthlyTotals: [],
+    byCategory: {},
+    byMethod: {}
+  };
+
+  it('shows planned savings, the planned share of income and the gap to actual savings', async () => {
+    mockFetch.mockImplementation(createCompleteMockFetch({ ...baseData, totalPlannedSavings: 6000 }));
+
+    const { findByTestId } = render(<AnnualSummary year={2024} />);
+    const card = await findByTestId('annual-planned-savings');
+
+    expect(card.querySelector('.big-number').textContent).toBe('$6,000.00');
+    expect(card.querySelector('.sub-text').textContent).toBe('10.0% of income · $14,000.00 ahead of plan');
+  });
+
+  it('reports a shortfall when less was saved than planned', async () => {
+    mockFetch.mockImplementation(createCompleteMockFetch({ ...baseData, netIncome: 1000, totalPlannedSavings: 6000 }));
+
+    const { findByTestId } = render(<AnnualSummary year={2024} />);
+    const card = await findByTestId('annual-planned-savings');
+
+    expect(card.querySelector('.sub-text').textContent).toContain('$5,000.00 short of plan');
+  });
+
+  it('is hidden when nothing was planned', async () => {
+    mockFetch.mockImplementation(createCompleteMockFetch({ ...baseData, totalPlannedSavings: 0 }));
+
+    const { container, queryByTestId } = render(<AnnualSummary year={2024} />);
+    await waitFor(() => expect(container.querySelector('.net-income-card')).toBeTruthy());
+
+    expect(queryByTestId('annual-planned-savings')).toBeNull();
+  });
+});
+
 
 
 

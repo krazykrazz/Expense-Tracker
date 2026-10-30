@@ -106,6 +106,30 @@ describe('PeriodAnalyticsPanel', () => {
     expect(screen.getByText('Net shortfall')).toBeInTheDocument();
   });
 
+  it('compares saved with planned savings when the period has a plan', async () => {
+    getPeriodSummary.mockResolvedValue({
+      ...summary,
+      totals: { ...summary.totals, plannedSavings: 3000, plannedSavingsRate: 30 },
+    });
+    render(<Harness view="cash-flow" />);
+    await screen.findByTestId('cash-flow-view');
+
+    expect(screen.getByTestId('cash-flow-vs-plan')).toHaveTextContent('$500.00 short of $3,000.00 planned');
+    const plannedRow = screen.getByRole('rowheader', { name: 'Planned savings' }).closest('tr');
+    expect(plannedRow).toHaveTextContent('30.0%');
+    expect(plannedRow).toHaveTextContent('$3,000.00');
+    expect(screen.getByRole('rowheader', { name: 'Short of plan' })).toBeInTheDocument();
+    expect(screen.getByText('-$500.00')).toBeInTheDocument();
+  });
+
+  it('hides the plan comparison when nothing is planned', async () => {
+    render(<Harness view="cash-flow" />);
+    await screen.findByTestId('cash-flow-view');
+
+    expect(screen.queryByTestId('cash-flow-vs-plan')).not.toBeInTheDocument();
+    expect(screen.queryByRole('rowheader', { name: 'Planned savings' })).not.toBeInTheDocument();
+  });
+
   it('opens a category\'s transactions for the period, but not for fixed-only categories', async () => {
     const onViewCategory = vi.fn();
     render(<Harness view="spending" onViewCategory={onViewCategory} />);

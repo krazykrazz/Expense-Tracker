@@ -237,6 +237,8 @@ const AnnualSummary = ({ year }) => {
     );
   }
 
+  const savedVsPlan = Math.round(((summary.netIncome || 0) - (summary.totalPlannedSavings || 0)) * 100) / 100;
+
   return (
     <div className="annual-summary">
       <div className="annual-summary-header">
@@ -323,6 +325,18 @@ const AnnualSummary = ({ year }) => {
               : 'No income recorded'}
           </div>
         </div>
+
+        {summary.totalPlannedSavings > 0 && (
+          <div className="summary-card" data-testid="annual-planned-savings">
+            <h3>Planned Savings</h3>
+            <div className="big-number">${formatAmount(summary.totalPlannedSavings)}</div>
+            <div className="sub-text">
+              {(summary.totalIncome || 0) > 0 &&
+                `${((summary.totalPlannedSavings / summary.totalIncome) * 100).toFixed(1)}% of income · `}
+              ${formatAmount(Math.abs(savedVsPlan))} {savedVsPlan >= 0 ? 'ahead of plan' : 'short of plan'}
+            </div>
+          </div>
+        )}
 
         <div className="summary-card">
           <h3>Transactions</h3>

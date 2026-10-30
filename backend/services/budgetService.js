@@ -2,6 +2,7 @@ const budgetRepository = require('../repositories/budgetRepository');
 const { getDatabase } = require('../database/db');
 const { BUDGETABLE_CATEGORIES, normalizeCategory } = require('../utils/categories');
 const activityLogService = require('./activityLogService');
+const periodSummaryService = require('./periodSummaryService');
 const { parseYearMonth } = require('../utils/validators');
 const { loadWithCarryForward, copyRows, previousMonth } = require('../utils/monthlyRows');
 
@@ -575,7 +576,43 @@ class BudgetService {
         end: `${endYear}-${String(endMonth).padStart(2, '0')}-01`,
         months: period
       },
-      categories
+      categories,
+      plannedSavings: await this._getPlannedSavingsHistory(months)
+    };
+  }
+
+  /**
+   * Planned vs actual savings per month. Actual saved is the Cash Flow net
+   * (income - fixed - variable), so it matches the main-screen Balance.
+   * @private
+   * @param {Array<{year: number, month: number}>} months
+   * @returns {Promise<Object>} { history, totalPlanned, totalSaved, successRate }; totals and
+   *   success rate only cover months that have planned savings
+   */
+  async _getPlannedSavingsHistory(months) {
+    const history = [];
+    for (const monthInfo of months) {
+      const { totals } = await periodSummaryService.getPeriodSummary(monthInfo, monthInfo);
+      const planned = totals.plannedSavings;
+      history.push({
+        year: monthInfo.year,
+        month: monthInfo.month,
+        planned,
+        saved: totals.net,
+        met: planned > 0 ? totals.net >= planned : null
+      });
+    }
+
+    const plannedMonths = history.filter(h => h.planned > 0);
+    const sum = (field) => Math.round(plannedMonths.reduce((total, h) => total + h[field], 0) * 100) / 100;
+
+    return {
+      history,
+      totalPlanned: sum('planned'),
+      totalSaved: sum('saved'),
+      successRate: plannedMonths.length > 0
+        ? (plannedMonths.filter(h => h.met).length / plannedMonths.length) * 100
+        : null
     };
   }
 

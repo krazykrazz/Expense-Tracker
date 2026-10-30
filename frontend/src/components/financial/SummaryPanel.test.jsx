@@ -9,9 +9,9 @@ vi.mock('../../utils/fetchProvider', async () => {
   };
 });
 
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import * as fc from 'fast-check';
-import { ModalProvider } from '../../contexts/ModalContext';
+import { ModalProvider, useModalContext } from '../../contexts/ModalContext';
 import SummaryPanel from './SummaryPanel';
 
 // Mock the child components
@@ -145,6 +145,50 @@ describe('SummaryPanel', () => {
       expect(line.textContent).toContain('After planned savings ($750.00)');
       // income 3000 - (variable 500 + fixed 1500) - planned 750
       expect(line.textContent).toContain('$250.00');
+    });
+
+    describe('over-planned notification', () => {
+      const BudgetsProbe = () => {
+        const { showBudgets, budgetsInitialTab } = useModalContext();
+        return <div data-testid="budgets-probe">{showBudgets ? `open:${budgetsInitialTab}` : 'closed'}</div>;
+      };
+
+      const renderWith = async (current) => {
+        global.fetch.mockResolvedValueOnce({ ok: true, json: async () => ({ ...baseResponse, current: { ...baseResponse.current, ...current } }) });
+        renderWithProviders(
+          <>
+            <SummaryPanel selectedYear={2025} selectedMonth={11} refreshTrigger={0} />
+            <BudgetsProbe />
+          </>
+        );
+        await waitFor(() => expect(document.querySelector('.loading-message')).not.toBeInTheDocument());
+      };
+
+      it('shows the amount over plan and opens the Plan tab when clicked', async () => {
+        await renderWith({ plannedUnassigned: -420.5 });
+
+        const banner = screen.getByTestId('over-planned-banner');
+        expect(banner.textContent).toContain('November plan is over by $420.50');
+
+        fireEvent.click(banner);
+        expect(screen.getByTestId('budgets-probe').textContent).toBe('open:plan');
+      });
+
+      it('hides when dismissed', async () => {
+        await renderWith({ plannedUnassigned: -10 });
+
+        fireEvent.click(screen.getByRole('button', { name: 'Dismiss reminder' }));
+        expect(screen.queryByTestId('over-planned-banner')).not.toBeInTheDocument();
+      });
+
+      it.each([
+        ['the plan fits the income', { plannedUnassigned: 0 }],
+        ['no income is recorded', { monthlyGross: 0, plannedUnassigned: -500 }],
+        ['the summary has no plan data', {}],
+      ])('is not shown when %s', async (_, current) => {
+        await renderWith(current);
+        expect(screen.queryByTestId('over-planned-banner')).not.toBeInTheDocument();
+      });
     });
 
     it('should render Fixed Expenses and Variable Expenses cards', async () => {

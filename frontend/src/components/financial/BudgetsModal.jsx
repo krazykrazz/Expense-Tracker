@@ -483,14 +483,37 @@ const HistoryTabContent = ({ year, month }) => {
 
   const handleExportCSV = () => {
     if (!historyData || !historyData.categories) return;
+    const money = (value) => (value === null || value === undefined ? '' : value.toFixed(2));
     const headers = ['Category', 'Month', 'Year', 'Budgeted', 'Spent', 'Variance', 'Met Budget'];
     const rows = [];
     Object.entries(historyData.categories).forEach(([category, categoryData]) => {
       categoryData.history.forEach((monthData) => {
-        const variance = monthData.budgeted - monthData.spent;
-        rows.push([category, monthData.month, monthData.year, monthData.budgeted.toFixed(2), monthData.spent.toFixed(2), variance.toFixed(2), monthData.met ? 'Yes' : 'No']);
+        const hasBudget = monthData.budgeted !== null && monthData.budgeted !== undefined;
+        rows.push([
+          category,
+          monthData.month,
+          monthData.year,
+          money(monthData.budgeted),
+          money(monthData.spent),
+          hasBudget ? money(monthData.budgeted - monthData.spent) : '',
+          hasBudget ? (monthData.met ? 'Yes' : 'No') : ''
+        ]);
       });
     });
+    // Savings rows: Spent holds the amount actually saved, Variance is saved - planned
+    (historyData.plannedSavings?.history || [])
+      .filter((monthData) => monthData.planned > 0)
+      .forEach((monthData) => {
+        rows.push([
+          'Planned savings',
+          monthData.month,
+          monthData.year,
+          money(monthData.planned),
+          money(monthData.saved),
+          money(monthData.saved - monthData.planned),
+          monthData.met ? 'Yes' : 'No'
+        ]);
+      });
     const csvContent = [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
@@ -517,6 +540,8 @@ const HistoryTabContent = ({ year, month }) => {
   }
 
   const hasData = historyData && historyData.categories && Object.keys(historyData.categories).length > 0;
+  const plannedSavings = historyData?.plannedSavings;
+  const hasPlannedSavings = (plannedSavings?.totalPlanned || 0) > 0;
 
   return (
     <div className="budgets-tab-panel">
@@ -583,6 +608,53 @@ const HistoryTabContent = ({ year, month }) => {
 
           <div className="monthly-breakdown">
             <h3>Monthly Details</h3>
+            {hasPlannedSavings && (
+              <div className="category-section" data-testid="history-planned-savings">
+                <h4 className="category-title">Planned savings</h4>
+                <p className="plan-note">
+                  Saved is income minus all expenses (the main-screen Balance).
+                  {plannedSavings.successRate !== null && ` Plan met in ${formatPercentage(plannedSavings.successRate)} of planned months.`}
+                </p>
+                <div className="monthly-table-container">
+                  <table className="monthly-table">
+                    <thead>
+                      <tr>
+                        <th>Month</th>
+                        <th>Planned</th>
+                        <th>Saved</th>
+                        <th>Difference</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {plannedSavings.history.map((monthData) => {
+                        const difference = monthData.saved - monthData.planned;
+                        const hasPlan = monthData.planned > 0;
+                        return (
+                          <tr key={`${monthData.year}-${monthData.month}`}>
+                            <td>{`${getMonthNameShort(monthData.month)} ${monthData.year}`}</td>
+                            <td className="amount-cell">{hasPlan ? formatCurrency(monthData.planned) : 'No plan'}</td>
+                            <td className={`amount-cell ${monthData.saved >= 0 ? '' : 'negative'}`}>{formatCurrency(monthData.saved)}</td>
+                            <td className={`amount-cell ${difference >= 0 ? 'positive' : 'negative'}`}>
+                              {hasPlan ? formatCurrency(difference) : '-'}
+                            </td>
+                            <td className="status-cell">
+                              {hasPlan ? (
+                                <span className={`status-badge ${monthData.met ? 'met' : 'exceeded'}`}>
+                                  {monthData.met ? '✓ Met' : '✗ Short'}
+                                </span>
+                              ) : (
+                                <span className="status-badge no-budget">No plan</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
             {Object.entries(historyData.categories).map(([category, categoryData]) => (
               <div key={category} className="category-section">
                 <h4 className="category-title">{category}</h4>
@@ -635,8 +707,14 @@ const HistoryTabContent = ({ year, month }) => {
 
 // ─── BudgetsModal ─────────────────────────────────────────────────────────────
 
-const BudgetsModal = ({ isOpen, onClose, year, month, onBudgetUpdated, focusedCategory = null }) => {
+const BudgetsModal = ({ isOpen, onClose, year, month, onBudgetUpdated, focusedCategory = null, initialTab = null }) => {
   const [activeTab, setActiveTab] = useTabState('budgets-modal-tab', 'manage');
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
 
   // focusCategory overrides persisted tab — always force manage tab when non-null
   useEffect(() => {

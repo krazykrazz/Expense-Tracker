@@ -3,6 +3,7 @@ const fixedExpenseRepository = require('../repositories/fixedExpenseRepository')
 const loanService = require('./loanService');
 const investmentService = require('./investmentService');
 const allocationService = require('./allocationService');
+const budgetService = require('./budgetService');
 const { getDatabase } = require('../database/db');
 const { validateYearMonth } = require('../utils/validators');
 const { previousMonth } = require('../utils/monthlyRows');
@@ -56,7 +57,7 @@ class ExpenseAggregationService {
    */
   async _getMonthSummary(year, month) {
     // Fetch all data in parallel for better performance
-    const [summary, monthlyGross, totalFixedExpenses, loans, fixedCategoryTotals, fixedPaymentTotals, investments, plannedAllocations] = await Promise.all([
+    const [summary, monthlyGross, totalFixedExpenses, loans, fixedCategoryTotals, fixedPaymentTotals, investments, plannedAllocations, budgets] = await Promise.all([
       expenseRepository.getSummary(year, month),
       expenseRepository.getMonthlyGross(year, month),
       fixedExpenseRepository.getTotalFixedExpenses(year, month),
@@ -64,7 +65,8 @@ class ExpenseAggregationService {
       fixedExpenseRepository.getCategoryTotals(year, month),
       fixedExpenseRepository.getPaymentTypeTotals(year, month),
       investmentService.getAllInvestments(),
-      allocationService.getAllocationTotal(year, month)
+      allocationService.getAllocationTotal(year, month),
+      budgetService.getBudgets(year, month)
     ]);
     
     // Calculate total outstanding debt from active loans
@@ -72,6 +74,12 @@ class ExpenseAggregationService {
     
     // Calculate total investment value from all investments
     const totalInvestmentValue = investmentService.calculateTotalInvestmentValue(investments);
+
+    // Same formula as budgetPlanService's `unassigned`
+    const plannedBudgets = Math.round(budgets.reduce((sum, budget) => sum + budget.limit, 0) * 100) / 100;
+    const plannedUnassigned = Math.round(
+      ((monthlyGross || 0) - (totalFixedExpenses || 0) - plannedBudgets - plannedAllocations) * 100
+    ) / 100;
     
     // Combine category totals (regular + fixed)
     const combinedCategoryTotals = { ...summary.typeTotals };
@@ -99,6 +107,8 @@ class ExpenseAggregationService {
       totalExpenses: summary.total + (totalFixedExpenses || 0),
       netBalance: (monthlyGross || 0) - (summary.total + (totalFixedExpenses || 0)),
       plannedAllocations,
+      plannedBudgets,
+      plannedUnassigned,
       loans,
       totalOutstandingDebt,
       investments,
@@ -152,7 +162,8 @@ class ExpenseAggregationService {
       methodTotals,
       yearEndInvestments,
       yearEndLoans,
-      transactionCount
+      transactionCount,
+      plannedByMonth
     ] = await Promise.all([
       this._getMonthlyVariableExpenses(year),
       this._getMonthlyFixedExpenses(year),
@@ -161,7 +172,8 @@ class ExpenseAggregationService {
       this._getMethodTotals(year),
       this._getYearEndInvestmentValues(year),
       this._getYearEndLoanBalances(year),
-      this._getTransactionCount(year)
+      this._getTransactionCount(year),
+      allocationService.getPlannedSavingsByMonth({ year, month: 1 }, { year, month: 12 })
     ]);
 
     // Calculate net worth components
@@ -182,6 +194,8 @@ class ExpenseAggregationService {
     // Add net worth data to summary
     return {
       ...summary,
+      monthlyTotals: summary.monthlyTotals.map((m, i) => ({ ...m, plannedSavings: plannedByMonth[i].planned })),
+      totalPlannedSavings: Math.round(plannedByMonth.reduce((sum, m) => sum + m.planned, 0) * 100) / 100,
       netWorth,
       totalAssets,
       totalLiabilities,

@@ -12,6 +12,7 @@ const initialState = {
   showTaxDeductible: false,
   showBudgets: false,
   budgetManagementFocusCategory: null,
+  budgetsInitialTab: null,
   showPeopleManagement: false,
   showAnalyticsHub: false,
   showFinancialOverview: false,
@@ -69,11 +70,11 @@ export function ModalProvider({ children }) {
   const openTaxDeductible = useCallback(() => dispatch({ type: 'OPEN', modal: 'showTaxDeductible' }), []);
   const closeTaxDeductible = useCallback(() => dispatch({ type: 'CLOSE', modal: 'showTaxDeductible' }), []);
 
-  const openBudgets = useCallback((category = null) => {
-    dispatch({ type: 'OPEN', modal: 'showBudgets', payload: { budgetManagementFocusCategory: category } });
+  const openBudgets = useCallback((category = null, tab = null) => {
+    dispatch({ type: 'OPEN', modal: 'showBudgets', payload: { budgetManagementFocusCategory: category, budgetsInitialTab: tab } });
   }, []);
   const closeBudgets = useCallback(() => {
-    dispatch({ type: 'CLOSE', modal: 'showBudgets', payload: { budgetManagementFocusCategory: null } });
+    dispatch({ type: 'CLOSE', modal: 'showBudgets', payload: { budgetManagementFocusCategory: null, budgetsInitialTab: null } });
   }, []);
 
   const openPeopleManagement = useCallback(() => dispatch({ type: 'OPEN', modal: 'showPeopleManagement' }), []);

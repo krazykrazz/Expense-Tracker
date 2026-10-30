@@ -67,6 +67,18 @@ describe('ModalContext Unit Tests', () => {
     expect(result.current.financialOverviewInitialTab).toBe(null);
   });
 
+  it('openBudgets can request a tab, and closeBudgets clears it', () => {
+    const { result } = renderHook(() => useModalContext(), {
+      wrapper: ({ children }) => <ModalProvider>{children}</ModalProvider>,
+    });
+
+    expect(result.current.budgetsInitialTab).toBe(null);
+    act(() => result.current.openBudgets(null, 'plan'));
+    expect(result.current).toMatchObject({ showBudgets: true, budgetsInitialTab: 'plan', budgetManagementFocusCategory: null });
+    act(() => result.current.closeBudgets());
+    expect(result.current).toMatchObject({ showBudgets: false, budgetsInitialTab: null });
+  });
+
   /**
    * Interface completeness: all expected fields present
    */

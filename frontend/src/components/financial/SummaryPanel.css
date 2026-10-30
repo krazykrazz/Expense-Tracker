@@ -515,6 +515,17 @@
   color: var(--text-muted);
 }
 
+.balance-after-plan {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+  margin-top: var(--spacing-3);
+  padding-top: var(--spacing-2);
+  border-top: 1px solid var(--border-default);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
 .spend-meter {
   display: flex;
   gap: 2px;

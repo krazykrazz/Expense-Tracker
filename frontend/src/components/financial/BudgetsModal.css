@@ -412,6 +412,28 @@
 .budget-info-text { margin: 0; color: #1565c0; font-size: 0.9rem; line-height: 1.5; }
 .budget-info-text strong { font-weight: 600; }
 
+/* ── Plan Tab Styles ── */
+.plan-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+.plan-table th,
+.plan-table td { padding: 10px 12px; border-bottom: 1px solid var(--border-default, #e2e8f0); font-size: 1rem; }
+.plan-table th { text-align: left; font-weight: 500; color: #333; }
+.plan-amount { text-align: right; font-family: 'Courier New', monospace; font-weight: 600; }
+.plan-amount.negative { color: #c62828; }
+.plan-row-total th,
+.plan-row-total td { font-weight: 700; border-top: 2px solid #333; }
+.plan-sign { display: inline-block; width: 1.2em; color: #666; }
+.plan-link-button { background: none; border: none; color: #667eea; cursor: pointer; font-size: 0.85rem; margin-left: 10px; text-decoration: underline; }
+.plan-note { color: #666; font-size: 0.9rem; margin: 6px 0 12px; }
+.plan-section-gap { margin-top: 28px; }
+.plan-linked { color: #666; font-weight: 400; font-size: 0.85rem; }
+.plan-form { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 12px; border: 1px solid var(--border-default, #e2e8f0); border-radius: 8px; margin-bottom: 12px; }
+.plan-form input,
+.plan-form select { padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 1rem; }
+.plan-form input[type='text'] { flex: 2 1 160px; }
+.plan-form input[type='number'] { flex: 1 1 100px; }
+.plan-form select { flex: 2 1 160px; }
+.plan-form-error { flex-basis: 100%; }
+
 /* ── History Tab Styles (from BudgetHistoryView.css) ── */
 .budget-history-error {
   text-align: center;

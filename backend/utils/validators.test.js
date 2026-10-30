@@ -1,4 +1,4 @@
-const { validateNumber, validateString, validateYearMonth } = require('./validators');
+const { validateNumber, validateString, validateYearMonth, parseYearMonth } = require('./validators');
 
 describe('validators', () => {
   describe('validateNumber', () => {
@@ -218,6 +218,28 @@ describe('validators', () => {
     it('should accept boundary values', () => {
       expect(validateYearMonth(1900, 1)).toBe(true);
       expect(validateYearMonth(2100, 12)).toBe(true);
+    });
+  });
+
+  describe('parseYearMonth', () => {
+    it('should parse numeric strings from query parameters', () => {
+      expect(parseYearMonth('2025', '03')).toEqual({ year: 2025, month: 3 });
+    });
+
+    it.each([
+      ['abc', '3'],
+      ['2025', '13'],
+      ['2025', '0'],
+      ['1899', '6'],
+      [undefined, '6'],
+    ])('should reject year=%s month=%s with a 400 error', (year, month) => {
+      expect.assertions(2);
+      try {
+        parseYearMonth(year, month);
+      } catch (err) {
+        expect(err.message).toBe('Invalid year or month specified');
+        expect(err.statusCode).toBe(400);
+      }
     });
   });
 });

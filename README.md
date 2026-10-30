@@ -45,6 +45,7 @@ See **[Startup Guide](./docs/guides/STARTUP_GUIDE.md)** for detailed development
 - 💳 **Payment Methods** - Configurable payment methods with credit card balance tracking and utilization indicators
 - 💰 **Income & Fixed Expenses** - Track multiple income sources and recurring expenses with categorization
 - 📊 **Budget Tracking** - Set budget limits with real-time alerts at 80%, 90%, and 100% thresholds
+- 🧭 **Monthly Plan** - Plan savings and investments (RRSP, TFSA, emergency fund) and see what income is left unassigned
 
 ### Financial Tracking
 - 💳 **Loans & Mortgages** - Track loans, lines of credit, and mortgages with payment history, interest-aware balance calculations, and balance override
@@ -117,6 +118,7 @@ For detailed usage instructions, see **[User Guide](./docs/guides/USER_GUIDE.md)
 - Track income from multiple sources
 - Set budget limits with real-time alerts
 - Monitor spending against budgets
+- Plan savings and investment allocations against the month's income
 
 **Loans & Investments:**
 - Track loans, lines of credit, and mortgages
@@ -173,6 +175,7 @@ The application uses SQLite3 for data persistence. The schema is defined declara
 - `loans` - Loan, line of credit, and mortgage tracking
 - `investments` - Investment account tracking
 - `budgets` - Monthly budget limits
+- `budget_allocations` - Planned monthly savings/investment amounts
 - `people` - Family member records
 - `payment_methods` - Configurable payment methods
 

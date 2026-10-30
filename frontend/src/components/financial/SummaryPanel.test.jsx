@@ -125,6 +125,28 @@ describe('SummaryPanel', () => {
       expect(screen.getByText('Balance')).toBeInTheDocument();
     });
 
+    it('should not show the planned-savings line when nothing is allocated', async () => {
+      global.fetch.mockResolvedValueOnce({ ok: true, json: async () => baseResponse });
+      renderWithProviders(<SummaryPanel selectedYear={2025} selectedMonth={11} refreshTrigger={0} />);
+      await waitFor(() => expect(document.querySelector('.loading-message')).not.toBeInTheDocument());
+      expect(screen.queryByText(/After planned savings/)).not.toBeInTheDocument();
+    });
+
+    it('should show the balance after planned savings in the Balance card', async () => {
+      const response = { ...baseResponse, current: { ...baseResponse.current, plannedAllocations: 750 } };
+      global.fetch.mockResolvedValueOnce({ ok: true, json: async () => response });
+      const { container } = renderWithProviders(
+        <SummaryPanel selectedYear={2025} selectedMonth={11} refreshTrigger={0} />
+      );
+      await waitFor(() => expect(document.querySelector('.loading-message')).not.toBeInTheDocument());
+
+      const line = container.querySelector('.balance-card .balance-after-plan');
+      expect(line).toBeInTheDocument();
+      expect(line.textContent).toContain('After planned savings ($750.00)');
+      // income 3000 - (variable 500 + fixed 1500) - planned 750
+      expect(line.textContent).toContain('$250.00');
+    });
+
     it('should render Fixed Expenses and Variable Expenses cards', async () => {
       global.fetch.mockResolvedValueOnce({ ok: true, json: async () => baseResponse });
       renderWithProviders(<SummaryPanel selectedYear={2025} selectedMonth={11} refreshTrigger={0} />);

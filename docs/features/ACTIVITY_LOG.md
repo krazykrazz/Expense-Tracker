@@ -162,6 +162,9 @@ Update events include detailed change tracking showing old → new values for mo
 | `budget_added` | budget | New budget created |
 | `budget_updated` | budget | Budget modified (shows old → new limit) |
 | `budget_deleted` | budget | Budget removed |
+| `budget_allocation_added` | budget | Planned savings/investment allocation created |
+| `budget_allocation_updated` | budget | Allocation modified (shows old → new amount) |
+| `budget_allocation_deleted` | budget | Allocation removed |
 | `payment_method_added` | payment_method | New payment method created |
 | `payment_method_updated` | payment_method | Payment method modified (shows what changed: name, type, credit limit, billing/due days) |
 | `payment_method_deactivated` | payment_method | Payment method deactivated |

@@ -60,6 +60,9 @@ export const API_ENDPOINTS = {
   BUDGET_HISTORY: `${API_BASE_URL}/api/budgets/history`,
   BUDGET_COPY: `${API_BASE_URL}/api/budgets/copy`,
   BUDGET_SUGGEST: `${API_BASE_URL}/api/budgets/suggest`,
+  BUDGET_PLAN: `${API_BASE_URL}/api/budgets/plan`,
+  BUDGET_ALLOCATIONS: `${API_BASE_URL}/api/budgets/allocations`,
+  BUDGET_ALLOCATIONS_COPY: `${API_BASE_URL}/api/budgets/allocations/copy`,
   
   // Categories
   CATEGORIES: `${API_BASE_URL}/api/categories`,

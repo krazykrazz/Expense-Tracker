@@ -142,3 +142,90 @@ export const getBudgetSuggestion = async (year, month, category) => {
     throw error;
   }
 };
+
+/**
+ * Get where a month's income goes (fixed, budgeted, allocated, unassigned)
+ * @param {number} year - Year
+ * @param {number} month - Month (1-12)
+ * @returns {Promise<Object>} Budget plan
+ */
+export const getBudgetPlan = async (year, month) => {
+  try {
+    return await apiGet(`${API_ENDPOINTS.BUDGET_PLAN}?year=${year}&month=${month}`, 'fetch budget plan');
+  } catch (error) {
+    logApiError('fetching budget plan', error);
+    throw error;
+  }
+};
+
+/**
+ * Get planned savings/investment allocations for a month (carried forward when the month has none)
+ * @returns {Promise<Object>} { allocations: Array }
+ */
+export const getAllocations = async (year, month) => {
+  try {
+    return await apiGet(`${API_ENDPOINTS.BUDGET_ALLOCATIONS}?year=${year}&month=${month}`, 'fetch allocations');
+  } catch (error) {
+    logApiError('fetching allocations', error);
+    throw error;
+  }
+};
+
+/**
+ * @param {number} year
+ * @param {number} month
+ * @param {{name?: string, amount: number, investmentId?: (number|null)}} allocation
+ * @returns {Promise<Object>} Created allocation
+ */
+export const createAllocation = async (year, month, allocation) => {
+  try {
+    return await apiPost(API_ENDPOINTS.BUDGET_ALLOCATIONS, { year, month, ...allocation }, 'create allocation');
+  } catch (error) {
+    logApiError('creating allocation', error);
+    throw error;
+  }
+};
+
+/**
+ * @param {number} id - Allocation ID
+ * @param {{name?: string, amount?: number, investmentId?: (number|null)}} allocation
+ * @returns {Promise<Object>} Updated allocation
+ */
+export const updateAllocation = async (id, allocation) => {
+  try {
+    return await apiPut(`${API_ENDPOINTS.BUDGET_ALLOCATIONS}/${id}`, allocation, 'update allocation');
+  } catch (error) {
+    logApiError('updating allocation', error);
+    throw error;
+  }
+};
+
+/**
+ * @param {number} id - Allocation ID
+ * @returns {Promise<void>}
+ */
+export const deleteAllocation = async (id) => {
+  try {
+    return await apiDelete(`${API_ENDPOINTS.BUDGET_ALLOCATIONS}/${id}`, 'delete allocation');
+  } catch (error) {
+    logApiError('deleting allocation', error);
+    throw error;
+  }
+};
+
+/**
+ * Copy allocations from one month to another
+ * @returns {Promise<Object>} { copied, skipped, overwritten }
+ */
+export const copyAllocations = async (sourceYear, sourceMonth, targetYear, targetMonth, overwrite = false) => {
+  try {
+    return await apiPost(
+      API_ENDPOINTS.BUDGET_ALLOCATIONS_COPY,
+      { sourceYear, sourceMonth, targetYear, targetMonth, overwrite },
+      'copy allocations'
+    );
+  } catch (error) {
+    logApiError('copying allocations', error);
+    throw error;
+  }
+};

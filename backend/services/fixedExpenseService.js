@@ -3,6 +3,7 @@ const paymentMethodRepository = require('../repositories/paymentMethodRepository
 const loanRepository = require('../repositories/loanRepository');
 const activityLogService = require('./activityLogService');
 const { validateYearMonth } = require('../utils/validators');
+const { previousMonth } = require('../utils/monthlyRows');
 const { CATEGORIES, normalizeCategory } = require('../utils/categories');
 
 class FixedExpenseService {
@@ -482,15 +483,8 @@ class FixedExpenseService {
       throw new Error('Month must be between 1 and 12');
     }
 
-    // Calculate previous month
-    let prevYear = yearNum;
-    let prevMonth = monthNum - 1;
+    const { year: prevYear, month: prevMonth } = previousMonth(yearNum, monthNum);
     
-    if (prevMonth < 1) {
-      prevMonth = 12;
-      prevYear = yearNum - 1;
-    }
-
     // Check if previous month has any fixed expenses
     const previousExpenses = await fixedExpenseRepository.getFixedExpenses(prevYear, prevMonth);
     

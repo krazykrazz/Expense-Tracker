@@ -19,7 +19,8 @@ async function cleanDatabase() {
       'fixed_expenses',
       'loans',
       'loan_balances',
-      'budgets'
+      'budgets',
+      'budget_allocations'
     ];
     
     console.log('\nCleaning database tables...\n');

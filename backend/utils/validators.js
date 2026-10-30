@@ -114,8 +114,26 @@ const validateYearMonth = (year, month) => {
   return true;
 };
 
+/**
+ * Parse and validate year/month values that may arrive as strings (query/body)
+ * @param {number|string} year
+ * @param {number|string} month
+ * @returns {{year: number, month: number}} parsed values
+ * @throws {Error} statusCode 400 'Invalid year or month specified'
+ */
+const parseYearMonth = (year, month) => {
+  const parsed = { year: parseInt(year), month: parseInt(month) };
+  try {
+    validateYearMonth(parsed.year, parsed.month);
+  } catch (err) {
+    throw Object.assign(new Error('Invalid year or month specified'), { statusCode: 400 });
+  }
+  return parsed;
+};
+
 module.exports = {
   validateNumber,
   validateString,
-  validateYearMonth
+  validateYearMonth,
+  parseYearMonth
 };

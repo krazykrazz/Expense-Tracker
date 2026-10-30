@@ -6,12 +6,24 @@ The Budget Tracking & Alerts feature helps you control spending by setting month
 
 ## Key Features
 
-- **Monthly Budget Limits**: Set spending limits for Food, Gas, and Other categories
+- **Monthly Budget Limits**: Set spending limits for expense categories
 - **Real-Time Progress Tracking**: See how much of your budget you've used as you add expenses
 - **Color-Coded Alerts**: Visual indicators warn you when approaching or exceeding limits
-- **Automatic Carry-Forward**: Budgets automatically copy from previous month
-- **Manual Budget Copy**: Copy budgets from any previous month
+- **Automatic Carry-Forward**: A month with no budgets shows the previous month's budgets
+- **Manual Budget Copy**: Copy budgets from the previous month
+- **Monthly Plan**: Plan savings and investments (RRSP, TFSA, emergency fund, …) and see what is left to assign
 - **Historical Analysis**: Compare budget performance over 3, 6, or 12 months
+
+## What You See Where
+
+| Where | The question it answers |
+|-------|-------------------------|
+| **Main screen → Monthly Summary** | How is this month going? Balance (income − fixed − variable spending), plus *After planned savings* when you have allocations |
+| **💵 Budgets → 📋 Manage** | What may I spend per category? |
+| **💵 Budgets → 🧭 Plan** | Where does this month's income go? Fixed expenses, category budgets, savings and investments, and what is left **Unassigned** |
+| **💵 Budgets → 📊 History** | How did I do against my category budgets? |
+| **📈 Analytics → Cash Flow / Monthly Summary** | What actually happened? Actuals only; planned savings are not spending |
+| **💼 Financial** | The TFSA/RRSP accounts themselves |
 
 ## Getting Started
 
@@ -29,7 +41,7 @@ The Budget Tracking & Alerts feature helps you control spending by setting month
 
 ### Understanding Budget Progress
 
-Once you've set budgets, you'll see progress bars for each category in the Budget Summary Panel:
+Once you've set budgets, you'll see progress bars for each category on the Manage tab:
 
 #### Color Coding
 
@@ -52,59 +64,55 @@ Each budget card shows:
 
 ### How It Works
 
-When you navigate to a new month that doesn't have budgets set, the system automatically:
+When you open a month that doesn't have budgets set, the system:
 
 1. **Checks the previous month** for existing budgets
-2. **Copies all budget limits** to the current month
-3. **Preserves the exact amounts** from the previous month
-4. **Allows you to modify** the carried-forward budgets as needed
+2. **Shows those budget limits** for the current month, with the note "Showing last month's budgets"
+3. **Saves them to the month** as soon as you change, add or remove one (so nothing disappears), or when you use **Copy from Previous Month**
+
+Just viewing a month never creates budgets, so browsing ahead doesn't fill future months.
 
 ### Example
 
 - **October 2025**: You set Food = $500, Gas = $200, Other = $300
-- **November 2025**: When you first view November, budgets automatically become Food = $500, Gas = $200, Other = $300
-- **You can then adjust** November's budgets if your spending needs change
+- **November 2025**: When you first view November, the same three budgets are shown
+- **You can then adjust** one of them; November keeps all three, with your change applied
 
 ### When Carry-Forward Doesn't Happen
 
-- If you've already manually created budgets for a month, carry-forward won't overwrite them
+- If you've already created budgets for a month, carry-forward won't replace them
 - If the previous month has no budgets, you'll start with an empty budget list
 
 ## Manual Budget Copy
 
 ### When to Use Manual Copy
 
-Use manual budget copy when you want to:
-- Copy budgets from a specific month (not just the previous month)
-- Restore budget limits from several months ago
-- Replicate a successful budget configuration
+Use **Copy from Previous Month** when you want to save last month's budgets in one step, or replace this month's budgets with last month's.
 
 ### How to Copy Budgets
 
 1. **Open the Budget Management Modal** for the target month
-2. **Click "📋 Copy from Previous Month"** button
-3. **Select the source month** from the dropdown (shows months with existing budgets)
-4. **Confirm the copy operation**
-5. **Choose whether to overwrite** if the target month already has budgets
+2. **Click "📋 Copy from Previous Month"**
+3. **Confirm** if the month already has saved budgets (they will be overwritten)
 
 ### Copy Behavior
 
-- **All budgets are copied**: Every category with a budget in the source month is copied
+- **All budgets are copied**: Every category with a budget in the previous month is copied
 - **Exact amounts preserved**: Budget limits are copied exactly as they were
-- **Overwrite option**: If target month has budgets, you can choose to overwrite or cancel
-- **Confirmation message**: Shows how many budgets were copied
+- **Overwrite confirmation**: Only asked when the month already has saved budgets
+- **Confirmation message**: Shows a message when there was nothing to copy
 
-## Budget Summary Panel
+## Budget Overview
 
 ### Overall Summary
 
-At the top of the Budget Summary Panel, you'll see:
+At the top of the **Manage** tab, you'll see:
 
 - **Total Budgeted**: Sum of all budget limits (e.g., "$1,500.00")
 - **Total Spent**: Sum of spending in budgeted categories (e.g., "$1,234.56")
-- **Remaining/Overage**: How much budget is left or exceeded (e.g., "$265.44 remaining")
-- **Overall Progress**: Percentage of total budget used (e.g., "82.3%")
-- **Budgets On Track**: How many budgets are under 100% (e.g., "2 of 3 on track")
+- **Remaining/Over Budget**: How much budget is left or exceeded (e.g., "$265.44")
+- **On Track**: How many budgets are under 100% (e.g., "2 / 3")
+- **Overall Budget Progress**: Percentage of total budget used (e.g., "82.3%")
 
 ### Category Cards
 
@@ -113,6 +121,27 @@ Below the summary, individual cards show progress for each budgeted category wit
 - Spent vs limit amounts
 - Remaining/overage
 - Color-coded status
+
+## Monthly Plan
+
+The **🧭 Plan** tab shows where this month's income goes:
+
+| Line | Meaning |
+|------|---------|
+| Income | Income sources recorded for the month |
+| − Fixed expenses | Fixed expenses for the month |
+| − Category budgets | Total of your category limits (edit them on the **Manage** tab) |
+| − Savings & investments | What you plan to put into RRSP, TFSA, an emergency fund, or any other goal |
+| = **Unassigned** | Income not yet given a job. Shown as **Over-planned** when the plan exceeds income |
+
+Below that, **So far this month** shows your **Balance** (the same figure as the main screen and Analytics → Cash Flow) and **Balance after planned savings**.
+
+### Savings & Investments
+
+- Click **➕ Add allocation**, enter a name and an amount, and optionally link one of your TFSA/RRSP accounts from **💼 Financial** (picking an account fills in the name).
+- Allocations are a **plan only**. They are not expenses, don't count as spending, and nothing is recorded as contributed.
+- Like budgets, a month with no allocations shows last month's, and they are saved to the month when you change one.
+- If no income is recorded for the month, the Plan tab asks you to add it with **Manage Income** on the main screen instead of showing a misleading remainder.
 
 ## Historical Budget Analysis
 
@@ -206,7 +235,7 @@ The system handles all updates automatically - you don't need to refresh the pag
 
 ### Budget Not Showing
 
-**Problem**: I set a budget but don't see it in the summary panel
+**Problem**: I set a budget but don't see it in the Budgets modal
 
 **Solutions**:
 - Ensure you clicked "Save" in the budget management modal
@@ -216,12 +245,12 @@ The system handles all updates automatically - you don't need to refresh the pag
 
 ### Automatic Carry-Forward Not Working
 
-**Problem**: Budgets didn't automatically copy to the new month
+**Problem**: Last month's budgets aren't shown in the new month
 
 **Solutions**:
 - Verify the previous month has budgets set
-- Check that you haven't already manually created budgets for the current month
-- Use manual budget copy as an alternative
+- Check that the current month doesn't already have its own budgets
+- Use Copy from Previous Month as an alternative
 
 ### Progress Not Updating
 

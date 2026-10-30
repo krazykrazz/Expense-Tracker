@@ -1,4 +1,6 @@
 const dbHelper = require('../utils/dbHelper');
+const budgetService = require('./budgetService');
+const { previousMonth } = require('../utils/monthlyRows');
 const logger = require('../config/logger');
 
 class MonthlySummaryService {
@@ -29,7 +31,7 @@ class MonthlySummaryService {
         this._getTopCategories(range),
         this._getTopMerchants(range),
         this._getMonthOverMonth(year, month),
-        this._getBudgetSummary(year, month, range),
+        this._getBudgetSummary(year, month),
       ]);
 
     return {
@@ -97,13 +99,7 @@ class MonthlySummaryService {
    * @returns {Promise<Object|null>} month-over-month comparison or null
    */
   async _getMonthOverMonth(year, month) {
-    // Calculate previous month
-    let prevYear = year;
-    let prevMonth = month - 1;
-    if (prevMonth < 1) {
-      prevMonth = 12;
-      prevYear = year - 1;
-    }
+    const { year: prevYear, month: prevMonth } = previousMonth(year, month);
 
     const prevRange = this._dateRange(prevYear, prevMonth);
     const currRange = this._dateRange(year, month);
@@ -143,52 +139,24 @@ class MonthlySummaryService {
   }
 
   /**
+   * Budget totals come from budgetService so they match the Budgets modal
+   * (including budgets carried forward from the previous month).
    * @returns {Promise<Object|null>} budget summary or null when no budgets exist
    */
-  async _getBudgetSummary(year, month, range) {
-    // Get all budgets for this month
-    const budgets = await dbHelper.queryAll(
-      `SELECT category, "limit" AS budget_limit
-       FROM budgets
-       WHERE year = ? AND month = ?`,
-      [year, month]
-    );
+  async _getBudgetSummary(year, month) {
+    const summary = await budgetService.getBudgetSummary(year, month);
 
-    if (budgets.length === 0) {
+    if (summary.totalBudgets === 0) {
       return null;
     }
 
-    const totalBudgeted = budgets.reduce((sum, b) => sum + b.budget_limit, 0);
-
-    // Get actual spending per budgeted category
-    const categories = budgets.map(b => b.category);
-    const placeholders = categories.map(() => '?').join(',');
-    const spendingRows = await dbHelper.queryAll(
-      `SELECT type AS category, SUM(amount) AS total
-       FROM expenses
-       WHERE date >= ? AND date < ?
-         AND type IN (${placeholders})
-       GROUP BY type`,
-      [range.start, range.end, ...categories]
-    );
-
-    const spendingMap = {};
-    for (const row of spendingRows) {
-      spendingMap[row.category] = row.total;
-    }
-
-    const totalSpent = budgets.reduce(
-      (sum, b) => sum + (spendingMap[b.category] || 0),
-      0
-    );
-
-    const utilizationPercentage = totalBudgeted > 0
-      ? parseFloat(((totalSpent / totalBudgeted) * 100).toFixed(1))
+    const utilizationPercentage = summary.totalBudgeted > 0
+      ? parseFloat(((summary.totalSpent / summary.totalBudgeted) * 100).toFixed(1))
       : 0;
 
     return {
-      totalBudgeted: parseFloat(totalBudgeted.toFixed(2)),
-      totalSpent: parseFloat(totalSpent.toFixed(2)),
+      totalBudgeted: parseFloat(summary.totalBudgeted.toFixed(2)),
+      totalSpent: parseFloat(summary.totalSpent.toFixed(2)),
       utilizationPercentage,
     };
   }

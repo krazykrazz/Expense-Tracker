@@ -27,6 +27,14 @@ vi.mock('./BudgetProgressBar', () => ({
   default: ({ category }) => <div data-testid="budget-progress-bar">{category}</div>,
 }));
 
+vi.mock('./BudgetPlanTab', () => ({
+  default: ({ onManageBudgets }) => (
+    <div data-testid="plan-tab">
+      <button onClick={onManageBudgets}>go-manage</button>
+    </div>
+  ),
+}));
+
 // Mock useTabState to control tab state in tests
 const mockSetActiveTab = vi.fn();
 let mockActiveTab = 'manage';
@@ -68,9 +76,10 @@ describe('BudgetsModal', () => {
       expect(screen.getByText(/💵 Budgets/)).toBeInTheDocument();
     });
 
-    it('renders both tab buttons with correct labels', () => {
+    it('renders all tab buttons with correct labels', () => {
       render(<BudgetsModal {...defaultProps} />);
       expect(screen.getByText('📋 Manage')).toBeInTheDocument();
+      expect(screen.getByText('🧭 Plan')).toBeInTheDocument();
       expect(screen.getByText('📊 History')).toBeInTheDocument();
     });
 
@@ -102,6 +111,20 @@ describe('BudgetsModal', () => {
       await waitFor(() => {
         expect(screen.getByText('Time Period:')).toBeInTheDocument();
       });
+    });
+
+    it('shows plan tab content when activeTab is plan', () => {
+      mockActiveTab = 'plan';
+      render(<BudgetsModal {...defaultProps} />);
+      expect(screen.getByTestId('plan-tab')).toBeInTheDocument();
+      expect(screen.getByText('🧭 Plan')).toHaveClass('active');
+    });
+
+    it('lets the plan tab switch to the manage tab', () => {
+      mockActiveTab = 'plan';
+      render(<BudgetsModal {...defaultProps} />);
+      fireEvent.click(screen.getByText('go-manage'));
+      expect(mockSetActiveTab).toHaveBeenCalledWith('manage');
     });
 
     it('manage tab button has active class when manage is selected', () => {

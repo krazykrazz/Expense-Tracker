@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import useTabState from '../../hooks/useTabState';
+import useCarryForward from '../../hooks/useCarryForward';
 import {
   getBudgets,
   getBudgetSummary,
@@ -16,6 +17,7 @@ import { getMonthNameLong, getMonthNameShort, formatCAD } from '../../utils/form
 import { createLogger } from '../../utils/logger';
 import BudgetCard from './BudgetCard';
 import BudgetProgressBar from './BudgetProgressBar';
+import BudgetPlanTab from './BudgetPlanTab';
 import ConfirmDialog from '../shared/ConfirmDialog';
 import './BudgetsModal.css';
 
@@ -61,14 +63,19 @@ const ManageTabContent = ({ year, month, onBudgetUpdated, focusedCategory }) => 
     }
   }, [year, month, focusedCategory]);
 
+  const loadBudgets = async () => {
+    const data = await getBudgets(year, month);
+    const loaded = data.budgets || [];
+    setBudgets(loaded);
+    setSummary(await getBudgetSummary(year, month));
+    return loaded;
+  };
+
   const fetchBudgets = async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await getBudgets(year, month);
-      setBudgets(data.budgets || []);
-      const summaryData = await getBudgetSummary(year, month);
-      setSummary(summaryData);
+      await loadBudgets();
     } catch (err) {
       setError(err.message || 'Network error. Unable to load budgets.');
       logger.error('Error fetching budgets:', err);
@@ -76,6 +83,14 @@ const ManageTabContent = ({ year, month, onBudgetUpdated, focusedCategory }) => 
       setLoading(false);
     }
   };
+
+  const { previousMonth, ensurePersisted } = useCarryForward({
+    year,
+    month,
+    rows: budgets,
+    copyFn: copyBudgets,
+    reload: loadBudgets
+  });
 
   const clearValidationErrors = () => setValidationErrors({});
 
@@ -119,9 +134,10 @@ const ManageTabContent = ({ year, month, onBudgetUpdated, focusedCategory }) => 
       return;
     }
     const amount = parseFloat(editAmount);
-    const existingBudget = getBudgetForCategory(editingCategory);
     setLoading(true);
     try {
+      const stored = await ensurePersisted();
+      const existingBudget = stored.find(b => b.category === editingCategory);
       if (existingBudget) {
         await updateBudget(existingBudget.id, amount);
       } else {
@@ -167,9 +183,13 @@ const ManageTabContent = ({ year, month, onBudgetUpdated, focusedCategory }) => 
         setLoading(true);
         setError(null);
         try {
-          await deleteBudget(budget.id);
-          setBudgets(budgets.filter(b => b.id !== budget.id));
-          if (onBudgetUpdated) onBudgetUpdated();
+          const stored = await ensurePersisted();
+          const target = stored.find(b => b.category === category);
+          if (target) {
+            await deleteBudget(target.id);
+            setBudgets(stored.filter(b => b.id !== target.id));
+            if (onBudgetUpdated) onBudgetUpdated();
+          }
         } catch (err) {
           setError(err.message || 'Network error. Unable to delete budget.');
           logger.error('Error deleting budget:', err);
@@ -181,8 +201,7 @@ const ManageTabContent = ({ year, month, onBudgetUpdated, focusedCategory }) => 
   };
 
   const handleCopyFromPreviousMonth = async () => {
-    const prevMonth = month === 1 ? 12 : month - 1;
-    const prevYear = month === 1 ? year - 1 : year;
+    const { year: prevYear, month: prevMonth } = previousMonth;
 
     const doCopy = async () => {
       setIsCopying(true);
@@ -210,7 +229,7 @@ const ManageTabContent = ({ year, month, onBudgetUpdated, focusedCategory }) => 
       }
     };
 
-    if (budgets.length > 0) {
+    if (budgets.some(b => !b.carriedForward)) {
       setConfirmState({
         open: true,
         title: 'Overwrite Budgets',
@@ -250,6 +269,9 @@ const ManageTabContent = ({ year, month, onBudgetUpdated, focusedCategory }) => 
       )}
 
       <div className="budget-modal-content">
+        {budgets.some(b => b.carriedForward) && (
+          <p className="plan-note">Showing last month&apos;s budgets. They are saved to this month when you change one.</p>
+        )}
         {loading && budgets.length === 0 ? (
           <div className="budget-modal-loading">Loading budgets...</div>
         ) : (
@@ -645,6 +667,12 @@ const BudgetsModal = ({ isOpen, onClose, year, month, onBudgetUpdated, focusedCa
             📋 Manage
           </button>
           <button
+            className={`tab-button ${activeTab === 'plan' ? 'active' : ''}`}
+            onClick={() => setActiveTab('plan')}
+          >
+            🧭 Plan
+          </button>
+          <button
             className={`tab-button ${activeTab === 'history' ? 'active' : ''}`}
             onClick={() => setActiveTab('history')}
           >
@@ -659,6 +687,14 @@ const BudgetsModal = ({ isOpen, onClose, year, month, onBudgetUpdated, focusedCa
               month={month}
               onBudgetUpdated={onBudgetUpdated}
               focusedCategory={focusedCategory}
+            />
+          )}
+          {activeTab === 'plan' && (
+            <BudgetPlanTab
+              year={year}
+              month={month}
+              onBudgetUpdated={onBudgetUpdated}
+              onManageBudgets={() => setActiveTab('manage')}
             />
           )}
           {activeTab === 'history' && (

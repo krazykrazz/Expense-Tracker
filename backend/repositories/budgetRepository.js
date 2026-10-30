@@ -147,33 +147,6 @@ class BudgetRepository {
       });
     });
   }
-
-  /**
-   * Get budgets for copy operation (source month)
-   * @param {number} year - Source year
-   * @param {number} month - Source month (1-12)
-   * @returns {Promise<Array>} Array of budget objects from source month
-   */
-  async findForCopy(year, month) {
-    const db = await getDatabase();
-    
-    return new Promise((resolve, reject) => {
-      const sql = `
-        SELECT category, "limit"
-        FROM budgets
-        WHERE year = ? AND month = ?
-        ORDER BY category ASC
-      `;
-      
-      db.all(sql, [year, month], (err, rows) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-        resolve(rows || []);
-      });
-    });
-  }
 }
 
 module.exports = new BudgetRepository();

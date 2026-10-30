@@ -1,5 +1,6 @@
 const incomeRepository = require('../repositories/incomeRepository');
 const { validateYearMonth } = require('../utils/validators');
+const { previousMonth } = require('../utils/monthlyRows');
 const { INCOME_CATEGORIES } = require('../utils/constants');
 const activityLogService = require('./activityLogService');
 const logger = require('../config/logger');
@@ -273,13 +274,7 @@ class IncomeService {
     const copiedSources = await incomeRepository.copyFromPreviousMonth(yearNum, monthNum);
 
     if (copiedSources.length > 0) {
-      // Calculate source month
-      let sourceMonth = monthNum - 1;
-      let sourceYear = yearNum;
-      if (sourceMonth < 1) {
-        sourceMonth = 12;
-        sourceYear = yearNum - 1;
-      }
+      const { year: sourceYear, month: sourceMonth } = previousMonth(yearNum, monthNum);
 
       // Log activity event (fire-and-forget)
       activityLogService.logEvent(

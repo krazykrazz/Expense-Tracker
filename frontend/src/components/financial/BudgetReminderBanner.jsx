@@ -2,6 +2,12 @@ import React from 'react';
 import { formatCAD as formatCurrency } from '../../utils/formatters';
 import './BudgetReminderBanner.css';
 
+// Round down so a near-limit budget (e.g. 99.6%) never displays as 100%
+const formatProgress = (progress, digits = 0) => {
+  const factor = 10 ** digits;
+  return (Math.floor(progress * factor) / factor).toFixed(digits);
+};
+
 /**
  * Banner component for budget alert reminders
  * Follows the reminder banner pattern (single click to navigate)
@@ -59,7 +65,7 @@ const BudgetReminderBanner = ({
       if (alert.severity === 'critical') {
         return `${alert.category} budget exceeded!`;
       }
-      return `${alert.category} budget is ${alert.progress.toFixed(1)}% used`;
+      return `${alert.category} budget is ${formatProgress(alert.progress, 1)}% used`;
     } else {
       const hasCritical = alerts.some(a => a.severity === 'critical');
       if (hasCritical) {
@@ -129,7 +135,7 @@ const BudgetReminderBanner = ({
                 className={`progress-badge ${severity.className}`}
                 data-testid="progress-badge"
               >
-                {alert.progress.toFixed(0)}%
+                {formatProgress(alert.progress)}%
               </span>
               {/* Severity indicator */}
               {severity.label && (
@@ -196,11 +202,18 @@ const BudgetReminderBanner = ({
                     e.stopPropagation();
                     handleClick(e, alert.category);
                   }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleClick(e, alert.category);
+                    }
+                  }}
                   role="button"
                   tabIndex={0}
                 >
                   <span className="reminder-alert-category">{alert.category}</span>
-                  <span className="reminder-alert-progress">{alert.progress.toFixed(0)}%</span>
+                  <span className="reminder-alert-progress">{formatProgress(alert.progress)}%</span>
                   <span className="reminder-alert-amounts">
                     {formatCurrency(alert.spent)} / {formatCurrency(alert.limit)}
                   </span>

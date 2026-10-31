@@ -187,7 +187,7 @@ const ManageTabContent = ({ year, month, onBudgetUpdated, focusedCategory }) => 
           const target = stored.find(b => b.category === category);
           if (target) {
             await deleteBudget(target.id);
-            setBudgets(stored.filter(b => b.id !== target.id));
+            await loadBudgets();
             if (onBudgetUpdated) onBudgetUpdated();
           }
         } catch (err) {
@@ -313,7 +313,7 @@ const ManageTabContent = ({ year, month, onBudgetUpdated, focusedCategory }) => 
                   <div className="budget-cards-grid">
                     {budgets.map((budget) => (
                       <BudgetCard
-                        key={budget.id}
+                        key={budget.category}
                         category={budget.category}
                         budgetLimit={budget.limit}
                         spent={budget.spent}

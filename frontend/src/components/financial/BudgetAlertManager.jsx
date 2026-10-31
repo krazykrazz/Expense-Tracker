@@ -39,7 +39,7 @@ const BudgetAlertManager = ({
 
   /**
    * Transform flat budget data from API to the nested structure expected by calculateAlerts
-   * API returns: { id, year, month, category, limit, spent }
+   * API returns: { id, year, month, category, limit, spent } (no id for carried-forward rows)
    * calculateAlerts expects: { budget: { id, category, limit }, progress, spent }
    */
   const transformBudgetData = useCallback((budgets) => {
@@ -57,7 +57,7 @@ const BudgetAlertManager = ({
         }
 
         // Check required fields for flat structure
-        const requiredFields = ['id', 'category', 'limit'];
+        const requiredFields = ['category', 'limit'];
         const missingFields = requiredFields.filter(field => 
           budget[field] === undefined || budget[field] === null
         );
@@ -89,7 +89,8 @@ const BudgetAlertManager = ({
 
         return {
           budget: {
-            id: budget.id,
+            // Category is unique within a month, so it identifies carried-forward rows
+            id: budget.id ?? `carried-${budget.category}`,
             category: budget.category,
             limit: budget.limit
           },

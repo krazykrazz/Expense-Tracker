@@ -1215,6 +1215,13 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v1.13.0</div>
+                <div className="changelog-date">October 31, 2026</div>
+                <ul className="changelog-items">
+                  <li>Monthly budget plan with planned savings and investments, shown in Cash Flow, Annual Summary and Budget History; budget alert and carry-forward fixes; wider activity log coverage; other tabs now refresh for loans, income, investments, credit cards and people</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v1.12.0</div>
                 <div className="changelog-date">October 16, 2026</div>
                 <ul className="changelog-items">

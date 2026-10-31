@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.13.0',
+    date: 'October 31, 2026',
+    added: [],
+    changed: ['Monthly budget plan with planned savings and investments, shown in Cash Flow, Annual Summary and Budget History; budget alert and carry-forward fixes; wider activity log coverage; other tabs now refresh for loans, income, investments, credit cards and people'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.12.0',
     date: 'October 16, 2026',
     added: [],

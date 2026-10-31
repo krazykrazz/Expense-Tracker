@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.13.0] - 2026-10-31
+
+### Monthly budget plan with planned savings and investments, shown in Cash Flow, Annual Summary and Budget History; budget alert and carry-forward fixes; wider activity log coverage; other tabs now refresh for loans, income, investments, credit cards and people
+
 ## [1.12.0] - 2026-10-16
 
 ### Refreshed look: new logo and header, clearer monthly summary, colour-coded expense list, smoother dialogs; dependency and security updates

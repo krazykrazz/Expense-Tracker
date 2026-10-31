@@ -87,6 +87,13 @@ Layer-specific, high-signal checks. Confirm each finding against source before r
       from a previously-viewed entity persists.
 - [ ] Redundant/dead conditions: when removing a feature-gate branch, verify that
       surrounding boolean logic is simplified (common: `(A || B) && A` → just `A`).
+- [ ] Consumers of month-scoped carry-forward endpoints (`/api/budgets`,
+      `/api/budgets/allocations`) must not require/key/dedupe on `id`: carried-forward
+      rows have none (`carriedForward: true`). Use category/name as identity.
+- [ ] After a mutation, every piece of state derived from the server is refreshed
+      (e.g. list AND summary), not just the list via a local `filter`.
+- [ ] Clickable children inside a `role="button"` container have their own
+      `onKeyDown` (Enter/Space + `stopPropagation`), matching their `onClick`.
 
 ### Data layer
 - [ ] All requests via `authAwareFetch`/`apiClient` (per `config.js`), not raw `fetch`.
@@ -110,6 +117,12 @@ Layer-specific, high-signal checks. Confirm each finding against source before r
 - [ ] Prop drilling (e.g. `SearchBar` with 11+ props) → filter object/context.
 - [ ] `console.*` in prod → centralized `utils/logger.js`.
 - [ ] Error boundaries around heavy modals.
+
+### Layout (narrow right column)
+- [ ] Components rendered in the summary column fit about 215px (desktop) / 165px
+      (tablet) of row width. No label with `min-width: 0` next to `flex-shrink: 0`
+      siblings (it collapses and overlaps them); prefer a grid + container query.
+- [ ] Percentages next to threshold labels round down for display.
 
 ## Money / Date correctness (both layers)
 - [ ] Currency math rounds correctly; no accumulated float error; cents handled.

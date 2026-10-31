@@ -265,7 +265,7 @@ describe('useDataSync visibility behavior', () => {
     expect(result.current.connectionStatus).toBe('connected');
   });
 
-  test('on visibility reconnect, all four context refresh callbacks are invoked and all four window events dispatched', () => {
+  test('on visibility reconnect, all four context refresh callbacks are invoked and all window events dispatched', () => {
     const callbacks = {
       refreshExpenses: vi.fn(),
       refreshBudgets: vi.fn(),
@@ -294,11 +294,12 @@ describe('useDataSync visibility behavior', () => {
     expect(callbacks.refreshPeople).toHaveBeenCalledTimes(1);
     expect(callbacks.refreshPaymentMethods).toHaveBeenCalledTimes(1);
 
-    expect(syncEvents).toHaveLength(4);
+    expect(syncEvents).toHaveLength(5);
     expect(syncEvents).toContain('loan');
     expect(syncEvents).toContain('income');
     expect(syncEvents).toContain('investment');
     expect(syncEvents).toContain('fixed_expense');
+    expect(syncEvents).toContain('credit_card');
 
     window.removeEventListener('syncEvent', syncListener);
   });

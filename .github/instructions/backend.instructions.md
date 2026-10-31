@@ -37,4 +37,4 @@ router.get('/items', asyncHandler(async (req, res) => {
 
 ## Activity Log
 
-Log user-visible mutations with `activityLogService.logEvent(eventType, entityType, entityId, userAction, metadata)` (`<entity>_added|_updated|_deleted`). It never throws. Pass `tabId` (from the `X-Tab-ID` header) in `metadata` so the originating tab ignores the SSE broadcast.
+Log user-visible mutations with `activityLogService.logEvent(eventType, entityType, entityId, userAction, metadata)` (`<entity>_added|_updated|_deleted`). It never throws. The originating tab's `X-Tab-ID` is picked up automatically from the request (`backend/utils/requestContext.js`) so that tab ignores the SSE broadcast; pass `tabId` in `metadata` only to override it. The `entityType` is the SSE sync key: if it is new, add it to `ENTITY_TYPE_ALIASES` / the routing sets in `frontend/src/hooks/useDataSync.js` or other tabs will not refresh (see `docs/features/REAL_TIME_SYNC.md`).

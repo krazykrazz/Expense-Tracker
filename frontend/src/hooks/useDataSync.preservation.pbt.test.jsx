@@ -65,11 +65,11 @@ afterEach(() => {
 
 const ALL_ENTITY_TYPES = [
   'expense', 'budget', 'people', 'payment_method',
-  'loan', 'income', 'investment', 'fixed_expense',
+  'loan', 'income', 'investment', 'fixed_expense', 'credit_card',
 ];
 
 const CONTEXT_ENTITY_TYPES = ['expense', 'budget', 'people', 'payment_method'];
-const WINDOW_EVENT_ENTITY_TYPES = ['loan', 'income', 'investment', 'fixed_expense'];
+const WINDOW_EVENT_ENTITY_TYPES = ['loan', 'income', 'investment', 'fixed_expense', 'credit_card'];
 
 const CALLBACK_MAP = {
   expense: 'refreshExpenses',
@@ -87,6 +87,7 @@ const EXPECTED_TOAST_LABELS = {
   income: '↻ Income updated',
   investment: '↻ Investments updated',
   fixed_expense: '↻ Fixed expenses updated',
+  credit_card: '↻ Credit cards updated',
 };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────

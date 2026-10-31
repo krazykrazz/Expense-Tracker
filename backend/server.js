@@ -40,6 +40,7 @@ const billingCycleSchedulerService = require('./services/billingCycleSchedulerSe
 const versionCheckService = require('./services/versionCheckService');
 const logger = require('./config/logger');
 const { errorHandler } = require('./middleware/errorHandler');
+const { requestContextMiddleware } = require('./utils/requestContext');
 const { createGracefulShutdown } = require('./utils/gracefulShutdown');
 const { authMiddleware, sseAuthMiddleware } = require('./middleware/authMiddleware');
 
@@ -142,6 +143,9 @@ app.use(cookieParser());
 // Body parsers
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+
+// Remember the originating tab (X-Tab-ID) so activity-log events can skip the sender on SSE broadcast
+app.use('/api', requestContextMiddleware);
 
 // Auth routes — registered BEFORE authMiddleware (public endpoints)
 app.use('/api/auth', authRoutes);

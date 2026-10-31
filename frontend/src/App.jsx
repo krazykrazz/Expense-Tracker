@@ -225,10 +225,17 @@ function AppContent({ onPaymentMethodsUpdate }) {
   // Auth context — needed for SSE token auth (Requirement 7.1, 7.2)
   const { getAccessToken, isPasswordRequired } = useAuthContext();
 
-  // Real-time sync — subscribes to SSE and refreshes data on remote changes
+  // Real-time sync — subscribes to SSE and refreshes data on remote changes.
+  // Budget and allocation changes also move the summary (planned savings) and budget alerts,
+  // which key off the expense refresh trigger rather than the SharedData budget list.
+  const refreshBudgetsAndSummary = useCallback(() => {
+    refreshBudgets();
+    triggerRefresh();
+  }, [refreshBudgets, triggerRefresh]);
+
   const { subscribeToasts, getToastSnapshot } = useDataSync({
     refreshExpenses,
-    refreshBudgets,
+    refreshBudgets: refreshBudgetsAndSummary,
     refreshPeople,
     refreshPaymentMethods,
     onReconnect: onSseReconnect,

@@ -135,13 +135,20 @@ Past confirmed-true patterns on THIS repo:
   payment delete, statement upload, billing cycle delete (fixed PR #417; the service
   copy was kept). `billing_cycle_created`/`credit_card_payment_recorded` are documented
   intentional controller-level companions, not duplicates.
-- **SSE entity-type mismatch (open, 2026-10):** backend logs `income_source`, `person`,
-  `loan_payment`, `loan_balance`, `investment_value`, `billing_cycle`, ...; the frontend
-  `useDataSync` only routes `expense|budget|people|payment_method|invoice` (context
-  refresh) and `loan|income|investment|fixed_expense` (window `syncEvent`). Nothing in
-  `frontend/src` listens for `syncEvent`. So only expense/budget/payment-method/invoice
-  changes actually sync across tabs; check this before claiming an event "syncs".
-
+- **SSE entity-type mismatch (fixed 2026-10, PR for `feature/cross-tab-sync-coverage`):**
+  the backend logs `person`, `income_source`, `loan_payment`, `loan_balance`,
+  `investment_value`, `mortgage_payment`, `billing_cycle`, `credit_card_*`, but
+  `useDataSync` only routed `people`, `income`, `loan`, ... , and nothing in `frontend/src`
+  listened for the window `syncEvent` it dispatched. Now: `ENTITY_TYPE_ALIASES` maps them,
+  `useSyncEvent` subscribes components (SummaryPanel, FinancialOverviewModal sections).
+  When adding an event/entity type or a screen that shows server data, check both ends:
+  does the entity type route, and does a consumer actually refresh? Remaining stale-until-
+  reopened surfaces: loan/investment/credit-card detail views, Income/Fixed Expenses
+  editors, Budgets modal tabs, Annual Summary, Analytics Hub.
+- **Per-service tab id plumbing was incomplete** (28 logged endpoints, e.g. loans,
+  investments, credit cards, invoices, income copy, passed none), so the sending tab also
+  got its own event. Fixed centrally with `utils/requestContext.js` (AsyncLocalStorage set
+  by middleware; `logEvent` falls back to it). Don't re-add per-call `tabId` threading.
 Past confirmed-false patterns (subagent hallucinations on THIS repo):
 - "Duplicate `findById()` in `loanPaymentRepository.js`" — FALSE, there is only
   one `findById()` (line 98). The two methods at lines 47/68 are `findByLoan` and

@@ -28,14 +28,37 @@ const TOAST_LABELS = {
   income: '↻ Income updated',
   investment: '↻ Investments updated',
   fixed_expense: '↻ Fixed expenses updated',
+  credit_card: '↻ Credit cards updated',
   invoice: '↻ Receipts updated',
 };
+
+/**
+ * Activity-log entity types the backend emits that differ from the keys routed below.
+ * Without this, events for people, income sources, loan/investment/credit card detail
+ * records never reached any refresh.
+ */
+export const ENTITY_TYPE_ALIASES = {
+  person: 'people',
+  income_source: 'income',
+  loan_payment: 'loan',
+  loan_balance: 'loan',
+  mortgage_payment: 'loan',
+  investment_value: 'investment',
+  credit_card_payment: 'credit_card',
+  credit_card_statement: 'credit_card',
+  billing_cycle: 'credit_card',
+};
+
+/** @returns {string} the routing key for a backend entity type */
+export function normalizeEntityType(entityType) {
+  return ENTITY_TYPE_ALIASES[entityType] ?? entityType;
+}
 
 /** Entity types that call context refresh callbacks */
 const CONTEXT_ENTITY_TYPES = new Set(['expense', 'budget', 'people', 'payment_method', 'invoice']);
 
-/** Entity types that dispatch window custom events */
-const WINDOW_EVENT_ENTITY_TYPES = new Set(['loan', 'income', 'investment', 'fixed_expense']);
+/** Entity types that dispatch window custom events (consumed via useSyncEvent) */
+const WINDOW_EVENT_ENTITY_TYPES = new Set(['loan', 'income', 'investment', 'fixed_expense', 'credit_card']);
 
 /**
  * useDataSync — subscribes to the SSE sync endpoint and dispatches targeted
@@ -220,7 +243,8 @@ export function useDataSync({
         return; // malformed JSON — skip
       }
 
-      const { entityType, tabId } = data;
+      const { entityType: rawEntityType, tabId } = data;
+      const entityType = normalizeEntityType(rawEntityType);
 
       // Self-update suppression: ignore events from our own tab
       if (tabId === getTabId()) return;

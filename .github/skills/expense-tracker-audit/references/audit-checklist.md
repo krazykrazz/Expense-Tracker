@@ -46,6 +46,13 @@ Layer-specific, high-signal checks. Confirm each finding against source before r
 - [ ] Duplicate activity log events: if a helper (e.g. `createPaymentFromFixedExpense`)
       already calls `activityLogService.logEvent`, the caller must NOT log again.
       Check for double-fire patterns on `'auto_payment_logged'`, `'expense_created'`, etc.
+      Also check controller + service pairs logging the SAME `event_type`.
+- [ ] Every POST/PUT/PATCH/DELETE route reaches a `logEvent` call, including bulk/copy,
+      activate (not just deactivate), settings and on-read writes. No-op bulk operations
+      should not log. Pass `req.headers['x-tab-id']` through so the originating tab
+      ignores its own SSE broadcast.
+- [ ] The `entity_type` of a new event is one `frontend/src/hooks/useDataSync.js`
+      actually routes, or the change will not sync to other tabs.
 
 ### Loan / LOC subsystem
 - [ ] After removing loan-type exclusions (e.g. `loan_type !== 'line_of_credit'`),
@@ -87,6 +94,13 @@ Layer-specific, high-signal checks. Confirm each finding against source before r
       from a previously-viewed entity persists.
 - [ ] Redundant/dead conditions: when removing a feature-gate branch, verify that
       surrounding boolean logic is simplified (common: `(A || B) && A` → just `A`).
+- [ ] Consumers of month-scoped carry-forward endpoints (`/api/budgets`,
+      `/api/budgets/allocations`) must not require/key/dedupe on `id`: carried-forward
+      rows have none (`carriedForward: true`). Use category/name as identity.
+- [ ] After a mutation, every piece of state derived from the server is refreshed
+      (e.g. list AND summary), not just the list via a local `filter`.
+- [ ] Clickable children inside a `role="button"` container have their own
+      `onKeyDown` (Enter/Space + `stopPropagation`), matching their `onClick`.
 
 ### Data layer
 - [ ] All requests via `authAwareFetch`/`apiClient` (per `config.js`), not raw `fetch`.
@@ -110,6 +124,12 @@ Layer-specific, high-signal checks. Confirm each finding against source before r
 - [ ] Prop drilling (e.g. `SearchBar` with 11+ props) → filter object/context.
 - [ ] `console.*` in prod → centralized `utils/logger.js`.
 - [ ] Error boundaries around heavy modals.
+
+### Layout (narrow right column)
+- [ ] Components rendered in the summary column fit about 215px (desktop) / 165px
+      (tablet) of row width. No label with `min-width: 0` next to `flex-shrink: 0`
+      siblings (it collapses and overlaps them); prefer a grid + container query.
+- [ ] Percentages next to threshold labels round down for display.
 
 ## Money / Date correctness (both layers)
 - [ ] Currency math rounds correctly; no accumulated float error; cents handled.

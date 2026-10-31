@@ -71,4 +71,38 @@ async function copyRows({ sourceRows, existingRows, keyOf, create, update, overw
   return result;
 }
 
-module.exports = { previousMonth, loadWithCarryForward, copyRows };
+const formatYearMonth = ({ year, month }) => `${year}-${String(month).padStart(2, '0')}`;
+
+/**
+ * Log a month-to-month copy (budgets, allocations, fixed expenses). Copies that changed
+ * nothing are not logged.
+ * @param {string} eventType
+ * @param {string} entityType - activity log entity type (drives SSE sync)
+ * @param {string} noun - singular row name for the message, e.g. 'budget'
+ * @param {{copied: number, overwritten?: number}} result
+ * @param {{year: number, month: number}} source
+ * @param {{year: number, month: number}} target
+ * @param {string|null} tabId
+ */
+async function logMonthCopy(eventType, entityType, noun, result, source, target, tabId = null) {
+  const overwritten = result.overwritten || 0;
+  if (result.copied + overwritten === 0) {
+    return;
+  }
+
+  // Lazy require: repositories load this module, and activityLogService pulls in services
+  const activityLogService = require('../services/activityLogService');
+  const from = formatYearMonth(source);
+  const to = formatYearMonth(target);
+  const overwrittenNote = overwritten > 0 ? ` (${overwritten} overwritten)` : '';
+
+  await activityLogService.logEvent(
+    eventType,
+    entityType,
+    null,
+    `Copied ${result.copied + overwritten} ${noun}(s) from ${from} to ${to}${overwrittenNote}`,
+    { sourceMonth: from, targetMonth: to, copied: result.copied, overwritten, skipped: result.skipped || 0, tabId }
+  );
+}
+
+module.exports = { previousMonth, loadWithCarryForward, copyRows, logMonthCopy };

@@ -255,26 +255,6 @@ async function deletePayment(req, res) {
       paymentMethodId
     });
 
-    // Activity logging (fire-and-forget)
-    try {
-      const cardName = paymentMethod.display_name || paymentMethod.full_name || `Card ${paymentMethodId}`;
-      const formattedAmount = parseFloat(payment.amount).toFixed(2);
-      const userAction = `Deleted payment of $${formattedAmount} on ${cardName} (${payment.payment_date})`;
-      await activityLogService.logEvent(
-        'credit_card_payment_deleted',
-        'credit_card_payment',
-        paymentId,
-        userAction,
-        {
-          paymentMethodName: cardName,
-          amount: payment.amount,
-          paymentDate: payment.payment_date
-        }
-      );
-    } catch (logError) {
-      logger.error('Failed to log credit card payment deleted event:', logError);
-    }
-
     res.status(200).json({
       success: true,
       message: 'Payment deleted successfully'

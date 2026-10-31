@@ -176,12 +176,16 @@
   padding-top: 8px;
   padding-bottom: 4px;
   border-top: 1px solid rgba(0, 0, 0, 0.1);
+  container-type: inline-size;
 }
 
+/* One line: category | % | amounts | badge */
 .budget-reminder-banner .reminder-alert-item {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
   align-items: center;
-  gap: 8px;
+  column-gap: 8px;
+  row-gap: 2px;
   font-size: var(--text-sm);
   padding: 4px 8px;
   border-radius: 4px;
@@ -190,29 +194,46 @@
   min-width: 0;
 }
 
+/* Narrow panel (e.g. the 400px summary column): category | % | badge on top, amounts below */
+@container (max-width: 300px) {
+  .budget-reminder-banner .reminder-alert-item {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+  }
+
+  .budget-reminder-banner .reminder-alert-item .reminder-severity-badge {
+    grid-row: 1;
+    grid-column: 3;
+  }
+
+  .budget-reminder-banner .reminder-alert-item .reminder-alert-amounts {
+    grid-row: 2;
+    grid-column: 1 / -1;
+  }
+}
+
 .budget-reminder-banner .reminder-alert-item:hover {
   background-color: rgba(0, 0, 0, 0.05);
 }
 
 .budget-reminder-banner .reminder-alert-category {
-  flex: 1;
   font-weight: var(--font-medium);
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .budget-reminder-banner .reminder-alert-progress {
   font-weight: var(--font-semibold);
   min-width: 36px;
   text-align: right;
-  flex-shrink: 0;
 }
 
 .budget-reminder-banner .reminder-alert-amounts {
   font-size: var(--text-sm);
   opacity: 0.85;
   text-align: right;
-  flex-shrink: 0;
-  white-space: nowrap;
+  min-width: 0;
 }
 
 .budget-reminder-banner .reminder-dismiss-btn {

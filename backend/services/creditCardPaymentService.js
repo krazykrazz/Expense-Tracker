@@ -349,7 +349,7 @@ class CreditCardPaymentService {
         'credit_card_payment_deleted',
         'credit_card_payment',
         paymentId,
-        `Deleted credit card payment of $${payment.amount.toFixed(2)} from ${cardName}`,
+        `Deleted credit card payment of $${payment.amount.toFixed(2)} from ${cardName} (${payment.payment_date})`,
         {
           paymentMethodId: payment.payment_method_id,
           amount: payment.amount,

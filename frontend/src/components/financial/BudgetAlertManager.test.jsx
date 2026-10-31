@@ -66,6 +66,20 @@ describe('BudgetAlertManager', () => {
   });
 
   describe('Alert Calculation and State Management', () => {
+    test('alerts on carried-forward budgets, which have no id', async () => {
+      budgetApi.getBudgets.mockResolvedValue({
+        budgets: [
+          { year: 2025, month: 12, category: 'Gas', limit: 200, spent: 250, carriedForward: true },
+          { year: 2025, month: 12, category: 'Groceries', limit: 500, spent: 450, carriedForward: true }
+        ]
+      });
+
+      render(<ManagerWithRender year={2025} month={12} onClick={mockOnClick} />);
+
+      expect(await screen.findByTestId('alert-count')).toHaveTextContent('2 alerts');
+      expect(screen.getByTestId('alert-budget-alert-carried-Gas')).toHaveTextContent('Gas: 125%');
+    });
+
     test('should fetch budgets and calculate alerts on mount', async () => {
       render(
         <ManagerWithRender 

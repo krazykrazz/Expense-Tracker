@@ -284,12 +284,13 @@ describe('Billing Cycle Activity Logging - Integration Tests', () => {
 
       // Assert - activity log entry exists
       const events = await activityLogRepository.findRecent(10, 0);
-      const logEvent = events.find(e =>
+      const deleteEvents = events.filter(e =>
         e.event_type === 'billing_cycle_deleted' &&
         e.entity_id === createdCycle.id
       );
+      const logEvent = deleteEvents[0];
 
-      expect(logEvent).toBeDefined();
+      expect(deleteEvents).toHaveLength(1);
       expect(logEvent.entity_type).toBe('billing_cycle');
       expect(logEvent.user_action).toContain('Deleted billing cycle');
       expect(logEvent.user_action).toContain('Test Visa');
@@ -298,7 +299,7 @@ describe('Billing Cycle Activity Logging - Integration Tests', () => {
 
       // Verify metadata
       const metadata = JSON.parse(logEvent.metadata);
-      expect(metadata.paymentMethodName).toBe('Test Visa');
+      expect(metadata.cardName).toBe('Test Visa');
       expect(metadata.cycleStartDate).toBe(createdCycle.cycle_start_date);
       expect(metadata.cycleEndDate).toBe(createdCycle.cycle_end_date);
       expect(metadata.actualStatementBalance).toBe(300.25);

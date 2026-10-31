@@ -167,22 +167,23 @@ describe('Credit Card Statement Activity Logging - Integration Tests', () => {
       await new Promise(resolve => setTimeout(resolve, 100));
 
       const events = await activityLogRepository.findRecent(10, 0);
-      const logEvent = events.find(e =>
+      const uploadEvents = events.filter(e =>
         e.event_type === 'credit_card_statement_uploaded' &&
         e.entity_id === statement.id
       );
+      const logEvent = uploadEvents[0];
 
-      expect(logEvent).toBeDefined();
+      expect(uploadEvents).toHaveLength(1);
       expect(logEvent.entity_type).toBe('credit_card_statement');
-      expect(logEvent.user_action).toContain('Uploaded statement for');
+      expect(logEvent.user_action).toContain('Uploaded statement "june-statement.pdf" for');
       expect(logEvent.user_action).toContain('Test Visa');
       expect(logEvent.user_action).toContain('2025-06-14');
       expect(logEvent.user_action).toContain('june-statement.pdf');
 
       const metadata = JSON.parse(logEvent.metadata);
-      expect(metadata.paymentMethodName).toBe('Test Visa');
+      expect(metadata.cardName).toBe('Test Visa');
       expect(metadata.statementDate).toBe('2025-06-14');
-      expect(metadata.originalFilename).toBe('june-statement.pdf');
+      expect(metadata.filename).toBe('june-statement.pdf');
       expect(metadata.statementPeriodStart).toBe('2025-05-15');
       expect(metadata.statementPeriodEnd).toBe('2025-06-14');
     });

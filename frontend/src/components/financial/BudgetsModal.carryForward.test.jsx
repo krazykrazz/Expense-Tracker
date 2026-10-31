@@ -80,6 +80,19 @@ describe('BudgetsModal Manage tab: carried-forward budgets', () => {
     expect(budgetApi.copyBudgets).toHaveBeenCalledWith(2025, 5, 2025, 6, false);
   });
 
+  it('reloads the budget overview after removing a budget', async () => {
+    renderModal();
+    fireEvent.click(within(await rowFor('Gas')).getByTitle('Remove budget'));
+    const summaryCallsBefore = budgetApi.getBudgetSummary.mock.calls.length;
+    budgetApi.getBudgets
+      .mockResolvedValueOnce({ budgets: stored })
+      .mockResolvedValue({ budgets: stored.filter(b => b.category !== 'Gas') });
+    fireEvent.click(await screen.findByText('Delete'));
+
+    await waitFor(() => expect(budgetApi.getBudgetSummary.mock.calls.length).toBeGreaterThan(summaryCallsBefore));
+    await waitFor(async () => expect(within(await rowFor('Gas')).queryByTitle('Remove budget')).toBeNull());
+  });
+
   it('does not ask to overwrite when only carried-forward budgets are showing', async () => {
     budgetApi.copyBudgets.mockResolvedValue({ copied: 2, skipped: 0, overwritten: 0 });
     renderModal();

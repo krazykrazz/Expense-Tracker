@@ -249,15 +249,13 @@ class PaymentMethodService {
         isActive 
       });
 
-      if (!isActive) {
-        await activityLogService.logEvent(
-          'payment_method_deactivated',
-          'payment_method',
-          id,
-          `Deactivated payment method: ${updated.display_name}`,
-          { name: updated.display_name, type: updated.type, tabId }
-        );
-      }
+      await activityLogService.logEvent(
+        isActive ? 'payment_method_activated' : 'payment_method_deactivated',
+        'payment_method',
+        id,
+        `${isActive ? 'Activated' : 'Deactivated'} payment method: ${updated.display_name}`,
+        { name: updated.display_name, type: updated.type, tabId }
+      );
     }
 
     return updated;

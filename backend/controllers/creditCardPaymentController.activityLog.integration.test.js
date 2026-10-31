@@ -185,22 +185,23 @@ describe('Credit Card Payment Activity Logging - Integration Tests', () => {
       await new Promise(resolve => setTimeout(resolve, 100));
 
       const events = await activityLogRepository.findRecent(10, 0);
-      const logEvent = events.find(e =>
+      const deleteEvents = events.filter(e =>
         e.event_type === 'credit_card_payment_deleted' &&
         e.entity_id === payment.id
       );
+      const logEvent = deleteEvents[0];
 
-      expect(logEvent).toBeDefined();
+      expect(deleteEvents).toHaveLength(1);
       expect(logEvent.entity_type).toBe('credit_card_payment');
-      expect(logEvent.user_action).toContain('Deleted payment of');
+      expect(logEvent.user_action).toContain('Deleted credit card payment of');
       expect(logEvent.user_action).toContain('250.75');
       expect(logEvent.user_action).toContain('Test Visa');
       expect(logEvent.user_action).toContain('2025-06-20');
 
       const metadata = JSON.parse(logEvent.metadata);
-      expect(metadata.paymentMethodName).toBe('Test Visa');
+      expect(metadata.cardName).toBe('Test Visa');
       expect(metadata.amount).toBe(250.75);
-      expect(metadata.paymentDate).toBe('2025-06-20');
+      expect(metadata.payment_date).toBe('2025-06-20');
     });
 
     it('should not log event when deleting non-existent payment', async () => {
@@ -285,9 +286,10 @@ describe('Credit Card Payment Activity Logging - Integration Tests', () => {
             expect(logEvent.user_action).toContain('Test Visa');
 
             const metadata = JSON.parse(logEvent.metadata);
-            expect(metadata.paymentMethodName).toBe('Test Visa');
+            // Record is logged by the controller, delete by the service (different metadata keys)
+            expect(metadata.paymentMethodName ?? metadata.cardName).toBe('Test Visa');
             expect(metadata.amount).toBeDefined();
-            expect(metadata.paymentDate).toBe(paymentDate);
+            expect(metadata.paymentDate ?? metadata.payment_date).toBe(paymentDate);
           }
         ),
         { numRuns: 15 } // Reduced runs for integration test performance

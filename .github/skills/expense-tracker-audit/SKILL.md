@@ -15,6 +15,9 @@ code smells, and refactor opportunities. Optimized for this repo's conventions
 - Pre-release quality pass, tech-debt assessment, or PR review
 - Targeted review of a subsystem (expenses, invoices, backups, analytics, billing cycle, loans/LOC)
 - After removing feature-gates or type-exclusions (loan type changes, LOC handling)
+- After a UI fix in one component: audit its siblings in the same flow (manager →
+  banner → modal), not just the changed file. The 2026-10 banner-overlap fix led to a
+  High bug next door (alerts silently missing for carried-forward budgets).
 
 ## Procedure
 
@@ -101,6 +104,43 @@ Past confirmed-true patterns on THIS repo:
   Tests covering only the Saturday-Christmas cascade (2027) miss this — always test
   the Sunday-Christmas year too. The posted-date auto-suggestion is frontend-only and
   user-overridable, so this is Medium, not High.
+- **Carried-forward rows have no `id`** (fixed 2026-10, PR #417). `GET /api/budgets`
+  and `GET /api/budgets/allocations` return the previous month's rows for an empty
+  month as transient objects (`carriedForward: true`, no `id`), via
+  `utils/monthlyRows.loadWithCarryForward`. Any consumer that validates/keys/dedupes
+  on `id` silently breaks in every month whose budgets were never edited:
+  `BudgetAlertManager` required `id` and showed NO alerts; `BudgetCard` was keyed by
+  `budget.id`. Identity within a month is the category (budgets) or name
+  (allocations). Grep `\.id\b` / `key={...id}` in every consumer of these endpoints.
+  Writes must go through `useCarryForward.ensurePersisted` first.
+- Partial local-state updates after a mutation: `ManageTabContent` delete did
+  `setBudgets(filtered)` but never refreshed the separate `summary` state, so the
+  overview totals went stale. When a component holds two derived states from two
+  endpoints, a mutation must reload both (reuse the shared `load*` function).
+- Nested `role="button"` rows inside a `role="button"` banner (`BudgetReminderBanner`):
+  rows had `onClick` + `stopPropagation` but no `onKeyDown`, so Enter bubbled to the
+  banner and ran the banner action without the row's argument. Check keyboard parity
+  for every clickable child.
+- `progress.toFixed(0)` rounds 99.6 to "100%" next to a "Near Limit" (< 100) label.
+  Threshold-labelled percentages should round DOWN for display.
+- **Activity-log coverage gaps cluster in bulk/secondary mutations** (fixed 2026-10,
+  PR #417): month copies (`budgets/copy`, `allocations/copy`, fixed-expense
+  carry-forward), place-name standardization, payment-method *activation* (only
+  deactivation logged), timezone/backup-config settings, legacy `.db` restore, loan
+  balance migration, and billing cycles auto-generated on a GET (only the scheduler
+  logged). CRUD paths were fine. Missing events also mean NO cross-tab sync, because
+  `activityLogService.logEvent` is the only thing that triggers the SSE broadcast.
+  Enumerate every POST/PUT/PATCH/DELETE route and trace it to a `logEvent` call.
+- **Same event logged twice** (controller AND service, same `event_type`): credit card
+  payment delete, statement upload, billing cycle delete (fixed PR #417; the service
+  copy was kept). `billing_cycle_created`/`credit_card_payment_recorded` are documented
+  intentional controller-level companions, not duplicates.
+- **SSE entity-type mismatch (open, 2026-10):** backend logs `income_source`, `person`,
+  `loan_payment`, `loan_balance`, `investment_value`, `billing_cycle`, ...; the frontend
+  `useDataSync` only routes `expense|budget|people|payment_method|invoice` (context
+  refresh) and `loan|income|investment|fixed_expense` (window `syncEvent`). Nothing in
+  `frontend/src` listens for `syncEvent`. So only expense/budget/payment-method/invoice
+  changes actually sync across tabs; check this before claiming an event "syncs".
 
 Past confirmed-false patterns (subagent hallucinations on THIS repo):
 - "Duplicate `findById()` in `loanPaymentRepository.js`" — FALSE, there is only
@@ -118,6 +158,23 @@ Past confirmed-false patterns (subagent hallucinations on THIS repo):
   and 150 in the controller). Was true historically but since fixed.
 
 Downgrade or drop any finding you cannot reproduce by reading the source.
+
+### 2a. Layout / CSS findings: measure the real container
+The right column is `.content-layout` `1fr 400px` (350px at ≤1024px, full width on
+mobile via `styles/mobile.css`). Nested padding eats most of it: summary-panel 20px,
+notifications-content 12px, banner 16px + icon + dismiss button, row padding 8px.
+A notification row ends up with about **215px on desktop and 165px on tablet**.
+- Verify CSS fixes against those widths, not one guessed width. Throwaway HTML that
+  links the real stylesheets (`variables.css`, `App.css`, the component CSS) works,
+  but it must live INSIDE the workspace (browser tools 403 on `%TEMP%`), the test
+  columns need `flex-shrink: 0`/`min-width` or they silently shrink, and the file must
+  be deleted afterwards. Measure with `getBoundingClientRect` rather than trusting
+  screenshots.
+- Prefer a container query on the component's own list (`container-type: inline-size`)
+  over viewport media queries: the same banner renders at 165-375px depending on
+  the layout, not the viewport.
+- `flex: 1; min-width: 0` on a text label next to `flex-shrink: 0` siblings lets the
+  label collapse to zero width and overlap them; that was the banner-overlap bug.
 
 ### 2b. Performance-specific audit patterns
 When auditing for performance issues, check these verified patterns:

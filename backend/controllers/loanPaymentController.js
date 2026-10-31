@@ -327,7 +327,7 @@ async function migrateBalances(req, res) {
       return res.status(400).json({ error: 'Invalid loan ID' });
     }
     
-    const result = await migrationService.migrateBalanceEntries(loanId);
+    const result = await migrationService.migrateBalanceEntries(loanId, req.headers['x-tab-id'] ?? null);
     res.status(200).json(result);
   } catch (error) {
     if (error.message === 'Loan not found') {

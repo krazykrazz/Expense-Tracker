@@ -390,10 +390,12 @@ async function deleteBillingCycle(paymentMethodId, cycleId) {
       'billing_cycle_deleted',
       'billing_cycle',
       cycleId,
-      `Deleted billing cycle for ${paymentMethod.display_name} ending ${existing.cycle_end_date}`,
+      `Deleted billing cycle for ${paymentMethod.display_name} (${existing.cycle_start_date} to ${existing.cycle_end_date})`,
       {
         paymentMethodId,
+        cycleStartDate: existing.cycle_start_date,
         cycleEndDate: existing.cycle_end_date,
+        actualStatementBalance: existing.actual_statement_balance,
         cardName: paymentMethod.display_name
       }
     );

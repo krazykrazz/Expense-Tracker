@@ -4,7 +4,7 @@ const { BUDGETABLE_CATEGORIES, normalizeCategory } = require('../utils/categorie
 const activityLogService = require('./activityLogService');
 const periodSummaryService = require('./periodSummaryService');
 const { parseYearMonth } = require('../utils/validators');
-const { loadWithCarryForward, copyRows, previousMonth } = require('../utils/monthlyRows');
+const { loadWithCarryForward, copyRows, previousMonth, logMonthCopy } = require('../utils/monthlyRows');
 
 class BudgetService {
   // Budgetable categories (excludes tax-deductible categories)
@@ -419,7 +419,7 @@ class BudgetService {
    * @param {boolean} overwrite - Whether to overwrite existing budgets in target month
    * @returns {Promise<Object>} Copy statistics { copied, skipped, overwritten }
    */
-  async copyBudgets(sourceYear, sourceMonth, targetYear, targetMonth, overwrite = false) {
+  async copyBudgets(sourceYear, sourceMonth, targetYear, targetMonth, overwrite = false, tabId = null) {
     // Validate all inputs
     this.validateYearMonth(sourceYear, sourceMonth);
     this.validateYearMonth(targetYear, targetMonth);
@@ -450,7 +450,7 @@ class BudgetService {
       throw error;
     }
 
-    return copyRows({
+    const result = await copyRows({
       sourceRows: sourceBudgets,
       existingRows: existingBudgets,
       keyOf: budget => budget.category,
@@ -463,6 +463,11 @@ class BudgetService {
       update: (existing, source) => budgetRepository.updateLimit(existing.id, source.limit),
       overwrite
     });
+
+    await logMonthCopy('budgets_copied', 'budget', 'budget', result,
+      { year: srcYear, month: srcMonth }, { year: tgtYear, month: tgtMonth }, tabId);
+
+    return result;
   }
 
   /**

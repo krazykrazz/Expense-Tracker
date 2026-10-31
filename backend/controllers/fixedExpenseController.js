@@ -139,7 +139,7 @@ async function carryForwardFixedExpenses(req, res) {
       return res.status(400).json({ error: 'Month must be between 1 and 12' });
     }
     
-    const result = await fixedExpenseService.carryForwardFixedExpenses(yearNum, monthNum);
+    const result = await fixedExpenseService.carryForwardFixedExpenses(yearNum, monthNum, req.headers['x-tab-id'] ?? null);
     
     // Return success even if count is 0 (no items to carry forward)
     res.status(200).json({

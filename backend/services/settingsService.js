@@ -184,8 +184,18 @@ async function updateBusinessTimezone(timezone) {
     throw new Error(`Invalid IANA timezone identifier: ${timezone}`);
   }
   try {
+    const previous = await getBusinessTimezone();
     await settingsRepository.setSetting(SETTING_KEYS.BUSINESS_TIMEZONE, timezone);
     logger.info('Business timezone updated:', { timezone });
+    if (previous !== timezone) {
+      getActivityLogService().logEvent(
+        'settings_updated',
+        'settings',
+        null,
+        `Updated business timezone: ${previous} → ${timezone}`,
+        { setting: 'business_timezone', oldValue: previous, newValue: timezone }
+      );
+    }
     return timezone;
   } catch (error) {
     logger.error('Error updating business timezone:', error);

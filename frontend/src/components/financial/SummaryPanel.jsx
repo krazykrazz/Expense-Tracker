@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { API_ENDPOINTS } from '../../config';
 import { useModalContext } from '../../contexts/ModalContext';
+import { useSyncEvent } from '../../hooks/useSyncEvent';
 import { authAwareFetch } from '../../utils/fetchProvider';
 import IncomeManagementModal from './IncomeManagementModal';
 import FixedExpensesModal from './FixedExpensesModal';
@@ -21,8 +22,13 @@ import { formatCAD as formatCurrency } from '../../utils/formatters';
 import { getAnomalies, dismissAnomaly, markAnomalyAsExpected } from '../../services/analyticsApi';
 import './SummaryPanel.css';
 
+const SUMMARY_SYNC_ENTITIES = ['income', 'fixed_expense', 'loan', 'investment', 'credit_card'];
+
 const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
   const { openFinancialOverview, openCreditCardDetail, openBudgets } = useModalContext();
+  // Bumped when another tab changes data this panel summarizes but ExpenseContext does not own
+  const [syncTick, setSyncTick] = useState(0);
+  useSyncEvent(SUMMARY_SYNC_ENTITIES, () => setSyncTick(prev => prev + 1));
   const [summary, setSummary] = useState(null);
   const [previousSummary, setPreviousSummary] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -317,7 +323,7 @@ const SummaryPanel = ({ selectedYear, selectedMonth, refreshTrigger }) => {
     fetchAutoLogSuggestions(controller.signal);
     fetchAnomalies(controller.signal);
     return () => controller.abort();
-  }, [fetchSummaryData, fetchReminderStatus, fetchAutoLogSuggestions, fetchAnomalies, refreshTrigger]);
+  }, [fetchSummaryData, fetchReminderStatus, fetchAutoLogSuggestions, fetchAnomalies, refreshTrigger, syncTick]);
 
   // Reset dismissed reminders only when month/year changes (not on every refresh)
   // Budget alerts dismissal is managed by BudgetAlertManager

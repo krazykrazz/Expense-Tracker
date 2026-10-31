@@ -1,6 +1,7 @@
 const activityLogRepository = require('../repositories/activityLogRepository');
 const settingsService = require('./settingsService');
 const logger = require('../config/logger');
+const { getTabId } = require('../utils/requestContext');
 
 // Track last cleanup run
 let lastCleanupRun = null;
@@ -64,10 +65,11 @@ async function logEvent(eventType, entityType, entityId, userAction, metadata) {
     // Insert event
     await activityLogRepository.insert(event);
 
-    // Broadcast SSE sync event after successful insert (fire-and-forget)
+    // Broadcast SSE sync event after successful insert (fire-and-forget).
+    // Falls back to the request's X-Tab-ID so callers need not pass tabId explicitly.
     if (_sseService) {
       try {
-        await _sseService.broadcast(entityType, metadata?.tabId ?? null);
+        await _sseService.broadcast(entityType, metadata?.tabId ?? getTabId());
       } catch (err) {
         logger.error('Activity log: SSE broadcast failed', { err, entityType });
       }

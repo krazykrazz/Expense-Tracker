@@ -154,7 +154,7 @@ describe('Property 5 — entity type to refresh mapping', () => {
 // ── Property 6: Window-event entity types ────────────────────────────────────
 
 describe('Property 6 — non-context entity types dispatch window events', () => {
-  const WINDOW_ENTITY_TYPES = ['loan', 'income', 'investment', 'fixed_expense'];
+  const WINDOW_ENTITY_TYPES = ['loan', 'income', 'investment', 'fixed_expense', 'credit_card'];
 
   test('dispatches syncEvent on window with correct entityType, no callbacks called', () => {
     fc.assert(

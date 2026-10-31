@@ -9,7 +9,7 @@ vi.mock('../../utils/fetchProvider', async () => {
   };
 });
 
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
 import * as fc from 'fast-check';
 import { ModalProvider, useModalContext } from '../../contexts/ModalContext';
 import SummaryPanel from './SummaryPanel';
@@ -145,6 +145,44 @@ describe('SummaryPanel', () => {
       expect(line.textContent).toContain('After planned savings ($750.00)');
       // income 3000 - (variable 500 + fixed 1500) - planned 750
       expect(line.textContent).toContain('$250.00');
+    });
+
+    describe('refresh on changes from another tab', () => {
+      const summaryRequests = () => global.fetch.mock.calls.filter(([url]) => String(url).includes('/summary')).length;
+      const dispatchSync = (entityType) => act(() => {
+        window.dispatchEvent(new CustomEvent('syncEvent', { detail: { entityType } }));
+      });
+
+      beforeEach(() => {
+        global.fetch.mockImplementation(async (url) => ({
+          ok: true,
+          json: async () => (String(url).includes('/summary') ? baseResponse : {})
+        }));
+      });
+
+      it.each(['income', 'fixed_expense', 'loan', 'investment', 'credit_card'])(
+        'refetches the summary when %s changes elsewhere',
+        async (entityType) => {
+          renderWithProviders(<SummaryPanel selectedYear={2025} selectedMonth={11} refreshTrigger={0} />);
+          await waitFor(() => expect(document.querySelector('.loading-message')).not.toBeInTheDocument());
+          const before = summaryRequests();
+
+          dispatchSync(entityType);
+
+          await waitFor(() => expect(summaryRequests()).toBe(before + 1));
+        }
+      );
+
+      it('ignores entity types the summary does not show', async () => {
+        renderWithProviders(<SummaryPanel selectedYear={2025} selectedMonth={11} refreshTrigger={0} />);
+        await waitFor(() => expect(document.querySelector('.loading-message')).not.toBeInTheDocument());
+        const before = summaryRequests();
+
+        dispatchSync('people');
+        await act(async () => { await Promise.resolve(); });
+
+        expect(summaryRequests()).toBe(before);
+      });
     });
 
     describe('over-planned notification', () => {

@@ -6,6 +6,7 @@ import { getAllInvestments, createInvestment, updateInvestment, deleteInvestment
 import { getPaymentMethods, getPaymentMethod, deletePaymentMethod, setPaymentMethodActive } from '../../services/paymentMethodApi';
 import { getCurrentCycleStatus } from '../../services/creditCardApi';
 import { authAwareFetch } from '../../utils/fetchProvider';
+import { useSyncEvent } from '../../hooks/useSyncEvent';
 import CreditCardPaymentForm from '../credit-cards/CreditCardPaymentForm';
 import LoanRow from '../loans/LoanRow';
 import InvestmentRow from '../loans/InvestmentRow';
@@ -90,6 +91,9 @@ const CreditCardSummary = ({ paymentMethods, onPaymentRecorded, onViewDetails })
   }, [paymentMethods]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { fetchCardData(); }, [fetchCardData]);
+
+  // Another tab recorded a payment, statement or billing cycle
+  useSyncEvent('credit_card', () => fetchCardData());
 
   if (creditCards.length === 0) return null;
 
@@ -221,6 +225,8 @@ const PaymentMethodsSection = ({ paymentMethods, loading, onPaymentRecorded, onV
     fetchCardData({ onStale: () => stale });
     return () => { stale = true; };
   }, [fetchCardData]);
+
+  useSyncEvent('credit_card', () => fetchCardData());
 
   const payingCard = payingCardId ? filteredCardData.find(c => c.id === payingCardId) : null;
 
@@ -431,6 +437,9 @@ const LoansSection = ({ year, month, onUpdate, highlightIds = [], onTotalDebtCha
   };
 
   useEffect(() => { fetchLoans(); }, [fetchLoans]);
+
+  // Loan payments/balances and linked fixed expenses changed in another tab
+  useSyncEvent(['loan', 'fixed_expense'], () => fetchLoans());
 
   const clearForm = () => {
     setFormData({
@@ -768,6 +777,8 @@ const InvestmentsSection = ({ onUpdate, highlightIds = [], onTotalInvestmentsCha
   }, [onTotalInvestmentsChange]);
 
   useEffect(() => { fetchInvestments(); }, [fetchInvestments]);
+
+  useSyncEvent('investment', () => fetchInvestments());
 
   const clearForm = () => { setFormData({ name: '', type: 'TFSA', initial_value: '' }); setValidationErrors({}); };
 

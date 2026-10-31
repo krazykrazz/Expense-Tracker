@@ -51,8 +51,9 @@ Layer-specific, high-signal checks. Confirm each finding against source before r
       activate (not just deactivate), settings and on-read writes. No-op bulk operations
       should not log. Pass `req.headers['x-tab-id']` through so the originating tab
       ignores its own SSE broadcast.
-- [ ] The `entity_type` of a new event is one `frontend/src/hooks/useDataSync.js`
-      actually routes, or the change will not sync to other tabs.
+- [ ] The `entity_type` of a new event is routed by `frontend/src/hooks/useDataSync.js`
+      (directly or via `ENTITY_TYPE_ALIASES`), and a window `syncEvent` type has at least
+      one `useSyncEvent` consumer; otherwise other tabs never refresh.
 
 ### Loan / LOC subsystem
 - [ ] After removing loan-type exclusions (e.g. `loan_type !== 'line_of_credit'`),

@@ -314,7 +314,7 @@ describe('Feature: sse-visibility-optimization, Property 5: Full data refresh on
      *
      * For any hook that was disconnected due to tab-hidden, when the tab becomes
      * visible and the EventSource onopen fires, all 4 context refresh callbacks
-     * are called exactly once, all 4 syncEvent window events are dispatched,
+     * are called exactly once, all 5 syncEvent window events are dispatched,
      * and no toast notifications are shown.
      */
     fc.assert(
@@ -354,12 +354,13 @@ describe('Feature: sse-visibility-optimization, Property 5: Full data refresh on
           expect(callbacks.refreshPeople).toHaveBeenCalledTimes(1);
           expect(callbacks.refreshPaymentMethods).toHaveBeenCalledTimes(1);
 
-          // 4 syncEvent window events dispatched
-          expect(syncEvents).toHaveLength(4);
+          // 5 syncEvent window events dispatched
+          expect(syncEvents).toHaveLength(5);
           expect(syncEvents).toContain('loan');
           expect(syncEvents).toContain('income');
           expect(syncEvents).toContain('investment');
           expect(syncEvents).toContain('fixed_expense');
+          expect(syncEvents).toContain('credit_card');
 
           // No toast notifications
           expect(result.current.getToastSnapshot()).toHaveLength(0);

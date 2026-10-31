@@ -20,28 +20,47 @@ Browser Tab A          Backend              Browser Tab B
 
 **Data flow:**
 1. A mutation controller handles a write request and calls `activityLogService.logEvent()`
-2. `activityLogService` calls `sseService.broadcast(entityType, tabId)` after logging
+2. `activityLogService` calls `sseService.broadcast(entityType, tabId)` after logging. `tabId` is `metadata.tabId` if the service passed one, otherwise the request's `X-Tab-ID` header (see [Self-Update Suppression](#self-update-suppression))
 3. `sseService` writes an SSE frame to every connected client
-4. Each client's `useDataSync` hook receives the event, suppresses it if `tabId` matches the current tab, then debounces and triggers the appropriate context refresh
+4. Each client's `useDataSync` hook receives the event, maps the backend entity type to a routing key (see below), suppresses it if `tabId` matches the current tab, then debounces and triggers the appropriate refresh
 
 No database changes are required — SSE state is entirely in-memory.
 
 ## Entity Types
 
-| Entity Type | Refresh Action |
-|-------------|---------------|
-| `expense` | `refreshExpenses()` via ExpenseContext |
-| `budget` | `refreshBudgets()` via SharedDataContext |
-| `people` | `refreshPeople()` via SharedDataContext |
-| `payment_method` | `refreshPaymentMethods()` via SharedDataContext |
-| `loan` | `window.dispatchEvent(new CustomEvent('syncEvent', ...))` |
-| `income` | `window.dispatchEvent(new CustomEvent('syncEvent', ...))` |
-| `investment` | `window.dispatchEvent(new CustomEvent('syncEvent', ...))` |
-| `fixed_expense` | `window.dispatchEvent(new CustomEvent('syncEvent', ...))` |
+The backend broadcasts the `entity_type` of each activity-log event. `useDataSync` first normalizes it with `ENTITY_TYPE_ALIASES` (`frontend/src/hooks/useDataSync.js`), then routes it. Types that are not listed (`settings`, `system`, `auth`, `anomaly`, `suppression_rule`) are ignored.
+
+| Backend entity types | Routing key | Refresh action |
+|----------------------|-------------|----------------|
+| `expense` | `expense` | `refreshExpenses()` via ExpenseContext (also refreshes the Monthly Summary) |
+| `budget` (budgets and planned-savings allocations) | `budget` | `refreshBudgets()` via SharedDataContext, plus a Monthly Summary refresh so planned savings and budget alerts update |
+| `person` | `people` | `refreshPeople()` via SharedDataContext |
+| `payment_method` | `payment_method` | `refreshPaymentMethods()` via SharedDataContext |
+| `invoice` | `invoice` | `refreshExpenses()` (receipt badges) |
+| `loan`, `loan_payment`, `loan_balance`, `mortgage_payment` | `loan` | window `syncEvent` |
+| `income_source` | `income` | window `syncEvent` |
+| `investment`, `investment_value` | `investment` | window `syncEvent` |
+| `fixed_expense` | `fixed_expense` | window `syncEvent` |
+| `credit_card_payment`, `credit_card_statement`, `billing_cycle` | `credit_card` | window `syncEvent` |
+
+### Window `syncEvent` consumers
+
+A window `syncEvent` does nothing by itself; components subscribe with `useSyncEvent(entityTypes, callback)` (`frontend/src/hooks/useSyncEvent.js`). Current consumers:
+
+| Component | Reacts to | Refreshes |
+|-----------|-----------|-----------|
+| `SummaryPanel` | `income`, `fixed_expense`, `loan`, `investment`, `credit_card` | Monthly Summary, reminders, auto-log suggestions, anomalies |
+| `FinancialOverviewModal` loans section | `loan`, `fixed_expense` | Loan list and linked fixed-expense counts |
+| `FinancialOverviewModal` investments section | `investment` | Investment list and totals |
+| `FinancialOverviewModal` payment methods / credit card summary | `credit_card` | Card balances and cycle status |
+
+Not refreshed live (they load when opened): the loan, investment and credit card detail views, the Income and Fixed Expenses editors, Budgets modal tabs, Annual Summary, and the Analytics Hub.
+
+Add a new `useSyncEvent` call to any component that holds server data for one of these entity types.
 
 ## Self-Update Suppression
 
-Each browser tab generates a stable `TAB_ID` via `crypto.randomUUID()` at module load time (`frontend/src/utils/tabId.js`). Every mutation request includes this ID in the `X-Tab-ID` request header. The backend passes it through to the SSE broadcast payload. When `useDataSync` receives an event whose `tabId` matches the current tab's `TAB_ID`, it silently discards the event — the tab that made the change already has up-to-date state.
+Each browser tab generates a stable `TAB_ID` via `crypto.randomUUID()` at module load time (`frontend/src/utils/tabId.js`). Every mutation request includes this ID in the `X-Tab-ID` request header (added by `apiClient` and the credit card/invoice upload helpers). On the backend, `requestContextMiddleware` (`backend/utils/requestContext.js`, an `AsyncLocalStorage`) remembers the header for the rest of the request, and `activityLogService.logEvent` uses it as the broadcast `tabId` unless the caller passed `metadata.tabId`. Services therefore do not need to thread `tabId` through. Events logged outside a request (scheduler, startup) have no tab id and reach every tab. When `useDataSync` receives an event whose `tabId` matches the current tab's `TAB_ID`, it silently discards the event — the tab that made the change already has up-to-date state.
 
 ## Reconnection and Backoff
 
@@ -77,6 +96,8 @@ After each debounced refresh fires, a brief toast appears in the bottom-right co
 | `income` | ↻ Income updated |
 | `investment` | ↻ Investments updated |
 | `fixed_expense` | ↻ Fixed expenses updated |
+| `credit_card` | ↻ Credit cards updated |
+| `invoice` | ↻ Receipts updated |
 
 ## Visibility-Based Connection Lifecycle
 
@@ -125,7 +146,9 @@ Each broadcast to one or more connected clients is recorded in the activity log 
 | `backend/services/sseService.js` | Client registry, broadcast, connection count |
 | `backend/controllers/syncController.js` | SSE HTTP endpoint handler |
 | `backend/routes/syncRoutes.js` | Route: `GET /api/sync/events` |
-| `frontend/src/hooks/useDataSync.js` | EventSource lifecycle, routing, debounce, backoff |
+| `frontend/src/hooks/useDataSync.js` | EventSource lifecycle, entity type aliases, routing, debounce, backoff |
+| `frontend/src/hooks/useSyncEvent.js` | Subscribe a component to window `syncEvent`s for given entity types |
+| `backend/utils/requestContext.js` | Request-scoped `X-Tab-ID` for activity-log broadcasts |
 | `frontend/src/utils/tabId.js` | Stable per-tab ID, `fetchWithTabId` wrapper |
 | `frontend/src/components/SyncToast.jsx` | Toast notification component |
 | `frontend/src/components/SyncToast.css` | Toast styles with reduced-motion support |

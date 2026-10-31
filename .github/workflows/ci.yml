@@ -577,8 +577,23 @@ jobs:
 
       - name: Push Docker image to GHCR
         run: |
-          docker push ghcr.io/${{ github.repository_owner }}/expense-tracker:${{ steps.meta.outputs.sha_short }}
-          docker push ghcr.io/${{ github.repository_owner }}/expense-tracker:v${{ steps.meta.outputs.version }}
+          IMAGE="ghcr.io/${{ github.repository_owner }}/expense-tracker"
+          VERSION_TAG="v${{ steps.meta.outputs.version }}"
+
+          docker push "$IMAGE:${{ steps.meta.outputs.sha_short }}"
+
+          # :vX.Y.Z must keep pointing at the image built from its release commit.
+          # Every main build between releases still reports the last released version,
+          # so only the first build of a version (the release merge commit) may create it.
+          if out=$(docker manifest inspect "$IMAGE:$VERSION_TAG" 2>&1); then
+            echo "$IMAGE:$VERSION_TAG already exists, leaving it unchanged"
+          elif echo "$out" | grep -qiE 'manifest unknown|no such manifest|not found'; then
+            docker push "$IMAGE:$VERSION_TAG"
+          else
+            # Auth/network errors must not be mistaken for "tag does not exist"
+            echo "::error::Could not check whether $IMAGE:$VERSION_TAG exists: $out"
+            exit 1
+          fi
       
       - name: Prepare docker-compose for release
         run: |

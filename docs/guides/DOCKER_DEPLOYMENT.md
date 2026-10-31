@@ -67,7 +67,7 @@ The repo also includes [docker-compose.ghcr.yml](../../docker-compose.ghcr.yml) 
 
 - `latest`: the build the maintainer has promoted to production (not every `main` build)
 - `staging`: pre-production validation tag
-- `vX.Y.Z`: version tags, for example `v1.11.0`. CI re-pushes this tag on every `main` build until the next version bump, so it may include commits made after the release
+- `vX.Y.Z`: version tags, for example `v1.13.0`. Each is created once, from the release commit, and never changes afterwards (releases up to v1.12.0 were re-pushed on every `main` build, so those tags may include later commits)
 - `<git-sha>`: immutable commit-tagged images used by the promotion workflow (older ones are periodically cleaned up)
 
 Images are published for `linux/amd64`. For production, prefer a specific version tag when you want a fixed version.

@@ -10,6 +10,7 @@
 const loanPaymentRepository = require('../repositories/loanPaymentRepository');
 const loanBalanceRepository = require('../repositories/loanBalanceRepository');
 const loanRepository = require('../repositories/loanRepository');
+const activityLogService = require('./activityLogService');
 
 class MigrationService {
   /**
@@ -171,9 +172,10 @@ class MigrationService {
   /**
    * Migrate balance entries to payment entries (Requirement 4.1, 4.2, 4.3, 4.4, 4.5)
    * @param {number} loanId - Loan ID
+   * @param {string|null} tabId - Tab ID for SSE filtering
    * @returns {Promise<Object>} { converted, skipped, errors, summary }
    */
-  async migrateBalanceEntries(loanId) {
+  async migrateBalanceEntries(loanId, tabId = null) {
     // Verify loan exists and is eligible
     const loan = await this.verifyLoanEligibility(loanId);
     
@@ -231,6 +233,16 @@ class MigrationService {
     }
     
     const totalPaymentAmount = converted.reduce((sum, c) => sum + c.paymentAmount, 0);
+
+    if (converted.length > 0) {
+      await activityLogService.logEvent(
+        'loan_balances_migrated',
+        'loan_payment',
+        loanId,
+        `Migrated ${converted.length} balance entr${converted.length === 1 ? 'y' : 'ies'} to payments for ${loan.name} ($${totalPaymentAmount.toFixed(2)})`,
+        { loanName: loan.name, converted: converted.length, skipped: skipped.length, errors: errors.length, totalPaymentAmount, tabId }
+      );
+    }
     
     // Return migration result (Requirement 4.5)
     return {

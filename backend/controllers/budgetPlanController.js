@@ -53,7 +53,7 @@ const deleteAllocation = asyncHandler(async (req, res) => {
  */
 const copyAllocations = asyncHandler(async (req, res) => {
   const { sourceYear, sourceMonth, targetYear, targetMonth, overwrite } = req.body;
-  res.json(await allocationService.copyAllocations(sourceYear, sourceMonth, targetYear, targetMonth, overwrite === true));
+  res.json(await allocationService.copyAllocations(sourceYear, sourceMonth, targetYear, targetMonth, overwrite === true, tabIdOf(req)));
 });
 
 module.exports = {

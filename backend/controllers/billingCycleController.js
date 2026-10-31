@@ -550,29 +550,6 @@ async function deleteBillingCycle(req, res) {
       paymentMethodId
     });
     
-    // Activity logging (fire-and-forget)
-    if (cycleToDelete) {
-      try {
-        const paymentMethod = await paymentMethodRepository.findById(paymentMethodId);
-        const cardName = paymentMethod ? (paymentMethod.display_name || paymentMethod.full_name) : `Card ${paymentMethodId}`;
-        const userAction = `Deleted billing cycle for ${cardName} (${cycleToDelete.cycle_start_date} to ${cycleToDelete.cycle_end_date})`;
-        await activityLogService.logEvent(
-          'billing_cycle_deleted',
-          'billing_cycle',
-          cycleId,
-          userAction,
-          {
-            paymentMethodName: cardName,
-            cycleStartDate: cycleToDelete.cycle_start_date,
-            cycleEndDate: cycleToDelete.cycle_end_date,
-            actualStatementBalance: cycleToDelete.actual_statement_balance
-          }
-        );
-      } catch (logError) {
-        logger.error('Failed to log billing cycle deletion event:', logError);
-      }
-    }
-    
     res.status(200).json({
       success: true,
       message: 'Billing cycle record deleted successfully'

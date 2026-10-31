@@ -1,4 +1,5 @@
 const backupService = require('../services/backupService');
+const activityLogService = require('../services/activityLogService');
 const logger = require('../config/logger');
 const fs = require('fs');
 const path = require('path');
@@ -299,6 +300,14 @@ async function restoreBackup(req, res) {
       // Re-initialize database to ensure schema is up to date
       const { initializeDatabase } = require('../database/db');
       await initializeDatabase();
+
+      await activityLogService.logEvent(
+        'backup_restored',
+        'system',
+        null,
+        `Restored legacy database backup: ${originalName}`,
+        { filename: originalName, legacyDatabase: true, preRestoreBackup: path.basename(preRestoreBackup) }
+      );
 
       res.status(200).json({ 
         success: true,

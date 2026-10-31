@@ -81,6 +81,6 @@ describe('budget plan routes', () => {
       .send({ sourceYear: 2025, sourceMonth: 10, targetYear: 2025, targetMonth: 11, overwrite: true });
 
     expect(res.body).toEqual({ copied: 1, skipped: 0, overwritten: 0 });
-    expect(allocationService.copyAllocations).toHaveBeenCalledWith(2025, 10, 2025, 11, true);
+    expect(allocationService.copyAllocations).toHaveBeenCalledWith(2025, 10, 2025, 11, true, null);
   });
 });

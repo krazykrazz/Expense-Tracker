@@ -3,7 +3,7 @@ const paymentMethodRepository = require('../repositories/paymentMethodRepository
 const loanRepository = require('../repositories/loanRepository');
 const activityLogService = require('./activityLogService');
 const { validateYearMonth } = require('../utils/validators');
-const { previousMonth } = require('../utils/monthlyRows');
+const { previousMonth, logMonthCopy } = require('../utils/monthlyRows');
 const { CATEGORIES, normalizeCategory } = require('../utils/categories');
 
 class FixedExpenseService {
@@ -468,7 +468,7 @@ class FixedExpenseService {
    * @param {number} month - Target month (1-12)
    * @returns {Promise<Object>} { items: Array, count: number }
    */
-  async carryForwardFixedExpenses(year, month) {
+  async carryForwardFixedExpenses(year, month, tabId = null) {
     // Validate year and month
     validateYearMonth(year, month);
 
@@ -503,6 +503,9 @@ class FixedExpenseService {
       yearNum,
       monthNum
     );
+
+    await logMonthCopy('fixed_expenses_copied', 'fixed_expense', 'fixed expense', { copied: items.length, overwritten: 0 },
+      { year: prevYear, month: prevMonth }, { year: yearNum, month: monthNum }, tabId);
 
     return {
       items,

@@ -46,6 +46,13 @@ Layer-specific, high-signal checks. Confirm each finding against source before r
 - [ ] Duplicate activity log events: if a helper (e.g. `createPaymentFromFixedExpense`)
       already calls `activityLogService.logEvent`, the caller must NOT log again.
       Check for double-fire patterns on `'auto_payment_logged'`, `'expense_created'`, etc.
+      Also check controller + service pairs logging the SAME `event_type`.
+- [ ] Every POST/PUT/PATCH/DELETE route reaches a `logEvent` call, including bulk/copy,
+      activate (not just deactivate), settings and on-read writes. No-op bulk operations
+      should not log. Pass `req.headers['x-tab-id']` through so the originating tab
+      ignores its own SSE broadcast.
+- [ ] The `entity_type` of a new event is one `frontend/src/hooks/useDataSync.js`
+      actually routes, or the change will not sync to other tabs.
 
 ### Loan / LOC subsystem
 - [ ] After removing loan-type exclusions (e.g. `loan_type !== 'line_of_credit'`),

@@ -35,7 +35,7 @@ async function standardizePlaceNames(req, res) {
     }
 
     // Service handles detailed validation and will throw descriptive errors
-    const result = await placeNameService.standardizePlaceNames(updates);
+    const result = await placeNameService.standardizePlaceNames(updates, req.headers['x-tab-id'] ?? null);
     res.json(result);
   } catch (error) {
     logger.error('Error standardizing place names:', error);

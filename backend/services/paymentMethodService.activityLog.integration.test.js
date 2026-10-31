@@ -264,14 +264,15 @@ describe('Payment Method Activity Logging - Integration Tests', () => {
       // Act - Activate the payment method
       await paymentMethodService.setPaymentMethodActive(createdPaymentMethod.id, true);
 
-      // Assert - Verify NO activity log event was created for activation
+      // Assert
       const events = await activityLogRepository.findRecent(10, 0);
       const activationEvent = events.find(e => 
         e.entity_id === createdPaymentMethod.id &&
         e.event_type === 'payment_method_activated'
       );
 
-      expect(activationEvent).toBeUndefined();
+      expect(activationEvent).toBeDefined();
+      expect(activationEvent.user_action).toBe('Activated payment method: Test Payment Method Cheque');
     });
   });
 

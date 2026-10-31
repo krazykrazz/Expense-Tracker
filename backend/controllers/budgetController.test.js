@@ -376,7 +376,7 @@ describe('BudgetController - Unit Tests', () => {
 
       await budgetController.copyBudgets(req, res);
 
-      expect(budgetService.copyBudgets).toHaveBeenCalledWith(2025, 10, 2025, 11, false);
+      expect(budgetService.copyBudgets).toHaveBeenCalledWith(2025, 10, 2025, 11, false, null);
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith(mockResult);
     });

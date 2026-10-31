@@ -78,8 +78,23 @@ class BackupService {
       this._validateTargetPath(newConfig.targetPath);
     }
 
+    const previous = { ...this.config };
     this.config = { ...this.config, ...newConfig };
     this.saveConfig();
+
+    const changes = Object.keys(newConfig)
+      .filter(key => JSON.stringify(previous[key]) !== JSON.stringify(this.config[key]))
+      .map(key => `${key} ${JSON.stringify(previous[key])} → ${JSON.stringify(this.config[key])}`);
+    if (changes.length > 0) {
+      // logEvent never throws; not awaited because updateConfig is synchronous
+      activityLogService.logEvent(
+        'settings_updated',
+        'settings',
+        null,
+        `Updated backup settings: ${changes.join(', ')}`,
+        { setting: 'backup_config', changes }
+      );
+    }
     
     // Restart scheduler with new config
     if (this.config.enabled) {

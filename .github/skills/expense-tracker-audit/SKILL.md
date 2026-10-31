@@ -123,6 +123,24 @@ Past confirmed-true patterns on THIS repo:
   for every clickable child.
 - `progress.toFixed(0)` rounds 99.6 to "100%" next to a "Near Limit" (< 100) label.
   Threshold-labelled percentages should round DOWN for display.
+- **Activity-log coverage gaps cluster in bulk/secondary mutations** (fixed 2026-10,
+  PR #417): month copies (`budgets/copy`, `allocations/copy`, fixed-expense
+  carry-forward), place-name standardization, payment-method *activation* (only
+  deactivation logged), timezone/backup-config settings, legacy `.db` restore, loan
+  balance migration, and billing cycles auto-generated on a GET (only the scheduler
+  logged). CRUD paths were fine. Missing events also mean NO cross-tab sync, because
+  `activityLogService.logEvent` is the only thing that triggers the SSE broadcast.
+  Enumerate every POST/PUT/PATCH/DELETE route and trace it to a `logEvent` call.
+- **Same event logged twice** (controller AND service, same `event_type`): credit card
+  payment delete, statement upload, billing cycle delete (fixed PR #417; the service
+  copy was kept). `billing_cycle_created`/`credit_card_payment_recorded` are documented
+  intentional controller-level companions, not duplicates.
+- **SSE entity-type mismatch (open, 2026-10):** backend logs `income_source`, `person`,
+  `loan_payment`, `loan_balance`, `investment_value`, `billing_cycle`, ...; the frontend
+  `useDataSync` only routes `expense|budget|people|payment_method|invoice` (context
+  refresh) and `loan|income|investment|fixed_expense` (window `syncEvent`). Nothing in
+  `frontend/src` listens for `syncEvent`. So only expense/budget/payment-method/invoice
+  changes actually sync across tabs; check this before claiming an event "syncs".
 
 Past confirmed-false patterns (subagent hallucinations on THIS repo):
 - "Duplicate `findById()` in `loanPaymentRepository.js`" — FALSE, there is only

@@ -1,4 +1,5 @@
 const placeNameRepository = require('../repositories/placeNameRepository');
+const activityLogService = require('./activityLogService');
 
 /**
  * Calculate Levenshtein distance between two strings
@@ -241,14 +242,27 @@ function validateUpdates(updates) {
 /**
  * Apply standardization changes to place names with transaction support
  * @param {Array} updates - Array of {from: string[], to: string} objects
+ * @param {string|null} tabId - Tab ID for SSE filtering
  * @returns {Promise<Object>} Result with update count
  */
-async function standardizePlaceNames(updates) {
+async function standardizePlaceNames(updates, tabId = null) {
   // Validate the update payload
   validateUpdates(updates);
   
   // Use transaction-based update for atomic operation
   const totalUpdated = await placeNameRepository.updatePlaceNamesTransaction(updates);
+
+  if (totalUpdated > 0) {
+    const renames = updates.map(u => ({ from: u.from, to: u.to }));
+    // Entity 'expense' so open tabs reload their expense lists
+    await activityLogService.logEvent(
+      'place_names_standardized',
+      'expense',
+      null,
+      `Standardized place names: ${totalUpdated} expense(s) updated across ${updates.length} name group(s)`,
+      { updatedCount: totalUpdated, renames, tabId }
+    );
+  }
 
   return {
     success: true,

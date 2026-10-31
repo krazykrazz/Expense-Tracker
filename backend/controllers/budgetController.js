@@ -333,7 +333,8 @@ async function copyBudgets(req, res) {
       sourceMonth, 
       targetYear, 
       targetMonth, 
-      overwrite || false
+      overwrite || false,
+      req.headers['x-tab-id'] ?? null
     );
     
     res.status(200).json(result);

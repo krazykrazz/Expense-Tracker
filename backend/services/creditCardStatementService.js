@@ -169,10 +169,12 @@ class CreditCardStatementService {
         'credit_card_statement_uploaded',
         'credit_card_statement',
         statement.id,
-        `Uploaded statement "${file.originalname}" for ${paymentMethod.display_name}`,
+        `Uploaded statement "${file.originalname}" for ${paymentMethod.display_name} (${statementDate})`,
         {
           paymentMethodId,
           statementDate,
+          statementPeriodStart,
+          statementPeriodEnd,
           filename: file.originalname,
           cardName: paymentMethod.display_name
         }

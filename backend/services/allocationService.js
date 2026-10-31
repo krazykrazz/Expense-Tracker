@@ -3,7 +3,7 @@ const investmentRepository = require('../repositories/investmentRepository');
 const activityLogService = require('./activityLogService');
 const timeBoundaryService = require('./timeBoundaryService');
 const { parseYearMonth } = require('../utils/validators');
-const { loadWithCarryForward, copyRows } = require('../utils/monthlyRows');
+const { loadWithCarryForward, copyRows, logMonthCopy } = require('../utils/monthlyRows');
 
 const MAX_NAME_LENGTH = 100;
 
@@ -188,7 +188,7 @@ class AllocationService {
    * into another month. Existing allocations are kept unless overwrite is set.
    * @returns {Promise<{copied: number, skipped: number, overwritten: number}>}
    */
-  async copyAllocations(sourceYear, sourceMonth, targetYear, targetMonth, overwrite = false) {
+  async copyAllocations(sourceYear, sourceMonth, targetYear, targetMonth, overwrite = false, tabId = null) {
     const source = parseYearMonth(sourceYear, sourceMonth);
     const target = parseYearMonth(targetYear, targetMonth);
 
@@ -197,7 +197,7 @@ class AllocationService {
       allocationRepository.findByYearMonth(target.year, target.month)
     ]);
 
-    return copyRows({
+    const result = await copyRows({
       sourceRows,
       existingRows,
       keyOf: allocation => allocation.name,
@@ -214,6 +214,10 @@ class AllocationService {
       }),
       overwrite
     });
+
+    await logMonthCopy('budget_allocations_copied', 'budget', 'allocation', result, source, target, tabId);
+
+    return result;
   }
 }
 

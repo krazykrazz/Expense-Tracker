@@ -80,7 +80,7 @@ The `build-and-push-ghcr` job scans every Docker image with Trivy before pushing
 4. **Table Report** — `trivy convert` writes `trivy-results.txt` from the JSON
 5. **Artifact Upload** — `actions/upload-artifact@v7` uploads `trivy-scan-<sha>` (`trivy-results.txt` + `trivy-results.json`) with 30-day retention (`if: always()`)
 6. **Workflow Summary** — vulnerability counts by severity; if no report exists, the summary states the image was not assessed
-7. **Push** — `docker push` pushes the already-built SHA and version tags (no rebuild); only reached if the gate passed
+7. **Push** — `docker push` pushes the already-built SHA tag, and the version tag only if it does not exist in GHCR yet (no rebuild); only reached if the gate passed
 
 Because the scan itself always exits 0, a scanner failure can't masquerade as a finding: if all attempts fail, the job errors with "scanner infrastructure failure, NOT a vulnerability finding" and the image is not pushed.
 
@@ -493,7 +493,7 @@ The job requires `Backend Tests Status` and `Frontend Tests Status` to succeed a
 4. Builds the Docker image once and loads it into the local Docker daemon (tagged `<short-sha>` and `v<version>` from `backend/package.json`)
 5. Runs the Trivy scan and gate — fails on any CRITICAL finding (see [Docker Image Scanning](#docker-image-scanning-trivy))
 6. Uploads the scan artifact and writes the workflow summary
-7. Pushes the already-built SHA and version tags to `ghcr.io/krazykrazz/expense-tracker` (no rebuild)
+7. Pushes the already-built SHA tag to `ghcr.io/krazykrazz/expense-tracker` (no rebuild), plus `v<version>` when that tag does not exist yet. The first build of a version is the release merge commit, so release tags are immutable; later `main` builds at the same version only get a SHA tag. A GHCR error other than "manifest unknown" fails the step
 8. Generates `docker-compose-v<version>.yml` from `docker-compose.ghcr.yml` and creates GitHub release `v<version>` with it attached (or uploads the asset if the release already exists)
 
 ### GHCR Integration
@@ -536,7 +536,7 @@ CI is the single source of truth for image builds. The local script pulls the CI
 
 ### Registry Architecture
 
-GHCR is the single registry. CI pushes SHA and version tags on merge to main. The local script promotes images to `staging` and `latest` tags by pulling and retagging.
+GHCR is the single registry. CI pushes the SHA tag on every merge to main and the version tag once per version. The local script promotes images to `staging` and `latest` tags by pulling and retagging.
 
 ## Release Workflow
 

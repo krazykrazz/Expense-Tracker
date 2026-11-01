@@ -18,7 +18,7 @@ The `Build and Push to GHCR` job (`build-and-push-ghcr`) in `.github/workflows/c
 - Runs only on a push to `main` (or `workflow_dispatch` on `main`), after `Backend Tests Status` and `Frontend Tests Status` succeed. **Pull requests never build or push images.** Runs triggered by `dependabot[bot]` skip it.
 - Builds the root `Dockerfile` (linux/amd64) with build args `IMAGE_TAG` and `GIT_COMMIT` (both the short SHA) and `BUILD_DATE`.
 - Scans the image with Trivy; any CRITICAL finding fails the job before anything is pushed.
-- Pushes two tags: `:<short-sha>` and `:v<version>` (version read from `backend/package.json`).
+- Pushes `:<short-sha>` always, and `:v<version>` (version read from `backend/package.json`) only if that tag does not exist yet. The first build of a version is the release merge commit, so a release tag keeps pointing at the image built from its release commit; later `main` builds at the same version get only their SHA tag. If the check cannot reach GHCR the job fails instead of pushing.
 - Creates the GitHub Release `v<version>` (which also creates the git tag) if it does not exist yet, attaching a version-pinned `docker-compose-v<version>.yml`; if the release already exists, it re-uploads that asset.
 
 The follow-on `Deployment Health Check` job pulls the SHA image, runs it in a throwaway container on the CI runner and checks `/api/health` and `/`. It does not touch any real staging or production host.
@@ -34,7 +34,7 @@ All images live at `ghcr.io/krazykrazz/expense-tracker`.
 | Tag | Pushed by | Meaning |
 |-----|-----------|---------|
 | `<short-sha>` (e.g. `789bf08`) | CI | Image built from exactly that commit. Never re-pushed, but subject to GHCR cleanup |
-| `vX.Y.Z` | CI | Pushed on **every** `main` build while `backend/package.json` is at X.Y.Z, so it points at the latest `main` build of that version, not necessarily the release merge commit |
+| `vX.Y.Z` | CI | Created once, by the first `main` build of that version (the release merge commit), and never moved afterwards. Safe to pin in production and to roll back to. Releases before v1.13.0 were re-pushed on every `main` build, so their tags may point at a later build than the release commit |
 | `staging` | `build-and-push.ps1 -Environment staging` | The SHA last promoted to staging |
 | `latest` | `build-and-push.ps1 -Environment latest` | The SHA last promoted to production. CI never pushes `latest` |
 
@@ -259,7 +259,7 @@ Version bumps go on a dedicated `release/vX.Y.Z` branch created by the Release w
    docker tag ghcr.io/krazykrazz/expense-tracker:def5678 ghcr.io/krazykrazz/expense-tracker:latest
    docker push ghcr.io/krazykrazz/expense-tracker:latest
    ```
-   SHA-only images older than the 20 most recent versions may have been removed by GHCR cleanup; `vX.Y.Z` tags are always kept (but see [Image Tags](#image-tags) for what they point at).
+   SHA-only images older than the 20 most recent versions may have been removed by GHCR cleanup; `vX.Y.Z` tags are always kept and do not move.
 
 3. **Restart production container**:
    ```powershell

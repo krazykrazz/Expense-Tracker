@@ -1,5 +1,6 @@
 const loanBalanceRepository = require('../repositories/loanBalanceRepository');
 const loanRepository = require('../repositories/loanRepository');
+const loanPaymentRepository = require('../repositories/loanPaymentRepository');
 const activityLogService = require('./activityLogService');
 const { validateNumber, validateYearMonth } = require('../utils/validators');
 
@@ -327,11 +328,72 @@ class LoanBalanceService {
   }
 
   /**
-   * Get total debt over time across all loans, including paid-off loans for the months they had balances
-   * @returns {Promise<Array>} Array of monthly total debt values
+   * Get total debt over time across all loans, including paid-off loans for the months they had balances.
+   * Months without a snapshot use the anchor rule (last snapshot minus later payments), as the current-balance calculation does.
+   * Active loans are carried forward to the current month; paid-off loans stop at their last snapshot.
+   * @returns {Promise<Array>} Array of {year, month, total_debt, loan_count} sorted chronologically
    */
   async getTotalDebtOverTime() {
-    return await loanBalanceRepository.getTotalDebtOverTime();
+    const [snapshots, payments] = await Promise.all([
+      loanBalanceRepository.getAllSnapshotsWithLoanStatus(),
+      loanPaymentRepository.getMonthlyTotalsByLoan()
+    ]);
+    const now = new Date();
+    return this.buildTotalDebtHistory(snapshots, payments, now.getUTCFullYear(), now.getUTCMonth() + 1);
+  }
+
+  /**
+   * Combine per-loan snapshots and monthly payment totals into a monthly total-debt series
+   * @param {Array} snapshots - {loan_id, is_paid_off, year, month, remaining_balance} sorted by loan then month
+   * @param {Array} payments - {loan_id, year, month, total}
+   * @param {number} currentYear - Year active loans are carried forward to
+   * @param {number} currentMonth - Month (1-12) active loans are carried forward to
+   * @returns {Array} {year, month, total_debt, loan_count}; loan_count counts loans with a balance above zero
+   */
+  buildTotalDebtHistory(snapshots, payments, currentYear, currentMonth) {
+    const monthIndex = (year, month) => year * 12 + (month - 1);
+    const currentIndex = monthIndex(currentYear, currentMonth);
+
+    const paymentsByLoan = new Map();
+    for (const p of payments) {
+      if (!paymentsByLoan.has(p.loan_id)) paymentsByLoan.set(p.loan_id, new Map());
+      paymentsByLoan.get(p.loan_id).set(monthIndex(p.year, p.month), p.total);
+    }
+
+    const snapshotsByLoan = new Map();
+    for (const s of snapshots) {
+      if (!snapshotsByLoan.has(s.loan_id)) snapshotsByLoan.set(s.loan_id, []);
+      snapshotsByLoan.get(s.loan_id).push(s);
+    }
+
+    const totals = new Map();
+    for (const [loanId, loanSnapshots] of snapshotsByLoan) {
+      const byIndex = new Map(loanSnapshots.map(s => [monthIndex(s.year, s.month), s.remaining_balance]));
+      const firstIndex = monthIndex(loanSnapshots[0].year, loanSnapshots[0].month);
+      const last = loanSnapshots[loanSnapshots.length - 1];
+      const lastIndex = monthIndex(last.year, last.month);
+      const endIndex = last.is_paid_off ? lastIndex : Math.max(lastIndex, currentIndex);
+      const loanPayments = paymentsByLoan.get(loanId) || new Map();
+
+      let balance = 0;
+      for (let i = firstIndex; i <= endIndex; i++) {
+        balance = byIndex.has(i)
+          ? byIndex.get(i)
+          : Math.max(0, balance - (loanPayments.get(i) || 0));
+
+        const entry = totals.get(i) || { total: 0, count: 0 };
+        entry.total += balance;
+        if (balance > 0) entry.count += 1;
+        totals.set(i, entry);
+      }
+    }
+
+    return [...totals.keys()].sort((a, b) => a - b).map(i => ({
+      year: Math.floor(i / 12),
+      month: (i % 12) + 1,
+      total_debt: Math.round(totals.get(i).total * 100) / 100,
+      loan_count: totals.get(i).count
+    }));
   }
 
   /**

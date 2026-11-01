@@ -11,13 +11,15 @@ Added a new "Total Debt Trend" view to the Manage Loans page that shows the chan
 
 ### Backend Changes
 
-1. **Repository** (`backend/repositories/loanBalanceRepository.js`)
-   - Added `getTotalDebtOverTime()` method
-   - Aggregates loan balances by month across all loans, including paid-off loans for the months they had balances
-   - Returns monthly totals with loan count (loans with a balance above zero)
+1. **Repository** (`backend/repositories/loanBalanceRepository.js`, `loanPaymentRepository.js`)
+   - `getAllSnapshotsWithLoanStatus()` returns every balance snapshot with the loan's paid-off flag
+   - `getMonthlyTotalsByLoan()` returns payment totals per loan per month
 
 2. **Service** (`backend/services/loanBalanceService.js`)
-   - Added `getTotalDebtOverTime()` method to expose repository function
+   - `getTotalDebtOverTime()` builds the monthly series from snapshots and payments
+   - Paid-off loans count for the months they had balances and stop at their last snapshot
+   - Active loans are carried forward to the current month; a month with no snapshot uses the last snapshot minus later payments (the same anchor rule as the current-balance calculation), so loans whose balance is tracked through payments (no monthly snapshots) are not dropped
+   - `loan_count` is the number of loans with a balance above zero in that month
 
 3. **Controller** (`backend/controllers/loanBalanceController.js`)
    - Added `getTotalDebtOverTime()` endpoint handler

@@ -17,7 +17,8 @@ Added a new "Total Debt Trend" view to the Manage Loans page that shows the chan
 
 2. **Service** (`backend/services/loanBalanceService.js`)
    - `getTotalDebtOverTime()` builds the monthly series from snapshots and payments
-   - Paid-off loans count for the months they had balances and stop at their last snapshot
+   - Paid-off loans count for the months they had balances and stop at their last snapshot or last payment, whichever is later
+   - Balances are anchored on snapshots, never on `initial_balance`, so a loan whose tracking began mid-life (first snapshot differs from the starting value) is handled
    - Active loans are carried forward to the current month; a month with no snapshot uses the last snapshot minus later payments (the same anchor rule as the current-balance calculation), so loans whose balance is tracked through payments (no monthly snapshots) are not dropped
    - `loan_count` is the number of loans with a balance above zero in that month
 

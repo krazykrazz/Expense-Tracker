@@ -330,7 +330,8 @@ class LoanBalanceService {
   /**
    * Get total debt over time across all loans, including paid-off loans for the months they had balances.
    * Months without a snapshot use the anchor rule (last snapshot minus later payments), as the current-balance calculation does.
-   * Active loans are carried forward to the current month; paid-off loans stop at their last snapshot.
+   * Active loans are carried forward to the current month; paid-off loans stop at their last snapshot or last payment, whichever is later.
+   * Balances are anchored on snapshots, never on initial_balance, so loans whose tracking began mid-life are handled.
    * @returns {Promise<Array>} Array of {year, month, total_debt, loan_count} sorted chronologically
    */
   async getTotalDebtOverTime() {
@@ -372,8 +373,11 @@ class LoanBalanceService {
       const firstIndex = monthIndex(loanSnapshots[0].year, loanSnapshots[0].month);
       const last = loanSnapshots[loanSnapshots.length - 1];
       const lastIndex = monthIndex(last.year, last.month);
-      const endIndex = last.is_paid_off ? lastIndex : Math.max(lastIndex, currentIndex);
       const loanPayments = paymentsByLoan.get(loanId) || new Map();
+      const lastPaymentIndex = Math.max(-Infinity, ...loanPayments.keys());
+      const endIndex = last.is_paid_off
+        ? Math.max(lastIndex, lastPaymentIndex)
+        : Math.max(lastIndex, currentIndex);
 
       let balance = 0;
       for (let i = firstIndex; i <= endIndex; i++) {

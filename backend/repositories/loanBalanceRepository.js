@@ -244,8 +244,8 @@ class LoanBalanceRepository {
   }
 
   /**
-   * Get total debt over time across all active loans
-   * Returns monthly totals of all loan balances
+   * Get total debt over time across all loans, including paid-off loans for the months they had balances
+   * Returns monthly totals of all loan balances; loan_count counts loans with a balance above zero
    * @returns {Promise<Array>} Array of {year, month, total_debt} objects sorted chronologically
    */
   async getTotalDebtOverTime() {
@@ -257,10 +257,9 @@ class LoanBalanceRepository {
           lb.year,
           lb.month,
           SUM(lb.remaining_balance) as total_debt,
-          COUNT(DISTINCT lb.loan_id) as loan_count
+          COUNT(DISTINCT CASE WHEN lb.remaining_balance > 0 THEN lb.loan_id END) as loan_count
         FROM loan_balances lb
         INNER JOIN loans l ON lb.loan_id = l.id
-        WHERE l.is_paid_off = 0
         GROUP BY lb.year, lb.month
         ORDER BY lb.year ASC, lb.month ASC
       `;

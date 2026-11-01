@@ -167,7 +167,7 @@ async function deleteBalance(req, res) {
 }
 
 /**
- * Get total debt over time across all active loans
+ * Get total debt over time across all loans (including paid-off loans for months they had balances)
  * GET /api/loan-balances/total/history
  */
 async function getTotalDebtOverTime(req, res) {

@@ -327,7 +327,7 @@ class LoanBalanceService {
   }
 
   /**
-   * Get total debt over time across all active loans
+   * Get total debt over time across all loans, including paid-off loans for the months they had balances
    * @returns {Promise<Array>} Array of monthly total debt values
    */
   async getTotalDebtOverTime() {

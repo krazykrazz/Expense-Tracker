@@ -343,7 +343,7 @@ describe('LoanBalanceRepository', () => {
       }
     });
 
-    test('should exclude paid off loans from total debt', async () => {
+    test('should include paid off loans in total debt for months they had balances', async () => {
       // Create a paid off loan
       const paidOffLoan = await loanRepository.create({
         name: 'Paid Off Loan',
@@ -375,9 +375,29 @@ describe('LoanBalanceRepository', () => {
         // Find the entry for 2024-11
         const nov2024 = totalDebt.find(d => d.year === 2024 && d.month === 11);
         expect(nov2024).toBeDefined();
-        // Should only include active loan balance
-        expect(nov2024.total_debt).toBe(3500);
-        expect(nov2024.loan_count).toBe(1);
+        expect(nov2024.total_debt).toBe(5500); // 3500 + 2000
+        expect(nov2024.loan_count).toBe(2);
+
+        // Once the paid off loan reaches 0 it adds nothing and is not counted
+        await loanBalanceRepository.create({
+          loan_id: paidOffLoan.id,
+          year: 2024,
+          month: 12,
+          remaining_balance: 0,
+          rate: 6.0
+        });
+        await loanBalanceRepository.create({
+          loan_id: testLoan.id,
+          year: 2024,
+          month: 12,
+          remaining_balance: 3000,
+          rate: 5.5
+        });
+
+        const updated = await loanBalanceRepository.getTotalDebtOverTime();
+        const dec2024 = updated.find(d => d.year === 2024 && d.month === 12);
+        expect(dec2024.total_debt).toBe(3000);
+        expect(dec2024.loan_count).toBe(1);
       } finally {
         await loanRepository.delete(paidOffLoan.id);
       }

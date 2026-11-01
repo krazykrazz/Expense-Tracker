@@ -53,6 +53,22 @@ describe('LoanBalanceService.buildTotalDebtHistory', () => {
     ]);
   });
 
+  test('carries a paid-off loan forward through its last payment, anchored on its first snapshot', () => {
+    // Tracking began mid-life: payments before the first snapshot are ignored
+    const result = build(
+      [snap(1, 2025, 1, 1000, 1), snap(1, 2025, 2, 900, 1)],
+      [pay(1, 2024, 12, 500), pay(1, 2025, 2, 100), pay(1, 2025, 3, 100), pay(1, 2025, 4, 100)],
+      2025, 8
+    );
+
+    expect(result.map(r => [r.year, r.month, r.total_debt, r.loan_count])).toEqual([
+      [2025, 1, 1000, 1],
+      [2025, 2, 900, 1],
+      [2025, 3, 800, 1],
+      [2025, 4, 700, 1]
+    ]);
+  });
+
   test('fills months without a snapshot using the last snapshot minus later payments', () => {
     const result = build(
       [snap(1, 2024, 1, 1000)],

@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.13.1] - 2026-11-01
+
+### Fix Total Debt Trend: include paid-off loans for the months they had balances, carry active loans forward when no monthly balance is entered, and correct the Active Loans count. Make vX.Y.Z image tags immutable in CI.
+
 ## [1.13.0] - 2026-10-31
 
 ### Monthly budget plan with planned savings and investments, shown in Cash Flow, Annual Summary and Budget History; budget alert and carry-forward fixes; wider activity log coverage; other tabs now refresh for loans, income, investments, credit cards and people

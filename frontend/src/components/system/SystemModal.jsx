@@ -452,6 +452,16 @@ const SystemModal = () => {
           <div className="changelog">
             <div className="changelog-entry">
               <div className="changelog-version">
+                v1.13.1
+                {isCurrentVersion('v1.13.1') && <span className="current-version-badge">Current Version</span>}
+              </div>
+              <div className="changelog-date">November 1, 2026</div>
+              <ul className="changelog-items">
+                <li>Fix Total Debt Trend: include paid-off loans for the months they had balances, carry active loans forward when no monthly balance is entered, and correct the Active Loans count. Make vX.Y.Z image tags immutable in CI.</li>
+              </ul>
+            </div>
+            <div className="changelog-entry">
+              <div className="changelog-version">
                 v1.13.0
                 {isCurrentVersion('v1.13.0') && <span className="current-version-badge">Current Version</span>}
               </div>

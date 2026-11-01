@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.13.1',
+    date: 'November 1, 2026',
+    added: [],
+    changed: ['Fix Total Debt Trend: include paid-off loans for the months they had balances, carry active loans forward when no monthly balance is entered, and correct the Active Loans count. Make vX.Y.Z image tags immutable in CI.'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.13.0',
     date: 'October 31, 2026',
     added: [],

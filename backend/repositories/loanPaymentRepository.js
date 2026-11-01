@@ -202,6 +202,34 @@ class LoanPaymentRepository {
   }
 
   /**
+   * Get payment totals per loan per calendar month
+   * @returns {Promise<Array>} Array of {loan_id, year, month, total}
+   */
+  async getMonthlyTotalsByLoan() {
+    const db = await getDatabase();
+    
+    return new Promise((resolve, reject) => {
+      const sql = `
+        SELECT 
+          loan_id,
+          CAST(SUBSTR(payment_date, 1, 4) AS INTEGER) as year,
+          CAST(SUBSTR(payment_date, 6, 2) AS INTEGER) as month,
+          SUM(amount) as total
+        FROM loan_payments
+        GROUP BY loan_id, year, month
+      `;
+      
+      db.all(sql, [], (err, rows) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        resolve(rows || []);
+      });
+    });
+  }
+
+  /**
    * Get the sum of payments for a loan after a specific year/month
    * Used for anchor-based balance calculation: snapshot_balance - payments_after_snapshot
    * @param {number} loanId - Loan ID

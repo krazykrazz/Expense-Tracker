@@ -304,47 +304,8 @@ describe('LoanBalanceRepository', () => {
     });
   });
 
-  describe('getTotalDebtOverTime', () => {
-    test('should return aggregated debt across all active loans', async () => {
-      // Create another test loan
-      const testLoan2 = await loanRepository.create({
-        name: 'Test Loan 2',
-        initial_balance: 5000,
-        start_date: '2024-01-01',
-        loan_type: 'loan'
-      });
-
-      try {
-        // Add balances for both loans
-        await loanBalanceRepository.create({
-          loan_id: testLoan.id,
-          year: 2024,
-          month: 10,
-          remaining_balance: 4000,
-          rate: 5.5
-        });
-        await loanBalanceRepository.create({
-          loan_id: testLoan2.id,
-          year: 2024,
-          month: 10,
-          remaining_balance: 3000,
-          rate: 6.0
-        });
-
-        const totalDebt = await loanBalanceRepository.getTotalDebtOverTime();
-
-        // Find the entry for 2024-10
-        const oct2024 = totalDebt.find(d => d.year === 2024 && d.month === 10);
-        expect(oct2024).toBeDefined();
-        expect(oct2024.total_debt).toBe(7000); // 4000 + 3000
-        expect(oct2024.loan_count).toBe(2);
-      } finally {
-        await loanRepository.delete(testLoan2.id);
-      }
-    });
-
-    test('should include paid off loans in total debt for months they had balances', async () => {
-      // Create a paid off loan
+  describe('getAllSnapshotsWithLoanStatus', () => {
+    test('should return snapshots with the loan paid-off flag, ordered by loan then month', async () => {
       const paidOffLoan = await loanRepository.create({
         name: 'Paid Off Loan',
         initial_balance: 5000,
@@ -354,83 +315,24 @@ describe('LoanBalanceRepository', () => {
       });
 
       try {
-        // Add balances
-        await loanBalanceRepository.create({
-          loan_id: testLoan.id,
-          year: 2024,
-          month: 11,
-          remaining_balance: 3500,
-          rate: 5.5
-        });
-        await loanBalanceRepository.create({
-          loan_id: paidOffLoan.id,
-          year: 2024,
-          month: 11,
-          remaining_balance: 2000,
-          rate: 6.0
-        });
+        await loanBalanceRepository.create({ loan_id: testLoan.id, year: 2024, month: 2, remaining_balance: 3500, rate: 5.5 });
+        await loanBalanceRepository.create({ loan_id: testLoan.id, year: 2024, month: 1, remaining_balance: 4000, rate: 5.5 });
+        await loanBalanceRepository.create({ loan_id: paidOffLoan.id, year: 2024, month: 1, remaining_balance: 2000, rate: 6.0 });
 
-        const totalDebt = await loanBalanceRepository.getTotalDebtOverTime();
+        const rows = await loanBalanceRepository.getAllSnapshotsWithLoanStatus();
 
-        // Find the entry for 2024-11
-        const nov2024 = totalDebt.find(d => d.year === 2024 && d.month === 11);
-        expect(nov2024).toBeDefined();
-        expect(nov2024.total_debt).toBe(5500); // 3500 + 2000
-        expect(nov2024.loan_count).toBe(2);
+        const active = rows.filter(r => r.loan_id === testLoan.id);
+        expect(active.map(r => [r.year, r.month, r.remaining_balance, r.is_paid_off])).toEqual([
+          [2024, 1, 4000, 0],
+          [2024, 2, 3500, 0]
+        ]);
 
-        // Once the paid off loan reaches 0 it adds nothing and is not counted
-        await loanBalanceRepository.create({
-          loan_id: paidOffLoan.id,
-          year: 2024,
-          month: 12,
-          remaining_balance: 0,
-          rate: 6.0
-        });
-        await loanBalanceRepository.create({
-          loan_id: testLoan.id,
-          year: 2024,
-          month: 12,
-          remaining_balance: 3000,
-          rate: 5.5
-        });
-
-        const updated = await loanBalanceRepository.getTotalDebtOverTime();
-        const dec2024 = updated.find(d => d.year === 2024 && d.month === 12);
-        expect(dec2024.total_debt).toBe(3000);
-        expect(dec2024.loan_count).toBe(1);
+        const paidOff = rows.filter(r => r.loan_id === paidOffLoan.id);
+        expect(paidOff).toHaveLength(1);
+        expect(paidOff[0].is_paid_off).toBe(1);
       } finally {
         await loanRepository.delete(paidOffLoan.id);
       }
-    });
-
-    test('should return results sorted chronologically', async () => {
-      await loanBalanceRepository.create({
-        loan_id: testLoan.id,
-        year: 2024,
-        month: 12,
-        remaining_balance: 3000,
-        rate: 5.5
-      });
-      await loanBalanceRepository.create({
-        loan_id: testLoan.id,
-        year: 2025,
-        month: 1,
-        remaining_balance: 2500,
-        rate: 5.5
-      });
-
-      const totalDebt = await loanBalanceRepository.getTotalDebtOverTime();
-
-      // Filter to our test entries
-      const testEntries = totalDebt.filter(
-        d => (d.year === 2024 && d.month === 12) || (d.year === 2025 && d.month === 1)
-      );
-
-      expect(testEntries.length).toBeGreaterThanOrEqual(2);
-      // Should be sorted chronologically
-      const dec2024Idx = testEntries.findIndex(d => d.year === 2024 && d.month === 12);
-      const jan2025Idx = testEntries.findIndex(d => d.year === 2025 && d.month === 1);
-      expect(dec2024Idx).toBeLessThan(jan2025Idx);
     });
   });
 });

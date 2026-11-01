@@ -244,24 +244,23 @@ class LoanBalanceRepository {
   }
 
   /**
-   * Get total debt over time across all loans, including paid-off loans for the months they had balances
-   * Returns monthly totals of all loan balances; loan_count counts loans with a balance above zero
-   * @returns {Promise<Array>} Array of {year, month, total_debt} objects sorted chronologically
+   * Get every balance snapshot for every existing loan, with the loan's paid-off flag
+   * @returns {Promise<Array>} Array of {loan_id, is_paid_off, year, month, remaining_balance} sorted by loan then month
    */
-  async getTotalDebtOverTime() {
+  async getAllSnapshotsWithLoanStatus() {
     const db = await getDatabase();
     
     return new Promise((resolve, reject) => {
       const sql = `
         SELECT 
+          lb.loan_id,
+          l.is_paid_off,
           lb.year,
           lb.month,
-          SUM(lb.remaining_balance) as total_debt,
-          COUNT(DISTINCT CASE WHEN lb.remaining_balance > 0 THEN lb.loan_id END) as loan_count
+          lb.remaining_balance
         FROM loan_balances lb
         INNER JOIN loans l ON lb.loan_id = l.id
-        GROUP BY lb.year, lb.month
-        ORDER BY lb.year ASC, lb.month ASC
+        ORDER BY lb.loan_id ASC, lb.year ASC, lb.month ASC
       `;
       
       db.all(sql, [], (err, rows) => {

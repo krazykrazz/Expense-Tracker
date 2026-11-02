@@ -196,6 +196,11 @@ describe('plaidInboxService', () => {
       expect(transaction).toMatchObject({ status: 'matched', expenseId });
       expect(await get('SELECT place, amount FROM expenses WHERE id = ?', [expenseId])).toEqual({ place: 'Coffee', amount: 25.5 });
       expect((await get('SELECT COUNT(*) AS n FROM expenses')).n).toBe(1);
+      expect(activityLogService.logEvent).toHaveBeenCalledWith(
+        'plaid_transaction_updated', 'plaid_transaction', id,
+        'Matched bank transaction "Coffee Shop" ($25.50, 2026-10-12) to an existing expense',
+        { action: 'match', place: 'Coffee Shop', amount: 25.5, date: '2026-10-12', expenseId }
+      );
     });
 
     test('an expense can be linked to only one bank transaction', async () => {
@@ -227,6 +232,21 @@ describe('plaidInboxService', () => {
 
       await plaidInboxService.unignore(id);
       expect((await plaidInboxService.listInbox('new')).transactions.map(t => t.id)).toEqual([id]);
+
+      const actions = activityLogService.logEvent.mock.calls
+        .filter(([type]) => type === 'plaid_transaction_updated')
+        .map(([, entity, entityId, , metadata]) => [entity, entityId, metadata.action]);
+      expect(actions).toEqual([['plaid_transaction', id, 'ignore'], ['plaid_transaction', id, 'unignore']]);
+    });
+
+    test('a rejected action logs nothing', async () => {
+      const expenseId = await addExpense();
+      const id = await stage('t1');
+      await plaidInboxService.matchToExpense(id, expenseId);
+      activityLogService.logEvent.mockClear();
+
+      await expect(plaidInboxService.ignore(id)).rejects.toMatchObject({ statusCode: 409 });
+      expect(activityLogService.logEvent).not.toHaveBeenCalled();
     });
 
     test('only new rows can be ignored and only ignored rows restored', async () => {
@@ -376,6 +396,11 @@ describe('plaidInboxService', () => {
       expect((await plaidInboxService.listInbox('new')).transactions).toHaveLength(0);
       const { sources } = await incomeService.getMonthlyIncome(2026, 11);
       expect(sources[0].bankConfirmation).toMatchObject({ landedDate: '2026-10-29', amount: 10848.23, plannedAmount: 10848.23, name: 'JAT - Direct deposit' });
+      expect(activityLogService.logEvent).toHaveBeenCalledWith(
+        'plaid_transaction_updated', 'plaid_transaction', id,
+        'Confirmed income "JAT" with bank deposit "JAT - Direct deposit" ($10848.23, 2026-10-29)',
+        expect.objectContaining({ action: 'match_income', incomeSourceId: pay, amountUpdated: false })
+      );
     });
 
     test('a different amount updates the income unless declined', async () => {

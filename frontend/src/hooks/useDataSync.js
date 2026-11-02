@@ -30,7 +30,7 @@ const TOAST_LABELS = {
   fixed_expense: '↻ Fixed expenses updated',
   credit_card: '↻ Credit cards updated',
   invoice: '↻ Receipts updated',
-  plaid: '↻ Bank transactions synced',
+  plaid: '↻ Bank import updated',
 };
 
 /**
@@ -49,6 +49,8 @@ export const ENTITY_TYPE_ALIASES = {
   credit_card_statement: 'credit_card',
   billing_cycle: 'credit_card',
   plaid_transaction: 'plaid',
+  plaid_account: 'plaid',
+  plaid_item: 'plaid',
 };
 
 /** @returns {string} the routing key for a backend entity type */

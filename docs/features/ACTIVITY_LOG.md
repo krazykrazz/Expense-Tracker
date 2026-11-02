@@ -219,9 +219,12 @@ Update events include detailed change tracking showing old → new values for mo
 | `version_upgraded` | system | Application version upgrade detected on startup (includes old_version, new_version) |
 | `plaid_item_added` | plaid_item | Bank connected through Plaid (institution name and environment only; never tokens) |
 | `plaid_item_deleted` | plaid_item | Bank disconnected (institution name, count of unreviewed transactions removed) |
-| `plaid_sync_completed` | plaid_transaction | A bank sync (manual, scheduled or on opening the app) that added, changed or removed staged transactions: source and counts only. Routed as `plaid` so open Bank Import modals refresh |
+| `plaid_sync_completed` | plaid_transaction | A bank sync (manual, scheduled or on opening the app) that added, changed or removed staged transactions: source and counts only |
+| `plaid_transaction_updated` | plaid_transaction | An Import Inbox decision: `metadata.action` is `add`, `match`, `match_fixed`, `match_income`, `add_income`, `ignore` or `unignore`, with the bank description, amount, date and the linked expense / fixed expense / income source id. The created or changed record is logged by its own service as well (`expense_added`, `fixed_expense_updated`, `income_source_added`/`_updated`) |
+| `plaid_account_updated` | plaid_account | A bank account's import mapping changed (payment method, or Don't import) |
+| `plaid_sync_failed` | plaid_item | A bank went into error during sync (Plaid error code only). Logged when the error first appears, not on every retry |
 
-Adding a bank transaction from the Import Inbox logs the normal `expense_added`. Saving or removing Plaid keys (Settings → Bank Import) logs `settings_updated` with `metadata.section = 'plaid'` and a description of what changed, never the key values; changing the automatic sync schedule logs `settings_updated` with `metadata.section = 'plaid_auto_sync'`. Syncs with nothing new, matches and ignores are not logged. `plaid_item` events only matter to the Bank Import modal, so `useDataSync` does not route them to a refresh.
+Plaid entity types (`plaid_item`, `plaid_account`, `plaid_transaction`) are routed as `plaid`, refreshing open Bank Import modals and the Financial page bank badges in other tabs. Adding a bank transaction from the Import Inbox also logs the normal `expense_added`. Saving or removing Plaid keys (Settings → Bank Import) logs `settings_updated` with `metadata.section = 'plaid'` and a description of what changed, never the key values; changing the automatic sync schedule logs `settings_updated` with `metadata.section = 'plaid_auto_sync'`. Syncs with nothing new are not logged.
 
 ## Configuration
 

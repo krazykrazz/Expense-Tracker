@@ -6,6 +6,7 @@ const fixedExpenseRepository = require('../repositories/fixedExpenseRepository')
 const incomeService = require('./incomeService');
 const incomeRepository = require('../repositories/incomeRepository');
 const categorySuggestionService = require('./categorySuggestionService');
+const activityLogService = require('./activityLogService');
 const logger = require('../config/logger');
 const {
   MATCH_WINDOW_DAYS, toCents, shiftDate, transactionDate, findMatchCandidates,
@@ -21,6 +22,9 @@ const round2 = (n) => Math.round(n * 100) / 100;
 const defaultPlace = (txn) => (txn.merchantName || txn.name || '').trim();
 /** The bank description used to learn income names: same choice as the default place. */
 const incomeDescription = defaultPlace;
+const money = (amount) => `$${Math.abs(Number(amount)).toFixed(2)}`;
+/** e.g. `"Coffee Shop" ($25.50, 2026-10-12)` */
+const describeTxn = (txn) => `"${defaultPlace(txn) || 'bank transaction'}" (${money(txn.amount)}, ${txn.date})`;
 const monthIndexOf = (date) => Number(date.slice(0, 4)) * 12 + Number(date.slice(5, 7)) - 1;
 
 /**
@@ -172,12 +176,11 @@ class PlaidInboxService {
   }
 
   async _suggestCategories(rows) {
+    const places = [...new Set(rows.map(defaultPlace).filter(Boolean))];
+    const byPlace = await categorySuggestionService.getSuggestedCategories(places);
     const suggestions = new Map();
-    for (const place of new Set(rows.map(defaultPlace).filter(Boolean))) {
-      const key = place.toLowerCase();
-      if (suggestions.has(key)) continue;
-      const suggestion = await categorySuggestionService.getSuggestedCategory(place);
-      suggestions.set(key, suggestion ? suggestion.category : null);
+    for (const [place, suggestion] of byPlace) {
+      suggestions.set(place.toLowerCase(), suggestion ? suggestion.category : null);
     }
     return suggestions;
   }
@@ -203,6 +206,17 @@ class PlaidInboxService {
     } finally {
       this._inFlight.delete(id);
     }
+  }
+
+  /**
+   * Activity log for an inbox decision. Entity `plaid_transaction` is routed as `plaid`, so open inboxes in
+   * other tabs refresh. Side effects (expense_added, fixed_expense_updated, ...) are logged by their services.
+   * @param {'add'|'match'|'match_fixed'|'match_income'|'add_income'|'ignore'|'unignore'} action
+   */
+  async _logReview(txn, action, description, extra = {}) {
+    await activityLogService.logEvent('plaid_transaction_updated', 'plaid_transaction', txn.id, description, {
+      action, place: defaultPlace(txn), amount: txn.amount, date: txn.date, ...extra
+    });
   }
 
   /**
@@ -245,6 +259,7 @@ class PlaidInboxService {
       if (!linked) {
         logger.warn('Bank transaction changed state while adding an expense', { plaidTransactionId: id, expenseId: created.id });
       }
+      await this._logReview(txn, 'add', `Added bank transaction ${describeTxn(txn)} as an expense`, { expenseId: created.id });
       return { transaction: await plaidRepository.findTransactionById(id), expense: created };
     });
   }
@@ -272,6 +287,7 @@ class PlaidInboxService {
         }
         throw err;
       }
+      await this._logReview(txn, 'match', `Matched bank transaction ${describeTxn(txn)} to an existing expense`, { expenseId: expense.id });
       return { transaction: await plaidRepository.findTransactionById(id) };
     });
   }
@@ -323,6 +339,9 @@ class PlaidInboxService {
         }
       }
 
+      await this._logReview(txn, 'match_fixed', `Confirmed fixed expense "${fixed.name}" with bank transaction ${describeTxn(txn)}`, {
+        fixedExpenseId: fixed.id, amountUpdated: updated
+      });
       return {
         transaction: await plaidRepository.findTransactionById(id),
         fixedExpense: { id: fixed.id, name: fixed.name, plannedAmount, amount: round2(txn.amount), amountUpdated: updated, landedDate }
@@ -377,6 +396,9 @@ class PlaidInboxService {
         }
       }
 
+      await this._logReview(txn, 'match_income', `Confirmed income "${source.name}" with bank deposit ${describeTxn(txn)}`, {
+        incomeSourceId: source.id, amountUpdated: updated
+      });
       return {
         transaction: await plaidRepository.findTransactionById(id),
         incomeSource: { id: source.id, name: source.name, plannedAmount, amount: depositAmount, amountUpdated: updated, landedDate }
@@ -418,14 +440,16 @@ class PlaidInboxService {
         await incomeService.deleteIncomeSource(created.id, tabId);
         throw fail('Bank transaction was already reviewed', 409);
       }
+      await this._logReview(txn, 'add_income', `Added bank deposit ${describeTxn(txn)} as income "${created.name}"`, { incomeSourceId: created.id });
       return { transaction: await plaidRepository.findTransactionById(id), incomeSource: created };
     });
   }
 
   async ignore(id) {
     return this._exclusive(id, async () => {
-      await this._requireNew(id);
+      const txn = await this._requireNew(id);
       await plaidRepository.resolveTransaction(id, 'ignored');
+      await this._logReview(txn, 'ignore', `Ignored bank transaction ${describeTxn(txn)}`);
       return { transaction: await plaidRepository.findTransactionById(id) };
     });
   }
@@ -438,6 +462,7 @@ class PlaidInboxService {
     if (!(await plaidRepository.unignoreTransaction(id))) {
       throw fail(`Only ignored transactions can be restored (this one is ${txn.status})`, 409);
     }
+    await this._logReview(txn, 'unignore', `Restored ignored bank transaction ${describeTxn(txn)} to the inbox`);
     return { transaction: await plaidRepository.findTransactionById(id) };
   }
 }

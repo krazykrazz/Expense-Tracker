@@ -45,11 +45,6 @@ class PlaidRepository {
     await dbHelper.execute('UPDATE plaid_items SET last_error = ? WHERE id = ?', [lastError, id]);
   }
 
-  async deleteItem(id) {
-    const { changes } = await dbHelper.execute('DELETE FROM plaid_items WHERE id = ?', [id]);
-    return changes > 0;
-  }
-
   // ─── Accounts ───
 
   /**
@@ -152,17 +147,22 @@ class PlaidRepository {
   }
 
   /**
-   * Remove staged rows of an item that never became (or were linked to) an expense.
-   * Added/matched rows are kept so the expense list keeps its bank-confirmed indicator.
+   * Delete a bank connection and, in the same transaction, its staged rows that never became (or were
+   * linked to) an expense, fixed expense or income. Reviewed rows are kept, so bank-confirmed colours and
+   * income/fixed-expense confirmations survive the disconnect (their account link is set to NULL).
+   * @returns {Promise<number>} unreviewed rows removed
    */
-  async deleteUnreviewedForItem(plaidItemId) {
-    const { changes } = await dbHelper.execute(
-      `DELETE FROM plaid_transactions
-       WHERE status IN ('new', 'ignored')
-         AND plaid_account_id IN (SELECT id FROM plaid_accounts WHERE plaid_item_id = ?)`,
-      [plaidItemId]
-    );
-    return changes;
+  async deleteItemWithUnreviewed(plaidItemId) {
+    return dbHelper.runInTransaction(async (tx) => {
+      const { changes } = await tx.run(
+        `DELETE FROM plaid_transactions
+         WHERE status IN ('new', 'ignored')
+           AND plaid_account_id IN (SELECT id FROM plaid_accounts WHERE plaid_item_id = ?)`,
+        [plaidItemId]
+      );
+      await tx.run('DELETE FROM plaid_items WHERE id = ?', [plaidItemId]);
+      return changes;
+    });
   }
 
   // ─── Inbox ───

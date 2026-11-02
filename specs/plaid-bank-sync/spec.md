@@ -39,6 +39,70 @@ Small slices found while using Phase 1 with real banks, shipped ahead of the pha
 | Automatic sync (scheduled + on opening the app) | 2.2 (Status) | feature/plaid-auto-sync |
 | Financial page: bank badge on payment methods mapped to a bank account (`useBankAccountLinks`, `BankLinkedBadge`; frontend only, no calls without Plaid) | here | feature/payment-method-bank-badge |
 | Activity-log gaps and Phase 1 cleanup (inbox decisions, mapping, sync failures; batched category suggestions; atomic disconnect; inbox reload race) | 2.3, 2.6 | feature/plaid-audit-cleanup |
+| Linked balances: investments and loans/lines of credit kept current from bank balances | [below](#linked-balances-next-slice) | not started |
+
+### Linked balances (next slice)
+
+**Why now:** connected banks already return every account, not just the spending ones. On 2026-11-02 the production Wealthsimple connection listed 4 RRSPs (incl. spousal), 3 RESPs and a Line of Credit next to the chequing and card accounts, and `/accounts/get` returned a `balances.current` for **every** account, investment and loan ones included. Cached balances come free with the Transactions product; `/transactions/sync` responses carry the same `accounts[].balances`. So this needs **no Investments or Liabilities product, no extra consent and no extra API calls**: today the sync simply discards the balances.
+
+**Decisions (owner, 2026-11-02):**
+- **Overwrite rule:** the bank fills empty months and keeps the current month's value updated. It **never overwrites a value entered by hand**; the difference is shown instead (answers Q8).
+- **Several bank accounts can be summed into one tracker item**, e.g. two Wealthsimple RRSP accounts tracked as one RRSP.
+- **RESPs stay unlinked for now:** the `investments.type` CHECK only allows TFSA/RRSP. Adding RESP means a table rebuild, so it's a separate decision.
+
+**Requirements**
+1. Every sync stores each account's `current`, `available`, `limit`, currency and the time of the sync.
+2. On the Connections tab, each account links to what it represents. The options depend on the Plaid account type:
+   - `depository` / `credit` → a payment method (as today);
+   - `investment` → an investment;
+   - `loan` (line of credit, mortgage, loan) → an active loan (not paid off);
+   - always *Don't link*.
+
+   One link per bank account; a tracker item may have several bank accounts.
+3. **Investments:** after each successful sync, the current business month's `investment_values` row for each linked investment is created, or updated if it is bank-sourced. The value is the sum of the linked accounts' `current` balances.
+4. **Loans / lines of credit:** the same for `loan_balances.remaining_balance` (Plaid reports the amount owed as positive). `rate` is required but not provided without Liabilities, so it is carried from the loan's latest `loan_balances` row. With no earlier row, nothing is written and the loan shows "Enter a balance and rate once to start automatic updates".
+5. **Never overwrite manual:**
+   - A month row entered or edited by hand stays as it is; the item shows "Bank: $X (differs by $Y)".
+   - Editing a bank-sourced row by hand makes it manual from then on.
+   - Deleting it lets the bank fill it again.
+6. **Month rollover:** the first sync in a new month starts that month's row, and last month's last bank value stays as its final value. Earlier months are never backfilled; balance history before linking isn't available from Plaid without Investments/Liabilities.
+7. **Partial data:** when an item sums several accounts and one bank's sync failed or has no balance, the item is not updated for that sync. A partial sum would look like a real drop.
+8. **Visibility:**
+   - Linked investments and loans on the Financial page show a bank badge (as payment methods do) and "Bank: $X · as of 3:20 pm".
+   - Credit card rows show the bank balance next to the tracker's calculated `current_balance`, with the difference. This is a hint of missed or unreviewed transactions; it never changes the card balance.
+9. **Reminders:** the monthly "update investment values / loan balances" reminders are satisfied by bank rows automatically, because they only check that a row exists. Verify this in `reminderService`.
+10. **Without Plaid:** no change; everything stays manual (principle 7).
+
+**Design**
+- **Schema (migration, existing tables):**
+  - `plaid_accounts` gets `current_balance REAL`, `available_balance REAL`, `credit_limit REAL`, `balance_currency TEXT`, `balance_as_of TEXT`, `investment_id INTEGER REFERENCES investments(id) ON DELETE SET NULL` and `loan_id INTEGER REFERENCES loans(id) ON DELETE SET NULL`. The service enforces at most one of `payment_method_id` / `investment_id` / `loan_id`.
+  - `investment_values` and `loan_balances` get `source TEXT NOT NULL DEFAULT 'manual' CHECK(source IN ('manual','bank'))`. Existing rows stay manual.
+  - Indexes on the two new FKs go in the migration (columns added by migration).
+- **Sync:**
+  - `applySyncBatch` already upserts accounts from the sync response; it now also stores their balances.
+  - After `syncItem` succeeds, `plaidBalanceService.applyLinkedBalances(itemIds)` recomputes the items linked to that bank's accounts for the current business month.
+- **Writes:** through `investmentValueService` and `loanBalanceService` (validation, balance anchors), with a `source: 'bank'` option. Those services' per-row activity events are suppressed for bank writes; instead one `plaid_balances_updated` summary is logged per sync that changed tracker values, with entity `investment_value` and/or `loan_balance` (routed to `investment` / `loan`, so the Financial page refreshes). Values change most days, so per-row events would flood the log.
+- **Manual edits:** the existing update/create endpoints set `source = 'manual'`. Rows created by mortgage auto-snapshots on payment stay manual-equivalent: they're user-driven.
+- **Mapping API:**
+  - `PUT /api/plaid/accounts/:id` accepts `{ paymentMethodId? , investmentId? , loanId? }`; exactly one may be set (or none for Don't link).
+  - Validates the target type against the Plaid account type.
+  - Logs `plaid_account_updated` (as today).
+- **Frontend:**
+  - The Connections dropdown is filtered by account type and grouped ("Payment methods" / "Investments" / "Loans").
+  - `useBankAccountLinks` extends to investments and loans; badge plus "Bank: $X" on the Financial page investments, loans and credit cards.
+  - The investment and loan detail views mark bank-sourced months.
+
+**Tests**
+- Balance capture on sync.
+- Summing several accounts, and partial data skipping the update.
+- The never-overwrite-manual rule (PBT over sequences of manual/bank writes per month).
+- Rate carry-forward, and the no-earlier-row case.
+- Month rollover.
+- Type-validated mapping.
+- One summary event per changing sync.
+- No behaviour change without Plaid.
+
+**Out of scope:** holdings and securities (Investments product); card APR, statements and due dates (Liabilities, 4.2); RESP type; real-time balances (`/accounts/balance/get`, billed per call).
 
 ---
 
@@ -300,6 +364,8 @@ Rules only pre-fill. The inbox stays the single review point; bulk Add (3.4) cov
 
 ### 4.2 Credit card balances and statements (Plaid Liabilities)
 
+**Partly covered by [Linked balances](#linked-balances-next-slice):** the card's current balance next to the tracker's comes free. This section keeps the statement balance, statement date, minimum payment, due date and APR, which need Liabilities.
+
 **Requirements**
 1. For connected credit card accounts mapped to a credit card payment method, fetch (daily, with the scheduled sync) the **current balance**, **last statement balance and date**, **minimum payment**, **next due date**, **last payment amount/date** (`/liabilities/get` + account balances).
 2. **Statement reconciliation:** for the billing cycle whose end date equals Plaid's `last_statement_issue_date` (±2 days), show "Bank: $1,240.10 vs calculated: $1,238.60 (−$1.50)" in the billing-cycle history, with **Use bank amount** (sets `actual_statement_balance`, `is_user_entered` style semantics: `balance_source = 'bank'`).
@@ -313,6 +379,8 @@ Rules only pre-fill. The inbox stays the single review point; bulk Add (3.4) cov
 - Liabilities must be added to existing Items: call `/liabilities/get`; if the Item lacks consent, Plaid returns `PRODUCTS_NOT_SUPPORTED`/`ADDITIONAL_CONSENT_REQUIRED` → reuse 2.1's update mode with `additional_consented_products: ['liabilities']` (see Q7).
 
 ### 4.3 Investment values (Plaid Investments)
+
+**Mostly superseded by [Linked balances](#linked-balances-next-slice):** monthly values from account balances need no Investments product. What remains here is holdings and cost basis, which would need the Investments product (billed separately on paid plans).
 
 **Requirements**
 1. Map Plaid investment accounts (`type = investment`, subtypes such as `tfsa`, `rrsp`) to existing `investments` rows (Connections tab, like payment-method mapping).
@@ -366,7 +434,7 @@ Only for installs that already have a public HTTPS hostname. The maintainer's in
 
 ## Open questions
 
-Decided (owner review): Q2, Q3, Q4, Q5, Q6, Q9, Q12. Still open: Q1 (after Phase 0), Q7, Q8, Q10, Q11 (defaults apply unless changed before that phase).
+Decided (owner review): Q2, Q3, Q4, Q5, Q6, Q8, Q9, Q12. Still open: Q1 (after Phase 0), Q7, Q10, Q11 (defaults apply unless changed before that phase).
 
 | # | Question | Decision / default |
 |---|---|---|
@@ -376,8 +444,8 @@ Decided (owner review): Q2, Q3, Q4, Q5, Q6, Q9, Q12. Still open: Q1 (after Phase
 | Q4 | Classify existing staged rows (2.4)? Plaid doesn't resend old transactions, so old rows would need a one-off re-fetch (a full re-sync from an empty cursor, which also re-stages everything already reviewed, deduplicated by `transaction_id`) | **Decided:** new rows only |
 | Q5 | Full refunds: delete the original expense (it never really cost anything), or keep it and ignore the refund? | **Decided:** ask each time |
 | Q6 | Auto-add (3.3): build it at all, or keep everything manual with rules only pre-filling? | **Decided:** don't build; rules only pre-fill |
-| Q7 | Liabilities/Investments need extra consent on existing Items (one update-mode Link per bank, no new Trial slot). OK to prompt for that when you turn the feature on? | Yes, prompt per bank |
-| Q8 | Investment values: should bank values ever overwrite a value you entered by hand for the same month? | Never; show the difference for review |
+| Q7 | Liabilities/Investments need extra consent on existing Items (one update-mode Link per bank, no new Trial slot). OK to prompt for that when you turn the feature on? | Yes, prompt per bank. **Note:** balances alone need no extra consent (see Linked balances); this only applies to 4.2's statement, due date and APR details and to holdings |
+| Q8 | Investment values: should bank values ever overwrite a value you entered by hand for the same month? | **Decided:** never; the bank fills empty months and keeps the current month updated, and the difference from a hand-entered value is shown |
 | Q9 | Retention for ignored / not-expense rows? | **Decided:** 2 months |
 | Q10 | Trial limit: if more than 10 bank logins are ever needed, move to Pay-as-you-go. Transactions and Liabilities are billed per connected account per month, and Investments is extra. Do you want a usage/cost estimate panel? | No panel; document the plan limits |
 | Q11 | Webhooks (Phase 5): random path + signature verification + Cloudflare Bypass for that path only. Do you also want the Plaid IP allow-list rule? | Optional, documented |

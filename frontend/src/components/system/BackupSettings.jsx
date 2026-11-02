@@ -1215,6 +1215,13 @@ const BackupSettings = () => {
             <h3>Recent Updates</h3>
             <div className="changelog">
               <div className="changelog-entry">
+                <div className="changelog-version">v1.17.0</div>
+                <div className="changelog-date">November 2, 2026</div>
+                <ul className="changelog-items">
+                  <li>Bank import: pending transactions can be added the day you spend (yellow payment pill) and update automatically when they settle (green); dropped pending charges are flagged for review</li>
+                </ul>
+              </div>
+              <div className="changelog-entry">
                 <div className="changelog-version">v1.16.0</div>
                 <div className="changelog-date">November 2, 2026</div>
                 <ul className="changelog-items">

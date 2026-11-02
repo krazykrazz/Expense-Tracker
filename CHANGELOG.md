@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.17.0] - 2026-11-02
+
+### Bank import: pending transactions can be added the day you spend (yellow payment pill) and update automatically when they settle (green); dropped pending charges are flagged for review
+
 ## [1.16.0] - 2026-11-02
 
 ### Bank import: automatic sync (scheduled and on opening the app), bank badge on mapped payment methods, activity log for inbox decisions, mapping changes and sync failures, faster inbox loading

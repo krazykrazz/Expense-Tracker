@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   getInbox, addInboxTransaction, matchInboxTransaction, matchInboxTransactionToFixed,
   matchInboxTransactionToIncome, addInboxTransactionAsIncome,
@@ -255,16 +255,22 @@ const ImportInbox = ({ onExpensesChanged, onOpenConnections }) => {
   const [expanded, setExpanded] = useState({ id: null, mode: null });
   const [busyId, setBusyId] = useState(null);
   const [rowErrors, setRowErrors] = useState({});
+  // Background reloads (sync events, after actions) can overlap a filter switch; only the latest may apply
+  const latestLoadRef = useRef(0);
 
   const load = useCallback(async (signal) => {
+    const loadId = ++latestLoadRef.current;
+    const isCurrent = () => loadId === latestLoadRef.current && !(signal && signal.aborted);
     setLoading(true);
     try {
-      setData(await getInbox(filter, { signal }));
+      const result = await getInbox(filter, { signal });
+      if (!isCurrent()) return;
+      setData(result);
       setLoadError(null);
     } catch (err) {
-      if (err.name !== 'AbortError') setLoadError(err.message);
+      if (err.name !== 'AbortError' && isCurrent()) setLoadError(err.message);
     } finally {
-      if (!signal || !signal.aborted) setLoading(false);
+      if (isCurrent()) setLoading(false);
     }
   }, [filter]);
 
@@ -274,7 +280,7 @@ const ImportInbox = ({ onExpensesChanged, onOpenConnections }) => {
     return () => controller.abort();
   }, [load]);
 
-  // A sync (automatic, or Sync now in another tab) brought new transactions
+  // A sync, or an inbox decision in another tab, changed the inbox
   useSyncEvent('plaid', () => { load(); });
 
   const handleAction = async (txn, action, payload) => {

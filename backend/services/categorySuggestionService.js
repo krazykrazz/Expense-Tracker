@@ -1,5 +1,8 @@
 const expenseRepository = require('../repositories/expenseRepository');
 
+/** SQLite's LOWER() without ICU only folds ASCII letters; matching it keeps batched lookups exact. */
+const sqliteLower = (text) => text.replace(/[A-Z]/g, (c) => c.toLowerCase());
+
 /**
  * Category Suggestion Service
  * Provides intelligent category suggestions based on historical expense data
@@ -28,7 +31,30 @@ class CategorySuggestionService {
     }
 
     const frequencyData = await expenseRepository.getCategoryFrequencyByPlace(place);
-    
+    return this._suggestFromFrequency(frequencyData);
+  }
+
+  /**
+   * Suggestions for many places with one query (e.g. every row of the bank Import Inbox).
+   * @param {string[]} places
+   * @returns {Promise<Map<string, {category: string, confidence: number, count: number}|null>>} keyed by the
+   *   places exactly as given
+   */
+  async getSuggestedCategories(places) {
+    const byPlace = await expenseRepository.getCategoryFrequencyByPlaces(places);
+    const suggestions = new Map();
+    for (const place of places) {
+      const trimmed = (place || '').trim();
+      suggestions.set(place, trimmed ? this._suggestFromFrequency(byPlace.get(sqliteLower(trimmed))) : null);
+    }
+    return suggestions;
+  }
+
+  /**
+   * @param {Array<{category: string, count: number, last_used: string}>|undefined} frequencyData ordered by
+   *   count DESC, last_used DESC
+   */
+  _suggestFromFrequency(frequencyData) {
     // No history for this place
     if (!frequencyData || frequencyData.length === 0) {
       return null;

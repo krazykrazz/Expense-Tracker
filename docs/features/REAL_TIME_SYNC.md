@@ -42,7 +42,7 @@ The backend broadcasts the `entity_type` of each activity-log event. `useDataSyn
 | `investment`, `investment_value` | `investment` | window `syncEvent` |
 | `fixed_expense` | `fixed_expense` | window `syncEvent` |
 | `credit_card_payment`, `credit_card_statement`, `billing_cycle` | `credit_card` | window `syncEvent` |
-| `plaid_transaction` (`plaid_sync_completed`: a bank sync that changed the inbox) | `plaid` | window `syncEvent` |
+| `plaid_transaction` (sync results, inbox decisions), `plaid_account` (mapping changes), `plaid_item` (connect, disconnect, sync failure) | `plaid` | window `syncEvent` |
 
 ### Window `syncEvent` consumers
 
@@ -101,7 +101,7 @@ After each debounced refresh fires, a brief toast appears in the bottom-right co
 | `fixed_expense` | ↻ Fixed expenses updated |
 | `credit_card` | ↻ Credit cards updated |
 | `invoice` | ↻ Receipts updated |
-| `plaid` | ↻ Bank transactions synced |
+| `plaid` | ↻ Bank import updated |
 
 ## Visibility-Based Connection Lifecycle
 

@@ -189,15 +189,27 @@ class PlaidService {
     }
 
     let mappedId = null;
+    let paymentMethod = null;
     if (paymentMethodId !== null && paymentMethodId !== undefined && paymentMethodId !== '') {
       mappedId = parseInt(paymentMethodId, 10);
-      const paymentMethod = Number.isNaN(mappedId) ? null : await paymentMethodRepository.findById(mappedId);
+      paymentMethod = Number.isNaN(mappedId) ? null : await paymentMethodRepository.findById(mappedId);
       if (!paymentMethod || !paymentMethod.is_active) {
         throw fail('Payment method not found or inactive', 400);
       }
     }
 
-    return plaidRepository.updateAccountPaymentMethod(accountId, mappedId);
+    const updated = await plaidRepository.updateAccountPaymentMethod(accountId, mappedId);
+    if ((account.paymentMethodId ?? null) !== mappedId) {
+      const label = `"${account.name}${account.mask ? ` ••${account.mask}` : ''}"`;
+      await activityLogService.logEvent(
+        'plaid_account_updated',
+        'plaid_account',
+        account.id,
+        paymentMethod ? `Bank account ${label} now imports into ${paymentMethod.display_name}` : `Bank account ${label} set to Don't import`,
+        { accountName: account.name, mask: account.mask, paymentMethodId: mappedId, paymentMethodName: paymentMethod ? paymentMethod.display_name : null }
+      );
+    }
+    return updated;
   }
 
   /**
@@ -235,6 +247,16 @@ class PlaidService {
           if (code) {
             await plaidRepository.setItemError(id, code);
             logger.warn('Plaid sync failed', { plaidItemId: id, errorCode: code });
+            // Only when the bank goes into error, not on every retry of a bank that is already failing
+            if (item.lastError !== code) {
+              await activityLogService.logEvent(
+                'plaid_sync_failed',
+                'plaid_item',
+                id,
+                `Bank sync failed for ${item.institutionName}: ${code}`,
+                { institutionName: item.institutionName, errorCode: code }
+              );
+            }
           }
           throw toServiceError(err, 'sync');
         }
@@ -329,20 +351,16 @@ class PlaidService {
     return { synced, totals };
   }
 
-  /** Log a sync that changed the inbox, so other tabs refresh it. No-op syncs are not logged. Never throws. */
+  /** Log a sync that changed the inbox, so other tabs refresh it. No-op syncs are not logged. */
   async _logSyncChanges({ added, updated, removed }, source) {
     if (added + updated + removed === 0) return;
-    try {
-      await activityLogService.logEvent(
-        'plaid_sync_completed',
-        'plaid_transaction',
-        null,
-        `Bank sync (${source.replace('_', ' ')}): ${added} new, ${updated} updated, ${removed} removed`,
-        { source, added, updated, removed }
-      );
-    } catch (err) {
-      logger.warn('Logging the Plaid sync result failed', { error: err.message });
-    }
+    await activityLogService.logEvent(
+      'plaid_sync_completed',
+      'plaid_transaction',
+      null,
+      `Bank sync (${source.replace('_', ' ')}): ${added} new, ${updated} updated, ${removed} removed`,
+      { source, added, updated, removed }
+    );
   }
 
   /**
@@ -377,8 +395,8 @@ class PlaidService {
       }
     }
 
-    const removedRows = await plaidRepository.deleteUnreviewedForItem(id);
-    await plaidRepository.deleteItem(id);
+    const removedRows = await plaidRepository.deleteItemWithUnreviewed(id);
+    this._lastAttemptAt.delete(id);
 
     await activityLogService.logEvent(
       'plaid_item_deleted',

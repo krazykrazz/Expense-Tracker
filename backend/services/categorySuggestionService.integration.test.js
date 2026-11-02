@@ -165,6 +165,35 @@ describe('CategorySuggestionService', () => {
     });
   });
 
+  describe('getSuggestedCategories (batched, used by the bank Import Inbox)', () => {
+    test('gives exactly the per-place suggestion for every place', async () => {
+      await createTestExpense('Test Coffee Shop', 'Dining Out');
+      await createTestExpense('TEST COFFEE SHOP', 'Dining Out');
+      await createTestExpense('test coffee shop', 'Groceries');
+      await createTestExpense('Test Hardware', 'Other');
+      await createTestExpense('Test Hardware', 'Other');
+      await createTestExpense('Test Hardware', 'Automotive');
+      await createTestExpense('Test Tie Place', 'Gas', '2024-06-01');
+      await createTestExpense('Test Tie Place', 'Groceries', '2024-06-20');
+      await createTestExpense('Test Café Été', 'Dining Out');
+
+      const places = ['Test Coffee Shop', '  test COFFEE shop ', 'Test Hardware', 'Test Tie Place', 'Test Café Été', 'Test Unknown', ''];
+      const batched = await categorySuggestionService.getSuggestedCategories(places);
+
+      for (const place of places) {
+        expect({ place, suggestion: batched.get(place) })
+          .toEqual({ place, suggestion: await categorySuggestionService.getSuggestedCategory(place) });
+      }
+      expect(batched.get('Test Coffee Shop')).toMatchObject({ category: 'Dining Out', count: 2 });
+      expect(batched.get('Test Tie Place')).toMatchObject({ category: 'Groceries' });
+      expect(batched.get('Test Unknown')).toBeNull();
+    });
+
+    test('returns an empty map for no places', async () => {
+      expect((await categorySuggestionService.getSuggestedCategories([])).size).toBe(0);
+    });
+  });
+
   describe('getCategoryBreakdown', () => {
     test('should return empty array for empty place', async () => {
       const result = await categorySuggestionService.getCategoryBreakdown('');

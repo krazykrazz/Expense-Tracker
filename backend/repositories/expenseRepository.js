@@ -523,6 +523,41 @@ class ExpenseRepository {
   }
 
   /**
+   * Category frequency for many places in one query (the per-place query scans the expenses table once per
+   * place). Keys are the place lower-cased the way SQLite's LOWER() does it (ASCII letters only), so callers
+   * look up with `sqliteLower(place.trim())`.
+   * @param {string[]} places
+   * @returns {Promise<Map<string, Array<{category: string, count: number, last_used: string}>>>}
+   */
+  async getCategoryFrequencyByPlaces(places) {
+    const unique = [...new Set(places.map(place => (place || '').trim()).filter(Boolean))];
+    const byPlace = new Map();
+    if (unique.length === 0) return byPlace;
+    const db = await getDatabase();
+    const CHUNK = 500;
+    for (let i = 0; i < unique.length; i += CHUNK) {
+      const chunk = unique.slice(i, i + CHUNK);
+      const rows = await new Promise((resolve, reject) => {
+        db.all(
+          `SELECT LOWER(place) AS key, type AS category, COUNT(*) AS count, MAX(date) AS last_used
+           FROM expenses
+           WHERE LOWER(place) IN (${chunk.map(() => 'LOWER(?)').join(',')})
+           GROUP BY LOWER(place), type
+           ORDER BY key, count DESC, last_used DESC`,
+          chunk,
+          (err, result) => (err ? reject(err) : resolve(result || []))
+        );
+      });
+      for (const { key, ...frequency } of rows) {
+        const list = byPlace.get(key) || [];
+        list.push(frequency);
+        byPlace.set(key, list);
+      }
+    }
+    return byPlace;
+  }
+
+  /**
    * Get suggested category for a place based on historical data
    * @param {string} place - Place name
    * @returns {Promise<Object|null>} Object with suggested category and confidence, or null

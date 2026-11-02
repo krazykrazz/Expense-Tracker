@@ -38,6 +38,7 @@ Small slices found while using Phase 1 with real banks, shipped ahead of the pha
 | Bank-confirmed state as a coloured payment method pill (replaces the bank icon) | Phase 1 spec, Findings | #432 |
 | Automatic sync (scheduled + on opening the app) | 2.2 (Status) | feature/plaid-auto-sync |
 | Financial page: bank badge on payment methods mapped to a bank account (`useBankAccountLinks`, `BankLinkedBadge`; frontend only, no calls without Plaid) | here | feature/payment-method-bank-badge |
+| Activity-log gaps and Phase 1 cleanup (inbox decisions, mapping, sync failures; batched category suggestions; atomic disconnect; inbox reload race) | 2.3, 2.6 | feature/plaid-audit-cleanup |
 
 ---
 
@@ -131,6 +132,13 @@ Suggested after the first real-bank connection: a payroll deposit showed as "Ref
 
 ### 2.3 Inbox badge and cross-tab refresh
 
+**Status:** the activity events and cross-tab refresh are built (Phase 1.5 audit):
+- `plaid_transaction_updated` is logged for every inbox decision, with `metadata.action`.
+- `plaid_account_updated` is logged for mapping changes, and `plaid_sync_failed` when a bank first goes into error.
+- `plaid_item`, `plaid_account` and `plaid_transaction` route as `plaid`. `ImportInbox`, `BankConnections` and `useBankAccountLinks` refresh on it.
+
+Still to do: the count badge (requirement 1) and the `/status` counts.
+
 **Requirements**
 1. The header bank icon shows the **number of transactions to review** (status `new`, mapped accounts), e.g. a small "7", and an attention dot for 2.1 issues.
 2. Inbox actions (add, match, confirm fixed, ignore, unignore), sync results and account-mapping changes refresh the badge and any open inbox in **other tabs** via SSE; the acting tab ignores its own broadcast as usual.
@@ -193,10 +201,10 @@ Suggested after the first real-bank connection: a payroll deposit showed as "Ref
 
 ### 2.6 Data hygiene (audit deferrals)
 
-1. **Transactional multi-step writes:** `disconnectItem` (delete unreviewed + delete item) and `addAsExpense` (create expense + link) each in one transaction (pass the transaction connection into `expenseService` the way `createExpense` does for future months).
+1. **Transactional multi-step writes:** `disconnectItem` (delete unreviewed + delete item) and `addAsExpense` (create expense + link) each in one transaction (pass the transaction connection into `expenseService` the way `createExpense` does for future months). *Disconnect done (`plaidRepository.deleteItemWithUnreviewed`); addAsExpense still two steps, guarded by the per-row lock.*
 2. **"Hidden, map accounts"** counts only rows whose account exists and is unmapped; rows from accounts Plaid never listed are counted separately ("from unknown accounts").
 3. **Retention:** ignored and not-expense rows older than 2 months (by transaction date) are deleted by the daily scheduler run (configurable via `plaid_retention_months`; linked rows are never deleted). Deleted rows cannot come back: Plaid only resends a transaction if it is modified, and an unknown `modified` id is ignored.
-4. **Category suggestions:** one grouped query per inbox load instead of one per place.
+4. **Category suggestions:** one grouped query per inbox load instead of one per place. *Done: `categorySuggestionService.getSuggestedCategories` (51 places on production data: 689 ms → 8 ms).*
 5. **Settings change event** (`plaid-settings-changed`) also travels across tabs (via 2.3's SSE routing).
 
 ### Phase 2 tasks

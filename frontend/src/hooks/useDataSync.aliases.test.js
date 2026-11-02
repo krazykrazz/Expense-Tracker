@@ -72,6 +72,8 @@ describe('backend entity type aliases', () => {
     ['credit_card_statement', 'credit_card'],
     ['billing_cycle', 'credit_card'],
     ['plaid_transaction', 'plaid'],
+    ['plaid_account', 'plaid'],
+    ['plaid_item', 'plaid'],
   ])('%s is dispatched to window listeners as %s', (backendType, routedType) => {
     const events = [];
     const listener = (e) => events.push(e.detail.entityType);

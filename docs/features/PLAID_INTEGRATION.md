@@ -81,7 +81,7 @@ Nobody needs to know about Sync now:
 - **On a schedule:** a check runs every 5 minutes and syncs each bank whose last sync is older than the interval (with 3 minutes of slack, so "30 minutes" stays 30), during the active hours only.
 - **When the app is opened:** loading the app, coming back to its tab (at most once every 5 minutes) or opening Bank Import syncs, in the background, any bank not synced in the last 30 minutes. This works at any hour, including overnight.
 - **What is skipped:** banks waiting for you (expired login, removed at the bank) until they are reconnected, banks from another Plaid environment, and a bank that just failed (it is retried at the next interval, not every 5 minutes). Nothing runs while Plaid is not configured.
-- **Results:** a sync that brings new, changed or removed transactions refreshes the inbox and connections in every open tab (toast "↻ Bank transactions synced"). Syncs with nothing new are silent.
+- **Results:** a sync that brings new, changed or removed transactions refreshes the inbox and connections in every open tab (toast "↻ Bank import updated"). Syncs with nothing new are silent.
 - **Cost:** Plaid does not charge per sync call (Transactions is billed per connected account per month on paid plans, and is included in the Trial). Plaid itself collects new data from most banks 1 to 4 times a day, so most syncs find nothing new.
 
 ### Inbox tab
@@ -164,8 +164,10 @@ All under `/api/plaid`; see the [Endpoint Reference](../API_DOCUMENTATION.md#pla
 - `plaid_item_added` and `plaid_item_deleted` (entity `plaid_item`, institution name only).
 - Saving or removing Plaid keys logs `settings_updated` (entity `settings`) describing what changed, e.g. "environment: Sandbox → Production, secret changed", never the values.
 - Adding a transaction as an expense logs the normal `expense_added`. Confirming income with a different amount logs `income_source_updated`; Add income logs `income_source_added`.
-- A sync that changed the inbox (Sync now, scheduled or on opening the app) logs `plaid_sync_completed` (entity `plaid_transaction`, counts and source only), which also refreshes other tabs. Changing the automatic sync schedule logs `settings_updated` with `section: 'plaid_auto_sync'`.
-- Matches and ignores are not logged yet.
+- A sync that changed the inbox (Sync now, scheduled or on opening the app) logs `plaid_sync_completed` (entity `plaid_transaction`, counts and source only). Changing the automatic sync schedule logs `settings_updated` with `section: 'plaid_auto_sync'`.
+- Every inbox decision (add, match, confirm fixed expense, confirm income, add income, ignore, restore) logs `plaid_transaction_updated` with the action, e.g. "Matched bank transaction "Coffee Shop" ($25.50, 2026-10-12) to an existing expense".
+- Changing an account's mapping logs `plaid_account_updated`; a bank going into error logs `plaid_sync_failed` once (not on every retry).
+- All Plaid events refresh open Bank Import modals and Financial page bank badges in other tabs.
 
 ## Limitations
 

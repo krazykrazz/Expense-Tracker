@@ -241,6 +241,21 @@ describe('plaidService', () => {
         .toEqual({ sync_cursor: null, last_error: 'ITEM_LOGIN_REQUIRED' });
     });
 
+    test('logs a sync failure when the bank goes into error, not on every retry', async () => {
+      const item = await connect();
+      activityLogService.logEvent.mockClear();
+      client.transactionsSync.mockRejectedValue(plaidError('INSTITUTION_DOWN'));
+
+      await expect(plaidService.syncItem(item.id)).rejects.toMatchObject({ statusCode: 502 });
+      await expect(plaidService.syncItem(item.id)).rejects.toMatchObject({ statusCode: 502 });
+
+      const failures = activityLogService.logEvent.mock.calls.filter(([type]) => type === 'plaid_sync_failed');
+      expect(failures).toEqual([[
+        'plaid_sync_failed', 'plaid_item', item.id, 'Bank sync failed for Test Bank: INSTITUTION_DOWN',
+        { institutionName: 'Test Bank', errorCode: 'INSTITUTION_DOWN' }
+      ]]);
+    });
+
     test('syncAll reports per-bank failures without stopping other banks', async () => {
       await connect('Bank A');
       await connect('Bank B');
@@ -315,6 +330,22 @@ describe('plaidService', () => {
 
       expect(await plaidService.updateAccountMapping(accountId, 2)).toMatchObject({ paymentMethodId: 2 });
       expect(await plaidService.updateAccountMapping(accountId, null)).toMatchObject({ paymentMethodId: null });
+    });
+
+    test('logs mapping changes, and nothing when the mapping is unchanged', async () => {
+      const item = await connect();
+      const accountId = item.accounts[0].id;
+      activityLogService.logEvent.mockClear();
+
+      await plaidService.updateAccountMapping(accountId, 2);
+      await plaidService.updateAccountMapping(accountId, 2);
+      await plaidService.updateAccountMapping(accountId, null);
+
+      const events = activityLogService.logEvent.mock.calls.filter(([type]) => type === 'plaid_account_updated');
+      expect(events.map(([, entity, id, text, metadata]) => [entity, id, text, metadata.paymentMethodId])).toEqual([
+        ['plaid_account', accountId, expect.stringMatching(/^Bank account "Account acc-1 ••1234" now imports into /), 2],
+        ['plaid_account', accountId, 'Bank account "Account acc-1 ••1234" set to Don\'t import', null]
+      ]);
     });
 
     test('rejects unknown accounts and payment methods', async () => {

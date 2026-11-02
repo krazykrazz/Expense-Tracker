@@ -295,6 +295,7 @@ async function resetTestDatabase() {
   
   const tables = [
     'plaid_fixed_expense_links',
+    'plaid_income_links',
     'plaid_transactions',
     'plaid_accounts',
     'plaid_items',

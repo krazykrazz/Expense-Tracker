@@ -16,6 +16,7 @@ const activityLogService = require('./activityLogService');
 const plaidInboxService = require('./plaidInboxService');
 const expenseService = require('./expenseService');
 const fixedExpenseService = require('./fixedExpenseService');
+const incomeService = require('./incomeService');
 
 const DEBIT = 2;
 const CREDIT_CARD = 4;
@@ -52,11 +53,13 @@ afterAll(() => cleanupIsolatedTestDb(db));
 beforeEach(async () => {
   activityLogService.logEvent.mockClear();
   await run('DELETE FROM plaid_fixed_expense_links');
+  await run('DELETE FROM plaid_income_links');
   await run('DELETE FROM plaid_transactions');
   await run('DELETE FROM plaid_accounts');
   await run('DELETE FROM plaid_items');
   await run('DELETE FROM expenses');
   await run('DELETE FROM fixed_expenses');
+  await run('DELETE FROM income_sources');
   const itemId = await run("INSERT INTO plaid_items (item_id, institution_name, access_token_enc, environment) VALUES ('item-1', 'Test Bank', 'v1:x:y:z', 'sandbox')");
   debitAccountId = await run("INSERT INTO plaid_accounts (plaid_item_id, account_id, name, payment_method_id) VALUES (?, 'acc-debit', 'Chequing', ?)", [itemId, DEBIT]);
   cardAccountId = await run("INSERT INTO plaid_accounts (plaid_item_id, account_id, name, payment_method_id) VALUES (?, 'acc-card', 'Visa', ?)", [itemId, CREDIT_CARD]);
@@ -337,6 +340,116 @@ describe('plaidInboxService', () => {
       const { transactions } = await plaidInboxService.listInbox('new');
 
       expect(transactions[0].fixedCandidates.map(f => f.id)).toEqual([november]);
+    });
+  });
+
+  describe('income', () => {
+    const addIncome = ({ name = 'JAT', amount = 10848.23, year = 2026, month = 11, category = 'Salary' } = {}) =>
+      run('INSERT INTO income_sources (year, month, name, amount, category) VALUES (?, ?, ?, ?, ?)', [year, month, name, amount, category]);
+    const stageDeposit = (transactionId, { amount = -10848.23, date = '2026-10-29', name = 'JAT - Direct deposit', accountId = debitAccountId } = {}) =>
+      stage(transactionId, { accountId, amount, date, authorizedDate: null, name, merchantName: null });
+
+    test('deposits are flagged and offered expected income in their month, or the next month near its end', async () => {
+      const november = await addIncome({ month: 11 });
+      const october = await addIncome({ name: 'Bonus', amount: 500, month: 10 });
+      await addIncome({ month: 9 });
+      await stageDeposit('t-pay');
+      await stage('t-card-refund', { accountId: cardAccountId, amount: -20, date: '2026-10-29' });
+
+      const { transactions } = await plaidInboxService.listInbox('new');
+      const deposit = transactions.find(t => t.transactionId === 't-pay');
+      const refund = transactions.find(t => t.transactionId === 't-card-refund');
+
+      expect(deposit).toMatchObject({ isDeposit: true, canAdd: false, incomeSuggestion: { name: 'JAT - Direct deposit', category: 'Other' } });
+      expect(deposit.incomeCandidates.map(s => [s.id, s.nameMatch, s.amountDiffers])).toEqual([[november, true, false], [october, false, true]]);
+      expect(refund).toMatchObject({ isDeposit: false, incomeCandidates: [], incomeSuggestion: null });
+    });
+
+    test('confirming records when it landed, shows on the income source, and creates nothing else', async () => {
+      const pay = await addIncome();
+      const id = await stageDeposit('t-pay');
+
+      const result = await plaidInboxService.matchToIncome(id, pay, {}, 'tab-1');
+
+      expect(result.transaction).toMatchObject({ status: 'matched', expenseId: null });
+      expect(result.incomeSource).toMatchObject({ id: pay, amount: 10848.23, amountUpdated: false, landedDate: '2026-10-29' });
+      expect((await plaidInboxService.listInbox('new')).transactions).toHaveLength(0);
+      const { sources } = await incomeService.getMonthlyIncome(2026, 11);
+      expect(sources[0].bankConfirmation).toMatchObject({ landedDate: '2026-10-29', amount: 10848.23, plannedAmount: 10848.23, name: 'JAT - Direct deposit' });
+    });
+
+    test('a different amount updates the income unless declined', async () => {
+      const pay = await addIncome({ amount: 10500 });
+      const other = await addIncome({ name: 'Other pay', amount: 100 });
+      const first = await stageDeposit('t-1', { amount: -10848.23 });
+      const second = await stageDeposit('t-2', { amount: -120, name: 'Other pay' });
+
+      expect((await plaidInboxService.matchToIncome(first, pay, {}, 'tab-1')).incomeSource).toMatchObject({ plannedAmount: 10500, amountUpdated: true });
+      expect(await get('SELECT amount FROM income_sources WHERE id = ?', [pay])).toEqual({ amount: 10848.23 });
+      expect(activityLogService.logEvent).toHaveBeenCalledWith('income_source_updated', 'income_source', pay, expect.any(String), expect.objectContaining({ tabId: 'tab-1' }));
+
+      expect((await plaidInboxService.matchToIncome(second, other, { updateAmount: false })).incomeSource).toMatchObject({ amountUpdated: false });
+      expect(await get('SELECT amount FROM income_sources WHERE id = ?', [other])).toEqual({ amount: 100 });
+    });
+
+    test('next month the same description suggests the same income source first', async () => {
+      const october = await addIncome({ name: 'Paycheque', month: 10 });
+      const octDeposit = await stageDeposit('t-oct', { date: '2026-10-15' });
+      await plaidInboxService.matchToIncome(octDeposit, october);
+      await addIncome({ name: 'Bonus', amount: 10848.23, month: 11 });
+      const november = await addIncome({ name: 'Paycheque', amount: 9000, month: 11 });
+      await stageDeposit('t-nov', { date: '2026-11-14' });
+
+      const [txn] = (await plaidInboxService.listInbox('new')).transactions;
+
+      expect(txn.incomeCandidates[0]).toMatchObject({ id: november, nameMatch: true });
+      expect(txn.incomeSuggestion).toEqual({ name: 'Paycheque', category: 'Salary' });
+    });
+
+    test('rejects card credits, purchases, out-of-window months and already-confirmed income', async () => {
+      const pay = await addIncome();
+      const september = await addIncome({ month: 9 });
+      const cardCredit = await stage('t-card', { accountId: cardAccountId, amount: -10848.23, date: '2026-10-29' });
+      const purchase = await stage('t-buy', { amount: 50, date: '2026-10-29' });
+      const first = await stageDeposit('t-1');
+      const second = await stageDeposit('t-2');
+
+      await expect(plaidInboxService.matchToIncome(cardCredit, pay)).rejects.toMatchObject({ statusCode: 400 });
+      await expect(plaidInboxService.matchToIncome(purchase, pay)).rejects.toMatchObject({ statusCode: 400 });
+      await expect(plaidInboxService.matchToIncome(first, september)).rejects.toMatchObject({ statusCode: 400 });
+      await expect(plaidInboxService.matchToIncome(first, 99999)).rejects.toMatchObject({ statusCode: 404 });
+      await plaidInboxService.matchToIncome(first, pay);
+      await expect(plaidInboxService.matchToIncome(second, pay)).rejects.toMatchObject({ statusCode: 409 });
+      expect(await get('SELECT status FROM plaid_transactions WHERE id = ?', [second])).toEqual({ status: 'new' });
+    });
+
+    test('Add as income creates an income source in the deposit month and links it', async () => {
+      const id = await stageDeposit('t-gift', { amount: -250, date: '2026-10-12', name: 'E-TRANSFER FROM MOM' });
+
+      const result = await plaidInboxService.addAsIncome(id, { name: 'Birthday', category: 'Gifts' }, 'tab-1');
+
+      expect(result.transaction).toMatchObject({ status: 'added' });
+      expect(await get('SELECT year, month, name, amount, category FROM income_sources WHERE id = ?', [result.incomeSource.id]))
+        .toEqual({ year: 2026, month: 10, name: 'Birthday', amount: 250, category: 'Gifts' });
+      const { sources } = await incomeService.getMonthlyIncome(2026, 10);
+      expect(sources[0].bankConfirmation).toMatchObject({ landedDate: '2026-10-12', amount: 250, plannedAmount: null });
+
+      const purchase = await stage('t-buy', { amount: 50 });
+      await expect(plaidInboxService.addAsIncome(purchase, {})).rejects.toMatchObject({ statusCode: 400 });
+      const other = await stageDeposit('t-other');
+      await expect(plaidInboxService.addAsIncome(other, { category: 'Lottery' })).rejects.toMatchObject({ statusCode: 400 });
+      expect((await get('SELECT COUNT(*) AS n FROM income_sources')).n).toBe(1);
+    });
+
+    test('deleting a confirmed income source returns the deposit to the inbox', async () => {
+      const pay = await addIncome();
+      const id = await stageDeposit('t-pay');
+      await plaidInboxService.matchToIncome(id, pay);
+
+      await run('DELETE FROM income_sources WHERE id = ?', [pay]);
+
+      expect((await plaidInboxService.listInbox('new')).transactions.map(t => t.id)).toEqual([id]);
+      expect((await get('SELECT COUNT(*) AS n FROM plaid_income_links')).n).toBe(0);
     });
   });
 

@@ -103,6 +103,23 @@ const matchToFixedExpense = asyncHandler(async (req, res) => {
   res.json(await plaidInboxService.matchToFixedExpense(idParam(req), (req.body || {}).fixedExpenseId, tabIdOf(req)));
 });
 
+/**
+ * POST /api/plaid/inbox/:id/match-income
+ * Body: { incomeSourceId, updateAmount? = true }
+ */
+const matchToIncome = asyncHandler(async (req, res) => {
+  const { incomeSourceId, updateAmount } = req.body || {};
+  res.json(await plaidInboxService.matchToIncome(idParam(req), incomeSourceId, { updateAmount: updateAmount !== false }, tabIdOf(req)));
+});
+
+/**
+ * POST /api/plaid/inbox/:id/add-income
+ * Body: { name?, category? }
+ */
+const addAsIncome = asyncHandler(async (req, res) => {
+  res.status(201).json(await plaidInboxService.addAsIncome(idParam(req), req.body || {}, tabIdOf(req)));
+});
+
 /** POST /api/plaid/inbox/:id/ignore */
 const ignore = asyncHandler(async (req, res) => {
   res.json(await plaidInboxService.ignore(idParam(req)));
@@ -129,6 +146,8 @@ module.exports = {
   addAsExpense,
   matchToExpense,
   matchToFixedExpense,
+  matchToIncome,
+  addAsIncome,
   ignore,
   unignore
 };

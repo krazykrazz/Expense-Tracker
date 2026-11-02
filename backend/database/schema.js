@@ -412,6 +412,19 @@ const TABLE_STATEMENTS = [
     FOREIGN KEY (fixed_expense_id) REFERENCES fixed_expenses(id) ON DELETE CASCADE
   )`,
 
+  // plaid_income_links — a bank deposit confirming an expected income source (or creating one, Add as income),
+  // with the date it landed. One link per transaction and per income source.
+  `CREATE TABLE IF NOT EXISTS plaid_income_links (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    plaid_transaction_id INTEGER NOT NULL UNIQUE,
+    income_source_id INTEGER NOT NULL UNIQUE,
+    landed_date TEXT NOT NULL,
+    planned_amount REAL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (plaid_transaction_id) REFERENCES plaid_transactions(id) ON DELETE CASCADE,
+    FOREIGN KEY (income_source_id) REFERENCES income_sources(id) ON DELETE CASCADE
+  )`,
+
   // users — authentication user accounts
   `CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -479,6 +492,14 @@ const TRIGGER_STATEMENTS = [
    BEGIN
      UPDATE plaid_transactions SET status = 'new'
      WHERE id IN (SELECT plaid_transaction_id FROM plaid_fixed_expense_links WHERE fixed_expense_id = OLD.id);
+   END`,
+
+  // And for income sources
+  `CREATE TRIGGER IF NOT EXISTS plaid_transactions_unlink_on_income_source_delete
+   BEFORE DELETE ON income_sources
+   BEGIN
+     UPDATE plaid_transactions SET status = 'new'
+     WHERE id IN (SELECT plaid_transaction_id FROM plaid_income_links WHERE income_source_id = OLD.id);
    END`
 ];
 

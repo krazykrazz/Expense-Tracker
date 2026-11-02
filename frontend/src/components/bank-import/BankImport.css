@@ -349,6 +349,16 @@
   padding: 4px 0;
 }
 
+.inbox-inline-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: var(--spacing-2, 8px);
+  font-size: 0.875em;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
 @media (max-width: 768px) {
   .inbox-row-main {
     grid-template-columns: 1fr auto;

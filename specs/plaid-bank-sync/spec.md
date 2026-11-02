@@ -46,6 +46,18 @@ Not code. Connect **one** real bank (the one you use most) on the Trial plan in 
 
 ## Phase 2: reliable for daily use
 
+### 2.0 Income: confirm deposits (shipped first, small slice)
+
+Suggested after the first real-bank connection: a payroll deposit showed as "Refund / credit" with only Ignore. Same pattern as Phase 1's fixed-expense confirmation. Decisions: one deposit per income source (pay that arrives more than once a month is logged as separate sources); a different amount updates the income, offered pre-checked; unplanned deposits can be added as income.
+
+1. Deposits (money in on a non-credit-card account) are labelled *Deposit*; credit-card credits stay *Refund / credit*.
+2. Match offers unconfirmed income sources in the deposit's month, plus next month in its last 3 days and the previous month in its first 3 days. Ranked by learned name (an earlier confirmation of the same bank description), then name words in the description, then own month, then closest amount. Likely matches get an "Income: <name>" badge.
+3. Confirm links the deposit (`plaid_income_links`, landed date, planned amount), optionally updating the income amount through `incomeService.updateIncomeSource`; undone if that fails.
+4. Add income creates the income source in the deposit's month through `incomeService.createIncomeSource`, name/category pre-filled from learning, else the description and *Other*.
+5. Income Management shows a bank icon (landed date, deposit amount; amber when the amount differs). Deleting the income source returns the deposit to the inbox (trigger).
+
+- [x] `plaid_income_links` + trigger; matching helpers (PBT); repository; `match-income` / `add-income` endpoints; inbox UI; Income Management indicator; tests; docs
+
 ### 2.1 Reconnect expired logins (Plaid update mode)
 
 **Problem:** bank logins expire (password change, MFA re-consent, OAuth consent expiry, often 90 days–12 months). Today the only fix is disconnect + reconnect, which **consumes a new Trial slot** and loses the sync cursor.
@@ -75,20 +87,25 @@ Not code. Connect **one** real bank (the one you use most) on the Trial plan in 
 ### 2.2 Scheduled sync
 
 **Requirements**
-1. A background job syncs every `ok`/`consent_expiring` Item on a schedule. Default **4× a day** (06:00, 12:00, 18:00, 23:00 business time). Configurable in Settings → Bank Import: Off / 1× / 2× / 4× daily.
-2. Startup catch-up: one sync 2 minutes after start if the last successful sync is older than the interval.
-3. One sync at a time across the app (manual Sync now waits or returns "sync already running").
-4. Results are visible: "Last synced 12:00 (auto) · 3 new" on the Connections tab; failures surface as Item status (2.1), not silent logs.
-5. **Sync now** keeps working, and gains an optional "Ask the bank for fresh data" (`/transactions/refresh`, included in the Trial bundle; may be billable on paid plans) with a cooldown of 1 per Item per hour.
-6. The scheduler never runs when Plaid is disabled or no Items exist.
+1. A background job syncs every `ok`/`consent_expiring` Item **every 30 minutes between 06:00 and 23:00** business time (the last run at 23:00) and not overnight. Configurable in Settings → Bank Import: Off, interval (30 / 60 / 120 minutes) and active hours (start, end).
+   - Why this is cheap: `/transactions/sync` is not billed per call (Transactions is billed per account per month on paid plans; included in the Trial) and the limit is about 30 calls per minute per Item. Plaid itself pulls from most banks 1–4 times a day, so most runs return nothing; frequent polling only shortens the delay after Plaid has new data.
+2. **Sync on open:** when the app loads (and when the Bank Import modal opens), the frontend calls `POST /api/plaid/sync?ifStaleMinutes=30`. The server syncs only if the last successful sync of any Item is older than 30 minutes, in the background (responds immediately with `{ started: true|false }`); the badge and inbox update through the 2.3 SSE events. Users never need to know Sync now exists. Applies at any hour, including overnight.
+3. Startup catch-up: one sync 2 minutes after start if inside active hours and the last successful sync is older than the interval.
+4. One sync at a time across the app (manual Sync now, sync on open and the scheduler share one guard; a second request returns "sync already running" / `started: false`).
+5. Results are visible: "Last synced 12:00 (auto) · 3 new" on the Connections tab; failures surface as Item status (2.1), not silent logs.
+6. **Sync now** keeps working, and gains an optional "Ask the bank for fresh data" (`/transactions/refresh`, included in the Trial bundle; billed per call on paid plans, so it is never automatic) with a cooldown of 1 per Item per hour.
+7. The scheduler never runs when Plaid is disabled or no Items exist.
 
 **Design**
 - `plaidSyncSchedulerService` (pattern: `billingCycleSchedulerService`): `node-cron` job(s) registered in `server.js` with `{ timezone: businessTimezone }`, re-registered when the setting or timezone changes; guarded by a module-level `running` flag + the existing per-Item lock.
-- Settings: `plaid_sync_schedule` (`off|1|2|4`), stored via `plaidSettingsService`, exposed in `GET/PUT /api/plaid/settings` (not a secret).
-- `plaid_items.last_sync_source` (`manual|scheduled|webhook`) for display.
+- One cron expression built from the settings, e.g. `*/30 6-22 * * *` plus `0 23 * * *` for the defaults.
+- Settings: `plaid_sync_enabled` (default on), `plaid_sync_interval_minutes` (30), `plaid_sync_active_start` (`06:00`), `plaid_sync_active_end` (`23:00`), stored via `plaidSettingsService`, exposed in `GET/PUT /api/plaid/settings` (not secrets; validated: interval in {30, 60, 120}, start < end).
+- `POST /api/plaid/sync` accepts `ifStaleMinutes` (bounded 5–1440); without it, it behaves as today (manual Sync now).
+- Frontend: `BankImportButton` (always mounted in the header) fires the stale-sync call once on mount and once when the tab becomes visible again after > 30 minutes hidden; `BankImportModal` fires it on open. Failures are silent (status shows in Connections).
+- `plaid_items.last_sync_source` (`manual|scheduled|on_open|webhook`) for display.
 - Activity log: `plaid_sync_completed` **only when something changed** (new/updated/removed > 0 or status changed), entity `plaid_transaction`, so other tabs refresh the badge and inbox. No events for no-op runs (matches the billing-cycle scheduler rule).
 
-**Tests:** scheduler registers/unregisters with settings; skips when disabled; catch-up logic; concurrency guard (manual during scheduled); event only on change.
+**Tests:** cron expression from settings (PBT over interval × hours); scheduler registers/unregisters with settings; skips when disabled; catch-up only inside active hours; stale check (synced 29 vs 31 minutes ago); concurrency guard (manual, on-open and scheduled together); event only on change; frontend fires the stale call on mount, on modal open and on visibility after 30 minutes hidden, not on every render.
 
 ### 2.3 Inbox badge and cross-tab refresh
 
@@ -122,7 +139,8 @@ Not code. Connect **one** real bank (the one you use most) on the Trial plan in 
    - **Card payment** (debit side, from a chequing account): **Record as credit card payment** → choose the card (pre-selected when one card payment method is mapped to an account at the same institution, or when the description contains the card's name) → creates a `credit_card_payments` entry via `creditCardPaymentService.recordPayment` (balance updated as today) and links the transaction.
    - **Card payment received** (credit side, on the card account): **Link to card payment** if a matching `credit_card_payments` row exists (same card, same amount, ±5 days), else Ignore. Prevents recording the same payment twice when both accounts are connected.
    - **Loan / mortgage payment**: **Confirm fixed expense** (existing) when a loan-linked fixed expense matches; Phase 4.1 adds loan payment logging.
-   - **Transfer / income / fee**: **Mark reviewed** (= ignore with a reason) or **Add as expense anyway** (bank fees can be real costs).
+   - **Income**: **Confirm income** / **Add income** (2.0).
+   - **Transfer / fee**: **Mark reviewed** (= ignore with a reason) or **Add as expense anyway** (bank fees can be real costs).
 4. Users can move a row between To review and Not expenses (overrides the classification for that row).
 5. Duplicate guard: a transaction linked to a card payment cannot also be added or matched.
 
@@ -323,7 +341,7 @@ Decided (owner review): Q2, Q3, Q4, Q5, Q6, Q9, Q12. Still open: Q1 (after Phase
 | # | Question | Decision / default |
 |---|---|---|
 | Q1 | After Phase 0: does your bank use OAuth, and did the desktop pop-up work? If not, we need a registered HTTPS `redirect_uri` (your public hostname would work) | Desktop pop-up only |
-| Q2 | Sync schedule default: 4×/day, or 1×/day (fewer API calls if you move to a paid plan later)? | **Decided:** 4×/day |
+| Q2 | Sync schedule default? | **Decided:** every 30 minutes 06:00–23:00, none overnight, plus sync on open when older than 30 minutes (revised after the first real-bank connection) |
 | Q3 | Card payments when **both** accounts are connected: record from the chequing side (debit) and link the card side automatically? | **Decided:** yes, chequing side records, card side links |
 | Q4 | Classify existing staged rows (2.4)? Plaid doesn't resend old transactions, so old rows would need a one-off re-fetch (a full re-sync from an empty cursor, which also re-stages everything already reviewed, deduplicated by `transaction_id`) | **Decided:** new rows only |
 | Q5 | Full refunds: delete the original expense (it never really cost anything), or keep it and ignore the refund? | **Decided:** ask each time |

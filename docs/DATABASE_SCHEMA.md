@@ -19,7 +19,7 @@ The schema contains **31 tables**:
 | Financial tracking | `loans`, `loan_balances`, `loan_payments`, `mortgage_payments`, `investments`, `investment_values`, `budgets`, `budget_allocations` |
 | Medical & tax | `people`, `expense_people`, `expense_invoices` |
 | Payment methods | `payment_methods`, `credit_card_payments`, `credit_card_statements`, `credit_card_billing_cycles` |
-| Bank import (Plaid) | `plaid_items`, `plaid_accounts`, `plaid_transactions`, `plaid_fixed_expense_links` |
+| Bank import (Plaid) | `plaid_items`, `plaid_accounts`, `plaid_transactions`, `plaid_fixed_expense_links`, `plaid_income_links` |
 | Authentication | `users` |
 | Utility | `place_names`, `reminders`, `dismissed_anomalies`, `anomaly_suppression_rules`, `activity_logs`, `settings`, `schema_migrations` |
 
@@ -514,6 +514,21 @@ A bank transaction confirming a planned fixed expense (Import Inbox → Match �
 
 Deleting a confirmed fixed expense puts its transaction back to `'new'` (trigger `plaid_transactions_unlink_on_fixed_expense_delete`) and removes the link (cascade).
 
+### plaid_income_links
+
+A bank deposit confirming an expected income source (Import Inbox → Match → Confirm, transaction status `matched`) or creating one (Add income, status `added`). `expense_id` stays NULL.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| id | INTEGER PRIMARY KEY | Unique identifier |
+| plaid_transaction_id | INTEGER NOT NULL UNIQUE | Foreign key to plaid_transactions (ON DELETE CASCADE) |
+| income_source_id | INTEGER NOT NULL UNIQUE | Foreign key to income_sources (ON DELETE CASCADE); one deposit per income source |
+| landed_date | TEXT NOT NULL | Date the deposit landed (the transaction's posted date) |
+| planned_amount | REAL | Income amount before confirming (updated to the deposit amount unless declined); NULL for Add income |
+| created_at | TEXT NOT NULL | Timestamp |
+
+Deleting an income source puts its deposit back to `'new'` (trigger `plaid_transactions_unlink_on_income_source_delete`) and removes the link (cascade). Earlier links also teach the inbox which income source a bank description belongs to.
+
 ## Authentication Tables
 
 ### users
@@ -700,6 +715,7 @@ All indexes are listed per table above. `schema.js` (`INDEX_STATEMENTS`) creates
 | `update_plaid_transactions_timestamp` | plaid_transactions | AFTER UPDATE: sets `updated_at = CURRENT_TIMESTAMP` |
 | `plaid_transactions_unlink_on_expense_delete` | expenses | BEFORE DELETE: linked `plaid_transactions` go back to `status = 'new'`, `expense_id = NULL`, so the bank transaction returns to the Import Inbox instead of being stranded |
 | `plaid_transactions_unlink_on_fixed_expense_delete` | fixed_expenses | BEFORE DELETE: the confirming `plaid_transactions` row goes back to `status = 'new'` (its link row is removed by cascade) |
+| `plaid_transactions_unlink_on_income_source_delete` | income_sources | BEFORE DELETE: the confirming deposit goes back to `status = 'new'` (its link row is removed by cascade) |
 
 ## Foreign Key Constraints
 
@@ -714,6 +730,7 @@ Foreign keys are enforced (`PRAGMA foreign_keys = ON` per connection):
   - credit_card_payments, credit_card_statements, credit_card_billing_cycles (when payment method deleted)
   - plaid_accounts (when plaid item deleted)
   - plaid_fixed_expense_links (when its plaid transaction or fixed expense is deleted)
+  - plaid_income_links (when its plaid transaction or income source is deleted)
 
 - **SET NULL**: Foreign key is set to NULL when parent is deleted
   - fixed_expenses.linked_loan_id (when loan deleted)
@@ -744,7 +761,7 @@ Foreign keys are enforced (`PRAGMA foreign_keys = ON` per connection):
 - `payment_methods`: (display_name)
 - `credit_card_billing_cycles`: (payment_method_id, cycle_end_date)
 - `users`: (username)
-- `plaid_items`: (item_id); `plaid_accounts`: (account_id); `plaid_transactions`: (transaction_id), and expense_id when not NULL; `plaid_fixed_expense_links`: (plaid_transaction_id), (fixed_expense_id)
+- `plaid_items`: (item_id); `plaid_accounts`: (account_id); `plaid_transactions`: (transaction_id), and expense_id when not NULL; `plaid_fixed_expense_links`: (plaid_transaction_id), (fixed_expense_id); `plaid_income_links`: (plaid_transaction_id), (income_source_id)
 - `schema_migrations`: (migration_name)
 
 ### Check Constraints

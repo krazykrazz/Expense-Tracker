@@ -22,6 +22,9 @@ export const CATEGORIES = [
   'Tax - Medical'
 ];
 
+/** Income source categories (mirrors backend/utils/constants.js INCOME_CATEGORIES). */
+export const INCOME_CATEGORIES = ['Salary', 'Government', 'Gifts', 'Other'];
+
 /**
  * @deprecated PAYMENT_METHODS is deprecated and will be removed in a future version.
  * Payment methods are now stored in the database and should be fetched via the API.

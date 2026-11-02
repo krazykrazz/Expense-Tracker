@@ -91,7 +91,8 @@ const EXPECTED_TABLES = {
   plaid_items: ['id', 'item_id', 'institution_name', 'access_token_enc', 'sync_cursor', 'environment', 'last_synced_at', 'last_error', 'created_at', 'updated_at'],
   plaid_accounts: ['id', 'plaid_item_id', 'account_id', 'name', 'mask', 'type', 'subtype', 'payment_method_id', 'created_at', 'updated_at'],
   plaid_transactions: ['id', 'transaction_id', 'plaid_account_id', 'amount', 'iso_currency_code', 'date', 'authorized_date', 'name', 'merchant_name', 'status', 'expense_id', 'created_at', 'updated_at'],
-  plaid_fixed_expense_links: ['id', 'plaid_transaction_id', 'fixed_expense_id', 'landed_date', 'planned_amount', 'created_at']
+  plaid_fixed_expense_links: ['id', 'plaid_transaction_id', 'fixed_expense_id', 'landed_date', 'planned_amount', 'created_at'],
+  plaid_income_links: ['id', 'plaid_transaction_id', 'income_source_id', 'landed_date', 'planned_amount', 'created_at']
 };
 
 const TABLE_NAMES = Object.keys(EXPECTED_TABLES);
@@ -125,12 +126,12 @@ describe('Feature: migration-consolidation, Property 1: Schema completeness', ()
     );
   }, 120000);
 
-  test('Schema creates exactly 31 tables', async () => {
+  test('Schema creates exactly 32 tables', async () => {
     const db = await openDb();
     try {
       await applySchema(db);
       const tables = await all(db, "SELECT name FROM sqlite_master WHERE type='table' AND name != 'sqlite_sequence' ORDER BY name");
-      expect(tables.length).toBe(31);
+      expect(tables.length).toBe(32);
       const names = tables.map(t => t.name).sort();
       expect(names).toEqual(TABLE_NAMES.sort());
     } finally {

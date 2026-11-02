@@ -8,6 +8,8 @@ vi.mock('../../services/plaidApi', () => ({
   addInboxTransaction: vi.fn(),
   matchInboxTransaction: vi.fn(),
   matchInboxTransactionToFixed: vi.fn(),
+  matchInboxTransactionToIncome: vi.fn(),
+  addInboxTransactionAsIncome: vi.fn(),
   ignoreInboxTransaction: vi.fn(),
   unignoreInboxTransaction: vi.fn(),
 }));
@@ -130,6 +132,70 @@ describe('ImportInbox', () => {
 
       expect(screen.getByTestId('fixed-candidate')).toHaveTextContent('planned amount will be updated to $17.78');
       expect(screen.queryByText(/^Fixed:/)).not.toBeInTheDocument();
+    });
+  });
+
+  describe('income', () => {
+    const deposit = (overrides = {}) => txn({
+      place: 'JAT - Direct deposit', rawName: 'JAT - Direct deposit', date: '2026-10-29', postedDate: '2026-10-29',
+      amount: -10848.23, canAdd: false, isDeposit: true, incomeSuggestion: { name: 'JAT - Direct deposit', category: 'Other' }, ...overrides
+    });
+    const income = (overrides = {}) => ({
+      id: 5, year: 2026, month: 11, name: 'JAT', category: 'Salary', amount: 10848.23, amountDiffers: false, nameMatch: true, ...overrides
+    });
+
+    it('labels deposits, flags expected income and confirms it from the picker', async () => {
+      plaidApi.getInbox
+        .mockResolvedValueOnce({ transactions: [deposit({ incomeCandidates: [income()] })], hiddenUnmapped: 0 })
+        .mockResolvedValue({ transactions: [], hiddenUnmapped: 0 });
+      plaidApi.matchInboxTransactionToIncome.mockResolvedValue({ transaction: {}, incomeSource: { id: 5 } });
+      const onExpensesChanged = vi.fn();
+
+      renderInbox({ onExpensesChanged });
+      expect(await screen.findByText('Deposit')).toBeInTheDocument();
+      expect(screen.queryByText('Refund / credit')).not.toBeInTheDocument();
+      expect(screen.getByText('Income: JAT')).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Match' }));
+      const candidate = screen.getByTestId('income-candidate');
+      expect(candidate).toHaveTextContent('JAT · Nov 2026 · $10,848.23');
+      expect(within(candidate).queryByRole('checkbox')).not.toBeInTheDocument();
+      fireEvent.click(within(candidate).getByRole('button', { name: 'Confirm' }));
+
+      await waitFor(() => expect(plaidApi.matchInboxTransactionToIncome).toHaveBeenCalledWith(1, { incomeSourceId: 5, updateAmount: true }));
+      await waitFor(() => expect(onExpensesChanged).toHaveBeenCalled());
+    });
+
+    it('offers to update a different amount, pre-checked, and sends the choice', async () => {
+      plaidApi.getInbox.mockResolvedValue({
+        transactions: [deposit({ incomeCandidates: [income({ amount: 10500, amountDiffers: true })] })], hiddenUnmapped: 0
+      });
+      plaidApi.matchInboxTransactionToIncome.mockResolvedValue({ transaction: {}, incomeSource: { id: 5 } });
+
+      renderInbox();
+      fireEvent.click(await screen.findByRole('button', { name: 'Match' }));
+      const checkbox = within(screen.getByTestId('income-candidate')).getByRole('checkbox', { name: /Update to \$10,848\.23/ });
+      expect(checkbox).toBeChecked();
+      fireEvent.click(checkbox);
+      fireEvent.click(within(screen.getByTestId('income-candidate')).getByRole('button', { name: 'Confirm' }));
+
+      await waitFor(() => expect(plaidApi.matchInboxTransactionToIncome).toHaveBeenCalledWith(1, { incomeSourceId: 5, updateAmount: false }));
+    });
+
+    it('adds an unplanned deposit as income with the suggested name and chosen category', async () => {
+      plaidApi.getInbox
+        .mockResolvedValueOnce({ transactions: [deposit({ incomeCandidates: [] })], hiddenUnmapped: 0 })
+        .mockResolvedValue({ transactions: [], hiddenUnmapped: 0 });
+      plaidApi.addInboxTransactionAsIncome.mockResolvedValue({ transaction: {}, incomeSource: { id: 6 } });
+
+      renderInbox();
+      expect(await screen.findByText('Deposit')).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Match' })).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Add income' }));
+      expect(screen.getByText('Adds $10,848.23 to Oct 2026 income')).toBeInTheDocument();
+      fireEvent.change(screen.getByLabelText('Category'), { target: { value: 'Salary' } });
+      fireEvent.click(within(document.querySelector('.inbox-add-form')).getByRole('button', { name: 'Add income' }));
+
+      await waitFor(() => expect(plaidApi.addInboxTransactionAsIncome).toHaveBeenCalledWith(1, { name: 'JAT - Direct deposit', category: 'Salary' }));
     });
   });
 

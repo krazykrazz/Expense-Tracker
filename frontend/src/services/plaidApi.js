@@ -79,6 +79,14 @@ export const matchInboxTransaction = (id, expenseId) =>
 export const matchInboxTransactionToFixed = (id, fixedExpenseId) =>
   call('matching bank transaction to fixed expense', () => apiPost(API_ENDPOINTS.PLAID_INBOX_ACTION(id, 'match-fixed'), { fixedExpenseId }, 'match fixed expense'));
 
+/** Confirm expected income with this deposit; `updateAmount` sets the income amount to the deposit amount. */
+export const matchInboxTransactionToIncome = (id, { incomeSourceId, updateAmount = true }) =>
+  call('matching bank deposit to income', () => apiPost(API_ENDPOINTS.PLAID_INBOX_ACTION(id, 'match-income'), { incomeSourceId, updateAmount }, 'match income'));
+
+/** @param {{name?: string, category?: string}} fields */
+export const addInboxTransactionAsIncome = (id, fields) =>
+  call('adding bank deposit as income', () => apiPost(API_ENDPOINTS.PLAID_INBOX_ACTION(id, 'add-income'), fields, 'add income'));
+
 export const ignoreInboxTransaction = (id) =>
   call('ignoring bank transaction', () => apiPost(API_ENDPOINTS.PLAID_INBOX_ACTION(id, 'ignore'), {}, 'ignore transaction'));
 

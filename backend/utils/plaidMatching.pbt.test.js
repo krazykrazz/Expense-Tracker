@@ -4,14 +4,16 @@
  * insurance-tracked, else amount) to the cent, and they are at most 3 calendar days apart (using the authorized
  * date when present). A charge confirms a fixed expense exactly when it uses the same payment method and posted
  * between 3 days before and 10 days after the due date (due day clamped to the month length), whatever the
- * amount. Randomizing amounts (float noise around cent boundaries), out-of-pocket shares, due days 1-31,
+ * amount. A deposit (money in, not on a credit card) confirms expected income in its own month, the next month
+ * when it lands in the month's last 3 days, or the previous month when it lands in the first 3 days.
+ * Randomizing amounts (float noise around cent boundaries), out-of-pocket shares, due days 1-31,
  * dates (month/year/leap-year boundaries) and offsets checks both predicates against independent
  * integer-cents / day-number oracles.
  */
 
 const fc = require('fast-check');
 const { pbtOptions } = require('../test/pbtArbitraries');
-const { isMatchCandidate, findMatchCandidates, shiftDate, dayDiff, MATCH_WINDOW_DAYS, fixedExpectedDate, isFixedCandidate, findFixedCandidates, FIXED_EARLY_DAYS, FIXED_LATE_DAYS } = require('./plaidMatching');
+const { isMatchCandidate, findMatchCandidates, shiftDate, dayDiff, MATCH_WINDOW_DAYS, fixedExpectedDate, isFixedCandidate, findFixedCandidates, FIXED_EARLY_DAYS, FIXED_LATE_DAYS, INCOME_BOUNDARY_DAYS, isIncomeCandidate, findIncomeCandidates, incomeNameScore } = require('./plaidMatching');
 
 const arbDate = fc.date({ min: new Date('2019-12-25T00:00:00Z'), max: new Date('2031-01-05T00:00:00Z'), noInvalidDate: true })
   .map(d => d.toISOString().slice(0, 10));
@@ -146,5 +148,41 @@ describe('plaidMatching', () => {
     ];
     expect(findFixedCandidates({ paymentMethodId: 1, amount: 25.5, date: '2026-10-03' }, fixed).map(f => f.id)).toEqual([2, 3, 1]);
     expect(findFixedCandidates({ paymentMethodId: 1, amount: -25.5, date: '2026-10-03' }, fixed)).toEqual([]);
+  });
+
+  test('income: a deposit confirms its own month, the next month in its last 3 days, the previous month in its first 3 days', () => {
+    fc.assert(
+      fc.property(arbDate, fc.integer({ min: -2, max: 2 }), arbCents, fc.boolean(), (date, monthShift, cents, onCard) => {
+        const [y, m, d] = date.split('-').map(Number);
+        const idx = y * 12 + (m - 1) + monthShift;
+        const source = { id: 1, year: Math.floor(idx / 12), month: (idx % 12) + 1, name: 'Pay', amount: 1 };
+        const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
+        const deposit = { amount: -cents / 100, date, paymentMethodType: onCard ? 'credit_card' : 'debit' };
+
+        const inWindow = monthShift === 0
+          || (monthShift === 1 && d > lastDay - INCOME_BOUNDARY_DAYS)
+          || (monthShift === -1 && d <= INCOME_BOUNDARY_DAYS);
+        expect(isIncomeCandidate(deposit, source)).toBe(!onCard && inWindow);
+        // Money out never confirms income
+        expect(isIncomeCandidate({ ...deposit, amount: cents / 100 }, source)).toBe(false);
+      }),
+      pbtOptions()
+    );
+  });
+
+  test('income candidates: learned names first, then name words, then own month, then closest amount', () => {
+    const deposit = { amount: -10848.23, date: '2026-10-29', name: 'JAT - Direct deposit', merchantName: null, paymentMethodType: 'debit' };
+    const sources = [
+      { id: 1, year: 2026, month: 10, name: 'Bonus', amount: 10848.23 },
+      { id: 2, year: 2026, month: 11, name: 'JAT', amount: 10000 },
+      { id: 3, year: 2026, month: 10, name: 'JAT', amount: 9000 },
+      { id: 4, year: 2026, month: 10, name: 'Employer', amount: 500 },
+      { id: 5, year: 2026, month: 9, name: 'JAT', amount: 10848.23 }
+    ];
+
+    expect(findIncomeCandidates(deposit, sources).map(s => [s.id, s.nameScore])).toEqual([[3, 1], [2, 1], [1, 0], [4, 0]]);
+    expect(findIncomeCandidates(deposit, sources, new Set(['employer'])).map(s => s.id)).toEqual([4, 3, 2, 1]);
+    expect(incomeNameScore({ name: 'PAYROLL DEP' }, { name: 'JAT Payroll' })).toBe(0);
+    expect(incomeNameScore({ name: 'JAT PAYROLL DEP' }, { name: 'jat payroll' })).toBe(1);
   });
 });

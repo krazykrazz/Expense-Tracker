@@ -78,10 +78,10 @@ Lists posted transactions waiting for review, newest first, with the place (Plai
 | Action | What happens |
 |--------|--------------|
 | **Add** | Opens an inline editor pre-filled with place, date and a category suggested from your history for that place. **Add expense** creates a normal expense (validation, activity log and sync all apply). For credit cards, the bank's posting date is stored as the posted date when it is later than the purchase date. |
-| **Match** | Shown when existing expenses could be the same purchase: same payment method, same **charged** amount to the cent, date within ±3 days, and not already linked. For reimbursed or insurance-tracked expenses the charged amount is the original cost (what the card was charged), not the out-of-pocket amount; the picker shows both. Links the transaction to the chosen expense without changing it. The same picker lists **fixed expenses** the transaction could pay (see below). |
+| **Match** | Shown when existing expenses could be the same purchase: same payment method, same **charged** amount to the cent, date within ±3 days, and not already linked. For reimbursed or insurance-tracked expenses the charged amount is the original cost (what the card was charged), not the out-of-pocket amount; the picker shows both. Links the transaction to the chosen expense without changing it. The same picker lists **fixed expenses** the transaction could pay and, for deposits, **expected income** (see below). |
 | **Ignore** | Hides the transaction. The **Ignored** filter lists ignored transactions with **Undo ignore**. |
 
-- Refunds and credits (zero or negative amounts) are labelled *Refund / credit* and can only be ignored.
+- Refunds and credits on a credit card (zero or negative amounts) are labelled *Refund / credit* and can only be ignored. Money coming into a bank account is labelled *Deposit* (see [Income](#income-confirm-a-deposit)).
 - Amounts in a currency other than CAD get a badge; they are not converted.
 
 ### Fixed expenses: confirm instead of adding
@@ -100,6 +100,18 @@ Fixed expenses (rent, mortgage, utilities, subscriptions) are usually logged ahe
 - **Each month is separate:** copying fixed expenses forward creates new, unconfirmed items. Deleting a confirmed fixed expense returns its transaction to the inbox.
 
 The landing dates are the groundwork for a later phase: auto-logged loan payments (currently created on the due day) could use the actual date the payment landed.
+
+### Income: confirm a deposit
+
+Expected income (Income Management) is a monthly list of sources: a name, category and amount, with no day or account. A deposit (money into a chequing or savings account; credits on a credit card are refunds, not income) can confirm one of them or create one.
+
+- **Which income is offered:** the Match picker lists income sources that are **not already confirmed** in the deposit's month. In the last 3 days of a month it also lists next month's income (pay due on the 1st that lands early before a weekend), and in the first 3 days the previous month's.
+  - Ranking: sources this bank description confirmed before (by name, so next month's copied source is found automatically), then sources whose name words all appear in the description (*JAT* for "JAT - Direct deposit"), then the deposit's own month, then the closest amount.
+  - A likely match (name fit or exact amount) gets an **"Income: <name>"** badge.
+- **Confirm:** links the deposit to the income source and records when it **landed**. One deposit per income source: log pay that arrives more than once a month as separate sources.
+- **Different amount:** the picker offers **Update to $X** (pre-checked). Checked, the income amount becomes the deposit amount through the normal income update (logged as `income_source_updated`); unchecked, the income keeps its amount. If the update fails, the confirmation is undone.
+- **Add income:** for a deposit with no expected source (a one-off government payment, a gift), creates an income source in the deposit's month with the deposit amount. The name and category are pre-filled from an earlier confirmation of the same description, else the description and *Other*.
+- **In Income Management**, a received income source shows the bank icon with the description, the date it landed and the deposit amount. It turns amber when the income amount differs from the deposit. Deleting the income source returns the deposit to the inbox.
 ### Bank-confirmed icon in the expense list
 
 Expenses that were added from, or matched to, a bank transaction show a small bank icon next to the other indicators.
@@ -127,7 +139,7 @@ Expenses that were added from, or matched to, a bank transaction show a small ba
 
 ### Data
 
-Tables `plaid_items`, `plaid_accounts` and `plaid_transactions`; see [Database Schema](../DATABASE_SCHEMA.md#plaid-tables). The expense list (`GET /api/expenses`) adds a `bankLink` field to every expense: `{ status, name, rawName, date, amount }` or `null`.
+Tables `plaid_items`, `plaid_accounts`, `plaid_transactions`, `plaid_fixed_expense_links` and `plaid_income_links`; see [Database Schema](../DATABASE_SCHEMA.md#plaid-tables). The expense list (`GET /api/expenses`) adds a `bankLink` field to every expense: `{ status, name, rawName, date, amount }` or `null`. Fixed expenses and income sources get `bankConfirmation` (`{ landedDate, amount, plannedAmount, name }`) or `null`.
 
 ### API
 
@@ -137,7 +149,7 @@ All under `/api/plaid`; see the [Endpoint Reference](../API_DOCUMENTATION.md#pla
 
 - `plaid_item_added` and `plaid_item_deleted` (entity `plaid_item`, institution name only).
 - Saving or removing Plaid keys logs `settings_updated` (entity `settings`) describing what changed, e.g. "environment: Sandbox → Production, secret changed", never the values.
-- Adding a transaction as an expense logs the normal `expense_added`.
+- Adding a transaction as an expense logs the normal `expense_added`. Confirming income with a different amount logs `income_source_updated`; Add income logs `income_source_added`.
 - Syncs, matches and ignores are not logged in the PoC.
 
 ## Limitations

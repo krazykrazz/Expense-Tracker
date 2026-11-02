@@ -3,18 +3,24 @@ const expenseRepository = require('../repositories/expenseRepository');
 const expenseService = require('./expenseService');
 const fixedExpenseService = require('./fixedExpenseService');
 const fixedExpenseRepository = require('../repositories/fixedExpenseRepository');
+const incomeService = require('./incomeService');
+const incomeRepository = require('../repositories/incomeRepository');
 const categorySuggestionService = require('./categorySuggestionService');
 const logger = require('../config/logger');
 const {
   MATCH_WINDOW_DAYS, toCents, shiftDate, transactionDate, findMatchCandidates,
-  fixedExpectedDate, isFixedCandidate, findFixedCandidates
+  fixedExpectedDate, isFixedCandidate, findFixedCandidates,
+  isDeposit, isIncomeCandidate, findIncomeCandidates
 } = require('../utils/plaidMatching');
+const { INCOME_CATEGORIES } = require('../utils/constants');
 
 const INBOX_STATUSES = ['new', 'ignored'];
 
 const fail = (message, statusCode) => Object.assign(new Error(message), { statusCode });
 const round2 = (n) => Math.round(n * 100) / 100;
 const defaultPlace = (txn) => (txn.merchantName || txn.name || '').trim();
+/** The bank description used to learn income names: same choice as the default place. */
+const incomeDescription = defaultPlace;
 const monthIndexOf = (date) => Number(date.slice(0, 4)) * 12 + Number(date.slice(5, 7)) - 1;
 
 /**
@@ -41,14 +47,16 @@ class PlaidInboxService {
     ]);
 
     const isNew = status === 'new';
-    const [candidatesByRow, fixedByRow, suggestions] = await Promise.all([
+    const [candidatesByRow, fixedByRow, incomeByRow, suggestions] = await Promise.all([
       isNew ? this._matchCandidates(rows) : new Map(),
       isNew ? this._fixedCandidates(rows) : new Map(),
+      isNew ? this._incomeCandidates(rows) : new Map(),
       isNew ? this._suggestCategories(rows) : new Map()
     ]);
 
     const transactions = rows.map(row => {
       const place = defaultPlace(row);
+      const income = incomeByRow.get(row.id);
       return {
         id: row.id,
         transactionId: row.transactionId,
@@ -65,13 +73,52 @@ class PlaidInboxService {
         paymentMethodType: row.paymentMethodType,
         status: row.status,
         canAdd: row.amount > 0,
+        isDeposit: isDeposit(row),
         suggestedCategory: suggestions.get(place.toLowerCase()) ?? null,
         matchCandidates: candidatesByRow.get(row.id) ?? [],
-        fixedCandidates: fixedByRow.get(row.id) ?? []
+        fixedCandidates: fixedByRow.get(row.id) ?? [],
+        incomeCandidates: income ? income.candidates : [],
+        incomeSuggestion: income ? income.suggestion : null
       };
     });
 
     return { transactions, hiddenUnmapped };
+  }
+
+  /**
+   * Expected income sources each deposit could confirm, plus a name/category to pre-fill Add as income
+   * (learned from earlier confirmations of the same bank description).
+   */
+  async _incomeCandidates(rows) {
+    const result = new Map();
+    const deposits = rows.filter(isDeposit);
+    if (deposits.length === 0) return result;
+
+    const monthIdxs = deposits.map(row => monthIndexOf(row.date));
+    const [sources, learned] = await Promise.all([
+      plaidRepository.findUnlinkedIncomeSources(Math.min(...monthIdxs) - 1, Math.max(...monthIdxs) + 1),
+      plaidRepository.findLearnedIncomeNames()
+    ]);
+
+    for (const row of deposits) {
+      const learnedEntries = learned.get(incomeDescription(row).toLowerCase()) || [];
+      const learnedNames = new Set(learnedEntries.map(entry => entry.name.toLowerCase()));
+      const candidates = findIncomeCandidates(row, sources, learnedNames).map(source => ({
+        id: source.id,
+        year: source.year,
+        month: source.month,
+        name: source.name,
+        category: source.category,
+        amount: source.amount,
+        amountDiffers: toCents(source.amount) !== Math.abs(toCents(row.amount)),
+        nameMatch: source.nameScore > 0
+      }));
+      const suggestion = learnedEntries[0]
+        ? { name: learnedEntries[0].name, category: learnedEntries[0].category || 'Other' }
+        : { name: incomeDescription(row).slice(0, 100), category: 'Other' };
+      result.set(row.id, { candidates, suggestion });
+    }
+    return result;
   }
 
   async _fixedCandidates(rows) {
@@ -280,6 +327,98 @@ class PlaidInboxService {
         transaction: await plaidRepository.findTransactionById(id),
         fixedExpense: { id: fixed.id, name: fixed.name, plannedAmount, amount: round2(txn.amount), amountUpdated: updated, landedDate }
       };
+    });
+  }
+
+  /**
+   * Confirm an expected income source with a bank deposit and record when it landed. With `updateAmount`
+   * (the default) a different deposit amount becomes the income amount, through incomeService.
+   * @param {{updateAmount?: boolean}} options
+   */
+  async matchToIncome(id, incomeSourceId, { updateAmount = true } = {}, tabId = null) {
+    return this._exclusive(id, async () => {
+      const txn = await this._requireNew(id);
+      const parsedId = parseInt(incomeSourceId, 10);
+      const source = Number.isNaN(parsedId) ? null : await plaidRepository.findIncomeSourceForMatching(parsedId);
+      if (!source) {
+        throw fail('Income source not found', 404);
+      }
+      if (source.linked) {
+        throw fail('That income is already confirmed by another bank deposit', 409);
+      }
+      if (!isIncomeCandidate(txn, source)) {
+        throw fail('Only a deposit into a bank account in the same month (or within 3 days of it) can confirm that income', 400);
+      }
+
+      const landedDate = txn.date;
+      const plannedAmount = source.amount;
+      const depositAmount = round2(Math.abs(txn.amount));
+      try {
+        if (!(await plaidRepository.linkIncomeSource(id, source.id, landedDate, plannedAmount))) {
+          throw fail('Bank transaction was already reviewed', 409);
+        }
+      } catch (err) {
+        if (err.message && err.message.includes('UNIQUE constraint failed')) {
+          throw fail('That income is already confirmed by another bank deposit', 409);
+        }
+        throw err;
+      }
+
+      let updated = false;
+      if (updateAmount !== false && toCents(plannedAmount) !== toCents(depositAmount)) {
+        try {
+          const current = await incomeRepository.findById(source.id);
+          await incomeService.updateIncomeSource(source.id, { ...current, amount: depositAmount }, tabId);
+          updated = true;
+        } catch (err) {
+          await plaidRepository.unlinkIncomeSource(id);
+          logger.warn('Updating income amount from bank deposit failed', { incomeSourceId: source.id, error: err.message });
+          throw fail(`Could not update the income amount: ${err.message}`, err.statusCode || 400);
+        }
+      }
+
+      return {
+        transaction: await plaidRepository.findTransactionById(id),
+        incomeSource: { id: source.id, name: source.name, plannedAmount, amount: depositAmount, amountUpdated: updated, landedDate }
+      };
+    });
+  }
+
+  /**
+   * Record an unplanned deposit as a new income source in the deposit's month, linked to the deposit.
+   * @param {{name?: string, category?: string}} input
+   */
+  async addAsIncome(id, input = {}, tabId = null) {
+    return this._exclusive(id, async () => {
+      const txn = await this._requireNew(id);
+      if (!isDeposit(txn)) {
+        throw fail('Only deposits into a bank account can be added as income', 400);
+      }
+      const name = typeof input.name === 'string' && input.name.trim() ? input.name.trim() : incomeDescription(txn);
+      const category = input.category || 'Other';
+      if (!INCOME_CATEGORIES.includes(category)) {
+        throw fail(`Category must be one of: ${INCOME_CATEGORIES.join(', ')}`, 400);
+      }
+
+      let created;
+      try {
+        created = await incomeService.createIncomeSource({
+          year: Number(txn.date.slice(0, 4)),
+          month: Number(txn.date.slice(5, 7)),
+          name,
+          amount: round2(Math.abs(txn.amount)),
+          category
+        }, tabId);
+      } catch (err) {
+        if (!err.statusCode) err.statusCode = 400;
+        throw err;
+      }
+
+      if (!(await plaidRepository.linkIncomeSource(id, created.id, txn.date, null, 'added'))) {
+        await incomeService.deleteIncomeSource(created.id, tabId);
+        throw fail('Bank transaction was already reviewed', 409);
+      }
+      return { transaction: await plaidRepository.findTransactionById(id), incomeSource: created };
     });
   }
 

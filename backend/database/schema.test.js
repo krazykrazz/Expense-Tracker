@@ -55,17 +55,17 @@ describe('Consolidated Schema – Unit Tests', () => {
     'reminders', 'dismissed_anomalies', 'anomaly_suppression_rules',
     'payment_methods', 'credit_card_payments', 'credit_card_statements',
     'credit_card_billing_cycles', 'activity_logs', 'settings', 'users',
-    'plaid_items', 'plaid_accounts', 'plaid_transactions', 'plaid_fixed_expense_links'
+    'plaid_items', 'plaid_accounts', 'plaid_transactions', 'plaid_fixed_expense_links', 'plaid_income_links'
   ];
 
-  test('creates exactly 31 tables', async () => {
+  test('creates exactly 32 tables', async () => {
     const rows = await dbAll(
       db,
       "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
     );
     const tableNames = rows.map(r => r.name).sort();
     expect(tableNames).toEqual([...EXPECTED_TABLES].sort());
-    expect(tableNames).toHaveLength(31);
+    expect(tableNames).toHaveLength(32);
   });
 
   test('plaid_transactions allows one bank transaction per expense', async () => {

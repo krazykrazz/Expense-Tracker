@@ -150,6 +150,27 @@ describe('plaid routes', () => {
     expect(plaidInboxService.matchToFixedExpense).toHaveBeenCalledWith(3, 8, 'tab-2');
   });
 
+  test('POST /inbox/:id/match-income passes the income source, updateAmount and tab id', async () => {
+    plaidInboxService.matchToIncome.mockResolvedValue({ transaction: {}, incomeSource: { id: 9 } });
+
+    const kept = await request(app).post('/api/plaid/inbox/3/match-income').set('X-Tab-ID', 'tab-2').send({ incomeSourceId: 9 });
+    const declined = await request(app).post('/api/plaid/inbox/3/match-income').send({ incomeSourceId: 9, updateAmount: false });
+
+    expect(kept.status).toBe(200);
+    expect(declined.status).toBe(200);
+    expect(plaidInboxService.matchToIncome).toHaveBeenNthCalledWith(1, 3, 9, { updateAmount: true }, 'tab-2');
+    expect(plaidInboxService.matchToIncome).toHaveBeenNthCalledWith(2, 3, 9, { updateAmount: false }, null);
+  });
+
+  test('POST /inbox/:id/add-income returns 201', async () => {
+    plaidInboxService.addAsIncome.mockResolvedValue({ transaction: {}, incomeSource: { id: 10 } });
+
+    const res = await request(app).post('/api/plaid/inbox/3/add-income').send({ name: 'Gift', category: 'Gifts' });
+
+    expect(res.status).toBe(201);
+    expect(plaidInboxService.addAsIncome).toHaveBeenCalledWith(3, { name: 'Gift', category: 'Gifts' }, null);
+  });
+
   test('DELETE /items/:id returns 204', async () => {
     plaidService.disconnectItem.mockResolvedValue();
 

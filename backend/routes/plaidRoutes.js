@@ -27,6 +27,8 @@ router.get('/inbox', plaidController.getInbox);
 router.post('/inbox/:id/add', plaidController.addAsExpense);
 router.post('/inbox/:id/match', plaidController.matchToExpense);
 router.post('/inbox/:id/match-fixed', plaidController.matchToFixedExpense);
+router.post('/inbox/:id/match-income', plaidController.matchToIncome);
+router.post('/inbox/:id/add-income', plaidController.addAsIncome);
 router.post('/inbox/:id/ignore', plaidController.ignore);
 router.post('/inbox/:id/unignore', plaidController.unignore);
 

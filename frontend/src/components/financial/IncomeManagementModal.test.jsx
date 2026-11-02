@@ -77,6 +77,21 @@ describe('IncomeManagementModal', () => {
       });
     });
 
+    it('marks income received in the bank', async () => {
+      incomeApi.getMonthlyIncomeSources.mockResolvedValue({
+        ...mockIncomeSources,
+        sources: [
+          { ...mockIncomeSources.sources[0], bankConfirmation: { landedDate: '2024-12-13', amount: 5000, plannedAmount: 5000, name: 'PAYROLL' } },
+          { ...mockIncomeSources.sources[1], bankConfirmation: null }
+        ]
+      });
+      render(<IncomeManagementModal {...defaultProps} />);
+
+      const indicator = await screen.findByTestId('income-confirmation-indicator');
+      expect(indicator.getAttribute('title')).toContain('landed Dec 13, 2024');
+      expect(screen.getAllByTestId('income-confirmation-indicator')).toHaveLength(1);
+    });
+
     it('displays total monthly gross', async () => {
       render(<IncomeManagementModal {...defaultProps} />);
       

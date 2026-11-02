@@ -102,10 +102,83 @@ function findFixedCandidates(txn, fixedExpenses) {
       || a.id - b.id);
 }
 
+// ─── Income ───
+
+/** Pay due on the 1st often lands a few days early (weekends, holidays), and vice versa at month start. */
+const INCOME_BOUNDARY_DAYS = 3;
+
+const monthIndex = (year, month) => year * 12 + month - 1;
+
+/** Lower-case words of a bank description or income source name ("JAT - Direct deposit" → jat, direct, deposit). */
+const nameTokens = (text) => String(text || '').toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+
+/** A bank deposit (money in) on a non-credit-card account. Plaid amounts are negative for money in. */
+const isDeposit = (txn) => txn.amount < 0 && txn.paymentMethodType !== 'credit_card';
+
+/**
+ * Months (signed offset from the deposit's month) whose income a deposit can confirm: its own month, plus the
+ * next month when it lands in the last 3 days, or the previous month when it lands in the first 3 days.
+ */
+function incomeMonthOffset(txn, source) {
+  const [year, month, day] = txn.date.split('-').map(Number);
+  const offset = monthIndex(source.year, source.month) - monthIndex(year, month);
+  if (offset === 0) return 0;
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  if (offset === 1 && lastDay - day < INCOME_BOUNDARY_DAYS) return 1;
+  if (offset === -1 && day <= INCOME_BOUNDARY_DAYS) return -1;
+  return null;
+}
+
+/**
+ * A bank deposit can confirm an expected income source in its month (or the neighbouring month near a month
+ * boundary). Income sources have no account or day, so the amount may differ and ranking does the rest.
+ * @param {{amount: number, date: string, paymentMethodType?: string}} txn
+ * @param {{year: number, month: number}} source
+ */
+function isIncomeCandidate(txn, source) {
+  return isDeposit(txn) && incomeMonthOffset(txn, source) !== null;
+}
+
+/**
+ * How well an income source's name fits a deposit: 2 when this bank description confirmed a source of the same
+ * name before (`learnedNames`, lower-case), 1 when every word of the source name appears in the description.
+ */
+function incomeNameScore(txn, source, learnedNames = new Set()) {
+  const sourceName = String(source.name || '').trim().toLowerCase();
+  if (learnedNames.has(sourceName)) return 2;
+  const sourceTokens = nameTokens(source.name);
+  if (sourceTokens.length === 0) return 0;
+  const bankTokens = new Set([...nameTokens(txn.merchantName), ...nameTokens(txn.name)]);
+  return sourceTokens.every(token => bankTokens.has(token)) ? 1 : 0;
+}
+
+/**
+ * Income candidates for one deposit: best name fit first, then the deposit's own month, then the closest amount.
+ * @param {Set<string>} [learnedNames] lower-case income source names previously confirmed by this description
+ */
+function findIncomeCandidates(txn, sources, learnedNames = new Set()) {
+  const depositCents = Math.abs(toCents(txn.amount));
+  return sources
+    .filter(source => isIncomeCandidate(txn, source))
+    .map(source => ({ source, nameScore: incomeNameScore(txn, source, learnedNames) }))
+    .sort((a, b) => b.nameScore - a.nameScore
+      || Math.abs(incomeMonthOffset(txn, a.source)) - Math.abs(incomeMonthOffset(txn, b.source))
+      || Math.abs(toCents(a.source.amount) - depositCents) - Math.abs(toCents(b.source.amount) - depositCents)
+      || a.source.id - b.source.id)
+    .map(({ source, nameScore }) => ({ ...source, nameScore }));
+}
+
 module.exports = {
   MATCH_WINDOW_DAYS,
   FIXED_EARLY_DAYS,
   FIXED_LATE_DAYS,
+  INCOME_BOUNDARY_DAYS,
+  nameTokens,
+  isDeposit,
+  incomeMonthOffset,
+  isIncomeCandidate,
+  incomeNameScore,
+  findIncomeCandidates,
   toCents,
   dayDiff,
   signedDayDiff,

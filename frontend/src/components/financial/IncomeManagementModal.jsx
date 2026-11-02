@@ -12,6 +12,7 @@ import { savePlannedSavingsFromPreviousMonth } from '../../services/budgetApi';
 import { getMonthNameLong } from '../../utils/formatters';
 import { createLogger } from '../../utils/logger';
 import ConfirmDialog from '../shared/ConfirmDialog';
+import IncomeConfirmationIndicator from '../bank-import/IncomeConfirmationIndicator';
 
 const logger = createLogger('IncomeManagementModal');
 
@@ -405,7 +406,15 @@ const IncomeManagementModal = ({ isOpen, onClose, year, month, onUpdate }) => {
                           </div>
                         ) : (
                           <div className="income-source-display">
-                            <span className="income-source-name">{source.name}</span>
+                            <span className="income-source-name">
+                              {source.name}
+                              {source.bankConfirmation && (
+                                <>
+                                  {' '}
+                                  <IncomeConfirmationIndicator incomeSource={source} />
+                                </>
+                              )}
+                            </span>
                             <span className="income-source-category">{source.category || 'Other'}</span>
                             <span className="income-source-amount">
                               ${parseFloat(source.amount).toFixed(2)}

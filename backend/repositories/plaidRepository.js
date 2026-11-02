@@ -333,6 +333,105 @@ class PlaidRepository {
     return confirmations;
   }
 
+  // ─── Income ───
+
+  /**
+   * Income sources not yet confirmed by a bank deposit, for an inclusive range of month indexes
+   * (year * 12 + month - 1).
+   */
+  async findUnlinkedIncomeSources(fromMonthIdx, toMonthIdx) {
+    return dbHelper.queryAll(
+      `SELECT s.id, s.year, s.month, s.name, s.amount, s.category
+       FROM income_sources s
+       WHERE s.year BETWEEN ? AND ?
+         AND (s.year * 12 + s.month - 1) BETWEEN ? AND ?
+         AND NOT EXISTS (SELECT 1 FROM plaid_income_links l WHERE l.income_source_id = s.id)
+       ORDER BY s.year, s.month, s.name`,
+      [Math.floor(fromMonthIdx / 12), Math.floor(toMonthIdx / 12), fromMonthIdx, toMonthIdx]
+    );
+  }
+
+  async findIncomeSourceForMatching(id) {
+    return dbHelper.queryOne(
+      `SELECT s.id, s.year, s.month, s.name, s.amount, s.category,
+              EXISTS (SELECT 1 FROM plaid_income_links l WHERE l.income_source_id = s.id) AS linked
+       FROM income_sources s WHERE s.id = ?`,
+      [id]
+    );
+  }
+
+  /**
+   * Income source names (and categories) that earlier deposits with the same bank description confirmed,
+   * most recent first, keyed by the lower-case description (merchant name, else name).
+   * @returns {Promise<Map<string, Array<{name: string, category: string}>>>}
+   */
+  async findLearnedIncomeNames() {
+    const rows = await dbHelper.queryAll(
+      `SELECT LOWER(TRIM(COALESCE(pt.merchant_name, pt.name))) AS description, s.name, s.category
+       FROM plaid_income_links l
+       JOIN plaid_transactions pt ON pt.id = l.plaid_transaction_id
+       JOIN income_sources s ON s.id = l.income_source_id
+       ORDER BY l.landed_date DESC, l.id DESC`
+    );
+    const learned = new Map();
+    for (const { description, name, category } of rows) {
+      if (!description) continue;
+      const list = learned.get(description) || [];
+      if (!list.some(entry => entry.name.toLowerCase() === name.toLowerCase())) list.push({ name, category });
+      learned.set(description, list);
+    }
+    return learned;
+  }
+
+  /**
+   * Atomically move a 'new' transaction to `status` and link it to an income source.
+   * @param {'matched'|'added'} status matched = confirmed an expected source; added = Add as income
+   * @returns {Promise<boolean>} false when the transaction was no longer 'new'
+   */
+  async linkIncomeSource(transactionId, incomeSourceId, landedDate, plannedAmount, status = 'matched') {
+    return dbHelper.runInTransaction(async (tx) => {
+      const { changes } = await tx.run(
+        "UPDATE plaid_transactions SET status = ?, expense_id = NULL WHERE id = ? AND status = 'new'",
+        [status, transactionId]
+      );
+      if (changes === 0) return false;
+      await tx.run(
+        'INSERT INTO plaid_income_links (plaid_transaction_id, income_source_id, landed_date, planned_amount) VALUES (?, ?, ?, ?)',
+        [transactionId, incomeSourceId, landedDate, plannedAmount]
+      );
+      return true;
+    });
+  }
+
+  /** Undo linkIncomeSource (used when a follow-up step fails). */
+  async unlinkIncomeSource(transactionId) {
+    await dbHelper.runInTransaction(async (tx) => {
+      await tx.run('DELETE FROM plaid_income_links WHERE plaid_transaction_id = ?', [transactionId]);
+      await tx.run("UPDATE plaid_transactions SET status = 'new' WHERE id = ? AND status IN ('matched', 'added')", [transactionId]);
+    });
+  }
+
+  /**
+   * Bank confirmations for the given income sources.
+   * @returns {Promise<Map<number, {landedDate: string, amount: number, plannedAmount: (number|null), name: string}>>}
+   */
+  async findConfirmationsForIncomeSources(incomeSourceIds) {
+    const confirmations = new Map();
+    if (incomeSourceIds.length === 0) return confirmations;
+    const rows = await dbHelper.queryAll(
+      `SELECT l.income_source_id AS incomeSourceId, l.landed_date AS landedDate, l.planned_amount AS plannedAmount,
+              ABS(pt.amount) AS amount, COALESCE(pt.merchant_name, pt.name) AS name
+       FROM plaid_income_links l
+       JOIN plaid_transactions pt ON pt.id = l.plaid_transaction_id
+       WHERE l.income_source_id IN (${incomeSourceIds.map(() => '?').join(',')})`,
+      incomeSourceIds
+    );
+    for (const { incomeSourceId, ...confirmation } of rows) {
+      confirmations.set(incomeSourceId, confirmation);
+    }
+    return confirmations;
+  }
+
   // ─── Expense list ───
 
   /**

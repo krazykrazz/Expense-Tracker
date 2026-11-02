@@ -294,12 +294,13 @@ describe('useDataSync visibility behavior', () => {
     expect(callbacks.refreshPeople).toHaveBeenCalledTimes(1);
     expect(callbacks.refreshPaymentMethods).toHaveBeenCalledTimes(1);
 
-    expect(syncEvents).toHaveLength(5);
+    expect(syncEvents).toHaveLength(6);
     expect(syncEvents).toContain('loan');
     expect(syncEvents).toContain('income');
     expect(syncEvents).toContain('investment');
     expect(syncEvents).toContain('fixed_expense');
     expect(syncEvents).toContain('credit_card');
+    expect(syncEvents).toContain('plaid');
 
     window.removeEventListener('syncEvent', syncListener);
   });

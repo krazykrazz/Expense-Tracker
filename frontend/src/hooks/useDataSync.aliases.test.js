@@ -71,6 +71,7 @@ describe('backend entity type aliases', () => {
     ['credit_card_payment', 'credit_card'],
     ['credit_card_statement', 'credit_card'],
     ['billing_cycle', 'credit_card'],
+    ['plaid_transaction', 'plaid'],
   ])('%s is dispatched to window listeners as %s', (backendType, routedType) => {
     const events = [];
     const listener = (e) => events.push(e.detail.entityType);
@@ -125,7 +126,7 @@ describe('backend entity type aliases', () => {
   });
 
   test('every alias targets a type that useDataSync routes', () => {
-    const routed = new Set(['expense', 'budget', 'people', 'payment_method', 'invoice', 'loan', 'income', 'investment', 'fixed_expense', 'credit_card']);
+    const routed = new Set(['expense', 'budget', 'people', 'payment_method', 'invoice', 'loan', 'income', 'investment', 'fixed_expense', 'credit_card', 'plaid']);
     for (const target of Object.values(ENTITY_TYPE_ALIASES)) {
       expect(routed.has(target)).toBe(true);
     }

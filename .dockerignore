@@ -8,7 +8,8 @@ yarn-error.log*
 # Development
 .git
 .gitignore
-.env*
+# Any depth: `.env*` alone only matches the root, and `COPY backend/` would bake backend/.env (Plaid secrets) into the image
+**/.env*
 .vscode
 
 # Build artifacts
@@ -74,8 +75,9 @@ __pycache__/
 logs/
 *.log
 
-# Preview environment data
+# Preview and staging environment data (copies of production data)
 preview-data/
+staging-data/
 
 # Runtime data directories (large, not needed for build)
 backend/config/*.db

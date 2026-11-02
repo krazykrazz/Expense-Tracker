@@ -38,6 +38,7 @@ import { SharedDataProvider, useSharedDataContext } from './contexts/SharedDataC
 import { AuthProvider, useAuthContext } from './contexts/AuthContext';
 import LoginScreen from './components/system/LoginScreen';
 import UserMenu from './components/system/UserMenu';
+import BankImportButton from './components/bank-import/BankImportButton';
 import Icon from './components/shared/Icon';
 import logo from './assets/logo-mark.svg';
 
@@ -396,6 +397,7 @@ function AppContent({ onPaymentMethodsUpdate }) {
           >
             <Icon name={theme === 'dark' ? 'sun' : 'moon'} />
           </button>
+          <BankImportButton />
           <button
             className="header-icon-button"
             onClick={openSystemModal}

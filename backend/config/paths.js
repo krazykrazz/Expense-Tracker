@@ -66,6 +66,15 @@ function getStatementsPath() {
 }
 
 /**
+ * Directory for generated encryption keys. Deliberately not part of backups,
+ * so a backup archive never contains the key that decrypts stored secrets.
+ * @returns {string} Path to secrets directory
+ */
+function getSecretsPath() {
+  return path.join(CONFIG_DIR, 'secrets');
+}
+
+/**
  * Ensure all required directories exist
  * Creates directory structure if it doesn't exist
  * @returns {Promise<void>}
@@ -97,6 +106,7 @@ module.exports = {
   getBackupConfigPath,
   getInvoicesPath,
   getStatementsPath,
+  getSecretsPath,
   ensureDirectories,
   isContainerized
 };

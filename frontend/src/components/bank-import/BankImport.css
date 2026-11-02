@@ -1,0 +1,526 @@
+/* Bank Import (Plaid) modal, inbox and expense-list indicator */
+
+.bank-import-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--bg-overlay, rgba(0, 0, 0, 0.5));
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: var(--z-modal, 500);
+}
+
+.bank-import-modal {
+  background: var(--bg-card, white);
+  color: var(--text-primary);
+  border-radius: var(--radius-xl, 16px);
+  width: 92%;
+  max-width: 860px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-2xl);
+  font-family: var(--font-sans);
+}
+
+.bank-import-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-4, 16px) var(--spacing-5, 20px);
+  border-bottom: 1px solid var(--border-default);
+}
+
+.bank-import-header h2 {
+  margin: 0;
+  font-size: var(--heading-2, 20px);
+  font-weight: var(--font-semibold, 600);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2, 8px);
+}
+
+.bank-import-env-badge {
+  font-size: var(--text-xs, 12px);
+  font-weight: var(--font-medium, 500);
+  padding: 2px 8px;
+  border-radius: var(--radius-full, 999px);
+  background: var(--color-warning-light);
+  color: #92400e;
+}
+
+.bank-import-close {
+  background: none;
+  border: none;
+  font-size: 20px;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  padding: var(--spacing-2, 8px);
+  border-radius: var(--radius-md);
+}
+
+.bank-import-close:hover {
+  background: var(--bg-muted);
+  color: var(--text-primary);
+}
+
+.bank-import-tabs {
+  display: flex;
+  gap: var(--spacing-1, 4px);
+  padding: 0 var(--spacing-5, 20px);
+  border-bottom: 1px solid var(--border-default);
+}
+
+.bank-import-tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: var(--spacing-3, 12px) var(--spacing-4, 16px);
+  font: inherit;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.bank-import-tab.active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+  font-weight: var(--font-semibold, 600);
+}
+
+.bank-import-body {
+  padding: var(--spacing-4, 16px) var(--spacing-5, 20px);
+  overflow-y: auto;
+}
+
+.bank-import-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--spacing-2, 8px);
+  margin-bottom: var(--spacing-3, 12px);
+}
+
+.bank-import-primary,
+.bank-import-secondary {
+  font: inherit;
+  font-size: var(--text-sm, 13px);
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  border: 1px solid var(--color-primary);
+}
+
+.bank-import-primary {
+  background: var(--color-primary);
+  color: white;
+}
+
+.bank-import-secondary {
+  background: transparent;
+  color: var(--color-primary);
+}
+
+.bank-import-primary:disabled,
+.bank-import-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.bank-import-link,
+.bank-import-link-danger {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  color: var(--color-primary);
+}
+
+.bank-import-link-danger {
+  color: var(--color-negative);
+}
+
+.bank-import-muted {
+  color: var(--text-tertiary);
+  font-size: var(--text-sm, 13px);
+}
+
+.bank-import-empty {
+  padding: var(--spacing-6, 24px);
+  text-align: center;
+  color: var(--text-tertiary);
+}
+
+.bank-import-error,
+.bank-import-message {
+  padding: var(--spacing-2, 8px) var(--spacing-3, 12px);
+  border-radius: var(--radius-md);
+  margin: var(--spacing-2, 8px) 0;
+  font-size: var(--text-sm, 13px);
+}
+
+.bank-import-error {
+  background: var(--color-negative-light);
+  color: #991b1b;
+}
+
+.bank-import-message {
+  background: var(--color-primary-light);
+  color: var(--text-primary);
+}
+
+:root[data-theme='dark'] .bank-import-message,
+:root[data-theme='dark'] .bank-import-error,
+:root[data-theme='dark'] .bank-import-env-badge {
+  background: var(--bg-muted);
+  color: var(--text-primary);
+}
+
+/* Connections */
+
+.bank-connection {
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-3, 12px);
+  margin-bottom: var(--spacing-3, 12px);
+}
+
+.bank-connection-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--spacing-3, 12px);
+}
+
+.bank-connection-error {
+  color: var(--color-negative);
+}
+
+.bank-account-list {
+  list-style: none;
+  margin: var(--spacing-2, 8px) 0 0;
+  padding: 0;
+}
+
+.bank-account {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-3, 12px);
+  padding: var(--spacing-2, 8px) 0;
+  border-top: 1px solid var(--border-default);
+}
+
+.bank-account-mapping {
+  min-width: 180px;
+}
+
+/* Inbox */
+
+.inbox-filter {
+  display: inline-flex;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.inbox-filter-button {
+  background: transparent;
+  border: none;
+  padding: 6px 12px;
+  font: inherit;
+  font-size: var(--text-sm, 13px);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.inbox-filter-button.active {
+  background: var(--color-primary);
+  color: white;
+}
+
+.inbox-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.inbox-row {
+  border-bottom: 1px solid var(--border-default);
+  padding: var(--spacing-2, 8px) 0;
+}
+
+.inbox-row-main {
+  display: grid;
+  grid-template-columns: 90px minmax(0, 1fr) 110px 120px auto;
+  align-items: center;
+  gap: var(--spacing-3, 12px);
+}
+
+.inbox-row-date {
+  font-size: var(--text-sm, 13px);
+  color: var(--text-secondary);
+}
+
+.inbox-row-place strong {
+  overflow-wrap: anywhere;
+}
+
+.inbox-row-amount {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--font-semibold, 600);
+}
+
+.inbox-row-amount.credit {
+  color: var(--color-positive-dark, #15803d);
+}
+
+.inbox-row-actions {
+  display: flex;
+  gap: var(--spacing-1, 4px);
+  justify-content: flex-end;
+}
+
+.inbox-badge {
+  display: inline-block;
+  font-size: var(--text-xs, 12px);
+  padding: 2px 8px;
+  border-radius: var(--radius-full, 999px);
+  background: var(--bg-muted);
+  color: var(--text-secondary);
+  margin-left: 4px;
+}
+
+.inbox-badge.match {
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+}
+
+.inbox-badge.warning {
+  background: var(--color-warning-light);
+  color: #92400e;
+}
+
+.inbox-add-form {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--spacing-2, 8px);
+  margin-top: var(--spacing-2, 8px);
+  padding: var(--spacing-3, 12px);
+  background: var(--bg-subtle);
+  border-radius: var(--radius-md);
+}
+
+.inbox-add-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: var(--text-xs, 12px);
+  color: var(--text-secondary);
+}
+
+.inbox-form-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: var(--spacing-2, 8px);
+}
+
+.inbox-match-picker {
+  margin-top: var(--spacing-2, 8px);
+  padding: var(--spacing-3, 12px);
+  background: var(--bg-subtle);
+  border-radius: var(--radius-md);
+}
+
+.inbox-match-picker ul {
+  list-style: none;
+  margin: var(--spacing-2, 8px) 0;
+  padding: 0;
+}
+
+.inbox-match-picker li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-3, 12px);
+  padding: 4px 0;
+}
+
+@media (max-width: 768px) {
+  .inbox-row-main {
+    grid-template-columns: 1fr auto;
+  }
+
+  .inbox-row-badges,
+  .inbox-row-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+
+  .inbox-add-form {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* Expense list indicator */
+
+.bank-confirmed-indicator {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  border-radius: var(--radius-full, 999px);
+  vertical-align: middle;
+  cursor: default;
+  color: var(--color-positive-dark, #15803d);
+  background: var(--color-positive-light, #dcfce7);
+  border: 1px solid rgba(34, 197, 94, 0.25);
+}
+
+.bank-confirmed-indicator.differs {
+  color: #92400e;
+  background: var(--color-warning-light);
+  border-color: rgba(245, 158, 11, 0.4);
+}
+
+.bank-confirmed-warning {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 12px;
+  width: 12px;
+  height: 12px;
+  text-align: center;
+  border-radius: 50%;
+  background: var(--color-warning);
+  color: white;
+}
+
+@media print {
+  .bank-confirmed-indicator {
+    background: transparent !important;
+    color: #000 !important;
+    border: 1px solid #000 !important;
+  }
+}
+
+/* Settings → Bank Import (theme variables only, so it stays readable in dark mode) */
+
+.plaid-settings-section {
+  background: var(--bg-subtle);
+  color: var(--text-primary);
+  padding: var(--spacing-5, 20px);
+  border-radius: var(--radius-lg, 12px);
+  border: 1px solid var(--border-default);
+  font-family: var(--font-sans);
+}
+
+.plaid-settings-section h3 {
+  margin: 0 0 var(--spacing-3, 12px);
+  color: var(--text-primary);
+  font-size: var(--heading-4, 16px);
+  font-weight: var(--font-semibold, 600);
+}
+
+.plaid-settings-section a {
+  color: var(--color-primary);
+}
+
+.plaid-settings-environment strong {
+  color: var(--text-primary);
+}
+
+.plaid-settings-status {
+  padding: var(--spacing-2, 8px) var(--spacing-3, 12px);
+  border-radius: var(--radius-md);
+  margin: var(--spacing-3, 12px) 0 var(--spacing-2, 8px);
+  background: var(--bg-muted);
+  color: var(--text-secondary);
+  font-size: var(--text-sm, 13px);
+}
+
+.plaid-settings-status.enabled {
+  background: var(--color-positive-light, #dcfce7);
+  color: var(--color-positive-dark, #15803d);
+}
+
+:root[data-theme='dark'] .plaid-settings-status.enabled {
+  background: var(--bg-muted);
+  color: var(--color-positive, #22c55e);
+}
+
+.plaid-settings-problems {
+  margin: 0 0 var(--spacing-2, 8px);
+  padding-left: var(--spacing-6, 24px);
+}
+
+.plaid-settings-form {
+  border: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3, 12px);
+}
+
+.plaid-settings-form:disabled {
+  opacity: 0.7;
+}
+
+.plaid-settings-environments {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2, 8px);
+}
+
+.plaid-settings-environment {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  column-gap: var(--spacing-2, 8px);
+  align-items: baseline;
+  font-size: var(--text-sm, 13px);
+  cursor: pointer;
+}
+
+.plaid-settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: var(--text-sm, 13px);
+  color: var(--text-secondary);
+}
+
+.plaid-settings-field input {
+  font: inherit;
+  font-family: var(--font-mono, monospace);
+  padding: 6px 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-default);
+  background: var(--bg-card, white);
+  color: var(--text-primary);
+}
+
+.plaid-settings-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2, 8px);
+}
+
+.plaid-settings-actions .bank-import-link-danger {
+  margin-left: auto;
+}
+
+.plaid-settings-actions .bank-import-link-danger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.plaid-settings-footnote {
+  margin-top: var(--spacing-3, 12px);
+}

@@ -406,4 +406,22 @@ describe('ExpenseContext Unit Tests', () => {
       expect(result.current.budgetAlertRefreshTrigger).toBe(initialBudgetTrigger + 1);
     });
   });
+
+  it('handleExpenseUpdated keeps the bank link, which update responses do not include', async () => {
+    const bankLink = { status: 'matched', name: 'Coffee Shop', rawName: 'SQ *COFFEE', date: '2026-10-10', amount: 12 };
+    globalThis.fetch = mockFetchSuccess([
+      { id: 1, date: '2026-10-10', place: 'Coffee', amount: 12, type: 'Dining Out', method: 'Debit', bankLink },
+      { id: 2, date: '2026-10-11', place: 'Cash thing', amount: 5, type: 'Other', method: 'Cash', bankLink: null },
+    ]);
+    const { result } = renderHook(() => useExpenseContext(), { wrapper: createWrapper() });
+    await waitFor(() => expect(result.current.expenses).toHaveLength(2));
+
+    act(() => {
+      result.current.handleExpenseUpdated({ id: 1, date: '2026-10-10', place: 'Coffee', amount: 13, type: 'Dining Out', method: 'Debit' });
+      result.current.handleExpenseUpdated({ id: 2, date: '2026-10-11', place: 'Cash thing', amount: 6, type: 'Other', method: 'Cash' });
+    });
+
+    expect(result.current.expenses.find(e => e.id === 1)).toMatchObject({ amount: 13, bankLink });
+    expect(result.current.expenses.find(e => e.id === 2)).toMatchObject({ amount: 6, bankLink: null });
+  });
 });

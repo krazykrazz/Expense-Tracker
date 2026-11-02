@@ -97,18 +97,19 @@ describe('SettingsModal', () => {
   });
 
   describe('Tab structure', () => {
-    it('should render exactly 4 tabs: General, Backup Configuration, People, and Security', async () => {
+    it('should render exactly 5 tabs: General, Backup Configuration, People, Security, and Bank Import', async () => {
       render(<SettingsModal />);
       await waitForLoaded();
 
       const tabButtons = screen.getAllByRole('button').filter(btn =>
         btn.classList.contains('tab-button')
       );
-      expect(tabButtons).toHaveLength(4);
+      expect(tabButtons).toHaveLength(5);
       expect(screen.getByText('⚙️ General')).toBeInTheDocument();
       expect(screen.getByText('💾 Backup Configuration')).toBeInTheDocument();
       expect(screen.getByText('👥 People')).toBeInTheDocument();
       expect(screen.getByText('🔒 Security')).toBeInTheDocument();
+      expect(screen.getByText('🏦 Bank Import')).toBeInTheDocument();
     });
 
     it('should default to General tab', async () => {

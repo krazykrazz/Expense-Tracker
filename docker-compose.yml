@@ -15,6 +15,13 @@ services:
       # V8 sizes its heap from host RAM, not the cgroup limit, so without this it
       # would grow past 512M and be OOM-killed before ever collecting. ~75% of the limit.
       - NODE_OPTIONS=--max-old-space-size=384
+      # Plaid bank import is set up in the app (Settings → Bank Import). Only if you prefer
+      # environment variables: put the values in an untracked .env next to this file and
+      # uncomment (this makes the in-app settings read-only). Never commit the secrets.
+      # - PLAID_CLIENT_ID=${PLAID_CLIENT_ID}
+      # - PLAID_SECRET=${PLAID_SECRET}
+      # - PLAID_ENV=${PLAID_ENV}
+      # - PLAID_TOKEN_KEY=${PLAID_TOKEN_KEY}
     restart: unless-stopped
     # Must exceed the app's 10s shutdown timeout, or Docker SIGKILLs mid-checkpoint.
     stop_grace_period: 15s

@@ -9,9 +9,9 @@ The application uses SQLite3 for data persistence. The database file lives at `<
 - `PRAGMA foreign_keys = ON` is issued on every connection (`backend/database/db.js`).
 - `PRAGMA journal_mode = WAL` is enabled once at server startup (`backend/server.js`). `synchronous` is not set explicitly, so the SQLite default (`FULL`) applies.
 - All `id` primary keys are `INTEGER PRIMARY KEY AUTOINCREMENT`. Timestamp columns default to `CURRENT_TIMESTAMP` (UTC).
-- `updated_at` is maintained by application code, except for `budgets`, `budget_allocations` and `credit_card_billing_cycles`, which also have `AFTER UPDATE` triggers (see [Triggers](#triggers)).
+- `updated_at` is maintained by application code, except for `budgets`, `budget_allocations`, `credit_card_billing_cycles` and the three `plaid_*` tables, which also have `AFTER UPDATE` triggers (see [Triggers](#triggers)).
 
-The schema contains **27 tables**:
+The schema contains **30 tables**:
 
 | Group | Tables |
 |-------|--------|
@@ -19,6 +19,7 @@ The schema contains **27 tables**:
 | Financial tracking | `loans`, `loan_balances`, `loan_payments`, `mortgage_payments`, `investments`, `investment_values`, `budgets`, `budget_allocations` |
 | Medical & tax | `people`, `expense_people`, `expense_invoices` |
 | Payment methods | `payment_methods`, `credit_card_payments`, `credit_card_statements`, `credit_card_billing_cycles` |
+| Bank import (Plaid) | `plaid_items`, `plaid_accounts`, `plaid_transactions` |
 | Authentication | `users` |
 | Utility | `place_names`, `reminders`, `dismissed_anomalies`, `anomaly_suppression_rules`, `activity_logs`, `settings`, `schema_migrations` |
 
@@ -441,6 +442,63 @@ Billing cycle history with statement balances.
 
 **Indexes**: `idx_billing_cycles_payment_method`, `idx_billing_cycles_cycle_end` (cycle_end_date), `idx_billing_cycles_pm_cycle_end` (payment_method_id, cycle_end_date)
 
+## Plaid Tables
+
+Optional bank import ([Plaid Bank Import](features/PLAID_INTEGRATION.md)). All three tables have `AFTER UPDATE` triggers that set `updated_at`.
+
+### plaid_items
+
+One row per bank login connected through Plaid.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| id | INTEGER PRIMARY KEY | Unique identifier |
+| item_id | TEXT NOT NULL UNIQUE | Plaid item id |
+| institution_name | TEXT | Bank name from Plaid Link |
+| access_token_enc | TEXT NOT NULL | Plaid access token, AES-256-GCM encrypted with `PLAID_TOKEN_KEY` (`v1:iv:tag:ciphertext`) |
+| sync_cursor | TEXT | `/transactions/sync` cursor; advanced only after a full sync is stored |
+| environment | TEXT NOT NULL | 'sandbox' or 'production' (CHECK) |
+| last_synced_at | TEXT | Last successful sync (UTC) |
+| last_error | TEXT | Last Plaid error code, cleared by the next successful sync |
+| created_at, updated_at | TEXT NOT NULL | Timestamps |
+
+### plaid_accounts
+
+Bank accounts under an item, and the payment method their transactions are imported as.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| id | INTEGER PRIMARY KEY | Unique identifier |
+| plaid_item_id | INTEGER NOT NULL | Foreign key to plaid_items (ON DELETE CASCADE) |
+| account_id | TEXT NOT NULL UNIQUE | Plaid account id |
+| name, mask, type, subtype | TEXT | Account details from Plaid |
+| payment_method_id | INTEGER | Payment method for imported expenses; NULL = don't import (ON DELETE SET NULL) |
+| created_at, updated_at | TEXT NOT NULL | Timestamps |
+
+**Indexes**: `idx_plaid_accounts_item` (plaid_item_id)
+
+### plaid_transactions
+
+Posted bank transactions staged for review in the Import Inbox.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| id | INTEGER PRIMARY KEY | Unique identifier |
+| transaction_id | TEXT NOT NULL UNIQUE | Plaid transaction id (makes re-syncs idempotent) |
+| plaid_account_id | INTEGER | Foreign key to plaid_accounts (ON DELETE SET NULL, so added/matched links survive a disconnect) |
+| amount | REAL NOT NULL | Plaid amount: positive = money out, negative = refund/credit |
+| iso_currency_code | TEXT | Currency code |
+| date | TEXT NOT NULL | Posted date (YYYY-MM-DD) |
+| authorized_date | TEXT | Purchase date when Plaid provides it |
+| name, merchant_name | TEXT | Raw bank description and Plaid's cleaned merchant name |
+| status | TEXT NOT NULL DEFAULT 'new' | 'new', 'added', 'matched' or 'ignored' (CHECK) |
+| expense_id | INTEGER | Linked expense for 'added'/'matched' (ON DELETE SET NULL) |
+| created_at, updated_at | TEXT NOT NULL | Timestamps |
+
+**Indexes**: `idx_plaid_transactions_status_date` (status, date), `idx_plaid_transactions_account` (plaid_account_id), `idx_plaid_transactions_expense` (UNIQUE on expense_id WHERE expense_id IS NOT NULL: one bank transaction per expense)
+
+Sync only modifies or deletes rows whose status is still 'new'. Deleting a linked expense puts its row back to 'new' (trigger `plaid_transactions_unlink_on_expense_delete`).
+
 ## Authentication Tables
 
 ### users
@@ -566,8 +624,8 @@ Key-value store for application settings (e.g., retention policy configuration, 
 
 | Field | Type | Description |
 |-------|------|-------------|
-| key | TEXT PRIMARY KEY | Setting identifier (`activity_log_max_age_days`, `activity_log_max_count`, `business_timezone`, `last_known_version`, `jwt_secret`) |
-| value | TEXT NOT NULL | Setting value (stored as text, parsed by service layer) |
+| key | TEXT PRIMARY KEY | Setting identifier (`activity_log_max_age_days`, `activity_log_max_count`, `business_timezone`, `last_known_version`, `jwt_secret`, Plaid: `plaid_client_id`, `plaid_secret_enc`, `plaid_environment`, `plaid_production_items_created`) |
+| value | TEXT NOT NULL | Setting value (stored as text, parsed by service layer). `plaid_secret_enc` is AES-256-GCM encrypted with the key in `<CONFIG_DIR>/secrets/plaid.key` (or `PLAID_TOKEN_KEY`); an empty string means "not set" |
 | updated_at | TEXT | Last update timestamp |
 
 ### schema_migrations
@@ -599,6 +657,9 @@ Current entries written by `runMigrations()`: `consolidated_schema_v1`, `auth_in
 - `expenses` → `expense_invoices`
 - `expenses` → `dismissed_anomalies`
 - `people` → `expense_invoices` (optional, via person_id)
+- `plaid_items` → `plaid_accounts` → `plaid_transactions`
+- `payment_methods` → `plaid_accounts` (optional, via payment_method_id)
+- `expenses` → `plaid_transactions` (at most one, via expense_id)
 
 ### Many-to-Many Relationships
 
@@ -606,7 +667,7 @@ Current entries written by `runMigrations()`: `consolidated_schema_v1`, `auth_in
 
 ## Indexes
 
-All indexes are listed per table above. `schema.js` (`INDEX_STATEMENTS`) creates 46 indexes on every initialization (production and test). Migrations add the following on production databases only (test databases do not run migrations):
+All indexes are listed per table above. `schema.js` (`INDEX_STATEMENTS`) creates 51 indexes on every initialization (production and test). Migrations add the following on production databases only (test databases do not run migrations):
 
 - `performance_compound_indexes_v1`: `idx_expenses_date_type`, `idx_expenses_date_method`, `idx_expenses_week`, `idx_expenses_place_type`, `idx_expenses_date_place`. It also issues `CREATE INDEX IF NOT EXISTS idx_activity_logs_timestamp ON activity_logs(timestamp)`, which is a no-op because `schema.js` already created an index with that name (on `timestamp DESC`).
 - `dismissed_anomalies_nullable_expense_id_v1`: `idx_dismissed_anomalies_anomaly_type`
@@ -618,6 +679,10 @@ All indexes are listed per table above. `schema.js` (`INDEX_STATEMENTS`) creates
 | `update_budgets_timestamp` | budgets | AFTER UPDATE: sets `updated_at = CURRENT_TIMESTAMP` |
 | `update_budget_allocations_timestamp` | budget_allocations | AFTER UPDATE: sets `updated_at = CURRENT_TIMESTAMP` |
 | `update_billing_cycles_timestamp` | credit_card_billing_cycles | AFTER UPDATE: sets `updated_at = CURRENT_TIMESTAMP` |
+| `update_plaid_items_timestamp` | plaid_items | AFTER UPDATE: sets `updated_at = CURRENT_TIMESTAMP` |
+| `update_plaid_accounts_timestamp` | plaid_accounts | AFTER UPDATE: sets `updated_at = CURRENT_TIMESTAMP` |
+| `update_plaid_transactions_timestamp` | plaid_transactions | AFTER UPDATE: sets `updated_at = CURRENT_TIMESTAMP` |
+| `plaid_transactions_unlink_on_expense_delete` | expenses | BEFORE DELETE: linked `plaid_transactions` go back to `status = 'new'`, `expense_id = NULL`, so the bank transaction returns to the Import Inbox instead of being stranded |
 
 ## Foreign Key Constraints
 
@@ -630,11 +695,15 @@ Foreign keys are enforced (`PRAGMA foreign_keys = ON` per connection):
   - expense_invoices (when expense deleted)
   - dismissed_anomalies (when expense deleted)
   - credit_card_payments, credit_card_statements, credit_card_billing_cycles (when payment method deleted)
+  - plaid_accounts (when plaid item deleted)
 
 - **SET NULL**: Foreign key is set to NULL when parent is deleted
   - fixed_expenses.linked_loan_id (when loan deleted)
   - budget_allocations.investment_id (when investment deleted)
   - expense_invoices.person_id (when person deleted)
+  - plaid_accounts.payment_method_id (when payment method deleted)
+  - plaid_transactions.plaid_account_id (when bank account deleted, e.g. on disconnect)
+  - plaid_transactions.expense_id (when expense deleted)
 
 - **No action (delete is rejected while referenced)**
   - expenses.payment_method_id
@@ -657,6 +726,7 @@ Foreign keys are enforced (`PRAGMA foreign_keys = ON` per connection):
 - `payment_methods`: (display_name)
 - `credit_card_billing_cycles`: (payment_method_id, cycle_end_date)
 - `users`: (username)
+- `plaid_items`: (item_id); `plaid_accounts`: (account_id); `plaid_transactions`: (transaction_id), and expense_id when not NULL
 - `schema_migrations`: (migration_name)
 
 ### Check Constraints
@@ -675,6 +745,7 @@ Foreign keys are enforced (`PRAGMA foreign_keys = ON` per connection):
 - `payment_methods.type` enumeration; `credit_limit` NULL or > 0; `current_balance` >= 0; `payment_due_day`, `billing_cycle_start`, `billing_cycle_end`, `billing_cycle_day` NULL or 1-31
 - `credit_card_payments.amount` > 0
 - `credit_card_billing_cycles.actual_statement_balance`, `calculated_statement_balance` >= 0; `minimum_payment` NULL or >= 0; `balance_type` NULL, 'actual' or 'calculated'
+- `plaid_items.environment` 'sandbox'/'production'; `plaid_transactions.status` 'new'/'added'/'matched'/'ignored'
 
 ## Schema Definition
 

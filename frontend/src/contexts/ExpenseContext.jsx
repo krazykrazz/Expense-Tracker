@@ -157,7 +157,11 @@ export function ExpenseProvider({ children }) {
   }, []);
 
   const handleExpenseUpdated = useCallback((updatedExpense) => {
-    setExpenses(prev => prev.map(e => e.id === updatedExpense.id ? updatedExpense : e));
+    // Update responses don't carry the bank link (an edit never changes it); keep it so the
+    // bank-confirmed indicator, including "amount differs", stays visible after an edit
+    setExpenses(prev => prev.map(e => (e.id === updatedExpense.id
+      ? { ...updatedExpense, bankLink: updatedExpense.bankLink ?? e.bankLink ?? null }
+      : e)));
     setRefreshTrigger(prev => prev + 1);
     setBudgetAlertRefreshTrigger(prev => prev + 1);
   }, []);

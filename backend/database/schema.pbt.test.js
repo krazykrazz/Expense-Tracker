@@ -87,7 +87,10 @@ const EXPECTED_TABLES = {
   credit_card_billing_cycles: ['id', 'payment_method_id', 'cycle_start_date', 'cycle_end_date', 'actual_statement_balance', 'calculated_statement_balance', 'minimum_payment', 'notes', 'statement_pdf_path', 'is_user_entered', 'reviewed_at', 'effective_balance', 'balance_type', 'created_at', 'updated_at'],
   activity_logs: ['id', 'event_type', 'entity_type', 'entity_id', 'user_action', 'metadata', 'timestamp', 'created_at'],
   settings: ['key', 'value', 'updated_at'],
-  users: ['id', 'username', 'password_hash', 'created_at', 'updated_at']
+  users: ['id', 'username', 'password_hash', 'created_at', 'updated_at'],
+  plaid_items: ['id', 'item_id', 'institution_name', 'access_token_enc', 'sync_cursor', 'environment', 'last_synced_at', 'last_error', 'created_at', 'updated_at'],
+  plaid_accounts: ['id', 'plaid_item_id', 'account_id', 'name', 'mask', 'type', 'subtype', 'payment_method_id', 'created_at', 'updated_at'],
+  plaid_transactions: ['id', 'transaction_id', 'plaid_account_id', 'amount', 'iso_currency_code', 'date', 'authorized_date', 'name', 'merchant_name', 'status', 'expense_id', 'created_at', 'updated_at']
 };
 
 const TABLE_NAMES = Object.keys(EXPECTED_TABLES);
@@ -121,12 +124,12 @@ describe('Feature: migration-consolidation, Property 1: Schema completeness', ()
     );
   }, 120000);
 
-  test('Schema creates exactly 27 tables', async () => {
+  test('Schema creates exactly 30 tables', async () => {
     const db = await openDb();
     try {
       await applySchema(db);
       const tables = await all(db, "SELECT name FROM sqlite_master WHERE type='table' AND name != 'sqlite_sequence' ORDER BY name");
-      expect(tables.length).toBe(27);
+      expect(tables.length).toBe(30);
       const names = tables.map(t => t.name).sort();
       expect(names).toEqual(TABLE_NAMES.sort());
     } finally {

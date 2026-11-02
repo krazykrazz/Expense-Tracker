@@ -217,6 +217,10 @@ Update events include detailed change tracking showing old → new values for mo
 | `backup_created` | system | Database backup created |
 | `backup_restored` | system | Database backup restored (archive, or legacy `.db` with `legacyDatabase: true`) |
 | `version_upgraded` | system | Application version upgrade detected on startup (includes old_version, new_version) |
+| `plaid_item_added` | plaid_item | Bank connected through Plaid (institution name and environment only; never tokens) |
+| `plaid_item_deleted` | plaid_item | Bank disconnected (institution name, count of unreviewed transactions removed) |
+
+Adding a bank transaction from the Import Inbox logs the normal `expense_added`. Saving or removing Plaid keys (Settings → Bank Import) logs `settings_updated` with `metadata.section = 'plaid'` and a description of what changed, never the key values. Plaid syncs, matches and ignores are not logged. `plaid_item` events only matter to the Bank Import modal, so `useDataSync` does not route them to a refresh.
 
 ## Configuration
 

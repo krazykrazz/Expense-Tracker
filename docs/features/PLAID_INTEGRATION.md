@@ -69,7 +69,19 @@ The **bank icon** in the header opens the Bank Import modal. It appears as soon 
 2. For each account, choose the **payment method** it pays from (debit or credit card payment methods), or *Don't import*. Transactions from unmapped accounts are kept but hidden from the inbox.
 3. **Sync now** pulls changes for every connected bank and reports new / updated / removed counts. One failing bank does not stop the others.
    - The first sync covers about 30 days of history. Plaid may need a minute after connecting before history is ready.
-4. **Disconnect** removes the connection at Plaid and locally. Unreviewed and ignored transactions are deleted. Expenses already added, and their bank-confirmed icons, are kept.
+   - Each bank shows when it last synced (date and time) and its last error.
+4. **Automatic sync** (shown once a bank is connected): on by default, every **30 minutes from 06:00 to 23:00** in the business timezone (Settings), nothing overnight. Choose 30, 60 or 120 minutes and the hours, or turn it off. See [Automatic sync](#automatic-sync).
+5. **Disconnect** removes the connection at Plaid and locally. Unreviewed and ignored transactions are deleted. Expenses already added, and their bank-confirmed colours, are kept.
+
+### Automatic sync
+
+Nobody needs to know about Sync now:
+
+- **On a schedule:** a check runs every 5 minutes and syncs each bank whose last sync is older than the interval (with 3 minutes of slack, so "30 minutes" stays 30), during the active hours only.
+- **When the app is opened:** loading the app, coming back to its tab (at most once every 5 minutes) or opening Bank Import syncs, in the background, any bank not synced in the last 30 minutes. This works at any hour, including overnight.
+- **What is skipped:** banks waiting for you (expired login, removed at the bank) until they are reconnected, banks from another Plaid environment, and a bank that just failed (it is retried at the next interval, not every 5 minutes). Nothing runs while Plaid is not configured.
+- **Results:** a sync that brings new, changed or removed transactions refreshes the inbox and connections in every open tab (toast "↻ Bank transactions synced"). Syncs with nothing new are silent.
+- **Cost:** Plaid does not charge per sync call (Transactions is billed per connected account per month on paid plans, and is included in the Trial). Plaid itself collects new data from most banks 1 to 4 times a day, so most syncs find nothing new.
 
 ### Inbox tab
 
@@ -151,13 +163,14 @@ All under `/api/plaid`; see the [Endpoint Reference](../API_DOCUMENTATION.md#pla
 - `plaid_item_added` and `plaid_item_deleted` (entity `plaid_item`, institution name only).
 - Saving or removing Plaid keys logs `settings_updated` (entity `settings`) describing what changed, e.g. "environment: Sandbox → Production, secret changed", never the values.
 - Adding a transaction as an expense logs the normal `expense_added`. Confirming income with a different amount logs `income_source_updated`; Add income logs `income_source_added`.
-- Syncs, matches and ignores are not logged in the PoC.
+- A sync that changed the inbox (Sync now, scheduled or on opening the app) logs `plaid_sync_completed` (entity `plaid_transaction`, counts and source only), which also refreshes other tabs. Changing the automatic sync schedule logs `settings_updated` with `section: 'plaid_auto_sync'`.
+- Matches and ignores are not logged yet.
 
 ## Limitations
 
 These are deferred to later phases:
 
-- No scheduled sync or webhooks; use **Sync now**.
+- No webhooks: new transactions arrive with the next automatic sync, not instantly.
 - No reconnect (Plaid "update mode") for an expired bank login. The connection shows the error; in the PoC, disconnect and reconnect (in Production this uses a Trial slot).
 - Pending transactions are not shown. Changes made at the bank after you review a transaction are not reflected.
 - Categories come only from your own history for the place; Plaid's categories are not used.

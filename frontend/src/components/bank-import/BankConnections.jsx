@@ -4,7 +4,9 @@ import {
   createLinkToken, connectBank, getBankConnections, disconnectBank, mapBankAccount, syncBanks, getPlaidStatus
 } from '../../services/plaidApi';
 import { getPaymentMethods } from '../../services/paymentMethodApi';
-import { formatDate } from '../../utils/formatters';
+import { formatDateTime } from '../../utils/formatters';
+import { useSyncEvent } from '../../hooks/useSyncEvent';
+import AutoSyncSettings from './AutoSyncSettings';
 
 const MAPPABLE_TYPES = ['debit', 'credit_card'];
 
@@ -54,6 +56,9 @@ const BankConnections = ({ status, onStatusChange }) => {
     load(controller.signal);
     return () => controller.abort();
   }, [load]);
+
+  // Automatic sync finished (new "Last synced" times, errors)
+  useSyncEvent('plaid', () => { load(); });
 
   const refreshStatus = useCallback(async () => {
     try {
@@ -178,6 +183,8 @@ const BankConnections = ({ status, onStatusChange }) => {
       {error && <div className="bank-import-error" role="alert">{error}</div>}
       {message && <div className="bank-import-message" role="status">{message}</div>}
 
+      {items.length > 0 && <AutoSyncSettings />}
+
       {items.length === 0 ? (
         <div className="bank-import-empty">No banks connected yet.</div>
       ) : (
@@ -187,7 +194,7 @@ const BankConnections = ({ status, onStatusChange }) => {
               <div>
                 <strong>{item.institutionName}</strong>
                 <div className="bank-import-muted">
-                  {item.lastSyncedAt ? `Last synced ${formatDate(item.lastSyncedAt.replace(' ', 'T') + 'Z')}` : 'Never synced'}
+                  {item.lastSyncedAt ? `Last synced ${formatDateTime(item.lastSyncedAt.replace(' ', 'T') + 'Z')}` : 'Never synced'}
                   {item.lastError && <span className="bank-connection-error"> · Last error: {item.lastError}</span>}
                 </div>
               </div>

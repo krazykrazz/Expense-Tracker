@@ -219,8 +219,9 @@ Update events include detailed change tracking showing old → new values for mo
 | `version_upgraded` | system | Application version upgrade detected on startup (includes old_version, new_version) |
 | `plaid_item_added` | plaid_item | Bank connected through Plaid (institution name and environment only; never tokens) |
 | `plaid_item_deleted` | plaid_item | Bank disconnected (institution name, count of unreviewed transactions removed) |
+| `plaid_sync_completed` | plaid_transaction | A bank sync (manual, scheduled or on opening the app) that added, changed or removed staged transactions: source and counts only. Routed as `plaid` so open Bank Import modals refresh |
 
-Adding a bank transaction from the Import Inbox logs the normal `expense_added`. Saving or removing Plaid keys (Settings → Bank Import) logs `settings_updated` with `metadata.section = 'plaid'` and a description of what changed, never the key values. Plaid syncs, matches and ignores are not logged. `plaid_item` events only matter to the Bank Import modal, so `useDataSync` does not route them to a refresh.
+Adding a bank transaction from the Import Inbox logs the normal `expense_added`. Saving or removing Plaid keys (Settings → Bank Import) logs `settings_updated` with `metadata.section = 'plaid'` and a description of what changed, never the key values; changing the automatic sync schedule logs `settings_updated` with `metadata.section = 'plaid_auto_sync'`. Syncs with nothing new, matches and ignores are not logged. `plaid_item` events only matter to the Bank Import modal, so `useDataSync` does not route them to a refresh.
 
 ## Configuration
 

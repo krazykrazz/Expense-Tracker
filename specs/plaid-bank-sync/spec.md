@@ -86,6 +86,14 @@ Suggested after the first real-bank connection: a payroll deposit showed as "Ref
 
 ### 2.2 Scheduled sync
 
+**Status: built early as a Phase 1.5 slice**, with these differences from the design below:
+- One 5-minute cron tick syncs each bank whose last sync or attempt is older than the interval minus 3 minutes, instead of a cron expression per schedule. Changing settings needs no re-registration, and catching up after startup comes for free.
+- Settings use `plaid_auto_sync_enabled`, `_interval_minutes`, `_start_hour` and `_end_hour` (whole hours), set on the Connections tab through `GET/PUT /api/plaid/sync-settings`.
+- Sync on open is `POST /api/plaid/sync?ifStaleMinutes=30` from `BankImportButton`: on app load, when the tab becomes visible again (throttled to 5 minutes) and when the modal opens. It runs outside the request's tab context, so the opening tab also gets the event.
+- `plaid_sync_completed` (entity `plaid_transaction`, routed as `plaid`) is logged for manual, scheduled and on-open syncs that changed something. `ImportInbox` and `BankConnections` refresh on it. This covers 2.3's sync part; the badge is still to do.
+- Banks with user-fixable errors (`ITEM_LOGIN_REQUIRED` etc.) are skipped until 2.1 reconnect exists.
+- Not built yet: "Ask the bank for fresh data" (`/transactions/refresh`) and `plaid_items.last_sync_source`.
+
 **Requirements**
 1. A background job syncs every `ok`/`consent_expiring` Item **every 30 minutes between 06:00 and 23:00** business time (the last run at 23:00) and not overnight. Configurable in Settings → Bank Import: Off, interval (30 / 60 / 120 minutes) and active hours (start, end).
    - Why this is cheap: `/transactions/sync` is not billed per call (Transactions is billed per account per month on paid plans; included in the Trial) and the limit is about 30 calls per minute per Item. Plaid itself pulls from most banks 1–4 times a day, so most runs return nothing; frequent polling only shortens the delay after Plaid has new data.

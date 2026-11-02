@@ -23,6 +23,8 @@ router.post('/items', plaidController.connectItem);
 router.delete('/items/:id', plaidController.disconnectItem);
 router.put('/accounts/:id', plaidController.updateAccount);
 router.post('/sync', plaidController.sync);
+router.get('/sync-settings', plaidController.getSyncSettings);
+router.put('/sync-settings', plaidController.saveSyncSettings);
 router.get('/inbox', plaidController.getInbox);
 router.post('/inbox/:id/add', plaidController.addAsExpense);
 router.post('/inbox/:id/match', plaidController.matchToExpense);

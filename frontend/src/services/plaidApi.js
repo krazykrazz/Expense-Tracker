@@ -64,6 +64,22 @@ export const mapBankAccount = (accountId, paymentMethodId) =>
 export const syncBanks = () =>
   call('syncing banks', () => apiPost(API_ENDPOINTS.PLAID_SYNC, {}, 'sync banks'));
 
+/**
+ * Automatic sync when the app is opened: the server syncs, in the background, banks not synced in the last
+ * `minutes`, and answers at once. Results arrive as a cross-tab `plaid` sync event.
+ * @returns {Promise<{started: boolean, banks: number}>}
+ */
+export const syncBanksIfStale = (minutes = 30) =>
+  call('starting automatic bank sync', () => apiPost(API_ENDPOINTS.PLAID_SYNC_IF_STALE(minutes), {}, 'sync banks'));
+
+/** @returns {Promise<{enabled: boolean, intervalMinutes: number, startHour: number, endHour: number}>} */
+export const getAutoSyncSettings = (options = {}) =>
+  call('fetching auto sync settings', () => apiGet(API_ENDPOINTS.PLAID_SYNC_SETTINGS, 'fetch auto sync settings', options));
+
+/** @param {{enabled?: boolean, intervalMinutes?: number, startHour?: number, endHour?: number}} fields */
+export const saveAutoSyncSettings = (fields) =>
+  call('saving auto sync settings', () => apiPut(API_ENDPOINTS.PLAID_SYNC_SETTINGS, fields, 'save auto sync settings'));
+
 /** @returns {Promise<{transactions: Array, hiddenUnmapped: number}>} */
 export const getInbox = (status = 'new', options = {}) =>
   call('fetching import inbox', () => apiGet(API_ENDPOINTS.PLAID_INBOX(status), 'fetch import inbox', options));

@@ -354,13 +354,14 @@ describe('Feature: sse-visibility-optimization, Property 5: Full data refresh on
           expect(callbacks.refreshPeople).toHaveBeenCalledTimes(1);
           expect(callbacks.refreshPaymentMethods).toHaveBeenCalledTimes(1);
 
-          // 5 syncEvent window events dispatched
-          expect(syncEvents).toHaveLength(5);
+          // 6 syncEvent window events dispatched
+          expect(syncEvents).toHaveLength(6);
           expect(syncEvents).toContain('loan');
           expect(syncEvents).toContain('income');
           expect(syncEvents).toContain('investment');
           expect(syncEvents).toContain('fixed_expense');
           expect(syncEvents).toContain('credit_card');
+          expect(syncEvents).toContain('plaid');
 
           // No toast notifications
           expect(result.current.getToastSnapshot()).toHaveLength(0);

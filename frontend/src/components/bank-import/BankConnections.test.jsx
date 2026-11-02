@@ -18,6 +18,8 @@ vi.mock('../../services/plaidApi', () => ({
   mapBankAccount: vi.fn(),
   syncBanks: vi.fn(),
   getPlaidStatus: vi.fn(),
+  getAutoSyncSettings: vi.fn(),
+  saveAutoSyncSettings: vi.fn(),
 }));
 
 vi.mock('../../services/paymentMethodApi', () => ({
@@ -36,6 +38,7 @@ describe('BankConnections', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     plaidApi.getBankConnections.mockResolvedValue({ items: [item] });
+    plaidApi.getAutoSyncSettings.mockResolvedValue({ enabled: true, intervalMinutes: 30, startHour: 6, endHour: 23 });
     getPaymentMethods.mockResolvedValue([
       { id: 1, display_name: 'Cash', type: 'cash' },
       { id: 2, display_name: 'Debit', type: 'debit' },
@@ -45,6 +48,42 @@ describe('BankConnections', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  it('shows the automatic sync schedule and saves changes', async () => {
+    plaidApi.saveAutoSyncSettings.mockImplementation(async (next) => next);
+
+    render(<BankConnections status={sandbox} onStatusChange={vi.fn()} />);
+    const interval = await screen.findByLabelText('Sync interval');
+
+    expect(screen.getByLabelText('Automatic sync')).toBeChecked();
+    expect(interval.value).toBe('30');
+    expect(screen.getByLabelText('Sync from').value).toBe('6');
+    expect(screen.getByLabelText('Sync until').value).toBe('23');
+
+    fireEvent.change(interval, { target: { value: '60' } });
+    await waitFor(() => expect(plaidApi.saveAutoSyncSettings).toHaveBeenCalledWith({ enabled: true, intervalMinutes: 60, startHour: 6, endHour: 23 }));
+
+    fireEvent.click(screen.getByLabelText('Automatic sync'));
+    expect(await screen.findByText(/banks sync when the app is opened/)).toBeInTheDocument();
+  });
+
+  it('refuses a start hour after the end hour without saving', async () => {
+    render(<BankConnections status={sandbox} onStatusChange={vi.fn()} />);
+    fireEvent.change(await screen.findByLabelText('Sync from'), { target: { value: '23' } });
+
+    expect(await screen.findByText('Start must be before end.')).toBeInTheDocument();
+    expect(plaidApi.saveAutoSyncSettings).not.toHaveBeenCalled();
+  });
+
+  it('reloads when a sync finishes in the background', async () => {
+    render(<BankConnections status={sandbox} onStatusChange={vi.fn()} />);
+    await screen.findByText('Never synced');
+    plaidApi.getBankConnections.mockResolvedValue({ items: [{ ...item, lastSyncedAt: '2026-11-02 17:30:00' }] });
+
+    window.dispatchEvent(new CustomEvent('syncEvent', { detail: { entityType: 'plaid' } }));
+
+    expect(await screen.findByText(/^Last synced /)).toBeInTheDocument();
   });
 
   it('maps an account to a bank-backed payment method', async () => {

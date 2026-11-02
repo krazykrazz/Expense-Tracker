@@ -2,6 +2,8 @@ const { asyncHandler } = require('../middleware/errorHandler');
 const plaidService = require('../services/plaidService');
 const plaidInboxService = require('../services/plaidInboxService');
 const plaidSettingsService = require('../services/plaidSettingsService');
+const plaidSyncSchedulerService = require('../services/plaidSyncSchedulerService');
+const { runWithTabId } = require('../utils/requestContext');
 
 const tabIdOf = (req) => req.headers['x-tab-id'] ?? null;
 const idParam = (req) => parseInt(req.params.id, 10);
@@ -69,9 +71,38 @@ const updateAccount = asyncHandler(async (req, res) => {
   res.json(await plaidService.updateAccountMapping(idParam(req), (req.body || {}).paymentMethodId ?? null));
 });
 
-/** POST /api/plaid/sync */
+/**
+ * POST /api/plaid/sync — Sync now.
+ * POST /api/plaid/sync?ifStaleMinutes=N — automatic sync when the app is opened: syncs, in the background,
+ * only banks not synced in the last N minutes (5-1440) and answers at once with `{ started, banks }`.
+ */
 const sync = asyncHandler(async (req, res) => {
-  res.json(await plaidService.syncAll());
+  if (req.query.ifStaleMinutes === undefined) {
+    return res.json(await plaidService.syncAll());
+  }
+  const minutes = parseInt(req.query.ifStaleMinutes, 10);
+  if (Number.isNaN(minutes) || minutes < 5 || minutes > 1440) {
+    return res.status(400).json({ error: 'ifStaleMinutes must be between 5 and 1440' });
+  }
+  const stale = await plaidService.findStaleItems(minutes);
+  if (stale.length > 0) {
+    // Outside the request's tab context: the opening tab must also receive the resulting sync event
+    runWithTabId(null, () => plaidService.syncItems(stale, 'on_open'));
+  }
+  res.json({ started: stale.length > 0, banks: stale.length });
+});
+
+/** GET /api/plaid/sync-settings */
+const getSyncSettings = asyncHandler(async (req, res) => {
+  res.json(await plaidSyncSchedulerService.getSettings());
+});
+
+/**
+ * PUT /api/plaid/sync-settings
+ * Body: { enabled?, intervalMinutes? (30|60|120), startHour? (0-23), endHour? (1-24) }
+ */
+const saveSyncSettings = asyncHandler(async (req, res) => {
+  res.json(await plaidSyncSchedulerService.saveSettings(req.body || {}, tabIdOf(req)));
 });
 
 /** GET /api/plaid/inbox?status=new|ignored */
@@ -142,6 +173,8 @@ module.exports = {
   disconnectItem,
   updateAccount,
   sync,
+  getSyncSettings,
+  saveSyncSettings,
   getInbox,
   addAsExpense,
   matchToExpense,

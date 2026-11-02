@@ -40,6 +40,7 @@ const authService = require('./services/authService');
 const activityLogService = require('./services/activityLogService');
 const sseService = require('./services/sseService');
 const billingCycleSchedulerService = require('./services/billingCycleSchedulerService');
+const plaidSyncSchedulerService = require('./services/plaidSyncSchedulerService');
 const versionCheckService = require('./services/versionCheckService');
 const logger = require('./config/logger');
 const { errorHandler } = require('./middleware/errorHandler');
@@ -344,6 +345,13 @@ initializeDatabase()
         logger.info('Running initial billing cycle auto-generation check...');
         await billingCycleSchedulerService.runAutoGeneration();
       }, 60000);
+
+      // Automatic Plaid sync: the tick is cheap (no-op unless Plaid is configured, auto sync is on, it is
+      // within active hours and a bank is due); also catches up after downtime
+      scheduledTasks.push(cron.schedule(plaidSyncSchedulerService.TICK_CRON, async () => {
+        await plaidSyncSchedulerService.tick();
+      }, { timezone: 'Etc/UTC' }));
+      logger.info('Bank auto sync check scheduled (every 5 minutes; syncs per Bank Import settings)');
     });
   })
   .catch((err) => {

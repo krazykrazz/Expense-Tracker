@@ -452,6 +452,16 @@ const SystemModal = () => {
           <div className="changelog">
             <div className="changelog-entry">
               <div className="changelog-version">
+                v1.15.0
+                {isCurrentVersion('v1.15.0') && <span className="current-version-badge">Current Version</span>}
+              </div>
+              <div className="changelog-date">November 2, 2026</div>
+              <ul className="changelog-items">
+                <li>Bank import: confirm expected income with bank deposits (or add unplanned deposits as income); bank-confirmed payment methods are coloured green with bank details on hover</li>
+              </ul>
+            </div>
+            <div className="changelog-entry">
+              <div className="changelog-version">
                 v1.14.0
                 {isCurrentVersion('v1.14.0') && <span className="current-version-badge">Current Version</span>}
               </div>

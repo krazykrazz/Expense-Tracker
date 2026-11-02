@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.15.0] - 2026-11-02
+
+### Bank import: confirm expected income with bank deposits (or add unplanned deposits as income); bank-confirmed payment methods are coloured green with bank details on hover
+
 ## [1.14.0] - 2026-11-02
 
 ### Bank import (Plaid): connect banks and review transactions in an Import Inbox (add, match, confirm fixed expenses, ignore), with in-app setup; charged-amount matching; fixed expenses linked to payment methods

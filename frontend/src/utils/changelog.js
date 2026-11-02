@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.15.0',
+    date: 'November 2, 2026',
+    added: [],
+    changed: ['Bank import: confirm expected income with bank deposits (or add unplanned deposits as income); bank-confirmed payment methods are coloured green with bank details on hover'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.14.0',
     date: 'November 2, 2026',
     added: [],

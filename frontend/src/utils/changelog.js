@@ -11,6 +11,14 @@
 
 const changelogEntries = [
   {
+    version: '1.17.0',
+    date: 'November 2, 2026',
+    added: [],
+    changed: ['Bank import: pending transactions can be added the day you spend (yellow payment pill) and update automatically when they settle (green); dropped pending charges are flagged for review'],
+    fixed: [],
+    removed: [],
+  },
+  {
     version: '1.16.0',
     date: 'November 2, 2026',
     added: [],

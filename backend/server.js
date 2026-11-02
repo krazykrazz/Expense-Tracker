@@ -32,6 +32,9 @@ const activityLogRoutes = require('./routes/activityLogRoutes');
 const settingsRoutes = require('./routes/settingsRoutes');
 const syncRoutes = require('./routes/syncRoutes');
 const authRoutes = require('./routes/authRoutes');
+const plaidRoutes = require('./routes/plaidRoutes');
+const { logPlaidStatus } = require('./config/plaid');
+const plaidSettingsService = require('./services/plaidSettingsService');
 const backupService = require('./services/backupService');
 const authService = require('./services/authService');
 const activityLogService = require('./services/activityLogService');
@@ -69,13 +72,14 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"],
+      // Plaid Link loads its script and iframe from Plaid's CDN
+      scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.plaid.com"],
       styleSrc: ["'self'", "'unsafe-inline'"],
       imgSrc: ["'self'", "data:", "blob:"],
-      connectSrc: ["'self'"],
+      connectSrc: ["'self'", "https://*.plaid.com"],
       fontSrc: ["'self'"],
       objectSrc: ["'self'", "blob:"], // Allow PDF objects from blob URLs
-      frameSrc: ["'self'", "blob:"], // Allow iframes with blob URLs for PDF viewing
+      frameSrc: ["'self'", "blob:", "https://cdn.plaid.com"], // Allow iframes with blob URLs for PDF viewing
       upgradeInsecureRequests: null // Disable for local network use
     }
   },
@@ -226,6 +230,9 @@ app.use('/api/activity-logs', activityLogRoutes);
 // Settings API routes
 app.use('/api/settings/timezone', settingsRoutes);
 
+// Plaid bank connections and Import Inbox (503 unless PLAID_* env vars are configured)
+app.use('/api/plaid', plaidRoutes);
+
 // Serve static files from the React app (after build)
 // In container (production/staging): /app/frontend/dist, in development: ../frontend/dist
 const isContainerEnv = process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'staging';
@@ -272,6 +279,13 @@ initializeDatabase()
       logger.error('Version check failed during startup (non-blocking):', error);
     }
 
+    // Plaid keys saved in Settings (environment variables, when set, take precedence)
+    try {
+      await plaidSettingsService.load();
+    } catch (error) {
+      logger.error('Loading Plaid settings failed during startup (non-blocking):', error);
+    }
+
     httpServer = app.listen(PORT, '0.0.0.0', () => {
       logger.info('=== Expense Tracker Server Started ===');
       logger.info(`Environment Configuration:`);
@@ -287,6 +301,7 @@ initializeDatabase()
       logger.info('  - Auth middleware (Password_Gate: ' + (authService.isPasswordGateActive() ? 'active' : 'Open_Mode') + ')');
       logger.info('');
       logger.info(`Server is running on port ${PORT}`);
+      logPlaidStatus();
       logger.info(`API available at http://localhost:${PORT}/api`);
       logger.info(`Frontend available at http://localhost:${PORT}`);
       logger.info('');

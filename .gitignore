@@ -32,6 +32,9 @@ config/backups/
 # Runtime config (user-specific settings)
 backend/config/config/
 config/config/
+# Generated encryption keys (Plaid token key); never commit
+backend/config/secrets/
+**/secrets/plaid.key
 
 # Isolated config tree created by jest.globalSetup.js
 backend/.test-config/

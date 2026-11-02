@@ -8,7 +8,7 @@
  * @module database/schema
  */
 
-// ─── Table Statements (25 tables) ───
+// ─── Table Statements (30 tables) ───
 
 const TABLE_STATEMENTS = [
   // schema_migrations — tracks applied migrations
@@ -350,6 +350,55 @@ const TABLE_STATEMENTS = [
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP
   )`,
 
+  // plaid_items — one row per bank login connected through Plaid (access token encrypted)
+  `CREATE TABLE IF NOT EXISTS plaid_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    item_id TEXT NOT NULL UNIQUE,
+    institution_name TEXT,
+    access_token_enc TEXT NOT NULL,
+    sync_cursor TEXT,
+    environment TEXT NOT NULL CHECK(environment IN ('sandbox', 'production')),
+    last_synced_at TEXT,
+    last_error TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  )`,
+
+  // plaid_accounts — bank accounts under a Plaid item, mapped to a payment method for import
+  `CREATE TABLE IF NOT EXISTS plaid_accounts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    plaid_item_id INTEGER NOT NULL,
+    account_id TEXT NOT NULL UNIQUE,
+    name TEXT,
+    mask TEXT,
+    type TEXT,
+    subtype TEXT,
+    payment_method_id INTEGER,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (plaid_item_id) REFERENCES plaid_items(id) ON DELETE CASCADE,
+    FOREIGN KEY (payment_method_id) REFERENCES payment_methods(id) ON DELETE SET NULL
+  )`,
+
+  // plaid_transactions — posted bank transactions staged for review (Import Inbox)
+  `CREATE TABLE IF NOT EXISTS plaid_transactions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    transaction_id TEXT NOT NULL UNIQUE,
+    plaid_account_id INTEGER,
+    amount REAL NOT NULL,
+    iso_currency_code TEXT,
+    date TEXT NOT NULL,
+    authorized_date TEXT,
+    name TEXT,
+    merchant_name TEXT,
+    status TEXT NOT NULL DEFAULT 'new' CHECK(status IN ('new', 'added', 'matched', 'ignored')),
+    expense_id INTEGER,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (plaid_account_id) REFERENCES plaid_accounts(id) ON DELETE SET NULL,
+    FOREIGN KEY (expense_id) REFERENCES expenses(id) ON DELETE SET NULL
+  )`,
+
   // users — authentication user accounts
   `CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -382,6 +431,32 @@ const TRIGGER_STATEMENTS = [
    AFTER UPDATE ON credit_card_billing_cycles
    BEGIN
      UPDATE credit_card_billing_cycles SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+   END`,
+
+  `CREATE TRIGGER IF NOT EXISTS update_plaid_items_timestamp
+   AFTER UPDATE ON plaid_items
+   BEGIN
+     UPDATE plaid_items SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+   END`,
+
+  `CREATE TRIGGER IF NOT EXISTS update_plaid_accounts_timestamp
+   AFTER UPDATE ON plaid_accounts
+   BEGIN
+     UPDATE plaid_accounts SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+   END`,
+
+  `CREATE TRIGGER IF NOT EXISTS update_plaid_transactions_timestamp
+   AFTER UPDATE ON plaid_transactions
+   BEGIN
+     UPDATE plaid_transactions SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+   END`,
+
+  // Deleting an expense that came from (or was matched to) a bank transaction puts that
+  // transaction back in the Import Inbox; ON DELETE SET NULL alone would strand it as 'added'
+  `CREATE TRIGGER IF NOT EXISTS plaid_transactions_unlink_on_expense_delete
+   BEFORE DELETE ON expenses
+   BEGIN
+     UPDATE plaid_transactions SET status = 'new', expense_id = NULL WHERE expense_id = OLD.id;
    END`
 ];
 
@@ -477,7 +552,14 @@ const INDEX_STATEMENTS = [
   'CREATE INDEX IF NOT EXISTS idx_activity_logs_entity ON activity_logs(entity_type, entity_id)',
 
   // users indexes
-  'CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)'
+  'CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)',
+
+  // plaid indexes
+  'CREATE INDEX IF NOT EXISTS idx_plaid_accounts_item ON plaid_accounts(plaid_item_id)',
+  'CREATE INDEX IF NOT EXISTS idx_plaid_transactions_status_date ON plaid_transactions(status, date)',
+  'CREATE INDEX IF NOT EXISTS idx_plaid_transactions_account ON plaid_transactions(plaid_account_id)',
+  // One bank transaction per expense (also blocks matching an expense twice)
+  'CREATE UNIQUE INDEX IF NOT EXISTS idx_plaid_transactions_expense ON plaid_transactions(expense_id) WHERE expense_id IS NOT NULL'
 ];
 
 // ─── Seed Statements ───

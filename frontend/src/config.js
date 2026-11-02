@@ -168,6 +168,18 @@ export const API_ENDPOINTS = {
   // Settings
   SETTINGS_TIMEZONE: `${API_BASE_URL}/api/settings/timezone`,
 
+  // Plaid bank connections + Import Inbox
+  PLAID_STATUS: `${API_BASE_URL}/api/plaid/status`,
+  PLAID_SETTINGS: `${API_BASE_URL}/api/plaid/settings`,
+  PLAID_SETTINGS_TEST: `${API_BASE_URL}/api/plaid/settings/test`,
+  PLAID_LINK_TOKEN: `${API_BASE_URL}/api/plaid/link-token`,
+  PLAID_ITEMS: `${API_BASE_URL}/api/plaid/items`,
+  PLAID_ITEM_BY_ID: (id) => `${API_BASE_URL}/api/plaid/items/${id}`,
+  PLAID_ACCOUNT_BY_ID: (id) => `${API_BASE_URL}/api/plaid/accounts/${id}`,
+  PLAID_SYNC: `${API_BASE_URL}/api/plaid/sync`,
+  PLAID_INBOX: (status = 'new') => `${API_BASE_URL}/api/plaid/inbox?status=${encodeURIComponent(status)}`,
+  PLAID_INBOX_ACTION: (id, action) => `${API_BASE_URL}/api/plaid/inbox/${id}/${action}`,
+
   // Auth
   AUTH_STATUS: `${API_BASE_URL}/api/auth/status`,
   AUTH_LOGIN: `${API_BASE_URL}/api/auth/login`,

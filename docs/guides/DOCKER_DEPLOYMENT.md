@@ -60,6 +60,7 @@ The repo also includes [docker-compose.ghcr.yml](../../docker-compose.ghcr.yml) 
 | `CORS_ORIGIN` | unset | Allowed cross-origin browser origin. Unset means same-origin only (a warning is logged in production) |
 | `APP_ENV` | unset | Overrides the environment name reported by `/api/version` and shown in the UI banner |
 | `CONFIG_DIR` | unset (`/config` is used) | Root of persistent data |
+| `PLAID_CLIENT_ID`, `PLAID_SECRET`, `PLAID_ENV`, `PLAID_TOKEN_KEY` | unset | Optional. Plaid bank import is normally set up in **Settings → Bank Import**; these override it (and make that screen read-only). See [Plaid Bank Import](../features/PLAID_INTEGRATION.md#optional-environment-variables). Keep them in an untracked `.env` |
 
 `IMAGE_TAG`, `GIT_COMMIT` and `BUILD_DATE` are baked in at build time and reported by `/api/version` and `/api/health`.
 

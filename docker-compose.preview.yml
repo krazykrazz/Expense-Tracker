@@ -28,6 +28,9 @@ services:
       - TZ=Etc/UTC
       - NODE_ENV=production  # Must be production/staging for container frontend path
       - APP_ENV=preview  # Display environment for banner (overrides NODE_ENV for UI)
+      # Plaid bank import: configure it in the app (Settings → Bank Import) with Sandbox keys.
+      # PLAID_* variables are deliberately not passed through: preview runs on a copy of
+      # production data, and a stray shell variable would silently override the settings.
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:2424/api/health"]

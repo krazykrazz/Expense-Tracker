@@ -248,6 +248,31 @@ Request/response details for the plan and allocation endpoints: [Budget Plan End
 | GET | `/api/version/check-update` | Check GitHub Releases for a newer version |
 | GET | `/api/sync/events` | Server-Sent Events stream for real-time sync |
 
+### Plaid Bank Import — `plaidRoutes.js`
+
+Every route except `/status` and `/settings` returns `503` until Plaid is configured (Settings → Bank Import, or `PLAID_*` environment variables). Plaid API failures return `502` with Plaid's error code in the message. See [Plaid Bank Import](features/PLAID_INTEGRATION.md).
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/plaid/status` | `{ enabled, source: 'settings'\|'env'\|'none', environment, trial: { limit, used } \| null }` (Production only reports Trial usage) |
+| GET | `/api/plaid/settings` | `{ source, editable, enabled, environment, clientIdHint, secretHint, problems, keySource, connectedBanks: { sandbox, production } }`; keys only as masked hints |
+| PUT | `/api/plaid/settings` | Save keys: body `{ clientId?, secret?, environment? }` (blank keeps the saved value). 400 invalid, 409 when `PLAID_*` env vars are set or banks from the other environment are connected |
+| POST | `/api/plaid/settings/test` | Check keys with Plaid without saving (same body): `{ ok, environment, message }` |
+| DELETE | `/api/plaid/settings` | Remove saved keys (409 while banks are connected or when env vars are set) |
+| POST | `/api/plaid/link-token` | Create a Plaid Link token (`{ linkToken, expiration }`) |
+| POST | `/api/plaid/items` | Connect a bank: body `{ publicToken, institutionName? }`; returns the item with its accounts (201) |
+| GET | `/api/plaid/items` | Connected banks with their accounts (`{ items }`); never includes tokens |
+| DELETE | `/api/plaid/items/:id` | Disconnect a bank (removes it at Plaid; keeps added/matched links) (204) |
+| PUT | `/api/plaid/accounts/:id` | Map an account to a payment method: body `{ paymentMethodId }` (`null` = don't import) |
+| POST | `/api/plaid/sync` | Sync all banks: `{ results: [{ id, institutionName, added, updated, removed, updateStatus } \| { id, institutionName, error }], totals }` |
+| GET | `/api/plaid/inbox?status=new\|ignored` | Staged transactions from mapped accounts, with `suggestedCategory`, `matchCandidates` and `canAdd`; plus `hiddenUnmapped` |
+| POST | `/api/plaid/inbox/:id/add` | Create an expense: body `{ type, place?, date?, notes? }` (201; 400 for refunds/validation, 409 if already reviewed) |
+| POST | `/api/plaid/inbox/:id/match` | Link to an existing expense: body `{ expenseId }` (400 different payment method, 409 already linked) |
+| POST | `/api/plaid/inbox/:id/ignore` | Ignore a transaction (409 if already reviewed) |
+| POST | `/api/plaid/inbox/:id/unignore` | Return an ignored transaction to the inbox |
+
+`GET /api/expenses` adds a `bankLink` field to each expense: `{ status: 'added'|'matched', name, rawName, date, amount }`, or `null` when it is not linked to a bank transaction.
+
 ---
 
 # Invoice API

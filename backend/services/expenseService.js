@@ -2,6 +2,7 @@ const expenseRepository = require('../repositories/expenseRepository');
 const expensePeopleRepository = require('../repositories/expensePeopleRepository');
 const peopleRepository = require('../repositories/peopleRepository');
 const paymentMethodRepository = require('../repositories/paymentMethodRepository');
+const plaidRepository = require('../repositories/plaidRepository');
 const { calculateWeek } = require('../utils/dateUtils');
 const logger = require('../config/logger');
 const expenseValidationService = require('./expenseValidationService');
@@ -449,11 +450,16 @@ class ExpenseService {
       peopleByExpense = await expensePeopleRepository.getPeopleForExpenses(medicalExpenseIds);
     }
 
+    const bankLinks = expenses.length > 0
+      ? await plaidRepository.findLinksForExpenses(expenses.map(e => e.id))
+      : new Map();
+
     return expenses.map(expense => {
+      const bankLink = bankLinks.get(expense.id) ?? null;
       if (expense.type === 'Tax - Medical') {
-        return { ...expense, people: peopleByExpense[expense.id] || [] };
+        return { ...expense, people: peopleByExpense[expense.id] || [], bankLink };
       }
-      return expense;
+      return { ...expense, bankLink };
     });
   }
 

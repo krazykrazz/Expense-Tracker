@@ -7,6 +7,7 @@ import { fetchRetentionSettings, updateRetentionSettings } from '../../services/
 import { createLogger } from '../../utils/logger';
 import { authAwareFetch } from '../../utils/fetchProvider';
 import SecuritySettings from './SecuritySettings';
+import PlaidSettings from '../bank-import/PlaidSettings';
 import './SettingsModal.css';
 
 const logger = createLogger('SettingsModal');
@@ -441,6 +442,12 @@ const SettingsModal = () => {
           >
             🔒 Security
           </button>
+          <button 
+            className={`tab-button ${activeTab === 'bank-import' ? 'active' : ''}`}
+            onClick={() => setActiveTab('bank-import')}
+          >
+            🏦 Bank Import
+          </button>
         </div>
 
         <div className="tab-content">
@@ -856,6 +863,12 @@ const SettingsModal = () => {
           {activeTab === 'security' && (
             <div className="tab-panel">
               <SecuritySettings />
+            </div>
+          )}
+
+          {activeTab === 'bank-import' && (
+            <div className="tab-panel">
+              <PlaidSettings />
             </div>
           )}
 

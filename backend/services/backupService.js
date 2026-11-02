@@ -648,6 +648,13 @@ class BackupService {
         // This handles restoring from backups created before the configurable payment methods feature
         await this._checkAndRunPaymentMethodMigration();
 
+        // The restored database may hold different Plaid keys (or none); refresh the cached copy
+        try {
+          await require('./plaidSettingsService').load();
+        } catch (plaidError) {
+          logger.warn('Failed to reload Plaid settings after restore:', plaidError.message);
+        }
+
         // Log backup restoration event (fire-and-forget, don't let logging failures affect restore)
         try {
           await activityLogService.logEvent(

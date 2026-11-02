@@ -21,6 +21,7 @@ Some feature documents still mention labels like `v4.x` or `v5.x`. Those are pre
 - [Place Name Standardization](PLACE_NAME_STANDARDIZATION.md) - Cleanup tool for inconsistent place names
 - [Generic Expense Reimbursement](GENERIC_EXPENSE_REIMBURSEMENT.md) - Original cost vs out-of-pocket for non-medical expenses
 - [Sticky Summary Scrolling](STICKY_SUMMARY_SCROLLING.md) - Main page layout and sticky summary column
+- [Plaid Bank Import](PLAID_INTEGRATION.md) - Connect banks via Plaid, review synced transactions in an Import Inbox (PoC)
 
 ### Payment Methods and Credit Cards
 - [Configurable Payment Methods](CONFIGURABLE_PAYMENT_METHODS.md) - Payment methods table, credit card balances

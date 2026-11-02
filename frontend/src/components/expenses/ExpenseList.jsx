@@ -8,6 +8,7 @@ import InvoiceIndicator from '../tax/InvoiceIndicator';
 import InsuranceStatusIndicator from './InsuranceStatusIndicator';
 import QuickStatusUpdate from './QuickStatusUpdate';
 import ReimbursementIndicator from './ReimbursementIndicator';
+import BankConfirmedIndicator from '../bank-import/BankConfirmedIndicator';
 import PostedIndicator from './PostedIndicator';
 import ExpenseForm from './ExpenseForm';
 import FilterChip from './FilterChip';
@@ -1103,6 +1104,7 @@ const ExpenseList = memo(({
                       expense.place || '-'
                     )}
                     <div className="expense-indicators">
+                      <BankConfirmedIndicator expense={expense} />
                       <PeopleIndicator expense={expense} />
                       {TAX_TYPES.includes(expense.type) && (
                         <InvoiceIndicator

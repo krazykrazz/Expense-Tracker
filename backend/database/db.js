@@ -294,6 +294,9 @@ async function resetTestDatabase() {
   const db = await getTestDatabase();
   
   const tables = [
+    'plaid_transactions',
+    'plaid_accounts',
+    'plaid_items',
     'credit_card_statements',
     'credit_card_payments',
     'credit_card_billing_cycles',

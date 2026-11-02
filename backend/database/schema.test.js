@@ -54,17 +54,30 @@ describe('Consolidated Schema – Unit Tests', () => {
     'people', 'expense_people', 'expense_invoices', 'place_names',
     'reminders', 'dismissed_anomalies', 'anomaly_suppression_rules',
     'payment_methods', 'credit_card_payments', 'credit_card_statements',
-    'credit_card_billing_cycles', 'activity_logs', 'settings', 'users'
+    'credit_card_billing_cycles', 'activity_logs', 'settings', 'users',
+    'plaid_items', 'plaid_accounts', 'plaid_transactions'
   ];
 
-  test('creates exactly 27 tables', async () => {
+  test('creates exactly 30 tables', async () => {
     const rows = await dbAll(
       db,
       "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
     );
     const tableNames = rows.map(r => r.name).sort();
     expect(tableNames).toEqual([...EXPECTED_TABLES].sort());
-    expect(tableNames).toHaveLength(27);
+    expect(tableNames).toHaveLength(30);
+  });
+
+  test('plaid_transactions allows one bank transaction per expense', async () => {
+    await dbRun(db, "INSERT INTO expenses (date, amount, type, week, method) VALUES ('2026-01-05', 10, 'Other', 1, 'Cash')");
+    const expense = await dbGet(db, 'SELECT id FROM expenses ORDER BY id DESC LIMIT 1');
+    await dbRun(db, "INSERT INTO plaid_transactions (transaction_id, amount, date, status, expense_id) VALUES ('t1', 10, '2026-01-05', 'matched', ?)", [expense.id]);
+    // Unlinked rows (NULL expense_id) are not constrained
+    await dbRun(db, "INSERT INTO plaid_transactions (transaction_id, amount, date) VALUES ('t2', 10, '2026-01-05')");
+    await dbRun(db, "INSERT INTO plaid_transactions (transaction_id, amount, date) VALUES ('t3', 10, '2026-01-05')");
+    await expect(
+      dbRun(db, "INSERT INTO plaid_transactions (transaction_id, amount, date, status, expense_id) VALUES ('t4', 10, '2026-01-05', 'added', ?)", [expense.id])
+    ).rejects.toThrow(/UNIQUE constraint failed/);
   });
 
   // ── Requirement 1.4: Default payment methods seeded ──

@@ -11,6 +11,16 @@ const PRODUCTION_ITEMS_KEY = 'plaid_production_items_created';
 const MAX_SYNC_RESTARTS = 3;
 const SYNC_PAGE_SIZE = 500;
 const GONE_ITEM_CODES = new Set(['ITEM_NOT_FOUND', 'INVALID_ACCESS_TOKEN']);
+/** Errors only the user can fix (log in again, reconnect): automatic sync skips these banks. */
+const NEEDS_USER_CODES = new Set([
+  'ITEM_LOGIN_REQUIRED', 'INVALID_CREDENTIALS', 'INVALID_MFA', 'USER_SETUP_REQUIRED', 'PENDING_DISCONNECT', ...GONE_ITEM_CODES
+]);
+
+/** SQLite CURRENT_TIMESTAMP ('YYYY-MM-DD HH:MM:SS', UTC) → epoch ms; 0 when missing. */
+const sqliteUtcMs = (value) => {
+  const ms = value ? Date.parse(`${value.replace(' ', 'T')}Z`) : NaN;
+  return Number.isNaN(ms) ? 0 : ms;
+};
 
 const fail = (message, statusCode, extra = {}) => Object.assign(new Error(message), { statusCode, ...extra });
 
@@ -36,6 +46,8 @@ function toServiceError(err, action) {
 class PlaidService {
   constructor() {
     this._syncing = new Set();
+    // Last sync attempt per bank (success or failure), so automatic sync doesn't retry a failing bank every tick
+    this._lastAttemptAt = new Map();
   }
 
   _client() {
@@ -262,6 +274,7 @@ class PlaidService {
     const items = await plaidRepository.findAllItems();
     const results = [];
     for (const item of items) {
+      this._lastAttemptAt.set(item.id, Date.now());
       try {
         results.push(await this.syncItem(item.id));
       } catch (err) {
@@ -272,7 +285,64 @@ class PlaidService {
       (sum, r) => ({ added: sum.added + (r.added || 0), updated: sum.updated + (r.updated || 0), removed: sum.removed + (r.removed || 0) }),
       { added: 0, updated: 0, removed: 0 }
     );
+    await this._logSyncChanges(totals, 'manual');
     return { results, totals };
+  }
+
+  /**
+   * Banks due for an automatic sync: connected in the current environment, not waiting for the user
+   * (expired login, removed at the bank), and neither synced nor attempted in the last `maxAgeMinutes`.
+   */
+  async findStaleItems(maxAgeMinutes, now = Date.now()) {
+    const { environment } = plaidConfig.getPlaidConfig();
+    const cutoff = now - maxAgeMinutes * 60 * 1000;
+    const items = await plaidRepository.findAllItems();
+    return items.filter(item => item.environment === environment
+      && !NEEDS_USER_CODES.has(item.lastError)
+      && Math.max(sqliteUtcMs(item.lastSyncedAt), this._lastAttemptAt.get(item.id) || 0) <= cutoff);
+  }
+
+  /**
+   * Automatic sync (scheduled, or when the app is opened) of the given banks, one at a time. Never throws:
+   * failures are recorded on the bank (`last_error`) by syncItem and shown on the Connections tab.
+   * @param {Array<{id: number}>} items
+   * @param {'scheduled'|'on_open'} source
+   */
+  async syncItems(items, source) {
+    const totals = { added: 0, updated: 0, removed: 0 };
+    let synced = 0;
+    for (const item of items) {
+      this._lastAttemptAt.set(item.id, Date.now());
+      try {
+        const result = await this.syncItem(item.id);
+        totals.added += result.added;
+        totals.updated += result.updated;
+        totals.removed += result.removed;
+        synced++;
+      } catch (err) {
+        if (err.statusCode !== 409) {
+          logger.warn('Automatic Plaid sync failed', { plaidItemId: item.id, source, error: err.message });
+        }
+      }
+    }
+    await this._logSyncChanges(totals, source);
+    return { synced, totals };
+  }
+
+  /** Log a sync that changed the inbox, so other tabs refresh it. No-op syncs are not logged. Never throws. */
+  async _logSyncChanges({ added, updated, removed }, source) {
+    if (added + updated + removed === 0) return;
+    try {
+      await activityLogService.logEvent(
+        'plaid_sync_completed',
+        'plaid_transaction',
+        null,
+        `Bank sync (${source.replace('_', ' ')}): ${added} new, ${updated} updated, ${removed} removed`,
+        { source, added, updated, removed }
+      );
+    } catch (err) {
+      logger.warn('Logging the Plaid sync result failed', { error: err.message });
+    }
   }
 
   /**

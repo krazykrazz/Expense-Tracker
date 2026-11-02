@@ -30,6 +30,7 @@ const TOAST_LABELS = {
   fixed_expense: '↻ Fixed expenses updated',
   credit_card: '↻ Credit cards updated',
   invoice: '↻ Receipts updated',
+  plaid: '↻ Bank transactions synced',
 };
 
 /**
@@ -47,6 +48,7 @@ export const ENTITY_TYPE_ALIASES = {
   credit_card_payment: 'credit_card',
   credit_card_statement: 'credit_card',
   billing_cycle: 'credit_card',
+  plaid_transaction: 'plaid',
 };
 
 /** @returns {string} the routing key for a backend entity type */
@@ -58,7 +60,7 @@ export function normalizeEntityType(entityType) {
 const CONTEXT_ENTITY_TYPES = new Set(['expense', 'budget', 'people', 'payment_method', 'invoice']);
 
 /** Entity types that dispatch window custom events (consumed via useSyncEvent) */
-const WINDOW_EVENT_ENTITY_TYPES = new Set(['loan', 'income', 'investment', 'fixed_expense', 'credit_card']);
+const WINDOW_EVENT_ENTITY_TYPES = new Set(['loan', 'income', 'investment', 'fixed_expense', 'credit_card', 'plaid']);
 
 /**
  * useDataSync — subscribes to the SSE sync endpoint and dispatches targeted

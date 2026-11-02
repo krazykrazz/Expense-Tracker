@@ -42,6 +42,7 @@ The backend broadcasts the `entity_type` of each activity-log event. `useDataSyn
 | `investment`, `investment_value` | `investment` | window `syncEvent` |
 | `fixed_expense` | `fixed_expense` | window `syncEvent` |
 | `credit_card_payment`, `credit_card_statement`, `billing_cycle` | `credit_card` | window `syncEvent` |
+| `plaid_transaction` (`plaid_sync_completed`: a bank sync that changed the inbox) | `plaid` | window `syncEvent` |
 
 ### Window `syncEvent` consumers
 
@@ -53,6 +54,7 @@ A window `syncEvent` does nothing by itself; components subscribe with `useSyncE
 | `FinancialOverviewModal` loans section | `loan`, `fixed_expense` | Loan list and linked fixed-expense counts |
 | `FinancialOverviewModal` investments section | `investment` | Investment list and totals |
 | `FinancialOverviewModal` payment methods / credit card summary | `credit_card` | Card balances and cycle status |
+| `ImportInbox`, `BankConnections` (Bank Import modal) | `plaid` | Inbox rows; last-synced times and bank errors |
 
 Not refreshed live (they load when opened): the loan, investment and credit card detail views, the Income and Fixed Expenses editors, Budgets modal tabs, Annual Summary, and the Analytics Hub.
 
@@ -98,6 +100,7 @@ After each debounced refresh fires, a brief toast appears in the bottom-right co
 | `fixed_expense` | ↻ Fixed expenses updated |
 | `credit_card` | ↻ Credit cards updated |
 | `invoice` | ↻ Receipts updated |
+| `plaid` | ↻ Bank transactions synced |
 
 ## Visibility-Based Connection Lifecycle
 

@@ -6,6 +6,7 @@ import {
 } from '../../services/plaidApi';
 import { CATEGORIES, INCOME_CATEGORIES } from '../../utils/constants';
 import { formatCurrency, formatDate } from '../../utils/formatters';
+import { useSyncEvent } from '../../hooks/useSyncEvent';
 
 const EXPECTED_CURRENCY = 'CAD';
 
@@ -272,6 +273,9 @@ const ImportInbox = ({ onExpensesChanged, onOpenConnections }) => {
     load(controller.signal);
     return () => controller.abort();
   }, [load]);
+
+  // A sync (automatic, or Sync now in another tab) brought new transactions
+  useSyncEvent('plaid', () => { load(); });
 
   const handleAction = async (txn, action, payload) => {
     setBusyId(txn.id);

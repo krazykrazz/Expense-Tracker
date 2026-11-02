@@ -217,6 +217,30 @@
   min-width: 180px;
 }
 
+.auto-sync-settings {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--spacing-2, 8px);
+  margin-bottom: var(--spacing-3, 12px);
+  padding: var(--spacing-2, 8px) var(--spacing-3, 12px);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  font-size: 0.9em;
+}
+
+.auto-sync-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.auto-sync-schedule select {
+  margin: 0 2px;
+}
+
 /* Inbox */
 
 .inbox-filter {

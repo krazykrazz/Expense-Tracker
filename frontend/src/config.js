@@ -177,6 +177,8 @@ export const API_ENDPOINTS = {
   PLAID_ITEM_BY_ID: (id) => `${API_BASE_URL}/api/plaid/items/${id}`,
   PLAID_ACCOUNT_BY_ID: (id) => `${API_BASE_URL}/api/plaid/accounts/${id}`,
   PLAID_SYNC: `${API_BASE_URL}/api/plaid/sync`,
+  PLAID_SYNC_IF_STALE: (minutes) => `${API_BASE_URL}/api/plaid/sync?ifStaleMinutes=${encodeURIComponent(minutes)}`,
+  PLAID_SYNC_SETTINGS: `${API_BASE_URL}/api/plaid/sync-settings`,
   PLAID_INBOX: (status = 'new') => `${API_BASE_URL}/api/plaid/inbox?status=${encodeURIComponent(status)}`,
   PLAID_INBOX_ACTION: (id, action) => `${API_BASE_URL}/api/plaid/inbox/${id}/${action}`,
 

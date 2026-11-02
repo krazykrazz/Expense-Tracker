@@ -8,11 +8,13 @@ const express = require('express');
 jest.mock('../services/plaidService');
 jest.mock('../services/plaidInboxService');
 jest.mock('../services/plaidSettingsService');
+jest.mock('../services/plaidSyncSchedulerService');
 jest.mock('../config/plaid', () => ({ isEnabled: jest.fn() }));
 
 const plaidService = require('../services/plaidService');
 const plaidInboxService = require('../services/plaidInboxService');
 const plaidSettingsService = require('../services/plaidSettingsService');
+const plaidSyncSchedulerService = require('../services/plaidSyncSchedulerService');
 const { isEnabled } = require('../config/plaid');
 const plaidRoutes = require('./plaidRoutes');
 const { errorHandler } = require('../middleware/errorHandler');
@@ -160,6 +162,42 @@ describe('plaid routes', () => {
     expect(declined.status).toBe(200);
     expect(plaidInboxService.matchToIncome).toHaveBeenNthCalledWith(1, 3, 9, { updateAmount: true }, 'tab-2');
     expect(plaidInboxService.matchToIncome).toHaveBeenNthCalledWith(2, 3, 9, { updateAmount: false }, null);
+  });
+
+  test('POST /sync?ifStaleMinutes starts only stale banks in the background and answers at once', async () => {
+    plaidService.findStaleItems.mockResolvedValue([{ id: 1 }, { id: 2 }]);
+    plaidService.syncItems.mockReturnValue(new Promise(() => {}));
+
+    const res = await request(app).post('/api/plaid/sync?ifStaleMinutes=30');
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ started: true, banks: 2 });
+    expect(plaidService.findStaleItems).toHaveBeenCalledWith(30);
+    expect(plaidService.syncItems).toHaveBeenCalledWith([{ id: 1 }, { id: 2 }], 'on_open');
+    expect(plaidService.syncAll).not.toHaveBeenCalled();
+  });
+
+  test('POST /sync?ifStaleMinutes does nothing when every bank is fresh, and validates the window', async () => {
+    plaidService.findStaleItems.mockResolvedValue([]);
+
+    const fresh = await request(app).post('/api/plaid/sync?ifStaleMinutes=30');
+    const invalid = await request(app).post('/api/plaid/sync?ifStaleMinutes=1');
+
+    expect(fresh.body).toEqual({ started: false, banks: 0 });
+    expect(plaidService.syncItems).not.toHaveBeenCalled();
+    expect(invalid.status).toBe(400);
+  });
+
+  test('GET and PUT /sync-settings', async () => {
+    plaidSyncSchedulerService.getSettings.mockResolvedValue({ enabled: true, intervalMinutes: 30, startHour: 6, endHour: 23 });
+    plaidSyncSchedulerService.saveSettings.mockResolvedValue({ enabled: false, intervalMinutes: 30, startHour: 6, endHour: 23 });
+
+    const got = await request(app).get('/api/plaid/sync-settings');
+    const saved = await request(app).put('/api/plaid/sync-settings').set('X-Tab-ID', 'tab-3').send({ enabled: false });
+
+    expect(got.body.intervalMinutes).toBe(30);
+    expect(saved.body.enabled).toBe(false);
+    expect(plaidSyncSchedulerService.saveSettings).toHaveBeenCalledWith({ enabled: false }, 'tab-3');
   });
 
   test('POST /inbox/:id/add-income returns 201', async () => {

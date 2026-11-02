@@ -255,6 +255,56 @@ describe('plaidService', () => {
         expect.objectContaining({ institutionName: 'Bank B', added: 1 })
       ]);
       expect(totals).toEqual({ added: 1, updated: 0, removed: 0 });
+      expect(activityLogService.logEvent).toHaveBeenCalledWith(
+        'plaid_sync_completed', 'plaid_transaction', null, 'Bank sync (manual): 1 new, 0 updated, 0 removed',
+        { source: 'manual', added: 1, updated: 0, removed: 0 }
+      );
+    });
+  });
+
+  describe('automatic sync', () => {
+    beforeEach(() => plaidService._lastAttemptAt.clear());
+
+    const setSynced = (id, minutesAgo) => run(
+      "UPDATE plaid_items SET last_synced_at = strftime('%Y-%m-%d %H:%M:%S', 'now', ?) WHERE id = ?",
+      [`-${minutesAgo} minutes`, id]
+    );
+
+    test('finds banks not synced within the window, skipping those that need the user and other environments', async () => {
+      await connect('Never');
+      const old = await connect('Old');
+      const fresh = await connect('Fresh');
+      const expired = await connect('Expired');
+      const other = await connect('Other');
+      await setSynced(old.id, 45);
+      await setSynced(fresh.id, 10);
+      await run("UPDATE plaid_items SET last_error = 'ITEM_LOGIN_REQUIRED' WHERE id = ?", [expired.id]);
+      await run("UPDATE plaid_items SET environment = 'production' WHERE id = ?", [other.id]);
+
+      const stale = await plaidService.findStaleItems(30);
+
+      expect(stale.map(item => item.institutionName).sort()).toEqual(['Never', 'Old']);
+    });
+
+    test('syncs due banks, records attempts so a failing bank is not retried at once, and logs only changes', async () => {
+      await connect('Bank A');
+      await connect('Bank B');
+      client.transactionsSync
+        .mockRejectedValueOnce(plaidError('INSTITUTION_DOWN'))
+        .mockResolvedValueOnce(page({ added: [txn('t1'), txn('t2')] }));
+
+      const result = await plaidService.syncItems(await plaidService.findStaleItems(30), 'scheduled');
+
+      expect(result).toEqual({ synced: 1, totals: { added: 2, updated: 0, removed: 0 } });
+      expect(await plaidService.findStaleItems(30)).toEqual([]);
+      expect(activityLogService.logEvent).toHaveBeenCalledWith(
+        'plaid_sync_completed', 'plaid_transaction', null, 'Bank sync (scheduled): 2 new, 0 updated, 0 removed', expect.any(Object)
+      );
+
+      activityLogService.logEvent.mockClear();
+      client.transactionsSync.mockResolvedValue(page());
+      await plaidService.syncItems(await plaidService.findStaleItems(30, Date.now() + 31 * 60 * 1000), 'on_open');
+      expect(activityLogService.logEvent).not.toHaveBeenCalled();
     });
   });
 
